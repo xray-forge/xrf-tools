@@ -1,4 +1,4 @@
-use super::source_span::SourceSpan;
+use crate::condlist::SourceSpan;
 
 /// A condition or effect in a condition-list branch.
 #[derive(Clone, Debug, PartialEq)]

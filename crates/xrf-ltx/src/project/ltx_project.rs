@@ -8,10 +8,10 @@ use xrf_vfs::{XrayAssetType, XrayCachePolicy, XrayLogicalPath, XrayLookupScope, 
 
 use crate::dialect::{LtxDialect, LtxResolution, LtxResolveRequest, LtxStandardDialect};
 use crate::document::LtxDocument;
-use crate::ltx::{Ltx, LtxSectionSchemes};
+use crate::ltx::Ltx;
 use crate::project::{LtxProjectOptions, LtxReadCounters, LtxReadCountersSnapshot, LtxResolvedRoot};
-use crate::scheme::LtxSchemeParser;
-use crate::source::{LtxDocumentSource, LtxIncludeSource, LtxListingCache, LtxVfsSource};
+use crate::scheme::{LtxSchemeParser, LtxSectionSchemes};
+use crate::source::{LtxDocumentSource, LtxListingCache, LtxVfsSource};
 use crate::syntax::{LTX_SCHEME_EXTENSION, LTX_SCHEME_LTX_FILENAME, SYSTEM_LTX_FILENAME};
 
 /// An LTX project over one VFS scope. Files use logical paths for both loose and archived configs.
@@ -193,21 +193,18 @@ impl LtxProject {
     let (included, unreadable): (Vec<XrayLogicalPath>, Vec<XrayLogicalPath>) = ltx_files
       .par_iter()
       .map(|path| {
-        let directory: PathBuf = path
-          .parent()
-          .map(|parent| PathBuf::from(parent.as_str()))
-          .unwrap_or_default();
+        let directory: &str = Ltx::directory_of(path.as_str());
 
         match source.read_included(path.as_str()) {
           Ok(includes) => includes
             .iter()
-            .map(|include| source.resolve(&directory, include))
-            .collect::<XrfResult<Vec<Vec<PathBuf>>>>()
+            .map(|include| source.resolve_include(directory, include))
+            .collect::<XrfResult<Vec<Vec<String>>>>()
             .and_then(|resolved| {
               resolved
                 .iter()
                 .flatten()
-                .map(|reached| Self::included_path(reached))
+                .map(|reached| XrayLogicalPath::new(reached))
                 .collect::<XrfResult<Vec<XrayLogicalPath>>>()
             })
             .map_err(|_| path),
@@ -337,15 +334,6 @@ impl LtxProject {
     paths.sort();
 
     paths
-  }
-
-  /// Converts a resolved include path into an engine identity.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error for an invalid X-Ray logical path.
-  fn included_path(path: &Path) -> XrfResult<XrayLogicalPath> {
-    XrayLogicalPath::new(&path.to_string_lossy())
   }
 }
 

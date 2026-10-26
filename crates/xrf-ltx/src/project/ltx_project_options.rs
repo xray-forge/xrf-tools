@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::dialect::{LtxDialect, LtxStandardDialect};
 
-/// Verification configuration.
+/// How a project is opened: which rules resolve it, what assembling it checks, and what it keeps.
 #[derive(Clone)]
 pub struct LtxProjectOptions {
   /// Whether project parsing should include schemes parsing.

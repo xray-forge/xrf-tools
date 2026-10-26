@@ -164,7 +164,7 @@ fn a_read_outside_the_project_is_not_counted() -> XrfResult {
   let before: LtxReadCountersSnapshot = project.get_read_counters();
 
   // The counters describe what the project did, so a caller reaching past it for a plain VFS read stays invisible.
-  Ltx::read_from_search(project.search(), "second.ltx")?;
+  Ltx::read_from_search_standard(project.search(), "second.ltx")?;
 
   assert_eq!(project.get_read_counters(), before);
 

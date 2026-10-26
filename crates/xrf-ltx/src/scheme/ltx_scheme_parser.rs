@@ -3,8 +3,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path_or;
 use xrf_vfs::{XrayLogicalPath, XraySearch};
 
-use crate::ltx::{Ltx, LtxSectionSchemes, Section};
-use crate::scheme::{LtxFieldDataType, LtxFieldScheme, LtxSectionScheme};
+use crate::ltx::{Ltx, Section};
+use crate::scheme::{LtxFieldDataType, LtxFieldScheme, LtxSectionScheme, LtxSectionSchemes};
 use crate::syntax::{LTX_SCHEME_FIELD, LTX_SCHEME_STRICT_FIELD, LTX_SYMBOL_SCHEME, VIRTUAL_LTX_PATH};
 
 /// Parser of LTX scheme definitions.

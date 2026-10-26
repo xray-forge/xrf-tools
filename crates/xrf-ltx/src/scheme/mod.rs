@@ -9,5 +9,5 @@ pub(crate) mod tuple_separator;
 pub use crate::scheme::ltx_field_data_type::LtxFieldDataType;
 pub use crate::scheme::ltx_field_scheme::LtxFieldScheme;
 pub use crate::scheme::ltx_scheme_parser::LtxSchemeParser;
-pub use crate::scheme::ltx_section_scheme::LtxSectionScheme;
+pub use crate::scheme::ltx_section_scheme::{LtxSectionFieldSchemes, LtxSectionScheme, LtxSectionSchemes};
 pub use crate::scheme::tuple_separator::TupleSeparator;

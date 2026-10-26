@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayLookupScope, XraySearch, XrayVfs};
 
-use crate::ltx::Ltx;
+use crate::source::LtxVfsSource;
 
 fn mount_search(name: &str, files: &[(&str, &str)]) -> XraySearch {
   let root: PathBuf = GeneratedResources::create_dir(&format!("ltx_vfs_includes/{name}")).expect("config root");
@@ -35,7 +35,9 @@ fn reads_include_statements_and_ignores_sections() {
     )],
   );
 
-  let includes: Vec<String> = Ltx::read_included_from_search(&search, "configs\\system.ltx").expect("includes read");
+  let includes: Vec<String> = LtxVfsSource::new(search.clone())
+    .read_included("configs\\system.ltx")
+    .expect("includes read");
 
   assert_eq!(includes, vec!["first.ltx", "second.ltx"]);
 }
@@ -45,7 +47,9 @@ fn answers_an_empty_list_for_a_config_including_nothing() {
   let search: XraySearch = mount_search("none", &[("configs\\system.ltx", "[section]\nvalue = 1\n")]);
 
   assert_eq!(
-    Ltx::read_included_from_search(&search, "configs\\system.ltx").expect("includes read"),
+    LtxVfsSource::new(search.clone())
+      .read_included("configs\\system.ltx")
+      .expect("includes read"),
     Vec::<String>::new()
   );
 }
@@ -56,7 +60,11 @@ fn a_config_outside_the_search_is_an_error() {
     .with_prefix("textures")
     .expect("prefix is valid");
 
-  assert!(Ltx::read_included_from_search(&textures, "configs\\system.ltx").is_err());
+  assert!(
+    LtxVfsSource::new(textures)
+      .read_included("configs\\system.ltx")
+      .is_err()
+  );
 }
 
 #[test]
@@ -72,7 +80,9 @@ fn reads_include_statements_declared_after_sections() {
   );
 
   assert_eq!(
-    Ltx::read_included_from_search(&search, "configs\\system.ltx").expect("includes read"),
+    LtxVfsSource::new(search.clone())
+      .read_included("configs\\system.ltx")
+      .expect("includes read"),
     vec!["first.ltx", "second.ltx"]
   );
 }

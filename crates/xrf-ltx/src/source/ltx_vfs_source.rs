@@ -1,15 +1,13 @@
-use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{decode_bytes_to_string, new_windows1251_encoder};
 use xrf_vfs::{XrayLogicalPath, XraySearch};
 
-use crate::dialect::LtxStandardDialect;
 use crate::document::LtxDocument;
-use crate::ltx::{Ltx, LtxIncludeConvertor};
+use crate::ltx::Ltx;
 use crate::project::LtxReadCounters;
-use crate::source::{LtxDocumentSource, LtxIncludeSource, LtxListingCache};
+use crate::source::{LtxDocumentSource, LtxIncludeMask, LtxListingCache};
 
 /// Resolves and reads includes through a search, so whatever records the search's reads records a config's too.
 pub(crate) struct LtxVfsSource<'a> {
@@ -63,26 +61,8 @@ impl<'a> LtxVfsSource<'a> {
     })
   }
 
-  /// Reads and lowers one logical path, with its logical location recorded so nested includes resolve against it.
-  pub fn read_ltx(&self, logical_path: &str) -> XrfResult<Ltx> {
-    let mut ltx: Ltx = LtxStandardDialect::lower(self.read_document(logical_path)?.as_ref())?;
-    let path: XrayLogicalPath = XrayLogicalPath::new(logical_path)?;
-
-    // The logical parent, not `Path::parent`: on a host that does not separate on `\` the latter answers the path unsplit, and
-    // every nested include then resolves against the mount root. An empty directory stands for a top-level config, which is
-    // what a filesystem read records for one too.
-    ltx.directory = Some(PathBuf::from(
-      path
-        .parent()
-        .map_or_else(String::new, |parent| parent.as_str().to_string()),
-    ));
-    ltx.path = Some(PathBuf::from(path.as_str()));
-
-    Ok(ltx)
-  }
-
-  /// Reads only a config's include statements, without parsing its sections.
-  pub fn read_included(&self, logical_path: &str) -> XrfResult<crate::ltx::LtxIncluded> {
+  /// Reads only a config's include statements, without lowering its sections.
+  pub fn read_included(&self, logical_path: &str) -> XrfResult<Vec<String>> {
     if let Some(counters) = self.counters {
       counters.record_include_scan();
     }
@@ -95,11 +75,6 @@ impl<'a> LtxVfsSource<'a> {
         .map(String::from)
         .collect(),
     )
-  }
-
-  /// A logical path as the VFS spells it.
-  fn to_logical(path: &Path) -> String {
-    path.to_string_lossy().replace('/', "\\")
   }
 
   /// The sorted file names directly in `directory`, asked of the search every time.
@@ -127,13 +102,38 @@ impl LtxDocumentSource for LtxVfsSource<'_> {
     self.read_document(logical_path).map(Some)
   }
 
+  /// Resolved as the engine reads a statement, against the logical directory of the config that wrote it, with either
+  /// slash taken as its separator.
   fn resolve_include(&self, directory: &str, statement: &str) -> XrfResult<Vec<String>> {
-    Ok(
-      LtxIncludeSource::resolve(self, &PathBuf::from(directory), statement)?
-        .into_iter()
-        .map(|path| Self::to_logical(&path))
-        .collect(),
-    )
+    let directory: String = directory.replace('/', "\\");
+    let statement: String = statement.replace('/', "\\");
+    let joined: String = if directory.is_empty() {
+      statement
+    } else {
+      format!("{directory}\\{statement}")
+    };
+    let normalized: String = XrayLogicalPath::normalize(&joined)?;
+
+    if !LtxIncludeMask::is_mask(&normalized) {
+      return Ok(vec![normalized]);
+    }
+
+    let (prefix, mask) = normalized.rsplit_once('\\').unwrap_or(("", &normalized));
+
+    // `#include "sections\*.ltx"` means that one directory, so this asks for its children rather than everything below it.
+    let mut resolved: Vec<String> = self
+      .search
+      .list_children(prefix)?
+      .files
+      .into_iter()
+      .filter(|location| LtxIncludeMask::matches(location.get_logical_path().file_name().as_bytes(), mask.as_bytes()))
+      .map(|location| String::from(location.get_logical_path().as_str()))
+      .collect();
+
+    // Sorted so section merging is deterministic, matching what the filesystem source guarantees.
+    resolved.sort();
+
+    Ok(resolved)
   }
 
   fn list_file_names(&self, directory: &str) -> XrfResult<Vec<String>> {
@@ -145,62 +145,5 @@ impl LtxDocumentSource for LtxVfsSource<'_> {
       ),
       None => self.list_file_names_uncached(directory),
     }
-  }
-}
-
-impl LtxIncludeSource for LtxVfsSource<'_> {
-  fn resolve(&self, directory: &Path, statement: &str) -> XrfResult<Vec<PathBuf>> {
-    let directory: String = Self::to_logical(directory);
-    let statement: String = statement.replace('/', "\\");
-
-    let joined: String = if directory.is_empty() {
-      statement.clone()
-    } else {
-      format!("{directory}\\{statement}")
-    };
-
-    if !statement.contains('*') {
-      return Ok(vec![PathBuf::from(XrayLogicalPath::normalize(&joined)?)]);
-    }
-
-    let normalized: String = XrayLogicalPath::normalize(&joined)?;
-    let (prefix, mask) = match normalized.rsplit_once('\\') {
-      Some((prefix, mask)) => (prefix.to_string(), mask.to_string()),
-      None => (String::new(), normalized.clone()),
-    };
-
-    // `#include "sections\*.ltx"` means that one directory, so this asks for its children rather than everything below it.
-    let mut resolved: Vec<PathBuf> = self
-      .search
-      .list_children(&prefix)?
-      .files
-      .into_iter()
-      .filter(|location| {
-        LtxIncludeConvertor::matches_wildcard_mask(location.get_logical_path().file_name().as_bytes(), mask.as_bytes())
-      })
-      // The documented crossing back into `PathBuf`: an include source carries logical paths that way for both backends.
-      .map(|location| PathBuf::from(location.get_logical_path().as_str()))
-      .collect();
-
-    // Sorted so section merging is deterministic, matching what the filesystem source guarantees.
-    resolved.sort();
-
-    Ok(resolved)
-  }
-
-  fn read(&self, path: &Path) -> XrfResult<Option<Ltx>> {
-    let logical_path: String = Self::to_logical(path);
-
-    // A wildcard include resolves only to names the VFS holds, and a named include that is absent is nothing to merge -
-    // the same tolerance the filesystem source shows a config not yet generated from TypeScript.
-    if self.search.find(&logical_path)?.is_none() {
-      return Ok(None);
-    }
-
-    self.read_ltx(&logical_path).map(Some)
-  }
-
-  fn describe(&self, path: &Path) -> String {
-    format!("{} (logical)", Self::to_logical(path))
   }
 }

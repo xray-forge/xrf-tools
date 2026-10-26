@@ -3,18 +3,16 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_utils::{
-  decode_bytes_to_string, decode_w1251_bytes_to_string, new_windows1251_encoder, read_as_string_from_w1251_encoded,
-};
-use xrf_vfs::XraySearch;
+use xrf_utils::{decode_w1251_bytes_to_string, read_as_string_from_w1251_encoded};
+use xrf_vfs::{XrayLogicalPath, XraySearch};
 
 use crate::dialect::{LtxDialect, LtxResolveRequest, LtxStandardDialect};
 use crate::document::{LtxDocument, LtxParser};
-use crate::ltx::{Ltx, LtxIncludeConvertor, LtxIncluded};
+use crate::ltx::Ltx;
 use crate::source::{LtxFilesystemSource, LtxVfsSource};
 
 impl Ltx {
-  /// Read LTX from a string.
+  /// Read one document from a string under standard rules, without reading anything it includes.
   pub fn read_from_str(buf: &str) -> XrfResult<Self> {
     LtxStandardDialect::lower(&Self::read_document_from_str(buf)?)
   }
@@ -33,38 +31,37 @@ impl Ltx {
     LtxParser::new_preserving_source(buf.chars()).parse_document()
   }
 
-  /// Read LTX from a file as full parsed file, inject included files.
-  pub(crate) fn read_from_file_included<P: AsRef<Path>>(filename: P) -> XrfResult<Self> {
-    Self::read_from_path(filename)?.into_included()
-  }
-
-  /// Read LTX from a file under standard rules, injecting includes and flattening inheritance.
-  pub fn read_from_file_standard<P: AsRef<Path>>(filename: P) -> XrfResult<Self> {
-    Self::read_from_path(filename)?.into_included()?.into_inherited()
-  }
-
-  /// Read LTX through a search, injecting includes resolved through it.
+  /// Read a config from the filesystem under standard rules, merging its includes and flattening inheritance.
   ///
   /// # Errors
   ///
-  /// Returns an error when the search does not reach the path, its bytes are not valid Windows-1251, or the contents
-  /// will not parse.
-  pub(crate) fn read_from_search(search: &XraySearch, logical_path: &str) -> XrfResult<Self> {
-    let source: LtxVfsSource = LtxVfsSource::new(search.clone());
-
-    LtxIncludeConvertor::convert_with(source.read_ltx(logical_path)?, &source)
+  /// Returns an error when the config or a file it includes cannot be read, or when standard rules refuse the tree.
+  pub fn read_from_file_standard<P: AsRef<Path>>(path: P) -> XrfResult<Self> {
+    Self::read_from_file_with_dialect(path, &LtxStandardDialect)
   }
 
-  /// Read LTX through a search under standard rules, with includes injected and inheritance flattened.
+  /// Read a config through a search under standard rules, merging its includes and flattening inheritance.
   ///
   /// # Errors
   ///
-  /// Returns an error when reading fails, or when an inherited section cannot be resolved.
+  /// Returns an error when the search does not reach the config or a file it includes, its bytes are not valid
+  /// Windows-1251, or standard rules refuse the tree.
   pub(crate) fn read_from_search_standard(search: &XraySearch, logical_path: &str) -> XrfResult<Self> {
-    Self::read_from_search(search, logical_path)?.into_inherited()
+    // Normalized first, so the location the config records is its engine identity rather than the spelling asked for.
+    let logical_path: XrayLogicalPath = XrayLogicalPath::new(logical_path)?;
+
+    Ok(
+      LtxStandardDialect
+        .resolve(
+          logical_path.as_str(),
+          &LtxVfsSource::new(search.clone()),
+          LtxResolveRequest::plain(),
+        )?
+        .ltx,
+    )
   }
 
-  /// Read from a file as generic ltx with LTX descriptor filled.
+  /// Read one config file under standard rules, recording where it was read from, without reading what it includes.
   pub fn read_from_path<P: AsRef<Path>>(filename: P) -> XrfResult<Self> {
     let mut ltx: Self = Self::read_from(&mut File::open(filename.as_ref())?)?;
 
@@ -100,39 +97,9 @@ impl Ltx {
     )
   }
 
-  /// Read from a reader as generic ltx with LTX descriptor filled.
+  /// Read one document from a reader under standard rules, decoding strict Windows-1251.
   pub(crate) fn read_from<R: Read>(reader: &mut R) -> XrfResult<Self> {
     Self::read_from_str(&read_as_string_from_w1251_encoded(reader)?)
-  }
-}
-
-impl Ltx {
-  /// Load include statements from a string.
-  pub(crate) fn read_included_from_str(buf: &str) -> XrfResult<LtxIncluded> {
-    Ok(
-      Self::read_document_from_str(buf)?
-        .list_included()
-        .into_iter()
-        .map(String::from)
-        .collect(),
-    )
-  }
-
-  /// Load include statements from a file.
-  pub(crate) fn read_included_from_file<P: AsRef<Path>>(filename: P) -> XrfResult<LtxIncluded> {
-    Self::read_included_from_str(&read_as_string_from_w1251_encoded(&mut File::open(filename.as_ref())?)?)
-  }
-
-  /// Load include statements from a config a search reaches, without parsing its sections.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the search does not reach the path, its bytes are not valid Windows-1251, or the contents
-  /// will not parse.
-  pub(crate) fn read_included_from_search(search: &XraySearch, logical_path: &str) -> XrfResult<LtxIncluded> {
-    let bytes: Vec<u8> = search.read(logical_path)?;
-
-    Self::read_included_from_str(&decode_bytes_to_string(&bytes, new_windows1251_encoder())?)
   }
 }
 
@@ -165,7 +132,7 @@ mod test {
 
   use xrf_test_utils::GeneratedResources;
 
-  use crate::ltx::{Ltx, LtxIncluded};
+  use crate::ltx::Ltx;
 
   #[test]
   fn load_from_file() {
@@ -376,28 +343,36 @@ value3 ; another comment
     );
   }
 
+  /// The include statements a file holds, read through the document a project reads it as.
+  fn includes_of(case: &str, contents: &[u8]) -> Vec<String> {
+    let file_name: PathBuf = GeneratedResources::write(&GeneratedResources::sample_name(file!(), case), contents)
+      .expect("generated LTX input to be written");
+
+    Ltx::read_document_from(&mut std::fs::File::open(file_name).expect("generated LTX input to open"))
+      .unwrap()
+      .list_included()
+      .into_iter()
+      .map(String::from)
+      .collect()
+  }
+
   #[test]
   fn load_no_includes_from_file() {
-    let file_name: PathBuf = GeneratedResources::write(
-      &GeneratedResources::sample_name(file!(), "load_no_includes.ltx"),
-      b"[test]Key=Value\n",
-    )
-    .expect("generated LTX input to be written");
-
-    let includes: LtxIncluded = Ltx::read_included_from_file(&file_name).unwrap();
-    assert_eq!(includes, Vec::<String>::new());
+    assert_eq!(
+      includes_of("load_no_includes.ltx", b"[test]Key=Value\n"),
+      Vec::<String>::new()
+    );
   }
 
   #[test]
   fn load_few_includes_from_file() {
-    let file_name: PathBuf = GeneratedResources::write(
-      &GeneratedResources::sample_name(file!(), "load_few_includes.ltx"),
-      b"#include \"first.ltx\"\n;commented\n#include \"second.ltx\"",
-    )
-    .expect("generated LTX input to be written");
-
-    let includes: LtxIncluded = Ltx::read_included_from_file(&file_name).unwrap();
-    assert_eq!(includes, vec!("first.ltx", "second.ltx"));
+    assert_eq!(
+      includes_of(
+        "load_few_includes.ltx",
+        b"#include \"first.ltx\"\n;commented\n#include \"second.ltx\""
+      ),
+      vec!("first.ltx", "second.ltx")
+    );
   }
 
   #[test]

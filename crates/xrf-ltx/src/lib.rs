@@ -11,9 +11,7 @@ pub(crate) mod scheme;
 pub(crate) mod source;
 pub(crate) mod syntax;
 
-pub use crate::binding::file_import_export::FileImportExport;
-pub use crate::binding::ltx_field::{read_ltx_field, read_ltx_optional_field};
-pub use crate::binding::ltx_import_export::{LtxImportExport, META_TYPE_FIELD};
+pub use crate::binding::{FileImportExport, LtxImportExport, META_TYPE_FIELD, read_ltx_field, read_ltx_optional_field};
 pub use crate::condlist::{Condlist, CondlistBranch, CondlistCondition};
 pub use crate::dialect::{
   LtxDialect, LtxFieldOrigin, LtxProvenance, LtxResolution, LtxResolutionDiagnostic, LtxResolveRequest,
@@ -21,13 +19,16 @@ pub use crate::dialect::{
 };
 pub use crate::document::{LtxCheck, LtxDocument, LtxItem, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxSpan};
 pub use crate::finding::{LtxFinding, LtxFindingKind};
-pub use crate::ltx::{Ltx, LtxSectionFieldSchemes, LtxSectionSchemes, Section};
+pub use crate::ltx::{Ltx, Section};
 pub use crate::project::{
-  LTX_PHASE_CHECK, LTX_PHASE_FORMAT, LTX_PHASE_VERIFY, LtxEntryVerification, LtxFilesFormatter, LtxFormatOptions,
-  LtxProject, LtxProjectFormatResult, LtxProjectOptions, LtxProjectVerifyResult, LtxReadCountersSnapshot,
-  LtxVerifyOptions,
+  LtxEntryVerification, LtxFilesFormatter, LtxFormatOptions, LtxProject, LtxProjectFormatResult, LtxProjectOptions,
+  LtxProjectVerifyResult, LtxReadCountersSnapshot, LtxVerifyOptions,
 };
-pub use crate::scheme::{LtxFieldDataType, LtxFieldScheme, LtxSchemeParser, LtxSectionScheme};
+pub use crate::scheme::{
+  LtxFieldDataType, LtxFieldScheme, LtxSchemeParser, LtxSectionFieldSchemes, LtxSectionScheme, LtxSectionSchemes,
+};
 pub use crate::source::LtxDocumentSource;
-pub use crate::syntax::ltx_value::{read_engine_bool, read_engine_float, read_engine_floats, scan_engine_float};
-pub use crate::syntax::{LTX_SCHEME_FIELD, LTX_SYMBOL_ANY, LTX_SYMBOL_INCLUDE_WILDCARD, LTX_SYMBOL_SCHEME};
+pub use crate::syntax::{
+  LTX_SCHEME_FIELD, LTX_SYMBOL_ANY, LTX_SYMBOL_INCLUDE_WILDCARD, LTX_SYMBOL_SCHEME, read_engine_bool,
+  read_engine_float, read_engine_floats, scan_engine_float,
+};

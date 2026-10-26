@@ -6,14 +6,12 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::dialect::LtxProvenance;
 use crate::document::LtxCheck;
-use crate::ltx::{
-  LtxIncludeConvertor, LtxIncluded, LtxInheritConvertor, LtxSections, Section, SectionEntry, SectionSetter,
-};
+use crate::ltx::{LtxInheritConvertor, LtxSections, Section, SectionEntry, SectionSetter};
 use crate::syntax::ROOT_SECTION;
 
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct Ltx {
-  pub(crate) includes: LtxIncluded,
+  pub(crate) includes: Vec<String>,
   pub(crate) skipped_checks: Vec<LtxCheck>,
   pub directory: Option<PathBuf>,
   pub path: Option<PathBuf>,
@@ -26,12 +24,11 @@ impl Ltx {
     Self::default()
   }
 
-  /// Convert current instance of ltx file into full parsed one.
-  pub fn into_included(self) -> XrfResult<Self> {
-    LtxIncludeConvertor::convert(self)
-  }
-
-  /// Convert current instance of ltx file into full parsed one.
+  /// The same config with every section's parents folded into it, under standard rules.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a section inherits one that is not declared before it, or inherits itself.
   pub fn into_inherited(self) -> XrfResult<Self> {
     LtxInheritConvertor::convert(self)
   }
@@ -50,7 +47,7 @@ impl Ltx {
     self.directory.as_ref()
   }
 
-  /// Set with a specified section, `None` is for the general section
+  /// A setter writing into `section`, which it creates on the first write; an empty name is the root section.
   pub fn with_section<S>(&mut self, section: S) -> SectionSetter<'_>
   where
     S: Into<String>,

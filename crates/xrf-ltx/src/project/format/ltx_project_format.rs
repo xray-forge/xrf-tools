@@ -6,9 +6,7 @@ use xrf_utils::{decode_w1251_bytes_to_string, encode_string_to_w1251_bytes, form
 use xrf_vfs::{XrayTransaction, require_writable_path};
 
 use crate::ltx::Ltx;
-use crate::project::{
-  LTX_PHASE_CHECK, LTX_PHASE_FORMAT, LtxFilesFormatter, LtxFormatOptions, LtxProject, LtxProjectFormatResult,
-};
+use crate::project::{LtxFilesFormatter, LtxFormatOptions, LtxProject, LtxProjectFormatResult};
 
 impl LtxProject {
   /// Formats every project LTX file with explicit options, rewriting the ones not formatted yet in one commit of the
@@ -50,7 +48,9 @@ impl LtxProject {
 
     result.startup_duration = options.job.elapsed();
 
-    let formatting: JobScope = options.job.enter(LTX_PHASE_FORMAT, Some(files.len() as u64));
+    let formatting: JobScope = options
+      .job
+      .enter(LtxFormatOptions::PHASE_FORMAT, Some(files.len() as u64));
 
     for (logical_path, file) in self.ltx_files.iter().zip(files) {
       // Between files, never inside one.
@@ -117,7 +117,9 @@ impl LtxProject {
     // filesystem where that one reads host files. The two therefore have to be instrumented separately.
     result.startup_duration = options.job.elapsed();
 
-    let checking: JobScope = options.job.enter(LTX_PHASE_CHECK, Some(self.ltx_files.len() as u64));
+    let checking: JobScope = options
+      .job
+      .enter(LtxFormatOptions::PHASE_CHECK, Some(self.ltx_files.len() as u64));
 
     for logical_path in &self.ltx_files {
       // A stopped check reports what it had judged so far, and says so: findings read as a complete verdict otherwise.

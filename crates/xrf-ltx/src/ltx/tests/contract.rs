@@ -350,7 +350,7 @@ fn accepts_both_spellings_of_an_include_statement() -> XrfResult {
     ],
   );
 
-  let ltx: Ltx = Ltx::read_from_file_included(root.join("system.ltx"))?;
+  let ltx: Ltx = Ltx::read_from_file_standard(root.join("system.ltx"))?;
 
   assert!(ltx.has_section("quoted"));
   assert!(ltx.has_section("parenthesized"));
@@ -370,7 +370,7 @@ fn treats_a_missing_include_with_a_ts_sibling_as_nothing_to_merge() -> XrfResult
 
   // A config a generator has not produced yet is nothing to merge rather than a failure, which is what lets a project be
   // read mid-build. Without the sibling the same missing include is an error.
-  let ltx: Ltx = Ltx::read_from_file_included(root.join("system.ltx"))?;
+  let ltx: Ltx = Ltx::read_from_file_standard(root.join("system.ltx"))?;
 
   assert!(ltx.has_section("present"));
   assert!(!ltx.has_section("generated"));
@@ -382,7 +382,7 @@ fn treats_a_missing_include_with_a_ts_sibling_as_nothing_to_merge() -> XrfResult
 fn reports_a_missing_include_with_no_ts_sibling() -> XrfResult {
   let root: PathBuf = tree("missing_include", &[("system.ltx", "#include \"absent.ltx\"\n")]);
 
-  assert!(Ltx::read_from_file_included(root.join("system.ltx")).is_err());
+  assert!(Ltx::read_from_file_standard(root.join("system.ltx")).is_err());
 
   Ok(())
 }

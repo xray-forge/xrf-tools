@@ -6,7 +6,7 @@ use xrf_job::{JobOutcome, JobScope};
 use xrf_utils::format_path;
 
 use crate::ltx::Ltx;
-use crate::project::{LTX_PHASE_CHECK, LTX_PHASE_FORMAT, LtxFormatOptions, LtxProjectFormatResult};
+use crate::project::{LtxFormatOptions, LtxProjectFormatResult};
 
 /// Formatter of arbitrary sets of LTX files.
 pub struct LtxFilesFormatter {}
@@ -24,7 +24,9 @@ impl LtxFilesFormatter {
 
     result.startup_duration = options.job.elapsed();
 
-    let formatting: JobScope = options.job.enter(LTX_PHASE_FORMAT, Some(files.len() as u64));
+    let formatting: JobScope = options
+      .job
+      .enter(LtxFormatOptions::PHASE_FORMAT, Some(files.len() as u64));
 
     for file in files {
       // Between files, never inside one.
@@ -78,7 +80,9 @@ impl LtxFilesFormatter {
 
     result.startup_duration = options.job.elapsed();
 
-    let checking: JobScope = options.job.enter(LTX_PHASE_CHECK, Some(files.len() as u64));
+    let checking: JobScope = options
+      .job
+      .enter(LtxFormatOptions::PHASE_CHECK, Some(files.len() as u64));
 
     for file in files {
       // A stopped check reports what it had judged so far, and says so: findings read as a complete verdict otherwise.

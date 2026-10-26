@@ -9,3 +9,4 @@ pub use crate::syntax::ltx_syntax::{
   LTX_SYMBOL_INCLUDE_WILDCARD, LTX_SYMBOL_INHERIT, LTX_SYMBOL_OPTIONAL, LTX_SYMBOL_SCHEME, LTX_SYMBOL_SECTION_CLOSE,
   LTX_SYMBOL_SECTION_OPEN, ROOT_SECTION, SYSTEM_LTX_FILENAME, VIRTUAL_LTX_PATH,
 };
+pub use crate::syntax::ltx_value::{read_engine_bool, read_engine_float, read_engine_floats, scan_engine_float};

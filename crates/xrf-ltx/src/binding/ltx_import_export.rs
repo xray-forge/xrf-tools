@@ -1,10 +1,11 @@
-/// Field an exported record declares its own kind in, so a reader knows which type to import it back as.
-pub const META_TYPE_FIELD: &str = "$type";
-
 use xrf_error::XrfResult;
 
 use crate::Ltx;
 
+/// Field an exported record declares its own kind in, so a reader knows which type to import it back as.
+pub const META_TYPE_FIELD: &str = "$type";
+
+/// A record that is read from and written to one section of a config.
 pub trait LtxImportExport: Sized {
   fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self>;
 

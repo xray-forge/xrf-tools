@@ -1,30 +1,20 @@
 //! A whole tree of configs: what it holds, and the verify and format passes that walk it.
 
-pub(crate) mod ltx_entry_verification;
-pub(crate) mod ltx_files_formatter;
-pub(crate) mod ltx_format_options;
+pub(crate) mod format;
 pub(crate) mod ltx_project;
-pub(crate) mod ltx_project_format;
-pub(crate) mod ltx_project_format_result;
 pub(crate) mod ltx_project_options;
-pub(crate) mod ltx_project_verify;
-pub(crate) mod ltx_project_verify_result;
 pub(crate) mod ltx_read_counters;
 pub(crate) mod ltx_read_counters_snapshot;
 pub(crate) mod ltx_resolved_root;
-pub(crate) mod ltx_verify_options;
+pub(crate) mod verify;
 
 #[cfg(test)]
 mod tests;
 
-pub use crate::project::ltx_entry_verification::LtxEntryVerification;
-pub use crate::project::ltx_files_formatter::LtxFilesFormatter;
-pub use crate::project::ltx_format_options::{LTX_PHASE_CHECK, LTX_PHASE_FORMAT, LtxFormatOptions};
+pub use crate::project::format::{LtxFilesFormatter, LtxFormatOptions, LtxProjectFormatResult};
 pub use crate::project::ltx_project::LtxProject;
-pub use crate::project::ltx_project_format_result::LtxProjectFormatResult;
 pub use crate::project::ltx_project_options::LtxProjectOptions;
-pub use crate::project::ltx_project_verify_result::LtxProjectVerifyResult;
 pub(crate) use crate::project::ltx_read_counters::LtxReadCounters;
 pub use crate::project::ltx_read_counters_snapshot::LtxReadCountersSnapshot;
 pub(crate) use crate::project::ltx_resolved_root::LtxResolvedRoot;
-pub use crate::project::ltx_verify_options::{LTX_PHASE_VERIFY, LtxVerifyOptions};
+pub use crate::project::verify::{LtxEntryVerification, LtxProjectVerifyResult, LtxVerifyOptions};

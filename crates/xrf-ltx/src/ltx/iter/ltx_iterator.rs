@@ -1,10 +1,6 @@
 use std::sync::Arc;
 
-use crate::ltx::properties_into_iter::PropertiesIntoIter;
-use crate::ltx::property_iter::PropertyIter;
-use crate::ltx::section_into_iter::SectionIntoIter;
-use crate::ltx::section_iter::SectionIter;
-use crate::ltx::section_iter_mut::SectionIterMut;
+use crate::ltx::iter::{PropertiesIntoIter, PropertyIter, SectionIntoIter, SectionIter, SectionIterMut};
 use crate::ltx::{Ltx, Section};
 
 impl<'a> IntoIterator for &'a Section {

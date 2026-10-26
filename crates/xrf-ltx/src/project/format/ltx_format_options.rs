@@ -1,11 +1,5 @@
 use xrf_job::JobHandle;
 
-/// Phase a formatting run reports while it rewrites files.
-pub const LTX_PHASE_FORMAT: &str = "format";
-
-/// Phase a formatting check reports while it reads files without rewriting any.
-pub const LTX_PHASE_CHECK: &str = "check";
-
 /// Formatting configuration.
 #[derive(Clone, Default)]
 pub struct LtxFormatOptions {
@@ -16,6 +10,12 @@ pub struct LtxFormatOptions {
 }
 
 impl LtxFormatOptions {
+  /// Phase a formatting run reports while it rewrites files.
+  pub const PHASE_FORMAT: &'static str = "format";
+
+  /// Phase a formatting check reports while it reads files without rewriting any.
+  pub const PHASE_CHECK: &'static str = "check";
+
   /// The same options, reporting to and cancellable through `job`.
   pub fn with_job(self, job: JobHandle) -> Self {
     Self { job, ..self }

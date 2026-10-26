@@ -12,7 +12,7 @@ use xrf_vfs::XrayLogicalPath;
 use crate::dialect::LtxResolution;
 use crate::finding::LtxFinding;
 use crate::ltx::Ltx;
-use crate::project::{LTX_PHASE_VERIFY, LtxEntryVerification, LtxProject, LtxProjectVerifyResult, LtxVerifyOptions};
+use crate::project::{LtxEntryVerification, LtxProject, LtxProjectVerifyResult, LtxVerifyOptions};
 use crate::syntax::{LTX_SCHEME_FIELD, LTX_SYMBOL_ANY};
 
 impl LtxProject {
@@ -31,7 +31,7 @@ impl LtxProject {
 
     let verifying: JobScope = options
       .job
-      .enter(LTX_PHASE_VERIFY, Some(self.ltx_file_entries.len() as u64));
+      .enter(LtxVerifyOptions::PHASE_VERIFY, Some(self.ltx_file_entries.len() as u64));
 
     // For each file entry in the project:
     for entry in &self.ltx_file_entries {
@@ -255,7 +255,11 @@ impl LtxProject {
     self.verify_entries_opt(Default::default())
   }
 
-  /// Format single LTX file by provided path
+  /// Whether one config on the filesystem resolves under standard rules, its includes and inheritance included.
+  ///
+  /// # Errors
+  ///
+  /// Returns the error resolving it ends with.
   pub fn verify_file<P: AsRef<Path>>(path: P) -> XrfResult<()> {
     Ltx::read_from_file_standard(path)?;
 
