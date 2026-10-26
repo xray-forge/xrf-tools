@@ -11,7 +11,7 @@ import { ExportsEditor } from "./components/viewer/ExportsEditor";
 export function ExportsExplorerApplication(): ReactElement {
   const exportsService: ExportsService = useInjection(ExportsService);
 
-  if (exportsService.isReady) {
+  if (exportsService.project.isRestored) {
     return exportsService.project.value ? <ExportsEditor /> : <ExportsOpenForm />;
   }
 

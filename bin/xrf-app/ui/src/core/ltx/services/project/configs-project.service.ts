@@ -1,41 +1,27 @@
-import { inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
-import { transformError } from "@xrf/errors";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
-import { formatDuration } from "@xrf/format";
+import { Injectable, OnProvision } from "@wirestate/core";
+import { BoundAction, Computed, flowResult } from "@wirestate/mobx";
 import { configsCommands } from "@xrf/ipc/commands/configs";
-import { Session, SessionScopeService } from "@xrf/ipc/session";
 import { ConfigsProjectDescriptor } from "@xrf/ipc/types/xrf-app-configs";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { LtxInventoryFile } from "@xrf/ipc/types/xrf-ltx-inspect";
-import { Logger, Timer } from "@xrf/logging";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
+import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 
 /**
- * Owns the configs project and addresses reads by its committed session identity.
- * Failed replacements leave the current project usable.
+ * Owns the configs project; every read of it is addressed by `project.sessionId`. A failed replacement leaves the
+ * current project usable.
  */
 @Injectable()
 export class ConfigsProjectService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(configsCommands.closeProject, inject(SessionScopeService));
-
-  /** Whether the backend has been asked what it still has open. */
-  @Observable()
-  public isReady: boolean = false;
-
-  @Observable()
-  private projectState: AsyncState<SessionSnapshot<ConfigsProjectDescriptor>> = AsyncState.idle();
-
-  /** The open project, or null when nothing is open. */
-  @Computed()
-  public get project(): AsyncState<ConfigsProjectDescriptor> {
-    return this.projectState.map((snapshot) => snapshot.value);
-  }
+  public readonly project: SessionRootResource<ConfigsProjectDescriptor> = new SessionRootResource(this.log, {
+    subject: "configs project",
+    close: configsCommands.closeProject,
+    restore: configsCommands.restoreProject,
+  });
 
   /**
    * @returns Whether a project is open, which is what puts the tree on screen.
@@ -54,14 +40,6 @@ export class ConfigsProjectService {
   }
 
   /**
-   * @returns The identity every read must be addressed by, or null when nothing is open.
-   */
-  @Computed()
-  public get sessionId(): Nullable<string> {
-    return this.projectState.value?.sessionId ?? null;
-  }
-
-  /**
    * Restore whatever project the backend still has open.
    *
    * A reload loses the tree but not the session, so the descriptor comes back with its inventory and the screen
@@ -69,17 +47,7 @@ export class ConfigsProjectService {
    */
   @OnProvision()
   public async onProvision(): Promise<void> {
-    await flowResult(this.restore());
-  }
-
-  /**
-   * Forget the project on the way out of the application, which the tool's scope closes.
-   */
-  @OnDeactivation()
-  public onDeactivation(): void {
-    runInAction(() => {
-      this.projectState = this.projectState.asIdle(null);
-    });
+    await flowResult(this.project.restore());
   }
 
   /**
@@ -89,77 +57,20 @@ export class ConfigsProjectService {
    * @param isDltx - Whether to resolve with the Monolith/Anomaly patch dialect.
    * @param prefix - Logical subtree holding the configs, or null for the whole root.
    */
-  @LatestFlow("project")
-  public *open(root: string, isDltx: boolean, prefix: Nullable<string> = null): TFlow {
-    const timer: Timer = new Timer();
-
-    this.log.info("Opening configs project:", root, { isDltx, prefix });
-    this.projectState = this.projectState.asLoading();
-
-    try {
-      const snapshot: SessionSnapshot<ConfigsProjectDescriptor> = yield* call(
-        this.session.open((sessionId) =>
-          configsCommands.openProject({
-            sessionId,
-            isDltx,
-            prefix,
-            roots: createRoots([root]),
-          })
-        )
-      );
-
-      this.log.info("Opened configs project:", snapshot.value.root, "in", formatDuration(timer.elapsed()));
-
-      this.projectState = this.projectState.asReady(snapshot);
-    } catch (error) {
-      this.log.error("Failed to open the configs project:", root, "after", formatDuration(timer.elapsed()), error);
-
-      this.projectState = this.projectState.asFailed(transformError(error));
-    } finally {
-      this.isReady = true;
-    }
+  @BoundAction()
+  public open(root: string, isDltx: boolean, prefix: Nullable<string> = null): Promise<void> {
+    return flowResult(
+      this.project.open(root, (sessionId) =>
+        configsCommands.openProject({ sessionId, isDltx, prefix, roots: createRoots([root]) })
+      )
+    );
   }
 
   /**
    * Close the project and go back to the picker.
    */
-  @LatestFlow("project")
-  public *close(): TFlow {
-    const root: Nullable<string> = this.project.value?.root ?? null;
-
-    try {
-      yield* call(this.session.close());
-
-      this.projectState = this.projectState.asIdle(null);
-
-      if (root) {
-        this.log.info("Configs project closed:", root);
-      }
-    } catch (error) {
-      this.log.error("Failed to close the configs project:", root, error);
-    }
-  }
-
-  /**
-   * Restores the committed descriptor unless a user action has taken the project flow.
-   */
-  @ExclusiveFlow("project")
-  private *restore(): TFlow {
-    try {
-      const snapshot: Nullable<SessionSnapshot<ConfigsProjectDescriptor>> = yield* call(
-        configsCommands.restoreProject(this.session.tool)
-      );
-
-      this.session.adopt(snapshot);
-      this.projectState = this.projectState.asReady(snapshot);
-
-      if (snapshot) {
-        this.log.info("Configs project restored:", snapshot.value.root, snapshot.sessionId);
-      }
-    } catch (error) {
-      this.log.error("Failed to restore the configs project:", error);
-    } finally {
-      this.isReady = true;
-    }
+  @BoundAction()
+  public async close(): Promise<void> {
+    await flowResult(this.project.close());
   }
 }

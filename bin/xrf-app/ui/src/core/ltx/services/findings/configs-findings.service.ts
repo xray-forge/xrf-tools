@@ -37,7 +37,7 @@ export class ConfigsFindingsService {
    */
   @LatestFlow("findings")
   public *open(entry: string): TFlow {
-    const sessionId: Nullable<string> = this.projectService.sessionId;
+    const sessionId: Nullable<string> = this.projectService.project.sessionId;
 
     if (!sessionId) {
       this.log.error("Cannot verify an entry point with no project open:", entry);

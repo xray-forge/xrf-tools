@@ -16,7 +16,7 @@ export function ConfigsExplorerApplication({
 }: BaseComponentProps): ReactElement {
   const projectService: ConfigsProjectService = useInjection(ConfigsProjectService);
 
-  if (!projectService.isReady) {
+  if (!projectService.project.isRestored) {
     return <ApplicationLoader />;
   }
 

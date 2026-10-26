@@ -1,4 +1,5 @@
 import { Binding, Container, ServiceToken } from "@wirestate/core";
+import { SESSION_TOOL, SessionScopeService } from "@xrf/ipc/session";
 
 import { AssetService } from "@/core/assets/services";
 import { createContainerPlugins, ROOT_BINDINGS } from "@/core/container";
@@ -11,13 +12,25 @@ export interface IInjectedServiceMockDescriptor<T> {
 /**
  * Builds a container wired the way the application wires one.
  *
- * @param bindings - Services to register beside the root ones.
+ * @param bindings - Services to register beside the root ones; one naming a root binding's token replaces it.
  * @returns A container ready to resolve them.
  */
 export function mockContainer(bindings: Array<Binding> = []): Container {
-  const roots: Array<Binding> = ROOT_BINDINGS.filter((it: Binding) => !bindings.includes(it));
+  const tokens: Set<unknown> = new Set(bindings.map(toBindingToken));
+  const roots: Array<Binding> = ROOT_BINDINGS.filter((it: Binding) => !tokens.has(toBindingToken(it)));
 
   return new Container({ bindings: [...roots, ...bindings], plugins: createContainerPlugins() });
+}
+
+/**
+ * The bindings an application's container adds over the root, as `ApplicationScope` adds them: the application's id as
+ * the tool its openings are held for and its notices name, and a scope of its own.
+ *
+ * @param application - The application's id.
+ * @returns The bindings to pass beside the service under test.
+ */
+export function mockApplicationScope(application: string): Array<Binding> {
+  return [{ token: SESSION_TOOL, value: application }, SessionScopeService];
 }
 
 /**
@@ -41,4 +54,8 @@ export function mockInjectedService<T>(
     container,
     service: container.get(token),
   };
+}
+
+function toBindingToken(binding: Binding): unknown {
+  return typeof binding === "function" ? binding : binding.token;
 }

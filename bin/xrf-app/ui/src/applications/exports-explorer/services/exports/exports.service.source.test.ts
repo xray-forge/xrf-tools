@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { AsyncState } from "@xrf/async";
 import { EExportsCommand } from "@xrf/ipc/commands/exports";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ExportSourceContent } from "@xrf/ipc/types/xrf-export";
@@ -18,15 +17,24 @@ const SOURCE: ExportSourceContent = {
   content: 'extern("xr_effects.play", (): void => {});',
 };
 
+async function mockRestoredService(): Promise<ExportsService> {
+  const service: ExportsService = mockInjectedService(ExportsService).service;
+
+  await service.onProvision();
+
+  return service;
+}
+
 describe("ExportsService export source", () => {
   beforeEach(() => {
-    mockIpcCommands({ [EExportsCommand.GET_SOURCE]: SOURCE });
+    mockIpcCommands({
+      [EExportsCommand.GET_SOURCE]: SOURCE,
+      [EExportsCommand.RESTORE_PROJECT]: mockSessionSnapshot(mockExportsProject()),
+    });
   });
 
   it("reads the source of one declaration by name", async () => {
-    const service: ExportsService = mockInjectedService(ExportsService).service;
-
-    service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockExportsProject()));
+    const service: ExportsService = await mockRestoredService();
 
     await expect(service.readExportSource("xr_effects.play")).resolves.toEqual(SOURCE);
 
@@ -38,9 +46,7 @@ describe("ExportsService export source", () => {
 
   it("propagates a failed read to its caller", async () => {
     // Reporting is the view's job here, so the service must not swallow this into a null result.
-    const service: ExportsService = mockInjectedService(ExportsService).service;
-
-    service["projectState"] = AsyncState.ready(mockSessionSnapshot(mockExportsProject()));
+    const service: ExportsService = await mockRestoredService();
 
     mockIpcCommands({
       [EExportsCommand.GET_SOURCE]: () => {

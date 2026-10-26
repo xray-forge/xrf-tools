@@ -5,8 +5,9 @@ import { mockIpcCommands } from "@xrf/ipc/testing";
 
 import { mockExportsProject } from "@/core/exports/fixtures/project.mocks";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
+import { EApplicationId } from "@/core/routing/application";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
+import { IInjectedServiceMockDescriptor, mockApplicationScope, mockInjectedService } from "@/fixtures/utils/container";
 
 import { ExportsService } from "./exports.service";
 
@@ -16,7 +17,10 @@ interface IWatchedService {
 }
 
 function watchNotifications(): IWatchedService {
-  const { container, service }: IInjectedServiceMockDescriptor<ExportsService> = mockInjectedService(ExportsService);
+  const { container, service }: IInjectedServiceMockDescriptor<ExportsService> = mockInjectedService(
+    ExportsService,
+    mockApplicationScope(EApplicationId.EXPORTS_EXPLORER)
+  );
   const raised: Array<INotificationPayload> = [];
 
   container

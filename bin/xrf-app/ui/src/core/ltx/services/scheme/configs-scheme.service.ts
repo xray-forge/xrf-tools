@@ -43,7 +43,7 @@ export class ConfigsSchemeService {
    */
   @LatestFlow("report")
   public *read(entry: string, section: string): TFlow {
-    const sessionId: Nullable<string> = this.projectService.sessionId;
+    const sessionId: Nullable<string> = this.projectService.project.sessionId;
 
     if (!sessionId) {
       this.log.error("Cannot explain a section with no project open:", section);

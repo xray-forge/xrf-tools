@@ -87,7 +87,7 @@ export class ConfigsResolvedService {
    */
   @LatestFlow("index")
   public *open(entry: string): TFlow {
-    const sessionId: Nullable<string> = this.projectService.sessionId;
+    const sessionId: Nullable<string> = this.projectService.project.sessionId;
 
     if (!sessionId) {
       this.log.error("Cannot resolve an entry point with no project open:", entry);
@@ -130,7 +130,7 @@ export class ConfigsResolvedService {
    * @param names - Sections the viewport needs, in any order. Ones already held or in flight are dropped.
    */
   public async request(names: ReadonlyArray<string>): Promise<void> {
-    const sessionId: Nullable<string> = this.projectService.sessionId;
+    const sessionId: Nullable<string> = this.projectService.project.sessionId;
     const entry: Nullable<string> = this.entry;
     const generation: number = this.generation;
 
