@@ -2,9 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-use crate::shader_blender_class::ShaderBlenderClass;
-use crate::shader_blender_property::ShaderBlenderProperty;
-use crate::shader_fixed_string::{read_shader_fixed_string, write_shader_fixed_string};
+use crate::library::{ShaderBlenderClass, ShaderBlenderProperty, read_shader_fixed_string, write_shader_fixed_string};
 
 /// One compiled blender of `shaders.xr`: what a shader name resolves to.
 #[derive(Clone, Debug, PartialEq)]
@@ -47,8 +45,6 @@ impl ShaderBlender {
   /// What a texture slot carries when nothing is bound to it (`Layers/xrRender/Blender_Recorder.cpp`).
   pub const NULL_TEXTURE: &'static str = "$null";
 
-  /// The highest slot `ParseName` reads a `$base` spelling as (`Layers/xrRender/Blender_Recorder.cpp`).
-  const MAXIMUM_BASE_SLOT: usize = 7;
   /// What a slot spelling starts with, the rest of it being the slot.
   const BASE_SLOT_PREFIX: &'static str = "$base";
 
@@ -109,12 +105,14 @@ impl ShaderBlender {
   }
 
   /// The slot a `$base<N>` spelling names, or `None` for a name standing for itself.
+  ///
+  /// `ParseName` compares against exactly `$base0` to `$base7` (`Layers/xrRender/Blender_Recorder.cpp`), so `$base8`,
+  /// `$base01` or `$base+1` name a texture of that spelling rather than a slot.
   fn to_base_slot(declared: &str) -> Option<usize> {
-    declared
-      .strip_prefix(Self::BASE_SLOT_PREFIX)?
-      .parse::<usize>()
-      .ok()
-      .filter(|slot| *slot <= Self::MAXIMUM_BASE_SLOT)
+    match declared.strip_prefix(Self::BASE_SLOT_PREFIX)?.as_bytes() {
+      [digit @ b'0'..=b'7'] => Some(usize::from(digit - b'0')),
+      _ => None,
+    }
   }
 }
 

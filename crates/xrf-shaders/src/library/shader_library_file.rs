@@ -6,7 +6,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::shader_blender::ShaderBlender;
+use crate::library::ShaderBlender;
 
 /// The compiled blender library, `shaders.xr`.
 #[derive(Debug, Default)]
@@ -60,11 +60,32 @@ impl ShaderLibraryFile {
   }
 
   /// Reads every blender chunk, refusing a library that defines one name twice.
+  ///
+  /// The engine and the SDK both open blender chunks by id, 0 upwards, until one is missing
+  /// (`CResourceManager::OnDeviceCreate`, `CSHEngineTools::Load`), so a chunk past a gap or repeating an id holds a
+  /// blender neither loads. Such a chunk is refused rather than answered for a name the game cannot resolve.
   fn read_blenders<D: ChunkDataSource>(blenders: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let chunks: Vec<ChunkReader<D>> = blenders.read_children()?;
+    let mut chunks: Vec<ChunkReader<D>> = blenders.read_children()?;
     let mut library: HashMap<String, ShaderBlender> = HashMap::with_capacity(chunks.len());
 
-    for mut chunk in chunks {
+    // Stable, so of two chunks sharing an id the first in the file comes first, as the engine finds it.
+    chunks.sort_by_key(|chunk| chunk.id);
+
+    for (expected, mut chunk) in (0u32..).zip(chunks) {
+      if chunk.id != expected {
+        return Err(XrfError::new_invalid_error(if chunk.id < expected {
+          format!(
+            "Shader library repeats blender chunk {}, which the engine never loads",
+            chunk.id
+          )
+        } else {
+          format!(
+            "Shader library has no blender chunk {expected}, so the engine never loads chunk {}",
+            chunk.id
+          )
+        }));
+      }
+
       let blender: ShaderBlender = ShaderBlender::read::<XRayByteOrder, D>(&mut chunk)?;
 
       chunk.assert_read("Expect all data to be read from shader blender")?;

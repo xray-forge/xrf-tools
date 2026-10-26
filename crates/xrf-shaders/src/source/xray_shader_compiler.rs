@@ -1,6 +1,6 @@
 use xrf_error::XrfResult;
 
-use crate::{ShaderRenderer, XRayShader};
+use crate::source::{ShaderRenderer, XRayShader};
 
 /// Compiles a fully resolved X-Ray shader source tree for one renderer.
 pub trait XRayShaderCompiler {

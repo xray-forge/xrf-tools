@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
-use xrf_shaders::{ShaderRenderer, XRayShader, XRayShaderScript, is_shader_source_path};
+use xrf_shaders::{ShaderRenderer, XRayShader, XRayShaderScript};
 use xrf_vfs::XraySearch;
 
 use crate::project::gamedata_check::GamedataCheck;
@@ -137,7 +137,7 @@ impl<'a> ShadersVerifier<'a> {
 
     // Scripts and sources are different sets: a `.s` script is Lua the renderer runs, so a renderer holding only scripts is
     // still checked rather than reported absent.
-    for source in entries.iter().filter(|name| is_shader_source_path(name)) {
+    for source in entries.iter().filter(|name| XRayShader::is_source_path(name)) {
       if self.options.job.is_cancelled() {
         break;
       }

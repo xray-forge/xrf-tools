@@ -1,6 +1,6 @@
 use xrf_lua::XRayLuaMethodCall;
 
-use crate::xray_shader_sampler_texture::XRayShaderSamplerTexture;
+use crate::script::XRayShaderSamplerTexture;
 
 /// One texture a pass binds by name: `shader:sampler("s_nmap"):texture(tex_nmap)`, or on DX10 and later
 /// `shader:dx10texture("s_nmap", tex_nmap)`.

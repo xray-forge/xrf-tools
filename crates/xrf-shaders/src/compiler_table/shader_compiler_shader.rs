@@ -2,16 +2,6 @@ use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{decode_w1251_bytes_to_string, encode_string_to_w1251_bytes};
 
-/// Flags a compiler shader carries, by the bit `Shader_xrLC` names it under.
-pub const SHADER_COMPILER_FLAGS: [(u32, &str); 6] = [
-  (1 << 0, "collision"),
-  (1 << 1, "rendering"),
-  (1 << 2, "optimize UV"),
-  (1 << 3, "vertex lighting"),
-  (1 << 4, "casts shadow"),
-  (1 << 5, "sharp light"),
-];
-
 /// One compiler shader, `Shader_xrLC` (`utils/Shader_xrLC.h`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -27,6 +17,16 @@ pub struct ShaderCompilerShader {
 }
 
 impl ShaderCompilerShader {
+  /// Flags a compiler shader carries, by the bit `Shader_xrLC` names it under.
+  pub const FLAGS: [(u32, &'static str); 6] = [
+    (1 << 0, "collision"),
+    (1 << 1, "rendering"),
+    (1 << 2, "optimize UV"),
+    (1 << 3, "vertex lighting"),
+    (1 << 4, "casts shadow"),
+    (1 << 5, "sharp light"),
+  ];
+
   /// Bytes the fixed name field occupies, which is `char Name[128]` whatever the name's own length.
   pub const NAME_SIZE: usize = 128;
 
@@ -73,7 +73,7 @@ impl ShaderCompilerShader {
 
   /// The flags the shader sets, named.
   pub fn get_named_flags(&self) -> Vec<&'static str> {
-    SHADER_COMPILER_FLAGS
+    Self::FLAGS
       .into_iter()
       .filter_map(|(mask, name)| (self.flags & mask != 0).then_some(name))
       .collect()

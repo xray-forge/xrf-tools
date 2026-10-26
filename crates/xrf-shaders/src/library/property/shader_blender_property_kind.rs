@@ -68,7 +68,7 @@ impl ShaderBlenderPropertyKind {
 
 #[cfg(test)]
 mod tests {
-  use crate::shader_blender_property_kind::ShaderBlenderPropertyKind;
+  use crate::library::ShaderBlenderPropertyKind;
 
   #[test]
   fn refuses_a_property_type_the_engine_never_writes() {

@@ -1,10 +1,12 @@
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_extension::{XrayExtension, XrayExtensionOf};
 use xrf_utils::format_path;
 
-use crate::xray_shader_import_reference::XRayShaderImportReference;
-use crate::{ShaderRenderer, XRayShaderCompiler, XRayShaderImport, XRayShaderSourceLoader};
+use crate::source::{
+  ShaderRenderer, XRayShaderCompiler, XRayShaderImport, XRayShaderImportReference, XRayShaderSourceLoader,
+};
 
 /// A fully resolved X-Ray shader source file and its nested imports.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -15,6 +17,27 @@ pub struct XRayShader {
 }
 
 impl XRayShader {
+  /// File extensions the engine treats as renderer shader sources.
+  pub const SOURCE_FILE_EXTENSIONS: &[XrayExtension] = &[
+    XrayExtension::H,
+    XrayExtension::Vs,
+    XrayExtension::Ps,
+    XrayExtension::Cs,
+    XrayExtension::Hs,
+    XrayExtension::Ds,
+    XrayExtension::Gs,
+  ];
+
+  /// Whether a name has a shader source extension recognized by the engine.
+  ///
+  /// Takes the engine identity rather than a `Path` because that is what every caller holds: a shader tree is enumerated
+  /// through the VFS, whose listings are logical paths, and the one caller passes a listing's name straight in.
+  pub fn is_source_path(name: &str) -> bool {
+    XrayExtensionOf::of(name)
+      .known()
+      .is_some_and(|extension| Self::SOURCE_FILE_EXTENSIONS.contains(&extension))
+  }
+
   /// Load a shader and recursively resolve all of its renderer-specific
   /// imports through the provided source loader.
   pub fn load<P, L>(path: P, renderer: ShaderRenderer, shaders_root: &Path, loader: &L) -> XrfResult<Self>
@@ -137,9 +160,9 @@ mod tests {
   use std::path::{Path, PathBuf};
 
   use xrf_error::{XrfError, XrfResult};
+  use xrf_extension::XrayExtension;
 
-  use super::XRayShader;
-  use crate::{ShaderRenderer, XRayShaderPlaceholderCompiler, XRayShaderSourceLoader};
+  use crate::source::{ShaderRenderer, XRayShader, XRayShaderPlaceholderCompiler, XRayShaderSourceLoader};
 
   struct TestSourceLoader {
     sources: HashMap<PathBuf, Vec<u8>>,
@@ -251,5 +274,37 @@ mod tests {
     assert!(matches!(result, Err(XrfError::NotImplemented { .. })));
 
     Ok(())
+  }
+
+  #[test]
+  fn recognizes_every_compiled_source_spelling_without_case() {
+    for extension in XRayShader::SOURCE_FILE_EXTENSIONS {
+      assert!(XRayShader::is_source_path(&format!("shaders\\r3\\model.{extension}")));
+      assert!(XRayShader::is_source_path(&format!(
+        "shaders\\r3\\model.{}",
+        extension.as_str().to_uppercase()
+      )));
+    }
+  }
+
+  #[test]
+  fn a_script_is_not_a_source_and_neither_is_anything_else_beside_them() {
+    // Scripts are Lua the renderer runs, not HLSL it compiles, so the two sets stay apart.
+    assert!(!XRayShader::is_source_path("shaders\\r3\\basic.s"));
+    assert!(!XRayShader::is_source_path("shaders\\r3\\basic.s_"));
+    assert!(!XRayShader::is_source_path("shaders\\r3\\readme.txt"));
+    assert!(!XRayShader::is_source_path("shaders\\r3\\notes"));
+  }
+
+  #[test]
+  fn a_name_merely_ending_in_a_source_spelling_is_not_a_source() {
+    assert!(!XRayShader::is_source_path("shaders\\r3\\lightps"));
+    assert!(!XRayShader::is_source_path("shaders\\r3\\model.myps"));
+  }
+
+  #[test]
+  fn the_script_spelling_is_the_one_whose_whole_name_the_engine_ships() {
+    assert!(XrayExtension::S.matches("shaders\\r1\\.s"));
+    assert!(!XRayShader::SOURCE_FILE_EXTENSIONS.contains(&XrayExtension::S));
   }
 }
