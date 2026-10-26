@@ -8,7 +8,8 @@ below the CLI's `dds` and `sprite` commands and the desktop app's texture and sp
 
 - `BuildTextureProcessor::build` rebuilds a texture from a source image the way its `.thm` descriptor says, as the
   SDK's `DXTCompress` does; `BuildTextureRecipe::of` reads that descriptor as a recipe.
-- `GenerateBumpProcessor::generate` produces a bump pair from a height map and gloss.
+- `GenerateBumpProcessor::generate` produces a bump pair from a height map and gloss; a bump descriptor's build does
+  the same.
 - `CropTextureProcessor::crop` extracts a DDS region, optionally fits it, and writes PNG or DDS output.
 - `DescriptionSpritePacker::pack_xml_descriptions` and `DescriptionSpriteUnpacker::unpack_xml_descriptions` handle
   sprite sheets an XML description lays out; both take `PackDescriptionOptions`.
@@ -47,6 +48,7 @@ fn main() -> xrf_error::XrfResult {
     destination: "output/example.dds".into(),
     source: RgbaImage::from_pixel(64, 64, Rgba([128, 128, 255, 255])),
     descriptor,
+    normal_map: None,
     quality: Quality::Normal,
   })?;
 
@@ -61,13 +63,20 @@ source's alpha means anything; nothing is taken from the file being replaced. DX
 BC2, BC3 and uncompressed RGBA. Other formats are refused rather than substituted, DXT1 Alpha included because the
 available BC1 encoder does not preserve its one-bit cutout, and so is a descriptor without texture parameters.
 
-| Descriptor                    | Built as                                                                     |
-| ----------------------------- | ---------------------------------------------------------------------------- |
-| Image, normal map, terrain    | One texture (`BuildTextureLayout::Planar`)                                   |
-| Cube map                      | A cube from six square faces side by side, `+x -x +y -y +z -z` (`CubeStrip`) |
-| Bump map                      | Refused: it is a pair, which `GenerateBumpProcessor` writes                  |
-| `Advanced` mip filter         | The SDK's own chain (`BuildTextureAdvancedChain`), fade included             |
-| Any other filter, mip maps on | A chain the filter reduces from the base (`BuildTextureMipmaps::Filtered`)   |
+| Descriptor                    | Built as                                                                         |
+| ----------------------------- | -------------------------------------------------------------------------------- |
+| Image, normal map, terrain    | One texture (`BuildTextureLayout::Planar`)                                       |
+| Cube map                      | A cube from six square faces side by side, `+x -x +y -y +z -z` (`CubeStrip`)     |
+| Bump map                      | The `<name>.dds` and `<name>#.dds` pair, as `DXTCompressBump` builds (`BumpPair`) |
+| `Advanced` mip filter         | The SDK's own chain (`BuildTextureAdvancedChain`), fade included                 |
+| Any other filter, mip maps on | A chain the filter reduces from the base (`BuildTextureMipmaps::Filtered`)       |
+
+A bump descriptor builds its pair from one source holding the height in its colour and the gloss in its alpha, at the
+descriptor's virtual height, DXT5 with a box chain whatever the descriptor's own format and mip settings say, since
+`DXTCompressBump` reads neither. The companion's path and the gloss verdict are in `BuildTextureResult::bump`. A bump
+descriptor naming an external normal map needs `BuildTextureOptions::normal_map`, the map's pixels and its own
+descriptor, which only the caller can find; like the SDK the build refuses a map that is not a 32-bit RGBA normal map of
+the source's size, and refuses a normal map for a descriptor that names none.
 
 The `Advanced` chain is `Build32MipLevel` ported: each level the 2x2 average of the one above, faded towards
 `fade_color` by `fade_amount` percent from level `fade_delay` on, alpha raised by an eighth, and stopping when the
@@ -81,17 +90,19 @@ are information about a successful but partial build, not failures. The destinat
 
 ## Bump pairs
 
-`GenerateBumpProcessor` ports the SDK's `DXTCompressBump`. It writes `<destination>_bump.dds` (normals and gloss) and
-`<destination>_bump#.dds` (the compression error and the height); `pair_paths` names both. The second half records what
-the first lost to DXT5 compression, so both are encoded before either is written, and a cancelled run writes neither.
-`GenerateBumpOptions` takes the height map, a constant or masked gloss, an optional external normal map, which must
-match the height in size, the virtual height, the mip filter and the quality. A bump pair is distinct from a standalone
-normal-map image. `GenerateBumpResult::is_gloss_too_dark` reports a mean gloss below 0.1; the pair is written anyway.
+`GenerateBumpProcessor` ports the SDK's `DXTCompressBump`. For a bump named `<bump>` it writes `<bump>.dds` (normals
+and gloss) and `<bump>#.dds` (the compression error and the height); `pair_paths` names both, and `bump_of` names the
+`<texture>_bump` a texture binds. The second half records what the first lost to DXT5 compression, so both are encoded
+before either is written, and a cancelled run writes neither. `GenerateBumpOptions` takes the height map, its gloss, an
+optional external normal map, which must match the height in size, the virtual height, the mip filter and the quality.
+A bump pair is distinct from a standalone normal-map image. `GenerateBumpResult::is_gloss_too_dark` reports a mean gloss
+below 0.1; the pair is written anyway.
 
 As in the SDK, the normals read the colour average truncated to a byte, and the height the second half stores reads
-the red channel, rescaled and floored with `EPS_S`. The SDK reads gloss from its one source's alpha and always reduces
-both halves with a box; here gloss is a plane of its own and the filter an option, box by default in the CLI and the
-app. Where a rescaled height or an error passes 255 the SDK keeps its low eight bits; these are clamped.
+the red channel, rescaled and floored with `EPS_S`. The gloss is the height's own alpha as the SDK reads it
+(`GenerateBumpGloss::HeightAlpha`), or a constant or a mask of its own for a source without one. The SDK always reduces
+both halves with a box; here the filter is an option, box by default in the CLI and the app. Where a rescaled height or
+an error passes 255 the SDK keeps its low eight bits; these are clamped.
 
 ## Cropping
 

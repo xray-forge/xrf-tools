@@ -1,7 +1,12 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
 import { Computed, flowResult } from "@wirestate/mobx";
 import { texturesCommands } from "@xrf/ipc/commands/textures";
-import { TextureDescription, TextureMakeBumpOutcome, TEXTURES_JOB_MAKE_BUMP } from "@xrf/ipc/types/xrf-app-textures";
+import {
+  TextureBumpGloss,
+  TextureDescription,
+  TextureMakeBumpOutcome,
+  TEXTURES_JOB_MAKE_BUMP,
+} from "@xrf/ipc/types/xrf-app-textures";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
@@ -18,10 +23,8 @@ import { call, ExclusiveFlow, TFlow } from "@/lib/mobx";
 export interface ITextureBumpSources {
   /** The relief, averaged across its colour channels. Required; everything else refines it. */
   height: string;
-  /** A gloss mask, or null to use one level everywhere. */
-  gloss: Nullable<string>;
-  /** One gloss level for the whole surface, used when there is no mask. */
-  glossConstant: number;
+  /** Where the gloss comes from: the height map's own alpha, as the SDK reads it, a mask, or one level everywhere. */
+  gloss: TextureBumpGloss;
   /** Normals to use instead of the ones the height implies, of the same size. */
   normalMap: Nullable<string>;
   /** `bump_virtual_height` of the descriptor, which decides how deep the relief is derived at; null for the SDK's. */
@@ -91,7 +94,6 @@ export class TextureBumpService {
           {
             destination,
             gloss: sources.gloss,
-            glossConstant: sources.glossConstant,
             height: sources.height,
             // The backend's own chain, the Box the SDK's generator leaves its parameters at.
             mipFilter: null,

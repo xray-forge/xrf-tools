@@ -1,11 +1,14 @@
 use image::RgbaImage;
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain};
 use xrf_error::{XrfError, XrfResult};
+use xrf_job::JobHandle;
 
 use crate::build::build_texture_options::BuildTextureOptions;
 use crate::build::build_texture_result::BuildTextureResult;
+use crate::build::recipe::build_texture_bump_pair::BuildTextureBumpPair;
 use crate::build::recipe::build_texture_layout::BuildTextureLayout;
 use crate::build::recipe::build_texture_recipe::BuildTextureRecipe;
+use crate::bump::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult};
 
 /// Rebuilds a texture from a source image, the way its descriptor says to.
 ///
@@ -24,6 +27,17 @@ impl BuildTextureProcessor {
   /// is merely not implemented is reported in the result instead; see [`crate::BuildTextureOmission`].
   pub fn build(options: &BuildTextureOptions) -> XrfResult<BuildTextureResult> {
     let recipe: BuildTextureRecipe = BuildTextureRecipe::of(&options.descriptor)?;
+
+    if let BuildTextureLayout::BumpPair(pair) = &recipe.layout {
+      return Self::build_bump_pair(options, pair);
+    }
+
+    if options.normal_map.is_some() {
+      return Err(XrfError::new_texture_processing_error(
+        "Only a bump descriptor takes an external normal map, and this build was given one for another",
+      ));
+    }
+
     let source: &RgbaImage = &options.source;
     let faces: Vec<DdsMipChain> = recipe
       .layout
@@ -35,8 +49,8 @@ impl BuildTextureProcessor {
       .map_err(|_| XrfError::new_texture_processing_error("Built texture has more levels than the format can carry"))?;
     let encoding: DdsEncoding = DdsEncoding::new(recipe.format, options.quality);
     let encoded: DdsFile = match recipe.layout {
-      BuildTextureLayout::Planar => encoding.encode(&faces[0])?,
       BuildTextureLayout::CubeStrip => encoding.encode_cube(&faces)?,
+      BuildTextureLayout::Planar | BuildTextureLayout::BumpPair(_) => encoding.encode(&faces[0])?,
     };
 
     encoded.write_to_path(&options.destination)?;
@@ -47,6 +61,52 @@ impl BuildTextureProcessor {
       height: source.height(),
       mipmap_levels: levels,
       omissions: recipe.omissions,
+      bump: None,
+    })
+  }
+
+  /// The pair a bump descriptor builds, `DXTCompressBump`: the gloss read from the source's own alpha, the normals from
+  /// its colour or from the external map the descriptor names, and both halves DXT5 with a box chain.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the descriptor names an external normal map the build was not given, or was given one it
+  /// does not name, when that map is one [`crate::BuildTextureNormalMap::accept`] refuses, or when either half cannot be
+  /// written.
+  fn build_bump_pair(options: &BuildTextureOptions, pair: &BuildTextureBumpPair) -> XrfResult<BuildTextureResult> {
+    let source: &RgbaImage = &options.source;
+    let normal_map: Option<RgbaImage> = match (&pair.normal_map, &options.normal_map) {
+      (Some(name), Some(normal_map)) => Some(normal_map.accept(name, source.dimensions())?.clone()),
+      (Some(name), None) => {
+        return Err(XrfError::new_texture_processing_error(format!(
+          "The bump descriptor names the external normal map '{name}', which this build was not given"
+        )));
+      }
+      (None, Some(_)) => {
+        return Err(XrfError::new_texture_processing_error(
+          "This build was given an external normal map the bump descriptor does not name",
+        ));
+      }
+      (None, None) => None,
+    };
+    let generated: GenerateBumpResult = GenerateBumpProcessor::generate(&GenerateBumpOptions {
+      job: JobHandle::inert(),
+      bump: BuildTextureBumpPair::bump_of(&options.destination),
+      height: source.clone(),
+      gloss: GenerateBumpGloss::HeightAlpha,
+      normal_map,
+      virtual_height: pair.virtual_height,
+      mip_filter: BuildTextureBumpPair::MIP_FILTER,
+      quality: options.quality,
+    })?;
+
+    Ok(BuildTextureResult {
+      destination: generated.bump.clone(),
+      width: source.width(),
+      height: source.height(),
+      mipmap_levels: generated.mipmap_levels,
+      omissions: Vec::new(),
+      bump: Some(generated),
     })
   }
 }
@@ -64,6 +124,7 @@ mod tests {
   };
 
   use super::BuildTextureProcessor;
+  use crate::build::build_texture_normal_map::BuildTextureNormalMap;
   use crate::build::build_texture_options::BuildTextureOptions;
   use crate::build::build_texture_result::BuildTextureResult;
   use crate::build::recipe::build_texture_omission::BuildTextureOmission;
@@ -97,7 +158,29 @@ mod tests {
       destination,
       source,
       descriptor,
+      normal_map: None,
       quality: Quality::Fast,
+    }
+  }
+
+  /// A bump descriptor, naming the external normal map `normal_map` when given one.
+  fn bump_descriptor(normal_map: Option<&str>) -> ThmFile {
+    let mut bump: ThmFile = descriptor(ThmFormat::A8, &[], ThmMipFilter::Advanced);
+
+    bump.texture_type = Some(ThmTextureType::BumpMap);
+    bump.ext_normal_map_name = normal_map.map(str::to_owned);
+    bump
+  }
+
+  /// A normal map as the SDK takes one: a normal-map descriptor of 32-bit RGBA, and its pixels.
+  fn normal_map(size: u32) -> BuildTextureNormalMap {
+    let mut descriptor: ThmFile = descriptor(ThmFormat::Rgba, &[], ThmMipFilter::Box);
+
+    descriptor.texture_type = Some(ThmTextureType::NormalMap);
+
+    BuildTextureNormalMap {
+      descriptor,
+      image: RgbaImage::from_pixel(size, size, Rgba([128, 128, 255, 255])),
     }
   }
 
@@ -256,12 +339,64 @@ mod tests {
   }
 
   #[test]
-  fn refuses_a_bump_descriptor_which_builds_a_pair_rather_than_one_texture() {
-    let mut bump: ThmFile = descriptor(ThmFormat::Dxt5, &[], ThmMipFilter::Box);
+  fn builds_a_bump_descriptor_as_its_pair_with_the_gloss_from_the_source_alpha() -> XrfResult {
+    // The descriptor's own format and filter are ones a plain build refuses or reduces itself; `DXTCompressBump` reads
+    // neither, so the pair is built anyway, DXT5 with a box chain, and leaves nothing out.
+    let source: RgbaImage = RgbaImage::from_pixel(16, 16, Rgba([128, 128, 128, 0x40]));
+    let built: BuildTextureResult =
+      BuildTextureProcessor::build(&options("stone_bump", bump_descriptor(None), source))?;
+    let pair = built.bump.as_ref().expect("a bump descriptor builds a pair");
 
-    bump.texture_type = Some(ThmTextureType::BumpMap);
+    assert_eq!(built.destination.file_name().unwrap(), "stone_bump.dds");
+    assert_eq!(pair.companion.file_name().unwrap(), "stone_bump#.dds");
+    assert!(pair.companion.is_file());
+    assert!(
+      (pair.gloss_power - 64.0 / 255.0).abs() < 1e-6,
+      "got {}",
+      pair.gloss_power
+    );
+    assert!(built.omissions.is_empty());
+    assert_eq!(built.mipmap_levels, 5);
 
-    assert!(BuildTextureProcessor::build(&options("bump", bump, translucent(16))).is_err());
+    Ok(())
+  }
+
+  #[test]
+  fn takes_the_external_normal_map_a_bump_descriptor_names_as_the_sdk_does() -> XrfResult {
+    let named: ThmFile = bump_descriptor(Some("stone\\stone_nmap"));
+    let mut given: BuildTextureOptions = options("named_bump", named.clone(), translucent(16));
+
+    given.normal_map = Some(normal_map(16));
+
+    assert!(BuildTextureProcessor::build(&given)?.bump.is_some());
+
+    // Named and not given, given and not named, or given in a shape the SDK refuses: each fails rather than building
+    // a pair from normals the descriptor did not ask for.
+    assert!(BuildTextureProcessor::build(&options("named_missing", named.clone(), translucent(16))).is_err());
+
+    let mut unnamed: BuildTextureOptions = options("unnamed_bump", bump_descriptor(None), translucent(16));
+
+    unnamed.normal_map = Some(normal_map(16));
+
+    assert!(BuildTextureProcessor::build(&unnamed).is_err());
+
+    let mut mismatched: BuildTextureOptions = options("mismatched_bump", named, translucent(16));
+
+    mismatched.normal_map = Some(normal_map(8));
+
+    assert!(BuildTextureProcessor::build(&mismatched).is_err());
+
+    let mut image: BuildTextureOptions = options(
+      "image_with_normals",
+      descriptor(ThmFormat::Dxt5, &[], ThmMipFilter::Box),
+      translucent(16),
+    );
+
+    image.normal_map = Some(normal_map(16));
+
+    assert!(BuildTextureProcessor::build(&image).is_err());
+
+    Ok(())
   }
 
   #[test]

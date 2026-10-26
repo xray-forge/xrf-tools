@@ -10,10 +10,12 @@ pub struct GenerateBumpResult {
   /// A cancelled run wrote neither half. Both are encoded before either is written, so there is no point at which
   /// stopping could leave one half of a pair on disk for the other to be missing from.
   pub outcome: JobOutcome,
-  /// The normals and gloss, written as `<name>_bump.dds`.
+  /// The normals and gloss, written as `<bump>.dds`.
   pub bump: PathBuf,
-  /// The compression error and the height, written as `<name>_bump#.dds`.
+  /// The compression error and the height, written as `<bump>#.dds`.
   pub companion: PathBuf,
+  /// Levels each half was written with, counting the base; none for a run that stopped.
+  pub mipmap_levels: u32,
   /// Mean gloss over the whole surface, in `0..=1`.
   pub gloss_power: f32,
 }

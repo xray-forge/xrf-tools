@@ -11,8 +11,8 @@ mod image_file;
 pub mod job_phases;
 
 pub use crate::build::{
-  BuildTextureAdvancedChain, BuildTextureLayout, BuildTextureMipmaps, BuildTextureOmission, BuildTextureOptions,
-  BuildTextureProcessor, BuildTextureRecipe, BuildTextureResult,
+  BuildTextureAdvancedChain, BuildTextureBumpPair, BuildTextureLayout, BuildTextureMipmaps, BuildTextureNormalMap,
+  BuildTextureOmission, BuildTextureOptions, BuildTextureProcessor, BuildTextureRecipe, BuildTextureResult,
 };
 pub use crate::bump::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult};
 pub use crate::crop::{CropTextureOptions, CropTextureProcessor, CropTextureResult};

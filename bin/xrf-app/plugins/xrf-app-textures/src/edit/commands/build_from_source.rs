@@ -44,6 +44,7 @@ pub async fn textures_build_from_source(
           destination: request.to_destination(),
           source: ImageFileReader::read_rgba(&request.source).map_err(error_to_string)?,
           descriptor: request.descriptor.to_descriptor(Some(ThmFile::new_texture())),
+          normal_map: request.to_normal_map()?,
           quality: request.quality.to_quality(),
         };
 
@@ -53,8 +54,12 @@ pub async fn textures_build_from_source(
     )
     .await?;
 
-  // Every viewport drawing what was written draws it as written.
-  reloads.reload_written(&[&outcome.destination]);
+  // Every viewport drawing what was written draws it as written, a bump's companion with it.
+  let written: Vec<&String> = std::iter::once(&outcome.destination)
+    .chain(outcome.companion.as_ref())
+    .collect();
+
+  reloads.reload_written(&written);
 
   Ok(outcome)
 }

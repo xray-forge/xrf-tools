@@ -1,9 +1,14 @@
+use std::path::{Path, PathBuf};
+
 use image::RgbaImage;
 use image::imageops::crop_imm;
 use xrf_error::{XrfError, XrfResult};
 
+use crate::build::recipe::build_texture_bump_pair::BuildTextureBumpPair;
+use crate::bump::GenerateBumpProcessor;
+
 /// How a source image is laid out into the texture written from it.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum BuildTextureLayout {
   /// One face, as written: an image, a normal map or a terrain texture alike, which the SDK compresses the same way.
   Planar,
@@ -12,20 +17,31 @@ pub enum BuildTextureLayout {
   /// The strip is the SDK's cube source: `CImageManager` takes a source six times as wide as it is tall for a cube,
   /// and `ETools_cm.cpp` reads face `n` from the `n`-th square of it.
   CubeStrip,
+  /// The `<name>.dds` and `<name>#.dds` pair a bump descriptor builds (`ttBumpMap`), from one source holding the height
+  /// in its colour and the gloss in its alpha, as `DXTCompressBump` reads it.
+  BumpPair(BuildTextureBumpPair),
 }
 
 impl BuildTextureLayout {
   /// Faces of a cube.
   pub const CUBE_FACES: u32 = 6;
 
-  /// The faces the source holds, left to right.
+  /// Every file a build of this layout writes at `destination`: the texture, and for a bump pair its `#` companion.
+  pub fn get_written_paths(&self, destination: &Path) -> Vec<PathBuf> {
+    match self {
+      Self::BumpPair(_) => GenerateBumpProcessor::pair_paths(&BuildTextureBumpPair::bump_of(destination)).to_vec(),
+      Self::Planar | Self::CubeStrip => vec![destination.to_path_buf()],
+    }
+  }
+
+  /// The faces the source holds, left to right; a bump pair's one source is a single face.
   ///
   /// # Errors
   ///
   /// Returns an error for a cube source that is not six square faces side by side.
-  pub fn split(self, source: &RgbaImage) -> XrfResult<Vec<RgbaImage>> {
+  pub fn split(&self, source: &RgbaImage) -> XrfResult<Vec<RgbaImage>> {
     match self {
-      Self::Planar => Ok(vec![source.clone()]),
+      Self::Planar | Self::BumpPair(_) => Ok(vec![source.clone()]),
       Self::CubeStrip => {
         let (width, height): (u32, u32) = source.dimensions();
 
@@ -47,10 +63,13 @@ impl BuildTextureLayout {
 
 #[cfg(test)]
 mod tests {
+  use std::path::{Path, PathBuf};
+
   use image::{Rgba, RgbaImage};
   use xrf_error::XrfResult;
 
   use super::BuildTextureLayout;
+  use crate::build::recipe::build_texture_bump_pair::BuildTextureBumpPair;
 
   #[test]
   fn takes_a_cubes_faces_from_the_left_in_dds_order() -> XrfResult {
@@ -67,6 +86,23 @@ mod tests {
     );
 
     Ok(())
+  }
+
+  #[test]
+  fn names_every_file_a_build_writes() {
+    let pair: BuildTextureLayout = BuildTextureLayout::BumpPair(BuildTextureBumpPair {
+      virtual_height: 0.05,
+      normal_map: None,
+    });
+
+    assert_eq!(
+      pair.get_written_paths(Path::new("stone_bump.dds")),
+      [PathBuf::from("stone_bump.dds"), PathBuf::from("stone_bump#.dds")]
+    );
+    assert_eq!(
+      BuildTextureLayout::CubeStrip.get_written_paths(Path::new("sky.dds")),
+      [PathBuf::from("sky.dds")]
+    );
   }
 
   #[test]
