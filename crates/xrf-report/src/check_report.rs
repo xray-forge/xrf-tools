@@ -21,10 +21,11 @@ pub struct CheckReport {
 }
 
 impl CheckReport {
+  /// A check's report, its findings in their report order ([`Finding`]'s `Ord`) whatever order they were found in.
   pub fn new(id: CheckId, status: Status, duration: Option<Duration>, findings: Vec<Finding>) -> Self {
     let mut findings: Vec<Finding> = findings;
 
-    findings.sort_by(Finding::cmp);
+    findings.sort();
 
     Self {
       duration,
