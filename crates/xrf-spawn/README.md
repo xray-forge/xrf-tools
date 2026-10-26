@@ -44,6 +44,18 @@ A script class closes its own fields with a save marker counting their bytes, wh
 scripts assert on load. The marker is not a field here: reading checks it against what was read, and writing derives
 it, so an edited level changer hint still loads.
 
+## Stalkers and monsters
+
+Call of Pripyat spawns its NPCs at runtime from squads, so no shipped spawn set holds one, but an editor can place them:
+a `stalker` section reads as `AlifeStalker` and a monster section (`dog_weak`, `bloodsucker_normal`) as `AlifeMonster`.
+A stalker's spawn packet opens with its trader fields (`AlifeObjectHumanAbstract`), ahead of the alife object and the
+creature, unlike the actor's. Both script classes end with an `OfflineObjectState` - the level vertex and logic section
+as the strings `se_stalker` and `se_monster` write, `None` for their `nil` - and the stalker with its loot byte; neither
+closes them with a marker. A new object holds `None`, `None` and `0`, as a compiled spawn does. The tails mirror
+`STATE_Write` in xrf-engine's `Stalker.ts` and `Monster.ts`, whose own tests pin their write order, so a change to
+either side changes the other in the same work. The layout is checked against packets the game itself wrote for a new
+stalker and monster.
+
 `export_to_path` unpacks a set into a directory of LTX files a person can edit, and
 `import_from_path` reads that directory back; `write_to_path` and `write_to` write the binary set. Unpacking and packing
 again is meant to reproduce the original bytes.
@@ -74,6 +86,8 @@ and writes both packets together (`AlifePacketsReadWrite`).
 | With a grenade launcher   | `update_grenade_mode`, which opens the packet ahead of every inherited field        |
 | Shotgun (magazined)       | `update_ammo_ids`, a byte counting the shells loaded, after the magazined weapon's  |
 | Creature                  | health, timestamp, flags, position, model and torso angles, team, squad and group   |
+| Monster, human            | the game vertices it walks between and its distances along that edge, after those   |
+| Stalker                   | `update_start_dialog` after the monster's                                           |
 | Actor                     | movement state, two `ScaledDirection`s, radiation, weapon, then `update_body`       |
 
 `PhysicsNetState` models the state's mask: its opening byte packs the item count beside whether the body is enabled

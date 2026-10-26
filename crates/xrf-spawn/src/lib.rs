@@ -9,6 +9,8 @@ pub(crate) mod spawn_file;
 pub(crate) mod types;
 
 #[cfg(test)]
+mod fixtures;
+#[cfg(test)]
 mod tests;
 
 pub use xrf_chunk::XRayByteOrder;
@@ -24,6 +26,7 @@ pub use crate::data::alife::inherited::alife_actor::AlifeActor;
 pub use crate::data::alife::inherited::alife_anomalous_zone::AlifeAnomalousZone;
 pub use crate::data::alife::inherited::alife_graph_point::AlifeGraphPoint;
 pub use crate::data::alife::inherited::alife_level_changer::AlifeLevelChanger;
+pub use crate::data::alife::inherited::alife_monster::AlifeMonster;
 pub use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 pub use crate::data::alife::inherited::alife_object_actor::AlifeObjectActor;
 pub use crate::data::alife::inherited::alife_object_anomaly_zone::AlifeObjectAnomalyZone;
@@ -35,6 +38,8 @@ pub use crate::data::alife::inherited::alife_object_dynamic::AlifeObjectDynamic;
 pub use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 pub use crate::data::alife::inherited::alife_object_hanging_lamp::AlifeObjectHangingLamp;
 pub use crate::data::alife::inherited::alife_object_helicopter::AlifeObjectHelicopter;
+pub use crate::data::alife::inherited::alife_object_human_abstract::AlifeObjectHumanAbstract;
+pub use crate::data::alife::inherited::alife_object_human_stalker::AlifeObjectHumanStalker;
 pub use crate::data::alife::inherited::alife_object_inventory_box::AlifeObjectInventoryBox;
 pub use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
 pub use crate::data::alife::inherited::alife_object_item_ammo::AlifeObjectItemAmmo;
@@ -49,6 +54,8 @@ pub use crate::data::alife::inherited::alife_object_item_weapon::AlifeObjectItem
 pub use crate::data::alife::inherited::alife_object_item_weapon_magazined::AlifeObjectItemWeaponMagazined;
 pub use crate::data::alife::inherited::alife_object_item_weapon_magazined_wgl::AlifeObjectItemWeaponMagazinedWgl;
 pub use crate::data::alife::inherited::alife_object_item_weapon_shotgun::AlifeObjectItemWeaponShotgun;
+pub use crate::data::alife::inherited::alife_object_monster_abstract::AlifeObjectMonsterAbstract;
+pub use crate::data::alife::inherited::alife_object_monster_base::AlifeObjectMonsterBase;
 pub use crate::data::alife::inherited::alife_object_motion::AlifeObjectMotion;
 pub use crate::data::alife::inherited::alife_object_physic::AlifeObjectPhysic;
 pub use crate::data::alife::inherited::alife_object_shape::AlifeObjectShape;
@@ -62,12 +69,14 @@ pub use crate::data::alife::inherited::alife_smart_cover::AlifeSmartCover;
 pub use crate::data::alife::inherited::alife_smart_cover_loophole::AlifeSmartCoverLoophole;
 pub use crate::data::alife::inherited::alife_smart_terrain::AlifeSmartTerrain;
 pub use crate::data::alife::inherited::alife_smart_zone::AlifeSmartZone;
+pub use crate::data::alife::inherited::alife_stalker::AlifeStalker;
 pub use crate::data::alife::inherited::alife_zone_visual::AlifeZoneVisual;
 pub use crate::data::alife::spawn_level_arrival::SpawnLevelArrival;
 pub use crate::data::alife::spawn_level_objects::SpawnLevelObjects;
 pub use crate::data::alife::spawn_skipped_object::SpawnSkippedObject;
 pub use crate::data::artefact_spawn::artefact_spawn_point::ArtefactSpawnPoint;
 pub use crate::data::generic::last_spawn_time::LastSpawnTime;
+pub use crate::data::generic::offline_object_state::OfflineObjectState;
 pub use crate::data::generic::shape::Shape;
 pub use crate::data::generic::time::Time;
 pub use crate::data::generic::u32_bytes::U32Bytes;

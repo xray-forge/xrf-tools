@@ -12,6 +12,7 @@ use crate::data::alife::inherited::alife_actor::AlifeActor;
 use crate::data::alife::inherited::alife_anomalous_zone::AlifeAnomalousZone;
 use crate::data::alife::inherited::alife_graph_point::AlifeGraphPoint;
 use crate::data::alife::inherited::alife_level_changer::AlifeLevelChanger;
+use crate::data::alife::inherited::alife_monster::AlifeMonster;
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::alife::inherited::alife_object_breakable::AlifeObjectBreakable;
 use crate::data::alife::inherited::alife_object_car::AlifeObjectCar;
@@ -38,6 +39,7 @@ use crate::data::alife::inherited::alife_object_torrid_zone::AlifeObjectTorridZo
 use crate::data::alife::inherited::alife_object_trader::AlifeObjectTrader;
 use crate::data::alife::inherited::alife_smart_cover::AlifeSmartCover;
 use crate::data::alife::inherited::alife_smart_terrain::AlifeSmartTerrain;
+use crate::data::alife::inherited::alife_stalker::AlifeStalker;
 use crate::data::alife::inherited::alife_zone_visual::AlifeZoneVisual;
 use crate::data::meta::alife_class::AlifeClass;
 use crate::data::physics::physics_net_state::PhysicsNetState;
@@ -47,6 +49,8 @@ use crate::data::physics::physics_net_state::PhysicsNetState;
 #[serde(tag = "type")]
 pub enum AlifeObjectInherited {
   SeActor(Box<AlifeActor>),
+  SeStalker(Box<AlifeStalker>),
+  SeMonster(Box<AlifeMonster>),
   CseAlifeObjectBreakable(Box<AlifeObjectBreakable>),
   CseAlifeObjectClimable(Box<AlifeObjectClimable>),
   CseAlifeGraphPoint(Box<AlifeGraphPoint>),
@@ -88,6 +92,8 @@ impl AlifeObjectInherited {
   ) -> XrfResult<Self> {
     Ok(match alife_class {
       AlifeClass::SeActor => Self::SeActor(Box::new(AlifeActor::read::<T, _>(spawn, update)?)),
+      AlifeClass::SeStalker => Self::SeStalker(Box::new(AlifeStalker::read::<T, _>(spawn, update)?)),
+      AlifeClass::SeMonster => Self::SeMonster(Box::new(AlifeMonster::read::<T, _>(spawn, update)?)),
       AlifeClass::CseAlifeObjectBreakable => Self::CseAlifeObjectBreakable(Box::new(spawn.read_xr::<T, _>()?)),
       AlifeClass::CseAlifeObjectClimable => Self::CseAlifeObjectClimable(Box::new(spawn.read_xr::<T, _>()?)),
       AlifeClass::CseAlifeGraphPoint => Self::CseAlifeGraphPoint(Box::new(spawn.read_xr::<T, _>()?)),
@@ -154,6 +160,8 @@ impl AlifeObjectInherited {
   pub fn get_class(&self) -> AlifeClass {
     match self {
       AlifeObjectInherited::SeActor(_) => AlifeClass::SeActor,
+      AlifeObjectInherited::SeStalker(_) => AlifeClass::SeStalker,
+      AlifeObjectInherited::SeMonster(_) => AlifeClass::SeMonster,
       AlifeObjectInherited::CseAlifeObjectBreakable(_) => AlifeClass::CseAlifeObjectBreakable,
       AlifeObjectInherited::CseAlifeObjectClimable(_) => AlifeClass::CseAlifeObjectClimable,
       AlifeObjectInherited::CseAlifeGraphPoint(_) => AlifeClass::CseAlifeGraphPoint,
@@ -191,6 +199,8 @@ impl AlifeObjectInherited {
   pub fn get_abstract(&self) -> Option<&AlifeObjectAbstract> {
     match self {
       AlifeObjectInherited::SeActor(object) => Some(&object.base.base.base.base),
+      AlifeObjectInherited::SeStalker(object) => Some(&object.base.base.base.base.base.base),
+      AlifeObjectInherited::SeMonster(object) => Some(&object.base.base.base.base.base),
       AlifeObjectInherited::CseAlifeObjectBreakable(object) => Some(&object.base.base),
       AlifeObjectInherited::CseAlifeObjectClimable(object) => Some(&object.base.base),
       AlifeObjectInherited::CseAlifeGraphPoint(_) => None,
@@ -228,6 +238,8 @@ impl AlifeObjectInherited {
   pub fn get_visual(&self) -> Option<&str> {
     let name: &str = match self {
       AlifeObjectInherited::SeActor(object) => object.base.base.base.visual_name.as_str(),
+      AlifeObjectInherited::SeStalker(object) => object.base.base.base.base.base.visual_name.as_str(),
+      AlifeObjectInherited::SeMonster(object) => object.base.base.base.base.visual_name.as_str(),
       AlifeObjectInherited::CseAlifeObjectBreakable(object) => object.base.visual_name.as_str(),
       AlifeObjectInherited::CseAlifeCar(object) => object.base.visual_name.as_str(),
       AlifeObjectInherited::CseAlifeTrader(object) => object.base.visual_name.as_str(),
@@ -278,6 +290,16 @@ impl AlifeObjectInherited {
 
         return;
       }
+      AlifeObjectInherited::SeStalker(object) => {
+        object.move_to(position, direction);
+
+        return;
+      }
+      AlifeObjectInherited::SeMonster(object) => {
+        object.move_to(position, direction);
+
+        return;
+      }
       AlifeObjectInherited::CseAlifeObjectPhysic(object) => object.update_state.as_mut(),
       AlifeObjectInherited::CseAlifeItem(object) => object.update_state.as_mut(),
       AlifeObjectInherited::CseAlifeItemExplosive(object) => object.base.update_state.as_mut(),
@@ -318,6 +340,8 @@ impl AlifeObjectInherited {
   pub fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
     match self {
       AlifeObjectInherited::SeActor(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::SeStalker(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::SeMonster(object) => object.write::<T>(spawn, update)?,
       AlifeObjectInherited::CseAlifeObjectBreakable(object) => spawn.write_xr::<T, _>(object.deref())?,
       AlifeObjectInherited::CseAlifeObjectClimable(object) => spawn.write_xr::<T, _>(object.deref())?,
       AlifeObjectInherited::CseAlifeGraphPoint(object) => spawn.write_xr::<T, _>(object.deref())?,
@@ -355,6 +379,8 @@ impl AlifeObjectInherited {
   pub fn import(section_name: &str, ltx: &Ltx, alife_class: &AlifeClass) -> XrfResult<Self> {
     Ok(match alife_class {
       AlifeClass::SeActor => Self::SeActor(Box::new(AlifeActor::import(section_name, ltx)?)),
+      AlifeClass::SeStalker => Self::SeStalker(Box::new(AlifeStalker::import(section_name, ltx)?)),
+      AlifeClass::SeMonster => Self::SeMonster(Box::new(AlifeMonster::import(section_name, ltx)?)),
       AlifeClass::CseAlifeObjectBreakable => {
         Self::CseAlifeObjectBreakable(Box::new(AlifeObjectBreakable::import(section_name, ltx)?))
       }
@@ -434,6 +460,8 @@ impl AlifeObjectInherited {
   pub fn export(&self, section_name: &str, ltx: &mut Ltx) -> XrfResult {
     match self {
       AlifeObjectInherited::SeActor(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::SeStalker(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::SeMonster(object) => object.export(section_name, ltx),
       AlifeObjectInherited::CseAlifeObjectBreakable(object) => object.export(section_name, ltx),
       AlifeObjectInherited::CseAlifeObjectClimable(object) => object.export(section_name, ltx),
       AlifeObjectInherited::CseAlifeGraphPoint(object) => object.export(section_name, ltx),

@@ -43,6 +43,8 @@ impl LevelSpawnCategory {
       AlifeObjectInherited::CseAlifeObjectHangingLamp(lamp) => lamp.is_spawned_on_r2().then_some(Self::Lamps),
       // Characters, which stand animated and are not in a level's spawn but for the actor, and the logic volumes.
       AlifeObjectInherited::SeActor(_)
+      | AlifeObjectInherited::SeStalker(_)
+      | AlifeObjectInherited::SeMonster(_)
       | AlifeObjectInherited::CseAlifeTrader(_)
       | AlifeObjectInherited::CseAlifeObjectClimable(_)
       | AlifeObjectInherited::CseAlifeGraphPoint(_)
