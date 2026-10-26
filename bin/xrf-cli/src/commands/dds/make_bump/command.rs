@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use clap::{Arg, ArgMatches, Command, value_parser};
+use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
 use xrf_output::OutputOptions;
@@ -37,6 +37,13 @@ impl GenericCommand for MakeBumpCommand {
           .long("dest")
           .required(true)
           .value_parser(value_parser!(PathBuf)),
+      )
+      .arg(
+        Arg::new("gloss-alpha")
+          .help("Read the gloss from the height map's own alpha, where the SDK's bump source carries it")
+          .long("gloss-alpha")
+          .conflicts_with_all(["gloss", "gloss-constant"])
+          .action(ArgAction::SetTrue),
       )
       .arg(
         Arg::new("gloss")
@@ -78,7 +85,7 @@ impl GenericCommand for MakeBumpCommand {
 
     let options: GenerateBumpOptions = GenerateBumpOptions {
       job: JobHandle::inert(),
-      destination: destination.clone(),
+      bump: GenerateBumpProcessor::bump_of(destination),
       height: ImageFileReader::read_rgba(height)?,
       gloss: Self::get_gloss(matches)?,
       normal_map: match matches.get_one::<PathBuf>("normal-map") {
@@ -118,8 +125,13 @@ impl GenericCommand for MakeBumpCommand {
 }
 
 impl MakeBumpCommand {
-  /// The gloss the pair carries: a mask, one level everywhere, or the default where neither was given.
+  /// The gloss the pair carries: the height's own alpha, a mask, one level everywhere, or the default where none was
+  /// given.
   fn get_gloss(matches: &ArgMatches) -> XrfResult<GenerateBumpGloss> {
+    if matches.get_flag("gloss-alpha") {
+      return Ok(GenerateBumpGloss::HeightAlpha);
+    }
+
     if let Some(path) = matches.get_one::<PathBuf>("gloss") {
       return Ok(GenerateBumpGloss::Mask(ImageFileReader::read_rgba(path)?));
     }

@@ -3,6 +3,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_thm::{ThmFile, ThmFormat, ThmMipFilter, ThmTextureFlag, ThmTextureParamChunk, ThmTextureType};
 
 use crate::build::recipe::build_texture_advanced_chain::BuildTextureAdvancedChain;
+use crate::build::recipe::build_texture_bump_pair::BuildTextureBumpPair;
 use crate::build::recipe::build_texture_layout::BuildTextureLayout;
 use crate::build::recipe::build_texture_mipmaps::BuildTextureMipmaps;
 use crate::build::recipe::build_texture_omission::BuildTextureOmission;
@@ -22,39 +23,45 @@ pub struct BuildTextureRecipe {
 impl BuildTextureRecipe {
   /// Reads a descriptor as a build recipe.
   ///
+  /// A bump descriptor is `DXTCompressBump`'s, which ignores its format and mip settings for its own DXT5 with a box
+  /// chain, so it is read for its pair alone and leaves nothing out.
+  ///
   /// # Errors
   ///
-  /// Returns an error when the descriptor carries no texture params, is a bump descriptor or of a type the SDK has no
-  /// name for, or names a format this build cannot write. A format is refused rather than substituted: writing BC3
-  /// where the author asked for `A8` would produce a texture that loads and is not the one they described.
+  /// Returns an error when the descriptor is of a type the SDK has no name for, or, unless it is a bump descriptor,
+  /// carries no texture params or names a format this build cannot write. A format is refused rather than
+  /// substituted: writing BC3 where the author asked for `A8` would produce a texture that loads and is not the one
+  /// they described.
   pub fn of(file: &ThmFile) -> XrfResult<Self> {
+    // `STextureParams` starts zeroed, which is `ttImage`, so a descriptor without a type chunk is an image.
+    let layout: BuildTextureLayout = match file.texture_type.unwrap_or_default() {
+      ThmTextureType::Image | ThmTextureType::NormalMap | ThmTextureType::Terrain => BuildTextureLayout::Planar,
+      ThmTextureType::CubeMap => BuildTextureLayout::CubeStrip,
+      ThmTextureType::BumpMap => {
+        return Ok(Self {
+          layout: BuildTextureLayout::BumpPair(BuildTextureBumpPair::of(file)),
+          format: BuildTextureBumpPair::FORMAT,
+          mipmaps: BuildTextureMipmaps::Filtered(BuildTextureBumpPair::MIP_FILTER),
+          omissions: Vec::new(),
+        });
+      }
+      ThmTextureType::Unknown(raw) => {
+        return Err(XrfError::new_texture_processing_error(format!(
+          "Cannot build a texture of type {raw}, which the SDK has no name for and refuses"
+        )));
+      }
+    };
     let param: &ThmTextureParamChunk = file.texture_param.as_ref().ok_or_else(|| {
       XrfError::new_texture_processing_error("Cannot build from a descriptor carrying no texture parameters")
     })?;
     let mipmaps: BuildTextureMipmaps = Self::to_mipmaps(param, file.fade_delay);
 
     Ok(Self {
-      // `STextureParams` starts zeroed, which is `ttImage`, so a descriptor without a type chunk is an image.
-      layout: Self::to_layout(file.texture_type.unwrap_or_default())?,
+      layout,
       format: Self::to_image_format(param.format)?,
       omissions: Self::to_omissions(param, &mipmaps),
       mipmaps,
     })
-  }
-
-  /// The layout `DXTCompress` routes the type to.
-  fn to_layout(texture_type: ThmTextureType) -> XrfResult<BuildTextureLayout> {
-    match texture_type {
-      ThmTextureType::Image | ThmTextureType::NormalMap | ThmTextureType::Terrain => Ok(BuildTextureLayout::Planar),
-      ThmTextureType::CubeMap => Ok(BuildTextureLayout::CubeStrip),
-      // `DXTCompressBump` writes two files from one packed source, which is a different operation from this one.
-      ThmTextureType::BumpMap => Err(XrfError::new_texture_processing_error(
-        "A bump descriptor builds the '_bump' and '_bump#' pair, which GenerateBumpProcessor writes, not one texture",
-      )),
-      ThmTextureType::Unknown(raw) => Err(XrfError::new_texture_processing_error(format!(
-        "Cannot build a texture of type {raw}, which the SDK has no name for and refuses"
-      ))),
-    }
   }
 
   /// The layout the descriptor's format names, for the four this build can write.

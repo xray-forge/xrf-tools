@@ -29,13 +29,6 @@ pub async fn textures_make_bump(
 ) -> TauriResult<TextureMakeBumpOutcome> {
   log::info!("Generating bump pair for: {}", request.destination);
 
-  if !(0.0..=1.0).contains(&request.gloss_constant) {
-    return Err(format!(
-      "Gloss level {} is outside the 0 to 1 range a gloss is measured in",
-      request.gloss_constant
-    ));
-  }
-
   let mip_filter: DdsMipFilter = request.to_mip_filter()?;
   let start: JobStart = JobStart::new(job_id, TEXTURES_JOB_MAKE_BUMP)
     .with_request(&request)

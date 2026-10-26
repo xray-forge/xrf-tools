@@ -14,11 +14,12 @@ use crate::bump::generate_bump_result::GenerateBumpResult;
 use crate::bump::grey_plane::GreyPlane;
 use crate::job_phases::TEXTURE_PHASE_GENERATE_BUMP;
 
-/// Suffix of the half holding the normals and the gloss.
+/// Suffix a texture's own bump takes, which is how the shipped bumps and the SDK's authors name them.
 const BUMP_SUFFIX: &str = "_bump";
 
-/// Suffix of the half holding the compression error and the height.
-const COMPANION_SUFFIX: &str = "_bump#";
+/// Suffix the half holding the compression error and the height takes after the bump's own name, `#.dds` in
+/// `DXTCompressBump`.
+const COMPANION_SUFFIX: &str = "#";
 
 /// The value a difference of nothing encodes to, so an error plane is signed around the middle of the byte range.
 const ERROR_BIAS: i32 = 128;
@@ -51,13 +52,13 @@ impl GenerateBumpProcessor {
   /// than refused; see [`GenerateBumpResult::is_gloss_too_dark`].
   pub fn generate(options: &GenerateBumpOptions) -> XrfResult<GenerateBumpResult> {
     let steps: JobScope = options.job.enter(TEXTURE_PHASE_GENERATE_BUMP, Some(GENERATE_STEPS));
-    let bump_path: PathBuf = Self::half_path(&options.destination, BUMP_SUFFIX);
-    let companion_path: PathBuf = Self::half_path(&options.destination, COMPANION_SUFFIX);
+    let [bump_path, companion_path]: [PathBuf; 2] = Self::pair_paths(&options.bump);
 
     let stopped = |gloss_power: f32| GenerateBumpResult {
       outcome: JobOutcome::Cancelled,
       bump: bump_path.clone(),
       companion: companion_path.clone(),
+      mipmap_levels: 0,
       gloss_power,
     };
 
@@ -129,6 +130,7 @@ impl GenerateBumpProcessor {
       outcome: JobOutcome::Completed,
       bump: bump_path,
       companion: companion_path,
+      mipmap_levels: encoded_bump.metadata().mipmap_levels,
       gloss_power,
     })
   }
@@ -171,6 +173,7 @@ impl GenerateBumpProcessor {
 
         Ok(GreyPlane::from_rgb_average(mask))
       }
+      GenerateBumpGloss::HeightAlpha => Ok(GreyPlane::from_channel(&options.height, 3)),
       GenerateBumpGloss::Constant(level) => Ok(GreyPlane::filled(
         options.height.width(),
         options.height.height(),
@@ -259,24 +262,28 @@ impl GenerateBumpProcessor {
       .encode(&DdsMipChain::build(image, DdsMipmaps::Filtered(options.mip_filter))?)
   }
 
-  /// Both halves a generation would write, in the order it writes them.
+  /// Both halves a generation writes for a bump named `bump`, in the order it writes them: `<bump>.dds` and
+  /// `<bump>#.dds`, as `DXTCompressBump` names them.
   ///
   /// Public because the naming rule is the generator's and a caller that needs the paths before the run - to hold them
-  /// while it works, or to say what it is about to replace - should not be spelling `_bump#` a second time.
-  pub fn pair_paths(destination: &Path) -> [PathBuf; 2] {
-    [
-      Self::half_path(destination, BUMP_SUFFIX),
-      Self::half_path(destination, COMPANION_SUFFIX),
-    ]
+  /// while it works, or to say what it is about to replace - should not be spelling `#` a second time.
+  pub fn pair_paths(bump: &Path) -> [PathBuf; 2] {
+    [Self::half_path(bump, ""), Self::half_path(bump, COMPANION_SUFFIX)]
   }
 
-  /// Where one half of the pair is written, from the base name both share.
-  fn half_path(destination: &Path, suffix: &str) -> PathBuf {
-    let name: String = destination
+  /// The bump a texture binds, `<texture>_bump`, without an extension: what [`GenerateBumpOptions::bump`] names for a
+  /// pair generated for the texture at `texture`.
+  pub fn bump_of(texture: &Path) -> PathBuf {
+    Self::half_path(texture, BUMP_SUFFIX).with_extension("")
+  }
+
+  /// Where one half of the pair is written, from the name both share.
+  fn half_path(bump: &Path, suffix: &str) -> PathBuf {
+    let name: String = bump
       .file_name()
       .map_or_else(String::new, |name| name.to_string_lossy().into_owned());
 
-    destination.with_file_name(format!("{name}{suffix}.{}", XrayExtension::Dds))
+    bump.with_file_name(format!("{name}{suffix}.{}", XrayExtension::Dds))
   }
 }
 
@@ -301,13 +308,13 @@ mod tests {
   }
 
   fn options(case: &str, height: RgbaImage) -> GenerateBumpOptions {
-    let destination: PathBuf = GeneratedResources::path(&format!("xrf-texture/bump/{case}"));
+    let texture: PathBuf = GeneratedResources::path(&format!("xrf-texture/bump/{case}"));
 
-    std::fs::create_dir_all(destination.parent().expect("case directory")).expect("scratch directory");
+    std::fs::create_dir_all(texture.parent().expect("case directory")).expect("scratch directory");
 
     GenerateBumpOptions {
       job: JobHandle::inert(),
-      destination,
+      bump: GenerateBumpProcessor::bump_of(&texture),
       height,
       gloss: GenerateBumpGloss::Constant(0.5),
       normal_map: None,
@@ -447,6 +454,33 @@ mod tests {
 
     assert_eq!(result.bump.file_name().unwrap(), "naming_bump.dds");
     assert_eq!(result.companion.file_name().unwrap(), "naming_bump#.dds");
+    assert_eq!(result.mipmap_levels, 4);
+
+    // A bump of any name pairs as the SDK names it, `#` after the bump's own name.
+    assert_eq!(
+      GenerateBumpProcessor::pair_paths(&PathBuf::from("detail/stone"))
+        .map(|path| path.file_name().unwrap().to_owned()),
+      ["stone.dds", "stone#.dds"].map(std::ffi::OsString::from)
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn reads_the_gloss_from_the_heights_own_alpha_as_the_sdk_does() -> XrfResult {
+    // The SDK's bump source carries the gloss in its alpha: here 0x30, stored one above.
+    let mut sourced: GenerateBumpOptions =
+      options("height_alpha", RgbaImage::from_pixel(8, 8, Rgba([128, 128, 128, 0x30])));
+
+    sourced.gloss = GenerateBumpGloss::HeightAlpha;
+
+    let result: GenerateBumpResult = GenerateBumpProcessor::generate(&sourced)?;
+
+    assert!(
+      (result.gloss_power - 48.0 / 255.0).abs() < 1e-6,
+      "got {}",
+      result.gloss_power
+    );
 
     Ok(())
   }

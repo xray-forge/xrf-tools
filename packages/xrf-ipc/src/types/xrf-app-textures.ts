@@ -51,6 +51,15 @@ export type TextureBuildOutcome = {
   /** Whether the texture was written or the run stopped before it started. */
   outcome: JobOutcome;
   destination: string;
+  /**
+   * The `#` half a bump descriptor writes beside the texture, the compression error and the height; absent for any
+   * other descriptor.
+   */
+  companion: string | null;
+  /** Mean gloss of a bump descriptor's pair, in `0..=1`; absent for any other descriptor. */
+  glossPower: number | null;
+  /** Whether that gloss is too dark for the surface to show a specular response worth having. */
+  isGlossTooDark: boolean;
   /** Size of the source, which the descriptor's own width and height are refreshed from. */
   width: number;
   height: number;
@@ -59,6 +68,25 @@ export type TextureBuildOutcome = {
   /** Recipe fields the descriptor asked for and the build did not carry out. */
   omissions: Array<TextureBuildOmissionReport>;
 };
+
+/** Every `kind` the `TextureBumpGloss` union is told apart by, so a switch or a comparison names one. */
+export enum ETextureBumpGloss {
+  /** The height map's own alpha, where the SDK's bump source carries its gloss. */
+  HEIGHT_ALPHA = "heightAlpha",
+  /** One level for the whole surface, from 0 to 1, for a surface authored without a gloss. */
+  CONSTANT = "constant",
+  /** Path of a gloss mask, averaged across its colour channels. */
+  MASK = "mask",
+}
+
+/** Where a generated bump pair takes its gloss from. */
+export type TextureBumpGloss =
+  /** The height map's own alpha, where the SDK's bump source carries its gloss. */
+  | { kind: "heightAlpha" }
+  /** One level for the whole surface, from 0 to 1, for a surface authored without a gloss. */
+  | { kind: "constant"; level: number | null }
+  /** Path of a gloss mask, averaged across its colour channels. */
+  | { kind: "mask"; path: string };
 
 /** The two references a declaration binds, which is what folds a pair under the texture that declares it. */
 export type TextureBumpPair = {
@@ -259,9 +287,9 @@ export type TextureFormatSupport = `${ETextureFormatSupport}`;
 export type TextureMakeBumpOutcome = {
   /** Whether the pair was written or the run stopped because it was asked to. */
   outcome: JobOutcome;
-  /** The normals and gloss, written as `<name>_bump.dds`. */
+  /** The normals and gloss, written as `<bump>.dds`. */
   bump: string;
-  /** The compression error and the height, written as `<name>_bump#.dds`. */
+  /** The compression error and the height, written as `<bump>#.dds`. */
   companion: string;
   /** Mean gloss over the whole surface, in `0..=1`. */
   glossPower: number | null;
@@ -383,10 +411,18 @@ export type TextureVocabularyEntry = {
 export type TexturesBuildRequest = {
   /** Path of the `.dds` to write, which is the file beside the descriptor. */
   destination: string;
-  /** Path of the image to encode, of whatever kind `image` decodes. */
+  /**
+   * Path of the image to encode, of whatever kind `image` decodes; for a bump descriptor, the height in its colour and
+   * the gloss in its alpha.
+   */
   source: string;
   /** The descriptor to read as a recipe, as the editor currently has it rather than as it is on disk. */
   descriptor: TextureDescriptorForm;
+  /**
+   * Path of the texture a bump descriptor names as its external normal map, whose own `.thm` beside it says what it
+   * is; absent for any other.
+   */
+  normalMap: string | null;
   quality: TextureEncodingQuality;
 };
 
@@ -404,17 +440,16 @@ export type TexturesCompareRequest = {
 /**
  * What a bump pair generation was asked to do.
  *
- * The height source is required and everything else refines it, exactly as the SDK's generator has it: normals are
- * derived from the height alone and gloss is a separate plane, so a caller with only a height map still gets a pair.
+ * The height source is required and everything else refines it, so a caller with only a height map still gets a
+ * pair. The SDK's generator reads the gloss from that one source's alpha; a constant or a mask stands in for a source
+ * without one.
  */
 export type TexturesMakeBumpRequest = {
   /** Path of the texture the pair belongs to, without the `_bump` suffix or an extension. */
   destination: string;
   /** Path of the image the relief is read from, averaged across its colour channels. */
   height: string;
-  /** Path of a gloss mask, averaged the same way. */
-  gloss: string | null;
-  glossConstant: number | null;
+  gloss: TextureBumpGloss;
   /** Path of a normal map to use instead of deriving one from the height, of the same size. */
   normalMap: string | null;
   /** `bump_virtual_height` of the descriptor, read here and nowhere at runtime; the SDK's default when absent. */

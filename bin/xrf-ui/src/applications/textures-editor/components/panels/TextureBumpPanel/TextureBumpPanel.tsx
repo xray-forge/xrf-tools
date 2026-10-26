@@ -1,11 +1,11 @@
-import { Alert, Button, Stack, Typography } from "@mui/material";
+import { Alert, Button, Checkbox, FormControlLabel, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
-import { DEFAULT_GLOSS_POWER } from "@/applications/textures-editor/lib/texture-bump-gloss";
+import { DEFAULT_GLOSS_POWER, toBumpGloss } from "@/applications/textures-editor/lib/texture-bump-gloss";
 import { TextureBumpService } from "@/applications/textures-editor/services/bump";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { EApplicationId } from "@/core/routing/application";
@@ -46,6 +46,7 @@ export function TextureBumpPanel({
   const bumpService: TextureBumpService = useInjection(TextureBumpService);
 
   const [glossConstant, setGlossConstant] = useState<number>(DEFAULT_GLOSS_POWER);
+  const [isGlossFromHeight, setIsGlossFromHeight] = useState<boolean>(false);
 
   const description: Nullable<TextureDescription> = selectionService.selected.value;
   const isRunning: boolean = bumpService.generate.isRunning;
@@ -77,14 +78,21 @@ export function TextureBumpPanel({
   const onGenerate = useCallback(
     () =>
       void bumpService.run({
-        gloss: gloss.value,
-        glossConstant,
+        gloss: toBumpGloss(isGlossFromHeight, gloss.value, glossConstant),
         height: height.value ?? "",
         normalMap: normalMap.value,
         // The descriptor's own, so generating twice at different depths is a deliberate act rather than a surprise.
         virtualHeight: editorService.draft?.virtualHeight ?? null,
       }),
-    [bumpService, editorService.draft?.virtualHeight, gloss.value, glossConstant, height.value, normalMap.value]
+    [
+      bumpService,
+      editorService.draft?.virtualHeight,
+      gloss.value,
+      glossConstant,
+      height.value,
+      isGlossFromHeight,
+      normalMap.value,
+    ]
   );
 
   if (!description) {
@@ -116,14 +124,29 @@ export function TextureBumpPanel({
           field={height}
         />
 
-        <PathFormRow
-          label={"Gloss mask"}
-          description={"Optional. Without one, the level below is used everywhere"}
-          isDisabled={isRunning}
-          field={gloss}
+        <FormControlLabel
+          data-testid={"texture-bump-gloss-from-height"}
+          label={"Gloss from the height map's alpha, as the SDK's bump source carries it"}
+          disabled={isRunning}
+          control={
+            <Checkbox
+              size={"small"}
+              checked={isGlossFromHeight}
+              onChange={(_, isChecked: boolean) => setIsGlossFromHeight(isChecked)}
+            />
+          }
         />
 
-        {gloss.value ? null : (
+        {isGlossFromHeight ? null : (
+          <PathFormRow
+            label={"Gloss mask"}
+            description={"Optional. Without one, the level below is used everywhere"}
+            isDisabled={isRunning}
+            field={gloss}
+          />
+        )}
+
+        {isGlossFromHeight || gloss.value ? null : (
           <TextureGlossField
             value={glossConstant}
             minimum={editorService.vocabulary.value?.minimumGlossPower ?? null}

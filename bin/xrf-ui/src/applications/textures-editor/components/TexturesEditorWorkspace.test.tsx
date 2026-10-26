@@ -35,8 +35,7 @@ import { noop } from "@/lib/callbacks/noop";
 import { TexturesEditorWorkspace } from "./TexturesEditorWorkspace";
 
 const SOURCES: ITextureBumpSources = {
-  gloss: null,
-  glossConstant: 0.5,
+  gloss: { kind: "constant", level: 0.5 },
   height: "C:\\work\\wall_height.png",
   normalMap: null,
   virtualHeight: 0.05,

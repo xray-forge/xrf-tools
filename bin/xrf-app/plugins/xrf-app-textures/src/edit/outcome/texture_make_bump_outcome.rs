@@ -10,9 +10,9 @@ use xrf_utils::to_portable_path_string;
 pub struct TextureMakeBumpOutcome {
   /// Whether the pair was written or the run stopped because it was asked to.
   pub outcome: JobOutcome,
-  /// The normals and gloss, written as `<name>_bump.dds`.
+  /// The normals and gloss, written as `<bump>.dds`.
   pub bump: String,
-  /// The compression error and the height, written as `<name>_bump#.dds`.
+  /// The compression error and the height, written as `<bump>#.dds`.
   pub companion: String,
   /// Mean gloss over the whole surface, in `0..=1`.
   pub gloss_power: f32,
