@@ -25,12 +25,73 @@ impl AnimationEnvelope {
   /// The two behaviours and the key count of the wider layout, which is what `CEnvelope::Load_1` reads.
   pub const MIN_WIDE_SERIALIZED_SIZE: u64 = 4 + 4 + 4;
 
+  /// `EPS_L`, how near a time must be to a key's for `CEnvelope::InsertKey` and `DeleteKey` to take it for that key.
+  pub const KEY_TIME_EPSILON: f32 = 0.001;
+
   /// Seconds the keyed part of the channel spans, or `None` for one carrying no keys.
   pub fn get_duration_seconds(&self) -> Option<f32> {
     let first: &AnimationKey = self.keys.first()?;
     let last: &AnimationKey = self.keys.last()?;
 
     Some(last.time - first.time)
+  }
+
+  /// The position of the key at `time`, within `epsilon`, as `CEnvelope::FindKey` looks for it: in key order, giving
+  /// up at the first key past `time`.
+  pub fn find_key(&self, time: f32, epsilon: f32) -> Option<usize> {
+    for (index, key) in self.keys.iter().enumerate() {
+      if (key.time - time).abs() < epsilon {
+        return Some(index);
+      }
+
+      if key.time > time {
+        return None;
+      }
+    }
+
+    None
+  }
+
+  /// `CEnvelope::InsertKey`: sets the value of the key at `time` where there is one, and otherwise inserts a TCB key
+  /// before the first key past `time`, which also turns both behaviours constant. Returns the key's position.
+  pub fn insert_key(&mut self, time: f32, value: f32) -> usize {
+    let mut position: usize = self.keys.len();
+
+    for (index, key) in self.keys.iter_mut().enumerate() {
+      if (key.time - time).abs() < Self::KEY_TIME_EPSILON {
+        key.value = value;
+
+        return index;
+      }
+
+      if key.time > time {
+        position = index;
+        break;
+      }
+    }
+
+    self.keys.insert(
+      position,
+      AnimationKey {
+        value,
+        time,
+        ..AnimationKey::default()
+      },
+    );
+    self.behavior_before = AnimationBehavior::Constant;
+    self.behavior_after = AnimationBehavior::Constant;
+
+    position
+  }
+
+  /// `CEnvelope::DeleteKey`: takes out the first key at `time`, wherever it sits among the others.
+  pub fn delete_key(&mut self, time: f32) -> Option<AnimationKey> {
+    let position: usize = self
+      .keys
+      .iter()
+      .position(|key| (key.time - time).abs() < Self::KEY_TIME_EPSILON)?;
+
+    Some(self.keys.remove(position))
   }
 
   /// Reads an envelope the narrow way, `CEnvelope::Load_2`.
@@ -277,6 +338,62 @@ mod tests {
     ));
 
     Ok(())
+  }
+
+  fn new_keyed_envelope(times: &[f32]) -> AnimationEnvelope {
+    AnimationEnvelope {
+      behavior_before: AnimationBehavior::Repeat,
+      behavior_after: AnimationBehavior::Linear,
+      keys: times
+        .iter()
+        .map(|&time| AnimationKey {
+          time,
+          shape: AnimationShape::Linear,
+          ..AnimationKey::default()
+        })
+        .collect(),
+    }
+  }
+
+  #[test]
+  fn finds_a_key_near_a_time_and_gives_up_past_it() {
+    let envelope: AnimationEnvelope = new_keyed_envelope(&[0.0, 1.0, 2.0]);
+
+    assert_eq!(envelope.find_key(1.005, 0.01), Some(1));
+    assert_eq!(envelope.find_key(1.5, 0.01), None);
+    assert_eq!(envelope.find_key(3.0, 0.01), None);
+  }
+
+  #[test]
+  fn inserts_a_new_key_in_time_order_and_turns_the_behaviours_constant() {
+    let mut envelope: AnimationEnvelope = new_keyed_envelope(&[0.0, 2.0]);
+
+    assert_eq!(envelope.insert_key(1.0, 5.0), 1);
+    assert_eq!(envelope.keys[1].value, 5.0);
+    assert_eq!(envelope.keys[1].shape, AnimationShape::Tcb);
+    assert_eq!(envelope.behavior_before, AnimationBehavior::Constant);
+    assert_eq!(envelope.behavior_after, AnimationBehavior::Constant);
+    assert_eq!(envelope.insert_key(9.0, 1.0), 3);
+  }
+
+  #[test]
+  fn sets_the_value_of_a_key_already_at_the_time_and_keeps_the_behaviours() {
+    let mut envelope: AnimationEnvelope = new_keyed_envelope(&[0.0, 2.0]);
+
+    assert_eq!(envelope.insert_key(2.0005, 7.0), 1);
+    assert_eq!(envelope.keys.len(), 2);
+    assert_eq!(envelope.keys[1].value, 7.0);
+    assert_eq!(envelope.keys[1].shape, AnimationShape::Linear);
+    assert_eq!(envelope.behavior_after, AnimationBehavior::Linear);
+  }
+
+  #[test]
+  fn deletes_the_key_at_a_time() {
+    let mut envelope: AnimationEnvelope = new_keyed_envelope(&[0.0, 1.0, 2.0]);
+
+    assert_eq!(envelope.delete_key(1.0).map(|key| key.time), Some(1.0));
+    assert_eq!(envelope.delete_key(1.0), None);
+    assert_eq!(envelope.keys.len(), 2);
   }
 
   #[test]

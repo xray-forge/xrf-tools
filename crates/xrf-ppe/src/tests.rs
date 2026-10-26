@@ -5,7 +5,7 @@ use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationPlayback,
 use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::{PpeColor, PpeColorMap, PpeFile, PpeScreen};
+use crate::{PpeColor, PpeColorChannel, PpeColorMap, PpeFile, PpeParameter, PpeScreen};
 
 /// One interpolating key, as `st_Key::Load_2` lays it out: value, time, shape, then seven quantised parameters.
 fn new_key_bytes(value: f32, time: f32) -> Vec<u8> {
@@ -167,6 +167,95 @@ fn a_version_nothing_here_reads_is_refused_by_name() {
     .to_string();
 
   assert!(error.contains('7'), "'{error}' names the version it refused");
+}
+
+#[test]
+fn a_version_two_effect_ending_before_its_color_map_is_refused_as_such() {
+  // The version 1 body under a version 2 header, as Anomaly's `fade_in_out.ppe` ships.
+  let mut bytes: Vec<u8> = 2u32.to_le_bytes().to_vec();
+
+  bytes.extend(new_effect_bytes(1).into_iter().skip(4));
+
+  let error: String = PpeFile::read_from_bytes::<XRayByteOrder>(bytes)
+    .expect_err("a missing colour map is refused")
+    .to_string();
+
+  assert!(
+    error.contains("ends before its colour map"),
+    "unexpected error: {error}"
+  );
+}
+
+#[test]
+fn a_screen_fades_from_the_identity_but_keeps_its_noise() {
+  let screen: PpeScreen = PpeScreen {
+    base_color: [1.5, 0.5, 0.5],
+    blur: 1.0,
+    noise_intensity: 0.8,
+    noise_granularity: 0.25,
+    color_map_influence: 1.0,
+    ..PpeScreen::IDENTITY
+  };
+  let faded: PpeScreen = screen.lerp(0.5);
+
+  assert_eq!(faded.base_color, [1.0, 0.5, 0.5]);
+  assert_eq!(faded.blur, 0.5);
+  assert_eq!(faded.color_map_influence, 0.5);
+  // `SPPInfo::lerp` copies the noise, which is why a non-positive granularity stops the game at any factor.
+  assert_eq!((faded.noise_intensity, faded.noise_granularity), (0.8, 0.25));
+  assert_eq!(screen.lerp(2.0), screen);
+  assert_eq!(screen.lerp(-1.0).blur, 0.0);
+}
+
+#[test]
+fn a_key_is_set_as_the_editor_sets_it() {
+  let mut effect: PpeFile = PpeFile::default();
+
+  effect.insert_key(PpeParameter::Blur, PpeColorChannel::Red, 1.0, 0.5);
+  effect.blur.keys[0].interpolation.tension = 0.7;
+  // Within `EPS_L` of the key: its value changes, and the editor clears its tension.
+  effect.insert_key(PpeParameter::Blur, PpeColorChannel::Blue, 1.0005, 0.9);
+
+  assert_eq!(effect.blur.keys.len(), 1);
+  assert_eq!(effect.blur.keys[0].value, 0.9);
+  assert_eq!(effect.blur.keys[0].interpolation.tension, 0.0);
+  assert_eq!(effect.get_key_times(PpeParameter::Blur), [1.0]);
+}
+
+#[test]
+fn a_colour_key_is_set_on_one_channel_and_deleted_from_all() {
+  let mut effect: PpeFile = PpeFile::default();
+
+  effect.insert_key(PpeParameter::AddColor, PpeColorChannel::Green, 2.0, 0.1);
+  effect.insert_key(PpeParameter::AddColor, PpeColorChannel::Red, 2.0, 0.3);
+
+  assert_eq!(effect.add_color.green.keys.len(), 1);
+  assert!(effect.add_color.blue.keys.is_empty());
+  // The editor's timeline lists a colour by its red channel.
+  assert_eq!(effect.get_key_times(PpeParameter::AddColor), [2.0]);
+
+  effect.delete_key(PpeParameter::AddColor, 2.0);
+
+  assert_eq!(effect.add_color.get_keys_count(), 0);
+}
+
+#[test]
+fn keying_the_color_map_influence_makes_the_effect_version_two() {
+  let mut effect: PpeFile = PpeFile::default();
+
+  assert_eq!(
+    effect.get_envelope(PpeParameter::ColorMapInfluence, PpeColorChannel::Red),
+    None
+  );
+
+  effect.delete_key(PpeParameter::ColorMapInfluence, 0.0);
+
+  assert_eq!(effect.get_version(), PpeFile::FIRST_VERSION);
+
+  effect.insert_key(PpeParameter::ColorMapInfluence, PpeColorChannel::Red, 0.0, 1.0);
+
+  assert_eq!(effect.get_version(), PpeFile::COLOR_MAP_VERSION);
+  assert_eq!(effect.get_key_times(PpeParameter::ColorMapInfluence), [0.0]);
 }
 
 #[test]

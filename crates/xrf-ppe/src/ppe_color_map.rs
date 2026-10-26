@@ -4,8 +4,10 @@ use xrf_animation_envelope::AnimationEnvelope;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
+use crate::ppe_parameter::PpeParameter;
+
 /// The colour grading a post-process effect applies, appended by version 2.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PpeColorMap {
   /// How much of the graded colour is mixed in over time, `pp_cm_influence`.
@@ -16,7 +18,7 @@ pub struct PpeColorMap {
 
 impl PpeColorMap {
   /// What the influence channel is called, which no part of the file spells.
-  pub const INFLUENCE_NAME: &'static str = "colour map influence";
+  pub const INFLUENCE_NAME: &'static str = PpeParameter::ColorMapInfluence.get_name();
 
   /// Reads the colour grading a version 2 effect appends.
   ///

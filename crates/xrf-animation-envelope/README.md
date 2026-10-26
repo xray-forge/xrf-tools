@@ -58,6 +58,12 @@ file written back says what it said; both serialize as their stored `u8`.
 for one key. It neither sorts keys nor finds the minimum and maximum times; keep keys in chronological order when
 constructing an envelope.
 
+An editor changes keys as the engine's `CEnvelope` does:
+- `find_key(time, epsilon)` finds a key near a time in key order, stopping at the first key past it (`FindKey`).
+- `insert_key(time, value)` sets the value of a key within `KEY_TIME_EPSILON` (`EPS_L`) of the time. Otherwise it
+  inserts a TCB key in time order, which also turns both behaviours constant (`InsertKey`).
+- `delete_key(time)` takes out the first key within that distance (`DeleteKey`).
+
 `evaluate(time)` reads the channel's value at a time as the engine's `evalEnvelope` (`xrCore/Animation/interp.cpp`)
 does: zero without keys, the one key's value with one, the keys' curve by each span's shape (TCB, Hermite, Bezier,
 line, step, `BEZ2`), and outside the keys the before/after behaviour (reset, constant, repeat, oscillate, offset,

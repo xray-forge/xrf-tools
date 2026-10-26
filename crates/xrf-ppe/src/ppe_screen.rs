@@ -1,5 +1,6 @@
 /// What a post-process effect does to the screen at one time, `SPPInfo` as `CPostprocessAnimator::Process` fills it at
-/// full strength. An effector's factor then lerps it from [`Self::IDENTITY`], which is how an effect fades in and out.
+/// full strength. An effector's factor then fades it from [`Self::IDENTITY`] ([`Self::lerp`]), which is how an effect
+/// fades in and out.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PpeScreen {
   /// `color_base`, as red, green and blue.
@@ -42,4 +43,28 @@ impl PpeScreen {
     noise_fps: 30.0,
     color_map_influence: 0.0,
   };
+
+  /// The screen at `factor` of its strength, as `SPPInfo::lerp` fades it from [`Self::IDENTITY`]: the colours, gray,
+  /// blur, duality and colour map influence move that far from the identity's, while the noise keeps this screen's, as
+  /// the engine copies it rather than fading it. The factor is clamped to `0..=1`.
+  pub fn lerp(&self, factor: f32) -> Self {
+    let factor: f32 = factor.clamp(0.0, 1.0);
+    let identity: Self = Self::IDENTITY;
+    let mix = |from: f32, to: f32| from + (to - from) * factor;
+    let mix_color = |from: [f32; 3], to: [f32; 3]| [mix(from[0], to[0]), mix(from[1], to[1]), mix(from[2], to[2])];
+
+    Self {
+      base_color: mix_color(identity.base_color, self.base_color),
+      add_color: mix_color(identity.add_color, self.add_color),
+      gray_color: mix_color(identity.gray_color, self.gray_color),
+      gray_value: mix(identity.gray_value, self.gray_value),
+      blur: mix(identity.blur, self.blur),
+      duality_horizontal: mix(identity.duality_horizontal, self.duality_horizontal),
+      duality_vertical: mix(identity.duality_vertical, self.duality_vertical),
+      noise_intensity: self.noise_intensity,
+      noise_granularity: self.noise_granularity,
+      noise_fps: self.noise_fps,
+      color_map_influence: mix(identity.color_map_influence, self.color_map_influence),
+    }
+  }
 }

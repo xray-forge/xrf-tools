@@ -10,6 +10,7 @@ use xrf_utils::format_path;
 
 use crate::ppe_color::PpeColor;
 use crate::ppe_color_map::PpeColorMap;
+use crate::ppe_parameter::PpeParameter;
 
 /// The post-process effect the engine plays over the screen, `.ppe`: `BasicPostProcessAnimator`'s parameters
 /// (`pp_params`), in the order the file stores them. By default a version 1 effect keyed on nothing, as
@@ -89,6 +90,10 @@ impl PpeFile {
 
   /// Reads an effect off a reader positioned at its first byte, `BasicPostProcessAnimator::Load`.
   ///
+  /// The engine checks neither the version nor the end: it reads any version below 2 as version 1 and any other as
+  /// version 2, and ignores bytes past the colour map. Both are refused here, since writing such a file back would
+  /// change its version or drop its tail; no shipped effect has either.
+  ///
   /// # Errors
   ///
   /// Returns an error when the version is one this does not read, or the payload does not account for every
@@ -115,6 +120,14 @@ impl PpeFile {
       noise_granularity: AnimationEnvelope::read::<T, D>(reader)?,
       noise_fps: AnimationEnvelope::read::<T, D>(reader)?,
       color_map: if version >= Self::COLOR_MAP_VERSION {
+        // Anomaly's `fade_in_out.ppe` is one: the engine reads its colour map from whatever memory follows the file.
+        if reader.is_ended() {
+          return Err(XrfError::new_parsing_error(format!(
+            "Post process effect of version {version} ends before its colour map, which the engine then reads past \
+             the end of the file"
+          )));
+        }
+
         Some(PpeColorMap::read::<T, D>(reader)?)
       } else {
         None
@@ -165,22 +178,22 @@ impl PpeFile {
   /// The three colour parameters under the names an author knows them by, in the order the file stores them.
   pub const fn get_colors(&self) -> [(&'static str, &PpeColor); 3] {
     [
-      ("base color", &self.base_color),
-      ("add color", &self.add_color),
-      ("gray color", &self.gray_color),
+      (PpeParameter::BaseColor.get_name(), &self.base_color),
+      (PpeParameter::AddColor.get_name(), &self.add_color),
+      (PpeParameter::GrayColor.get_name(), &self.gray_color),
     ]
   }
 
   /// The seven scalar parameters under the names an author knows them by, in the order the file stores them.
   pub const fn get_values(&self) -> [(&'static str, &AnimationEnvelope); 7] {
     [
-      ("gray value", &self.gray_value),
-      ("blur", &self.blur),
-      ("duality horizontal", &self.duality_horizontal),
-      ("duality vertical", &self.duality_vertical),
-      ("noise intensity", &self.noise_intensity),
-      ("noise granularity", &self.noise_granularity),
-      ("noise fps", &self.noise_fps),
+      (PpeParameter::GrayValue.get_name(), &self.gray_value),
+      (PpeParameter::Blur.get_name(), &self.blur),
+      (PpeParameter::DualityHorizontal.get_name(), &self.duality_horizontal),
+      (PpeParameter::DualityVertical.get_name(), &self.duality_vertical),
+      (PpeParameter::NoiseIntensity.get_name(), &self.noise_intensity),
+      (PpeParameter::NoiseGranularity.get_name(), &self.noise_granularity),
+      (PpeParameter::NoiseFps.get_name(), &self.noise_fps),
     ]
   }
 
