@@ -243,10 +243,12 @@ impl LtxFieldScheme {
   }
 
   /// Validate if provided value is correct list of floats with defined len.
+  ///
+  /// Every component has to be a number: one that is not is a broken value, not one fewer component to count.
   fn validate_fixed_float_list_type(&self, value: &str, len: usize) -> Result<(), String> {
-    let parsed_values: Vec<f32> = value.split(',').filter_map(|x| x.trim().parse::<f32>().ok()).collect();
+    let components: Vec<&str> = value.split(',').map(str::trim).collect();
 
-    if parsed_values.len() != len {
+    if components.len() != len || components.iter().any(|component| component.parse::<f32>().is_err()) {
       Err(format!(
         "Invalid value, comma separated {len} float values expected, got '{value}'"
       ))
@@ -324,7 +326,7 @@ impl LtxFieldScheme {
         }
       }
       _ => Err(String::from(
-        "Unexpected tuple type check, trying to validate enum with non-enum field",
+        "Unexpected tuple type check, trying to validate tuple with non-tuple field",
       )),
     }
   }
@@ -344,7 +346,7 @@ impl LtxFieldScheme {
         }
       }
       _ => Err(String::from(
-        "Unexpected tuple type check, trying to validate enum with non-enum field",
+        "Unexpected const type check, trying to validate const with non-const field",
       )),
     }
   }
@@ -587,6 +589,11 @@ mod tests {
     assert!(scheme.validate_vector_type("1,2").is_err());
     assert!(scheme.validate_vector_type("-1,2.0").is_err());
     assert!(scheme.validate_vector_type("a,b,c").is_err());
+    // A component that is not a number breaks the value rather than going uncounted.
+    assert!(scheme.validate_vector_type("1,2,x,3").is_err());
+    assert!(scheme.validate_vector_type("1,,2,3").is_err());
+    assert!(scheme.validate_rgba_type("0.1,0.2,0.3,0.4").is_ok());
+    assert!(scheme.validate_rgba_type("0.1,0.2,0.3,0.4,oops").is_err());
   }
 
   #[test]

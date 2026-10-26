@@ -278,7 +278,7 @@ impl Display for LtxFieldDataType {
       Self::TypeCondlist => String::from("condlist"),
       Self::TypeConst(value) => format!("const:{value}"),
       Self::TypeEnum(values) => format!("enum:{}", values.join(",")),
-      Self::TypeF32 => String::from("g43"),
+      Self::TypeF32 => String::from("f32"),
       Self::TypeI16 => String::from("i16"),
       Self::TypeI32 => String::from("i32"),
       Self::TypeI8 => String::from("i8"),
@@ -336,6 +336,21 @@ mod tests {
         .to_string()
         .contains("enum entries must be enclosed in parentheses")
     );
+  }
+
+  /// Every type names itself as a scheme file spells it, which is what a finding and the explorer's scheme panel show.
+  #[test]
+  fn names_each_type_as_a_scheme_file_spells_it() {
+    for spelling in [
+      "bool", "condlist", "f32", "i16", "i32", "i8", "rgb", "rgba", "section", "string", "u16", "u32", "u8", "vector",
+    ] {
+      assert_eq!(
+        LtxFieldDataType::from_field_data("field", "section", spelling)
+          .unwrap()
+          .to_string(),
+        spelling
+      );
+    }
   }
 
   #[test]
