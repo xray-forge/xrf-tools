@@ -23,6 +23,9 @@ impl SkeletonMotionDefinition {
   /// marks that version 4 appends only make a record longer.
   pub const MIN_SERIALIZED_SIZE: u64 = 1 + 4 + 2 + 2 + 16;
 
+  /// The first parameters version whose definitions carry marks, which `CMotionDef::Load` reads from it on.
+  pub const MARKS_VERSION: u16 = 4;
+
   /// The rate a motion plays at when its own is unusable, which is the rate the format samples at.
   pub const DEFAULT_SPEED: f32 = 1.0;
 
@@ -69,7 +72,7 @@ impl SkeletonMotionDefinition {
     let accrue: f32 = reader.read_f32::<T>()?;
     let falloff: f32 = reader.read_f32::<T>()?;
 
-    let marks: Vec<SkeletonMotionMark> = if version == 4 {
+    let marks: Vec<SkeletonMotionMark> = if version >= Self::MARKS_VERSION {
       let count: u32 = reader.read_u32::<T>()?;
       let mut marks: Vec<SkeletonMotionMark> = reader.new_bounded_vec(
         count.into(),
@@ -132,7 +135,7 @@ impl SkeletonMotionDefinition {
     writer.write_f32::<T>(self.accrue)?;
     writer.write_f32::<T>(self.falloff)?;
 
-    if version == 4 {
+    if version >= Self::MARKS_VERSION {
       writer.write_u32::<T>(to_format_size(self.marks.len(), "skeleton motion marks")?)?;
 
       for mark in &self.marks {
@@ -142,9 +145,10 @@ impl SkeletonMotionDefinition {
       }
     } else if !self.marks.is_empty() {
       return Err(XrfError::new_invalid_error(format!(
-        "Cannot write {} skeleton motion marks for '{}', marks are only supported in version 4, got {version}",
+        "Cannot write {} skeleton motion marks for '{}', marks are only supported from version {}, got {version}",
         self.marks.len(),
-        self.name
+        self.name,
+        Self::MARKS_VERSION
       )));
     }
 

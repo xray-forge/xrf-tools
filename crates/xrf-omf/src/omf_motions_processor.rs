@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use xrf_error::{XrfError, XrfResult};
+use xrf_skeleton::SkeletonMotionFlag;
 use xrf_utils::assert_equal;
 
 use crate::omf_file::OmfFile;
@@ -9,8 +10,8 @@ use crate::omf_file::OmfFile;
 pub struct OmfMotionsProcessor {}
 
 impl OmfMotionsProcessor {
-  /// Bit that makes a motion play once and stop rather than loop.
-  pub const FLAG_PLAY_ONCE: u32 = 0b10;
+  /// Bit that makes a motion play once and stop rather than loop, `esmStopAtEnd`.
+  pub const FLAG_PLAY_ONCE: u32 = SkeletonMotionFlag::StopAtEnd.mask();
 
   /// Keep only motions whose definition name is accepted by the predicate.
   pub fn retain_motions(file: &mut OmfFile, predicate: impl Fn(&str) -> bool) -> XrfResult<usize> {

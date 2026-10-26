@@ -1,7 +1,7 @@
 /// One bit of a motion definition's flag word, `ESMFlags` (`xrCore/Animation/Motion.hpp`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u32)]
-pub enum ArchiveOmfMotionFlag {
+pub enum SkeletonMotionFlag {
   /// Plays as an effect rather than a cycle, which is also what makes the definition's target a bone.
   Fx = 0,
   StopAtEnd = 1,
@@ -13,7 +13,7 @@ pub enum ArchiveOmfMotionFlag {
   UseWeaponBone = 7,
 }
 
-impl ArchiveOmfMotionFlag {
+impl SkeletonMotionFlag {
   /// Every bit the engine names, in bit order.
   pub const NAMED: [Self; 8] = [
     Self::Fx,
@@ -76,20 +76,20 @@ impl ArchiveOmfMotionFlag {
 
 #[cfg(test)]
 mod tests {
-  use super::ArchiveOmfMotionFlag;
+  use super::SkeletonMotionFlag;
 
   #[test]
   fn each_bit_sits_where_the_engine_declares_it() {
-    assert_eq!(ArchiveOmfMotionFlag::Fx.mask(), 1);
-    assert_eq!(ArchiveOmfMotionFlag::StopAtEnd.mask(), 1 << 1);
-    assert_eq!(ArchiveOmfMotionFlag::UseWeaponBone.mask(), 1 << 7);
+    assert_eq!(SkeletonMotionFlag::Fx.mask(), 1);
+    assert_eq!(SkeletonMotionFlag::StopAtEnd.mask(), 1 << 1);
+    assert_eq!(SkeletonMotionFlag::UseWeaponBone.mask(), 1 << 7);
   }
 
   #[test]
   fn a_word_reports_the_bits_it_carries_in_bit_order() {
     // The commonest word in vanilla after `esmStopAtEnd` alone: an idle that blends across the partition.
     assert_eq!(
-      ArchiveOmfMotionFlag::set_in(0b101_0010),
+      SkeletonMotionFlag::set_in(0b101_0010),
       vec![
         String::from("esmStopAtEnd"),
         String::from("esmUseFootSteps"),
@@ -100,7 +100,7 @@ mod tests {
 
   #[test]
   fn a_word_carrying_only_named_bits_leaves_no_residue() {
-    assert_eq!(ArchiveOmfMotionFlag::unnamed_in(0xFF), 0);
-    assert_eq!(ArchiveOmfMotionFlag::unnamed_in(0x100), 0x100);
+    assert_eq!(SkeletonMotionFlag::unnamed_in(0xFF), 0);
+    assert_eq!(SkeletonMotionFlag::unnamed_in(0x100), 0x100);
   }
 }

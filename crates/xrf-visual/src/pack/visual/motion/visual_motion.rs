@@ -157,7 +157,9 @@ fn resolve_animated_bones(bones: &[OgfBone], parts: &[SkeletonPart], run_count: 
         continue;
       }
 
-      if let Some(bone) = bones.iter().position(|it| it.name == *name) {
+      // Case-blind as the engine is, which lower-cases both names before `find_bone_id` compares them
+      // (`SkeletonMotions.cpp`, `SkeletonCustom.cpp`).
+      if let Some(bone) = bones.iter().position(|it| it.name.eq_ignore_ascii_case(name)) {
         animated[bone] = Some(run);
       }
     }

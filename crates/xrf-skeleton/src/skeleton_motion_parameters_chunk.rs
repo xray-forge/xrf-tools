@@ -15,11 +15,23 @@ pub struct SkeletonMotionParametersChunk {
 impl SkeletonMotionParametersChunk {
   pub const CHUNK_ID: u32 = 15; // 0x14, 0xF
 
-  /// Versions of this chunk's own `version` field that are implemented.
-  pub const SUPPORTED_VERSIONS: [u16; 2] = [3, 4];
+  /// The newest version of this chunk's own `version` field, `xrOGF_SMParamsVersion`. `motions_value::load` reads every
+  /// version up to it with one layout, which only marks extend ([`SkeletonMotionDefinition::MARKS_VERSION`]).
+  pub const MAXIMUM_VERSION: u16 = 4;
 
   pub fn get_bones_count(&self) -> usize {
     self.parts.iter().map(|it| it.bones.len()).sum()
+  }
+
+  fn assert_version(version: u16, operation: &str) -> XrfResult {
+    if version > Self::MAXIMUM_VERSION {
+      return Err(XrfError::new_not_implemented_error(format!(
+        "Unexpected parameters version {version} on {operation}, only versions up to {} are implemented",
+        Self::MAXIMUM_VERSION
+      )));
+    }
+
+    Ok(())
   }
 }
 
@@ -27,13 +39,7 @@ impl ChunkReadWrite for SkeletonMotionParametersChunk {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let version: u16 = reader.read_u16::<T>()?;
 
-    if !Self::SUPPORTED_VERSIONS.contains(&version) {
-      return Err(XrfError::new_not_implemented_error(format!(
-        "Unexpected parameters version {} on read, only versions {:?} are implemented",
-        version,
-        Self::SUPPORTED_VERSIONS
-      )));
-    }
+    Self::assert_version(version, "read")?;
 
     let parts: Vec<SkeletonPart> = reader
       .read_xr_list::<T, _>()
@@ -52,13 +58,7 @@ impl ChunkReadWrite for SkeletonMotionParametersChunk {
   }
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    if !Self::SUPPORTED_VERSIONS.contains(&self.version) {
-      return Err(XrfError::new_not_implemented_error(format!(
-        "Unexpected parameters version {} on write, only versions {:?} are implemented",
-        self.version,
-        Self::SUPPORTED_VERSIONS
-      )));
-    }
+    Self::assert_version(self.version, "write")?;
 
     writer.write_u16::<T>(self.version)?;
 

@@ -9,7 +9,6 @@ mod archive_omf_description;
 mod archive_omf_mark;
 mod archive_omf_mark_interval;
 mod archive_omf_motion;
-mod archive_omf_motion_flag;
 mod archive_omf_part;
 mod archive_omf_quantized;
 mod archive_omf_target;

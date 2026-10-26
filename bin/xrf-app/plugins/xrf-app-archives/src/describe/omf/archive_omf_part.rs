@@ -1,7 +1,5 @@
 use serde::Serialize;
-use xrf_skeleton::{SkeletonMotionDefinition, SkeletonPart};
-
-use crate::describe::omf::archive_omf_motion_flag::ArchiveOmfMotionFlag;
+use xrf_skeleton::{SkeletonMotionDefinition, SkeletonMotionFlag, SkeletonPart};
 
 /// One part of a bank's partition, and what plays on it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -29,7 +27,7 @@ impl ArchiveOmfPart {
           .filter(|definition| {
             // An effect's index is a bone rather than a part, so counting it here would credit the part sharing its
             // number with animations that never play on it.
-            !ArchiveOmfMotionFlag::Fx.is_set_in(definition.flags) && usize::from(definition.bone_or_part) == index
+            !SkeletonMotionFlag::Fx.is_set_in(definition.flags) && usize::from(definition.bone_or_part) == index
           })
           .count(),
       })
