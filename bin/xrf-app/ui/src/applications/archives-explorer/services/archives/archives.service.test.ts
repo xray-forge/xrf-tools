@@ -11,7 +11,11 @@ import { ArchiveFileDescriptor, ArchiveReadResult } from "@xrf/ipc/types/xrf-arc
 import { XrayPathCollision } from "@xrf/ipc/types/xrf-vfs";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
-import { mockArchiveFileDescriptor, mockArchivesVolumes, mockPathCollision } from "@/fixtures/mocks/archive.mocks";
+import {
+  mockArchiveFileDescriptor,
+  mockArchivesVolumes,
+  mockPathCollision,
+} from "@/core/archive/fixtures/archive.mocks";
 import {
   mockRestoredSession,
   mockSessionRead,

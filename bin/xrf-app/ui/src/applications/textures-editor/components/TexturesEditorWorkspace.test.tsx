@@ -21,13 +21,13 @@ import { ITextureBumpSources, TextureBumpService } from "@/applications/textures
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";
-import { TextureSelectionService } from "@/core/textures/services/selection";
 import {
   MOCK_TEXTURE,
   mockTextureDescription,
   mockTextureEncodingComparison,
   mockTextureVocabulary,
-} from "@/fixtures/mocks/texture.mocks";
+} from "@/core/textures/fixtures/texture.mocks";
+import { TextureSelectionService } from "@/core/textures/services/selection";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { noop } from "@/lib/callbacks/noop";

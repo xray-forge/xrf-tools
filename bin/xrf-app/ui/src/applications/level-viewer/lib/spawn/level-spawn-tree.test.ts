@@ -8,8 +8,8 @@ import {
   toLevelSpawnObjectId,
   toLevelSpawnTree,
 } from "@/applications/level-viewer/lib/spawn/level-spawn-tree";
+import { mockLevelSpawnObject } from "@/core/level/fixtures/level.mocks";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
-import { mockLevelSpawnObject } from "@/fixtures/mocks/level.mocks";
 
 /** Three crates and a barrel among the props, a medkit among the items, nothing among the weapons or lamps. */
 function mockDescription(): LevelSpawnObjectsDescription {

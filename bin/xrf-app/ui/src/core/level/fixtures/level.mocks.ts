@@ -21,8 +21,8 @@ import { createRoots } from "@/core/assets/lib";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { ELevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
+import { mockVisualBounds, mockVisualTransform } from "@/core/visuals/fixtures/visual.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockVisualBounds, mockVisualTransform } from "@/fixtures/mocks/visual.mocks";
 
 /**
  * What one sector is before any of its geometry is read.

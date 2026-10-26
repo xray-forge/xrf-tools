@@ -12,12 +12,12 @@ import { Nullable } from "@xrf/types";
 import { ELevelCaptureMode } from "@/applications/level-viewer/lib/capture/level-capture";
 import { ELevelMapArea, ELevelMapLook } from "@/applications/level-viewer/lib/map/level-map-capture";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { ILevelViewContainerDescriptor, mockLevelViewContainer } from "@/core/level/fixtures/level-container";
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { LEVEL_WEATHER_NOON } from "@/core/level/lib/weather/level-weather-control";
 import { clearLocalStorage } from "@/core/storage";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { ILevelViewContainerDescriptor, mockLevelViewContainer } from "@/fixtures/utils/level-container";
 
 const PATH: string = "appdata/level-viewer/screenshots/map_zaton-20261021-101500.png";
 

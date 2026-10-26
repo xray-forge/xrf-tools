@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { ArchiveAnmDescription, EArchiveAnimationBehavior } from "@xrf/ipc/types/xrf-app-archives";
 
-import { mockArchiveAnimationChannel, mockArchiveAnmDescription } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveAnimationChannel, mockArchiveAnmDescription } from "@/core/archive/fixtures/archive.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveAnmDescriptionView } from "./ArchiveAnmDescriptionView";

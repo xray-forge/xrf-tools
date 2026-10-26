@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { ArchiveLevelGameDescription } from "@xrf/ipc/types/xrf-app-archives";
 
-import { mockArchiveLevelGameDescription } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveLevelGameDescription } from "@/core/archive/fixtures/archive.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveLevelGameView } from "./ArchiveLevelGameView";

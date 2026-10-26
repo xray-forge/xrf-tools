@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
 
+import { mockEquipmentOccupant } from "@/core/sprite-equipment/fixtures/sprite.mocks";
 import { IEquipmentLayout, toEquipmentLayout } from "@/core/sprite-equipment/lib";
-import { mockEquipmentOccupant } from "@/fixtures/mocks/sprite.mocks";
 
 function mockLayout(occupants: Array<EquipmentSlotOccupant>): IEquipmentLayout {
   return toEquipmentLayout(1000, 500, 50, occupants);

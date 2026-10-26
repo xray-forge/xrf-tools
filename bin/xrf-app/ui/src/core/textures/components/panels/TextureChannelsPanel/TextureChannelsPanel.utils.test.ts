@@ -2,10 +2,10 @@ import { describe, expect, it } from "@jest/globals";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { XrayMaterialDescriptor } from "@xrf/ipc/types/xrf-material";
 
+import { mockTextureDescription } from "@/core/textures/fixtures/texture.mocks";
 import { ETextureBumpPlane } from "@/core/textures/lib/texture-bump-plane";
 import { EMPTY_TEXTURE_SURFACE, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
-import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
-import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
+import { mockMaterialDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 
 import {
   describeTextureChannelsGap,

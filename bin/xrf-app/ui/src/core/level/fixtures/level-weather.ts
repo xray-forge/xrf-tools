@@ -4,9 +4,9 @@ import { WeatherDescriptor } from "@xrf/ipc/types/xrf-environment";
 import { EWorldWeatherPlay, WorldWeatherPlay } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
 /** The level the weather tests open. */

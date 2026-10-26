@@ -3,13 +3,13 @@ import { userEvent } from "@testing-library/user-event";
 import { ERenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelWindAction } from "@/applications/level-viewer/components/toolbar/environment/LevelWindAction";
-import { TRenderFoliageSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
   renderLevelView,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import { TRenderFoliageSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { clearLocalStorage } from "@/core/storage";
 
 beforeEach(() => {
   clearLocalStorage();

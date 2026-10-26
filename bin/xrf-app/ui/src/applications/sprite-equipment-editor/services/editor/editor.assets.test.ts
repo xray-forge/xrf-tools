@@ -9,9 +9,9 @@ import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
 
 import { AssetService } from "@/core/assets/services";
+import { mockEquipmentSpriteMetadata, mockEquipmentSpriteOpen } from "@/core/sprite-equipment/fixtures/sprite.mocks";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockEquipmentSpriteMetadata, mockEquipmentSpriteOpen } from "@/fixtures/mocks/sprite.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { SpriteEquipmentEditorService } from "./editor.service";

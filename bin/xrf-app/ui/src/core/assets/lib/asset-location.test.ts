@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { mockArchivedTextureAsset, mockTextureAsset } from "@/fixtures/mocks/texture.mocks";
+import { mockArchivedTextureAsset, mockTextureAsset } from "@/core/textures/fixtures/texture.mocks";
 
 import { toAssetLocation } from "./asset-location";
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { ArchiveLevelHomDescription, ArchiveLevelSomDescription } from "@xrf/ipc/types/xrf-app-archives";
 
-import { mockArchiveLevelHomDescription, mockArchiveLevelSomDescription } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveLevelHomDescription, mockArchiveLevelSomDescription } from "@/core/archive/fixtures/archive.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveLevelHomView } from "./ArchiveLevelHomView";

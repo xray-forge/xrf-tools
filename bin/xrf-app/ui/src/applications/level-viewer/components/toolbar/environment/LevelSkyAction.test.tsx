@@ -3,8 +3,6 @@ import { userEvent } from "@testing-library/user-event";
 import { resetMockInvoke } from "@xrf/ipc/testing";
 
 import { LevelSkyAction } from "@/applications/level-viewer/components/toolbar/environment/LevelSkyAction";
-import { clearLocalStorage } from "@/core/storage";
-import { mockLevelTextureReference } from "@/fixtures/mocks/level.mocks";
 import {
   ILevelViewContainerDescriptor,
   ILevelViewOpening,
@@ -12,7 +10,9 @@ import {
   renderLevelView,
   renderOpenLevelView,
   TLevelViewRenderResult,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import { mockLevelTextureReference } from "@/core/level/fixtures/level.mocks";
+import { clearLocalStorage } from "@/core/storage";
 
 /**
  * @param opening - The level and weather to open; none unless given.

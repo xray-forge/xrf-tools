@@ -3,14 +3,6 @@ import { VisualDescription } from "@xrf/ipc/types/xrf-visual";
 
 import { ERenderDraw } from "@/core/render/lib/surface/render-draw";
 import { OPAQUE_RENDER_SURFACE_DRAW } from "@/core/render/lib/surface/render-surface-draw";
-import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
-import {
-  countVisualTriangles,
-  createVisualCameraFit,
-  createVisualViews,
-  getVisualSubmeshLevel,
-  IVisualModelViews,
-} from "@/core/visuals/lib/visual-views";
 import {
   mockAlphaSurfaceDescriptor,
   mockPackedSubmesh,
@@ -20,7 +12,15 @@ import {
   MockVisualBuffer,
   mockVisualDescription,
   mockVisualTransform,
-} from "@/fixtures/mocks/visual.mocks";
+} from "@/core/visuals/fixtures/visual.mocks";
+import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
+import {
+  countVisualTriangles,
+  createVisualCameraFit,
+  createVisualViews,
+  getVisualSubmeshLevel,
+  IVisualModelViews,
+} from "@/core/visuals/lib/visual-views";
 
 describe("visual views", () => {
   it("carries the material state each submesh's shader compiles to", () => {

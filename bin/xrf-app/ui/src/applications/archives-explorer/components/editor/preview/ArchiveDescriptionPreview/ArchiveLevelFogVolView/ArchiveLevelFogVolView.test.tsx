@@ -7,7 +7,7 @@ import {
 } from "@xrf/ipc/types/xrf-app-archives";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { mockArchiveLevelFogVolDescription } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveLevelFogVolDescription } from "@/core/archive/fixtures/archive.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

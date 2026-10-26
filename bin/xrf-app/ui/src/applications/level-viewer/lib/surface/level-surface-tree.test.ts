@@ -3,7 +3,7 @@ import { describe, expect, it } from "@jest/globals";
 import { TLevelSurfaceTreeRow, toLevelSurfaceTree } from "@/applications/level-viewer/lib/surface/level-surface-tree";
 import { ILevelSurfaceSummary, listLevelSurfaces } from "@/core/level/lib/surface/level-surface-summary";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
-import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
+import { mockSurfaceDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 
 function mockSummaries(): Array<ILevelSurfaceSummary> {
   return listLevelSurfaces([

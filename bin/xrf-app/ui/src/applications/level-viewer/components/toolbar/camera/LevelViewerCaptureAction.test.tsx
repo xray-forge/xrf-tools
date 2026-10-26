@@ -8,8 +8,8 @@ import { ELevelCaptureMode } from "@/applications/level-viewer/lib/capture/level
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
 import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/screenshot";
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
-import { mockLevelViewContainer, renderLevelView } from "@/fixtures/utils/level-container";
+import { mockLevelViewContainer, renderLevelView } from "@/core/level/fixtures/level-container";
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 
 afterEach(() => {
   jest.restoreAllMocks();

@@ -21,14 +21,14 @@ import {
 } from "@xrf/ipc/types/xrf-renderer";
 import { EWorldCameraCommand } from "@xrf/ipc/types/xrf-world";
 
+import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
+import { mockSelectedVisual, mockTextureDependency, mockVisualModelViews } from "@/core/visuals/fixtures/visual.mocks";
 import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualRenderService } from "@/core/visuals/services/visual-render.service";
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
-import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockSelectedVisual, mockTextureDependency, mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
 const VIEWPORT: number = 3;

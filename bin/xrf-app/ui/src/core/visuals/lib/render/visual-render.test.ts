@@ -3,11 +3,11 @@ import { ERenderOverlay, RenderViewOptions } from "@xrf/ipc/types/xrf-renderer";
 import { EWorldCamera, WorldCamera } from "@xrf/ipc/types/xrf-world";
 import { toRawColor } from "@xrf/math";
 
+import { mockRenderFeatures } from "@/core/render/fixtures/render.mocks";
 import { toVisualCamera, toVisualOverlays, toVisualViewOptions } from "@/core/visuals/lib/render/visual-render";
 import { DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG } from "@/core/visuals/lib/scene/scene-config";
 import { DEFAULT_VISUAL_LIGHTING } from "@/core/visuals/lib/scene/visual-lighting";
 import { DEFAULT_VISUAL_PREVIEW_VIEW_OPTIONS } from "@/core/visuals/lib/scene/visual-view-options";
-import { mockRenderFeatures } from "@/fixtures/mocks/render.mocks";
 
 describe("toVisualCamera", () => {
   it("frames the model's sphere from the viewer's direction, far enough to fit it", () => {

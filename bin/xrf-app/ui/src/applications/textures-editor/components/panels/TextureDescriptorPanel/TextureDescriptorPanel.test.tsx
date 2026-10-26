@@ -8,8 +8,8 @@ import { TextureDescription, TextureVocabulary } from "@xrf/ipc/types/xrf-app-te
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { JobsService } from "@/core/jobs/services/jobs";
+import { MOCK_TEXTURE, mockTextureDescription, mockTextureVocabulary } from "@/core/textures/fixtures/texture.mocks";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { MOCK_TEXTURE, mockTextureDescription, mockTextureVocabulary } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

@@ -3,12 +3,12 @@ import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
 import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { VisualTextureDependency } from "@xrf/ipc/types/xrf-visual";
 
+import { mockMaterialDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 import {
   describeVisualTextureSummary,
   IVisualTextureSummary,
   summarizeVisualTextures,
 } from "@/core/visuals/lib/visual-texture-summary";
-import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
 
 const FACE: string = "textures\\act\\act_face.dds";
 const BODY: string = "textures\\act\\act_body.dds";

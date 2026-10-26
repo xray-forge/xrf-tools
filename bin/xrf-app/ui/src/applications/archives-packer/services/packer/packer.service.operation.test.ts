@@ -9,9 +9,9 @@ import { ArchivePackConfig, ArchivePackResult } from "@xrf/ipc/types/xrf-pack";
 
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { PackerService } from "@/applications/archives-packer/services/packer";
+import { mockArchivePackResult } from "@/core/archive/fixtures/archive.mocks";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { mockArchivePackResult } from "@/fixtures/mocks/archive.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 

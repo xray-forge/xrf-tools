@@ -9,14 +9,14 @@ import { TextureDescription, TextureVocabulary } from "@xrf/ipc/types/xrf-app-te
 
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { TextureSelectionService } from "@/core/textures/services/selection";
 import {
   MOCK_TEXTURE,
   mockTextureDescription,
   mockTextureDescriptorForm,
   mockTextureEncodingComparison,
   mockTextureVocabulary,
-} from "@/fixtures/mocks/texture.mocks";
+} from "@/core/textures/fixtures/texture.mocks";
+import { TextureSelectionService } from "@/core/textures/services/selection";
 import { mockContainer } from "@/fixtures/utils/container";
 
 import { TextureEditorService } from "./texture-editor.service";

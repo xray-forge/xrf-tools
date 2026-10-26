@@ -5,14 +5,18 @@ import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { EWorldWeatherTransition, WorldWeatherPlay } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 
+import {
+  createLevelWeatherService,
+  LEVEL_WEATHER_SELECTED,
+  toWeatherKeyframe,
+} from "@/core/level/fixtures/level-weather";
+import { mockLevelWeatherDescription, mockWorldWeatherReport } from "@/core/level/fixtures/weather.mocks";
 import { ILevelManualWeather, toLevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { readLevelWeatherMemory, toLevelWeatherMemoryKey } from "@/core/level/lib/weather/level-weather-memory";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockLevelWeatherDescription, mockWorldWeatherReport } from "@/fixtures/mocks/weather.mocks";
-import { createLevelWeatherService, LEVEL_WEATHER_SELECTED, toWeatherKeyframe } from "@/fixtures/utils/level-weather";
 
 afterEach(() => {
   resetMockInvoke();

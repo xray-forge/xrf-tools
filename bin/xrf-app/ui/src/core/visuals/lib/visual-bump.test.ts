@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
+import { mockMaterialDescriptor, mockTextureDependency } from "@/core/visuals/fixtures/visual.mocks";
 import { toLoadableBumps } from "@/core/visuals/lib/visual-bump";
-import { mockMaterialDescriptor, mockTextureDependency } from "@/fixtures/mocks/visual.mocks";
 
 describe("toLoadableBumps", () => {
   it("keeps the submeshes whose material located both halves of the pair, addressed by those files", () => {

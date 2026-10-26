@@ -22,12 +22,12 @@ import {
 } from "@xrf/ipc/types/xrf-renderer";
 import { EWorldCameraCommand } from "@xrf/ipc/types/xrf-world";
 
+import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
+import { MOCK_TEXTURE, mockTextureDescription } from "@/core/textures/fixtures/texture.mocks";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
 import { TextureRenderService } from "@/core/textures/services/render";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureViewService } from "@/core/textures/services/view";
-import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
-import { MOCK_TEXTURE, mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
 async function flush(): Promise<void> {

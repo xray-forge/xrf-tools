@@ -7,8 +7,8 @@ import { ETextureSource, TextureDescription } from "@xrf/ipc/types/xrf-app-textu
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
 import { createRoots } from "@/core/assets/lib";
+import { mockTextureDescription } from "@/core/textures/fixtures/texture.mocks";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 

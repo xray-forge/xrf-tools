@@ -7,8 +7,8 @@ import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
 
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT } from "@/core/notifications/lib";
+import { mockEquipmentSpritePackResult } from "@/core/sprite-equipment/fixtures/sprite.mocks";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
-import { mockEquipmentSpritePackResult } from "@/fixtures/mocks/sprite.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 

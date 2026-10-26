@@ -10,9 +10,9 @@ import { EXrayEngine, EXrayEngineEvidence, XrayEngineResolution } from "@xrf/ipc
 
 import { LevelViewerListService } from "@/applications/level-viewer/services/list";
 import { AssetService } from "@/core/assets/services";
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { clearLocalStorage } from "@/core/storage";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

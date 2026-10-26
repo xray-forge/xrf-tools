@@ -7,10 +7,6 @@ import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 import { Nullable } from "@xrf/types";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals/index";
-import { describeVisualSource } from "@/core/visuals/lib/visual-source";
-import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import {
   mockPackedSubmesh,
   mockSelectedVisual,
@@ -18,7 +14,11 @@ import {
   MockVisualBuffer,
   mockVisualDescription,
   mockVisualTransform,
-} from "@/fixtures/mocks/visual.mocks";
+} from "@/core/visuals/fixtures/visual.mocks";
+import { describeVisualSource } from "@/core/visuals/lib/visual-source";
+import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 /** A selected visual with one packed submesh. */

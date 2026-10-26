@@ -17,16 +17,16 @@ import {
 } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelImageQualityAction } from "@/applications/level-viewer/components/toolbar/image/LevelImageQualityAction";
-import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
-import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
-import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
   noteLevelFrame,
   renderLevelView,
   TLevelViewRenderResult,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
+import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
+import { clearLocalStorage } from "@/core/storage";
 
 /** What the settings draw with, what the GPU can do, and what the view already sets, as one case needs them. */
 interface IImageQualitySetup {

@@ -3,10 +3,9 @@ import { ExportDescriptor, ExportsProject } from "@xrf/ipc/types/xrf-export";
 import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
 import { TranslationProjectDescriptor, TranslationSource } from "@xrf/ipc/types/xrf-translation";
 
+import { mockArchiveFileDescriptor } from "@/core/archive/fixtures/archive.mocks";
 import { TCallableExportDescriptor } from "@/core/exports";
-
-import { mockArchiveFileDescriptor } from "./archive.mocks";
-import { mockEquipmentOccupant } from "./sprite.mocks";
+import { mockEquipmentOccupant } from "@/core/sprite-equipment/fixtures/sprite.mocks";
 
 /**
  * Creates an archive file fixture.

@@ -3,13 +3,13 @@ import { userEvent } from "@testing-library/user-event";
 import { ERenderDebandingMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelDebandingSettings } from "@/applications/level-viewer/components/toolbar/image/LevelDebandingSettings";
-import { DEFAULT_RENDER_DEBANDING_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
-import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
   renderLevelView,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import { DEFAULT_RENDER_DEBANDING_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { clearLocalStorage } from "@/core/storage";
 
 beforeEach(() => {
   clearLocalStorage();

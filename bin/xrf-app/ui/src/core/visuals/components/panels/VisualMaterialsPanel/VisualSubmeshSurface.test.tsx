@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 
-import { mockAlphaSurfaceDescriptor, mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
+import { mockAlphaSurfaceDescriptor, mockSurfaceDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { VisualSubmeshSurface } from "./VisualSubmeshSurface";

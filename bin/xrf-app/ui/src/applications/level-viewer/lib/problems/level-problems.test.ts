@@ -8,7 +8,7 @@ import { ELevelProblemRule } from "@/applications/level-viewer/lib/problems/leve
 import { ILevelProblemSources, listLevelProblems } from "@/applications/level-viewer/lib/problems/level-problems";
 import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn/level-spawn-report";
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
-import { mockSurfaceDescriptor } from "@/fixtures/mocks/visual.mocks";
+import { mockSurfaceDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 
 function sectorOf(sector: number, skipped: ReadonlyArray<SectorSkip>): ReadonlyArray<WorldSectorSkip> {
   return skipped.map((skip: SectorSkip) => ({ sector, skip }));

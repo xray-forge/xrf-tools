@@ -3,9 +3,9 @@ import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { XrayMaterialDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Nullable } from "@xrf/types";
 
+import { mockTextureDescription } from "@/core/textures/fixtures/texture.mocks";
 import { ITextureBumpAssets, selectTextureBumpAssets, toTextureAspect } from "@/core/textures/lib/texture-surface";
-import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
-import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
+import { mockMaterialDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 
 describe("toTextureAspect", () => {
   it("should report the proportions the file was authored in", () => {

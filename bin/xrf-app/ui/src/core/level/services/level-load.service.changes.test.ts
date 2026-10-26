@@ -20,7 +20,7 @@ import {
   mockLevelPartResponses,
   mockLevelSpawnObject,
   mockSelectedLevelDescription,
-} from "@/fixtures/mocks/level.mocks";
+} from "@/core/level/fixtures/level.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 

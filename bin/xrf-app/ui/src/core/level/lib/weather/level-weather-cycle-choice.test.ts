@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import { EWeatherCycleKind } from "@xrf/ipc/types/xrf-environment";
 
+import { mockLevelWeatherCycle, mockLevelWeatherDescription } from "@/core/level/fixtures/weather.mocks";
 import { listLevelWeatherCycles } from "@/core/level/lib/weather/level-weather-cycle-choice";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
-import { mockLevelWeatherCycle, mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
 
 describe("listLevelWeatherCycles", () => {
   it("lists the level's cycles first with the states that play them, then the game's others by name", () => {

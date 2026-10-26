@@ -6,7 +6,7 @@ import { CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND } from "@/core/level/commands";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
-import { mockRenderLoadReport } from "@/fixtures/mocks/render.mocks";
+import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 
 function camera(overrides: Partial<ILevelCamera> = {}): ILevelCamera {

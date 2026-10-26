@@ -5,15 +5,15 @@ import { ETexturesCommand } from "@xrf/ipc/commands/textures";
 import { mockIpcBulkRoutes, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { TextureCatalogMode } from "@xrf/ipc/types/xrf-app-textures";
 
-import { TextureSelectionService } from "@/core/textures/services/selection";
-import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import {
   MOCK_TEXTURE,
   mockTextureCatalog,
   mockTextureDescription,
   mockTextureEntry,
   mockTextureSummary,
-} from "@/fixtures/mocks/texture.mocks";
+} from "@/core/textures/fixtures/texture.mocks";
+import { TextureSelectionService } from "@/core/textures/services/selection";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
 import { TextureCatalogService } from "./texture-catalog.service";

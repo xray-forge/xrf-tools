@@ -8,13 +8,13 @@ import { ConfigsDocument, ConfigsProjectDescriptor } from "@xrf/ipc/types/xrf-ap
 import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 
 import { ConfigsProblemsPanel } from "@/core/ltx/components/panels/ConfigsProblemsPanel";
+import { mockRestoredConfigsProject } from "@/core/ltx/fixtures/configs-project";
 import { ConfigsDocumentService } from "@/core/ltx/services/document";
 import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockRestoredConfigsProject } from "@/fixtures/utils/configs-project";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

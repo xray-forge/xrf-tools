@@ -11,7 +11,7 @@ import {
   mockArchivesVolumes,
   mockArchivesWorldSubject,
   mockArchiveWorldEntry,
-} from "@/fixtures/mocks/archive.mocks";
+} from "@/core/archive/fixtures/archive.mocks";
 import { mockSessionRead, mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { ArchiveLevelLightsDescription } from "@xrf/ipc/types/xrf-app-archives";
 
-import { mockArchiveLevelLightsDescription } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveLevelLightsDescription } from "@/core/archive/fixtures/archive.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveLevelLightsView } from "./ArchiveLevelLightsView";

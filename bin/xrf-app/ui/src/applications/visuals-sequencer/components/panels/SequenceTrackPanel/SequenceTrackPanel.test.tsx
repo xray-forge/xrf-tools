@@ -6,9 +6,9 @@ import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
+import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/fixtures/mocks/visual.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

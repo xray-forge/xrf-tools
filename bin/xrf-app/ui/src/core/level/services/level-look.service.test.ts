@@ -6,13 +6,13 @@ import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { LevelConsoleDefaults } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngine, EXrayEngineEvidence } from "@xrf/ipc/types/xrf-engine-target";
 
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { MONOLITH_LEVEL_BLOOM, OPENXRAY_LEVEL_BLOOM } from "@/core/level/lib/look/level-look";
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { clearLocalStorage, getLocalStorageValue, LEVEL_LOOK_STORAGE_KEY } from "@/core/storage";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 

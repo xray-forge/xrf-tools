@@ -15,11 +15,11 @@ import {
 import { ViewportEvent } from "@xrf/ipc/types/xrf-app-render";
 import { ERenderViewportEvent } from "@xrf/ipc/types/xrf-renderer";
 
+import { mockVisualModelViews } from "@/core/visuals/fixtures/visual.mocks";
 import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualRenderService } from "@/core/visuals/services/visual-render.service";
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
-import { mockVisualModelViews } from "@/fixtures/mocks/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { VisualPreviewViewport } from "./VisualPreviewViewport";

@@ -9,12 +9,12 @@ import { ILevelViewerScreenshot } from "@/applications/level-viewer/lib/screensh
 import { LEVEL_VIEWER_SNAPSHOT_FORMAT } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
 import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/screenshot";
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
-import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
   noteLevelFrame,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import { clearLocalStorage } from "@/core/storage";
 
 const PATH: string = "appdata/level-viewer/screenshots/zaton-20261020-070509.png";
 const REPORT_PATH: string = "appdata/level-viewer/screenshots/zaton-20261020-070509.json";

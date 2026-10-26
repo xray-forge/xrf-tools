@@ -3,8 +3,8 @@ import { userEvent } from "@testing-library/user-event";
 import { ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelVolumetricSettings } from "@/core/level/components/preview/toolbar/lighting/LevelVolumetricSettings";
+import { mockLevelViewContainer } from "@/core/level/fixtures/level-container";
 import { clearLocalStorage } from "@/core/storage";
-import { mockLevelViewContainer } from "@/fixtures/utils/level-container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 beforeEach(() => {

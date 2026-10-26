@@ -8,6 +8,7 @@ import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
 
 import { AssetService } from "@/core/assets/services";
+import { mockTextureDescription } from "@/core/textures/fixtures/texture.mocks";
 import {
   DEFAULT_TEXTURE_PREVIEW_OPTIONS,
   ETexturePreviewMode,
@@ -15,7 +16,6 @@ import {
 } from "@/core/textures/lib/texture-preview";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureViewService } from "@/core/textures/services/view";
-import { mockTextureDescription } from "@/fixtures/mocks/texture.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

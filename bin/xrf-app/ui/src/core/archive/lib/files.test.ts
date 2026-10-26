@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { ArchiveFileDescriptor, ArchiveSharedPayload } from "@xrf/ipc/types/xrf-archive";
 
-import { mockArchiveFileDescriptor, mockArchiveSharedPayload } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveFileDescriptor, mockArchiveSharedPayload } from "@/core/archive/fixtures/archive.mocks";
 
 import { findSharedPayloadOf, listPayloadSharersOf } from "./files";
 

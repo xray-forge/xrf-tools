@@ -8,18 +8,18 @@ import { LevelWeatherDescription, SelectedLevelDescription } from "@xrf/ipc/type
 import { RenderAppliedReport, RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
 import { ReactNode } from "react";
 
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
+import { mockLevelWeatherDescription } from "@/core/level/fixtures/weather.mocks";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { mockRenderAppliedReport } from "@/core/render/fixtures/render.mocks";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
-import { mockRenderAppliedReport } from "@/fixtures/mocks/render.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockLevelWeatherDescription } from "@/fixtures/mocks/weather.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

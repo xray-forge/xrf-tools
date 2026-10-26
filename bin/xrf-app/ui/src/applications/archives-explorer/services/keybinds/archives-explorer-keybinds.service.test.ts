@@ -5,6 +5,7 @@ import { Nullable } from "@xrf/types";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchivesExplorerKeybindsService } from "@/applications/archives-explorer/services/keybinds";
+import { mockArchivesVolumes } from "@/core/archive/fixtures/archive.mocks";
 import { KeybindCommandsService } from "@/core/commands";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { FOCUS_SEARCH_FIELD_COMMAND } from "@/core/search/lib";
@@ -13,7 +14,6 @@ import {
   PANEL_ACTIVE_QUERY,
   PANEL_SET_ACTIVE_COMMAND,
 } from "@/core/shell/panel/panel-messages";
-import { mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
 import { mockRestoredSession, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 

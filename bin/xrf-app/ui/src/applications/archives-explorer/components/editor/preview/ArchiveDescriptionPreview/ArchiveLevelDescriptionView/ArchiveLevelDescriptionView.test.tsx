@@ -13,7 +13,7 @@ import {
   mockArchiveLevelDescription,
   mockArchiveLevelSurface,
   mockArchiveReference,
-} from "@/fixtures/mocks/archive.mocks";
+} from "@/core/archive/fixtures/archive.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

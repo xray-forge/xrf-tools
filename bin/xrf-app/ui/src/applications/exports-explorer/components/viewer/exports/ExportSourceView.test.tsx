@@ -7,7 +7,7 @@ import { ExportSourceContent } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
-import { mockExportsProject } from "@/fixtures/mocks/project.mocks";
+import { mockExportsProject } from "@/core/exports/fixtures/project.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { ArchiveSpawnDescription } from "@xrf/ipc/types/xrf-app-archives";
 
-import { mockArchiveSpawnDescription } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveSpawnDescription } from "@/core/archive/fixtures/archive.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveSpawnDescriptionView } from "./ArchiveSpawnDescriptionView";

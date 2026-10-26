@@ -2,15 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals
 import { emitMockChannelMessage, mockIpcCommands, resetMockChannels, resetMockInvoke } from "@xrf/ipc/testing";
 import { ARCHIVES_JOB_PACK } from "@xrf/ipc/types/xrf-app-archives";
 
-import { EApplicationId } from "@/core/routing/application";
-import { mockJobDescription } from "@/fixtures/mocks/job.mocks";
+import { mockJobDescription } from "@/core/jobs/fixtures/job.mocks";
 import {
   JOBS_ATTACH_COMMAND,
   JOBS_LIST_COMMAND,
   JOBS_POLL_INTERVAL,
   JOBS_SLOW_LISTING,
   mockWatchedJobsService,
-} from "@/fixtures/utils/jobs-service";
+} from "@/core/jobs/fixtures/jobs-service";
+import { EApplicationId } from "@/core/routing/application";
 
 describe("JobsService adoption", () => {
   beforeEach(() => {

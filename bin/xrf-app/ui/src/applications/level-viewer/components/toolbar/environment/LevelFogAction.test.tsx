@@ -4,14 +4,14 @@ import { userEvent } from "@testing-library/user-event";
 import { ERenderFogMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelFogAction } from "@/applications/level-viewer/components/toolbar/environment/LevelFogAction";
-import { DEFAULT_RENDER_FOG_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
-import { clearLocalStorage } from "@/core/storage";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
   renderLevelView,
   TLevelViewRenderResult,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import { DEFAULT_RENDER_FOG_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { clearLocalStorage } from "@/core/storage";
 
 /**
  * @returns The fog's action, its popover open, and the services behind it, the fog drawn as the engine does.

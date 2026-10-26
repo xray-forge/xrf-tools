@@ -5,18 +5,18 @@ import { ERenderReflectionMode, ERenderTraceSize, ERenderWaterMode } from "@xrf/
 
 import { LevelReflectionsAction } from "@/applications/level-viewer/components/toolbar/lighting/LevelReflectionsAction";
 import {
-  DEFAULT_RENDER_REFLECTION_SETTINGS,
-  DEFAULT_RENDER_WATER_SETTINGS,
-} from "@/core/render/lib/settings/render-feature-defaults";
-import { TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { clearLocalStorage } from "@/core/storage";
-import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,
   noteLevelFrame,
   renderLevelView,
   TLevelViewRenderResult,
-} from "@/fixtures/utils/level-container";
+} from "@/core/level/fixtures/level-container";
+import {
+  DEFAULT_RENDER_REFLECTION_SETTINGS,
+  DEFAULT_RENDER_WATER_SETTINGS,
+} from "@/core/render/lib/settings/render-feature-defaults";
+import { TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { clearLocalStorage } from "@/core/storage";
 
 /**
  * @param reflections - The reflections the settings draw every viewport with.

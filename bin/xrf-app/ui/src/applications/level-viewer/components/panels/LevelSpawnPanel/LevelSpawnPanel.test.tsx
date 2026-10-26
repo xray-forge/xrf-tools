@@ -7,6 +7,7 @@ import { mockIpcCommands } from "@xrf/ipc/testing";
 import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
+import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
@@ -15,9 +16,8 @@ import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
-import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
+import { mockVisualTransform } from "@/core/visuals/fixtures/visual.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockVisualTransform } from "@/fixtures/mocks/visual.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

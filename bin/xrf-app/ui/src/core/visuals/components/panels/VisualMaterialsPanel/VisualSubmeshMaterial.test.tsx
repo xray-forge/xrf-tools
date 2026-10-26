@@ -3,7 +3,7 @@ import { RenderResult } from "@testing-library/react";
 import { XrayMaterialDescriptor } from "@xrf/ipc/types/xrf-material";
 import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 
-import { mockMaterialDescriptor } from "@/fixtures/mocks/visual.mocks";
+import { mockMaterialDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { VisualSubmeshMaterial } from "./VisualSubmeshMaterial";

@@ -5,10 +5,10 @@ import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 
 import { LevelGoToAction } from "@/core/level/components/preview/toolbar/camera/LevelGoToAction";
+import { mockLevelViewContainer } from "@/core/level/fixtures/level-container";
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockLevelViewContainer } from "@/fixtures/utils/level-container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 /** A camera a quarter turn round and level, somewhere every axis has something to say. */

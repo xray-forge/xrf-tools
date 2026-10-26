@@ -7,7 +7,7 @@ import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { Nullable } from "@xrf/types";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
-import { mockArchiveStatistics, mockArchivesVolumes } from "@/fixtures/mocks/archive.mocks";
+import { mockArchiveStatistics, mockArchivesVolumes } from "@/core/archive/fixtures/archive.mocks";
 import { mockRestoredSession, mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 

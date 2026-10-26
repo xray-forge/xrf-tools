@@ -4,9 +4,9 @@ import { ESpawnCommand } from "@xrf/ipc/commands/spawn";
 import { mockIpcCommands } from "@xrf/ipc/testing";
 
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
+import { mockSpawnSession } from "@/core/spawn/fixtures/spawn.mocks";
 import { SpawnFileService } from "@/core/spawn/services/spawn-file.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockSpawnSession } from "@/fixtures/mocks/spawn.mocks";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
 
 interface IWatchedService {

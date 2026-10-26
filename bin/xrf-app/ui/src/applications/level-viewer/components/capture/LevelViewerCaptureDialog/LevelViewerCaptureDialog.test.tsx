@@ -8,9 +8,9 @@ import { mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
 import { LevelViewerCaptureActions } from "@/applications/level-viewer/components/capture/LevelViewerCaptureActions";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
+import { mockLevelViewContainer, renderLevelView, TLevelViewRenderResult } from "@/core/level/fixtures/level-container";
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { clearLocalStorage } from "@/core/storage";
-import { mockSelectedLevelDescription } from "@/fixtures/mocks/level.mocks";
-import { mockLevelViewContainer, renderLevelView, TLevelViewRenderResult } from "@/fixtures/utils/level-container";
 
 /**
  * @returns The capture's dialog over a level, a capture answering with a 2048 pixel map, and the services behind it.

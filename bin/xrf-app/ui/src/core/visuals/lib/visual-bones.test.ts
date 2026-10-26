@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { VisualBone } from "@xrf/ipc/types/xrf-visual";
 
+import { mockVisualBone } from "@/core/visuals/fixtures/visual.mocks";
 import { selectAddonBones, selectHiddenBoneIndices } from "@/core/visuals/lib/visual-bones";
-import { mockVisualBone } from "@/fixtures/mocks/visual.mocks";
 
 /** A weapon skeleton in the shape ogf stores one: a body, its parts, and a lens hanging off the scope. */
 const WEAPON: Array<VisualBone> = [
