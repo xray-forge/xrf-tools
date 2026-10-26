@@ -46,6 +46,9 @@ impl Default for LtxParser<'_> {
 }
 
 impl<'a> LtxParser<'a> {
+  /// The word an include statement opens with.
+  const INCLUDE_DIRECTIVE: &'static str = "#include";
+
   /// Create new parser based on characters stream.
   pub fn new(reader: Chars<'a>) -> Self {
     let mut parser: Self = Self {
@@ -91,7 +94,7 @@ impl<'a> LtxParser<'a> {
 
       // Kept whole, comment included, because the document carries what a reformat needs to write back. The value of a
       // statement is unaffected: every `parse_*_from_line` splits the comment off itself.
-      let line: String = self.parse_until_eol(false)?;
+      let line: String = self.parse_until_eol();
 
       if self.is_preserving_source {
         document
@@ -284,74 +287,20 @@ impl LtxParser<'_> {
     }
   }
 
-  /// Consume all the white space except line break.
-  fn skip_whitespaces_except_line_break(&mut self) {
-    while let Some(c) = self.char {
-      if (c == '\n' || c == '\r' || !c.is_whitespace()) && c != '\t' {
+  /// The rest of the current line, leaving the cursor on the break that ends it.
+  fn parse_until_eol(&mut self) -> String {
+    let mut line: String = String::new();
+
+    while let Some(char) = self.char {
+      if char == '\n' || char == '\r' {
         break;
       }
 
-      self.bump();
-    }
-  }
-
-  fn skip_comment(&mut self) -> XrfResult<String> {
-    self.bump();
-
-    // Allow empty value.
-    self.skip_whitespaces_except_line_break();
-
-    match self.char {
-      None => Ok(String::new()),
-      _ => self.parse_until_eol(false),
-    }
-  }
-
-  fn parse_until(&mut self, endpoint: &[Option<char>], check_inline_comment: bool) -> XrfResult<String> {
-    let mut result: String = String::new();
-
-    while !endpoint.contains(&self.char) {
-      match self.char {
-        None => {
-          return self.error(format!("Expecting \"{:?}\" but found EOF.", endpoint));
-        }
-        Some(space) if check_inline_comment && (space == ' ' || space == '\t') => {
-          self.bump();
-
-          match self.char {
-            Some(';') => {
-              // [space]; starts an inline comment.
-              break;
-            }
-            Some(_) => {
-              result.push(space);
-              continue;
-            }
-            None => {
-              result.push(space);
-            }
-          }
-        }
-        Some(c) => {
-          result.push(c);
-        }
-      }
+      line.push(char);
       self.bump();
     }
 
-    let _ = check_inline_comment;
-    Ok(result)
-  }
-
-  #[inline]
-  fn parse_until_eol(&mut self, strip_inline_comment: bool) -> XrfResult<String> {
-    let value: String = self.parse_until(&[Some('\n'), Some('\r'), None], strip_inline_comment)?;
-
-    if strip_inline_comment && matches!(self.char, Some(LTX_SYMBOL_COMMENT)) {
-      self.skip_comment()?;
-    }
-
-    Ok(value)
+    line
   }
 }
 
@@ -395,48 +344,38 @@ impl LtxParser<'_> {
         comment.map(|comment| Box::from(comment.trim())),
       ))
     } else {
-      // Fully trimmed value after splitting.
-      let comment: Box<str> = Box::from(remainder[1..].trim_start());
+      // Anything else after the brackets is no part of the header, and the engine reads past it: shipped configs write
+      // column captions there (`[m_dog_step_params]   fwdleftleg ...`). Kept whole as the header's comment, so a
+      // reformat writes it back behind a `;` rather than dropping any of it.
+      let comment: &str = remainder
+        .strip_prefix(LTX_SYMBOL_COMMENT)
+        .unwrap_or(remainder)
+        .trim_start();
 
-      Ok((section, None, if comment.is_empty() { None } else { Some(comment) }))
+      Ok((section, None, (!comment.is_empty()).then(|| Box::from(comment))))
     }
   }
 
-  /// Parse section name, inherited sections and comment from the line.
+  /// Parse the file an include statement names, and its comment.
   ///
-  /// Supported include variants are:
-  /// - #include "file.ltx"
-  /// - #include("file.ltx")
+  /// The name is what sits between the first two quotes after the directive, which is how the engine's `CInifile` reads
+  /// it, so `#include "file.ltx"`, `#include("file.ltx")` and any spacing around the quotes all name `file.ltx`.
   fn parse_include_from_line(&self, line: &str) -> XrfResult<(Box<str>, Option<Box<str>>)> {
-    if line.is_empty() {
-      return self.error("Failed to parse empty include statement");
-    }
-
-    let line: &str = line.trim();
-
-    let (include, comment) = match line.split_once(';') {
-      Some((key, value)) => (key.trim(), Some(value.trim())),
-      None => (line, None),
+    let (include, comment) = match line.trim().split_once(LTX_SYMBOL_COMMENT) {
+      Some((include, comment)) => (include.trim(), Some(comment.trim())),
+      None => (line.trim(), None),
     };
 
-    let included_path: Box<str> = if include.starts_with("#include \"") && include.ends_with('\"') {
-      Box::from(&include[10..include.len() - 1])
-    } else if include.starts_with("#include(\"") && include.ends_with("\")") {
-      Box::from(&include[10..include.len() - 2])
-    } else if include.len() > 10 {
-      if let Some(closing_index) = include[10..].find("\"") {
-        // Closing index is -10 positions:
-        Box::from(&include[10..closing_index + 10])
-      } else {
-        return self.error(format!(
-          "Expected correct '#include \"config.ltx\"' statement, got '{include}'"
-        ));
-      }
-    } else {
+    let Some(name) = include
+      .strip_prefix(Self::INCLUDE_DIRECTIVE)
+      .and_then(|rest| rest.split('"').nth(1))
+    else {
       return self.error(format!(
         "Expected correct '#include \"config.ltx\"' statement, got '{include}'"
       ));
     };
+
+    let included_path: Box<str> = Box::from(name);
 
     if included_path.is_empty() {
       return self.error(String::from(
@@ -460,7 +399,7 @@ impl LtxParser<'_> {
       return self.error("Failed to parse empty value statement");
     }
 
-    let (data, comment) = match line.split_once(';') {
+    let (data, comment) = match line.split_once(LTX_SYMBOL_COMMENT) {
       None => (line.trim(), None),
       Some((data, comment)) => (data.trim(), Some(comment.trim())),
     };
@@ -576,6 +515,71 @@ mod test {
       parser.parse_section_from_line("[section];commented phrase ").unwrap(),
       (Box::from("section"), None, Some(Box::from("commented phrase")))
     );
+  }
+
+  /// Shipped configs write column captions after a header, and a reformat has to keep every character of them:
+  /// `[m_dog_step_params]   fwdleftleg` becomes a comment reading `fwdleftleg`, not `wdleftleg`.
+  #[test]
+  fn keeps_text_after_a_header_whole_as_its_comment() {
+    let parser: LtxParser = Default::default();
+
+    assert_eq!(
+      parser
+        .parse_section_from_line("[m_dog_step_params]   fwdleftleg   fwdrightleg")
+        .unwrap(),
+      (
+        Box::from("m_dog_step_params"),
+        None,
+        Some(Box::from("fwdleftleg   fwdrightleg"))
+      )
+    );
+    assert_eq!(
+      parser.parse_section_from_line("[logic]r").unwrap(),
+      (Box::from("logic"), None, Some(Box::from("r")))
+    );
+  }
+
+  /// A header followed by a character wider than a byte is read, never sliced inside that character.
+  #[test]
+  fn reads_a_header_followed_by_non_ascii_text() {
+    let parser: LtxParser = Default::default();
+
+    assert_eq!(
+      parser.parse_section_from_line("[marsh_20]Жовтий").unwrap(),
+      (Box::from("marsh_20"), None, Some(Box::from("Жовтий")))
+    );
+  }
+
+  #[test]
+  fn names_the_file_between_the_first_two_quotes_of_an_include() {
+    let parser: LtxParser = Default::default();
+
+    for line in [
+      "#include \"file.ltx\"",
+      "#include(\"file.ltx\")",
+      "#include   \"file.ltx\"",
+      "#include\t\"file.ltx\" trailing",
+    ] {
+      assert_eq!(
+        parser.parse_include_from_line(line).unwrap(),
+        (Box::from("file.ltx"), None),
+        "for {line}"
+      );
+    }
+
+    assert_eq!(
+      parser.parse_include_from_line("#include \"file.ltx\" ; why").unwrap(),
+      (Box::from("file.ltx"), Some(Box::from("why")))
+    );
+  }
+
+  /// A malformed include is refused with an error, whatever characters follow the directive.
+  #[test]
+  fn refuses_an_unquoted_include_rather_than_aborting() {
+    let parser: LtxParser = Default::default();
+
+    assert!(parser.parse_include_from_line("#include ЖЖ.ltx").is_err());
+    assert!(Ltx::read_from_str("#include ЖЖЖЖЖ.ltx\n").is_err());
   }
 
   #[test]
