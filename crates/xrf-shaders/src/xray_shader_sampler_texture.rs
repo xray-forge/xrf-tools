@@ -1,3 +1,5 @@
+use xrf_lua::{XRayLuaBinding, XRayLuaValue};
+
 /// What a script binds to one of its samplers, as far as reading it without running it can tell.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum XRayShaderSamplerTexture {
@@ -17,6 +19,26 @@ pub enum XRayShaderSamplerTexture {
 impl XRayShaderSamplerTexture {
   /// The prefix of a name the engine binds itself rather than reading a file for.
   pub const ENGINE_TARGET_PREFIX: &'static str = "$";
+
+  /// What a texture argument binds, read through what its name means where the script passes it.
+  pub fn of(value: Option<&XRayLuaValue>) -> Self {
+    match value {
+      Some(XRayLuaValue::String(value))
+      | Some(XRayLuaValue::Local {
+        binding: XRayLuaBinding::String(value),
+        ..
+      }) => Self::Named(value.clone()),
+      Some(XRayLuaValue::Local {
+        binding: XRayLuaBinding::Parameter { index },
+        name,
+      }) => Self::Parameter {
+        name: name.clone(),
+        index: *index,
+      },
+      Some(XRayLuaValue::Name(name)) => Self::Global(name.clone()),
+      _ => Self::Unresolved,
+    }
+  }
 
   /// The texture file it names, for one naming a file rather than an engine target.
   pub fn file(&self) -> Option<&str> {

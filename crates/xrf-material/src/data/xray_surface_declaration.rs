@@ -38,9 +38,11 @@ pub enum XraySurfaceDeclaration {
   Described {
     /// The class tag, as `Blender_CLSID.h` spells it: `MODEL`, `MODELEbB`, `LM_AREF`.
     class: String,
-    /// The class's own alpha switch, or `None` for a class that writes none and is therefore always opaque.
+    /// The class's own alpha switch, or `None` for a class that writes none: one drawn by its blending token, or
+    /// always opaque.
     is_alpha_used: Option<bool>,
-    /// The authored `Alpha ref`, or `None` for a class that writes none.
+    /// The authored `Alpha ref`, the value its class starts from where the file omits it, or `None` for a class that
+    /// writes none.
     alpha_reference: Option<u8>,
     /// `Strict sorting`, which every class writes and which pushes a model surface out of the deferred path.
     is_strict_sorting: bool,

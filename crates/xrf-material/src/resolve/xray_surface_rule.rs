@@ -51,11 +51,19 @@ impl XraySurfaceRule {
   const REFERENCE: &'static str = "Alpha ref";
 
   /// The reference below which an alpha blended model surface leaves the deferred path for a forward pass.
-  const FORWARD_REFERENCE_LIMIT: i32 = 16;
+  const FORWARD_REFERENCE_LIMIT: u8 = 16;
 
   /// What a forward pass tests against for the rules that pass no reference of their own, both `r_Pass(..., TRUE, 0)`
   /// (`blenders/blender_deffer_model.cpp`, `blenders/Blender_Model_EbB_deferred.cpp`).
   const BLENDED_DEFAULT_REFERENCE: u8 = 0;
+
+  /// The `Alpha ref` `B_MODEL`, `B_PARTICLE` and `B_SCREEN_SET` start from, and keep where a file omits it
+  /// (`CBlender_deffer_model::CBlender_deffer_model`, `CBlender_Particle`, `CBlender_Screen_SET`).
+  const DEFAULT_REFERENCE: u8 = 32;
+  /// The `Alpha ref` the level cut-out classes start from (`CBlender_deffer_aref::CBlender_deffer_aref`).
+  const LEVEL_DEFAULT_REFERENCE: u8 = 200;
+  /// `Texture clamp`, which both classes that write it start switched on.
+  const DEFAULT_TEXTURE_CLAMP: bool = true;
 
   /// The rule a class follows, or `None` for one this crate does not model.
   pub(crate) fn of(class: ShaderBlenderClass) -> Option<Self> {
@@ -75,32 +83,36 @@ impl XraySurfaceRule {
     }
   }
 
-  /// The knobs this rule reads, by the spellings the class that follows it uses.
+  /// The knobs this rule reads, by the spellings the class that follows it uses, and the values its class starts from
+  /// where a file omits them.
   pub(crate) fn read(self, blender: &ShaderBlender) -> XraySurfaceAlpha {
     XraySurfaceAlpha::read(blender, self.switch(), self.reference())
   }
 
+  /// Whether the class compiles its surface through `uber_deffer`, which is what binds a bump pair and a detail: every
+  /// deferred pass does, and the forward pass a blended surface takes instead (`model_def_lq`, `model_env_lq`,
+  /// `lmapE`, `vert`) binds its base alone.
+  pub(crate) fn is_deferred(draw: XraySurfaceDraw) -> bool {
+    !matches!(draw, XraySurfaceDraw::Blended { .. })
+  }
+
   /// The pass the renderer compiles for one blender, which is the knobs this rule reads out of it.
   pub(crate) fn draw(self, blender: &ShaderBlender, alpha: XraySurfaceAlpha) -> XraySurfaceDraw {
-    // One of the classes that name their equation outright, as `ScreenSet` below does. An index no build of it defines
-    // leaves the surface drawn as written, which is what the engine's own `switch` does with one.
-    if self == Self::Particle {
-      return blender
+    // The classes that name their equation outright by a token. An index no build of them defines leaves the surface
+    // drawn as written, which is what the engine's own `switch` does with one.
+    match self {
+      Self::Particle => blender
         .token(XrayParticleBlending::PROPERTY)
         .and_then(XrayParticleBlending::of)
-        .map_or(XraySurfaceDraw::Opaque, XrayParticleBlending::draw);
-    }
-
-    if self == Self::ScreenSet {
-      return blender
+        .map_or(XraySurfaceDraw::Opaque, XrayParticleBlending::draw),
+      Self::ScreenSet => blender
         .token(XrayScreenSetBlending::PROPERTY)
         .and_then(XrayScreenSetBlending::of)
         .map_or(XraySurfaceDraw::Opaque, |blending| {
           blending.draw(alpha.reference.unwrap_or(Self::BLENDED_DEFAULT_REFERENCE))
-        });
+        }),
+      _ => self.compile(alpha),
     }
-
-    self.compile(alpha)
   }
 
   /// The pass the deferred renderer compiles for the classes whose alpha is a switch and a reference.
@@ -114,13 +126,13 @@ impl XraySurfaceRule {
 
     // Matched without a wildcard, so a rule added to `of` cannot reach a viewer as silently opaque.
     match self {
-      // A low reference or strict sorting takes the surface forward; anything else reading alpha is cut out of the
-      // g-buffer at the shader's own constant.
+      // Strict sorting takes the surface forward whatever its switch says, and so does a low reference with alpha on;
+      // anything else reading alpha is cut out of the g-buffer at the shader's own constant.
+      Self::Model if alpha.is_strict_sorting => blended,
       Self::Model if alpha.is_switched_on() => {
-        let is_forward: bool = alpha.is_strict_sorting
-          || alpha
-            .reference
-            .is_some_and(|reference| i32::from(reference) < Self::FORWARD_REFERENCE_LIMIT);
+        let is_forward: bool = alpha
+          .reference
+          .is_some_and(|reference| reference < Self::FORWARD_REFERENCE_LIMIT);
 
         if is_forward { blended } else { cut_out }
       }
@@ -143,9 +155,13 @@ impl XraySurfaceRule {
     }
   }
 
-  /// `Texture clamp`: whether the class samples its base clamped to the edge, which only the particle class writes.
+  /// `Texture clamp`: whether the class samples its base clamped to the edge, which the particle and screen space
+  /// classes write and start switched on.
   pub(crate) fn is_texture_clamped(self, blender: &ShaderBlender) -> bool {
-    self == Self::Particle && blender.boolean(Self::TEXTURE_CLAMP).unwrap_or(false)
+    matches!(self, Self::Particle | Self::ScreenSet)
+      && blender
+        .boolean(Self::TEXTURE_CLAMP)
+        .unwrap_or(Self::DEFAULT_TEXTURE_CLAMP)
   }
 
   /// Whether a tree class surface is an object stored as a tree, compiled with `tree_s` rather than `tree`
@@ -173,10 +189,11 @@ impl XraySurfaceRule {
     }
   }
 
-  /// The class's alpha reference, or `None` for a rule whose classes write none.
-  fn reference(self) -> Option<&'static str> {
+  /// The class's alpha reference and the value its class starts from, or `None` for a rule whose classes write none.
+  fn reference(self) -> Option<(&'static str, u8)> {
     match self {
-      Self::Model | Self::LevelAref | Self::Particle | Self::ScreenSet => Some(Self::REFERENCE),
+      Self::Model | Self::Particle | Self::ScreenSet => Some((Self::REFERENCE, Self::DEFAULT_REFERENCE)),
+      Self::LevelAref => Some((Self::REFERENCE, Self::LEVEL_DEFAULT_REFERENCE)),
       Self::EnvironmentMapped | Self::Tree | Self::Detail | Self::Opaque => None,
     }
   }

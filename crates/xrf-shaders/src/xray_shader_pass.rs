@@ -20,6 +20,10 @@ impl XRayShaderPass {
   /// The function whose pass the renderer compiles as a surface's base element (`_lua_Create`).
   pub const BASE_FUNCTION: &'static str = "normal";
 
+  /// The function DX10 and later compile the high quality base element from instead, where a script declares it and
+  /// the surface's base texture names a detail (`dx11ResourceManager_Scripting.cpp`, `_lua_Create`).
+  pub const DETAILED_BASE_FUNCTION: &'static str = "normal_hq";
+
   /// The function whose pass the renderer compiles as a surface's special element (`L_special`): drawn into the
   /// distortion target where it says `distort(true)` (`mapDistort`), and into the light a self-lit surface gathers where
   /// its base pass says `emissive(true)` (`mapEmissive`).

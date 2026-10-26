@@ -9,13 +9,12 @@ pub(crate) struct XraySurfaceAlpha {
 }
 
 impl XraySurfaceAlpha {
-  /// Reads the knobs a rule names, taking a switch the file omits as off.
-  pub(crate) fn read(blender: &ShaderBlender, switch: Option<&str>, reference: Option<&str>) -> Self {
+  /// Reads the knobs a rule names: a switch the file omits as off and a reference it omits as `default`, which is what
+  /// each class's constructor starts both from before its `Load` reads them.
+  pub(crate) fn read(blender: &ShaderBlender, switch: Option<&str>, reference: Option<(&str, u8)>) -> Self {
     Self {
       is_used: switch.map(|property| blender.boolean(property).unwrap_or(false)),
-      reference: reference
-        .and_then(|property| blender.integer(property))
-        .map(Self::to_reference),
+      reference: reference.map(|(property, default)| blender.integer(property).map_or(default, Self::to_reference)),
       is_strict_sorting: blender.is_strict_sorting(),
     }
   }

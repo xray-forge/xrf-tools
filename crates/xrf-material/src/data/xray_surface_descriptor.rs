@@ -22,18 +22,18 @@ pub struct XraySurfaceDescriptor {
   /// its blender. `None` when the surface names no shader, or no root holds a library to ask.
   pub library: Option<XrayAsset>,
   pub declaration: XraySurfaceDeclaration,
-  /// What to draw. Always answerable: a surface nothing could be read for is drawn the way the engine draws one whose
-  /// shader it could not resolve, which is opaque.
+  /// What to draw. Always answerable: a surface nothing could be read for is drawn the way the DX11 renderer draws a
+  /// shader it could not resolve, by `stub_default.s`, which is opaque.
   pub draw: XraySurfaceDraw,
-  /// The detail texture modulating its diffuse, `None` for a class the engine never details or a base texture whose
-  /// descriptor associates none.
+  /// The detail texture modulating its diffuse, `None` for a class the engine never details, a base texture whose
+  /// descriptor associates none, or a blended surface, whose forward pass samples its base alone.
   pub detail: Option<XraySurfaceDetail>,
   /// The four details and mask a terrain class lays over its base instead, `None` for any other class.
   pub terrain: Option<XraySurfaceTerrain>,
   /// The texture files a scripted surface binds by sampler, in every element the renderer compiles for it; none for a
   /// surface the blender library describes, whose class binds by slot.
   pub samplers: Vec<XraySurfaceSampler>,
-  /// The bump pair its base texture's descriptor declares, for a class that binds one.
+  /// The bump pair its base texture's descriptor declares, for a class that binds one on a deferred pass.
   pub bump: Option<XrayMaterialBump>,
   /// The lighting model its base texture's descriptor sets, `m_material`.
   pub material: f32,

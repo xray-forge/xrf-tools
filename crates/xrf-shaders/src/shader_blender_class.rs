@@ -16,7 +16,10 @@ impl ShaderBlenderClass {
   pub const LM_BMM_D: Self = Self::of(b"LmBmmD  ");
   pub const LA_EM_B: Self = Self::of(b"LaEmB   ");
   pub const LM_EB_B: Self = Self::of(b"LmEbB   ");
+  /// The engine's `B_B`, which no deferred renderer builds a blender for (`r2_blenders.cpp`), whatever its tag
+  /// suggests.
   pub const BMM_D: Self = Self::of(b"BmmD    ");
+  /// The engine's `B_BmmD`, the terrain class `CBlender_BmmD` (`Blender_CLSID.h`), despite the `old` in its tag.
   pub const BMM_D_OLD: Self = Self::of(b"BmmDold ");
 
   // Model surfaces.

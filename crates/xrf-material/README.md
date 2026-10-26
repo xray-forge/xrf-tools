@@ -71,17 +71,23 @@ substituted. `describe_descriptor` is useful for sweeping THMs even when no diff
 
 ## Alpha behavior
 
-`XraySurfaceResolver::describe` looks for a renderer shader script, `shaders\r2\<name>.s` with `\` in the name read as
-`_`, before the library, because the engine uses a script in place of the library entry when one exists. A scripted
-surface reports `XraySurfaceDeclaration::Scripted` and the texture each of its samplers binds. Otherwise the blender's
-class decides: `Described` with its alpha switch, reference and strict sorting, or `Undeclared`, `NoLibrary`,
-`Unreadable`, `Undefined` or `Unmodelled` where nothing could be said.
+Surfaces are described for OpenXRay's DX11 renderer, the one it runs by default. `XraySurfaceResolver::describe`
+looks for its shader script, `shaders\r3\<name>.s` with `\` in the name read as `_`, before the library, because the
+engine uses a script in place of the library entry when one exists. Scripts in both the `sampler():texture()` and the
+`dx10texture` dialects are read, and a script's `normal_hq` pass is the one compiled where the base texture associates
+a detail. A scripted surface reports `XraySurfaceDeclaration::Scripted` and the texture each of its samplers binds.
+Otherwise the blender's class decides: `Described` with its alpha switch, reference and strict sorting, or
+`Undeclared`, `NoLibrary`, `Unreadable`, `Undefined` or `Unmodelled` where nothing could be said. A knob a library
+omits reads as the value its class starts from: `Alpha ref` 32, or 200 for the level cut-out classes, and
+`Texture clamp` on.
 
 `XraySurfaceDescriptor` keeps the declaration separate from `XraySurfaceDraw`: `Opaque`, `AlphaTested`, `Blended`,
-`Added`, `Multiplied`, `Invisible`, or `Water`. A surface nothing could be read for still draws `Opaque`, as the engine
-draws a shader it cannot resolve; do not treat a drawable fallback as proof that the authored shader was found and
-understood. The descriptor also carries the detail texture, terrain layers, bump pair, environment cube, and the clamp,
-distortion, emission, shadow and object-LOD flags. Surface alpha rules model the deferred renderer, R2 and above.
+`Added`, `Multiplied`, `Invisible`, or `Water`. A model asking for strict sorting, or for alpha below a reference of 16,
+blends forward rather than cutting out. A surface nothing could be read for still draws `Opaque`, as DX11 draws a
+shader it cannot resolve with `stub_default.s`; do not treat a drawable fallback as proof that the authored shader was
+found and understood. The descriptor also carries the detail texture, terrain layers, bump pair, environment cube, and
+the clamp, distortion, emission, shadow and object-LOD flags. The bump pair and the detail are bound only on a deferred
+pass: a blended surface's forward pass samples its base alone.
 
 ## Limitations, features, and checks
 

@@ -48,7 +48,7 @@ fn chunk(id: u32, payload: &[u8]) -> Vec<u8> {
 const TEXTURE: &str = "textures\\prop\\prop_fence.dds";
 
 /// The renderer script the entry's shader is looked up as, which its surface is described from where it is found.
-const SHADER_SCRIPT: &str = "shaders\\r2\\def_shaders_def_vertex.s";
+const SHADER_SCRIPT: &str = "shaders\\r3\\def_shaders_def_vertex.s";
 
 /// The smallest `level` a read takes: a header, a shader table of one entry and an empty run of visuals.
 fn level_bytes() -> Vec<u8> {
