@@ -82,6 +82,19 @@ export type AlifeLevelChanger = {
   hint: string;
 };
 
+/**
+ * A monster as its script class `se_monster` saves one: vanilla's `se_monster.script` and xrf-engine's `Monster.ts`
+ * both follow the server class's spawn fields with the offline state alone, unmarked, and add nothing to the update
+ * packet.
+ *
+ * The tail mirrors `STATE_Write` in xrf-engine's `src/engine/core/objects/creature/Monster.ts`, whose own test pins
+ * its write order, so a change to either side changes the other in the same work.
+ */
+export type AlifeMonster = {
+  base: AlifeObjectMonsterBase;
+  offlineState: OfflineObjectState;
+};
+
 /** Generic abstract ALife object base. */
 export type AlifeObject = {
   id: number;
@@ -250,10 +263,41 @@ export type AlifeObjectHelicopter = {
   engineSound: string;
 };
 
+/**
+ * A human, `CSE_ALifeHumanAbstract`: a trader and a monster, in that order, so unlike the actor's its spawn packet
+ * opens with the trader's fields, ahead of every field the object inherits. The human brain follows them with the
+ * equipment and weapon preferences it picks at random. Its update packet is the monster's.
+ */
+export type AlifeObjectHumanAbstract = {
+  trader: AlifeObjectTraderAbstract;
+  base: AlifeObjectMonsterAbstract;
+  /** `CALifeHumanBrain::m_cpEquipmentPreferences`, five values in 0..3 as the SDK writes them. */
+  equipmentPreferences: Array<number>;
+  /** `CALifeHumanBrain::m_cpMainWeaponPreferences`, four values in 0..3 as the SDK writes them. */
+  mainWeaponPreferences: Array<number>;
+};
+
+/**
+ * A stalker, `CSE_ALifeHumanStalker`: a human with a physics skeleton, whose update packet closes with the dialog it
+ * starts a conversation with.
+ */
+export type AlifeObjectHumanStalker = {
+  base: AlifeObjectHumanAbstract;
+  skeleton: AlifeObjectSkeleton;
+  /** `m_start_dialog`, which only the update packet stores; empty for the default. */
+  updateStartDialog: string;
+};
+
 export type AlifeObjectInherited =
   | ({
       type: "SeActor";
     } & AlifeActor)
+  | ({
+      type: "SeStalker";
+    } & AlifeStalker)
+  | ({
+      type: "SeMonster";
+    } & AlifeMonster)
   | ({
       type: "CseAlifeObjectBreakable";
     } & AlifeObjectBreakable)
@@ -451,6 +495,40 @@ export type AlifeObjectItemWeaponShotgun = {
   updateAmmoIds: Array<number>;
 };
 
+/**
+ * A creature the alife simulation moves offline, `CSE_ALifeMonsterAbstract`: every monster and every stalker. Its
+ * spawn packet adds the space restrictions it keeps to and the smart terrain it serves, and its update packet the game
+ * graph edge it walks, after the creature's fields in each.
+ */
+export type AlifeObjectMonsterAbstract = {
+  base: AlifeObjectCreature;
+  /** The restrictors it may not leave, `m_out_space_restrictors`, as a comma-separated list of names. */
+  outSpaceRestrictors: string;
+  /** The restrictors it may not enter, `m_in_space_restrictors`. */
+  inSpaceRestrictors: string;
+  /** The smart terrain whose job it holds, `m_smart_terrain_id`; `u16::MAX` for none. */
+  smartTerrainId: number;
+  /** Whether it reached its smart terrain task, a C++ `bool` stored as one byte. */
+  taskReached: number;
+  /** The game vertex it walks to, `m_tNextGraphID`. */
+  updateNextGameVertexId: number;
+  /** The game vertex it walks from, `m_tPrevGraphID`. */
+  updatePreviousGameVertexId: number;
+  updateDistanceFromPoint: number | null;
+  updateDistanceToPoint: number | null;
+};
+
+/**
+ * A mutant, `CSE_ALifeMonsterBase`: a monster with a physics skeleton, which every monster class Call of Pripyat
+ * registers is, the psy dog's phantom included. Its update packet is the monster's; the skeleton adds none.
+ */
+export type AlifeObjectMonsterBase = {
+  base: AlifeObjectMonsterAbstract;
+  skeleton: AlifeObjectSkeleton;
+  /** The object the monster is bound to, `m_spec_object_id`: the psy dog a phantom belongs to; `u16::MAX` for none. */
+  specObjectId: number;
+};
+
 export type AlifeObjectMotion = {
   motionName: string;
 };
@@ -556,6 +634,24 @@ export type AlifeSmartZone = {
   base: AlifeObjectSpaceRestrictor;
 };
 
+/**
+ * A stalker as its script class `se_stalker` saves one: vanilla's `se_stalker.script` and xrf-engine's `Stalker.ts`
+ * both follow the server class's spawn fields with the offline state and whether the corpse's loot was dropped,
+ * unmarked, and add nothing to the update packet.
+ *
+ * The tail mirrors `STATE_Write` in xrf-engine's `src/engine/core/objects/creature/Stalker.ts`, whose own test pins
+ * its write order, so a change to either side changes the other in the same work.
+ */
+export type AlifeStalker = {
+  base: AlifeObjectHumanStalker;
+  offlineState: OfflineObjectState;
+  /**
+   * Whether the death manager already dropped the corpse's loot, `w_bool` of `death_droped` (`isCorpseLootDropped`
+   * in xrf-engine); zero for a new object.
+   */
+  lootDropped: number;
+};
+
 export type AlifeZoneVisual = {
   base: AlifeObjectAnomalyZone;
   visual: AlifeObjectVisual;
@@ -580,6 +676,7 @@ export enum EClsId {
   AI_RAT = "AiRat",
   AI_RAT_G = "AiRatG",
   AI_SP_GRP = "AiSpGrp",
+  AI_STL_S = "AiStlS",
   AI_TRD_S = "AiTrdS",
   AMMO_S = "AmmoS",
   ARTEFACT = "Artefact",
@@ -753,6 +850,17 @@ export type LastSpawnTime =
   | { type: "Unset" }
   /** The script class wrote its flag and a time. */
   | { type: "Set"; value: Time };
+
+/**
+ * What `se_stalker` and `se_monster` keep of an object while it is offline, written after their server class's fields
+ * as two strings, each `tostring` of a value or of `nil`: the level vertex it last stood on and the logic section it
+ * was running. Neither class closes them with a save marker. A compiled spawn holds `nil` for both, which is what a
+ * new object starts with.
+ */
+export type OfflineObjectState = {
+  levelVertexId: number | null;
+  activeSection: string | null;
+};
 
 /**
  * Patrols list is represented by list of samples containing patrol chunk.

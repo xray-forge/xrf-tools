@@ -16,6 +16,7 @@ pub enum ClsId {
   AiRat,
   AiRatG,
   AiSpGrp,
+  AiStlS,
   AiTrdS,
   AmmoS,
   Artefact,

@@ -359,10 +359,13 @@ mod tests {
   use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
   use crate::data::alife::inherited::alife_actor::AlifeActor;
   use crate::data::alife::inherited::alife_graph_point::AlifeGraphPoint;
+  use crate::data::alife::inherited::alife_monster::AlifeMonster;
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
+  use crate::data::alife::inherited::alife_object_creature::AlifeObjectCreature;
   use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
   use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
   use crate::data::alife::inherited::alife_object_item_custom_outfit::AlifeObjectItemCustomOutfit;
+  use crate::data::alife::inherited::alife_stalker::AlifeStalker;
   use crate::data::meta::cls_id::ClsId;
   use crate::data::physics::physics_net_state::PhysicsNetState;
 
@@ -694,6 +697,50 @@ mod tests {
     assert_eq!(actor.base.base.update_position, Vector3d::new(-40.0, 5.5, 120.0));
     assert_eq!(actor.base.base.update_torso_yaw, 1.25);
     assert_eq!(actor.base.base.update_torso_pitch, -0.1);
+
+    Ok(())
+  }
+
+  /// A stalker and a monster written under their sections read back whole, each moved in both packets.
+  #[test]
+  fn writes_and_moves_a_stalker_and_a_monster() -> XrfResult {
+    for (section, clsid, inherited) in [
+      (
+        "stalker",
+        ClsId::AiStlS,
+        AlifeObjectInherited::SeStalker(Box::new(AlifeStalker::new_mock(Vector3d::new(1.0, 2.0, 3.0)))),
+      ),
+      (
+        "dog_weak",
+        ClsId::SmDogS,
+        AlifeObjectInherited::SeMonster(Box::new(AlifeMonster::new_mock(Vector3d::new(1.0, 2.0, 3.0)))),
+      ),
+    ] {
+      let mut original: AlifeObject = new_graph_point_object();
+
+      original.section = String::from(section);
+      original.clsid = clsid;
+      original.inherited = inherited;
+      original.move_to(Vector3d::new(-40.0, 5.5, 120.0), Vector3d::new(-0.1, 1.25, 0.0));
+
+      let mut writer: ChunkWriter = ChunkWriter::new();
+
+      original.write::<XRayByteOrder>(&mut writer)?;
+
+      let mut reader: ChunkReader<InMemoryChunkDataSource> =
+        ChunkReader::from_vec(writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?.read_child_by_index(0)?;
+      let read: AlifeObject = AlifeObject::read::<XRayByteOrder, _>(&mut reader)?;
+      let creature: &AlifeObjectCreature = match &read.inherited {
+        AlifeObjectInherited::SeStalker(stalker) => &stalker.base.base.base.base,
+        AlifeObjectInherited::SeMonster(monster) => &monster.base.base.base,
+        other => panic!("Expected a stalker or a monster payload, read {other:?}"),
+      };
+
+      assert_eq!(read, original);
+      assert_eq!(creature.update_position, Vector3d::new(-40.0, 5.5, 120.0));
+      assert_eq!(creature.update_torso_yaw, 1.25);
+      assert_eq!(creature.update_torso_pitch, -0.1);
+    }
 
     Ok(())
   }
