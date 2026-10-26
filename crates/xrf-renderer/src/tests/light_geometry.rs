@@ -1,6 +1,7 @@
 use std::f32::consts::{PI, SQRT_2};
 
 use glam::{Vec3, Vec4};
+use xrf_light_anim::{LightAnimItem, LightAnimKey};
 use xrf_math::Vector3d;
 use xrf_visual::{LightAnimatorDescription, LightAnimatorKey, LightDescription, LightKind};
 
@@ -188,4 +189,78 @@ fn light_animation_steps_time_to_frames_and_loops() {
   assert_eq!(to_animated_color(&animator(), 0.55), Vec3::new(100.0, 50.0, 25.0));
   assert_eq!(to_animated_color(&animator(), 2.55), Vec3::new(100.0, 50.0, 25.0));
   assert_eq!(to_animated_color(&animator(), 1.0), Vec3::new(200.0, 100.0, 50.0));
+}
+
+/// The renderer's colour is the engine's before `color_argb_f` floors it to a byte, so the two never differ by more
+/// than the one step that floor takes off a channel.
+fn assert_matches_the_engine(rendered: Vec3, engine: u32, at: &str) {
+  let engine: Vec3 = Vec3::new(
+    ((engine >> 16) & 0xFF) as f32,
+    ((engine >> 8) & 0xFF) as f32,
+    (engine & 0xFF) as f32,
+  );
+
+  assert!(
+    (rendered - engine).abs().max_element() <= 1.0,
+    "{at}: the renderer draws {rendered}, the engine {engine}"
+  );
+}
+
+#[test]
+fn light_animation_draws_what_the_engines_light_animation_computes() {
+  // `svet_01`'s keys, the one every shipped library holds with a key before frame 0, beside an uneven flicker.
+  let items: [LightAnimItem; 2] = [
+    LightAnimItem {
+      name: String::from("svet_01"),
+      fps: 30.0,
+      frame_count: 30,
+      keys: [
+        (-1, 0x00E9_CE72),
+        (0, 0x00FF_C066),
+        (15, 0x00FC_CA84),
+        (29, 0x00FF_C066),
+      ]
+      .map(|(frame, color)| LightAnimKey { frame, color })
+      .to_vec(),
+    },
+    LightAnimItem {
+      name: String::from("flicker"),
+      fps: 15.0,
+      frame_count: 40,
+      keys: [
+        (0, 0xFF00_0000),
+        (3, 0xFF7F_10FF),
+        (4, 0xFF01_FE02),
+        (17, 0xFF33_6699),
+        (40, 0xFFFF_FFFF),
+      ]
+      .map(|(frame, color)| LightAnimKey { frame, color })
+      .to_vec(),
+    },
+  ];
+
+  for item in &items {
+    let animator: LightAnimatorDescription = LightAnimatorDescription::of(item, false);
+
+    for frame in 0..=item.frame_count as i32 {
+      assert_matches_the_engine(
+        to_interpolated_color(&animator, frame as f32),
+        item
+          .interpolate_rgb(frame)
+          .expect("every frame from zero is keyed at or before"),
+        &format!("{} frame {frame}", item.name),
+      );
+    }
+
+    for step in 0..120 {
+      let seconds: f32 = step as f32 * 0.037;
+      let (_, color) = item.calculate_rgb(seconds).expect("the animation advances");
+
+      assert_matches_the_engine(
+        to_animated_color(&animator, seconds),
+        color,
+        &format!("{} at {seconds} s", item.name),
+      );
+    }
+  }
 }

@@ -8465,6 +8465,7 @@ dependencies = [
  "xrf-environment",
  "xrf-error",
  "xrf-ipc",
+ "xrf-light-anim",
  "xrf-material",
  "xrf-math",
  "xrf-particles",
