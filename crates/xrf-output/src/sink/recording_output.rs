@@ -5,9 +5,6 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 use crate::{Output, OutputChannel, OutputRecord};
 
 /// Retains every workflow message instead of rendering it.
-///
-/// Backs the buffering half of [`crate::OutputSequence`], and stands in for a terminal in a test
-/// that asserts what a workflow said rather than printing it.
 #[derive(Default)]
 pub struct RecordingOutput {
   records: Mutex<Vec<OutputRecord>>,

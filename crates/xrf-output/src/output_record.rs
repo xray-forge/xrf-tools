@@ -3,10 +3,6 @@ use std::fmt::Display;
 use crate::OutputChannel;
 
 /// One message, rendered and kept.
-///
-/// The captured form of what [`crate::Output`] is handed live. A sink that writes straight through
-/// never builds one, because rendering a message it is about to print would allocate for nothing;
-/// only a sink that must outlive the call — replaying later, or serializing — pays for it.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct OutputRecord {
   channel: OutputChannel,

@@ -17,9 +17,6 @@ impl OutputOptions {
   }
 
   /// The same verbosity, writing into `output` instead.
-  ///
-  /// Gating stays with the verbosity rather than the sink, so a message muted by the original is
-  /// muted here too and is never rendered at all.
   pub fn with_output(&self, output: Arc<dyn Output>) -> Self {
     Self::new(output, self.verbosity)
   }
@@ -68,9 +65,6 @@ impl OutputOptions {
   }
 
   /// Sends a message captured earlier.
-  ///
-  /// Replaying a record does not re-decide whether it is visible: it was recorded through the same
-  /// verbosity that renders it, so anything muted was never recorded in the first place.
   pub fn write_record(&self, record: &OutputRecord) {
     self.output.write(record.get_channel(), &record.get_message());
   }

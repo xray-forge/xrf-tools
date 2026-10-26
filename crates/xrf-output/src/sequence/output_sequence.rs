@@ -3,30 +3,6 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use crate::{OutputOptions, OutputRecord, OutputSlot, RecordingOutput};
 
 /// Releases the messages of parallel work in the order the work was listed in.
-///
-/// Work spread across threads finishes in whatever order the threads happen to reach the end, so a
-/// worker that logs directly makes the run's output depend on timing: two runs of one binary over
-/// one tree say the same things in a different order, and neither can be compared with the other.
-///
-/// A sequence gives each unit of work a [`OutputSlot`] holding its position. Messages sent through a
-/// slot are held until every earlier position has been released, then written in position order.
-/// Ordering therefore comes from the input rather than from how the work was scheduled, while a run
-/// whose early positions finish first still prints them immediately instead of waiting for the
-/// slowest worker.
-///
-/// ```
-/// # use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
-/// # let output: OutputOptions = OutputOptions::default();
-/// # let paths: Vec<&str> = vec!["a.ogf", "b.ogf"];
-/// let sequence: OutputSequence = OutputSequence::new(&output, paths.len());
-///
-/// // Whichever order these finish in, the messages leave in path order.
-/// for (index, path) in paths.iter().enumerate() {
-///   let slot: OutputSlot = sequence.new_slot(index);
-///
-///   xrf_output::verbose!(slot.get_output(), "Verify mesh: {path}");
-/// }
-/// ```
 pub struct OutputSequence {
   sink: OutputOptions,
   state: Mutex<SequenceState>,
@@ -52,9 +28,6 @@ impl OutputSequence {
   }
 
   /// Reserves the position `index` in the sequence.
-  ///
-  /// Take it as the first thing a unit of work does, before anything that can return early: a
-  /// position nobody takes holds back every later one until the sequence itself is dropped.
   pub fn new_slot(&self, index: usize) -> OutputSlot<'_> {
     let recorder: Arc<RecordingOutput> = Arc::new(RecordingOutput::default());
 
@@ -79,10 +52,6 @@ impl OutputSequence {
   }
 
   /// Writes each position from `next` that has arrived, stopping at the first that has not.
-  ///
-  /// Writing happens under the lock intentionally. Releasing outside it would let two threads that
-  /// each completed a run interleave their writes, which is the one thing a sequence exists to
-  /// prevent.
   fn release(&self, state: &mut SequenceState) {
     while state.next < state.pending.len() {
       let Some(records) = state.pending[state.next].take() else {
@@ -110,10 +79,6 @@ impl OutputSequence {
 
 impl Drop for OutputSequence {
   /// Writes whatever is still held, in position order.
-  ///
-  /// Only a position whose slot was never taken can still be held here, and it would otherwise keep
-  /// every later position from ever being written. Releasing on the way out makes a missed slot cost
-  /// its messages their place in the order rather than their existence.
   fn drop(&mut self) {
     let mut state: MutexGuard<'_, SequenceState> = self.lock();
 
