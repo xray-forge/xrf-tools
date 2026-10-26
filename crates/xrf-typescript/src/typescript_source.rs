@@ -20,63 +20,65 @@ pub struct TypeScriptSource {
   pub source_map: Lrc<SourceMap>,
 }
 
-/// Parse a TypeScript source file and collect its comments and source map.
-///
-/// Caller-supplied input decides both failures, so neither aborts: a source that cannot be read is
-/// an `XrfError::Io` and any syntax diagnostic an `XrfError::Parsing` naming the position it holds.
-pub fn parse_typescript_file(path: &Path) -> XrfResult<TypeScriptSource> {
-  let source_map: Lrc<SourceMap> = Default::default();
-  let source_file: Rc<SourceFile> = source_map.load_file(path).map_err(|error| {
-    XrfError::new_io_error(
-      format!("Failed to read TypeScript file {}: {error}.", format_path(path)),
-      error.kind(),
-    )
-  })?;
-  let comments: SingleThreadedComments = Default::default();
+impl TypeScriptSource {
+  /// Parse a TypeScript source file and collect its comments and source map.
+  ///
+  /// Caller-supplied input decides both failures, so neither aborts: a source that cannot be read is
+  /// an `XrfError::Io` and any syntax diagnostic an `XrfError::Parsing` naming the position it holds.
+  pub fn parse_file(path: &Path) -> XrfResult<Self> {
+    let source_map: Lrc<SourceMap> = Default::default();
+    let source_file: Rc<SourceFile> = source_map.load_file(path).map_err(|error| {
+      XrfError::new_io_error(
+        format!("Failed to read TypeScript file {}: {error}.", format_path(path)),
+        error.kind(),
+      )
+    })?;
+    let comments: SingleThreadedComments = Default::default();
 
-  let lexer: Lexer = Lexer::new(
-    Syntax::Typescript(Default::default()),
-    Default::default(),
-    StringInput::from(source_file.as_ref()),
-    Some(&comments),
-  );
-  let mut parser: Parser<Lexer> = Parser::new_from(lexer);
+    let lexer: Lexer = Lexer::new(
+      Syntax::Typescript(Default::default()),
+      Default::default(),
+      StringInput::from(source_file.as_ref()),
+      Some(&comments),
+    );
+    let mut parser: Parser<Lexer> = Parser::new_from(lexer);
 
-  // A diagnostic exists only once the parser has run, so the fatal one is read before the recovered ones.
-  let program: Program = parser
-    .parse_program()
-    .map_err(|error| new_syntax_error(&source_map, path, &[error]))?;
-  let recovered: Vec<SyntaxError> = parser.take_errors();
+    // A diagnostic exists only once the parser has run, so the fatal one is read before the recovered ones.
+    let program: Program = parser
+      .parse_program()
+      .map_err(|error| Self::new_syntax_error(&source_map, path, &[error]))?;
+    let recovered: Vec<SyntaxError> = parser.take_errors();
 
-  if !recovered.is_empty() {
-    return Err(new_syntax_error(&source_map, path, &recovered));
+    if !recovered.is_empty() {
+      return Err(Self::new_syntax_error(&source_map, path, &recovered));
+    }
+
+    Ok(Self {
+      comments,
+      program,
+      source_map,
+    })
   }
 
-  Ok(TypeScriptSource {
-    comments,
-    program,
-    source_map,
-  })
-}
+  /// Describe SWC syntax diagnostics at the source positions they were reported for.
+  fn new_syntax_error(source_map: &SourceMap, path: &Path, errors: &[SyntaxError]) -> XrfError {
+    let path: String = format_path(path).to_string();
+    let described: Vec<String> = errors
+      .iter()
+      .map(|error| {
+        let message: Cow<str> = error.kind().msg();
+        // SWC terminates some of its messages and not others; the joined line terminates each once.
+        let message: &str = message.trim_end_matches('.');
 
-/// Describe SWC syntax diagnostics at the source positions they were reported for.
-fn new_syntax_error(source_map: &SourceMap, path: &Path, errors: &[SyntaxError]) -> XrfError {
-  let path: String = format_path(path).to_string();
-  let described: Vec<String> = errors
-    .iter()
-    .map(|error| {
-      let message: Cow<str> = error.kind().msg();
-      // SWC terminates some of its messages and not others; the joined line terminates each once.
-      let message: &str = message.trim_end_matches('.');
+        match source_map.try_lookup_char_pos(error.span().lo) {
+          Ok(position) => format!("{path}:{}:{}: {message}", position.line, position.col.0 + 1),
+          Err(_) => format!("{path}: {message}"),
+        }
+      })
+      .collect();
 
-      match source_map.try_lookup_char_pos(error.span().lo) {
-        Ok(position) => format!("{path}:{}:{}: {message}", position.line, position.col.0 + 1),
-        Err(_) => format!("{path}: {message}"),
-      }
-    })
-    .collect();
-
-  XrfError::new_parsing_error(format!("Failed to parse TypeScript {}.", described.join("; ")))
+    XrfError::new_parsing_error(format!("Failed to parse TypeScript {}.", described.join("; ")))
+  }
 }
 
 #[cfg(test)]
@@ -89,7 +91,7 @@ mod tests {
   use xrf_error::XrfError;
   use xrf_test_utils::GeneratedResources;
 
-  use super::parse_typescript_file;
+  use super::TypeScriptSource;
 
   fn write_source(name: &str, source: &str) -> PathBuf {
     let path: PathBuf = GeneratedResources::path(&format!("typescript-parser/{name}"));
@@ -101,7 +103,7 @@ mod tests {
   }
 
   fn parse_failure(path: &Path) -> XrfError {
-    match parse_typescript_file(path) {
+    match TypeScriptSource::parse_file(path) {
       Ok(_) => panic!("Expected parsing to fail"),
       Err(error) => error,
     }
@@ -112,7 +114,7 @@ mod tests {
     let path: PathBuf = write_source("valid.ts", "export const value: number = 1;");
 
     assert!(matches!(
-      parse_typescript_file(&path).unwrap().program,
+      TypeScriptSource::parse_file(&path).unwrap().program,
       Program::Module(_)
     ));
   }

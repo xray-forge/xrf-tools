@@ -3,12 +3,11 @@ use std::path::Path;
 
 use xrf_error::XrfResult;
 use xrf_typescript::swc_ecma_ast::{Expr, MemberExpr, MemberProp, Program, TsFnOrConstructorType, TsType};
-use xrf_typescript::{TypeScriptSymbol, TypeScriptSymbolResolver};
+use xrf_typescript::{TypeScriptSymbol, TypeScriptSymbolResolver, TypeScriptTypeRenderer};
 
 use crate::manifest::{ExternDocumentation, ExternExport, ExternValue};
 use crate::parse::declaration::extern_callable_parser::ExternCallableParser;
 use crate::parse::declaration::extern_diagnostic::ExternDiagnostic;
-use crate::parse::declaration::extern_type_renderer::ExternTypeRenderer;
 
 /// Parses one value passed to an extern declaration.
 pub(crate) struct ExternValueParser<'a> {
@@ -77,7 +76,7 @@ impl<'a> ExternValueParser<'a> {
 
         Ok(self.new_value(
           documentation,
-          ExternTypeRenderer::render(assertion.type_ann.as_ref(), self.diagnostic.get_source_map()),
+          TypeScriptTypeRenderer::render_canonical(&assertion.type_ann, self.diagnostic.get_source_map()),
         ))
       }
       _ => Err(self.diagnostic.invalid_value(value, export_name)),
@@ -105,10 +104,7 @@ impl<'a> ExternValueParser<'a> {
         documentation,
         parameter_docs,
       ))),
-      value => Ok(self.new_value(
-        documentation,
-        value.value_type().expect("Non-callable symbols have value types"),
-      )),
+      value => Ok(self.new_value(documentation, value.type_name())),
     }
   }
 

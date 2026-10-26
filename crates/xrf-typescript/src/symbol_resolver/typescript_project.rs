@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -27,7 +28,7 @@ impl TypeScriptProject {
       });
     };
 
-    let config: TypeScriptConfig = read_typescript_config(&config_path)?;
+    let config: TypeScriptConfig = TypeScriptConfig::read(&config_path)?;
     let root: PathBuf = config_path
       .parent()
       .expect("TypeScript configuration path has a parent")
@@ -42,7 +43,7 @@ impl TypeScriptProject {
   /// Resolve a module specifier from an importing TypeScript source file.
   pub fn resolve_module_path(&self, source_file: &Path, specifier: &str) -> Option<PathBuf> {
     if specifier.starts_with('.') {
-      return find_typescript_module(&source_file.parent()?.join(specifier));
+      return Self::find_module(&source_file.parent()?.join(specifier));
     }
 
     let (capture, targets) = self.best_path_alias(specifier)?;
@@ -51,7 +52,7 @@ impl TypeScriptProject {
     // Configured target order is fallback order: the first target holding the module wins.
     targets
       .iter()
-      .find_map(|target| find_typescript_module(&base_url.join(target.replace('*', capture))))
+      .find_map(|target| Self::find_module(&base_url.join(target.replace('*', capture))))
   }
 
   /// Select the most specific configured path alias matching `specifier`.
@@ -63,10 +64,10 @@ impl TypeScriptProject {
     let mut best: Option<((usize, usize), &str, &[String])> = None;
 
     for (pattern, targets) in &self.compiler_options.paths {
-      let Some(capture) = path_alias_capture(pattern, specifier) else {
+      let Some(capture) = Self::capture_path_alias(pattern, specifier) else {
         continue;
       };
-      let specificity: (usize, usize) = path_alias_specificity(pattern);
+      let specificity: (usize, usize) = Self::rank_path_alias(pattern);
 
       if best.is_none_or(|(current, ..)| specificity > current) {
         best = Some((specificity, capture, targets.as_slice()));
@@ -85,6 +86,44 @@ impl TypeScriptProject {
       .map(|value| self.root.join(value))
       .unwrap_or_else(|| self.root.clone())
   }
+
+  /// Match a module specifier against a TypeScript path-alias pattern.
+  fn capture_path_alias<'a>(pattern: &str, specifier: &'a str) -> Option<&'a str> {
+    let Some((prefix, suffix)) = pattern.split_once('*') else {
+      return (pattern == specifier).then_some("");
+    };
+
+    specifier
+      .strip_prefix(prefix)
+      .and_then(|value| value.strip_suffix(suffix))
+  }
+
+  /// Rank one path-alias pattern by the literal text it fixes, most specific last.
+  ///
+  /// TypeScript gives an import to the longest matching prefix rather than to the first configured
+  /// pattern, so `@/shared/*` owns what `@/*` also matches. Suffix length separates two patterns
+  /// sharing a prefix; a pattern without a wildcard fixes all of its text.
+  fn rank_path_alias(pattern: &str) -> (usize, usize) {
+    match pattern.split_once('*') {
+      Some((prefix, suffix)) => (prefix.len(), suffix.len()),
+      None => (pattern.len(), 0),
+    }
+  }
+
+  /// Find the TypeScript source a module path names: the path as written, then with `.ts` appended, then its
+  /// `index.ts`.
+  ///
+  /// The extension is appended rather than substituted, since a module name may hold dots of its own
+  /// (`patrols.mock` is `patrols.mock.ts`).
+  fn find_module(path: &Path) -> Option<PathBuf> {
+    let mut file: OsString = path.as_os_str().to_owned();
+
+    file.push(".ts");
+
+    [path.to_path_buf(), PathBuf::from(file), path.join("index.ts")]
+      .into_iter()
+      .find(|candidate| candidate.is_file())
+  }
 }
 
 #[derive(Default, Deserialize)]
@@ -93,69 +132,39 @@ struct TypeScriptConfig {
   compiler_options: TypeScriptCompilerOptions,
 }
 
+impl TypeScriptConfig {
+  /// Read the compiler options needed for native module resolution.
+  ///
+  /// The two failures are separated the way `TypeScriptSource::parse_file` separates its own: a configuration
+  /// that cannot be read is an `XrfError::Io`, and one whose content is malformed an `XrfError::Invalid`.
+  fn read(path: &Path) -> XrfResult<Self> {
+    let source: String = fs::read_to_string(path).map_err(|error| {
+      XrfError::new_io_error(
+        format!(
+          "Failed to read TypeScript configuration '{}': {error}",
+          format_path(path),
+        ),
+        error.kind(),
+      )
+    })?;
+
+    // A tsconfig is JSONC: TypeScript accepts comments and trailing commas, so strict JSON would
+    // reject configurations the compiler itself reads.
+    jsonc_parser::parse_to_serde_value(&source, &Default::default()).map_err(|error| {
+      XrfError::new_invalid_error(format!(
+        "Failed to parse TypeScript configuration '{}': {error}",
+        format_path(path),
+      ))
+    })
+  }
+}
+
 #[derive(Default, Deserialize)]
 struct TypeScriptCompilerOptions {
   #[serde(default, rename = "baseUrl")]
   base_url: Option<String>,
   #[serde(default)]
   paths: BTreeMap<String, Vec<String>>,
-}
-
-/// Read the compiler options needed for native module resolution.
-///
-/// The two failures are separated the way `parse_typescript_file` separates its own: a configuration
-/// that cannot be read is an `XrfError::Io`, and one whose content is malformed an `XrfError::Invalid`.
-fn read_typescript_config(path: &Path) -> XrfResult<TypeScriptConfig> {
-  let source: String = fs::read_to_string(path).map_err(|error| {
-    XrfError::new_io_error(
-      format!(
-        "Failed to read TypeScript configuration '{}': {error}",
-        format_path(path),
-      ),
-      error.kind(),
-    )
-  })?;
-
-  // A tsconfig is JSONC: TypeScript accepts comments and trailing commas, so strict JSON would
-  // reject configurations the compiler itself reads.
-  jsonc_parser::parse_to_serde_value(&source, &Default::default()).map_err(|error| {
-    XrfError::new_invalid_error(format!(
-      "Failed to parse TypeScript configuration '{}': {error}",
-      format_path(path),
-    ))
-  })
-}
-
-/// Match a module specifier against a TypeScript path-alias pattern.
-fn path_alias_capture<'a>(pattern: &str, specifier: &'a str) -> Option<&'a str> {
-  let Some((prefix, suffix)) = pattern.split_once('*') else {
-    return (pattern == specifier).then_some("");
-  };
-
-  specifier
-    .strip_prefix(prefix)
-    .and_then(|value| value.strip_suffix(suffix))
-}
-
-/// Rank one path-alias pattern by the literal text it fixes, most specific last.
-///
-/// TypeScript gives an import to the longest matching prefix rather than to the first configured
-/// pattern, so `@/shared/*` owns what `@/*` also matches. Suffix length separates two patterns
-/// sharing a prefix; a pattern without a wildcard fixes all of its text.
-fn path_alias_specificity(pattern: &str) -> (usize, usize) {
-  match pattern.split_once('*') {
-    Some((prefix, suffix)) => (prefix.len(), suffix.len()),
-    None => (pattern.len(), 0),
-  }
-}
-
-/// Find a TypeScript source file for an unresolved module path.
-fn find_typescript_module(path: &Path) -> Option<PathBuf> {
-  let direct: PathBuf = path.to_path_buf();
-  let file: PathBuf = path.with_extension("ts");
-  let index: PathBuf = path.join("index.ts");
-
-  [direct, file, index].into_iter().find(|candidate| candidate.is_file())
 }
 
 #[cfg(test)]
@@ -267,5 +276,26 @@ mod tests {
       Some(root.join("src/declarations/helpers.ts"))
     );
     assert_eq!(resolve(&root, "./missing"), None);
+  }
+
+  #[test]
+  fn appends_the_extension_to_a_module_name_holding_dots() {
+    let root: PathBuf = create_test_root("dotted");
+
+    write_source(
+      &root,
+      "tsconfig.json",
+      r#"{ "compilerOptions": { "paths": { "@/*": ["src/*"] } } }"#,
+    );
+    write_source(&root, "src/declarations/externs.ts", "export {};");
+    write_source(&root, "src/mocks/patrols.mock.ts", "export {};");
+    write_source(&root, "src/mocks/patrols.ts", "export {};");
+    write_source(&root, "src/mocks/index.ts", "export {};");
+
+    assert_eq!(
+      resolve(&root, "@/mocks/patrols.mock"),
+      Some(root.join("src/mocks/patrols.mock.ts"))
+    );
+    assert_eq!(resolve(&root, "@/mocks"), Some(root.join("src/mocks/index.ts")));
   }
 }

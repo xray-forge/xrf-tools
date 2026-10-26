@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 use xrf_typescript::swc_common::SourceMap;
 use xrf_typescript::swc_common::sync::Lrc;
 use xrf_typescript::swc_ecma_ast::{Decl, ModuleDecl, ModuleItem, Pat, Program};
-use xrf_typescript::{parse_typescript_file, render_module_item};
+use xrf_typescript::{TypeScriptItemRenderer, TypeScriptSource};
 use xrf_utils::format_path;
 
 use crate::typescript::normalization::normalize_module_item;
@@ -89,7 +89,7 @@ impl Surface {
 
   /// Reads one module, canonicalizing each exported declaration.
   fn read_module(&mut self, path: &Path, module: &str) {
-    let source = parse_typescript_file(path)
+    let source: TypeScriptSource = TypeScriptSource::parse_file(path)
       .unwrap_or_else(|error| panic!("Failed to parse bindings module {}: {error}", format_path(path)));
 
     let Program::Module(parsed) = &source.program else {
@@ -141,7 +141,7 @@ impl Surface {
 
     normalize_module_item(&mut normalized);
 
-    render_module_item(&normalized, source_map)
+    TypeScriptItemRenderer::render(&normalized, source_map)
       .unwrap_or_else(|error| panic!("Failed to render a bindings declaration: {error}"))
   }
 }

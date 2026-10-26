@@ -1,4 +1,4 @@
-use xrf_typescript::ast::ts_type_to_string;
+use xrf_typescript::TypeScriptTypeRenderer;
 use xrf_typescript::swc_common::DUMMY_SP;
 use xrf_typescript::swc_ecma_ast::{
   ArrayLit, ArrowFunctionBody, Decl, Expr, Lit, ModuleDecl, ModuleItem, Pat, Prop, PropName, PropOrSpread, TsArrayType,
@@ -193,7 +193,7 @@ fn generic_array_element(ts_type: &TsType) -> Option<TsType> {
 /// Total order over the members of a union or intersection, stable across both spellings of a shape.
 fn type_sort_key(ts_type: &TsType) -> String {
   match ts_type {
-    // `ts_type_to_string` renders a type literal as `unsupported`, so its members carry the key instead.
+    // `TypeScriptTypeRenderer::render` writes a type literal as `unsupported`, so its members carry the key instead.
     TsType::TsTypeLit(literal) => format!(
       "lit:{}",
       literal
@@ -218,7 +218,7 @@ fn type_sort_key(ts_type: &TsType) -> String {
           .join("&")
       )
     }
-    other => ts_type_to_string(other),
+    other => TypeScriptTypeRenderer::render(other),
   }
 }
 

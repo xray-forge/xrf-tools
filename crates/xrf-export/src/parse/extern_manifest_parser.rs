@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
-use xrf_typescript::{TypeScriptSymbolResolver, parse_typescript_file};
+use xrf_typescript::{TypeScriptSource, TypeScriptSymbolResolver};
 use xrf_utils::{format_path, to_portable_path_string};
 
 use crate::manifest::{ExternExport, ExternManifest};
@@ -69,7 +69,7 @@ impl ExternManifestParser {
     let mut statements: Vec<ExternStatement> = Vec::new();
 
     for path in files {
-      let source = parse_typescript_file(path)?;
+      let source: TypeScriptSource = TypeScriptSource::parse_file(path)?;
       let source_path: String = self.normalize_declaration_path(path, declarations_root)?;
       let symbol_resolver: TypeScriptSymbolResolver =
         TypeScriptSymbolResolver::discover(path.parent().expect("TypeScript source path has a parent directory"))?;

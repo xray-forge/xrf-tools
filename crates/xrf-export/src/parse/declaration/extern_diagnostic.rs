@@ -68,14 +68,6 @@ impl<'a> ExternDiagnostic<'a> {
     self.invalid_at(value.span().lo, &reason)
   }
 
-  /// A snippet of the source a span covers, or `fallback` where the map cannot give one.
-  pub fn get_snippet(&self, span: Span, fallback: &str) -> String {
-    self
-      .source_map
-      .span_to_snippet(span)
-      .unwrap_or_else(|_| fallback.into())
-  }
-
   pub fn get_source_map(&self) -> &'a SourceMap {
     self.source_map
   }

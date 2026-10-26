@@ -3,10 +3,11 @@ use std::path::Path;
 
 use xrf_error::XrfResult;
 use xrf_typescript::TypeScriptSymbolResolver;
-use xrf_typescript::ast::{expression_callee_name, expression_string_argument};
 use xrf_typescript::swc_common::comments::Comments;
 use xrf_typescript::swc_common::{SourceMap, Spanned};
-use xrf_typescript::swc_ecma_ast::{Expr, ModuleItem, ObjectLit, Program, Prop, PropName, Stmt};
+use xrf_typescript::swc_ecma_ast::{
+  Callee, Expr, ExprOrSpread, Lit, ModuleItem, ObjectLit, Program, Prop, PropName, Stmt,
+};
 
 use crate::manifest::ExternDocumentation;
 use crate::parse::declaration::extern_diagnostic::ExternDiagnostic;
@@ -76,7 +77,7 @@ impl<'a> ExternDeclarationParser<'a> {
       return Ok(None);
     };
 
-    if expression_callee_name(&call.callee).as_deref() != Some(Self::CALLEE) {
+    if !Self::is_extern_callee(&call.callee) {
       return Ok(None);
     }
 
@@ -87,7 +88,7 @@ impl<'a> ExternDeclarationParser<'a> {
       ));
     }
 
-    let key: String = expression_string_argument(&call.args[0]).ok_or_else(|| {
+    let key: String = Self::get_string_argument(&call.args[0]).ok_or_else(|| {
       self
         .diagnostic
         .invalid_at(call.args[0].expr.span().lo, "extern names must be string literals")
@@ -166,6 +167,24 @@ impl<'a> ExternDeclarationParser<'a> {
     }
 
     Ok(externs)
+  }
+
+  /// Whether a call names `extern` itself, unqualified.
+  fn is_extern_callee(callee: &Callee) -> bool {
+    let Callee::Expr(callee) = callee else {
+      return false;
+    };
+
+    matches!(callee.as_ref(), Expr::Ident(identifier) if identifier.sym == *Self::CALLEE)
+  }
+
+  /// An argument's value where it is a string literal.
+  fn get_string_argument(argument: &ExprOrSpread) -> Option<String> {
+    let Expr::Lit(Lit::Str(literal)) = argument.expr.as_ref() else {
+      return None;
+    };
+
+    Some(literal.value.to_string_lossy().to_string())
   }
 
   /// An object property's name, which the extern schema takes only as an identifier or a string literal.
