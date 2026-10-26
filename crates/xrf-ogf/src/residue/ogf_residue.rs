@@ -5,7 +5,7 @@ use xrf_chunk::{
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::decode_w1251_bytes_to_string;
 
-use crate::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
+use crate::chunks::skeleton::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::residue::ogf_chunk_access::OgfChunkAccess;
 use crate::residue::ogf_residue_cause::OgfResidueCause;
 

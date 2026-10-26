@@ -2,8 +2,8 @@ use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-use crate::data::ogf_box::OgfBox;
-use crate::data::ogf_lod_facet::OgfLodFacet;
+use crate::data::lod::ogf_lod_facet::OgfLodFacet;
+use crate::data::shape::ogf_box::OgfBox;
 
 /// The impostor of a `MT_LOD` visual, `OGF_LODDEF2`: eight facets looking at the trees it stands for from eight
 /// sides, in the level's own space.
@@ -74,10 +74,10 @@ mod tests {
   use xrf_math::Vector3d;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
-  use crate::chunks::ogf_lod_definition_chunk::OgfLodDefinitionChunk;
-  use crate::data::ogf_box::OgfBox;
-  use crate::data::ogf_lod_facet::OgfLodFacet;
-  use crate::data::ogf_lod_vertex::OgfLodVertex;
+  use crate::chunks::level::ogf_lod_definition_chunk::OgfLodDefinitionChunk;
+  use crate::data::lod::ogf_lod_facet::OgfLodFacet;
+  use crate::data::lod::ogf_lod_vertex::OgfLodVertex;
+  use crate::data::shape::ogf_box::OgfBox;
 
   /// A unit square in the plane `z = depth`, wound so its triangles face `+z`.
   fn facet(depth: f32) -> OgfLodFacet {

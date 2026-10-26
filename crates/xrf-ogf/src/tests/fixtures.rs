@@ -4,10 +4,10 @@ use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
-use crate::chunks::ogf_header_chunk::OgfHeaderChunk;
-use crate::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
-use crate::data::ogf_box::OgfBox;
-use crate::data::ogf_sphere::OgfSphere;
+use crate::chunks::skeleton::ogf_kinematics_chunk::OgfKinematicsChunk;
+use crate::chunks::visual::ogf_header_chunk::OgfHeaderChunk;
+use crate::data::shape::ogf_box::OgfBox;
+use crate::data::shape::ogf_sphere::OgfSphere;
 
 /// The four references shipped Anomaly zombied faces declare.
 pub(crate) const DECLARED_REFS: [&str; 4] = [

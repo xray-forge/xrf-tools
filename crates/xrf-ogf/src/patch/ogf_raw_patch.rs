@@ -6,7 +6,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
+use crate::chunks::skeleton::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::residue::OgfNormalization;
 
 /// Machinery both raw ogf patchers need, held once so they cannot drift apart.

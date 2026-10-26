@@ -6,10 +6,10 @@ use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path};
 
-use crate::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
+use crate::chunks::skeleton::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::ogf_file::OgfFile;
-use crate::ogf_raw_patch::OgfRawPatch;
-use crate::ogf_refs_patch_report::OgfRefsPatchReport;
+use crate::patch::ogf_raw_patch::OgfRawPatch;
+use crate::patch::ogf_refs_patch_report::OgfRefsPatchReport;
 use crate::residue::{OgfNormalization, OgfResidue};
 
 /// Editing operations over the motion refs of an ogf file.
@@ -144,9 +144,9 @@ mod tests {
   use xrf_error::XrfResult;
   use xrf_test_utils::GeneratedResources;
 
-  use crate::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
+  use crate::chunks::skeleton::ogf_kinematics_chunk::OgfKinematicsChunk;
   use crate::ogf_file::OgfFile;
-  use crate::ogf_motion_refs_processor::OgfMotionRefsProcessor;
+  use crate::patch::ogf_motion_refs_processor::OgfMotionRefsProcessor;
 
   /// Payload standing in for a chunk the writer must copy verbatim, such as geometry.
   const OPAQUE_PAYLOAD: [u8; 12] = [9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 255, 128];

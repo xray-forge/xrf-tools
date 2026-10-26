@@ -1,7 +1,7 @@
 use byteorder::ByteOrder;
 use xrf_math::Vector3d;
 
-use crate::data::ogf_fvf::OgfFvf;
+use crate::data::geometry::ogf_fvf::OgfFvf;
 
 /// One vertex of a static visual, laid out as its flexible vertex format declares.
 #[derive(Clone, Debug, PartialEq)]

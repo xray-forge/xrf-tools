@@ -1,20 +1,7 @@
-pub(crate) mod ogf_bones_chunk;
-pub(crate) mod ogf_children_chunk;
-pub(crate) mod ogf_children_link_chunk;
-pub(crate) mod ogf_collision_indices_chunk;
-pub(crate) mod ogf_collision_vertices_chunk;
-pub(crate) mod ogf_description_chunk;
-pub(crate) mod ogf_description_time_width;
-pub(crate) mod ogf_fastpath_chunk;
-pub(crate) mod ogf_geometry_container_chunk;
-pub(crate) mod ogf_header_chunk;
-pub(crate) mod ogf_ik_data_chunk;
-pub(crate) mod ogf_kinematics_chunk;
-pub(crate) mod ogf_lod_definition_chunk;
-pub(crate) mod ogf_lods_chunk;
-pub(crate) mod ogf_swi_container_chunk;
-pub(crate) mod ogf_swi_data_chunk;
-pub(crate) mod ogf_texture_chunk;
-pub(crate) mod ogf_tree_color;
-pub(crate) mod ogf_tree_definition_chunk;
-pub(crate) mod ogf_user_data_chunk;
+//! The chunks of a visual, grouped by the engine layer that reads them: every visual's own (`visual`), a standalone
+//! mesh's embedded parts (`mesh`), a skeleton's (`skeleton`), and those only a level visual carries (`level`).
+
+pub(crate) mod level;
+pub(crate) mod mesh;
+pub(crate) mod skeleton;
+pub(crate) mod visual;

@@ -13,6 +13,13 @@ pub struct OgfLodsChunk {
 
 impl OgfLodsChunk {
   pub const CHUNK_ID: u32 = 23;
+
+  /// The LOD visual the engine loads: the chunk's first line, which `CKinematics::Load` reads with `r_string`, stopping
+  /// at the first carriage return or line feed (`SkeletonCustom.cpp`). The stored text may end with the `\r\n` an
+  /// exporter wrote, which `lods` keeps for the write and this leaves out.
+  pub fn get_visual_name(&self) -> &str {
+    self.lods.split(['\r', '\n']).next().unwrap_or_default()
+  }
 }
 
 impl ChunkReadWrite for OgfLodsChunk {
@@ -80,6 +87,17 @@ mod tests {
   #[test]
   fn round_trips_an_empty_payload() -> XrfResult {
     assert_eq!(write_then_read("empty.chunk", "")?.lods, "");
+
+    Ok(())
+  }
+
+  #[test]
+  fn names_the_visual_the_engine_loads_without_the_line_end() -> XrfResult {
+    // `wpn_gp100.ogf`'s payload: the path and the `\r\n` its exporter left.
+    let read: OgfLodsChunk = write_then_read("crlf.chunk", "dynamics\\weapons\\wpn_gp100\\wpn_gp100_lod\r\n")?;
+
+    assert_eq!(read.lods, "dynamics\\weapons\\wpn_gp100\\wpn_gp100_lod\r\n");
+    assert_eq!(read.get_visual_name(), "dynamics\\weapons\\wpn_gp100\\wpn_gp100_lod");
 
     Ok(())
   }

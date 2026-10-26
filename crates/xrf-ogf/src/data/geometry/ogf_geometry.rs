@@ -2,12 +2,12 @@ use byteorder::{ByteOrder, ReadBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::data::ogf_fvf::OgfFvf;
+use crate::data::geometry::ogf_fvf::OgfFvf;
+use crate::data::geometry::ogf_static_vertex::OgfStaticVertex;
+use crate::data::geometry::ogf_vertex::OgfVertex;
+use crate::data::geometry::ogf_vertex_data::OgfVertexData;
+use crate::data::geometry::ogf_vertices::OgfVertices;
 use crate::data::ogf_model_type::OgfModelType;
-use crate::data::ogf_static_vertex::OgfStaticVertex;
-use crate::data::ogf_vertex::OgfVertex;
-use crate::data::ogf_vertex_data::OgfVertexData;
-use crate::data::ogf_vertices::OgfVertices;
 
 /// Geometry embedded directly in an OGF visual.
 #[derive(Debug)]
@@ -168,8 +168,8 @@ mod tests {
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use super::OgfGeometry;
+  use crate::data::geometry::ogf_static_vertex::OgfStaticVertex;
   use crate::data::ogf_model_type::OgfModelType;
-  use crate::data::ogf_static_vertex::OgfStaticVertex;
 
   #[test]
   fn test_read() -> XrfResult {

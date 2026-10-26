@@ -112,6 +112,6 @@ cargo test --locked -p xrf-ogf
 
 The README is the crate documentation, so its Rust examples run as doctests. The `fixtures` feature forwards
 `xrf-skeleton`'s fixtures for dependants' tests. See the [visual](src/ogf_file.rs),
-[motion reference patch](src/ogf_motion_refs_processor.rs),
-[texture reference patch](src/ogf_texture_refs_processor.rs), [residue](src/residue/ogf_residue.rs), and
+[motion reference patch](src/patch/ogf_motion_refs_processor.rs),
+[texture reference patch](src/patch/ogf_texture_refs_processor.rs), [residue](src/residue/ogf_residue.rs), and
 [public exports](src/lib.rs).

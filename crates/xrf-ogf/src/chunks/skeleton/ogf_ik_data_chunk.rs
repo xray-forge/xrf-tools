@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-use crate::data::ogf_bone_ik_data::OgfBoneIkData;
+use crate::data::skeleton::ogf_bone_ik_data::OgfBoneIkData;
 
 /// Per bone physics and bind pose data, `OGF_S_IKDATA`.
 #[derive(Debug)]
@@ -48,13 +48,13 @@ mod tests {
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use super::OgfIkDataChunk;
-  use crate::data::ogf_bone_ik_data::OgfBoneIkData;
-  use crate::data::ogf_bone_shape::OgfBoneShape;
-  use crate::data::ogf_cylinder::OgfCylinder;
-  use crate::data::ogf_joint_ik_data::OgfJointIkData;
-  use crate::data::ogf_joint_limit::OgfJointLimit;
-  use crate::data::ogf_obb::OgfObb;
-  use crate::data::ogf_sphere::OgfSphere;
+  use crate::data::shape::ogf_cylinder::OgfCylinder;
+  use crate::data::shape::ogf_obb::OgfObb;
+  use crate::data::shape::ogf_sphere::OgfSphere;
+  use crate::data::skeleton::ogf_bone_ik_data::OgfBoneIkData;
+  use crate::data::skeleton::ogf_bone_shape::OgfBoneShape;
+  use crate::data::skeleton::ogf_joint_ik_data::OgfJointIkData;
+  use crate::data::skeleton::ogf_joint_limit::OgfJointLimit;
 
   fn vector(base: f32) -> Vector3d {
     Vector3d::new(base, base + 1.0, base + 2.0)

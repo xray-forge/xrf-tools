@@ -7,11 +7,11 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, InMem
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path};
 
-use crate::chunks::ogf_children_chunk::OgfChildrenChunk;
-use crate::chunks::ogf_texture_chunk::OgfTextureChunk;
+use crate::chunks::mesh::ogf_children_chunk::OgfChildrenChunk;
+use crate::chunks::visual::ogf_texture_chunk::OgfTextureChunk;
 use crate::ogf_file::OgfFile;
-use crate::ogf_raw_patch::OgfRawPatch;
-use crate::ogf_refs_patch_report::OgfRefsPatchReport;
+use crate::patch::ogf_raw_patch::OgfRawPatch;
+use crate::patch::ogf_refs_patch_report::OgfRefsPatchReport;
 use crate::residue::{OgfNormalization, OgfResidue};
 
 /// Editing operations over the texture refs of an ogf file.

@@ -63,7 +63,7 @@ mod tests {
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
-  use crate::chunks::ogf_geometry_container_chunk::OgfGeometryContainerChunk;
+  use crate::chunks::level::ogf_geometry_container_chunk::OgfGeometryContainerChunk;
 
   #[test]
   fn test_read_write() -> XrfResult {

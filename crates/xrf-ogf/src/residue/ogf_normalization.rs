@@ -3,7 +3,7 @@ use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::ogf_file::OgfFile;
-use crate::ogf_raw_patch::OgfRawPatch;
+use crate::patch::ogf_raw_patch::OgfRawPatch;
 use crate::residue::ogf_residue::OgfResidue;
 
 /// A visual rewritten into bytes the engine loads identically, beside what the rewrite took out.

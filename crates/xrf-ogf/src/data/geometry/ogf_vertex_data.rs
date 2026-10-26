@@ -1,5 +1,5 @@
-use crate::data::ogf_static_vertex::OgfStaticVertex;
-use crate::data::ogf_vertex::OgfVertex;
+use crate::data::geometry::ogf_static_vertex::OgfStaticVertex;
+use crate::data::geometry::ogf_vertex::OgfVertex;
 
 /// Decoded vertices of a visual, in the family its kind reads them as: `CSkeletonX` for skinned children, `Fvisual`
 /// for every other visual (`xray-16/src/Layers/xrRender/SkeletonX.cpp`, `FVisual.cpp`).
