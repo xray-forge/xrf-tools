@@ -4,14 +4,13 @@ use tauri::utils::config::WindowConfig;
 use tauri::webview::{WebviewWindow, WebviewWindowBuilder};
 use tauri::window::Color;
 use tauri::{App, AppHandle, Manager, Runtime};
-use xrf_app_core::window::WindowHandles;
+use xrf_app_core::window::{WindowHandles, WindowReveals};
 use xrf_build_info::BuildInfo;
 
 use crate::preferences::Preferences;
 use crate::window::geometry::{WindowGeometry, WindowGeometryTracker};
 use crate::window::webview_extensions::WebviewExtensions;
 use crate::window::window_build_kind::WindowBuildKind;
-use crate::window::window_reveal::WindowReveal;
 
 /// The window `tauri.conf.json` describes, which every page of the application runs in.
 pub struct MainWindow;
@@ -57,8 +56,8 @@ impl MainWindow {
       WindowGeometryTracker::track(&window, preferences, opened);
     }
 
-    // The configuration declares it hidden: the document reveals itself once it has resolved its colour scheme.
-    WindowReveal::on_timeout(window);
+    // The configuration declares it hidden: its page reveals it once it has something themed to show.
+    application.state::<WindowReveals>().hold(window);
 
     Ok(())
   }

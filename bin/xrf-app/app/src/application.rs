@@ -11,7 +11,7 @@ use xrf_app_core::jobs::JobRegistry;
 use xrf_app_core::logging::{ProcessStart, setup_logger};
 use xrf_app_core::session::SessionScopes;
 use xrf_app_core::transport::TransportServer;
-use xrf_app_core::window::{WindowCloseApprovals, WindowHandles};
+use xrf_app_core::window::{WindowCloseApprovals, WindowHandles, WindowReveals};
 use xrf_app_system::StartupLog;
 use xrf_build_info::{BuildInfo, build_info};
 use xrf_job::ExecutionRequest;
@@ -82,8 +82,8 @@ pub fn run() -> ExitCode {
 
 /// The domain plugins over the state every one's setup builds on, managed before any of them: which build is running,
 /// the pool, the asset state every setup hands the sessions a commit moves along, the scopes every session's handles
-/// are released by, where the application writes, the windows viewports and close approvals address, and the jobs. A
-/// window that goes releases every scope its pages held.
+/// are released by, where the application writes, the windows viewports, close approvals and reveals address, and the
+/// jobs. A window that goes releases every scope its pages held.
 fn assemble<R: Runtime>(
   builder: Builder<R>,
   build: BuildInfo,
@@ -100,6 +100,7 @@ fn assemble<R: Runtime>(
     .manage(directories)
     .manage(WindowHandles::default())
     .manage(WindowCloseApprovals::default())
+    .manage(WindowReveals::default())
     .manage(Arc::new(JobRegistry::new()).start_reporting())
     .on_window_event(|window: &Window<R>, event: &WindowEvent| {
       if matches!(event, WindowEvent::Destroyed) {
@@ -127,7 +128,7 @@ mod tests {
   use xrf_app_core::execution::ExecutionState;
   use xrf_app_core::jobs::JobRegistry;
   use xrf_app_core::session::SessionScopes;
-  use xrf_app_core::window::{WindowCloseApprovals, WindowHandles};
+  use xrf_app_core::window::{WindowCloseApprovals, WindowHandles, WindowReveals};
   use xrf_app_dialogs::DialogProjects;
   use xrf_app_exports::ExportsProjects;
   use xrf_app_levels::{SelectedLevels, ShownLevels};
@@ -161,6 +162,7 @@ mod tests {
     assert!(application.try_state::<AppDirectories>().is_some());
     assert!(application.try_state::<WindowHandles>().is_some());
     assert!(application.try_state::<WindowCloseApprovals>().is_some());
+    assert!(application.try_state::<WindowReveals>().is_some());
     assert!(application.try_state::<Arc<JobRegistry>>().is_some());
     assert!(application.try_state::<Renderer>().is_some());
     assert!(application.try_state::<WorldState>().is_some());
