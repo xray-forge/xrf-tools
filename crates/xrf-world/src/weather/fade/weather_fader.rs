@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use xrf_renderer::RenderLighting;
 
-use crate::weather::weather_fade::WeatherFade;
+use crate::weather::fade::weather_fade::WeatherFade;
 
 /// Real time a fade waits for the skies it fades into before it starts without them.
 const LONGEST_WAIT: Duration = Duration::from_secs(2);

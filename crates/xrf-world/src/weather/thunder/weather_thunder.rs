@@ -9,7 +9,7 @@ use xrf_renderer::{
   WeatherRandom, to_interpolated_color,
 };
 
-use crate::weather::thunder_flash::ThunderFlash;
+use crate::weather::thunder::thunder_flash::ThunderFlash;
 
 /// `EPS_L`: real seconds a strike followed at once waits after the last one ends.
 const SECOND_DELAY: f32 = EPS_L;

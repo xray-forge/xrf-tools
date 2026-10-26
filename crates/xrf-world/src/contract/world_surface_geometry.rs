@@ -44,8 +44,8 @@ impl WorldSurfaceGeometry {
   pub fn merge(&mut self, other: &Self) {
     self.drawables = self.drawables.saturating_add(other.drawables);
     self.triangles = self.triangles.saturating_add(other.triangles);
-    self.span = merge_spans(self.span, other.span, WorldSurfaceSpan::merge);
-    self.narrowest = merge_spans(self.narrowest, other.narrowest, |held, drawn| {
+    self.span = Self::combine_spans(self.span, other.span, WorldSurfaceSpan::merge);
+    self.narrowest = Self::combine_spans(self.narrowest, other.narrowest, |held, drawn| {
       if drawn.get_area() < held.get_area() {
         drawn
       } else {
@@ -53,15 +53,16 @@ impl WorldSurfaceGeometry {
       }
     });
   }
-}
 
-fn merge_spans(
-  held: Option<WorldSurfaceSpan>,
-  drawn: Option<WorldSurfaceSpan>,
-  combine: impl Fn(WorldSurfaceSpan, WorldSurfaceSpan) -> WorldSurfaceSpan,
-) -> Option<WorldSurfaceSpan> {
-  match (held, drawn) {
-    (Some(held), Some(drawn)) => Some(combine(held, drawn)),
-    (held, drawn) => held.or(drawn),
+  /// Two spans either measure may lack, combined where both have one, else whichever does.
+  fn combine_spans(
+    held: Option<WorldSurfaceSpan>,
+    drawn: Option<WorldSurfaceSpan>,
+    combine: impl Fn(WorldSurfaceSpan, WorldSurfaceSpan) -> WorldSurfaceSpan,
+  ) -> Option<WorldSurfaceSpan> {
+    match (held, drawn) {
+      (Some(held), Some(drawn)) => Some(combine(held, drawn)),
+      (held, drawn) => held.or(drawn),
+    }
   }
 }

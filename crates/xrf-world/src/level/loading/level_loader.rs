@@ -6,10 +6,8 @@ use xrf_renderer::{LoaderReceiver, RenderLevelSource, RenderWorkers};
 use xrf_visual::SectorPackage;
 
 use crate::level::loading::loader_flight::LoaderFlight;
+use crate::level::loading::sector_load::SectorLoad;
 use crate::level::streaming::surface_tally::SurfaceTally;
-
-/// One sector's pack as a loader thread finished it, with what its surfaces draw, or why it could not be packed.
-pub type SectorLoad = (u32, Result<(SectorPackage, SurfaceTally), String>);
 
 /// Packs a level's sectors side by side on the loader threads, no more than the pool's width of them running or queued
 /// at once (`LoaderFlight`), handing each to the render thread as it is done; the next start as the render thread takes
@@ -72,7 +70,10 @@ impl LevelLoader {
 
       self.workers.spawn(move || {
         if !is_cancelled.load(Ordering::Acquire) {
-          let _ = sender.send((sector, Self::pack(source.as_ref(), sector)));
+          let _ = sender.send(SectorLoad {
+            sector,
+            pack: Self::pack(source.as_ref(), sector),
+          });
         }
 
         finished.fetch_add(1, Ordering::AcqRel);

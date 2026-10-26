@@ -16,6 +16,9 @@ use crate::contract::world_sector_skip::WorldSectorSkip;
 use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
 use crate::level::animation::level_animation::LevelAnimation;
 use crate::level::loading::level_loader::LevelLoader;
+use crate::level::loading::sector_load::SectorLoad;
+use crate::level::streaming::hidden_spawn_groups::HiddenSpawnGroups;
+use crate::level::streaming::spawn_load::SpawnLoad;
 use crate::level::streaming::spawn_loader::SpawnLoader;
 use crate::level::streaming::streamed_model::StreamedModel;
 use crate::level::streaming::surface_tally::SurfaceTally;
@@ -45,8 +48,8 @@ pub struct LevelStreaming {
   posted: HashMap<ProxyHandle<StaticSectorProxy>, (u32, u64)>,
   /// Each spawned model posted, with every object standing as it, whether its group shows it or not.
   models: Vec<StreamedModel>,
-  /// The spawn groups left out of the scene, a bit a group from the lowest.
-  hidden_groups: u32,
+  /// The spawn groups left out of the scene.
+  hidden_groups: HiddenSpawnGroups,
   /// The sectors that could not be read or taken in, and the drawables the packer left out of those that were.
   failed_sectors: Vec<RenderLoadFailure>,
   /// The spawned models the scene could not take in, which no object stands as.
@@ -71,7 +74,7 @@ impl LevelStreaming {
       object_handles: ProxyAllocator::new(),
       posted: HashMap::new(),
       models: Vec::new(),
-      hidden_groups: 0,
+      hidden_groups: HiddenSpawnGroups::default(),
       failed_sectors: Vec::new(),
       failed_models: Vec::new(),
       skipped: Vec::new(),
@@ -143,12 +146,7 @@ impl LevelStreaming {
 
     if reload.is_spawn {
       for model in std::mem::take(&mut self.models) {
-        for object in model.places.iter().filter_map(|(_, object)| *object) {
-          animation.remove(object);
-          self.object_handles.free(object);
-        }
-
-        self.model_handles.free(model.handle);
+        self.release_model(animation, &model);
         updates.push(RenderSceneUpdate::RemoveModel(model.handle));
       }
 
@@ -186,7 +184,12 @@ impl LevelStreaming {
 
   /// Posts this frame's changes: the spawn groups `hidden` names left out and those it no longer names stood again, the
   /// lights and the grass once read, and a few of the sectors and spawned models the workers finished.
-  pub fn stream(&mut self, updates: &mut Vec<RenderSceneUpdate>, animation: &mut LevelAnimation, hidden: u32) {
+  pub fn stream(
+    &mut self,
+    updates: &mut Vec<RenderSceneUpdate>,
+    animation: &mut LevelAnimation,
+    hidden: HiddenSpawnGroups,
+  ) {
     self.filter_spawn(updates, animation, hidden);
 
     if let Some(Ok(grass)) = take_answer(&mut self.grass, "grass") {
@@ -203,8 +206,8 @@ impl LevelStreaming {
       updates.push(RenderSceneUpdate::AddLights(lights));
     }
 
-    for (sector, package) in self.sectors.take(SECTORS_PER_FRAME) {
-      match package {
+    for SectorLoad { sector, pack } in self.sectors.take(SECTORS_PER_FRAME) {
+      match pack {
         Ok((package, tally)) => {
           let handle: ProxyHandle<StaticSectorProxy> = self.sector_handles.allocate();
 
@@ -225,7 +228,13 @@ impl LevelStreaming {
       }
     }
 
-    for (model, name, places, skeleton) in self.spawn.take(MODELS_PER_FRAME) {
+    for SpawnLoad {
+      model,
+      name,
+      places,
+      skeleton,
+    } in self.spawn.take(MODELS_PER_FRAME)
+    {
       let handle: ProxyHandle<StaticModelProxy> = self.model_handles.allocate();
       let skeleton: Option<RenderModelSkeleton> = skeleton.filter(|_| model.skin.is_some());
 
@@ -239,7 +248,7 @@ impl LevelStreaming {
       };
 
       for index in 0..streamed.places.len() {
-        if Self::is_group_shown(self.hidden_groups, streamed.places[index].0.group) {
+        if self.hidden_groups.is_shown(streamed.places[index].0.group) {
           self.stand(updates, animation, &mut streamed, index);
         }
       }
@@ -298,12 +307,7 @@ impl LevelStreaming {
       };
       let model: StreamedModel = self.models.remove(index);
 
-      for object in model.places.iter().filter_map(|(_, object)| *object) {
-        animation.remove(object);
-        self.object_handles.free(object);
-      }
-
-      self.model_handles.free(model.handle);
+      self.release_model(animation, &model);
       self.failed_models.push(RenderLoadFailure {
         name: model.name,
         reason: failure.reason,
@@ -313,36 +317,54 @@ impl LevelStreaming {
 
   /// Leaves the spawn groups `hidden` names out of the scene: the objects of a group newly hidden leave it, and those
   /// of one newly shown stand in it again.
-  fn filter_spawn(&mut self, updates: &mut Vec<RenderSceneUpdate>, animation: &mut LevelAnimation, hidden: u32) {
-    let changed: u32 = hidden ^ self.hidden_groups;
+  fn filter_spawn(
+    &mut self,
+    updates: &mut Vec<RenderSceneUpdate>,
+    animation: &mut LevelAnimation,
+    hidden: HiddenSpawnGroups,
+  ) {
+    let before: HiddenSpawnGroups = std::mem::replace(&mut self.hidden_groups, hidden);
 
-    if changed == 0 {
+    if before == hidden {
       return;
     }
-
-    self.hidden_groups = hidden;
 
     let mut models: Vec<StreamedModel> = std::mem::take(&mut self.models);
 
     for model in &mut models {
       for index in 0..model.places.len() {
         let group: u32 = model.places[index].0.group;
+        let is_shown: bool = hidden.is_shown(group);
 
-        if group == 0 || changed & (1 << (group - 1)) == 0 {
+        if is_shown == before.is_shown(group) {
           continue;
         }
 
-        if Self::is_group_shown(hidden, group) {
+        if is_shown {
           self.stand(updates, animation, model, index);
         } else if let Some(object) = model.places[index].1.take() {
-          animation.remove(object);
-          self.object_handles.free(object);
+          self.release_object(animation, object);
           updates.push(RenderSceneUpdate::RemoveObject(object));
         }
       }
     }
 
     self.models = models;
+  }
+
+  /// Lets go of a model's handle and of every object standing as it, which leave the scene with it.
+  fn release_model(&mut self, animation: &mut LevelAnimation, model: &StreamedModel) {
+    for object in model.places.iter().filter_map(|(_, object)| *object) {
+      self.release_object(animation, object);
+    }
+
+    self.model_handles.free(model.handle);
+  }
+
+  /// Lets go of an object's handle and stops posing it.
+  fn release_object(&mut self, animation: &mut LevelAnimation, object: ProxyHandle<StaticObjectProxy>) {
+    animation.remove(object);
+    self.object_handles.free(object);
   }
 
   /// Stands one of a model's objects in the scene, posed by its skeleton where it has one.
@@ -371,10 +393,5 @@ impl LevelStreaming {
     if let Some(skeleton) = &model.skeleton {
       animation.add(object, skeleton, place.transform);
     }
-  }
-
-  /// Whether a spawn group stands in the scene: group zero always does.
-  fn is_group_shown(hidden: u32, group: u32) -> bool {
-    group == 0 || hidden & (1 << (group - 1)) == 0
   }
 }

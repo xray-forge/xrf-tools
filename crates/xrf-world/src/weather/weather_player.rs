@@ -11,12 +11,11 @@ use crate::contract::world_weather_control::WorldWeatherControl;
 use crate::contract::world_weather_effect_report::WorldWeatherEffectReport;
 use crate::contract::world_weather_report::WorldWeatherReport;
 use crate::contract::world_weather_transition::WorldWeatherTransition;
+use crate::weather::fade::weather_fader::WeatherFader;
 use crate::weather::played_weather::PlayedWeather;
 use crate::weather::playing_effect::PlayingEffect;
-use crate::weather::weather_fader::WeatherFader;
+use crate::weather::thunder::weather_thunder::WeatherThunder;
 use crate::weather::weather_lighting::WeatherLighting;
-use crate::weather::weather_thunder::WeatherThunder;
-use crate::weather::weather_thundered_lighting::to_thundered_lighting;
 
 /// Seconds from midnight to noon.
 const NOON: f32 = 12.0 * 60.0 * 60.0;
@@ -245,11 +244,7 @@ impl WeatherPlayer {
     if let (Some(flash), Some(settings)) = (flash, thunder.settings) {
       self.is_flashing = true;
 
-      return Some(to_thundered_lighting(
-        lighting.as_ref().unwrap_or(shown),
-        &flash,
-        &settings,
-      ));
+      return Some(flash.light(lighting.as_ref().unwrap_or(shown), &settings));
     }
 
     if self.is_flashing {
