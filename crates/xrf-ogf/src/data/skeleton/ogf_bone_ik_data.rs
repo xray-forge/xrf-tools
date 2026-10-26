@@ -3,8 +3,8 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
-use crate::data::ogf_bone_shape::OgfBoneShape;
-use crate::data::ogf_joint_ik_data::OgfJointIkData;
+use crate::data::skeleton::ogf_bone_shape::OgfBoneShape;
+use crate::data::skeleton::ogf_joint_ik_data::OgfJointIkData;
 
 /// Physics and bind pose data of one bone, one record of `OGF_S_IKDATA`.
 #[derive(Clone, Debug, PartialEq)]

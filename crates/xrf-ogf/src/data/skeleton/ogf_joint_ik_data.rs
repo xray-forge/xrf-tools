@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-use crate::data::ogf_joint_limit::OgfJointLimit;
+use crate::data::skeleton::ogf_joint_limit::OgfJointLimit;
 
 /// Inverse kinematics settings of one bone, `SJointIKData` in the engine.
 #[derive(Clone, Debug, PartialEq)]

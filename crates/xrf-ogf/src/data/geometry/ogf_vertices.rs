@@ -1,4 +1,4 @@
-use crate::data::ogf_vertex_data::OgfVertexData;
+use crate::data::geometry::ogf_vertex_data::OgfVertexData;
 
 /// Contents of an OGF vertex chunk: the stored format tag, the vertex count it declares, and the
 /// decoded vertices when the layout of that format is known.

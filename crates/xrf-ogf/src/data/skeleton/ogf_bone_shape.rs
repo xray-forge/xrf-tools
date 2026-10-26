@@ -2,9 +2,9 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-use crate::data::ogf_cylinder::OgfCylinder;
-use crate::data::ogf_obb::OgfObb;
-use crate::data::ogf_sphere::OgfSphere;
+use crate::data::shape::ogf_cylinder::OgfCylinder;
+use crate::data::shape::ogf_obb::OgfObb;
+use crate::data::shape::ogf_sphere::OgfSphere;
 
 /// Collision shape of one bone, `SBoneShape` in the engine.
 #[derive(Clone, Debug, PartialEq)]

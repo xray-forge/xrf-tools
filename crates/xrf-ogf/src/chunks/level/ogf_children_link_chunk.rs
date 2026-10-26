@@ -47,7 +47,7 @@ mod tests {
   use xrf_error::XrfResult;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
-  use crate::chunks::ogf_children_link_chunk::OgfChildrenLinkChunk;
+  use crate::chunks::level::ogf_children_link_chunk::OgfChildrenLinkChunk;
 
   #[test]
   fn test_read_write() -> XrfResult {

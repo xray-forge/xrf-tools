@@ -3,7 +3,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_utils::{assert_length, to_format_size};
 
-use crate::data::ogf_bone::OgfBone;
+use crate::data::skeleton::ogf_bone::OgfBone;
 
 #[derive(Debug)]
 pub struct OgfBonesChunk {
@@ -51,7 +51,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
 
-  use crate::chunks::ogf_bones_chunk::OgfBonesChunk;
+  use crate::chunks::skeleton::ogf_bones_chunk::OgfBonesChunk;
 
   #[test]
   fn rejects_bone_count_larger_than_the_chunk_before_reserving_it() -> XrfResult {

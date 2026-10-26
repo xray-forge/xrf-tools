@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::chunks::ogf_description_time_width::OgfDescriptionTimeWidth;
+use crate::chunks::visual::ogf_description_time_width::OgfDescriptionTimeWidth;
 
 /// Who built a visual and with what, `ogf_desc` (`xray-16/src/xrCore/FMesh.cpp`): three names, each followed by a time,
 /// after the source file.

@@ -3,7 +3,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
-use crate::data::ogf_lod_vertex::OgfLodVertex;
+use crate::data::lod::ogf_lod_vertex::OgfLodVertex;
 
 /// One of an impostor's eight facets, `FLOD::_face` as the file stores it: four corners, its normal derived on load.
 #[derive(Clone, Debug, PartialEq)]

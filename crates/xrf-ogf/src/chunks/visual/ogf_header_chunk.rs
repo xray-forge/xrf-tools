@@ -2,8 +2,8 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::data::ogf_box::OgfBox;
-use crate::data::ogf_sphere::OgfSphere;
+use crate::data::shape::ogf_box::OgfBox;
+use crate::data::shape::ogf_sphere::OgfSphere;
 
 #[derive(Debug)]
 pub struct OgfHeaderChunk {

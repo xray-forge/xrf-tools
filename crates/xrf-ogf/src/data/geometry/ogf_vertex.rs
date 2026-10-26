@@ -1,7 +1,7 @@
 use byteorder::ByteOrder;
 use xrf_math::Vector3d;
 
-use crate::data::ogf_vertex_link::OgfVertexLink;
+use crate::data::geometry::ogf_vertex_link::OgfVertexLink;
 
 /// One vertex of an OGF visual, with its skinning links resolved.
 #[derive(Clone, Debug, PartialEq)]

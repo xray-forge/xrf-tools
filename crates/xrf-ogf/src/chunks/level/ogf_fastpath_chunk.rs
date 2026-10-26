@@ -2,8 +2,8 @@ use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::XrfResult;
 
-use crate::chunks::ogf_geometry_container_chunk::OgfGeometryContainerChunk;
-use crate::chunks::ogf_swi_data_chunk::OgfSwiDataChunk;
+use crate::chunks::level::ogf_geometry_container_chunk::OgfGeometryContainerChunk;
+use crate::chunks::mesh::ogf_swi_data_chunk::OgfSwiDataChunk;
 
 /// The fast geometry a level visual draws for depth and shadows from `level.geomX`, `OGF_FASTPATH`.
 #[derive(Debug)]

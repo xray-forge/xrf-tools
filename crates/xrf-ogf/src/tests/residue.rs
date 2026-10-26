@@ -2,7 +2,7 @@ use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
-use crate::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
+use crate::chunks::skeleton::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::ogf_file::OgfFile;
 use crate::residue::{OgfNormalization, OgfResidueCause};
 use crate::survey::OgfChunksProcessor;

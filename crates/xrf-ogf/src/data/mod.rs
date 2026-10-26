@@ -1,22 +1,10 @@
-pub(crate) mod ogf_bone;
-pub(crate) mod ogf_bone_ik_data;
-pub(crate) mod ogf_bone_shape;
-pub(crate) mod ogf_box;
+//! Records the chunks are made of.
+
+pub(crate) mod geometry;
+pub(crate) mod lod;
 pub(crate) mod ogf_collision_face;
-pub(crate) mod ogf_cylinder;
-pub(crate) mod ogf_fvf;
-pub(crate) mod ogf_geometry;
-pub(crate) mod ogf_joint_ik_data;
-pub(crate) mod ogf_joint_limit;
-pub(crate) mod ogf_lod_facet;
-pub(crate) mod ogf_lod_vertex;
 pub(crate) mod ogf_model_type;
-pub(crate) mod ogf_obb;
 pub(crate) mod ogf_slide_window;
-pub(crate) mod ogf_sphere;
-pub(crate) mod ogf_static_vertex;
-pub(crate) mod ogf_vertex;
-pub(crate) mod ogf_vertex_data;
-pub(crate) mod ogf_vertex_link;
-pub(crate) mod ogf_vertices;
 pub(crate) mod rgb_color;
+pub(crate) mod shape;
+pub(crate) mod skeleton;

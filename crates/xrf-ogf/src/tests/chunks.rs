@@ -1,9 +1,9 @@
 use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::chunks::ogf_description_chunk::OgfDescriptionChunk;
-use crate::chunks::ogf_description_time_width::OgfDescriptionTimeWidth;
-use crate::chunks::ogf_texture_chunk::OgfTextureChunk;
+use crate::chunks::visual::ogf_description_chunk::OgfDescriptionChunk;
+use crate::chunks::visual::ogf_description_time_width::OgfDescriptionTimeWidth;
+use crate::chunks::visual::ogf_texture_chunk::OgfTextureChunk;
 
 /// A description laid out with times `width` bytes wide: the source file, then the convertor, creator and editor, each
 /// followed by its time.

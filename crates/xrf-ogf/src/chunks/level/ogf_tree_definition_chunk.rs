@@ -3,7 +3,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::Matrix4x4;
 
-use crate::chunks::ogf_tree_color::OgfTreeColor;
+use crate::chunks::level::ogf_tree_color::OgfTreeColor;
 
 /// Where a tree stands and how it is lit, `OGF_TREEDEF2`.
 #[derive(Clone, Debug, PartialEq)]
@@ -50,8 +50,8 @@ mod tests {
   use xrf_math::{Matrix4x4, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
-  use crate::chunks::ogf_tree_color::OgfTreeColor;
-  use crate::chunks::ogf_tree_definition_chunk::OgfTreeDefinitionChunk;
+  use crate::chunks::level::ogf_tree_color::OgfTreeColor;
+  use crate::chunks::level::ogf_tree_definition_chunk::OgfTreeDefinitionChunk;
 
   fn color(hemi: f32, sun: f32) -> OgfTreeColor {
     OgfTreeColor {

@@ -8,9 +8,9 @@ use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
 use crate::ogf_file::OgfFile;
-use crate::ogf_motion_refs_processor::OgfMotionRefsProcessor;
-use crate::ogf_refs_patch_report::OgfRefsPatchReport;
-use crate::ogf_texture_refs_processor::OgfTextureRefsProcessor;
+use crate::patch::ogf_motion_refs_processor::OgfMotionRefsProcessor;
+use crate::patch::ogf_refs_patch_report::OgfRefsPatchReport;
+use crate::patch::ogf_texture_refs_processor::OgfTextureRefsProcessor;
 use crate::residue::OgfNormalization;
 use crate::tests::fixtures;
 
