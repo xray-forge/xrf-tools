@@ -6,14 +6,12 @@ use xrf_archive::{
   DESCRIPTOR_ROW_SIZE_FIELD_SIZE,
 };
 use xrf_error::XrfResult;
-use xrf_lzhuf::compress;
+use xrf_lzhuf::LzhufEncoder;
 use xrf_utils::to_format_size;
 
 use crate::pack::volume::DescriptorName;
 
 /// Archive descriptor rows encoded as chunk 1.
-///
-/// [`Self::get_size`] bounds the payload size; writing adds one chunk header.
 pub(crate) struct ArchiveDescriptorTable {
   rows: Vec<u8>,
   /// Length of the directory rows every volume of the set repeats, which [`Self::reset`] rewinds to.
@@ -86,14 +84,12 @@ impl ArchiveDescriptorTable {
   }
 
   /// Returns chunk 1 with LZHUF compression only when it shrinks the table.
-  ///
-  /// The payload never exceeds [`Self::get_size`]. Empty tables stay plain because LZHUF rejects empty input.
   fn to_chunk(&self) -> XrfResult<(u32, Cow<'_, [u8]>)> {
     if self.rows.is_empty() {
       return Ok((CHUNK_ID_FILE_DESCRIPTORS, Cow::Borrowed(&self.rows)));
     }
 
-    let coded: Vec<u8> = compress(&self.rows)?;
+    let coded: Vec<u8> = LzhufEncoder::compress(&self.rows)?;
 
     if coded.len() < self.rows.len() {
       Ok((CHUNK_ID_FILE_DESCRIPTORS | CHUNK_ID_COMPRESSED_MASK, Cow::Owned(coded)))

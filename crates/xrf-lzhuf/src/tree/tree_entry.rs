@@ -1,12 +1,9 @@
-use crate::tree::node_type::NodeType;
+use crate::tree::NodeType;
 
 /// Marks a packed entry as a leaf; every other bit carries the payload.
 const LEAF_MARK: u16 = 1u16.rotate_right(1);
 
 /// A node payload packed into one `u16`, keeping the node array small enough to stay cache-friendly.
-///
-/// Branch indices address the tree's own node array and so always fit well below [`LEAF_MARK`]; leaf
-/// values are bounded by the leaf count. Both invariants are the tree's to uphold.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(transparent)]
 pub(crate) struct TreeEntry(u16);

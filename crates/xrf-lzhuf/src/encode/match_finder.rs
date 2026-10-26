@@ -1,4 +1,4 @@
-use crate::encode::source_match::SourceMatch;
+use crate::encode::SourceMatch;
 use crate::lzhuf_constants::{MATCH_LENGTH_MAX, MATCH_LENGTH_THRESHOLD, RING_BUFFER_SIZE};
 
 /// Bytes that must agree before a match is worth coding, which is also the hash width.
@@ -9,21 +9,12 @@ const HASH_BITS: u32 = 15;
 const HASH_SIZE: usize = 1 << HASH_BITS;
 
 /// Candidates examined per position before settling for the best match found so far.
-///
-/// Every candidate shares this position's first [`MATCH_LENGTH_MIN`] bytes, so the chain is already the
-/// exact set of possible matches. The bound only trades a rare longer match for predictable time on
-/// highly repetitive input, where chains grow long and the extra bytes gained are small.
 const MAX_CHAIN_DEPTH: usize = 128;
 
 /// Mask that wraps a position into the sliding window.
 const WINDOW_MASK: usize = RING_BUFFER_SIZE - 1;
 
 /// Finds the longest back-reference for a position, over hash chains of equal three-byte prefixes.
-///
-/// Matches are sought in the source itself rather than in a reconstructed window, which is possible
-/// because the whole input is in memory. Unlike `LzHuf.cpp`, this never matches against the window's
-/// pre-fill, so the first bytes of a stream may cost a few bits more; the output stays valid either way,
-/// since the decoder's window holds exactly the bytes already produced.
 pub(crate) struct MatchFinder<'a> {
   source: &'a [u8],
   /// Latest position holding each hash, stored as position + 1 so zero means empty.
@@ -44,8 +35,6 @@ impl<'a> MatchFinder<'a> {
   }
 
   /// Record `position` so later positions can match against it.
-  ///
-  /// Positions inside a coded match must be recorded too, or their prefixes become unmatchable.
   pub(crate) fn insert(&mut self, position: usize) {
     let Some(hash) = self.hash_at(position) else {
       return;

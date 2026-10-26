@@ -1,15 +1,9 @@
 use xrf_error::{XrfError, XrfResult};
 
 /// Widest single write the codec performs.
-///
-/// Huffman codes are the long case. With frequencies capped by the rebuild limit, the deepest possible
-/// code is bounded by where the Fibonacci sequence passes that cap, which is under twenty bits - wider
-/// than the sixteen the engine's own encoder can stage, and narrower than this.
 const WRITE_BITS_MAX: u32 = 32;
 
 /// Writes big-endian bit runs into a growing byte buffer.
-///
-/// Mirrors [`crate::bit_reader::BitReader`]: bits fill each byte from its most significant bit down.
 pub(crate) struct BitWriter {
   target: Vec<u8>,
   /// Bits awaiting a full byte, right-aligned, with `count` of them valid.
@@ -74,7 +68,7 @@ impl BitWriter {
 #[cfg(test)]
 mod tests {
   use super::{BitWriter, WRITE_BITS_MAX};
-  use crate::bit_reader::BitReader;
+  use crate::bits::BitReader;
 
   #[test]
   fn writes_bits_most_significant_first() {
