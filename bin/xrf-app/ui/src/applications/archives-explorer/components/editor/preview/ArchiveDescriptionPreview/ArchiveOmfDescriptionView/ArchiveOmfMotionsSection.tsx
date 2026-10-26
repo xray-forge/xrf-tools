@@ -1,4 +1,5 @@
 import { Typography } from "@mui/material";
+import { formatCount } from "@xrf/format";
 import { ArchiveOmfMotion } from "@xrf/ipc/types/xrf-app-archives";
 import { filterByName } from "@xrf/search";
 import { ReactElement, useMemo, useState } from "react";
@@ -34,7 +35,11 @@ export function ArchiveOmfMotionsSection({
       data-testid={dataTestId}
       id={id}
       className={className}
-      title={filter.trim() ? `Motions (${matched.length} of ${motions.length})` : `Motions (${motions.length})`}
+      title={
+        filter.trim()
+          ? `Motions (${formatCount(matched.length)} of ${formatCount(motions.length)})`
+          : `Motions (${formatCount(motions.length)})`
+      }
       caption={"In the order the bank declares them, which is the order the engine pairs them by"}
     >
       <EditorFilterInput

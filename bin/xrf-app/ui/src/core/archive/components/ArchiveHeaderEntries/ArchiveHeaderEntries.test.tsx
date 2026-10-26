@@ -9,6 +9,17 @@ import { ArchiveHeaderEntries } from "./ArchiveHeaderEntries";
 const HEADER: string = "[header]\r\nauto_load = true\r\nentry_point = gamedata\r\nauthor = Original\r\n";
 
 describe("ArchiveHeaderEntries", () => {
+  it("keeps an edited value in its row rather than moving it to the end", () => {
+    const onChange = jest.fn();
+    const { getByRole } = renderWithProviders(
+      <ArchiveHeaderEntries header={"[header]\r\nauthor = A\r\nlevel_name = zaton\r\n"} onChange={onChange} />
+    );
+
+    fireEvent.change(getByRole("textbox", { name: "Value of author" }), { target: { value: "B" } });
+
+    expect(onChange).toHaveBeenLastCalledWith("[header]\r\nauthor = B\r\nlevel_name = zaton\r\n");
+  });
+
   it("edits and removes custom values while preserving the dedicated header settings", async () => {
     const onChange = jest.fn();
     const { getByRole, queryByRole } = renderWithProviders(
@@ -56,6 +67,11 @@ describe("ArchiveHeaderEntries", () => {
     expect(button).toHaveAccessibleDescription("Enter a header key");
 
     fireEvent.change(getByRole("textbox", { name: "New header key" }), { target: { value: " author " } });
+
+    // A blank value removes an entry rather than writing one, so a key alone has nothing to add.
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription("Enter a header value");
+
     fireEvent.change(getByRole("textbox", { name: "New header value" }), { target: { value: " XRF " } });
     await userEvent.click(button);
 

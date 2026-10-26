@@ -1,3 +1,4 @@
+import { formatCount } from "@xrf/format";
 import { XrayPathCollision } from "@xrf/ipc/types/xrf-vfs";
 import { ReactElement } from "react";
 
@@ -31,7 +32,7 @@ export function ArchiveUnreachableSection({
             "fault in the archive rather than layering."
           : "Every source here reaches each of its own entries, so nothing is hidden by an authoring fault."
       }
-      fact={`${collisions.length} cop${collisions.length === 1 ? "y" : "ies"}`}
+      fact={`${formatCount(collisions.length)} cop${collisions.length === 1 ? "y" : "ies"}`}
     >
       {collisions.length ? (
         <div className={"max-h-40 overflow-y-auto"}>

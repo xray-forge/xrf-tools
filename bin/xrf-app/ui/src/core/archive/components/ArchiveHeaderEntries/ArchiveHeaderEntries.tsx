@@ -34,9 +34,14 @@ export function ArchiveHeaderEntries({
   const trimmedKey: string = newKey.trim();
   const isDuplicateKey: boolean = Boolean(trimmedKey && entries.some(([key]) => isSameHeaderKey(key, trimmedKey)));
   const keyError: Nullable<string> = isDuplicateKey ? "That key is already in the header" : null;
+  // Why the draft cannot be added yet, which both disables the action and says so. A blank value is how a header entry
+  // is removed, so adding one would write nothing and still clear the draft.
+  const addBlocker: Nullable<string> = isDisabled
+    ? "Wait for the current operation to finish before editing"
+    : (keyError ?? (!trimmedKey ? "Enter a header key" : null) ?? (!newValue.trim() ? "Enter a header value" : null));
 
   const onAddEntry = useCallback((): void => {
-    if (isDisabled || !trimmedKey || isDuplicateKey) {
+    if (addBlocker) {
       return;
     }
 
@@ -44,7 +49,7 @@ export function ArchiveHeaderEntries({
 
     setNewKey("");
     setNewValue("");
-  }, [header, isDisabled, isDuplicateKey, newValue, onChange, trimmedKey]);
+  }, [addBlocker, header, newValue, onChange, trimmedKey]);
 
   return (
     <FormRow
@@ -110,13 +115,9 @@ export function ArchiveHeaderEntries({
 
           <EditorIconAction
             label={"Add header value"}
-            description={
-              isDisabled
-                ? "Wait for the current operation to finish before editing"
-                : (keyError ?? (!trimmedKey ? "Enter a header key" : "Add this header value"))
-            }
+            description={addBlocker ?? "Add this header value"}
             icon={<AddIcon />}
-            isDisabled={isDisabled || !trimmedKey || isDuplicateKey}
+            isDisabled={Boolean(addBlocker)}
             onClick={onAddEntry}
           />
         </Stack>

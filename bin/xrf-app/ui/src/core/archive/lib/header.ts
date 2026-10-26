@@ -56,8 +56,10 @@ export function readHeaderValue(header: Nullable<string>, key: string): Nullable
 }
 
 /**
- * Replaces a header key, or removes it for a blank value. Rebuilds the section with CRLF line
- * endings.
+ * Replaces a header key where it stands, appends it when absent, or removes it for a blank value. Rebuilds the section
+ * with CRLF line endings.
+ *
+ * Replaced in place so that editing one value keeps the order the header was written in, which an editor lists it in.
  *
  * @param header - Current header text.
  * @param key - Key to replace, matched with case ignored.
@@ -65,13 +67,29 @@ export function readHeaderValue(header: Nullable<string>, key: string): Nullable
  * @returns Updated header, or `null` if no lines remain.
  */
 export function writeHeaderValue(header: Nullable<string>, key: string, value: string): Nullable<string> {
-  const lines: Array<string> = (header ?? "")
-    .split(/\r?\n/)
-    .filter((line) => line.trim() && !line.trim().startsWith("["))
-    .filter((line) => !isSameHeaderKey(line.split("=")[0] ?? "", key));
+  const written: Nullable<string> = value.trim() ? `${key} = ${value.trim()}` : null;
+  const lines: Array<string> = [];
+  let isReplaced: boolean = false;
 
-  if (value.trim()) {
-    lines.push(`${key} = ${value.trim()}`);
+  for (const line of (header ?? "").split(/\r?\n/)) {
+    if (!line.trim() || line.trim().startsWith("[")) {
+      continue;
+    }
+
+    if (!isSameHeaderKey(line.split("=")[0] ?? "", key)) {
+      lines.push(line);
+    } else if (!isReplaced) {
+      // A repeated key collapses into the first, which is the one `readHeaderValue` answers with.
+      isReplaced = true;
+
+      if (written) {
+        lines.push(written);
+      }
+    }
+  }
+
+  if (written && !isReplaced) {
+    lines.push(written);
   }
 
   if (!lines.length) {
