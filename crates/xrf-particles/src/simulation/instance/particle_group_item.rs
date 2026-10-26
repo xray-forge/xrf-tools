@@ -1,7 +1,7 @@
 use glam::{Mat4, Vec3};
 
-use crate::data::particle_group_effect::ParticleGroupEffect;
-use crate::data::particle_group_effect_flags::ParticleGroupEffectFlags;
+use crate::data::group::particle_group_effect::ParticleGroupEffect;
+use crate::data::group::particle_group_effect_flags::ParticleGroupEffectFlags;
 use crate::simulation::domain::particle_random::ParticleRandom;
 use crate::simulation::instance::particle_effect_instance::ParticleEffectInstance;
 use crate::simulation::particle_library::ParticleLibrary;

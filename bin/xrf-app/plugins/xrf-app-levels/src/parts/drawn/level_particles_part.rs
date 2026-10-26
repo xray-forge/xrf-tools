@@ -114,13 +114,14 @@ impl LevelParticlesPart {
     let mut references: BTreeSet<String> = BTreeSet::new();
 
     for name in Self::list_reached_effects(&library, &placements, &ambient_particles) {
-      let Some(effect) = library.get_effect(&name) else {
+      // An effect without a sprite draws nothing, so it has no surface to describe.
+      let Some(sprite) = library.get_effect(&name).and_then(|effect| effect.sprite.as_ref()) else {
         continue;
       };
-      let textures: Vec<String> = effect.sprite.list_textures();
+      let textures: Vec<String> = sprite.list_textures();
 
       references.extend(textures.iter().cloned());
-      surfaces.insert(name, resolver.describe(&effect.sprite.shader_name, &textures));
+      surfaces.insert(name, resolver.describe(&sprite.shader_name, &textures));
     }
 
     LevelReport::particles(&current.source, &library, placements.len(), surfaces.len(), started);

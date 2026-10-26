@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use glam::{Mat4, Vec3};
 
-use crate::data::particle_effect::ParticleEffect;
-use crate::data::particle_effect_flags::ParticleEffectFlags;
-use crate::data::particle_effect_frame::ParticleEffectFrame;
+use crate::data::effect::particle_effect::ParticleEffect;
+use crate::data::effect::particle_effect_flags::ParticleEffectFlags;
+use crate::data::effect::particle_effect_frame::ParticleEffectFrame;
 use crate::simulation::instance::particle_effect_instance::ParticleEffectInstance;
 use crate::simulation::particle_engine_rules::ParticleEngineRules;
 use crate::simulation::particle_library::ParticleLibrary;

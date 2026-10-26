@@ -5,26 +5,32 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
 use xrf_utils::assert_equal;
 
-use crate::data::particle_effect_description::ParticleDescription;
-use crate::data::particle_group_effect::ParticleGroupEffect;
-use crate::data::particle_group_effect_old::ParticleGroupEffectOld;
+use crate::data::group::particle_group_effect::ParticleGroupEffect;
+use crate::data::group::particle_group_effect_old::ParticleGroupEffectOld;
+use crate::data::particle_description::ParticleDescription;
+use crate::data::particle_record_chunks::ParticleRecordChunks;
 
+/// A sequence of effects, the engine's `CPGDef` (`Layers/xrRender/ParticleGroup.cpp`).
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParticleGroup {
   pub version: u16,
   pub name: String,
   pub flags: u32,
+  /// Seconds the group plays for as stored; the engine plays it to its latest effect's `time_1` where this is not
+  /// above zero ([`Self::get_time_limit`]).
   pub time_limit: f32,
   pub effects: Vec<ParticleGroupEffect>,
   pub description: Option<ParticleDescription>,
+  /// The effects in Shadow of Chernobyl's earlier layout, which the engine of that game reads where `effects` is absent.
   pub effects_old: Option<Vec<ParticleGroupEffectOld>>,
 }
 
 impl ParticleGroup {
   pub const META_TYPE: &'static str = "particle_group";
 
-  pub const EFFECT_ACTIONS_LIMIT: usize = 10_000;
+  /// `PGD_VERSION`, the one version `CPGDef::Load` reads; any other fails the whole library's load.
+  pub const VERSION: u16 = 3;
 
   pub const VERSION_CHUNK_ID: u32 = 1;
   pub const NAME_CHUNK_ID: u32 = 2;
@@ -37,31 +43,67 @@ impl ParticleGroup {
   fn get_description_section(section_name: &str) -> String {
     format!("{section_name}.description")
   }
+
+  /// Seconds the group plays for, as `CPGDef::Load` settles them: the stored limit where it is above zero, otherwise
+  /// the latest `time_1` of its effects; zero or less loops.
+  pub fn get_time_limit(&self) -> f32 {
+    if self.time_limit > 0.0 {
+      self.time_limit
+    } else {
+      self
+        .effects
+        .iter()
+        .fold(self.time_limit, |limit, effect| limit.max(effect.time_1))
+    }
+  }
 }
 
 impl ChunkReadWrite for ParticleGroup {
-  /// Read group from chunk reader binary data.
+  /// Reads a group as `CPGDef::Load` does: its effects and time limit may be absent, which reads as none and zero.
+  ///
+  /// # Errors
+  ///
+  /// Returns a parsing error naming the chunk when a required one is missing or any is malformed, and when the version
+  /// is not [`Self::VERSION`].
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
+    let version: u16 = ParticleRecordChunks::read_required(&chunks, Self::VERSION_CHUNK_ID, "version", |it| {
+      it.read_u16_payload::<T>()
+    })?;
+
+    if version != Self::VERSION {
+      return Err(XrfError::new_parsing_error(format!(
+        "Failed to read particle group of version {version}, only version {} is read by the engine",
+        Self::VERSION
+      )));
+    }
+
     let particle_group: Self = Self {
-      version: ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u16_payload::<T>()?,
-      name: ChunkReader::find_required_by_id(&chunks, Self::NAME_CHUNK_ID)?.read_w1251_string_payload()?,
-      flags: ChunkReader::find_required_by_id(&chunks, Self::FLAGS_CHUNK_ID)?.read_u32_payload::<T>()?,
-      effects: ChunkReader::find_required_by_id(&chunks, Self::EFFECTS_CHUNK_ID)?.read_xr_list::<T, _>()?,
-      time_limit: ChunkReader::find_required_by_id(&chunks, Self::TIME_LIMIT_CHUNK_ID)?.read_f32_payload::<T>()?,
-      description: ChunkReader::find_optional_by_id(&chunks, Self::DESCRIPTION_CHUNK_ID)
-        .map(|mut it| ParticleDescription::read::<T, _>(&mut it))
-        .transpose()
-        .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle group description: {error}")))?,
-      effects_old: ChunkReader::find_optional_by_id(&chunks, Self::EFFECTS2_CHUNK_ID)
-        .map(|mut it| it.read_xr_list::<T, _>())
-        .transpose()
-        .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle group old effects: {error}")))?,
+      version,
+      name: ParticleRecordChunks::read_required(&chunks, Self::NAME_CHUNK_ID, "name", |it| {
+        it.read_w1251_string_payload()
+      })?,
+      flags: ParticleRecordChunks::read_required(&chunks, Self::FLAGS_CHUNK_ID, "flags", |it| {
+        it.read_u32_payload::<T>()
+      })?,
+      effects: ParticleRecordChunks::read_optional(&chunks, Self::EFFECTS_CHUNK_ID, "effects", |it| {
+        it.read_xr_list::<T, _>()
+      })?
+      .unwrap_or_default(),
+      time_limit: ParticleRecordChunks::read_optional(&chunks, Self::TIME_LIMIT_CHUNK_ID, "time_limit", |it| {
+        it.read_f32_payload::<T>()
+      })?
+      .unwrap_or(0.0),
+      description: ParticleRecordChunks::read_optional(&chunks, Self::DESCRIPTION_CHUNK_ID, "description", |it| {
+        ParticleDescription::read::<T, _>(it)
+      })?,
+      effects_old: ParticleRecordChunks::read_optional(&chunks, Self::EFFECTS2_CHUNK_ID, "old effects", |it| {
+        it.read_xr_list::<T, _>()
+      })?,
     };
 
     reader.assert_read("Expect groups chunk to be ended")?;
-    assert_equal(particle_group.version, 3, "Only version 3 of group chunks is supported")?;
 
     Ok(particle_group)
   }
@@ -99,7 +141,7 @@ impl ChunkReadWrite for ParticleGroup {
     {
       let mut effects_old_chunk_writer: ChunkWriter = ChunkWriter::new();
       effects_old_chunk_writer.write_xr_list::<T, _>(effects_old)?;
-      effects_old_chunk_writer.flush_chunk_into::<T>(writer, Self::DESCRIPTION_CHUNK_ID)?;
+      effects_old_chunk_writer.flush_chunk_into::<T>(writer, Self::EFFECTS2_CHUNK_ID)?;
     }
 
     Ok(())

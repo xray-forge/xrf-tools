@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use glam::{Mat4, Vec3};
 
-use crate::data::particle_group::ParticleGroup;
-use crate::data::particle_group_effect_flags::ParticleGroupEffectFlags;
+use crate::data::group::particle_group::ParticleGroup;
+use crate::data::group::particle_group_effect_flags::ParticleGroupEffectFlags;
 use crate::simulation::domain::particle_random::ParticleRandom;
 use crate::simulation::instance::particle_effect_instance::ParticleEffectInstance;
 use crate::simulation::instance::particle_group_item::ParticleGroupItem;
@@ -40,14 +40,7 @@ impl ParticleGroupInstance {
         ParticleGroupItem::new(instance, seeds.next_integer())
       })
       .collect();
-    let time_limit: f32 = if definition.time_limit > 0.0 {
-      definition.time_limit
-    } else {
-      definition
-        .effects
-        .iter()
-        .fold(definition.time_limit, |limit, effect| limit.max(effect.time_1))
-    };
+    let time_limit: f32 = definition.get_time_limit();
 
     Self {
       definition,

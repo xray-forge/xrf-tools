@@ -794,10 +794,13 @@ export type ArchiveParticlesEffect = {
   maxParticles: number;
   /** Seconds the emitter runs for, absent where it declares no limit and runs until something stops it. */
   timeLimit: number | null;
-  /** The blender the sprite is drawn with, which names a definition of `shaders.xr` rather than a file. */
-  shader: string;
-  /** The texture the sprite is drawn from, resolved against the subject being browsed. */
-  texture: ArchiveReference;
+  /**
+   * The blender the sprite is drawn with, which names a definition of `shaders.xr` rather than a file; absent for an
+   * effect that draws no sprite.
+   */
+  shader: string | null;
+  /** The texture the sprite is drawn from, resolved against the subject being browsed; absent with the shader. */
+  texture: ArchiveReference | null;
   /** Every action kind the effect is built from, in the order it first uses each. */
   actions: Array<string>;
   /** Actions in total, which is more than the kinds above when one kind is used twice. */

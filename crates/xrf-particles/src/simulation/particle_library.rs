@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::data::particle_effect::ParticleEffect;
-use crate::data::particle_group::ParticleGroup;
+use crate::data::effect::particle_effect::ParticleEffect;
+use crate::data::group::particle_group::ParticleGroup;
 use crate::particles_file::ParticlesFile;
 use crate::simulation::instance::particle_effect_instance::ParticleEffectInstance;
 use crate::simulation::instance::particle_group_instance::ParticleGroupInstance;

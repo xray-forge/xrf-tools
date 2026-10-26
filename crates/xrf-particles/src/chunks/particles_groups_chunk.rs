@@ -4,13 +4,13 @@ use std::path::Path;
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, META_TYPE_FIELD};
 use xrf_utils::{format_path, to_format_size};
 
-use crate::data::particle_group::ParticleGroup;
+use crate::data::group::particle_group::ParticleGroup;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParticlesGroupsChunk {
   pub groups: Vec<ParticleGroup>,
@@ -18,6 +18,41 @@ pub struct ParticlesGroupsChunk {
 
 impl ParticlesGroupsChunk {
   pub const CHUNK_ID: u32 = 4;
+
+  /// The group by its exact name, as `CPSLibrary::FindPGD` looks one up.
+  pub fn get(&self, name: &str) -> Option<&ParticleGroup> {
+    self.groups.iter().find(|group| group.name == name)
+  }
+
+  pub fn get_mut(&mut self, name: &str) -> Option<&mut ParticleGroup> {
+    self.groups.iter_mut().find(|group| group.name == name)
+  }
+
+  /// Adds a group where its name sorts, the order the engine looks groups up in and a library is read in.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a group already has its name.
+  pub fn insert(&mut self, group: ParticleGroup) -> XrfResult {
+    match self.groups.binary_search_by(|it| it.name.cmp(&group.name)) {
+      Ok(_) => Err(XrfError::new_invalid_error(format!(
+        "Particle group '{}' is already defined",
+        group.name
+      ))),
+      Err(position) => {
+        self.groups.insert(position, group);
+
+        Ok(())
+      }
+    }
+  }
+
+  /// Takes the group by its exact name out, as `CPSLibrary::Remove` does.
+  pub fn remove(&mut self, name: &str) -> Option<ParticleGroup> {
+    let position: usize = self.groups.iter().position(|group| group.name == name)?;
+
+    Some(self.groups.remove(position))
+  }
 }
 
 impl ChunkReadWrite for ParticlesGroupsChunk {

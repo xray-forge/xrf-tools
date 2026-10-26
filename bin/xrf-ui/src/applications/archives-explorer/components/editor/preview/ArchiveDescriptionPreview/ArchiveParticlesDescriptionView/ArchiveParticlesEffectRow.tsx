@@ -25,7 +25,7 @@ export function ArchiveParticlesEffectRow({
   effect,
   scope,
 }: IArchiveParticlesEffectRowProps): ReactElement {
-  const status: Nullable<string> = describeReferenceStatus(effect.texture, scope);
+  const status: Nullable<string> = effect.texture ? describeReferenceStatus(effect.texture, scope) : null;
 
   return (
     <div data-testid={dataTestId} id={id} className={cn("min-w-0 py-1.5 leading-panel", className)}>
@@ -40,9 +40,15 @@ export function ArchiveParticlesEffectRow({
       </div>
 
       <Typography className={"block wrap-anywhere text-text-disabled"} variant={"caption"}>
-        <ArchiveDescriptionReferenceLink reference={effect.texture} />
-        {` · drawn with ${effect.shader}`}
-        {status ? ` · ${status}` : null}
+        {effect.texture ? (
+          <>
+            <ArchiveDescriptionReferenceLink reference={effect.texture} />
+            {` · drawn with ${effect.shader}`}
+            {status ? ` · ${status}` : null}
+          </>
+        ) : (
+          "no sprite, draws nothing"
+        )}
       </Typography>
 
       <Typography className={"block wrap-anywhere text-text-disabled"} variant={"caption"}>

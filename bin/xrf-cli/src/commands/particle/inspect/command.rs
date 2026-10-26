@@ -81,8 +81,11 @@ impl InspectCommand {
     let mut lines: Vec<String> = vec![
       format!("effect {}", effect.name),
       format!(
-        "  sprite: {}, {}",
-        effect.sprite.shader_name, effect.sprite.texture_name
+        "  sprite: {}",
+        effect.sprite.as_ref().map_or(String::from("none"), |sprite| format!(
+          "{}, {}",
+          sprite.shader_name, sprite.texture_name
+        ))
       ),
       format!("  max particles: {}", effect.max_particles),
       format!("  flags: {}", flags.join(", ")),

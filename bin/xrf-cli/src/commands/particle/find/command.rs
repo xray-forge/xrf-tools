@@ -141,10 +141,11 @@ impl FindCommand {
       }
     }
 
-    if report
-      .shaders
-      .iter()
-      .any(|query| ParticleNames::name_key(query) == ParticleNames::name_key(shader))
+    if let Some(shader) = shader
+      && report
+        .shaders
+        .iter()
+        .any(|query| ParticleNames::name_key(query) == ParticleNames::name_key(shader))
     {
       reasons.push(ParticleFindReason::Shader(shader.clone()));
     }

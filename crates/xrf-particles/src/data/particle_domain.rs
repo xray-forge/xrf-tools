@@ -3,7 +3,7 @@ use std::str::FromStr;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_math::Vector3d;
 
@@ -34,15 +34,15 @@ impl ChunkReadWrite for ParticleDomain {
   }
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_u32::<XRayByteOrder>(self.domain_type)?;
+    writer.write_u32::<T>(self.domain_type)?;
     writer.write_xr::<T, _>(&self.coordinates.0)?;
     writer.write_xr::<T, _>(&self.coordinates.1)?;
     writer.write_xr::<T, _>(&self.basis.0)?;
     writer.write_xr::<T, _>(&self.basis.1)?;
-    writer.write_f32::<XRayByteOrder>(self.radius1)?;
-    writer.write_f32::<XRayByteOrder>(self.radius2)?;
-    writer.write_f32::<XRayByteOrder>(self.radius1_sqr)?;
-    writer.write_f32::<XRayByteOrder>(self.radius2_sqr)?;
+    writer.write_f32::<T>(self.radius1)?;
+    writer.write_f32::<T>(self.radius2)?;
+    writer.write_f32::<T>(self.radius1_sqr)?;
+    writer.write_f32::<T>(self.radius2_sqr)?;
 
     Ok(())
   }

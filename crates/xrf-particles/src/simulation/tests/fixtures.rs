@@ -6,13 +6,13 @@ use crate::chunks::particles_header_chunk::ParticlesHeaderChunk;
 use crate::data::actions::particle_action_kill_old::ParticleActionKillOld;
 use crate::data::actions::particle_action_move::ParticleActionMove;
 use crate::data::actions::particle_action_source::ParticleActionSource;
+use crate::data::effect::particle_effect::ParticleEffect;
+use crate::data::effect::particle_effect_sprite::ParticleEffectSprite;
+use crate::data::group::particle_group::ParticleGroup;
+use crate::data::group::particle_group_effect::ParticleGroupEffect;
 use crate::data::particle_action::ParticleAction;
 use crate::data::particle_action_type::ParticleActionType;
 use crate::data::particle_domain::ParticleDomain;
-use crate::data::particle_effect::ParticleEffect;
-use crate::data::particle_effect_sprite::ParticleEffectSprite;
-use crate::data::particle_group::ParticleGroup;
-use crate::data::particle_group_effect::ParticleGroupEffect;
 use crate::particles_file::ParticlesFile;
 use crate::simulation::particle_engine_rules::ParticleEngineRules;
 use crate::simulation::particle_library::ParticleLibrary;
@@ -80,10 +80,10 @@ pub fn effect(name: &str, max_particles: u32, actions: Vec<ParticleAction>) -> P
     actions,
     flags: 1,
     frame: None,
-    sprite: ParticleEffectSprite {
+    sprite: Some(ParticleEffectSprite {
       shader_name: String::from("particles\\add"),
       texture_name: String::from("pfx\\pfx_flame"),
-    },
+    }),
     time_limit: None,
     collision: None,
     velocity_scale: None,

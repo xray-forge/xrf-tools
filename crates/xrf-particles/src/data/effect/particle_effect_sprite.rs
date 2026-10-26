@@ -99,7 +99,7 @@ mod tests {
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
-  use crate::data::particle_effect_sprite::ParticleEffectSprite;
+  use crate::data::effect::particle_effect_sprite::ParticleEffectSprite;
 
   #[test]
   fn test_read_write() -> XrfResult {

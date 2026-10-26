@@ -8,8 +8,8 @@ pub enum ParticleListEntry {
   /// An effect: the sprite it draws, how many particles it holds, what acts on them and how long it plays.
   Effect {
     name: String,
-    /// The sprite's shader, as `shaders.xr` or a script names it.
-    shader: String,
+    /// The sprite's shader, as `shaders.xr` or a script names it; none for an effect that draws no sprite.
+    shader: Option<String>,
     /// The sprite's textures, the comma-separated list split as the engine splits it: the base first.
     textures: Vec<String>,
     max_particles: u32,
@@ -33,8 +33,12 @@ impl ParticleListEntry {
   pub fn of_effect(effect: &ParticleEffect) -> Self {
     Self::Effect {
       name: effect.name.clone(),
-      shader: effect.sprite.shader_name.clone(),
-      textures: effect.sprite.list_textures(),
+      shader: effect.sprite.as_ref().map(|sprite| sprite.shader_name.clone()),
+      textures: effect
+        .sprite
+        .as_ref()
+        .map(|sprite| sprite.list_textures())
+        .unwrap_or_default(),
       max_particles: effect.max_particles,
       actions: effect.actions.iter().map(ParticleActionType::get_action_type).collect(),
       time_limit: effect.time_limit,
@@ -75,7 +79,8 @@ impl ParticleListEntry {
         actions,
         ..
       } => format!(
-        "effect {name} ({shader}, {}, {max_particles} particles, {} actions)",
+        "effect {name} ({}, {}, {max_particles} particles, {} actions)",
+        shader.as_deref().unwrap_or("no sprite"),
         if textures.is_empty() {
           String::from("no texture")
         } else {

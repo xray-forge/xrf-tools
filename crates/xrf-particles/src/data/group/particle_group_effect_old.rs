@@ -180,7 +180,7 @@ mod tests {
   use xrf_ltx::Ltx;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
-  use crate::data::particle_group_effect_old::ParticleGroupEffectOld;
+  use crate::data::group::particle_group_effect_old::ParticleGroupEffectOld;
 
   #[test]
   fn test_read_write_list() -> XrfResult {
