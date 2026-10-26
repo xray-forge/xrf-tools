@@ -8,3 +8,4 @@ pub(crate) mod source_span;
 pub use crate::condlist::condlist::Condlist;
 pub use crate::condlist::condlist_branch::CondlistBranch;
 pub use crate::condlist::condlist_condition::CondlistCondition;
+pub(crate) use crate::condlist::source_span::SourceSpan;

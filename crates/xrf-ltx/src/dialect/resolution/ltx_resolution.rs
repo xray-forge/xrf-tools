@@ -1,6 +1,4 @@
-use crate::dialect::ltx_field_origin::LtxFieldOrigin;
-use crate::dialect::ltx_provenance::LtxProvenance;
-use crate::dialect::ltx_resolution_diagnostic::LtxResolutionDiagnostic;
+use crate::dialect::{LtxFieldOrigin, LtxProvenance, LtxResolutionDiagnostic};
 use crate::ltx::Ltx;
 
 /// What resolving one root answers with.

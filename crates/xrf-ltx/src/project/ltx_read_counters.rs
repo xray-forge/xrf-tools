@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::project::ltx_read_counters_snapshot::LtxReadCountersSnapshot;
+use crate::project::LtxReadCountersSnapshot;
 
 /// How much reading and parsing a project actually did.
 #[derive(Debug, Default)]

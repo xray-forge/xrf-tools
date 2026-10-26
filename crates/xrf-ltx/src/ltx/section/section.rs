@@ -2,7 +2,7 @@ use std::ops::Index;
 use std::sync::Arc;
 
 use crate::ltx::{PropertyIter, SectionData};
-use crate::syntax::ltx_value::{read_engine_bool, read_engine_float};
+use crate::syntax::{read_engine_bool, read_engine_float};
 
 /// One resolved section: the parents its header declared, and its fields in written order.
 ///
@@ -112,7 +112,7 @@ impl Section {
     self.inherited.iter().any(|inherited| inherited == parent_section)
   }
 
-  /// Insert (key, value) pair by replace.
+  /// Declare a parent this section inherits, after the ones already declared.
   pub fn inherit<S>(&mut self, parent_section: S)
   where
     S: Into<String>,

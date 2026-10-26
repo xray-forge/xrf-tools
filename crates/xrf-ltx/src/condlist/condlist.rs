@@ -1,7 +1,6 @@
 use xrf_error::XrfResult;
 
-use super::condlist_branch::CondlistBranch;
-use super::source_span::SourceSpan;
+use crate::condlist::{CondlistBranch, SourceSpan};
 
 /// A parsed X-Ray condition list.
 #[derive(Clone, Debug, PartialEq)]
@@ -34,8 +33,7 @@ impl Condlist {
 
 #[cfg(test)]
 mod tests {
-  use super::super::condlist_condition::CondlistCondition;
-  use super::Condlist;
+  use crate::condlist::{Condlist, CondlistCondition};
 
   #[test]
   fn parses_xray_condlist_syntax() {

@@ -3,9 +3,7 @@ use xrf_ltx::{
 };
 
 use crate::resolved::{LtxResolvedField, LtxResolvedFieldOrigin};
-use crate::scheme::ltx_scheme_field_declaration::LtxSchemeFieldDeclaration;
-use crate::scheme::ltx_scheme_field_report::LtxSchemeFieldReport;
-use crate::scheme::ltx_section_scheme_report::LtxSectionSchemeReport;
+use crate::scheme::{LtxSchemeFieldDeclaration, LtxSchemeFieldReport, LtxSectionSchemeReport};
 
 /// Reads one resolved section against the scheme that judges it.
 ///

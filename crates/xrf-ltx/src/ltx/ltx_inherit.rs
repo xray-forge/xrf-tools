@@ -56,7 +56,7 @@ impl LtxInheritConvertor {
   fn convert_ltx(mut self, mut ltx: Ltx) -> XrfResult<(Ltx, Option<LtxProvenance>)> {
     if !ltx.includes.is_empty() {
       return Err(XrfError::new_convert_error(
-        "Failed to equipment ltx file, not processed include statements detected on inheritance conversion",
+        "Failed to inherit ltx sections, the config still carries include statements that were never merged",
       ));
     }
 

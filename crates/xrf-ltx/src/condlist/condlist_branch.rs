@@ -1,7 +1,6 @@
 use xrf_error::XrfResult;
 
-use super::condlist_condition::CondlistCondition;
-use super::source_span::SourceSpan;
+use crate::condlist::{CondlistCondition, SourceSpan};
 
 /// One comma-separated condition-list branch.
 #[derive(Clone, Debug, PartialEq)]

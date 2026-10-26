@@ -1,7 +1,9 @@
 use crate::document::{LtxItemKind, LtxSpan};
 
 /// One statement of an LTX file, with where it was written.
-/// [`crate::document::LtxDocument`] instead.
+///
+/// Statements are read in order off a [`crate::LtxDocument`], which also says what a statement cannot: which section a
+/// key belongs to is the nearest header above it.
 #[derive(Clone, Debug, PartialEq)]
 pub struct LtxItem {
   pub kind: LtxItemKind,

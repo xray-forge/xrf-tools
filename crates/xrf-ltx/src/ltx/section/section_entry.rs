@@ -1,8 +1,6 @@
 use indexmap::map::Entry;
 
-use crate::ltx::Section;
-use crate::ltx::section_occupied_entry::SectionOccupiedEntry;
-use crate::ltx::section_vacant_entry::SectionVacantEntry;
+use crate::ltx::section::{Section, SectionOccupiedEntry, SectionVacantEntry};
 
 /// A view into an `Ltx`, which may either be vacant or occupied.
 pub enum SectionEntry<'a> {

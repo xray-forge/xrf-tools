@@ -13,7 +13,7 @@ impl<'a> SectionOccupiedEntry<'a> {
     self.inner.into_mut()
   }
 
-  /// Append a new section
+  /// Replace the section this entry holds, keeping its position.
   pub fn append(&mut self, props: Section) {
     self.inner.insert(props);
   }

@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use fxhash::FxBuildHasher;
 
-use crate::dialect::ltx_field_origin::LtxFieldOrigin;
+use crate::dialect::LtxFieldOrigin;
 
 /// Where every resolved field came from, grouped by the section holding it.
 ///

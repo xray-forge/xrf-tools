@@ -31,9 +31,9 @@ fn mount(name: &str, files: &[(&str, &str)]) -> (Arc<XrayVfs>, XrayLookupScope) 
   (Arc::new(vfs), XrayLookupScope::all())
 }
 
-/// Reads a config through a search searching one scope.
+/// Reads a config through a search searching one scope, under standard rules.
 fn read(vfs: &Arc<XrayVfs>, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Ltx> {
-  Ltx::read_from_search(
+  Ltx::read_from_search_standard(
     &XraySearch::new(Arc::clone(vfs)).with_step("configs", scope.clone()),
     logical_path,
   )
