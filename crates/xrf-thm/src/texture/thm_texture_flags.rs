@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::thm_texture_flag::ThmTextureFlag;
+use crate::texture::thm_texture_flag::ThmTextureFlag;
 
 /// The texture param flag word, `Flags32 flags` of `STextureParams` (`ETextureParams.h`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]

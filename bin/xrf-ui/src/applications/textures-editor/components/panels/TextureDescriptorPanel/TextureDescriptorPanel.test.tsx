@@ -148,6 +148,23 @@ describe("TextureDescriptorPanel", () => {
     await waitFor(() => expect(service.draft?.flags).toBe(1 | (1 << 25)));
   });
 
+  it("applies the sdk's defaults for a chosen texture type", async () => {
+    const { render, service } = await renderPanel(describedTexture());
+
+    await waitFor(() => expect(render.getByTestId("texture-field-texture-type")).toBeTruthy());
+
+    // Through the select's native input, as autofill sets it, so no menu is left closing after the test.
+    fireEvent.change(render.getByTestId("texture-field-texture-type").querySelector("input") as HTMLInputElement, {
+      target: { value: "4" },
+    });
+
+    // The mock terrain change clears `flGenerateMipMaps`, sets `flImplicitLighted` and takes `tfDXT1`.
+    await waitFor(() => expect(service.draft?.textureType).toBe(4));
+    expect(service.draft?.flags).toBe(1 << 24);
+    expect(service.draft?.format).toBe(0);
+    expect(service.draft?.mipFilter).toBe(1);
+  });
+
   it("shows width and height read-only, because the dds header is the authority", async () => {
     const { render } = await renderPanel(describedTexture());
 

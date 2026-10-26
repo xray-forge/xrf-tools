@@ -8,9 +8,9 @@ use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSourc
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path};
 
+use crate::bump::thm_bump_mode::ThmBumpMode;
+use crate::bump::thm_bump_patch_report::ThmBumpPatchReport;
 use crate::chunks::thm_bump_chunk::ThmBumpChunk;
-use crate::thm_bump_mode::ThmBumpMode;
-use crate::thm_bump_patch_report::ThmBumpPatchReport;
 use crate::thm_file::ThmFile;
 
 /// Editing operations over the bump declaration of a thm file.
@@ -195,9 +195,9 @@ mod tests {
   use xrf_error::XrfResult;
   use xrf_test_utils::GeneratedResources;
 
+  use crate::bump::thm_bump_mode::ThmBumpMode;
+  use crate::bump::thm_bump_processor::ThmBumpProcessor;
   use crate::chunks::thm_bump_chunk::ThmBumpChunk;
-  use crate::thm_bump_mode::ThmBumpMode;
-  use crate::thm_bump_processor::ThmBumpProcessor;
   use crate::thm_file::ThmFile;
 
   /// Payload standing in for a chunk the writer must copy verbatim.

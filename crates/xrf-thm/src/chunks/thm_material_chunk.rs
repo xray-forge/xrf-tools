@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-use crate::thm_material::ThmMaterial;
+use crate::texture::thm_material::ThmMaterial;
 
 /// Shading declaration of a texture, `THM_CHUNK_MATERIAL` in the engine (`ETextureParams.cpp`).
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]

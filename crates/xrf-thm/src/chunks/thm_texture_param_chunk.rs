@@ -3,9 +3,10 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-use crate::thm_format::ThmFormat;
-use crate::thm_mip_filter::ThmMipFilter;
-use crate::thm_texture_flags::ThmTextureFlags;
+use crate::texture::thm_format::ThmFormat;
+use crate::texture::thm_mip_filter::ThmMipFilter;
+use crate::texture::thm_texture_flags::ThmTextureFlags;
+use crate::texture::thm_texture_type::ThmTextureType;
 
 /// Conversion parameters of a texture, `THM_CHUNK_TEXTUREPARAM` in the engine (`ETextureParams.cpp:68`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -23,6 +24,22 @@ pub struct ThmTextureParamChunk {
 
 impl ThmTextureParamChunk {
   pub const CHUNK_ID: u32 = 0x0812;
+
+  /// What the SDK's editor changes when the descriptor is given `texture_type`, `STextureParams::OnTypeChange`: the
+  /// flags it clears, then the ones it sets, then the format and mip filter where the type has its own.
+  pub fn apply_texture_type(&mut self, texture_type: ThmTextureType) {
+    let cleared: u32 = texture_type.get_cleared_flags().raw();
+
+    self.flags = ThmTextureFlags::from((self.flags.raw() & !cleared) | texture_type.get_set_flags().raw());
+
+    if let Some(format) = texture_type.get_format() {
+      self.format = format;
+    }
+
+    if let Some(mip_filter) = texture_type.get_mip_filter() {
+      self.mip_filter = mip_filter;
+    }
+  }
 }
 
 impl Default for ThmTextureParamChunk {

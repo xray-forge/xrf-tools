@@ -2,21 +2,21 @@ use serde_json::Value;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
 
+use crate::bump::thm_bump_mode::ThmBumpMode;
 use crate::chunks::thm_bump_chunk::ThmBumpChunk;
 use crate::chunks::thm_detail_chunk::ThmDetailChunk;
 use crate::chunks::thm_material_chunk::ThmMaterialChunk;
 use crate::chunks::thm_texture_param_chunk::ThmTextureParamChunk;
 use crate::chunks::thm_trailing_bytes::ThmTrailingBytes;
 use crate::tests::fixtures;
-use crate::thm_bump_mode::ThmBumpMode;
-use crate::thm_detail_usage::ThmDetailUsage;
+use crate::texture::thm_detail_usage::ThmDetailUsage;
+use crate::texture::thm_format::ThmFormat;
+use crate::texture::thm_material::ThmMaterial;
+use crate::texture::thm_mip_filter::ThmMipFilter;
+use crate::texture::thm_texture_flag::ThmTextureFlag;
+use crate::texture::thm_texture_flags::ThmTextureFlags;
+use crate::texture::thm_texture_type::ThmTextureType;
 use crate::thm_file::ThmFile;
-use crate::thm_format::ThmFormat;
-use crate::thm_material::ThmMaterial;
-use crate::thm_mip_filter::ThmMipFilter;
-use crate::thm_texture_flag::ThmTextureFlag;
-use crate::thm_texture_flags::ThmTextureFlags;
-use crate::thm_texture_type::ThmTextureType;
 
 #[test]
 fn reads_every_field_the_format_defines() -> XrfResult {

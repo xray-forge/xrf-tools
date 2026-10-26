@@ -10,6 +10,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { hasTextureFlag, withTextureFlag } from "@/applications/textures-editor/lib/texture-descriptor-flags";
+import { withTextureType } from "@/applications/textures-editor/lib/texture-type-change";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/selection";
@@ -86,8 +87,8 @@ export function TextureDescriptorPanel({
           label={"Texture type"}
           entries={vocabulary.textureTypes}
           value={draft.textureType}
-          helperText={"A type outside Image makes LoadTHM skip the descriptor whole"}
-          onChange={(textureType: number) => onEdit({ textureType })}
+          helperText={"LoadTHM skips a cube or bump map's descriptor whole; choosing a type applies the SDK's defaults"}
+          onChange={(textureType: number) => onEdit(withTextureType(draft, textureType, vocabulary.typeChanges))}
         />
 
         <TextureSelectField

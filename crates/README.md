@@ -27,7 +27,7 @@ README is also its crate's rustdoc page.
 | [xrf-skeleton](xrf-skeleton/README.md)                     | Skeleton motion data that OGF visuals and OMF libraries share                  |
 | [xrf-sound](xrf-sound/README.md)                           | Read and edit sound parameters, validate audio, edit `senvironment.xr`         |
 | [xrf-spawn](xrf-spawn/README.md)                           | Read and write spawn sets, alife records, graphs, patrols, and artefact points |
-| [xrf-thm](xrf-thm/README.md)                               | Read and write `.thm` texture descriptors and their bump pairs                 |
+| [xrf-thm](xrf-thm/README.md)                               | Read and write `.thm` texture descriptors, bump pairs and SDK thumbnails       |
 
 ### Archives and the virtual file system
 

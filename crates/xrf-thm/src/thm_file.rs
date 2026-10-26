@@ -9,15 +9,16 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{StagedFile, format_path};
 
 use crate::chunks::thm_bump_chunk::ThmBumpChunk;
+use crate::chunks::thm_chunks::ThmChunks;
 use crate::chunks::thm_detail_chunk::ThmDetailChunk;
 use crate::chunks::thm_extra_chunk::ThmExtraChunk;
 use crate::chunks::thm_material_chunk::ThmMaterialChunk;
 use crate::chunks::thm_texture_param_chunk::ThmTextureParamChunk;
 use crate::chunks::thm_thumbnail_chunk::ThmThumbnailChunk;
 use crate::chunks::thm_trailing_bytes::ThmTrailingBytes;
-use crate::thm_detail_usage::ThmDetailUsage;
-use crate::thm_texture_flag::ThmTextureFlag;
-use crate::thm_texture_type::ThmTextureType;
+use crate::texture::thm_detail_usage::ThmDetailUsage;
+use crate::texture::thm_texture_flag::ThmTextureFlag;
+use crate::texture::thm_texture_type::ThmTextureType;
 
 /// Texture descriptor file: `ETextureThumbnail` wrapping `STextureParams` (`EThumbnailTexture.cpp`,
 /// `ETextureParams.cpp`).
@@ -148,21 +149,7 @@ impl ThmFile {
         _ => false,
       };
 
-      // The engine's `ETextureParams::Load` reads a chunk's fields and nothing past them, which some texture packs
-      // write: a type chunk a byte longer.
-      let rest: Vec<u8> = chunk.read_remaining()?;
-
-      if !is_folded {
-        file.extra.push(ThmExtraChunk {
-          id: chunk.id,
-          data: rest,
-        });
-      } else if !rest.is_empty() {
-        file.trailing.push(ThmTrailingBytes {
-          id: chunk.id,
-          data: rest,
-        });
-      }
+      ThmChunks::keep_rest(&mut chunk, is_folded, &mut file.extra, &mut file.trailing)?;
     }
 
     Ok(file)
@@ -249,11 +236,7 @@ impl ThmFile {
       })?;
     }
 
-    for extra in &self.extra {
-      Self::write_payload::<T>(destination, extra.id, |writer| extra.write(writer))?;
-    }
-
-    Ok(())
+    ThmChunks::write_extra::<T>(destination, &self.extra)
   }
 
   /// Frames a folded chunk's fields as a chunk of `id`, the bytes read past them after, so that the order above reads
@@ -264,29 +247,7 @@ impl ThmFile {
     id: u32,
     fill: impl FnOnce(&mut ChunkWriter) -> XrfResult,
   ) -> XrfResult {
-    Self::write_payload::<T>(destination, id, |writer| {
-      fill(writer)?;
-
-      for trailing in self.trailing.iter().filter(|trailing| trailing.id == id) {
-        writer.write_all(&trailing.data)?;
-      }
-
-      Ok(())
-    })
-  }
-
-  /// Frames one payload as a chunk of `id`.
-  fn write_payload<T: ByteOrder>(
-    destination: &mut dyn Write,
-    id: u32,
-    fill: impl FnOnce(&mut ChunkWriter) -> XrfResult,
-  ) -> XrfResult {
-    let mut writer: ChunkWriter = ChunkWriter::new();
-
-    fill(&mut writer)?;
-    writer.flush_chunk_into::<T>(destination, id)?;
-
-    Ok(())
+    ThmChunks::write::<T>(destination, id, &self.trailing, fill)
   }
 }
 
@@ -306,6 +267,16 @@ impl ThmFile {
   /// The texture type the engine sees, which for a file without the chunk is the zeroed default.
   pub fn texture_type(&self) -> ThmTextureType {
     self.texture_type.unwrap_or_default()
+  }
+
+  /// Gives the descriptor `texture_type` as the SDK's editor does, with the flags, format and mip filter that type
+  /// brings; see [`ThmTextureParamChunk::apply_texture_type`].
+  pub fn change_texture_type(&mut self, texture_type: ThmTextureType) {
+    self.texture_type = Some(texture_type);
+
+    if let Some(param) = self.texture_param.as_mut() {
+      param.apply_texture_type(texture_type);
+    }
   }
 
   /// Whether `LoadTHM` reads this descriptor's bump and detail at all.

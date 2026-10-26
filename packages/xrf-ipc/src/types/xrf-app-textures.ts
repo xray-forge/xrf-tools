@@ -382,6 +382,21 @@ export enum ETextureSurfaceShape {
 /** Every `ETextureSurfaceShape` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type TextureSurfaceShape = `${ETextureSurfaceShape}`;
 
+/**
+ * What the SDK's editor changes when a descriptor is given one texture type, `STextureParams::OnTypeChange`, so the
+ * form makes the same change when its type does.
+ */
+export type TextureTypeChange = {
+  textureType: number;
+  /** Bits cleared from the flag word, before the set ones are set. */
+  clearedFlags: number;
+  setFlags: number;
+  /** The format the type brings, or none where the descriptor keeps its own. */
+  format: number | null;
+  /** The mip filter the type brings, or none where the descriptor keeps its own. */
+  mipFilter: number | null;
+};
+
 /** Every named value the descriptor form's numeric fields can take. */
 export type TextureVocabulary = {
   /** The gate `LoadTHM` reads before anything else. */
@@ -393,6 +408,8 @@ export type TextureVocabulary = {
   bumpModes: Array<TextureVocabularyEntry>;
   /** The twelve bits the SDK names, in bit order. A word may carry others, and those have no name to show. */
   flags: Array<TextureFlagEntry>;
+  /** What giving a descriptor each type changes beside the type, as the SDK's editor does. */
+  typeChanges: Array<TextureTypeChange>;
   /** The bump mode that makes the engine bind a pair. */
   bumpModeUse: number;
   /** The mean gloss below which a generated bump shows almost no specular response. */
