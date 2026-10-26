@@ -3,7 +3,7 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
-use xrf_lua::verify_luajit_script;
+use xrf_lua::XRayLuaScript;
 use xrf_utils::read_as_string_from_w1251_encoded;
 use xrf_vfs::XrayAssetType;
 
@@ -106,7 +106,7 @@ impl ScriptsVerifier<'_> {
       }
     };
 
-    let error = verify_luajit_script(&code, Path::new(path)).err()?;
+    let error = XRayLuaScript::verify(Path::new(path), &code).err()?;
 
     xrf_output::info!(options.output, "Script is not valid: {path}");
 

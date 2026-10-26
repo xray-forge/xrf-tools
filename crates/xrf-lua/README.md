@@ -58,16 +58,19 @@ in source order.
 ## Call records
 
 Each `XRayLuaMethodCall` exposes its receiver, method, 1-based `line_number`, arguments, the calls chained onto its
-result (`chained`, `chained_call`), and the named `function` it is written in, `None` at the top level.
-`literal_string_arguments` answers the arguments only when every one is a literal string.
+result (`chained`, `chained_call`), and the named `function` it is written in, a `local function` included, `None` at
+the top level or in an anonymous function. `literal_string_arguments` answers the arguments only when every one is a
+literal string.
 
 Arguments are `XRayLuaValue`s, read as far as a reader that never runs the script can read them:
 
-- literal strings (quoted escapes decoded as LuaJIT's lexer does, long brackets as written), numbers, and booleans;
+- literal strings (quoted escapes decoded as LuaJIT's lexer does, long brackets as written), numbers (decimal, with a
+  fraction or exponent, or a hexadecimal integer), and booleans;
 - `Name`: a global or a dotted name such as `blend.srcalpha`, kept verbatim;
 - `Local`: a bare name a local or parameter binds where it is written, with its `XRayLuaBinding`: a literal string, the
   argument at a parameter index (a method's implicit `self` is index 0), or anything else;
-- `Other`: tables, operations, calls, `nil`, varargs, and strings with an escape LuaJIT would refuse.
+- `Other`: tables, operations (a negative number among them), calls, `nil`, varargs, numbers only LuaJIT's FFI reads
+  (`10LL`, `1i`), and strings with an escape LuaJIT would refuse.
 
 Names resolve by Lua's scoping: the innermost local or parameter, a local only after the statement declaring it, a
 `repeat` body's locals visible to its `until`, and a loop's variables invisible to its bounds. A local that any
@@ -79,15 +82,14 @@ expressions or follows control flow to decide which calls execute.
 
 ## Syntax-only checks
 
-Call `verify_luajit_script(code, path)` when only validity matters; it parses the same way and discards the calls.
+Call `XRayLuaScript::verify(path, source)` when only validity matters; it parses the same way and reads no calls.
 
 ```rust
-use std::path::Path;
-use xrf_lua::verify_luajit_script;
+use xrf_lua::XRayLuaScript;
 
 fn main() -> xrf_error::XrfResult {
-  verify_luajit_script("local enabled = true", Path::new("scripts/example.script"))?;
-  assert!(verify_luajit_script("function broken(", Path::new("broken.script")).is_err());
+  XRayLuaScript::verify("scripts/example.script", "local enabled = true")?;
+  assert!(XRayLuaScript::verify("broken.script", "function broken(").is_err());
 
   Ok(())
 }
