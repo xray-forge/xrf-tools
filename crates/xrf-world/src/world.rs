@@ -112,25 +112,15 @@ impl World {
 
     let source: Arc<dyn RenderLevelSource> = source?;
     let key: Option<String> = source.get_scene_key();
-    let shared: Option<RenderSceneId> = key.as_ref().and_then(|key| {
-      self
-        .scenes
-        .iter()
-        .find(|(_, scene)| scene.key.as_ref() == Some(key))
-        .map(|(id, _)| *id)
-    });
-    let id: RenderSceneId = match shared {
+    let id: RenderSceneId = match key.as_deref().and_then(|key| self.find_scene(key)) {
       Some(id) => id,
       None => {
-        let id: RenderSceneId = RenderSceneId(self.next_scene);
-        let mut level: WorldLevel = WorldLevel::start(source, &self.workers);
+        let id: RenderSceneId = self.take_scene_id();
 
-        self.next_scene += 1;
-        level.set_pose(&self.get_viewport(viewport).pose);
         self.scenes.insert(
           id,
           WorldScene {
-            level,
+            level: WorldLevel::start(source, &self.workers),
             key,
             viewers: Vec::new(),
           },
@@ -142,6 +132,7 @@ impl World {
 
     if let Some(scene) = self.scenes.get_mut(&id) {
       scene.viewers.push(viewport);
+      scene.follow_driver(&self.viewports);
     }
 
     self.get_viewport(viewport).scene = Some(id);
@@ -158,10 +149,8 @@ impl World {
     source: Arc<dyn RenderLevelSource>,
     reload: WorldLevelReload,
   ) -> Option<RenderSceneId> {
-    let (id, scene) = self
-      .scenes
-      .iter_mut()
-      .find(|(_, scene)| scene.key.as_deref() == Some(key))?;
+    let id: RenderSceneId = self.find_scene(key)?;
+    let scene: &mut WorldScene = self.scenes.get_mut(&id)?;
 
     scene.level.reload(Arc::clone(&source), reload, &self.workers);
 
@@ -171,36 +160,32 @@ impl World {
       }
     }
 
-    Some(*id)
+    Some(id)
   }
 
   /// Streams the scene sources share by `key` afresh from `source`, a level read again whole, as a scene of its own:
   /// every viewport showing the one before shows it, its weather read again, and the one before goes. Answers the new
   /// scene, none where no scene has the key.
   pub fn reopen_scene(&mut self, key: &str, source: Arc<dyn RenderLevelSource>) -> Option<RenderSceneId> {
-    let before: RenderSceneId = self
-      .scenes
-      .iter()
-      .find(|(_, scene)| scene.key.as_deref() == Some(key))
-      .map(|(id, _)| *id)?;
+    let before: RenderSceneId = self.find_scene(key)?;
     let WorldScene { key, viewers, .. } = self.scenes.remove(&before)?;
-    let id: RenderSceneId = RenderSceneId(self.next_scene);
-    let mut level: WorldLevel = WorldLevel::start(Arc::clone(&source), &self.workers);
+    let id: RenderSceneId = self.take_scene_id();
+    let mut scene: WorldScene = WorldScene {
+      level: WorldLevel::start(Arc::clone(&source), &self.workers),
+      key,
+      viewers,
+    };
 
-    self.next_scene += 1;
+    scene.follow_driver(&self.viewports);
 
-    if let Some(driving) = viewers.first().and_then(|driver| self.viewports.get(driver)) {
-      level.set_pose(&driving.pose);
-    }
-
-    for viewer in &viewers {
+    for viewer in &scene.viewers {
       if let Some(world) = self.viewports.get_mut(viewer) {
         world.scene = Some(id);
         world.weather.show(Some(Arc::clone(&source)));
       }
     }
 
-    self.scenes.insert(id, WorldScene { level, key, viewers });
+    self.scenes.insert(id, scene);
 
     Some(id)
   }
@@ -283,6 +268,24 @@ impl World {
     self.scenes.get(&self.viewports.get(&viewport)?.scene?)
   }
 
+  /// The scene sources share by `key`.
+  fn find_scene(&self, key: &str) -> Option<RenderSceneId> {
+    self
+      .scenes
+      .iter()
+      .find(|(_, scene)| scene.key.as_deref() == Some(key))
+      .map(|(id, _)| *id)
+  }
+
+  /// The id the next scene takes, which no scene took before.
+  fn take_scene_id(&mut self) -> RenderSceneId {
+    let id: RenderSceneId = RenderSceneId(self.next_scene);
+
+    self.next_scene += 1;
+
+    id
+  }
+
   /// Takes a viewport out of the scene it shows, which goes once no viewport shows it; the next shows on drive it,
   /// standing its skinned objects as that viewport asks.
   fn leave_scene(&mut self, viewport: RenderViewportId) {
@@ -297,8 +300,8 @@ impl World {
 
       if scene.viewers.is_empty() {
         self.scenes.remove(&id);
-      } else if was_driving && let Some(driving) = scene.get_driver().and_then(|driver| self.viewports.get(&driver)) {
-        scene.level.set_pose(&driving.pose);
+      } else if was_driving {
+        scene.follow_driver(&self.viewports);
       }
     }
   }
@@ -377,10 +380,7 @@ impl RenderWorld for World {
       let source: Arc<dyn RenderLevelSource> = Arc::clone(scene.level.get_source());
 
       scene.level = WorldLevel::start(source, &self.workers);
-
-      if let Some(driving) = scene.get_driver().and_then(|driver| self.viewports.get(&driver)) {
-        scene.level.set_pose(&driving.pose);
-      }
+      scene.follow_driver(&self.viewports);
     }
   }
 }

@@ -7,7 +7,8 @@ use std::time::{Duration, Instant};
 
 use xrf_renderer::{RenderLevelSource, RenderWorkers};
 
-use crate::level::loading::level_loader::{LevelLoader, SectorLoad};
+use crate::level::loading::level_loader::LevelLoader;
+use crate::level::loading::sector_load::SectorLoad;
 use crate::tests::fixtures::TestLevelSource;
 use crate::tests::test_workers::create_workers;
 
@@ -72,7 +73,7 @@ fn packs_every_sector_once_as_they_are_taken() {
     std::thread::sleep(Duration::from_millis(1));
   }
 
-  let mut sectors: Vec<u32> = taken.iter().map(|(sector, _)| *sector).collect();
+  let mut sectors: Vec<u32> = taken.iter().map(|load| load.sector).collect();
 
   sectors.sort_unstable();
 

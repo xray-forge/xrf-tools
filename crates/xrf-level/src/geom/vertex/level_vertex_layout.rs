@@ -60,7 +60,7 @@ impl LevelVertexLayout {
 
   /// What a byte riding in a tangent or binormal alpha is divided by, which is the engine's 255 from
   /// `unpack_D3DCOLOR` rather than the 255.5 the compiler wrote it with.
-  const BASE_FRACTION: f32 = 255.0;
+  pub const BASE_FRACTION: f32 = 255.0;
 
   /// Reads a buffer's declaration into the offsets a decoder needs.
   ///

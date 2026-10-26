@@ -13,11 +13,11 @@ use xrf_visual::{LightAnimatorDescription, LightAnimatorKey};
 
 use crate::contract::world_weather_control::WorldWeatherControl;
 use crate::contract::world_weather_transition::WorldWeatherTransition;
+use crate::weather::fade::weather_fade::WeatherFade;
 use crate::weather::played_weather::PlayedWeather;
-use crate::weather::weather_fade::WeatherFade;
+use crate::weather::thunder::weather_thunder::WeatherThunder;
 use crate::weather::weather_lighting::WeatherLighting;
 use crate::weather::weather_player::WeatherPlayer;
-use crate::weather::weather_thunder::WeatherThunder;
 
 const NOON: u32 = 12 * 3600;
 

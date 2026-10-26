@@ -5,20 +5,17 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use glam::Mat4;
 use xrf_renderer::{
-  LoaderReceiver, RenderLevelSource, RenderLevelSpawn, RenderLoadFailure, RenderModelSkeleton, RenderSpawnModels,
-  RenderSpawnObject, RenderWorkers, StaticModel, StaticModelPlace, take_answer,
+  LoaderReceiver, RenderLevelSource, RenderLevelSpawn, RenderLoadFailure, RenderSpawnModels, RenderSpawnObject,
+  RenderWorkers, StaticModel, StaticModelPlace, take_answer,
 };
 
 use crate::level::loading::loader_flight::LoaderFlight;
 use crate::level::streaming::indexed_spawn::IndexedSpawn;
+use crate::level::streaming::spawn_load::SpawnLoad;
 
 /// Visuals a loader thread reads in one batch: enough that the level's lighting is estimated for many at once, few
 /// enough that objects appear while the rest are read.
 const VISUALS_PER_BATCH: usize = 16;
-
-/// One model packed for the scene, the visual it was read from, every object standing as it, and the skeleton it is
-/// posed by where the renderer poses it.
-pub type SpawnLoad = (StaticModel, String, Vec<StaticModelPlace>, Option<RenderModelSkeleton>);
 
 /// Reads a level's spawn on the loader threads: the objects once, then their visuals in batches side by side, no more
 /// than the pool's width of them running or queued at once (`LoaderFlight`), each model packed and handed to the render
@@ -197,7 +194,12 @@ impl SpawnLoader {
       // Counted before it is sent, so the loader never sees it taken before it was sent.
       sent.fetch_add(1, Ordering::AcqRel);
 
-      let _ = sender.send((packed, model.name, places, model.skeleton));
+      let _ = sender.send(SpawnLoad {
+        model: packed,
+        name: model.name,
+        places,
+        skeleton: model.skeleton,
+      });
     }
   }
 }

@@ -1,11 +1,8 @@
+pub(crate) mod fade;
 pub(crate) mod played_weather;
 pub(crate) mod playing_effect;
-pub(crate) mod thunder_flash;
+pub(crate) mod thunder;
 pub(crate) mod viewport_weather;
-pub(crate) mod weather_fade;
-pub(crate) mod weather_fader;
 pub(crate) mod weather_lighting;
 pub(crate) mod weather_load;
 pub(crate) mod weather_player;
-pub(crate) mod weather_thunder;
-pub(crate) mod weather_thundered_lighting;

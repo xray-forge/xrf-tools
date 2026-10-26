@@ -8736,6 +8736,7 @@ dependencies = [
  "xrf-engine-target",
  "xrf-environment",
  "xrf-error",
+ "xrf-level",
  "xrf-material",
  "xrf-math",
  "xrf-particles",

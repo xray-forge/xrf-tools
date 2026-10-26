@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use xrf_renderer::RenderSpawnCategory;
 
+use crate::level::streaming::hidden_spawn_groups::HiddenSpawnGroups;
+
 /// What of the level's world plays, rather than what is drawn of it: the weather's rain, bolts and wind, the campfires,
 /// the ambient effects, and which groups of the spawned objects stream in.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -54,19 +56,24 @@ impl WorldToggles {
     }
   }
 
-  /// The spawn groups left out of the scene, a bit a group from the lowest: each category not drawn, and the released
-  /// objects of every one while no released objects are drawn.
-  pub fn get_hidden_spawn_groups(&self) -> u32 {
-    RenderSpawnCategory::ALL.into_iter().fold(0, |hidden, category| {
-      let is_shown: bool = self.is_spawned(category);
-      let kept: u32 = if is_shown { 0 } else { 1 << (category.get_group() - 1) };
-      let released: u32 = if is_shown && self.is_spawned_released {
-        0
-      } else {
-        1 << (category.get_released_group() - 1)
-      };
+  /// The spawn groups left out of the scene: each category not drawn, and the released objects of every one while no
+  /// released objects are drawn.
+  pub(crate) fn get_hidden_spawn_groups(&self) -> HiddenSpawnGroups {
+    RenderSpawnCategory::ALL
+      .into_iter()
+      .fold(HiddenSpawnGroups::default(), |hidden, category| {
+        let is_shown: bool = self.is_spawned(category);
+        let hidden: HiddenSpawnGroups = if is_shown {
+          hidden
+        } else {
+          hidden.with(category.get_group())
+        };
 
-      hidden | kept | released
-    })
+        if is_shown && self.is_spawned_released {
+          hidden
+        } else {
+          hidden.with(category.get_released_group())
+        }
+      })
   }
 }
