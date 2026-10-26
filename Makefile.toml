@@ -6,9 +6,9 @@ skip_core_tasks = true
 # Cargo features that every Cargo check task enables, so they share one build. CI runs the same tasks, so it uses the
 # same list.
 CHECK_FEATURES = "xrf-app/typescript-bindings,xrf-app/dlss,xrf-job/rayon"
-# Tauri CLI version pinned by the `bin/xrf-ui` lockfile. Desktop tasks run it with Node from `bin/xrf-app/app`, which
-# holds `tauri.conf.json`.
-NODE_TAURI = "../../xrf-ui/node_modules/@tauri-apps/cli/tauri.js"
+# Tauri CLI version pinned by the `bin/xrf-app/ui` lockfile. Desktop tasks run it with Node from `bin/xrf-app/app`,
+# which holds `tauri.conf.json`.
+NODE_TAURI = "../ui/node_modules/@tauri-apps/cli/tauri.js"
 
 # Checks.
 
@@ -173,7 +173,7 @@ args = ["run", "-p", "xrf-app", "--no-default-features"]
 [tasks.serve-ui]
 description = "Run the UI dev server without the backend."
 category = "Development"
-cwd = "bin/xrf-ui"
+cwd = "bin/xrf-app/ui"
 script_runner = "@shell"
 script = "pnpm run dev"
 

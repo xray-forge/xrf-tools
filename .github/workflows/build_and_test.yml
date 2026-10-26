@@ -127,10 +127,10 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            bin/xrf-ui/target/jest-cache
-            bin/xrf-ui/target/eslint
-            bin/xrf-ui/target/tsconfig.tsbuildinfo
-            bin/xrf-ui/target/tsconfig.node.tsbuildinfo
+            bin/xrf-app/ui/target/jest-cache
+            bin/xrf-app/ui/target/eslint
+            bin/xrf-app/ui/target/tsconfig.tsbuildinfo
+            bin/xrf-app/ui/target/tsconfig.node.tsbuildinfo
             cli/target/eslint
             packages/*/target/jest-cache
             packages/*/target/eslint
@@ -164,10 +164,10 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: |
-            bin/xrf-ui/target/jest-cache
-            bin/xrf-ui/target/eslint
-            bin/xrf-ui/target/tsconfig.tsbuildinfo
-            bin/xrf-ui/target/tsconfig.node.tsbuildinfo
+            bin/xrf-app/ui/target/jest-cache
+            bin/xrf-app/ui/target/eslint
+            bin/xrf-app/ui/target/tsconfig.tsbuildinfo
+            bin/xrf-app/ui/target/tsconfig.node.tsbuildinfo
             cli/target/eslint
             packages/*/target/jest-cache
             packages/*/target/eslint

@@ -2,7 +2,7 @@
 
 The XRF desktop application: the Tauri binary that assembles the plugin crates, opens the main window and runs until it
 exits. It holds no domain of its own. Each domain is a plugin crate under `plugins/`, the infrastructure they share is
-`xrf-app-core`, and the page the window shows is built from `bin/xrf-ui`.
+`xrf-app-core`, and the page the window shows is built from `ui/` (`xrf-app-ui`).
 
 ## Layout
 

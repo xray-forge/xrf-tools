@@ -1,5 +1,5 @@
 packages:
-  - bin/xrf-ui
+  - bin/xrf-app/ui
   - cli
   - packages/*
 
