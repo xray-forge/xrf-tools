@@ -2,6 +2,7 @@ import { ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject } from "@xrf/i
 import { ExportDescriptor, ExportsProject } from "@xrf/ipc/types/xrf-export";
 import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
 import { TranslationProjectDescriptor, TranslationSource } from "@xrf/ipc/types/xrf-translation";
+import { EXrayMountMode } from "@xrf/ipc/types/xrf-vfs";
 
 import { mockArchiveFileDescriptor } from "@/core/archive/fixtures/archive.mocks";
 import { TCallableExportDescriptor } from "@/core/exports";
@@ -140,7 +141,7 @@ export function mockTranslationsProject(
 
   return {
     mode: "source",
-    roots: { asset: null, roots: [{ mode: "auto", path: root }] },
+    roots: { asset: null, roots: [{ mode: EXrayMountMode.AUTO, path: root }] },
     prefix: "translations",
     languages: ["eng", "ukr"],
     encodings: { eng: "windows-1251", ukr: "windows-1251" },

@@ -1,5 +1,6 @@
 import { EquipmentSpriteMetadata } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
+import { EXrayAssetContainer } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 
 import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
@@ -55,7 +56,10 @@ export function toEquipmentProblems(
   if (!metadata.location.path) {
     problems.push({
       rule: EEquipmentProblemRule.ARCHIVED,
-      subject: metadata.location.asset?.container.kind === "archive" ? metadata.location.asset.container.path : null,
+      subject:
+        metadata.location.asset?.container.kind === EXrayAssetContainer.ARCHIVE
+          ? metadata.location.asset.container.path
+          : null,
       message: metadata.location.writeTarget
         ? `The sheet is served out of an archive. A save would create ${metadata.location.writeTarget}, which shadows it.`
         : "The sheet is served out of an archive and no mounted root can take a write, so nothing here can be saved.",

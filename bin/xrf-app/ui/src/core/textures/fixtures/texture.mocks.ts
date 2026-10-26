@@ -10,7 +10,7 @@ import {
   TextureVocabulary,
 } from "@xrf/ipc/types/xrf-app-textures";
 import { XrayMaterialDescriptor } from "@xrf/ipc/types/xrf-material";
-import { XrayAsset, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
+import { EXrayMountMode, XrayAsset, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
 /** The engine reference of a texture, its bump, and that bump's companion, which most cases need together. */
 export const MOCK_TEXTURE: string = "ston\\ston_beton05";
@@ -76,7 +76,7 @@ export function mockBumpedTextureSummary(
 }
 
 export function mockTextureRoots(root: string = "C:\\gamedata"): XrayRoots {
-  return { asset: null, roots: [{ mode: "auto", path: root }] };
+  return { asset: null, roots: [{ mode: EXrayMountMode.AUTO, path: root }] };
 }
 
 export function mockTextureCatalog(

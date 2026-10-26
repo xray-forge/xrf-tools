@@ -1,4 +1,5 @@
-import { XrayRootProbe } from "@xrf/ipc/types/xrf-vfs";
+import { EXrayRootKind, XrayRootProbe } from "@xrf/ipc/types/xrf-vfs";
+import { assertExhaustive } from "@xrf/types";
 
 /**
  * What a probed path is, in one line meant to be read beside the path itself.
@@ -8,20 +9,23 @@ import { XrayRootProbe } from "@xrf/ipc/types/xrf-vfs";
  */
 export function describeRootProbe(probe: XrayRootProbe): string {
   switch (probe.kind) {
-    case "installation":
+    case EXrayRootKind.INSTALLATION:
       return `Game installation, ${countOf(probe.mounts, "source")}`;
 
-    case "volumes":
+    case EXrayRootKind.VOLUMES:
       return "Archive volumes";
 
-    case "root":
+    case EXrayRootKind.ROOT:
       return `Game data: ${probe.evidence.join(", ")}`;
 
-    case "unrecognized":
+    case EXrayRootKind.UNRECOGNIZED:
       return "Nothing here looks like game data";
 
-    case "missing":
+    case EXrayRootKind.MISSING:
       return "Path does not exist";
+
+    default:
+      return assertExhaustive(probe.kind);
   }
 }
 
