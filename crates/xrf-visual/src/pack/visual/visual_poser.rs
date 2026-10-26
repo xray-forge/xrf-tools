@@ -1,18 +1,15 @@
 use xrf_math::Vector3d;
 
-use crate::data::visual::geometry::visual_clusters::VisualClusters;
 use crate::data::visual::geometry::visual_geometry::VisualGeometry;
+use crate::data::visual::geometry::visual_skin::VisualSkin;
 use crate::data::visual::geometry::visual_submesh::VisualSubmesh;
 use crate::data::visual::geometry::visual_submesh_content::VisualSubmeshContent;
 use crate::data::visual::skeleton::visual_rest_pose::VisualRestPose;
 use crate::data::visual::skeleton::visual_transform::VisualTransform;
 use crate::data::visual::visual_description::VisualDescription;
+use crate::pack::buffer::visual_buffer_builder::VisualBufferBuilder;
+use crate::pack::buffer::visual_cluster_table::VisualClusterTable;
 use crate::pack::visual::visual_package::VisualPackage;
-use crate::pack::visual_buffer_builder::VisualBufferBuilder;
-use crate::pack::visual_cluster_table::VisualClusterTable;
-
-/// Links a skinned vertex hangs from.
-const LINKS: usize = 4;
 
 /// Stands a packed visual still in a pose, as static geometry: every skinned vertex moved by the bones it hangs from,
 /// from their bind to the pose, weighted as its skin weights it, and every submesh cut into clusters as geometry drawn
@@ -85,15 +82,15 @@ impl VisualPoser {
       let weights: Vec<f32> = package.read_f32_section(skin.weights);
 
       for vertex in 0..(positions.len() / 3)
-        .min(links.len() / LINKS)
-        .min(weights.len() / LINKS)
+        .min(links.len() / VisualSkin::LINKS)
+        .min(weights.len() / VisualSkin::LINKS)
       {
-        let linked: Vec<(&VisualTransform, f32)> = (0..LINKS)
+        let linked: Vec<(&VisualTransform, f32)> = (0..VisualSkin::LINKS)
           .filter_map(|link| {
-            let weight: f32 = weights[vertex * LINKS + link];
+            let weight: f32 = weights[vertex * VisualSkin::LINKS + link];
 
             skins
-              .get(links[vertex * LINKS + link] as usize)
+              .get(links[vertex * VisualSkin::LINKS + link] as usize)
               .filter(|_| weight != 0.0)
               .map(|skin| (skin, weight))
           })
@@ -107,18 +104,8 @@ impl VisualPoser {
       }
     }
 
-    let points: Vec<[f32; 3]> = positions
-      .as_chunks::<3>()
-      .0
-      .iter()
-      .map(|it| [it[0], it[1], it[2]])
-      .collect();
-    let cut: Vec<u32> = indices.iter().map(|index| u32::from(*index)).collect();
-    let mut table: VisualClusterTable = VisualClusterTable::default();
-
-    for level in &geometry.detail_levels {
-      table.push_run(&cut, &points, level.start, level.count, VisualClusters::NO_DRAWABLE);
-    }
+    let table: VisualClusterTable =
+      VisualClusterTable::of_levels(&indices, positions.as_chunks::<3>().0, &geometry.detail_levels);
 
     VisualGeometry {
       positions: builder.push_f32_section(&positions),
@@ -133,8 +120,13 @@ impl VisualPoser {
     }
   }
 
-  /// A point moved by each bone it hangs from, weighted, in place.
+  /// A point moved by each bone it hangs from, weighted, in place; one hanging from none, every weight nought, stays
+  /// where it is stored rather than collapsing to the origin.
   fn move_point(values: &mut [f32], vertex: usize, linked: &[(&VisualTransform, f32)]) {
+    if linked.is_empty() {
+      return;
+    }
+
     let point: Vector3d = Vector3d::new(values[vertex * 3], values[vertex * 3 + 1], values[vertex * 3 + 2]);
     let mut moved: Vector3d = Vector3d::ZERO;
 

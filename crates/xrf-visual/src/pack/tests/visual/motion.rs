@@ -4,9 +4,10 @@ use xrf_error::XrfResult;
 use xrf_ogf::{OgfBone, OgfBoneIkData};
 use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 
+use crate::data::visual::skeleton::visual_transform::VisualTransform;
 use crate::pack::tests::fixtures::{bind, bones, vector};
-use crate::pack::visual::motion::visual_motion::{FLOATS_PER_BONE, bake_motion, describe_motion};
 use crate::pack::visual::motion::visual_motion_bake::VisualMotionBake;
+use crate::pack::visual::motion::visual_motion_baker::VisualMotionBaker;
 use crate::pack::visual::motion::visual_motion_pose::VisualMotionPose;
 
 /// The measured case behind the reported duration: `s98b_reload` of Anomaly's `ceasar_hand_am98b_hud_animation.omf`.
@@ -81,7 +82,7 @@ fn flat_skeleton(names: &[&str]) -> (Vec<OgfBone>, Vec<OgfBoneIkData>, Vec<Skele
 fn try_bake(motion: &SkeletonMotion, names: &[&str], speed: f32) -> XrfResult<VisualMotionPose> {
   let (skeleton, binds, parts) = flat_skeleton(names);
 
-  bake_motion(&skeleton, &binds, &parts, &definition("s98b_reload", speed), motion)
+  VisualMotionBaker::bake(&skeleton, &binds, &parts, &definition("s98b_reload", speed), motion)
 }
 
 fn bake_keyed(count: u32, speed: f32) -> VisualMotionPose {
@@ -180,7 +181,7 @@ fn poses_one_frame_for_a_motion_of_nothing_but_held_bones() {
   );
   assert_eq!(
     posed.transforms.len(),
-    FLOATS_PER_BONE,
+    VisualTransform::FLOATS,
     "expect one bone's transform, once"
   );
 }
@@ -200,7 +201,7 @@ fn takes_the_frame_count_from_the_longest_stream_any_bone_carries() {
   assert_eq!(posed.description.bone_count, 2);
   assert_eq!(
     posed.transforms.len(),
-    RELOAD_FRAMES as usize * 2 * FLOATS_PER_BONE,
+    RELOAD_FRAMES as usize * 2 * VisualTransform::FLOATS,
     "expect the buffer to hold every baked frame"
   );
 }
@@ -212,7 +213,7 @@ fn drives_a_bone_its_bank_names_in_another_case() {
 
   parts[0].bones[0].0 = String::from("Bip01");
 
-  let described: VisualMotionBake = describe_motion(
+  let described: VisualMotionBake = VisualMotionBaker::describe(
     &skeleton,
     &binds,
     &parts,
@@ -230,9 +231,9 @@ fn describes_a_motion_as_its_bake_does_without_posing_it() {
   let motion: SkeletonMotion = motion(RELOAD_FRAMES, &[keyed_run(RELOAD_FRAMES), held_run()]);
   let definition: SkeletonMotionDefinition = definition("s98b_reload", RELOAD_SPEED);
   let baked: VisualMotionPose =
-    bake_motion(&skeleton, &binds, &parts, &definition, &motion).expect("expect the motion to bake");
-  let described: VisualMotionBake =
-    describe_motion(&skeleton, &binds, &parts, &definition, &motion).expect("expect the motion to describe");
+    VisualMotionBaker::bake(&skeleton, &binds, &parts, &definition, &motion).expect("expect the motion to bake");
+  let described: VisualMotionBake = VisualMotionBaker::describe(&skeleton, &binds, &parts, &definition, &motion)
+    .expect("expect the motion to describe");
 
   assert_eq!(described, baked.description);
 }

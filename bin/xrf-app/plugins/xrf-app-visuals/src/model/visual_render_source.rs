@@ -12,8 +12,7 @@ use xrf_renderer::{
   RenderSpawnObject,
 };
 use xrf_visual::{
-  FLOATS_PER_BONE, LightsDescription, SectorPackage, VisualDescription, VisualMotionPose, VisualPackage, VisualPoser,
-  VisualTransform,
+  LightsDescription, SectorPackage, VisualDescription, VisualMotionPose, VisualPackage, VisualPoser, VisualTransform,
 };
 
 use crate::{SelectedVisual, VisualPoses};
@@ -222,10 +221,11 @@ impl RenderLevelSource for VisualRenderSource {
       ),
     };
     // Twelve floats a bone, as the renderer reads them: the basis' three columns, then the translation.
-    if posed.description.floats_per_bone as usize != FLOATS_PER_BONE {
+    if posed.description.floats_per_bone as usize != VisualTransform::FLOATS {
       return Err(XrfError::new_invalid_error(format!(
-        "Motion '{name}' is baked at {} floats a bone, not {FLOATS_PER_BONE}",
-        posed.description.floats_per_bone
+        "Motion '{name}' is baked at {} floats a bone, not {}",
+        posed.description.floats_per_bone,
+        VisualTransform::FLOATS
       )));
     }
 

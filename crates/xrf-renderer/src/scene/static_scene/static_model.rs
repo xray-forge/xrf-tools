@@ -1,15 +1,12 @@
 use glam::{Vec3, Vec4};
 use xrf_material::XraySurfaceDescriptor;
-use xrf_visual::{SectorSurface, VisualClusters, VisualDrawRange, VisualGeometry, VisualPackage};
+use xrf_visual::{SectorSurface, VisualClusters, VisualDrawRange, VisualGeometry, VisualPackage, VisualSkin};
 
 use crate::scene::section_bytes::read_pods;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_model_part::StaticModelPart;
 use crate::scene::static_scene::static_model_skin::StaticModelSkin;
 use crate::scene::static_scene::static_vertex_words::StaticVertexWords;
-
-/// Bones a skinned vertex hangs from.
-const LINKS: usize = 4;
 
 /// How far past its declared sphere a skinned model is taken to reach, for its clusters: it moves with its bones, so
 /// its clusters are culled by the model's whole sphere, widened, rather than by where they stand bound.
@@ -142,8 +139,12 @@ impl StaticModel {
     (0..vertices)
       .flat_map(|vertex| {
         let link = |at: usize| -> (u32, u32) {
-          let bone: u32 = bones.get(vertex * LINKS + at).copied().map_or(0, u32::from).min(255);
-          let weight: f32 = weights.get(vertex * LINKS + at).copied().unwrap_or(0.0);
+          let bone: u32 = bones
+            .get(vertex * VisualSkin::LINKS + at)
+            .copied()
+            .map_or(0, u32::from)
+            .min(255);
+          let weight: f32 = weights.get(vertex * VisualSkin::LINKS + at).copied().unwrap_or(0.0);
 
           (bone, (weight.clamp(0.0, 1.0) * 255.0).round() as u32)
         };

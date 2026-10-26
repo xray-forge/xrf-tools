@@ -1,12 +1,12 @@
+use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
 use xrf_ogf::{OgfBone, OgfBoneIkData, OgfFile};
 use xrf_omf::OmfFile;
 use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
-use xrf_spawn::XRayByteOrder;
 use xrf_vfs::{XrayAsset, XraySearch};
 
-use crate::pack::visual::motion::visual_motion::{bake_motion, describe_motion};
 use crate::pack::visual::motion::visual_motion_bake::VisualMotionBake;
+use crate::pack::visual::motion::visual_motion_baker::VisualMotionBaker;
 use crate::pack::visual::motion::visual_motion_pose::VisualMotionPose;
 use crate::resolve::visual_dependencies::VisualDependencies;
 
@@ -63,7 +63,7 @@ impl VisualMotions {
     dependencies: &VisualDependencies,
     name: &str,
   ) -> XrfResult<VisualMotionPose> {
-    self.read_named(search, dependencies, (name, "pose"), bake_motion)
+    self.read_named(search, dependencies, (name, "pose"), VisualMotionBaker::bake)
   }
 
   /// Describes one named motion as a bake of it onto the skeleton would hold it, posing no frame.
@@ -77,7 +77,7 @@ impl VisualMotions {
     dependencies: &VisualDependencies,
     name: &str,
   ) -> XrfResult<VisualMotionBake> {
-    self.read_named(search, dependencies, (name, "describe"), describe_motion)
+    self.read_named(search, dependencies, (name, "describe"), VisualMotionBaker::describe)
   }
 
   /// Every motion name the visual can play, embedded ones first then each referenced file's.
@@ -90,7 +90,7 @@ impl VisualMotions {
 
     for dependency in &dependencies.motions {
       for asset in dependency.resolution.get_assets() {
-        let Ok(omf) = read_omf(search, asset) else {
+        let Ok(omf) = Self::read_omf(search, asset) else {
           continue;
         };
 
@@ -129,7 +129,7 @@ impl VisualMotions {
       for asset in dependency.resolution.get_assets() {
         searched += 1;
 
-        let Ok(omf) = read_omf(search, asset) else {
+        let Ok(omf) = Self::read_omf(search, asset) else {
           continue;
         };
 
@@ -144,13 +144,14 @@ impl VisualMotions {
       "Motion '{name}' is in none of the {searched} animation files this visual references"
     )))
   }
-}
 
-fn read_omf(search: &XraySearch, asset: &XrayAsset) -> XrfResult<OmfFile> {
-  let bytes: Vec<u8> = search
-    .read_asset(asset)
-    .map_err(|error| XrfError::new_read_error(format!("Failed to read '{}': {error}", asset.get_logical_path())))?;
+  /// One animation file a dependency located, read and parsed.
+  fn read_omf(search: &XraySearch, asset: &XrayAsset) -> XrfResult<OmfFile> {
+    let bytes: Vec<u8> = search
+      .read_asset(asset)
+      .map_err(|error| XrfError::new_read_error(format!("Failed to read '{}': {error}", asset.get_logical_path())))?;
 
-  OmfFile::read_from_bytes::<XRayByteOrder>(bytes)
-    .map_err(|error| XrfError::new_parsing_error(format!("Failed to parse '{}': {error}", asset.get_logical_path())))
+    OmfFile::read_from_bytes::<XRayByteOrder>(bytes)
+      .map_err(|error| XrfError::new_parsing_error(format!("Failed to parse '{}': {error}", asset.get_logical_path())))
+  }
 }

@@ -13,6 +13,11 @@ impl SkeletonPart {
   pub fn get_bones(&self) -> Vec<&str> {
     self.bones.iter().map(|it| it.0.as_str()).collect::<Vec<_>>()
   }
+
+  /// Bones a set of partitions names in total, which is how many key runs a motion of theirs holds.
+  pub fn count_bones(parts: &[Self]) -> usize {
+    parts.iter().map(|it| it.bones.len()).sum()
+  }
 }
 
 impl SkeletonPart {
