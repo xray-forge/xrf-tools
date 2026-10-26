@@ -31,6 +31,9 @@ this crate reads the visuals run through [xrf-ogf](../xrf-ogf/README.md)'s chunk
 | `level.game`                | `LevelGameFile`      | Patrol paths and respawn points                       | Yes    |
 | `build.lights`              | `LevelLightsFile`    | The compiler's light list                             | Yes    |
 | `level.wallmarks`           | `LevelWallmarksFile` | Editor-only baked decals                              | Yes    |
+| `build.prj`                 | `BuildPrjFile`       | The scene the level editor hands xrLC                 | Yes    |
+| `build.aimap`               | `BuildAimapFile`     | The AI map the level editor hands xrAI                | Yes    |
+| `build.cform`               | `BuildCformFile`     | The collision form xrLC leaves for xrAI               | Yes    |
 
 The file types share their doors, generic over the byte order (`xrf_chunk::XRayByteOrder` for every shipped file):
 `read_from_path`, `read_from_file`, `read_from_chunk` over any chunk data source, and, for most, `read_from_bytes` for
@@ -38,7 +41,8 @@ bytes already in hand, which is how an archived level arrives. Each names the fi
 are chunk trees; `level.cform`, `level.ai` and `level.fog_vol` are flat, which their readers handle. Writers take a
 `ChunkWriter` and fill its `buffer`.
 
-Not read here: the SDK's compiler inputs (`build.prj`, `build.cform`, `build.aimap`), which no game loads, and
+The three `build.*` files besides `build.lights` are compiler inputs no game loads: the level editor writes `build.prj`
+and `build.aimap`, xrLC writes `build.cform`, and xrCompress leaves all three out of archives. Not read here:
 `level.spawn`, which [xrf-spawn](../xrf-spawn/README.md) reads as `LevelSpawnFile`.
 
 ## Read a level
@@ -112,6 +116,10 @@ objects, grid, then header; a patrol path's chunks are 1, 5, 2, 3; `build.lights
 records verbatim. `level.env_mod` and `level.ps_static` tell a version chunk from a first record by its size, as the
 engine does. Do not reorder a writer to match a format's comments: a writer that parses back fine can still differ on
 every byte.
+
+The compiler inputs are checked against the workspace's one sample of each, Gunslinger's `l01_test`. The editor blits
+its structs whole, so `BuildPrjName` keeps the stale bytes past a name's terminator, and the records keep their pack
+padding and the unused `svector` slots; `build.prj` writes its smoothing groups after the faces, as `SaveBuild` does.
 
 ```rust
 use xrf_chunk::{ChunkWriter, XRayByteOrder};

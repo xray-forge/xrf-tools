@@ -1,6 +1,9 @@
 #![doc = include_str!("../README.md")]
 
 pub(crate) mod ai;
+pub(crate) mod build_aimap;
+pub(crate) mod build_cform;
+pub(crate) mod build_prj;
 pub(crate) mod cform;
 pub(crate) mod details;
 pub(crate) mod env_mod;
@@ -25,6 +28,27 @@ pub use crate::ai::level_ai_header::*;
 pub use crate::ai::level_ai_node::*;
 pub use crate::ai::level_ai_nodes::*;
 pub use crate::ai::level_ai_version::*;
+pub use crate::build_aimap::build_aimap_file::*;
+pub use crate::build_aimap::build_aimap_node::*;
+pub use crate::build_aimap::build_aimap_params::*;
+pub use crate::build_cform::build_cform_face::*;
+pub use crate::build_cform::build_cform_file::*;
+pub use crate::build_cform::build_cform_raycast_face::*;
+pub use crate::build_prj::build_prj_file::*;
+pub use crate::build_prj::build_prj_name::*;
+pub use crate::build_prj::build_prj_params::*;
+pub use crate::build_prj::geometry::build_prj_face::*;
+pub use crate::build_prj::geometry::build_prj_glow::*;
+pub use crate::build_prj::geometry::build_prj_portal::*;
+pub use crate::build_prj::lights::build_prj_dynamic_light::*;
+pub use crate::build_prj::lights::build_prj_light_control::*;
+pub use crate::build_prj::models::build_prj_lod::*;
+pub use crate::build_prj::models::build_prj_lod_face::*;
+pub use crate::build_prj::models::build_prj_mu_model::*;
+pub use crate::build_prj::models::build_prj_mu_reference::*;
+pub use crate::build_prj::surfaces::build_prj_material::*;
+pub use crate::build_prj::surfaces::build_prj_shader::*;
+pub use crate::build_prj::surfaces::build_prj_texture::*;
 pub use crate::cform::level_cform_face::*;
 pub use crate::cform::level_cform_file::*;
 pub use crate::cform::level_cform_geometry::*;
