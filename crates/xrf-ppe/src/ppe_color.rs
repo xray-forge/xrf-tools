@@ -4,6 +4,8 @@ use xrf_animation_envelope::AnimationEnvelope;
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
+use crate::ppe_color_channel::PpeColorChannel;
+
 /// One colour parameter of a post-process effect, `CPostProcessColor`. By default a zero base and no keys, as
 /// `CPostProcessColor` starts one.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -19,7 +21,27 @@ pub struct PpeColor {
 
 impl PpeColor {
   /// What the three channels are called, in the order [`Self::channels`] gives them.
-  pub const CHANNEL_NAMES: [&'static str; 3] = ["red", "green", "blue"];
+  pub const CHANNEL_NAMES: [&'static str; 3] = [
+    PpeColorChannel::Red.get_name(),
+    PpeColorChannel::Green.get_name(),
+    PpeColorChannel::Blue.get_name(),
+  ];
+
+  pub fn get_channel(&self, channel: PpeColorChannel) -> &AnimationEnvelope {
+    match channel {
+      PpeColorChannel::Red => &self.red,
+      PpeColorChannel::Green => &self.green,
+      PpeColorChannel::Blue => &self.blue,
+    }
+  }
+
+  pub fn get_channel_mut(&mut self, channel: PpeColorChannel) -> &mut AnimationEnvelope {
+    match channel {
+      PpeColorChannel::Red => &mut self.red,
+      PpeColorChannel::Green => &mut self.green,
+      PpeColorChannel::Blue => &mut self.blue,
+    }
+  }
 
   /// Reads a colour, `CPostProcessColor::load`.
   ///

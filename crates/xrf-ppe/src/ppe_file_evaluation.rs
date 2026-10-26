@@ -67,10 +67,10 @@ impl PpeFile {
   }
 
   /// The first time the effect plays at, and the noise granularity there, at which that granularity is zero or below.
-  /// `CPostprocessAnimator::Process` lerps the screen from the identity's granularity of 1 by the effector's factor and
-  /// stops the game with `R_ASSERT3` on a result at or below zero, which such a granularity reaches at full strength
-  /// and a positive one never does. Sampled over the times the effect plays at, from zero to its length: at each key
-  /// there, the middle of each span, and both ends. An unkeyed granularity keeps the identity's and is never refused.
+  /// `CPostprocessAnimator::Process` stops the game with `R_ASSERT3` on such a granularity at any effector factor:
+  /// `SPPInfo::lerp` copies the noise rather than fading it. Sampled over the times the effect plays at, from zero to
+  /// its length: at each key there, the middle of each span, and both ends. An unkeyed granularity keeps the identity's
+  /// and is never refused.
   pub fn find_refused_noise_granularity(&self) -> Option<(f32, f32)> {
     let keys: &[AnimationKey] = &self.noise_granularity.keys;
 
