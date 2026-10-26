@@ -3,7 +3,7 @@ use std::path::Path;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::ShaderRenderer;
+use crate::source::ShaderRenderer;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct XRayShaderImportReference {

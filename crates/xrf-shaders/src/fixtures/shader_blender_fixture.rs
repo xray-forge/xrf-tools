@@ -1,8 +1,6 @@
-use crate::shader_blender::ShaderBlender;
-use crate::shader_blender_class::ShaderBlenderClass;
-use crate::shader_blender_property::ShaderBlenderProperty;
-use crate::shader_blender_property_value::ShaderBlenderPropertyValue;
-use crate::shader_blender_token::ShaderBlenderToken;
+use crate::library::{
+  ShaderBlender, ShaderBlenderClass, ShaderBlenderProperty, ShaderBlenderPropertyValue, ShaderBlenderToken,
+};
 
 /// One blender, built as the SDK writes it and then changed a knob at a time.
 #[derive(Clone, Debug)]

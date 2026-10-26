@@ -1,8 +1,6 @@
 //! Blenders and libraries laid down as raw bytes, in the shape the corpus holds.
 
-use crate::shader_blender::ShaderBlender;
-use crate::shader_blender_property_kind::ShaderBlenderPropertyKind;
-use crate::shader_library_file::ShaderLibraryFile;
+use crate::library::{ShaderBlender, ShaderBlenderPropertyKind, ShaderLibraryFile};
 
 /// Bytes `CBlender_DESC` occupies, stated as the literal the engine's struct comes to rather than derived from the
 /// reader's own constants.

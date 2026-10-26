@@ -3,10 +3,9 @@
 use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::shader_blender_property::ShaderBlenderProperty;
-use crate::shader_blender_property_kind::ShaderBlenderPropertyKind;
-use crate::shader_blender_property_value::ShaderBlenderPropertyValue;
-use crate::shader_blender_token::ShaderBlenderToken;
+use crate::library::{
+  ShaderBlenderProperty, ShaderBlenderPropertyKind, ShaderBlenderPropertyValue, ShaderBlenderToken,
+};
 use crate::tests::fixtures;
 
 fn read(bytes: &[u8]) -> XrfResult<ShaderBlenderProperty> {

@@ -1,7 +1,6 @@
 use xrf_lua::XRayLuaMethodCall;
 
-use crate::xray_shader_pass_state::XRayShaderPassState;
-use crate::xray_shader_sampler::XRayShaderSampler;
+use crate::script::{XRayShaderPassState, XRayShaderSampler};
 
 /// A literal vertex and pixel shader pair selected by `shader:begin`, and the state chained onto it.
 #[derive(Clone, Debug, PartialEq)]

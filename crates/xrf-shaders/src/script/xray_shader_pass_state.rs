@@ -1,6 +1,6 @@
 use xrf_lua::{XRayLuaChainedCall, XRayLuaMethodCall, XRayLuaValue};
 
-use crate::xray_shader_blend_factor::XRayShaderBlendFactor;
+use crate::script::XRayShaderBlendFactor;
 
 /// The render state a shader script sets on one pass, in the calls chained onto its `shader:begin`.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

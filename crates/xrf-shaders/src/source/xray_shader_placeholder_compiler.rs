@@ -1,6 +1,6 @@
 use xrf_error::{XrfError, XrfResult};
 
-use crate::{ShaderRenderer, XRayShader, XRayShaderCompiler};
+use crate::source::{ShaderRenderer, XRayShader, XRayShaderCompiler};
 
 /// Placeholder until a renderer-specific compiler backend is implemented.
 pub struct XRayShaderPlaceholderCompiler;

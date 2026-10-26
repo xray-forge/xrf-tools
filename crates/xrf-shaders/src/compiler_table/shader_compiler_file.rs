@@ -7,7 +7,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::shader_compiler_shader::ShaderCompilerShader;
+use crate::compiler_table::ShaderCompilerShader;
 
 /// The compiler shader library, `shaders_xrlc.xr`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

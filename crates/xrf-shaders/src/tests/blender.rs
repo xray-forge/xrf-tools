@@ -4,8 +4,7 @@ use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
 use crate::fixtures::ShaderBlenderFixture;
-use crate::shader_blender::ShaderBlender;
-use crate::shader_blender_property_kind::ShaderBlenderPropertyKind;
+use crate::library::{ShaderBlender, ShaderBlenderPropertyKind, ShaderBlenderPropertyValue};
 use crate::tests::fixtures;
 
 fn read(bytes: &[u8]) -> XrfResult<ShaderBlender> {
@@ -67,6 +66,37 @@ fn reads_the_knobs_a_class_declares_by_name() {
   assert_eq!(blender.integer("Use alpha-channel"), None);
   assert_eq!(blender.boolean("Alpha ref"), None);
   assert_eq!(blender.boolean("Nothing writes this"), None);
+}
+
+#[test]
+fn reads_the_base_texture_through_the_slot_its_spelling_names() {
+  let textures: Vec<String> = (0..9).map(|slot| format!("texture_{slot}")).collect();
+  let base = |declared: &str| {
+    let mut blender: ShaderBlender = ShaderBlenderFixture::model("models\\model").blender;
+
+    blender
+      .properties
+      .iter_mut()
+      .find(|property| property.name == ShaderBlender::TEXTURE_NAME_PROPERTY)
+      .expect("every class writes a base texture")
+      .value = ShaderBlenderPropertyValue::Texture(String::from(declared));
+
+    blender.base_texture(&textures).map(str::to_owned)
+  };
+
+  assert_eq!(base("$base0").as_deref(), Some("texture_0"));
+  assert_eq!(base("$base7").as_deref(), Some("texture_7"));
+  // `ParseName` knows exactly eight spellings; anything else beginning `$base` names a texture of that spelling.
+  assert_eq!(base("$base8").as_deref(), Some("$base8"));
+  assert_eq!(base("$base01").as_deref(), Some("$base01"));
+  assert_eq!(base("$base+1").as_deref(), Some("$base+1"));
+  assert_eq!(base("$null"), None);
+  assert_eq!(base(""), None);
+  assert_eq!(base("trees\\trees_bark").as_deref(), Some("trees\\trees_bark"));
+  assert_eq!(
+    ShaderBlenderFixture::model("models\\model").blender.base_texture(&[]),
+    None
+  );
 }
 
 #[test]

@@ -3,10 +3,10 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_utils::to_format_size;
 
-use crate::shader_blender_property_kind::ShaderBlenderPropertyKind;
-use crate::shader_blender_property_value::ShaderBlenderPropertyValue;
-use crate::shader_blender_token::ShaderBlenderToken;
-use crate::shader_fixed_string::{read_shader_fixed_string, write_shader_fixed_string};
+use crate::library::{
+  ShaderBlenderPropertyKind, ShaderBlenderPropertyValue, ShaderBlenderToken, read_shader_fixed_string,
+  write_shader_fixed_string,
+};
 
 /// One property of a blender: what it is called, and what the author left in it.
 #[derive(Clone, Debug, PartialEq)]

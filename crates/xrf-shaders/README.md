@@ -13,9 +13,11 @@ blender of `shaders.xr`. `ShaderLibraryFile` reads the library from a path, an o
 archived library has no file to open), or a chunk reader, always in X-Ray's byte order. It looks a blender up by its
 exact name (`find_blender`, `contains_blender`); `blenders` iterates in no particular order.
 
-Reading refuses a library without its blenders chunk (id 2), a name defined twice, a blender chunk not consumed whole,
-and a property type the engine never writes (11 and above, `XrfError::NotImplemented`), since a guessed payload size
-would misread every property after it.
+The engine and the SDK open blender chunks by id, 0 upwards, until one is missing, whatever order the file stores them
+in. Reading does the same and refuses a chunk that walk never reaches, past a gap or repeating an id, since the game
+would resolve no surface to its blender. It also refuses a library without its blenders chunk (id 2), a name defined
+twice, a blender chunk not consumed whole, and a property type the engine never writes (11 and above,
+`XrfError::NotImplemented`), since a guessed payload size would misread every property after it.
 
 A `ShaderBlender` holds the description `CBlender_DESC` lays out — its class, name, the computer and time the SDK saved
 it at, and the class's format version — then its properties in the order the class wrote them:
@@ -27,8 +29,8 @@ it at, and the class's format version — then its properties in the order the c
 - `integer`, `boolean` and `token` read a knob by name, `None` when the class does not write it or it is of another
   kind.
 - `base_texture(textures)` answers the texture the base slot comes to for a surface compiled against that texture list:
-  a `$base<N>` spelling (`N` up to 7) indexes the list, `$null` or an empty name is no texture, and anything else names
-  itself.
+  exactly `$base0` to `$base7` index the list, `$null` or an empty name is no texture, and anything else, `$base8`
+  included, names itself.
 
 `ShaderBlender` and `ShaderBlenderProperty` implement `xrf_chunk::ChunkReadWrite` and write back byte for byte; the
 library itself has no writer. Fixed-width text fields are Windows-1251 and null terminated, and a value too long for
@@ -43,7 +45,7 @@ that is not a whole number of records is refused, as the engine asserts.
 
 The bytes the editor left in a name field after its terminator are kept (`name_trailing`), so `write` reproduces the
 file byte for byte and refuses a name changed without them. `find_shader` matches a name ASCII case-insensitively, as
-the compiler does, and `get_named_flags` names the set bits from `SHADER_COMPILER_FLAGS`. Both types serialize with
+the compiler does, and `get_named_flags` names the set bits from `ShaderCompilerShader::FLAGS`. Both types serialize with
 serde, in camelCase.
 
 ## Shader scripts
@@ -136,9 +138,9 @@ A missing source is `XrfError::NotFound`, and so is an include no candidate hold
 A malformed include (no quote or bracket, no closing delimiter, an empty path) is `XrfError::Invalid`, and an include
 cycle `XrfError::Verify`. A loader's own error propagates unchanged.
 
-`is_shader_source_path` tells a VFS listing's name apart as a compiled source by its extension, ASCII
-case-insensitively, against `SHADER_SOURCE_FILE_EXTENSIONS` (`h`, `vs`, `ps`, `cs`, `hs`, `ds`, `gs`); `.s` scripts are
-not sources.
+`XRayShader::is_source_path` tells a VFS listing's name apart as a compiled source by its extension, ASCII
+case-insensitively, against `XRayShader::SOURCE_FILE_EXTENSIONS` (`h`, `vs`, `ps`, `cs`, `hs`, `ds`, `gs`); `.s` scripts
+are not sources.
 
 ## Limitations
 
@@ -155,7 +157,9 @@ the shapes the shipped classes write (`model`, `tree`, `detail`, `of(class, name
 
 ## Checks
 
-Run `cargo test --locked -p xrf-shaders`. Sources: the [library](src/shader_library_file.rs) and
-[blender](src/shader_blender.rs), the [compiler table](src/shader_compiler_file.rs), the
-[script parser](src/xray_shader_script.rs), the [source loader](src/xray_shader.rs), and the
-[compiler interface](src/xray_shader_compiler.rs).
+Run `cargo test --locked -p xrf-shaders`. The crate is grouped by form: `src/library/` (the blender library, its
+properties under `property/`), `src/compiler_table/`, `src/script/` and `src/source/`, each re-exporting its types and
+the crate root re-exporting them flat. Sources: the [library](src/library/shader_library_file.rs) and
+[blender](src/library/shader_blender.rs), the [compiler table](src/compiler_table/shader_compiler_file.rs), the
+[script parser](src/script/xray_shader_script.rs), the [source loader](src/source/xray_shader.rs), and the
+[compiler interface](src/source/xray_shader_compiler.rs).

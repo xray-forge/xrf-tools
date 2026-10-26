@@ -1,5 +1,4 @@
-use crate::XRayShader;
-use crate::xray_shader_import_reference::XRayShaderImportReference;
+use crate::source::{XRayShader, XRayShaderImportReference};
 
 /// A resolved shader source imported by another shader source.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -10,7 +9,7 @@ pub struct XRayShaderImport {
 }
 
 impl XRayShaderImport {
-  pub fn from_reference(reference: XRayShaderImportReference, shader: XRayShader) -> Self {
+  pub(crate) fn from_reference(reference: XRayShaderImportReference, shader: XRayShader) -> Self {
     Self {
       line_number: reference.line_number(),
       path: reference.into_path(),

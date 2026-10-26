@@ -1,5 +1,4 @@
-use crate::shader_blender_property_kind::ShaderBlenderPropertyKind;
-use crate::shader_blender_token::ShaderBlenderToken;
+use crate::library::{ShaderBlenderPropertyKind, ShaderBlenderToken};
 
 /// The payload of one property, by the type that wrote it.
 #[derive(Clone, Debug, PartialEq)]

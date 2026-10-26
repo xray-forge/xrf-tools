@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use xrf_error::XrfResult;
 use xrf_lua::{XRayLuaMethodCall, XRayLuaScript};
 
-use crate::{XRayShaderPass, XRayShaderSampler};
+use crate::script::{XRayShaderPass, XRayShaderSampler};
 
 /// An X-Ray renderer shader script and the literal passes it declares.
 #[derive(Clone, Debug, PartialEq)]
@@ -86,11 +86,9 @@ mod tests {
 
   use xrf_error::{XrfError, XrfResult};
 
-  use super::XRayShaderScript;
-  use crate::xray_shader_blend_factor::XRayShaderBlendFactor;
-  use crate::xray_shader_pass::XRayShaderPass;
-  use crate::xray_shader_pass_state::XRayShaderPassState;
-  use crate::xray_shader_sampler_texture::XRayShaderSamplerTexture;
+  use crate::script::{
+    XRayShaderBlendFactor, XRayShaderPass, XRayShaderPassState, XRayShaderSamplerTexture, XRayShaderScript,
+  };
 
   #[test]
   fn collects_literal_shader_passes() -> XrfResult {

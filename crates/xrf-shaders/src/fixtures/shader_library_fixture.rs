@@ -3,8 +3,7 @@ use std::io::Write;
 use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::shader_blender::ShaderBlender;
-use crate::shader_library_file::ShaderLibraryFile;
+use crate::library::{ShaderBlender, ShaderLibraryFile};
 
 /// A `shaders.xr` holding the blenders a test needs, and nothing else.
 pub struct ShaderLibraryFixture;
