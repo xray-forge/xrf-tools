@@ -51,7 +51,8 @@ again is meant to reproduce the original bytes.
 Writing refuses what the engine would misread rather than writing it: header counts that differ from the objects and
 levels the set holds, graph counts that differ from its tables, an object whose payload class is not its section's, a
 patrol link to a point the patrol lacks, a smart terrain or skeleton declaring state this crate cannot carry, a
-physics state whose opening byte would not hold it, and a shotgun loading more shells than a byte counts. Reading
+physics state whose opening byte would not hold it, a shotgun loading more shells than a byte counts, and an actor's
+dead body whose bones disagree with its counts or overrun the engine's buffer. Reading
 refuses update bytes past what the object's class reads, which a rewrite would drop.
 
 ## The update packet
@@ -72,7 +73,8 @@ and writes both packets together (`AlifePacketsReadWrite`).
 | Magazined weapon          | `update_fire_mode` after the weapon's                                               |
 | With a grenade launcher   | `update_grenade_mode`, which opens the packet ahead of every inherited field        |
 | Shotgun (magazined)       | `update_ammo_ids`, a byte counting the shells loaded, after the magazined weapon's  |
-| Actor                     | its update packet, still carried as bytes                                           |
+| Creature                  | health, timestamp, flags, position, model and torso angles, team, squad and group   |
+| Actor                     | movement state, two `ScaledDirection`s, radiation, weapon, then `update_body`       |
 
 `PhysicsNetState` models the state's mask: its opening byte packs the item count beside whether the body is enabled
 and whether each velocity is left out, so a velocity left out is `None`. The engine reads a physic object's empty
@@ -81,7 +83,14 @@ those two shapes, which no shipped spawn holds, are read as the engine reads the
 quantised field keeps the byte it is stored in, and the float the engine reads is a derived reader
 (`get_update_condition`). The SDK writes some states without initialising them, so their floats are `RawFloat`s that
 keep their bits: vanilla's spawn holds 5,286 floats of `0xffffffff` and NaNs with payloads, which LTX and JSON carry as
-hex (`0xffffffff`) and every finite value as its number.
+hex (`0xffffffff`) and every finite value as its number. The actor's `ActorPhysicsState` is the body behind its count:
+none, the living body's state, or a dead body's two corners and the bones quantised within them, refused past the
+1,024 bytes the engine holds one in.
+
+`AlifeObject::move_to` moves an object to a position and direction in every packet that stores where it stands, so an
+editor need not know which classes repeat it: the spawn packet's, a creature's position and torso (pitch from the
+direction's x, heading from its y, as `STATE_Read` derives them), an item's or physic object's physics state, and the
+actor's saved body, carried by as far as the actor moves.
 
 ## Read a level spawn list
 

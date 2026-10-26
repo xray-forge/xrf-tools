@@ -4,7 +4,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, Section};
 use xrf_math::Vector3d;
-use xrf_utils::{vector_from_string_sized, vector_to_string};
+use xrf_utils::vector_to_string;
 
 use crate::constants::NIL;
 use crate::data::physics::raw_float::RawFloat;
@@ -58,7 +58,7 @@ impl PhysicsNetState {
 
   /// Place the object at `position`.
   pub fn set_position(&mut self, position: &Vector3d) {
-    self.position = [position.x.into(), position.y.into(), position.z.into()];
+    self.position = [position.x, position.y, position.z].map(RawFloat::from);
   }
 
   /// Read the state an update packet carries, or `None` for the zero byte standing in for one.
@@ -74,17 +74,17 @@ impl PhysicsNetState {
     Ok(Some(Self {
       item_count: packed & Self::MAX_ITEM_COUNT,
       enabled: packed & Self::FLAG_ENABLED != 0,
-      force: Self::read_floats::<T, D, 3>(reader)?,
-      torque: Self::read_floats::<T, D, 3>(reader)?,
-      position: Self::read_floats::<T, D, 3>(reader)?,
-      rotation: Self::read_floats::<T, D, 4>(reader)?,
+      force: RawFloat::read_array::<T, D, 3>(reader)?,
+      torque: RawFloat::read_array::<T, D, 3>(reader)?,
+      position: RawFloat::read_array::<T, D, 3>(reader)?,
+      rotation: RawFloat::read_array::<T, D, 4>(reader)?,
       angular_velocity: if packed & Self::FLAG_ANGULAR_NULL == 0 {
-        Some(Self::read_floats::<T, D, 3>(reader)?)
+        Some(RawFloat::read_array::<T, D, 3>(reader)?)
       } else {
         None
       },
       linear_velocity: if packed & Self::FLAG_LINEAR_NULL == 0 {
-        Some(Self::read_floats::<T, D, 3>(reader)?)
+        Some(RawFloat::read_array::<T, D, 3>(reader)?)
       } else {
         None
       },
@@ -111,17 +111,17 @@ impl PhysicsNetState {
 
     writer.write_u8(state.get_packed()?)?;
 
-    Self::write_floats::<T>(writer, &state.force)?;
-    Self::write_floats::<T>(writer, &state.torque)?;
-    Self::write_floats::<T>(writer, &state.position)?;
-    Self::write_floats::<T>(writer, &state.rotation)?;
+    RawFloat::write_array::<T>(writer, &state.force)?;
+    RawFloat::write_array::<T>(writer, &state.torque)?;
+    RawFloat::write_array::<T>(writer, &state.position)?;
+    RawFloat::write_array::<T>(writer, &state.rotation)?;
 
     if let Some(velocity) = &state.angular_velocity {
-      Self::write_floats::<T>(writer, velocity)?;
+      RawFloat::write_array::<T>(writer, velocity)?;
     }
 
     if let Some(velocity) = &state.linear_velocity {
-      Self::write_floats::<T>(writer, velocity)?;
+      RawFloat::write_array::<T>(writer, velocity)?;
     }
 
     writer.write_u8(state.awake)?;
@@ -162,26 +162,6 @@ impl PhysicsNetState {
     Ok(packed)
   }
 
-  fn write_floats<T: ByteOrder>(writer: &mut ChunkWriter, floats: &[RawFloat]) -> XrfResult {
-    for float in floats {
-      writer.write_u32::<T>(float.0)?;
-    }
-
-    Ok(())
-  }
-
-  fn read_floats<T: ByteOrder, D: ChunkDataSource, const N: usize>(
-    reader: &mut ChunkReader<D>,
-  ) -> XrfResult<[RawFloat; N]> {
-    let mut floats: [RawFloat; N] = [RawFloat(0); N];
-
-    for float in &mut floats {
-      *float = RawFloat(reader.read_u32::<T>()?);
-    }
-
-    Ok(floats)
-  }
-
   /// Import the state kept under `prefix`, where `prefix = nil` stands for none.
   pub fn import_optional(section: &Section, prefix: &str) -> XrfResult<Option<Self>> {
     if section.get(prefix).map(str::trim) == Some(NIL) {
@@ -191,10 +171,10 @@ impl PhysicsNetState {
     Ok(Some(Self {
       item_count: section.read_field(&format!("{prefix}.item_count"))?,
       enabled: section.read_field(&format!("{prefix}.enabled"))?,
-      force: Self::import_floats(section, &format!("{prefix}.force"))?,
-      torque: Self::import_floats(section, &format!("{prefix}.torque"))?,
-      position: Self::import_floats(section, &format!("{prefix}.position"))?,
-      rotation: Self::import_floats(section, &format!("{prefix}.rotation"))?,
+      force: RawFloat::import_array(section, &format!("{prefix}.force"))?,
+      torque: RawFloat::import_array(section, &format!("{prefix}.torque"))?,
+      position: RawFloat::import_array(section, &format!("{prefix}.position"))?,
+      rotation: RawFloat::import_array(section, &format!("{prefix}.rotation"))?,
       angular_velocity: Self::import_velocity(section, &format!("{prefix}.angular_velocity"))?,
       linear_velocity: Self::import_velocity(section, &format!("{prefix}.linear_velocity"))?,
       awake: section.read_field(&format!("{prefix}.awake"))?,
@@ -228,20 +208,12 @@ impl PhysicsNetState {
       .set(format!("{prefix}.awake"), state.awake.to_string());
   }
 
-  fn import_floats<const N: usize>(section: &Section, key: &str) -> XrfResult<[RawFloat; N]> {
-    let floats: Vec<RawFloat> = vector_from_string_sized(&section.read_field::<String>(key)?, N)?;
-
-    floats
-      .try_into()
-      .map_err(|_| XrfError::new_parsing_error(format!("Expected {N} floats in '{key}'")))
-  }
-
   fn import_velocity(section: &Section, key: &str) -> XrfResult<Option<[RawFloat; 3]>> {
     if section.get(key).map(str::trim) == Some(NIL) {
       return Ok(None);
     }
 
-    Ok(Some(Self::import_floats(section, key)?))
+    Ok(Some(RawFloat::import_array(section, key)?))
   }
 
   fn export_velocity(velocity: Option<&[RawFloat; 3]>) -> String {

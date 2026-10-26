@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxImportExport};
+use xrf_math::Vector3d;
 
 use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
 use crate::data::alife::inherited::alife_actor::AlifeActor;
@@ -39,6 +40,7 @@ use crate::data::alife::inherited::alife_smart_cover::AlifeSmartCover;
 use crate::data::alife::inherited::alife_smart_terrain::AlifeSmartTerrain;
 use crate::data::alife::inherited::alife_zone_visual::AlifeZoneVisual;
 use crate::data::meta::alife_class::AlifeClass;
+use crate::data::physics::physics_net_state::PhysicsNetState;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
@@ -264,6 +266,52 @@ impl AlifeObjectInherited {
   /// Custom data is stored on the shared abstract object and reached through inheritance chains.
   pub fn get_custom_data(&self) -> Option<&String> {
     self.get_abstract().map(|it| &it.custom_data)
+  }
+
+  /// Move the object to `position`, facing `direction`, in the update packet: a creature's position and torso, an
+  /// item's or a physic object's physics state, and the body an actor saved. A class whose update packet stores no
+  /// position keeps none to move.
+  pub fn move_to(&mut self, position: &Vector3d, direction: &Vector3d) {
+    let state: Option<&mut PhysicsNetState> = match self {
+      AlifeObjectInherited::SeActor(object) => {
+        object.base.move_to(position, direction);
+
+        return;
+      }
+      AlifeObjectInherited::CseAlifeObjectPhysic(object) => object.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItem(object) => object.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItemExplosive(object) => object.base.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItemPda(object) => object.base.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItemAmmo(object) => object.base.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItemGrenade(object) => object.base.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItemArtefact(object) => object.base.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItemWeapon(object) => object.base.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItemDetector(object) => object.base.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItemHelmet(object) => object.base.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItemCustomOutfit(object) => object.base.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => object.base.base.base.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => object.base.base.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => object.base.base.base.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeObjectBreakable(_)
+      | AlifeObjectInherited::CseAlifeObjectClimable(_)
+      | AlifeObjectInherited::CseAlifeGraphPoint(_)
+      | AlifeObjectInherited::CseAlifeSpaceRestrictor(_)
+      | AlifeObjectInherited::SeSmartCover(_)
+      | AlifeObjectInherited::CseAlifeAnomalousZone(_)
+      | AlifeObjectInherited::CseAlifeTorridZone(_)
+      | AlifeObjectInherited::SeSmartTerrain(_)
+      | AlifeObjectInherited::SeLevelChanger(_)
+      | AlifeObjectInherited::CseAlifeZoneVisual(_)
+      | AlifeObjectInherited::CseAlifeCar(_)
+      | AlifeObjectInherited::CseAlifeTrader(_)
+      | AlifeObjectInherited::CseAlifeHelicopter(_)
+      | AlifeObjectInherited::CseAlifeInventoryBox(_)
+      | AlifeObjectInherited::CseAlifeObjectHangingLamp(_) => None,
+    };
+
+    if let Some(state) = state {
+      state.set_position(position);
+    }
   }
 
   /// Write the payload's spawn fields into `spawn` and its update fields into `update`.

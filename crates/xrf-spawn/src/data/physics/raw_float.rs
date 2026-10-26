@@ -1,9 +1,14 @@
 use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
+use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use xrf_error::XrfError;
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_error::{XrfError, XrfResult};
+use xrf_ltx::Section;
+use xrf_math::Vector3d;
+use xrf_utils::vector_from_string_sized;
 
 /// A float kept as the bits it is stored in, for state the SDK writes without initialising: a vanilla spawn's
 /// physics states hold NaNs with payloads, and whole states of `0xffffffff`, which no decimal brings back.
@@ -34,6 +39,46 @@ impl RawFloat {
   /// The value's bits as hex, which is how one with no finite value is written.
   fn to_hex(self) -> String {
     format!("0x{:08x}", self.0)
+  }
+
+  /// Read `N` floats as their bits.
+  pub fn read_array<T: ByteOrder, D: ChunkDataSource, const N: usize>(
+    reader: &mut ChunkReader<D>,
+  ) -> XrfResult<[Self; N]> {
+    let mut floats: [Self; N] = [Self(0); N];
+
+    for float in &mut floats {
+      *float = Self(reader.read_u32::<T>()?);
+    }
+
+    Ok(floats)
+  }
+
+  /// Write floats as the bits they keep.
+  pub fn write_array<T: ByteOrder>(writer: &mut ChunkWriter, floats: &[Self]) -> XrfResult {
+    for float in floats {
+      writer.write_u32::<T>(float.0)?;
+    }
+
+    Ok(())
+  }
+
+  /// Import the `N` comma-separated floats an ltx field holds.
+  pub fn import_array<const N: usize>(section: &Section, key: &str) -> XrfResult<[Self; N]> {
+    let floats: Vec<Self> = vector_from_string_sized(&section.read_field::<String>(key)?, N)?;
+
+    floats
+      .try_into()
+      .map_err(|_| XrfError::new_parsing_error(format!("Expected {N} floats in '{key}'")))
+  }
+
+  /// Move three floats by `offset`, as the vector they hold.
+  pub fn translate(floats: &mut [Self; 3], offset: &Vector3d) {
+    *floats = [
+      Self::from(floats[0].get() + offset.x),
+      Self::from(floats[1].get() + offset.y),
+      Self::from(floats[2].get() + offset.z),
+    ];
   }
 }
 
