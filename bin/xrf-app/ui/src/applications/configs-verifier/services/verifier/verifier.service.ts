@@ -1,4 +1,5 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { configsCommands } from "@xrf/ipc/commands/configs";
 import { CONFIGS_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-configs";
 import { LtxProjectVerifyResult } from "@xrf/ipc/types/xrf-ltx";
@@ -9,7 +10,6 @@ import { createRoots } from "@/core/assets/lib";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The configs verification run and what it found.

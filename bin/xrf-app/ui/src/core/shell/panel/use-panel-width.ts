@@ -6,7 +6,7 @@ import { TEditorPanelSide } from "@/core/shell/editor-shell";
 import { clampPanelWidth } from "@/core/shell/panel/panel-width";
 import { getLocalStorageValue, getPanelWidthStorageKey, setLocalStorageValue } from "@/core/storage";
 import { PANEL } from "@/core/theme/tokens";
-import { useWindowWidth } from "@/lib/react";
+import { useWindowWidth } from "@/lib/react/use-window-width";
 
 export interface IPanelWidth {
   width: number;

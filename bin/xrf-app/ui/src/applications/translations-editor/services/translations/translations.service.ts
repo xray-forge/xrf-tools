@@ -2,6 +2,7 @@ import { EventBus, inject, Injectable, OnEvent, OnProvision, WireEvent } from "@
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { translationsCommands } from "@xrf/ipc/commands/translations";
 import {
@@ -24,7 +25,6 @@ import { TranslationDraft, TTranslationFileEdits } from "@/applications/translat
 import { describeRoots } from "@/core/assets/lib/roots";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 @Injectable()
 export class TranslationsService {

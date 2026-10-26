@@ -7,7 +7,7 @@ import { TREE } from "@/core/theme/tokens";
 import { IFlatTreeRow } from "@/core/ui/tree/flatten";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ITreeIconDecoration } from "@/core/ui/tree/VirtualizedTree/VirtualizedTree";
-import { stopPropagation } from "@/lib/dom/event";
+import { stopPropagation } from "@/lib/dom/event/propagation";
 
 /** A theme colour path as the variable the theme emits for it, since a plain element has no `sx` to resolve it. */
 function toPaletteColor(path: string): string {

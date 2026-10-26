@@ -1,5 +1,6 @@
 import { inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
 import { BoundAction, Observable } from "@wirestate/mobx";
+import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { archivesCommands } from "@xrf/ipc/commands/archives";
 import { ARCHIVES_JOB_COMPARE, ARCHIVES_JOB_PATCH, ArchivesPatchRequest } from "@xrf/ipc/types/xrf-app-archives";
 import { JobKind } from "@xrf/ipc/types/xrf-app-core";
@@ -10,7 +11,6 @@ import { describePatchOutcome } from "@/applications/archives-patcher/lib/descri
 import { ArchiveConfigEditorService } from "@/core/archive/services/config-editor";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { call, ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 import { toSavedState } from "./patcher.service.utils";
 

@@ -1,4 +1,5 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { gamedataCommands } from "@xrf/ipc/commands/gamedata";
 import { GAMEDATA_JOB_VERIFY, GamedataVerifySummary } from "@xrf/ipc/types/xrf-app-gamedata";
 import { Logger } from "@xrf/logging";
@@ -8,7 +9,6 @@ import { IGamedataVerification } from "@/applications/gamedata-verifier/lib/game
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The gamedata verification run and what it found.

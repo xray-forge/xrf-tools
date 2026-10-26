@@ -1,12 +1,12 @@
 import { BoundAction, Computed, makeObservable, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, TFlow } from "@xrf/flow";
 import { JobKind } from "@xrf/ipc/types/xrf-app-core";
 import { Logger } from "@xrf/logging";
 import { Nullable, Optional } from "@xrf/types";
 
 import { JobsService } from "@/core/jobs/services/jobs";
-import { call, TFlow } from "@/lib/mobx";
 
 import { IJobDescriptor, IJobRun, IJobSettledPayload, IJobState } from "./jobs-types";
 

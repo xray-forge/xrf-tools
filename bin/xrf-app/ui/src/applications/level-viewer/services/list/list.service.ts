@@ -2,6 +2,7 @@ import { Injectable } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
@@ -9,7 +10,6 @@ import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger, Timer } from "@xrf/logging";
 
 import { describeRoots } from "@/core/assets/lib";
-import { call, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**
  * What levels the mounted roots hold, for a picker to choose from.

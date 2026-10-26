@@ -2,6 +2,7 @@ import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { visualsCommands } from "@xrf/ipc/commands/visuals";
 import { Session, SessionScopeService } from "@xrf/ipc/session";
@@ -20,7 +21,6 @@ import { createVisualSurfaces } from "@/core/visuals/lib/visual-surface";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { toVisualBumpStatuses, toVisualTextureStatuses } from "@/core/visuals/lib/visual-texture-report";
 import { createVisualViews, IVisualModelViews } from "@/core/visuals/lib/visual-views";
-import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /** A visual that is loaded: what it is, where it came from, and the views the scene draws. */
 export interface IOpenVisual {

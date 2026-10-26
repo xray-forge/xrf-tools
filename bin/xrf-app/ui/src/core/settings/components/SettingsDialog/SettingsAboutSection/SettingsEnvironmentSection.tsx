@@ -7,7 +7,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useState } from "react";
 
 import { DetailSection } from "@/core/ui/layout/DetailSection";
-import { useMountEffect } from "@/lib/react";
+import { useMountEffect } from "@/lib/react/use-mount-effect";
 
 import { IAboutRow } from "./about-row";
 import { SettingsAboutRow } from "./SettingsAboutRow";

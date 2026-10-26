@@ -2,6 +2,7 @@ import { EventBus, inject, Injectable, OnDeactivation, OnEvent, OnProvision, Wir
 import { BoundAction, Computed, flowResult, Observable, reaction, RefObservable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import {
@@ -36,7 +37,6 @@ import { describeLevelSource } from "@/core/level/lib/source/level-source";
 import { EMPTY_LEVEL_SPAWN_REPORT, ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /** A level that is open: the level itself, its root, as its session holds it. */
 export interface IOpenLevel {

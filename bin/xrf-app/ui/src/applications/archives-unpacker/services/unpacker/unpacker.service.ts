@@ -1,4 +1,5 @@
 import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { archivesCommands } from "@xrf/ipc/commands/archives";
 import { ARCHIVES_JOB_UNPACK } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchiveUnpackResult } from "@xrf/ipc/types/xrf-pack";
@@ -8,7 +9,6 @@ import { describeUnpackOutcome } from "@/applications/archives-unpacker/lib/desc
 import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { ExclusiveFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The unpacking run and what it produced.

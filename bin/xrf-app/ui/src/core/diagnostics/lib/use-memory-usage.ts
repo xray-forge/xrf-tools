@@ -4,7 +4,7 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 
-import { usePolledValue } from "@/lib/react";
+import { usePolledValue } from "@/lib/react/use-polled-value";
 
 /** How often memory is read: slow enough to cost nothing, fast enough to watch a level stream in. */
 const MEMORY_POLL_INTERVAL: number = 2_000;

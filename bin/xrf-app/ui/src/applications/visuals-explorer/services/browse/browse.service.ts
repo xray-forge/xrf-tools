@@ -2,6 +2,7 @@ import { inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core
 import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { assetsCommands } from "@xrf/ipc/commands/assets";
 import { visualsCommands } from "@xrf/ipc/commands/visuals";
@@ -12,7 +13,6 @@ import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { createRoots, describeRoots } from "@/core/assets/lib";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The roots being browsed, and every visual in them.

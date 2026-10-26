@@ -1,4 +1,4 @@
-import { TFlow } from "@/lib/mobx/flow/types";
+import { TFlow } from "#/types";
 
 /**
  * Awaits several promises inside a flow at once, keeping each one's type.
@@ -22,8 +22,8 @@ export function* all<T extends ReadonlyArray<unknown>>(
  * Awaits a promise inside a flow while keeping its type.
  *
  * A bare `yield` is typed `any`, because a generator cannot describe what is sent back into it. Delegating with
- * `yield*` through this does describe it, so `const bake: VisualMotionBake = yield* call(openMotion(name))` checks
- * exactly as the `await` it replaces did.
+ * `yield*` through this does describe it, so `const value: TValue = yield* call(readValue(name))` checks exactly as
+ * the `await` it replaces did.
  *
  * @param promise - Promise to await inside the flow.
  * @returns The resolved value, typed.

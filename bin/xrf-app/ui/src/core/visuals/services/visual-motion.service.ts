@@ -2,6 +2,7 @@ import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, cancelFlows, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { visualsCommands } from "@xrf/ipc/commands/visuals";
 import { requireSessionId, Session, SessionScopeService } from "@xrf/ipc/session";
@@ -13,7 +14,6 @@ import { Nullable } from "@xrf/types";
 
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { call, cancelFlows, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**
  * Playing one of the open visual's motions.

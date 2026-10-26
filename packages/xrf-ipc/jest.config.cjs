@@ -8,8 +8,6 @@ const { createJestConfig } = require("@xrf/toolchain/jest");
  */
 module.exports = createJestConfig({
   rootDir: __dirname,
+  hasDecorators: true,
   setupFilesAfterEnv: [path.resolve(__dirname, "./test/jest-setup.ts")],
-  transform: {
-    "^.+\\.[jt]sx?$": path.resolve(__dirname, "./test/transformer.cjs"),
-  },
 });

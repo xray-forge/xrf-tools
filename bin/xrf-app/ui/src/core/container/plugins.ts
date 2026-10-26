@@ -1,9 +1,9 @@
 import { CommandsPlugin, EventsPlugin, QueriesPlugin, WirestatePlugin } from "@wirestate/core";
 import { DevToolsPlugin } from "@wirestate/core/devtools";
 import { ObservablePlugin } from "@wirestate/mobx";
+import { FlowCancellationPlugin } from "@xrf/flow";
 
 import { KeybindCommandBindingPlugin } from "@/core/commands";
-import { FlowCancellationPlugin } from "@/lib/mobx/flow/cancellation.plugin";
 
 /**
  * The plugins every container runs with, application and test alike.

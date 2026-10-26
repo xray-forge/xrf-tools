@@ -2,6 +2,7 @@ import { EventBus, inject, Injectable, OnDeprovision, OnProvision, ProvisionId }
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { spawnCommands } from "@xrf/ipc/commands/spawn";
 import { Session, SessionScopeService } from "@xrf/ipc/session";
@@ -13,7 +14,6 @@ import { AnyObject, Nullable } from "@xrf/types";
 
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
-import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 export interface ISpawnRowSelection {
   /** What kind of row this is, for the panel heading. */

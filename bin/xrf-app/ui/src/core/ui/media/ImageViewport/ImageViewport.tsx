@@ -31,7 +31,7 @@ import {
 import { toCheckerboardSizing } from "@/core/ui/media/media.styles";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import { PanZoomController } from "@/lib/media/pan-zoom-controller";
-import { IElementSize, useElementSize } from "@/lib/react";
+import { IElementSize, useElementSize } from "@/lib/react/use-element-size";
 
 /** Stands in for the viewport until it has been measured, when there is nowhere to place anything anyway. */
 const UNMEASURED: IPanZoomSize = { width: 0, height: 0 };

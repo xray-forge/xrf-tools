@@ -2,6 +2,7 @@ import { Channel } from "@tauri-apps/api/core";
 import { open as openDialog, save } from "@tauri-apps/plugin-dialog";
 import { inject, Injectable, OnDeactivation, OnEvent, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable, runInAction } from "@wirestate/mobx";
+import { call, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { systemCommands } from "@xrf/ipc/commands/system";
 import { JobKind, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
@@ -89,7 +90,6 @@ import { LevelViewportService } from "@/core/level/services/level-viewport.servi
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { noop } from "@/lib/callbacks/noop";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /** The weather cycle `CDemoRecord` captures a level map under. */
 const MAP_WEATHER_CYCLE: string = "map";

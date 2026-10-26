@@ -46,8 +46,6 @@
   },
   "devDependencies": {
     "@jest/globals": "catalog:",
-    "@swc/core": "catalog:",
-    "@swc/jest": "catalog:",
     "@tauri-apps/api": "^2.12.4",
     "@types/react": "^19.3.0",
     "@typescript/native": "catalog:",

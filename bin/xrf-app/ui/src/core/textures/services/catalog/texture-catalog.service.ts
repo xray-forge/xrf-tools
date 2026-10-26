@@ -2,6 +2,7 @@ import { inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core
 import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { toEnumMember } from "@xrf/ipc";
 import { texturesCommands } from "@xrf/ipc/commands/textures";
@@ -21,7 +22,6 @@ import { Nullable } from "@xrf/types";
 import { createRoots, describeRoots } from "@/core/assets/lib";
 import { buildTextureNodes, ITextureNode } from "@/core/textures/lib/texture-catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**
  * A browsed root set: every texture the engine would find in it, and what each descriptor makes of its own.

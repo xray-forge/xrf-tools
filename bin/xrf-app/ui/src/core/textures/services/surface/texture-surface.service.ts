@@ -2,6 +2,7 @@ import { Injectable, OnDeactivation } from "@wirestate/core";
 import { Observable, RefObservable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { fetchBulk } from "@xrf/ipc";
 import { texturesBulkRoutes } from "@xrf/ipc/commands/textures-bulk";
@@ -19,7 +20,6 @@ import {
   toTextureAspect,
 } from "@/core/textures/lib/texture-surface";
 import { ITextureTexels, readTextureTexels } from "@/core/textures/lib/texture-texels";
-import { call, cancelFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**
  * Reads what the panels show of the selected texture beside its body: the bump pair's texels, which the channels panel

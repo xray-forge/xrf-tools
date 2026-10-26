@@ -4,6 +4,7 @@ import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wire
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { all, call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { fetchBulk } from "@xrf/ipc";
 import { spriteEquipmentCommands } from "@xrf/ipc/commands/sprite-equipment";
@@ -24,7 +25,6 @@ import { emitNotification, ENotificationSeverity } from "@/core/notifications/li
 import { EApplicationGroupId } from "@/core/routing/application";
 import { describeEquipmentSheet, ENGINE_GRID_SQUARE } from "@/core/sprite-equipment/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
-import { all, call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@/lib/mobx";
 
 /**
  * The sheet on screen: what the backend answered, and the image decoded from it.
