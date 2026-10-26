@@ -1,13 +1,12 @@
 use std::collections::BTreeMap;
 
 use xrf_error::XrfResult;
-use xrf_typescript::TypeScriptFunctionSignature;
-use xrf_typescript::swc_common::{Span, Spanned};
-use xrf_typescript::swc_ecma_ast::{ArrowExpr, Pat, TsFnParam, TsFnType, TsTypeAnn};
+use xrf_typescript::swc_common::Spanned;
+use xrf_typescript::swc_ecma_ast::{ArrowExpr, Pat, TsFnParam, TsFnType};
+use xrf_typescript::{TypeScriptFunctionParameter, TypeScriptFunctionSignature, TypeScriptTypeRenderer};
 
 use crate::manifest::{ExternCallable, ExternDocumentation, ExternParameter};
 use crate::parse::declaration::extern_diagnostic::ExternDiagnostic;
-use crate::parse::declaration::extern_type_renderer::ExternTypeRenderer;
 
 /// Builds canonical extern callables from TypeScript function contracts.
 pub(crate) struct ExternCallableParser<'a> {
@@ -15,9 +14,6 @@ pub(crate) struct ExternCallableParser<'a> {
 }
 
 impl<'a> ExternCallableParser<'a> {
-  /// What a destructured parameter is named where its source cannot be read back.
-  const PATTERN_NAME: &'static str = "[parameter]";
-
   /// Create a callable parser for one declaration source file.
   pub fn new(diagnostic: ExternDiagnostic<'a>) -> Self {
     Self { diagnostic }
@@ -39,7 +35,10 @@ impl<'a> ExternCallableParser<'a> {
     Ok(ExternCallable {
       doc: documentation,
       params,
-      returns: ExternTypeRenderer::render_annotation(arrow.return_type.as_deref(), self.diagnostic.get_source_map()),
+      returns: TypeScriptTypeRenderer::render_annotation(
+        arrow.return_type.as_deref(),
+        self.diagnostic.get_source_map(),
+      ),
       source: self.diagnostic.get_source_path().into(),
     })
   }
@@ -60,21 +59,25 @@ impl<'a> ExternCallableParser<'a> {
           "function type assertions must use named parameters",
         ));
       };
-      let name: String = binding.id.sym.to_string();
 
-      params.push(ExternParameter {
-        doc: parameter_docs.get(&name).cloned(),
-        name,
-        optional: binding.id.optional.then_some(true),
-        type_name: ExternTypeRenderer::render_annotation(binding.type_ann.as_deref(), self.diagnostic.get_source_map()),
-      });
+      params.push(Self::convert_parameter(
+        TypeScriptFunctionParameter {
+          name: binding.id.sym.to_string(),
+          optional: binding.id.optional,
+          type_name: TypeScriptTypeRenderer::render_annotation(
+            binding.type_ann.as_deref(),
+            self.diagnostic.get_source_map(),
+          ),
+        },
+        parameter_docs,
+      ));
     }
 
     Ok(ExternCallable {
       doc: documentation,
       params,
-      returns: ExternTypeRenderer::render(
-        function_type.type_ann.type_ann.as_ref(),
+      returns: TypeScriptTypeRenderer::render_canonical(
+        &function_type.type_ann.type_ann,
         self.diagnostic.get_source_map(),
       ),
       source: self.diagnostic.get_source_path().into(),
@@ -88,92 +91,45 @@ impl<'a> ExternCallableParser<'a> {
     documentation: Option<ExternDocumentation>,
     parameter_docs: &BTreeMap<String, String>,
   ) -> ExternCallable {
-    let params: Vec<ExternParameter> = signature
-      .params
-      .into_iter()
-      .map(|parameter| ExternParameter {
-        doc: parameter_docs.get(&parameter.name).cloned(),
-        name: parameter.name,
-        optional: parameter.optional.then_some(true),
-        type_name: parameter.type_name,
-      })
-      .collect();
-
     ExternCallable {
       doc: documentation,
-      params,
+      params: signature
+        .params
+        .into_iter()
+        .map(|parameter| Self::convert_parameter(parameter, parameter_docs))
+        .collect(),
       returns: signature.returns,
       source: self.diagnostic.get_source_path().into(),
     }
   }
 
-  /// Parse one parameter in an inline arrow function.
+  /// Parse one parameter in an inline arrow function, refusing a pattern no contract can be read from.
   fn parse_parameter(&self, parameter: &Pat, parameter_docs: &BTreeMap<String, String>) -> XrfResult<ExternParameter> {
-    let (name, annotation, optional): (String, Option<&TsTypeAnn>, bool) = match parameter {
-      Pat::Ident(binding) => (
-        binding.id.sym.to_string(),
-        binding.type_ann.as_deref(),
-        binding.id.optional,
-      ),
-      Pat::Array(pattern) => (
-        self.get_pattern_name(pattern.span),
-        pattern.type_ann.as_deref(),
-        pattern.optional,
-      ),
-      Pat::Rest(pattern) => {
-        let Pat::Ident(binding) = pattern.arg.as_ref() else {
-          return Err(self.diagnostic.invalid_at(
-            parameter.span().lo,
-            "rest parameters must use explicitly typed identifiers",
-          ));
-        };
-
-        (
-          binding.id.sym.to_string(),
-          pattern.type_ann.as_deref().or(binding.type_ann.as_deref()),
-          false,
-        )
-      }
-      Pat::Assign(pattern) => match pattern.left.as_ref() {
-        Pat::Ident(binding) => (binding.id.sym.to_string(), binding.type_ann.as_deref(), true),
-        Pat::Array(binding) => (self.get_pattern_name(binding.span), binding.type_ann.as_deref(), true),
-        _ => {
-          return Err(self.diagnostic.invalid_at(
-            parameter.span().lo,
-            "callable extern parameters with defaults must use explicitly typed identifiers or array patterns",
-          ));
+    let Some(signature) = TypeScriptFunctionParameter::from_pattern(parameter, self.diagnostic.get_source_map()) else {
+      let reason: &str = match parameter {
+        Pat::Rest(_) => "rest parameters must use explicitly typed identifiers",
+        Pat::Assign(_) => {
+          "callable extern parameters with defaults must use explicitly typed identifiers or array patterns"
         }
-      },
-      _ => {
-        return Err(self.diagnostic.invalid_at(
-          parameter.span().lo,
-          "callable extern parameters must use explicitly typed identifiers or array patterns",
-        ));
-      }
+        _ => "callable extern parameters must use explicitly typed identifiers or array patterns",
+      };
+
+      return Err(self.diagnostic.invalid_at(parameter.span().lo, reason));
     };
 
-    Ok(ExternParameter {
-      doc: parameter_docs.get(&name).cloned(),
-      name,
-      optional: optional.then_some(true),
-      type_name: ExternTypeRenderer::render_annotation(annotation, self.diagnostic.get_source_map()),
-    })
+    Ok(Self::convert_parameter(signature, parameter_docs))
   }
 
-  /// A readable name for a destructured parameter: its pattern as written, up to the type annotation.
-  fn get_pattern_name(&self, span: Span) -> String {
-    let snippet: String = self.diagnostic.get_snippet(span, Self::PATTERN_NAME);
-    let mut nesting: usize = 0;
-
-    for (index, character) in snippet.char_indices() {
-      match character {
-        '[' | '(' | '{' => nesting += 1,
-        ']' | ')' | '}' => nesting = nesting.saturating_sub(1),
-        ':' if nesting == 0 => return snippet[..index].trim_end().into(),
-        _ => {}
-      }
+  /// A signature's parameter as the manifest records it, with its documentation.
+  fn convert_parameter(
+    parameter: TypeScriptFunctionParameter,
+    parameter_docs: &BTreeMap<String, String>,
+  ) -> ExternParameter {
+    ExternParameter {
+      doc: parameter_docs.get(&parameter.name).cloned(),
+      name: parameter.name,
+      optional: parameter.optional.then_some(true),
+      type_name: parameter.type_name,
     }
-
-    snippet.trim_end().into()
   }
 }
