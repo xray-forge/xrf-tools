@@ -1,21 +1,12 @@
 use xrf_error::{XrfError, XrfResult};
 
 /// Bits the reader may invent past the end of the stream before it calls the stream truncated.
-///
-/// The engine's `LZfs::GetBit` substitutes zero for every byte read past the end and never fails, because
-/// its 16-bit refill window runs up to two bytes ahead of the bit actually being consumed. A sound stream
-/// therefore needs a handful of phantom bits at most, while a stream cut short by a real amount asks for
-/// far more. Tolerating a whole `u32` keeps every stream the engine accepts working and still turns gross
-/// truncation into an error instead of plausible-looking garbage.
 const PHANTOM_BIT_BUDGET: u32 = 32;
 
 /// Widest single read the codec performs, which bounds how much the buffer can hold at once.
 const READ_BITS_MAX: u32 = 16;
 
 /// Reads big-endian bit runs out of an in-memory LZHUF stream.
-///
-/// X-Ray codes bits from the most significant bit of each byte down, and every X-Ray consumer already
-/// holds the whole compressed chunk in memory, so this reads a slice rather than an [`std::io::Read`].
 pub(crate) struct BitReader<'a> {
   source: &'a [u8],
   /// Index of the next byte to pull into `buffer`.

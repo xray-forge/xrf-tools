@@ -1,17 +1,15 @@
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 
-use crate::bit_reader::BitReader;
-use crate::lzhuf_constants::{MATCH_CODE_BASE, MATCH_LENGTH_THRESHOLD};
-use crate::match_distance::{LEADING_BIT_COUNT, split_match_distance};
+use crate::bits::BitReader;
+use crate::lzhuf_constants::{
+  DECOMPRESSED_SIZE_HEADER_LENGTH, MATCH_CODE_BASE, MATCH_LENGTH_MAX, MATCH_LENGTH_THRESHOLD,
+};
+use crate::match_distance::MatchDistance;
 use crate::ring_buffer::RingBuffer;
-use crate::tree::dynamic_huffman_tree::DynamicHuffmanTree;
+use crate::tree::DynamicHuffmanTree;
 
-/// Decodes one headerless X-Ray LZHUF bit stream.
-///
-/// The decoder is single-shot: it fills the caller's buffer and stops. A match that would run past the
-/// end of that buffer is truncated rather than carried over, because the buffer length is the encoder's
-/// own declared output size and nothing consumes bytes beyond it.
-pub(crate) struct LzhufDecoder<'a> {
+/// Decodes X-Ray LZHUF, the exact byte layout `_decompressLZ` accepts.
+pub struct LzhufDecoder<'a> {
   reader: BitReader<'a>,
   /// Boxed to keep several kilobytes of coder state off the stack of every caller.
   tree: Box<DynamicHuffmanTree>,
@@ -19,7 +17,65 @@ pub(crate) struct LzhufDecoder<'a> {
 }
 
 impl<'a> LzhufDecoder<'a> {
-  pub(crate) fn new(stream: &'a [u8]) -> Self {
+  /// Most bytes one input byte may legitimately yield.
+  const MAX_EXPANSION_RATIO: usize = (MATCH_LENGTH_MAX * 8).div_ceil(10);
+
+  /// Decompress an X-Ray LZHUF blob: a little-endian `u32` decompressed size followed by the bit stream.
+  ///
+  /// # Errors
+  ///
+  /// Fails when the blob is too short to hold a header, declares a zero or implausible size, or ends before the
+  /// declared size has been produced.
+  pub fn decompress(source: &[u8]) -> XrfResult<Vec<u8>> {
+    let Some((header, stream)) = source.split_at_checked(DECOMPRESSED_SIZE_HEADER_LENGTH) else {
+      return Err(XrfError::new_parsing_error(format!(
+        "LZHUF blob of {} byte(s) is too short to declare a decompressed size",
+        source.len()
+      )));
+    };
+
+    let declared_size: usize = match header.try_into() {
+      Ok(bytes) => u32::from_le_bytes(bytes) as usize,
+      Err(error) => {
+        return Err(XrfError::new_parsing_error(format!(
+          "LZHUF blob has no readable decompressed size: {error}"
+        )));
+      }
+    };
+
+    // `Decode` refuses a zero size rather than yielding nothing, because X-Ray never writes such a blob.
+    if declared_size == 0 {
+      return Err(XrfError::new_parsing_error(
+        "LZHUF blob declares an empty decompressed size".to_string(),
+      ));
+    }
+
+    let plausible_size: usize = stream.len().saturating_mul(Self::MAX_EXPANSION_RATIO);
+
+    if declared_size > plausible_size {
+      return Err(XrfError::new_parsing_error(format!(
+        "LZHUF blob declares {declared_size} byte(s) of output, more than {} byte(s) of stream can yield",
+        stream.len()
+      )));
+    }
+
+    let mut target: Vec<u8> = vec![0; declared_size];
+
+    Self::decompress_into(stream, &mut target)?;
+
+    Ok(target)
+  }
+
+  /// Decompress a headerless X-Ray LZHUF stream into a buffer of known size, filling `target` completely.
+  ///
+  /// # Errors
+  ///
+  /// Fails when the stream ends before `target` is full, or when it decodes to a malformed coder state.
+  pub fn decompress_into(stream: &[u8], target: &mut [u8]) -> XrfResult<()> {
+    LzhufDecoder::new(stream).decode_into(target)
+  }
+
+  fn new(stream: &'a [u8]) -> Self {
     Self {
       reader: BitReader::new(stream),
       tree: Box::new(DynamicHuffmanTree::new()),
@@ -28,7 +84,7 @@ impl<'a> LzhufDecoder<'a> {
   }
 
   /// Decode exactly `target.len()` bytes.
-  pub(crate) fn decode_into(&mut self, target: &mut [u8]) -> XrfResult<()> {
+  fn decode_into(&mut self, target: &mut [u8]) -> XrfResult<()> {
     let length: usize = target.len();
     let mut position: usize = 0;
 
@@ -70,9 +126,41 @@ impl<'a> LzhufDecoder<'a> {
 
   /// Read a match distance: nine leading bits select a bucket, which names the remaining bits to read.
   fn read_match_distance(&mut self) -> XrfResult<u16> {
-    let leading: u16 = self.reader.read_bits(LEADING_BIT_COUNT)?;
-    let (distance, remaining_bits) = split_match_distance(leading);
+    let leading: u16 = self.reader.read_bits(MatchDistance::LEADING_BIT_COUNT)?;
+    let (distance, remaining_bits) = MatchDistance::split(leading);
 
     Ok(distance | self.reader.read_bits(remaining_bits)?)
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::decode::LzhufDecoder;
+
+  #[test]
+  fn rejects_a_blob_without_a_size_header() {
+    assert!(LzhufDecoder::decompress(&[]).is_err());
+    assert!(LzhufDecoder::decompress(&[0x01, 0x02, 0x03]).is_err());
+  }
+
+  #[test]
+  fn rejects_a_blob_declaring_nothing() {
+    assert!(LzhufDecoder::decompress(&[0, 0, 0, 0, 0xff]).is_err());
+  }
+
+  #[test]
+  fn rejects_a_size_no_stream_that_short_could_produce() {
+    // Four bytes of stream cannot yield 16 MB, however the bits decode.
+    let mut blob: Vec<u8> = 0x0100_0000u32.to_le_bytes().to_vec();
+
+    blob.extend_from_slice(&[0xff; 4]);
+
+    assert!(LzhufDecoder::decompress(&blob).is_err());
+  }
+
+  #[test]
+  fn bounds_expansion_above_the_best_possible_match() {
+    // Sixty bytes for ten bits is the theoretical best; the guard must not sit below it.
+    const { assert!(LzhufDecoder::MAX_EXPANSION_RATIO >= 48) };
   }
 }

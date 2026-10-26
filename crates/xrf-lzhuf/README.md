@@ -9,17 +9,17 @@ chunk with this crate and `xrf-pack` encodes it. The engine applies the same cod
 ## Compress and read back
 
 ```rust
-use xrf_lzhuf::{compress, decompress, decompress_into};
+use xrf_lzhuf::{LzhufDecoder, LzhufEncoder};
 
 fn main() -> xrf_error::XrfResult {
   let source = b"configs\\system.ltx configs\\system.ltx";
-  let packed = compress(source)?;
+  let packed = LzhufEncoder::compress(source)?;
 
-  assert_eq!(decompress(&packed)?, source);
+  assert_eq!(LzhufDecoder::decompress(&packed)?, source);
 
   let mut output = vec![0; source.len()];
 
-  decompress_into(&packed[4..], &mut output)?;
+  LzhufDecoder::decompress_into(&packed[4..], &mut output)?;
   assert_eq!(output, source);
 
   Ok(())
@@ -31,16 +31,16 @@ the output buffer.
 
 ## Blob and stream formats
 
-`compress(&[u8])` returns a blob with a little-endian `u32` decompressed-size header followed by the bit stream, ready
-to be written as the payload of a chunk whose ID carries the compressed mark. Pass that complete blob to `decompress`.
-Use `decompress_into(stream, target)` only when the stream has no size header and the output size is already known; it
-fills the target completely.
+`LzhufEncoder::compress(&[u8])` returns a blob with a little-endian `u32` decompressed-size header followed by the bit
+stream, ready to be written as the payload of a chunk whose ID carries the compressed mark. Pass that complete blob to
+`LzhufDecoder::decompress`. Use `LzhufDecoder::decompress_into(stream, target)` only when the stream has no size header
+and the output size is already known; it fills the target completely.
 
-| API               | Input                         | Output                                 |
-| ----------------- | ----------------------------- | -------------------------------------- |
-| `compress`        | Uncompressed bytes            | Four-byte size header and coded stream |
-| `decompress`      | Complete blob with its header | Newly allocated bytes                  |
-| `decompress_into` | Headerless coded stream       | Caller-supplied output buffer          |
+| API                             | Input                         | Output                                 |
+| ------------------------------- | ----------------------------- | -------------------------------------- |
+| `LzhufEncoder::compress`        | Uncompressed bytes            | Four-byte size header and coded stream |
+| `LzhufDecoder::decompress`      | Complete blob with its header | Newly allocated bytes                  |
+| `LzhufDecoder::decompress_into` | Headerless coded stream       | Caller-supplied output buffer          |
 
 Streams arrive whole in memory, so these APIs take and return slices rather than readers. They do not read files, write
 chunk IDs, or manage archive volumes. The high-bit compressed marker belongs to the enclosing chunk header
@@ -64,5 +64,5 @@ symbols of an X-Ray stream and then diverges, so generic LZH implementations are
 
 ## Checks
 
-Run `cargo test --locked -p xrf-lzhuf` from the repository root. See the [encoder](src/encode/lzhuf_encode.rs),
-[decoder](src/decode/lzhuf_decode.rs), [constants](src/lzhuf_constants.rs), and [tests](src/tests).
+Run `cargo test --locked -p xrf-lzhuf` from the repository root. See the [encoder](src/encode/lzhuf_encoder.rs),
+[decoder](src/decode/lzhuf_decoder.rs), [constants](src/lzhuf_constants.rs), and [tests](src/tests).

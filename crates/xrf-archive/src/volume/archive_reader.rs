@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use byteorder::ReadBytesExt;
 use xrf_chunk::{CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_MASK, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
-use xrf_lzhuf::decompress;
+use xrf_lzhuf::LzhufDecoder;
 use xrf_utils::{
   XRayEncoding, decode_bytes_to_string_without_bom_handling, format_path, new_declared_vec, new_windows1251_encoder,
 };
@@ -160,7 +160,11 @@ impl ArchiveReader {
 
     self.file.read_exact(buffer.as_mut_slice())?;
 
-    if is_compressed { decompress(&buffer) } else { Ok(buffer) }
+    if is_compressed {
+      LzhufDecoder::decompress(&buffer)
+    } else {
+      Ok(buffer)
+    }
   }
 
   fn read_file_descriptors<T: Read>(reader: &mut T) -> XrfResult<HashMap<Arc<str>, ArchiveFileDescriptor>> {
