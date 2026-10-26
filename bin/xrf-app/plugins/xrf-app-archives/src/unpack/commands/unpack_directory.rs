@@ -9,6 +9,7 @@ use xrf_app_core::jobs::{JobRegistry, JobResource, JobStart};
 use xrf_archive::ArchiveProject;
 use xrf_job::JobProgress;
 use xrf_pack::{ArchiveExtractOptions, ArchiveUnpackResult, ArchiveUnpacker};
+use xrf_utils::format_path;
 
 use crate::ipc::archives::ARCHIVES_JOB_UNPACK;
 use crate::unpack::ArchivesUnpackRequest;
@@ -34,8 +35,11 @@ pub async fn archives_unpack_directory(
     destination,
   } = request;
 
-  log::info!("Open archive directory: {}", source.display());
-  log::info!("Unpacking archive to: {}", destination.display());
+  log::info!(
+    "Unpacking archive: {} -> {}",
+    format_path(&source),
+    format_path(&destination)
+  );
 
   registry
     .run(
