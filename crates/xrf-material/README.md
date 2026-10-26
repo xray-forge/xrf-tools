@@ -101,6 +101,8 @@ metadata.
 
 Run `cargo test --locked -p xrf-material` from the repository root.
 
-See the [texture resolver](src/resolve/xray_material_resolver.rs), the
-[surface resolver](src/resolve/xray_surface_resolver.rs), the [texture scope](src/resolve/xray_texture_scope.rs), and
-the [draw modes](src/data/xray_surface_draw.rs).
+The sources follow the two halves: `src/material/` reads descriptors, `src/surface/` reads shaders, with each blender
+class's rules in `src/surface/rule/`, and `src/texture/` holds the scope and reduction both read within. See the
+[texture resolver](src/material/xray_material_resolver.rs), the [surface resolver](src/surface/xray_surface_resolver.rs),
+the [class rules](src/surface/rule/xray_surface_rule.rs), the [texture scope](src/texture/xray_texture_scope.rs), and the
+[draw modes](src/surface/xray_surface_draw.rs).

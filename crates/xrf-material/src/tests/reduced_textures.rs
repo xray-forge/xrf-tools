@@ -1,4 +1,4 @@
-use crate::resolve::xray_reduced_textures::XrayReducedTextures;
+use crate::texture::XrayReducedTextures;
 
 #[test]
 fn reduces_a_reference_holding_a_listed_part_whatever_its_case() {

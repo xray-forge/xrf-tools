@@ -1,15 +1,7 @@
-//! The material a descriptor comes to, against small trees built from the crate's own fixtures.
+//! What a texture and a surface come to, against small trees built from the crate's own fixtures.
 
 pub(crate) mod material_search;
 
-mod declaration;
-mod descriptor;
-mod detail;
-mod level;
 mod material;
-mod outcome;
 mod reduced_textures;
 mod surface;
-mod surface_bump;
-mod surface_detail;
-mod surface_terrain;
