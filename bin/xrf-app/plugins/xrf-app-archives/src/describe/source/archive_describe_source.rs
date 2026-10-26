@@ -65,9 +65,7 @@ impl ArchiveDescribeSource<'_> {
   /// be read out of the container.
   pub fn open_entry(&self, name: &str) -> XrfResult<ArchiveEntryReader> {
     match self {
-      Self::Volumes { project, .. } => Ok(ArchiveEntryReader::Held(ChunkReader::from_vec(
-        project.read_file_bytes(name)?,
-      )?)),
+      Self::Volumes { .. } => Ok(ArchiveEntryReader::Held(ChunkReader::from_vec(self.read_bytes(name)?)?)),
       Self::World { world } => {
         let asset: XrayAsset = world.find_asset(name)?;
 
@@ -81,14 +79,14 @@ impl ArchiveDescribeSource<'_> {
     }
   }
 
-  /// Bytes of an entry this source lists.
+  /// Bytes of an entry this source lists, however `name` spells it.
   ///
   /// # Errors
   ///
   /// Returns an error when the source holds no such entry, or its bytes cannot be read out of the container.
   pub fn read_bytes(&self, name: &str) -> XrfResult<Vec<u8>> {
     match self {
-      Self::Volumes { project, .. } => project.read_file_bytes(name),
+      Self::Volumes { project, names } => project.read_file_bytes(names.resolve(project, name)),
       Self::World { world } => world.search.read(name),
     }
   }
@@ -109,7 +107,7 @@ impl ArchiveDescribeSource<'_> {
   /// Returns an error when the source holds no such entry, or its bytes cannot be reached at all.
   pub fn describe_texture(&self, name: &str) -> XrfResult<AssetTextureDescriptor> {
     match self {
-      Self::Volumes { project, .. } => Ok(AssetTextureDescriptor::of_bytes(&project.read_file_bytes(name)?)),
+      Self::Volumes { .. } => Ok(AssetTextureDescriptor::of_bytes(&self.read_bytes(name)?)),
       Self::World { world } => AssetTextureDescriptor::describe(&world.search, &world.find_asset(name)?)
         .ok_or_else(|| XrfError::new_asset_error(format!("'{name}' could not be read at all"))),
     }

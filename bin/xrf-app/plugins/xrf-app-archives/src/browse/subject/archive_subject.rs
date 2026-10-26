@@ -141,7 +141,8 @@ impl ArchiveSubject {
     }
   }
 
-  /// Reads one file as text, if the viewers' read policy admits it.
+  /// Reads one file as text, if the viewers' read policy admits it. Every read of a subject takes an engine path
+  /// however it is spelled, a volume set's as much as a world's.
   ///
   /// # Errors
   ///
@@ -149,7 +150,9 @@ impl ArchiveSubject {
   /// decoded.
   pub fn read_text(&self, name: &str) -> TauriResult<ArchiveReadResult> {
     match self {
-      Self::Volumes { project, .. } => project.read_file_as_string(name, &ARCHIVE_READ_POLICY),
+      Self::Volumes { project, names, .. } => {
+        project.read_file_as_string(names.resolve(project, name), &ARCHIVE_READ_POLICY)
+      }
       Self::World { world, .. } => world.read_text(name, &ARCHIVE_READ_POLICY),
     }
     .map_err(|error| format!("Failed to read '{name}': {error}"))
@@ -197,7 +200,9 @@ impl ArchiveSubject {
   /// Returns a message when the subject does not hold the name, or the bytes cannot be read or written.
   pub fn extract_file(&self, name: &str, destination: &Path) -> TauriResult<ArchiveExtractResult> {
     match self {
-      Self::Volumes { project, .. } => ArchiveUnpacker::extract_file(project, name, destination),
+      Self::Volumes { project, names, .. } => {
+        ArchiveUnpacker::extract_file(project, names.resolve(project, name), destination)
+      }
       Self::World { world, .. } => XrayWorldExtractor::extract_file(&world.search, name, destination),
     }
     .map_err(error_to_string)

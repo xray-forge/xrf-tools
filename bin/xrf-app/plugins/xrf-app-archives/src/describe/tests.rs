@@ -1,40 +1,23 @@
 //! Pins how an entry is routed to a describer: the ceiling a held read answers to, a claim that does not hold falling
-//! to the container walk, and a lookup that finds an entry however a reference spells it.
+//! to the container walk, and a lookup and a read that find an entry however a reference spells it.
 
-use std::fs;
-use std::path::PathBuf;
+use xrf_archive::{ARCHIVE_READ_POLICY, ArchiveProject, ArchiveReadPolicy};
+use xrf_vfs::{XrayMountMode, XrayRoots};
 
-use xrf_archive::{ARCHIVE_READ_POLICY, ArchiveReadPolicy};
-use xrf_test_utils::GeneratedResources;
-use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots, XraySearch, XraySearchStep, XrayVfs};
-
-use crate::browse::ArchiveWorld;
+use crate::browse::{ArchiveNameIndex, ArchiveWorld};
 use crate::describe::description::{ArchiveDescribeRefusal, ArchiveFormatDescription};
 use crate::describe::{ArchiveDescribeSource, ArchiveFileDescription};
+use crate::tests::fixtures;
 
-/// A world over a tree of its own holding `files`, emptied first so a re-run reads what this run wrote.
+/// One chunk holding four bytes: a container, but no format any describer claims.
+const CONTAINER: &[u8] = &[7, 0, 0, 0, 4, 0, 0, 0, 1, 2, 3, 4];
+
+/// A world over a tree of its own holding `files`.
 fn world(case: &str, files: &[(&str, &[u8])]) -> ArchiveWorld {
-  let root: PathBuf = GeneratedResources::path(&format!("archives/describe/{case}"));
-
-  let _ = fs::remove_dir_all(&root);
-
-  for (path, contents) in files {
-    let path: PathBuf = root.join(path);
-
-    fs::create_dir_all(path.parent().expect("a file sits in a directory")).expect("test tree is creatable");
-    fs::write(&path, contents).expect("test file is writable");
-  }
-
-  let roots: XrayRoots = XrayRoots::new([XrayRoot::new(root, XrayMountMode::Directory)]);
-  let mut vfs: XrayVfs = XrayVfs::new();
-  let steps: Vec<XraySearchStep> = roots
-    .to_search_plan()
-    .expect("the roots plan")
-    .mount_into(&mut vfs)
-    .expect("the roots mount");
-  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
-
-  ArchiveWorld::list(&search, search.clone())
+  fixtures::world(&XrayRoots::one(
+    fixtures::tree(&format!("describe/{case}"), files),
+    XrayMountMode::Directory,
+  ))
 }
 
 fn describe(world: &ArchiveWorld, name: &str) -> ArchiveFormatDescription {
@@ -67,12 +50,11 @@ fn a_held_read_past_the_ceiling_is_refused_rather_than_read() {
 
 #[test]
 fn a_spawn_that_is_neither_format_falls_to_the_container_walk() {
-  // One chunk holding four bytes: a container, but with no set header and no spawn packet in it.
-  let container: &[u8] = &[7, 0, 0, 0, 4, 0, 0, 0, 1, 2, 3, 4];
+  // A container with no set header and no spawn packet in it.
   let world: ArchiveWorld = world(
     "spawn_neither",
     &[
-      ("spawns\\container.spawn", container),
+      ("spawns\\container.spawn", CONTAINER),
       ("spawns\\broken.spawn", b"not a spawn of either kind"),
     ],
   );
@@ -81,7 +63,7 @@ fn a_spawn_that_is_neither_format_falls_to_the_container_walk() {
     panic!("a claim that does not hold is offered whatever the container walk can say");
   };
 
-  assert_eq!((description.nodes, description.size), (1, container.len() as u64));
+  assert_eq!((description.nodes, description.size), (1, CONTAINER.len() as u64));
   assert_eq!(
     describe(&world, "spawns\\broken.spawn"),
     ArchiveFormatDescription::Unsupported {
@@ -118,4 +100,33 @@ fn a_world_lookup_finds_an_entry_however_a_reference_spells_it() {
   );
   assert_eq!(source.get_size_of("textures\\act\\act_arm_1.dds"), Some(3));
   assert_eq!(source.find_entry("textures\\act\\act_arm_2.dds"), None);
+}
+
+#[test]
+fn a_volume_set_describes_an_entry_however_a_reference_spells_it() {
+  let project: ArchiveProject = ArchiveProject::new(fixtures::volumes(
+    "describe/volumes_spelling",
+    &[("meshes/container.dat", CONTAINER)],
+  ))
+  .expect("the volumes open");
+  let names: ArchiveNameIndex = ArchiveNameIndex::default();
+  let source: ArchiveDescribeSource = ArchiveDescribeSource::Volumes {
+    project: &project,
+    names: &names,
+  };
+
+  // The lookup that weighs the entry and the read that walks it must name the same file, as they do in a world.
+  let ArchiveFormatDescription::Chunks { description } =
+    ArchiveFileDescription::of(&source, "Meshes/Container.DAT", &ARCHIVE_READ_POLICY)
+      .expect("the entry is described")
+      .format
+  else {
+    panic!("an unclaimed container is walked");
+  };
+
+  assert_eq!(description.size, CONTAINER.len() as u64);
+  assert_eq!(
+    source.read_bytes("MESHES\\container.dat").expect("the entry reads"),
+    CONTAINER
+  );
 }

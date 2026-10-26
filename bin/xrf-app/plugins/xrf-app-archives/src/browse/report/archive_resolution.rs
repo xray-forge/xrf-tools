@@ -58,15 +58,14 @@ impl ArchiveResolution {
 #[cfg(test)]
 mod tests {
   use std::collections::HashMap;
-  use std::fs;
   use std::path::PathBuf;
   use std::sync::Arc;
 
   use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
-  use xrf_test_utils::GeneratedResources;
-  use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots, XraySearch, XraySearchStep, XraySourceKind, XrayVfs};
+  use xrf_vfs::{XrayMountMode, XrayRoot, XrayRoots, XraySourceKind};
 
   use super::ArchiveResolution;
+  use crate::tests::fixtures;
 
   fn volume(name: &str, entries: usize) -> ArchiveDescriptor {
     ArchiveDescriptor {
@@ -90,22 +89,6 @@ mod tests {
       size_real: 0,
       volume: 0,
     }
-  }
-
-  /// Writes a tree and returns its root, since a mount is decided by what is actually on disk.
-  fn tree(name: &str, files: &[&str]) -> PathBuf {
-    let root: PathBuf = GeneratedResources::path(&format!("archives/resolution/{name}"));
-
-    let _ = fs::remove_dir_all(&root);
-
-    for file in files {
-      let path: PathBuf = root.join(file);
-
-      fs::create_dir_all(path.parent().expect("a file sits in a directory")).expect("test tree is creatable");
-      fs::write(&path, b"payload").expect("test file is writable");
-    }
-
-    root
   }
 
   #[test]
@@ -153,22 +136,19 @@ mod tests {
 
   #[test]
   fn a_world_is_searched_in_the_order_its_roots_were_declared() {
-    let front: PathBuf = tree("front", &["configs/system.ltx"]);
-    let back: PathBuf = tree("back", &["configs/system.ltx", "configs/only_back.ltx"]);
+    let front: PathBuf = fixtures::tree("resolution/front", &[("configs/system.ltx", b"payload")]);
+    let back: PathBuf = fixtures::tree(
+      "resolution/back",
+      &[
+        ("configs/system.ltx", b"payload"),
+        ("configs/only_back.ltx", b"payload"),
+      ],
+    );
 
-    let roots: XrayRoots = XrayRoots::new([
+    let resolution: ArchiveResolution = ArchiveResolution::of_search(&fixtures::search(&XrayRoots::new([
       XrayRoot::new(front.clone(), XrayMountMode::Directory),
       XrayRoot::new(back.clone(), XrayMountMode::Directory),
-    ]);
-
-    let mut vfs: XrayVfs = XrayVfs::new();
-    let steps: Vec<XraySearchStep> = roots
-      .to_search_plan()
-      .expect("the roots plan")
-      .mount_into(&mut vfs)
-      .expect("the roots mount");
-
-    let resolution: ArchiveResolution = ArchiveResolution::of_search(&XraySearch::new(vfs).with_steps(steps));
+    ])));
 
     assert_eq!(
       resolution

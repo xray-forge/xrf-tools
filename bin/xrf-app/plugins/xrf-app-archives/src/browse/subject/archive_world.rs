@@ -103,56 +103,29 @@ impl ArchiveWorld {
 
 #[cfg(test)]
 mod tests {
-  use std::fs;
   use std::path::PathBuf;
 
   use xrf_archive::ARCHIVE_READ_POLICY;
-  use xrf_test_utils::GeneratedResources;
-  use xrf_vfs::{XrayAssetContainer, XrayMountMode, XrayRoot, XrayRoots, XraySearch, XraySearchStep, XrayVfs};
+  use xrf_vfs::{XrayAssetContainer, XrayMountMode, XrayRoot, XrayRoots};
 
   use super::ArchiveWorld;
-
-  fn tree(name: &str, files: &[(&str, &str)]) -> PathBuf {
-    let root: PathBuf = GeneratedResources::path(&format!("archives/world/{name}"));
-
-    let _ = fs::remove_dir_all(&root);
-
-    for (path, contents) in files {
-      let path: PathBuf = root.join(path);
-
-      fs::create_dir_all(path.parent().expect("a file sits in a directory")).expect("test tree is creatable");
-      fs::write(&path, contents).expect("test file is writable");
-    }
-
-    root
-  }
+  use crate::tests::fixtures;
 
   /// A mod tree in front of the tree it overrides, which is the arrangement this subject exists to show.
   fn layered(name: &str) -> ArchiveWorld {
-    let front: PathBuf = tree(
-      &format!("{name}_front"),
-      &[("configs/system.ltx", "front"), ("configs/only_front.ltx", "front")],
+    let front: PathBuf = fixtures::tree(
+      &format!("world/{name}_front"),
+      &[("configs/system.ltx", b"front"), ("configs/only_front.ltx", b"front")],
     );
-    let back: PathBuf = tree(
-      &format!("{name}_back"),
-      &[("configs/system.ltx", "backish"), ("configs/only_back.ltx", "back")],
+    let back: PathBuf = fixtures::tree(
+      &format!("world/{name}_back"),
+      &[("configs/system.ltx", b"backish"), ("configs/only_back.ltx", b"back")],
     );
 
-    let roots: XrayRoots = XrayRoots::new([
+    fixtures::world(&XrayRoots::new([
       XrayRoot::new(front, XrayMountMode::Directory),
       XrayRoot::new(back, XrayMountMode::Directory),
-    ]);
-
-    let mut vfs: XrayVfs = XrayVfs::new();
-    let steps: Vec<XraySearchStep> = roots
-      .to_search_plan()
-      .expect("the roots plan")
-      .mount_into(&mut vfs)
-      .expect("the roots mount");
-
-    let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
-
-    ArchiveWorld::list(&search, search.clone())
+    ]))
   }
 
   #[test]

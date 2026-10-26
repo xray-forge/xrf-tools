@@ -36,13 +36,7 @@ impl AudioDescriptor {
       channels: sound.as_ref().map(|it| it.channels),
       sample_rate: sound.as_ref().map(|it| it.sample_rate),
       parameters: sound.as_ref().and_then(|it| match &it.metadata {
-        SoundMetadata::XRay { parameters, .. } => Some(AudioSourceParameters {
-          min_distance: parameters.min_distance,
-          max_distance: parameters.max_distance,
-          base_volume: parameters.base_volume,
-          game_type: parameters.game_type.into(),
-          max_ai_distance: parameters.max_ai_distance,
-        }),
+        SoundMetadata::XRay { parameters, .. } => Some(AudioSourceParameters::from(parameters)),
         SoundMetadata::EngineDefaults => None,
       }),
       media_type: media_type.to_owned(),

@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use tauri::State;
 use xrf_app_core::TauriResult;
+use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_pack::ArchiveExtractResult;
 
@@ -15,11 +16,17 @@ pub async fn archives_extract_file(
   session_id: SessionId,
   name: String,
   destination: PathBuf,
+  execution: State<'_, ExecutionState>,
   subjects: State<'_, ArchiveSubjects>,
 ) -> TauriResult<ArchiveExtractResult> {
   log::info!("Extracting file '{name}' to '{}'", destination.display());
 
   let subject: Arc<SessionSnapshot<ArchiveSubject>> = subjects.require(session_id)?;
 
-  subject.extract_file(&name, &destination)
+  // Off the async worker: the entry is read whole, unpacked where its volume stores it compressed, and written out.
+  execution
+    .run_blocking("Extracting an archive file", move || {
+      subject.extract_file(&name, &destination)
+    })
+    .await?
 }

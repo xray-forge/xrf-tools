@@ -28,6 +28,12 @@ impl ArchiveNameIndex {
     (!descriptor.is_directory).then_some(descriptor)
   }
 
+  /// The name `project` lists an engine path's file under, however the path is spelled, or `path` as given where it
+  /// lists no file there, so a read of it fails as a read of an absent name does.
+  pub fn resolve<'a>(&self, project: &'a ArchiveProject, path: &'a str) -> &'a str {
+    self.find(project, path).map_or(path, |descriptor| &descriptor.name)
+  }
+
   fn index(project: &ArchiveProject) -> HashMap<String, Arc<str>> {
     project
       .files
