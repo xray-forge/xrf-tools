@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{FileImportExport, Ltx, META_TYPE_FIELD, Section, read_ltx_field};
+use xrf_ltx::{FileImportExport, Ltx, META_TYPE_FIELD, Section};
 use xrf_utils::{assert_equal, format_path};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -60,9 +60,9 @@ impl FileImportExport for ParticlesHeaderChunk {
       .section("header")
       .expect("Patrol section 'header' should be defined in ltx file");
 
-    let meta_type: String = read_ltx_field(META_TYPE_FIELD, section)?;
+    let meta_type: String = section.read_field(META_TYPE_FIELD)?;
     let header_chunk: Self = Self {
-      version: read_ltx_field("version", section)?,
+      version: section.read_field("version")?,
     };
 
     assert_equal(

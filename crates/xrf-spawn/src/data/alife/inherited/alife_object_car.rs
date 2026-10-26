@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
@@ -50,7 +50,7 @@ impl LtxImportExport for AlifeObjectCar {
     Ok(Self {
       base: AlifeObjectDynamicVisual::import(section_name, ltx)?,
       skeleton: AlifeObjectSkeleton::import(section_name, ltx)?,
-      health: read_ltx_field("car.health", section)?,
+      health: section.read_field("car.health")?,
     })
   }
 

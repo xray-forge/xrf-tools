@@ -1,5 +1,9 @@
+use std::any::type_name;
 use std::ops::Index;
+use std::str::FromStr;
 use std::sync::Arc;
+
+use xrf_error::{XrfError, XrfResult};
 
 use crate::ltx::{PropertyIter, SectionData};
 use crate::syntax::{read_engine_bool, read_engine_float};
@@ -140,6 +144,43 @@ impl Section {
     self.get(key).map(read_engine_float)
   }
 
+  /// The value of a field a record requires, parsed as `T` strictly, which is how an exported record is read back.
+  ///
+  /// # Errors
+  ///
+  /// Returns a parsing error when the section lacks the field, or its value is not a valid `T`.
+  pub fn read_field<T: FromStr>(&self, key: &str) -> XrfResult<T> {
+    let value: &str = self
+      .get(key)
+      .ok_or_else(|| XrfError::new_parsing_error(format!("Field '{key}' was not found in ltx file")))?;
+
+    value.parse::<T>().map_err(|_| {
+      XrfError::new_parsing_error(format!(
+        "Failed to parse ltx field '{key}' value '{value}', valid {} is expected",
+        type_name::<T>(),
+      ))
+    })
+  }
+
+  /// The value of a field a record may leave out, parsed as `T` strictly; `None` for a key the section lacks.
+  ///
+  /// # Errors
+  ///
+  /// Returns a parsing error when the value is not a valid `T`.
+  pub fn read_optional_field<T: FromStr>(&self, key: &str) -> XrfResult<Option<T>> {
+    self
+      .get(key)
+      .map(|value| {
+        value.parse::<T>().map_err(|_| {
+          XrfError::new_parsing_error(format!(
+            "Failed to parse optional ltx field '{key}' value, correct {:?} is expected",
+            type_name::<T>()
+          ))
+        })
+      })
+      .transpose()
+  }
+
   /// Remove the property with the first value of the key.
   pub fn remove(&mut self, key: &str) -> Option<Arc<str>> {
     self.data.shift_remove(key)
@@ -191,6 +232,33 @@ mod test {
     assert_eq!(section.get_f32("number"), Some(-0.25));
     assert_eq!(section.get_bool("missing"), None);
     assert_eq!(section.get_f32("missing"), None);
+  }
+
+  #[test]
+  fn reads_a_record_field_strictly_and_says_which_one_failed() {
+    let mut section: Section = Section::new();
+
+    section.insert("count", "4");
+    section.insert("broken", "4.5");
+
+    assert_eq!(section.read_field::<u32>("count").unwrap(), 4);
+    assert_eq!(section.read_optional_field::<u32>("count").unwrap(), Some(4));
+    assert_eq!(section.read_optional_field::<u32>("missing").unwrap(), None);
+    assert!(
+      section
+        .read_field::<u32>("missing")
+        .unwrap_err()
+        .to_string()
+        .contains("Field 'missing' was not found")
+    );
+    assert!(
+      section
+        .read_field::<u32>("broken")
+        .unwrap_err()
+        .to_string()
+        .contains("'broken' value '4.5', valid u32 is expected")
+    );
+    assert!(section.read_optional_field::<u32>("broken").is_err());
   }
 
   #[test]

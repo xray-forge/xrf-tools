@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, META_TYPE_FIELD, Section, read_ltx_field};
+use xrf_ltx::{Ltx, META_TYPE_FIELD, Section};
 use xrf_utils::{assert_equal, assert_length, to_format_size};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -125,7 +125,7 @@ impl ParticleGroupEffectOld {
       ))
     })?;
 
-    let meta_type: String = read_ltx_field(META_TYPE_FIELD, section)?;
+    let meta_type: String = section.read_field(META_TYPE_FIELD)?;
 
     assert_equal(
       meta_type.as_str(),
@@ -134,11 +134,11 @@ impl ParticleGroupEffectOld {
     )?;
 
     Ok(Self {
-      name: read_ltx_field("name", section)?,
-      on_play_child_name: read_ltx_field("on_play_child_name", section)?,
-      time_0: read_ltx_field("time_0", section)?,
-      time_1: read_ltx_field("time_1", section)?,
-      flags: read_ltx_field("flags", section)?,
+      name: section.read_field("name")?,
+      on_play_child_name: section.read_field("on_play_child_name")?,
+      time_0: section.read_field("time_0")?,
+      time_1: section.read_field("time_1")?,
+      flags: section.read_field("flags")?,
     })
   }
 

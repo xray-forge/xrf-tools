@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_utils::{decode_string_from_base64, encode_string_to_base64};
 
 /// Generic ALife object abstraction data.
@@ -72,14 +72,14 @@ impl LtxImportExport for AlifeObjectAbstract {
     })?;
 
     Ok(Self {
-      game_vertex_id: read_ltx_field("abstract.game_vertex_id", section)?,
-      distance: read_ltx_field("abstract.distance", section)?,
-      direct_control: read_ltx_field("abstract.direct_control", section)?,
-      level_vertex_id: read_ltx_field("abstract.level_vertex_id", section)?,
-      flags: read_ltx_field("abstract.flags", section)?,
-      custom_data: decode_string_from_base64(&read_ltx_field::<String>("abstract.custom_data", section)?)?,
-      story_id: read_ltx_field("abstract.story_id", section)?,
-      spawn_story_id: read_ltx_field("abstract.spawn_story_id", section)?,
+      game_vertex_id: section.read_field("abstract.game_vertex_id")?,
+      distance: section.read_field("abstract.distance")?,
+      direct_control: section.read_field("abstract.direct_control")?,
+      level_vertex_id: section.read_field("abstract.level_vertex_id")?,
+      flags: section.read_field("abstract.flags")?,
+      custom_data: decode_string_from_base64(&section.read_field::<String>("abstract.custom_data")?)?,
+      story_id: section.read_field("abstract.story_id")?,
+      spawn_story_id: section.read_field("abstract.spawn_story_id")?,
     })
   }
 

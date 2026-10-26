@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
 use xrf_utils::assert_equal;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -63,7 +63,7 @@ impl LtxImportExport for ParticleEffectCollision {
       ))
     })?;
 
-    let meta_type: String = read_ltx_field(META_TYPE_FIELD, section)?;
+    let meta_type: String = section.read_field(META_TYPE_FIELD)?;
 
     assert_equal(
       meta_type.as_str(),
@@ -72,9 +72,9 @@ impl LtxImportExport for ParticleEffectCollision {
     )?;
 
     Ok(Self {
-      collide_one_minus_friction: read_ltx_field("collide_one_minus_friction", section)?,
-      collide_resilience: read_ltx_field("collide_resilience", section)?,
-      collide_sqr_cutoff: read_ltx_field("collide_sqr_cutoff", section)?,
+      collide_one_minus_friction: section.read_field("collide_one_minus_friction")?,
+      collide_resilience: section.read_field("collide_resilience")?,
+      collide_sqr_cutoff: section.read_field("collide_sqr_cutoff")?,
     })
   }
 

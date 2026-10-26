@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
 
@@ -60,12 +60,12 @@ impl LtxImportExport for AlifeObjectItemWeapon {
 
     Ok(Self {
       base: AlifeObjectItem::import(section_name, ltx)?,
-      ammo_current: read_ltx_field("item_weapon.ammo_current", section)?,
-      ammo_elapsed: read_ltx_field("item_weapon.ammo_elapsed", section)?,
-      weapon_state: read_ltx_field("item_weapon.weapon_state", section)?,
-      addon_flags: read_ltx_field("item_weapon.addon_flags", section)?,
-      ammo_type: read_ltx_field("item_weapon.ammo_type", section)?,
-      elapsed_grenades: read_ltx_field("item_weapon.elapsed_grenades", section)?,
+      ammo_current: section.read_field("item_weapon.ammo_current")?,
+      ammo_elapsed: section.read_field("item_weapon.ammo_elapsed")?,
+      weapon_state: section.read_field("item_weapon.weapon_state")?,
+      addon_flags: section.read_field("item_weapon.addon_flags")?,
+      ammo_type: section.read_field("item_weapon.ammo_type")?,
+      elapsed_grenades: section.read_field("item_weapon.elapsed_grenades")?,
     })
   }
 

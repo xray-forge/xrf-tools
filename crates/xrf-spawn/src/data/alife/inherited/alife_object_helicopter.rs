@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 use crate::data::alife::inherited::alife_object_motion::AlifeObjectMotion;
@@ -59,8 +59,8 @@ impl LtxImportExport for AlifeObjectHelicopter {
       base: AlifeObjectDynamicVisual::import(section_name, ltx)?,
       skeleton: AlifeObjectSkeleton::import(section_name, ltx)?,
       motion: AlifeObjectMotion::import(section_name, ltx)?,
-      startup_animation: read_ltx_field("helicopter.startup_animation", section)?,
-      engine_sound: read_ltx_field("helicopter.engine_sound", section)?,
+      startup_animation: section.read_field("helicopter.startup_animation")?,
+      engine_sound: section.read_field("helicopter.engine_sound")?,
     })
   }
 

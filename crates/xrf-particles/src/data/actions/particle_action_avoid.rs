@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::particle_action_type::ParticleActionType;
 use crate::data::particle_domain::ParticleDomain;
@@ -53,12 +53,12 @@ impl LtxImportExport for ParticleActionAvoid {
     })?;
 
     Ok(Self {
-      action_flags: read_ltx_field("action_flags", section)?,
-      action_type: read_ltx_field("action_type", section)?,
-      position: read_ltx_field("position", section)?,
-      look_ahead: read_ltx_field("look_ahead", section)?,
-      magnitude: read_ltx_field("magnitude", section)?,
-      epsilon: read_ltx_field("epsilon", section)?,
+      action_flags: section.read_field("action_flags")?,
+      action_type: section.read_field("action_type")?,
+      position: section.read_field("position")?,
+      look_ahead: section.read_field("look_ahead")?,
+      magnitude: section.read_field("magnitude")?,
+      epsilon: section.read_field("epsilon")?,
     })
   }
 

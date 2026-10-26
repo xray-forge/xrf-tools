@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_utils::{assert_equal, assert_length, new_bounded_vec, to_format_size};
 
 use crate::data::patrols::patrol_link::PatrolLink;
@@ -148,9 +148,9 @@ impl Patrol {
       ))
     })?;
 
-    let name: String = read_ltx_field("name", section)?;
-    let points_list: String = read_ltx_field("points", section)?;
-    let links_count: usize = read_ltx_field("links_count", section)?;
+    let name: String = section.read_field("name")?;
+    let points_list: String = section.read_field("points")?;
+    let links_count: usize = section.read_field("links_count")?;
 
     let mut points: Vec<PatrolPoint> = Vec::new();
 

@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_utils::{assert_length, to_format_size};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -91,15 +91,15 @@ impl LtxImportExport for PatrolLink {
       ))
     })?;
 
-    let index: u32 = read_ltx_field("index", section)?;
-    let count: usize = read_ltx_field("count", section)?;
+    let index: u32 = section.read_field("index")?;
+    let count: usize = section.read_field("count")?;
 
     let mut links: Vec<(u32, f32)> = Vec::new();
 
     for link in 0..count {
       links.push((
-        read_ltx_field(&format!("from.{link}"), section)?,
-        read_ltx_field(&format!("weight.{link}"), section)?,
+        section.read_field(&format!("from.{link}"))?,
+        section.read_field(&format!("weight.{link}"))?,
       ))
     }
 

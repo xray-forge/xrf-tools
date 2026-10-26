@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_utils::{vector_from_string, vector_to_string};
 
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
@@ -70,20 +70,16 @@ impl LtxImportExport for AlifeObjectCreature {
 
     Ok(Self {
       base: AlifeObjectDynamicVisual::import(section_name, ltx)?,
-      team: read_ltx_field("creature.team", section)?,
-      squad: read_ltx_field("creature.squad", section)?,
-      group: read_ltx_field("creature.group", section)?,
-      health: read_ltx_field("creature.health", section)?,
-      dynamic_out_restrictions: vector_from_string(&read_ltx_field::<String>(
-        "creature.dynamic_out_restrictions",
-        section,
-      )?)?,
-      dynamic_in_restrictions: vector_from_string(&read_ltx_field::<String>(
-        "creature.dynamic_in_restrictions",
-        section,
-      )?)?,
-      killer_id: read_ltx_field("creature.killer_id", section)?,
-      game_death_time: read_ltx_field("creature.game_death_time", section)?,
+      team: section.read_field("creature.team")?,
+      squad: section.read_field("creature.squad")?,
+      group: section.read_field("creature.group")?,
+      health: section.read_field("creature.health")?,
+      dynamic_out_restrictions: vector_from_string(
+        &section.read_field::<String>("creature.dynamic_out_restrictions")?,
+      )?,
+      dynamic_in_restrictions: vector_from_string(&section.read_field::<String>("creature.dynamic_in_restrictions")?)?,
+      killer_id: section.read_field("creature.killer_id")?,
+      game_death_time: section.read_field("creature.game_death_time")?,
     })
   }
 

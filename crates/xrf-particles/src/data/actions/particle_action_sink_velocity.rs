@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::particle_action_type::ParticleActionType;
 use crate::data::particle_domain::ParticleDomain;
@@ -47,10 +47,10 @@ impl LtxImportExport for ParticleActionSinkVelocity {
     })?;
 
     Ok(Self {
-      action_flags: read_ltx_field("action_flags", section)?,
-      action_type: read_ltx_field("action_type", section)?,
-      kill_inside: read_ltx_field("kill_inside", section)?,
-      velocity: read_ltx_field("velocity", section)?,
+      action_flags: section.read_field("action_flags")?,
+      action_type: section.read_field("action_type")?,
+      kill_inside: section.read_field("kill_inside")?,
+      velocity: section.read_field("velocity")?,
     })
   }
 

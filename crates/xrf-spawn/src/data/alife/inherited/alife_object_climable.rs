@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_shape::AlifeObjectShape;
 
@@ -45,7 +45,7 @@ impl LtxImportExport for AlifeObjectClimable {
 
     Ok(Self {
       base: AlifeObjectShape::import(section_name, ltx)?,
-      game_material: read_ltx_field("climbable.game_material", section)?,
+      game_material: section.read_field("climbable.game_material")?,
     })
   }
 

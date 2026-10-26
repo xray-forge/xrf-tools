@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_math::Vector3d;
 use xrf_utils::vector_to_string;
 
@@ -72,15 +72,15 @@ impl LtxImportExport for GraphVertex {
     })?;
 
     Ok(Self {
-      level_point: read_ltx_field("level_point", section)?,
-      game_point: read_ltx_field("game_point", section)?,
-      level_id: read_ltx_field("level_id", section)?,
-      level_vertex_id: read_ltx_field("level_vertex_id", section)?,
-      vertex_type: read_ltx_field("vertex_type", section)?,
-      edges_offset: read_ltx_field("edge_offset", section)?,
-      level_points_offset: read_ltx_field("level_point_offset", section)?,
-      edges_count: read_ltx_field("edge_count", section)?,
-      level_points_count: read_ltx_field("level_point_count", section)?,
+      level_point: section.read_field("level_point")?,
+      game_point: section.read_field("game_point")?,
+      level_id: section.read_field("level_id")?,
+      level_vertex_id: section.read_field("level_vertex_id")?,
+      vertex_type: section.read_field("vertex_type")?,
+      edges_offset: section.read_field("edge_offset")?,
+      level_points_offset: section.read_field("level_point_offset")?,
+      edges_count: section.read_field("edge_count")?,
+      level_points_count: section.read_field("level_point_count")?,
     })
   }
 

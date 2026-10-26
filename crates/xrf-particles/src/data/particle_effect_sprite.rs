@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
 use xrf_utils::assert_equal;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -61,7 +61,7 @@ impl LtxImportExport for ParticleEffectSprite {
       ))
     })?;
 
-    let meta_type: String = read_ltx_field(META_TYPE_FIELD, section)?;
+    let meta_type: String = section.read_field(META_TYPE_FIELD)?;
 
     assert_equal(
       meta_type.as_str(),
@@ -70,8 +70,8 @@ impl LtxImportExport for ParticleEffectSprite {
     )?;
 
     Ok(Self {
-      shader_name: read_ltx_field("shader_name", section)?,
-      texture_name: read_ltx_field("texture_name", section)?,
+      shader_name: section.read_field("shader_name")?,
+      texture_name: section.read_field("texture_name")?,
     })
   }
 

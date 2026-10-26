@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_math::Vector3d;
 
 use crate::data::particle_action_type::ParticleActionType;
@@ -59,14 +59,14 @@ impl LtxImportExport for ParticleActionExplosion {
     })?;
 
     Ok(Self {
-      action_flags: read_ltx_field("action_flags", section)?,
-      action_type: read_ltx_field("action_type", section)?,
-      center: read_ltx_field("center", section)?,
-      velocity: read_ltx_field("velocity", section)?,
-      magnitude: read_ltx_field("magnitude", section)?,
-      st_dev: read_ltx_field("st_dev", section)?,
-      age: read_ltx_field("age", section)?,
-      epsilon: read_ltx_field("epsilon", section)?,
+      action_flags: section.read_field("action_flags")?,
+      action_type: section.read_field("action_type")?,
+      center: section.read_field("center")?,
+      velocity: section.read_field("velocity")?,
+      magnitude: section.read_field("magnitude")?,
+      st_dev: section.read_field("st_dev")?,
+      age: section.read_field("age")?,
+      epsilon: section.read_field("epsilon")?,
     })
   }
 

@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_math::Vector3d;
 use xrf_utils::{
   assert, assert_equal, assert_not_equal, decode_bytes_from_base64, encode_bytes_to_base64, to_format_size,
@@ -243,30 +243,30 @@ impl LtxImportExport for AlifeObject {
       ))
     })?;
 
-    let object_section: String = read_ltx_field("section", section)?;
+    let object_section: String = section.read_field("section")?;
     let clsid: ClsId = ClsId::from_section(&object_section)?;
 
     Ok(Self {
-      id: read_ltx_field("id", section)?,
-      net_action: read_ltx_field("net_action", section)?,
+      id: section.read_field("id")?,
+      net_action: section.read_field("net_action")?,
       clsid: clsid.clone(),
       section: object_section,
-      name: read_ltx_field("name", section)?,
-      script_game_id: read_ltx_field("script_game_id", section)?,
-      script_rp: read_ltx_field("script_rp", section)?,
-      position: read_ltx_field("position", section)?,
-      direction: read_ltx_field("direction", section)?,
-      respawn_time: read_ltx_field("respawn_time", section)?,
-      parent_id: read_ltx_field("parent_id", section)?,
-      phantom_id: read_ltx_field("phantom_id", section)?,
-      script_flags: read_ltx_field("script_flags", section)?,
-      version: read_ltx_field("version", section)?,
-      game_type: read_ltx_field("game_type", section)?,
-      script_version: read_ltx_field("script_version", section)?,
-      client_data_size: read_ltx_field("client_data_size", section)?,
-      spawn_id: read_ltx_field("spawn_id", section)?,
+      name: section.read_field("name")?,
+      script_game_id: section.read_field("script_game_id")?,
+      script_rp: section.read_field("script_rp")?,
+      position: section.read_field("position")?,
+      direction: section.read_field("direction")?,
+      respawn_time: section.read_field("respawn_time")?,
+      parent_id: section.read_field("parent_id")?,
+      phantom_id: section.read_field("phantom_id")?,
+      script_flags: section.read_field("script_flags")?,
+      version: section.read_field("version")?,
+      game_type: section.read_field("game_type")?,
+      script_version: section.read_field("script_version")?,
+      client_data_size: section.read_field("client_data_size")?,
+      spawn_id: section.read_field("spawn_id")?,
       inherited: AlifeObjectInherited::import(section_name, ltx, &AlifeClass::from_cls_id(&clsid))?,
-      update_data: decode_bytes_from_base64(&read_ltx_field::<String>("update_data", section)?)?,
+      update_data: decode_bytes_from_base64(&section.read_field::<String>("update_data")?)?,
     })
   }
 

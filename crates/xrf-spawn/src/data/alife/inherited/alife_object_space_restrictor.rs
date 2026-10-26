@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::generic::shape::Shape;
@@ -49,7 +49,7 @@ impl LtxImportExport for AlifeObjectSpaceRestrictor {
     Ok(Self {
       base: AlifeObjectAbstract::import(section_name, ltx)?,
       shape: Shape::import_list(section)?,
-      restrictor_type: read_ltx_field("space_restrictor.restrictor_type", section)?,
+      restrictor_type: section.read_field("space_restrictor.restrictor_type")?,
     })
   }
 

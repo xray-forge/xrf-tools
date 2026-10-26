@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_utils::assert_equal;
 
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
@@ -53,8 +53,8 @@ impl LtxImportExport for AlifeObjectItem {
 
     Ok(Self {
       base: AlifeObjectDynamicVisual::import(section_name, ltx)?,
-      condition: read_ltx_field("item.condition", section)?,
-      upgrades_count: read_ltx_field("item.upgrades_count", section)?,
+      condition: section.read_field("item.condition")?,
+      upgrades_count: section.read_field("item.upgrades_count")?,
     })
   }
 

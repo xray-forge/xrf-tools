@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_math::Vector3d;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -50,9 +50,9 @@ impl LtxImportExport for GraphLevelPoint {
     })?;
 
     Ok(Self {
-      position: read_ltx_field("position", section)?,
-      level_vertex_id: read_ltx_field("level_vertex_id", section)?,
-      distance: read_ltx_field("distance", section)?,
+      position: section.read_field("position")?,
+      level_vertex_id: section.read_field("level_vertex_id")?,
+      distance: section.read_field("distance")?,
     })
   }
 

@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
 use xrf_utils::assert_equal;
 
 use crate::data::particle_effect_description::ParticleDescription;
@@ -117,7 +117,7 @@ impl LtxImportExport for ParticleGroup {
       ))
     })?;
 
-    let meta_type: String = read_ltx_field(META_TYPE_FIELD, section)?;
+    let meta_type: String = section.read_field(META_TYPE_FIELD)?;
 
     assert_equal(
       meta_type.as_str(),
@@ -128,10 +128,10 @@ impl LtxImportExport for ParticleGroup {
     let effects_old: Vec<ParticleGroupEffectOld> = ParticleGroupEffectOld::import_list(section_name, ltx)?;
 
     Ok(Self {
-      version: read_ltx_field("version", section)?,
-      name: read_ltx_field("name", section)?,
-      flags: read_ltx_field("flags", section)?,
-      time_limit: read_ltx_field("time_limit", section)?,
+      version: section.read_field("version")?,
+      name: section.read_field("name")?,
+      flags: section.read_field("flags")?,
+      time_limit: section.read_field("time_limit")?,
       effects: ParticleGroupEffect::import_list(section_name, ltx)?,
       description: ParticleDescription::import_optional(&Self::get_description_section(section_name), ltx)?,
       effects_old: if effects_old.is_empty() {

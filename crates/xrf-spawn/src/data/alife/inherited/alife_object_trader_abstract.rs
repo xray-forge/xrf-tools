@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -66,16 +66,16 @@ impl LtxImportExport for AlifeObjectTraderAbstract {
     })?;
 
     Ok(Self {
-      money: read_ltx_field("trader.money", section)?,
-      specific_character: read_ltx_field("trader.specific_character", section)?,
-      trader_flags: read_ltx_field("trader.trader_flags", section)?,
-      character_profile: read_ltx_field("trader.character_profile", section)?,
-      community_index: read_ltx_field("trader.community_index", section)?,
-      rank: read_ltx_field("trader.rank", section)?,
-      reputation: read_ltx_field("trader.reputation", section)?,
-      character_name: read_ltx_field("trader.character_name", section)?,
-      dead_body_can_take: read_ltx_field("trader.dead_body_can_take", section)?,
-      dead_body_closed: read_ltx_field("trader.dead_body_closed", section)?,
+      money: section.read_field("trader.money")?,
+      specific_character: section.read_field("trader.specific_character")?,
+      trader_flags: section.read_field("trader.trader_flags")?,
+      character_profile: section.read_field("trader.character_profile")?,
+      community_index: section.read_field("trader.community_index")?,
+      rank: section.read_field("trader.rank")?,
+      reputation: section.read_field("trader.reputation")?,
+      character_name: section.read_field("trader.character_name")?,
+      dead_body_can_take: section.read_field("trader.dead_body_can_take")?,
+      dead_body_closed: section.read_field("trader.dead_body_closed")?,
     })
   }
 

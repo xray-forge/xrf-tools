@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
 use xrf_utils::assert_equal;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -60,7 +60,7 @@ impl LtxImportExport for ParticleEffectFrame {
       ))
     })?;
 
-    let meta_type: String = read_ltx_field(META_TYPE_FIELD, section)?;
+    let meta_type: String = section.read_field(META_TYPE_FIELD)?;
 
     assert_equal(
       meta_type.as_str(),
@@ -68,11 +68,13 @@ impl LtxImportExport for ParticleEffectFrame {
       "Expected corrected meta type field for particle effect frame importing",
     )?;
 
-    let texture_size: Vec<String> = read_ltx_field::<String>("texture_size", section)?
+    let texture_size: Vec<String> = section
+      .read_field::<String>("texture_size")?
       .split(',')
       .map(String::from)
       .collect();
-    let reserved: Vec<String> = read_ltx_field::<String>("reserved", section)?
+    let reserved: Vec<String> = section
+      .read_field::<String>("reserved")?
       .split(',')
       .map(String::from)
       .collect();
@@ -98,9 +100,9 @@ impl LtxImportExport for ParticleEffectFrame {
           .parse::<f32>()
           .or(Err(XrfError::new_parsing_error("Failed to parse reserved Y value")))?,
       ),
-      frame_dimension_x: read_ltx_field("frame_dimension_x", section)?,
-      frame_count: read_ltx_field("frame_count", section)?,
-      frame_speed: read_ltx_field("frame_speed", section)?,
+      frame_dimension_x: section.read_field("frame_dimension_x")?,
+      frame_count: section.read_field("frame_count")?,
+      frame_speed: section.read_field("frame_speed")?,
     })
   }
 

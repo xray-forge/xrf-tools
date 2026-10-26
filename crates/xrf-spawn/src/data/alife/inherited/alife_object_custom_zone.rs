@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_space_restrictor::AlifeObjectSpaceRestrictor;
 
@@ -75,11 +75,11 @@ impl LtxImportExport for AlifeObjectCustomZone {
 
     Ok(Self {
       base: AlifeObjectSpaceRestrictor::import(section_name, ltx)?,
-      max_power: read_ltx_field("custom_zone.max_power", section)?,
-      owner_id: read_ltx_field("custom_zone.owner_id", section)?,
-      enabled_time: read_ltx_field("custom_zone.enabled_time", section)?,
-      disabled_time: read_ltx_field("custom_zone.disabled_time", section)?,
-      start_time_shift: read_ltx_field("custom_zone.start_time_shift", section)?,
+      max_power: section.read_field("custom_zone.max_power")?,
+      owner_id: section.read_field("custom_zone.owner_id")?,
+      enabled_time: section.read_field("custom_zone.enabled_time")?,
+      disabled_time: section.read_field("custom_zone.disabled_time")?,
+      start_time_shift: section.read_field("custom_zone.start_time_shift")?,
     })
   }
 

@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_utils::to_format_size;
 
 use crate::data::alife::inherited::alife_object_smart_cover::AlifeObjectSmartCover;
@@ -73,8 +73,8 @@ impl LtxImportExport for AlifeSmartCover {
 
     Ok(Self {
       base: AlifeObjectSmartCover::import(section_name, ltx)?,
-      last_description: read_ltx_field("last_description", section)?,
-      loopholes: AlifeSmartCoverLoophole::string_to_list(&read_ltx_field::<String>("loopholes", section)?)?,
+      last_description: section.read_field("last_description")?,
+      loopholes: AlifeSmartCoverLoophole::string_to_list(&section.read_field::<String>("loopholes")?)?,
     })
   }
 

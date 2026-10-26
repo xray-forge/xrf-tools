@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_math::Vector3d;
 
 use crate::data::particle_action_type::ParticleActionType;
@@ -50,11 +50,11 @@ impl LtxImportExport for ParticleActionDamping {
     })?;
 
     Ok(Self {
-      action_flags: read_ltx_field("action_flags", section)?,
-      action_type: read_ltx_field("action_type", section)?,
-      damping: read_ltx_field("damping", section)?,
-      v_low_sqr: read_ltx_field("v_low_sqr", section)?,
-      v_high_sqr: read_ltx_field("v_high_sqr", section)?,
+      action_flags: section.read_field("action_flags")?,
+      action_type: section.read_field("action_type")?,
+      damping: section.read_field("damping")?,
+      v_low_sqr: section.read_field("v_low_sqr")?,
+      v_high_sqr: section.read_field("v_high_sqr")?,
     })
   }
 

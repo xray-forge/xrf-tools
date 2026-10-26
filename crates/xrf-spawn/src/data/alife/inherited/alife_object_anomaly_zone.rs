@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_custom_zone::AlifeObjectCustomZone;
 
@@ -51,9 +51,9 @@ impl LtxImportExport for AlifeObjectAnomalyZone {
 
     Ok(Self {
       base: AlifeObjectCustomZone::import(section_name, ltx)?,
-      offline_interactive_radius: read_ltx_field("anomaly_zone.offline_interactive_radius", section)?,
-      artefact_spawn_count: read_ltx_field("anomaly_zone.artefact_spawn_count", section)?,
-      artefact_position_offset: read_ltx_field("anomaly_zone.artefact_position_offset", section)?,
+      offline_interactive_radius: section.read_field("anomaly_zone.offline_interactive_radius")?,
+      artefact_spawn_count: section.read_field("anomaly_zone.artefact_spawn_count")?,
+      artefact_position_offset: section.read_field("anomaly_zone.artefact_position_offset")?,
     })
   }
 

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_ltx::{FileImportExport, Ltx, Section, read_ltx_field};
+use xrf_ltx::{FileImportExport, Ltx, Section};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -66,11 +66,11 @@ impl FileImportExport for SpawnHeaderChunk {
       .expect("Patrol section 'header' should be defined in ltx file");
 
     Ok(Self {
-      version: read_ltx_field("version", section)?,
-      guid: read_ltx_field("guid", section)?,
-      graph_guid: read_ltx_field("graph_guid", section)?,
-      objects_count: read_ltx_field("objects", section)?,
-      levels_count: read_ltx_field("level_count", section)?,
+      version: section.read_field("version")?,
+      guid: section.read_field("guid")?,
+      graph_guid: section.read_field("graph_guid")?,
+      objects_count: section.read_field("objects")?,
+      levels_count: section.read_field("level_count")?,
     })
   }
 

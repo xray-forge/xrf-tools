@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
@@ -56,9 +56,9 @@ impl LtxImportExport for AlifeObjectPhysic {
     Ok(Self {
       base: AlifeObjectDynamicVisual::import(section_name, ltx)?,
       skeleton: AlifeObjectSkeleton::import(section_name, ltx)?,
-      physic_type: read_ltx_field("physic_type", section)?,
-      mass: read_ltx_field("mass", section)?,
-      fixed_bones: read_ltx_field("fixed_bones", section)?,
+      physic_type: section.read_field("physic_type")?,
+      mass: section.read_field("mass")?,
+      fixed_bones: section.read_field("fixed_bones")?,
     })
   }
   /// Export object data into ltx file.

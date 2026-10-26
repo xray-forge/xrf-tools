@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 
@@ -51,9 +51,9 @@ impl LtxImportExport for AlifeObjectInventoryBox {
 
     Ok(Self {
       base: AlifeObjectDynamicVisual::import(section_name, ltx)?,
-      can_take: read_ltx_field("inventory_box.can_take", section)?,
-      is_closed: read_ltx_field("inventory_box.is_closed", section)?,
-      tip: read_ltx_field("inventory_box.tip", section)?,
+      can_take: section.read_field("inventory_box.can_take")?,
+      is_closed: section.read_field("inventory_box.is_closed")?,
+      tip: section.read_field("inventory_box.tip")?,
     })
   }
 
