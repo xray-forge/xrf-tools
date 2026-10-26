@@ -30,12 +30,12 @@ impl ArchiveSoundEnvironment {
   fn of(environment: &SoundEnvironment) -> Self {
     Self {
       name: environment.name.clone(),
-      version: environment.version,
+      version: environment.get_version(),
       decay_time: environment.decay_time,
       room: environment.room,
       room_hf: environment.room_hf,
       environment_size: environment.environment_size,
-      environment: environment.environment,
+      environment: environment.environment.map(u32::from),
     }
   }
 }
