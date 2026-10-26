@@ -16,6 +16,7 @@ macro_rules! for_each_system_domain {
         get_runtime_snapshot => crate::diagnostics::commands::get_runtime_snapshot::system_get_runtime_snapshot,
         report_leave_decision => crate::window::commands::report_leave_decision::system_report_leave_decision,
         reveal_path => crate::paths::commands::reveal_path::system_reveal_path,
+        reveal_window => crate::window::commands::reveal_window::system_reveal_window,
       }
     }
   };

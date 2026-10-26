@@ -4,7 +4,6 @@ mod geometry;
 mod main_window;
 mod webview_extensions;
 mod window_build_kind;
-mod window_reveal;
 
 #[cfg(test)]
 mod tests;

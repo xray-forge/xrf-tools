@@ -19,6 +19,7 @@ export enum ESystemCommand {
   GET_RUNTIME_SNAPSHOT = "plugin:system|get_runtime_snapshot",
   REPORT_LEAVE_DECISION = "plugin:system|report_leave_decision",
   REVEAL_PATH = "plugin:system|reveal_path",
+  REVEAL_WINDOW = "plugin:system|reveal_window",
 }
 
 /** Commands */
@@ -49,6 +50,14 @@ export const systemCommands = {
     __TAURI_INVOKE<void>(ESystemCommand.REPORT_LEAVE_DECISION, { decision, unsaved }),
   /** Show a path in the desktop's own file manager. */
   revealPath: (path: string) => __TAURI_INVOKE<null>(ESystemCommand.REVEAL_PATH, { path }),
+  /**
+   * Put the calling window on screen: its page has something themed to show. A page loaded over a window already shown
+   * changes nothing.
+   *
+   * Asynchronous so it runs off the main thread: a synchronous command runs inside the webview's message callback there,
+   * and showing the window from inside it never returns on Windows.
+   */
+  revealWindow: () => __TAURI_INVOKE<null>(ESystemCommand.REVEAL_WINDOW),
 };
 
 /** What each command of the `system` plugin takes and resolves to, keyed by its wire name. */
@@ -67,4 +76,5 @@ export interface ISystemCommandSignatures {
     ["decision", "unsaved"]
   >;
   [ESystemCommand.REVEAL_PATH]: IIpcCommandSignature<typeof systemCommands.revealPath, ["path"]>;
+  [ESystemCommand.REVEAL_WINDOW]: IIpcCommandSignature<typeof systemCommands.revealWindow, []>;
 }
