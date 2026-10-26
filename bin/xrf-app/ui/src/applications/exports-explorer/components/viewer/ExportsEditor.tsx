@@ -23,37 +23,25 @@ export function ExportsEditor(): ReactElement {
   const exportsService: ExportsService = useInjection(ExportsService);
 
   const [selectedName, setSelectedName] = useState<Nullable<string>>(null);
-  const [isClosing, setClosing] = useState<boolean>(false);
-  const [closeError, setCloseError] = useState<Nullable<string>>(null);
 
   const project: Nullable<ExportsProject> = exportsService.project.value;
   const declarations: Array<ExportDescriptor> = useMemo(() => project?.declarations ?? [], [project?.declarations]);
   const groups: Array<IExportGroup> = useMemo(() => groupExports(declarations), [declarations]);
   const selectedDeclaration: Nullable<ExportDescriptor> =
     declarations.find((declaration: ExportDescriptor) => declaration.name === selectedName) ?? null;
-  const isBusy: boolean = exportsService.project.isLoading || exportsService.manifest.isLoading || isClosing;
+  const isBusy: boolean = exportsService.project.isLoading || exportsService.manifest.isLoading;
 
   const onSelect = useCallback((name: string): void => setSelectedName(name), []);
 
   const onDeselect = useCallback((): void => setSelectedName(null), []);
 
   const onRefresh = useCallback((): void => {
-    setCloseError(null);
     void exportsService.refreshExportsProject();
   }, [exportsService]);
 
-  const onClose = useCallback(async (): Promise<void> => {
-    setClosing(true);
-    setCloseError(null);
-
-    try {
-      // Closing does not navigate: the application shows its own picker again once nothing is open.
-      await exportsService.closeExportsProject();
-    } catch (error: unknown) {
-      setCloseError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setClosing(false);
-    }
+  // Closing does not navigate: the application shows its own picker again once nothing is open.
+  const onClose = useCallback((): void => {
+    void exportsService.closeExportsProject();
   }, [exportsService]);
 
   useEffect(() => {
@@ -103,21 +91,13 @@ export function ExportsEditor(): ReactElement {
               />
             </>
           }
-          onBack={() => void onClose()}
+          onBack={onClose}
         />
       }
       banner={
-        <>
-          {exportsService.project.error ? (
-            <Alert severity={"error"}>Could not refresh exports: {exportsService.project.error.message}</Alert>
-          ) : null}
-
-          {closeError ? (
-            <Alert severity={"error"} onClose={() => setCloseError(null)}>
-              Could not close exports: {closeError}
-            </Alert>
-          ) : null}
-        </>
+        exportsService.project.error ? (
+          <Alert severity={"error"}>Could not refresh exports: {exportsService.project.error.message}</Alert>
+        ) : null
       }
     >
       <ExportsViewer declaration={selectedDeclaration} exportCount={declarations.length} onDeselect={onDeselect} />

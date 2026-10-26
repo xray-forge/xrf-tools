@@ -102,7 +102,7 @@ export class ConfigsDocumentService {
    */
   @LatestFlow("document")
   public *select(path: string): TFlow {
-    const sessionId: Nullable<string> = this.projectService.sessionId;
+    const sessionId: Nullable<string> = this.projectService.project.sessionId;
 
     if (!sessionId) {
       this.log.error("Cannot read a config with no project open:", path);

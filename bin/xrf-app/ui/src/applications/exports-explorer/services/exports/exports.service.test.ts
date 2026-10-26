@@ -28,7 +28,7 @@ describe("ExportsService", () => {
 
     await service.onProvision();
 
-    expect(service.isReady).toBe(true);
+    expect(service.project.isRestored).toBe(true);
     expect(service.project.value).toEqual(PROJECT);
     expect(mockInvoke).not.toHaveBeenCalledWith(EExportsCommand.OPEN_PROJECT, expect.anything());
   });
@@ -38,7 +38,7 @@ describe("ExportsService", () => {
 
     await service.onProvision();
 
-    expect(service.isReady).toBe(true);
+    expect(service.project.isRestored).toBe(true);
     expect(service.project.value).toBeNull();
     expect(mockInvoke).toHaveBeenCalledTimes(1);
     // The restore names the tool's scope, which the backend lists its openings by.
@@ -58,7 +58,7 @@ describe("ExportsService", () => {
 
     await service.onProvision();
 
-    expect(service.isReady).toBe(true);
+    expect(service.project.isRestored).toBe(true);
     expect(service.project.isLoading).toBe(false);
     expect(service.project.error).toEqual(new Error("backend unavailable"));
   });
@@ -109,7 +109,22 @@ describe("ExportsService", () => {
     }
   });
 
-  it("keeps the project and rejects when close fails", async () => {
+  it("forgets the manifest of a project it closes", async () => {
+    const service = mockInjectedService(ExportsService).service;
+
+    await service.openExportsProject("C:\\chosen\\xrf");
+    await service.exportManifest("C:\\out\\extern.json");
+
+    expect(service.manifest.value).toBe("C:\\out\\extern.json");
+
+    await service.closeExportsProject();
+
+    expect(service.project.value).toBeNull();
+    expect(service.manifest.state.isIdle).toBe(true);
+    expect(service.manifest.value).toBeNull();
+  });
+
+  it("keeps the project when close fails", async () => {
     mockIpcCommands({
       [EExportsCommand.RESTORE_PROJECT]: mockSessionResponse(PROJECT),
       [EExportsCommand.CLOSE_PROJECT]: () => {
@@ -121,7 +136,8 @@ describe("ExportsService", () => {
 
     await service.onProvision();
 
-    await expect(service.closeExportsProject()).rejects.toThrow("project is busy");
+    await service.closeExportsProject();
+
     expect(service.project.value).toEqual(PROJECT);
     expect(service.project.isLoading).toBe(false);
   });

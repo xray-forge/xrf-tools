@@ -18,11 +18,11 @@ function mockSource(name: string, content: string, line: number = 18): ExportSou
   return { name, path: "effects/sound.ts", line, endLine: line + 2, content };
 }
 
-function renderSource(name: string) {
+async function renderSource(name: string) {
   const container = mockContainer([ExportsService]);
-  const service = container.get(ExportsService);
 
-  service["projectState"] = service["projectState"].asReady(mockSessionSnapshot(mockExportsProject()));
+  // Restored before the view reads, as the application shows the view only once a project is held.
+  await container.get(ExportsService).onProvision();
 
   return renderWithProviders(<ExportSourceView name={name} />, { container });
 }
@@ -36,7 +36,7 @@ describe("ExportSourceView", () => {
   });
 
   it("renders the body of the declaration it was asked for", async () => {
-    const { findByLabelText } = renderSource("xr_effects.play");
+    const { findByLabelText } = await renderSource("xr_effects.play");
 
     expect(await findByLabelText("Source of xr_effects.play")).toHaveTextContent('extern("xr_effects.play", () => {})');
   });
@@ -47,7 +47,7 @@ describe("ExportSourceView", () => {
       [EExportsCommand.GET_SOURCE]: mockSource("play", "line one\nline two\nline three", 18),
     });
 
-    const { findByLabelText } = renderSource("play");
+    const { findByLabelText } = await renderSource("play");
     const gutter: Nullable<Element> = (await findByLabelText("Source of play")).querySelector("pre");
 
     // An excerpt is far more useful when its gutter still says where in the file it came from.
@@ -62,7 +62,7 @@ describe("ExportSourceView", () => {
       },
     });
 
-    const { findByRole, getByRole, findByLabelText, queryByRole } = renderSource("play");
+    const { findByRole, getByRole, findByLabelText, queryByRole } = await renderSource("play");
 
     expect(await findByRole("alert")).toHaveTextContent("declaration file is gone");
 
@@ -94,7 +94,7 @@ describe("ExportSourceView", () => {
         }),
     });
 
-    const { rerender, findByLabelText } = renderSource("first");
+    const { rerender, findByLabelText } = await renderSource("first");
 
     rerender(
       <>

@@ -1,77 +1,33 @@
-import { EventBus, inject, Injectable, OnProvision } from "@wirestate/core";
-import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
-import { transformError } from "@xrf/errors";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
+import { Injectable, OnProvision } from "@wirestate/core";
+import { BoundAction, flowResult } from "@wirestate/mobx";
+import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { formatDuration } from "@xrf/format";
 import { exportsCommands } from "@xrf/ipc/commands/exports";
-import { requireSessionId, Session, SessionScopeService } from "@xrf/ipc/session";
+import { requireSessionId } from "@xrf/ipc/session";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { ExportSourceContent, ExportsProject } from "@xrf/ipc/types/xrf-export";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
-import { EApplicationId } from "@/core/routing/application";
+import { CommandOperation } from "@/core/operations/lib/command-operation";
+import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 
 @Injectable()
 export class ExportsService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(exportsCommands.closeProject, inject(SessionScopeService));
-
-  @Observable()
-  public isReady: boolean = false;
+  public readonly project: SessionRootResource<ExportsProject> = new SessionRootResource(this.log, {
+    subject: "exports project",
+    close: exportsCommands.closeProject,
+    restore: exportsCommands.restoreProject,
+  });
 
   /** The last manifest written to disk, so a surface can report the outcome and block a second write. */
-  @Observable()
-  public manifest: AsyncState<string> = AsyncState.idle();
-
-  @Observable()
-  private projectState: AsyncState<SessionSnapshot<ExportsProject>> = AsyncState.idle();
-
-  @Computed()
-  public get project(): AsyncState<ExportsProject> {
-    return this.projectState.map((snapshot) => snapshot.value);
-  }
-
-  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
+  public readonly manifest: CommandOperation<string> = new CommandOperation(this.log);
 
   @OnProvision()
   public async onProvision(): Promise<void> {
-    await flowResult(this.restore());
-  }
-
-  /**
-   * Restores the committed session without superseding a user action in the same flow.
-   */
-  @ExclusiveFlow("project")
-  private *restore(): TFlow {
-    try {
-      const project: Nullable<SessionSnapshot<ExportsProject>> = yield* call(
-        exportsCommands.restoreProject(this.session.tool)
-      );
-
-      this.log.info(project ? "Existing exports project detected" : "No existing exports project");
-
-      this.isReady = true;
-      this.session.adopt(project);
-      this.projectState = this.projectState.asReady(project);
-    } catch (error: unknown) {
-      const transformed: Error = transformError(error);
-
-      this.log.error("Failed to restore exports project:", transformed);
-
-      this.projectState = this.projectState.asFailed(transformed);
-      this.isReady = true;
-
-      emitNotification(this.eventBus, {
-        details: transformed.message,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.EXPORTS_EXPLORER,
-        title: "Could not restore the open exports project",
-      });
-    }
+    await flowResult(this.project.restore());
   }
 
   /**
@@ -86,7 +42,7 @@ export class ExportsService {
 
     try {
       const source: ExportSourceContent = await exportsCommands.getSource(
-        requireSessionId(this.projectState.value),
+        requireSessionId(this.project.snapshot),
         name
       );
 
@@ -107,173 +63,38 @@ export class ExportsService {
    */
   @ExclusiveFlow("manifest")
   public *exportManifest(path: string): TFlow {
-    const project: Nullable<SessionSnapshot<ExportsProject>> = this.projectState.value;
+    const project: Nullable<SessionSnapshot<ExportsProject>> = this.project.snapshot;
 
     if (!project) {
       return;
     }
 
-    const timer: Timer = new Timer();
-
-    this.log.info("Exporting externs manifest:", path);
-    this.manifest = this.manifest.asLoading();
-
-    try {
-      yield* call(exportsCommands.exportManifest(project.sessionId, path));
-
-      this.manifest = this.manifest.asReady(path);
-
-      this.log.info(
-        "Externs manifest exported:",
-        path,
-        project.value.declarations.length,
-        "externs, in",
-        formatDuration(timer.elapsed())
-      );
-
-      emitNotification(this.eventBus, {
-        details: path,
-        severity: ENotificationSeverity.SUCCESS,
-        source: EApplicationId.EXPORTS_EXPLORER,
-        title: `Exported ${project.value.declarations.length} externs`,
-      });
-    } catch (error: unknown) {
-      const transformed: Error = transformError(error);
-
-      this.log.error("Failed to export externs manifest:", path, "after", formatDuration(timer.elapsed()), transformed);
-
-      this.manifest = this.manifest.asFailed(transformed);
-
-      emitNotification(this.eventBus, {
-        details: `${path}\n${transformed.message}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.EXPORTS_EXPLORER,
-        title: "Could not export externs",
-      });
-    }
+    yield* this.manifest.run({
+      name: "Export externs manifest",
+      subject: path,
+      command: () => exportsCommands.exportManifest(project.sessionId, path).then(() => path),
+      failure: "Could not export externs",
+      success: () => ({ title: `Exported ${project.value.declarations.length} externs`, details: path }),
+    });
   }
 
-  @LatestFlow("project")
-  public *openExportsProject(path: string): TFlow {
-    const timer: Timer = new Timer();
-
-    this.log.info("Parsing exports from project:", path);
-    this.projectState = this.projectState.asLoading();
-
-    try {
-      const result: SessionSnapshot<ExportsProject> = yield* call(this.session.open(exportsCommands.openProject, path));
-
-      this.projectState = this.projectState.asReady(result);
-
-      this.log.info(
-        "Exports project opened:",
-        path,
-        result.value.declarations.length,
-        "externs, in",
-        formatDuration(timer.elapsed())
-      );
-    } catch (error: unknown) {
-      const transformed: Error = transformError(error);
-
-      this.log.error("Failed to parse exports:", path, "after", formatDuration(timer.elapsed()), transformed);
-
-      this.projectState = this.projectState.asFailed(transformed);
-
-      emitNotification(this.eventBus, {
-        details: `${path}\n${transformed.message}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.EXPORTS_EXPLORER,
-        title: "Could not parse exports",
-      });
-    }
+  @BoundAction()
+  public openExportsProject(path: string): Promise<void> {
+    return flowResult(this.project.open(path, exportsCommands.openProject, path));
   }
 
-  @ExclusiveFlow("project")
-  public *refreshExportsProject(): TFlow {
-    const existing: Nullable<SessionSnapshot<ExportsProject>> = this.projectState.value;
+  @BoundAction()
+  public refreshExportsProject(): Promise<void> {
+    const root: Nullable<string> = this.project.value?.root ?? null;
 
-    if (!existing) {
-      return;
-    }
-
-    const timer: Timer = new Timer();
-
-    this.log.info("Refreshing exports project:", existing.value.root);
-    this.projectState = this.projectState.asLoading(existing);
-
-    try {
-      const result: SessionSnapshot<ExportsProject> = yield* call(
-        this.session.open(exportsCommands.openProject, existing.value.root)
-      );
-
-      this.projectState = this.projectState.asReady(result);
-
-      this.log.info(
-        "Exports project refreshed:",
-        existing.value.root,
-        result.value.declarations.length,
-        "externs, in",
-        formatDuration(timer.elapsed())
-      );
-    } catch (error: unknown) {
-      const transformed: Error = transformError(error);
-
-      this.log.error(
-        "Failed to refresh exports project:",
-        existing.value.root,
-        "after",
-        formatDuration(timer.elapsed()),
-        transformed
-      );
-
-      this.projectState = this.projectState.asFailed(transformed, existing);
-
-      emitNotification(this.eventBus, {
-        details: `${existing.value.root}\n${transformed.message}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.EXPORTS_EXPLORER,
-        title: "Could not refresh exports",
-      });
-    }
+    return root ? flowResult(this.project.refresh(root, exportsCommands.openProject, root)) : Promise.resolve();
   }
 
-  @LatestFlow("project")
-  public *closeExportsProject(): TFlow {
-    const previous: AsyncState<SessionSnapshot<ExportsProject>> = this.projectState;
-    const timer: Timer = new Timer();
-
-    this.log.info("Closing exports project");
-    this.projectState = this.projectState.asLoading();
-
-    try {
-      yield* call(this.session.close());
-
-      this.projectState = this.projectState.asIdle();
-      // The artifact described the project that just closed, so the next one starts without its outcome.
-      this.manifest = this.manifest.asIdle();
-
-      this.log.info("Exports project closed:", previous.value?.value.root, "in", formatDuration(timer.elapsed()));
-    } catch (error: unknown) {
-      const transformed: Error = transformError(error);
-
-      this.log.error(
-        "Failed to close exports project:",
-        previous.value?.value.root,
-        "after",
-        formatDuration(timer.elapsed()),
-        transformed
-      );
-
-      this.projectState = previous;
-
-      emitNotification(this.eventBus, {
-        details: transformed.message,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.EXPORTS_EXPLORER,
-        title: "Could not close exports project",
-      });
-
-      throw transformed;
+  @BoundAction()
+  public async closeExportsProject(): Promise<void> {
+    // The manifest described the project that just closed, so the next one starts without its outcome.
+    if (await flowResult(this.project.close())) {
+      this.manifest.reset();
     }
   }
 }
