@@ -97,7 +97,6 @@ lazy_static! {
     "explosive_tank" => ClsId::SExplo, //	#II_EXPLO before 122
     "fire_vedro" => ClsId::ODstrS,
     "fireball_zone" => ClsId::ZsTorrd,		// Z_TORRID before 128
-    "flesh_group" => ClsId::AiFleG,
     "flesh_normal" => ClsId::SmFlesh,
     "flesh_strong" => ClsId::SmFlesh,
     "freezer" => ClsId::ODstrS,
@@ -139,12 +138,11 @@ lazy_static! {
     "m_dog_e" => ClsId::SmDogS,
     "m_flesh_e" => ClsId::SmFlesh,
     "m_gigant_e" => ClsId::SmGiant,
-    "m_phantom" => ClsId::AiGraph,
+    "m_phantom" => ClsId::AiPhant,
     "m_poltergeist_e" => ClsId::SmPoltr,
     "m_poltergeist_normal_flame" => ClsId::SmPoltr,
     "m_poltergeist_normal_tele" => ClsId::SmPoltr,
     "m_pseudodog_e" => ClsId::SmPDog,
-    "m_rat_e" => ClsId::AiRat,
     "m_snork_e" => ClsId::SmSnork,
     "m_tushkano_e" => ClsId::SmTushk,
     "med_stolik_01" => ClsId::ODstrS,
@@ -153,11 +151,11 @@ lazy_static! {
     "medkit_scientic" => ClsId::SFood, // II_MEDKI  before 128
     "military_outfit" => ClsId::EStlk,
     "miska" => ClsId::ODstrS,
-    "mounted_weapon" => ClsId::WMountd,
     "new_attachable_item" => ClsId::IIBttch,
     "notebook" => ClsId::ODstrS,
     "novice_outfit" => ClsId::EStlk,
     "ognetushitel" => ClsId::ODstrS,
+    "online_offline_group" => ClsId::OnOffS,
     "ph_skeleton_object" => ClsId::PSkelet,
     "physic_destroyable_object" => ClsId::ODstrS,
     "physic_object" => ClsId::OPhysS,
@@ -165,14 +163,13 @@ lazy_static! {
     "pseudodog_normal" => ClsId::SmPDog,
     "psy_dog" => ClsId::SmDogP,
     "psy_dog_phantom" => ClsId::SmDogF,
-    "rat_group" => ClsId::AiRatG,
     "rupor" => ClsId::ODstrS,
     "scientific_outfit" => ClsId::EStlk,
     "script_object" => ClsId::ScrptObj,
     "script_zone" => ClsId::ScriptZn,
     "search_light" => ClsId::OSearch,
     "shooting_target_1" => ClsId::ODstrS,
-    "sim_faction" => ClsId::SFaction,
+    "sim_faction" => ClsId::ScriptZn, // S_FACTION in Clear Sky
     "smart_cover" => ClsId::SmrtCS,
     "smart_terrain" => ClsId::SmrtTrrn,
     "snork_indoor" => ClsId::SmSnork,
@@ -182,10 +179,7 @@ lazy_static! {
     "snork_strong" => ClsId::SmSnork,
     "snork_weak" => ClsId::SmSnork,
     "space_restrictor" => ClsId::SpcRsS,
-    "spawn_group" => ClsId::AiSpGrp,
-    "spawn_group_zone" => ClsId::AiSpGrp,
     "specops_outfit" => ClsId::EStlk,
-    "spectator" => ClsId::Spect,
     "stalker" => ClsId::AiStlS,
     "stalker_outfit" => ClsId::EStlk,
     "stationary_mgun" => ClsId::WSTMGun,
@@ -626,19 +620,14 @@ lazy_static! {
 
   pub static ref CLS_ID_TO_CLASS: EnumMap<ClsId, AlifeClass> = enum_map! {
     ClsId::AiCrow => AlifeClass::CseAlifeCreatureCrow,
-    ClsId::AiFleG => AlifeClass::CseAlifeFleshGroup,
     ClsId::AiGraph => AlifeClass::CseAlifeGraphPoint,
-    ClsId::AiPhant => AlifeClass::CseAlifeMonsterBase,
-    // `CSE_ALifeMonsterRat`, a Shadow of Chernobyl monster with a layout of its own.
-    ClsId::AiRat => AlifeClass::Unknown,
-    ClsId::AiRatG => AlifeClass::CseAlifeRatGroup,
-    ClsId::AiSpGrp => AlifeClass::CseAlifeSpawnGroup,
+    ClsId::AiPhant => AlifeClass::CseAlifeCreaturePhantom,
     ClsId::AiStlS => AlifeClass::SeStalker,
     ClsId::AiTrdS => AlifeClass::CseAlifeTrader,
     ClsId::AmmoS => AlifeClass::CseAlifeItemAmmo,
     ClsId::Artefact => AlifeClass::CseAlifeItemArtefact,
     ClsId::CHlcpS => AlifeClass::CseAlifeHelicopter,
-    ClsId::DFlare => AlifeClass::Unknown,
+    ClsId::DFlare => AlifeClass::CseAlifeItem,
     ClsId::DPda => AlifeClass::CseAlifeItemPda,
     ClsId::DetAdva => AlifeClass::CseAlifeItemDetector,
     ClsId::DetElit => AlifeClass::CseAlifeItemDetector,
@@ -647,9 +636,10 @@ lazy_static! {
     ClsId::EHlmet => AlifeClass::CseAlifeItemHelmet,
     ClsId::EStlk => AlifeClass::CseAlifeItemCustomOutfit,
     ClsId::GF1S => AlifeClass::CseAlifeItemGrenade,
-    ClsId::GFake => AlifeClass::CseAlifeItemGrenade,
+    // Rockets are `CSE_Temporary`, which the alife simulation cannot hold.
+    ClsId::GFake => AlifeClass::Unknown,
     ClsId::GRgd5S => AlifeClass::CseAlifeItemGrenade,
-    ClsId::GRpg7 => AlifeClass::CseAlifeItemAmmo,
+    ClsId::GRpg7 => AlifeClass::Unknown,
     ClsId::IIAttch => AlifeClass::CseAlifeItem,
     ClsId::IIBolt => AlifeClass::CseAlifeItemBolt,
     ClsId::IIBttch => AlifeClass::CseAlifeItem,
@@ -661,10 +651,10 @@ lazy_static! {
     ClsId::ODstrS => AlifeClass::CseAlifeObjectPhysic,
     ClsId::OPhysS => AlifeClass::CseAlifeObjectPhysic,
     ClsId::OSearch => AlifeClass::CseAlifeObjectProjector,
+    ClsId::OnOffS => AlifeClass::SimSquadScripted,
     ClsId::PSkelet => AlifeClass::CseAlifePhSkeletonObject,
     ClsId::SActor => AlifeClass::SeActor,
     ClsId::SExplo => AlifeClass::CseAlifeItemExplosive,
-    ClsId::SFaction => AlifeClass::SeSimFaction,
     ClsId::SFood => AlifeClass::CseAlifeItem,
     ClsId::SInvBox => AlifeClass::CseAlifeInventoryBox,
     ClsId::SM209 => AlifeClass::CseAlifeItemAmmo,
@@ -693,9 +683,7 @@ lazy_static! {
     ClsId::SmrtTrrn => AlifeClass::SeSmartTerrain,
     ClsId::SoHLamp => AlifeClass::CseAlifeObjectHangingLamp,
     ClsId::SpcRsS => AlifeClass::CseAlifeSpaceRestrictor,
-    ClsId::Spect => AlifeClass::CseSpectator,
     ClsId::TorchS => AlifeClass::CseAlifeItemTorch,
-    ClsId::WMountd => AlifeClass::CseAlifeMountedWeapon,
     ClsId::WSTMGun => AlifeClass::CseAlifeStationaryMGun,
     ClsId::WpAk74 => AlifeClass::CseAlifeItemWeaponMagazinedWGl,
     ClsId::WpAshTG => AlifeClass::CseAlifeItemWeaponShotgun,
@@ -725,7 +713,6 @@ lazy_static! {
     ClsId::ZNoGrav => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZRadio => AlifeClass::CseAlifeAnomalousZone,
     ClsId::ZRustyH => AlifeClass::CseAlifeZoneVisual,
-    ClsId::ZTeamBs => AlifeClass::CseAlifeTeamBaseZone,
     ClsId::ZTorrid => AlifeClass::CseAlifeTorridZone,
     ClsId::ZsAmeba => AlifeClass::CseAlifeZoneVisual,
     ClsId::ZsBFuzz => AlifeClass::CseAlifeZoneVisual,
@@ -743,9 +730,32 @@ mod tests {
   use crate::data::meta::alife_class::AlifeClass;
   use crate::data::meta::cls_id::ClsId;
 
+  /// Multiplayer and Shadow of Chernobyl sections have no class to read, and a rocket's `CSE_Temporary` is no alife
+  /// object the simulation can hold.
+  #[test]
+  fn refuses_what_call_of_pripyat_creates_from_no_spawn() {
+    for section in [
+      "flesh_group",
+      "m_rat_e",
+      "mounted_weapon",
+      "rat_group",
+      "spawn_group",
+      "spawn_group_zone",
+      "spectator",
+    ] {
+      assert!(ClsId::from_section(section).is_err(), "{section}");
+    }
+
+    for section in ["wpn_rpg7_missile", "helicopter_missile", "wpn_fake_missile"] {
+      let clsid: ClsId = ClsId::from_section(section).expect("a rocket section");
+
+      assert_eq!(AlifeClass::from_cls_id(&clsid), AlifeClass::Unknown, "{section}");
+    }
+  }
+
   /// Every zone CLSID `xray-16/src/xrServerEntities/object_factory_register.cpp` registers, paired with the server
-  /// class it registers it to. No spawn in the mounted corpora declares a section for most of them, so the registry
-  /// is what records the engine's answer.
+  /// class it registers it to, but the multiplayer team base. No spawn in the mounted corpora declares a section for
+  /// most of them, so the registry is what records the engine's answer.
   #[test]
   fn maps_every_engine_zone_clsid_to_its_server_class() {
     for (cls_id, class) in [
@@ -757,7 +767,6 @@ mod tests {
       (ClsId::ZBFuzz, AlifeClass::CseAlifeZoneVisual),
       (ClsId::ZRustyH, AlifeClass::CseAlifeZoneVisual),
       (ClsId::ZDead, AlifeClass::CseAlifeAnomalousZone),
-      (ClsId::ZTeamBs, AlifeClass::CseAlifeTeamBaseZone),
       (ClsId::ZTorrid, AlifeClass::CseAlifeTorridZone),
       (ClsId::ZAmeba, AlifeClass::CseAlifeZoneVisual),
       (ClsId::ZNoGrav, AlifeClass::CseAlifeAnomalousZone),

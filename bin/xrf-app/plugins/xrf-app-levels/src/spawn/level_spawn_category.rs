@@ -26,8 +26,15 @@ impl LevelSpawnCategory {
       | AlifeObjectInherited::CseAlifeInventoryBox(_)
       | AlifeObjectInherited::CseAlifeCar(_)
       | AlifeObjectInherited::CseAlifeHelicopter(_)
-      | AlifeObjectInherited::CseAlifeZoneVisual(_) => Some(Self::Props),
+      | AlifeObjectInherited::CseAlifeZoneVisual(_)
+      | AlifeObjectInherited::CseAlifeDynamicObjectVisual(_)
+      | AlifeObjectInherited::CseAlifeObjectProjector(_)
+      | AlifeObjectInherited::CseAlifePhSkeletonObject(_)
+      | AlifeObjectInherited::CseAlifeStationaryMGun(_) => Some(Self::Props),
       AlifeObjectInherited::CseAlifeItem(_)
+      | AlifeObjectInherited::CseAlifeItemBolt(_)
+      | AlifeObjectInherited::CseAlifeItemTorch(_)
+      | AlifeObjectInherited::CseAlifeItemDocument(_)
       | AlifeObjectInherited::CseAlifeItemExplosive(_)
       | AlifeObjectInherited::CseAlifeItemPda(_)
       | AlifeObjectInherited::CseAlifeItemAmmo(_)
@@ -41,10 +48,14 @@ impl LevelSpawnCategory {
       | AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(_)
       | AlifeObjectInherited::CseAlifeItemGrenade(_) => Some(Self::Weapons),
       AlifeObjectInherited::CseAlifeObjectHangingLamp(lamp) => lamp.is_spawned_on_r2().then_some(Self::Lamps),
-      // Characters, which stand animated and are not in a level's spawn but for the actor, and the logic volumes.
+      // Characters and squads, which are not in a level's spawn but for the actor and stand animated or nowhere, and
+      // the logic volumes.
       AlifeObjectInherited::SeActor(_)
       | AlifeObjectInherited::SeStalker(_)
       | AlifeObjectInherited::SeMonster(_)
+      | AlifeObjectInherited::CseAlifeCreatureCrow(_)
+      | AlifeObjectInherited::CseAlifeCreaturePhantom(_)
+      | AlifeObjectInherited::SimSquadScripted(_)
       | AlifeObjectInherited::CseAlifeTrader(_)
       | AlifeObjectInherited::CseAlifeObjectClimable(_)
       | AlifeObjectInherited::CseAlifeGraphPoint(_)

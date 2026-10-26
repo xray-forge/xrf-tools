@@ -17,6 +17,8 @@ use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::alife::inherited::alife_object_breakable::AlifeObjectBreakable;
 use crate::data::alife::inherited::alife_object_car::AlifeObjectCar;
 use crate::data::alife::inherited::alife_object_climable::AlifeObjectClimable;
+use crate::data::alife::inherited::alife_object_creature::AlifeObjectCreature;
+use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 use crate::data::alife::inherited::alife_object_hanging_lamp::AlifeObjectHangingLamp;
 use crate::data::alife::inherited::alife_object_helicopter::AlifeObjectHelicopter;
 use crate::data::alife::inherited::alife_object_inventory_box::AlifeObjectInventoryBox;
@@ -25,20 +27,25 @@ use crate::data::alife::inherited::alife_object_item_ammo::AlifeObjectItemAmmo;
 use crate::data::alife::inherited::alife_object_item_artefact::AlifeObjectItemArtefact;
 use crate::data::alife::inherited::alife_object_item_custom_outfit::AlifeObjectItemCustomOutfit;
 use crate::data::alife::inherited::alife_object_item_detector::AlifeObjectItemDetector;
+use crate::data::alife::inherited::alife_object_item_document::AlifeObjectItemDocument;
 use crate::data::alife::inherited::alife_object_item_explosive::AlifeObjectItemExplosive;
 use crate::data::alife::inherited::alife_object_item_grenade::AlifeObjectItemGrenade;
 use crate::data::alife::inherited::alife_object_item_helmet::AlifeObjectItemHelmet;
 use crate::data::alife::inherited::alife_object_item_pda::AlifeObjectItemPda;
+use crate::data::alife::inherited::alife_object_item_torch::AlifeObjectItemTorch;
 use crate::data::alife::inherited::alife_object_item_weapon::AlifeObjectItemWeapon;
 use crate::data::alife::inherited::alife_object_item_weapon_magazined::AlifeObjectItemWeaponMagazined;
 use crate::data::alife::inherited::alife_object_item_weapon_magazined_wgl::AlifeObjectItemWeaponMagazinedWgl;
 use crate::data::alife::inherited::alife_object_item_weapon_shotgun::AlifeObjectItemWeaponShotgun;
+use crate::data::alife::inherited::alife_object_ph_skeleton_object::AlifeObjectPhSkeletonObject;
 use crate::data::alife::inherited::alife_object_physic::AlifeObjectPhysic;
 use crate::data::alife::inherited::alife_object_space_restrictor::AlifeObjectSpaceRestrictor;
+use crate::data::alife::inherited::alife_object_stationary_mgun::AlifeObjectStationaryMgun;
 use crate::data::alife::inherited::alife_object_torrid_zone::AlifeObjectTorridZone;
 use crate::data::alife::inherited::alife_object_trader::AlifeObjectTrader;
 use crate::data::alife::inherited::alife_smart_cover::AlifeSmartCover;
 use crate::data::alife::inherited::alife_smart_terrain::AlifeSmartTerrain;
+use crate::data::alife::inherited::alife_squad::AlifeSquad;
 use crate::data::alife::inherited::alife_stalker::AlifeStalker;
 use crate::data::alife::inherited::alife_zone_visual::AlifeZoneVisual;
 use crate::data::meta::alife_class::AlifeClass;
@@ -80,6 +87,16 @@ pub enum AlifeObjectInherited {
   CseAlifeItemWeaponShotgun(Box<AlifeObjectItemWeaponShotgun>),
   CseAlifeItemWeaponMagazined(Box<AlifeObjectItemWeaponMagazined>),
   CseAlifeItemWeaponMagazinedWGl(Box<AlifeObjectItemWeaponMagazinedWgl>),
+  CseAlifeItemBolt(Box<AlifeObjectItem>),
+  CseAlifeItemTorch(Box<AlifeObjectItemTorch>),
+  CseAlifeItemDocument(Box<AlifeObjectItemDocument>),
+  CseAlifeCreatureCrow(Box<AlifeObjectCreature>),
+  CseAlifeCreaturePhantom(Box<AlifeObjectCreature>),
+  CseAlifeDynamicObjectVisual(Box<AlifeObjectDynamicVisual>),
+  CseAlifeObjectProjector(Box<AlifeObjectDynamicVisual>),
+  CseAlifePhSkeletonObject(Box<AlifeObjectPhSkeletonObject>),
+  CseAlifeStationaryMGun(Box<AlifeObjectStationaryMgun>),
+  SimSquadScripted(Box<AlifeSquad>),
 }
 
 impl AlifeObjectInherited {
@@ -147,13 +164,33 @@ impl AlifeObjectInherited {
       AlifeClass::CseAlifeItemWeaponMagazinedWGl => Self::CseAlifeItemWeaponMagazinedWGl(Box::new(
         AlifeObjectItemWeaponMagazinedWgl::read::<T, _>(spawn, update)?,
       )),
-      _ => {
-        return Err(XrfError::new_parsing_error(format!(
-          "Not implemented parser for {}",
-          alife_class
-        )));
+      AlifeClass::CseAlifeItemBolt => Self::CseAlifeItemBolt(Box::new(AlifeObjectItem::read::<T, _>(spawn, update)?)),
+      AlifeClass::CseAlifeItemTorch => {
+        Self::CseAlifeItemTorch(Box::new(AlifeObjectItemTorch::read::<T, _>(spawn, update)?))
       }
+      AlifeClass::CseAlifeItemDocument => {
+        Self::CseAlifeItemDocument(Box::new(AlifeObjectItemDocument::read::<T, _>(spawn, update)?))
+      }
+      AlifeClass::CseAlifeCreatureCrow => {
+        Self::CseAlifeCreatureCrow(Box::new(AlifeObjectCreature::read::<T, _>(spawn, update)?))
+      }
+      AlifeClass::CseAlifeCreaturePhantom => {
+        Self::CseAlifeCreaturePhantom(Box::new(AlifeObjectCreature::read::<T, _>(spawn, update)?))
+      }
+      AlifeClass::CseAlifeDynamicObjectVisual => Self::CseAlifeDynamicObjectVisual(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeObjectProjector => Self::CseAlifeObjectProjector(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifePhSkeletonObject => Self::CseAlifePhSkeletonObject(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::CseAlifeStationaryMGun => {
+        Self::CseAlifeStationaryMGun(Box::new(AlifeObjectStationaryMgun::read::<T, _>(spawn, update)?))
+      }
+      AlifeClass::SimSquadScripted => Self::SimSquadScripted(Box::new(spawn.read_xr::<T, _>()?)),
+      AlifeClass::Unknown => return Err(Self::new_unknown_class_error()),
     })
+  }
+
+  /// The error for a class no spawn can hold, which has no payload to read or import.
+  fn new_unknown_class_error() -> XrfError {
+    XrfError::new_parsing_error("ALife object of a class no spawn can hold")
   }
 
   /// The server class whose `STATE_Read` this payload is shaped for.
@@ -191,6 +228,16 @@ impl AlifeObjectInherited {
       AlifeObjectInherited::CseAlifeItemWeaponShotgun(_) => AlifeClass::CseAlifeItemWeaponShotgun,
       AlifeObjectInherited::CseAlifeItemWeaponMagazined(_) => AlifeClass::CseAlifeItemWeaponMagazined,
       AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(_) => AlifeClass::CseAlifeItemWeaponMagazinedWGl,
+      AlifeObjectInherited::CseAlifeItemBolt(_) => AlifeClass::CseAlifeItemBolt,
+      AlifeObjectInherited::CseAlifeItemTorch(_) => AlifeClass::CseAlifeItemTorch,
+      AlifeObjectInherited::CseAlifeItemDocument(_) => AlifeClass::CseAlifeItemDocument,
+      AlifeObjectInherited::CseAlifeCreatureCrow(_) => AlifeClass::CseAlifeCreatureCrow,
+      AlifeObjectInherited::CseAlifeCreaturePhantom(_) => AlifeClass::CseAlifeCreaturePhantom,
+      AlifeObjectInherited::CseAlifeDynamicObjectVisual(_) => AlifeClass::CseAlifeDynamicObjectVisual,
+      AlifeObjectInherited::CseAlifeObjectProjector(_) => AlifeClass::CseAlifeObjectProjector,
+      AlifeObjectInherited::CseAlifePhSkeletonObject(_) => AlifeClass::CseAlifePhSkeletonObject,
+      AlifeObjectInherited::CseAlifeStationaryMGun(_) => AlifeClass::CseAlifeStationaryMGun,
+      AlifeObjectInherited::SimSquadScripted(_) => AlifeClass::SimSquadScripted,
     }
   }
 
@@ -230,6 +277,16 @@ impl AlifeObjectInherited {
       AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => Some(&object.base.base.base.base.base),
       AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => Some(&object.base.base.base.base),
       AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => Some(&object.base.base.base.base.base),
+      AlifeObjectInherited::CseAlifeItemBolt(object) => Some(&object.base.base),
+      AlifeObjectInherited::CseAlifeItemTorch(object) => Some(&object.base.base.base),
+      AlifeObjectInherited::CseAlifeItemDocument(object) => Some(&object.base.base.base),
+      AlifeObjectInherited::CseAlifeCreatureCrow(object) => Some(&object.base.base),
+      AlifeObjectInherited::CseAlifeCreaturePhantom(object) => Some(&object.base.base),
+      AlifeObjectInherited::CseAlifeDynamicObjectVisual(object) => Some(&object.base),
+      AlifeObjectInherited::CseAlifeObjectProjector(object) => Some(&object.base),
+      AlifeObjectInherited::CseAlifePhSkeletonObject(object) => Some(&object.base.base),
+      AlifeObjectInherited::CseAlifeStationaryMGun(object) => Some(&object.base.base),
+      AlifeObjectInherited::SimSquadScripted(object) => Some(&object.base.base.base),
     }
   }
 
@@ -261,6 +318,15 @@ impl AlifeObjectInherited {
       AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => object.base.base.base.visual_name.as_str(),
       AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => object.base.base.base.base.visual_name.as_str(),
       AlifeObjectInherited::CseAlifeZoneVisual(object) => object.visual.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemBolt(object) => object.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemTorch(object) => object.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeItemDocument(object) => object.base.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeCreatureCrow(object) => object.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeCreaturePhantom(object) => object.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeDynamicObjectVisual(object) => object.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeObjectProjector(object) => object.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifePhSkeletonObject(object) => object.base.visual_name.as_str(),
+      AlifeObjectInherited::CseAlifeStationaryMGun(object) => object.base.visual_name.as_str(),
       AlifeObjectInherited::CseAlifeObjectClimable(_)
       | AlifeObjectInherited::CseAlifeGraphPoint(_)
       | AlifeObjectInherited::CseAlifeSpaceRestrictor(_)
@@ -268,7 +334,8 @@ impl AlifeObjectInherited {
       | AlifeObjectInherited::CseAlifeAnomalousZone(_)
       | AlifeObjectInherited::CseAlifeTorridZone(_)
       | AlifeObjectInherited::SeSmartTerrain(_)
-      | AlifeObjectInherited::SeLevelChanger(_) => return None,
+      | AlifeObjectInherited::SeLevelChanger(_)
+      | AlifeObjectInherited::SimSquadScripted(_) => return None,
     };
 
     (!name.is_empty()).then_some(name)
@@ -300,7 +367,15 @@ impl AlifeObjectInherited {
 
         return;
       }
+      AlifeObjectInherited::CseAlifeCreatureCrow(object) | AlifeObjectInherited::CseAlifeCreaturePhantom(object) => {
+        object.move_to(position, direction);
+
+        return;
+      }
       AlifeObjectInherited::CseAlifeObjectPhysic(object) => object.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItemBolt(object) => object.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItemTorch(object) => object.base.update_state.as_mut(),
+      AlifeObjectInherited::CseAlifeItemDocument(object) => object.base.update_state.as_mut(),
       AlifeObjectInherited::CseAlifeItem(object) => object.update_state.as_mut(),
       AlifeObjectInherited::CseAlifeItemExplosive(object) => object.base.update_state.as_mut(),
       AlifeObjectInherited::CseAlifeItemPda(object) => object.base.update_state.as_mut(),
@@ -328,7 +403,12 @@ impl AlifeObjectInherited {
       | AlifeObjectInherited::CseAlifeTrader(_)
       | AlifeObjectInherited::CseAlifeHelicopter(_)
       | AlifeObjectInherited::CseAlifeInventoryBox(_)
-      | AlifeObjectInherited::CseAlifeObjectHangingLamp(_) => None,
+      | AlifeObjectInherited::CseAlifeObjectHangingLamp(_)
+      | AlifeObjectInherited::CseAlifeDynamicObjectVisual(_)
+      | AlifeObjectInherited::CseAlifeObjectProjector(_)
+      | AlifeObjectInherited::CseAlifePhSkeletonObject(_)
+      | AlifeObjectInherited::CseAlifeStationaryMGun(_)
+      | AlifeObjectInherited::SimSquadScripted(_) => None,
     };
 
     if let Some(state) = state {
@@ -371,6 +451,16 @@ impl AlifeObjectInherited {
       AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => object.write::<T>(spawn, update)?,
       AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => object.write::<T>(spawn, update)?,
       AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeItemBolt(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeItemTorch(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeItemDocument(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeCreatureCrow(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeCreaturePhantom(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::CseAlifeDynamicObjectVisual(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeObjectProjector(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifePhSkeletonObject(object) => spawn.write_xr::<T, _>(object.deref())?,
+      AlifeObjectInherited::CseAlifeStationaryMGun(object) => object.write::<T>(spawn, update)?,
+      AlifeObjectInherited::SimSquadScripted(object) => spawn.write_xr::<T, _>(object.deref())?,
     }
 
     Ok(())
@@ -448,12 +538,33 @@ impl AlifeObjectInherited {
       AlifeClass::CseAlifeItemWeaponMagazinedWGl => {
         Self::CseAlifeItemWeaponMagazinedWGl(Box::new(AlifeObjectItemWeaponMagazinedWgl::import(section_name, ltx)?))
       }
-      _ => {
-        return Err(XrfError::new_parsing_error(format!(
-          "Not implemented parser for {}",
-          alife_class
-        )));
+      AlifeClass::CseAlifeItemBolt => Self::CseAlifeItemBolt(Box::new(AlifeObjectItem::import(section_name, ltx)?)),
+      AlifeClass::CseAlifeItemTorch => {
+        Self::CseAlifeItemTorch(Box::new(AlifeObjectItemTorch::import(section_name, ltx)?))
       }
+      AlifeClass::CseAlifeItemDocument => {
+        Self::CseAlifeItemDocument(Box::new(AlifeObjectItemDocument::import(section_name, ltx)?))
+      }
+      AlifeClass::CseAlifeCreatureCrow => {
+        Self::CseAlifeCreatureCrow(Box::new(AlifeObjectCreature::import(section_name, ltx)?))
+      }
+      AlifeClass::CseAlifeCreaturePhantom => {
+        Self::CseAlifeCreaturePhantom(Box::new(AlifeObjectCreature::import(section_name, ltx)?))
+      }
+      AlifeClass::CseAlifeDynamicObjectVisual => {
+        Self::CseAlifeDynamicObjectVisual(Box::new(AlifeObjectDynamicVisual::import(section_name, ltx)?))
+      }
+      AlifeClass::CseAlifeObjectProjector => {
+        Self::CseAlifeObjectProjector(Box::new(AlifeObjectDynamicVisual::import(section_name, ltx)?))
+      }
+      AlifeClass::CseAlifePhSkeletonObject => {
+        Self::CseAlifePhSkeletonObject(Box::new(AlifeObjectPhSkeletonObject::import(section_name, ltx)?))
+      }
+      AlifeClass::CseAlifeStationaryMGun => {
+        Self::CseAlifeStationaryMGun(Box::new(AlifeObjectStationaryMgun::import(section_name, ltx)?))
+      }
+      AlifeClass::SimSquadScripted => Self::SimSquadScripted(Box::new(AlifeSquad::import(section_name, ltx)?)),
+      AlifeClass::Unknown => return Err(Self::new_unknown_class_error()),
     })
   }
 
@@ -491,6 +602,62 @@ impl AlifeObjectInherited {
       AlifeObjectInherited::CseAlifeItemWeaponShotgun(object) => object.export(section_name, ltx),
       AlifeObjectInherited::CseAlifeItemWeaponMagazined(object) => object.export(section_name, ltx),
       AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::CseAlifeItemBolt(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::CseAlifeItemTorch(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::CseAlifeItemDocument(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::CseAlifeCreatureCrow(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::CseAlifeCreaturePhantom(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::CseAlifeDynamicObjectVisual(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::CseAlifeObjectProjector(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::CseAlifePhSkeletonObject(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::CseAlifeStationaryMGun(object) => object.export(section_name, ltx),
+      AlifeObjectInherited::SimSquadScripted(object) => object.export(section_name, ltx),
     }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use byteorder::ReadBytesExt;
+  use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
+  use xrf_error::XrfResult;
+
+  use crate::constants::NET_ACTION_UPDATE;
+  use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
+  use crate::fixtures::GameWrittenPackets;
+
+  /// What the game writes for a new object of each class reads whole as that class and writes back byte for byte.
+  #[test]
+  fn reads_and_writes_what_the_game_writes_for_each_class() -> XrfResult {
+    for (section, class, spawn, update) in GameWrittenPackets::CLASSES {
+      let spawn: Vec<u8> = GameWrittenPackets::bytes(spawn);
+      let update: Vec<u8> = GameWrittenPackets::bytes(update);
+      // An object's update packet opens with its action, so even an empty class's packet holds bytes to read past.
+      let framed_update: Vec<u8> = [NET_ACTION_UPDATE.to_le_bytes().as_slice(), &update].concat();
+      let mut spawn_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&spawn)?;
+      let mut update_reader: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&framed_update)?;
+
+      update_reader.read_u16::<XRayByteOrder>()?;
+
+      let object: AlifeObjectInherited =
+        AlifeObjectInherited::read::<XRayByteOrder, _>(&mut spawn_reader, &mut update_reader, class)?;
+
+      spawn_reader.assert_read(&format!("Expect the game's {section} spawn packet to be read whole"))?;
+      update_reader.assert_read(&format!("Expect the game's {section} update packet to be read whole"))?;
+
+      let mut spawn_writer: ChunkWriter = ChunkWriter::new();
+      let mut update_writer: ChunkWriter = ChunkWriter::new();
+
+      object.write::<XRayByteOrder>(&mut spawn_writer, &mut update_writer)?;
+
+      assert_eq!(&object.get_class(), class, "{section}");
+      assert_eq!(
+        (spawn_writer.buffer, update_writer.buffer),
+        (spawn, update),
+        "{section}"
+      );
+    }
+
+    Ok(())
   }
 }
