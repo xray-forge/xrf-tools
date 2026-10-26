@@ -583,17 +583,28 @@ impl<'a> MeshAssetsVerifier<'a> {
         .as_ref()
         .map_or(0, |kinematics| kinematics.trailing.len());
 
-    let detail: String = match &residue.cause {
-      OgfResidueCause::TrailingFragment => String::from("too few to be another chunk header"),
-      OgfResidueCause::SplitMotionRef { path } => {
-        format!("an uncounted motion reference '{path}' split across the declared bounds of the motion refs chunk")
+    let message: String = match &residue.cause {
+      OgfResidueCause::TrailingFragment => {
+        format!("Mesh carries {ignored} bytes the engine never reads, too few to be another chunk header")
       }
+      OgfResidueCause::SplitMotionRef { path } => format!(
+        "Mesh carries {ignored} bytes the engine never reads, an uncounted motion reference '{path}' split across the \
+         declared bounds of the motion refs chunk"
+      ),
+      OgfResidueCause::UnderstatedMotionRefs { declared } => format!(
+        "Mesh motion refs chunk declares {declared} bytes, fewer than its counted references, which the engine reads \
+         on past it"
+      ),
+      OgfResidueCause::OverstatedMotionRefs { declared } => format!(
+        "Mesh motion refs chunk declares {declared} bytes, more than the file holds, and the engine reads its \
+         references from what is there"
+      ),
     };
 
     vec![Self::new_mesh_finding(
       GamedataVerificationRule::MeshesChunkResidue,
       mesh_path,
-      format!("Mesh carries {ignored} bytes the engine never reads, {detail}"),
+      message,
     )]
   }
 

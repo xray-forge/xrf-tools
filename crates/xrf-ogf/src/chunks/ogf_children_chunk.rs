@@ -1,10 +1,13 @@
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::to_format_size;
 
 use crate::OgfFile;
 
+/// Child visuals carried whole, `OGF_CHILDREN`: numbered chunks from zero, each a visual of its own.
+///
+/// Read-only, as [`OgfFile`] is: a child is an inspection view, and a narrow edit rewrites the bytes around it instead
+/// (see the reference patchers).
 #[derive(Debug)]
 pub struct OgfChildrenChunk {
   pub nested: Vec<OgfFile>,
@@ -12,10 +15,13 @@ pub struct OgfChildrenChunk {
 
 impl OgfChildrenChunk {
   pub const CHUNK_ID: u32 = 9;
-}
 
-impl ChunkReadWrite for OgfChildrenChunk {
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+  /// Reads every child from a reader positioned at the children chunk.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a child is not numbered by its position, or does not read as a visual.
+  pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     log::debug!("Reading children chunk: {} bytes", reader.read_bytes_remain());
 
     let mut children: Vec<OgfFile> = Vec::new();
@@ -36,17 +42,5 @@ impl ChunkReadWrite for OgfChildrenChunk {
     reader.assert_read("Expect all data to be read from ogf children")?;
 
     Ok(Self { nested: children })
-  }
-
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    for (index, _child) in self.nested.iter().enumerate() {
-      let child_writer: ChunkWriter = ChunkWriter::new();
-
-      // todo: Child write.
-
-      child_writer.flush_chunk_into::<T>(writer, to_format_size(index, "ogf child chunk id")?)?;
-    }
-
-    todo!("Implement OGF file writer here");
   }
 }

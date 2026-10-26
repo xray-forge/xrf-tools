@@ -212,12 +212,31 @@ impl<T: ChunkDataSource> ChunkReader<T> {
   /// Returns all children, and on the first malformed header the bytes from the last good boundary rather than an
   /// error.
   pub fn read_children_with_trailing(&mut self) -> XrfResult<(Vec<Self>, Option<ChunkTrailing<T>>)> {
+    self.read_children_with_trailing_from(false)
+  }
+
+  /// [`Self::read_children_with_trailing`], handing over a compressed chunk as the bytes it is stored as, which
+  /// [`Self::read_children_including_compressed`] explains.
+  pub fn read_children_with_trailing_including_compressed(
+    &mut self,
+  ) -> XrfResult<(Vec<Self>, Option<ChunkTrailing<T>>)> {
+    self.read_children_with_trailing_from(true)
+  }
+
+  fn read_children_with_trailing_from(
+    &mut self,
+    is_compression_accepted: bool,
+  ) -> XrfResult<(Vec<Self>, Option<ChunkTrailing<T>>)> {
     let total: u64 = self.data.end_pos().saturating_sub(self.data.start_pos());
     let mut chunks: Vec<Self> = Vec::new();
     let mut consumed: u64 = 0;
     let mut failure: Option<XrfError> = None;
+    let iterator: ChunkIterator<T> = match is_compression_accepted {
+      true => ChunkIterator::from_start_including_compressed(self)?,
+      false => ChunkIterator::from_start(self)?,
+    };
 
-    for chunk in ChunkIterator::<T>::from_start(self)? {
+    for chunk in iterator {
       match chunk {
         Ok(chunk) => {
           consumed = chunk.position.saturating_add(chunk.size);

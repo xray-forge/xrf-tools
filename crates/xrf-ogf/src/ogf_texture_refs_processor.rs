@@ -19,9 +19,6 @@ pub struct OgfTextureRefsProcessor {}
 
 impl OgfTextureRefsProcessor {
   /// Rename a texture reference of an ogf file, verifying the result before letting it survive.
-  ///
-  /// The source is read once, and every pass over it reads that one buffer. The patched bytes are checked before
-  /// anything is written, so a refused patch leaves the destination as it was and a written one replaces it whole.
   pub fn patch_texture_refs_to_path<T: ByteOrder>(
     source: &Path,
     destination: &Path,
@@ -89,14 +86,10 @@ impl OgfTextureRefsProcessor {
       } else if OgfRawPatch::is_kinematics_chunk(chunk.id) {
         OgfRawPatch::read_normalized_kinematics_payload::<T, _>(chunk)?
       } else {
-        chunk.reset_pos()?;
-        chunk.read_remaining()?
+        OgfRawPatch::read_payload(chunk)?
       };
 
-      let mut chunk_writer: ChunkWriter = ChunkWriter::new();
-
-      chunk_writer.write_all(&payload)?;
-      chunk_writer.flush_chunk_into::<T>(&mut buffer, chunk.id)?;
+      OgfRawPatch::write_chunk::<T>(&mut buffer, chunk.id, payload)?;
     }
 
     Ok((buffer, patched_count))
@@ -125,7 +118,7 @@ impl OgfTextureRefsProcessor {
 
             OgfTextureChunk {
               texture_name: String::from(to),
-              shader_name: texture.shader_name,
+              ..texture
             }
           } else {
             texture

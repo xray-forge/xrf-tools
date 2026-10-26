@@ -1,3 +1,4 @@
+mod chunks;
 pub(crate) mod fixtures;
 mod normalization;
 mod patching;

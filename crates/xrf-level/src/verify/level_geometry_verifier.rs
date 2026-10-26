@@ -67,9 +67,16 @@ impl<'a, S: LevelFileSource + ?Sized> LevelGeometryVerifier<'a, S> {
           self.verify_container(index, Self::GEOMETRY_FILE, container, Some(visual), source, &mut state);
         }
 
-        if let (Some(container), Some(source)) = (&visual.fastpath, detail.as_mut()) {
+        if let (Some(fastpath), Some(source)) = (&visual.fastpath, detail.as_mut()) {
           state.census.fastpath_visuals += 1;
-          self.verify_container(index, Self::DETAIL_GEOMETRY_FILE, container, None, source, &mut state);
+          self.verify_container(
+            index,
+            Self::DETAIL_GEOMETRY_FILE,
+            &fastpath.geometry,
+            None,
+            source,
+            &mut state,
+          );
         }
 
         self.verify_shader(index, visual, level.as_ref(), &mut state.ranges);

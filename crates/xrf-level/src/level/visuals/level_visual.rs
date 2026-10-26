@@ -3,8 +3,8 @@ use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::XrfResult;
 use xrf_math::Matrix4x4;
 use xrf_ogf::{
-  OgfChildrenLinkChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfLodDefinitionChunk, OgfSwiContainerChunk,
-  OgfSwiDataChunk, OgfTextureChunk, OgfTreeDefinitionChunk,
+  OgfChildrenLinkChunk, OgfFastpathChunk, OgfGeometryContainerChunk, OgfHeaderChunk, OgfLodDefinitionChunk,
+  OgfSwiContainerChunk, OgfSwiDataChunk, OgfTextureChunk, OgfTreeDefinitionChunk,
 };
 
 /// One visual of a compiled level, as `fsL_VISUALS` stores it.
@@ -16,8 +16,9 @@ pub struct LevelVisual {
   pub texture: Option<OgfTextureChunk>,
   /// Where the visual's geometry sits in the buffers of `level.geom`.
   pub geometry: Option<OgfGeometryContainerChunk>,
-  /// The same for `level.geomX`, present only for a visual the compiler gave a fast path.
-  pub fastpath: Option<OgfGeometryContainerChunk>,
+  /// The same for `level.geomX`, with a progressive visual's windows over it, present only for a visual the compiler
+  /// gave a fast path.
+  pub fastpath: Option<OgfFastpathChunk>,
   /// Visuals this one composes, by their index in the run, for a hierarchy visual.
   pub children: Vec<u32>,
   /// Where a tree stands and how it is lit, absent for every visual that is not one.
@@ -55,7 +56,10 @@ impl LevelVisual {
         Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
         None => None,
       },
-      fastpath: Self::read_fastpath::<T, D>(&chunks)?,
+      fastpath: match ChunkReader::find_optional_by_id(&chunks, OgfFastpathChunk::CHUNK_ID) {
+        Some(mut chunk) => Some(OgfFastpathChunk::read_from_chunk::<T, _>(&mut chunk)?),
+        None => None,
+      },
       tree: match ChunkReader::find_optional_by_id(&chunks, OgfTreeDefinitionChunk::CHUNK_ID) {
         Some(mut chunk) => Some(chunk.read_xr::<T, _>()?),
         None => None,
@@ -79,24 +83,6 @@ impl LevelVisual {
     match &self.tree {
       Some(definition) => Some(&definition.transform),
       None => None,
-    }
-  }
-
-  /// `OGF_FASTPATH` wraps a geometry container rather than being one, so its record is one level deeper than the
-  /// ordinary container's (`xray-16/src/Layers/xrRender/FVisual.cpp`).
-  fn read_fastpath<T: ByteOrder, D: ChunkDataSource>(
-    chunks: &[ChunkReader<D>],
-  ) -> XrfResult<Option<OgfGeometryContainerChunk>> {
-    let Some(mut fastpath) = ChunkReader::find_optional_by_id(chunks, OgfGeometryContainerChunk::FASTPATH_CHUNK_ID)
-    else {
-      return Ok(None);
-    };
-
-    let nested: Vec<ChunkReader<D>> = fastpath.read_children()?;
-
-    match ChunkReader::find_optional_by_id(&nested, OgfGeometryContainerChunk::CHUNK_ID) {
-      Some(mut chunk) => Ok(Some(chunk.read_xr::<T, _>()?)),
-      None => Ok(None),
     }
   }
 }

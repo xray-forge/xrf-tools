@@ -18,9 +18,8 @@ impl OgfKinematicsChunk {
   pub const CHUNK_ID_OLD: u32 = 19;
 }
 
-// todo: Conditional read + implement chunk RW.
-// todo: Conditional read + implement chunk RW.
-// todo: Conditional read + implement chunk RW.
+// Not `ChunkReadWrite`: the layout depends on which of the two ids the chunk was stored under, which a record read
+// cannot be told.
 impl OgfKinematicsChunk {
   pub fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>, chunk_id: u32) -> XrfResult<Self> {
     log::info!(

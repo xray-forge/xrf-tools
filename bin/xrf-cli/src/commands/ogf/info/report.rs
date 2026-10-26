@@ -41,7 +41,7 @@ impl OgfInfoReport {
           .map(OgfMaterialReport::new)
           .collect()
       }),
-      description: file.description.as_ref().map(OgfDescriptionReport::new),
+      description: file.get_description().map(OgfDescriptionReport::new),
       material: file.texture.as_ref().map(OgfMaterialReport::new),
       model_type: file.header.model_type,
       motion_refs: file

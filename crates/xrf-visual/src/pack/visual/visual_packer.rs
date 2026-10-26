@@ -1,5 +1,5 @@
 use xrf_math::Vector3d;
-use xrf_ogf::{OgfFile, OgfGeometry, OgfModelType, OgfSlideWindow, OgfVertex};
+use xrf_ogf::{OgfFile, OgfGeometry, OgfModelType, OgfSlideWindow, OgfVertex, OgfVertexData};
 
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
 use crate::data::visual::bounds::visual_box::VisualBox;
@@ -56,8 +56,7 @@ impl VisualPacker {
       model_type_label: OgfModelType::label(file.header.model_type),
       shader_id: file.header.shader_id,
       source_file: file
-        .description
-        .as_ref()
+        .get_description()
         .map(|it| it.source_file.clone())
         .filter(|it| !it.is_empty()),
       declared_bounds: convert_declared_bounds(&file.header.bounding_box, &file.header.bounding_sphere),
@@ -239,10 +238,20 @@ impl VisualPacker {
       .as_ref()
       .ok_or_else(|| VisualSkip::unsupported("Carries no geometry chunk"))?;
 
-    let vertices: &Vec<OgfVertex> = geometry.vertices.as_ref().ok_or_else(|| match geometry.vertex_format {
-      Some(format) => VisualSkip::unsupported(format!("Vertex format {format:#010x} has no known layout")),
-      None => VisualSkip::unsupported("Carries no vertex chunk"),
-    })?;
+    let vertices: &[OgfVertex] = match (&geometry.vertices, geometry.vertex_format) {
+      (Some(OgfVertexData::Skinned(vertices)), _) => vertices,
+      (Some(OgfVertexData::Static(_)), Some(format)) => {
+        return Err(VisualSkip::unsupported(format!(
+          "Static vertex format {format:#010x} is not packed, only skinned meshes are"
+        )));
+      }
+      (_, Some(format)) => {
+        return Err(VisualSkip::unsupported(format!(
+          "Vertex format {format:#010x} has no known layout"
+        )));
+      }
+      (_, None) => return Err(VisualSkip::unsupported("Carries no vertex chunk")),
+    };
 
     if vertices.is_empty() {
       return Err(VisualSkip::malformed("Vertex chunk is empty"));

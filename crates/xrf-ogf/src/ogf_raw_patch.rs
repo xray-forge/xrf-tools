@@ -46,17 +46,36 @@ impl OgfRawPatch {
     Ok(())
   }
 
-  /// Payload of a motion refs chunk with the bytes the count never reaches removed.
+  /// Payload of a motion refs chunk with the bytes the count never reaches cut off, every byte before them as stored.
   pub(crate) fn read_normalized_kinematics_payload<T: ByteOrder, D: ChunkDataSource>(
     chunk: &ChunkReader<D>,
   ) -> XrfResult<Vec<u8>> {
-    let mut kinematics: OgfKinematicsChunk = OgfKinematicsChunk::read::<T, _>(&mut chunk.clone(), chunk.id)?;
+    let trailing: usize = OgfKinematicsChunk::read::<T, _>(&mut chunk.clone(), chunk.id)?
+      .trailing
+      .len();
+    let mut payload: Vec<u8> = Self::read_payload(chunk)?;
+
+    payload.truncate(payload.len() - trailing);
+
+    Ok(payload)
+  }
+
+  /// A chunk's payload as stored, whatever its reader's cursor.
+  pub(crate) fn read_payload<D: ChunkDataSource>(chunk: &ChunkReader<D>) -> XrfResult<Vec<u8>> {
+    let mut chunk: ChunkReader<D> = chunk.clone();
+
+    chunk.reset_pos()?;
+    chunk.read_remaining()
+  }
+
+  /// Appends a chunk of `id` holding `payload` to `buffer`, its header declaring the payload's own size.
+  pub(crate) fn write_chunk<T: ByteOrder>(buffer: &mut Vec<u8>, id: u32, payload: Vec<u8>) -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
 
-    kinematics.trailing.clear();
-    kinematics.write::<T>(&mut writer)?;
+    writer.buffer = payload;
+    writer.flush_chunk_into::<T>(buffer, id)?;
 
-    writer.flush_raw_into_buffer()
+    Ok(())
   }
 
   pub(crate) fn is_kinematics_chunk(id: u32) -> bool {

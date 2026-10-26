@@ -4,14 +4,12 @@ use serde::Serialize;
 use xrf_ogf::OgfResidue;
 
 /// One visual whose bytes `ogf fix` changed, or would change on a dry run.
-///
-/// The bytes discarded are the two sizes' difference, and whether the file was written is the report's `isDryRun`, so
-/// neither is carried again here.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OgfFixFileReport {
-  /// Why the residue was inert to the engine: `split-motion-ref` or `trailing-fragment`. Absent when the only discarded
-  /// bytes sat inside the motion refs chunk, past its count.
+  /// Why the residue was inert to the engine: `split-motion-ref` or `trailing-fragment` for bytes dropped,
+  /// `understated-motion-refs` or `overstated-motion-refs` for a size corrected. Absent when the only discarded bytes sat
+  /// inside the motion refs chunk, past its count.
   cause: Option<String>,
   destination: String,
   /// The motion reference path the residue completed, for the split-reference shape only.
