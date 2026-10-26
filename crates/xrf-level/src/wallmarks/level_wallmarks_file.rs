@@ -17,6 +17,9 @@ pub struct LevelWallmarksFile {
 }
 
 impl LevelWallmarksFile {
+  /// The file a level's baked decals are shipped as, in its directory.
+  pub const FILE_NAME: &'static str = "level.wallmarks";
+
   /// The one chunk the exporter writes.
   pub const SLOTS_CHUNK_ID: u32 = 1;
 

@@ -19,6 +19,9 @@ pub struct LevelLightsFile {
 }
 
 impl LevelLightsFile {
+  /// The file the compiler's light list is shipped as, in a level's directory.
+  pub const FILE_NAME: &'static str = "build.lights";
+
   /// Reads a compiled light list from a path.
   ///
   /// # Errors

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use xrf_app_core::session::SessionSnapshot;
 use xrf_environment::{EnvironmentCatalog, WeatherModifier};
-use xrf_level::EnvModifier;
+use xrf_level::LevelEnvModifier;
 use xrf_math::Vector3d;
 use xrf_renderer::{RenderLensFlare, RenderLevelWeather, RenderRain, RenderWetSurfaces};
 use xrf_vfs::XraySearch;
@@ -27,7 +27,7 @@ impl LevelRenderWeather {
     let rain: LevelRain = LevelRain::read(&source);
     let wet: LevelWetSurfaces = LevelWetSurfaces::read(&source);
     let thunder: LevelThunderbolts = LevelThunderbolts::read(&source);
-    let modifiers: Vec<EnvModifier> = LevelEnvironment::read_modifiers(level, search);
+    let modifiers: Vec<LevelEnvModifier> = LevelEnvironment::read_modifiers(level, search);
 
     RenderLevelWeather {
       engine: environment.catalog.engine,
@@ -60,7 +60,7 @@ impl LevelRenderWeather {
 
   /// A `level.env_mod` volume as the mixer weighs it: one from a file before the flag word adds every value, as the
   /// engine's `use_flags.one()` before the read leaves it.
-  fn to_modifier(modifier: &EnvModifier) -> WeatherModifier {
+  fn to_modifier(modifier: &LevelEnvModifier) -> WeatherModifier {
     let to_array = |vector: &Vector3d<f32>| [vector.x, vector.y, vector.z];
 
     WeatherModifier {

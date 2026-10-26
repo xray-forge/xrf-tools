@@ -1,7 +1,11 @@
 //! Constants mirrored from the engine so every level rule can be traced to a load-time assertion.
 //!
 //! Sources are `xray-16` (OpenXRay), which is the engine XRF targets. Vanilla Call of Pripyat is
-//! stricter in one place: it accepts only `XRAI_VERSION_CS_COP` AI-maps.
+//! stricter in one place: it accepts only `XRAI_VERSION_CS_COP` AI-maps. The file names are the format readers' own.
+
+use xrf_level::{
+  LevelAiFile, LevelAiVersion, LevelCformFile, LevelDetailsFile, LevelFile, LevelGameFile, LevelGeomFile,
+};
 
 /// `XRCL_PRODUCTION_VERSION`, asserted by `CLevel::Load` as an exact match.
 ///
@@ -17,38 +21,38 @@ pub const CFORM_CURRENT_VERSION: u32 = 4;
 /// `XRAI_VERSION_ALLOWED`, the lowest AI-map version the engine loads.
 ///
 /// `ASSERT_XRAI_VERSION_MATCH` - `src/Common/LevelStructure.hpp:593`
-pub const AI_VERSION_ALLOWED: u32 = 8;
+pub const AI_VERSION_ALLOWED: u32 = LevelAiVersion::Soc as u32;
 
 /// `XRAI_CURRENT_VERSION`, the highest AI-map version the engine loads.
 ///
 /// `ASSERT_XRAI_VERSION_MATCH` - `src/Common/LevelStructure.hpp:593`
-pub const AI_CURRENT_VERSION: u32 = 13;
-
-/// Files every built level bundle contains, verified against 94 bundles across four gamedata trees.
-pub const REQUIRED_LEVEL_FILES: [&str; 7] = [
-  "level",
-  "level.cform",
-  "level.game",
-  "level.geom",
-  "level.geomx",
-  "level.ltx",
-  "level.spawn",
-];
-
-/// Compiled level geometry, shaders and sectors.
-pub const LEVEL_FILE: &str = "level";
+pub const AI_CURRENT_VERSION: u32 = LevelAiVersion::Skyloader as u32;
 
 /// Level configuration describing the map rendered in the UI.
 pub const LEVEL_LTX_FILE: &str = "level.ltx";
 
+/// Files every built level bundle contains, verified against 94 bundles across four gamedata trees.
+pub const REQUIRED_LEVEL_FILES: [&str; 7] = [
+  LevelFile::FILE_NAME,
+  LevelCformFile::FILE_NAME,
+  LevelGameFile::FILE_NAME,
+  LevelGeomFile::FILE_NAME,
+  LevelGeomFile::DETAIL_FILE_NAME,
+  LEVEL_LTX_FILE,
+  "level.spawn",
+];
+
+/// Compiled level geometry, shaders and sectors.
+pub const LEVEL_FILE: &str = LevelFile::FILE_NAME;
+
 /// Collision form used by the collision database.
-pub const LEVEL_CFORM_FILE: &str = "level.cform";
+pub const LEVEL_CFORM_FILE: &str = LevelCformFile::FILE_NAME;
 
 /// AI-map file, required for every level reachable from the game graph.
-pub const LEVEL_AI_FILE: &str = "level.ai";
+pub const LEVEL_AI_FILE: &str = LevelAiFile::FILE_NAME;
 
 /// Detail model description, always shipped together with its compiled texture atlas.
-pub const LEVEL_DETAILS_FILE: &str = "level.details";
+pub const LEVEL_DETAILS_FILE: &str = LevelDetailsFile::FILE_NAME;
 
 /// Compiled detail texture atlas, always shipped together with the detail model description.
 pub const LEVEL_DETAILS_TEXTURE_FILE: &str = "build_details.dds";

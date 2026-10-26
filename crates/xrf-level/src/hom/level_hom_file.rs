@@ -7,7 +7,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::hom::level_hom_polygon::HomPolygon;
+use crate::hom::level_hom_polygon::LevelHomPolygon;
 
 /// The hierarchical occlusion mesh of a level, `level.hom`.
 ///
@@ -16,10 +16,13 @@ use crate::hom::level_hom_polygon::HomPolygon;
 #[serde(rename_all = "camelCase")]
 pub struct LevelHomFile {
   pub version: u32,
-  pub polygons: Vec<HomPolygon>,
+  pub polygons: Vec<LevelHomPolygon>,
 }
 
 impl LevelHomFile {
+  /// The file a level's occlusion mesh is shipped as, in its directory.
+  pub const FILE_NAME: &'static str = "level.hom";
+
   /// The only version shipped, which `CHOM::Load` does not itself check.
   pub const CURRENT_VERSION: u32 = 0;
 
@@ -67,25 +70,8 @@ impl LevelHomFile {
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
     let version: u32 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u32::<T>()?;
-    let mut geometry: ChunkReader<D> = ChunkReader::find_required_by_id(&chunks, Self::GEOMETRY_CHUNK_ID)?;
-
-    let count: u64 = geometry.read_bytes_remain();
-
-    if !count.is_multiple_of(HomPolygon::SERIALIZED_SIZE) {
-      return Err(XrfError::new_invalid_error(format!(
-        "Unexpected level occlusion geometry of {count} bytes, expected whole triangles"
-      )));
-    }
-
-    let count: u64 = count / HomPolygon::SERIALIZED_SIZE;
-    let mut polygons: Vec<HomPolygon> =
-      geometry.new_bounded_vec(count, HomPolygon::SERIALIZED_SIZE, "occlusion triangles")?;
-
-    for _ in 0..count {
-      polygons.push(geometry.read_xr::<T, _>()?);
-    }
-
-    geometry.assert_read("Expect all data to be read from level occlusion geometry chunk")?;
+    let polygons: Vec<LevelHomPolygon> = ChunkReader::find_required_by_id(&chunks, Self::GEOMETRY_CHUNK_ID)?
+      .read_xr_records::<T, _>(LevelHomPolygon::SERIALIZED_SIZE, "level occlusion geometry chunk")?;
 
     Ok(Self { version, polygons })
   }

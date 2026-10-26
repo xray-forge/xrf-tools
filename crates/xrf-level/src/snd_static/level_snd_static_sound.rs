@@ -4,31 +4,31 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
 
-use crate::snd_static::level_snd_static_window::SndStaticWindow;
+use crate::snd_static::level_snd_static_window::LevelSndStaticWindow;
 
 /// One sound the level plants, `SStaticSound` (`xrGame/level_sounds.cpp`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SndStaticSound {
+pub struct LevelSndStaticSound {
   /// The sound it plays, which names a file.
   pub sound: String,
   pub position: Vector3d<f32>,
   pub volume: f32,
   pub frequency: f32,
   /// Hours of the day the sound is allowed to play at all.
-  pub active: SndStaticWindow,
+  pub active: LevelSndStaticWindow,
   /// How long one playing lasts, in milliseconds.
-  pub play: SndStaticWindow,
+  pub play: LevelSndStaticWindow,
   /// How long the sound waits between playings, in milliseconds.
-  pub pause: SndStaticWindow,
+  pub pause: LevelSndStaticWindow,
 }
 
-impl SndStaticSound {
+impl LevelSndStaticSound {
   /// The one chunk a record's payload sits in, which the engine finds inside the record's own chunk.
   pub const DATA_CHUNK_ID: u32 = 0;
 }
 
-impl ChunkReadWrite for SndStaticSound {
+impl ChunkReadWrite for LevelSndStaticSound {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
       sound: reader.read_w1251_string()?,

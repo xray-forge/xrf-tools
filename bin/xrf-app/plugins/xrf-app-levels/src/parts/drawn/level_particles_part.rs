@@ -4,7 +4,7 @@ use std::time::Instant;
 use xrf_app_core::assets::read_located_asset;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
-use xrf_level::{LevelPsStaticFile, PsStaticPlacement};
+use xrf_level::{LevelPsStaticFile, LevelPsStaticPlacement};
 use xrf_ltx::{Ltx, Section};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_particles::{ParticleLibrary, ParticlesFile};
@@ -65,7 +65,7 @@ impl LevelParticlesPart {
   }
 
   /// One system `level.ps_static` plants, lifted off the ground it stands on.
-  pub fn place_planted(placement: &PsStaticPlacement) -> RenderParticlePlacement {
+  pub fn place_planted(placement: &LevelPsStaticPlacement) -> RenderParticlePlacement {
     let mut transform: [f32; 16] = placement.transform.values;
 
     // The `Fmatrix` rows are the columns of a column-major matrix; the translation is the last.

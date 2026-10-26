@@ -64,6 +64,31 @@ impl Vector3d<f32> {
   pub fn to_array(&self) -> [f32; 3] {
     [self.x, self.y, self.z]
   }
+
+  /// The unit direction a 16-bit compressed normal names, `pvDecompress` (`xrCore/_compressed_normal.cpp`).
+  ///
+  /// The top three bits are the signs of x, y and z; the remaining thirteen are a point on the triangle
+  /// (0,0)-(0,126)-(126,0) folded into a rectangle, six bits of x above seven of y. A level AI node packs its plane
+  /// normal this way. Computed in `f32` as the engine's lookup table is, so a decoded normal matches what it uses.
+  pub fn from_compressed_normal(packed: u16) -> Self {
+    let mut x: i32 = i32::from((packed & 0x1F80) >> 7);
+    let mut y: i32 = i32::from(packed & 0x007F);
+
+    if x + y >= 127 {
+      x = 127 - x;
+      y = 127 - y;
+    }
+
+    let z: i32 = 126 - x - y;
+    let (x, y, z): (f32, f32, f32) = (x as f32, y as f32, z as f32);
+    let adjustment: f32 = 1.0 / (x * x + y * y + z * z).sqrt();
+
+    Self::new(
+      if packed & 0x8000 == 0 { x } else { -x } * adjustment,
+      if packed & 0x4000 == 0 { y } else { -y } * adjustment,
+      if packed & 0x2000 == 0 { z } else { -z } * adjustment,
+    )
+  }
 }
 
 impl From<[f32; 3]> for Vector3d<f32> {
@@ -258,6 +283,26 @@ mod tests {
     sum += &b;
 
     assert_eq!(sum, &a + &b);
+  }
+
+  #[test]
+  fn decompresses_a_packed_normal_as_the_engine_does() {
+    let is_near = |packed: u16, expected: Vector3d| Vector3d::from_compressed_normal(packed).distance(&expected) < 1e-6;
+
+    // Zero bits name the triangle's (0,0) corner, which is straight along z.
+    assert!(is_near(0, Vector3d::new(0.0, 0.0, 1.0)));
+    // 126 in the y bits is the (0,126) corner, straight along y, and the y sign bit flips it.
+    assert!(is_near(126, Vector3d::new(0.0, 1.0, 0.0)));
+    assert!(is_near(0x4000 | 126, Vector3d::new(0.0, -1.0, 0.0)));
+    // A point past the fold maps back: x 63 and y 127 become 64 and 0, leaving (64, 0, 62) before normalising.
+    let folded: Vector3d = Vector3d::from_compressed_normal((63 << 7) | 127);
+
+    assert!((folded.length() - 1.0).abs() < 1e-6, "Unexpected length of {folded}");
+    assert!(
+      (folded.x / folded.z - 64.0 / 62.0).abs() < 1e-6,
+      "Unexpected normal {folded}"
+    );
+    assert_eq!(folded.y, 0.0);
   }
 
   #[test]

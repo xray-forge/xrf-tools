@@ -3,7 +3,7 @@
 import { Vector3d } from "#/types/xrf-math";
 
 /** One local override of the level's weather, `CEnvModifier` (`xrEngine/Environment_misc.cpp`). */
-export type EnvModifier = {
+export type LevelEnvModifier = {
   position: Vector3d;
   radius: number | null;
   power: number | null;

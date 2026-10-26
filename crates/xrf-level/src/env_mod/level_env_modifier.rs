@@ -18,7 +18,7 @@ pub const ENV_MOD_PARAMETERS: [(u16, &str); 6] = [
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct EnvModifier {
+pub struct LevelEnvModifier {
   pub position: Vector3d<f32>,
   pub radius: f32,
   pub power: f32,
@@ -33,7 +33,7 @@ pub struct EnvModifier {
   pub use_flags: Option<u16>,
 }
 
-impl EnvModifier {
+impl LevelEnvModifier {
   /// Bytes a modifier occupies before the flag word version `0x0016` appended.
   pub const SERIALIZED_SIZE: u64 = 12 + 4 + 4 + 4 + 12 + 4 + 12 + 12 + 12;
 

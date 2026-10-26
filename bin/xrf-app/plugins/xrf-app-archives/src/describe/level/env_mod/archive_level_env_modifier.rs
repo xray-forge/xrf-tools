@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_level::EnvModifier;
+use xrf_level::LevelEnvModifier;
 
 /// One local weather override of a level, as the viewer reads it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -21,12 +21,12 @@ pub struct ArchiveLevelEnvModifier {
 
 impl ArchiveLevelEnvModifier {
   /// Every modifier of a level, in the order the file lists them.
-  pub fn of_all(modifiers: &[EnvModifier]) -> Vec<Self> {
+  pub fn of_all(modifiers: &[LevelEnvModifier]) -> Vec<Self> {
     modifiers.iter().map(Self::of).collect()
   }
 
   /// One modifier, taken over what it overrides.
-  fn of(modifier: &EnvModifier) -> Self {
+  fn of(modifier: &LevelEnvModifier) -> Self {
     Self {
       radius: modifier.radius,
       power: modifier.power,

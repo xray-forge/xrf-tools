@@ -2,7 +2,7 @@ use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
 use crate::som::level_som_file::LevelSomFile;
-use crate::som::level_som_polygon::SomPolygon;
+use crate::som::level_som_polygon::LevelSomPolygon;
 use crate::tests::fixtures::{chunk, floats, triangle};
 
 /// A sound occlusion mesh: a version chunk and a packed run of triangles.
@@ -56,5 +56,5 @@ fn a_sound_occlusion_version_the_engine_refuses_is_refused_here_too() -> XrfResu
 
 #[test]
 fn a_sound_occluder_triangle_is_wider_than_a_visual_one_by_its_occlusion() {
-  assert_eq!(SomPolygon::SERIALIZED_SIZE, 44);
+  assert_eq!(LevelSomPolygon::SERIALIZED_SIZE, 44);
 }

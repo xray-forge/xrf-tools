@@ -8,7 +8,7 @@ use xrf_utils::to_format_size;
 /// One volumetric fog body of a level, `dx113DFluidData::Load`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct FogVolume {
+pub struct LevelFogVolume {
   /// The config the body's simulation settings come from, under `$game_config$`, which makes it an LTX reference
   /// rather than anything the file itself holds.
   pub profile: String,
@@ -21,12 +21,12 @@ pub struct FogVolume {
   pub obstacles: Vec<Matrix4x4>,
 }
 
-impl FogVolume {
+impl LevelFogVolume {
   /// Bytes a body occupies before its profile line and its obstacles.
   pub const FIXED_SIZE: u64 = Matrix4x4::SERIALIZED_SIZE + 4;
 }
 
-impl ChunkReadWrite for FogVolume {
+impl ChunkReadWrite for LevelFogVolume {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let profile: ChunkLine = reader.read_w1251_line()?;
     let transform: Matrix4x4 = reader.read_xr::<T, _>()?;

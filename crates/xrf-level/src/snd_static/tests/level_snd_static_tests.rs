@@ -2,7 +2,7 @@ use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
 use crate::snd_static::level_snd_static_file::LevelSndStaticFile;
-use crate::snd_static::level_snd_static_sound::SndStaticSound;
+use crate::snd_static::level_snd_static_sound::LevelSndStaticSound;
 use crate::tests::fixtures::{chunk, floats, string};
 
 /// One static sound record, wrapped in the chunk its payload sits in.
@@ -17,7 +17,7 @@ fn sound_bytes(name: &str, active: (u32, u32)) -> XrfResult<Vec<u8>> {
     payload.extend_from_slice(&value.to_le_bytes());
   }
 
-  chunk(SndStaticSound::DATA_CHUNK_ID, &payload)
+  chunk(LevelSndStaticSound::DATA_CHUNK_ID, &payload)
 }
 
 /// A sound list: one numbered chunk per record, each holding one payload chunk.

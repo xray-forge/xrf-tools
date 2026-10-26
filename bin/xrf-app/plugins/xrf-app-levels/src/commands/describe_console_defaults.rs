@@ -12,10 +12,7 @@ use crate::parts::LevelConsolePart;
 
 /// Describe what the open level's game runs its console with of how levels are lit and exposed: its `user.ltx` over
 /// its shipped defaults; read again where a commit let the shipped ones go.
-#[cfg_attr(
-  feature = "typescript-bindings",
-  specta::specta
-)]
+#[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_console_defaults")]
 pub async fn levels_describe_console_defaults(
   session_id: SessionId,

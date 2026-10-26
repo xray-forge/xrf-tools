@@ -7,17 +7,20 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::ps_static::level_ps_static_placement::PsStaticPlacement;
+use crate::ps_static::level_ps_static_placement::LevelPsStaticPlacement;
 
 /// The particle effects a level plants, `level.ps_static`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelPsStaticFile {
   pub version: u32,
-  pub placements: Vec<PsStaticPlacement>,
+  pub placements: Vec<LevelPsStaticPlacement>,
 }
 
 impl LevelPsStaticFile {
+  /// The file a level's planted particle effects are shipped as, in its directory.
+  pub const FILE_NAME: &'static str = "level.ps_static";
+
   /// The version every shipped file declares, which is also the one that added the gametype word.
   pub const CURRENT_VERSION: u32 = 1;
 
@@ -63,7 +66,7 @@ impl LevelPsStaticFile {
   /// Returns an error when a chunk does not hold exactly one placement.
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut version: u32 = 0;
-    let mut placements: Vec<PsStaticPlacement> = Vec::new();
+    let mut placements: Vec<LevelPsStaticPlacement> = Vec::new();
 
     for (index, mut chunk) in reader.read_children()?.into_iter().enumerate() {
       if index == 0 && chunk.read_bytes_remain() == size_of::<u32>() as u64 {
@@ -71,7 +74,7 @@ impl LevelPsStaticFile {
         continue;
       }
 
-      placements.push(PsStaticPlacement::read::<T, D>(&mut chunk, version)?);
+      placements.push(LevelPsStaticPlacement::read::<T, D>(&mut chunk, version)?);
       chunk.assert_read("Expect all data to be read from level static particle chunk")?;
     }
 

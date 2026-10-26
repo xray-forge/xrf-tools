@@ -3,7 +3,7 @@ use std::sync::Arc;
 use xrf_app_core::session::SessionSnapshot;
 use xrf_chunk::XRayByteOrder;
 use xrf_environment::{EnvironmentCatalog, LevelWeather, SunTable, WeatherCycle, WeatherKey};
-use xrf_level::{EnvModifier, LevelEnvModFile};
+use xrf_level::{LevelEnvModFile, LevelEnvModifier};
 use xrf_vfs::XraySearch;
 
 use crate::level::SelectedLevel;
@@ -97,7 +97,7 @@ impl LevelEnvironment {
 
   /// The level's `level.env_mod`, none where it has none; one that will not read is said and left out, since the
   /// weather plays without it.
-  pub fn read_modifiers(current: &SelectedLevel, search: &XraySearch) -> Vec<EnvModifier> {
+  pub fn read_modifiers(current: &SelectedLevel, search: &XraySearch) -> Vec<LevelEnvModifier> {
     current
       .source
       .read_optional_file(search, LevelWeatherPart::ENV_MOD_FILE)

@@ -7,7 +7,7 @@ use xrf_math::Vector3d;
 /// One sound occluder triangle, `SOM_poly` (`xrSound/SoundRender_Scene.cpp`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SomPolygon {
+pub struct LevelSomPolygon {
   pub vertices: [Vector3d<f32>; 3],
   /// Whether the occluder blocks from both sides, which the loader turns into a second, reversed face.
   pub is_two_sided: u32,
@@ -15,7 +15,7 @@ pub struct SomPolygon {
   pub occlusion: f32,
 }
 
-impl SomPolygon {
+impl LevelSomPolygon {
   /// Bytes one triangle occupies: three positions, the two-sided word and the occlusion value.
   pub const SERIALIZED_SIZE: u64 = 3 * 12 + 4 + 4;
 
@@ -25,7 +25,7 @@ impl SomPolygon {
   }
 }
 
-impl ChunkReadWrite for SomPolygon {
+impl ChunkReadWrite for LevelSomPolygon {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
       vertices: [
