@@ -19,6 +19,9 @@ pub struct LevelGameFile {
 }
 
 impl LevelGameFile {
+  /// The file a level's patrol paths and respawn points are shipped as, in its directory.
+  pub const FILE_NAME: &'static str = "level.game";
+
   /// `RPOINT_CHUNK`, which is `POINT_BASE + ptRPoint`.
   pub const RPOINTS_CHUNK_ID: u32 = 0x2000;
 

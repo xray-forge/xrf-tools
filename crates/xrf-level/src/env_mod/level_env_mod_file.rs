@@ -7,17 +7,20 @@ use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::env_mod::level_env_modifier::EnvModifier;
+use crate::env_mod::level_env_modifier::LevelEnvModifier;
 
 /// The local weather overrides of a level, `level.env_mod`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelEnvModFile {
   pub version: u32,
-  pub modifiers: Vec<EnvModifier>,
+  pub modifiers: Vec<LevelEnvModifier>,
 }
 
 impl LevelEnvModFile {
+  /// The file a level's weather modifiers are shipped as, in its directory.
+  pub const FILE_NAME: &'static str = "level.env_mod";
+
   /// What `CEnvironment::mods_load` assumes when the file declares nothing.
   pub const DEFAULT_VERSION: u32 = 0x0015;
 
@@ -62,7 +65,7 @@ impl LevelEnvModFile {
   /// Returns an error when a chunk is not the size its version gives a modifier.
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut version: u32 = Self::DEFAULT_VERSION;
-    let mut modifiers: Vec<EnvModifier> = Vec::new();
+    let mut modifiers: Vec<LevelEnvModifier> = Vec::new();
 
     for (index, mut chunk) in reader.read_children()?.into_iter().enumerate() {
       if index == 0 && chunk.read_bytes_remain() == size_of::<u32>() as u64 {
@@ -70,7 +73,7 @@ impl LevelEnvModFile {
         continue;
       }
 
-      modifiers.push(EnvModifier::read::<T, D>(&mut chunk, version)?);
+      modifiers.push(LevelEnvModifier::read::<T, D>(&mut chunk, version)?);
       chunk.assert_read("Expect all data to be read from level environment modifier chunk")?;
     }
 

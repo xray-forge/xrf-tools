@@ -16,6 +16,7 @@ pub fn new_level(entries: &[&str]) -> LevelFile {
       xrlc_quality: 1,
       xrlc_version: 14,
     },
+    glows: None,
     lights: None,
     portals: None,
     sectors: None,

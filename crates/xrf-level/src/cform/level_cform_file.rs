@@ -63,6 +63,9 @@ pub struct LevelCformFile {
 }
 
 impl LevelCformFile {
+  /// The file a level's collision form is shipped as, in its directory.
+  pub const FILE_NAME: &'static str = "level.cform";
+
   /// Read level collision form file from provided path.
   pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
     Self::read_from_file::<T>(File::open(path).map_err(|error| {

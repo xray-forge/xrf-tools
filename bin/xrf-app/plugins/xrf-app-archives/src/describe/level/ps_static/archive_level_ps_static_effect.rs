@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use serde::Serialize;
-use xrf_level::PsStaticPlacement;
+use xrf_level::LevelPsStaticPlacement;
 
 /// One particle effect a level plants, and how widely.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -17,7 +17,7 @@ pub struct ArchiveLevelPsStaticEffect {
 
 impl ArchiveLevelPsStaticEffect {
   /// Every effect a level plants, by name, in the order a reader would look them up.
-  pub fn of_all(placements: &[PsStaticPlacement]) -> Vec<Self> {
+  pub fn of_all(placements: &[LevelPsStaticPlacement]) -> Vec<Self> {
     let mut counted: BTreeMap<&str, (usize, usize)> = BTreeMap::new();
 
     for placement in placements {

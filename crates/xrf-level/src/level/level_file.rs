@@ -8,6 +8,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
 use crate::level::dynamic_lights::level_dynamic_lights_chunk::LevelDynamicLightsChunk;
+use crate::level::glows::level_glow::LevelGlow;
+use crate::level::glows::level_glows_chunk::LevelGlowsChunk;
 use crate::level::level_header_chunk::LevelHeaderChunk;
 use crate::level::portals::level_portal::LevelPortal;
 use crate::level::portals::level_portals_chunk::LevelPortalsChunk;
@@ -42,11 +44,18 @@ pub struct LevelFile {
   pub portals: Option<LevelPortalsChunk>,
   /// The static lights the renderer loads, one of which may be the level's sun.
   pub lights: Option<LevelDynamicLightsChunk>,
+  /// The light flares the static-lighting renderer draws; every shipped level carries the chunk.
+  pub glows: Option<LevelGlowsChunk>,
 }
 
 impl LevelFile {
   /// The file a compiled level's bundle is shipped as, in its directory.
   pub const FILE_NAME: &'static str = "level";
+
+  /// The glows the level names, none for a level built without them.
+  pub fn get_glows(&self) -> &[LevelGlow] {
+    self.glows.as_ref().map_or(&[], |chunk| &chunk.glows)
+  }
 
   /// The sectors the level names, none for a level built without them.
   pub fn get_sectors(&self) -> &[LevelSector] {
@@ -150,6 +159,10 @@ impl LevelFile {
   pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
     Ok(Self {
       header: ChunkReader::find_required_by_id(chunks, LevelHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      glows: match ChunkReader::find_optional_by_id(chunks, LevelGlowsChunk::CHUNK_ID) {
+        Some(mut it) => Some(LevelGlowsChunk::read_from_chunk::<T, _>(&mut it)?),
+        None => None,
+      },
       lights: match ChunkReader::find_optional_by_id(chunks, LevelDynamicLightsChunk::CHUNK_ID) {
         Some(mut it) => Some(LevelDynamicLightsChunk::read_from_chunk::<T, _>(&mut it)?),
         None => None,

@@ -6,12 +6,12 @@ use xrf_error::XrfResult;
 /// A window a static sound answers to, as a pair the engine compares a clock against.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SndStaticWindow {
+pub struct LevelSndStaticWindow {
   pub from: u32,
   pub to: u32,
 }
 
-impl SndStaticWindow {
+impl LevelSndStaticWindow {
   /// Bytes a window occupies.
   pub const SERIALIZED_SIZE: u64 = 4 + 4;
 
@@ -21,7 +21,7 @@ impl SndStaticWindow {
   }
 }
 
-impl ChunkReadWrite for SndStaticWindow {
+impl ChunkReadWrite for LevelSndStaticWindow {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
       from: reader.read_u32::<T>()?,

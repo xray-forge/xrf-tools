@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_engine_target::XrayEngine;
 use xrf_environment::{LevelWeather, SunPosition, ThunderboltCollection};
-use xrf_level::EnvModifier;
+use xrf_level::LevelEnvModifier;
 
 use crate::weather::EnvironmentCycleEntry;
 use crate::weather::LevelWeatherCycle;
@@ -26,7 +26,7 @@ pub struct LevelWeatherDescription {
   /// Monolith's table of where the sun stands, midnight first; none on OpenXRay.
   pub sun_table: Option<Vec<SunPosition>>,
   /// The level's local overrides, `level.env_mod`; none where it has none.
-  pub modifiers: Vec<EnvModifier>,
+  pub modifiers: Vec<LevelEnvModifier>,
   /// Every sky the cycles and effects name, by reference, for a hand-set keyframe to be given.
   pub skies: Vec<LevelWeatherTexture>,
   /// Every clouds texture they name.

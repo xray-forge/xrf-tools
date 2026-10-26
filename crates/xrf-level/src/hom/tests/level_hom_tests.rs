@@ -2,7 +2,7 @@ use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
 use crate::hom::level_hom_file::LevelHomFile;
-use crate::hom::level_hom_polygon::HomPolygon;
+use crate::hom::level_hom_polygon::LevelHomPolygon;
 use crate::tests::fixtures::{chunk, triangle};
 
 /// An occlusion mesh: a version chunk and a packed run of triangles.
@@ -57,12 +57,15 @@ fn geometry_that_is_not_whole_triangles_is_refused() -> XrfResult {
     .expect_err("a partial triangle is refused")
     .to_string();
 
-  assert!(error.contains("whole triangles"), "Unexpected error: {error}");
+  assert!(
+    error.contains("does not divide into 40 byte records"),
+    "Unexpected error: {error}"
+  );
 
   Ok(())
 }
 
 #[test]
 fn an_occluder_triangle_is_the_width_the_engine_packs_it_at() {
-  assert_eq!(HomPolygon::SERIALIZED_SIZE, 40);
+  assert_eq!(LevelHomPolygon::SERIALIZED_SIZE, 40);
 }

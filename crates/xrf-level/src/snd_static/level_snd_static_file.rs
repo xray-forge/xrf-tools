@@ -7,16 +7,19 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::snd_static::level_snd_static_sound::SndStaticSound;
+use crate::snd_static::level_snd_static_sound::LevelSndStaticSound;
 
 /// The sounds a level plants, `level.snd_static`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelSndStaticFile {
-  pub sounds: Vec<SndStaticSound>,
+  pub sounds: Vec<LevelSndStaticSound>,
 }
 
 impl LevelSndStaticFile {
+  /// The file a level's planted sounds are shipped as, in its directory.
+  pub const FILE_NAME: &'static str = "level.snd_static";
+
   /// Reads the sounds from a path.
   ///
   /// # Errors
@@ -55,12 +58,12 @@ impl LevelSndStaticFile {
   ///
   /// Returns an error when a record's chunk does not hold exactly one payload.
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let mut sounds: Vec<SndStaticSound> = Vec::new();
+    let mut sounds: Vec<LevelSndStaticSound> = Vec::new();
 
     for mut chunk in reader.read_children()? {
-      let mut data: ChunkReader<D> = chunk.read_child_by_index(SndStaticSound::DATA_CHUNK_ID)?;
+      let mut data: ChunkReader<D> = chunk.read_child_by_index(LevelSndStaticSound::DATA_CHUNK_ID)?;
 
-      sounds.push(SndStaticSound::read::<T, D>(&mut data)?);
+      sounds.push(LevelSndStaticSound::read::<T, D>(&mut data)?);
 
       data.assert_read("Expect all data to be read from level static sound chunk")?;
       chunk.assert_read("Expect level static sound record to hold one chunk")?;
@@ -82,7 +85,7 @@ impl LevelSndStaticFile {
 
       let mut record: ChunkWriter = ChunkWriter::new();
 
-      data.flush_chunk_into::<T>(&mut record.buffer, SndStaticSound::DATA_CHUNK_ID)?;
+      data.flush_chunk_into::<T>(&mut record.buffer, LevelSndStaticSound::DATA_CHUNK_ID)?;
       record.flush_chunk_into::<T>(&mut writer.buffer, index as u32)?;
     }
 

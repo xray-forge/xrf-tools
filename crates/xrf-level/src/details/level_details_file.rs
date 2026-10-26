@@ -68,6 +68,9 @@ pub struct LevelDetailsFile {
 }
 
 impl LevelDetailsFile {
+  /// The file a level's detail objects are shipped as, in its directory.
+  pub const FILE_NAME: &'static str = "level.details";
+
   /// The version `CDetailManager::Load` asserts on, `DETAIL_VERSION`.
   pub const CURRENT_VERSION: u32 = 3;
 

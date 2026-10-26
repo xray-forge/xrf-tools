@@ -13,28 +13,33 @@ this crate reads the visuals run through [xrf-ogf](../xrf-ogf/README.md)'s chunk
 
 | File                        | Type                 | Reads                                                | Writer |
 | --------------------------- | -------------------- | ---------------------------------------------------- | ------ |
-| `level`                     | `LevelFile`          | Header, shader table, sectors, portals, lights       | No     |
-| `level`                     | `LevelVisualsChunk`  | The visuals run, through `LevelFile::read_visuals_*` | No     |
-| `level.geom`, `level.geomx` | `LevelGeomFile`      | Buffer declarations and counts, slide windows        | No     |
-| `level.geom`, `level.geomx` | `LevelGeomSource`    | The same, plus the vertices and indices of a range   | No     |
-| `level.cform`               | `LevelCformFile`     | The 36-byte header; geometry or face materials       | Header |
-| `level.ai`                  | `LevelAiFile`        | The 56-byte header only                              | Header |
-| `level.details`             | `LevelDetailsFile`   | Detail object library and planting grid              | Yes    |
-| `.dm`                       | `DetailModel`        | One detail object, also a library entry              | Yes    |
-| `level.hom`                 | `LevelHomFile`       | Hierarchical occlusion mesh                          | Yes    |
-| `level.som`                 | `LevelSomFile`       | Sound occlusion mesh                                 | Yes    |
-| `level.env_mod`             | `LevelEnvModFile`    | Local weather modifiers                              | Yes    |
-| `level.fog_vol`             | `LevelFogVolFile`    | Volumetric fog bodies                                | Yes    |
-| `level.ps_static`           | `LevelPsStaticFile`  | Planted particle effects                             | Yes    |
-| `level.snd_static`          | `LevelSndStaticFile` | Planted sounds                                       | Yes    |
-| `level.game`                | `LevelGameFile`      | Patrol paths and respawn points                      | Yes    |
-| `build.lights`              | `LevelLightsFile`    | The compiler's light list                            | Yes    |
-| `level.wallmarks`           | `LevelWallmarksFile` | Editor-only baked decals                             | Yes    |
+| `level`                     | `LevelFile`          | Header, shader table, sectors, portals, lights, glows | No     |
+| `level`                     | `LevelVisualsChunk`  | The visuals run, through `LevelFile::read_visuals_*`  | No     |
+| `level.geom`, `level.geomx` | `LevelGeomFile`      | Buffer declarations and counts, slide windows         | No     |
+| `level.geom`, `level.geomx` | `LevelGeomSource`    | The same, plus the vertices and indices of a range    | No     |
+| `level.cform`               | `LevelCformFile`     | The 36-byte header; geometry or face materials        | Header |
+| `level.ai`                  | `LevelAiFile`        | The 56-byte header; with `LevelAiNodes`, every node   | Yes    |
+| `level.details`             | `LevelDetailsFile`   | Detail object library and planting grid               | Yes    |
+| `.dm`                       | `DetailModel`        | One detail object, also a library entry               | Yes    |
+| `level.hom`                 | `LevelHomFile`       | Hierarchical occlusion mesh                           | Yes    |
+| `level.som`                 | `LevelSomFile`       | Sound occlusion mesh                                  | Yes    |
+| `level.snd_env`             | `LevelSndEnvFile`    | Sound environment volumes                             | Yes    |
+| `level.env_mod`             | `LevelEnvModFile`    | Local weather modifiers                               | Yes    |
+| `level.fog_vol`             | `LevelFogVolFile`    | Volumetric fog bodies                                 | Yes    |
+| `level.ps_static`           | `LevelPsStaticFile`  | Planted particle effects                              | Yes    |
+| `level.snd_static`          | `LevelSndStaticFile` | Planted sounds                                        | Yes    |
+| `level.game`                | `LevelGameFile`      | Patrol paths and respawn points                       | Yes    |
+| `build.lights`              | `LevelLightsFile`    | The compiler's light list                             | Yes    |
+| `level.wallmarks`           | `LevelWallmarksFile` | Editor-only baked decals                              | Yes    |
 
 The file types share their doors, generic over the byte order (`xrf_chunk::XRayByteOrder` for every shipped file):
 `read_from_path`, `read_from_file`, `read_from_chunk` over any chunk data source, and, for most, `read_from_bytes` for
-bytes already in hand, which is how an archived level arrives. Most files are chunk trees; `level.cform`, `level.ai` and
-`level.fog_vol` are flat, which their readers handle. Writers take a `ChunkWriter` and fill its `buffer`.
+bytes already in hand, which is how an archived level arrives. Each names the file it reads as `FILE_NAME`. Most files
+are chunk trees; `level.cform`, `level.ai` and `level.fog_vol` are flat, which their readers handle. Writers take a
+`ChunkWriter` and fill its `buffer`.
+
+Not read here: the SDK's compiler inputs (`build.prj`, `build.cform`, `build.aimap`), which no game loads, and
+`level.spawn`, which [xrf-spawn](../xrf-spawn/README.md) reads as `LevelSpawnFile`.
 
 ## Read a level
 
@@ -87,6 +92,12 @@ a range, refusing one that reaches past what its buffer declares. Every vertex d
   a spawn set carries. `LevelCformFile::read_with_materials_from_chunk` walks the faces for the `gamemtl.xr` ids they
   name (`LevelCformMaterials`), keeping nothing else, which is what checking a level against the material library
   wants.
+- `LevelAiFile::read_with_nodes_*` takes the map's nodes as `LevelAiNodes`, kept packed as the file stores them and
+  decoded one at a time (`LevelAiNode`) in any layout the engine loads, versions 8 to 13. Keeping the bytes is what
+  makes the writer give back the file it read; `LevelAiHeader::get_node_position` turns a node into the world position
+  `CLevelGraph` gives it.
+- The record chunks the engine casts onto an array - portals, static lights, glows, the occlusion meshes - read through
+  `ChunkReader::read_xr_records`, which refuses a chunk that does not divide into whole records.
 - `LevelDetailsFile` keeps its slot grid packed as the file's 16-byte words, up to 667,489 slots a level, and answers
   totals by folding over it; `LevelDetailsSlot` is a view built per slot. A `.dm` is one `CDetail`, so `DetailModel`
   reads both a library entry and a whole `.dm`.
@@ -120,8 +131,7 @@ assert_eq!(LevelHomFile::read_from_bytes::<XRayByteOrder>(writer.buffer.clone())
 # }
 ```
 
-`LevelFile`, `LevelGeomFile`, and the bodies of `level.cform` and `level.ai` have no writer: assume they are not
-byte-faithful.
+`LevelFile`, `LevelGeomFile`, and the body of `level.cform` have no writer: assume they are not byte-faithful.
 
 ## Checks
 

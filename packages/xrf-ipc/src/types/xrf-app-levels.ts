@@ -9,7 +9,7 @@ import {
   WeatherCycleKind,
   WeatherDescriptor,
 } from "#/types/xrf-environment";
-import { EnvModifier } from "#/types/xrf-level";
+import { LevelEnvModifier } from "#/types/xrf-level";
 import { Vector3d } from "#/types/xrf-math";
 import { RenderCubeCapture, RenderMapCapture, RenderViewportId } from "#/types/xrf-renderer";
 import { ClsId } from "#/types/xrf-spawn";
@@ -342,7 +342,7 @@ export type LevelWeatherDescription = {
   /** Monolith's table of where the sun stands, midnight first; none on OpenXRay. */
   sunTable: Array<SunPosition> | null;
   /** The level's local overrides, `level.env_mod`; none where it has none. */
-  modifiers: Array<EnvModifier>;
+  modifiers: Array<LevelEnvModifier>;
   /** Every sky the cycles and effects name, by reference, for a hand-set keyframe to be given. */
   skies: Array<LevelWeatherTexture>;
   /** Every clouds texture they name. */

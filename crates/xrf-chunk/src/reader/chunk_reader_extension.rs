@@ -79,6 +79,40 @@ impl<D: ChunkDataSource> ChunkReader<D> {
     xrf_utils::new_bounded_vec(count, self.read_bytes_remain(), min_record_size, what)
   }
 
+  /// Read the rest of the chunk as a packed run of fixed-size records, which is how the engine reads a chunk it casts
+  /// onto an array: no count is stored, the size alone says how many there are.
+  ///
+  /// `what` names the chunk in the errors.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the payload does not divide into whole `record_size` byte records, a record cannot be read,
+  /// or the records read do not end exactly at the chunk end.
+  pub fn read_xr_records<T: ByteOrder, C: ChunkReadWrite>(
+    &mut self,
+    record_size: u64,
+    what: &str,
+  ) -> XrfResult<Vec<C>> {
+    let size: u64 = self.read_bytes_remain();
+
+    if !size.is_multiple_of(record_size) {
+      return Err(XrfError::new_invalid_error(format!(
+        "Unexpected {what} of {size} bytes, which does not divide into {record_size} byte records"
+      )));
+    }
+
+    let count: u64 = size / record_size;
+    let mut records: Vec<C> = self.new_bounded_vec(count, record_size, what)?;
+
+    for _ in 0..count {
+      records.push(C::read::<T, D>(self)?);
+    }
+
+    self.assert_read(&format!("Expect all data to be read from {what}"))?;
+
+    Ok(records)
+  }
+
   /// Read serialized vector from chunk, where u32 count N is followed by N u16 entries.
   pub fn read_u16_vector<T: ByteOrder>(&mut self) -> XrfResult<Vec<u16>> {
     let count: u32 = self.read_u32::<T>()?;
@@ -138,11 +172,15 @@ impl<D: ChunkDataSource> ChunkReader<D> {
 
 #[cfg(test)]
 mod tests {
+  use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
   use xrf_error::XrfResult;
 
   use crate::XRayByteOrder;
+  use crate::read_write::chunk_read_write::ChunkReadWrite;
   use crate::reader::chunk_reader::ChunkReader;
+  use crate::source::chunk_data_source::ChunkDataSource;
   use crate::source::chunk_memory_source::InMemoryChunkDataSource;
+  use crate::writer::chunk_writer::ChunkWriter;
 
   #[test]
   fn test_read_u16_vector() -> XrfResult {
@@ -248,6 +286,48 @@ mod tests {
       "Unexpected error: {error}"
     );
     assert!(error.contains("only 8 remain"), "Unexpected error: {error}");
+
+    Ok(())
+  }
+
+  /// A four byte record, the smallest a test needs.
+  #[derive(Debug, PartialEq)]
+  struct Record(u32);
+
+  impl ChunkReadWrite for Record {
+    fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
+      Ok(Self(reader.read_u32::<T>()?))
+    }
+
+    fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+      Ok(writer.write_u32::<T>(self.0)?)
+    }
+  }
+
+  #[test]
+  fn reads_a_packed_run_of_records_counted_by_its_size() -> XrfResult {
+    let mut chunk: ChunkReader<InMemoryChunkDataSource> = ChunkReader::from_bytes(&[1, 0, 0, 0, 2, 0, 0, 0])?;
+
+    assert_eq!(
+      chunk.read_xr_records::<XRayByteOrder, Record>(4, "test records")?,
+      vec![Record(1), Record(2)]
+    );
+    assert!(chunk.is_ended());
+
+    Ok(())
+  }
+
+  #[test]
+  fn refuses_a_record_run_that_does_not_divide_into_whole_records() -> XrfResult {
+    let error: String = ChunkReader::from_bytes(&[1, 0, 0, 0, 2])?
+      .read_xr_records::<XRayByteOrder, Record>(4, "test records")
+      .expect_err("expect the trailing byte to be refused")
+      .to_string();
+
+    assert_eq!(
+      error,
+      "Invalid error: Unexpected test records of 5 bytes, which does not divide into 4 byte records"
+    );
 
     Ok(())
   }
