@@ -1,4 +1,4 @@
-//! Judging translation sources: which ids a language still has no text for.
+//! Judging translation sources: which ids a language still has no text for, and what the game would refuse or mangle.
 
 pub(crate) mod translation_verifier;
 pub(crate) mod translation_verify_language_summary;

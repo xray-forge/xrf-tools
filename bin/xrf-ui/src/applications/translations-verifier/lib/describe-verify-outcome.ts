@@ -8,7 +8,8 @@ import { ENotificationSeverity } from "@/core/notifications/lib";
  * What the notification centre says when a translation check ends.
  *
  * A stopped run is information rather than a verdict: it read part of the tree, so its silence about the rest says
- * nothing, and reporting it as complete would be the one way a partial check can mislead.
+ * nothing, and reporting it as complete would be the one way a partial check can mislead. What the game would refuse
+ * or show wrong outranks a missing translation, which the game shows as its id.
  *
  * @param sources - Source tree the run was pointed at.
  * @param outcome - How the run ended.
@@ -29,6 +30,16 @@ export function describeTranslationVerifyOutcome(
       details: [`Checked ${formatCount(result.checkedTranslationsCount)} id(s) before stopping.`, sources].join("\n"),
       severity: ENotificationSeverity.INFO,
       title: "Stopped checking translations",
+    };
+  }
+
+  const problems: number = result?.problems.length ?? 0;
+
+  if (problems) {
+    return {
+      details: sources,
+      severity: ENotificationSeverity.ERROR,
+      title: `Translations the game would refuse or show wrong: ${problems} problem(s)`,
     };
   }
 

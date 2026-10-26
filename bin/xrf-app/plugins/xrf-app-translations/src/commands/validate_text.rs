@@ -1,12 +1,12 @@
 use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::SessionId;
-use xrf_translation::find_unwritable_character;
 use xrf_utils::error_to_string;
 
 use crate::TranslationProjects;
 
-/// Report the first character a language cannot hold, or nothing when the value is writable.
+/// Report why a language cannot hold a value — a character its code page lacks, or a text too long for the game to
+/// load — or nothing when the value is writable.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "validate_text")]
 pub async fn translations_validate_text(
@@ -17,5 +17,5 @@ pub async fn translations_validate_text(
 ) -> TauriResult<Option<String>> {
   let project = projects.require(session_id)?;
 
-  find_unwritable_character(&project, language, text).map_err(error_to_string)
+  project.find_unwritable(language, text).map_err(error_to_string)
 }

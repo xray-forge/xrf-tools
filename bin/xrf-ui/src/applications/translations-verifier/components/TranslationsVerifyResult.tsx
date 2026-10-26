@@ -1,5 +1,9 @@
 import { GridColDef } from "@mui/x-data-grid";
-import { TranslationVerifyLanguageSummary, TranslationVerifyResult } from "@xrf/ipc/types/xrf-translation";
+import {
+  TranslationFinding,
+  TranslationVerifyLanguageSummary,
+  TranslationVerifyResult,
+} from "@xrf/ipc/types/xrf-translation";
 import { ReactElement, useMemo } from "react";
 
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
@@ -8,6 +12,11 @@ import { identifierColumn, pathColumn } from "@/core/ui/table/columns";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 type TLanguageRow = TranslationVerifyLanguageSummary & { id: string; complete: number };
+
+/**
+ * One problem as a row, keyed by where it came in the run: two problems can say the same thing about the same file.
+ */
+type TProblemRow = TranslationFinding & { index: number };
 
 export interface ITranslationsVerifyResultProps extends BaseComponentProps {
   result: TranslationVerifyResult;
@@ -30,6 +39,15 @@ export function TranslationsVerifyResult({
     []
   );
 
+  const problemColumns: Array<GridColDef> = useMemo(
+    () => [
+      identifierColumn("rule", "Rule", 220),
+      { field: "message", headerName: "Problem", flex: 1, minWidth: 260 },
+      pathColumn("subject", "File", 220),
+    ],
+    []
+  );
+
   const rows: Array<TLanguageRow> = useMemo(
     () =>
       result.languages.map((summary) => ({
@@ -40,6 +58,11 @@ export function TranslationsVerifyResult({
           summary.checked === 0 ? 100 : Math.round(((summary.checked - summary.missing) / summary.checked) * 100),
       })),
     [result.languages]
+  );
+
+  const problems: Array<TProblemRow> = useMemo(
+    () => result.problems.map((problem: TranslationFinding, index: number) => ({ ...problem, index })),
+    [result.problems]
   );
 
   // Which languages are incomplete, rather than which of 149,979 ids: the counts are what a row of the
@@ -60,6 +83,11 @@ export function TranslationsVerifyResult({
         value: result.missingTranslationsCount,
         tone: result.missingTranslationsCount ? "error" : "success",
       },
+      {
+        label: "game problems",
+        value: result.problems.length,
+        tone: result.problems.length ? "error" : "success",
+      },
       { label: "files", value: new Set(result.languages.map((summary) => summary.file)).size },
       { label: "languages", value: new Set(result.languages.map((summary) => summary.language)).size },
       {
@@ -76,14 +104,21 @@ export function TranslationsVerifyResult({
       data-testid={dataTestId}
       id={id}
       className={className}
-      headline={
-        result.missingTranslationsCount
-          ? `${result.missingTranslationsCount} translation(s) missing across ${incompleteLanguages.length} language(s)`
-          : `Every language is complete across ${result.checkedTranslationsCount} id(s)`
-      }
-      tone={result.missingTranslationsCount ? "error" : "success"}
+      headline={describeHeadline(result, incompleteLanguages.length)}
+      tone={result.problems.length || result.missingTranslationsCount ? "error" : "success"}
       stats={stats}
     >
+      {problems.length ? (
+        <CommandResultFindings<TProblemRow>
+          rows={problems}
+          columns={problemColumns}
+          getRowId={(row) => row.index}
+          getSearchText={(row) => `${row.rule} ${row.message} ${row.subject ?? ""}`}
+          emptyLabel={"Nothing the game would refuse or mangle."}
+          searchPlaceholder={"Filter by rule, problem or file"}
+        />
+      ) : null}
+
       <CommandResultFindings<TLanguageRow>
         rows={rows}
         columns={columns}
@@ -94,4 +129,21 @@ export function TranslationsVerifyResult({
       />
     </CommandResult>
   );
+}
+
+/**
+ * The run's verdict in one line, what the game would refuse or mangle before what it would show as an id.
+ *
+ * @param result - What the run found.
+ * @param incomplete - How many languages miss at least one translation.
+ * @returns The headline.
+ */
+function describeHeadline(result: TranslationVerifyResult, incomplete: number): string {
+  if (result.problems.length) {
+    return `${result.problems.length} problem(s) the game would refuse or show wrong`;
+  }
+
+  return result.missingTranslationsCount
+    ? `${result.missingTranslationsCount} translation(s) missing across ${incomplete} language(s)`
+    : `Every language is complete across ${result.checkedTranslationsCount} id(s)`;
 }

@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
-use xrf_translation::{read_gamedata_in, read_source_in};
+use xrf_translation::{TranslationGamedataReader, TranslationSourceReader};
 use xrf_utils::to_portable_path_string;
 use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayRoots, XraySearch};
 
@@ -126,8 +126,8 @@ impl DialogProject {
     // XML under `configs\text`. Matched rather than converted — the two mode enums default opposite
     // ways on purpose, so a `From` between them that looked obvious would silently flip one.
     let read = match mode {
-      DialogProjectMode::Source => read_source_in(search, roots, prefix),
-      DialogProjectMode::Gamedata => read_gamedata_in(search, roots, prefix),
+      DialogProjectMode::Source => TranslationSourceReader::read_in(search, roots, prefix),
+      DialogProjectMode::Gamedata => TranslationGamedataReader::read_in(search, roots, prefix),
     };
 
     match read {

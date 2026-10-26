@@ -144,7 +144,7 @@ export function mockTranslationsProject(
     roots: { asset: null, roots: [{ mode: "auto", path: root }] },
     prefix: "translations",
     languages: ["eng", "ukr"],
-    encodings: { eng: "windows-1252", ukr: "windows-1251" },
+    encodings: { eng: "windows-1251", ukr: "windows-1251" },
     isEditable: true,
     files: {
       "st_dialogs.json": {

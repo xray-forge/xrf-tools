@@ -1,7 +1,7 @@
 use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
-use xrf_translation::{TranslationProjectMode, detect_mode};
+use xrf_translation::TranslationProjectMode;
 use xrf_utils::error_to_string;
 use xrf_vfs::XrayRoots;
 
@@ -14,7 +14,7 @@ pub async fn translations_detect_mode(
 ) -> TauriResult<TranslationProjectMode> {
   execution
     .run_blocking("Detecting a translations layout", move || {
-      let mode: TranslationProjectMode = detect_mode(&roots).map_err(error_to_string)?;
+      let mode: TranslationProjectMode = TranslationProjectMode::detect(&roots).map_err(error_to_string)?;
 
       log::info!(
         "Detected translations layout across {} root(s): {:?}",

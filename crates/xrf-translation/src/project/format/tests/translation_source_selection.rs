@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
-use crate::project::format::translation_source_selection::select_sources;
+use crate::project::format::translation_source_selection::TranslationSourceSelection;
 
 const SOURCE: &str = "{\n  \"st_a\": {\n    \"eng\": \"A\"\n  }\n}\n";
 
@@ -16,7 +16,7 @@ fn walks_a_directory_for_json_sources_only() -> XrfResult {
   GeneratedResources::write("translation_selection/walk/notes.txt", "ignored")?;
 
   let directory: &Path = source.parent().expect("Expected a parent directory");
-  let selected: Vec<PathBuf> = select_sources(&[directory.to_path_buf()])?;
+  let selected: Vec<PathBuf> = TranslationSourceSelection::select(&[directory.to_path_buf()])?;
 
   assert_eq!(selected, vec![nested, source]);
 
@@ -27,7 +27,10 @@ fn walks_a_directory_for_json_sources_only() -> XrfResult {
 fn takes_a_named_file_whatever_its_extension() -> XrfResult {
   let path: PathBuf = GeneratedResources::write("translation_selection/named/st_a.txt", SOURCE)?;
 
-  assert_eq!(select_sources(std::slice::from_ref(&path))?, vec![path]);
+  assert_eq!(
+    TranslationSourceSelection::select(std::slice::from_ref(&path))?,
+    vec![path]
+  );
 
   Ok(())
 }
@@ -38,17 +41,20 @@ fn de_duplicates_overlapping_paths() -> XrfResult {
   let directory: &Path = path.parent().expect("Expected a parent directory");
 
   assert_eq!(
-    select_sources(&[directory.to_path_buf(), path.clone()])?,
+    TranslationSourceSelection::select(&[directory.to_path_buf(), path.clone()])?,
     vec![path.clone()]
   );
-  assert_eq!(select_sources(&[path.clone(), path.clone()])?, vec![path]);
+  assert_eq!(
+    TranslationSourceSelection::select(&[path.clone(), path.clone()])?,
+    vec![path]
+  );
 
   Ok(())
 }
 
 #[test]
 fn a_path_that_does_not_exist_is_refused() {
-  let error = select_sources(&[PathBuf::from("no_such_translation_directory")])
+  let error = TranslationSourceSelection::select(&[PathBuf::from("no_such_translation_directory")])
     .expect_err("Expected a missing path to be refused");
 
   assert!(error.to_string().contains("does not exist"), "{error}");
@@ -61,7 +67,8 @@ fn selecting_nothing_is_refused() -> XrfResult {
   let placeholder: PathBuf = GeneratedResources::write("translation_selection/empty/notes.txt", "ignored")?;
   let directory: &Path = placeholder.parent().expect("Expected a parent directory");
 
-  let error = select_sources(&[directory.to_path_buf()]).expect_err("Expected an empty selection to be refused");
+  let error = TranslationSourceSelection::select(&[directory.to_path_buf()])
+    .expect_err("Expected an empty selection to be refused");
 
   assert!(
     error.to_string().contains("No translation sources to format"),

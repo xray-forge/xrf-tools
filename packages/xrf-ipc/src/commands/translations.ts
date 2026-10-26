@@ -80,10 +80,13 @@ export const translationsCommands = {
   /** Write one logical file's pending edits, grouped by the language each belongs to, into the project `session_id` holds. */
   saveFile: (sessionId: SessionId, file: string, edits: { [key in string]: Array<TranslationEdit> }) =>
     __TAURI_INVOKE<TranslationSaveOutcome>(ETranslationsCommand.SAVE_FILE, { sessionId, file, edits }),
-  /** Report the first character a language cannot hold, or nothing when the value is writable. */
+  /**
+   * Report why a language cannot hold a value — a character its code page lacks, or a text too long for the game to
+   * load — or nothing when the value is writable.
+   */
   validateText: (sessionId: SessionId, language: string, text: string) =>
     __TAURI_INVOKE<string | null>(ETranslationsCommand.VALIDATE_TEXT, { sessionId, language, text }),
-  /** Report which translations are missing from which languages, one check at a time. */
+  /** Report which translations are missing from which languages, and what the game would refuse or mangle in them. */
   verifyProject: (request: TranslationsVerifyRequest, jobId: string, progress: Channel<JobProgress>) =>
     __TAURI_INVOKE<TranslationVerifyResult>(ETranslationsCommand.VERIFY_PROJECT, { request, jobId, progress }),
 };

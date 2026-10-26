@@ -1,7 +1,9 @@
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionSnapshot};
-use xrf_translation::{TranslationProjectDescriptor, TranslationProjectMode, read_gamedata_in, read_source_in};
+use xrf_translation::{
+  TranslationGamedataReader, TranslationProjectDescriptor, TranslationProjectMode, TranslationSourceReader,
+};
 use xrf_utils::error_to_string;
 use xrf_vfs::{XrayInputRecord, XrayRoots, XraySearch};
 
@@ -25,8 +27,8 @@ impl TranslationProjectRead {
     let inputs: XrayInputRecord = XrayInputRecord::new();
     let search: XraySearch = search.with_recording(&inputs);
     let descriptor: TranslationProjectDescriptor = match mode {
-      TranslationProjectMode::Source => read_source_in(&search, roots, prefix),
-      TranslationProjectMode::Gamedata => read_gamedata_in(&search, roots, prefix),
+      TranslationProjectMode::Source => TranslationSourceReader::read_in(&search, roots, prefix),
+      TranslationProjectMode::Gamedata => TranslationGamedataReader::read_in(&search, roots, prefix),
     }
     .map_err(error_to_string)?;
 

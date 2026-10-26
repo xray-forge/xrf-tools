@@ -212,8 +212,7 @@ export type TranslationProjectDescriptor = {
   /**
    * The code page each language is written in, which is what limits the characters it can hold.
    *
-   * Taken from the files themselves in gamedata mode, so a language XRF has never heard of still
-   * reports the encoding its own declaration claims.
+   * The one the game draws a language XRF builds with; for one it does not, what that language's own files declare.
    */
   encodings: { [key in string]: string };
   /**
@@ -231,7 +230,7 @@ export type TranslationProjectDescriptor = {
 
 /** Which layout a translations root is read with. */
 export enum ETranslationProjectMode {
-  /** XRF sources: multi-language JSON and language-suffixed XML side by side in one tree. */
+  /** XRF sources: multi-language JSON files, one per string table. */
   SOURCE = "source",
   /** Shipped gamedata: `text\<language>\*.xml`, where the directory carries the language. */
   GAMEDATA = "gamedata",
@@ -250,8 +249,8 @@ export type TranslationProjectMode = `${ETranslationProjectMode}`;
  *
  * **The physical path is for showing, never for addressing.** It is portable-formatted, so it has
  * already lost any name that is not valid Unicode and any `\` a host treats as an ordinary character.
- * A save renders the edited bytes by logical path (`render_edits`) and commits them through the VFS,
- * which resolves where the file really is.
+ * A save renders the edited bytes by logical path (`TranslationEditor::render_edits`) and commits them
+ * through the VFS, which resolves where the file really is.
  */
 export type TranslationSource = {
   logicalPath: string;
@@ -272,7 +271,10 @@ export type TranslationVerifyLanguageSummary = {
   missing: number;
 };
 
-/** What a completeness check found, per file and language. */
+/**
+ * What a check of translation sources found: how complete each file is per language, and what the game would refuse
+ * or mangle in them.
+ */
 export type TranslationVerifyResult = {
   /** Whether the run checked every source or was stopped between them. */
   outcome: JobOutcome;
@@ -281,4 +283,13 @@ export type TranslationVerifyResult = {
   missingTranslationsCount: number;
   /** Per file and language, in discovery order. */
   languages: Array<TranslationVerifyLanguageSummary>;
+  /**
+   * What the game would refuse or mangle: a character a language's code page cannot hold, a line past what its XML
+   * reader takes, an id two sources define, two sources building to one table.
+   *
+   * Listed in full however the run was asked to report, because there are few of them and each one is a table the
+   * game shows wrong or will not load. Unlike a missing translation, which the game shows as its id, every one fails
+   * the run.
+   */
+  problems: Array<TranslationFinding>;
 };

@@ -1,0 +1,140 @@
+use xrf_error::XrfResult;
+use xrf_test_utils::GeneratedResources;
+
+use crate::language::translation_language::TranslationLanguage;
+use crate::project::parse::resolved_parse_scope::ResolvedParseScope;
+use crate::project::tests::fixtures::{roots, table};
+
+#[test]
+fn an_installation_root_resolves_down_to_the_language_directory() -> XrfResult {
+  // The common invocation: name the mod folder, name a language, and let the tool find the tables.
+  let root: &str = "parse_scope/from_root";
+
+  GeneratedResources::write(&format!("{root}/configs/text/eng/st_a.xml"), table("st_a", "A"))?;
+
+  let scope = ResolvedParseScope::resolve(
+    &roots(root).to_search_plan()?.open()?,
+    None,
+    TranslationLanguage::English,
+  )?;
+
+  assert_eq!(scope.prefix(), r"configs\text\eng");
+
+  Ok(())
+}
+
+#[test]
+fn a_text_root_resolves_down_to_the_language_directory() -> XrfResult {
+  let root: &str = "parse_scope/from_text";
+
+  GeneratedResources::write(&format!("{root}/eng/st_a.xml"), table("st_a", "A"))?;
+
+  let scope = ResolvedParseScope::resolve(
+    &roots(root).to_search_plan()?.open()?,
+    None,
+    TranslationLanguage::English,
+  )?;
+
+  assert_eq!(scope.prefix(), "eng");
+
+  Ok(())
+}
+
+#[test]
+fn a_language_directory_named_directly_is_taken_as_it_is() -> XrfResult {
+  // Nothing to descend into, so the root itself is the scope.
+  let root: &str = "parse_scope/leaf";
+
+  GeneratedResources::write(&format!("{root}/st_a.xml"), table("st_a", "A"))?;
+
+  let scope = ResolvedParseScope::resolve(
+    &roots(root).to_search_plan()?.open()?,
+    None,
+    TranslationLanguage::English,
+  )?;
+
+  assert_eq!(scope.prefix(), "");
+  assert_eq!(scope.describe(), "<root>");
+
+  Ok(())
+}
+
+#[test]
+fn an_explicit_prefix_is_obeyed_without_searching() -> XrfResult {
+  let root: &str = "parse_scope/explicit";
+
+  GeneratedResources::write(&format!("{root}/configs/text/rus/st_a.xml"), table("st_a", "А"))?;
+
+  let scope = ResolvedParseScope::resolve(
+    &roots(root).to_search_plan()?.open()?,
+    Some(r"configs\text\rus"),
+    TranslationLanguage::Russian,
+  )?;
+
+  assert_eq!(scope.prefix(), r"configs\text\rus");
+
+  Ok(())
+}
+
+#[test]
+fn a_text_root_holding_several_languages_still_resolves_to_the_one_named() -> XrfResult {
+  // Descending happens before the guard, so naming the text root of a two-language tree is not
+  // ambiguous: the language directory says which files belong to the run.
+  let root: &str = "parse_scope/several";
+
+  GeneratedResources::write(&format!("{root}/eng/st_a.xml"), table("st_a", "A"))?;
+  GeneratedResources::write(&format!("{root}/rus/st_a.xml"), table("st_a", "A"))?;
+
+  let scope = ResolvedParseScope::resolve(
+    &roots(root).to_search_plan()?.open()?,
+    None,
+    TranslationLanguage::English,
+  )?;
+
+  assert_eq!(scope.prefix(), "eng");
+
+  Ok(())
+}
+
+#[test]
+fn a_scope_still_holding_another_language_is_refused() -> XrfResult {
+  // The dangerous shape: tables sit directly in the scope, so the run would read them as English, and
+  // a Russian directory beside them would be swept up by the same recursive listing and filed as
+  // English too. On an Anomaly-sized tree that is thousands of entries mislabelled with no complaint.
+  let root: &str = "parse_scope/mixed";
+
+  GeneratedResources::write(&format!("{root}/st_a.xml"), table("st_a", "A"))?;
+  GeneratedResources::write(&format!("{root}/rus/st_b.xml"), table("st_b", "B"))?;
+
+  let error = ResolvedParseScope::resolve(
+    &roots(root).to_search_plan()?.open()?,
+    Some(""),
+    TranslationLanguage::English,
+  )
+  .unwrap_err();
+
+  assert!(error.to_string().contains("hold other languages"));
+  assert!(error.to_string().contains("rus"));
+
+  Ok(())
+}
+
+#[test]
+fn map_desc_is_not_mistaken_for_another_language() -> XrfResult {
+  // The engine excludes it by name rather than by content, so a tree carrying map descriptions is not
+  // a tree carrying a second language.
+  let root: &str = "parse_scope/map_desc";
+
+  GeneratedResources::write(&format!("{root}/st_a.xml"), table("st_a", "A"))?;
+  GeneratedResources::write(&format!("{root}/map_desc/st_b.xml"), table("st_b", "B"))?;
+
+  let scope = ResolvedParseScope::resolve(
+    &roots(root).to_search_plan()?.open()?,
+    Some(""),
+    TranslationLanguage::English,
+  )?;
+
+  assert_eq!(scope.prefix(), "");
+
+  Ok(())
+}
