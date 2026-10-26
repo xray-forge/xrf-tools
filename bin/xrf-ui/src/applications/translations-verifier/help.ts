@@ -2,9 +2,9 @@ import { EApplicationId, IApplicationHelp } from "@/core/routing/application";
 
 export const TRANSLATIONS_VERIFIER_HELP: IApplicationHelp = {
   summary:
-    "Reports which translations are missing, and from which languages. It reads authored JSON sources and " +
-    "answers one question for each of them: how many ids does this language have " +
-    "text for, and how many is it still short. Nothing is written.",
+    "Reports which translations are missing, and from which languages, and what the game would refuse or show " +
+    "wrong in the tables they build to. It reads authored JSON sources and answers two questions for each of " +
+    "them: how many ids does this language have text for, and will the game load it as written. Nothing is written.",
   workflow: [
     "Pick the translations directory, source tree, or installation holding the JSON sources - usually " +
       "`configs\\text` under a game data tree. The picker offers the directories it was last pointed at.",
@@ -19,6 +19,9 @@ export const TRANSLATIONS_VERIFIER_HELP: IApplicationHelp = {
     "Reading goes through the virtual file system, so a source tree layered over an installation is " +
       "checked the way the engine would load it rather than the way a directory walk happens to find it.",
     "Only JSON sources are checked. XML under the same tree is a built artifact, not a source.",
+    "Game problems are listed in full: a character the language's code page cannot hold, which the game draws " +
+      "as another letter; a line past what its XML reader takes, which stops it loading; an id two sources " +
+      "define; and two sources of one name, which the game cannot tell apart.",
     "The check reports counts rather than naming every missing id. Checking a two-language import " +
       "against all eight languages means 149,979 individual gaps - a correct answer, and one no table " +
       "can be read from. The counts say which languages need work and where; `xrf-cli translation " +
@@ -28,8 +31,8 @@ export const TRANSLATIONS_VERIFIER_HELP: IApplicationHelp = {
     "It does not say which ids are missing, only how many. Use the CLI for the itemised list.",
     "It judges completeness, not correctness: text that is present but wrong, untranslated, or copied " +
       "from another language counts as present.",
-    "There is no pass or fail threshold here. `xrf-cli translation verify --strict` is what a build " +
-      "step gates on.",
+    "There is no pass or fail threshold here. `xrf-cli translation verify` is what a build step gates on: it " +
+      "fails on game problems, and with `--strict` on missing translations too.",
     "No progress and no cancellation. Every source is parsed before anything is reported.",
   ],
   relatedTools: [EApplicationId.TRANSLATIONS_EDITOR, EApplicationId.TRANSLATIONS_PARSER],

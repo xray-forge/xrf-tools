@@ -8,15 +8,16 @@ use xrf_extension::XrayExtension;
 use xrf_utils::{HostDestination, HostFileName, HostRelativePath, format_path};
 use xrf_vfs::{XrayAsset, XraySearch};
 
-use crate::json::read::parse_json;
-use crate::json::write::{CanonicalRender, render_canonical, write_canonical};
-use crate::project::parse::merge::{MergeOutcome, merge_entries};
-use crate::project::parse::scope::{ResolvedParseScope, resolve};
+use crate::json::translation_json_reader::TranslationJsonReader;
+use crate::json::translation_json_render::TranslationJsonRender;
+use crate::project::parse::resolved_parse_scope::ResolvedParseScope;
+use crate::project::parse::translation_merge_outcome::TranslationMergeOutcome;
+use crate::project::parse::translation_merger::TranslationMerger;
 use crate::project::parse::translation_parse_options::TranslationParseOptions;
 use crate::project::parse::translation_parse_result::TranslationParseResult;
-use crate::types::TranslationJson;
-use crate::xml::read::parse_required_string_table;
+use crate::text::translation_json::TranslationJson;
 use crate::xml::translation_identity::TranslationIdentity;
+use crate::xml::translation_xml_reader::TranslationXmlReader;
 
 /// One file's entries while duplicates are being resolved, in the order the table declared them.
 type StringTableEntries = IndexMap<String, String>;
@@ -25,6 +26,9 @@ type StringTableEntries = IndexMap<String, String>;
 pub struct TranslationParser;
 
 impl TranslationParser {
+  /// Phase an import reports while it reads raw tables and writes sources.
+  pub const PHASE: &str = "parse";
+
   /// Import one language's raw string tables into JSON sources.
   ///
   /// # Errors
@@ -47,7 +51,7 @@ impl TranslationParser {
 
     let mut result: TranslationParseResult = TranslationParseResult::new(&language, options.is_dry_run);
 
-    let scope: ResolvedParseScope = resolve(search, options.prefix.as_deref(), options.language)?;
+    let scope: ResolvedParseScope = ResolvedParseScope::resolve(search, options.prefix.as_deref(), options.language)?;
 
     xrf_output::info!(
       options.output,
@@ -83,10 +87,7 @@ impl TranslationParser {
 
     let destination: HostDestination = HostDestination::new(&options.output_dir, options.link_policy);
 
-    let parsing: xrf_job::JobScope = options.job.enter(
-      crate::project::job_phases::TRANSLATION_PHASE_PARSE,
-      Some(assets.len() as u64),
-    );
+    let parsing: xrf_job::JobScope = options.job.enter(Self::PHASE, Some(assets.len() as u64));
 
     for asset in &assets {
       // Between tables: each source is written whole through a staged replace, so stopping leaves the ones already
@@ -131,9 +132,8 @@ impl TranslationParser {
   ) -> XrfResult {
     let logical_path: &str = asset.get_logical_path().as_str();
 
-    // The declared language is supplied as the directory name, because that is the slot a string table
-    // carries its language in. It only matters as an encoding fallback: a file that declares its code
-    // page is read with that one either way.
+    // The declared language is supplied as the directory name, because that is the slot a string table carries its
+    // language in, and it decides the code page the bytes are read in.
     let identity: TranslationIdentity = TranslationIdentity {
       file_name: asset.get_logical_path().file_name(),
       directory_name: Some(language),
@@ -141,7 +141,7 @@ impl TranslationParser {
 
     let entries: Vec<(String, String)> = match search
       .read_asset(asset)
-      .and_then(|data| parse_required_string_table(identity, &data))
+      .and_then(|data| TranslationXmlReader::parse_required(identity, &data))
     {
       Ok(entries) => entries,
       Err(error) => {
@@ -172,11 +172,21 @@ impl TranslationParser {
 
     let entries: Vec<(String, String)> = Self::deduplicate(entries, logical_path, result);
     let relative: HostRelativePath = Self::target_path(scope, logical_path)?;
+
+    // Imported all the same, because its text is what the run was pointed at; a build then writes it flat, where the
+    // game finds it.
+    if relative.as_path().components().count() > 1 {
+      result.record_finding(
+        "translations.nested",
+        logical_path,
+        "The game never loads this table: it opens every table by name in the language directory",
+      );
+    }
     let target: PathBuf = destination.resolve_file(&relative)?;
     let existing: TranslationJson = Self::read_existing(&target, result)?;
 
-    let (merged, outcome): (TranslationJson, MergeOutcome) =
-      merge_entries(existing, &entries, language, options.is_overwrite);
+    let (merged, outcome): (TranslationJson, TranslationMergeOutcome) =
+      TranslationMerger::merge(existing, &entries, language, options.is_overwrite);
 
     outcome.record(&mut result.census);
 
@@ -251,7 +261,7 @@ impl TranslationParser {
     match fs::read(target).map_err(XrfError::from).and_then(|data| {
       let subject: String = format_path(target).to_string();
 
-      parse_json(&subject, &data)
+      TranslationJsonReader::parse(&subject, &data)
     }) {
       Ok(existing) => Ok(existing),
       Err(error) => {
@@ -275,7 +285,7 @@ impl TranslationParser {
     options: &TranslationParseOptions,
     result: &mut TranslationParseResult,
   ) -> XrfResult {
-    let render: CanonicalRender = render_canonical(target, merged, None)?;
+    let render: TranslationJsonRender = TranslationJsonRender::render(target, merged, None)?;
 
     if !render.is_changed() {
       result.census.files_unchanged += 1;
@@ -314,7 +324,7 @@ impl TranslationParser {
     destination.create_root()?;
     destination.prepare_file(relative)?;
 
-    write_canonical(target, &render)?;
+    render.write(target)?;
 
     Ok(())
   }

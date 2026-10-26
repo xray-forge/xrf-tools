@@ -24,7 +24,10 @@ impl GenericCommand for VerifyCommand {
 
   fn declare(&self, command: Command) -> Command {
     XrayRootsArguments::declare(
-      command.about("Verify that translation sources are well formed and translated into every language"),
+      command.about(
+        "Verify that translation sources build to tables the game loads as written, and are translated into every \
+         language",
+      ),
       "Root holding translation sources, or one source file. Repeat to layer roots, highest priority first",
       "Limit to one logical subtree, such as translations",
     )
@@ -39,7 +42,7 @@ impl GenericCommand for VerifyCommand {
     )
     .arg(
       Arg::new("strict")
-        .help("Answer with a check failure when any translation is missing")
+        .help("Also answer with a check failure when any translation is missing")
         .long("strict")
         .required(false)
         .action(ArgAction::SetTrue),
@@ -108,24 +111,24 @@ impl GenericCommand for VerifyCommand {
 
     xrf_output::info!(
       options.output,
-      "Verified translation files in {}, {} checked, {} missing",
+      "Verified translation files in {}, {} checked, {} missing, {} the game would refuse or mangle",
       xrf_utils::format_duration(result.duration),
       result.checked_translations_count,
-      result.missing_translations_count
+      result.missing_translations_count,
+      result.problems.len()
     );
 
     // Missing translations are reported and answered as success by default, as a project mid-translation always has
-    // some; `--strict` is the mode that judges them, so only it sums them up as a check's verdict.
-    if options.is_strict {
-      let report: Report = result.to_report();
+    // some and the game shows each one as its id; `--strict` is the mode that judges them. What the game would refuse
+    // or mangle is judged either way.
+    let report: Report = if options.is_strict {
+      result.to_report()
+    } else {
+      result.to_engine_report()
+    };
 
-      ReportVerdict::print_findings(&options.output, &report);
+    ReportVerdict::print_findings(&options.output, &report);
 
-      return ReportVerdict::conclude(&options.output, &report, "Translation verification");
-    }
-
-    xrf_output::success!(options.output, "Translation sources are well formed");
-
-    Ok(())
+    ReportVerdict::conclude(&options.output, &report, "Translation verification")
   }
 }

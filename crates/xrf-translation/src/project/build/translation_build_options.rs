@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use xrf_utils::HostLinkPolicy;
 
-use crate::language::TranslationLanguage;
+use crate::language::translation_language::TranslationLanguage;
 
 pub struct TranslationBuildOptions {
   /// Where progress goes and where cancellation comes from.

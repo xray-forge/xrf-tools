@@ -12,7 +12,7 @@ use xrf_translation::{TranslationVerifier, TranslationVerifyOptions, Translation
 use crate::ipc::translations::TRANSLATIONS_JOB_VERIFY;
 use crate::request::TranslationsVerifyRequest;
 
-/// Report which translations are missing from which languages, one check at a time.
+/// Report which translations are missing from which languages, and what the game would refuse or mangle in them.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "verify_project")]
 pub async fn translations_verify_project(
@@ -57,10 +57,11 @@ pub async fn translations_verify_project(
     .await?;
 
   log::info!(
-    "Verified {} translation(s), {} missing across {} language row(s)",
+    "Verified {} translation(s), {} missing across {} language row(s), {} problem(s) the game would show",
     result.checked_translations_count,
     result.missing_translations_count,
-    result.languages.len()
+    result.languages.len(),
+    result.problems.len()
   );
 
   Ok(result)

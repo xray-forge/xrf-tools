@@ -3,10 +3,10 @@ use std::fs;
 use xrf_error::XrfResult;
 use xrf_test_utils::GeneratedResources;
 
-use crate::json::read::read_json;
-use crate::language::TranslationLanguage;
+use crate::json::translation_json_reader::TranslationJsonReader;
+use crate::language::translation_language::TranslationLanguage;
 use crate::project::initialize::translation_initializer::TranslationInitializer;
-use crate::types::TranslationVariant;
+use crate::text::translation_variant::TranslationVariant;
 
 #[test]
 fn initialization_replaces_json_only_after_writing_a_valid_document() -> XrfResult {
@@ -16,21 +16,18 @@ fn initialization_replaces_json_only_after_writing_a_valid_document() -> XrfResu
 
   assert_eq!(result.files_read, 1);
   assert_eq!(result.files_initialized, 1);
-  assert_eq!(
-    result.keys_added,
-    TranslationLanguage::get_all_strings().len() as u32 - 1
-  );
+  assert_eq!(result.keys_added, TranslationLanguage::LANGUAGES.len() as u32 - 1);
 
-  let initialized = read_json(&path)?;
+  let initialized = TranslationJsonReader::read(&path)?;
 
   assert_eq!(
     initialized["st_test"]["eng"],
     Some(TranslationVariant::String(String::from("original")))
   );
   assert!(
-    TranslationLanguage::get_all_strings()
+    TranslationLanguage::LANGUAGES
       .iter()
-      .all(|language| initialized["st_test"].contains_key(language))
+      .all(|language| initialized["st_test"].contains_key(&language.to_string()))
   );
 
   Ok(())
@@ -38,7 +35,7 @@ fn initialization_replaces_json_only_after_writing_a_valid_document() -> XrfResu
 
 #[test]
 fn an_already_complete_file_is_left_untouched() -> XrfResult {
-  let languages: String = TranslationLanguage::get_all_strings()
+  let languages: String = TranslationLanguage::LANGUAGES
     .iter()
     .map(|language| format!("\"{language}\":null"))
     .collect::<Vec<_>>()

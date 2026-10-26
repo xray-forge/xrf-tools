@@ -1,0 +1,4 @@
+mod translation_gamedata_reader;
+mod translation_project_descriptor;
+mod translation_project_mode;
+mod translation_source_reader;

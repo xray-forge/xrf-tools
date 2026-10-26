@@ -9,7 +9,7 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionDerived, SessionId, SessionScopes};
 use xrf_test_utils::GeneratedResources;
 use xrf_translation::{
-  TranslationEdit, TranslationProjectDescriptor, TranslationProjectMode, TranslationVariant, read_source,
+  TranslationEdit, TranslationProjectDescriptor, TranslationProjectMode, TranslationSourceReader, TranslationVariant,
 };
 use xrf_utils::error_to_string;
 use xrf_vfs::{XrayChangeSet, XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
@@ -67,7 +67,10 @@ fn entry_of(descriptor: &TranslationProjectDescriptor) -> String {
 
 /// What a file reads as now, straight off disk through a mount of its own.
 fn value_on_disk(roots: &XrayRoots, file: &str) -> TauriResult<String> {
-  Ok(entry_in(&read_source(roots, PREFIX).map_err(error_to_string)?, file))
+  Ok(entry_in(
+    &TranslationSourceReader::read(roots, PREFIX).map_err(error_to_string)?,
+    file,
+  ))
 }
 
 /// What the state reports as open, or `None` when nothing is.

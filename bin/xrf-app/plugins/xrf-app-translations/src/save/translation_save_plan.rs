@@ -5,8 +5,8 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_translation::{
-  TranslationEdit, TranslationFile, TranslationProjectDescriptor, TranslationProjectMode, TranslationSource,
-  build_save_transaction,
+  TranslationEdit, TranslationEditor, TranslationFile, TranslationProjectDescriptor, TranslationProjectMode,
+  TranslationSource,
 };
 use xrf_utils::error_to_string;
 use xrf_vfs::{XrayChangeSet, XrayInputKind, XrayInputRecord, XrayLogicalPath, XrayRoots, XraySearch};
@@ -98,7 +98,7 @@ impl TranslationSavePlan {
       .to_filtered(|input| matches!(input.get_kind(), XrayInputKind::File(path) if written.contains(path)));
 
     assets.commit(
-      &build_save_transaction(&sources, &self.file, &self.sources, edits)
+      &TranslationEditor::build_save_transaction(&sources, &self.file, &self.sources, edits)
         .map_err(error_to_string)?
         .with_expected(&expected),
     )

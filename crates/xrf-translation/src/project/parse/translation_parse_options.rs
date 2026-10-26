@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use xrf_utils::HostLinkPolicy;
 use xrf_vfs::XrayRoots;
 
-use crate::language::TranslationLanguage;
+use crate::language::translation_language::TranslationLanguage;
 
 /// What one import run was asked to do.
 pub struct TranslationParseOptions {

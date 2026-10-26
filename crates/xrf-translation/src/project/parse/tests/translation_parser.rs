@@ -5,10 +5,10 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_test_utils::{GeneratedResources, HostFilesystem};
 use xrf_utils::{HostLinkPolicy, encode_string_to_bytes};
 
-use super::super::translation_parse_options::TranslationParseOptions;
-use super::super::translation_parse_result::TranslationParseResult;
-use super::super::translation_parser::TranslationParser;
-use crate::language::TranslationLanguage;
+use crate::language::translation_language::TranslationLanguage;
+use crate::project::parse::translation_parse_options::TranslationParseOptions;
+use crate::project::parse::translation_parse_result::TranslationParseResult;
+use crate::project::parse::translation_parser::TranslationParser;
 use crate::project::tests::fixtures::{roots, table};
 
 fn options(root: &str, language: TranslationLanguage, output_dir: PathBuf) -> TranslationParseOptions {
@@ -44,19 +44,16 @@ fn read(path: &PathBuf) -> String {
 /// Write a string table the way a shipped one is written: declared, and in its language's code page.
 ///
 /// Not UTF-8. A gamedata table carries no byte order mark, so a Russian one written as UTF-8 decodes
-/// as windows-1251 and comes back as mojibake — correctly, since that is what the file claims to be.
+/// as windows-1251 and comes back as mojibake — correctly, since that is what the game draws it as.
 fn write_table(relative_path: &str, language: TranslationLanguage, id: &str, text: &str) -> XrfResult {
   let source: String = format!(
     "<?xml version=\"1.0\" encoding=\"{}\" ?>
 {}",
-    language.get_language_encoding(),
+    language.get_encoding_label(),
     table(id, text)
   );
 
-  GeneratedResources::write(
-    relative_path,
-    encode_string_to_bytes(&source, language.new_language_encoder())?,
-  )?;
+  GeneratedResources::write(relative_path, encode_string_to_bytes(&source, language.get_encoding())?)?;
 
   Ok(())
 }
@@ -213,10 +210,20 @@ fn nested_sources_keep_their_directories_apart() -> XrfResult {
   GeneratedResources::write(&format!("{root}/eng/one/common.xml"), table("st_one", "One"))?;
   GeneratedResources::write(&format!("{root}/eng/two/common.xml"), table("st_two", "Two"))?;
 
-  TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
+  let result: TranslationParseResult =
+    TranslationParser::parse(&options(root, TranslationLanguage::English, output_dir.clone()))?;
 
   assert!(output_dir.join("one/common.json").is_file());
   assert!(output_dir.join("two/common.json").is_file());
+  // The game never loads a table below the language directory, so the import says so of each.
+  assert_eq!(
+    result
+      .get_findings()
+      .iter()
+      .filter(|finding| finding.rule_id().as_str() == "translations.nested")
+      .count(),
+    2
+  );
 
   Ok(())
 }
