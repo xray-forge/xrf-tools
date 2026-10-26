@@ -1,17 +1,19 @@
 use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::XrayLogicalPath;
 
+use crate::archive_extension_pattern::ArchiveExtensionPattern;
+
 /// What a comparison is allowed to look at, in engine terms and decided once.
 #[derive(Debug, Default)]
 pub(crate) struct ArchivePatchScope {
   include: Vec<String>,
   ignore: Vec<String>,
-  /// Suffixes with their dot, lower-cased, as `*.txt` reduces to `.txt`.
+  /// Extension patterns as authored, matched the way a packing configuration matches the same field.
   extensions: Vec<String>,
 }
 
 impl ArchivePatchScope {
-  /// Fold the authored prefixes and extension patterns into the forms the predicate compares.
+  /// Fold the authored prefixes into the form the predicate compares, keeping the extension patterns as written.
   ///
   /// # Errors
   ///
@@ -20,10 +22,7 @@ impl ArchivePatchScope {
     Ok(Self {
       include: Self::fold_prefixes(include)?,
       ignore: Self::fold_prefixes(ignore)?,
-      extensions: extensions
-        .iter()
-        .map(|pattern| pattern.trim_start_matches('*').to_ascii_lowercase())
-        .collect(),
+      extensions: extensions.to_vec(),
     })
   }
 
@@ -40,7 +39,7 @@ impl ArchivePatchScope {
       return false;
     }
 
-    !self.extensions.iter().any(|suffix| name.ends_with(suffix.as_str()))
+    !ArchiveExtensionPattern::is_any_matched(name, &self.extensions)
   }
 
   /// Whether the scope names a subtree, which is what tells an empty answer from a selection matching nothing.
