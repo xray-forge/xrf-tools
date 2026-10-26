@@ -29,11 +29,12 @@ fn main() -> xrf_error::XrfResult {
   library.write::<XRayByteOrder>(&mut writer)?;
 
   let restored = LightAnimFile::read_from_bytes::<XRayByteOrder>(writer.buffer)?;
-  let item = &restored.items[0];
+  let item = restored.find_item("koster_01").expect("the animation is in the library");
+  let keys = item.to_loaded_keys(restored.is_bgr());
 
   assert_eq!(restored, library);
   assert_eq!(item.get_duration_seconds(), Some(2.0));
-  assert_eq!((item.keys[0].get_red(), item.keys[0].get_green(), item.keys[0].get_blue()), (0xFF, 0x80, 0x00));
+  assert_eq!((keys[0].get_red(), keys[0].get_green(), keys[0].get_blue()), (0xFF, 0x80, 0x00));
 
   Ok(())
 }
@@ -45,17 +46,27 @@ Read a library with `read_from_path`, `read_from_file`, `read_from_bytes` for an
 ## Library, items and keys
 
 The library is a chunk tree: a `u16` version (chunk 0) and an items chunk (1) holding one child per animation, numbered
-from zero. A file with no version chunk reads as version 0, as `ELightAnimLibrary::Load` treats one.
+from zero. A file with no version chunk reads as version 0, as `ELightAnimLibrary::Load` treats one. Animations are
+read as the engine opens them, chunk 0, 1, 2 and on until the first number the list lacks, so one numbered past a gap
+is not read. `find_item(name)` is `FindItem`: the first animation of exactly that name, case included, and none for an
+empty name.
 
-`LightAnimItem` is `CLAItem`: a name, its own frames per second, a frame count, and its keys in frame order, from a
-common chunk (1) and a keys chunk (2). `get_duration_seconds` is the frame count over the rate, or `None` for a rate
-that is not positive. `LightAnimKey` is a frame and a stored `u32` colour; a key holds its colour from its frame, and
-the engine divides the frame by the item's rate to reach a time.
+`LightAnimItem` is `CLAItem`: a name, its own frames per second, a frame count, and its keys as the file lists them,
+from a common chunk (1) and a keys chunk (2). `get_duration_seconds` is the frame count over the rate, or `None` for a
+rate that is not positive. `LightAnimKey` is a signed frame and a stored `u32` colour. Frames are the engine's `int`,
+and every shipped library keys some before zero: `svet_01` at `-1`, GAMMA's `koster_00_old` at `-2`.
+
+The engine holds an animation's keys in a map, so `to_loaded_keys(is_bgr)` returns them as it does after load: by
+frame, a frame listed twice keeping the colour read last. Between two keys `CLAItem::InterpolateRGB` blends their
+colours, alpha included, by how far the frame stands between them; on a key it answers that key, and past the last key
+the last one. `CalculateRGB` takes a time to a frame as `floor((seconds mod length) * fps)`, so an animation loops. XRF
+evaluates it where it draws, in the renderer's light animation.
 
 The colour's channels are read as the engine leaves them after load: alpha, red, green and blue from the high byte
 down, through `get_alpha`, `get_red`, `get_green` and `get_blue`. A version 0 library stores red and blue swapped,
 which the engine corrects on load and then saves as version 1. `is_bgr` reports such a library; the crate keeps the
-stored value and the stored version, so swap the channels yourself before reading one that way.
+stored value and the stored version, and `to_loaded_keys(file.is_bgr())` (or `LightAnimKey::to_swapped_red_blue`)
+gives the colours the engine uses.
 
 `get_keys_count` counts keys across every animation.
 
@@ -63,7 +74,9 @@ stored value and the stored version, so swap the channels yourself before readin
 
 Reads reject a file that cannot be opened, a missing items chunk, an animation missing its common or keys chunk, a key
 count the keys chunk cannot hold, and bytes left in a keys chunk. A library read and written back is byte for byte the
-file it came from when it carries a version chunk; the writer always writes one.
+file it came from when it carries a version chunk and numbers its animations from zero without a gap; the writer
+always writes a version and renumbers from zero. Every `lanims.xr` in the reference trees (vanilla, CoC, CS, Enhanced
+Edition, Anomaly, GAMMA, Gunslinger) is version 1, numbered without a gap, and holds no frame twice.
 
 Run `cargo test --locked -p xrf-light-anim` from the repository root. See the [library](src/light_anim_file.rs),
 [animation](src/light_anim_item.rs), [key](src/light_anim_key.rs), and [format tests](src/tests.rs).
