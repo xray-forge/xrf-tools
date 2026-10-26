@@ -125,6 +125,42 @@ impl AlifeObjectInherited {
     })
   }
 
+  /// The server class whose `STATE_Read` this payload is shaped for.
+  pub fn get_class(&self) -> AlifeClass {
+    match self {
+      AlifeObjectInherited::SeActor(_) => AlifeClass::SeActor,
+      AlifeObjectInherited::CseAlifeObjectBreakable(_) => AlifeClass::CseAlifeObjectBreakable,
+      AlifeObjectInherited::CseAlifeObjectClimable(_) => AlifeClass::CseAlifeObjectClimable,
+      AlifeObjectInherited::CseAlifeGraphPoint(_) => AlifeClass::CseAlifeGraphPoint,
+      AlifeObjectInherited::CseAlifeSpaceRestrictor(_) => AlifeClass::CseAlifeSpaceRestrictor,
+      AlifeObjectInherited::SeSmartCover(_) => AlifeClass::SeSmartCover,
+      AlifeObjectInherited::CseAlifeAnomalousZone(_) => AlifeClass::CseAlifeAnomalousZone,
+      AlifeObjectInherited::CseAlifeTorridZone(_) => AlifeClass::CseAlifeTorridZone,
+      AlifeObjectInherited::SeSmartTerrain(_) => AlifeClass::SeSmartTerrain,
+      AlifeObjectInherited::SeLevelChanger(_) => AlifeClass::SeLevelChanger,
+      AlifeObjectInherited::CseAlifeZoneVisual(_) => AlifeClass::CseAlifeZoneVisual,
+      AlifeObjectInherited::CseAlifeCar(_) => AlifeClass::CseAlifeCar,
+      AlifeObjectInherited::CseAlifeTrader(_) => AlifeClass::CseAlifeTrader,
+      AlifeObjectInherited::CseAlifeObjectPhysic(_) => AlifeClass::CseAlifeObjectPhysic,
+      AlifeObjectInherited::CseAlifeHelicopter(_) => AlifeClass::CseAlifeHelicopter,
+      AlifeObjectInherited::CseAlifeInventoryBox(_) => AlifeClass::CseAlifeInventoryBox,
+      AlifeObjectInherited::CseAlifeObjectHangingLamp(_) => AlifeClass::CseAlifeObjectHangingLamp,
+      AlifeObjectInherited::CseAlifeItem(_) => AlifeClass::CseAlifeItem,
+      AlifeObjectInherited::CseAlifeItemExplosive(_) => AlifeClass::CseAlifeItemExplosive,
+      AlifeObjectInherited::CseAlifeItemPda(_) => AlifeClass::CseAlifeItemPda,
+      AlifeObjectInherited::CseAlifeItemAmmo(_) => AlifeClass::CseAlifeItemAmmo,
+      AlifeObjectInherited::CseAlifeItemGrenade(_) => AlifeClass::CseAlifeItemGrenade,
+      AlifeObjectInherited::CseAlifeItemArtefact(_) => AlifeClass::CseAlifeItemArtefact,
+      AlifeObjectInherited::CseAlifeItemWeapon(_) => AlifeClass::CseAlifeItemWeapon,
+      AlifeObjectInherited::CseAlifeItemDetector(_) => AlifeClass::CseAlifeItemDetector,
+      AlifeObjectInherited::CseAlifeItemHelmet(_) => AlifeClass::CseAlifeItemHelmet,
+      AlifeObjectInherited::CseAlifeItemCustomOutfit(_) => AlifeClass::CseAlifeItemCustomOutfit,
+      AlifeObjectInherited::CseAlifeItemWeaponShotgun(_) => AlifeClass::CseAlifeItemWeaponShotgun,
+      AlifeObjectInherited::CseAlifeItemWeaponMagazined(_) => AlifeClass::CseAlifeItemWeaponMagazined,
+      AlifeObjectInherited::CseAlifeItemWeaponMagazinedWGl(_) => AlifeClass::CseAlifeItemWeaponMagazinedWGl,
+    }
+  }
+
   /// The abstract object every alife class inherits, which carries its game vertex, flags and custom data; `None`
   /// for a graph point, which inherits none.
   pub fn get_abstract(&self) -> Option<&AlifeObjectAbstract> {

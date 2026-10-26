@@ -3,40 +3,44 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxImportExport, Section};
-use xrf_utils::assert_equal;
 
 use crate::data::alife::inherited::alife_object_actor::AlifeObjectActor;
+use crate::data::generic::script_save_marker::ScriptSaveMarker;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlifeActor {
   pub base: AlifeObjectActor,
+  /// The script class's own field, `se_actor` in vanilla.
   pub start_position_filled: u8,
-  pub save_marker: u16,
+}
+
+impl AlifeActor {
+  /// The script class the trailing field belongs to, named in a refused save marker.
+  const SCRIPT_CLASS: &'static str = "se_actor";
 }
 
 impl ChunkReadWrite for AlifeActor {
   /// Read actor data from the chunk.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let object: Self = Self {
+    Ok(Self {
       base: reader.read_xr::<T, _>()?,
-      start_position_filled: reader.read_u8()?,
-      save_marker: reader.read_u16::<T>()?,
-    };
-
-    assert_equal(object.save_marker, 1, "Unexpected save data for actor object provided")?;
-
-    Ok(object)
+      start_position_filled: ScriptSaveMarker::read::<T, _, _>(reader, Self::SCRIPT_CLASS, |reader| {
+        Ok(reader.read_u8()?)
+      })?,
+    })
   }
 
   /// Write object data into the writer.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
-    writer.write_u8(self.start_position_filled)?;
-    writer.write_u16::<T>(self.save_marker)?;
 
-    Ok(())
+    ScriptSaveMarker::write::<T>(writer, Self::SCRIPT_CLASS, |writer| {
+      writer.write_u8(self.start_position_filled)?;
+
+      Ok(())
+    })
   }
 }
 
@@ -54,7 +58,6 @@ impl LtxImportExport for AlifeActor {
     Ok(Self {
       base: AlifeObjectActor::import(section_name, ltx)?,
       start_position_filled: section.read_field("actor.start_position_filled")?,
-      save_marker: section.read_field("actor.save_marker")?,
     })
   }
 
@@ -64,8 +67,7 @@ impl LtxImportExport for AlifeActor {
 
     ltx
       .with_section(section_name)
-      .set("actor.start_position_filled", self.start_position_filled.to_string())
-      .set("actor.save_marker", self.save_marker.to_string());
+      .set("actor.start_position_filled", self.start_position_filled.to_string());
 
     Ok(())
   }
@@ -141,7 +143,6 @@ mod tests {
         holder_id: 0,
       },
       start_position_filled: 1,
-      save_marker: 1,
     };
 
     original.write::<XRayByteOrder>(&mut writer)?;
@@ -215,7 +216,6 @@ mod tests {
         holder_id: 0,
       },
       start_position_filled: 1,
-      save_marker: 1,
     };
 
     original.export("data", &mut ltx)?;
@@ -277,7 +277,6 @@ mod tests {
         holder_id: 0,
       },
       start_position_filled: 1,
-      save_marker: 1,
     };
 
     let mut file: File =

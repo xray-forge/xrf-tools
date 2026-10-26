@@ -31,6 +31,30 @@ pub struct SpawnGraphsChunk {
 
 impl SpawnGraphsChunk {
   pub const CHUNK_ID: u32 = 4;
+
+  /// Refuse a header whose counts are not what the graph holds: `CGameGraph` finds each table by the counts before it.
+  fn assert_header_counts(&self) -> XrfResult {
+    assert_length(
+      &self.levels,
+      self.header.levels_count as usize,
+      "Expect correct levels count to be read",
+    )?;
+    assert_length(
+      &self.vertices,
+      self.header.vertices_count as usize,
+      "Expect correct vertices count to be read",
+    )?;
+    assert_length(
+      &self.edges,
+      self.header.edges_count as usize,
+      "Expect correct edges count to be read",
+    )?;
+    assert_length(
+      &self.points,
+      self.header.points_count as usize,
+      "Expect correct points count to be read",
+    )
+  }
 }
 
 impl ChunkReadWrite for SpawnGraphsChunk {
@@ -81,40 +105,24 @@ impl ChunkReadWrite for SpawnGraphsChunk {
 
     log::info!("Read graphs ver {}, {} bytes", header.version, reader.read_bytes_len(),);
 
-    assert_length(
-      &levels,
-      header.levels_count as usize,
-      "Expect correct levels count to be read",
-    )?;
-    assert_length(
-      &vertices,
-      header.vertices_count as usize,
-      "Expect correct vertices count to be read",
-    )?;
-    assert_length(
-      &edges,
-      header.edges_count as usize,
-      "Expect correct edges count to be read",
-    )?;
-    assert_length(
-      &points,
-      header.points_count as usize,
-      "Expect correct points count to be read",
-    )?;
-    reader.assert_read("Expect graphs chunk to be ended")?;
-
-    Ok(Self {
+    let graphs: Self = Self {
       header,
       levels,
       vertices,
       edges,
       points,
       cross_tables,
-    })
+    };
+
+    graphs.assert_header_counts()?;
+    reader.assert_read("Expect graphs chunk to be ended")?;
+
+    Ok(graphs)
   }
 
   /// Write whole graphs chunk into the writer.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    self.assert_header_counts()?;
     self.header.write::<T>(writer)?;
 
     for level in &self.levels {

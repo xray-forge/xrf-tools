@@ -40,6 +40,25 @@ impl Patrol {
 
   /// Sections one imported link occupies in the links file.
   pub const MIN_LINK_SECTIONS: u64 = 1;
+
+  /// Refuse a link from or to a point the patrol does not hold: `CGraphAbstract::add_edge` looks both ends up and
+  /// dereferences what it finds.
+  fn assert_links_in_range(&self) -> XrfResult {
+    let count: usize = self.points.len();
+
+    for link in &self.links {
+      for point in std::iter::once(link.index).chain(link.links.iter().map(|(to, _)| *to)) {
+        if point as usize >= count {
+          return Err(XrfError::new_invalid_error(format!(
+            "Patrol '{}' links point {point}, it holds {count} points",
+            self.name
+          )));
+        }
+      }
+    }
+
+    Ok(())
+  }
 }
 
 impl ChunkReadWriteList for Patrol {
@@ -101,11 +120,17 @@ impl ChunkReadWrite for Patrol {
     )?;
     reader.assert_read("Expect patrol chunk to be ended")?;
 
-    Ok(Self { name, points, links })
+    let patrol: Self = Self { name, points, links };
+
+    patrol.assert_links_in_range()?;
+
+    Ok(patrol)
   }
 
   /// Write single patrol entity into chunk writer.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    self.assert_links_in_range()?;
+
     let mut meta_writer: ChunkWriter = ChunkWriter::new();
     let mut data_writer: ChunkWriter = ChunkWriter::new();
 
@@ -290,7 +315,7 @@ mod tests {
       ],
       links: vec![PatrolLink {
         index: 0,
-        links: vec![(10, 50.5), (15, 60.25)],
+        links: vec![(1, 50.5), (0, 60.25)],
       }],
     };
 
@@ -312,6 +337,35 @@ mod tests {
     );
 
     Ok(())
+  }
+
+  /// The engine adds a link's edge by looking both points up, so a link past the last point is not written.
+  #[test]
+  fn refuses_to_write_a_link_to_a_point_it_does_not_hold() {
+    let patrol: Patrol = Patrol {
+      name: String::from("patrol-name"),
+      points: vec![PatrolPoint {
+        name: String::from("wp00"),
+        position: Vector3d::new(0.0, 0.0, 0.0),
+        flags: 0,
+        level_vertex_id: 0,
+        game_vertex_id: 0,
+      }],
+      links: vec![PatrolLink {
+        index: 0,
+        links: vec![(1, 1.0)],
+      }],
+    };
+
+    let error: String = patrol
+      .write::<XRayByteOrder>(&mut ChunkWriter::new())
+      .expect_err("a link to a second point")
+      .to_string();
+
+    assert!(
+      error.contains("Patrol 'patrol-name' links point 1, it holds 1 points"),
+      "{error}"
+    );
   }
 
   #[test]
@@ -340,7 +394,7 @@ mod tests {
         ],
         links: vec![PatrolLink {
           index: 0,
-          links: vec![(10, 50.5), (15, 60.25)],
+          links: vec![(1, 50.5), (0, 60.25)],
         }],
       },
       Patrol {
@@ -363,7 +417,7 @@ mod tests {
         ],
         links: vec![PatrolLink {
           index: 0,
-          links: vec![(10, 50.5), (15, 60.25)],
+          links: vec![(1, 50.5), (0, 60.25)],
         }],
       },
     ];

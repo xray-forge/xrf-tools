@@ -37,11 +37,21 @@ than desynchronizing the next one. `ClsId::from_section` maps a section to its c
 and so which server-class reader (`AlifeObjectInherited`) parses its payload; scripted fields at the tail are read from
 the object's remaining byte budget. An object at spawn version 120 or below is refused (Call of Pripyat and Anomaly
 write 128), and so is a section with no known class. Stored values are kept as written rather than normalized the way
-the engine's `STATE_Read` would, and `LastSpawnTime` keeps its three states (`Absent`, `Unset`, `Set`) apart.
+the engine's `STATE_Read` would, and `LastSpawnTime` keeps its three states (`Absent`, `Unset`, `Set`) apart. An
+object's client data and an item's upgrade sections are read as the engine reads them; its update packet is carried
+verbatim, though the engine applies it over the spawn packet when it creates the object.
+
+A script class closes its own fields with a save marker counting their bytes, which both vanilla and xrf-engine
+scripts assert on load. The marker is not a field here: reading checks it against what was read, and writing derives
+it, so an edited level changer hint still loads.
 
 `export_to_path` unpacks a set into a directory of LTX files a person can edit, and
 `import_from_path` reads that directory back; `write_to_path` and `write_to` write the binary set. Unpacking and packing
 again is meant to reproduce the original bytes.
+
+Writing refuses what the engine would misread rather than writing it: header counts that differ from the objects and
+levels the set holds, graph counts that differ from its tables, an object whose payload class is not its section's, a
+patrol link to a point the patrol lacks, and a smart terrain or skeleton declaring state this crate cannot carry.
 
 ## Read a level spawn list
 

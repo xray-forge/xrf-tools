@@ -39,7 +39,7 @@ fn new_item(visual: &str) -> AlifeObjectInherited {
   AlifeObjectInherited::CseAlifeItem(Box::new(AlifeObjectItem {
     base: new_visual(visual, AlifeObjectAbstract::INVALID_STORY_ID),
     condition: 1.0,
-    upgrades_count: 0,
+    upgrades: Vec::new(),
   }))
 }
 

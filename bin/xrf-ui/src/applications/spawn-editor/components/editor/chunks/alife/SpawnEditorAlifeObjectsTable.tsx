@@ -9,6 +9,7 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 interface IAlifeObjectRow extends AlifeObject {
   index: number;
   type: string;
+  clientDataSize: number;
 }
 
 /**
@@ -63,7 +64,13 @@ export function SpawnEditorAlifeObjectsTable({
   );
 
   const rows: Array<IAlifeObjectRow> = useMemo(
-    () => objects.map((it: AlifeObject, index: number) => ({ ...it, index, type: it.inherited.type })),
+    () =>
+      objects.map((it: AlifeObject, index: number) => ({
+        ...it,
+        index,
+        type: it.inherited.type,
+        clientDataSize: it.clientData.length,
+      })),
     [objects]
   );
 

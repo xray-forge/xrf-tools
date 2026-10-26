@@ -1,12 +1,12 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_math::Vector3d;
-use xrf_utils::assert_equal;
 
 use crate::data::alife::inherited::alife_object_space_restrictor::AlifeObjectSpaceRestrictor;
+use crate::data::generic::script_save_marker::ScriptSaveMarker;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -20,56 +20,65 @@ pub struct AlifeLevelChanger {
   pub dest_level_name: String,
   pub dest_graph_point: String,
   pub silent_mode: u8,
+  /// The script class's own fields, `se_level_changer` in vanilla and `LevelChanger` in xrf-engine.
   pub enabled: u8,
   pub hint: String,
-  pub save_marker: u16,
+}
+
+impl AlifeLevelChanger {
+  /// The script class the trailing fields belong to, named in a refused save marker.
+  const SCRIPT_CLASS: &'static str = "se_level_changer";
 }
 
 impl ChunkReadWrite for AlifeLevelChanger {
   /// Read ALife level changer object data from the chunk.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let object: Self = Self {
-      base: reader.read_xr::<T, _>()?,
-      dest_game_vertex_id: reader.read_u16::<T>()?,
-      dest_level_vertex_id: reader.read_u32::<T>()?,
-      dest_position: reader.read_xr::<T, _>()?,
-      dest_direction: reader.read_xr::<T, _>()?,
-      dest_level_name: reader.read_w1251_string()?,
-      dest_graph_point: reader.read_w1251_string()?,
-      silent_mode: reader.read_u8()?,
-      enabled: reader.read_u8()?,
-      hint: reader.read_w1251_string()?,
-      save_marker: reader.read_u16::<T>()?,
-    };
+    let base: AlifeObjectSpaceRestrictor = reader.read_xr::<T, _>()?;
+    let dest_game_vertex_id: u16 = reader.read_u16::<T>()?;
+    let dest_level_vertex_id: u32 = reader.read_u32::<T>()?;
+    let dest_position: Vector3d = reader.read_xr::<T, _>()?;
+    let dest_direction: Vector3d = reader.read_xr::<T, _>()?;
+    let dest_level_name: String = reader.read_w1251_string()?;
+    let dest_graph_point: String = reader.read_w1251_string()?;
+    let silent_mode: u8 = reader.read_u8()?;
+    let (enabled, hint): (u8, String) = ScriptSaveMarker::read::<T, _, _>(reader, Self::SCRIPT_CLASS, |reader| {
+      Ok((reader.read_u8()?, reader.read_w1251_string()?))
+    })?;
 
-    assert_equal(
-      object.save_marker,
-      26,
-      "Unexpected script data provided for level changer",
-    )?;
-
-    Ok(object)
+    Ok(Self {
+      base,
+      dest_game_vertex_id,
+      dest_level_vertex_id,
+      dest_position,
+      dest_direction,
+      dest_level_name,
+      dest_graph_point,
+      silent_mode,
+      enabled,
+      hint,
+    })
   }
 
   /// Write object data into the writer.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
 
-    writer.write_u16::<XRayByteOrder>(self.dest_game_vertex_id)?;
-    writer.write_u32::<XRayByteOrder>(self.dest_level_vertex_id)?;
+    writer.write_u16::<T>(self.dest_game_vertex_id)?;
+    writer.write_u32::<T>(self.dest_level_vertex_id)?;
 
-    writer.write_xr::<XRayByteOrder, _>(&self.dest_position)?;
-    writer.write_xr::<XRayByteOrder, _>(&self.dest_direction)?;
+    writer.write_xr::<T, _>(&self.dest_position)?;
+    writer.write_xr::<T, _>(&self.dest_direction)?;
 
     writer.write_w1251_string(&self.dest_level_name)?;
     writer.write_w1251_string(&self.dest_graph_point)?;
     writer.write_u8(self.silent_mode)?;
 
-    writer.write_u8(self.enabled)?;
-    writer.write_w1251_string(&self.hint)?;
-    writer.write_u16::<XRayByteOrder>(self.save_marker)?;
+    ScriptSaveMarker::write::<T>(writer, Self::SCRIPT_CLASS, |writer| {
+      writer.write_u8(self.enabled)?;
+      writer.write_w1251_string(&self.hint)?;
 
-    Ok(())
+      Ok(())
+    })
   }
 }
 
@@ -95,7 +104,6 @@ impl LtxImportExport for AlifeLevelChanger {
       silent_mode: section.read_field("level_changer.silent_mode")?,
       enabled: section.read_field("level_changer.enabled")?,
       hint: section.read_field("level_changer.hint")?,
-      save_marker: section.read_field("level_changer.save_marker")?,
     })
   }
 
@@ -119,8 +127,7 @@ impl LtxImportExport for AlifeLevelChanger {
       .set("level_changer.dest_graph_point", &self.dest_graph_point)
       .set("level_changer.silent_mode", self.silent_mode.to_string())
       .set("level_changer.enabled", self.enabled.to_string())
-      .set("level_changer.hint", &self.hint)
-      .set("level_changer.save_marker", self.save_marker.to_string());
+      .set("level_changer.hint", &self.hint);
 
     Ok(())
   }
@@ -180,12 +187,13 @@ mod tests {
       silent_mode: 1,
       enabled: 1,
       hint: String::from("hint"),
-      save_marker: 26,
     };
 
     original.write::<XRayByteOrder>(&mut writer)?;
 
     assert_eq!(writer.bytes_written(), 173);
+    // The script's marker counts its flag and the hint with its terminator, whatever the hint says.
+    assert_eq!(writer.buffer[171..], [6, 0]);
 
     let bytes_written: usize =
       writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
@@ -241,7 +249,6 @@ mod tests {
       silent_mode: 1,
       enabled: 0,
       hint: String::from("hint"),
-      save_marker: 27,
     };
 
     original.export("data", &mut ltx)?;
@@ -289,7 +296,6 @@ mod tests {
       silent_mode: 0,
       enabled: 1,
       hint: String::from("hint"),
-      save_marker: 26,
     };
 
     let mut file: File =

@@ -83,7 +83,7 @@ mod tests {
           visual_flags: 33,
         },
         condition: 0.6,
-        upgrades_count: 0,
+        upgrades: Vec::new(),
       },
     };
 
@@ -132,7 +132,7 @@ mod tests {
           visual_flags: 6,
         },
         condition: 0.25,
-        upgrades_count: 5,
+        upgrades: vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")],
       },
     };
 
@@ -166,7 +166,7 @@ mod tests {
           visual_flags: 3,
         },
         condition: 0.25,
-        upgrades_count: 5,
+        upgrades: vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")],
       },
     };
 

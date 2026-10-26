@@ -37,7 +37,7 @@ export function mockVector3d(overrides: Partial<Vector3d> = {}): Vector3d {
  */
 export function mockAlifeObject(overrides: Partial<AlifeObject> = {}): AlifeObject {
   return {
-    clientDataSize: 0,
+    clientData: [],
     clsid: "EStlk",
     direction: mockVector3d(),
     gameType: 1,

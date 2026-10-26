@@ -269,7 +269,7 @@ mod tests {
       version: 128,
       game_type: 1,
       script_version: 10,
-      client_data_size: 0,
+      client_data: Vec::new(),
       spawn_id: 2354,
       inherited: AlifeObjectInherited::CseAlifeSpaceRestrictor(Box::new(AlifeObjectSpaceRestrictor {
         base: AlifeObjectAbstract {
@@ -414,7 +414,7 @@ mod tests {
           version: 128,
           game_type: 1,
           script_version: 10,
-          client_data_size: 0,
+          client_data: Vec::new(),
           spawn_id: 2354,
           inherited: AlifeObjectInherited::CseAlifeItemCustomOutfit(Box::new(AlifeObjectItemCustomOutfit {
             base: AlifeObjectItem {
@@ -433,7 +433,7 @@ mod tests {
                 visual_flags: 0,
               },
               condition: 1.0,
-              upgrades_count: 0,
+              upgrades: Vec::new(),
             },
           })),
           update_data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
@@ -455,7 +455,7 @@ mod tests {
           version: 128,
           game_type: 1,
           script_version: 10,
-          client_data_size: 0,
+          client_data: Vec::new(),
           spawn_id: 2354,
           inherited: AlifeObjectInherited::CseAlifeSpaceRestrictor(Box::new(AlifeObjectSpaceRestrictor {
             base: AlifeObjectAbstract {

@@ -80,7 +80,7 @@ mod tests {
             visual_flags: 253,
           },
           condition: 1.0,
-          upgrades_count: 0,
+          upgrades: Vec::new(),
         },
         ammo_current: 20,
         ammo_elapsed: 10,

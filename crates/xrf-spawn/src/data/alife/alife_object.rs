@@ -10,7 +10,7 @@ use xrf_utils::{
   assert, assert_equal, assert_not_equal, decode_bytes_from_base64, encode_bytes_to_base64, to_format_size,
 };
 
-use crate::constants::{FLAG_SPAWN_DESTROY_ON_SPAWN, MINIMAL_SUPPORTED_SPAWN_VERSION, NET_ACTION_SPAWN};
+use crate::constants::{NET_ACTION_SPAWN, NET_ACTION_UPDATE};
 use crate::data::alife::alife_object_inherited::AlifeObjectInherited;
 use crate::data::meta::alife_class::AlifeClass;
 use crate::data::meta::cls_id::ClsId;
@@ -32,24 +32,53 @@ pub struct AlifeObject {
   pub respawn_time: u16,
   pub parent_id: u16,
   pub phantom_id: u16,
+  /// `s_flags`; the spawn version is stored only while `M_SPAWN_VERSION` is set.
   pub script_flags: u16,
   pub version: u16,
   pub game_type: u16,
   pub script_version: u16,
-  pub client_data_size: u16,
+  /// The client object's saved state (`CSE_Abstract::client_data`), carried as stored.
+  pub client_data: Vec<u8>,
   pub spawn_id: u16,
   pub inherited: AlifeObjectInherited,
-  pub update_data: Vec<u8>, // todo: Parse.
+  /// The update packet past its `M_UPDATE` action, carried as stored. The engine applies it over the spawn packet when
+  /// it creates the object, so a creature is placed where its update packet says.
+  // todo: Read and write the update packet by server class, as each class's `UPDATE_Read` and `UPDATE_Write` do.
+  pub update_data: Vec<u8>,
 }
 
 impl AlifeObject {
   pub const DATA_SPAWN_CHUNK_ID: u32 = 0;
   pub const DATA_UPDATE_CHUNK_ID: u32 = 1;
-}
 
-impl AlifeObject {
   /// One framed object chunk: its own header, plus the header and payload of the index chunk it must carry.
   pub const MIN_SERIALIZED_SIZE: u64 = 8 + 8 + 2;
+
+  /// `M_SPAWN_VERSION`: the packet stores its spawn version after the flags.
+  pub const FLAG_SPAWN_VERSION: u16 = 1 << 5;
+
+  /// The highest spawn version refused: `CSE_Abstract::Spawn_Read` reads the game type only above it, and the payloads
+  /// here are laid out as Call of Pripyat and the forks built on it write them, at 128.
+  pub const MAX_UNSUPPORTED_VERSION: u16 = 120;
+
+  /// Refuse an object whose payload is shaped for another class than its section's, which the engine would read
+  /// with the section's class.
+  fn assert_class_matches_section(&self) -> XrfResult {
+    let clsid: ClsId = ClsId::from_section(&self.section)?;
+    let class: AlifeClass = AlifeClass::from_cls_id(&clsid);
+
+    if clsid != self.clsid || class != self.inherited.get_class() {
+      return Err(XrfError::new_invalid_error(format!(
+        "ALife object '{}' of section '{}' ({clsid:?}, {class}) carries {:?} and a {} payload",
+        self.name,
+        self.section,
+        self.clsid,
+        self.inherited.get_class()
+      )));
+    }
+
+    Ok(())
+  }
 }
 
 impl ChunkReadWrite for AlifeObject {
@@ -86,23 +115,21 @@ impl ChunkReadWrite for AlifeObject {
     let parent_id: u16 = spawn_reader.read_u16::<T>()?;
     let phantom_id: u16 = spawn_reader.read_u16::<T>()?;
     let script_flags: u16 = spawn_reader.read_u16::<T>()?;
-    let version: u16 = if script_flags & FLAG_SPAWN_DESTROY_ON_SPAWN == 0 {
+    let version: u16 = if script_flags & Self::FLAG_SPAWN_VERSION == 0 {
       0
     } else {
       spawn_reader.read_u16::<T>()?
     };
 
     assert(
-      version > MINIMAL_SUPPORTED_SPAWN_VERSION,
+      version > Self::MAX_UNSUPPORTED_VERSION,
       "Unexpected version of ALife object in spawn file, flag is {script_flags}",
     )?;
 
     let game_type: u16 = spawn_reader.read_u16::<T>()?;
     let script_version: u16 = spawn_reader.read_u16::<T>()?;
     let client_data_size: u16 = spawn_reader.read_u16::<T>()?;
-
-    assert_equal(client_data_size, 0, "Client data is not expected in ALife object")?; // Or read client data?
-
+    let client_data: Vec<u8> = spawn_reader.read_bytes(client_data_size.into())?;
     let spawn_id: u16 = spawn_reader.read_u16::<T>()?;
     let inherited_size: u16 = spawn_reader.read_u16::<T>()?;
 
@@ -125,14 +152,18 @@ impl ChunkReadWrite for AlifeObject {
 
     let mut update_reader: ChunkReader<D> = reader.read_child_by_index(Self::DATA_UPDATE_CHUNK_ID)?;
     let update_data_length: u16 = update_reader.read_u16::<T>()?;
-    let update_size: u16 = update_reader.read_u16::<T>()?;
+    let update_action: u16 = update_reader.read_u16::<T>()?;
 
     assert_equal(
       update_data_length as u64 + 2,
       update_reader.size,
       "Expect correct size of ALife object update data",
     )?;
-    assert_equal(update_size, 0, "Expect no ALife update data in object chunk")?;
+    assert_equal(
+      update_action,
+      NET_ACTION_UPDATE,
+      "Expect only net_update actions in ALife object update data",
+    )?;
 
     let update_data: Vec<u8> = update_reader.read_bytes(update_reader.read_bytes_remain() as usize)?;
 
@@ -157,7 +188,7 @@ impl ChunkReadWrite for AlifeObject {
       version,
       game_type,
       script_version,
-      client_data_size,
+      client_data,
       spawn_id,
       inherited,
       update_data,
@@ -166,6 +197,8 @@ impl ChunkReadWrite for AlifeObject {
 
   /// Write ALife object data into the writer.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
+    self.assert_class_matches_section()?;
+
     let mut data_spawn_writer: ChunkWriter = ChunkWriter::new();
     let mut data_update_writer: ChunkWriter = ChunkWriter::new();
 
@@ -188,10 +221,15 @@ impl ChunkReadWrite for AlifeObject {
     object_data_writer.write_u16::<T>(self.parent_id)?;
     object_data_writer.write_u16::<T>(self.phantom_id)?;
     object_data_writer.write_u16::<T>(self.script_flags)?;
-    object_data_writer.write_u16::<T>(self.version)?;
+
+    if self.script_flags & Self::FLAG_SPAWN_VERSION != 0 {
+      object_data_writer.write_u16::<T>(self.version)?;
+    }
+
     object_data_writer.write_u16::<T>(self.game_type)?;
     object_data_writer.write_u16::<T>(self.script_version)?;
-    object_data_writer.write_u16::<T>(self.client_data_size)?;
+    object_data_writer.write_u16::<T>(to_format_size(self.client_data.len(), "alife object client data")?)?;
+    object_data_writer.write_all(&self.client_data)?;
     object_data_writer.write_u16::<T>(self.spawn_id)?;
 
     self.inherited.write::<T>(&mut inherited_data_writer)?;
@@ -208,7 +246,7 @@ impl ChunkReadWrite for AlifeObject {
     )?)?;
     data_spawn_writer.write_all(object_data_writer.flush_raw_into_buffer()?.as_slice())?;
 
-    updated_data_writer.write_u16::<T>(0)?;
+    updated_data_writer.write_u16::<T>(NET_ACTION_UPDATE)?;
     updated_data_writer.write_all(&self.update_data)?;
 
     data_update_writer.write_u16::<T>(to_format_size(
@@ -263,7 +301,7 @@ impl LtxImportExport for AlifeObject {
       version: section.read_field("version")?,
       game_type: section.read_field("game_type")?,
       script_version: section.read_field("script_version")?,
-      client_data_size: section.read_field("client_data_size")?,
+      client_data: decode_bytes_from_base64(&section.read_field::<String>("client_data")?)?,
       spawn_id: section.read_field("spawn_id")?,
       inherited: AlifeObjectInherited::import(section_name, ltx, &AlifeClass::from_cls_id(&clsid))?,
       update_data: decode_bytes_from_base64(&section.read_field::<String>("update_data")?)?,
@@ -289,7 +327,7 @@ impl LtxImportExport for AlifeObject {
       .set("version", self.version.to_string())
       .set("game_type", self.game_type.to_string())
       .set("script_version", self.script_version.to_string())
-      .set("client_data_size", self.client_data_size.to_string())
+      .set("client_data", encode_bytes_to_base64(&self.client_data))
       .set("spawn_id", self.spawn_id.to_string());
 
     self.inherited.export(section_name, ltx)?;
@@ -389,7 +427,7 @@ mod tests {
       version: 128,
       game_type: 1,
       script_version: 10,
-      client_data_size: 0,
+      client_data: Vec::new(),
       spawn_id: 2354,
       inherited: AlifeObjectInherited::CseAlifeItemCustomOutfit(Box::new(AlifeObjectItemCustomOutfit {
         base: AlifeObjectItem {
@@ -408,7 +446,7 @@ mod tests {
             visual_flags: 0,
           },
           condition: 1.0,
-          upgrades_count: 0,
+          upgrades: Vec::new(),
         },
       })),
       update_data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
@@ -456,7 +494,7 @@ mod tests {
       version: 128,
       game_type: 1,
       script_version: 10,
-      client_data_size: 0,
+      client_data: Vec::new(),
       spawn_id: 2354,
       inherited: AlifeObjectInherited::CseAlifeItemCustomOutfit(Box::new(AlifeObjectItemCustomOutfit {
         base: AlifeObjectItem {
@@ -475,7 +513,7 @@ mod tests {
             visual_flags: 0,
           },
           condition: 0.2,
-          upgrades_count: 0,
+          upgrades: Vec::new(),
         },
       })),
       update_data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
@@ -511,7 +549,7 @@ mod tests {
       version: 128,
       game_type: 1,
       script_version: 10,
-      client_data_size: 0,
+      client_data: Vec::new(),
       spawn_id: 2354,
       inherited: AlifeObjectInherited::CseAlifeItemCustomOutfit(Box::new(AlifeObjectItemCustomOutfit {
         base: AlifeObjectItem {
@@ -530,7 +568,7 @@ mod tests {
             visual_flags: 2,
           },
           condition: 1.0,
-          upgrades_count: 0,
+          upgrades: Vec::new(),
         },
       })),
       update_data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
@@ -569,7 +607,7 @@ mod tests {
       version: 128,
       game_type: 1,
       script_version: 10,
-      client_data_size: 0,
+      client_data: Vec::new(),
       spawn_id: 2355,
       inherited: AlifeObjectInherited::CseAlifeGraphPoint(Box::new(AlifeGraphPoint {
         connection_point_name: String::from("connection-point"),
@@ -686,5 +724,39 @@ mod tests {
     }
 
     Ok(())
+  }
+
+  /// `CSE_Abstract::Spawn_Read` reads client data whatever its size, so a spawn carrying some reads and writes back.
+  #[test]
+  fn carries_client_data_through_a_round_trip() -> XrfResult {
+    let mut original: AlifeObject = new_graph_point_object();
+
+    original.client_data = vec![4, 8, 15, 16, 23, 42];
+
+    let mut writer: ChunkWriter = ChunkWriter::new();
+
+    original.write::<XRayByteOrder>(&mut writer)?;
+
+    let mut reader: ChunkReader<InMemoryChunkDataSource> =
+      ChunkReader::from_vec(writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?.read_child_by_index(0)?;
+
+    assert_eq!(AlifeObject::read::<XRayByteOrder, _>(&mut reader)?, original);
+
+    Ok(())
+  }
+
+  /// The engine picks the payload's reader by section, so a payload of another class would be misread.
+  #[test]
+  fn refuses_to_write_a_payload_its_section_does_not_read() {
+    let mut original: AlifeObject = new_graph_point_object();
+
+    original.section = String::from("medkit");
+
+    let error: String = original
+      .write::<XRayByteOrder>(&mut ChunkWriter::new())
+      .expect_err("a graph point payload under an item section")
+      .to_string();
+
+    assert!(error.contains("of section 'medkit' (SFood, CseAlifeItem)"), "{error}");
   }
 }

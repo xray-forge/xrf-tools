@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxImportExport, Section};
-use xrf_utils::assert_equal;
+use xrf_utils::{to_format_size, vector_from_string, vector_to_string};
 
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 
@@ -13,28 +13,39 @@ use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynam
 pub struct AlifeObjectItem {
   pub base: AlifeObjectDynamicVisual,
   pub condition: f32,
-  pub upgrades_count: u32,
+  /// The upgrade sections installed on the item (`CSE_ALifeInventoryItem::m_upgrades`).
+  pub upgrades: Vec<String>,
 }
 
 impl ChunkReadWrite for AlifeObjectItem {
   /// Read ALife item object data from the chunk.
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let object: Self = Self {
-      base: reader.read_xr::<T, _>()?,
-      condition: reader.read_f32::<T>()?,
-      upgrades_count: reader.read_u32::<T>()?,
-    };
+    let base: AlifeObjectDynamicVisual = reader.read_xr::<T, _>()?;
+    let condition: f32 = reader.read_f32::<T>()?;
+    let count: u32 = reader.read_u32::<T>()?;
+    // An upgrade is at least the terminator of an empty name.
+    let mut upgrades: Vec<String> = reader.new_bounded_vec(count.into(), 1, "item upgrades")?;
 
-    assert_equal(object.upgrades_count, 0, "Unexpected upgraded item provided")?;
+    for _ in 0..count {
+      upgrades.push(reader.read_w1251_string()?);
+    }
 
-    Ok(object)
+    Ok(Self {
+      base,
+      condition,
+      upgrades,
+    })
   }
 
   /// Write item data into the writer.
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_xr::<T, _>(&self.base)?;
     writer.write_f32::<T>(self.condition)?;
-    writer.write_u32::<T>(self.upgrades_count)?;
+    writer.write_u32::<T>(to_format_size(self.upgrades.len(), "item upgrades")?)?;
+
+    for upgrade in &self.upgrades {
+      writer.write_w1251_string(upgrade)?;
+    }
 
     Ok(())
   }
@@ -54,7 +65,7 @@ impl LtxImportExport for AlifeObjectItem {
     Ok(Self {
       base: AlifeObjectDynamicVisual::import(section_name, ltx)?,
       condition: section.read_field("item.condition")?,
-      upgrades_count: section.read_field("item.upgrades_count")?,
+      upgrades: vector_from_string(&section.read_field::<String>("item.upgrades")?)?,
     })
   }
 
@@ -65,7 +76,7 @@ impl LtxImportExport for AlifeObjectItem {
     ltx
       .with_section(section_name)
       .set("item.condition", self.condition.to_string())
-      .set("item.upgrades_count", self.upgrades_count.to_string());
+      .set("item.upgrades", vector_to_string(&self.upgrades));
 
     Ok(())
   }
@@ -77,7 +88,7 @@ mod tests {
   use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_ltx::{Ltx, LtxImportExport};
   use xrf_test_utils::{FileSlice, GeneratedResources};
@@ -107,7 +118,7 @@ mod tests {
         visual_flags: 33,
       },
       condition: 0.5,
-      upgrades_count: 0,
+      upgrades: Vec::new(),
     };
 
     original.write::<XRayByteOrder>(&mut writer)?;
@@ -126,6 +137,40 @@ mod tests {
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
     assert_eq!(AlifeObjectItem::read::<XRayByteOrder, _>(&mut reader)?, original);
+
+    Ok(())
+  }
+
+  /// An item placed upgraded carries each upgrade's section after the count, `save_data` of `m_upgrades`.
+  #[test]
+  fn reads_and_writes_the_upgrades_an_item_carries() -> XrfResult {
+    let mut writer: ChunkWriter = ChunkWriter::new();
+    let original: AlifeObjectItem = AlifeObjectItem {
+      base: AlifeObjectDynamicVisual {
+        base: AlifeObjectAbstract {
+          game_vertex_id: 1,
+          distance: 0.0,
+          direct_control: 1,
+          level_vertex_id: 2,
+          flags: 0,
+          custom_data: String::new(),
+          story_id: AlifeObjectAbstract::INVALID_STORY_ID,
+          spawn_story_id: AlifeObjectAbstract::INVALID_STORY_ID,
+        },
+        visual_name: String::new(),
+        visual_flags: 0,
+      },
+      condition: 1.0,
+      upgrades: vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")],
+    };
+
+    original.write::<XRayByteOrder>(&mut writer)?;
+
+    let mut reader: ChunkReader<InMemoryChunkDataSource> =
+      ChunkReader::from_vec(writer.flush_chunk_into_buffer::<XRayByteOrder>(0)?)?.read_child_by_index(0)?;
+
+    assert_eq!(AlifeObjectItem::read::<XRayByteOrder, _>(&mut reader)?, original);
+    reader.assert_read("Expect the upgrades to end the item")?;
 
     Ok(())
   }
@@ -151,7 +196,7 @@ mod tests {
         visual_flags: 234,
       },
       condition: 0.1,
-      upgrades_count: 16,
+      upgrades: vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")],
     };
 
     original.export("data", &mut ltx)?;
@@ -183,7 +228,7 @@ mod tests {
         visual_flags: 25,
       },
       condition: 0.65,
-      upgrades_count: 2,
+      upgrades: vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")],
     };
 
     let mut file: File =

@@ -102,7 +102,7 @@ fn object(name: &str, lamp: AlifeObjectHangingLamp) -> AlifeObject {
     version: 128,
     game_type: 0,
     script_version: 12,
-    client_data_size: 0,
+    client_data: Vec::new(),
     spawn_id: 0,
     inherited: AlifeObjectInherited::CseAlifeObjectHangingLamp(Box::new(lamp)),
     update_data: Vec::new(),
