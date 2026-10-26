@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
 use xrf_error::{XrfError, XrfResult};
-use xrf_pack::{ArchivePackHeaderEntry, VOLUME_SIZE_MAX, VOLUME_SIZE_MIN};
+use xrf_pack::{ArchivePackConfig, ArchivePackHeaderEntry};
 
 use crate::commands::archive::ArchiveVolumeRequest;
 
@@ -57,8 +57,8 @@ impl ArchiveVolumeArguments {
         Arg::new(Self::MAX_SIZE)
           .help(format!(
             "Maximum volume size in megabytes, from {} to {}",
-            VOLUME_SIZE_MIN / xrf_utils::BYTES_PER_MEGABYTE,
-            VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
+            ArchivePackConfig::VOLUME_SIZE_MIN / xrf_utils::BYTES_PER_MEGABYTE,
+            ArchivePackConfig::VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
           ))
           .long(Self::MAX_SIZE)
           .value_parser(value_parser!(u64).range(1..)),
@@ -67,7 +67,7 @@ impl ArchiveVolumeArguments {
         Arg::new(Self::OVERSIZED)
           .help(format!(
             "Let --max-size exceed {} MB, which only an engine fork that raised XRP_MAX_SIZE can mount",
-            VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
+            ArchivePackConfig::VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
           ))
           .long(Self::OVERSIZED)
           .action(ArgAction::SetTrue),
@@ -136,12 +136,12 @@ impl ArchiveVolumeArguments {
 
     // Asked here as well as in the configuration, so the refusal can name the flag that lifts it. The configuration
     // refuses the same size regardless; this is the surface's own wording, not its own rule.
-    if size > VOLUME_SIZE_MAX && !is_oversized_allowed {
+    if size > ArchivePackConfig::VOLUME_SIZE_MAX && !is_oversized_allowed {
       return Err(XrfError::new_invalid_error(format!(
         "Volume size {} is past the {} MB the engine mounts. Pass --oversized-volumes to publish volumes only a fork \
          that raised XRP_MAX_SIZE can open.",
         xrf_utils::format_bytes(size),
-        VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
+        ArchivePackConfig::VOLUME_SIZE_MAX / xrf_utils::BYTES_PER_MEGABYTE
       )));
     }
 

@@ -6,6 +6,7 @@ use xrf_ltx::Ltx;
 use xrf_utils::{StagedFile, format_path};
 
 use crate::archive_config_format::ArchiveConfigFormat;
+use crate::archive_config_ltx::ArchiveConfigLtx;
 use crate::pack::config::{ArchivePackConfig, ArchivePackConfigJson};
 
 impl ArchivePackConfig {
@@ -19,7 +20,7 @@ impl ArchivePackConfig {
     let path: &Path = path.as_ref();
 
     match ArchiveConfigFormat::of_pack_config(path)? {
-      ArchiveConfigFormat::Ltx => self.with_ltx(&Ltx::read_from_file_standard(path)?),
+      ArchiveConfigFormat::Ltx => Ok(self.with_ltx(&Ltx::read_from_file_standard(path)?)),
       ArchiveConfigFormat::Json => {
         let json: ArchivePackConfigJson = ArchivePackConfigJson::parse(&fs::read(path)?).map_err(|error| {
           XrfError::new_parsing_error(format!(
@@ -43,8 +44,8 @@ impl ArchivePackConfig {
     let path: &Path = path.as_ref();
 
     let rendered: Vec<u8> = match ArchiveConfigFormat::of_pack_config(path)? {
-      ArchiveConfigFormat::Ltx => self.to_ltx_bytes()?,
-      ArchiveConfigFormat::Json => self.to_json().render()?.into_bytes(),
+      ArchiveConfigFormat::Ltx => ArchiveConfigLtx::render(&Ltx::from(self))?,
+      ArchiveConfigFormat::Json => ArchivePackConfigJson::from(self).render()?.into_bytes(),
     };
 
     StagedFile::write(path, &rendered).map_err(|error| {

@@ -9,9 +9,7 @@ use xrf_utils::format_path;
 use crate::pack::config::ArchivePackConfig;
 use crate::pack::source::{ArchivePackNameTable, ArchivePackPayloads, ArchivePackSource, ArchivePackSourceCollector};
 use crate::pack::volume::{ArchiveDescriptorTable, ArchivePublishedSet, ArchiveVolumeLayout, ArchiveVolumeWriter};
-use crate::pack::{
-  ArchivePackNarrator, ArchivePackOptions, ArchivePackResult, PACK_PHASE_COLLECT, PACK_PHASE_FINALIZE, PACK_PHASE_WRITE,
-};
+use crate::pack::{ArchivePackNarrator, ArchivePackOptions, ArchivePackResult};
 
 /// Writes one volume set from a source tree.
 pub struct ArchivePacker;
@@ -113,7 +111,7 @@ impl ArchivePacker {
     narrator.describe_settings(config);
 
     let source: ArchivePackSource = {
-      let collecting: JobScope = job.enter(PACK_PHASE_COLLECT, None);
+      let collecting: JobScope = job.enter(ArchivePackOptions::PHASE_COLLECT, None);
 
       ArchivePackSourceCollector::collect_opt(config, &collecting, narrator.is_recording())?
     };
@@ -151,7 +149,7 @@ impl ArchivePacker {
       &ArchivePackPayloads::Host,
       job,
       &narrator,
-      PACK_PHASE_WRITE,
+      ArchivePackOptions::PHASE_WRITE,
     )?;
 
     if result.outcome == JobOutcome::Cancelled {
@@ -225,7 +223,7 @@ impl ArchivePacker {
     //
     // The binding is what holds it open. `let _ = job.enter(..)` would drop the scope immediately and leave the run
     // reporting the phase it had already left, so keep the name even though nothing reads it.
-    let _finalizing: JobScope = job.enter(PACK_PHASE_FINALIZE, None);
+    let _finalizing: JobScope = job.enter(ArchivePackOptions::PHASE_FINALIZE, None);
 
     job.set_detail(None);
 

@@ -10,9 +10,7 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobOutcome, JobScope};
 use xrf_utils::{HostDestination, HostRelativePath};
 
-use crate::unpack::archive_extract_options::{EXTRACT_PHASE_PREPARE, EXTRACT_PHASE_WRITE};
-use crate::unpack::tree_entry::TreeEntry;
-use crate::unpack::tree_write_summary::TreeWriteSummary;
+use crate::unpack::{ArchiveExtractOptions, TreeEntry, TreeWriteSummary};
 
 /// Writes a selected set of entries below a destination root, as wide as the installed pool.
 pub(crate) struct TreeWriter;
@@ -34,7 +32,7 @@ impl TreeWriter {
     F: Fn(&T, &mut File) -> XrfResult<u64> + Sync,
   {
     let prepared: HashMap<PathBuf, PathBuf> = {
-      let preparing: JobScope = job.enter(EXTRACT_PHASE_PREPARE, None);
+      let preparing: JobScope = job.enter(ArchiveExtractOptions::PHASE_PREPARE, None);
 
       Self::create_directories(destination, entries, &preparing)?
     };
@@ -45,7 +43,7 @@ impl TreeWriter {
     let bytes: AtomicU64 = AtomicU64::new(0);
 
     let is_cancelled: bool = {
-      let writing: JobScope = job.enter(EXTRACT_PHASE_WRITE, Some(entries.len() as u64));
+      let writing: JobScope = job.enter(ArchiveExtractOptions::PHASE_WRITE, Some(entries.len() as u64));
 
       let outcome: XrfResult = entries
         .par_iter()

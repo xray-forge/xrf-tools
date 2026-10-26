@@ -4,27 +4,7 @@ use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::HostFileName;
 
-use crate::pack::config::archive_pack_directory::ArchivePackDirectory;
-use crate::pack::config::archive_pack_header_rules::require_loadable_header;
-use crate::pack::config::archive_pack_mode::ArchivePackMode;
-use crate::pack::config::archive_volume_extension::ArchiveVolumeExtension;
-
-/// Largest volume the engine will open, and the default (`XRP_MAX_SIZE` in `xrCompress.h`).
-pub const VOLUME_SIZE_MAX: u64 = 1900 * xrf_utils::BYTES_PER_MEGABYTE;
-
-/// Smallest volume size a caller may ask for.
-pub const VOLUME_SIZE_MIN: u64 = xrf_utils::BYTES_PER_MEGABYTE;
-
-/// Ceiling no configuration may pass, whatever it allows.
-pub const VOLUME_SIZE_HARD_MAX: u64 = 32 * xrf_utils::BYTES_PER_GIGABYTE;
-
-/// Where a packed `gamedata` tree mounts, which is what nearly every archive is.
-pub const DEFAULT_ENTRY_POINT: &str = "$fs_root$\\gamedata\\";
-
-/// Header written unless a configuration supplies its own.
-pub fn default_header() -> String {
-  format!("[header]\r\nauto_load = true\r\nentry_point = {DEFAULT_ENTRY_POINT}\r\n")
-}
+use crate::pack::config::{ArchivePackDirectory, ArchivePackHeader, ArchivePackMode, ArchiveVolumeExtension};
 
 /// Everything needed to pack one archive volume set.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -50,13 +30,22 @@ pub struct ArchivePackConfig {
   /// they are actually stored, and the descriptor table written last. Packing refuses a cap it cannot keep rather
   /// than exceeding it, which is stricter than the target xrCompress tests before each file and routinely overshoots.
   pub max_volume_size: u64,
-  /// Let `max_volume_size` exceed `VOLUME_SIZE_MAX`, for an engine fork that raised `XRP_MAX_SIZE`.
+  /// Let `max_volume_size` exceed [`Self::VOLUME_SIZE_MAX`], for an engine fork that raised `XRP_MAX_SIZE`.
   #[serde(default)]
   pub is_with_oversized_volumes: bool,
   pub volume_extension: ArchiveVolumeExtension,
 }
 
 impl ArchivePackConfig {
+  /// Largest volume the engine will open, and the default (`XRP_MAX_SIZE` in `xrCompress.h`).
+  pub const VOLUME_SIZE_MAX: u64 = 1900 * xrf_utils::BYTES_PER_MEGABYTE;
+
+  /// Smallest volume size a caller may ask for.
+  pub const VOLUME_SIZE_MIN: u64 = xrf_utils::BYTES_PER_MEGABYTE;
+
+  /// Ceiling no configuration may pass, whatever it allows.
+  pub const VOLUME_SIZE_HARD_MAX: u64 = 32 * xrf_utils::BYTES_PER_GIGABYTE;
+
   pub fn new<S: AsRef<Path>, D: AsRef<Path>>(source: S, destination: D, name: &str) -> Self {
     Self {
       source: source.as_ref().into(),
@@ -67,9 +56,9 @@ impl ArchivePackConfig {
       exclude_directories: Vec::new(),
       exclude_extensions: Vec::new(),
       is_with_skip_list: true,
-      header: Some(default_header()),
+      header: Some(ArchivePackHeader::default_text()),
       mode: ArchivePackMode::default(),
-      max_volume_size: VOLUME_SIZE_MAX,
+      max_volume_size: Self::VOLUME_SIZE_MAX,
       is_with_oversized_volumes: false,
       volume_extension: ArchiveVolumeExtension::default(),
     }
@@ -79,8 +68,8 @@ impl ArchivePackConfig {
   ///
   /// # Errors
   ///
-  /// Returns an invalid error below `VOLUME_SIZE_MIN`, or above `VOLUME_SIZE_MAX` unless oversized volumes are
-  /// allowed.
+  /// Returns an invalid error below [`Self::VOLUME_SIZE_MIN`], or above [`Self::VOLUME_SIZE_MAX`] unless oversized
+  /// volumes are allowed.
   pub fn with_max_volume_size(mut self, size: u64) -> XrfResult<Self> {
     Self::check_volume_size(size, self.is_with_oversized_volumes)?;
 
@@ -89,21 +78,22 @@ impl ArchivePackConfig {
     Ok(self)
   }
 
-  /// Refuses a volume size a person asks for outside the range the engine can mount: under `VOLUME_SIZE_MIN`, which is
-  /// more likely a unit mistaken than a set meant to hold a few kilobytes a volume, or past what
-  /// [`Self::check_volume_bounds`] refuses.
+  /// Refuses a volume size a person asks for outside the range the engine can mount: under
+  /// [`Self::VOLUME_SIZE_MIN`], which is more likely a unit mistaken than a set meant to hold a few kilobytes a volume,
+  /// or past what [`Self::check_volume_bounds`] refuses.
   pub(crate) fn check_volume_size(size: u64, is_oversized_allowed: bool) -> XrfResult {
-    if size < VOLUME_SIZE_MIN {
+    if size < Self::VOLUME_SIZE_MIN {
       return Err(XrfError::new_invalid_error(format!(
-        "Archive volume size must be at least {VOLUME_SIZE_MIN} bytes, got {size}"
+        "Archive volume size must be at least {} bytes, got {size}",
+        Self::VOLUME_SIZE_MIN
       )));
     }
 
     Self::check_volume_bounds(size, is_oversized_allowed)
   }
 
-  /// Refuses a volume size no set can be packed at: none, past `VOLUME_SIZE_MAX` unless oversized volumes are allowed,
-  /// and past `VOLUME_SIZE_HARD_MAX` ever.
+  /// Refuses a volume size no set can be packed at: none, past [`Self::VOLUME_SIZE_MAX`] unless oversized volumes are
+  /// allowed, and past [`Self::VOLUME_SIZE_HARD_MAX`] ever.
   fn check_volume_bounds(size: u64, is_oversized_allowed: bool) -> XrfResult {
     if size == 0 {
       return Err(XrfError::new_invalid_error(
@@ -111,26 +101,29 @@ impl ArchivePackConfig {
       ));
     }
 
-    if size > VOLUME_SIZE_HARD_MAX {
+    if size > Self::VOLUME_SIZE_HARD_MAX {
       return Err(XrfError::new_invalid_error(format!(
-        "Archive volume size must not exceed {VOLUME_SIZE_HARD_MAX} bytes, got {size}. Nothing lifts this bound; \
-         check the number for a stray digit."
+        "Archive volume size must not exceed {} bytes, got {size}. Nothing lifts this bound; check the number for a \
+         stray digit.",
+        Self::VOLUME_SIZE_HARD_MAX
       )));
     }
 
-    if size > VOLUME_SIZE_MAX && !is_oversized_allowed {
+    if size > Self::VOLUME_SIZE_MAX && !is_oversized_allowed {
       return Err(XrfError::new_invalid_error(format!(
-        "Archive volume size must not exceed {VOLUME_SIZE_MAX} bytes, got {size}. No unmodified engine mounts \
-         a larger volume; allow oversized volumes to pack one anyway."
+        "Archive volume size must not exceed {} bytes, got {size}. No unmodified engine mounts a larger volume; allow \
+         oversized volumes to pack one anyway.",
+        Self::VOLUME_SIZE_MAX
       )));
     }
 
     Ok(())
   }
 
-  /// Allow a volume size past `VOLUME_SIZE_MAX`, which only an engine fork that raised `XRP_MAX_SIZE` can open.
+  /// Allow a volume size past [`Self::VOLUME_SIZE_MAX`], which only an engine fork that raised `XRP_MAX_SIZE` can
+  /// open.
   ///
-  /// `VOLUME_SIZE_HARD_MAX` still stands: this lifts an engine limit, not the guard against a mistyped number.
+  /// [`Self::VOLUME_SIZE_HARD_MAX`] still stands: this lifts an engine limit, not the guard against a mistyped number.
   pub fn with_oversized_volumes(mut self, is_allowed: bool) -> Self {
     self.is_with_oversized_volumes = is_allowed;
 
@@ -139,16 +132,13 @@ impl ArchivePackConfig {
 
   /// Reject a configuration that cannot produce an engine-mountable archive, or that would publish outside the
   /// destination the caller was shown.
-  ///
-  /// Runs before any filesystem operation, because both publication paths join the name to `destination`: the volume
-  /// each `File::create` opens, and the rename a lone volume ends under.
   pub(crate) fn validate_for_packing(&self) -> XrfResult {
     HostFileName::new(&self.name, "Archive name")?;
 
     // A header is optional; one that exists and cannot be loaded is not. Judged here rather than at each surface, so
     // a configuration file reaches the same answer a flag does.
     if let Some(header) = self.header.as_deref() {
-      require_loadable_header(header)?;
+      ArchivePackHeader::require_loadable(header)?;
     }
 
     // The minimum is a guard on what a person types, kept by the setters; a configuration packs at any size the
@@ -171,16 +161,14 @@ impl ArchivePackConfig {
 mod tests {
   use xrf_error::XrfError;
 
-  use super::{
-    ArchivePackConfig, ArchivePackMode, ArchiveVolumeExtension, VOLUME_SIZE_HARD_MAX, VOLUME_SIZE_MAX, VOLUME_SIZE_MIN,
-  };
+  use super::{ArchivePackConfig, ArchivePackMode, ArchiveVolumeExtension};
 
   #[test]
   fn defaults_match_the_engine() {
     let config: ArchivePackConfig = ArchivePackConfig::new("gamedata", "db", "configs");
 
     assert_eq!(config.mode, ArchivePackMode::Compress);
-    assert_eq!(config.max_volume_size, VOLUME_SIZE_MAX);
+    assert_eq!(config.max_volume_size, ArchivePackConfig::VOLUME_SIZE_MAX);
     assert_eq!(config.volume_extension, ArchiveVolumeExtension::Db);
     assert!(config.is_with_skip_list, "the vanilla skip list is on by default");
   }
@@ -199,7 +187,7 @@ mod tests {
 
   #[test]
   fn packs_an_oversized_volume_only_when_that_is_asked_for_explicitly() {
-    let oversized: u64 = VOLUME_SIZE_MAX + 1;
+    let oversized: u64 = ArchivePackConfig::VOLUME_SIZE_MAX + 1;
 
     // The escape hatch is applied first, and the size it lifts the bound for is then taken as given.
     let config: ArchivePackConfig = ArchivePackConfig::new("gamedata", "db", "configs")
@@ -221,14 +209,14 @@ mod tests {
     assert!(
       ArchivePackConfig::new("gamedata", "db", "configs")
         .with_oversized_volumes(true)
-        .with_max_volume_size(VOLUME_SIZE_MIN - 1)
+        .with_max_volume_size(ArchivePackConfig::VOLUME_SIZE_MIN - 1)
         .is_err()
     );
   }
 
   #[test]
   fn keeps_the_typo_guard_above_everything_the_fork_flag_lifts() {
-    let mistyped: u64 = VOLUME_SIZE_HARD_MAX + 1;
+    let mistyped: u64 = ArchivePackConfig::VOLUME_SIZE_HARD_MAX + 1;
     let error: XrfError = ArchivePackConfig::new("gamedata", "db", "configs")
       .with_oversized_volumes(true)
       .with_max_volume_size(mistyped)
@@ -245,7 +233,7 @@ mod tests {
     assert!(config.validate_for_packing().is_err());
 
     // The bound itself is allowed, so the refusal is a ceiling rather than an off-by-one.
-    config.max_volume_size = VOLUME_SIZE_HARD_MAX;
+    config.max_volume_size = ArchivePackConfig::VOLUME_SIZE_HARD_MAX;
 
     assert!(config.validate_for_packing().is_ok());
   }
@@ -265,8 +253,10 @@ mod tests {
 
   #[test]
   fn refuses_a_volume_size_outside_the_range_the_engine_mounts() {
+    let (min, max): (u64, u64) = (ArchivePackConfig::VOLUME_SIZE_MIN, ArchivePackConfig::VOLUME_SIZE_MAX);
+
     // Neither bound is clamped: an accepted size is the size that was asked for.
-    for size in [VOLUME_SIZE_MIN, VOLUME_SIZE_MAX, VOLUME_SIZE_MIN + 1] {
+    for size in [min, max, min + 1] {
       let config: ArchivePackConfig = ArchivePackConfig::new("gamedata", "db", "configs")
         .with_max_volume_size(size)
         .expect("a size within range is taken as given");
@@ -274,7 +264,7 @@ mod tests {
       assert_eq!(config.max_volume_size, size);
     }
 
-    for size in [0, 1, VOLUME_SIZE_MIN - 1, VOLUME_SIZE_MAX + 1, VOLUME_SIZE_MAX * 4] {
+    for size in [0, 1, min - 1, max + 1, max * 4] {
       assert!(
         ArchivePackConfig::new("gamedata", "db", "configs")
           .with_max_volume_size(size)

@@ -4,15 +4,6 @@ use xrf_error::XrfResult;
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory, ArchivePackHeaderEntry};
 
 /// A packing configuration as JSON carries it: the file-owned fields, and nothing else.
-///
-/// [`ArchivePackConfig`] is the whole run — source, destination, volume name, mode, volume size — and most of it
-/// belongs to the invocation or the open form rather than to a file shared between machines. This is the subset an
-/// LTX has always carried, given a shape of its own so JSON and LTX are two serializations of one payload rather
-/// than two unrelated features.
-///
-/// Every field is optional, and an absent one means the same thing an absent LTX section does: leave what the caller
-/// already holds. That is what makes importing a file a layering step rather than a replacement, so the explicit
-/// options of a command line or a form keep winning over it.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ArchivePackConfigJson {
@@ -32,9 +23,6 @@ pub struct ArchivePackConfigJson {
 impl ArchivePackConfigJson {
   /// Read one out of its JSON text.
   ///
-  /// Strict on purpose: an unknown key is refused rather than ignored, because a file whose `includeFiles` was typed
-  /// `includeFile` would otherwise pack a different archive than the one it describes, and say nothing.
-  ///
   /// # Errors
   ///
   /// Returns a parse error for malformed JSON, an unknown key, or a value of the wrong shape.
@@ -43,10 +31,6 @@ impl ArchivePackConfigJson {
   }
 
   /// Render it as JSON text.
-  ///
-  /// Deterministic: fields are written in declaration order, an absent one is omitted rather than written as null,
-  /// and the text ends with a newline the way every other text artifact here does. Two runs over equal values
-  /// produce equal bytes, so a checked-in configuration only changes when its contents do.
   ///
   /// # Errors
   ///
@@ -59,23 +43,21 @@ impl ArchivePackConfigJson {
     Ok(rendered)
   }
 
+  fn some_if_populated<T: Clone>(values: &[T]) -> Option<Vec<T>> {
+    (!values.is_empty()).then(|| values.to_vec())
+  }
+}
+
+impl From<&ArchivePackConfig> for ArchivePackConfigJson {
   /// Take the file-owned fields of a configuration, leaving the per-run ones behind.
-  ///
-  /// An empty collection is written as absent rather than as an empty list, matching an LTX export omitting a
-  /// section it has no entries for. Both serializations therefore say "nothing to apply here" the same way, and a
-  /// round trip through either leaves a caller's own values alone.
-  pub fn from_config(config: &ArchivePackConfig) -> Self {
+  fn from(config: &ArchivePackConfig) -> Self {
     Self {
-      exclude_extensions: Self::some_if_populated(config.exclude_extensions.clone()),
-      include_files: Self::some_if_populated(config.include_files.clone()),
-      include_directories: Self::some_if_populated(config.include_directories.clone()),
-      exclude_directories: Self::some_if_populated(config.exclude_directories.clone()),
+      exclude_extensions: Self::some_if_populated(&config.exclude_extensions),
+      include_files: Self::some_if_populated(&config.include_files),
+      include_directories: Self::some_if_populated(&config.include_directories),
+      exclude_directories: Self::some_if_populated(&config.exclude_directories),
       header: config.header.as_deref().map(ArchivePackHeaderEntry::split),
     }
-  }
-
-  fn some_if_populated<T>(values: Vec<T>) -> Option<Vec<T>> {
-    (!values.is_empty()).then_some(values)
   }
 }
 
@@ -106,10 +88,5 @@ impl ArchivePackConfig {
     }
 
     self
-  }
-
-  /// Take the file-owned fields of this configuration in the shape JSON carries.
-  pub fn to_json(&self) -> ArchivePackConfigJson {
-    ArchivePackConfigJson::from_config(self)
   }
 }

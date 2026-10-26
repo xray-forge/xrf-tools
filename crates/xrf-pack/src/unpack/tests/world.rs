@@ -6,9 +6,8 @@ use xrf_job::{ExecutionRequest, JobOutcome};
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XraySearch, XraySearchPlan, XraySearchStep, XrayVfs};
 
-use crate::unpack::archive_extract_directory_result::ArchiveExtractDirectoryResult;
-use crate::unpack::archive_extract_result::ArchiveExtractResult;
 use crate::unpack::xray_world_extractor::XrayWorldExtractor;
+use crate::unpack::{ArchiveExtractDirectoryResult, ArchiveExtractResult};
 
 fn tree(name: &str, files: &[(&str, &str)]) -> PathBuf {
   let root: PathBuf =

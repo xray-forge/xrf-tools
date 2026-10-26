@@ -17,7 +17,6 @@ mod archive_pack_entry_outcome;
 mod archive_pack_narrator;
 mod archive_pack_options;
 mod archive_pack_result;
-mod archive_pack_skip_reason;
 mod archive_packer;
 
 #[cfg(test)]
@@ -25,7 +24,6 @@ mod tests;
 
 pub(crate) use archive_pack_entry_outcome::ArchivePackEntryOutcome;
 pub(crate) use archive_pack_narrator::ArchivePackNarrator;
-pub use archive_pack_options::{ArchivePackOptions, PACK_PHASE_COLLECT, PACK_PHASE_FINALIZE, PACK_PHASE_WRITE};
+pub use archive_pack_options::ArchivePackOptions;
 pub use archive_pack_result::ArchivePackResult;
-pub(crate) use archive_pack_skip_reason::ArchivePackSkipReason;
 pub use archive_packer::ArchivePacker;

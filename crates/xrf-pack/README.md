@@ -118,9 +118,9 @@ otherwise.
 `max_volume_size` caps each finished volume, including chunk headers, header text, stored payloads, and the descriptor
 table. Unlike xrCompress's `XRP_TARGET_SIZE`, it cannot be exceeded by the next file or the final table.
 
-The cap defaults to `VOLUME_SIZE_MAX`, matching the engine's `XRP_MAX_SIZE`, and may not go below `VOLUME_SIZE_MIN`.
-For an engine fork with a higher limit, call `with_oversized_volumes(true)` before `with_max_volume_size`.
-`VOLUME_SIZE_HARD_MAX` still applies.
+The cap defaults to `ArchivePackConfig::VOLUME_SIZE_MAX`, matching the engine's `XRP_MAX_SIZE`, and may not go below
+`VOLUME_SIZE_MIN`. For an engine fork with a higher limit, call `with_oversized_volumes(true)` before
+`with_max_volume_size`. `VOLUME_SIZE_HARD_MAX` still applies.
 
 - A cap too small for the headers, directory rows, and one entry is rejected before writing.
 - A file that cannot fit in an empty volume is rejected with its name and required volume size. Raise the cap,

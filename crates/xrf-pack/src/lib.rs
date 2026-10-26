@@ -1,6 +1,8 @@
 #![doc = include_str!("../README.md")]
 
 mod archive_config_format;
+mod archive_config_ltx;
+mod archive_extension_pattern;
 #[cfg(test)]
 mod asset_source_tests;
 pub(crate) mod pack;
@@ -11,20 +13,13 @@ pub(crate) mod unpack;
 pub use crate::archive_config_format::ArchiveConfigFormat;
 pub use crate::pack::config::{
   ArchivePackConfig, ArchivePackConfigJson, ArchivePackDirectory, ArchivePackHeaderEntry, ArchivePackMode,
-  ArchiveVolumeExtension, VOLUME_SIZE_HARD_MAX, VOLUME_SIZE_MAX, VOLUME_SIZE_MIN,
+  ArchiveVolumeExtension,
 };
-pub use crate::pack::{
-  ArchivePackOptions, ArchivePackResult, ArchivePacker, PACK_PHASE_COLLECT, PACK_PHASE_FINALIZE, PACK_PHASE_WRITE,
-};
+pub use crate::pack::{ArchivePackOptions, ArchivePackResult, ArchivePacker};
 pub use crate::patch::compare::{ArchivePatchChange, ArchivePatchClass, ArchivePatchOrigin, ArchivePatchSide};
 pub use crate::patch::config::{ArchivePatchConfig, ArchivePatchConfigJson};
-pub use crate::patch::{
-  ArchivePatchOptions, ArchivePatchPublication, ArchivePatchResult, ArchivePatcher, PATCH_PHASE_COMPARE,
-  PATCH_PHASE_PACK,
+pub use crate::patch::{ArchivePatchOptions, ArchivePatchPublication, ArchivePatchResult, ArchivePatcher};
+pub use crate::unpack::{
+  ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchiveExtractResult, ArchiveUnpackResult, ArchiveUnpacker,
+  XrayWorldExtractor,
 };
-pub use crate::unpack::archive_extract_directory_result::ArchiveExtractDirectoryResult;
-pub use crate::unpack::archive_extract_options::{ArchiveExtractOptions, EXTRACT_PHASE_PREPARE, EXTRACT_PHASE_WRITE};
-pub use crate::unpack::archive_extract_result::ArchiveExtractResult;
-pub use crate::unpack::archive_unpack_result::ArchiveUnpackResult;
-pub use crate::unpack::archive_unpacker::ArchiveUnpacker;
-pub use crate::unpack::xray_world_extractor::XrayWorldExtractor;

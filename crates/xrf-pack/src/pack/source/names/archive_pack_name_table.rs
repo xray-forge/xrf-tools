@@ -10,15 +10,6 @@ use crate::pack::source::{ArchivePackEntry, ArchivePackNameCollision, ArchivePac
 
 /// Every file and directory one packing run writes, under the name `CLocatorAPI::Register` folds it to, once each, in
 /// the order the engine's own table iterates.
-///
-/// `Register` lower-cases a name before its lookup in `m_files` and overwrites on a hit, so two authored names with one
-/// folded form are one file to the engine and only the payload registered last is ever readable. xrCompress never
-/// wrote such a pair, because its file list came out of that same folded table; the packing walk reads the host tree
-/// directly, which on a case-sensitive filesystem can hold both. Registering here, before any volume exists, is where
-/// a person can still rename one.
-///
-/// Rows keep their authored spelling. The folded names live only as long as registration, so what the write phase
-/// holds costs what the walk found.
 #[derive(Debug)]
 pub(crate) struct ArchivePackNameTable {
   files: Vec<ArchivePackEntry>,
@@ -28,11 +19,6 @@ pub(crate) struct ArchivePackNameTable {
 
 impl ArchivePackNameTable {
   /// Register what the walk found, refusing a set the engine would fold into fewer files.
-  ///
-  /// One file reached under two spellings — `[include_files]` naming what the walk also found, or a case-insensitive
-  /// host — is one payload and registers once, under the spelling that sorts first. Two different files under one
-  /// engine name are refused, every such name reported at once so a person fixes them in one pass. A directory row
-  /// has no payload to lose, so a folded pair of them simply registers once.
   ///
   /// # Errors
   ///
@@ -63,14 +49,10 @@ impl ArchivePackNameTable {
   }
 
   /// Register the files by engine name: one row per name, and every name more than one file claims.
-  ///
-  /// Sorted by engine name so each name arrives as one run, and unstably because two rows equal in both keys are one
-  /// name twice, of which the run keeps whichever came first; a stable sort would buy nothing but the buffer it
-  /// allocates.
   fn register_files(files: Vec<ArchivePackEntry>) -> XrfResult<(Vec<ArchivePackEntry>, Vec<ArchivePackNameCollision>)> {
     let mut keyed: Vec<(String, ArchivePackEntry)> = files
       .into_iter()
-      .map(|file| Ok((to_engine_name(&file.name)?, file)))
+      .map(|file| Ok((Self::to_engine_name(&file.name)?, file)))
       .collect::<XrfResult<_>>()?;
 
     keyed.sort_unstable_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.name.cmp(&right.1.name)));
@@ -88,7 +70,7 @@ impl ArchivePackNameTable {
   fn register_directories(directories: Vec<String>) -> XrfResult<Vec<String>> {
     let mut keyed: Vec<(String, String)> = directories
       .into_iter()
-      .map(|directory| Ok((to_engine_name(&directory)?, directory)))
+      .map(|directory| Ok((Self::to_engine_name(&directory)?, directory)))
       .collect::<XrfResult<_>>()?;
 
     keyed.sort_unstable_by(|left, right| left.0.cmp(&right.0).then_with(|| left.1.cmp(&right.1)));
@@ -96,12 +78,32 @@ impl ArchivePackNameTable {
 
     Ok(keyed.into_iter().map(|(_, directory)| directory).collect())
   }
+
+  /// The name `Register` folds an authored one to.
+  fn to_engine_name(name: &str) -> XrfResult<String> {
+    XrayLogicalPath::normalize(name).map_err(|error| {
+      XrfError::new_invalid_error(format!(
+        "Packing source entry '{name}' is not a name the engine can address: {error}"
+      ))
+    })
+  }
+
+  /// Whether two origins reach one file.
+  fn is_same_file(left: &ArchivePackOrigin, right: &ArchivePackOrigin) -> bool {
+    match (left, right) {
+      (ArchivePackOrigin::Host(left), ArchivePackOrigin::Host(right)) => {
+        match (fs::canonicalize(left), fs::canonicalize(right)) {
+          (Ok(left), Ok(right)) => left == right,
+          _ => false,
+        }
+      }
+      (ArchivePackOrigin::Mounted, ArchivePackOrigin::Mounted) => true,
+      _ => false,
+    }
+  }
 }
 
 /// Registration in progress over sorted rows.
-///
-/// Private to the table it builds: a half-registered set has no meaning of its own, and the run-detection it performs
-/// is only correct against input the table has already sorted.
 struct ArchivePackNameRegistration {
   rows: Vec<ArchivePackEntry>,
   collisions: Vec<ArchivePackNameCollision>,
@@ -129,10 +131,9 @@ impl ArchivePackNameRegistration {
       self.settle();
     }
 
-    let is_registered: bool = self
-      .claimants
-      .iter()
-      .any(|(_, claimant)| claimant.name == file.name || is_same_file(&claimant.origin, &file.origin));
+    let is_registered: bool = self.claimants.iter().any(|(_, claimant)| {
+      claimant.name == file.name || ArchivePackNameTable::is_same_file(&claimant.origin, &file.origin)
+    });
 
     if !is_registered {
       self.claimants.push((engine_name, file));
@@ -158,37 +159,6 @@ impl ArchivePackNameRegistration {
   }
 }
 
-/// The name `Register` folds an authored one to.
-fn to_engine_name(name: &str) -> XrfResult<String> {
-  XrayLogicalPath::normalize(name).map_err(|error| {
-    XrfError::new_invalid_error(format!(
-      "Packing source entry '{name}' is not a name the engine can address: {error}"
-    ))
-  })
-}
-
-/// Whether two origins reach one file.
-///
-/// Asked only of two entries claiming one engine name, so its cost is paid per collision rather than per row. Two host
-/// paths are the same file when they resolve to one; a path that cannot be resolved is not proven to be, and the claim
-/// stands, since the write phase would have failed on it anyway.
-///
-/// Two mounted origins are always the same file. A mounted world has already folded its own names and answers one
-/// entry per engine identity, so two rows claiming one name are that entry reached twice rather than a pair a person
-/// could rename apart.
-fn is_same_file(left: &ArchivePackOrigin, right: &ArchivePackOrigin) -> bool {
-  match (left, right) {
-    (ArchivePackOrigin::Host(left), ArchivePackOrigin::Host(right)) => {
-      match (fs::canonicalize(left), fs::canonicalize(right)) {
-        (Ok(left), Ok(right)) => left == right,
-        _ => false,
-      }
-    }
-    (ArchivePackOrigin::Mounted, ArchivePackOrigin::Mounted) => true,
-    _ => false,
-  }
-}
-
 #[cfg(test)]
 mod tests {
   use std::fs;
@@ -202,9 +172,6 @@ mod tests {
   use crate::pack::source::ArchivePackEntry;
 
   /// Rows the way the walk would hand them over, against host paths that need not exist.
-  ///
-  /// No case-insensitive filesystem can hold a case-only pair in one directory, so the pair is authored here rather
-  /// than on disk. Registration is a function over names and paths, which is what makes that possible.
   fn entries(names: &[&str]) -> Vec<ArchivePackEntry> {
     names
       .iter()
