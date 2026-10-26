@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -42,8 +42,8 @@ impl LtxImportExport for AlifeObjectVisual {
     })?;
 
     Ok(Self {
-      visual_name: read_ltx_field("visual.visual_name", section)?,
-      visual_flags: read_ltx_field("visual.visual_flags", section)?,
+      visual_name: section.read_field("visual.visual_name")?,
+      visual_flags: section.read_field("visual.visual_flags")?,
     })
   }
 

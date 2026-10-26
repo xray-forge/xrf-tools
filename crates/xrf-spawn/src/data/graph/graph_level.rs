@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_math::Vector3d;
 
 /// `GameGraph::SLevel::load` in xray codebase.
@@ -60,11 +60,11 @@ impl LtxImportExport for GraphLevel {
     })?;
 
     Ok(Self {
-      name: read_ltx_field("name", section)?,
-      offset: read_ltx_field("offset", section)?,
-      id: read_ltx_field("id", section)?,
-      section: read_ltx_field("section", section)?,
-      guid: read_ltx_field("guid", section)?,
+      name: section.read_field("name")?,
+      offset: section.read_field("offset")?,
+      id: section.read_field("id")?,
+      section: section.read_field("section")?,
+      guid: section.read_field("guid")?,
     })
   }
 

@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_utils::assert_equal;
 
 use crate::data::alife::inherited::alife_smart_zone::AlifeSmartZone;
@@ -106,13 +106,13 @@ impl LtxImportExport for AlifeSmartTerrain {
 
     Ok(Self {
       base: AlifeSmartZone::import(section_name, ltx)?,
-      arriving_objects_count: read_ltx_field("arriving_objects_count", section)?,
-      object_job_descriptors_count: read_ltx_field("object_job_descriptors_count", section)?,
-      dead_objects_infos_count: read_ltx_field("dead_objects_infos_count", section)?,
-      smart_terrain_actor_control: read_ltx_field("smart_terrain_actor_control", section)?,
-      respawn_point: read_ltx_field("respawn_point", section)?,
-      staying_objects_count: read_ltx_field("staying_objects_count", section)?,
-      save_marker: read_ltx_field("save_marker", section)?,
+      arriving_objects_count: section.read_field("arriving_objects_count")?,
+      object_job_descriptors_count: section.read_field("object_job_descriptors_count")?,
+      dead_objects_infos_count: section.read_field("dead_objects_infos_count")?,
+      smart_terrain_actor_control: section.read_field("smart_terrain_actor_control")?,
+      respawn_point: section.read_field("respawn_point")?,
+      staying_objects_count: section.read_field("staying_objects_count")?,
+      save_marker: section.read_field("save_marker")?,
     })
   }
 

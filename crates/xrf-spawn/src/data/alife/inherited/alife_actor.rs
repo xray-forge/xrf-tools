@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_utils::assert_equal;
 
 use crate::data::alife::inherited::alife_object_actor::AlifeObjectActor;
@@ -53,8 +53,8 @@ impl LtxImportExport for AlifeActor {
 
     Ok(Self {
       base: AlifeObjectActor::import(section_name, ltx)?,
-      start_position_filled: read_ltx_field("actor.start_position_filled", section)?,
-      save_marker: read_ltx_field("actor.save_marker", section)?,
+      start_position_filled: section.read_field("actor.start_position_filled")?,
+      save_marker: section.read_field("actor.save_marker")?,
     })
   }
 

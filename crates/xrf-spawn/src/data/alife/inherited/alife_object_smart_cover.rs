@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_dynamic::AlifeObjectDynamic;
 use crate::data::generic::shape::Shape;
@@ -65,12 +65,12 @@ impl LtxImportExport for AlifeObjectSmartCover {
     Ok(Self {
       base: AlifeObjectDynamic::import(section_name, ltx)?,
       shape: Shape::import_list(section)?,
-      description: read_ltx_field("description", section)?,
-      hold_position_time: read_ltx_field("hold_position_time", section)?,
-      enter_min_enemy_distance: read_ltx_field("enter_min_enemy_distance", section)?,
-      exit_min_enemy_distance: read_ltx_field("exit_min_enemy_distance", section)?,
-      is_combat_cover: read_ltx_field("is_combat_cover", section)?,
-      can_fire: read_ltx_field("can_fire", section)?,
+      description: section.read_field("description")?,
+      hold_position_time: section.read_field("hold_position_time")?,
+      enter_min_enemy_distance: section.read_field("enter_min_enemy_distance")?,
+      exit_min_enemy_distance: section.read_field("exit_min_enemy_distance")?,
+      is_combat_cover: section.read_field("is_combat_cover")?,
+      can_fire: section.read_field("can_fire")?,
     })
   }
   /// Export object data into ltx file.

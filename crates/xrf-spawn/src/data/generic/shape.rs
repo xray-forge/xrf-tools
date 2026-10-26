@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, Section, read_ltx_field};
+use xrf_ltx::{Ltx, Section};
 use xrf_math::Vector3d;
 use xrf_utils::{assert_length, to_format_size};
 
@@ -145,25 +145,25 @@ impl Shape {
   /// Import shape objects from ltx config file.
   pub fn import_list(section: &Section) -> XrfResult<Vec<Self>> {
     let mut shapes: Vec<Self> = Vec::new();
-    let count: usize = read_ltx_field("shapes_count", section)?;
+    let count: usize = section.read_field("shapes_count")?;
 
     for index in 0..count {
       let prefix: String = format!("shape.{index}");
-      let shape_type: String = read_ltx_field(&format!("{prefix}.type"), section)?;
+      let shape_type: String = section.read_field(&format!("{prefix}.type"))?;
 
       match shape_type.as_str() {
         "sphere" => {
           shapes.push(Self::Sphere((
-            read_ltx_field(&format!("{prefix}.center"), section)?,
-            read_ltx_field(&format!("{prefix}.radius"), section)?,
+            section.read_field(&format!("{prefix}.center"))?,
+            section.read_field(&format!("{prefix}.radius"))?,
           )));
         }
         "box" => {
           shapes.push(Self::Box((
-            read_ltx_field(&format!("{prefix}.a"), section)?,
-            read_ltx_field(&format!("{prefix}.b"), section)?,
-            read_ltx_field(&format!("{prefix}.c"), section)?,
-            read_ltx_field(&format!("{prefix}.d"), section)?,
+            section.read_field(&format!("{prefix}.a"))?,
+            section.read_field(&format!("{prefix}.b"))?,
+            section.read_field(&format!("{prefix}.c"))?,
+            section.read_field(&format!("{prefix}.d"))?,
           )));
         }
         _ => {

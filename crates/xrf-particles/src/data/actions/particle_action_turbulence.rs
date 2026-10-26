@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_math::Vector3d;
 
 use crate::data::particle_action_type::ParticleActionType;
@@ -56,13 +56,13 @@ impl LtxImportExport for ParticleActionTurbulence {
     })?;
 
     Ok(Self {
-      action_flags: read_ltx_field("action_flags", section)?,
-      action_type: read_ltx_field("action_type", section)?,
-      frequency: read_ltx_field("frequency", section)?,
-      octaves: read_ltx_field("octaves", section)?,
-      magnitude: read_ltx_field("magnitude", section)?,
-      epsilon: read_ltx_field("epsilon", section)?,
-      offset: read_ltx_field("offset", section)?,
+      action_flags: section.read_field("action_flags")?,
+      action_type: section.read_field("action_type")?,
+      frequency: section.read_field("frequency")?,
+      octaves: section.read_field("octaves")?,
+      magnitude: section.read_field("magnitude")?,
+      epsilon: section.read_field("epsilon")?,
+      offset: section.read_field("offset")?,
     })
   }
 

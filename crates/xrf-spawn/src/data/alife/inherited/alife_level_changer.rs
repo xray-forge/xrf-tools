@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_math::Vector3d;
 use xrf_utils::assert_equal;
 
@@ -86,16 +86,16 @@ impl LtxImportExport for AlifeLevelChanger {
 
     Ok(Self {
       base: AlifeObjectSpaceRestrictor::import(section_name, ltx)?,
-      dest_game_vertex_id: read_ltx_field("level_changer.dest_game_vertex_id", section)?,
-      dest_level_vertex_id: read_ltx_field("level_changer.dest_level_vertex_id", section)?,
-      dest_position: read_ltx_field("level_changer.dest_position", section)?,
-      dest_direction: read_ltx_field("level_changer.dest_direction", section)?,
-      dest_level_name: read_ltx_field("level_changer.dest_level_name", section)?,
-      dest_graph_point: read_ltx_field("level_changer.dest_graph_point", section)?,
-      silent_mode: read_ltx_field("level_changer.silent_mode", section)?,
-      enabled: read_ltx_field("level_changer.enabled", section)?,
-      hint: read_ltx_field("level_changer.hint", section)?,
-      save_marker: read_ltx_field("level_changer.save_marker", section)?,
+      dest_game_vertex_id: section.read_field("level_changer.dest_game_vertex_id")?,
+      dest_level_vertex_id: section.read_field("level_changer.dest_level_vertex_id")?,
+      dest_position: section.read_field("level_changer.dest_position")?,
+      dest_direction: section.read_field("level_changer.dest_direction")?,
+      dest_level_name: section.read_field("level_changer.dest_level_name")?,
+      dest_graph_point: section.read_field("level_changer.dest_graph_point")?,
+      silent_mode: section.read_field("level_changer.silent_mode")?,
+      enabled: section.read_field("level_changer.enabled")?,
+      hint: section.read_field("level_changer.hint")?,
+      save_marker: section.read_field("level_changer.save_marker")?,
     })
   }
 

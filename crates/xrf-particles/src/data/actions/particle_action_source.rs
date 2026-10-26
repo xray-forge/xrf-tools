@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_math::Vector3d;
 
 use crate::data::particle_action_type::ParticleActionType;
@@ -75,19 +75,19 @@ impl LtxImportExport for ParticleActionSource {
     })?;
 
     Ok(Self {
-      action_flags: read_ltx_field("action_flags", section)?,
-      action_type: read_ltx_field("action_type", section)?,
-      position: read_ltx_field("position", section)?,
-      velocity: read_ltx_field("velocity", section)?,
-      rot: read_ltx_field("rot", section)?,
-      size: read_ltx_field("size", section)?,
-      color: read_ltx_field("color", section)?,
-      alpha: read_ltx_field("alpha", section)?,
-      particle_rate: read_ltx_field("particle_rate", section)?,
-      age: read_ltx_field("age", section)?,
-      age_sigma: read_ltx_field("age_sigma", section)?,
-      parent_vel: read_ltx_field("parent_vel", section)?,
-      parent_motion: read_ltx_field("parent_motion", section)?,
+      action_flags: section.read_field("action_flags")?,
+      action_type: section.read_field("action_type")?,
+      position: section.read_field("position")?,
+      velocity: section.read_field("velocity")?,
+      rot: section.read_field("rot")?,
+      size: section.read_field("size")?,
+      color: section.read_field("color")?,
+      alpha: section.read_field("alpha")?,
+      particle_rate: section.read_field("particle_rate")?,
+      age: section.read_field("age")?,
+      age_sigma: section.read_field("age_sigma")?,
+      parent_vel: section.read_field("parent_vel")?,
+      parent_motion: section.read_field("parent_motion")?,
     })
   }
 

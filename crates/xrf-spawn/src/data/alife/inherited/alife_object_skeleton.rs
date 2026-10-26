@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::constants::FLAG_SKELETON_SAVED_DATA;
 
@@ -68,9 +68,9 @@ impl LtxImportExport for AlifeObjectSkeleton {
     })?;
 
     let object = Self {
-      name: read_ltx_field("skeleton.name", section)?,
-      flags: read_ltx_field("skeleton.flags", section)?,
-      source_id: read_ltx_field("skeleton.source_id", section)?,
+      name: section.read_field("skeleton.name")?,
+      flags: section.read_field("skeleton.flags")?,
+      source_id: section.read_field("skeleton.source_id")?,
     };
 
     object.assert_no_saved_bone_data()?;

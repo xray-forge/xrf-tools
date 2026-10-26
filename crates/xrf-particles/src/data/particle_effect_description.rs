@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
 use xrf_utils::assert_equal;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -55,7 +55,7 @@ impl LtxImportExport for ParticleDescription {
       ))
     })?;
 
-    let meta_type: String = read_ltx_field(META_TYPE_FIELD, section)?;
+    let meta_type: String = section.read_field(META_TYPE_FIELD)?;
 
     assert_equal(
       meta_type.as_str(),
@@ -64,10 +64,10 @@ impl LtxImportExport for ParticleDescription {
     )?;
 
     Ok(Self {
-      creator: read_ltx_field("creator", section)?,
-      editor: read_ltx_field("editor", section)?,
-      created_time: read_ltx_field("created_time", section)?,
-      edit_time: read_ltx_field("edit_time", section)?,
+      creator: section.read_field("creator")?,
+      editor: section.read_field("editor")?,
+      created_time: section.read_field("created_time")?,
+      edit_time: section.read_field("edit_time")?,
     })
   }
 

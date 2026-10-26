@@ -5,7 +5,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
 use xrf_utils::{assert_equal, assert_length, to_format_size};
 
 use crate::data::actions::particle_action_avoid::ParticleActionAvoid;
@@ -219,7 +219,7 @@ impl LtxImportExport for ParticleAction {
       ))
     })?;
 
-    let meta_type: String = read_ltx_field(META_TYPE_FIELD, section)?;
+    let meta_type: String = section.read_field(META_TYPE_FIELD)?;
 
     assert_equal(
       meta_type.as_str(),
@@ -228,7 +228,7 @@ impl LtxImportExport for ParticleAction {
     )?;
 
     let action_type: ParticleActionType =
-      ParticleActionType::from_str(read_ltx_field::<String>("action_type", section)?.as_str())
+      ParticleActionType::from_str(section.read_field::<String>("action_type")?.as_str())
         .map_err(|_| XrfError::new_parsing_error("Failed to parse particle action type from LTX field"))?;
 
     Ok(match action_type {

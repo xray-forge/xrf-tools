@@ -4,7 +4,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_math::Vector3d;
 use xrf_utils::{assert_equal, to_format_size};
 
@@ -129,10 +129,10 @@ impl PatrolPoint {
 
     Ok(Self {
       name,
-      position: read_ltx_field("position", section)?,
-      flags: read_ltx_field("flags", section)?,
-      level_vertex_id: read_ltx_field("level_vertex_id", section)?,
-      game_vertex_id: read_ltx_field("game_vertex_id", section)?,
+      position: section.read_field("position")?,
+      flags: section.read_field("flags")?,
+      level_vertex_id: section.read_field("level_vertex_id")?,
+      game_vertex_id: section.read_field("game_vertex_id")?,
     })
   }
 }
@@ -148,7 +148,7 @@ impl LtxImportExport for PatrolPoint {
       ))
     })?;
 
-    Self::import_named(section_name, read_ltx_field("name", section)?, ltx)
+    Self::import_named(section_name, section.read_field("name")?, ltx)
   }
 
   /// Export patrol point data into ltx.

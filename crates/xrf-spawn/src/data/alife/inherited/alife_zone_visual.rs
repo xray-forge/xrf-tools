@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field, read_ltx_optional_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_anomaly_zone::AlifeObjectAnomalyZone;
 use crate::data::alife::inherited::alife_object_visual::AlifeObjectVisual;
@@ -65,10 +65,12 @@ impl LtxImportExport for AlifeZoneVisual {
     Ok(Self {
       base: AlifeObjectAnomalyZone::import(section_name, ltx)?,
       visual: AlifeObjectVisual::import(section_name, ltx)?,
-      idle_animation: read_ltx_field("zone_visual.idle_animation", section)?,
-      attack_animation: read_ltx_field("zone_visual.attack_animation", section)?,
+      idle_animation: section.read_field("zone_visual.idle_animation")?,
+      attack_animation: section.read_field("zone_visual.attack_animation")?,
       last_spawn_time: LastSpawnTime::from_str_optional(
-        read_ltx_optional_field::<String>("zone_visual.last_spawn_time", section)?.as_deref(),
+        section
+          .read_optional_field::<String>("zone_visual.last_spawn_time")?
+          .as_deref(),
       )?,
     })
   }

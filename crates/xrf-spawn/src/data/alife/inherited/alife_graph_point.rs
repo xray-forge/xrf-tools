@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -57,12 +57,12 @@ impl LtxImportExport for AlifeGraphPoint {
     })?;
 
     Ok(Self {
-      connection_point_name: read_ltx_field("graph_point.connection_point_name", section)?,
-      connection_level_name: read_ltx_field("graph_point.connection_level_name", section)?,
-      location0: read_ltx_field("graph_point.location0", section)?,
-      location1: read_ltx_field("graph_point.location1", section)?,
-      location2: read_ltx_field("graph_point.location2", section)?,
-      location3: read_ltx_field("graph_point.location3", section)?,
+      connection_point_name: section.read_field("graph_point.connection_point_name")?,
+      connection_level_name: section.read_field("graph_point.connection_level_name")?,
+      location0: section.read_field("graph_point.location0")?,
+      location1: section.read_field("graph_point.location1")?,
+      location2: section.read_field("graph_point.location2")?,
+      location3: section.read_field("graph_point.location3")?,
     })
   }
 

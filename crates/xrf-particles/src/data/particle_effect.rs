@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section, read_ltx_field, read_ltx_optional_field};
+use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
 use xrf_math::Vector3d;
 use xrf_utils::assert_equal;
 
@@ -233,7 +233,7 @@ impl LtxImportExport for ParticleEffect {
       ))
     })?;
 
-    let meta_type: String = read_ltx_field(META_TYPE_FIELD, section)?;
+    let meta_type: String = section.read_field(META_TYPE_FIELD)?;
 
     assert_equal(
       meta_type.as_str(),
@@ -262,18 +262,18 @@ impl LtxImportExport for ParticleEffect {
     }
 
     Ok(Self {
-      version: read_ltx_field("version", section)?,
-      name: read_ltx_field("name", section)?,
-      max_particles: read_ltx_field("max_particles", section)?,
+      version: section.read_field("version")?,
+      name: section.read_field("name")?,
+      max_particles: section.read_field("max_particles")?,
       actions,
-      flags: read_ltx_field("flags", section)?,
+      flags: section.read_field("flags")?,
       frame: ParticleEffectFrame::import_optional(&Self::get_frame_section(section_name), ltx)?,
       sprite: ParticleEffectSprite::import(&Self::get_sprite_section(section_name), ltx)?,
-      time_limit: read_ltx_optional_field("time_limit", section)?,
+      time_limit: section.read_optional_field("time_limit")?,
       collision: ParticleEffectCollision::import_optional(&Self::get_collision_section(section_name), ltx)?,
-      velocity_scale: read_ltx_optional_field("velocity_scale", section)?,
+      velocity_scale: section.read_optional_field("velocity_scale")?,
       description: ParticleDescription::import_optional(&Self::get_description_section(section_name), ltx)?,
-      rotation: read_ltx_optional_field("rotation", section)?,
+      rotation: section.read_optional_field("rotation")?,
       editor_data: ParticleEffectEditorData::import_optional(&Self::get_editor_data_section(section_name), ltx)?,
     })
   }

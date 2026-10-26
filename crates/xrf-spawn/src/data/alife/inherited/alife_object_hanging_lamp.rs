@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
 use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
@@ -153,27 +153,27 @@ impl LtxImportExport for AlifeObjectHangingLamp {
     Ok(Self {
       base: AlifeObjectDynamicVisual::import(section_name, ltx)?,
       skeleton: AlifeObjectSkeleton::import(section_name, ltx)?,
-      main_color: read_ltx_field("hanging_lamp.main_color", section)?,
-      main_brightness: read_ltx_field("hanging_lamp.main_brightness", section)?,
-      color_animator: read_ltx_field("hanging_lamp.color_animator", section)?,
-      main_range: read_ltx_field("hanging_lamp.main_range", section)?,
-      light_flags: read_ltx_field("hanging_lamp.light_flags", section)?,
-      startup_animation: read_ltx_field("hanging_lamp.startup_animation", section)?,
-      fixed_bones: read_ltx_field("hanging_lamp.fixed_bones", section)?,
-      health: read_ltx_field("hanging_lamp.health", section)?,
-      virtual_size: read_ltx_field("hanging_lamp.virtual_size", section)?,
-      ambient_radius: read_ltx_field("hanging_lamp.ambient_radius", section)?,
-      ambient_power: read_ltx_field("hanging_lamp.ambient_power", section)?,
-      ambient_texture: read_ltx_field("hanging_lamp.ambient_texture", section)?,
-      light_texture: read_ltx_field("hanging_lamp.light_texture", section)?,
-      light_bone: read_ltx_field("hanging_lamp.light_bone", section)?,
-      spot_cone_angle: read_ltx_field("hanging_lamp.spot_cone_angle", section)?,
-      glow_texture: read_ltx_field("hanging_lamp.glow_texture", section)?,
-      glow_radius: read_ltx_field("hanging_lamp.glow_radius", section)?,
-      light_ambient_bone: read_ltx_field("hanging_lamp.light_ambient_bone", section)?,
-      volumetric_quality: read_ltx_field("hanging_lamp.volumetric_quality", section)?,
-      volumetric_intensity: read_ltx_field("hanging_lamp.volumetric_intensity", section)?,
-      volumetric_distance: read_ltx_field("hanging_lamp.volumetric_distance", section)?,
+      main_color: section.read_field("hanging_lamp.main_color")?,
+      main_brightness: section.read_field("hanging_lamp.main_brightness")?,
+      color_animator: section.read_field("hanging_lamp.color_animator")?,
+      main_range: section.read_field("hanging_lamp.main_range")?,
+      light_flags: section.read_field("hanging_lamp.light_flags")?,
+      startup_animation: section.read_field("hanging_lamp.startup_animation")?,
+      fixed_bones: section.read_field("hanging_lamp.fixed_bones")?,
+      health: section.read_field("hanging_lamp.health")?,
+      virtual_size: section.read_field("hanging_lamp.virtual_size")?,
+      ambient_radius: section.read_field("hanging_lamp.ambient_radius")?,
+      ambient_power: section.read_field("hanging_lamp.ambient_power")?,
+      ambient_texture: section.read_field("hanging_lamp.ambient_texture")?,
+      light_texture: section.read_field("hanging_lamp.light_texture")?,
+      light_bone: section.read_field("hanging_lamp.light_bone")?,
+      spot_cone_angle: section.read_field("hanging_lamp.spot_cone_angle")?,
+      glow_texture: section.read_field("hanging_lamp.glow_texture")?,
+      glow_radius: section.read_field("hanging_lamp.glow_radius")?,
+      light_ambient_bone: section.read_field("hanging_lamp.light_ambient_bone")?,
+      volumetric_quality: section.read_field("hanging_lamp.volumetric_quality")?,
+      volumetric_intensity: section.read_field("hanging_lamp.volumetric_intensity")?,
+      volumetric_distance: section.read_field("hanging_lamp.volumetric_distance")?,
     })
   }
 

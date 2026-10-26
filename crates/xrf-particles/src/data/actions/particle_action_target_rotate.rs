@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 use xrf_math::Vector3d;
 
 use crate::data::particle_action_type::ParticleActionType;
@@ -47,10 +47,10 @@ impl LtxImportExport for ParticleActionTargetRotate {
     })?;
 
     Ok(Self {
-      action_flags: read_ltx_field("action_flags", section)?,
-      action_type: read_ltx_field("action_type", section)?,
-      rot: read_ltx_field("rot", section)?,
-      scale: read_ltx_field("scale", section)?,
+      action_flags: section.read_field("action_flags")?,
+      action_type: section.read_field("action_type")?,
+      rot: section.read_field("rot")?,
+      scale: section.read_field("scale")?,
     })
   }
 

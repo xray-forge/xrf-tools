@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -55,12 +55,12 @@ impl LtxImportExport for GraphHeader {
     })?;
 
     Ok(Self {
-      version: read_ltx_field("version", section)?,
-      vertices_count: read_ltx_field("vertex_count", section)?,
-      edges_count: read_ltx_field("edges_count", section)?,
-      points_count: read_ltx_field("point_count", section)?,
-      levels_count: read_ltx_field("level_count", section)?,
-      guid: read_ltx_field("guid", section)?,
+      version: section.read_field("version")?,
+      vertices_count: section.read_field("vertex_count")?,
+      edges_count: section.read_field("edges_count")?,
+      points_count: section.read_field("point_count")?,
+      levels_count: section.read_field("level_count")?,
+      guid: section.read_field("guid")?,
     })
   }
 

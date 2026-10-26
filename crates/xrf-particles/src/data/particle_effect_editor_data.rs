@@ -4,7 +4,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
 use xrf_utils::{assert_equal, decode_bytes_from_base64, encode_bytes_to_base64};
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -48,7 +48,7 @@ impl LtxImportExport for ParticleEffectEditorData {
       ))
     })?;
 
-    let meta_type: String = read_ltx_field(META_TYPE_FIELD, section)?;
+    let meta_type: String = section.read_field(META_TYPE_FIELD)?;
 
     assert_equal(
       meta_type.as_str(),
@@ -57,7 +57,7 @@ impl LtxImportExport for ParticleEffectEditorData {
     )?;
 
     Ok(Self {
-      value: decode_bytes_from_base64(&read_ltx_field::<String>("value", section)?)?,
+      value: decode_bytes_from_base64(&section.read_field::<String>("value")?)?,
     })
   }
 

@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
 
@@ -51,9 +51,9 @@ impl LtxImportExport for AlifeObjectItemPda {
 
     Ok(Self {
       base: AlifeObjectItem::import(section_name, ltx)?,
-      owner: read_ltx_field("item_pda.owner", section)?,
-      character: read_ltx_field("item_pda.character", section)?,
-      info_portion: read_ltx_field("item_pda.info_portion", section)?,
+      owner: section.read_field("item_pda.owner")?,
+      character: section.read_field("item_pda.character")?,
+      info_portion: section.read_field("item_pda.info_portion")?,
     })
   }
 

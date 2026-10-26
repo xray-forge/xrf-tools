@@ -123,7 +123,8 @@ outside it are an error rather than replaced.
 - `read_engine_bool`, `read_engine_float`, `scan_engine_float` and `read_engine_floats` read a value as the engine's
   `CInifile` does, including what it makes of malformed text.
 - `Condlist` parses the `{+info} value, otherwise` condition lists that logic fields are written in.
-- `LtxImportExport`, `read_ltx_field` and `read_ltx_optional_field` bind a typed record to a section.
+- `LtxImportExport` binds a typed record to a section, which reads its fields strictly through `Section::read_field`
+  and `Section::read_optional_field`.
 
 ## Module map
 

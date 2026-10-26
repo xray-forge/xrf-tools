@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_optional_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_custom_zone::AlifeObjectCustomZone;
 use crate::data::alife::inherited::alife_object_motion::AlifeObjectMotion;
@@ -52,7 +52,7 @@ impl LtxImportExport for AlifeObjectTorridZone {
       base: AlifeObjectCustomZone::import(section_name, ltx)?,
       motion: AlifeObjectMotion::import(section_name, ltx)?,
       last_spawn_time: LastSpawnTime::from_str_optional(
-        read_ltx_optional_field::<String>("last_spawn_time", section)?.as_deref(),
+        section.read_optional_field::<String>("last_spawn_time")?.as_deref(),
       )?,
     })
   }
