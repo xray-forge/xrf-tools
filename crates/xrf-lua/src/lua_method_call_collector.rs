@@ -164,7 +164,7 @@ impl Visitor for LuaMethodCallCollector {
     let values: Vec<XRayLuaBinding> = assignment
       .expressions()
       .iter()
-      .map(|expression| XRayLuaValue::of(expression, &self.scope).to_binding())
+      .map(|expression| XRayLuaBinding::from(&XRayLuaValue::of(expression, &self.scope)))
       .collect();
 
     for (index, name) in assignment.names().iter().enumerate() {
@@ -176,13 +176,18 @@ impl Visitor for LuaMethodCallCollector {
     }
   }
 
-  // Before its body: a local function sees itself.
+  // Before its body: a local function sees itself, and the calls in it are written in it.
   fn visit_local_function(&mut self, function: &LocalFunction) {
-    self.scope.bind(
-      function.name().token().to_string(),
-      Self::position(function.name()),
-      XRayLuaBinding::Other,
-    );
+    let name: String = function.name().token().to_string();
+
+    self
+      .scope
+      .bind(name.clone(), Self::position(function.name()), XRayLuaBinding::Other);
+    self.functions.push(name);
+  }
+
+  fn visit_local_function_end(&mut self, _: &LocalFunction) {
+    self.functions.pop();
   }
 
   fn visit_assignment(&mut self, assignment: &Assignment) {
@@ -236,15 +241,13 @@ impl Visitor for LuaMethodCallCollector {
         _ => None,
       })
       .collect();
-    let mut call: XRayLuaMethodCall = XRayLuaMethodCall::from_parts(
+    self.method_calls.push(XRayLuaMethodCall::from_parts(
       first.name().token().start_position().line(),
       receiver.token().to_string(),
       first.name().token().to_string(),
       self.arguments(first.args()),
       chained,
-    );
-
-    call.set_function(self.functions.last().cloned());
-    self.method_calls.push(call);
+      self.functions.last().cloned(),
+    ));
   }
 }

@@ -21,19 +21,16 @@ impl XRayLuaMethodCall {
     method: String,
     arguments: Vec<XRayLuaValue>,
     chained: Vec<XRayLuaChainedCall>,
+    function: Option<String>,
   ) -> Self {
     Self {
       arguments,
       chained,
-      function: None,
+      function,
       line_number,
       method,
       receiver,
     }
-  }
-
-  pub(crate) fn set_function(&mut self, function: Option<String>) {
-    self.function = function;
   }
 
   pub fn line_number(&self) -> usize {
