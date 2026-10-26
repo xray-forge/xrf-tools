@@ -3,9 +3,9 @@ use std::sync::Arc;
 use glam::{Mat4, Vec3};
 use xrf_math::EPS;
 
-use crate::data::particle_effect::ParticleEffect;
-use crate::data::particle_effect_collision::ParticleEffectCollision;
-use crate::data::particle_effect_flags::ParticleEffectFlags;
+use crate::data::effect::particle_effect::ParticleEffect;
+use crate::data::effect::particle_effect_collision::ParticleEffectCollision;
+use crate::data::effect::particle_effect_flags::ParticleEffectFlags;
 use crate::simulation::actions::particle_action_step::ParticleActionStep;
 use crate::simulation::instance::particle_running_action::ParticleRunningAction;
 use crate::simulation::particle_collider::ParticleCollider;

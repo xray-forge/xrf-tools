@@ -4,13 +4,13 @@ use std::path::Path;
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{FileImportExport, Ltx, LtxImportExport, META_TYPE_FIELD};
 use xrf_utils::{assert, format_path, to_format_size};
 
-use crate::data::particle_effect::ParticleEffect;
+use crate::data::effect::particle_effect::ParticleEffect;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParticlesEffectsChunk {
   pub effects: Vec<ParticleEffect>,
@@ -18,6 +18,41 @@ pub struct ParticlesEffectsChunk {
 
 impl ParticlesEffectsChunk {
   pub const CHUNK_ID: u32 = 3;
+
+  /// The effect by its exact name, as `CPSLibrary::FindPED` looks one up.
+  pub fn get(&self, name: &str) -> Option<&ParticleEffect> {
+    self.effects.iter().find(|effect| effect.name == name)
+  }
+
+  pub fn get_mut(&mut self, name: &str) -> Option<&mut ParticleEffect> {
+    self.effects.iter_mut().find(|effect| effect.name == name)
+  }
+
+  /// Adds an effect where its name sorts, the order the engine looks effects up in and a library is read in.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when an effect already has its name.
+  pub fn insert(&mut self, effect: ParticleEffect) -> XrfResult {
+    match self.effects.binary_search_by(|it| it.name.cmp(&effect.name)) {
+      Ok(_) => Err(XrfError::new_invalid_error(format!(
+        "Particle effect '{}' is already defined",
+        effect.name
+      ))),
+      Err(position) => {
+        self.effects.insert(position, effect);
+
+        Ok(())
+      }
+    }
+  }
+
+  /// Takes the effect by its exact name out, as `CPSLibrary::Remove` does.
+  pub fn remove(&mut self, name: &str) -> Option<ParticleEffect> {
+    let position: usize = self.effects.iter().position(|effect| effect.name == name)?;
+
+    Some(self.effects.remove(position))
+  }
 }
 
 impl ChunkReadWrite for ParticlesEffectsChunk {

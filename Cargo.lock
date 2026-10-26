@@ -8412,7 +8412,6 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
- "uuid",
  "xrf-chunk",
  "xrf-engine-target",
  "xrf-error",

@@ -5,7 +5,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, META_TYPE_FIELD, Section};
 use xrf_utils::{assert_equal, assert_length, to_format_size};
 
-use crate::data::particle_group_child::ParticleGroupChild;
+use crate::data::group::particle_group_child::ParticleGroupChild;
+use crate::data::group::particle_group_effect_flags::ParticleGroupEffectFlags;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -29,6 +30,47 @@ impl ParticleGroupEffect {
 
   pub fn get_effect_section(section_name: &str, index: usize) -> String {
     format!("{section_name}.effect.{index}")
+  }
+
+  /// Points every reference to the effect `from`, the played effect and its three children, at `to`, as the SDK does
+  /// when an effect is renamed.
+  pub fn rename_effect(&mut self, from: &str, to: &str) {
+    for name in [
+      &mut self.name,
+      &mut self.on_play_child_name,
+      &mut self.on_birth_child_name,
+      &mut self.on_dead_child_name,
+    ] {
+      if name == from {
+        *name = String::from(to);
+      }
+    }
+  }
+
+  /// The children whose flag is set but whose name is empty, which `CPGDef::Validate` refuses.
+  pub fn list_unnamed_children(&self) -> impl Iterator<Item = ParticleGroupChild> {
+    let flags: ParticleGroupEffectFlags = ParticleGroupEffectFlags(self.flags);
+
+    [
+      (
+        ParticleGroupChild::Play,
+        ParticleGroupEffectFlags::ON_PLAY_CHILD,
+        &self.on_play_child_name,
+      ),
+      (
+        ParticleGroupChild::Birth,
+        ParticleGroupEffectFlags::ON_BIRTH_CHILD,
+        &self.on_birth_child_name,
+      ),
+      (
+        ParticleGroupChild::Death,
+        ParticleGroupEffectFlags::ON_DEAD_CHILD,
+        &self.on_dead_child_name,
+      ),
+    ]
+    .into_iter()
+    .filter(move |(_, flag, name)| flags.is(*flag) && name.is_empty())
+    .map(|(child, _, _)| child)
   }
 
   /// The effects it spawns as children, each with when it spawns it, where it names one.
@@ -203,8 +245,8 @@ mod tests {
   use xrf_ltx::Ltx;
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
-  use crate::data::particle_group_child::ParticleGroupChild;
-  use crate::data::particle_group_effect::ParticleGroupEffect;
+  use crate::data::group::particle_group_child::ParticleGroupChild;
+  use crate::data::group::particle_group_effect::ParticleGroupEffect;
 
   #[test]
   fn test_read_write_list() -> XrfResult {

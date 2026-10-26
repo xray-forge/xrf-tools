@@ -136,7 +136,7 @@ mod tests {
   use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
-  use crate::data::particle_effect_frame::ParticleEffectFrame;
+  use crate::data::effect::particle_effect_frame::ParticleEffectFrame;
 
   #[test]
   fn test_read_write() -> XrfResult {

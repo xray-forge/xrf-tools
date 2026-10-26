@@ -26,6 +26,15 @@ pub struct ParticleActionSource {
   pub parent_motion: f32,
 }
 
+impl ParticleActionSource {
+  /// `PASource::flSingleSize`: a particle's size takes one random number for all three axes.
+  pub const SINGLE_SIZE: u32 = 1 << 29;
+
+  /// `PASource::flVertexB_tracks`: a particle's secondary position follows its position, which every source the SDK
+  /// compiles sets.
+  pub const VERTEX_B_TRACKS: u32 = 1 << 31;
+}
+
 impl ChunkReadWrite for ParticleActionSource {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<ParticleActionSource> {
     Ok(Self {

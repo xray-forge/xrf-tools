@@ -30,10 +30,10 @@ fn effect(name: &str) -> ParticleEffect {
     actions: Vec::new(),
     flags: 1,
     frame: None,
-    sprite: ParticleEffectSprite {
+    sprite: Some(ParticleEffectSprite {
       shader_name: String::from("particles\\add"),
       texture_name: String::from("pfx\\pfx_fog"),
-    },
+    }),
     time_limit: None,
     collision: None,
     velocity_scale: None,

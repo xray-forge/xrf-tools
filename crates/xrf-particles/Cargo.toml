@@ -15,8 +15,6 @@ log = { workspace = true }
 derive_more = { workspace = true, features = ["display", "from_str"] }
 glam = { workspace = true }
 serde = { workspace = true }
-serde_json = { workspace = true }
-uuid = { workspace = true, features = ["v4", "serde"] }
 xrf-chunk = { workspace = true }
 xrf-engine-target = { workspace = true }
 xrf-error = { workspace = true }
@@ -25,6 +23,7 @@ xrf-math = { workspace = true }
 xrf-utils = { workspace = true }
 
 [dev-dependencies]
+serde_json = { workspace = true }
 xrf-math = { workspace = true, features = ["fixtures"] }
 xrf-test-utils = { workspace = true }
 xrf-utils = { workspace = true, features = ["staging-faults"] }

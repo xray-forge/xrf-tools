@@ -15,10 +15,11 @@ pub struct ArchiveParticlesEffect {
   pub max_particles: u32,
   /// Seconds the emitter runs for, absent where it declares no limit and runs until something stops it.
   pub time_limit: Option<f32>,
-  /// The blender the sprite is drawn with, which names a definition of `shaders.xr` rather than a file.
-  pub shader: String,
-  /// The texture the sprite is drawn from, resolved against the subject being browsed.
-  pub texture: ArchiveReference,
+  /// The blender the sprite is drawn with, which names a definition of `shaders.xr` rather than a file; absent for an
+  /// effect that draws no sprite.
+  pub shader: Option<String>,
+  /// The texture the sprite is drawn from, resolved against the subject being browsed; absent with the shader.
+  pub texture: Option<ArchiveReference>,
   /// Every action kind the effect is built from, in the order it first uses each.
   pub actions: Vec<String>,
   /// Actions in total, which is more than the kinds above when one kind is used twice.
@@ -35,8 +36,11 @@ impl ArchiveParticlesEffect {
         name: effect.name.clone(),
         max_particles: effect.max_particles,
         time_limit: effect.time_limit,
-        shader: effect.sprite.shader_name.clone(),
-        texture: ArchiveReference::resolve(source, XrayAssetType::Dds, &effect.sprite.texture_name),
+        shader: effect.sprite.as_ref().map(|sprite| sprite.shader_name.clone()),
+        texture: effect
+          .sprite
+          .as_ref()
+          .map(|sprite| ArchiveReference::resolve(source, XrayAssetType::Dds, &sprite.texture_name)),
         actions: Self::to_action_kinds(effect),
         actions_count: effect.actions.len(),
         flags: effect.flags,

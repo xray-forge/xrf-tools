@@ -31,11 +31,11 @@ impl ArchiveParticlesLibrary {
     let mut textures: HashSet<&str> = HashSet::new();
     let mut absent: HashSet<&str> = HashSet::new();
 
-    for effect in effects {
-      textures.insert(effect.texture.name.as_str());
+    for texture in effects.iter().filter_map(|effect| effect.texture.as_ref()) {
+      textures.insert(texture.name.as_str());
 
-      if effect.texture.status != ArchiveReferenceStatus::Present {
-        absent.insert(effect.texture.name.as_str());
+      if texture.status != ArchiveReferenceStatus::Present {
+        absent.insert(texture.name.as_str());
       }
     }
 

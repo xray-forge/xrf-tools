@@ -6,14 +6,19 @@ use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
 use xrf_math::Vector3d;
 use xrf_utils::assert_equal;
 
+use crate::data::editor::particle_editor_action::ParticleEditorAction;
+use crate::data::effect::particle_effect_collision::ParticleEffectCollision;
+use crate::data::effect::particle_effect_editor_data::ParticleEffectEditorData;
+use crate::data::effect::particle_effect_frame::ParticleEffectFrame;
+use crate::data::effect::particle_effect_sprite::ParticleEffectSprite;
 use crate::data::particle_action::ParticleAction;
-use crate::data::particle_effect_collision::ParticleEffectCollision;
-use crate::data::particle_effect_description::ParticleDescription;
-use crate::data::particle_effect_editor_data::ParticleEffectEditorData;
-use crate::data::particle_effect_frame::ParticleEffectFrame;
-use crate::data::particle_effect_sprite::ParticleEffectSprite;
+use crate::data::particle_description::ParticleDescription;
+use crate::data::particle_record_chunks::ParticleRecordChunks;
 
-/// C++ src/Layers/xrRender/ParticleEffectDef.cpp
+/// One emitter, the engine's `CPEDef` (`Layers/xrRender/ParticleEffectDef.cpp`).
+///
+/// The optional records are chunks the engine reads only where `flags` asks for them (`dfSprite`, `dfFramed`,
+/// `dfTimeLimit`, `dfCollision`, `dfVelocityScale`, `dfAlignToPath`); every shipped library stores exactly those.
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ParticleEffect {
@@ -23,7 +28,8 @@ pub struct ParticleEffect {
   pub actions: Vec<ParticleAction>,
   pub flags: u32,
   pub frame: Option<ParticleEffectFrame>,
-  pub sprite: ParticleEffectSprite,
+  /// What the effect draws; absent on an effect that draws nothing, which two of GAMMA's are.
+  pub sprite: Option<ParticleEffectSprite>,
   pub time_limit: Option<f32>,
   pub collision: Option<ParticleEffectCollision>,
   pub velocity_scale: Option<Vector3d>,
@@ -36,6 +42,9 @@ impl ParticleEffect {
   pub const META_TYPE: &'static str = "particle_effect";
 
   pub const EFFECT_ACTIONS_LIMIT: usize = 10_000;
+
+  /// `PED_VERSION`, the one version `CPEDef::Load` reads; any other fails the whole library's load.
+  pub const VERSION: u16 = 1;
 
   pub const VERSION_CHUNK_ID: u32 = 1;
   pub const NAME_CHUNK_ID: u32 = 2;
@@ -77,70 +86,98 @@ impl ParticleEffect {
     format!("{section_name}.editor_data")
   }
 
-  /// Reads a chunk the effect cannot do without, naming it whether it is missing or malformed.
-  fn read_required<D: ChunkDataSource, R>(
-    chunks: &[ChunkReader<D>],
-    id: u32,
-    name: &str,
-    read: impl FnOnce(&mut ChunkReader<D>) -> XrfResult<R>,
-  ) -> XrfResult<R> {
-    ChunkReader::find_required_by_id(chunks, id)
-      .and_then(|mut chunk| read(&mut chunk))
-      .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle {name} chunk: {error}")))
+  /// The actions as the SDK edits them, where the effect keeps its editor data; every shipped effect does.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the editor data does not decode.
+  pub fn read_editor_actions<T: ByteOrder>(&self) -> XrfResult<Option<Vec<ParticleEditorAction>>> {
+    self
+      .editor_data
+      .as_ref()
+      .map(ParticleEffectEditorData::read_actions::<T>)
+      .transpose()
   }
 
-  /// Reads a chunk the effect may omit: absent is `None`, present but malformed is an error naming it.
-  fn read_optional<D: ChunkDataSource, R>(
-    chunks: &[ChunkReader<D>],
-    id: u32,
-    name: &str,
-    read: impl FnOnce(&mut ChunkReader<D>) -> XrfResult<R>,
-  ) -> XrfResult<Option<R>> {
-    ChunkReader::find_optional_by_id(chunks, id)
-      .map(|mut chunk| read(&mut chunk))
-      .transpose()
-      .map_err(|error| XrfError::new_parsing_error(format!("Failed to read particle {name} chunk: {error}")))
+  /// Replaces the editor's actions, and the engine's with what they compile to, as the SDK saves an effect: the enabled
+  /// ones, in their order.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when an enabled action does not compile; the effect is then left as it was.
+  pub fn set_editor_actions<T: ByteOrder>(&mut self, actions: &[ParticleEditorAction]) -> XrfResult {
+    let compiled: Vec<ParticleAction> = actions
+      .iter()
+      .filter(|action| action.is_enabled())
+      .map(ParticleEditorAction::compile)
+      .collect::<XrfResult<_>>()?;
+
+    self.editor_data = Some(ParticleEffectEditorData::from_actions::<T>(actions)?);
+    self.actions = compiled;
+
+    Ok(())
   }
 }
 
 impl ChunkReadWrite for ParticleEffect {
-  /// Read effects by position descriptor.
-  /// Parses binary data into version chunk representation object.
+  /// Reads an effect as `CPEDef::Load` does, from the chunks it is made of in any order.
+  ///
+  /// # Errors
+  ///
+  /// Returns a parsing error naming the chunk when a required one is missing or any is malformed, and when the version
+  /// is not [`Self::VERSION`].
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
 
+    let version: u16 = ParticleRecordChunks::read_required(&chunks, Self::VERSION_CHUNK_ID, "version", |it| {
+      it.read_u16_payload::<T>()
+    })?;
+
+    if version != Self::VERSION {
+      return Err(XrfError::new_parsing_error(format!(
+        "Failed to read particle effect of version {version}, only version {} is read by the engine",
+        Self::VERSION
+      )));
+    }
+
     let effect: Self = Self {
-      version: Self::read_required(&chunks, Self::VERSION_CHUNK_ID, "version", |it| {
-        it.read_u16_payload::<T>()
-      })?,
-      name: Self::read_required(&chunks, Self::NAME_CHUNK_ID, "name", |it| {
+      version,
+      name: ParticleRecordChunks::read_required(&chunks, Self::NAME_CHUNK_ID, "name", |it| {
         it.read_w1251_string_payload()
       })?,
-      max_particles: Self::read_required(&chunks, Self::MAX_PARTICLES_CHUNK_ID, "max_particles", |it| {
-        it.read_u32_payload::<T>()
-      })?,
-      actions: Self::read_required(&chunks, Self::ACTION_LIST_CHUNK_ID, "actions", |it| {
+      max_particles: ParticleRecordChunks::read_required(
+        &chunks,
+        Self::MAX_PARTICLES_CHUNK_ID,
+        "max_particles",
+        |it| it.read_u32_payload::<T>(),
+      )?,
+      actions: ParticleRecordChunks::read_required(&chunks, Self::ACTION_LIST_CHUNK_ID, "actions", |it| {
         it.read_xr_list::<T, _>()
       })?,
-      flags: Self::read_required(&chunks, Self::FLAGS_CHUNK_ID, "flags", |it| it.read_u32_payload::<T>())?,
-      frame: Self::read_optional(&chunks, Self::FRAME_CHUNK_ID, "frame", |it| it.read_xr::<T, _>())?,
-      sprite: Self::read_required(&chunks, Self::SPRITE_CHUNK_ID, "sprite", |it| it.read_xr::<T, _>())?,
-      time_limit: Self::read_optional(&chunks, Self::TIME_LIMIT_CHUNK_ID, "time_limit", |it| {
+      flags: ParticleRecordChunks::read_required(&chunks, Self::FLAGS_CHUNK_ID, "flags", |it| {
+        it.read_u32_payload::<T>()
+      })?,
+      frame: ParticleRecordChunks::read_optional(&chunks, Self::FRAME_CHUNK_ID, "frame", |it| it.read_xr::<T, _>())?,
+      sprite: ParticleRecordChunks::read_optional(&chunks, Self::SPRITE_CHUNK_ID, "sprite", |it| it.read_xr::<T, _>())?,
+      time_limit: ParticleRecordChunks::read_optional(&chunks, Self::TIME_LIMIT_CHUNK_ID, "time_limit", |it| {
         it.read_f32_payload::<T>()
       })?,
-      collision: Self::read_optional(&chunks, Self::COLLISION_CHUNK_ID, "collision", |it| {
+      collision: ParticleRecordChunks::read_optional(&chunks, Self::COLLISION_CHUNK_ID, "collision", |it| {
         it.read_xr::<T, _>()
       })?,
-      velocity_scale: Self::read_optional(&chunks, Self::VELOCITY_SCALE_CHUNK_ID, "velocity_scale", |it| {
-        it.read_f32_vector_payload::<T>().map(Into::into)
-      })?,
-      description: Self::read_optional(&chunks, Self::DESCRIPTION_CHUNK_ID, "description", |it| {
+      velocity_scale: ParticleRecordChunks::read_optional(
+        &chunks,
+        Self::VELOCITY_SCALE_CHUNK_ID,
+        "velocity_scale",
+        |it| it.read_f32_vector_payload::<T>().map(Into::into),
+      )?,
+      description: ParticleRecordChunks::read_optional(&chunks, Self::DESCRIPTION_CHUNK_ID, "description", |it| {
         it.read_xr::<T, _>()
       })?,
-      rotation: Self::read_optional(&chunks, Self::ROTATION_CHUNK_ID, "rotation", |it| {
+      rotation: ParticleRecordChunks::read_optional(&chunks, Self::ROTATION_CHUNK_ID, "rotation", |it| {
         it.read_f32_vector_payload::<T>().map(Into::into)
       })?,
-      editor_data: Self::read_optional(&chunks, Self::EDITOR_DATA_CHUNK_ID, "editor_data", |it| {
+      editor_data: ParticleRecordChunks::read_optional(&chunks, Self::EDITOR_DATA_CHUNK_ID, "editor_data", |it| {
         it.read_xr::<T, _>()
       })?,
     };
@@ -178,9 +215,11 @@ impl ChunkReadWrite for ParticleEffect {
       frame_chunk_writer.flush_chunk_into::<T>(writer, Self::FRAME_CHUNK_ID)?;
     }
 
-    let mut sprite_chunk_writer: ChunkWriter = ChunkWriter::new();
-    sprite_chunk_writer.write_xr::<T, _>(&self.sprite)?;
-    sprite_chunk_writer.flush_chunk_into::<T>(writer, Self::SPRITE_CHUNK_ID)?;
+    if let Some(sprite) = &self.sprite {
+      let mut sprite_chunk_writer: ChunkWriter = ChunkWriter::new();
+      sprite_chunk_writer.write_xr::<T, _>(sprite)?;
+      sprite_chunk_writer.flush_chunk_into::<T>(writer, Self::SPRITE_CHUNK_ID)?;
+    }
 
     if let Some(time_limit) = self.time_limit {
       let mut time_limit_chunk_writer: ChunkWriter = ChunkWriter::new();
@@ -268,7 +307,7 @@ impl LtxImportExport for ParticleEffect {
       actions,
       flags: section.read_field("flags")?,
       frame: ParticleEffectFrame::import_optional(&Self::get_frame_section(section_name), ltx)?,
-      sprite: ParticleEffectSprite::import(&Self::get_sprite_section(section_name), ltx)?,
+      sprite: ParticleEffectSprite::import_optional(&Self::get_sprite_section(section_name), ltx)?,
       time_limit: section.read_optional_field("time_limit")?,
       collision: ParticleEffectCollision::import_optional(&Self::get_collision_section(section_name), ltx)?,
       velocity_scale: section.read_optional_field("velocity_scale")?,
@@ -292,7 +331,7 @@ impl LtxImportExport for ParticleEffect {
       .set_optional("rotation", self.rotation.as_ref().map(|it| it.to_string()))
       .set_optional("velocity_scale", self.velocity_scale.as_ref().map(|it| it.to_string()));
 
-    self.sprite.export(&Self::get_sprite_section(section_name), ltx)?;
+    ParticleEffectSprite::export_optional(&Self::get_sprite_section(section_name), ltx, self.sprite.as_ref())?;
 
     for (index, action) in self.actions.iter().enumerate() {
       action.export(&Self::get_action_section(section_name, index), ltx)?
@@ -329,14 +368,14 @@ mod tests {
 
   use crate::data::actions::particle_action_copy_vertex::ParticleActionCopyVertex;
   use crate::data::actions::particle_action_damping::ParticleActionDamping;
+  use crate::data::effect::particle_effect::ParticleEffect;
+  use crate::data::effect::particle_effect_collision::ParticleEffectCollision;
+  use crate::data::effect::particle_effect_editor_data::ParticleEffectEditorData;
+  use crate::data::effect::particle_effect_frame::ParticleEffectFrame;
+  use crate::data::effect::particle_effect_sprite::ParticleEffectSprite;
   use crate::data::particle_action::ParticleAction;
   use crate::data::particle_action_type::ParticleActionType;
-  use crate::data::particle_effect::ParticleEffect;
-  use crate::data::particle_effect_collision::ParticleEffectCollision;
-  use crate::data::particle_effect_description::ParticleDescription;
-  use crate::data::particle_effect_editor_data::ParticleEffectEditorData;
-  use crate::data::particle_effect_frame::ParticleEffectFrame;
-  use crate::data::particle_effect_sprite::ParticleEffectSprite;
+  use crate::data::particle_description::ParticleDescription;
 
   #[test]
   fn test_read_write() -> XrfResult {
@@ -369,10 +408,10 @@ mod tests {
         frame_count: 60,
         frame_speed: 29.7,
       }),
-      sprite: ParticleEffectSprite {
+      sprite: Some(ParticleEffectSprite {
         shader_name: String::from("test-shader-name"),
         texture_name: String::from("test-texture-name"),
-      },
+      }),
       time_limit: Some(450.1),
       collision: Some(ParticleEffectCollision {
         collide_one_minus_friction: 0.55,
@@ -448,10 +487,10 @@ mod tests {
         frame_count: 60,
         frame_speed: 29.7,
       }),
-      sprite: ParticleEffectSprite {
+      sprite: Some(ParticleEffectSprite {
         shader_name: String::from("test-shader-name"),
         texture_name: String::from("test-texture-name"),
-      },
+      }),
       time_limit: Some(450.1),
       collision: Some(ParticleEffectCollision {
         collide_one_minus_friction: 0.55,
@@ -510,10 +549,10 @@ mod tests {
         frame_count: 80,
         frame_speed: 29.7,
       }),
-      sprite: ParticleEffectSprite {
+      sprite: Some(ParticleEffectSprite {
         shader_name: String::from("test-shader-name"),
         texture_name: String::from("test-texture-name"),
-      },
+      }),
       time_limit: Some(460.1),
       collision: Some(ParticleEffectCollision {
         collide_one_minus_friction: 0.540,

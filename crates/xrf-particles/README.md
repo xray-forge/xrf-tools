@@ -54,13 +54,53 @@ fn main() -> xrf_error::XrfResult {
 `write_to`; each takes the byte order as a type parameter, `xrf_chunk::XRayByteOrder` for game files. Strings are
 Windows-1251.
 
-Reading is strict. The root must hold exactly the three chunks; a first-generation particle chunk is refused as not
-implemented; groups must be version 3; a required chunk that is missing, or an optional one (frame, time limit,
-collision, velocity scale, description, rotation) that is malformed, is a parsing error naming it, and a chunk with
-bytes left over is an error. A malformed library answers with an error, never a panic.
+Reading follows `CPSLibrary::Load` and reads what the engine reads:
+- The header is required, but a library without effects or without groups holds none.
+- Effects must be version 1 and groups version 3, the only versions the engine loads.
+- An effect's sprite, frame, time limit, collision, velocity scale and rotation are optional, as the engine reads each
+  only under its flag. Two of GAMMA's effects draw no sprite.
+- A group's effects and time limit are optional, reading as none and zero.
+
+Where the engine would quietly drop data, reading refuses instead, so a library written back loses nothing:
+- a root chunk it does not read;
+- a first-generation chunk, which the engine skips and this crate does not read;
+- bytes left over in a chunk.
+
+A required chunk that is missing, or any chunk that is malformed, is a parsing error naming it. A malformed library
+answers with an error, never a panic.
 
 Effects and groups are sorted by name when read, and written in that order, so a library written back is ordered by
-name whatever order it was read in.
+name whatever order it was read in. A group's Shadow of Chernobyl effects (`effects_old`) are written to chunk 7, where
+that game's engine reads them.
+
+## Edit a library
+
+The library is edited as the SDK's particle editor edits it:
+- `ParticlesEffectsChunk` and `ParticlesGroupsChunk` look records up by exact name (`get`, `get_mut`), add them where
+  their names sort (`insert`), and take them out (`remove`).
+- `ParticlesFile::insert_effect` and `insert_group` also keep a name unique across both lists, as the SDK does.
+- `rename_effect` renames an effect and every group reference to it, children included; `rename_group` renames a group.
+- `validate` lists the faults the SDK refuses to save over (`ParticlesFileIssue`): an effect with no `KillOld` action,
+  a group playing an undefined effect, and a child flag with no child named. No shipped library has any.
+
+An effect keeps two copies of its actions. `actions` is what the engine plays. `editor_data` holds the SDK's own editor
+actions: named, switchable sets of properties from which the SDK compiles `actions` on every save. Every shipped
+effect carries both.
+- `read_editor_actions` decodes the editor copy into `ParticleEditorAction`s.
+- `set_editor_actions` replaces it and recompiles `actions` from the enabled actions, as the SDK saves an effect.
+- `ParticleEditorAction::new` starts an action at the SDK's defaults (`ParticleEditorSchema`).
+- `get_float`, `get_vector`, `get_domain`, `get_bool`, `get_int` and `set` read and change properties by name and
+  kind. `compile` derives the engine's action, including `ParticleEditorDomain::compile`, which ports `pDomain`'s
+  constructor.
+
+Over the vanilla, Clear Sky, CoP-EE, Anomaly, Gunslinger, GAMMA and xrf libraries, every effect's editor actions decode,
+re-encode byte for byte, and compile to its stored actions. CoC and SGM editor data also re-encodes byte for byte, but
+1,119 of their effects compile to something other than the actions they play. Mostly, a converter wrote their target
+colours as `Alpha, Scale, Color, TimeFrom, TimeTo`, which the SDK, like this crate, reads in its own order. Saving those
+effects from their editor data changes how they play.
+
+The engine never reads editor data, so its bytes are kept as stored and decoded only on request. A library whose editor
+data does not decode still reads.
 
 `export_to_path` unpacks a library into `header.ltx`, `effects.ltx` and `groups.ltx` in a directory, a section per
 effect and group (tagged with its `$type`) with sub-sections such as `<effect>.action.<index>` and `<effect>.sprite`;
@@ -81,7 +121,8 @@ Instances follow the engine's `CParticleEffect` and `CParticleGroup`:
   per update (99 ms at the default rate), carrying the remainder. An effect with a time limit stops itself, deferred,
   when the limit runs out.
 - A group plays each enabled effect as its clock passes the effect's `time_0` and stops it at `time_1`; its time limit
-  is the file's, or the latest `time_1` where the file gives none. Zero or less means it loops.
+  is `ParticleGroup::get_time_limit`, the file's, or the latest `time_1` where the file gives none. Zero or less means
+  it loops.
 
 `ParticleObject` wraps an instance as the engine's `CParticlesObject`: `play` takes a first update as if 33 ms had
 passed, and `advance` updates it when it is in view and on a distance-paced schedule otherwise, from every 30 ms near
@@ -116,9 +157,11 @@ engine's `dfXXX` constants do.
 
 ## Checks
 
-Run `cargo test --locked -p xrf-particles` from the repository root. Malformed-input tests frame their chunks by hand
-rather than through the writer, so a reader cannot pass by agreeing with its own writer.
+Run `cargo test --locked -p xrf-particles` from the repository root. Malformed-input and editor tests frame their
+bytes by hand rather than through the writer, so a reader cannot pass by agreeing with its own writer.
 
-See the [file](src/particles_file.rs), [effect](src/data/particle_effect.rs), [group](src/data/particle_group.rs),
-[library](src/simulation/particle_library.rs), [engine rules](src/simulation/particle_engine_rules.rs), and
-[malformed-input tests](src/tests/malformed.rs).
+See the [file](src/particles_file.rs), [effect](src/data/effect/particle_effect.rs),
+[group](src/data/group/particle_group.rs), [editor action](src/data/editor/particle_editor_action.rs),
+[library](src/simulation/particle_library.rs), [engine rules](src/simulation/particle_engine_rules.rs), and the
+[malformed-input](src/tests/malformed.rs), [editor](src/tests/editor.rs) and [library editing](src/tests/library.rs)
+tests.

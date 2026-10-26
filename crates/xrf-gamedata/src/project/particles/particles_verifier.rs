@@ -108,7 +108,11 @@ impl ParticlesVerifier<'_> {
 
       xrf_output::verbose!(options.output, "Verify particle: {}", effect.name);
 
-      for reference in effect.sprite.texture_name.split(',') {
+      let Some(sprite) = &effect.sprite else {
+        continue;
+      };
+
+      for reference in sprite.texture_name.split(',') {
         let Some(texture) = self
           .project
           .dds_texture(reference)

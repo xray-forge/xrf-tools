@@ -76,6 +76,10 @@ pub enum ParticleAction {
 impl ParticleAction {
   pub const META_TYPE: &'static str = "particle_action";
 
+  /// `ParticleAction::ALLOW_ROTATE` of an action's flags: its domains and vectors turn with the effect's placement
+  /// rather than only moving with it.
+  pub const ALLOW_ROTATE: u32 = 1 << 1;
+
   /// The action type selects the payload that follows it, so only the type itself is unconditional.
   pub const MIN_SERIALIZED_SIZE: u64 = 4;
 }
