@@ -11,6 +11,7 @@ pub struct OutputOptions {
 }
 
 impl OutputOptions {
+  /// Options writing every message `verbosity` lets through into `output`.
   pub fn new(output: Arc<dyn Output>, verbosity: OutputVerbosity) -> Self {
     Self { output, verbosity }
   }

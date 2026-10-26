@@ -87,4 +87,4 @@ Run `cargo test --locked -p xrf-output` from the repository root. Output carries
 message neither returns an error nor marks a report as failed. Progress and cancellation belong to
 [xrf-job](../xrf-job/README.md); final findings belong to [xrf-report](../xrf-report/README.md).
 
-See the [options](src/output_options.rs), [sinks](src/output.rs) and [ordered output](src/output_sequence.rs).
+See the [options](src/output_options.rs), [sinks](src/sink/output.rs) and [ordered output](src/sequence/output_sequence.rs).
