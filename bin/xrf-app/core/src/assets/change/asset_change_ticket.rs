@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::assets::asset_change_order::AssetChangeOrder;
+use crate::assets::change::AssetChangeOrder;
 
 /// An event's place in [`AssetChangeOrder`], given up where it is dropped undelivered, so a failed fan-out never holds
 /// back the ones after it.

@@ -33,7 +33,7 @@ impl<'a> GamedataCheck<'a> for ParticlesVerifier<'a> {
     // Enumerated through the VFS, so an installation's archived libraries are verified too.
     let library_paths: Vec<String> = self
       .project
-      .entries_with_suffix("particles.xr")?
+      .entries_with_suffix(ParticlesFile::FILE_NAME)?
       .into_iter()
       .map(|location| location.get_logical_path().to_string())
       .collect();

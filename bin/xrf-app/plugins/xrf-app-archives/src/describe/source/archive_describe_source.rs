@@ -89,7 +89,7 @@ impl ArchiveDescribeSource<'_> {
   pub fn read_bytes(&self, name: &str) -> XrfResult<Vec<u8>> {
     match self {
       Self::Volumes { project, .. } => project.read_file_bytes(name),
-      Self::World { world } => world.search.read_asset(&world.find_asset(name)?),
+      Self::World { world } => world.search.read(name),
     }
   }
 

@@ -1,9 +1,9 @@
 use serde::Serialize;
 use xrf_app_core::TauriResult;
+use xrf_level::{LevelFile, LevelGeomFile};
 use xrf_vfs::{XrayDirectoryListing, XrayLogicalPath, XraySearch};
 
-use crate::level::{LevelBundle, LevelSource};
-use crate::parts::LevelGeometryPart;
+use crate::level::LevelSource;
 
 /// One compiled level the roots hold, as a picker lists it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -38,9 +38,9 @@ impl LevelEntry {
         .filter_map(|name| {
           let logical_path: XrayLogicalPath = levels.join(&name).ok()?;
 
-          Self::is_present(search, &logical_path, LevelBundle::FILE).then(|| Self {
+          Self::is_present(search, &logical_path, LevelFile::FILE_NAME).then(|| Self {
             // A level shipping no render geometry draws nothing, which is worth saying in the list rather than on open.
-            has_geometry: Self::is_present(search, &logical_path, LevelGeometryPart::FILE),
+            has_geometry: Self::is_present(search, &logical_path, LevelGeomFile::FILE_NAME),
             logical_path: logical_path.as_str().to_owned(),
             name,
           })

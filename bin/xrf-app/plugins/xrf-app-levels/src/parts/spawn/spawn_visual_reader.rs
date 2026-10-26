@@ -1,10 +1,9 @@
 use std::collections::BTreeSet;
 use std::sync::{Arc, OnceLock};
 
-use xrf_app_core::assets::locate_referenced_asset;
 use xrf_app_core::session::SessionSnapshot;
 use xrf_chunk::XRayByteOrder;
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 use xrf_material::{XraySurfaceDescriptor, XraySurfaceResolver, XrayTextureScope};
 use xrf_ogf::OgfFile;
 use xrf_vfs::{XrayAsset, XrayAssetType, XrayLogicalPath, XraySearch};
@@ -115,7 +114,11 @@ impl SpawnVisualReader {
       .and_then(|level| self.search.find_beside(level, XrayAssetType::Ogf, name).ok().flatten());
     let asset: XrayAsset = match beside {
       Some(asset) => asset,
-      None => locate_referenced_asset(&self.search, XrayAssetType::Ogf, name)?,
+      None => self
+        .search
+        .resolve(XrayAssetType::Ogf, name)?
+        .into_asset()
+        .ok_or_else(|| XrfError::new_asset_error(format!("'{name}' resolves to no model in the mounted roots")))?,
     };
 
     self

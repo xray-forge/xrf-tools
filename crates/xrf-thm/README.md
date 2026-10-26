@@ -108,7 +108,7 @@ Only part of a descriptor matters at runtime. `is_described_by_engine` is the en
 map descriptor contributes nothing, however complete its bump chunk, and a file without a type chunk counts as an
 image. `used_bump_name` is the bump name only when the mode is `Use` or `UseParallax` and the name is not empty.
 `used_detail_usage` is the detail association only when a detail is named and the flag word sets diffuse or bump
-detail. `is_supported_version` and `is_texture_thumbnail` answer whether the file is one the engine loads as a texture
+detail, and `ThmDetailUsage::get_flags` names the flags each usage is read from. `is_supported_version` and `is_texture_thumbnail` answer whether the file is one the engine loads as a texture
 descriptor; both accept a file lacking the chunk.
 
 ## Patch a bump declaration

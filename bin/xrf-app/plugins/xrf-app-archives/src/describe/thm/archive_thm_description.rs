@@ -8,11 +8,10 @@ use crate::describe::description::ArchiveReference;
 use crate::describe::source::ArchiveDescribeSource;
 use crate::describe::thm::archive_thm_bump::ArchiveThmBump;
 use crate::describe::thm::archive_thm_detail::ArchiveThmDetail;
-use crate::describe::thm::archive_thm_file::ArchiveThmFile;
 use crate::describe::thm::archive_thm_material::ArchiveThmMaterial;
-use crate::describe::thm::archive_thm_parameters::ArchiveThmParameters;
-use crate::describe::thm::archive_thm_texture::ArchiveThmTexture;
-use crate::describe::thm::archive_thm_texture_type::ArchiveThmTextureType;
+use crate::describe::thm::file::ArchiveThmFile;
+use crate::describe::thm::parameters::ArchiveThmParameters;
+use crate::describe::thm::texture::{ArchiveThmTexture, ArchiveThmTextureType};
 
 /// Everything the viewer says about one texture descriptor.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -40,6 +39,8 @@ impl ArchiveThmDescription {
   /// Returns an error when the entry's bytes cannot be read, or when they are not a descriptor this reader can walk.
   /// A chunk it does not recognise is not a failure: [`ThmFile`] keeps it, and it is reported as an extra chunk.
   pub fn read(source: &ArchiveDescribeSource, name: &str) -> XrfResult<Self> {
+    // todo: Describe the SDK's object, group and sound thumbnails as their own kinds through `ThmKind::detect` and
+    //  their readers, rather than as a texture descriptor whose chunk ids they reuse.
     let file: ThmFile = ThmFile::read_from_bytes::<XRayByteOrder>(source.read_bytes(name)?)?;
     let parameters: Option<&ThmTextureParamChunk> = file.texture_param.as_ref();
 

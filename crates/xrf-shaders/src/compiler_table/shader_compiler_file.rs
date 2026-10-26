@@ -17,6 +17,9 @@ pub struct ShaderCompilerFile {
 }
 
 impl ShaderCompilerFile {
+  /// The library's path under `$game_data$`, the one the level compiler's `Shader_xrLC_LIB` loads.
+  pub const FILE_NAME: &'static str = "shaders_xrlc.xr";
+
   /// Reads a compiler shader library from a path.
   ///
   /// # Errors

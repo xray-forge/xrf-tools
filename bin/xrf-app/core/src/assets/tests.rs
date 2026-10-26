@@ -4,8 +4,7 @@ use std::sync::{Arc, Mutex};
 use xrf_test_utils::GeneratedResources;
 
 use crate::assets::FileStamp;
-use crate::assets::asset_change_order::AssetChangeOrder;
-use crate::assets::asset_change_ticket::AssetChangeTicket;
+use crate::assets::change::{AssetChangeOrder, AssetChangeTicket};
 
 /// A ticket dropped undelivered, as a fan-out that failed drops its own, gives its turn up: the events issued after it
 /// are heard all the same, in their order.

@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_thm::{ThmDetailChunk, ThmDetailUsage, ThmTextureFlag};
+use xrf_thm::{ThmDetailChunk, ThmDetailUsage};
 use xrf_vfs::XrayAssetType;
 
 use crate::describe::description::ArchiveReference;
@@ -26,44 +26,11 @@ impl ArchiveThmDetail {
     Self {
       scale: detail.scale,
       texture: (!detail.name.is_empty()).then(|| ArchiveReference::resolve(source, XrayAssetType::Dds, &detail.name)),
-      enabled_by: to_enabling_flags(usage),
+      enabled_by: usage
+        .map_or(&[][..], ThmDetailUsage::get_flags)
+        .iter()
+        .map(|flag| flag.label().to_owned())
+        .collect(),
     }
-  }
-}
-
-/// The SDK spellings of the flags a live detail association is applied by.
-fn to_enabling_flags(usage: Option<ThmDetailUsage>) -> Vec<String> {
-  let flags: &[ThmTextureFlag] = match usage {
-    Some(ThmDetailUsage::Diffuse) => &[ThmTextureFlag::DiffuseDetail],
-    Some(ThmDetailUsage::Bump) => &[ThmTextureFlag::BumpDetail],
-    Some(ThmDetailUsage::DiffuseAndBump) => &[ThmTextureFlag::DiffuseDetail, ThmTextureFlag::BumpDetail],
-    None => &[],
-  };
-
-  flags.iter().map(|flag| flag.label().to_owned()).collect()
-}
-
-#[cfg(test)]
-mod tests {
-  use xrf_thm::ThmDetailUsage;
-
-  use super::to_enabling_flags;
-
-  #[test]
-  fn each_usage_names_the_flags_that_produce_it() {
-    assert_eq!(
-      to_enabling_flags(Some(ThmDetailUsage::Diffuse)),
-      vec!["flDiffuseDetail"]
-    );
-    assert_eq!(to_enabling_flags(Some(ThmDetailUsage::Bump)), vec!["flBumpDetail"]);
-    assert_eq!(
-      to_enabling_flags(Some(ThmDetailUsage::DiffuseAndBump)),
-      vec!["flDiffuseDetail", "flBumpDetail"]
-    );
-  }
-
-  #[test]
-  fn an_association_the_engine_reads_past_names_nothing() {
-    assert!(to_enabling_flags(None).is_empty());
   }
 }

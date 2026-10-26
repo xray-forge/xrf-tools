@@ -29,6 +29,9 @@ pub struct ParticlesFile {
 }
 
 impl ParticlesFile {
+  /// `PSLIB_FILENAME`, the library's path under `$game_data$`, the one `CPSLibrary::OnCreate` loads.
+  pub const FILE_NAME: &'static str = "particles.xr";
+
   /// The root chunks the engine reads, which are the ones a library is written with.
   pub const ROOT_CHUNK_IDS: [u32; 3] = [
     ParticlesHeaderChunk::CHUNK_ID,

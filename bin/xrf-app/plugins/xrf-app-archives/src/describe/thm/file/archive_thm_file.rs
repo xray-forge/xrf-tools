@@ -1,6 +1,8 @@
 use serde::Serialize;
 use xrf_thm::ThmFile;
 
+use crate::describe::thm::file::archive_thm_thumbnail::ArchiveThmThumbnail;
+
 /// What the file is, apart from what it declares.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -9,7 +11,7 @@ pub struct ArchiveThmFile {
   pub version: Option<u16>,
   /// Whether the version is the one `ETextureThumbnail::Load` accepts.
   pub is_supported_version: bool,
-  /// The kind of asset the thumbnail describes; `1` is a texture and the only one these tools read.
+  /// The kind of asset the thumbnail describes; `1` is a texture and the only kind this describer reads.
   pub thumbnail_type: Option<u32>,
   pub thumbnail: Option<ArchiveThmThumbnail>,
   /// Chunk ids the reader could not fold into a field, in the order it read them.
@@ -18,26 +20,13 @@ pub struct ArchiveThmFile {
   pub trailing_chunks: Vec<u32>,
 }
 
-/// The preview picture a descriptor carries, `THM_CHUNK_DATA`.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ArchiveThmThumbnail {
-  /// Whether the payload is the engine's own compressed stream, which is the only form seen in the wild.
-  pub is_compressed: bool,
-  pub size: u64,
-}
-
 impl ArchiveThmFile {
   pub fn of(file: &ThmFile) -> Self {
     Self {
       version: file.version,
       is_supported_version: file.is_supported_version(),
       thumbnail_type: file.thumbnail_type,
-      thumbnail: file.thumbnail.as_ref().map(|thumbnail| ArchiveThmThumbnail {
-        is_compressed: thumbnail.is_compressed,
-        size: thumbnail.data.len() as u64,
-      }),
+      thumbnail: file.thumbnail.as_ref().map(ArchiveThmThumbnail::of),
       extra_chunks: file.extra.iter().map(|chunk| chunk.id).collect(),
       trailing_chunks: file.trailing.iter().map(|trailing| trailing.id).collect(),
     }

@@ -19,6 +19,9 @@ pub struct LightAnimFile {
 }
 
 impl LightAnimFile {
+  /// The library's path under `$game_data$`, the one `ELightAnimLibrary::Load` reads.
+  pub const FILE_NAME: &'static str = "lanims.xr";
+
   pub const VERSION_CHUNK_ID: u32 = 0x0000;
   pub const ITEMS_CHUNK_ID: u32 = 0x0001;
 

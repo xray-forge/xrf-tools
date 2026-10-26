@@ -3,10 +3,11 @@ use std::time::Instant;
 
 use tauri::State;
 use xrf_app_core::TauriResult;
-use xrf_app_core::assets::{AssetMountState, detect_search_engine};
+use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_dltx::DltxDialect;
+use xrf_engine_target::XrayEngineDetector;
 use xrf_ltx::LtxDialect;
 use xrf_vfs::XrayRoots;
 
@@ -47,7 +48,7 @@ pub async fn levels_open_level(
       "Opening the level",
       move |search| {
         OpenedLevel::read(search, source, roots, dialect, |search, roots| {
-          engine.resolve(|| detect_search_engine(search, roots))
+          engine.resolve(|| XrayEngineDetector::detect(roots, |logical_path| search.read(logical_path).ok()))
         })
       },
     )

@@ -48,7 +48,7 @@ pub trait PackedFileFormat: Sized + Send + Sync + 'static {
 
 impl PackedFileFormat for ParticlesFile {
   const NOUN: &'static str = "particles file";
-  const FILE_NAME: &'static str = "particles.xr";
+  const FILE_NAME: &'static str = ParticlesFile::FILE_NAME;
   const READ_CHECK: &'static str = "particles.read";
 
   fn read(path: &Path) -> XrfResult<Self> {

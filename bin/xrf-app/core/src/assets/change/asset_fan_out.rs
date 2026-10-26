@@ -2,13 +2,12 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use xrf_vfs::XrayVfs;
 
-/// Work run once a change has been heard, or that tells everyone of one.
-pub(crate) type AssetFanOutStart = Box<dyn FnOnce() + Send>;
+use crate::assets::change::asset_change_work::AssetChangeWork;
 
 /// One change on its way out: the snapshot the sessions move to, and what their follows put off until it is heard.
 pub struct AssetFanOut {
   vfs: Arc<XrayVfs>,
-  starts: Mutex<Vec<AssetFanOutStart>>,
+  starts: Mutex<Vec<AssetChangeWork>>,
 }
 
 impl AssetFanOut {
@@ -36,7 +35,7 @@ impl AssetFanOut {
       .push(Box::new(start));
   }
 
-  pub(crate) fn into_starts(self) -> Vec<AssetFanOutStart> {
+  pub(crate) fn into_starts(self) -> Vec<AssetChangeWork> {
     self.starts.into_inner().unwrap_or_else(PoisonError::into_inner)
   }
 }

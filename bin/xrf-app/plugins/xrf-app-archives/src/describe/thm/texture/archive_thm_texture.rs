@@ -5,7 +5,7 @@ use xrf_vfs::XrayLogicalPath;
 
 use crate::describe::description::ArchiveReference;
 use crate::describe::source::ArchiveDescribeSource;
-use crate::describe::thm::archive_thm_declared_size::ArchiveThmDeclaredSize;
+use crate::describe::thm::texture::archive_thm_declared_size::ArchiveThmDeclaredSize;
 
 /// The texture a descriptor sits beside, and what that file actually is.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -28,7 +28,7 @@ impl ArchiveThmTexture {
     texture_type: ThmTextureType,
     parameters: Option<&ThmTextureParamChunk>,
   ) -> Self {
-    let reference: ArchiveReference = match to_sibling_texture_path(name) {
+    let reference: ArchiveReference = match Self::to_sibling_path(name) {
       Some(path) => ArchiveReference::of_path(source, &path),
       None => ArchiveReference::unresolvable(name),
     };
@@ -43,27 +43,27 @@ impl ArchiveThmTexture {
       shape,
     }
   }
-}
 
-/// The `.dds` beside a descriptor, addressed by where it sits rather than by a name the descriptor carries.
-fn to_sibling_texture_path(name: &str) -> Option<String> {
-  let path: XrayLogicalPath = XrayLogicalPath::new(name).ok()?;
+  /// The `.dds` beside a descriptor, addressed by where it sits rather than by a name the descriptor carries.
+  fn to_sibling_path(name: &str) -> Option<String> {
+    let path: XrayLogicalPath = XrayLogicalPath::new(name).ok()?;
 
-  path.as_str().strip_suffix(".thm").map(|stem| format!("{stem}.dds"))
+    path.as_str().strip_suffix(".thm").map(|stem| format!("{stem}.dds"))
+  }
 }
 
 #[cfg(test)]
 mod tests {
-  use super::to_sibling_texture_path;
+  use super::ArchiveThmTexture;
 
   #[test]
   fn a_descriptor_names_the_texture_it_sits_beside() {
     assert_eq!(
-      to_sibling_texture_path("textures\\act\\act_arm_1.thm").as_deref(),
+      ArchiveThmTexture::to_sibling_path("textures\\act\\act_arm_1.thm").as_deref(),
       Some("textures\\act\\act_arm_1.dds")
     );
     assert_eq!(
-      to_sibling_texture_path("Textures\\Act\\ACT_ARM_1.THM").as_deref(),
+      ArchiveThmTexture::to_sibling_path("Textures\\Act\\ACT_ARM_1.THM").as_deref(),
       Some("textures\\act\\act_arm_1.dds")
     );
   }

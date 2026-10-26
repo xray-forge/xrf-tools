@@ -1,7 +1,6 @@
 use std::collections::{BTreeSet, HashMap};
 use std::time::Instant;
 
-use xrf_app_core::assets::read_located_asset;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelPsStaticFile, LevelPsStaticPlacement};
@@ -36,12 +35,6 @@ impl SessionPart for LevelParticlesPart {
 }
 
 impl LevelParticlesPart {
-  /// The particle systems the level plants and where, `CLevel::Load_GameSpecific_After`.
-  pub const PS_STATIC_FILE: &'static str = "level.ps_static";
-
-  /// The game's particle library, at the root of its data (`$game_data$`).
-  const PARTICLES_FILE: &'static str = "particles.xr";
-
   /// `eGameIDSingle`: the game type a planted system must name to play in a single player game.
   const SINGLE_PLAYER: u16 = 1;
 
@@ -138,19 +131,20 @@ impl LevelParticlesPart {
   }
 
   fn read_library(search: &XraySearch) -> Result<ParticleLibrary, String> {
-    read_located_asset(search, Self::PARTICLES_FILE)
+    search
+      .read(ParticlesFile::FILE_NAME)
       .and_then(ParticlesFile::read_from_bytes::<XRayByteOrder>)
       .map(ParticleLibrary::from)
-      .map_err(|error| format!("Failed to read '{}': {error}", Self::PARTICLES_FILE))
+      .map_err(|error| format!("Failed to read '{}': {error}", ParticlesFile::FILE_NAME))
   }
 
   /// `CLevel::Load_GameSpecific_After`: each system the level plants for a single player game, lifted a centimetre.
   fn read_planted(source: &LevelSource, search: &XraySearch) -> Result<Vec<RenderParticlePlacement>, String> {
-    let Some(bytes) = source.read_optional_file(search, Self::PS_STATIC_FILE)? else {
+    let Some(bytes) = source.read_optional_file(search, LevelPsStaticFile::FILE_NAME)? else {
       return Ok(Vec::new());
     };
     let file: LevelPsStaticFile = LevelPsStaticFile::read_from_bytes::<XRayByteOrder>(bytes)
-      .map_err(|error| source.describe_read_failure(Self::PS_STATIC_FILE, &error))?;
+      .map_err(|error| source.describe_read_failure(LevelPsStaticFile::FILE_NAME, &error))?;
 
     Ok(
       file

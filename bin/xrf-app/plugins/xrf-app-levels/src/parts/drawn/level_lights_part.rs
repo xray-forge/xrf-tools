@@ -1,6 +1,5 @@
 use std::time::Instant;
 
-use xrf_app_core::assets::read_located_asset;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
 use xrf_light_anim::LightAnimFile;
@@ -31,9 +30,6 @@ impl SessionPart for LevelLightsPart {
 }
 
 impl LevelLightsPart {
-  /// The colour animations lights name.
-  pub const ANIMATIONS_FILE: &'static str = "lanims.xr";
-
   /// Collects the open level's lights, what they are read from recorded as its lights part. Where its spawn cannot be
   /// read the level keeps its own lights alone, and without configs its zones light nothing and its lamps keep their
   /// spawned flags.
@@ -54,9 +50,10 @@ impl LevelLightsPart {
     sections: Option<&Ltx>,
   ) -> PackedLevelLights {
     let started: Instant = Instant::now();
-    let animations: Option<LightAnimFile> = read_located_asset(search, Self::ANIMATIONS_FILE)
+    let animations: Option<LightAnimFile> = search
+      .read(LightAnimFile::FILE_NAME)
       .and_then(LightAnimFile::read_from_bytes::<XRayByteOrder>)
-      .inspect_err(|error| LevelReport::unreadable_animations(Self::ANIMATIONS_FILE, error))
+      .inspect_err(|error| LevelReport::unreadable_animations(LightAnimFile::FILE_NAME, error))
       .ok();
     let mut packer: LightsPacker = LightsPacker::new(animations.as_ref());
 

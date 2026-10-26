@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use xrf_app_core::assets::read_located_asset;
 use xrf_app_core::session::{SessionPart, SessionParts, SessionSnapshot};
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_spawn::{AlifeObject, ClsId, SpawnFile, SpawnLevelObjects};
@@ -74,7 +73,8 @@ impl LevelSpawnPart {
     let path: XrayLogicalPath = XrayLogicalPath::new(Self::SPAWNS_DIRECTORY)
       .and_then(|directory| directory.join(Self::SPAWN_FILE))
       .map_err(|error| format!("Failed to name '{}': {error}", Self::SPAWN_FILE))?;
-    let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = read_located_asset(search, path.as_str())
+    let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = search
+      .read(path.as_str())
       .and_then(ChunkReader::from_vec)
       .and_then(|mut it| it.read_children())
       .map_err(|error| format!("Failed to read '{path}': {error}"))?;

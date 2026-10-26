@@ -3,7 +3,7 @@ use tauri::{AppHandle, Manager};
 use xrf_vfs::XrayRoots;
 
 use crate::TauriResult;
-use crate::assets::{AssetMountState, read_located_asset};
+use crate::assets::AssetMountState;
 use crate::execution::ExecutionState;
 use crate::transport::TransportAnswer;
 
@@ -26,7 +26,9 @@ pub(crate) async fn assets_read_asset(app: AppHandle, request: AssetsReadAssetRe
   let bytes: Vec<u8> = app
     .state::<ExecutionState>()
     .run_blocking("Reading asset", move || {
-      read_located_asset(&assets.search(&roots)?, &logical_path)
+      assets
+        .search(&roots)?
+        .read(&logical_path)
         .map_err(|error| format!("Failed to read asset '{logical_path}': {error}"))
     })
     .await??;

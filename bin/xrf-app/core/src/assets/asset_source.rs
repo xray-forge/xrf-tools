@@ -6,7 +6,6 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_vfs::{XrayRoots, XraySearch};
 
 use crate::assets::AssetMountState;
-use crate::assets::asset_read::read_located_asset;
 
 /// Where a document is read from: a file on disk, read by its path and mounted nowhere, or an asset of the roots, loose
 /// or archived, read by its logical path.
@@ -45,7 +44,7 @@ impl AssetSource {
   pub fn read(&self, search: &XraySearch) -> XrfResult<Vec<u8>> {
     match self {
       Self::File { path } => Ok(fs::read(path)?),
-      Self::Asset { logical_path } => read_located_asset(search, logical_path),
+      Self::Asset { logical_path } => search.read(logical_path),
     }
   }
 
@@ -59,9 +58,10 @@ impl AssetSource {
   pub fn read_in(&self, assets: &AssetMountState, roots: &XrayRoots) -> XrfResult<Vec<u8>> {
     match self {
       Self::File { path } => Ok(fs::read(path)?),
-      Self::Asset { logical_path } => {
-        read_located_asset(&assets.search(roots).map_err(XrfError::new_asset_error)?, logical_path)
-      }
+      Self::Asset { logical_path } => assets
+        .search(roots)
+        .map_err(XrfError::new_asset_error)?
+        .read(logical_path),
     }
   }
 }

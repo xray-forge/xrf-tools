@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-use xrf_app_core::assets::{AssetMountState, FileStamp, read_located_asset};
+use xrf_app_core::assets::{AssetMountState, FileStamp};
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XrayTextureScope;
 use xrf_renderer::get_texture_name;
@@ -117,7 +117,7 @@ impl TextureResolver {
     };
 
     match logical_path {
-      Some(logical_path) => read_located_asset(&search, &logical_path).map(Some),
+      Some(logical_path) => search.read(&logical_path).map(Some),
       None => Ok(None),
     }
   }

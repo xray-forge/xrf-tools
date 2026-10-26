@@ -74,7 +74,7 @@ impl ParticlesUsageVerifier<'_> {
 
     let mut names: HashSet<String> = HashSet::new();
 
-    for library in self.project.entries_with_suffix("particles.xr")? {
+    for library in self.project.entries_with_suffix(ParticlesFile::FILE_NAME)? {
       self.options.job.check_cancelled()?;
 
       // Read from the source that answered the enumeration, rather than searching the mounts again by path.

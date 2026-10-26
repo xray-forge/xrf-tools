@@ -85,7 +85,7 @@ impl ArchiveWorld {
 
     policy.assert_can_read_as_text(name, size)?;
 
-    ArchiveReadResult::decode(name, &self.search.read_asset(&self.find_asset(name)?)?, size)
+    ArchiveReadResult::decode(name, &self.search.read(name)?, size)
   }
 
   /// The mounted asset behind an engine path, in the snapshot this world was listed from.

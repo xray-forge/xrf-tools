@@ -18,6 +18,9 @@ pub struct SoundEnvironmentFile {
 }
 
 impl SoundEnvironmentFile {
+  /// `SNDENV_FILENAME`, the library's path under `$game_data$`, the one the sound renderer loads.
+  pub const FILE_NAME: &'static str = "senvironment.xr";
+
   /// Reads a sound environment library from a path.
   ///
   /// # Errors

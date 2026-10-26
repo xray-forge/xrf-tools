@@ -1,7 +1,13 @@
 use xrf_archive::ArchiveReadPolicy;
 use xrf_error::XrfResult;
 use xrf_extension::{XrayExtension, XrayExtensionOf};
-use xrf_vfs::XrayLogicalPath;
+use xrf_gamemtl::GameMtlFile;
+use xrf_level::{LevelDetailsFile, LevelFile};
+use xrf_light_anim::LightAnimFile;
+use xrf_particles::ParticlesFile;
+use xrf_shaders::ShaderCompilerFile;
+use xrf_sound::SoundEnvironmentFile;
+use xrf_vfs::{XrayAssetType, XrayLogicalPath};
 
 use crate::describe::anm::ArchiveAnmDescription;
 use crate::describe::description::{ArchiveDescribeRefusal, ArchiveFileDescription, ArchiveFormatDescription};
@@ -97,14 +103,14 @@ impl ArchiveDescribedFormat {
   /// file under is the whole of the answer. All six `.xr` libraries are named here, so the extension has no unclaimed
   /// spelling left in the trees.
   const NAMED: [(&'static str, Self); 8] = [
-    ("gamemtl.xr", Self::GameMtl),
-    ("lanims.xr", Self::LightAnim),
-    ("level", Self::Level),
-    ("level.details", Self::DetailLibrary),
-    ("particles.xr", Self::Particles),
-    ("senvironment.xr", Self::SoundEnvironment),
-    ("shaders.xr", Self::Shaders),
-    ("shaders_xrlc.xr", Self::ShaderCompiler),
+    (GameMtlFile::FILE_NAME, Self::GameMtl),
+    (LightAnimFile::FILE_NAME, Self::LightAnim),
+    (LevelFile::FILE_NAME, Self::Level),
+    (LevelDetailsFile::FILE_NAME, Self::DetailLibrary),
+    (ParticlesFile::FILE_NAME, Self::Particles),
+    (SoundEnvironmentFile::FILE_NAME, Self::SoundEnvironment),
+    (XrayAssetType::SHADER_LIBRARY_PATH, Self::Shaders),
+    (ShaderCompilerFile::FILE_NAME, Self::ShaderCompiler),
   ];
 
   /// The describer for an entry name, or `None` when no describer claims it.

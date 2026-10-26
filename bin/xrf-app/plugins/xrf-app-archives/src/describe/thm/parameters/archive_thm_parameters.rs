@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_thm::{ThmTextureFlag, ThmTextureParamChunk};
 
-use crate::describe::thm::archive_thm_flag::ArchiveThmFlag;
+use crate::describe::thm::parameters::archive_thm_flag::ArchiveThmFlag;
 
 /// The conversion parameters a descriptor carries, `THM_CHUNK_TEXTUREPARAM`.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
