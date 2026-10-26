@@ -281,16 +281,16 @@ fn a_detail_association_with_neither_flag_set_details_nothing() {
 
 #[test]
 fn a_class_the_engine_never_details_takes_no_detail_from_its_base_texture() {
-  // `B_MODEL` answers `canBeDetailed` with the base class's `FALSE`, so an association on its texture is not one the
-  // renderer ever binds.
+  // `B_MODEL_EbB` answers `canBeDetailed` with the base class's `FALSE`, so an association on its texture is not one
+  // the renderer ever binds.
   let tree: FixtureTree = FixtureTree::new("level_surfaces_detail_undetailable")
-    .with_shader_library(&[ShaderBlenderFixture::model("models\\model")])
+    .with_shader_library(&[ShaderBlenderFixture::model_environment("models\\weapons")])
     .with_descriptor(
       "prop\\prop_wall",
       &ThmFixture::image().with_detail("detail\\detail_beton_det4", 8.0, &[ThmTextureFlag::DiffuseDetail]),
     );
 
-  let surfaces: Vec<XraySurfaceDescriptor> = new_resolved(&tree, &new_level(&["models\\model/prop\\prop_wall"]));
+  let surfaces: Vec<XraySurfaceDescriptor> = new_resolved(&tree, &new_level(&["models\\weapons/prop\\prop_wall"]));
 
   assert_eq!(surfaces[0].detail, None);
 }
