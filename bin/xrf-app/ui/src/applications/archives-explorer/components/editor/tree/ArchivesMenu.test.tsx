@@ -1,24 +1,25 @@
 import { describe, expect, it } from "@jest/globals";
 import { act, fireEvent, RenderResult, waitFor } from "@testing-library/react";
-import { Container } from "@wirestate/core";
-import { runInAction } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import {
+  IArchivesExplorerMock,
+  mockArchivesExplorer,
+} from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
 import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/core/archive/fixtures/archive.mocks";
+import { mockCommandAnswer } from "@/core/operations/fixtures/command-operation.mocks";
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { mockSessionRead, mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchivesMenu } from "./ArchivesMenu";
 
 interface IRenderedMenu {
   render: RenderResult;
-  container: Container;
-  service: ArchivesService;
+  explorer: IArchivesExplorerMock;
 }
 
 async function renderMenu(files: Array<ArchiveFileDescriptor>): Promise<IRenderedMenu> {
@@ -29,13 +30,13 @@ async function renderMenu(files: Array<ArchiveFileDescriptor>): Promise<IRendere
     [EArchivesCommand.READ_FILE]: mockSessionRead({ name: files[0]?.name ?? "", content: "[system]", size: 8 }),
   });
 
-  const { container, service } = mockInjectedService(ArchivesService);
+  const explorer: IArchivesExplorerMock = mockArchivesExplorer();
 
-  const render = renderWithProviders(<ArchivesMenu />, { container });
+  const render = renderWithProviders(<ArchivesMenu />, { container: explorer.container });
 
-  await waitFor(() => expect(service.subject.isRestored).toBe(true));
+  await waitFor(() => expect(explorer.archivesService.subject.isRestored).toBe(true));
 
-  return { container, service, render };
+  return { explorer, render };
 }
 
 function fileRow(render: RenderResult, label: string): HTMLElement {
@@ -68,27 +69,27 @@ describe("ArchivesMenu", () => {
   });
 
   it("takes a directory as the extraction target on a double click, and opens it", async () => {
-    const { render, service } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
+    const { render, explorer } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
 
     fireEvent.click(render.getByText("configs"));
 
-    expect(service.selection).toEqual({ kind: "none" });
+    expect(explorer.previewService.selection).toEqual({ kind: "none" });
 
     fireEvent.dblClick(render.getByText("configs"));
 
-    expect(service.selection).toEqual({ kind: EPathEntryKind.DIRECTORY, path: "configs" });
+    expect(explorer.previewService.selection).toEqual({ kind: EPathEntryKind.DIRECTORY, path: "configs" });
     expect(await render.findByText("system.ltx")).toBeInTheDocument();
   });
 
   it("keeps browsing free while a read is in flight, and supersedes it with the next open", async () => {
-    const { render, service } = await renderMenu([
+    const { render, explorer } = await renderMenu([
       mockArchiveFileDescriptor({ name: "configs\\system.ltx" }),
       mockArchiveFileDescriptor({ name: "configs\\game.ltx" }),
     ]);
 
     fireEvent.dblClick(render.getByText("configs"));
 
-    await act(() => runInAction(() => (service.content = service.content.asLoading(null))));
+    await act(() => mockCommandAnswer(explorer.previewService["read"], AsyncState.loading()));
 
     fireEvent.click(await render.findByText("game.ltx"));
 
@@ -107,12 +108,12 @@ describe("ArchivesMenu", () => {
   });
 
   it("refuses to open anything while an extraction is writing to disk", async () => {
-    const { render, service } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
+    const { render, explorer } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
 
     fireEvent.dblClick(render.getByText("configs"));
 
     // A write leaves the archive and cannot be abandoned the way a read can, so it still holds an open back.
-    await act(() => runInAction(() => (service.operation = service.operation.asLoading(null))));
+    await act(() => mockCommandAnswer(explorer.archivesService.fileExtraction, AsyncState.loading()));
 
     fireEvent.dblClick(await render.findByText("system.ltx"));
 
@@ -120,11 +121,11 @@ describe("ArchivesMenu", () => {
   });
 
   it("blocks Enter on search results during extraction and opens them after it finishes", async () => {
-    const { render, service } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
+    const { render, explorer } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
     const input = render.getByRole("textbox", { name: "Filter archive files" });
 
     fireEvent.change(input, { target: { value: "system" } });
-    await act(() => runInAction(() => (service.operation = service.operation.asLoading(null))));
+    await act(() => mockCommandAnswer(explorer.archivesService.fileExtraction, AsyncState.loading()));
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.READ_FILE, expect.anything());
@@ -134,7 +135,7 @@ describe("ArchivesMenu", () => {
     expect(render.getByText("No files match missing.")).toBeInTheDocument();
 
     fireEvent.change(input, { target: { value: "system" } });
-    await act(() => runInAction(() => (service.operation = service.operation.asIdle())));
+    await act(() => mockCommandAnswer(explorer.archivesService.fileExtraction, AsyncState.idle()));
     fireEvent.keyDown(input, { key: "Enter" });
 
     await waitFor(() =>
@@ -150,10 +151,10 @@ describe("ArchivesMenu", () => {
   });
 
   it("blocks clicks on search results during extraction and opens them after it finishes", async () => {
-    const { render, service } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
+    const { render, explorer } = await renderMenu([mockArchiveFileDescriptor({ name: "configs\\system.ltx" })]);
 
     fireEvent.change(render.getByRole("textbox", { name: "Filter archive files" }), { target: { value: "system" } });
-    await act(() => runInAction(() => (service.operation = service.operation.asLoading(null))));
+    await act(() => mockCommandAnswer(explorer.archivesService.fileExtraction, AsyncState.loading()));
 
     const result = render.getByRole("button", { name: "system.ltx configs" });
 
@@ -163,7 +164,7 @@ describe("ArchivesMenu", () => {
 
     expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.READ_FILE, expect.anything());
 
-    await act(() => runInAction(() => (service.operation = service.operation.asIdle())));
+    await act(() => mockCommandAnswer(explorer.archivesService.fileExtraction, AsyncState.idle()));
     fireEvent.click(render.getByRole("button", { name: "system.ltx configs" }));
 
     await waitFor(() =>

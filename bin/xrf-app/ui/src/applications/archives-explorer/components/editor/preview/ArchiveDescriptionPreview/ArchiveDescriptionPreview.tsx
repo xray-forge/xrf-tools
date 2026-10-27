@@ -10,7 +10,7 @@ import {
 import { assertExhaustive, Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import { TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
@@ -53,8 +53,8 @@ export function ArchiveDescriptionPreview({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const archivesService: ArchivesService = useInjection(ArchivesService);
-  const content: AsyncState<Nullable<TArchiveContent>> = archivesService.content;
+  const previewService: ArchivePreviewService = useInjection(ArchivePreviewService);
+  const content: AsyncState<Nullable<TArchiveContent>> = previewService.content;
 
   // The previous description stays on screen while the next one is read, rather than the panel blanking between
   // clicks - the same courtesy the texture and sound previews extend.
@@ -86,7 +86,7 @@ export function ArchiveDescriptionPreview({
         id={id}
         className={className}
         error={content.error}
-        onRetry={archivesService.retrySelectedFile}
+        onRetry={previewService.retry}
       />
     );
   }

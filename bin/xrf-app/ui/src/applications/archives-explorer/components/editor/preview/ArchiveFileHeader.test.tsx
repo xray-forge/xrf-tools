@@ -3,22 +3,28 @@ import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import {
+  IArchivesExplorerMock,
+  mockArchivesExplorer,
+  mockShownArchiveFile,
+} from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import { mockArchiveFileDescriptor } from "@/core/archive/fixtures/archive.mocks";
-import { EPathEntryKind } from "@/core/path/entry-kind";
-import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveFileHeader } from "./ArchiveFileHeader";
 
 const FILE: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "configs\\gameplay\\dialogs.xml" });
 
-function renderHeader(): { render: RenderResult; service: ArchivesService } {
-  const { service, container } = mockInjectedService(ArchivesService);
+function renderHeader(): { render: RenderResult; service: ArchivePreviewService } {
+  const explorer: IArchivesExplorerMock = mockArchivesExplorer();
 
-  service.selection = { kind: EPathEntryKind.FILE, entry: FILE };
+  mockShownArchiveFile(explorer, FILE, null);
 
-  return { service, render: renderWithProviders(<ArchiveFileHeader entry={FILE} />, { container }) };
+  return {
+    service: explorer.previewService,
+    render: renderWithProviders(<ArchiveFileHeader entry={FILE} />, { container: explorer.container }),
+  };
 }
 
 describe("ArchiveFileHeader", () => {

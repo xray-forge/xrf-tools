@@ -1,13 +1,16 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
-import { AsyncState } from "@xrf/async";
 import { AudioDescriptor } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 
 import { ArchiveAudioPreview } from "@/applications/archives-explorer/components/editor/preview/ArchiveAudioPreview";
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import {
+  IArchivesExplorerMock,
+  mockArchivesExplorer,
+  mockShownArchiveFile,
+} from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
+import { mockArchiveFileDescriptor } from "@/core/archive/fixtures/archive.mocks";
 import { TArchiveBytes } from "@/core/archive/lib";
-import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 const BYTES: TArchiveBytes = new Uint8Array([0x4f, 0x67, 0x67, 0x53]);
@@ -19,18 +22,16 @@ const FULL: AudioDescriptor = {
   mediaType: "audio/ogg",
 };
 
-/**
- * Renders the panel over content the service already holds, which is the state the preview reads.
- *
- * @param descriptor - Sound description to publish, or null for a selection that produced no content.
- * @returns The render result.
- */
 function renderPreview(descriptor: Nullable<AudioDescriptor>): RenderResult {
-  const { service, container } = mockInjectedService(ArchivesService);
+  const explorer: IArchivesExplorerMock = mockArchivesExplorer();
 
-  service.content = AsyncState.ready(descriptor ? { kind: "audio" as const, descriptor, bytes: BYTES } : null);
+  mockShownArchiveFile(
+    explorer,
+    mockArchiveFileDescriptor(),
+    descriptor ? { kind: "audio" as const, descriptor, bytes: BYTES } : null
+  );
 
-  return renderWithProviders(<ArchiveAudioPreview />, { container });
+  return renderWithProviders(<ArchiveAudioPreview />, { container: explorer.container });
 }
 
 describe("ArchiveAudioPreview", () => {

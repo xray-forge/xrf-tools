@@ -1,7 +1,6 @@
 import { ArchiveFileDescription, AudioDescriptor, ImageDescriptor } from "@xrf/ipc/types/xrf-app-archives";
 import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
 import { ArchiveReadResult } from "@xrf/ipc/types/xrf-archive";
-import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
 
 import { EPathEntryKind } from "@/core/path/entry-kind";
 
@@ -36,7 +35,3 @@ export type TArchiveContent =
   | { kind: "image"; descriptor: ImageDescriptor; bytes: TArchiveBytes }
   | { kind: "audio"; descriptor: AudioDescriptor; bytes: TArchiveBytes }
   | { kind: "description"; description: ArchiveFileDescription };
-
-/** The last thing written to disk, so the surface that started it can report what happened. */
-export type TArchiveOperation =
-  { kind: "extract-file"; destination: string } | { kind: "extract-directory"; result: ArchiveExtractDirectoryResult };

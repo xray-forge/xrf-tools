@@ -6,7 +6,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError/ArchivePreviewError";
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { describeTextureShape } from "@/core/assets/lib";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
@@ -24,8 +24,8 @@ export function ArchiveTexturePreview({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const archivesService: ArchivesService = useInjection(ArchivesService);
-  const content: AsyncState<Nullable<TArchiveContent>> = archivesService.content;
+  const previewService: ArchivePreviewService = useInjection(ArchivePreviewService);
+  const content: AsyncState<Nullable<TArchiveContent>> = previewService.content;
 
   // The previous texture stays on screen while the next one decodes, rather than the panel blanking between clicks.
   const texture: Nullable<TArchiveContent & { kind: "texture" }> = useLastContent(
@@ -47,7 +47,7 @@ export function ArchiveTexturePreview({
         id={id}
         className={className}
         error={content.error}
-        onRetry={archivesService.retrySelectedFile}
+        onRetry={previewService.retry}
       />
     );
   }
@@ -69,7 +69,7 @@ export function ArchiveTexturePreview({
   return (
     <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 min-w-0 grow flex-col", className)}>
       <ImageViewport
-        alt={archivesService.selectedEntry?.name ?? "Texture"}
+        alt={previewService.selectedEntry?.name ?? "Texture"}
         src={url}
         width={shape.width}
         height={shape.height}

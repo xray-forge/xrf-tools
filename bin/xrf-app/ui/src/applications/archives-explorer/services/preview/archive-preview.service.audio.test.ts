@@ -5,16 +5,15 @@ import { listMockBulkCalls, mockInvoke, mockIpcBulkRoutes, mockIpcCommands } fro
 import { AudioDescriptor } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
+import { mockArchivesExplorer } from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
 import {
   mockArchiveFileDescriptor,
   mockArchiveReadPolicy,
   mockArchivesVolumes,
 } from "@/core/archive/fixtures/archive.mocks";
-import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockInjectedService } from "@/fixtures/utils/container";
 
-import { ArchivesService } from "./archives.service";
+import { ArchivePreviewService } from "./archive-preview.service";
 
 const SESSION: string = "archives-session";
 const BYTES: ArrayBuffer = new Uint8Array([0x4f, 0x67, 0x67, 0x53]).buffer;
@@ -33,15 +32,11 @@ const DESCRIPTOR: AudioDescriptor = {
   mediaType: "audio/ogg",
 };
 
-function mockService(sound: ArchiveFileDescriptor = SOUND): ArchivesService {
-  const { service } = mockInjectedService(ArchivesService);
-
-  mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes([sound, TEXTURE]), SESSION));
-
-  return service;
+function mockService(sound: ArchiveFileDescriptor = SOUND): ArchivePreviewService {
+  return mockArchivesExplorer(mockSessionSnapshot(mockArchivesVolumes([sound, TEXTURE]), SESSION)).previewService;
 }
 
-describe("ArchivesService audio preview", () => {
+describe("ArchivePreviewService audio preview", () => {
   beforeEach(() => {
     mockIpcCommands({
       [EArchivesCommand.DESCRIBE_AUDIO]: mockSessionRead(DESCRIPTOR),
@@ -56,10 +51,10 @@ describe("ArchivesService audio preview", () => {
       ...SOUND,
       sizeReal: mockArchiveReadPolicy().maximumAudioSize + 1,
     });
-    const service: ArchivesService = mockService(sound);
+    const service: ArchivePreviewService = mockService(sound);
 
-    await service.selectArchiveFile(sound);
-    await service.retrySelectedFile();
+    await service.selectFile(sound);
+    await service.retry();
 
     expect(service.selectedEntry).toEqual(sound);
     expect(service.content.value).toBeNull();
@@ -73,9 +68,9 @@ describe("ArchivesService audio preview", () => {
       ...SOUND,
       sizeReal: mockArchiveReadPolicy().maximumAudioSize,
     });
-    const service: ArchivesService = mockService(sound);
+    const service: ArchivePreviewService = mockService(sound);
 
-    await service.selectArchiveFile(sound);
+    await service.selectFile(sound);
 
     expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.DESCRIBE_AUDIO, {
       sessionId: SESSION,
@@ -89,9 +84,9 @@ describe("ArchivesService audio preview", () => {
   });
 
   it("routes a sound to the audio commands rather than reading it as text", async () => {
-    const service: ArchivesService = mockService();
+    const service: ArchivePreviewService = mockService();
 
-    await service.selectArchiveFile(SOUND);
+    await service.selectFile(SOUND);
 
     expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.DESCRIBE_AUDIO, {
       sessionId: SESSION,
@@ -102,9 +97,9 @@ describe("ArchivesService audio preview", () => {
   });
 
   it("describes and reads one file, of the same subject", async () => {
-    const service: ArchivesService = mockService();
+    const service: ArchivePreviewService = mockService();
 
-    await service.selectArchiveFile(SOUND);
+    await service.selectFile(SOUND);
 
     // The description and the bytes come from different commands, and nothing but this pairing stops a sound from
     // being played with another file's numbers beside it.
@@ -117,9 +112,9 @@ describe("ArchivesService audio preview", () => {
   });
 
   it("carries the engine parameters the archive stored, and the bytes beside them", async () => {
-    const service: ArchivesService = mockService();
+    const service: ArchivePreviewService = mockService();
 
-    await service.selectArchiveFile(SOUND);
+    await service.selectFile(SOUND);
 
     const content = service.content.value?.kind === "audio" ? service.content.value : null;
 
@@ -130,16 +125,16 @@ describe("ArchivesService audio preview", () => {
   });
 
   it("keeps textures on the texture path", async () => {
-    const service: ArchivesService = mockService();
+    const service: ArchivePreviewService = mockService();
 
-    await service.selectArchiveFile(TEXTURE);
+    await service.selectFile(TEXTURE);
 
     expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.DESCRIBE_AUDIO, expect.anything());
     expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.DESCRIBE_TEXTURE, expect.anything());
   });
 
   it("reports a failed read instead of staying loading", async () => {
-    const service: ArchivesService = mockService();
+    const service: ArchivePreviewService = mockService();
 
     mockIpcCommands({
       [EArchivesCommand.DESCRIBE_AUDIO]: mockSessionRead(() => {
@@ -150,14 +145,14 @@ describe("ArchivesService audio preview", () => {
       [EArchivesBulkRoute.READ_ENTRY]: BYTES,
     });
 
-    await service.selectArchiveFile(SOUND);
+    await service.selectFile(SOUND);
 
     expect(service.content.isLoading).toBe(false);
     expect(String(service.content.error)).toContain("not a playable sound");
   });
 
   it("reports a failed byte read even when the description succeeds", async () => {
-    const service: ArchivesService = mockService();
+    const service: ArchivePreviewService = mockService();
 
     mockIpcCommands({
       [EArchivesCommand.DESCRIBE_AUDIO]: mockSessionRead(DESCRIPTOR),
@@ -168,7 +163,7 @@ describe("ArchivesService audio preview", () => {
       },
     });
 
-    await service.selectArchiveFile(SOUND);
+    await service.selectFile(SOUND);
 
     // Half a preview is not a preview: a described sound with no bytes has nothing to play.
     expect(service.content.isLoading).toBe(false);
@@ -177,10 +172,10 @@ describe("ArchivesService audio preview", () => {
   });
 
   it("retries the audio read rather than falling back to text", async () => {
-    const service: ArchivesService = mockService();
+    const service: ArchivePreviewService = mockService();
 
-    await service.selectArchiveFile(SOUND);
-    await service.retrySelectedFile();
+    await service.selectFile(SOUND);
+    await service.retry();
 
     const describeCalls = mockInvoke.mock.calls.filter(([command]) => command === EArchivesCommand.DESCRIBE_AUDIO);
 

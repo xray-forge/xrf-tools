@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
-import { Nullable } from "@xrf/types";
 
 import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/core/archive/fixtures/archive.mocks";
 import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
@@ -13,8 +12,12 @@ import { ArchivesService } from "./archives.service";
 
 const FILE: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
 
-function getExtractedFile(service: ArchivesService): Nullable<string> {
-  return service.operation.value?.kind === "extract-file" ? service.operation.value.destination : null;
+function mockService(): ArchivesService {
+  const { service } = mockInjectedService(ArchivesService);
+
+  mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
+
+  return service;
 }
 
 describe("ArchivesService extraction", () => {
@@ -23,9 +26,7 @@ describe("ArchivesService extraction", () => {
   });
 
   it("asks the backend for the file by its archived name", async () => {
-    const { service } = mockInjectedService(ArchivesService);
-
-    mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
+    const service: ArchivesService = mockService();
 
     await service.extractFile(FILE, "C:\\out\\system.ltx");
 
@@ -34,14 +35,12 @@ describe("ArchivesService extraction", () => {
       name: "configs\\system.ltx",
       destination: "C:\\out\\system.ltx",
     });
-    expect(getExtractedFile(service)).toBe("C:\\out\\system.ltx");
-    expect(service.operation.isLoading).toBe(false);
+    expect(service.fileExtraction.value).toBe("C:\\out\\system.ltx");
+    expect(service.fileExtraction.isLoading).toBe(false);
   });
 
   it("reports a refused extraction instead of staying loading", async () => {
-    const { service } = mockInjectedService(ArchivesService);
-
-    mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
+    const service: ArchivesService = mockService();
 
     mockIpcCommands({
       [EArchivesCommand.EXTRACT_FILE]: () => {
@@ -49,23 +48,21 @@ describe("ArchivesService extraction", () => {
       },
     });
 
-    await expect(service.extractFile(FILE, "C:\\out\\system.ltx")).rejects.toThrow("read only");
+    await service.extractFile(FILE, "C:\\out\\system.ltx");
 
     // Left loading, the header's extract control stays disabled with no way back.
-    expect(service.operation.isLoading).toBe(false);
-    expect(String(service.operation.error)).toContain("read only");
+    expect(service.fileExtraction.isLoading).toBe(false);
+    expect(String(service.fileExtraction.error)).toContain("read only");
   });
 
   it("clears a reported outcome", async () => {
-    const { service } = mockInjectedService(ArchivesService);
-
-    mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
+    const service: ArchivesService = mockService();
 
     await service.extractFile(FILE, "C:\\out\\system.ltx");
 
-    service.clearOperation();
+    service.clearExtractions();
 
-    expect(service.operation.value?.kind === "extract-file" ? service.operation.value.destination : null).toBeNull();
-    expect(service.operation.error).toBeNull();
+    expect(service.fileExtraction.value).toBeNull();
+    expect(service.fileExtraction.error).toBeNull();
   });
 });

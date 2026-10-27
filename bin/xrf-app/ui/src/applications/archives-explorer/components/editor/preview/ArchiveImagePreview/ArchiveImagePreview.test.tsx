@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
-import { AsyncState } from "@xrf/async";
 import { ImageDescriptor } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import {
+  IArchivesExplorerMock,
+  mockArchivesExplorer,
+  mockShownArchiveFile,
+} from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
+import { mockArchiveFileDescriptor } from "@/core/archive/fixtures/archive.mocks";
 import { TArchiveBytes } from "@/core/archive/lib";
-import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveImagePreview } from "./ArchiveImagePreview";
@@ -19,11 +22,15 @@ const DESCRIBED: ImageDescriptor = {
 };
 
 function renderPreview(descriptor: Nullable<ImageDescriptor> = DESCRIBED): RenderResult {
-  const { service, container } = mockInjectedService(ArchivesService);
+  const explorer: IArchivesExplorerMock = mockArchivesExplorer();
 
-  service.content = AsyncState.ready(descriptor ? { kind: "image" as const, descriptor, bytes: BYTES } : null);
+  mockShownArchiveFile(
+    explorer,
+    mockArchiveFileDescriptor(),
+    descriptor ? { kind: "image" as const, descriptor, bytes: BYTES } : null
+  );
 
-  return renderWithProviders(<ArchiveImagePreview />, { container });
+  return renderWithProviders(<ArchiveImagePreview />, { container: explorer.container });
 }
 
 describe("ArchiveImagePreview", () => {

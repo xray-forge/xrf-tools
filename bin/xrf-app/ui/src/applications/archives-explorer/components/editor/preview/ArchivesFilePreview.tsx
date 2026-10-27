@@ -5,7 +5,7 @@ import { ARCHIVE_READ_POLICY } from "@xrf/ipc/types/xrf-archive";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import {
   ArchivePreviewSupport,
   getArchivePreviewSupport,
@@ -52,10 +52,10 @@ export function ArchivesFilePreview({
   className,
   onUnpack,
 }: IArchivesFilePreviewProps): ReactElement {
-  const archivesService: ArchivesService = useInjection(ArchivesService);
+  const previewService: ArchivePreviewService = useInjection(ArchivePreviewService);
 
-  const selection: TArchiveSelection = archivesService.selection;
-  const content: AsyncState<Nullable<TArchiveContent>> = archivesService.content;
+  const selection: TArchiveSelection = previewService.selection;
+  const content: AsyncState<Nullable<TArchiveContent>> = previewService.content;
 
   const onGetUnsupportedDescription = useCallback((support: TUnsupported): string => {
     switch (support.kind) {
@@ -109,7 +109,7 @@ export function ArchivesFilePreview({
           } else if (content.isLoading) {
             return <DelayedProgress />;
           } else if (content.error) {
-            return <ArchivePreviewError error={content.error} onRetry={archivesService.retrySelectedFile} />;
+            return <ArchivePreviewError error={content.error} onRetry={previewService.retry} />;
           } else if (content.value?.kind === "text") {
             return <ArchiveCodePreview file={content.value.result} />;
           }

@@ -5,6 +5,7 @@ import { ArchiveWorldEntry, EArchiveSubject } from "@xrf/ipc/types/xrf-app-archi
 import { ArchiveReadResult } from "@xrf/ipc/types/xrf-archive";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
+import { mockArchivesExplorer } from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
 import {
   mockArchiveShadowedCopy,
@@ -50,13 +51,13 @@ describe("ArchivesService world subject", () => {
       [EArchivesCommand.EXTRACT_FILE]: { name: entry.name, destination: "C:\\out\\system.ltx", size: 8 },
     });
 
-    const { service } = mockInjectedService(ArchivesService);
+    const { archivesService: service, previewService } = mockArchivesExplorer();
 
     await service.openWorld(mockInstallationRoots());
-    await service.selectArchiveFile(entry);
+    await previewService.selectFile(entry);
     await service.extractFile(entry, "C:\\out\\system.ltx");
 
-    expect(service.content.value?.kind === "text" ? service.content.value.result : null).toEqual(result);
+    expect(previewService.content.value?.kind === "text" ? previewService.content.value.result : null).toEqual(result);
     expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.EXTRACT_FILE, {
       sessionId: expect.any(String),
       name: entry.name,
@@ -83,14 +84,14 @@ describe("ArchivesService world subject", () => {
 
     mockIpcCommands({ [EArchivesCommand.OPEN_WORLD]: mockSessionResponse(mockArchivesWorldSubject([entry])) });
 
-    const { service } = mockInjectedService(ArchivesService);
+    const { archivesService: service, previewService } = mockArchivesExplorer();
 
     await service.openWorld(mockInstallationRoots());
-    await service.selectArchiveFile(entry);
+    await previewService.selectFile(entry);
 
-    expect(service.selectedWorldEntry).toStrictEqual(entry);
+    expect(previewService.selectedWorldEntry).toStrictEqual(entry);
     // A world has no name table, so the panel that reads one must find nothing rather than a fabricated descriptor.
-    expect(service.selectedDescriptor).toBeNull();
+    expect(previewService.selectedDescriptor).toBeNull();
   });
 
   it("replaces a volume set, closing only the volume set it replaced", async () => {
