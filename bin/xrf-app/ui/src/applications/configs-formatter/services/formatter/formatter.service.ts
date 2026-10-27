@@ -1,7 +1,7 @@
 import { Injectable } from "@wirestate/core";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { configsCommands } from "@xrf/ipc/commands/configs";
-import { CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT } from "@xrf/ipc/types/xrf-app-configs";
+import { CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT, ConfigsFormatRequest } from "@xrf/ipc/types/xrf-app-configs";
 import { LtxProjectFormatResult } from "@xrf/ipc/types/xrf-ltx";
 import { Logger } from "@xrf/logging";
 
@@ -14,7 +14,7 @@ import { JobOperation } from "@/core/jobs/lib/job-operation";
  * The configs formatting run and what it rewrote.
  */
 @Injectable()
-export class FormatterService {
+export class ConfigsFormatterService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   public readonly operation: JobOperation<LtxProjectFormatResult> = new JobOperation(this.log, {
@@ -35,12 +35,14 @@ export class FormatterService {
   public *format(directory: string, isCheck: boolean): TFlow {
     this.log.info("Formatting:", directory, isCheck);
 
+    const request: ConfigsFormatRequest = { roots: createRoots([directory]), prefix: null };
+
     yield* this.operation.run({
       kind: isCheck ? CONFIGS_JOB_CHECK_FORMAT : CONFIGS_JOB_FORMAT,
       invoke: (id: string, progress) =>
         isCheck
-          ? configsCommands.checkDirectoryFormat({ roots: createRoots([directory]), prefix: null }, id, progress)
-          : configsCommands.formatDirectory({ roots: createRoots([directory]), prefix: null }, id, progress),
+          ? configsCommands.checkDirectoryFormat(request, id, progress)
+          : configsCommands.formatDirectory(request, id, progress),
       describe: (outcome: IJobOutcome<LtxProjectFormatResult>): IJobNotice =>
         describeFormatOutcome(directory, isCheck, outcome),
     });

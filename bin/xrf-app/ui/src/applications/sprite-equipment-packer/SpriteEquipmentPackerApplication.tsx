@@ -5,7 +5,7 @@ import { useLogger } from "@xrf/logging/react";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
-import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
+import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { DDS_FILE_FILTERS, LTX_FILE_FILTERS } from "@/core/path/file-filters";
 import { EApplicationId } from "@/core/routing/application";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";

@@ -1,6 +1,6 @@
 import { LtxFileStructure, LtxStructureInclude, LtxStructureSection } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
-import { Maybe } from "@xrf/types";
+import { Maybe, Nullable } from "@xrf/types";
 
 import { toLexicalLine } from "@/core/ltx/lib/lexical";
 import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
@@ -8,11 +8,6 @@ import { EMPTY_ARRAY } from "@/lib/types/array";
 
 /**
  * Turn one config's text and structure into a source a viewer renders.
- *
- * Two layers, as an editor draws them. The lexical one colours every line from its own characters, locally and at
- * keystroke speed. The semantic one replaces the lines only the parser can be right about - a section header, an
- * include - because a regex cannot tell whether a parent resolves or whether an include reached anything, and the
- * document already knows.
  *
  * @param text - The config's lines, index `n` holding line `n + 1`.
  * @param structure - What the backend made of the same file, or null when nothing judged it.
@@ -22,7 +17,7 @@ import { EMPTY_ARRAY } from "@/lib/types/array";
  */
 export function toDocumentLineSource(
   text: ReadonlyArray<string>,
-  structure: LtxFileStructure | null,
+  structure: Nullable<LtxFileStructure>,
   marks: ReadonlyMap<number, ECodeLineMark> = new Map()
 ): ICodeLineSource {
   const sections: ReadonlyMap<number, LtxStructureSection> = new Map(
@@ -68,9 +63,6 @@ export function toDocumentLineSource(
 
 /**
  * A section header, coloured by what resolving it made of each part.
- *
- * A parent nothing declares is drawn as plain text rather than as a name, which is the only visible difference between
- * `[a]:base` in a tree that has `base` and one that does not - and in the second the engine silently inherits nothing.
  */
 function toSectionSpans(section: LtxStructureSection, line: string): Array<ISyntaxSpan> {
   const bracketed: string = `${section.operation}[${section.name}]`;

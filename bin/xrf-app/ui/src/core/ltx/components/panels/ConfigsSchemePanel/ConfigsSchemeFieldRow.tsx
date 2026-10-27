@@ -7,7 +7,7 @@ import { cn } from "@/core/theme/class-name";
 
 interface IConfigsSchemeFieldRowProps {
   field: LtxSchemeFieldReport;
-  /**  Whether a scheme is judging this section at all. */
+  /** Whether a scheme is judging this section at all. */
   isJudged: boolean;
   /** Whether a missing field is a finding here, which is what strictness decides. */
   isStrict: boolean;

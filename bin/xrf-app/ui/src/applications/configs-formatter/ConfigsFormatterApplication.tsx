@@ -4,7 +4,7 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { FormatterService } from "@/applications/configs-formatter/services/formatter";
+import { ConfigsFormatterService } from "@/applications/configs-formatter/services/formatter";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
 import { FormatCommandResult, IFormatCommandNouns } from "@/core/ui/command-result/FormatCommandResult";
@@ -16,7 +16,7 @@ const CONFIGS_FORMAT_NOUNS: IFormatCommandNouns = { column: "File", everything: 
 export function ConfigsFormatterApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const formatterService: FormatterService = useInjection(FormatterService);
+  const formatterService: ConfigsFormatterService = useInjection(ConfigsFormatterService);
 
   const [isCheck, setIsCheck] = useState(true);
 
