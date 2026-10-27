@@ -7,6 +7,7 @@ import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
 import { default as TerminalIcon } from "@mui/icons-material/Terminal";
 import { default as WarningAmberIcon } from "@mui/icons-material/WarningAmber";
 import { Box, Button, IconButton, Tooltip, Typography } from "@mui/material";
+import { formatCount } from "@xrf/format";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
@@ -102,7 +103,7 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
                 className={"rounded-control border border-divider px-1 text-text-secondary"}
                 variant={"caption"}
               >
-                ×{repeatCount}
+                ×{formatCount(repeatCount)}
               </Typography>
             ) : null}
 
@@ -159,7 +160,7 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
 
           {isExpanded && isClamped ? (
             <Button className={"mt-1 min-w-0 px-1"} size={"small"} onClick={() => setFullShown(true)}>
-              Show all {lines.length} lines
+              Show all {formatCount(lines.length)} lines
             </Button>
           ) : null}
         </div>
