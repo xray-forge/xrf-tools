@@ -1,7 +1,7 @@
 import { join } from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { inject, Injectable } from "@wirestate/core";
-import { BoundAction, RefObservable, runInAction } from "@wirestate/mobx";
+import { BoundAction, flowResult, RefObservable, runInAction } from "@wirestate/mobx";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { systemCommands } from "@xrf/ipc/commands/system";
 import { BuildInfo } from "@xrf/ipc/types/xrf-build-info";
@@ -353,7 +353,7 @@ export class LevelViewerSnapshotService {
     const failed: ILevelViewerSnapshotApplied["failed"] = [];
 
     if (typeof weather.cycle === "string") {
-      await this.weatherService.selectCycle(weather.cycle);
+      await flowResult(this.weatherService.selectCycle(weather.cycle));
 
       if (this.weatherService.cycle.value?.name !== weather.cycle) {
         failed.push({

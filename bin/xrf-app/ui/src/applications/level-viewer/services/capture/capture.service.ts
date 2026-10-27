@@ -1,6 +1,6 @@
 import { Channel } from "@tauri-apps/api/core";
 import { inject, Injectable } from "@wirestate/core";
-import { BoundAction, Computed, RefObservable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, flowResult, RefObservable, runInAction } from "@wirestate/mobx";
 import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { JobKind } from "@xrf/ipc/types/xrf-app-core";
@@ -472,7 +472,7 @@ export class LevelViewerCaptureService {
     }
 
     try {
-      await this.weatherService.cutTo(MAP_WEATHER_CYCLE);
+      await flowResult(this.weatherService.cutTo(MAP_WEATHER_CYCLE));
     } catch (error: unknown) {
       // A game with no map weather is captured under its own at noon, its clock held there.
       this.log.warn("No map weather to capture under, the current one at noon instead:", error);
@@ -490,7 +490,7 @@ export class LevelViewerCaptureService {
     this.viewService.setOptions(options);
 
     try {
-      await this.weatherService.release(weather);
+      await flowResult(this.weatherService.release(weather));
     } catch (error: unknown) {
       this.fail("put the weather back", error);
     } finally {

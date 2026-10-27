@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
-import { autorun } from "@wirestate/mobx";
+import { autorun, flowResult } from "@wirestate/mobx";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
@@ -309,11 +309,11 @@ describe("LevelWeatherService", () => {
 
     await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
-    const rain: Promise<void> = service.selectCycle("default_rain");
+    const rain: Promise<void> = flowResult(service.selectCycle("default_rain"));
 
     expect(service.reading).toBe("default_rain");
 
-    await service.selectCycle("default_clear");
+    await flowResult(service.selectCycle("default_clear"));
 
     expect(service.reading).toBeNull();
 
@@ -322,6 +322,38 @@ describe("LevelWeatherService", () => {
 
     expect(service.cycle.value?.name).toBe("default_clear");
     expect(service.weather).toEqual({ kind: EWorldWeatherPlay.CYCLE, name: "default_clear" });
+  });
+
+  // Releasing a held weather is on the cycle lane too, so a pick still being read gives way to it, read no longer.
+  it("leaves no cycle being read where a release cancels the pick being read", async () => {
+    let release!: () => void;
+
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
+      [ELevelsCommand.READ_LEVEL_CYCLE]: mockSessionResponse(
+        ({ cycle }: { cycle: WeatherCycleId }) =>
+          new Promise((resolve) => {
+            release = () => resolve(mockLevelWeatherCycle({ name: cycle.name }));
+          })
+      ),
+    });
+
+    const service: LevelWeatherService = createLevelWeatherService();
+
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
+
+    const held: ILevelWeatherHold = service.hold();
+    const rain: Promise<void> = flowResult(service.selectCycle("default_rain"));
+
+    await flowResult(service.release(held));
+
+    expect(service.reading).toBeNull();
+    expect(service.cycle.isLoading).toBe(false);
+
+    release();
+    await rain;
+
+    expect(service.cycle.value?.name).toBe("default_clear");
   });
 
   it("leaves a level opened during a cycle's read lit as it was", async () => {
@@ -356,7 +388,7 @@ describe("LevelWeatherService", () => {
 
     await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
-    const rain: Promise<void> = service.selectCycle("default_rain");
+    const rain: Promise<void> = flowResult(service.selectCycle("default_rain"));
 
     await mockOpenLevelWeather(service, other);
     release();

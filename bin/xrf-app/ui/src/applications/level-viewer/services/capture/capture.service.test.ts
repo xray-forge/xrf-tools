@@ -15,6 +15,7 @@ import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks"
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { LEVEL_WEATHER_NOON } from "@/core/level/lib/weather/level-weather-control";
 import { clearLocalStorage } from "@/core/storage";
+import { mockFlow } from "@/fixtures/utils/flow";
 
 const PATH: string = "appdata/level-viewer/screenshots/map_zaton-20261021-101500.png";
 
@@ -100,10 +101,10 @@ describe("LevelViewerCaptureService", () => {
   it("captures under the map weather with the spawned objects hidden, and puts the view back after", async () => {
     const { result, service, render, view, weather } = mockCapture();
     const capturingDuring: Array<boolean> = [];
-    const cutTo = jest.spyOn(weather, "cutTo").mockImplementation(async () => {
+    const cutTo = mockFlow(weather, "cutTo", async () => {
       capturingDuring.push(service.isCapturing);
     });
-    const release = jest.spyOn(weather, "release").mockResolvedValue();
+    const release = mockFlow(weather, "release");
     const shownDuring: Array<boolean> = [];
     const captured: Array<RenderMapCapture> = [];
 
@@ -149,8 +150,8 @@ describe("LevelViewerCaptureService", () => {
     const { result, service, render, weather } = mockCapture();
     const timeDuring: Array<number> = [];
 
-    jest.spyOn(weather, "cutTo").mockRejectedValue(new Error("no cycle 'map'"));
-    jest.spyOn(weather, "release").mockResolvedValue();
+    mockFlow(weather, "cutTo", () => Promise.reject(new Error("no cycle 'map'")));
+    mockFlow(weather, "release");
     jest.spyOn(render, "captureMap").mockImplementation(async () => {
       timeDuring.push(weather.time);
 
@@ -169,10 +170,10 @@ describe("LevelViewerCaptureService", () => {
 
   it("says why a capture failed, shows nothing, and puts the view back", async () => {
     const { result, service, render, view, weather } = mockCapture();
-    const release = jest.spyOn(weather, "release").mockResolvedValue();
+    const release = mockFlow(weather, "release");
 
     view.setOptions({ ...DEFAULT_LEVEL_VIEW_OPTIONS, isSpawnedProps: true });
-    jest.spyOn(weather, "cutTo").mockResolvedValue();
+    mockFlow(weather, "cutTo");
     jest.spyOn(render, "captureMap").mockRejectedValue(new Error("the device was lost"));
 
     service.open();
@@ -188,8 +189,8 @@ describe("LevelViewerCaptureService", () => {
   it("keeps the parameters and shows no map where the capture was stopped", async () => {
     const { result, service, render, weather } = mockCapture();
 
-    jest.spyOn(weather, "cutTo").mockResolvedValue();
-    jest.spyOn(weather, "release").mockResolvedValue();
+    mockFlow(weather, "cutTo");
+    mockFlow(weather, "release");
     jest.spyOn(render, "captureMap").mockResolvedValue({ outcome: "cancelled", width: 2048, height: 2048 });
 
     service.open();
@@ -201,8 +202,8 @@ describe("LevelViewerCaptureService", () => {
 
   it("captures a cubemap around the camera under the view's own weather, its clock held", async () => {
     const { result, service, render, weather } = mockCapture();
-    const cutTo = jest.spyOn(weather, "cutTo").mockResolvedValue();
-    const release = jest.spyOn(weather, "release").mockResolvedValue();
+    const cutTo = mockFlow(weather, "cutTo");
+    const release = mockFlow(weather, "release");
     const pausedDuring: Array<boolean> = [];
     const captured: Array<RenderCubeCapture> = [];
 

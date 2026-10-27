@@ -1,7 +1,8 @@
 import { EventBus, inject, Injectable, OnDeactivation, OnDeprovision, OnProvision } from "@wirestate/core";
-import { BoundAction, comparer, Computed, reaction, RefObservable, runInAction } from "@wirestate/mobx";
+import { BoundAction, comparer, Computed, flowResult, reaction, RefObservable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { call, cancelFlows, LatestFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { SessionPartResource } from "@xrf/ipc/session";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
@@ -117,7 +118,7 @@ export class LevelWeatherService {
   private memoryKey: Nullable<string> = null;
   /** The cycle the level was last played with, kept until one plays so a level left early forgets nothing. */
   private remembered: string = "";
-  /** The cycle last asked for, which a read of another one since gives way to. */
+  /** The cycle last asked for, which `reading` names while it is read. */
   @RefObservable()
   private requested: Nullable<string> = null;
   /** Stops following the open level and its weather, while provisioned. */
@@ -207,7 +208,7 @@ export class LevelWeatherService {
     return this.selected?.value.engine.engine ?? EXrayEngine.VANILLA;
   }
 
-  /** The level open, as its loader holds it, which a cycle is read against and the engine is named by. */
+  /** The level open, as its loader holds it, which the engine is named by. */
   private get selected(): Nullable<SessionSnapshot<SelectedLevelDescription>> {
     return this.loadService.level.value?.selected ?? null;
   }
@@ -253,7 +254,7 @@ export class LevelWeatherService {
       this.restore(memory);
     }
 
-    await this.read(selected, memory?.cycle ?? "");
+    await flowResult(this.read(selected, memory?.cycle ?? ""));
   }
 
   /**
@@ -270,15 +271,15 @@ export class LevelWeatherService {
    * Reads the level's weather and plays the cycle it was last played with, or the first it offers, or the game's first
    * where it offers none; or the keyframe set by hand, where that is what it was lit by, or where no cycle plays.
    *
+   * On the cycle lane, as every play is: a cycle picked meanwhile is the last word, and another level opened meanwhile
+   * cancels it with the rest of the level's work.
+   *
    * @param selected - The level open.
    * @param remembered - The cycle it was last played with, empty for none.
    */
-  private async read(selected: SessionSnapshot<SelectedLevelDescription>, remembered: string): Promise<void> {
-    await this.described.attach(selected.sessionId);
-
-    if (this.sessionId !== selected.sessionId) {
-      return;
-    }
+  @LatestFlow("cycle")
+  private *read(selected: SessionSnapshot<SelectedLevelDescription>, remembered: string): TFlow {
+    yield* call(this.described.attach(selected.sessionId));
 
     const description: Nullable<LevelWeatherDescription> = this.described.value;
 
@@ -302,36 +303,35 @@ export class LevelWeatherService {
         description.cycles.find((it: EnvironmentCycleEntry) => it.kind === EWeatherCycleKind.CYCLE)?.name;
 
       // A remembered cycle the game no longer has gives way to the level's own.
-      if (remembered && (await this.playRemembered(selected, remembered))) {
+      if (remembered && (yield* this.playRemembered(selected.sessionId, remembered))) {
         return;
       }
 
       if (first) {
-        await this.play(selected, first);
+        yield* this.play(selected.sessionId, first);
       } else if (this.source !== ELevelWeatherSource.MANUAL) {
         this.playManual(EWorldWeatherTransition.CUT);
       }
     } catch (error: unknown) {
-      this.fail(selected.sessionId, error);
+      this.fail(error);
 
-      // The keyframe set by hand is what lights a level whose weather does not play, unless another level opened since.
-      if (this.sessionId === selected.sessionId) {
-        this.playManual(EWorldWeatherTransition.CUT);
-      }
+      // The keyframe set by hand is what lights a level whose weather does not play.
+      this.playManual(EWorldWeatherTransition.CUT);
     }
   }
 
   /**
    * Plays another cycle from where the clock stands, faded into from what is shown; picking one is asking to see it,
-   * so a level lit by hand is lit by the weather again once it is read.
+   * so a level lit by hand is lit by the weather again once it is read. A cycle picked meanwhile, or another level
+   * opened, cancels it before it shows or lights anything.
    *
    * @param name - The cycle's name.
    */
-  public async selectCycle(name: string): Promise<void> {
+  @LatestFlow("cycle")
+  public *selectCycle(name: string): TFlow {
     const sessionId: Nullable<string> = this.sessionId;
-    const selected: Nullable<SessionSnapshot<SelectedLevelDescription>> = this.selected;
 
-    if (!sessionId || !selected) {
+    if (!sessionId) {
       return;
     }
 
@@ -339,18 +339,13 @@ export class LevelWeatherService {
       if (this.cycle.value?.name === name) {
         this.keepCycle(name);
       } else {
-        await this.play(selected, name);
-      }
-
-      // Another level opened during the read keeps how it was lit.
-      if (this.sessionId !== sessionId) {
-        return;
+        yield* this.play(sessionId, name);
       }
 
       this.setSource(ELevelWeatherSource.WEATHER);
       this.persist();
     } catch (error: unknown) {
-      this.fail(sessionId, error);
+      this.fail(error);
     }
   }
 
@@ -380,28 +375,22 @@ export class LevelWeatherService {
    *
    * @param name - The cycle's name.
    */
-  public async cutTo(name: string): Promise<void> {
+  @LatestFlow("cycle")
+  public *cutTo(name: string): TFlow {
     const sessionId: Nullable<string> = this.sessionId;
-    const selected: Nullable<SessionSnapshot<SelectedLevelDescription>> = this.selected;
 
-    if (!sessionId || !selected) {
+    if (!sessionId) {
       return;
     }
 
     if (this.cycle.value?.name !== name) {
-      await this.play(selected, name, EWorldWeatherTransition.CUT);
+      yield* this.play(sessionId, name, EWorldWeatherTransition.CUT);
     }
 
-    if (this.sessionId !== sessionId) {
-      return;
-    }
+    const shown: Nullable<WorldWeatherPlay> = this.weather;
 
-    runInAction(() => {
-      const shown: Nullable<WorldWeatherPlay> = this.weather;
-
-      this.source = ELevelWeatherSource.WEATHER;
-      this.noteShown(shown, EWorldWeatherTransition.CUT);
-    });
+    this.source = ELevelWeatherSource.WEATHER;
+    this.noteShown(shown, EWorldWeatherTransition.CUT);
   }
 
   /**
@@ -410,33 +399,27 @@ export class LevelWeatherService {
    *
    * @param held - What played when the weather was borrowed.
    */
-  public async release(held: ILevelWeatherHold): Promise<void> {
+  @LatestFlow("cycle")
+  public *release(held: ILevelWeatherHold): TFlow {
     const sessionId: Nullable<string> = this.sessionId;
-    const selected: Nullable<SessionSnapshot<SelectedLevelDescription>> = this.selected;
 
-    if (!sessionId || !selected) {
+    if (!sessionId) {
       return;
     }
 
     try {
       if (held.cycle && this.cycle.value?.name !== held.cycle) {
-        await this.play(selected, held.cycle, EWorldWeatherTransition.CUT);
+        yield* this.play(sessionId, held.cycle, EWorldWeatherTransition.CUT);
       }
     } catch (error: unknown) {
-      this.fail(sessionId, error);
+      this.fail(error);
     }
 
-    if (this.sessionId !== sessionId) {
-      return;
-    }
+    const shown: Nullable<WorldWeatherPlay> = this.weather;
 
-    runInAction(() => {
-      const shown: Nullable<WorldWeatherPlay> = this.weather;
-
-      this.source = held.source;
-      this.control = held.control;
-      this.noteShown(shown, EWorldWeatherTransition.CUT);
-    });
+    this.source = held.source;
+    this.control = held.control;
+    this.noteShown(shown, EWorldWeatherTransition.CUT);
     this.persist();
   }
 
@@ -550,10 +533,14 @@ export class LevelWeatherService {
     }
   }
 
-  /** Remembers how the level's weather played, then forgets it all, for the next level to start from its own. */
+  /**
+   * Remembers how the level's weather played, then forgets it all, for the next level to start from its own: every read
+   * of the level's is cancelled, so none lands on the next.
+   */
   @OnDeactivation()
   @BoundAction()
   public clear(): void {
+    cancelFlows(this);
     this.persist();
     this.sessionId = null;
     this.memoryKey = null;
@@ -625,13 +612,13 @@ export class LevelWeatherService {
   /**
    * Plays the cycle a level was last played with, where it still reads.
    *
-   * @param selected - The level it plays in.
+   * @param sessionId - The level it plays in.
    * @param name - The cycle's name.
    * @returns Whether it plays.
    */
-  private async playRemembered(selected: SessionSnapshot<SelectedLevelDescription>, name: string): Promise<boolean> {
+  private *playRemembered(sessionId: string, name: string): TFlow<boolean> {
     try {
-      await this.play(selected, name);
+      yield* this.play(sessionId, name);
 
       return true;
     } catch (error: unknown) {
@@ -642,7 +629,7 @@ export class LevelWeatherService {
   }
 
   /**
-   * Asks again for the cycle held, which a read of another one since then gives way to.
+   * Asks again for the cycle held; the pick asking it has cancelled any read of another one on the cycle lane.
    *
    * @param name - The held cycle's name.
    */
@@ -656,50 +643,33 @@ export class LevelWeatherService {
   }
 
   /**
-   * Reads a cycle, for what the panels show of it, then plays it, for a level still open.
+   * Reads a cycle, for what the panels show of it, then plays it, inside the cycle lane's flow that asked for it.
    *
-   * @param selected - The level it plays in.
+   * @param sessionId - The level it plays in.
    * @param name - The cycle's name.
    * @param transition - How it takes over from what is shown.
    */
-  private async play(
-    selected: SessionSnapshot<SelectedLevelDescription>,
+  private *play(
+    sessionId: string,
     name: string,
     transition: EWorldWeatherTransition = EWorldWeatherTransition.FADE
-  ): Promise<void> {
-    runInAction(() => {
-      this.requested = name;
-      this.cycle = this.cycle.asLoading();
-    });
-
-    let cycle: LevelWeatherCycle;
+  ): TFlow {
+    this.requested = name;
+    this.cycle = this.cycle.asLoading();
 
     try {
-      cycle = await this.readCycle(selected.sessionId, name);
-    } catch (error: unknown) {
-      // A cycle asked for since decides what plays; this one's failure no longer says anything.
-      if (this.requested !== name) {
-        return;
-      }
-
-      // No longer being read: the caller says whether its failure is worth stating.
-      runInAction(() => {
-        this.cycle = this.cycle.value ? this.cycle.asReady() : this.cycle.asIdle();
-      });
-
-      throw error;
-    }
-
-    if (this.sessionId !== selected.sessionId || this.requested !== name) {
-      return;
-    }
-
-    runInAction(() => {
+      const cycle: LevelWeatherCycle = yield* this.readCycle(sessionId, name);
       const shown: Nullable<WorldWeatherPlay> = this.weather;
 
       this.cycle = this.cycle.asReady(cycle);
       this.noteShown(shown, transition);
-    });
+    } finally {
+      // No longer being read, whether it failed, which the caller says is worth stating or not, or a newer play
+      // cancelled it: what played before stays played.
+      if (this.cycle.isLoading) {
+        this.cycle = this.cycle.value ? this.cycle.asReady() : this.cycle.asIdle();
+      }
+    }
   }
 
   /**
@@ -708,8 +678,9 @@ export class LevelWeatherService {
    *
    * @param sessionId - The level it plays in.
    * @param name - The cycle's name.
+   * @returns The cycle.
    */
-  private async readCycle(sessionId: string, name: string): Promise<LevelWeatherCycle> {
+  private *readCycle(sessionId: string, name: string): TFlow<LevelWeatherCycle> {
     const offered: Maybe<LevelWeatherCycle> = this.description.value?.offered.find(
       (it: LevelWeatherCycle) => it.name === name
     );
@@ -718,39 +689,34 @@ export class LevelWeatherService {
       return offered;
     }
 
-    const read: SessionSnapshot<LevelWeatherCycle> = await levelsCommands.readLevelCycle(sessionId, {
-      kind: EWeatherCycleKind.CYCLE,
-      name,
-    });
+    const read: SessionSnapshot<LevelWeatherCycle> = yield* call(
+      levelsCommands.readLevelCycle(sessionId, { kind: EWeatherCycleKind.CYCLE, name })
+    );
 
     const shown: Maybe<number> = this.described.snapshot?.revision;
 
-    return read.revision < (shown ?? read.revision) ? this.readCycle(sessionId, name) : read.value;
+    return read.revision < (shown ?? read.revision) ? yield* this.readCycle(sessionId, name) : read.value;
   }
 
   /**
-   * Reads the cycle played again from the level's weather read again, keeping what plays and how.
+   * Reads the cycle played again from the level's weather read again, keeping what plays and how; a lane of its own,
+   * so it never cancels a cycle being picked, and drops its answer where another cycle played meanwhile.
    *
    * @param sessionId - The level open.
    */
-  private async rereadCycle(sessionId: string): Promise<void> {
+  @LatestFlow()
+  private *rereadCycle(sessionId: string): TFlow {
+    const name: Maybe<string> = this.cycle.value?.name;
+
+    if (!name) {
+      return;
+    }
+
     try {
-      if (this.sessionId !== sessionId) {
-        return;
-      }
+      const cycle: LevelWeatherCycle = yield* this.readCycle(sessionId, name);
 
-      const name: Maybe<string> = this.cycle.value?.name;
-
-      if (!name) {
-        return;
-      }
-
-      const cycle: LevelWeatherCycle = await this.readCycle(sessionId, name);
-
-      if (this.sessionId === sessionId && this.cycle.value?.name === name) {
-        runInAction(() => {
-          this.cycle = this.cycle.map(() => cycle);
-        });
+      if (this.cycle.value?.name === name) {
+        this.cycle = this.cycle.map(() => cycle);
       }
     } catch (error: unknown) {
       this.log.warn("The level's cycle played was not read again:", transformError(error).message);
@@ -770,21 +736,16 @@ export class LevelWeatherService {
   }
 
   /**
-   * Notes why the cycle asked for does not play; why the level's weather does not read is its resource's to say.
+   * Notes why the cycle asked for does not play, inside the flow that asked; why the level's weather does not read is
+   * its resource's to say.
    *
-   * @param sessionId - The level the failed read belongs to.
    * @param error - Why it failed.
    */
-  private fail(sessionId: string, error: unknown): void {
+  private fail(error: unknown): void {
     const failure: Error = transformError(error);
 
     this.log.warn("The level's weather is not played:", failure.message);
-
-    if (this.sessionId === sessionId) {
-      runInAction(() => {
-        this.cycle = this.cycle.asFailed(failure);
-      });
-    }
+    this.cycle = this.cycle.asFailed(failure);
   }
 
   /** Remembers how the open level's weather plays, once a cycle or the keyframe set by hand does. */
