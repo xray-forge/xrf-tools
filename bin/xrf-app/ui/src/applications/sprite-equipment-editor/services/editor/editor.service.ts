@@ -9,6 +9,7 @@ import { spriteEquipmentCommands } from "@xrf/ipc/commands/sprite-equipment";
 import { spriteEquipmentBulkRoutes } from "@xrf/ipc/commands/sprite-equipment-bulk";
 import { AssetSource, EAssetSource, SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { EquipmentSpriteMetadata, EquipmentSpriteOpen } from "@xrf/ipc/types/xrf-app-sprite-equipment";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
 import { Logger } from "@xrf/logging";
 import { clamp } from "@xrf/math";
@@ -239,7 +240,7 @@ export class SpriteEquipmentEditorService {
       failure: "Could not repack equipment sprite",
       // A busy or cancelled repack wrote nothing, so it says nothing and the sheet is not read again.
       success: (result: Nullable<EquipmentSpritePackResult>) =>
-        result?.outcome === "completed"
+        result?.outcome === EJobOutcome.COMPLETED
           ? { details: `${repackSourcePath}\n${targets.sheet}`, title: "Repacked equipment sprite" }
           : null,
     });
@@ -248,7 +249,7 @@ export class SpriteEquipmentEditorService {
       throw completion.error;
     }
 
-    if (completion.result?.outcome === "completed") {
+    if (completion.result?.outcome === EJobOutcome.COMPLETED) {
       this.repackedAt = Date.now();
 
       yield* call(this.reopen());
