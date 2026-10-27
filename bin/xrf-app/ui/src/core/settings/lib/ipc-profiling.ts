@@ -1,6 +1,6 @@
 import { setIpcProfilingEnabled, subscribeToIpcProfiling } from "@xrf/ipc";
 
-import { getLocalStorageValue, IPC_PROFILING_STORAGE_KEY, setLocalStorageValue } from "@/core/storage";
+import { booleanCodec, IPC_PROFILING_STORAGE_KEY, StoredValue } from "@/core/storage";
 
 /**
  * Restores whether IPC payloads are weighed from the preference that keeps it, and keeps each change from here on.
@@ -11,9 +11,9 @@ import { getLocalStorageValue, IPC_PROFILING_STORAGE_KEY, setLocalStorageValue }
  * @returns Stops keeping changes, for a test.
  */
 export function persistIpcProfiling(): () => void {
-  setIpcProfilingEnabled(getLocalStorageValue(IPC_PROFILING_STORAGE_KEY) === String(true));
+  const stored: StoredValue<boolean> = new StoredValue(IPC_PROFILING_STORAGE_KEY, booleanCodec(false));
 
-  return subscribeToIpcProfiling((isEnabled: boolean) =>
-    setLocalStorageValue(IPC_PROFILING_STORAGE_KEY, String(isEnabled))
-  );
+  setIpcProfilingEnabled(stored.value);
+
+  return subscribeToIpcProfiling(stored.set);
 }

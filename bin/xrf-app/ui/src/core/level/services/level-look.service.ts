@@ -19,7 +19,7 @@ import {
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
-import { LEVEL_LOOK_STORAGE_KEY, parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/core/storage";
+import { jsonCodec, LEVEL_LOOK_STORAGE_KEY, StoredValue } from "@/core/storage";
 
 /**
  * How a level is exposed, lit and corrected: the game's console defaults, the settings', a built-in engine's, or a
@@ -27,9 +27,7 @@ import { LEVEL_LOOK_STORAGE_KEY, parseLocalStorageValueSafe, setLocalStorageValu
  */
 @Injectable()
 export class LevelLookService {
-  /** Where the look comes from, and the custom one's values. */
-  @RefObservable()
-  public choice: ILevelLookChoice;
+  private readonly storedChoice: StoredValue<ILevelLookChoice>;
 
   /** The open level's console defaults, read again where a commit lets the shipped ones go. */
   private readonly console: SessionPartResource<LevelConsoleDefaults>;
@@ -51,7 +49,17 @@ export class LevelLookService {
     private readonly renderSettingsService: RenderSettingsService = inject(RenderSettingsService)
   ) {
     this.console = new SessionPartResource(eventBus, [LEVEL_CONSOLE_PART], levelsCommands.describeConsoleDefaults);
-    this.choice = toLevelLookChoice(parseLocalStorageValueSafe(LEVEL_LOOK_STORAGE_KEY), this.exposure);
+    // Built here rather than as a field, as reading a stored look takes the exposure the render settings hold.
+    this.storedChoice = new StoredValue(
+      LEVEL_LOOK_STORAGE_KEY,
+      jsonCodec((stored: unknown) => toLevelLookChoice(stored, this.exposure))
+    );
+  }
+
+  /** Where the look comes from, and the custom one's values. */
+  @Computed()
+  public get choice(): ILevelLookChoice {
+    return this.storedChoice.value;
   }
 
   /** What the open level's game ships as its console defaults: idle with no level open, then read, or failed to. */
@@ -131,7 +139,7 @@ export class LevelLookService {
   @BoundAction()
   public setSource(source: ELevelLookSource): void {
     if (source !== ELevelLookSource.CUSTOM || this.choice.custom) {
-      this.store({ ...this.choice, source });
+      this.storedChoice.set({ ...this.choice, source });
     }
   }
 
@@ -142,15 +150,10 @@ export class LevelLookService {
    */
   @BoundAction()
   public edit(look: ILevelLook): void {
-    this.store({ custom: look, source: ELevelLookSource.CUSTOM });
+    this.storedChoice.set({ custom: look, source: ELevelLookSource.CUSTOM });
   }
 
   private get exposure(): TRenderExposureSettings {
     return this.renderSettingsService.rendererFeatures.exposure;
-  }
-
-  private store(choice: ILevelLookChoice): void {
-    this.choice = choice;
-    setLocalStorageValueSafe(LEVEL_LOOK_STORAGE_KEY, JSON.stringify(choice));
   }
 }

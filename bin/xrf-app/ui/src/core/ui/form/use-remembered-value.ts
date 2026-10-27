@@ -1,8 +1,8 @@
 import { Nullable } from "@xrf/types";
-import { useCallback, useState } from "react";
+import { useMemo } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
-import { getFieldValueStorageKey, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
+import { getFieldValueStorageKey, IStoredValueCodec, textCodec, useStoredValue } from "@/core/storage";
 
 export interface IRememberedValueOptions<T extends string> {
   /** The application that owns this field. */
@@ -31,23 +31,12 @@ export function useRememberedValue<T extends string>({
   fallback,
   allowed,
 }: IRememberedValueOptions<T>): [T, (value: T) => void] {
-  const storageKey: string = getFieldValueStorageKey(application, id);
-
-  // Read once, on the first render. Nothing about mounting or remounting writes, so no session can
-  // overwrite what an earlier one remembered while its own state is still empty.
-  const [value, setValue] = useState<T>(() => {
-    const stored: Nullable<string> = getLocalStorageValue(storageKey);
-
-    return stored && allowed.includes(stored as T) ? (stored as T) : fallback;
-  });
-
-  const remember = useCallback(
-    (next: T): void => {
-      setValue(next);
-      setLocalStorageValue(storageKey, next);
-    },
-    [storageKey]
+  const codec: IStoredValueCodec<T> = useMemo(
+    () => textCodec((stored: Nullable<string>) => (stored && allowed.includes(stored as T) ? (stored as T) : fallback)),
+    [allowed, fallback]
   );
 
-  return [value, remember];
+  // Read once, on the first render. Nothing about mounting or remounting writes, so no session can overwrite what an
+  // earlier one remembered while its own state is still empty.
+  return useStoredValue<T>(getFieldValueStorageKey(application, id), codec);
 }

@@ -1,15 +1,9 @@
 import { Injectable, OnDeprovision, OnProvision, ProvisionId } from "@wirestate/core";
-import { BoundAction, Observable } from "@wirestate/mobx";
+import { BoundAction, Computed } from "@wirestate/mobx";
 import { Logger } from "@xrf/logging";
-import { Nullable } from "@xrf/types";
 
 import { TCatalogView, toCatalogView } from "@/core/settings/lib/catalog-view";
-import {
-  CATALOG_VIEW_STORAGE_KEY,
-  DEV_MODE_STORAGE_KEY,
-  getLocalStorageValue,
-  setLocalStorageValue,
-} from "@/core/storage";
+import { booleanCodec, CATALOG_VIEW_STORAGE_KEY, DEV_MODE_STORAGE_KEY, StoredValue, textCodec } from "@/core/storage";
 import { isDevelopmentBuild } from "@/lib/env/build-mode";
 
 /**
@@ -19,21 +13,27 @@ import { isDevelopmentBuild } from "@/lib/env/build-mode";
 export class SettingsService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
+  /** The stored choice, or whether this is a development build when there is none. */
+  private readonly storedDevModeEnabled: StoredValue<boolean> = new StoredValue(
+    DEV_MODE_STORAGE_KEY,
+    booleanCodec(isDevelopmentBuild())
+  );
+
+  private readonly storedCatalogView: StoredValue<TCatalogView> = new StoredValue(
+    CATALOG_VIEW_STORAGE_KEY,
+    textCodec(toCatalogView)
+  );
+
   /** Surfaces dev traces and captured runtime errors that are otherwise hidden. */
-  @Observable()
-  public isDevModeEnabled: boolean = SettingsService.readDevModeEnabled();
+  @Computed()
+  public get isDevModeEnabled(): boolean {
+    return this.storedDevModeEnabled.value;
+  }
 
   /** How the root catalog draws its tools. */
-  @Observable()
-  public catalogView: TCatalogView = toCatalogView(getLocalStorageValue(CATALOG_VIEW_STORAGE_KEY));
-
-  /**
-   * @returns The stored choice, or whether this is a development build when there is none.
-   */
-  private static readDevModeEnabled(): boolean {
-    const stored: Nullable<string> = getLocalStorageValue(DEV_MODE_STORAGE_KEY);
-
-    return stored === null ? isDevelopmentBuild() : stored === String(true);
+  @Computed()
+  public get catalogView(): TCatalogView {
+    return this.storedCatalogView.value;
   }
 
   @OnProvision()
@@ -50,15 +50,13 @@ export class SettingsService {
   public setDevModeEnabled(isEnabled: boolean): void {
     this.log.info("Set dev mode:", isEnabled);
 
-    this.isDevModeEnabled = isEnabled;
-    setLocalStorageValue(DEV_MODE_STORAGE_KEY, String(isEnabled));
+    this.storedDevModeEnabled.set(isEnabled);
   }
 
   @BoundAction()
   public setCatalogView(view: TCatalogView): void {
     this.log.info("Set catalog view:", view);
 
-    this.catalogView = view;
-    setLocalStorageValue(CATALOG_VIEW_STORAGE_KEY, view);
+    this.storedCatalogView.set(view);
   }
 }

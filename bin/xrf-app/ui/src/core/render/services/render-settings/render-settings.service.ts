@@ -43,17 +43,17 @@ import {
 } from "@/core/render/lib/settings/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
 import {
+  booleanCodec,
   FRAME_RATE_LIMIT_STORAGE_KEY,
-  getLocalStorageValue,
   GPU_TIMED_STORAGE_KEY,
-  parseLocalStorageValueSafe,
+  jsonCodec,
   RENDER_BACKEND_STORAGE_KEY,
   RENDER_GPU_STORAGE_KEY,
   RENDER_OUTPUT_SCALE_STORAGE_KEY,
   RENDER_RESOLUTION_STORAGE_KEY,
   RENDERER_FEATURES_STORAGE_KEY,
-  setLocalStorageValue,
-  setLocalStorageValueSafe,
+  StoredValue,
+  textCodec,
   VSYNC_STORAGE_KEY,
 } from "@/core/storage";
 
@@ -64,15 +64,39 @@ import {
 export class RenderSettingsService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  /**
-   * Frames a second every viewport is allowed to draw.
-   */
-  @Observable()
-  public frameRateLimit: TFrameRateLimit = toFrameRateLimit(getLocalStorageValue(FRAME_RATE_LIMIT_STORAGE_KEY));
+  private readonly storedFrameRateLimit: StoredValue<TFrameRateLimit> = new StoredValue(
+    FRAME_RATE_LIMIT_STORAGE_KEY,
+    textCodec(toFrameRateLimit)
+  );
 
-  /** Whether every viewport times its passes on the GPU: never a preset's, as it costs a frame 1-4% of its rate. */
-  @Observable()
-  public isGpuTimed: boolean = getLocalStorageValue(GPU_TIMED_STORAGE_KEY) === String(true);
+  private readonly storedGpuTimed: StoredValue<boolean> = new StoredValue(GPU_TIMED_STORAGE_KEY, booleanCodec(false));
+
+  private readonly storedVsync: StoredValue<boolean> = new StoredValue(VSYNC_STORAGE_KEY, booleanCodec(true));
+
+  private readonly storedRenderBackend: StoredValue<TRenderBackendChoice> = new StoredValue(
+    RENDER_BACKEND_STORAGE_KEY,
+    textCodec(toRenderBackendChoice)
+  );
+
+  private readonly storedRenderGpu: StoredValue<Nullable<RenderGpu>> = new StoredValue(
+    RENDER_GPU_STORAGE_KEY,
+    jsonCodec(toRenderGpuChoice)
+  );
+
+  private readonly storedRenderResolution: StoredValue<ERenderResolution> = new StoredValue(
+    RENDER_RESOLUTION_STORAGE_KEY,
+    textCodec(toRenderResolution)
+  );
+
+  private readonly storedRenderOutputScale: StoredValue<number> = new StoredValue(
+    RENDER_OUTPUT_SCALE_STORAGE_KEY,
+    textCodec(toRenderOutputScale)
+  );
+
+  private readonly storedRendererChoice: StoredValue<IRenderFeatureChoice> = new StoredValue(
+    RENDERER_FEATURES_STORAGE_KEY,
+    jsonCodec(RenderSettingsService.readRendererChoice)
+  );
 
   /**
    * Which of the frame graph's mechanisms every frame compiles with: all on unless one is turned off to bisect a
@@ -88,32 +112,9 @@ export class RenderSettingsService {
   @Observable()
   public periodicBudget: number = RENDER_DEFAULT_PERIODIC_BUDGET;
 
-  /** Whether every viewport's frames wait for the display's refresh: on unless turned off. */
-  @Observable()
-  public isVsync: boolean = getLocalStorageValue(VSYNC_STORAGE_KEY) !== String(false);
-
-  /** Which graphics API every viewport asks the renderer for, by name or whichever works first. */
-  @Observable()
-  public renderBackend: TRenderBackendChoice = toRenderBackendChoice(getLocalStorageValue(RENDER_BACKEND_STORAGE_KEY));
-
-  /** Which GPU every viewport asks the renderer for, or null for the one the backend picks automatically. */
-  @RefObservable()
-  public renderGpu: Nullable<RenderGpu> = toRenderGpuChoice(parseLocalStorageValueSafe(RENDER_GPU_STORAGE_KEY));
-
   /** What each graphics API can do on this machine, as the renderer last probed it; none before it was. */
   @RefObservable()
   public renderBackends: Nullable<ReadonlyArray<RenderBackendAvailability>> = null;
-
-  /** What every viewport resolves its frame at: its own size times the output scale, or a height in its shape. */
-  @Observable()
-  public renderResolution: ERenderResolution = toRenderResolution(getLocalStorageValue(RENDER_RESOLUTION_STORAGE_KEY));
-  /** The share of the viewport's sides the automatic resolution resolves at. */
-  @Observable()
-  public renderOutputScale: number = toRenderOutputScale(getLocalStorageValue(RENDER_OUTPUT_SCALE_STORAGE_KEY));
-
-  /** The renderer's preset and what was changed on top of it, the same for every viewport. */
-  @RefObservable()
-  public rendererChoice: IRenderFeatureChoice = RenderSettingsService.readRendererChoice();
 
   /** How many holds time every viewport's passes on the GPU for now, whatever `isGpuTimed` keeps. */
   @Observable()
@@ -123,6 +124,54 @@ export class RenderSettingsService {
   private stopConfiguring: Nullable<() => void> = null;
 
   public constructor(private readonly settingsService: SettingsService = inject(SettingsService)) {}
+
+  /** Frames a second every viewport is allowed to draw. */
+  @Computed()
+  public get frameRateLimit(): TFrameRateLimit {
+    return this.storedFrameRateLimit.value;
+  }
+
+  /** Whether every viewport times its passes on the GPU: never a preset's, as it costs a frame 1-4% of its rate. */
+  @Computed()
+  public get isGpuTimed(): boolean {
+    return this.storedGpuTimed.value;
+  }
+
+  /** Whether every viewport's frames wait for the display's refresh: on unless turned off. */
+  @Computed()
+  public get isVsync(): boolean {
+    return this.storedVsync.value;
+  }
+
+  /** Which graphics API every viewport asks the renderer for, by name or whichever works first. */
+  @Computed()
+  public get renderBackend(): TRenderBackendChoice {
+    return this.storedRenderBackend.value;
+  }
+
+  /** Which GPU every viewport asks the renderer for, or null for the one the backend picks automatically. */
+  @Computed()
+  public get renderGpu(): Nullable<RenderGpu> {
+    return this.storedRenderGpu.value;
+  }
+
+  /** What every viewport resolves its frame at: its own size times the output scale, or a height in its shape. */
+  @Computed()
+  public get renderResolution(): ERenderResolution {
+    return this.storedRenderResolution.value;
+  }
+
+  /** The share of the viewport's sides the automatic resolution resolves at. */
+  @Computed()
+  public get renderOutputScale(): number {
+    return this.storedRenderOutputScale.value;
+  }
+
+  /** The renderer's preset and what was changed on top of it, the same for every viewport. */
+  @Computed()
+  public get rendererChoice(): IRenderFeatureChoice {
+    return this.storedRendererChoice.value;
+  }
 
   /** Whether the physical light levels may be chosen and drawn: in dev mode only. */
   @Computed()
@@ -186,10 +235,10 @@ export class RenderSettingsService {
   }
 
   /**
-   * @returns The stored choice, or the default where none was stored or it does not parse.
+   * @param stored - The parsed stored choice, `null` when none was stored.
+   * @returns The choice, or the default where none was stored.
    */
-  private static readRendererChoice(): IRenderFeatureChoice {
-    const stored: unknown = parseLocalStorageValueSafe(RENDERER_FEATURES_STORAGE_KEY);
+  private static readRendererChoice(stored: unknown): IRenderFeatureChoice {
     const choice: IRenderFeatureChoice = toRenderFeatureChoice(stored);
     const unkept: Array<string> = listUnkeptRenderSettings(
       (stored as Nullable<{ overrides?: unknown }>)?.overrides,
@@ -207,24 +256,21 @@ export class RenderSettingsService {
   public setFrameRateLimit(limit: TFrameRateLimit): void {
     this.log.info("Set frame rate limit:", limit);
 
-    this.frameRateLimit = limit;
-    setLocalStorageValue(FRAME_RATE_LIMIT_STORAGE_KEY, limit);
+    this.storedFrameRateLimit.set(limit);
   }
 
   @BoundAction()
   public setVsync(isVsync: boolean): void {
     this.log.info("Set vsync:", isVsync);
 
-    this.isVsync = isVsync;
-    setLocalStorageValue(VSYNC_STORAGE_KEY, String(isVsync));
+    this.storedVsync.set(isVsync);
   }
 
   @BoundAction()
   public setGpuTimed(isGpuTimed: boolean): void {
     this.log.info("Set GPU timing:", isGpuTimed);
 
-    this.isGpuTimed = isGpuTimed;
-    setLocalStorageValue(GPU_TIMED_STORAGE_KEY, String(isGpuTimed));
+    this.storedGpuTimed.set(isGpuTimed);
   }
 
   /**
@@ -266,16 +312,14 @@ export class RenderSettingsService {
   public setRenderBackend(choice: TRenderBackendChoice): void {
     this.log.info("Set render backend:", choice);
 
-    this.renderBackend = choice;
-    setLocalStorageValue(RENDER_BACKEND_STORAGE_KEY, choice);
+    this.storedRenderBackend.set(choice);
   }
 
   @BoundAction()
   public setRenderGpu(gpu: Nullable<RenderGpu>): void {
     this.log.info("Set render GPU:", gpu);
 
-    this.renderGpu = gpu;
-    setLocalStorageValueSafe(RENDER_GPU_STORAGE_KEY, gpu === null ? null : JSON.stringify(gpu));
+    this.storedRenderGpu.set(gpu);
   }
 
   /** Asks the renderer which graphics APIs it can draw with here, for the settings to offer only those. */
@@ -299,8 +343,7 @@ export class RenderSettingsService {
   public setRenderResolution(resolution: ERenderResolution): void {
     this.log.info("Set render resolution:", resolution);
 
-    this.renderResolution = resolution;
-    setLocalStorageValue(RENDER_RESOLUTION_STORAGE_KEY, resolution);
+    this.storedRenderResolution.set(resolution);
   }
 
   @BoundAction()
@@ -309,8 +352,7 @@ export class RenderSettingsService {
 
     this.log.info("Set render output scale:", kept);
 
-    this.renderOutputScale = kept;
-    setLocalStorageValue(RENDER_OUTPUT_SCALE_STORAGE_KEY, String(kept));
+    this.storedRenderOutputScale.set(kept);
   }
 
   /**
@@ -341,7 +383,6 @@ export class RenderSettingsService {
   }
 
   private storeRendererChoice(choice: IRenderFeatureChoice): void {
-    this.rendererChoice = toRenderFeatureChoice(choice);
-    setLocalStorageValueSafe(RENDERER_FEATURES_STORAGE_KEY, JSON.stringify(this.rendererChoice));
+    this.storedRendererChoice.set(toRenderFeatureChoice(choice));
   }
 }

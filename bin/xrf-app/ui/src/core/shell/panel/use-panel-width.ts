@@ -1,12 +1,14 @@
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 import { TEditorPanelSide } from "@/core/shell/editor-shell";
 import { clampPanelWidth } from "@/core/shell/panel/panel-width";
-import { getLocalStorageValue, getPanelWidthStorageKey, setLocalStorageValue } from "@/core/storage";
+import { getPanelWidthStorageKey, IStoredValueCodec, textCodec, useStoredValue } from "@/core/storage";
 import { PANEL } from "@/core/theme/tokens";
 import { useWindowWidth } from "@/lib/react/use-window-width";
+
+const PREFERRED_WIDTH_CODEC: IStoredValueCodec<number> = textCodec(readPreferredWidth);
 
 export interface IPanelWidth {
   width: number;
@@ -14,11 +16,10 @@ export interface IPanelWidth {
 }
 
 /**
- * Reads the stored preference, which is validated against the fixed bounds only - the window budget is
- * a property of the current window, not of what the user asked for.
+ * Reads the stored preference, which is validated against the fixed bounds only - the window budget is a property of
+ * the current window, not of what the user asked for.
  */
-function readPreferredWidth(side: TEditorPanelSide): number {
-  const stored: Nullable<string> = getLocalStorageValue(getPanelWidthStorageKey(side));
+function readPreferredWidth(stored: Nullable<string>): number {
   const parsed: number = stored === null ? NaN : Number(stored);
 
   return Number.isFinite(parsed) ? clamp(parsed, PANEL.minWidth, PANEL.maxWidth) : PANEL.defaultWidth;
@@ -34,16 +35,11 @@ function readPreferredWidth(side: TEditorPanelSide): number {
 export function usePanelWidth(side: TEditorPanelSide, openCount: number): IPanelWidth {
   const windowWidth: number = useWindowWidth();
 
-  const [preferred, setPreferred] = useState<number>(() => readPreferredWidth(side));
+  const [preferred, setPreferred] = useStoredValue<number>(getPanelWidthStorageKey(side), PREFERRED_WIDTH_CODEC);
 
   const onResize = useCallback(
-    (next: number) => {
-      const clamped: number = clampPanelWidth(next, windowWidth, openCount);
-
-      setPreferred(clamped);
-      setLocalStorageValue(getPanelWidthStorageKey(side), String(clamped));
-    },
-    [openCount, side, windowWidth]
+    (next: number) => setPreferred(clampPanelWidth(next, windowWidth, openCount)),
+    [openCount, setPreferred, windowWidth]
   );
 
   return { onResize, width: clampPanelWidth(preferred, windowWidth, openCount) };
