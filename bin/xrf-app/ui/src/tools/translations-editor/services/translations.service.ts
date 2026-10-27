@@ -42,12 +42,6 @@ export class TranslationsService {
 
   private readonly reporter: CommandReporter = new CommandReporter(this.log);
 
-  /** Whether the backend has been asked what it still holds, which holds the loader back. */
-  @Computed()
-  public get isReady(): boolean {
-    return this.project.isRestored;
-  }
-
   /** Whether a change moved the open project past what is shown, which is being read again. */
   @Computed()
   public get isStale(): boolean {

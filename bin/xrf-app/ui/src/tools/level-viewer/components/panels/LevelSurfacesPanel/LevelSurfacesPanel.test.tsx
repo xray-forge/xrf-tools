@@ -103,7 +103,7 @@ async function renderPanel(
   const result: RenderResult = renderWithProviders(<LevelSurfacesPanel />, { container, route: "/level-viewer" });
 
   // Mounting provisions the container, and that restores the level the backend holds.
-  await waitFor(() => expect(service.isReady).toBe(true));
+  await waitFor(() => expect(service.selection.isRestored).toBe(true));
 
   return result;
 }

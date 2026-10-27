@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
+import { SessionTool } from "@/core/session/components/SessionTool";
 import { ExportsService } from "@/tools/exports-explorer/services/exports.service";
 
 import { ExportsOpenForm } from "./components/ExportsOpenForm";
@@ -11,9 +11,5 @@ import { ExportsEditor } from "./components/viewer/ExportsEditor";
 export function ExportsExplorerTool(): ReactElement {
   const exportsService: ExportsService = useInjection(ExportsService);
 
-  if (exportsService.project.isRestored) {
-    return exportsService.project.value ? <ExportsEditor /> : <ExportsOpenForm />;
-  }
-
-  return <ToolLoader />;
+  return <SessionTool root={exportsService.project} openForm={<ExportsOpenForm />} workspace={<ExportsEditor />} />;
 }

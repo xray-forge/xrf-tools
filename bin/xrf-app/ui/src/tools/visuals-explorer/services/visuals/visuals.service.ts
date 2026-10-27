@@ -85,12 +85,6 @@ export class VisualsService extends VisualInspectionService {
     return selectAddonBones(this.bones);
   }
 
-  /** Whether the backend has been asked what it still has selected, which holds the loader back. */
-  @Computed()
-  public get isReady(): boolean {
-    return this.loadService.selection.isRestored;
-  }
-
   /**
    * @returns Itself, because the explorer is a viewer: it marks and hides bones.
    *

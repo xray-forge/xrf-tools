@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
+import { SessionTool } from "@/core/session/components/SessionTool";
 import { SpriteEquipmentEditorService } from "@/tools/sprite-equipment-editor/services/sprite-equipment-editor";
 
 import { EquipmentSpriteEditor, SpriteEquipmentOpenForm } from "./components/editor";
@@ -10,9 +10,12 @@ import { EquipmentSpriteEditor, SpriteEquipmentOpenForm } from "./components/edi
 export function SpriteEquipmentEditorTool(): ReactElement {
   const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
 
-  if (spriteEquipmentService.isReady) {
-    return spriteEquipmentService.spriteImage.value ? <EquipmentSpriteEditor /> : <SpriteEquipmentOpenForm />;
-  }
-
-  return <ToolLoader />;
+  return (
+    <SessionTool
+      root={spriteEquipmentService.sprite}
+      isOpen={Boolean(spriteEquipmentService.spriteImage.value)}
+      openForm={<SpriteEquipmentOpenForm />}
+      workspace={<EquipmentSpriteEditor />}
+    />
+  );
 }

@@ -4,9 +4,10 @@ import { EditorToolbarLocation } from "@xrf/ui/editor/toolbar";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
-import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
+import { SessionTool } from "@/core/session/components/SessionTool";
 import { VisualPreviewLayout } from "@/core/visuals/components/preview/VisualPreviewLayout";
 import { IOpenVisual } from "@/core/visuals/services";
+import { VisualLoadService } from "@/core/visuals/services/visual-load";
 import { toVisualSessionLocation } from "@/tools/visuals-explorer/lib/visual-location";
 import { VisualsService } from "@/tools/visuals-explorer/services/visuals";
 import { VisualsBrowseService } from "@/tools/visuals-explorer/services/visuals-browse";
@@ -29,6 +30,7 @@ export function VisualsExplorerTool({
 }: BaseComponentProps): ReactElement {
   const visualsService: VisualsService = useInjection(VisualsService);
   const browseService: VisualsBrowseService = useInjection(VisualsBrowseService);
+  const loadService: VisualLoadService = useInjection(VisualLoadService);
 
   const [isPickerOpen, setPickerOpen] = useState(false);
 
@@ -56,29 +58,28 @@ export function VisualsExplorerTool({
     }
   }, [browseService, visualsService.containingRoot]);
 
-  if (!visualsService.isReady) {
-    return <ToolLoader />;
-  }
-
-  if (isPickerOpen || (!visual && !isBrowsing)) {
-    return <VisualsExplorerOpenForm onFinished={onFinished} />;
-  }
-
   return (
-    <VisualPreviewLayout
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      subtitle={location ? <EditorToolbarLocation location={location} /> : undefined}
-      name={visualsService.sourceLabel}
-      panels={VISUALS_EXPLORER_PANELS}
-      tree={isBrowsing ? <VisualsMenu /> : undefined}
-      isLoading={visualsService.visual.isLoading}
-      error={visualsService.visual.error?.message}
-      onRetry={visualsService.retryOpen}
-      onBack={onBack}
-      onBrowse={isBrowsing ? undefined : onBrowse}
-      onDeselect={isBrowsing ? onDeselect : null}
+    <SessionTool
+      root={loadService.selection}
+      isOpen={!isPickerOpen && (visual !== null || isBrowsing)}
+      openForm={<VisualsExplorerOpenForm onFinished={onFinished} />}
+      workspace={
+        <VisualPreviewLayout
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          subtitle={location ? <EditorToolbarLocation location={location} /> : undefined}
+          name={visualsService.sourceLabel}
+          panels={VISUALS_EXPLORER_PANELS}
+          tree={isBrowsing ? <VisualsMenu /> : undefined}
+          isLoading={visualsService.visual.isLoading}
+          error={visualsService.visual.error?.message}
+          onRetry={visualsService.retryOpen}
+          onBack={onBack}
+          onBrowse={isBrowsing ? undefined : onBrowse}
+          onDeselect={isBrowsing ? onDeselect : null}
+        />
+      }
     />
   );
 }

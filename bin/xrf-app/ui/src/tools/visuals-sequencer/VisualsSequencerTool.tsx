@@ -3,9 +3,10 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback, useState } from "react";
 
-import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
+import { SessionTool } from "@/core/session/components/SessionTool";
 import { VisualPreviewLayout } from "@/core/visuals/components/preview/VisualPreviewLayout";
 import { IOpenVisual } from "@/core/visuals/services";
+import { VisualLoadService } from "@/core/visuals/services/visual-load";
 import { VisualsSequencerService } from "@/tools/visuals-sequencer/services/visuals-sequencer";
 
 import { SEQUENCER_PANELS } from "./components/panels";
@@ -21,6 +22,7 @@ export function VisualsSequencerTool({
   className,
 }: BaseComponentProps): ReactElement {
   const service: VisualsSequencerService = useInjection(VisualsSequencerService);
+  const loadService: VisualLoadService = useInjection(VisualLoadService);
 
   const [isPickerOpen, setPickerOpen] = useState(false);
 
@@ -30,25 +32,24 @@ export function VisualsSequencerTool({
 
   const onFinished = useCallback(() => setPickerOpen(false), []);
 
-  if (!service.isReady) {
-    return <ToolLoader />;
-  }
-
-  if (isPickerOpen || !visual) {
-    return <VisualsSequencerOpenForm onFinished={onFinished} />;
-  }
-
   return (
-    <VisualPreviewLayout
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      name={service.sourceLabel}
-      panels={SEQUENCER_PANELS}
-      footer={<SequencerTransport />}
-      isLoading={service.visual.isLoading}
-      error={service.visual.error?.message}
-      onBack={onBack}
+    <SessionTool
+      root={loadService.selection}
+      isOpen={!isPickerOpen && visual !== null}
+      openForm={<VisualsSequencerOpenForm onFinished={onFinished} />}
+      workspace={
+        <VisualPreviewLayout
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          name={service.sourceLabel}
+          panels={SEQUENCER_PANELS}
+          footer={<SequencerTransport />}
+          isLoading={service.visual.isLoading}
+          error={service.visual.error?.message}
+          onBack={onBack}
+        />
+      }
     />
   );
 }

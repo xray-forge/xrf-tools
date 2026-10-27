@@ -54,7 +54,7 @@ export async function mockAttachedLevelRender(
 
   // Provisioned as the tool provisions it, so the level's look and weather open with the level.
   container.provision();
-  await waitFor(() => expect(container.get(LevelLoadService).isReady).toBe(true));
+  await waitFor(() => expect(container.get(LevelLoadService).selection.isRestored).toBe(true));
 
   const service: LevelRenderService = container.get(LevelRenderService);
 

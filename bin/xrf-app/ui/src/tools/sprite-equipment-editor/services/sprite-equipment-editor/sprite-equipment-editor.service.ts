@@ -93,12 +93,6 @@ export class SpriteEquipmentEditorService {
     private readonly packerService: SpriteEquipmentPackerService = inject(SpriteEquipmentPackerService)
   ) {}
 
-  /** Whether the backend has been asked what it still holds, which holds the loader back. */
-  @Computed()
-  public get isReady(): boolean {
-    return this.sprite.isRestored;
-  }
-
   /**
    * The sheet as the editor shows it: its picture while one is held, loading while the sheet, its picture or a repack
    * is, and the latest failure of the three a person has not dismissed.

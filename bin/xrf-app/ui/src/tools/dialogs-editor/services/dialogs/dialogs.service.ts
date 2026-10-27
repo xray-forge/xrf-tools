@@ -24,12 +24,6 @@ export class DialogsService {
     restore: dialogsCommands.restoreProject,
   });
 
-  /** Whether the backend has been asked what it still holds, which holds the loader back. */
-  @Computed()
-  public get isReady(): boolean {
-    return this.project.isRestored;
-  }
-
   /** Languages the open project's text tree offers, empty when it read none. */
   @Computed()
   public get languages(): Array<string> {

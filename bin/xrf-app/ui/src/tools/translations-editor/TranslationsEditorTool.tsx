@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
+import { SessionTool } from "@/core/session/components/SessionTool";
 
 import { TranslationsEditor } from "./components/TranslationsEditor";
 import { TranslationsEditorOpenForm } from "./components/TranslationsEditorOpenForm";
@@ -11,9 +11,11 @@ import { TranslationsService } from "./services/translations.service";
 export function TranslationsEditorTool(): ReactElement {
   const translationsService: TranslationsService = useInjection(TranslationsService);
 
-  if (translationsService.isReady) {
-    return translationsService.project.value ? <TranslationsEditor /> : <TranslationsEditorOpenForm />;
-  }
-
-  return <ToolLoader />;
+  return (
+    <SessionTool
+      root={translationsService.project}
+      openForm={<TranslationsEditorOpenForm />}
+      workspace={<TranslationsEditor />}
+    />
+  );
 }
