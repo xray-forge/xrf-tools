@@ -1,5 +1,6 @@
 import { ELevelLookFieldOff } from "@/applications/level-viewer/lib/look/level-look-field-off";
 import { ILevelLook } from "@/core/level/lib/look/level-look";
+import { RENDER_EXPOSURE_LIMITS } from "@/core/render/lib/features/render-exposure-choices";
 import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/render-feature-settings";
 
 /** One number of the look a slider sets. */
@@ -34,37 +35,29 @@ export const LEVEL_LOOK_TONEMAP_FIELDS: ReadonlyArray<ILevelLookField> = [
   {
     label: "Strength",
     offUnder: ELevelLookFieldOff.PHYSICAL_LIGHT,
-    max: 1,
-    min: 0,
+    ...RENDER_EXPOSURE_LIMITS.amount,
     read: (look) => look.exposure.amount,
-    step: 0.01,
     write: (look, amount) => ({ ...look, exposure: { ...look.exposure, amount } }),
   },
   {
     label: "Middle gray",
     offUnder: ELevelLookFieldOff.PHYSICAL_LIGHT,
-    max: 2,
-    min: 0,
+    ...RENDER_EXPOSURE_LIMITS.middleGray,
     read: (look) => look.exposure.middleGray,
-    step: 0.05,
     write: (look, middleGray) => ({ ...look, exposure: { ...look.exposure, middleGray } }),
   },
   {
     label: "Luminance floor",
     offUnder: ELevelLookFieldOff.PHYSICAL_LIGHT,
-    max: 1,
-    min: 0.0001,
+    ...RENDER_EXPOSURE_LIMITS.lowLuminance,
     read: (look) => look.exposure.lowLuminance,
-    step: 0.01,
     write: (look, lowLuminance) => ({ ...look, exposure: { ...look.exposure, lowLuminance } }),
   },
   {
     label: "Adaptation speed",
     offUnder: ELevelLookFieldOff.PHYSICAL_LIGHT,
-    max: 10,
-    min: 0.01,
+    ...RENDER_EXPOSURE_LIMITS.adaptation,
     read: (look) => look.exposure.adaptation,
-    step: 0.01,
     write: (look, adaptation) => ({ ...look, exposure: { ...look.exposure, adaptation } }),
   },
 ];

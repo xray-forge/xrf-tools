@@ -1,5 +1,7 @@
+import { formatCount } from "@xrf/format";
 import { EnvironmentCycleEntry, LevelWeatherDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EWeatherCycleKind, LevelWeatherOption } from "@xrf/ipc/types/xrf-environment";
+import { Nullable } from "@xrf/types";
 
 /**
  * One cycle a viewer can play.
@@ -41,4 +43,14 @@ export function listLevelWeatherCycles(description: LevelWeatherDescription): Ar
     }));
 
   return [...offered, ...others];
+}
+
+/** @returns How many keyframes a cycle or effect plays, as a list of them says beside its name. */
+export function formatLevelWeatherKeyframes(keyframes: number): string {
+  return `${formatCount(keyframes)} ${keyframes === 1 ? "keyframe" : "keyframes"}`;
+}
+
+/** @returns How many problems reading a cycle or effect found, as a list of them says beside its name; null for none. */
+export function formatLevelWeatherFindings(findings: number): Nullable<string> {
+  return findings ? `${formatCount(findings)} ${findings === 1 ? "finding" : "findings"}` : null;
 }

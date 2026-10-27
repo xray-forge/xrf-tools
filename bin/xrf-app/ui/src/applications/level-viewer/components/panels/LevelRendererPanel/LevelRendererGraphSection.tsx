@@ -1,4 +1,4 @@
-import { formatBytes } from "@xrf/format";
+import { formatBytes, formatCount } from "@xrf/format";
 import { RenderGraphReport, RenderGraphSettings } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
@@ -38,15 +38,15 @@ export function LevelRendererGraphSection({
 
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Frame graph"}>
-      <EditorPanelProperty label={"Passes"} value={graph?.passes.length ?? 0} />
-      <EditorPanelProperty label={"Culled"} value={graph?.culled.length ?? 0} />
-      <EditorPanelProperty label={"Encode groups"} value={graph?.groups.length ?? 0} />
-      <EditorPanelProperty label={"Render passes"} value={graph?.renderPassCount ?? 0} />
-      <EditorPanelProperty label={"Transients"} value={graph?.transients.length ?? 0} />
+      <EditorPanelProperty label={"Passes"} value={formatCount(graph?.passes.length ?? 0)} />
+      <EditorPanelProperty label={"Culled"} value={formatCount(graph?.culled.length ?? 0)} />
+      <EditorPanelProperty label={"Encode groups"} value={formatCount(graph?.groups.length ?? 0)} />
+      <EditorPanelProperty label={"Render passes"} value={formatCount(graph?.renderPassCount ?? 0)} />
+      <EditorPanelProperty label={"Transients"} value={formatCount(graph?.transients.length ?? 0)} />
       <EditorPanelProperty label={"Transients apart"} value={formatBytes(graph?.transientBytes ?? 0)} />
       <EditorPanelProperty
         label={"Pooled"}
-        value={`${graph?.pooledCount ?? 0}, ${formatBytes(graph?.pooledBytes ?? 0)}`}
+        value={`${formatCount(graph?.pooledCount ?? 0)}, ${formatBytes(graph?.pooledBytes ?? 0)}`}
       />
 
       <CheckboxFormRow

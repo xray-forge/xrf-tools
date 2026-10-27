@@ -5,7 +5,7 @@ import { ReactElement } from "react";
 
 import { formatLevelPoint } from "@/core/level/lib/camera/level-camera";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
-import { UNNAMED_LEVEL_SURFACE } from "@/core/level/lib/surface/level-surface-summary";
+import { describeLevelSurface, toLevelSurfaceSummary } from "@/core/level/lib/surface/level-surface-summary";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { RenderViewportOverlay } from "@/core/render/components/overlay";
@@ -23,7 +23,7 @@ function toSurfaceHeading(picked: Extract<TLevelPick, { kind: ELevelPick.SURFACE
 function toSurfaceNaming(surfaces: ReadonlyArray<XraySurfaceDescriptor>, shaderId: number): string {
   const descriptor: Maybe<XraySurfaceDescriptor> = surfaces[shaderId];
 
-  return descriptor ? `${descriptor.shader ?? UNNAMED_LEVEL_SURFACE} / ${descriptor.textures[0] ?? "no texture"}` : "";
+  return descriptor ? describeLevelSurface(toLevelSurfaceSummary(descriptor, shaderId)) : "";
 }
 
 /**

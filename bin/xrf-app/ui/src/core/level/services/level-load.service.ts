@@ -213,9 +213,12 @@ export class LevelLoadService {
    */
   @BoundAction()
   public async close(): Promise<void> {
-    await flowResult(this.selection.close());
+    const isClosed: Maybe<boolean> = await flowResult(this.selection.close());
 
-    this.detachParts();
+    // Superseded rather than settled: a later open's answer decides what the parts read.
+    if (isClosed !== undefined) {
+      this.detachParts();
+    }
   }
 
   /**

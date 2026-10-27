@@ -13,14 +13,14 @@ export function LevelViewerCaptureExported({
   "data-testid": dataTestId = "level-viewer-capture-exported",
   id,
   className,
-}: BaseComponentProps): Nullable<ReactElement> {
+}: BaseComponentProps): ReactElement {
   const resultService: LevelViewerCaptureResultService = useInjection(LevelViewerCaptureResultService);
   const exported: Nullable<string> = resultService.exported;
 
   const onReveal = useCallback(() => void resultService.revealExport(), [resultService]);
 
   if (!exported) {
-    return null;
+    return <></>;
   }
 
   return (

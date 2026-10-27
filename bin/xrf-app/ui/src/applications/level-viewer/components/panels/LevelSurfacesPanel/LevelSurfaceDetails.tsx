@@ -19,7 +19,7 @@ import {
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ILevelSurfaceRowProps extends BaseComponentProps {
+interface ILevelSurfaceDetailsProps extends BaseComponentProps {
   summary: ILevelSurfaceSummary;
   /** What the renderer got for each texture the entry names, which is not always what the entry asked for. */
   dressing: ReadonlyArray<ILevelSurfaceDressing>;
@@ -27,22 +27,20 @@ interface ILevelSurfaceRowProps extends BaseComponentProps {
   geometry: ILevelSurfaceGeometry;
   /** Why the renderer has not said how much the entry draws, in place of the count; null once it has. */
   unmeasured?: Nullable<string>;
-  isFirst?: boolean;
 }
 
 /**
- * One entry of a level's shader table: what it names, what it is drawn as, and what answered for it.
+ * The shader table entry chosen in the Surfaces panel: what it names, what it is drawn as, and what answered for it.
  */
-export function LevelSurfaceRow({
-  "data-testid": dataTestId = "level-surface-row",
+export function LevelSurfaceDetails({
+  "data-testid": dataTestId = "level-surface-details",
   id,
   className,
   summary,
   dressing,
   geometry,
   unmeasured = null,
-  isFirst = false,
-}: ILevelSurfaceRowProps): ReactElement {
+}: ILevelSurfaceDetailsProps): ReactElement {
   const { descriptor } = summary;
   const outcome: IMaterialStateDescriptor = describeSurfaceOutcome(descriptor);
   const draw: Nullable<string> = describeSurfaceDraw(descriptor.draw);
@@ -53,7 +51,7 @@ export function LevelSurfaceRow({
       id={id}
       className={className}
       title={`${summary.shaderId} · ${describeLevelSurface(summary)}`}
-      isFirst={isFirst}
+      isFirst={true}
     >
       <EditorPanelProperty
         label={"Drawn as"}

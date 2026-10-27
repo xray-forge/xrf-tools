@@ -1,4 +1,4 @@
-import { formatNumber } from "@xrf/format";
+import { formatDegrees } from "@xrf/format";
 import { clamp, toDegrees } from "@xrf/math";
 
 import { DEFAULT_LEVEL_FLY_OPTIONS, ILevelFlyOptions } from "@/core/level/lib/camera/level-fly-options";
@@ -33,7 +33,7 @@ export const LEVEL_CAMERA_LIMITS = {
 
 /** @returns The pointer's sensitivity as the degrees the camera turns a pixel it moves. */
 export function formatCameraSensitivity(sensitivity: number): string {
-  return `${formatNumber(toDegrees(sensitivity), 2)}° a pixel`;
+  return `${formatDegrees(toDegrees(sensitivity), 2)} a pixel`;
 }
 
 /**

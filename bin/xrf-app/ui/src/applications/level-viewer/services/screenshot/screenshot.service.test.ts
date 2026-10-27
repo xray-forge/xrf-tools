@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
+import { flowResult } from "@wirestate/mobx";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { ELevelsBulkRoute } from "@xrf/ipc/commands/levels-bulk";
 import { mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
@@ -15,6 +16,7 @@ import {
   noteLevelFrame,
 } from "@/core/level/fixtures/level-container";
 import { clearLocalStorage } from "@/core/storage";
+import { deferred } from "@/fixtures/utils/promise";
 
 const PATH: string = "appdata/level-viewer/screenshots/zaton-20261020-070509.png";
 const REPORT_PATH: string = "appdata/level-viewer/screenshots/zaton-20261020-070509.json";
@@ -61,12 +63,14 @@ describe("LevelViewerScreenshotService", () => {
     });
 
     const { screenshots, render, renderSettings } = mockScreenshots();
-    const taking: Promise<Nullable<ILevelViewerScreenshot>> = screenshots.take();
+    const taking: Promise<Nullable<ILevelViewerScreenshot>> = flowResult(screenshots.take());
 
     expect(renderSettings.renderSettings.isGpuTimed).toBe(true);
     expect(renderSettings.isGpuTimed).toBe(false);
     expect(screenshots.canTake).toBe(false);
-    await expect(screenshots.take()).resolves.toBeNull();
+
+    // Asked again while it is taken, it is the same screenshot.
+    const again: Promise<Nullable<ILevelViewerScreenshot>> = flowResult(screenshots.take());
 
     await waitFor(() => expect(screenshots.shot).not.toBeNull());
 
@@ -91,6 +95,7 @@ describe("LevelViewerScreenshotService", () => {
     });
     expect(shot?.frame?.framesPerSecond).toBe(61);
     expect(shot?.reportPath).toBe(REPORT_PATH);
+    await expect(again).resolves.toBe(shot);
     expect(renderSettings.renderSettings.isGpuTimed).toBe(false);
     expect(screenshots.canTake).toBe(true);
   });
@@ -112,7 +117,7 @@ describe("LevelViewerScreenshotService", () => {
     renderSettings.setGpuTimed(true);
     noteLevelFrame(render, { framesPerSecond: 90, isGpuTimed: true });
 
-    await screenshots.take();
+    await flowResult(screenshots.take());
 
     expect(JSON.parse(String(saved[0]?.text))).toMatchObject({
       frame: { framesPerSecond: 90 },
@@ -134,11 +139,32 @@ describe("LevelViewerScreenshotService", () => {
     renderSettings.setGpuTimed(true);
     noteLevelFrame(render, { isGpuTimed: true });
 
-    const shot: Nullable<ILevelViewerScreenshot> = await screenshots.take();
+    const shot: Nullable<ILevelViewerScreenshot> = await flowResult(screenshots.take());
 
     expect(shot?.path).toBe(PATH);
     expect(shot?.reportPath).toBeNull();
     expect(screenshots.failure).toContain("write the screenshot's report");
+  });
+
+  it("holds no screenshot taken while the tool was left", async () => {
+    const path = deferred<string>();
+
+    mockIpcCommands({ [ELevelsCommand.FIND_SCREENSHOT_PATH]: () => path.promise });
+
+    const { container, screenshots, render, renderSettings } = mockScreenshots();
+
+    renderSettings.setGpuTimed(true);
+    noteLevelFrame(render, { isGpuTimed: true });
+
+    const taking: Promise<Nullable<ILevelViewerScreenshot>> = flowResult(screenshots.take());
+
+    container.unbind(LevelViewerScreenshotService);
+    path.resolve(PATH);
+
+    await expect(taking).resolves.toBeUndefined();
+    expect(render.saveScreenshot).not.toHaveBeenCalled();
+    expect(screenshots.shot).toBeNull();
+    expect(screenshots.isTaking).toBe(false);
   });
 
   it("deletes the screenshot through the backend and forgets it", async () => {
@@ -157,7 +183,7 @@ describe("LevelViewerScreenshotService", () => {
 
     renderSettings.setGpuTimed(true);
     noteLevelFrame(render, { isGpuTimed: true });
-    await screenshots.take();
+    await flowResult(screenshots.take());
     await screenshots.remove();
 
     expect(deleted).toEqual([PATH]);
