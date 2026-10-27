@@ -1,8 +1,11 @@
+import { EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import {
+  EEquipmentSheetSource,
   EquipmentSheetLocation,
   EquipmentSpriteMetadata,
   EquipmentSpriteOpen,
 } from "@xrf/ipc/types/xrf-app-sprite-equipment";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { EEquipmentSlotClaim, EquipmentSlotOccupant, EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
 
@@ -42,8 +45,8 @@ export function mockEquipmentOccupant(
 export function mockEquipmentSpriteOpen(overrides: Partial<EquipmentSpriteOpen> = {}): EquipmentSpriteOpen {
   return {
     roots: { asset: null, roots: [] },
-    sheet: { kind: "file", path: "C:\\game\\equipment.dds" },
-    config: { kind: "file", path: "C:\\game\\system.ltx" },
+    sheet: { kind: EEquipmentSheetSource.FILE, path: "C:\\game\\equipment.dds" },
+    config: { kind: EAssetSource.FILE, path: "C:\\game\\system.ltx" },
     isDltx: false,
     ...overrides,
   };
@@ -56,7 +59,7 @@ export function mockEquipmentSpriteOpen(overrides: Partial<EquipmentSpriteOpen> 
  * @returns The location as the backend would report it.
  */
 export function mockEquipmentSheetLocation(open: EquipmentSpriteOpen): EquipmentSheetLocation {
-  const path: Nullable<string> = open.sheet.kind === "file" ? open.sheet.path : null;
+  const path: Nullable<string> = open.sheet.kind === EEquipmentSheetSource.FILE ? open.sheet.path : null;
 
   return { asset: null, path, writeTarget: path };
 }
@@ -89,7 +92,7 @@ export function mockEquipmentSpritePackResult(
   overrides: Partial<EquipmentSpritePackResult> = {}
 ): EquipmentSpritePackResult {
   return {
-    outcome: "completed",
+    outcome: EJobOutcome.COMPLETED,
     duration: 1000,
     savedAt: "C:\\out\\equipment.dds",
     savedWidth: 1024,

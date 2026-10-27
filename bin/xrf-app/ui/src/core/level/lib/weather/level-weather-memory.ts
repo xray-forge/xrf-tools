@@ -1,4 +1,4 @@
-import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelSource, SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { WeatherDescriptor } from "@xrf/ipc/types/xrf-environment";
 import { clamp } from "@xrf/math";
 import { isRecord, Maybe, Nullable } from "@xrf/types";
@@ -54,7 +54,7 @@ export interface ILevelWeatherMemory {
  *   are remembered apart.
  */
 export function toLevelWeatherMemoryKey(level: SelectedLevelDescription): string {
-  const source: string = level.source.kind === "asset" ? level.source.logicalPath : level.source.path;
+  const source: string = level.source.kind === ELevelSource.ASSET ? level.source.logicalPath : level.source.path;
 
   return [...level.roots.roots.map((root) => root.path), source].join("|").toLowerCase();
 }

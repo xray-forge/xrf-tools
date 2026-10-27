@@ -378,7 +378,7 @@ export class JobsService {
     const job: Nullable<IJobState> = this.getJob(id);
 
     const outcome: IJobOutcome<T> = { isCancelRequested: Boolean(job?.isCancelRequested), result, error };
-    let conclusion: Nullable<JobConclusion> = error ? "failed" : null;
+    let conclusion: Nullable<JobConclusion> = error ? EJobConclusion.FAILED : null;
 
     // The shared outcome marker records accepted cancellation; requesting cancellation alone proves nothing.
     if (

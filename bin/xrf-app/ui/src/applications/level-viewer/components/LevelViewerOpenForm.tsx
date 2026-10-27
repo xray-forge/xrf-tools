@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelSource, LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -83,7 +83,7 @@ export function LevelViewerOpenForm({
       engine: engine.choice,
       isDltx,
       roots: createRoots([root.value]),
-      source: { kind: "asset", logicalPath: selected },
+      source: { kind: ELevelSource.ASSET, logicalPath: selected },
     });
 
     onFinished?.();

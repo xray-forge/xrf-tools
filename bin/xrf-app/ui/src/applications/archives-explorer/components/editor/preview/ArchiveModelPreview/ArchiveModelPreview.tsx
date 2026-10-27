@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
 import { ArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
+import { EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useEffect } from "react";
 
@@ -33,7 +34,7 @@ export function ArchiveModelPreview({
 
   useEffect(() => {
     if (subject) {
-      void loadService.load({ kind: "asset", logicalPath: name }, subject.roots);
+      void loadService.load({ kind: EAssetSource.ASSET, logicalPath: name }, subject.roots);
     }
 
     return () => loadService.clear();
