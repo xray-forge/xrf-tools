@@ -24,6 +24,7 @@ import { XrayRevision } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
 import { Maybe, Nullable } from "@xrf/types";
 
+import { ILevelScene } from "@/core/level/lib/load/level-scene";
 import { describeLevelSource } from "@/core/level/lib/source/level-source";
 import { EMPTY_LEVEL_SPAWN_REPORT, ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { SessionRootResource } from "@/core/session/lib/session-root-resource";
@@ -31,12 +32,6 @@ import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 /** A level that is open: the level itself, its root, as its session holds it. */
 export interface IOpenLevel {
   selected: SessionSnapshot<SelectedLevelDescription>;
-}
-
-/** The scene an open level streams as: its session, and the revision it last streamed afresh at. */
-export interface ILevelScene {
-  sessionId: SessionId;
-  revision: XrayRevision;
 }
 
 /**

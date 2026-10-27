@@ -4,7 +4,7 @@ import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Maybe, Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { describeLevelDescriptionWait } from "@/applications/level-viewer/lib/load/level-description-wait";
+import { describeLevelResidentWait } from "@/applications/level-viewer/lib/load/level-resident-wait";
 import {
   listLevelSurfaceGroupIds,
   TLevelSurfaceTreeRow,
@@ -13,6 +13,7 @@ import {
   toLevelSurfaceTree,
 } from "@/applications/level-viewer/lib/surface/level-surface-tree";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
+import { EMPTY_LEVEL_RESIDENT, ILevelResident } from "@/core/level/lib/render/level-resident";
 import { ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelSurfaceGeometry, NO_LEVEL_SURFACE_GEOMETRY } from "@/core/level/lib/surface/level-surface-geometry";
 import {
@@ -23,6 +24,7 @@ import {
 } from "@/core/level/lib/surface/level-surface-summary";
 import { listLevelSurfaceDressing } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { describeSurfaceOutcome } from "@/core/materials/lib";
 import { EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
@@ -48,6 +50,7 @@ export function LevelSurfacesPanel({
   className,
 }: BaseComponentProps): ReactElement {
   const loadService: LevelLoadService = useInjection(LevelLoadService);
+  const renderService: LevelRenderService = useInjection(LevelRenderService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
 
   const tree: IUseTreeState = useTreeState();
@@ -80,13 +83,14 @@ export function LevelSurfacesPanel({
     [items]
   );
 
+  const resident: ILevelResident = renderService.resident.value ?? EMPTY_LEVEL_RESIDENT;
   const selected: Nullable<ILevelSurfaceSummary> = tree.selectedId ? (byId.get(tree.selectedId) ?? null) : null;
   const dressing: Array<ILevelSurfaceDressing> = selected
-    ? listLevelSurfaceDressing(selected.textures, viewportService.textureReport)
+    ? listLevelSurfaceDressing(selected.textures, resident.textures)
     : [];
 
   const geometry: ILevelSurfaceGeometry = selected
-    ? (viewportService.surfaceGeometry.get(selected.shaderId) ?? NO_LEVEL_SURFACE_GEOMETRY)
+    ? (resident.surfaces.get(selected.shaderId) ?? NO_LEVEL_SURFACE_GEOMETRY)
     : NO_LEVEL_SURFACE_GEOMETRY;
 
   // The entry chosen as the table it was chosen in read it, which a table read anew finds again; null for a shader's
@@ -237,7 +241,7 @@ export function LevelSurfacesPanel({
             summary={selected}
             dressing={dressing}
             geometry={geometry}
-            unmeasured={describeLevelDescriptionWait(viewportService.description, "how much it draws")}
+            unmeasured={describeLevelResidentWait(renderService.resident.state, "how much it draws")}
           />
         </div>
       ) : null}

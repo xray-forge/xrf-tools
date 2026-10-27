@@ -19,6 +19,7 @@ import {
   mockSelectedLevelDescription,
 } from "@/core/level/fixtures/level.mocks";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
+import { EMPTY_LEVEL_RESIDENT } from "@/core/level/lib/render/level-resident";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
@@ -26,6 +27,7 @@ import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { mockCommandAnswer } from "@/core/operations/fixtures/command-operation.mocks";
 import { mockSurfaceDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -89,7 +91,10 @@ async function renderPanel(
 
   // What a level's textures came to, which no test here streams for itself: given one, the panel reads it.
   if (textures) {
-    container.get(LevelViewportService).noteTextures(textures);
+    mockCommandAnswer(
+      container.get(LevelRenderService).resident,
+      AsyncState.ready({ ...EMPTY_LEVEL_RESIDENT, textures })
+    );
   }
 
   arrange?.(container);
@@ -136,6 +141,7 @@ describe("LevelSurfacesPanel", () => {
       LevelViewService,
       LevelViewportService,
       LevelWeatherService,
+      LevelLookService,
     ]);
     const { getByText } = renderWithProviders(<LevelSurfacesPanel />, { container, route: "/level-viewer" });
 
@@ -217,16 +223,17 @@ describe("LevelSurfacesPanel", () => {
 
   // The renderer counts what every entry draws once the level is resident; the panel shows the chosen entry's count.
   it("shows what the viewport counted the chosen entry drawing", async () => {
-    const view: RenderResult = await renderPanel(undefined, (container: Container) => {
-      const viewport: LevelViewportService = container.get(LevelViewportService);
-
-      viewport.noteSurfaceGeometry(
-        new Map(
-          [0, 1, 2, 3].map((shaderId) => [shaderId, { drawables: 2, narrowest: null, span: null, triangles: 70 }])
-        )
-      );
-      viewport.noteDescription(AsyncState.ready<void>(null));
-    });
+    const view: RenderResult = await renderPanel(undefined, (container: Container) =>
+      mockCommandAnswer(
+        container.get(LevelRenderService).resident,
+        AsyncState.ready({
+          ...EMPTY_LEVEL_RESIDENT,
+          surfaces: new Map(
+            [0, 1, 2, 3].map((shaderId) => [shaderId, { drawables: 2, narrowest: null, span: null, triangles: 70 }])
+          ),
+        })
+      )
+    );
 
     const details: HTMLElement = await choose(view, "poteki", "2 · decal\\decal_poteki");
 

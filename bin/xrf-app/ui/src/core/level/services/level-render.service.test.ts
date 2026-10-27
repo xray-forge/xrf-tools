@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
-import { EventBus } from "@wirestate/core";
+import { EventBus, WireEvent } from "@wirestate/core";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { ERenderCommand } from "@xrf/ipc/commands/render";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
@@ -40,6 +40,7 @@ import {
   EWorldViewportEvent,
   EWorldWeatherPlay,
   WorldCamera,
+  WorldSurfaceGeometry,
   WorldSurfaceSpan,
 } from "@xrf/ipc/types/xrf-world";
 
@@ -56,19 +57,21 @@ import {
   mockSelectedLevelDescription,
 } from "@/core/level/fixtures/level.mocks";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
+import { ILevelResident } from "@/core/level/lib/render/level-resident";
 import { DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS } from "@/core/level/lib/weather/level-sun-shafts-options";
 import { DEFAULT_LEVEL_WEATHER_CONTROL } from "@/core/level/lib/weather/level-weather-control";
 import { toLevelWeatherMemoryKey, writeLevelWeatherMemory } from "@/core/level/lib/weather/level-weather-memory";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
 import { EMPTY_RENDER_FRAME_PHASES } from "@/core/render/lib/native/native-frame-report";
 import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSurfaceDescriptor, mockVisualTransform } from "@/core/visuals/fixtures/visual.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { flush } from "@/fixtures/utils/promise";
+import { deferred, flush, IDeferred } from "@/fixtures/utils/promise";
 
 const SPAN: WorldSurfaceSpan = { uMax: 2, uMin: 0, vMax: 1, vMin: -1 };
 
@@ -177,13 +180,12 @@ describe("LevelRenderService", () => {
   });
 
   it("shows the open level in its viewport and reveals it once the renderer has it resident", async () => {
-    const { container } = await mockAttachedLevelRender();
-    const viewport: LevelViewportService = container.get(LevelViewportService);
+    const { service } = await mockAttachedLevelRender();
 
     expect(listMockInvokeCalls(ELevelsCommand.SHOW_LEVEL)).toEqual([
       { sessionId: expect.any(String), viewport: LEVEL_VIEWPORT },
     ]);
-    expect(viewport.isRevealed).toBe(false);
+    expect(service.isRevealed).toBe(false);
 
     emitViewportEvent({
       kind: ERenderViewportEvent.LOAD,
@@ -197,14 +199,14 @@ describe("LevelRenderService", () => {
         texturesTotal: 3,
       }),
     });
-    expect(viewport.isRevealed).toBe(false);
+    expect(service.isRevealed).toBe(false);
 
     // A ready report of the level drawn before it reveals nothing.
     emitViewportEvent({
       kind: ERenderViewportEvent.LOAD,
       report: mockRenderLoadReport({ isReady: true, scene: LEVEL_SCENE - 1 }),
     });
-    expect(viewport.isRevealed).toBe(false);
+    expect(service.isRevealed).toBe(false);
 
     mockIpcCommands({
       [ERenderCommand.DESCRIBE_TEXTURE_LOADS]: [
@@ -229,14 +231,17 @@ describe("LevelRenderService", () => {
         texturesTotal: 3,
       }),
     });
-    expect(viewport.isRevealed).toBe(true);
+    expect(service.isRevealed).toBe(true);
 
     // Counted once everything is resident, so it counts the level whole.
-    await waitFor(() => expect(viewport.surfaceGeometry.get(7)?.triangles).toBe(40));
-    expect(viewport.surfaceGeometry.get(7)).toEqual({ drawables: 3, narrowest: SPAN, span: SPAN, triangles: 40 });
-    expect(viewport.textureReport.uploaded).toBe(2);
-    expect(viewport.textureReport.dressing.get("terrain\\terrain_escape")?.upload).toBe("1024×512 · DXT1 · 10 levels");
-    expect(viewport.textureReport.problems).toEqual([
+    await waitFor(() => expect(service.resident.isLoading).toBe(false));
+
+    const resident: ILevelResident = service.resident.value as ILevelResident;
+
+    expect(resident.surfaces.get(7)).toEqual({ drawables: 3, narrowest: SPAN, span: SPAN, triangles: 40 });
+    expect(resident.textures.uploaded).toBe(2);
+    expect(resident.textures.dressing.get("terrain\\terrain_escape")?.upload).toBe("1024×512 · DXT1 · 10 levels");
+    expect(resident.textures.problems).toEqual([
       {
         group: ERenderTextureGroup.SURFACES,
         reason: "Nothing in the mounted roots answers to it",
@@ -246,8 +251,7 @@ describe("LevelRenderService", () => {
   });
 
   it("describes a resident level once, however its later reports change its counts", async () => {
-    const { container } = await mockAttachedLevelRender();
-    const viewport: LevelViewportService = container.get(LevelViewportService);
+    const { service } = await mockAttachedLevelRender();
 
     mockIpcCommands({
       [ERenderCommand.DESCRIBE_PROBLEMS]: { models: [], sectors: [], skipped: [] },
@@ -258,7 +262,7 @@ describe("LevelRenderService", () => {
       kind: ERenderViewportEvent.LOAD,
       report: mockRenderLoadReport({ bytes: 20, isReady: true, scene: LEVEL_SCENE }),
     });
-    await waitFor(() => expect(viewport.description.isReady).toBe(true));
+    await waitFor(() => expect(service.resident.state.isReady).toBe(true));
 
     emitViewportEvent({
       kind: ERenderViewportEvent.LOAD,
@@ -266,7 +270,7 @@ describe("LevelRenderService", () => {
     });
     await flush();
 
-    expect(viewport.description.isReady).toBe(true);
+    expect(service.resident.state.isReady).toBe(true);
     expect(listMockInvokeCalls(ERenderCommand.MEASURE_SURFACES)).toHaveLength(1);
   });
 
@@ -274,7 +278,6 @@ describe("LevelRenderService", () => {
   // camera anew.
   it("reveals a level read again in its session once the scene it streams as is resident", async () => {
     const { container, service } = await mockAttachedLevelRender();
-    const viewport: LevelViewportService = container.get(LevelViewportService);
     const load: LevelLoadService = container.get(LevelLoadService);
 
     jest.spyOn(service.log, "error").mockImplementation(() => undefined);
@@ -282,7 +285,7 @@ describe("LevelRenderService", () => {
       kind: ERenderViewportEvent.LOAD,
       report: mockRenderLoadReport({ isReady: true, scene: LEVEL_SCENE }),
     });
-    expect(viewport.isRevealed).toBe(true);
+    expect(service.isRevealed).toBe(true);
 
     const sessionId: string = load.level.value?.selected.sessionId as string;
     const resets: number = listMockInvokeCalls(ERenderCommand.COMMAND_CAMERA).length;
@@ -301,24 +304,23 @@ describe("LevelRenderService", () => {
 
     expect(listMockInvokeCalls(ELevelsCommand.SHOW_LEVEL)).toHaveLength(1);
     expect(listMockInvokeCalls(ERenderCommand.COMMAND_CAMERA)).toHaveLength(resets);
-    expect(viewport.isRevealed).toBe(false);
+    expect(service.isRevealed).toBe(false);
 
     emitViewportEvent({
       kind: ERenderViewportEvent.LOAD,
       report: mockRenderLoadReport({ isReady: true, scene: LEVEL_SCENE }),
     });
-    expect(viewport.isRevealed).toBe(false);
+    expect(service.isRevealed).toBe(false);
 
     emitViewportEvent({
       kind: ERenderViewportEvent.LOAD,
       report: mockRenderLoadReport({ isReady: true, scene: LEVEL_SCENE + 1 }),
     });
-    expect(viewport.isRevealed).toBe(true);
+    expect(service.isRevealed).toBe(true);
   });
 
   it("keeps a level whose map alone moved revealed in the scene it is shown in", async () => {
-    const { container } = await mockAttachedLevelRender();
-    const viewport: LevelViewportService = container.get(LevelViewportService);
+    const { container, service } = await mockAttachedLevelRender();
     const load: LevelLoadService = container.get(LevelLoadService);
 
     emitViewportEvent({
@@ -342,14 +344,13 @@ describe("LevelRenderService", () => {
     await waitFor(() => expect(load.levelMap.snapshot?.revision).toBe(1));
 
     expect(listMockInvokeCalls(ELevelsCommand.SHOW_LEVEL)).toHaveLength(1);
-    expect(viewport.isRevealed).toBe(true);
+    expect(service.isRevealed).toBe(true);
   });
 
   // The backend streams a level afresh on its geometry without reading the level itself again: the viewport waits for
   // the scene it streams as, the camera kept.
   it("waits for the scene a level streams as afresh on its geometry, reading the level itself nowhere again", async () => {
-    const { container } = await mockAttachedLevelRender();
-    const viewport: LevelViewportService = container.get(LevelViewportService);
+    const { container, service } = await mockAttachedLevelRender();
     const load: LevelLoadService = container.get(LevelLoadService);
 
     emitViewportEvent({
@@ -368,7 +369,7 @@ describe("LevelRenderService", () => {
       isViewRenewed: true,
     });
 
-    expect(viewport.isRevealed).toBe(false);
+    expect(service.isRevealed).toBe(false);
     expect(listMockInvokeCalls(ELevelsCommand.SHOW_LEVEL)).toHaveLength(1);
     expect(listMockInvokeCalls(ERenderCommand.COMMAND_CAMERA)).toHaveLength(resets);
 
@@ -377,7 +378,7 @@ describe("LevelRenderService", () => {
       report: mockRenderLoadReport({ isReady: true, scene: LEVEL_SCENE + 1 }),
     });
 
-    expect(viewport.isRevealed).toBe(true);
+    expect(service.isRevealed).toBe(true);
   });
 
   it("reads frames and the camera into the readouts, and forgets the frame once detached", async () => {
@@ -607,10 +608,15 @@ describe("LevelRenderService", () => {
     await waitFor(() => expect(listMockInvokeCalls(ELevelsCommand.SHOW_LEVEL)).toHaveLength(3));
   });
 
-  it("holds why the resident level could not be described, for the panels to say", async () => {
+  it("says why the resident level could not be described, and holds it for the panels to say", async () => {
     const { container, service } = await mockAttachedLevelRender();
-    const viewport: LevelViewportService = container.get(LevelViewportService);
+    const raised: Array<INotificationPayload> = [];
 
+    container
+      .get(EventBus)
+      .subscribe(EMIT_NOTIFICATION_EVENT, (event: WireEvent<INotificationPayload>) =>
+        raised.push(event.payload as INotificationPayload)
+      );
     jest.spyOn(service.log, "error").mockImplementation(() => undefined);
     mockIpcCommands({
       [ERenderCommand.DESCRIBE_PROBLEMS]: () => Promise.reject(new Error("The viewport is gone")),
@@ -620,7 +626,60 @@ describe("LevelRenderService", () => {
       report: mockRenderLoadReport({ isReady: true, scene: LEVEL_SCENE }),
     });
 
-    expect(viewport.description.isLoading).toBe(true);
-    await waitFor(() => expect(viewport.description.error?.message).toBe("The viewport is gone"));
+    expect(service.resident.isLoading).toBe(true);
+    await waitFor(() => expect(service.resident.error?.message).toBe("The viewport is gone"));
+    expect(raised).toEqual([
+      expect.objectContaining({
+        details: "The viewport is gone",
+        severity: ENotificationSeverity.ERROR,
+        title: "Could not describe the resident level",
+      }),
+    ]);
+  });
+
+  // What was asked of a scene names that scene alone: its answer lands on no level opened or streamed since.
+  it("drops a description and a pick asked of a scene let go before they answered", async () => {
+    const { container, service } = await mockAttachedLevelRender();
+    const load: LevelLoadService = container.get(LevelLoadService);
+    const measured: IDeferred<Array<WorldSurfaceGeometry>> = deferred();
+    const picked: IDeferred<RenderLevelHit> = deferred();
+
+    mockIpcCommands({
+      [ERenderCommand.DESCRIBE_PROBLEMS]: { models: [], sectors: [], skipped: [] },
+      [ERenderCommand.DESCRIBE_TEXTURE_LOADS]: [],
+      [ERenderCommand.MEASURE_SURFACES]: () => measured.promise,
+      [ERenderCommand.PICK]: () => picked.promise,
+    });
+    emitViewportEvent({
+      kind: ERenderViewportEvent.LOAD,
+      report: mockRenderLoadReport({ isReady: true, scene: LEVEL_SCENE }),
+    });
+    void service.pick({ x: 10, y: 20 }, false);
+    expect(service.resident.isLoading).toBe(true);
+
+    container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
+      revision: 1,
+      root: { kind: "kept" },
+      sessionId: load.level.value?.selected.sessionId as string,
+      staleParts: [LEVEL_GEOMETRY_PART],
+      isViewRenewed: true,
+    });
+    expect(service.isRevealed).toBe(false);
+    expect(service.resident.state.isIdle).toBe(true);
+
+    measured.resolve([{ drawables: 3, narrowest: SPAN, shaderId: 7, span: SPAN, triangles: 40 }]);
+    picked.resolve({
+      isImpostor: false,
+      kind: ERenderLevelHit.SURFACE,
+      mesh: null,
+      place: null,
+      point: [0, 0, 0],
+      sector: 4,
+      shaderId: 0,
+    });
+    await flush();
+
+    expect(service.resident.value).toBeNull();
+    expect(container.get(LevelViewportService).picked).toBeNull();
   });
 });
