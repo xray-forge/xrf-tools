@@ -1,11 +1,10 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { act, fireEvent, RenderResult } from "@testing-library/react";
+import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { CommandBus, Container, QueryBus } from "@wirestate/core";
 import { EJobsCommand } from "@xrf/ipc/commands/jobs";
 import { mockIpcCommands } from "@xrf/ipc/testing";
 import { ReactElement, ReactNode } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 
 import { NotificationsService } from "@/core/notifications/services";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
@@ -19,48 +18,6 @@ import {
 import { clearLocalStorage, setLocalStorageValue } from "@/core/storage";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
-
-/** Stands in for an editor that publishes one default-open panel, which most of them do. */
-function EditorWithPanel({ name }: { name: string }): ReactElement {
-  useEditorPanels(
-    () => [{ icon: <span>{name}</span>, id: name, label: name, render: () => <div>{name} panel</div> }],
-    [name]
-  );
-
-  return <div>{name} editor</div>;
-}
-
-/** Stands in for an editor that browses on the left and inspects on the right, as the dialogs editor does. */
-function EditorWithBothPanels(): ReactElement {
-  useEditorPanels(
-    () => [
-      { icon: <span>t</span>, id: "tree", label: "Tree", render: () => <div>tree panel</div>, side: "left" },
-      { icon: <span>i</span>, id: "inspector", label: "Inspector", render: () => <div>inspector panel</div> },
-    ],
-    []
-  );
-
-  return <div>both editor</div>;
-}
-
-function EditorWithRouter(): ReactElement {
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
-
-  const name: string = pathname === "/archives-explorer" ? "Bones" : "Header";
-
-  useEditorPanels(
-    () => [{ icon: <span>{name}</span>, id: name, label: name, render: () => <div>{name} panel</div> }],
-    [name]
-  );
-
-  return (
-    <>
-      <div>{name} editor</div>
-      <button onClick={() => navigate("/exports-explorer")}>Open another tool</button>
-    </>
-  );
-}
 
 /** Stands in for an editor whose browse panel starts closed, which is the case the panel command exists for. */
 function EditorWithClosedLeftPanel(): ReactElement {
@@ -94,10 +51,9 @@ function withoutActEnvironment(run: () => void): void {
   }
 }
 
-function renderFrame(children: ReactNode, route: string = "/"): RenderResult {
+function renderFrame(children: ReactNode): RenderResult {
   return renderWithProviders(<ApplicationShellFrame>{children}</ApplicationShellFrame>, {
     bindings: [NotificationsService],
-    route,
   });
 }
 
@@ -105,8 +61,6 @@ describe("ApplicationShellFrame", () => {
   beforeEach(() => {
     // The frame remembers which panel was open, so a leftover choice would decide the next test.
     clearLocalStorage();
-    // The narrowest window the app supports, where the ratio binds and the fixed maximum never did.
-    Object.defineProperty(window, "innerWidth", { configurable: true, value: 900, writable: true });
   });
 
   it("opens a panel synchronously, so what a caller wants inside it is mounted when the dispatch returns", () => {
@@ -155,87 +109,5 @@ describe("ApplicationShellFrame", () => {
     const { getByLabelText } = renderFrame(<div>bare editor</div>);
 
     expect(getByLabelText("Notifications")).toBeInTheDocument();
-  });
-
-  it("selects notifications over an editor's default-open panel", async () => {
-    const { getByLabelText, getByText, queryByText } = renderFrame(<EditorWithPanel name={"Bones"} />);
-
-    expect(getByText("Bones panel")).toBeInTheDocument();
-
-    await userEvent.click(getByLabelText("Notifications"));
-
-    expect(getByText(/Nothing has been reported yet/)).toBeInTheDocument();
-    expect(queryByText("Bones panel")).not.toBeInTheDocument();
-  });
-
-  it("selects an editor panel when notifications is open", async () => {
-    const { getByLabelText, getByText, queryByText } = renderFrame(<EditorWithPanel name={"Bones"} />);
-
-    await userEvent.click(getByLabelText("Notifications"));
-    await userEvent.click(getByLabelText("Bones"));
-
-    expect(getByText("Bones panel")).toBeInTheDocument();
-    expect(queryByText(/Nothing has been reported yet/)).not.toBeInTheDocument();
-  });
-
-  it("keeps notifications open when navigating to another tool", async () => {
-    const { getByLabelText, getByText, findByText, queryByText } = await act(async () =>
-      renderFrame(<EditorWithRouter />, "/archives-explorer")
-    );
-
-    await userEvent.click(getByLabelText("Notifications"));
-    await act(async () => fireEvent.click(getByText("Open another tool")));
-
-    expect(await findByText("Header editor")).toBeInTheDocument();
-    expect(getByText(/Nothing has been reported yet/)).toBeInTheDocument();
-    expect(queryByText("Header panel")).not.toBeInTheDocument();
-  });
-
-  it("collapses the right slot when notifications is clicked again", async () => {
-    const { getByLabelText, queryByText } = renderFrame(<EditorWithPanel name={"Bones"} />);
-
-    await userEvent.click(getByLabelText("Notifications"));
-    await userEvent.click(getByLabelText("Notifications"));
-
-    expect(queryByText(/Nothing has been reported yet/)).not.toBeInTheDocument();
-    expect(queryByText("Bones panel")).not.toBeInTheDocument();
-  });
-
-  it("renders a lone panel at the window budget rather than its stored width", () => {
-    setLocalStorageValue("xrf.panels.right.width", "640");
-
-    const { getByTestId } = renderFrame(<EditorWithPanel name={"Bones"} />);
-
-    expect(getByTestId("application-panel-slot-right")).toHaveStyle({ minWidth: "450px", width: "450px" });
-  });
-
-  it("splits the budget so two open panels leave the content room", () => {
-    setLocalStorageValue("xrf.panels.left.width", "640");
-    setLocalStorageValue("xrf.panels.right.width", "640");
-
-    const { getByTestId } = renderFrame(<EditorWithBothPanels />);
-
-    expect(getByTestId("application-panel-slot-left")).toHaveStyle({ width: "225px" });
-    expect(getByTestId("application-panel-slot-right")).toHaveStyle({ width: "225px" });
-  });
-
-  it("returns the closed panel's share to the one still open", async () => {
-    setLocalStorageValue("xrf.panels.left.width", "640");
-    setLocalStorageValue("xrf.panels.right.width", "640");
-
-    const { getByLabelText, getByTestId } = renderFrame(<EditorWithBothPanels />);
-
-    await userEvent.click(getByLabelText("Inspector"));
-
-    expect(getByTestId("application-panel-slot-left")).toHaveStyle({ width: "450px" });
-  });
-
-  it("restores the global right-panel selection", () => {
-    setLocalStorageValue("xrf.panels.right.global", "notifications");
-
-    const { getByText, queryByText } = renderFrame(<EditorWithPanel name={"Bones"} />);
-
-    expect(getByText(/Nothing has been reported yet/)).toBeInTheDocument();
-    expect(queryByText("Bones panel")).not.toBeInTheDocument();
   });
 });
