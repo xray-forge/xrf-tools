@@ -8,6 +8,13 @@ import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
+/**
+ * What a payload set compressed to, as stored bytes over unpacked ones.
+ */
+function formatRatio(sizeCompressed: number, sizeReal: number): string {
+  return sizeReal > 0 ? (sizeCompressed / sizeReal).toFixed(3) : "-";
+}
+
 /** One extension and what its payloads compressed to. */
 interface IExtensionRatio {
   extension: string;
@@ -88,14 +95,4 @@ export function ArchiveCompressionSection({
       </div>
     </DetailSection>
   );
-}
-
-/**
- * What a payload set compressed to, as stored bytes over unpacked ones.
- *
- * A dash rather than a figure when there is nothing to divide by, because a ratio of zero would read as perfect
- * compression of an empty set.
- */
-function formatRatio(sizeCompressed: number, sizeReal: number): string {
-  return sizeReal > 0 ? (sizeCompressed / sizeReal).toFixed(3) : "-";
 }

@@ -25,6 +25,13 @@ export function SettingsGraphicsSection(): ReactElement {
 
   const [libraries, setLibraries] = useState<Nullable<RenderLibraries>>(null);
 
+  const rows: Array<IAboutRow> = describeGraphics(
+    renderSettingsService.renderBackend,
+    renderSettingsService.renderGpu,
+    renderSettingsService.renderBackends,
+    libraries
+  );
+
   // The DLSS version cannot change while the application runs; the backends are probed again, as in Display.
   useMountEffect(() => {
     void renderSettingsService.refreshRenderBackends();
@@ -34,13 +41,6 @@ export function SettingsGraphicsSection(): ReactElement {
       .then((it: RenderLibraries) => setLibraries(it))
       .catch((error: unknown) => log.error("Failed to read the graphics libraries:", error));
   });
-
-  const rows: Array<IAboutRow> = describeGraphics(
-    renderSettingsService.renderBackend,
-    renderSettingsService.renderGpu,
-    renderSettingsService.renderBackends,
-    libraries
-  );
 
   return (
     <DetailSection

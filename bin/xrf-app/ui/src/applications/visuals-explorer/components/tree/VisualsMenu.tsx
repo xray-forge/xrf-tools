@@ -55,6 +55,9 @@ export function VisualsMenu({
     [visuals]
   );
 
+  const source: Nullable<AssetSource> = visualsService.selected?.source ?? null;
+  const openItemId: Nullable<string> = source?.kind === EAssetSource.ASSET ? toFileItemId(source.logicalPath) : null;
+
   const onOpenPath = useCallback(
     (logicalPath: string) => {
       // Selection is written from what was asked for, never derived from what the viewport ended up holding: a
@@ -77,9 +80,6 @@ export function VisualsMenu({
     ),
     []
   );
-
-  const source: Nullable<AssetSource> = visualsService.selected?.source ?? null;
-  const openItemId: Nullable<string> = source?.kind === EAssetSource.ASSET ? toFileItemId(source.logicalPath) : null;
 
   const onOpenAsset = useCallback((asset: XrayAsset) => onOpenPath(asset.logicalPath), [onOpenPath]);
 

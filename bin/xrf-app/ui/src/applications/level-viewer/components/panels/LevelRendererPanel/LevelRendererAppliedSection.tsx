@@ -24,13 +24,6 @@ import { describeRenderScale } from "@/core/render/lib/features/render-upscaling
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ILevelRendererAppliedSectionProps extends BaseComponentProps {
-  /** What the renderer draws the level with, or null until it says. */
-  applied: Nullable<RenderAppliedReport>;
-  /** What the level asked it to draw with, which a changed value is told against. */
-  requested: RenderViewOptions;
-}
-
 /** Three channels as the panel reads them. */
 function formatTriple(values: ReadonlyArray<Nullable<number>>): string {
   return values.map((value: Nullable<number>) => formatNumber(value ?? 0, 2)).join("  ");
@@ -39,6 +32,13 @@ function formatTriple(values: ReadonlyArray<Nullable<number>>): string {
 /** A value, and what was asked where the renderer drew something else. */
 function toChanged(value: string, asked: string): string {
   return value === asked ? value : `${value} · asked ${asked}`;
+}
+
+interface ILevelRendererAppliedSectionProps extends BaseComponentProps {
+  /** What the renderer draws the level with, or null until it says. */
+  applied: Nullable<RenderAppliedReport>;
+  /** What the level asked it to draw with, which a changed value is told against. */
+  requested: RenderViewOptions;
 }
 
 /**

@@ -16,6 +16,12 @@ import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
+/** A snapshot's values by what importing them does, and its changes by part. */
+interface ILevelViewerImportSort {
+  byStatus: Record<ELevelViewerSnapshotStatus, Array<ILevelViewerSnapshotEntry>>;
+  groups: Map<string, Array<ILevelViewerSnapshotEntry>>;
+}
+
 export interface ILevelViewerImportDialogProps extends BaseComponentProps {
   /** The file's name, which the summary starts with. */
   fileName: string;
@@ -30,12 +36,6 @@ export interface ILevelViewerImportDialogProps extends BaseComponentProps {
   isApplying?: boolean;
   onApply: (entries: Array<ILevelViewerSnapshotEntry>) => void;
   onClose: () => void;
-}
-
-/** A snapshot's values by what importing them does, and its changes by part. */
-interface ILevelViewerImportSort {
-  byStatus: Record<ELevelViewerSnapshotStatus, Array<ILevelViewerSnapshotEntry>>;
-  groups: Map<string, Array<ILevelViewerSnapshotEntry>>;
 }
 
 /**

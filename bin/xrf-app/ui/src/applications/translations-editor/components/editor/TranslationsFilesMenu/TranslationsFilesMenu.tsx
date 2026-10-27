@@ -52,13 +52,13 @@ export function TranslationsFilesMenu({
     [dirtyFiles, files]
   );
 
-  const toFileSearchText = useCallback((entry: IFileEntry): string => entry.name, []);
-
   const sections: Array<IEditorSideMenuItem> = entries.map((entry: IFileEntry) => ({
     ...toFileRow(entry),
     isSelected: entry.name === selected,
     onClick: () => onSelect(entry.name),
   }));
+
+  const toFileSearchText = useCallback((entry: IFileEntry): string => entry.name, []);
 
   return (
     <EditorSearchMenu

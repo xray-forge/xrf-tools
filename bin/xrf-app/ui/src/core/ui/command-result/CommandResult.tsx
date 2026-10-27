@@ -7,19 +7,19 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export type TCommandResultTone = "success" | "warning" | "error" | "info";
 
-const TONE_COLORS: Record<TCommandResultTone, string> = {
-  success: "success.main",
-  warning: "warning.main",
-  error: "error.main",
-  info: "text.primary",
-};
-
 export interface ICommandResultStat {
   label: string;
   /** What the stat measured; a number is a count, spelled through `formatCount` here so no caller forgets to. */
   value: ReactNode;
   tone?: TCommandResultTone;
 }
+
+const TONE_COLORS: Record<TCommandResultTone, string> = {
+  success: "success.main",
+  warning: "warning.main",
+  error: "error.main",
+  info: "text.primary",
+};
 
 interface ICommandResultProps extends BaseComponentProps {
   /** The one sentence answer to "how did it go". */

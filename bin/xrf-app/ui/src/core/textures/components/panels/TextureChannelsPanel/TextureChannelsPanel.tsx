@@ -84,6 +84,24 @@ export function TextureChannelsPanel({
     [texels]
   );
 
+  // One callback per plane for the panel's life: a new one each render would detach and attach every tile each time.
+  const registers: ReadonlyMap<ETextureBumpPlane, RefCallback<HTMLCanvasElement>> = useMemo(
+    () =>
+      new Map(
+        TEXTURE_CHANNEL_TILES.map((tile: ITextureChannelTile) => [
+          tile.plane,
+          (canvas: Nullable<HTMLCanvasElement>): void => {
+            if (canvas) {
+              tilesRef.current.set(tile.plane, canvas);
+            } else {
+              tilesRef.current.delete(tile.plane);
+            }
+          },
+        ])
+      ),
+    []
+  );
+
   const draw = useCallback(() => {
     const ratio: number = window.devicePixelRatio;
 
@@ -106,38 +124,6 @@ export function TextureChannelsPanel({
     }
   }, [planes]);
 
-  useEffect(() => draw(), [draw]);
-
-  // A panel is resized by hand and by the window, and a tile that is not redrawn afterwards keeps the last size it was
-  // copied at, stretched.
-  useEffect(() => {
-    const observer: ResizeObserver = new ResizeObserver(() => draw());
-
-    for (const tile of tilesRef.current.values()) {
-      observer.observe(tile);
-    }
-
-    return () => observer.disconnect();
-  }, [draw, gap]);
-
-  // One callback per plane for the panel's life: a new one each render would detach and attach every tile each time.
-  const registers: ReadonlyMap<ETextureBumpPlane, RefCallback<HTMLCanvasElement>> = useMemo(
-    () =>
-      new Map(
-        TEXTURE_CHANNEL_TILES.map((tile: ITextureChannelTile) => [
-          tile.plane,
-          (canvas: Nullable<HTMLCanvasElement>): void => {
-            if (canvas) {
-              tilesRef.current.set(tile.plane, canvas);
-            } else {
-              tilesRef.current.delete(tile.plane);
-            }
-          },
-        ])
-      ),
-    []
-  );
-
   const onHover = useCallback(
     (event: PointerEvent<HTMLElement>): void => {
       if (!texels) {
@@ -156,6 +142,20 @@ export function TextureChannelsPanel({
     },
     [texels]
   );
+
+  useEffect(() => draw(), [draw]);
+
+  // A panel is resized by hand and by the window, and a tile that is not redrawn afterwards keeps the last size it was
+  // copied at, stretched.
+  useEffect(() => {
+    const observer: ResizeObserver = new ResizeObserver(() => draw());
+
+    for (const tile of tilesRef.current.values()) {
+      observer.observe(tile);
+    }
+
+    return () => observer.disconnect();
+  }, [draw, gap]);
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Channels"}>

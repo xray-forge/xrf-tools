@@ -22,6 +22,12 @@ enum ECodeLineReveal {
   START,
 }
 
+/** The last window handed to `onVisibleRangeChange`, and the document it was a window into. */
+interface IReportedWindow {
+  layout: object;
+  range: ICodeLineRange;
+}
+
 /**
  * What every row entry the virtualizer holds points at.
  *
@@ -30,12 +36,6 @@ enum ECodeLineReveal {
  * the entries exist to be counted and identified, not read, and there are as many of them as the document has lines.
  */
 const ROW_MODEL: Readonly<Record<string, never>> = Object.freeze({});
-
-/** The last window handed to `onVisibleRangeChange`, and the document it was a window into. */
-interface IReportedWindow {
-  layout: object;
-  range: ICodeLineRange;
-}
 
 interface IVirtualizedLinesProps extends BaseComponentProps {
   /**

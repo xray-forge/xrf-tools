@@ -13,15 +13,6 @@ export interface IEditorSideMenuItem {
   onClick?: () => void;
 }
 
-interface IEditorSideMenuProps extends BaseComponentProps {
-  header?: ReactNode;
-  sections?: Array<IEditorSideMenuItem>;
-  actions?: Array<IEditorSideMenuItem>;
-  /** Pinned directly above the actions, for whatever the last one of them has to report. */
-  footer?: ReactNode;
-  children?: ReactNode;
-}
-
 function renderItem(item: IEditorSideMenuItem): ReactElement {
   return (
     <ListItem key={item.label} disablePadding>
@@ -31,6 +22,15 @@ function renderItem(item: IEditorSideMenuItem): ReactElement {
       </ListItemButton>
     </ListItem>
   );
+}
+
+interface IEditorSideMenuProps extends BaseComponentProps {
+  header?: ReactNode;
+  sections?: Array<IEditorSideMenuItem>;
+  actions?: Array<IEditorSideMenuItem>;
+  /** Pinned directly above the actions, for whatever the last one of them has to report. */
+  footer?: ReactNode;
+  children?: ReactNode;
 }
 
 /**

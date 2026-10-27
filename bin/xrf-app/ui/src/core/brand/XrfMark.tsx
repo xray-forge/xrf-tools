@@ -5,19 +5,19 @@ import { getBuildKind } from "@/core/configs";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface IXrfMarkProps extends BaseComponentProps {
-  /** Rendered edge in pixels. The drawing is tuned for small sizes; see the note above. */
-  size?: number;
-  /** Names the mark for assistive technology. Omit where a label already sits beside it. */
-  title?: string;
-}
-
 /** Core colour per build kind, matching the application icons in `bin/xrf-app/app/icons`. */
 const CORE_COLORS: Readonly<Record<EBuildKind, string>> = {
   [EBuildKind.OPTIMIZED]: "#FFA200",
   [EBuildKind.DEVELOPMENT]: "#8B9AFF",
   [EBuildKind.LOCAL]: "#00C369",
 };
+
+interface IXrfMarkProps extends BaseComponentProps {
+  /** Rendered edge in pixels. The drawing is tuned for small sizes; see the note above. */
+  size?: number;
+  /** Names the mark for assistive technology. Omit where a label already sits beside it. */
+  title?: string;
+}
 
 export function XrfMark({
   "data-testid": dataTestId = "xrf-mark",

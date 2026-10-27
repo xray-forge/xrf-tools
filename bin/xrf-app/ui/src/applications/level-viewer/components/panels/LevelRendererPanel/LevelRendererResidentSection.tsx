@@ -6,13 +6,6 @@ import { ReactElement } from "react";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ILevelRendererResidentSectionProps extends BaseComponentProps {
-  /** How far the renderer has read the level, or null until it says. */
-  load: Nullable<RenderLoadReport>;
-  /** What it holds on the GPU. */
-  memory: RenderMemoryReport;
-}
-
 /**
  * @param bytes - A count of bytes the report may leave out.
  * @returns Whether it holds one.
@@ -57,6 +50,13 @@ function formatVideoMemory(memory: RenderMemoryReport): string {
   return isReported(memory.budget)
     ? `${formatBytes(memory.used)} used of ${formatBytes(memory.budget)} budget`
     : `${formatBytes(memory.used)} used`;
+}
+
+interface ILevelRendererResidentSectionProps extends BaseComponentProps {
+  /** How far the renderer has read the level, or null until it says. */
+  load: Nullable<RenderLoadReport>;
+  /** What it holds on the GPU. */
+  memory: RenderMemoryReport;
 }
 
 /**

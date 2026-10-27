@@ -15,14 +15,7 @@ export interface ITranslationRow {
   error: Nullable<string>;
 }
 
-export interface ITranslationsTableProps {
-  rows: Array<ITranslationRow>;
-  targetLanguage: string;
-  isDisabled?: boolean;
-  onCommit: (id: string, value: string) => void;
-  onSelect: (id: string) => void;
-  selectedId: Nullable<string>;
-}
+const EDITED_ROW_CLASS: string = "xrf-translation-row-edited";
 
 function renderValue(value: Nullable<string>): ReactElement {
   // Absent is not empty: the engine falls back to the id, so the gap is a real state worth seeing.
@@ -41,7 +34,14 @@ function renderValue(value: Nullable<string>): ReactElement {
   );
 }
 
-const EDITED_ROW_CLASS: string = "xrf-translation-row-edited";
+export interface ITranslationsTableProps {
+  rows: Array<ITranslationRow>;
+  targetLanguage: string;
+  isDisabled?: boolean;
+  onCommit: (id: string, value: string) => void;
+  onSelect: (id: string) => void;
+  selectedId: Nullable<string>;
+}
 
 // todo: Split the file.
 export function TranslationsTable({

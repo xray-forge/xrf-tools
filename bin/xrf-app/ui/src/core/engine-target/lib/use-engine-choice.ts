@@ -7,6 +7,11 @@ import { createRoots } from "@/core/assets/lib/roots";
 
 import { readEngineChoice, writeEngineChoice } from "./engine-choice-memory";
 
+interface IRootValue<T> {
+  root: Nullable<string>;
+  value: T;
+}
+
 /** Which engine a game root is opened as, and what Auto would read it as. */
 export interface IEngineChoice {
   /** The override remembered for the root, or Auto. */
@@ -17,11 +22,6 @@ export interface IEngineChoice {
   isDetecting: boolean;
   /** Chooses, and remembers the choice for the root. */
   setChoice: (choice: EXrayEngineChoice) => void;
-}
-
-interface IRootValue<T> {
-  root: Nullable<string>;
-  value: T;
 }
 
 /**
@@ -36,6 +36,17 @@ export function useEngineChoice(field: Nullable<string>): IEngineChoice {
   const root: Nullable<string> = field === "" ? null : field;
   const [chosen, setChosen] = useState<IRootValue<EXrayEngineChoice>>(() => ({ root, value: readEngineChoice(root) }));
   const [detected, setDetected] = useState<IRootValue<Nullable<XrayEngineResolution>>>({ root: null, value: null });
+
+  const setChoice = useCallback(
+    (choice: EXrayEngineChoice): void => {
+      if (root !== null) {
+        writeEngineChoice(root, choice);
+      }
+
+      setChosen({ root, value: choice });
+    },
+    [root]
+  );
 
   useEffect(() => {
     if (root === null) {
@@ -61,17 +72,6 @@ export function useEngineChoice(field: Nullable<string>): IEngineChoice {
       isCurrent = false;
     };
   }, [root]);
-
-  const setChoice = useCallback(
-    (choice: EXrayEngineChoice): void => {
-      if (root !== null) {
-        writeEngineChoice(root, choice);
-      }
-
-      setChosen({ root, value: choice });
-    },
-    [root]
-  );
 
   return {
     choice: chosen.root === root ? chosen.value : readEngineChoice(root),
