@@ -1,14 +1,20 @@
 import { LtxInventoryFile } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable } from "@xrf/types";
+import { IEditorSearchResultRow } from "@xrf/ui/editor/search-results";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EmptyListing } from "@xrf/ui/layout";
-import { IEditorSearchResultRow } from "@xrf/ui/shell/editor/EditorSearchResults";
-import { IPathTreeItem, parsePathTree, toFileItemId } from "@xrf/ui/tree/path-tree";
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
-import { ARCHIVED_CAPTION, TreeRowLabel } from "@xrf/ui/tree/TreeRowLabel";
-import { IUseTreeState, useTreeState } from "@xrf/ui/tree/use-tree-state";
-import { VirtualizedTree } from "@xrf/ui/tree/VirtualizedTree";
+import { EmptyListing } from "@xrf/ui/layout/empty-listing";
+import {
+  ARCHIVED_CAPTION,
+  IPathTreeItem,
+  ITreeNode,
+  IUseTreeState,
+  parsePathTree,
+  toFileItemId,
+  TreeRowLabel,
+  useTreeState,
+  VirtualizedTree,
+} from "@xrf/ui/tree";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";

@@ -6,10 +6,10 @@ import { ArchivePatchConfig } from "@xrf/ipc/types/xrf-pack";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
-import { ConfirmDialog } from "@xrf/ui/dialog/ConfirmDialog";
+import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
+import { EditorLayout } from "@xrf/ui/editor/layout";
 import { TuneIcon } from "@xrf/ui/icons";
 import { Alert, Divider, Stack, Typography } from "@xrf/ui/material";
-import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import {

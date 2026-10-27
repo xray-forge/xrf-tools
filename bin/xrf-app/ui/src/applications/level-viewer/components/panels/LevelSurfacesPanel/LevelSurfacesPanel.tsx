@@ -2,14 +2,11 @@ import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Maybe, Nullable } from "@xrf/types";
+import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EmptyListing } from "@xrf/ui/layout";
-import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
-import { cn } from "@xrf/ui/theme/class-name";
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
-import { TreeRowLabel } from "@xrf/ui/tree/TreeRowLabel";
-import { IUseTreeState, useTreeState } from "@xrf/ui/tree/use-tree-state";
-import { VirtualizedTree } from "@xrf/ui/tree/VirtualizedTree";
+import { EmptyListing } from "@xrf/ui/layout/empty-listing";
+import { cn } from "@xrf/ui/theme";
+import { ITreeNode, IUseTreeState, TreeRowLabel, useTreeState, VirtualizedTree } from "@xrf/ui/tree";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { describeLevelResidentWait } from "@/applications/level-viewer/lib/load/level-resident-wait";

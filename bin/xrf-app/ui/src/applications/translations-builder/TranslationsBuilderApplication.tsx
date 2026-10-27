@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
-import { SwitchFormRow } from "@xrf/ui/form";
+import { SwitchFormRow } from "@xrf/ui/form/switch-row";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { TranslationsBuilderService } from "@/applications/translations-builder/services/translations-builder.service";

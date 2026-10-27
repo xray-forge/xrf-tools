@@ -1,6 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { FormRow, SwitchFormRow } from "@xrf/ui/form";
+import { FormRow } from "@xrf/ui/form/row";
+import { SwitchFormRow } from "@xrf/ui/form/switch-row";
 import { Stack, TextField } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement, useId } from "react";
 

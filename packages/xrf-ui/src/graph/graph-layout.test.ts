@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { layoutGraphNodes } from "#/graph/graph-layout";
-import { GRAPH_LAYOUT_DEFAULTS, TGraphEdge, TGraphNode } from "#/graph/graph.types";
+import { layoutGraphNodes } from "./graph-layout";
+import { GRAPH_LAYOUT_DEFAULTS, TGraphEdge, TGraphNode } from "./graph.types";
 
 /**
  * Builds a node with no position, which is what the layout is for.

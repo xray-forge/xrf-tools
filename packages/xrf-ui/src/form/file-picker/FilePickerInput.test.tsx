@@ -1,10 +1,10 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { FilePickerInput } from "./FilePickerInput";
-
-import { IPathFieldRecents, IPathRecord } from "#/form/file-picker/path-field-recents";
 import { renderWithTheme } from "#/testing/render";
+
+import { FilePickerInput } from "./FilePickerInput";
+import { IPathFieldRecents, IPathRecord } from "./path-field-recents";
 
 describe("FilePickerInput", () => {
   it("shows the picked path", () => {

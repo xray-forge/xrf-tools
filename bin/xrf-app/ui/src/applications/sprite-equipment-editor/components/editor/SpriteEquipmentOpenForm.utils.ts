@@ -1,4 +1,4 @@
-import { IChoiceFormRowOption } from "@xrf/ui/form";
+import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 /** Which of the two things the picker is opening. */
 export enum EEquipmentOpenMode {

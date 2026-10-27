@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
+import { ITreeNode } from "@xrf/ui/tree";
 
 import {
   listLevelSpawnGroupIds,

@@ -2,12 +2,11 @@ import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { LtxResolvedIndexEntry } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
-import { ICodeLine, ICodeLineRange, ICodeLineSource } from "@xrf/ui/code/code-line";
-import { VirtualizedLines } from "@xrf/ui/code/VirtualizedLines";
+import { ICodeLine, ICodeLineRange, ICodeLineSource, VirtualizedLines } from "@xrf/ui/code/lines";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
-import { EmptyState } from "@xrf/ui/layout/EmptyState";
-import { ErrorState } from "@xrf/ui/layout/ErrorState";
+import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
+import { EmptyState } from "@xrf/ui/layout/empty-state";
+import { ErrorState } from "@xrf/ui/layout/error-state";
 import { Alert, Button } from "@xrf/ui/material";
 import { ReactElement, useCallback, useMemo } from "react";
 

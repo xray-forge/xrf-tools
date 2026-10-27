@@ -1,9 +1,9 @@
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
+import { EditorTextAction } from "@xrf/ui/editor/text-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ArchiveIcon, FileOpenIcon, SaveAltIcon } from "@xrf/ui/icons";
 import { Stack } from "@xrf/ui/material";
-import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
-import { EditorTextAction } from "@xrf/ui/shell/editor/EditorTextAction";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 interface IPackerToolbarActionsProps extends BaseComponentProps {

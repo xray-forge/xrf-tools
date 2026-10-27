@@ -1,7 +1,7 @@
 import { ABSENT_VALUE, formatBytes, formatBytesPair, formatCount, formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
-import { DetailSection } from "@xrf/ui/layout/DetailSection";
-import { StatFigure } from "@xrf/ui/stats/StatFigure";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
+import { StatFigure } from "@xrf/ui/stats";
 import { ReactElement } from "react";
 
 import { usePolledValue } from "@/lib/react/use-polled-value";

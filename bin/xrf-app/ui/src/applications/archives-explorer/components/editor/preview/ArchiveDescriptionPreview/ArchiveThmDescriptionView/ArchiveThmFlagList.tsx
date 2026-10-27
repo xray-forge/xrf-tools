@@ -1,7 +1,7 @@
 import { ArchiveThmFlag } from "@xrf/ipc/types/xrf-app-archives";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Chip } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 interface IArchiveThmFlagListProps extends BaseComponentProps {

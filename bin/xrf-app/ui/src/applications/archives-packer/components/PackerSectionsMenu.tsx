@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
+import { EditorSideMenu, IEditorSideMenuItem } from "@xrf/ui/editor/side-menu";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FolderIcon, SettingsIcon, TitleIcon, TuneIcon } from "@xrf/ui/icons";
-import { EditorSideMenu, IEditorSideMenuItem } from "@xrf/ui/shell/editor/EditorSideMenu";
 import { ReactElement } from "react";
 
 import { ArchivesPackerService, EPackerSection } from "@/applications/archives-packer/services/archives-packer.service";

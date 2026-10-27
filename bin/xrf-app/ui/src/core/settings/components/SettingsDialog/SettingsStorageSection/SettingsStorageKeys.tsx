@@ -1,5 +1,5 @@
 import { formatBytes } from "@xrf/format";
-import { DetailSection } from "@xrf/ui/layout/DetailSection";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { Stack, Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 

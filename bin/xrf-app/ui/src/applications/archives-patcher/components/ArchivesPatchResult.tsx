@@ -1,12 +1,11 @@
 import { formatBytes, formatDuration } from "@xrf/format";
 import { ArchivePatchClass, ArchivePatchResult } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
-import { CommandResult, ICommandResultStat } from "@xrf/ui/command-result/CommandResult";
-import { CommandResultFindings } from "@xrf/ui/command-result/CommandResultFindings";
+import { CommandResult, CommandResultFindings, ICommandResultStat } from "@xrf/ui/command-result";
 import { GridColDef, GridRenderCellParams } from "@xrf/ui/data-grid";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { pathColumn } from "@xrf/ui/table/columns";
-import { cn } from "@xrf/ui/theme/class-name";
+import { pathColumn } from "@xrf/ui/table";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, useMemo } from "react";
 
 import { describePatchHeadline } from "@/applications/archives-patcher/lib/describe-patch-headline";

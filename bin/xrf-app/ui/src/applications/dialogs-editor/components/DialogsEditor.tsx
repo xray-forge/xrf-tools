@@ -4,9 +4,9 @@ import { DialogFinding, DialogProjectDescriptor } from "@xrf/ipc/types/xrf-dialo
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { EditorLayout } from "@xrf/ui/editor/layout";
+import { EditorToolbarLocation } from "@xrf/ui/editor/toolbar";
 import { AccountTreeIcon, InfoOutlinedIcon, ReportProblemIcon } from "@xrf/ui/icons";
-import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
-import { EditorToolbarLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { DialogViewService } from "@/applications/dialogs-editor/services/dialog-view";

@@ -5,7 +5,8 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ChoiceFormRow, FormRow } from "@xrf/ui/form";
+import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
+import { FormRow } from "@xrf/ui/form/row";
 import { TextField } from "@xrf/ui/material";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 

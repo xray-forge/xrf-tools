@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
-import { XrfMark } from "@xrf/ui/brand/XrfMark";
+import { XrfMark } from "@xrf/ui/brand";
 import { ReactElement, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 

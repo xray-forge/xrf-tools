@@ -1,8 +1,7 @@
 import { Nullable } from "@xrf/types";
+import { EditorToolbarLocation, EditorToolbarSeparator, IEditorLocation } from "@xrf/ui/editor/toolbar";
+import { EditorViewToggle } from "@xrf/ui/editor/view-toggle";
 import { GrainIcon, LightbulbIcon, ViewInArIcon } from "@xrf/ui/icons";
-import { EditorToolbarLocation, IEditorLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
-import { EditorToolbarSeparator } from "@xrf/ui/shell/editor/EditorToolbarSeparator";
-import { EditorViewToggle } from "@xrf/ui/shell/editor/EditorViewToggle";
 import { ReactElement, useCallback } from "react";
 
 import { RenderLightingAction } from "@/core/render/components/lighting/RenderLightingAction";

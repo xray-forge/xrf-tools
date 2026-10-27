@@ -1,8 +1,7 @@
 import { Nullable } from "@xrf/types";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Chip } from "@xrf/ui/material";
-import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
-import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
 
 import { describeLevelSurfacePass } from "@/applications/level-viewer/lib/surface/level-surface-pass";

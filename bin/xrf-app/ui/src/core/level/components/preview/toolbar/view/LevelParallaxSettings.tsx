@@ -1,6 +1,6 @@
 import { ERenderParallaxMode, RenderParallaxMode } from "@xrf/ipc/types/xrf-renderer";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { Button } from "@xrf/ui/material";
 import { ReactElement } from "react";
 

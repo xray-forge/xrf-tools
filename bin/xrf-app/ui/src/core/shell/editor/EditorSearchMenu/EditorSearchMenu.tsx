@@ -1,6 +1,6 @@
+import { EditorSearchResults, IEditorSearchResultRow } from "@xrf/ui/editor/search-results";
+import { EditorSideMenu, IEditorSideMenuItem } from "@xrf/ui/editor/side-menu";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EditorSearchResults, IEditorSearchResultRow } from "@xrf/ui/shell/editor/EditorSearchResults";
-import { EditorSideMenu, IEditorSideMenuItem } from "@xrf/ui/shell/editor/EditorSideMenu";
 import { ReactElement, ReactNode, useCallback, useMemo } from "react";
 
 import { IUseRankedSearchOptions, useRankedSearch } from "@/core/search/lib";

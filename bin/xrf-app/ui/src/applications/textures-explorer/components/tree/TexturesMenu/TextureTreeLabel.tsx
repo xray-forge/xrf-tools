@@ -1,5 +1,5 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
+import { ITreeNode } from "@xrf/ui/tree";
 import { ReactElement } from "react";
 
 import { TextureBadgeMarks } from "@/applications/textures-explorer/components/tree/TextureBadgeMarks";

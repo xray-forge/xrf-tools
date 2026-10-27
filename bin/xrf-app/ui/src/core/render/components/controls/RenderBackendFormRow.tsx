@@ -1,7 +1,7 @@
 import { RenderBackend, RenderBackendAvailability, RenderGpu } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow";
+import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ReactElement } from "react";
 
 import {

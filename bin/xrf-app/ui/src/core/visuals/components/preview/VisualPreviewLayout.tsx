@@ -1,11 +1,11 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { EditorFileHeader } from "@xrf/ui/editor/file-header";
+import { EditorLayout } from "@xrf/ui/editor/layout";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { AccountTreeIcon } from "@xrf/ui/icons";
-import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
-import { EditorFileHeader } from "@xrf/ui/shell/editor/EditorFileHeader";
-import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
-import { cn } from "@xrf/ui/theme/class-name";
+import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, ReactNode, useMemo } from "react";
 
 import { isAlphaRenderSurfaceDraw } from "@/core/render/lib/surface/render-surface-draw";

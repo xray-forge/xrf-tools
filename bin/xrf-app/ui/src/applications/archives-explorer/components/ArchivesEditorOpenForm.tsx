@@ -3,7 +3,7 @@ import { EXrayMountMode } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { assertExhaustive, Nullable } from "@xrf/types";
-import { ChoiceFormRow } from "@xrf/ui/form";
+import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";

@@ -2,8 +2,8 @@ import { useInjection } from "@wirestate/react";
 import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
-import { ErrorState } from "@xrf/ui/layout/ErrorState";
+import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
+import { ErrorState } from "@xrf/ui/layout/error-state";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { ConfigsDocumentService } from "@/applications/configs-explorer/services/configs-document";

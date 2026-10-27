@@ -15,9 +15,10 @@ import {
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { TGraphEdge, TGraphNode } from "#/graph/graph.types";
 import { useColorScheme } from "#/material";
-import { cn } from "#/theme/class-name";
+import { cn } from "#/theme";
+
+import { TGraphEdge, TGraphNode } from "./graph.types";
 
 import "@xyflow/react/dist/style.css";
 

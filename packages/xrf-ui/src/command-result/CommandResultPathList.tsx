@@ -1,9 +1,9 @@
 import { ReactElement, useMemo } from "react";
 
-import { CommandResultFindings } from "./CommandResultFindings";
-
 import { GridColDef } from "#/data-grid";
-import { pathColumn } from "#/table/columns";
+import { pathColumn } from "#/table";
+
+import { CommandResultFindings } from "./CommandResultFindings";
 
 interface ICommandResultPathListProps {
   /** Every path the run names, each its own row, id and search text. */

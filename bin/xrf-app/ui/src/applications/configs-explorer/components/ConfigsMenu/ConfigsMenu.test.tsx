@@ -2,7 +2,7 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
 import { LtxInventoryFile } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
-import { ARCHIVED_CAPTION } from "@xrf/ui/tree/TreeRowLabel";
+import { ARCHIVED_CAPTION } from "@xrf/ui/tree";
 
 import { ConfigsMenu } from "@/applications/configs-explorer/components/ConfigsMenu/ConfigsMenu";
 import { renderWithProviders } from "@/fixtures/utils/render";

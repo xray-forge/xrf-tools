@@ -1,5 +1,5 @@
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
-import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form";
+import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ReactElement, useMemo } from "react";
 
 import { toAutoEngineLabel } from "@/core/engine-target/lib/engine-target-label";

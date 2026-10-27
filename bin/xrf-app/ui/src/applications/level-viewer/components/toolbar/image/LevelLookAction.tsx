@@ -10,12 +10,13 @@ import {
   RenderLightLevel,
   RenderLightModel,
 } from "@xrf/ipc/types/xrf-renderer";
+import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ChoiceListFormRow, IChoiceFormRowOption } from "@xrf/ui/form";
-import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
+import { ChoiceListFormRow } from "@xrf/ui/form/choice-list-row";
+import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ExposureIcon } from "@xrf/ui/icons";
 import { Button } from "@xrf/ui/material";
-import { EditorPopoverAction } from "@xrf/ui/shell/editor/EditorPopoverAction";
 import { ReactElement, useCallback } from "react";
 
 import { LevelLookSection } from "@/applications/level-viewer/components/toolbar/image/LevelLookSection";

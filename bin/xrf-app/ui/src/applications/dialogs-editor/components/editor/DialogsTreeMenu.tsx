@@ -1,13 +1,19 @@
 import { useInjection } from "@wirestate/react";
 import { LOGICAL_PATH_SEPARATOR, splitLogicalPath } from "@xrf/path";
 import { Nullable } from "@xrf/types";
+import { IEditorSearchResultRow } from "@xrf/ui/editor/search-results";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DescriptionIcon, FolderOpenIcon, ForumIcon } from "@xrf/ui/icons";
-import { IEditorSearchResultRow } from "@xrf/ui/shell/editor/EditorSearchResults";
-import { IPathTreeItem, parsePathTree, toFileItemId } from "@xrf/ui/tree/path-tree";
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
-import { IUseTreeState, useTreeState } from "@xrf/ui/tree/use-tree-state";
-import { IVirtualizedTreeIcons, VirtualizedTree } from "@xrf/ui/tree/VirtualizedTree";
+import {
+  IPathTreeItem,
+  ITreeNode,
+  IUseTreeState,
+  IVirtualizedTreeIcons,
+  parsePathTree,
+  toFileItemId,
+  useTreeState,
+  VirtualizedTree,
+} from "@xrf/ui/tree";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { IDialogTreeEntry, IDialogTreeLeaf } from "@/applications/dialogs-editor/lib/dialog-tree";

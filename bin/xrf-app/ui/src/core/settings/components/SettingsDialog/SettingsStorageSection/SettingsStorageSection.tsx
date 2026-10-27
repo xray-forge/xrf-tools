@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
-import { ConfirmDialog } from "@xrf/ui/dialog/ConfirmDialog";
-import { DetailSection } from "@xrf/ui/layout/DetailSection";
+import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { Button, Divider, Stack, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback, useState } from "react";
 

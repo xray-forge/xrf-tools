@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { ViewportControls } from "@xrf/ui/media/ViewportControls";
+import { ViewportControls } from "@xrf/ui/media/viewport-controls";
 import { ReactElement, useCallback } from "react";
 
 import { RenderFailureCover, RenderFrameReadout } from "@/core/render/components/overlay";

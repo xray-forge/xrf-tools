@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
-import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
-import { DetailSection } from "@xrf/ui/layout/DetailSection";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
 import { TRenderWaterSettings } from "@/core/render/lib/settings/render-feature-settings";

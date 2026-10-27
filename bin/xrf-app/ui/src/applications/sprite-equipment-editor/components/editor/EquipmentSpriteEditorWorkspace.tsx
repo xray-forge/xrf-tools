@@ -1,5 +1,5 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { EquipmentSpriteViewer } from "@/applications/sprite-equipment-editor/components/sprite-view/EquipmentSpriteViewer";

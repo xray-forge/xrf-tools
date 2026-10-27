@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { ERenderVolumetricMode, RenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
-import { ChoiceFormRow } from "@xrf/ui/form/ChoiceFormRow";
-import { SliderFormRow } from "@xrf/ui/form/SliderFormRow";
-import { DetailSection } from "@xrf/ui/layout/DetailSection";
+import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
+import { SliderFormRow } from "@xrf/ui/form/slider-row";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
 import {

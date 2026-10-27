@@ -1,7 +1,7 @@
 import { ABSENT_VALUE } from "@xrf/format";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Checkbox, Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ChangeEvent, ReactElement, useCallback } from "react";
 
 import {

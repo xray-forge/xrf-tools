@@ -1,7 +1,7 @@
 import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
-import { IEditorLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
+import { IEditorLocation } from "@xrf/ui/editor/toolbar";
 
 import { toAssetLocation } from "@/core/assets/lib";
 

@@ -1,7 +1,7 @@
 import { ArchiveOmfMotion } from "@xrf/ipc/types/xrf-app-archives";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { describeMotionDetail, describeMotionLength } from "./ArchiveOmfDescriptionView.utils";

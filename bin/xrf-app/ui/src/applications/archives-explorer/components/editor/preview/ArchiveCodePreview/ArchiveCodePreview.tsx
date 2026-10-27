@@ -1,11 +1,9 @@
 import { ArchiveReadResult } from "@xrf/ipc/types/xrf-archive";
 import { ESyntaxLanguage } from "@xrf/syntax";
 import { Nullable } from "@xrf/types";
-import { ICodeLine, ICodeLineSource } from "@xrf/ui/code/code-line";
-import { toTextLineSource } from "@xrf/ui/code/text-line-source";
-import { VirtualizedLines } from "@xrf/ui/code/VirtualizedLines";
+import { ICodeLine, ICodeLineSource, toTextLineSource, VirtualizedLines } from "@xrf/ui/code/lines";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { getSyntaxLanguage } from "@/core/syntax/lib/syntax-language";

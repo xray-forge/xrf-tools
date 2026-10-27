@@ -1,13 +1,18 @@
 import { ExportDescriptor } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
+import { IEditorSearchResultRow } from "@xrf/ui/editor/search-results";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DataObjectIcon, FolderIcon, FolderOpenIcon } from "@xrf/ui/icons";
-import { EmptyListing } from "@xrf/ui/layout";
-import { IEditorSearchResultRow } from "@xrf/ui/shell/editor/EditorSearchResults";
-import { IPathTreeItem, toFileItemId } from "@xrf/ui/tree/path-tree";
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
-import { IUseTreeState, useTreeState } from "@xrf/ui/tree/use-tree-state";
-import { IVirtualizedTreeIcons, VirtualizedTree } from "@xrf/ui/tree/VirtualizedTree";
+import { EmptyListing } from "@xrf/ui/layout/empty-listing";
+import {
+  IPathTreeItem,
+  ITreeNode,
+  IUseTreeState,
+  IVirtualizedTreeIcons,
+  toFileItemId,
+  useTreeState,
+  VirtualizedTree,
+} from "@xrf/ui/tree";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";

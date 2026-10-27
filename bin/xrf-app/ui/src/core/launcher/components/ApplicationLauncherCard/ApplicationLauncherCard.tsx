@@ -1,7 +1,7 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ArrowOutwardIcon } from "@xrf/ui/icons";
 import { Card, CardActionArea, Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { CSSProperties, ReactElement } from "react";
 
 import { ApplicationLauncherGroupLabel } from "@/core/launcher/components/ApplicationLauncherGroupLabel";

@@ -1,5 +1,5 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, useEffect, useRef } from "react";
 
 import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";

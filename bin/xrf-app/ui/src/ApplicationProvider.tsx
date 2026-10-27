@@ -1,7 +1,7 @@
 import { ContainerConfig } from "@wirestate/core";
 import { ContainerProvider } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
-import { ThemeRoot } from "@xrf/ui/theme/ThemeRoot";
+import { ThemeRoot } from "@xrf/ui/theme/root";
 import { ComponentType, PropsWithChildren, ReactElement, ReactNode, useMemo } from "react";
 import { BrowserRouter } from "react-router-dom";
 

@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { TranslateIcon } from "@xrf/ui/icons";
 import { Menu, MenuItem } from "@xrf/ui/material";
-import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
 import { MouseEvent, ReactElement, useCallback, useId, useState } from "react";
 
 import { DialogViewService } from "@/applications/dialogs-editor/services/dialog-view";

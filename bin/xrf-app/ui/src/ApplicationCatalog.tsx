@@ -18,7 +18,7 @@ import {
   ViewInArIcon,
   WbSunnyIcon,
 } from "@xrf/ui/icons";
-import { CATALOG_ACCENT } from "@xrf/ui/theme/tokens";
+import { CATALOG_ACCENT } from "@xrf/ui/theme";
 
 import { ARCHIVES_EXPLORER_APPLICATION } from "@/applications/archives-explorer";
 import { ARCHIVES_PACKER_APPLICATION } from "@/applications/archives-packer";

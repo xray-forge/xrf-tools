@@ -1,7 +1,7 @@
 import { EPathEntryKind, LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 
-import { ITreeNode } from "#/tree/tree-node";
+import { ITreeNode } from "./tree-node";
 
 /**
  * Prefixes the node ids carry, so a selection says which kind of node it is.

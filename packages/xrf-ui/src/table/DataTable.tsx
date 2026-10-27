@@ -3,10 +3,10 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { DataGrid, GridColDef, GridRowId, GridRowParams, GridValidRowModel } from "#/data-grid";
+import { EditorFilterInput } from "#/editor/filter-input";
 import { BaseComponentProps } from "#/element-types";
 import { Typography } from "#/material";
-import { EditorFilterInput } from "#/shell/editor/EditorFilterInput/index";
-import { cn } from "#/theme/class-name";
+import { cn } from "#/theme";
 
 interface IDataTableProps<T extends GridValidRowModel> extends BaseComponentProps {
   rows: Array<T>;

@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DeleteOutlinedIcon as DeleteIcon, FolderOpenOutlinedIcon as FolderOpenIcon, LinkIcon } from "@xrf/ui/icons";
 import { ButtonBase, IconButton, Paper, Tooltip, Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { ILevelViewerScreenshot } from "@/applications/level-viewer/lib/screenshot/level-viewer-screenshot";

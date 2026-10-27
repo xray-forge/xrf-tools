@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
 
-import { mockInjectedService } from "../../test/container";
-
 import { EAssetsCommand } from "#/commands/assets";
 import { SessionChangesService } from "#/session/session-changes.service";
 import { SESSION_CHANGE_EVENT } from "#/session/session.types";
@@ -15,6 +13,8 @@ import {
   resetMockIsTauri,
 } from "#/testing/index";
 import { AssetChangeEvent, SessionChange } from "#/types/xrf-app-core";
+
+import { mockInjectedService } from "../../test/container";
 
 const SUBSCRIBE: string = EAssetsCommand.SUBSCRIBE_CHANGES;
 

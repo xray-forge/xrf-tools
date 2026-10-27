@@ -13,7 +13,7 @@ import {
   WarningAmberIcon,
 } from "@xrf/ui/icons";
 import { Box, Button, IconButton, Tooltip, Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { format } from "date-fns";
 import { ReactElement, ReactNode, useCallback, useState } from "react";
 

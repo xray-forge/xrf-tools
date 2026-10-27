@@ -1,5 +1,5 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ReactElement } from "react";
 
 export interface IRenderPassTimingFormRowProps extends BaseComponentProps {

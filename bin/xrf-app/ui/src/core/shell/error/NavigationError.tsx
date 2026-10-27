@@ -1,5 +1,5 @@
+import { EditorLayout } from "@xrf/ui/editor/layout";
 import { Button, Typography } from "@xrf/ui/material";
-import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
 import { ReactElement } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 

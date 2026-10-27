@@ -1,6 +1,6 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { MenuItem, TextField, Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 function describe(language: string, encodings: Record<string, string>): string {

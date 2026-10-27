@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ISliderReference, ReferenceSlider, SliderReadout, useSliderReference } from "@xrf/ui/form/ReferenceSlider";
-import { IThrottledDraft, useThrottledDraft } from "@xrf/ui/react/use-throttled-draft";
+import { ISliderReference, ReferenceSlider, SliderReadout, useSliderReference } from "@xrf/ui/form/reference-slider";
+import { IThrottledDraft, useThrottledDraft } from "@xrf/ui/react/throttled-draft";
 import { ReactElement, useCallback } from "react";
 
 export interface IRenderValueSliderProps extends BaseComponentProps {

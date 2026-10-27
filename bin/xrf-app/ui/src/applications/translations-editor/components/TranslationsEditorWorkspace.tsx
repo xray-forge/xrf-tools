@@ -2,8 +2,8 @@ import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { TranslationFile, TranslationProjectDescriptor } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
-import { EmptyState } from "@xrf/ui/layout/EmptyState";
-import { EditorFileHeader } from "@xrf/ui/shell/editor/EditorFileHeader";
+import { EditorFileHeader } from "@xrf/ui/editor/file-header";
+import { EmptyState } from "@xrf/ui/layout/empty-state";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import {

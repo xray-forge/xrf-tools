@@ -1,10 +1,10 @@
 import { useInjection } from "@wirestate/react";
 import { formatDegrees, formatNumber, formatPercent } from "@xrf/format";
 import { ERenderFoliageMode, RenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
+import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { AirIcon } from "@xrf/ui/icons";
 import { Button, Typography } from "@xrf/ui/material";
-import { EditorPopoverToggle } from "@xrf/ui/shell/editor/EditorPopoverToggle";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";

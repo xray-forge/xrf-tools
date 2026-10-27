@@ -1,6 +1,6 @@
 import { LtxFinding, LtxFindingKind } from "@xrf/ipc/types/xrf-ltx";
 import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
-import { ECodeLineMark } from "@xrf/ui/code/code-line";
+import { ECodeLineMark } from "@xrf/ui/code/lines";
 
 /**
  * How each kind of finding is drawn beside the line that raised it.

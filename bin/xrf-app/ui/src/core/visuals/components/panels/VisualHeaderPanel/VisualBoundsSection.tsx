@@ -1,8 +1,7 @@
 import { VisualBounds } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
-import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
 
 import { formatCoordinate, formatVector } from "@/core/visuals/lib/visual-format";

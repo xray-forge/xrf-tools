@@ -1,6 +1,6 @@
 import { EPathEntryKind, isUnderPathPrefix } from "@xrf/path";
 import { Nullable } from "@xrf/types";
-import { IPathTreeItem, parsePathTree, toDirectoryItemId, toFileItemId } from "@xrf/ui/tree/path-tree";
+import { IPathTreeItem, parsePathTree, toDirectoryItemId, toFileItemId } from "@xrf/ui/tree";
 
 import { IArchiveEntry } from "./entry";
 import { TArchiveSelection } from "./selection";

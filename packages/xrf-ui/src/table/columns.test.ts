@@ -1,6 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
 import { GridColDef } from "#/data-grid";
+
 import {
   decimalColumn,
   flagsColumn,
@@ -9,7 +10,7 @@ import {
   textColumn,
   tupleColumn,
   vectorColumn,
-} from "#/table/columns";
+} from "./columns";
 
 /**
  * Reads a value through a column's value getter.

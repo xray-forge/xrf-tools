@@ -1,14 +1,12 @@
 import { useInjection } from "@wirestate/react";
 import { filterByName } from "@xrf/search";
 import { Nullable } from "@xrf/types";
+import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PlayArrowIcon } from "@xrf/ui/icons";
 import { Tooltip } from "@xrf/ui/material";
-import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
-import { cn } from "@xrf/ui/theme/class-name";
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
-import { IUseTreeState, useTreeState } from "@xrf/ui/tree/use-tree-state";
-import { VirtualizedTree } from "@xrf/ui/tree/VirtualizedTree";
+import { cn } from "@xrf/ui/theme";
+import { ITreeNode, IUseTreeState, useTreeState, VirtualizedTree } from "@xrf/ui/tree";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo } from "react";
 
 import { VisualMotionService } from "@/core/visuals/services/visual-motion";

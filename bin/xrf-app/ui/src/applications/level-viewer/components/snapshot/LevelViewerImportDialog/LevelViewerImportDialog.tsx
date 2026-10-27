@@ -1,9 +1,9 @@
 import { formatCount, formatInstant } from "@xrf/format";
 import { Nullable } from "@xrf/types";
-import { DialogHeader } from "@xrf/ui/dialog/DialogHeader";
+import { DialogHeader } from "@xrf/ui/dialog/header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FileOpenOutlinedIcon as FileOpenIcon } from "@xrf/ui/icons";
-import { DetailSection } from "@xrf/ui/layout/DetailSection";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { Alert, Button, Dialog, DialogActions, DialogContent, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback, useId, useMemo, useState } from "react";
 

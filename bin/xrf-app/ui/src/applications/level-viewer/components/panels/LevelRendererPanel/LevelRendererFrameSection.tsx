@@ -1,8 +1,7 @@
 import { ABSENT_VALUE, formatCount, formatMilliseconds } from "@xrf/format";
 import { RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
-import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
 
 import { describeRenderBackend } from "@/core/render/lib/settings/render-backend-choice";

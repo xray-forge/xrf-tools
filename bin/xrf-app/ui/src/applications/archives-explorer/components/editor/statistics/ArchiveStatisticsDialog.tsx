@@ -1,11 +1,11 @@
 import { useInjection } from "@wirestate/react";
 import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { Nullable, Optional } from "@xrf/types";
-import { DialogHeader } from "@xrf/ui/dialog/DialogHeader";
+import { DialogHeader } from "@xrf/ui/dialog/header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { QueryStatsIcon } from "@xrf/ui/icons";
 import { Alert, CircularProgress, Dialog, DialogContent, List, ListItemButton, ListItemText } from "@xrf/ui/material";
-import { EStatMeasure } from "@xrf/ui/stats/stat-measure";
+import { EStatMeasure } from "@xrf/ui/stats";
 import { ReactElement, useEffect, useId, useMemo, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";

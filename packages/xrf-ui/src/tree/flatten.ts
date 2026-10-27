@@ -1,4 +1,4 @@
-import { ITreeNode } from "#/tree/tree-node";
+import { ITreeNode } from "./tree-node";
 
 /**
  * One visible row of a flattened tree.

@@ -1,4 +1,4 @@
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
+import { ITreeNode } from "@xrf/ui/tree";
 
 import { ILevelSurfaceSummary } from "@/core/level/lib/surface/level-surface-summary";
 

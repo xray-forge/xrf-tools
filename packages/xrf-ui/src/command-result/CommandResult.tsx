@@ -3,7 +3,7 @@ import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "#/element-types";
 import { Divider, Typography } from "#/material";
-import { cn } from "#/theme/class-name";
+import { cn } from "#/theme";
 
 export type TCommandResultTone = "success" | "warning" | "error" | "info";
 

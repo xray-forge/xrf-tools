@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { CommandResultPathList } from "./CommandResultPathList";
-
 import { renderWithTheme } from "#/testing/render";
+
+import { CommandResultPathList } from "./CommandResultPathList";
 
 describe("CommandResultPathList", () => {
   it("lists every path under its column", () => {

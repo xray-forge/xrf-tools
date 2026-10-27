@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EmptyState } from "@xrf/ui/layout/EmptyState";
-import { ViewportControls } from "@xrf/ui/media/ViewportControls";
-import { cn } from "@xrf/ui/theme/class-name";
+import { EmptyState } from "@xrf/ui/layout/empty-state";
+import { ViewportControls } from "@xrf/ui/media/viewport-controls";
+import { cn } from "@xrf/ui/theme";
 import { PointerEvent, ReactElement, useCallback, useRef } from "react";
 
 import { RenderFailureCover, RenderFrameReadout } from "@/core/render/components/overlay";

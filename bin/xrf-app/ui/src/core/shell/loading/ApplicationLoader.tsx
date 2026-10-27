@@ -1,6 +1,6 @@
+import { EditorLayout } from "@xrf/ui/editor/layout";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
-import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
+import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
 import { ReactElement } from "react";
 
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";

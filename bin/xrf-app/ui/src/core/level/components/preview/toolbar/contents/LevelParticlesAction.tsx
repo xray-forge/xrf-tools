@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
+import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { LocalFireDepartmentIcon } from "@xrf/ui/icons";
-import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/shell/editor/EditorPopoverGroup";
 import { ReactElement } from "react";
 
 import { LevelViewService } from "@/core/level/services/level-view";

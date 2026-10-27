@@ -1,6 +1,6 @@
 import { LtxSchemeFieldReport } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Chip, Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { describeResolvedFieldOrigin } from "@/applications/configs-explorer/lib/resolved";

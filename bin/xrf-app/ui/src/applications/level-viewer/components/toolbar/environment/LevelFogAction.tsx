@@ -1,11 +1,11 @@
 import { useInjection } from "@wirestate/react";
 import { formatNumber, formatPercent } from "@xrf/format";
 import { ERenderFogMode, RenderFogMode } from "@xrf/ipc/types/xrf-renderer";
+import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow/choice-form-row-option";
+import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { FoggyIcon } from "@xrf/ui/icons";
 import { Button } from "@xrf/ui/material";
-import { EditorPopoverToggle } from "@xrf/ui/shell/editor/EditorPopoverToggle";
 import { ReactElement } from "react";
 
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";

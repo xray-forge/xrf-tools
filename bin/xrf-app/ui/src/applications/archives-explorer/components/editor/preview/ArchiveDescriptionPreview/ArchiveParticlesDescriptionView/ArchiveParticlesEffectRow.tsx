@@ -2,7 +2,7 @@ import { ArchiveDescribeScope, ArchiveParticlesEffect } from "@xrf/ipc/types/xrf
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { describeReferenceStatus } from "../ArchiveDescriptionPreview.utils";

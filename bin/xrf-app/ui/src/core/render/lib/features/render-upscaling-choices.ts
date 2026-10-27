@@ -10,7 +10,7 @@ import {
   RenderScale,
 } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
-import { IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow/choice-form-row-option";
+import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 import { IRenderLimits, toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";

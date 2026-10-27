@@ -1,9 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, render } from "@testing-library/react";
 
+import { IPickedColor } from "./color-intensity";
 import { ColorPicker } from "./ColorPicker";
-
-import { IPickedColor } from "#/color/color-intensity";
 
 describe("ColorPicker", () => {
   // A drag moves the colour every frame; its owner writes the weather and its memory, so it is told at most an interval.

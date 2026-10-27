@@ -1,5 +1,5 @@
 import { DialogFilter } from "@tauri-apps/plugin-dialog";
-import { IChoiceFormRowOption } from "@xrf/ui/form";
+import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 import { ARCHIVE_VOLUME_FILE_EXTENSIONS } from "@/core/archive/lib";
 

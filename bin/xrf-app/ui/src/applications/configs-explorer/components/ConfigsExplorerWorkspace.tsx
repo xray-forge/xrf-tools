@@ -2,11 +2,11 @@ import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { ConfigsProjectDescriptor } from "@xrf/ipc/types/xrf-app-configs";
 import { Nullable } from "@xrf/types";
+import { EditorLayout } from "@xrf/ui/editor/layout";
+import { EditorToolbarLocation } from "@xrf/ui/editor/toolbar";
+import { EditorViewToggle } from "@xrf/ui/editor/view-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { AccountTreeIcon } from "@xrf/ui/icons";
-import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
-import { EditorToolbarLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
-import { EditorViewToggle } from "@xrf/ui/shell/editor/EditorViewToggle";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { ConfigsDocumentView } from "@/applications/configs-explorer/components/ConfigsDocumentView";

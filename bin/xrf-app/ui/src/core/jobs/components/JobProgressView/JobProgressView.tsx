@@ -2,7 +2,7 @@ import { formatDuration } from "@xrf/format";
 import { ProgressLevel } from "@xrf/ipc/types/xrf-job";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Button, LinearProgress, Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { IJobState } from "@/core/jobs/lib";

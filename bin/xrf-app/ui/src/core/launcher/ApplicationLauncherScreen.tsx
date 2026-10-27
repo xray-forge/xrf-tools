@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { EditorLayout } from "@xrf/ui/editor/layout";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
 import { ReactElement, useCallback, useMemo, useRef } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 

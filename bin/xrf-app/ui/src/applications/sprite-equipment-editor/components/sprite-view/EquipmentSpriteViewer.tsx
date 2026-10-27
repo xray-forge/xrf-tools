@@ -3,8 +3,8 @@ import { IPanZoomPoint } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CircularProgress, Typography } from "@xrf/ui/material";
-import { IImageViewportView, ImageViewport } from "@xrf/ui/media/ImageViewport";
-import { cn } from "@xrf/ui/theme/class-name";
+import { IImageViewportView, ImageViewport } from "@xrf/ui/media/image-viewport";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback } from "react";
 
 import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/equipment-grid";

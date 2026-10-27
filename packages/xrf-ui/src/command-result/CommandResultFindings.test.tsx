@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { CommandResultFindings } from "./CommandResultFindings";
-
 import { renderWithTheme } from "#/testing/render";
+
+import { CommandResultFindings } from "./CommandResultFindings";
 
 interface IRow {
   file: string;

@@ -1,6 +1,6 @@
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
-import { PANEL } from "@xrf/ui/theme/tokens";
+import { PANEL } from "@xrf/ui/theme";
 import { useCallback } from "react";
 
 import { TEditorPanelSide } from "@/core/shell/editor-shell";

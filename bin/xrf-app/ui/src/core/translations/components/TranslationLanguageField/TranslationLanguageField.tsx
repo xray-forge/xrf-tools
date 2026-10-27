@@ -1,6 +1,6 @@
 import { ETranslationLanguage } from "@xrf/ipc/types/xrf-translation";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { FormRow } from "@xrf/ui/form";
+import { FormRow } from "@xrf/ui/form/row";
 import { MenuItem, Select } from "@xrf/ui/material";
 import { ReactElement } from "react";
 

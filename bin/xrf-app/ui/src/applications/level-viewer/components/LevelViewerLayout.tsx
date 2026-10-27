@@ -1,5 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { EditorFileHeader } from "@xrf/ui/editor/file-header";
+import { EditorLayout } from "@xrf/ui/editor/layout";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import {
   InfoOutlinedIcon,
@@ -9,9 +11,7 @@ import {
   WarningAmberIcon as WarningIcon,
   WbCloudyIcon,
 } from "@xrf/ui/icons";
-import { EditorFileHeader } from "@xrf/ui/shell/editor/EditorFileHeader";
-import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, ReactNode } from "react";
 
 import { LevelViewerCaptureActions } from "@/applications/level-viewer/components/capture/LevelViewerCaptureActions";

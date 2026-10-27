@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { formatNumber } from "@xrf/format";
-import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
-import { SliderFormRow } from "@xrf/ui/form/SliderFormRow";
-import { DetailSection } from "@xrf/ui/layout/DetailSection";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
+import { SliderFormRow } from "@xrf/ui/form/slider-row";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";

@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { ISliderReferenceSource, SliderReferenceContext } from "@xrf/ui/form/ReferenceSlider";
+import { ISliderReferenceSource, SliderReferenceContext } from "@xrf/ui/form/reference-slider";
 import { ReactElement, ReactNode, useMemo } from "react";
 
 import { readRenderFeatureNumber, TRenderFeaturePath } from "@/core/render/lib/settings/render-feature-path";

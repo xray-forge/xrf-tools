@@ -1,7 +1,7 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PauseIcon, PlayArrowIcon } from "@xrf/ui/icons";
 import { IconButton, Slider, Tooltip, Typography } from "@xrf/ui/material";
-import { IThrottledDraft, useThrottledDraft } from "@xrf/ui/react/use-throttled-draft";
+import { IThrottledDraft, useThrottledDraft } from "@xrf/ui/react/throttled-draft";
 import { ReactElement, useMemo } from "react";
 
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";

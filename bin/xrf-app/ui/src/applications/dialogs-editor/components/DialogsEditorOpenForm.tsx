@@ -3,7 +3,7 @@ import { DialogProjectMode } from "@xrf/ipc/types/xrf-dialog";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
-import { ChoiceFormRow } from "@xrf/ui/form";
+import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";

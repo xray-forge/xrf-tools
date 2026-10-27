@@ -2,7 +2,7 @@ import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { VisualMotionDependency } from "@xrf/ipc/types/xrf-visual";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Chip, Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { listLocatedAssets } from "@/core/assets/lib/resolution";

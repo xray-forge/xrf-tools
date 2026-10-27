@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { formatBytes } from "@xrf/format";
+import { EditorFileHeader } from "@xrf/ui/editor/file-header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EditorFileHeader } from "@xrf/ui/shell/editor/EditorFileHeader";
 import { ReactElement } from "react";
 
 import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";

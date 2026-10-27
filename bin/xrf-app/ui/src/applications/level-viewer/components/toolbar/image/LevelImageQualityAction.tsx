@@ -10,12 +10,12 @@ import {
   RenderScale,
 } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
+import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
-import { IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow/choice-form-row-option";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
+import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { HighQualityIcon } from "@xrf/ui/icons";
 import { Button, Typography } from "@xrf/ui/material";
-import { EditorPopoverAction } from "@xrf/ui/shell/editor/EditorPopoverAction";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";

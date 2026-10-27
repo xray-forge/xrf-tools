@@ -5,9 +5,9 @@ import { TranslationFinding, TranslationProjectDescriptor } from "@xrf/ipc/types
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { EditorLayout } from "@xrf/ui/editor/layout";
+import { EditorToolbarLocation } from "@xrf/ui/editor/toolbar";
 import { ReportProblemIcon } from "@xrf/ui/icons";
-import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
-import { EditorToolbarLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations.service";

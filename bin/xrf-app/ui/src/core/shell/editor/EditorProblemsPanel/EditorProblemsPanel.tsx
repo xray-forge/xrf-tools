@@ -1,8 +1,8 @@
 import { getPathName } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
+import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Chip, List, ListItem, ListItemButton, Typography } from "@xrf/ui/material";
-import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
 import { ReactElement } from "react";
 
 import { EditorPanel } from "@/core/shell/editor/EditorPanel";

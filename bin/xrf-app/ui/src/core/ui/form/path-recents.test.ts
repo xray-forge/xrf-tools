@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { IPathRecord } from "@xrf/ui/form/file-picker/path-field-recents";
+import { IPathRecord } from "@xrf/ui/form/file-picker";
 
 import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import {

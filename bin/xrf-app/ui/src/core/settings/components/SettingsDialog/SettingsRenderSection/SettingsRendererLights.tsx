@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { RenderLightShadowFilter } from "@xrf/ipc/types/xrf-renderer";
-import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
-import { ChoiceFormRow } from "@xrf/ui/form/ChoiceFormRow";
-import { DetailSection } from "@xrf/ui/layout/DetailSection";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
+import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
 import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features/render-shadow-choices";

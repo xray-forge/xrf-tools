@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { fromPickedColor, rescaleColor, toColorIntensity, toPickedColor } from "#/color/color-intensity";
+import { fromPickedColor, rescaleColor, toColorIntensity, toPickedColor } from "./color-intensity";
 
 describe("color intensity", () => {
   it("keeps a colour within one as it is, and scales an overbright one into the picker's range", () => {

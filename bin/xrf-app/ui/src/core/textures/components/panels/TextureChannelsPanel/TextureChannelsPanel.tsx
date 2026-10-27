@@ -2,10 +2,8 @@ import { useInjection } from "@wirestate/react";
 import { ABSENT_VALUE } from "@xrf/format";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable, Optional } from "@xrf/types";
+import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
-import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
-import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { PointerEvent, ReactElement, RefCallback, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { EditorPanel } from "@/core/shell/editor/EditorPanel";

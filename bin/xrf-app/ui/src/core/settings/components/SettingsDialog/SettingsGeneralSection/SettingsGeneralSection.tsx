@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
-import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
-import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
+import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { useColorScheme } from "@xrf/ui/material";
 import { COLOR_SCHEME_MODES, ColorSchemeMode, DEFAULT_COLOR_SCHEME_MODE } from "@xrf/ui/theme";
 import { ReactElement } from "react";

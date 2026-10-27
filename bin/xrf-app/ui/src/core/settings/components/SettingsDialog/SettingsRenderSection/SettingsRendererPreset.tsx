@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
-import { DetailSection } from "@xrf/ui/layout/DetailSection";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { Button, ToggleButton, ToggleButtonGroup } from "@xrf/ui/material";
 import { ReactElement } from "react";
 

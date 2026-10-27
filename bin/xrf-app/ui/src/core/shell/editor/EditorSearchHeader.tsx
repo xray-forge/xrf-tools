@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable, Optional } from "@xrf/types";
+import { EditorFilterInput } from "@xrf/ui/editor/filter-input";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EditorFilterInput } from "@xrf/ui/shell/editor/EditorFilterInput";
 import { KeyboardEvent, ReactElement, useRef } from "react";
 
 import { formatChord, parseChord } from "@/core/keybinds";

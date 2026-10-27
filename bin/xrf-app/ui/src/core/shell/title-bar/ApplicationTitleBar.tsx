@@ -1,6 +1,6 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { LinearProgress } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, Ref } from "react";
 
 import { ApplicationMenu } from "@/core/shell/title-bar/ApplicationMenu";

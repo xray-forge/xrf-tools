@@ -2,9 +2,9 @@ import { useInjection } from "@wirestate/react";
 import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
 import { VisualDescription, VisualTextureDependency } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
+import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material";
-import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
 import { ReactElement, useMemo } from "react";
 
 import { EditorPanel } from "@/core/shell/editor/EditorPanel";

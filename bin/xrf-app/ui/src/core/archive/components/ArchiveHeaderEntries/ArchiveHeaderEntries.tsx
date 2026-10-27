@@ -1,9 +1,10 @@
 import { Nullable } from "@xrf/types";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EditableListItem, FormRow } from "@xrf/ui/form";
+import { EditableListItem } from "@xrf/ui/form/editable-list";
+import { FormRow } from "@xrf/ui/form/row";
 import { AddIcon } from "@xrf/ui/icons";
 import { Stack, TextField, Typography } from "@xrf/ui/material";
-import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
 import { ChangeEvent, ReactElement, useCallback, useState } from "react";
 
 import { isReservedHeaderKey, isSameHeaderKey, readHeaderEntries, writeHeaderValue } from "@/core/archive/lib";

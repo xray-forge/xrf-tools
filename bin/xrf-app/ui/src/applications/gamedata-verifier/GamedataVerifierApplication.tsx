@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
-import { CheckboxFormRow } from "@xrf/ui/form";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { GamedataVerifierService } from "@/applications/gamedata-verifier/services/gamedata-verifier.service";

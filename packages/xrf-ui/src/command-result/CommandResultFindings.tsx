@@ -1,7 +1,7 @@
 import { ReactElement } from "react";
 
 import { GridColDef, GridRowId, GridValidRowModel } from "#/data-grid";
-import { DataTable } from "#/table/index";
+import { DataTable } from "#/table";
 
 interface ICommandResultFindingsProps<T extends GridValidRowModel> {
   rows: Array<T>;

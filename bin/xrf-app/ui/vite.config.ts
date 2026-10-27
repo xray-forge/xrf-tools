@@ -15,14 +15,14 @@ import { default as manifest } from "./package.json" with { type: "json" };
  * Inlines the first-paint theme stylesheet into `index.html`.
  */
 function preloadThemePlugin(): Plugin {
-  const entry: string = normalizePath(
-    createRequire(path.resolve(import.meta.dirname, "package.json")).resolve("@xrf/ui/theme/preload")
-  );
+  // The preload module itself, not its family's index: the index also carries `ThemeRoot` and its stylesheets.
+  const family: string = createRequire(path.resolve(import.meta.dirname, "package.json")).resolve("@xrf/ui/theme/root");
+  const entry: string = normalizePath(path.join(path.dirname(family), "preload.ts"));
   let files: ReadonlySet<string> = new Set([entry]);
   let css: Promise<string> | null = null;
 
   async function load(): Promise<string> {
-    const { module, dependencies } = await runnerImport<typeof import("@xrf/ui/theme/preload")>(entry);
+    const { module, dependencies } = await runnerImport<{ getPreloadThemeCss: () => string }>(entry);
 
     files = new Set([entry, ...dependencies.map(normalizePath)]);
 

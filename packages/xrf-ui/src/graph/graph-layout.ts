@@ -1,14 +1,9 @@
 import { EdgeLabel, Graph, GraphLabel, layout, NodeLabel } from "@dagrejs/dagre";
 
-import { GRAPH_LAYOUT_DEFAULTS, IGraphLayoutOptions, TGraphEdge, TGraphNode } from "#/graph/graph.types";
+import { GRAPH_LAYOUT_DEFAULTS, IGraphLayoutOptions, TGraphEdge, TGraphNode } from "./graph.types";
 
 /**
  * Positions nodes as a layered graph, in one pass.
- *
- * Layered rather than force-directed, and synchronous rather than animated: a dialog or spawn graph
- * is a DAG whose useful reading is "what follows what", and a simulation that keeps running has no
- * point at which the caller can say the layout is done. Cycles are handled by dagre, which breaks
- * them internally, so a graph that loops back terminates like any other.
  *
  * @param nodes - Nodes to place. Their existing positions are ignored.
  * @param edges - Edges deciding the ranking. Edges naming an absent node are skipped.

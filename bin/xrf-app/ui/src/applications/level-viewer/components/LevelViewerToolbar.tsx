@@ -1,5 +1,5 @@
+import { EditorToolbarSeparator } from "@xrf/ui/editor/toolbar";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EditorToolbarSeparator } from "@xrf/ui/shell/editor/EditorToolbarSeparator";
 import { ReactElement } from "react";
 
 import { LevelViewerCaptureAction } from "@/applications/level-viewer/components/toolbar/camera/LevelViewerCaptureAction";

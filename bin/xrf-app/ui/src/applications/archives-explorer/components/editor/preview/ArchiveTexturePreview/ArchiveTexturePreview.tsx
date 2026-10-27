@@ -3,11 +3,11 @@ import { AsyncState } from "@xrf/async";
 import { AssetTextureShape } from "@xrf/ipc/types/xrf-app-core";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
-import { EmptyState } from "@xrf/ui/layout/EmptyState";
+import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
+import { EmptyState } from "@xrf/ui/layout/empty-state";
 import { Typography } from "@xrf/ui/material";
-import { ImageViewport } from "@xrf/ui/media/ImageViewport";
-import { cn } from "@xrf/ui/theme/class-name";
+import { ImageViewport } from "@xrf/ui/media/image-viewport";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError/ArchivePreviewError";

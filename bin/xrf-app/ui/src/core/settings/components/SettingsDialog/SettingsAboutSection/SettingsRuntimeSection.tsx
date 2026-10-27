@@ -4,9 +4,9 @@ import { MemoryUsage, RuntimeSnapshot } from "@xrf/ipc/types/xrf-app-system";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
-import { DetailSection } from "@xrf/ui/layout/DetailSection";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { Typography } from "@xrf/ui/material";
-import { StatFigure } from "@xrf/ui/stats/StatFigure";
+import { StatFigure } from "@xrf/ui/stats";
 import { ReactElement } from "react";
 
 import { useMemoryUsage } from "@/core/diagnostics/lib";

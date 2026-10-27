@@ -1,6 +1,6 @@
 import { ExportDescriptor } from "@xrf/ipc/types/xrf-export";
 import { EPathEntryKind } from "@xrf/path";
-import { IPathTreeItem, toDirectoryItemId, toFileItemId } from "@xrf/ui/tree/path-tree";
+import { IPathTreeItem, toDirectoryItemId, toFileItemId } from "@xrf/ui/tree";
 
 import { TCallableExportDescriptor } from "@/applications/exports-explorer/lib/export-descriptors";
 

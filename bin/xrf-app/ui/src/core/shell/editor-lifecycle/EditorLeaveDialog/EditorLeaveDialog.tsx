@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
-import { ConfirmDialog } from "@xrf/ui/dialog/ConfirmDialog";
-import { UnsavedChangesDialog } from "@xrf/ui/dialog/UnsavedChangesDialog";
+import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
+import { UnsavedChangesDialog } from "@xrf/ui/dialog/unsaved-changes";
 import { ReactElement } from "react";
 
 import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";

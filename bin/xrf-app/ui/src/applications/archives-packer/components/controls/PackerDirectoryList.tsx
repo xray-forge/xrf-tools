@@ -1,7 +1,7 @@
 import { withoutAt } from "@xrf/collections";
 import { ArchivePackDirectory } from "@xrf/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EditableList, EditableListItem } from "@xrf/ui/form";
+import { EditableList, EditableListItem } from "@xrf/ui/form/editable-list";
 import { FormControlLabel, Switch, TextField, Typography } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement } from "react";
 

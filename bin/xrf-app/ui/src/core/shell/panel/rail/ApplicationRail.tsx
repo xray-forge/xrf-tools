@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { Maybe, Nullable } from "@xrf/types";
 import { DarkModeIcon, LightModeIcon, SettingsIcon } from "@xrf/ui/icons";
 import { useColorScheme } from "@xrf/ui/material";
-import { RailButton } from "@xrf/ui/shell/panel/rail/RailButton";
+import { RailButton } from "@xrf/ui/shell/rail-button";
 import { ReactElement, useCallback } from "react";
 
 import { ApplicationHelp } from "@/core/help/components/ApplicationHelp/ApplicationHelp";

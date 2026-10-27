@@ -2,14 +2,20 @@ import { useInjection } from "@wirestate/react";
 import { TextureSource } from "@xrf/ipc/types/xrf-app-textures";
 import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
+import { IEditorSearchResultRow } from "@xrf/ui/editor/search-results";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FolderIcon, FolderOpenIcon, ImageIcon } from "@xrf/ui/icons";
-import { EmptyListing } from "@xrf/ui/layout/EmptyListing";
-import { IEditorSearchResultRow } from "@xrf/ui/shell/editor/EditorSearchResults";
-import { IPathTreeItem, parsePathTree, toFileItemId } from "@xrf/ui/tree/path-tree";
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
-import { IUseTreeState, useTreeState } from "@xrf/ui/tree/use-tree-state";
-import { IVirtualizedTreeIcons, VirtualizedTree } from "@xrf/ui/tree/VirtualizedTree";
+import { EmptyListing } from "@xrf/ui/layout/empty-listing";
+import {
+  IPathTreeItem,
+  ITreeNode,
+  IUseTreeState,
+  IVirtualizedTreeIcons,
+  parsePathTree,
+  toFileItemId,
+  useTreeState,
+  VirtualizedTree,
+} from "@xrf/ui/tree";
 import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 
 import { TextureBadgeFilters } from "@/applications/textures-explorer/components/tree/TextureBadgeFilters";

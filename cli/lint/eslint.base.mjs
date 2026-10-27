@@ -117,7 +117,12 @@ export function createEslintConfig(rootDir, ...layers) {
             // rather than three blocks separated by blank lines.
             groups: ["builtin", "external", ["parent", "sibling", "index"]],
             "newlines-between": "always",
-            pathGroups: [{ group: "external", pattern: "@/**", position: "after" }],
+            // A member's own modules, by its `@/` alias or its `#/` package imports, sit between what it depends on
+            // and what sits beside the importing file.
+            pathGroups: [
+              { group: "external", pattern: "@/**", position: "after" },
+              { group: "external", pattern: "#/**", position: "after" },
+            ],
             pathGroupsExcludedImportTypes: ["builtin"],
           },
         ],

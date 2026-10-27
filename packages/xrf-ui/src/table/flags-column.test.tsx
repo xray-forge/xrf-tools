@@ -2,7 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { render } from "@testing-library/react";
 
 import { DataGrid } from "#/data-grid";
-import { flagsColumn } from "#/table/columns";
+
+import { flagsColumn } from "./columns";
 
 describe("flagsColumn", () => {
   it("sorts flags numerically while displaying uppercase hexadecimal", async () => {
