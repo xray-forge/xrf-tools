@@ -3,7 +3,8 @@ import { DialogDescriptor, DialogElementDescriptor, DialogPhraseDescriptor } fro
 import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip, Stack } from "@xrf/ui/material";
+import { Chip } from "@xrf/ui/material/chip";
+import { Stack } from "@xrf/ui/material/stack";
 import { ReactElement, useMemo } from "react";
 
 import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";

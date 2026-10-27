@@ -1,4 +1,4 @@
-import { MapIcon } from "@xrf/ui/icons";
+import { MapIcon } from "@xrf/ui/icons/map";
 
 import {
   EApplicationGroupId,

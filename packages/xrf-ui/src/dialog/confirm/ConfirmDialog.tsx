@@ -1,7 +1,9 @@
 import { ReactElement, ReactNode, useId } from "react";
 
 import { DialogHeader } from "#/dialog/header";
-import { Breakpoint, Button, Dialog, DialogActions, DialogContent, DialogContentText } from "#/material";
+import { Button } from "#/material/button";
+import { Dialog, DialogActions, DialogContent, DialogContentText } from "#/material/dialog";
+import { Breakpoint } from "#/material/styles";
 
 interface IConfirmDialogProps {
   isOpen: boolean;

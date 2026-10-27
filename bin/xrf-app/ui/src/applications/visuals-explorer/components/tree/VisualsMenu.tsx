@@ -6,7 +6,9 @@ import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { IEditorSearchResultRow } from "@xrf/ui/editor/search-results";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { FolderIcon, FolderOpenIcon, ViewInArIcon } from "@xrf/ui/icons";
+import { FolderIcon } from "@xrf/ui/icons/folder";
+import { FolderOpenIcon } from "@xrf/ui/icons/folder-open";
+import { ViewInArIcon } from "@xrf/ui/icons/view-in-ar";
 import { EmptyListing } from "@xrf/ui/layout/empty-listing";
 import {
   ARCHIVED_CAPTION,

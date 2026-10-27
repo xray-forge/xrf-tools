@@ -3,7 +3,7 @@ import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip } from "@xrf/ui/material";
+import { Chip } from "@xrf/ui/material/chip";
 import { ReactElement } from "react";
 
 import {

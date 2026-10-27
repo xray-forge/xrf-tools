@@ -1,7 +1,7 @@
 import { ExportDescriptor } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DataObjectIcon } from "@xrf/ui/icons";
+import { DataObjectIcon } from "@xrf/ui/icons/data-object";
 import { EmptyState } from "@xrf/ui/layout/empty-state";
 import { ReactElement } from "react";
 

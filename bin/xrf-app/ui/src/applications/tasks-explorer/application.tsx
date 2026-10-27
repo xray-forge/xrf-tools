@@ -1,4 +1,4 @@
-import { AssignmentIcon } from "@xrf/ui/icons";
+import { AssignmentIcon } from "@xrf/ui/icons/assignment";
 
 import {
   EApplicationGroupId,

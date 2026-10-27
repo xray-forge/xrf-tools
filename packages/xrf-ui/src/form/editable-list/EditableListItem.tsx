@@ -2,7 +2,7 @@ import { ReactElement, ReactNode } from "react";
 
 import { EditorIconAction } from "#/editor/icon-action";
 import { BaseComponentProps } from "#/element-types";
-import { DeleteIcon } from "#/icons";
+import { DeleteIcon } from "#/icons/delete";
 import { cn } from "#/theme";
 
 interface IEditableListItemProps extends BaseComponentProps {

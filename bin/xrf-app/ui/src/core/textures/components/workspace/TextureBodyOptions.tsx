@@ -2,8 +2,9 @@ import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@xrf/ipc/types/xrf-a
 import { Nullable } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ViewQuiltIcon } from "@xrf/ui/icons";
-import { ToggleButton, ToggleButtonGroup, Typography } from "@xrf/ui/material";
+import { ViewQuiltIcon } from "@xrf/ui/icons/view-quilt";
+import { ToggleButton, ToggleButtonGroup } from "@xrf/ui/material/toggle-button";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 import { ETexturePreviewMode, ITexturePreviewOptions, TEXTURE_TILING_STEPS } from "@/core/textures/lib/texture-preview";

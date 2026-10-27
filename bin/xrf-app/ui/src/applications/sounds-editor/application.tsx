@@ -1,4 +1,4 @@
-import { TuneIcon } from "@xrf/ui/icons";
+import { TuneIcon } from "@xrf/ui/icons/tune";
 
 import {
   EApplicationGroupId,

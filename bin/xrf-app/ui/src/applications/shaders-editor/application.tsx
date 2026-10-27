@@ -1,4 +1,4 @@
-import { PaletteIcon } from "@xrf/ui/icons";
+import { PaletteIcon } from "@xrf/ui/icons/palette";
 
 import {
   EApplicationGroupId,

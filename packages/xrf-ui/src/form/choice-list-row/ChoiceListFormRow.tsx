@@ -4,7 +4,8 @@ import { ChangeEvent, ReactElement, useCallback, useMemo, useState } from "react
 
 import { BaseComponentProps } from "#/element-types";
 import { FormRow } from "#/form/row";
-import { List, TextField } from "#/material";
+import { List } from "#/material/list";
+import { TextField } from "#/material/text-field";
 
 import { IChoiceListFormRowOption } from "./choice-list-form-row-option";
 import { IChoiceListFormRowSection, toChoiceListFormRowSections } from "./ChoiceListFormRow.utils";

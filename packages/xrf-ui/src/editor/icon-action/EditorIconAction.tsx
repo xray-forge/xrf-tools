@@ -1,7 +1,9 @@
 import { AriaAttributes, MouseEventHandler, ReactElement, ReactNode } from "react";
 
 import { StyledComponentProps } from "#/element-types";
-import { IconButton, svgIconClasses, Tooltip } from "#/material";
+import { IconButton } from "#/material/icon-button";
+import { svgIconClasses } from "#/material/svg-icon";
+import { Tooltip } from "#/material/tooltip";
 import { cn, CONTROL } from "#/theme";
 import { getControlStateSx, mergeSx } from "#/theme/sx";
 

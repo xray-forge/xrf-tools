@@ -2,7 +2,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Typography } from "#/material";
+import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
 export interface IStatFigureProps extends BaseComponentProps {

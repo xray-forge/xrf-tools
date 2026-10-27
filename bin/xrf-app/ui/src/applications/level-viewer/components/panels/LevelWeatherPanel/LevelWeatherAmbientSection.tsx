@@ -2,7 +2,8 @@ import { WorldAmbientReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Button, Typography } from "@xrf/ui/material";
+import { Button } from "@xrf/ui/material/button";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 /**

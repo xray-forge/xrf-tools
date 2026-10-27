@@ -4,8 +4,8 @@ import { ERenderWaterMode, RenderWaterMode } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { WaterIcon } from "@xrf/ui/icons";
-import { Button } from "@xrf/ui/material";
+import { WaterIcon } from "@xrf/ui/icons/water";
+import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";

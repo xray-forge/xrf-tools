@@ -4,7 +4,7 @@ import { VisualDescription, VisualTextureDependency } from "@xrf/ipc/types/xrf-v
 import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Typography } from "@xrf/ui/material";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useMemo } from "react";
 
 import { EditorPanel } from "@/core/shell/editor/EditorPanel";

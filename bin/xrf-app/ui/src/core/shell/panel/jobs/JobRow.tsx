@@ -2,7 +2,10 @@ import { formatDuration } from "@xrf/format";
 import { JobDescription } from "@xrf/ipc/types/xrf-app-core";
 import { ProgressLevel } from "@xrf/ipc/types/xrf-job";
 import { Nullable } from "@xrf/types";
-import { Button, Chip, LinearProgress, Typography } from "@xrf/ui/material";
+import { Button } from "@xrf/ui/material/button";
+import { Chip } from "@xrf/ui/material/chip";
+import { LinearProgress } from "@xrf/ui/material/progress";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 import { findJobKind, IJobKindDescriptor } from "@/core/jobs/lib";

@@ -2,7 +2,8 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 
 import { describe, expect, it } from "@jest/globals";
-import { Theme } from "@mui/material";
+
+import { Theme } from "#/material/styles";
 
 import { createApplicationTheme } from "./creation";
 import { getSchemeVariables, getThemeVariables } from "./variables";

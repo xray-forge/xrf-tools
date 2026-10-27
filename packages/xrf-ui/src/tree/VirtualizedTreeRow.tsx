@@ -1,7 +1,8 @@
 import { Nullable } from "@xrf/types";
 import { CSSProperties, MouseEvent, ReactElement, ReactNode } from "react";
 
-import { ChevronRightIcon, ExpandMoreIcon } from "#/icons";
+import { ChevronRightIcon } from "#/icons/chevron-right";
+import { ExpandMoreIcon } from "#/icons/expand-more";
 import { TREE } from "#/theme";
 
 import { IFlatTreeRow } from "./flatten";

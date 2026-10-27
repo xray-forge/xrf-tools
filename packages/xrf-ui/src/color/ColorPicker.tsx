@@ -3,7 +3,7 @@ import { ReactElement, useCallback, useEffect } from "react";
 import { RgbColorPicker } from "react-colorful";
 
 import { BaseComponentProps } from "#/element-types";
-import { Box } from "#/material";
+import { Box } from "#/material/box";
 import { useThrottledValue } from "#/react/throttled-value";
 import { RADIUS } from "#/theme";
 

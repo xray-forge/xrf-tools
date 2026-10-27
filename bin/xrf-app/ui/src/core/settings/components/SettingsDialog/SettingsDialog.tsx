@@ -1,15 +1,9 @@
 import { useInjection } from "@wirestate/react";
 import { DialogHeader } from "@xrf/ui/dialog/header";
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  List,
-  ListItemButton,
-  ListItemText,
-} from "@xrf/ui/material";
+import { Box } from "@xrf/ui/material/box";
+import { Button } from "@xrf/ui/material/button";
+import { Dialog, DialogActions, DialogContent } from "@xrf/ui/material/dialog";
+import { List, ListItemButton, ListItemText } from "@xrf/ui/material/list";
 import { FORM_SURFACE_SX } from "@xrf/ui/theme/sx";
 import { ReactElement, useId } from "react";
 

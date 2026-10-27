@@ -5,8 +5,9 @@ import { Nullable } from "@xrf/types";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorLayout } from "@xrf/ui/editor/layout";
 import { EditorToolbarLocation } from "@xrf/ui/editor/toolbar";
-import { ListAltIcon, RefreshIcon } from "@xrf/ui/icons";
-import { Alert } from "@xrf/ui/material";
+import { ListAltIcon } from "@xrf/ui/icons/list-alt";
+import { RefreshIcon } from "@xrf/ui/icons/refresh";
+import { Alert } from "@xrf/ui/material/alert";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports.service";

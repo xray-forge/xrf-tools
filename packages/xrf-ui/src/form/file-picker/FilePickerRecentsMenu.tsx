@@ -3,8 +3,13 @@ import { Nullable } from "@xrf/types";
 import { formatDistanceToNowStrict } from "date-fns";
 import { MouseEvent, ReactElement } from "react";
 
-import { CheckIcon, CloseIcon } from "#/icons";
-import { IconButton, ListItemText, Menu, MenuItem, Tooltip, Typography } from "#/material";
+import { CheckIcon } from "#/icons/check";
+import { CloseIcon } from "#/icons/close";
+import { IconButton } from "#/material/icon-button";
+import { ListItemText } from "#/material/list";
+import { Menu, MenuItem } from "#/material/menu";
+import { Tooltip } from "#/material/tooltip";
+import { Typography } from "#/material/typography";
 import { MONOSPACE_CHARACTER_WIDTH } from "#/theme";
 
 import { IPathFieldRecents, IPathRecord } from "./path-field-recents";

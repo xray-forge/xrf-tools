@@ -2,8 +2,8 @@ import { ERenderContactShadowMode, RenderContactShadowMode } from "@xrf/ipc/type
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { TonalityIcon } from "@xrf/ui/icons";
-import { Button } from "@xrf/ui/material";
+import { TonalityIcon } from "@xrf/ui/icons/tonality";
+import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";

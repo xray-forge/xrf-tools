@@ -1,11 +1,12 @@
-import { cardActionAreaClasses, inputBaseClasses, listItemButtonClasses, outlinedInputClasses } from "@mui/material";
-import { createTheme, PaletteOptions, Theme } from "@mui/material/styles";
-
 // Type-only, side-effect import: it pulls in `@mui/x-data-grid`'s module augmentation,
 // which registers the `MuiDataGrid` slot on MUI's `Components` type.
 import type {} from "@mui/material/themeCssVarsAugmentation";
 import type {} from "@mui/x-data-grid/themeAugmentation";
 
+import { cardActionAreaClasses } from "#/material/card";
+import { inputBaseClasses, outlinedInputClasses } from "#/material/input";
+import { listItemButtonClasses } from "#/material/list";
+import { createTheme, PaletteOptions, Theme } from "#/material/styles";
 import {
   ACCENT,
   COLOR_SCHEME_ATTRIBUTE,

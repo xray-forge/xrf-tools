@@ -7,8 +7,8 @@ import {
 } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { GradientIcon } from "@xrf/ui/icons";
-import { Button } from "@xrf/ui/material";
+import { GradientIcon } from "@xrf/ui/icons/gradient";
+import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback } from "react";
 
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";

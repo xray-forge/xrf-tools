@@ -1,4 +1,4 @@
-import { HelpOutlineOutlinedIcon as HelpOutlineIcon } from "@xrf/ui/icons";
+import { HelpOutlineOutlinedIcon as HelpOutlineIcon } from "@xrf/ui/icons/help-outline-outlined";
 
 import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
 

@@ -3,7 +3,9 @@ import { LOGICAL_PATH_SEPARATOR, splitLogicalPath } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { IEditorSearchResultRow } from "@xrf/ui/editor/search-results";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DescriptionIcon, FolderOpenIcon, ForumIcon } from "@xrf/ui/icons";
+import { DescriptionIcon } from "@xrf/ui/icons/description";
+import { FolderOpenIcon } from "@xrf/ui/icons/folder-open";
+import { ForumIcon } from "@xrf/ui/icons/forum";
 import {
   IPathTreeItem,
   ITreeNode,

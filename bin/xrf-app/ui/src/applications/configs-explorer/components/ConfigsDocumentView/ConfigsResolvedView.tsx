@@ -7,7 +7,8 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
 import { EmptyState } from "@xrf/ui/layout/empty-state";
 import { ErrorState } from "@xrf/ui/layout/error-state";
-import { Alert, Button } from "@xrf/ui/material";
+import { Alert } from "@xrf/ui/material/alert";
+import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { useRevealed } from "@/applications/configs-explorer/components/ConfigsDocumentView/use-revealed";

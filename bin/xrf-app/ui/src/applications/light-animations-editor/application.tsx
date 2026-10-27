@@ -1,4 +1,4 @@
-import { LightbulbIcon } from "@xrf/ui/icons";
+import { LightbulbIcon } from "@xrf/ui/icons/lightbulb";
 
 import {
   EApplicationGroupId,

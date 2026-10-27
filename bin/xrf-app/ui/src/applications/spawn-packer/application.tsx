@@ -1,4 +1,4 @@
-import { Inventory2Icon } from "@xrf/ui/icons";
+import { Inventory2Icon } from "@xrf/ui/icons/inventory2";
 
 import {
   EApplicationGroupId,

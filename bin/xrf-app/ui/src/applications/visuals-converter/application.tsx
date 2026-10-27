@@ -1,4 +1,4 @@
-import { SwapHorizIcon } from "@xrf/ui/icons";
+import { SwapHorizIcon } from "@xrf/ui/icons/swap-horiz";
 
 import {
   EApplicationGroupId,

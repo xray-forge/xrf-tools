@@ -3,8 +3,11 @@ import { Nullable } from "@xrf/types";
 import { DialogHeader } from "@xrf/ui/dialog/header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
-import { MapOutlinedIcon as MapIcon, PanoramaPhotosphereOutlinedIcon as PanoramaPhotosphereIcon } from "@xrf/ui/icons";
-import { Button, Dialog, DialogActions, DialogContent, Typography } from "@xrf/ui/material";
+import { MapOutlinedIcon as MapIcon } from "@xrf/ui/icons/map-outlined";
+import { PanoramaPhotosphereOutlinedIcon as PanoramaPhotosphereIcon } from "@xrf/ui/icons/panorama-photosphere-outlined";
+import { Button } from "@xrf/ui/material/button";
+import { Dialog, DialogActions, DialogContent } from "@xrf/ui/material/dialog";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback, useId, useState } from "react";
 
 import { ELevelCaptureMode, LEVEL_CAPTURE_NAMES } from "@/applications/level-viewer/lib/capture/level-capture";

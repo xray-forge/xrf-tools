@@ -1,4 +1,4 @@
-import { UnarchiveIcon } from "@xrf/ui/icons";
+import { UnarchiveIcon } from "@xrf/ui/icons/unarchive";
 
 import {
   EApplicationGroupId,

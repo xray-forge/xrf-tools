@@ -1,5 +1,6 @@
 import { LtxSchemeFieldReport } from "@xrf/ipc/types/xrf-ltx-inspect";
-import { Chip, Typography } from "@xrf/ui/material";
+import { Chip } from "@xrf/ui/material/chip";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

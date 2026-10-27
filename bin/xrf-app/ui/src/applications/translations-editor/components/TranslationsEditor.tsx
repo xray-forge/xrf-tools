@@ -7,7 +7,7 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { EditorLayout } from "@xrf/ui/editor/layout";
 import { EditorToolbarLocation } from "@xrf/ui/editor/toolbar";
-import { ReportProblemIcon } from "@xrf/ui/icons";
+import { ReportProblemIcon } from "@xrf/ui/icons/report-problem";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations.service";

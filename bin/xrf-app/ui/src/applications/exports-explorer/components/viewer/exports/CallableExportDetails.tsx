@@ -1,7 +1,8 @@
 import { ABSENT_VALUE } from "@xrf/format";
 import { ExportParameterDescriptor } from "@xrf/ipc/types/xrf-export";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@xrf/ui/material";
+import { Table, TableBody, TableCell, TableHead, TableRow } from "@xrf/ui/material/table";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 import { TCallableExportDescriptor } from "@/applications/exports-explorer/lib/export-descriptors";

@@ -4,8 +4,9 @@ import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorLayout } from "@xrf/ui/editor/layout";
 import { EditorToolbarLocation, IEditorLocation } from "@xrf/ui/editor/toolbar";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { RefreshIcon } from "@xrf/ui/icons";
-import { Alert, Typography } from "@xrf/ui/material";
+import { RefreshIcon } from "@xrf/ui/icons/refresh";
+import { Alert } from "@xrf/ui/material/alert";
+import { Typography } from "@xrf/ui/material/typography";
 import { format } from "date-fns";
 import { ReactElement, useCallback } from "react";
 

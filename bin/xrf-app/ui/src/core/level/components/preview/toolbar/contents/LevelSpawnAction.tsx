@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Inventory2Icon } from "@xrf/ui/icons";
+import { Inventory2Icon } from "@xrf/ui/icons/inventory2";
 import { ReactElement } from "react";
 
 import { ILevelSpawnCategoryEntry, LEVEL_SPAWN_CATEGORIES } from "@/core/level/lib/spawn/level-spawn-categories";

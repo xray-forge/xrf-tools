@@ -4,7 +4,8 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
-import { Stack, Typography } from "@xrf/ui/material";
+import { Stack } from "@xrf/ui/material/stack";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useState } from "react";
 
 import { useMountEffect } from "@/lib/react/use-mount-effect";

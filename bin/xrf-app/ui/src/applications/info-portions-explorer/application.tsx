@@ -1,4 +1,4 @@
-import { HubIcon } from "@xrf/ui/icons";
+import { HubIcon } from "@xrf/ui/icons/hub";
 
 import {
   EApplicationGroupId,

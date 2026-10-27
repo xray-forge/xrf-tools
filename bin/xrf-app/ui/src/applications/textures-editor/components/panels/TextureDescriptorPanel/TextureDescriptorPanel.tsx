@@ -8,7 +8,9 @@ import {
 import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Alert, Button, Stack } from "@xrf/ui/material";
+import { Alert } from "@xrf/ui/material/alert";
+import { Button } from "@xrf/ui/material/button";
+import { Stack } from "@xrf/ui/material/stack";
 import { ReactElement, useCallback } from "react";
 
 import { hasTextureFlag, withTextureFlag } from "@/applications/textures-editor/lib/texture-descriptor-flags";

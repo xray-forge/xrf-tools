@@ -1,4 +1,4 @@
-import { AccessibilityNewIcon } from "@xrf/ui/icons";
+import { AccessibilityNewIcon } from "@xrf/ui/icons/accessibility-new";
 
 import {
   EApplicationGroupId,

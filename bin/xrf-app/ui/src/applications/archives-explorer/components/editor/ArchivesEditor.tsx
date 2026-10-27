@@ -6,7 +6,10 @@ import { Nullable, Optional } from "@xrf/types";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorLayout } from "@xrf/ui/editor/layout";
 import { EditorToolbarLocation, IEditorLocation } from "@xrf/ui/editor/toolbar";
-import { BarChartIcon, FileCopyIcon, LayersIcon, UnarchiveIcon } from "@xrf/ui/icons";
+import { BarChartIcon } from "@xrf/ui/icons/bar-chart";
+import { FileCopyIcon } from "@xrf/ui/icons/file-copy";
+import { LayersIcon } from "@xrf/ui/icons/layers";
+import { UnarchiveIcon } from "@xrf/ui/icons/unarchive";
 import { ReactElement, useCallback, useState } from "react";
 
 import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";

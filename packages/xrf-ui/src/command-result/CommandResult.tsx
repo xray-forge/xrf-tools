@@ -2,7 +2,8 @@ import { formatCount } from "@xrf/format";
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Divider, Typography } from "#/material";
+import { Divider } from "#/material/divider";
+import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
 export type TCommandResultTone = "success" | "warning" | "error" | "info";

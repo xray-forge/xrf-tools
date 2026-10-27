@@ -1,6 +1,9 @@
 import { KeyboardEvent, ReactElement } from "react";
 
-import { Divider, MenuList, Paper, Popper } from "#/material";
+import { Divider } from "#/material/divider";
+import { MenuList } from "#/material/menu";
+import { Paper } from "#/material/paper";
+import { Popper } from "#/material/popper";
 
 import { IMenubarItem, IMenubarMenu } from "./menubar-menu";
 import { MenubarRow } from "./MenubarRow";

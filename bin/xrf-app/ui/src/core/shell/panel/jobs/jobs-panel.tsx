@@ -1,4 +1,4 @@
-import { PlaylistPlayIcon } from "@xrf/ui/icons";
+import { PlaylistPlayIcon } from "@xrf/ui/icons/playlist-play";
 
 import { IEditorPanel } from "@/core/shell/editor-shell";
 import { JobsPanel } from "@/core/shell/panel/jobs/JobsPanel";

@@ -14,8 +14,9 @@ import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
-import { HighQualityIcon } from "@xrf/ui/icons";
-import { Button, Typography } from "@xrf/ui/material";
+import { HighQualityIcon } from "@xrf/ui/icons/high-quality";
+import { Button } from "@xrf/ui/material/button";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";

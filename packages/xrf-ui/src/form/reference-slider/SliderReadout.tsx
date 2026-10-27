@@ -2,8 +2,10 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { RestartAltIcon } from "#/icons";
-import { IconButton, Tooltip, Typography } from "#/material";
+import { RestartAltIcon } from "#/icons/restart-alt";
+import { IconButton } from "#/material/icon-button";
+import { Tooltip } from "#/material/tooltip";
+import { Typography } from "#/material/typography";
 import { cn, SLIDER_REFERENCE } from "#/theme";
 
 import { describeSliderRecommendation, ISliderReference, isSliderWasted } from "./slider-reference";

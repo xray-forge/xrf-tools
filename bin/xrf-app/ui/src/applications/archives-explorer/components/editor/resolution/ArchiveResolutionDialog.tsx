@@ -3,9 +3,11 @@ import { ArchiveResolution, ArchiveResolutionSource, ArchiveUnreadSource } from 
 import { Nullable } from "@xrf/types";
 import { DialogHeader } from "@xrf/ui/dialog/header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { LayersIcon } from "@xrf/ui/icons";
+import { LayersIcon } from "@xrf/ui/icons/layers";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
-import { Alert, CircularProgress, Dialog, DialogContent } from "@xrf/ui/material";
+import { Alert } from "@xrf/ui/material/alert";
+import { Dialog, DialogContent } from "@xrf/ui/material/dialog";
+import { CircularProgress } from "@xrf/ui/material/progress";
 import { ReactElement, useEffect, useId } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";

@@ -7,7 +7,7 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { FormRow } from "@xrf/ui/form/row";
-import { TextField } from "@xrf/ui/material";
+import { TextField } from "@xrf/ui/material/text-field";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";

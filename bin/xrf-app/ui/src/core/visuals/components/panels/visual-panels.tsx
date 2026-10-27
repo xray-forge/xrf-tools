@@ -1,4 +1,6 @@
-import { AccountTreeIcon, InfoIcon, LayersIcon } from "@xrf/ui/icons";
+import { AccountTreeIcon } from "@xrf/ui/icons/account-tree";
+import { InfoIcon } from "@xrf/ui/icons/info";
+import { LayersIcon } from "@xrf/ui/icons/layers";
 
 import { IEditorPanel } from "@/core/shell/editor-shell";
 import { VisualBonesPanel } from "@/core/visuals/components/panels/VisualBonesPanel";

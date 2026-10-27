@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { KeyboardEvent, ReactElement, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { useForkRef } from "#/material";
+import { useForkRef } from "#/material/utils";
 import { cn, CODE, MONOSPACE_CHARACTER_WIDTH } from "#/theme";
 import { LayoutList, RenderContext, useVirtualizer, Virtualization } from "#/virtualizer";
 

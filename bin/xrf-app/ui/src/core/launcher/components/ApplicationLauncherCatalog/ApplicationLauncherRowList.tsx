@@ -1,5 +1,5 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { List, ListSubheader } from "@xrf/ui/material";
+import { List, ListSubheader } from "@xrf/ui/material/list";
 import { cn } from "@xrf/ui/theme";
 import { Fragment, ReactElement } from "react";
 

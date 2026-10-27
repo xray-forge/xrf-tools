@@ -1,7 +1,9 @@
 import { ReactElement } from "react";
 
-import { CheckIcon } from "#/icons";
-import { ListItemText, MenuItem, Typography } from "#/material";
+import { CheckIcon } from "#/icons/check";
+import { ListItemText } from "#/material/list";
+import { MenuItem } from "#/material/menu";
+import { Typography } from "#/material/typography";
 
 import { IMenubarItem } from "./menubar-menu";
 

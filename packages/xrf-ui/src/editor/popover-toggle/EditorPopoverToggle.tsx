@@ -4,7 +4,7 @@ import { ReactElement, ReactNode, useCallback } from "react";
 import { EditorPopoverAction } from "#/editor/popover-action";
 import { BaseComponentProps } from "#/element-types";
 import { CheckboxFormRow } from "#/form/checkbox-row";
-import { Typography } from "#/material";
+import { Typography } from "#/material/typography";
 
 export interface IEditorPopoverToggleProps extends BaseComponentProps {
   /** Stable accessible name, independent of whether the toggle is on. */

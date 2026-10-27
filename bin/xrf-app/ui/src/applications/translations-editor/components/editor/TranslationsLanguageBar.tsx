@@ -1,5 +1,7 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { MenuItem, TextField, Typography } from "@xrf/ui/material";
+import { MenuItem } from "@xrf/ui/material/menu";
+import { TextField } from "@xrf/ui/material/text-field";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

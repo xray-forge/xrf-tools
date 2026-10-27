@@ -2,7 +2,7 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { fireEvent } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
-import { FoggyIcon } from "#/icons";
+import { FoggyIcon } from "#/icons/foggy";
 import { renderWithTheme } from "#/testing/render";
 
 import { EditorPopoverToggle } from "./EditorPopoverToggle";

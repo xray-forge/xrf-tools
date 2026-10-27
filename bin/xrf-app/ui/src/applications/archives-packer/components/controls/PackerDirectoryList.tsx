@@ -2,7 +2,10 @@ import { withoutAt } from "@xrf/collections";
 import { ArchivePackDirectory } from "@xrf/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { EditableList, EditableListItem } from "@xrf/ui/form/editable-list";
-import { FormControlLabel, Switch, TextField, Typography } from "@xrf/ui/material";
+import { FormControlLabel } from "@xrf/ui/material/form-control-label";
+import { Switch } from "@xrf/ui/material/switch";
+import { TextField } from "@xrf/ui/material/text-field";
+import { Typography } from "@xrf/ui/material/typography";
 import { ChangeEvent, ReactElement } from "react";
 
 import { withDirectoryAt } from "@/applications/archives-packer/lib/pack-config";

@@ -3,8 +3,9 @@ import { formatDegrees, formatNumber, formatPercent } from "@xrf/format";
 import { ERenderFoliageMode, RenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { AirIcon } from "@xrf/ui/icons";
-import { Button, Typography } from "@xrf/ui/material";
+import { AirIcon } from "@xrf/ui/icons/air";
+import { Button } from "@xrf/ui/material/button";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";

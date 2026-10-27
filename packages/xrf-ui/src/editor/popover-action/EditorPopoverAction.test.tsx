@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { fireEvent, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
-import { TuneIcon } from "#/icons";
+import { TuneIcon } from "#/icons/tune";
 import { renderWithTheme } from "#/testing/render";
 
 import { EditorPopoverAction } from "./EditorPopoverAction";

@@ -1,7 +1,8 @@
 import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
 import { CSSProperties, Fragment, ReactElement, ReactNode } from "react";
 
-import { ErrorOutlineOutlinedIcon as ErrorOutlineIcon, WarningAmberIcon } from "#/icons";
+import { ErrorOutlineOutlinedIcon as ErrorOutlineIcon } from "#/icons/error-outline-outlined";
+import { WarningAmberIcon } from "#/icons/warning-amber";
 import { CODE } from "#/theme";
 
 import { ECodeLineMark, ICodeLine } from "./code-line";

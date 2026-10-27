@@ -1,8 +1,9 @@
 import { formatPercent } from "@xrf/format";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { TuneIcon } from "@xrf/ui/icons";
-import { Slider, Typography } from "@xrf/ui/material";
+import { TuneIcon } from "@xrf/ui/icons/tune";
+import { Slider } from "@xrf/ui/material/slider";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback } from "react";
 
 interface IVisualMeshDetailProps extends BaseComponentProps {

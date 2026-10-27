@@ -5,7 +5,7 @@ import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
 import { ErrorState } from "@xrf/ui/layout/error-state";
-import { Divider } from "@xrf/ui/material";
+import { Divider } from "@xrf/ui/material/divider";
 import { ReactElement, useEffect } from "react";
 
 import { ConfigsSchemeBinding } from "@/applications/configs-explorer/components/panels/ConfigsSchemePanel/ConfigsSchemeBinding";

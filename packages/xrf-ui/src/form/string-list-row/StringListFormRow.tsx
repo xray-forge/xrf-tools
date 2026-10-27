@@ -3,7 +3,7 @@ import { ChangeEvent, ReactElement } from "react";
 
 import { EditableList, EditableListItem } from "#/form/editable-list";
 import { FormRow } from "#/form/row";
-import { TextField } from "#/material";
+import { TextField } from "#/material/text-field";
 
 interface IStringListFormRowProps {
   label: string;

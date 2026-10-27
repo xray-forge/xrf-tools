@@ -2,7 +2,7 @@ import { splitAfterSeparators } from "@xrf/path";
 import { Fragment, ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Typography } from "#/material";
+import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
 /**

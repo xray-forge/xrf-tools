@@ -1,4 +1,4 @@
-import { ForumIcon } from "@xrf/ui/icons";
+import { ForumIcon } from "@xrf/ui/icons/forum";
 
 import {
   EApplicationGroupId,

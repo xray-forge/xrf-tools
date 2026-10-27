@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Typography } from "@xrf/ui/material";
+import { Typography } from "@xrf/ui/material/typography";
 import { Fragment, ReactElement } from "react";
 
 import { EKeybindCommandCategory, IKeybindCommand, KEYBIND_COMMAND_CATEGORY_LABELS } from "@/core/commands";

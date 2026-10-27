@@ -3,14 +3,12 @@ import { Nullable } from "@xrf/types";
 import { EditorFileHeader } from "@xrf/ui/editor/file-header";
 import { EditorLayout } from "@xrf/ui/editor/layout";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import {
-  InfoOutlinedIcon,
-  Inventory2Icon,
-  LayersIcon,
-  SpeedIcon,
-  WarningAmberIcon as WarningIcon,
-  WbCloudyIcon,
-} from "@xrf/ui/icons";
+import { InfoOutlinedIcon } from "@xrf/ui/icons/info-outlined";
+import { Inventory2Icon } from "@xrf/ui/icons/inventory2";
+import { LayersIcon } from "@xrf/ui/icons/layers";
+import { SpeedIcon } from "@xrf/ui/icons/speed";
+import { WarningAmberIcon as WarningIcon } from "@xrf/ui/icons/warning-amber";
+import { WbCloudyIcon } from "@xrf/ui/icons/wb-cloudy";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, ReactNode } from "react";
 

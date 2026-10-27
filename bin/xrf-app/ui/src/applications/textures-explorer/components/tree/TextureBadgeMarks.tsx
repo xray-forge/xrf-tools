@@ -1,5 +1,5 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Box } from "@xrf/ui/material";
+import { Box } from "@xrf/ui/material/box";
 import { ReactElement } from "react";
 
 import {

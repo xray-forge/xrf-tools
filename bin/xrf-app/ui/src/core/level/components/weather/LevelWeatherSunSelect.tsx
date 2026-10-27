@@ -1,5 +1,7 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ListItemText, MenuItem, TextField } from "@xrf/ui/material";
+import { ListItemText } from "@xrf/ui/material/list";
+import { MenuItem } from "@xrf/ui/material/menu";
+import { TextField } from "@xrf/ui/material/text-field";
 import { CONTROL } from "@xrf/ui/theme";
 import { ChangeEvent, ReactElement } from "react";
 

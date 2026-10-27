@@ -1,4 +1,4 @@
-import { ViewInArIcon } from "@xrf/ui/icons";
+import { ViewInArIcon } from "@xrf/ui/icons/view-in-ar";
 
 import {
   EApplicationGroupId,

@@ -1,4 +1,4 @@
-import { InfoIcon } from "@xrf/ui/icons";
+import { InfoIcon } from "@xrf/ui/icons/info";
 
 import { IEditorPanel } from "@/core/shell/editor-shell";
 

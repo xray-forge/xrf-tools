@@ -1,4 +1,9 @@
-import { CompareIcon, EditNoteIcon, GradientIcon, InfoIcon, LayersIcon, TuneIcon } from "@xrf/ui/icons";
+import { CompareIcon } from "@xrf/ui/icons/compare";
+import { EditNoteIcon } from "@xrf/ui/icons/edit-note";
+import { GradientIcon } from "@xrf/ui/icons/gradient";
+import { InfoIcon } from "@xrf/ui/icons/info";
+import { LayersIcon } from "@xrf/ui/icons/layers";
+import { TuneIcon } from "@xrf/ui/icons/tune";
 
 import { TextureBumpPanel } from "@/applications/textures-editor/components/panels/TextureBumpPanel";
 import { TextureDescriptorPanel } from "@/applications/textures-editor/components/panels/TextureDescriptorPanel";

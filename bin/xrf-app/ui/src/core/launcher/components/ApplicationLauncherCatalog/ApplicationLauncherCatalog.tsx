@@ -1,8 +1,9 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { SearchOffIcon } from "@xrf/ui/icons";
+import { SearchOffIcon } from "@xrf/ui/icons/search-off";
 import { EmptyState } from "@xrf/ui/layout/empty-state";
-import { Button, Typography } from "@xrf/ui/material";
+import { Button } from "@xrf/ui/material/button";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

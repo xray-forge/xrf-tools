@@ -1,4 +1,4 @@
-import { GrassIcon } from "@xrf/ui/icons";
+import { GrassIcon } from "@xrf/ui/icons/grass";
 
 import {
   EApplicationGroupId,

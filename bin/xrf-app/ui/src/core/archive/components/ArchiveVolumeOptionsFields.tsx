@@ -2,7 +2,9 @@ import { ArchivePackConfig, EArchivePackMode, EArchiveVolumeExtension } from "@x
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FormRow } from "@xrf/ui/form/row";
-import { MenuItem, Stack, TextField } from "@xrf/ui/material";
+import { MenuItem } from "@xrf/ui/material/menu";
+import { Stack } from "@xrf/ui/material/stack";
+import { TextField } from "@xrf/ui/material/text-field";
 import { ChangeEvent, ReactElement, useId } from "react";
 
 import { ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/lib";

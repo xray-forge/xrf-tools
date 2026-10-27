@@ -1,7 +1,8 @@
 import { Nullable } from "@xrf/types";
 import { DataGrid, GridColDef, GridRenderCellParams, GridRowParams } from "@xrf/ui/data-grid";
 import { EditorFilterInput } from "@xrf/ui/editor/filter-input";
-import { Tooltip, Typography } from "@xrf/ui/material";
+import { Tooltip } from "@xrf/ui/material/tooltip";
+import { Typography } from "@xrf/ui/material/typography";
 import { pathColumn } from "@xrf/ui/table";
 import { ReactElement, useMemo, useState } from "react";
 

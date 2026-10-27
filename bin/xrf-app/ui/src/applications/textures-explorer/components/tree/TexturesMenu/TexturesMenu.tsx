@@ -4,7 +4,9 @@ import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 import { IEditorSearchResultRow } from "@xrf/ui/editor/search-results";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { FolderIcon, FolderOpenIcon, ImageIcon } from "@xrf/ui/icons";
+import { FolderIcon } from "@xrf/ui/icons/folder";
+import { FolderOpenIcon } from "@xrf/ui/icons/folder-open";
+import { ImageIcon } from "@xrf/ui/icons/image";
 import { EmptyListing } from "@xrf/ui/layout/empty-listing";
 import {
   IPathTreeItem,

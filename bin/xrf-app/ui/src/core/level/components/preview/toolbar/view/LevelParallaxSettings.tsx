@@ -1,7 +1,7 @@
 import { ERenderParallaxMode, RenderParallaxMode } from "@xrf/ipc/types/xrf-renderer";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { Button } from "@xrf/ui/material";
+import { Button } from "@xrf/ui/material/button";
 import { ReactElement } from "react";
 
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";

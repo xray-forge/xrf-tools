@@ -1,4 +1,5 @@
-import { FolderOpenIcon, InfoIcon } from "@xrf/ui/icons";
+import { FolderOpenIcon } from "@xrf/ui/icons/folder-open";
+import { InfoIcon } from "@xrf/ui/icons/info";
 
 import { IEditorPanel } from "@/core/shell/editor-shell";
 

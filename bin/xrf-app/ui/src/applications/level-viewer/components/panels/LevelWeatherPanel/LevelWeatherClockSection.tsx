@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { Typography } from "@xrf/ui/material";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";

@@ -2,8 +2,13 @@ import { useInjection } from "@wirestate/react";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorToolbarSeparator } from "@xrf/ui/editor/toolbar";
 import { EditorViewToggle } from "@xrf/ui/editor/view-toggle";
-import { PauseIcon, PlayArrowIcon, RepeatIcon, SkipNextIcon, SkipPreviousIcon } from "@xrf/ui/icons";
-import { Paper, Typography } from "@xrf/ui/material";
+import { PauseIcon } from "@xrf/ui/icons/pause";
+import { PlayArrowIcon } from "@xrf/ui/icons/play-arrow";
+import { RepeatIcon } from "@xrf/ui/icons/repeat";
+import { SkipNextIcon } from "@xrf/ui/icons/skip-next";
+import { SkipPreviousIcon } from "@xrf/ui/icons/skip-previous";
+import { Paper } from "@xrf/ui/material/paper";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback } from "react";
 
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/visual-sequence";

@@ -2,7 +2,7 @@ import { ReactElement } from "react";
 
 import { BaseComponentProps } from "#/element-types";
 import { FormRow } from "#/form/row";
-import { Switch } from "#/material";
+import { Switch } from "#/material/switch";
 
 export interface ISwitchFormRowProps extends BaseComponentProps {
   label: string;

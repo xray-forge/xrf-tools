@@ -1,4 +1,5 @@
-import { AnimationIcon, PlaylistPlayIcon } from "@xrf/ui/icons";
+import { AnimationIcon } from "@xrf/ui/icons/animation";
+import { PlaylistPlayIcon } from "@xrf/ui/icons/playlist-play";
 
 import { SequenceMotionsPanel } from "@/applications/visuals-sequencer/components/panels/SequenceMotionsPanel";
 import { SequenceTrackPanel } from "@/applications/visuals-sequencer/components/panels/SequenceTrackPanel";

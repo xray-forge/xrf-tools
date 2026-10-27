@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
-import { Tab, Tabs } from "@xrf/ui/material";
+import { Tab, Tabs } from "@xrf/ui/material/tabs";
 import { ComponentType, ReactElement, RefObject, useRef, useState } from "react";
 
 import { RenderSliderReference } from "@/core/render/components/controls/RenderSliderReference";

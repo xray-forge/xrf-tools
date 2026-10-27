@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { SwitchFormRow } from "@xrf/ui/form/switch-row";
-import { Button } from "@xrf/ui/material";
+import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { TranslationsParserService } from "@/applications/translations-parser/services/translations-parser.service";

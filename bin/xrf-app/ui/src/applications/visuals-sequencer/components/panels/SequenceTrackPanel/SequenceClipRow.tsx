@@ -3,8 +3,11 @@ import { formatSeconds } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ArrowDownwardIcon, ArrowUpwardIcon, DeleteOutlinedIcon } from "@xrf/ui/icons";
-import { Chip, Typography } from "@xrf/ui/material";
+import { ArrowDownwardIcon } from "@xrf/ui/icons/arrow-downward";
+import { ArrowUpwardIcon } from "@xrf/ui/icons/arrow-upward";
+import { DeleteOutlinedIcon } from "@xrf/ui/icons/delete-outlined";
+import { Chip } from "@xrf/ui/material/chip";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

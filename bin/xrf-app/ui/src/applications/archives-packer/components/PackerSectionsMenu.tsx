@@ -1,7 +1,10 @@
 import { useInjection } from "@wirestate/react";
 import { EditorSideMenu, IEditorSideMenuItem } from "@xrf/ui/editor/side-menu";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { FolderIcon, SettingsIcon, TitleIcon, TuneIcon } from "@xrf/ui/icons";
+import { FolderIcon } from "@xrf/ui/icons/folder";
+import { SettingsIcon } from "@xrf/ui/icons/settings";
+import { TitleIcon } from "@xrf/ui/icons/title";
+import { TuneIcon } from "@xrf/ui/icons/tune";
 import { ReactElement } from "react";
 
 import { ArchivesPackerService, EPackerSection } from "@/applications/archives-packer/services/archives-packer.service";

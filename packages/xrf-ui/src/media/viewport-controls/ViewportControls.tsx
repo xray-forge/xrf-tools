@@ -1,8 +1,14 @@
 import { formatPercent } from "@xrf/format";
 import { ReactElement } from "react";
 
-import { CenterFocusStrongIcon, ZoomInIcon, ZoomOutIcon } from "#/icons";
-import { ButtonBase, IconButton, Paper, Tooltip, Typography } from "#/material";
+import { CenterFocusStrongIcon } from "#/icons/center-focus-strong";
+import { ZoomInIcon } from "#/icons/zoom-in";
+import { ZoomOutIcon } from "#/icons/zoom-out";
+import { ButtonBase } from "#/material/button-base";
+import { IconButton } from "#/material/icon-button";
+import { Paper } from "#/material/paper";
+import { Tooltip } from "#/material/tooltip";
+import { Typography } from "#/material/typography";
 
 interface IViewportControlsProps {
   /**

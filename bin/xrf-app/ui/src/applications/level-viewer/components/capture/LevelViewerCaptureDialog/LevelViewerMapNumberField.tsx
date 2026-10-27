@@ -1,5 +1,5 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { TextField } from "@xrf/ui/material";
+import { TextField } from "@xrf/ui/material/text-field";
 import { ChangeEvent, ReactElement, useCallback, useEffect, useState } from "react";
 
 /** Metres to a tenth, dropping a trailing `.0`. */

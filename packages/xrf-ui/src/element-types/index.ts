@@ -1,4 +1,4 @@
-import { SxProps, Theme } from "@mui/material/styles";
+import { SxProps, Theme } from "#/material/styles";
 
 /** Identity for a component's rendered surface. */
 export interface BaseComponentProps {

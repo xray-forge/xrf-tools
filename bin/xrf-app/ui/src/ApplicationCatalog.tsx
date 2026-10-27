@@ -1,23 +1,21 @@
 import { Nullable } from "@xrf/types";
-import {
-  ArchiveIcon,
-  BlurOnIcon,
-  CodeIcon,
-  FactCheckIcon,
-  ForumIcon,
-  GradientIcon,
-  GraphicEqIcon,
-  ImageIcon,
-  LayersIcon,
-  MapIcon,
-  SettingsApplicationsIcon,
-  SportsEsportsIcon,
-  TerrainIcon,
-  TextureIcon,
-  TranslateIcon,
-  ViewInArIcon,
-  WbSunnyIcon,
-} from "@xrf/ui/icons";
+import { ArchiveIcon } from "@xrf/ui/icons/archive";
+import { BlurOnIcon } from "@xrf/ui/icons/blur-on";
+import { CodeIcon } from "@xrf/ui/icons/code";
+import { FactCheckIcon } from "@xrf/ui/icons/fact-check";
+import { ForumIcon } from "@xrf/ui/icons/forum";
+import { GradientIcon } from "@xrf/ui/icons/gradient";
+import { GraphicEqIcon } from "@xrf/ui/icons/graphic-eq";
+import { ImageIcon } from "@xrf/ui/icons/image";
+import { LayersIcon } from "@xrf/ui/icons/layers";
+import { MapIcon } from "@xrf/ui/icons/map";
+import { SettingsApplicationsIcon } from "@xrf/ui/icons/settings-applications";
+import { SportsEsportsIcon } from "@xrf/ui/icons/sports-esports";
+import { TerrainIcon } from "@xrf/ui/icons/terrain";
+import { TextureIcon } from "@xrf/ui/icons/texture";
+import { TranslateIcon } from "@xrf/ui/icons/translate";
+import { ViewInArIcon } from "@xrf/ui/icons/view-in-ar";
+import { WbSunnyIcon } from "@xrf/ui/icons/wb-sunny";
 import { CATALOG_ACCENT } from "@xrf/ui/theme";
 
 import { ARCHIVES_EXPLORER_APPLICATION } from "@/applications/archives-explorer";

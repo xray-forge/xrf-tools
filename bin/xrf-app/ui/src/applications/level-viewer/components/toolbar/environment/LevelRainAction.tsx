@@ -5,8 +5,8 @@ import { ERenderRainDropsMode, ERenderRainMode } from "@xrf/ipc/types/xrf-render
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { WaterDropIcon } from "@xrf/ui/icons";
-import { Button } from "@xrf/ui/material";
+import { WaterDropIcon } from "@xrf/ui/icons/water-drop";
+import { Button } from "@xrf/ui/material/button";
 import { ReactElement } from "react";
 
 import { LevelWeatherCollectionSelect } from "@/applications/level-viewer/components/weather/LevelWeatherCollectionSelect";

@@ -1,5 +1,4 @@
-import { Theme } from "@mui/material";
-
+import { Theme } from "#/material/styles";
 import {
   BADGE_FONT_SIZE,
   CODE,

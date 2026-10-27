@@ -1,4 +1,4 @@
-import { BlurOnIcon } from "@xrf/ui/icons";
+import { BlurOnIcon } from "@xrf/ui/icons/blur-on";
 
 import {
   EApplicationGroupId,

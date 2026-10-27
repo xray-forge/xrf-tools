@@ -1,8 +1,10 @@
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorTextAction } from "@xrf/ui/editor/text-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ArchiveIcon, FileOpenIcon, SaveAltIcon } from "@xrf/ui/icons";
-import { Stack } from "@xrf/ui/material";
+import { ArchiveIcon } from "@xrf/ui/icons/archive";
+import { FileOpenIcon } from "@xrf/ui/icons/file-open";
+import { SaveAltIcon } from "@xrf/ui/icons/save-alt";
+import { Stack } from "@xrf/ui/material/stack";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

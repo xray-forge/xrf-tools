@@ -1,6 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Slider, Typography } from "@xrf/ui/material";
+import { Slider } from "@xrf/ui/material/slider";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

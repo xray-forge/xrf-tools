@@ -1,4 +1,4 @@
-import { RouteIcon } from "@xrf/ui/icons";
+import { RouteIcon } from "@xrf/ui/icons/route";
 
 import {
   EApplicationGroupId,

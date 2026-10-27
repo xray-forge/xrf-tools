@@ -1,4 +1,4 @@
-import { LibraryMusicIcon } from "@xrf/ui/icons";
+import { LibraryMusicIcon } from "@xrf/ui/icons/library-music";
 
 import {
   EApplicationGroupId,

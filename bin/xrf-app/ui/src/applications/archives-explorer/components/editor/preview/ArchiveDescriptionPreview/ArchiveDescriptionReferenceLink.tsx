@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ArchiveReference } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Link } from "@xrf/ui/material";
+import { Link } from "@xrf/ui/material/link";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback } from "react";
 

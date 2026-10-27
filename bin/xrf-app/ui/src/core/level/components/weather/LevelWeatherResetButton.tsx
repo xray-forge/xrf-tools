@@ -1,5 +1,5 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Button } from "@xrf/ui/material";
+import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback } from "react";
 
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";

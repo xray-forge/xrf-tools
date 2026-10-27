@@ -5,9 +5,12 @@ import { ArchiveSourceUsage, ArchiveStatistics } from "@xrf/ipc/types/xrf-archiv
 import { Nullable } from "@xrf/types";
 import { DialogHeader } from "@xrf/ui/dialog/header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ContentCopyIcon } from "@xrf/ui/icons";
+import { ContentCopyIcon } from "@xrf/ui/icons/content-copy";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
-import { Alert, CircularProgress, Dialog, DialogContent, TextField } from "@xrf/ui/material";
+import { Alert } from "@xrf/ui/material/alert";
+import { Dialog, DialogContent } from "@xrf/ui/material/dialog";
+import { CircularProgress } from "@xrf/ui/material/progress";
+import { TextField } from "@xrf/ui/material/text-field";
 import { EStatMeasure, IStatBreakdownRow, StatBreakdownTable, StatMeasureToggle } from "@xrf/ui/stats";
 import { cn } from "@xrf/ui/theme";
 import { ChangeEvent, ReactElement, useCallback, useEffect, useId, useMemo, useState } from "react";

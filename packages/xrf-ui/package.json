@@ -5,10 +5,14 @@
   "type": "module",
   "description": "The application's look: its tokens, theme and stylesheets, and the component library it draws with.",
   "exports": {
+    "./icons/*": "./src/icons/*.ts",
+    "./material/*": "./src/material/*.ts",
     "./theme/tailwind.css": "./src/theme/root/tailwind.css",
     "./*": "./src/*/index.ts"
   },
   "imports": {
+    "#/icons/*": "./src/icons/*.ts",
+    "#/material/*": "./src/material/*.ts",
     "#/*": "./src/*/index.ts"
   },
   "scripts": {

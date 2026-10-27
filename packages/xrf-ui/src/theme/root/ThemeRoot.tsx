@@ -1,8 +1,9 @@
 import { EmotionCache } from "@emotion/cache";
 import { CacheProvider } from "@emotion/react";
-import { default as CssBaseline } from "@mui/material/CssBaseline";
-import { Theme, ThemeProvider } from "@mui/material/styles";
 import { ReactElement, ReactNode, useMemo } from "react";
+
+import { CssBaseline } from "#/material/css-baseline";
+import { Theme, ThemeProvider } from "#/material/styles";
 
 import "./tailwind.css";
 import "./base.css";
