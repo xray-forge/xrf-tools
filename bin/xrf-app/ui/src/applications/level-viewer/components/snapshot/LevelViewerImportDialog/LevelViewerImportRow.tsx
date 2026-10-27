@@ -1,13 +1,43 @@
 import { Checkbox, Typography } from "@mui/material";
+import { ABSENT_VALUE } from "@xrf/format";
 import { ChangeEvent, ReactElement, useCallback } from "react";
 
-import { formatLevelViewerImportValue } from "@/applications/level-viewer/components/snapshot/LevelViewerImportDialog/LevelViewerImportDialog.utils";
 import {
   ELevelViewerSnapshotStatus,
   ILevelViewerSnapshotEntry,
 } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
+import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+
+/**
+ * @param key - The value's key, which says how it reads: the weather's clock as a time of day.
+ * @param value - The value, undefined for none.
+ * @returns The value as the dialog shows it.
+ */
+function formatLevelViewerImportValue(key: string, value: unknown): string {
+  if (value === undefined) {
+    return ABSENT_VALUE;
+  }
+
+  if (key === "weather.time" && typeof value === "number") {
+    return formatLevelWeatherTime(value);
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "on" : "off";
+  }
+
+  if (typeof value === "number") {
+    return String(Math.round(value * 1000) / 1000);
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item: unknown) => formatLevelViewerImportValue(key, item)).join(", ");
+  }
+
+  return value === null ? "none" : String(value);
+}
 
 export interface ILevelViewerImportRowProps extends BaseComponentProps {
   entry: ILevelViewerSnapshotEntry;

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
-import { EventBus } from "@wirestate/core";
+import { Container, EventBus } from "@wirestate/core";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
@@ -12,7 +12,7 @@ import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockInjectedService } from "@/fixtures/utils/container";
+import { mockContainer } from "@/fixtures/utils/container";
 
 /** Console defaults setting only the sun's scale, which tells one read from the next. */
 function mockDefaults(sunScale: number): LevelConsoleDefaults {
@@ -50,15 +50,16 @@ describe("LevelLookService session changes", () => {
     let revision: number = 0;
 
     mockIpcCommands({
+      [ELevelsCommand.RESTORE_LEVEL]: mockSessionSnapshot(mockSelectedLevelDescription(), "level", 0),
       [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: () =>
         mockSessionSnapshot(mockDefaults(revision + 1), "level", revision),
     });
 
-    const { container, service } = mockInjectedService(LevelLookService, [LevelLoadService]);
+    // The level the backend still holds, restored as the viewer restores it.
+    const container: Container = mockContainer([LevelLoadService, LevelLookService]).provision();
+    const service: LevelLookService = container.get(LevelLookService);
 
-    await service.open({ sessionId: "level", revision: 0, value: mockSelectedLevelDescription() });
-
-    expect(service.defaults.value?.sunScale).toBe(1);
+    await waitFor(() => expect(service.defaults.value?.sunScale).toBe(1));
 
     const reads: number = countReads();
 
@@ -88,5 +89,7 @@ describe("LevelLookService session changes", () => {
 
     await waitFor(() => expect(service.defaults.value?.sunScale).toBe(3));
     expect(countReads()).toBe(reads + 1);
+
+    container.deprovision();
   });
 });

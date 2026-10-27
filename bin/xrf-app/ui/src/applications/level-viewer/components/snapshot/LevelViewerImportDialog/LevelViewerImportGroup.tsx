@@ -2,10 +2,32 @@ import { Checkbox, Typography } from "@mui/material";
 import { formatCount } from "@xrf/format";
 import { ChangeEvent, ReactElement, useCallback, useMemo } from "react";
 
-import { toLevelViewerImportGroupLabel } from "@/applications/level-viewer/components/snapshot/LevelViewerImportDialog/LevelViewerImportDialog.utils";
 import { LevelViewerImportRow } from "@/applications/level-viewer/components/snapshot/LevelViewerImportDialog/LevelViewerImportRow";
 import { ILevelViewerSnapshotEntry } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
 import { BaseComponentProps } from "@/lib/dom/element-types";
+
+/** The parts of a snapshot that are not renderer settings, by their key, as the dialog heads them. */
+const GROUP_LABELS: Readonly<Record<string, string>> = {
+  camera: "Camera",
+  look: "Look",
+  options: "Toolbar",
+  output: "Output",
+  settings: "Renderer",
+  weather: "Weather",
+};
+
+/**
+ * @param group - A part of the view as entries name it: `camera`, `settings.ambientOcclusion`.
+ * @returns Its heading: a fixed name, or a renderer group's key in words.
+ */
+function toLevelViewerImportGroupLabel(group: string): string {
+  const words: string = group
+    .replace(/^settings\./, "")
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .toLowerCase();
+
+  return GROUP_LABELS[group] ?? `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
+}
 
 export interface ILevelViewerImportGroupProps extends BaseComponentProps {
   group: string;

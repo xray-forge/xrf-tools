@@ -1,33 +1,28 @@
 import { describe, expect, it } from "@jest/globals";
-import { TVector3 } from "@xrf/math";
 
-import { ILevelCamera } from "./level-camera";
-import { toLevelCameraReading } from "./level-camera-reading";
+import {
+  formatLevelFacing,
+  formatLevelPoint,
+  formatLevelPosition,
+  ILevelCamera,
+} from "@/core/level/lib/camera/level-camera";
 
-function placed(position: TVector3, target: TVector3): ILevelCamera {
-  return toLevelCameraReading({ position: [...position], target: [...target] });
-}
+const CAMERA: ILevelCamera = {
+  heading: Math.PI / 2,
+  pitch: -Math.PI / 12,
+  position: { x: -243.75, y: 12.5, z: 87.25 },
+};
 
-describe("toLevelCameraReading", () => {
-  // The packer negates `z`, so a readout taken straight off the camera would disagree with the level's own data on
-  // one axis - and only on one, which is exactly the kind of wrong that goes unnoticed.
-  it("states the position in the level's own axes", () => {
-    expect(placed([10, 20, 30], [10, 20, 0]).position).toEqual({ x: 10, y: 20, z: -30 });
+describe("level camera readout", () => {
+  it("states a point a decimal an axis, in the engine's own axis order", () => {
+    expect(formatLevelPoint({ x: 1, y: -2.04, z: 3.96 })).toBe("x 1.0 y -2.0 z 4.0");
   });
 
-  it("reads a heading in the same axes as the position", () => {
-    // Looking along renderer -z, which is the level's +z, and so a heading of zero.
-    expect(placed([0, 0, 0], [0, 0, -1]).heading).toBeCloseTo(0);
-    // A quarter turn from it, which the engine measures towards -x.
-    expect(placed([0, 0, 0], [-1, 0, 0]).heading).toBeCloseTo(Math.PI / 2);
+  it("states where the camera stands as a point", () => {
+    expect(formatLevelPosition(CAMERA)).toBe("x -243.8 y 12.5 z 87.3");
   });
 
-  it("reads pitch positive above the horizon", () => {
-    expect(placed([0, 0, 0], [0, 1, -1]).pitch).toBeCloseTo(Math.PI / 4);
-    expect(placed([0, 0, 0], [0, -1, -1]).pitch).toBeCloseTo(-Math.PI / 4);
-  });
-
-  it("reads where it faces from where it stands, not from the origin", () => {
-    expect(placed([5, 0, 5], [5, 0, 4]).heading).toBeCloseTo(0);
+  it("states which way the camera faces in degrees, heading then pitch", () => {
+    expect(formatLevelFacing(CAMERA)).toBe("h 90.0° p -15.0°");
   });
 });

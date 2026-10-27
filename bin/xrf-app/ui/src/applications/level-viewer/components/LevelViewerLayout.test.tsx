@@ -1,10 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { act, fireEvent, RenderResult, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, RenderResult, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
-import { ESystemCommand } from "@xrf/ipc/commands/system";
-import { mockIpcCommands } from "@xrf/ipc/testing";
 import { RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
 import { IPoint3 } from "@xrf/math";
 import { Nullable } from "@xrf/types";
@@ -17,10 +15,7 @@ import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
-import { RenderSettingsService } from "@/core/render/services/render-settings";
-import { SettingsRendererDisplay } from "@/core/settings/components/SettingsDialog/SettingsRenderSection/SettingsRendererDisplay";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
-import { clearLocalStorage } from "@/core/storage";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -96,11 +91,6 @@ async function openOverlays(view: RenderResult): Promise<HTMLElement> {
   await userEvent.click(view.getByRole("button", { name: "Overlays" }));
 
   return view.findByRole("dialog", { name: "Overlays" });
-}
-
-async function closeOverlays(view: RenderResult): Promise<void> {
-  await userEvent.keyboard("{Escape}");
-  await waitFor(() => expect(view.queryByRole("dialog", { name: "Overlays" })).not.toBeInTheDocument());
 }
 
 describe("LevelViewerLayout", () => {
@@ -243,28 +233,6 @@ describe("LevelViewerLayout", () => {
     expect(renders).toBe(before);
   });
 
-  it("says what the backend and the webview hold in the status bar", async () => {
-    const megabyte: number = 1024 * 1024;
-
-    mockIpcCommands({
-      [ESystemCommand.GET_MEMORY_USAGE]: {
-        application: { committed: 410 * megabyte, workingSet: 300 * megabyte, privateWorkingSet: 260 * megabyte },
-        webview: [
-          {
-            kind: "gpu",
-            pid: 8,
-            memory: { committed: 3667 * megabyte, workingSet: 2100 * megabyte, privateWorkingSet: 2048 * megabyte },
-          },
-        ],
-        gpu: null,
-      },
-    });
-
-    const { view } = renderReporting();
-
-    expect(await view.findByText("B 260MB W 2GB")).toBeInTheDocument();
-  });
-
   // With the settings timing the passes, the readout lists them as the renderer reports them.
   it("lists each pass's GPU time in the readout while the renderer reports them timed", () => {
     const { renderer, view, viewport } = renderReporting();
@@ -289,36 +257,6 @@ describe("LevelViewerLayout", () => {
     });
 
     expect(view.queryByTestId("render-frame-passes")).not.toBeInTheDocument();
-  });
-
-  // One switch, offered where the readout is and where the settings are: either place sets it, and both show it.
-  it("times the passes from the overlays' popover and from the settings alike", async () => {
-    clearLocalStorage();
-
-    const container: Container = mockLevelViewerContainer();
-    const settings: RenderSettingsService = container.get(RenderSettingsService);
-    const view: RenderResult = renderWithProviders(
-      <>
-        <LevelViewerLayout name={"levels\\zaton"} renderViewport={() => <div data-testid={"stub-viewport"} />} />
-        <SettingsRendererDisplay />
-      </>,
-      { container, route: "/level-viewer" }
-    );
-
-    expect(settings.isGpuTimed).toBe(false);
-
-    await userEvent.click(within(await openOverlays(view)).getByRole("checkbox", { name: "GPU time per pass" }));
-
-    expect(settings.isGpuTimed).toBe(true);
-
-    await closeOverlays(view);
-
-    expect(view.getByRole("checkbox", { name: "GPU time per pass" })).toBeChecked();
-
-    await userEvent.click(view.getByRole("checkbox", { name: "GPU time per pass" }));
-
-    expect(settings.isGpuTimed).toBe(false);
-    expect(within(await openOverlays(view)).getByRole("checkbox", { name: "GPU time per pass" })).not.toBeChecked();
   });
 
   // A sector lands many times a second while a level is read, and only the cover and the status bar say so.

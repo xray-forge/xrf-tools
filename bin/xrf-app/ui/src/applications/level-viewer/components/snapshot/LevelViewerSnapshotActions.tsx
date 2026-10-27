@@ -3,9 +3,12 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { LevelViewerImportDialog } from "@/applications/level-viewer/components/snapshot/LevelViewerImportDialog";
-import { ILevelViewerSnapshotEntry } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
+import {
+  ILevelViewerImport,
+  ILevelViewerSnapshotEntry,
+} from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
 import { LEVEL_VIEWER_FILE_MENU_EXTENSION } from "@/applications/level-viewer/menus";
-import { ILevelViewerImport, LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
+import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
 import { useEditorMenus } from "@/core/shell/editor-shell";
 import { IMenuContribution } from "@/core/shell/menu/lib";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";

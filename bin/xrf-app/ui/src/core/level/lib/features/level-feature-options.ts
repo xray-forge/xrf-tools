@@ -100,6 +100,9 @@ export type TLevelLightsOptions = Pick<
   "isLevelLights" | "isShadowed" | "isVolumetric" | "shadowFilter"
 >;
 
+/** What a view resolves its frame at where it sets its own, over the settings' resolution and scale. */
+export type TLevelOutputOptions = Partial<{ resolution: ERenderResolution; scale: number }>;
+
 /**
  * What a level view sets over the renderer's settings for itself: whatever it leaves unset follows them.
  */
@@ -146,27 +149,6 @@ export interface ILevelFeatureOptions {
   output: TLevelOutputOptions;
   shadows: Partial<TLevelShadowOptions>;
   water: Partial<TLevelWaterOptions>;
-}
-
-/** What a view resolves its frame at where it sets its own, over the settings' resolution and scale. */
-export type TLevelOutputOptions = Partial<{ resolution: ERenderResolution; scale: number }>;
-
-/**
- * @param stored - What was stored for a view's features.
- * @returns The output it set, each part dropped where it is not one the settings offer.
- */
-function toLevelOutputOptions(stored: unknown): TLevelOutputOptions {
-  const output: Record<string, unknown> =
-    (stored as { output?: Record<string, unknown> } | null | undefined)?.output ?? {};
-  const resolution: ERenderResolution | undefined = RENDER_RESOLUTIONS.find((it) => it === output.resolution);
-  const scale: unknown = output.scale;
-  const isScale: boolean =
-    typeof scale === "number" && scale >= RENDER_OUTPUT_SCALES.min && scale <= RENDER_OUTPUT_SCALES.max;
-
-  return {
-    ...(resolution ? { resolution } : {}),
-    ...(isScale ? { scale: scale as number } : {}),
-  };
 }
 
 /** The modes a view picks from, which smooth something: turning it off is the toggle's. */
@@ -285,6 +267,15 @@ const LEVEL_GROUP_KEYS: {
   volumetric: { mode: true, intensity: true, anisotropy: true, distance: true },
 };
 
+/** The upscaling a view may set, which no toggle turns off: every setting of it. */
+const LEVEL_UPSCALING_KEYS: TKeyTable<TRenderUpscalingSettings> = {
+  dlssPreset: true,
+  isRayReconstructed: true,
+  rayReconstructionPreset: true,
+  scale: true,
+  sharpening: true,
+};
+
 /**
  * @param stored - What was stored for a view's features, parsed from wherever it is kept.
  * @returns What the view sets, held to the renderer's own bounds, with everything a view does not set dropped.
@@ -324,10 +315,11 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     reflections: pick("reflections"),
     shadows: pick("shadows"),
     upscaling: Object.fromEntries(
-      (["scale", "sharpening", "dlssPreset", "isRayReconstructed", "rayReconstructionPreset"] as const)
+      (Object.keys(LEVEL_UPSCALING_KEYS) as Array<keyof TRenderUpscalingSettings>)
         .filter((key) => overrides.upscaling?.[key] !== undefined && overrides.upscaling?.[key] !== null)
         .map((key) => [key, overrides.upscaling?.[key]])
     ),
+    // The output is the view's own rather than a renderer setting, so the schema reads none of it: it is read as stored.
     output: toLevelOutputOptions(stored),
     volumetric: pick("volumetric"),
     water: pick("water"),
@@ -516,4 +508,22 @@ export function toLevelOutput(
   scale: number
 ): Required<TLevelOutputOptions> {
   return { resolution: view.resolution ?? resolution, scale: view.scale ?? scale };
+}
+
+/**
+ * @param stored - What was stored for a view's features.
+ * @returns The output it set, each part dropped where it is not one the settings offer.
+ */
+function toLevelOutputOptions(stored: unknown): TLevelOutputOptions {
+  const output: Record<string, unknown> =
+    (stored as { output?: Record<string, unknown> } | null | undefined)?.output ?? {};
+  const resolution: ERenderResolution | undefined = RENDER_RESOLUTIONS.find((it) => it === output.resolution);
+  const scale: unknown = output.scale;
+  const isScale: boolean =
+    typeof scale === "number" && scale >= RENDER_OUTPUT_SCALES.min && scale <= RENDER_OUTPUT_SCALES.max;
+
+  return {
+    ...(resolution ? { resolution } : {}),
+    ...(isScale ? { scale: scale as number } : {}),
+  };
 }

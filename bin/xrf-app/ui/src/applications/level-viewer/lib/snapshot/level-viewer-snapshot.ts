@@ -64,6 +64,19 @@ export interface ILevelViewerSnapshotEntry {
   reason?: string;
 }
 
+/** What an import applied of the values chosen, by their keys, and those it could not, with why. */
+export interface ILevelViewerSnapshotApplied {
+  applied: Array<string>;
+  failed: Array<{ key: string; reason: string }>;
+}
+
+/** A snapshot read for import, with its entries set against the view as it was read. */
+export interface ILevelViewerImport {
+  fileName: string;
+  snapshot: ILevelViewerSnapshot;
+  entries: Array<ILevelViewerSnapshotEntry>;
+}
+
 /** What a snapshot is compared against besides the view: the level open, and what fills a partial look. */
 export interface ILevelViewerSnapshotContext {
   level: Nullable<string>;

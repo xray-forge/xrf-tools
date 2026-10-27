@@ -5,10 +5,11 @@ import { ERenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
 import {
   ELevelViewerSnapshotStatus,
   ILevelViewerSnapshot,
+  ILevelViewerSnapshotApplied,
   ILevelViewerSnapshotEntry,
   LEVEL_VIEWER_SNAPSHOT_FORMAT,
 } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
-import { ILevelViewerSnapshotApplied, LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
+import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
 import { ILevelViewContainerDescriptor, mockLevelViewContainer } from "@/core/level/fixtures/level-container";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { clearLocalStorage } from "@/core/storage";

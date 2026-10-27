@@ -19,7 +19,9 @@ import {
 import {
   compareLevelViewerSnapshot,
   ELevelViewerSnapshotStatus,
+  ILevelViewerImport,
   ILevelViewerSnapshot,
+  ILevelViewerSnapshotApplied,
   ILevelViewerSnapshotEntry,
   LEVEL_VIEWER_SNAPSHOT_CAMERA_DECIMALS,
   LEVEL_VIEWER_SNAPSHOT_FORMAT,
@@ -50,19 +52,6 @@ import { mergeRenderFeatureOverrides } from "@/core/render/lib/settings/render-f
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { flattenDottedRecord, unflattenDottedRecord } from "@/lib/object/dotted-record";
-
-/** What an import applied of the values chosen, by their keys, and those it could not, with why. */
-export interface ILevelViewerSnapshotApplied {
-  applied: Array<string>;
-  failed: Array<{ key: string; reason: string }>;
-}
-
-/** A snapshot read for import, with its entries set against the view as it was read. */
-export interface ILevelViewerImport {
-  fileName: string;
-  snapshot: ILevelViewerSnapshot;
-  entries: Array<ILevelViewerSnapshotEntry>;
-}
 
 /**
  * A level view as a file holds it: what the viewer draws, from where and under what weather, taken whole and given
