@@ -299,7 +299,10 @@ describe("LevelSpawnPanel", () => {
     );
     await waitFor(() => expect(load.spawnRevision).toBe(1));
     act(() =>
-      viewportService.notePickRelocated({ ...(viewportService.picked as TLevelPick), object: renumbered.objects[2] })
+      viewportService.notePickRelocated({
+        ...(viewportService.picked as Extract<TLevelPick, { kind: ELevelPick.SPAWN }>),
+        object: renumbered.objects[2],
+      })
     );
 
     expect(view.getByRole("treeitem", { name: "crate_1", selected: true })).toBeInTheDocument();
