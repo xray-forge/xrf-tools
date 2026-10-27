@@ -64,7 +64,7 @@ export const VISUALS_EXPLORER_HELP: IToolHelp = {
       "still renders.",
     "References the browsed tree cannot answer are looked for in whatever `Also search in` named when it was opened, " +
       "so a mod tree carrying only what it changed still resolves the textures it did not.",
-    "The session survives a reload; leaving the application closes the backend selection.",
+    "The session survives a reload; leaving the tool closes the backend selection.",
   ],
   limitations: [
     "Read-only: no editing, saving, or export.",

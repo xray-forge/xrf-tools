@@ -21,7 +21,7 @@ export const VISUALS_SEQUENCER_HELP: IToolHelp = {
       "those reported durations.",
   ],
   limitations: [
-    "The track is temporary: opening another model, leaving the application, or reloading loses it. There is " +
+    "The track is temporary: opening another model, leaving the tool, or reloading loses it. There is " +
       "no sequence save or export.",
     "The sequencer previews existing motions from one model. It does not author animation frames or blend transitions.",
     "Opening accepts a loose OGF file, not a model selected inside an archive. A model without usable motions " +
