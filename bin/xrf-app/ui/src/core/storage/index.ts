@@ -1,5 +1,8 @@
 export * from "./keys";
 export * from "./read-write";
+export * from "./stored-value";
+export * from "./stored-value-codec";
+export * from "./use-stored-value";
 
 /**
  * Named one by one rather than re-exported wholesale, so `buildStorageKey` and `bumpLocalStorageRevision` stay out of

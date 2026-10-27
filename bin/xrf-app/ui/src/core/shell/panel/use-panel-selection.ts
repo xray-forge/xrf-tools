@@ -1,8 +1,14 @@
 import { Nullable } from "@xrf/types";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback } from "react";
 
 import { IEditorPanel, TEditorPanelSide } from "@/core/shell/editor-shell";
-import { getLocalStorageValue, getPanelSelectionStorageKey, setLocalStorageValue } from "@/core/storage";
+import { getPanelSelectionStorageKey, IStoredValueCodec, textCodec, useStoredValue } from "@/core/storage";
+
+/** The panel last opened, kept verbatim: an empty id for one closed by hand, or null where none was chosen. */
+const SELECTION_CODEC: IStoredValueCodec<Nullable<string>> = textCodec(
+  (stored: Nullable<string>) => stored,
+  (id: Nullable<string>) => id
+);
 
 export interface IPanelSelection {
   activePanel: Nullable<IEditorPanel>;
@@ -24,30 +30,19 @@ export function usePanelSelection(
   panels: Array<IEditorPanel>,
   selectionScope: string
 ): IPanelSelection {
-  const storageKey: string = getPanelSelectionStorageKey(side, selectionScope);
-
-  const [activeId, setActiveId] = useState<Nullable<string>>(null);
+  const [activeId, onOpenPanel] = useStoredValue<Nullable<string>>(
+    getPanelSelectionStorageKey(side, selectionScope),
+    SELECTION_CODEC
+  );
 
   const selectedId: Nullable<string> = activeId ?? panels.find((panel) => panel.isOpenByDefault !== false)?.id ?? null;
   const activePanel: Nullable<IEditorPanel> = panels.find((panel) => panel.id === selectedId) ?? null;
   const activePanelId: Nullable<string> = activePanel?.id ?? null;
-
-  const onOpenPanel = useCallback(
-    (next: string) => {
-      setActiveId(next);
-      setLocalStorageValue(storageKey, next);
-    },
-    [storageKey]
-  );
 
   const onTogglePanel = useCallback(
     (id: string) => onOpenPanel(activePanelId === id ? "" : id),
     [activePanelId, onOpenPanel]
   );
 
-  useEffect(() => {
-    setActiveId(getLocalStorageValue(storageKey));
-  }, [storageKey]);
-
-  return { activePanel, activePanelId, onOpenPanel: onOpenPanel, onTogglePanel };
+  return { activePanel, activePanelId, onOpenPanel, onTogglePanel };
 }

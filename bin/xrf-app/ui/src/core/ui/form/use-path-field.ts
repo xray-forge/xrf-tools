@@ -8,7 +8,7 @@ import {
   getFieldRecentsStorageKey,
   getFieldValueStorageKey,
   getLocalStorageValue,
-  setLocalStorageValue,
+  setLocalStorageValueSafe,
 } from "@/core/storage";
 import { resolveDialogStart } from "@/core/ui/form/file-picker/dialog-start";
 import { usePathState } from "@/core/ui/form/file-picker/use-path-state";
@@ -117,14 +117,14 @@ export function usePathField({
     (next: Nullable<string>): void => {
       supersedeSeed();
       setPath(next);
-      setLocalStorageValue(storageKey, next);
+      setLocalStorageValueSafe(storageKey, next);
     },
     [setPath, storageKey, supersedeSeed]
   );
 
   const clear = useCallback((): void => {
     setPath(null);
-    setLocalStorageValue(storageKey, null);
+    setLocalStorageValueSafe(storageKey, null);
     requestSeed();
   }, [requestSeed, setPath, storageKey]);
 
@@ -145,7 +145,7 @@ export function usePathField({
       return;
     }
 
-    setLocalStorageValue(storageKey, picked);
+    setLocalStorageValueSafe(storageKey, picked);
 
     history.record(picked);
   }, [history, requestSeed, selectPath, storageKey, supersedeSeed, value]);

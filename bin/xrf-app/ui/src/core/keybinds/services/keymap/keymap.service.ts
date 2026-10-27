@@ -9,7 +9,7 @@ import { parseChord } from "@/core/keybinds/lib/chord";
 import { buildKeymap, IKeymap } from "@/core/keybinds/lib/keymap";
 import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
 import { IApplicationDescriptor } from "@/core/routing/application";
-import { KEYBINDS_STORAGE_KEY, parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/core/storage";
+import { jsonCodec, KEYBINDS_STORAGE_KEY, StoredValue } from "@/core/storage";
 import { EMPTY_ARRAY } from "@/lib/types/array";
 
 /** Stored shape of the overlay: command id to the chords bound in its place. */
@@ -22,8 +22,10 @@ type TKeybindOverrides = Readonly<Record<string, ReadonlyArray<string>>>;
 export class KeymapService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  @Observable()
-  private overrides: TKeybindOverrides = KeymapService.readOverrides();
+  private readonly overrides: StoredValue<TKeybindOverrides> = new StoredValue(
+    KEYBINDS_STORAGE_KEY,
+    jsonCodec(KeymapService.readOverrides, KeymapService.writeOverrides)
+  );
 
   @Observable()
   private application: Nullable<IApplicationDescriptor> = null;
@@ -31,11 +33,10 @@ export class KeymapService {
   /**
    * Reads the overlay, discarding entries it cannot use rather than the whole map.
    *
+   * @param stored - The parsed overlay, `null` when none was stored.
    * @returns Usable overrides, or an empty map.
    */
-  private static readOverrides(): TKeybindOverrides {
-    const stored: unknown = parseLocalStorageValueSafe(KEYBINDS_STORAGE_KEY);
-
+  private static readOverrides(stored: unknown): TKeybindOverrides {
     if (stored === null || typeof stored !== "object" || Array.isArray(stored)) {
       return {};
     }
@@ -63,6 +64,15 @@ export class KeymapService {
     }
 
     return usable;
+  }
+
+  /**
+   * @param overrides - The overlay to keep.
+   * @returns The overlay as JSON; an emptied one removes the key rather than storing `{}`, so nothing declared-only
+   *   leaves a trace.
+   */
+  private static writeOverrides(overrides: TKeybindOverrides): Nullable<string> {
+    return Object.keys(overrides).length > 0 ? JSON.stringify(overrides) : null;
   }
 
   /**
@@ -110,7 +120,7 @@ export class KeymapService {
    * @returns Its effective chords.
    */
   public getChords(command: IKeybindCommand): ReadonlyArray<string> {
-    return this.overrides[command.id] ?? command.chords;
+    return this.overrides.value[command.id] ?? command.chords;
   }
 
   /**
@@ -131,7 +141,7 @@ export class KeymapService {
    */
   @BoundAction()
   public setChords(commandId: string, chords: Nullable<ReadonlyArray<string>>): void {
-    const next: Record<string, ReadonlyArray<string>> = { ...this.overrides };
+    const next: Record<string, ReadonlyArray<string>> = { ...this.overrides.value };
 
     if (chords === null) {
       delete next[commandId];
@@ -139,10 +149,7 @@ export class KeymapService {
       next[commandId] = [...chords];
     }
 
-    this.overrides = next;
+    this.overrides.set(next);
     this.log.info("Rebound command:", commandId, chords);
-
-    // An emptied overlay removes the key rather than storing `{}`, so nothing declared-only leaves a trace.
-    setLocalStorageValueSafe(KEYBINDS_STORAGE_KEY, Object.keys(next).length > 0 ? JSON.stringify(next) : null);
   }
 }

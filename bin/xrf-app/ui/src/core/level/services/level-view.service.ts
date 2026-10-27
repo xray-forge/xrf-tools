@@ -1,5 +1,5 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, RefObservable } from "@wirestate/mobx";
+import { BoundAction, Computed, RefObservable } from "@wirestate/mobx";
 import { Logger } from "@xrf/logging";
 
 import { ILevelCameraOptions, toLevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
@@ -12,12 +12,7 @@ import {
   ILevelViewOptions,
 } from "@/core/level/lib/view/level-view-options";
 import { listUnkeptRenderSettings } from "@/core/render/lib/settings/render-feature-choice";
-import {
-  LEVEL_CAMERA_STORAGE_KEY,
-  LEVEL_FEATURES_STORAGE_KEY,
-  parseLocalStorageValueSafe,
-  setLocalStorageValueSafe,
-} from "@/core/storage";
+import { jsonCodec, LEVEL_CAMERA_STORAGE_KEY, LEVEL_FEATURES_STORAGE_KEY, StoredValue } from "@/core/storage";
 
 /**
  * How a level is drawn: what the viewer has switched on, rather than what the level is.
@@ -34,26 +29,38 @@ export class LevelViewService {
   @RefObservable()
   public hemiStrength: number = DEFAULT_LEVEL_HEMI_STRENGTH;
 
-  /** What the camera sees and how it answers input: a preference, kept over runs. */
-  @RefObservable()
-  public cameraOptions: ILevelCameraOptions = toLevelCameraOptions(
-    parseLocalStorageValueSafe(LEVEL_CAMERA_STORAGE_KEY)
-  );
-
   /** How far trees are drawn in full before their impostors take over. */
   @RefObservable()
   public lod: ILevelLodOptions = DEFAULT_LEVEL_LOD_OPTIONS;
+
+  /** What the viewport shows of its surfaces: the frame as dressed, as clay or by shader, or one of its targets. */
+  @RefObservable()
+  public shading: ELevelShading = ELevelShading.FINAL;
+
+  private readonly storedCameraOptions: StoredValue<ILevelCameraOptions> = new StoredValue(
+    LEVEL_CAMERA_STORAGE_KEY,
+    jsonCodec(toLevelCameraOptions)
+  );
+
+  private readonly storedFeatures: StoredValue<ILevelFeatureOptions> = new StoredValue(
+    LEVEL_FEATURES_STORAGE_KEY,
+    jsonCodec(LevelViewService.readFeatures)
+  );
+
+  /** What the camera sees and how it answers input: a preference, kept over runs. */
+  @Computed()
+  public get cameraOptions(): ILevelCameraOptions {
+    return this.storedCameraOptions.value;
+  }
 
   /**
    * What the view sets over the renderer's features for itself: antialiasing, shadows, occlusion, grass and lights. A
    * preference, kept over runs.
    */
-  @RefObservable()
-  public features: ILevelFeatureOptions = LevelViewService.readFeatures();
-
-  /** What the viewport shows of its surfaces: the frame as dressed, as clay or by shader, or one of its targets. */
-  @RefObservable()
-  public shading: ELevelShading = ELevelShading.FINAL;
+  @Computed()
+  public get features(): ILevelFeatureOptions {
+    return this.storedFeatures.value;
+  }
 
   @BoundAction()
   public setOptions(options: ILevelViewOptions): void {
@@ -84,8 +91,7 @@ export class LevelViewService {
 
   @BoundAction()
   public setCameraOptions(cameraOptions: ILevelCameraOptions): void {
-    this.cameraOptions = cameraOptions;
-    setLocalStorageValueSafe(LEVEL_CAMERA_STORAGE_KEY, JSON.stringify(cameraOptions));
+    this.storedCameraOptions.set(cameraOptions);
   }
 
   @BoundAction()
@@ -111,15 +117,14 @@ export class LevelViewService {
       this.log.warn("View features the schema does not take, left to the settings:", unkept);
     }
 
-    this.features = kept;
-    setLocalStorageValueSafe(LEVEL_FEATURES_STORAGE_KEY, JSON.stringify(kept));
+    this.storedFeatures.set(kept);
   }
 
   /**
+   * @param stored - The parsed stored features, `null` when none were stored.
    * @returns The stored features, or none where none were stored; a setting the schema does not take is dropped.
    */
-  private static readFeatures(): ILevelFeatureOptions {
-    const stored: unknown = parseLocalStorageValueSafe(LEVEL_FEATURES_STORAGE_KEY);
+  private static readFeatures(stored: unknown): ILevelFeatureOptions {
     const features: ILevelFeatureOptions = toLevelFeatureOptions(stored);
     const unkept: Array<string> = listUnkeptRenderSettings(stored, features);
 
