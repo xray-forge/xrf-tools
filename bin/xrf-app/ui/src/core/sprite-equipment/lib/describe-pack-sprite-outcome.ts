@@ -1,3 +1,5 @@
+import { formatCount } from "@xrf/format";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
 
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
@@ -21,7 +23,7 @@ export function describePackSpriteOutcome(output: string, outcome: IJobOutcome<E
     return describeJobFailure("Could not pack equipment sprite", output, error);
   }
 
-  if (result?.outcome === "cancelled") {
+  if (result?.outcome === EJobOutcome.CANCELLED) {
     return {
       details: ["Nothing was written; the sheet is saved only once every icon is drawn.", output].join("\n"),
       severity: ENotificationSeverity.INFO,
@@ -33,7 +35,7 @@ export function describePackSpriteOutcome(output: string, outcome: IJobOutcome<E
     details: output,
     severity: result?.skippedCount ? ENotificationSeverity.WARNING : ENotificationSeverity.SUCCESS,
     title: result?.skippedCount
-      ? `Packed ${result.packedCount} icon(s), ${result.skippedCount} without an image`
-      : `Packed ${result?.packedCount ?? 0} icon(s)`,
+      ? `Packed ${formatCount(result.packedCount)} icon(s), ${formatCount(result.skippedCount)} without an image`
+      : `Packed ${formatCount(result?.packedCount ?? 0)} icon(s)`,
   };
 }

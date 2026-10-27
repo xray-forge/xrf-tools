@@ -1,29 +1,53 @@
-import { Chip, Grid } from "@mui/material";
-import { formatDuration } from "@xrf/format";
+import { formatCount, formatDuration } from "@xrf/format";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
 import { ReactElement } from "react";
 
-interface IEquipmentPackResultProps {
+import { CommandResult } from "@/core/ui/command-result/CommandResult";
+import { BaseComponentProps } from "@/lib/dom/element-types";
+
+interface IEquipmentPackResultProps extends BaseComponentProps {
   result: EquipmentSpritePackResult;
 }
 
-export function EquipmentPackResult({ result }: IEquipmentPackResultProps): ReactElement {
-  return (
-    <div className={"flex max-w-135 flex-col p-4"}>
-      <Grid className={"justify-center gap-2"} container={true}>
-        <Chip variant={"outlined"} color={"success"} label={formatDuration(result.duration)} />
-        <Chip
-          variant={"outlined"}
-          color={"success"}
-          label={`${result.packedCount + result.skippedCount} files total`}
-        />
-      </Grid>
+/** What a pack wrote: the icons drawn, the ones without an image, and the sheet's size. */
+export function EquipmentPackResult({
+  "data-testid": dataTestId = "equipment-pack-result",
+  id,
+  className,
+  result,
+}: IEquipmentPackResultProps): ReactElement {
+  // The sheet is written once at the end, so a stopped pack wrote nothing, whatever it had drawn.
+  if (result.outcome === EJobOutcome.CANCELLED) {
+    return (
+      <CommandResult
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        headline={"Stopped before writing. The sprite was left unchanged."}
+        tone={"info"}
+        stats={[{ label: "elapsed", value: formatDuration(result.duration) }]}
+      />
+    );
+  }
 
-      <Grid className={"mt-2 justify-center gap-2 px-4 py-0"} container={true}>
-        <Chip variant={"outlined"} label={`${result.packedCount} file(s) packed`} />
-        <Chip variant={"outlined"} label={`${result.skippedCount} file(s) skipped`} />
-        <Chip variant={"outlined"} label={`${result.savedWidth}x${result.savedHeight} sprite`} />
-      </Grid>
-    </div>
+  return (
+    <CommandResult
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      headline={
+        result.skippedCount
+          ? `Packed ${formatCount(result.packedCount)} icon(s), ${formatCount(result.skippedCount)} without an image`
+          : `Packed ${formatCount(result.packedCount)} icon(s)`
+      }
+      tone={result.skippedCount ? "warning" : "success"}
+      stats={[
+        { label: "packed", value: result.packedCount },
+        { label: "skipped", value: result.skippedCount, tone: result.skippedCount ? "warning" : undefined },
+        { label: "sprite", value: `${result.savedWidth} × ${result.savedHeight}` },
+        { label: "elapsed", value: formatDuration(result.duration) },
+      ]}
+    />
   );
 }
