@@ -39,7 +39,7 @@ export interface IPickerFormProps extends BaseComponentProps {
 }
 
 /**
- * Shared shell layout for the editors' "pick some paths, run a command, read the output" screens.
+ * Shared shell layout for the tools' "pick some paths, run a command, read the output" screens.
  */
 export function PickerForm({
   "data-testid": dataTestId,

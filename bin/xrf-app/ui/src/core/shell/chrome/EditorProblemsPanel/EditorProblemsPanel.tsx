@@ -17,7 +17,7 @@ export interface IEditorProblemLocation {
   line: Nullable<number>;
 }
 
-/** A problem reported while reading an editor project. */
+/** A problem reported while reading a tool's project. */
 export interface IEditorProblem {
   rule: string;
   subject: Nullable<string>;

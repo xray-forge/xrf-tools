@@ -9,7 +9,7 @@ export interface IShellStatusSegment {
   details: ReadonlyArray<IShellStatusDetail>;
 }
 
-/** What an editor publishes to the status bar: plain text, or text with its details behind it. */
+/** What a tool publishes to the status bar: plain text, or text with its details behind it. */
 export type TShellStatusSegment = string | IShellStatusSegment;
 
 /**

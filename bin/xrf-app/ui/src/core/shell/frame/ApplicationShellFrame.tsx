@@ -12,6 +12,8 @@ import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@
 import { useCurrentTool } from "@/core/routing/current-tool.context";
 import { APPLICATION_SOURCE, IToolDescriptor } from "@/core/routing/tool";
 import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
+import { TShellContributionTool } from "@/core/shell/contributions/shell-contributions";
+import { useShellContributionTool } from "@/core/shell/contributions/use-shell-contributions";
 import { ToolCrash } from "@/core/shell/error/ToolCrash";
 import { ToolScope } from "@/core/shell/frame/ToolScope";
 import { useShellToolRoute } from "@/core/shell/frame/use-shell-tool-route";
@@ -47,6 +49,7 @@ export function ApplicationShellFrame({
   children,
 }: IApplicationShellFrameProps): ReactElement {
   const tool: Nullable<IToolDescriptor> = useCurrentTool();
+  const toolKey: TShellContributionTool = useShellContributionTool();
   const notify: TEmitNotification = useEmitNotification();
   const sides: TFrameSides = useFrameSides();
 
@@ -57,8 +60,6 @@ export function ApplicationShellFrame({
   // The element the routed content portals its toolbar into. Held here rather than in a provider of
   // its own: the frame hands it down and never reads it back.
   const [toolbarHost, setToolbarHost] = useState<Nullable<HTMLElement>>(null);
-
-  const toolPath: string = tool?.path ?? "root";
 
   const onError = useCallback((props: IErrorBoundaryFallbackProps) => <ToolCrash {...props} />, []);
 
@@ -109,7 +110,7 @@ export function ApplicationShellFrame({
 
           <div className={"flex min-h-0 min-w-0 grow overflow-hidden rounded-surface border border-divider"}>
             <ErrorBoundary resetKey={pathname} fallback={onError} onCaught={onCaught}>
-              <Suspense key={toolPath} fallback={<ToolLoader />}>
+              <Suspense key={toolKey} fallback={<ToolLoader />}>
                 <ToolScope tool={tool}>
                   <ApplicationPanelSlot frameSide={sides.left} />
 
