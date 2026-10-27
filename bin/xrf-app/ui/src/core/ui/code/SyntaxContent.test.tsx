@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { ESyntaxLanguage } from "@xrf/syntax";
 
-import { MAXIMUM_HIGHLIGHT_LENGTH, SyntaxContent } from "@/core/syntax/components/SyntaxContent";
+import { MAXIMUM_HIGHLIGHT_LENGTH, SyntaxContent } from "@/core/ui/code/SyntaxContent";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 const LTX: string = "; comment\n[wpn_ak74]:wpn_base\nammo_mag_size = 30\n";
