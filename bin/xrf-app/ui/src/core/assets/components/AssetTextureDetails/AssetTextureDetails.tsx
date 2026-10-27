@@ -2,8 +2,8 @@ import { formatBytes } from "@xrf/format";
 import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
 import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
+import { EditorPanelProperty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
 import { ReactElement } from "react";
 
 import { getAssetContainerSource, isLooseContainer } from "@/core/assets/lib/container";

@@ -4,7 +4,7 @@ import { RenderViewOptions } from "@xrf/ipc/types/xrf-renderer";
 import { EWorldCamera, WorldCamera } from "@xrf/ipc/types/xrf-world";
 import { parseHexColor, toRawColor } from "@xrf/math";
 import { Nullable } from "@xrf/types";
-import { VIEWPORT } from "@xrf/ui/theme/tokens";
+import { VIEWPORT } from "@xrf/ui/theme";
 
 import { IRenderLighting, toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";
 import { toNativeAssetViewOptions } from "@/core/render/lib/native/native-view-options";

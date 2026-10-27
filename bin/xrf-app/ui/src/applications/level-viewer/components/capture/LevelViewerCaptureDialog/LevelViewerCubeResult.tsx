@@ -2,10 +2,11 @@ import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
 import { ETextureEncodingFormat } from "@xrf/ipc/types/xrf-texture";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow, ChoiceFormRow } from "@xrf/ui/form";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
+import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { Typography } from "@xrf/ui/material";
-import { ImageViewport } from "@xrf/ui/media/ImageViewport";
-import { cn } from "@xrf/ui/theme/class-name";
+import { ImageViewport } from "@xrf/ui/media/image-viewport";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback } from "react";
 
 import { LEVEL_CAPTURE_DDS_FORMATS } from "@/applications/level-viewer/lib/capture/level-capture";

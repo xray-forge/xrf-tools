@@ -1,4 +1,4 @@
-import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form";
+import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ReactElement } from "react";
 
 import { EConfigsDialect } from "@/core/ltx/lib/dialect";

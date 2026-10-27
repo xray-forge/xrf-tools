@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
+import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
 import { ReactElement } from "react";
 
 import { LevelRendererAppliedSection } from "@/applications/level-viewer/components/panels/LevelRendererPanel/LevelRendererAppliedSection";

@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
+import { EditorLayout } from "@xrf/ui/editor/layout";
 import { ConstructionIcon } from "@xrf/ui/icons";
-import { EmptyState } from "@xrf/ui/layout/EmptyState";
+import { EmptyState } from "@xrf/ui/layout/empty-state";
 import { Button } from "@xrf/ui/material";
-import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
 import { ReactElement, useCallback } from "react";
 
 import { KeybindCommandsService } from "@/core/commands";

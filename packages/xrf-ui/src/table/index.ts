@@ -1,2 +1,2 @@
-export * from "#/table/columns";
 export * from "./DataTable";
+export * from "./columns";

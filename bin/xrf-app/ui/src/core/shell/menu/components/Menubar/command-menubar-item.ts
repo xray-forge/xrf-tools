@@ -1,4 +1,4 @@
-import { IMenubarItem } from "@xrf/ui/shell/menu/components/Menubar/menubar-menu";
+import { IMenubarItem } from "@xrf/ui/shell/menubar";
 
 import { IKeybindCommand, KeybindCommandsService } from "@/core/commands";
 import { formatChord, KeymapService, parseChord } from "@/core/keybinds";

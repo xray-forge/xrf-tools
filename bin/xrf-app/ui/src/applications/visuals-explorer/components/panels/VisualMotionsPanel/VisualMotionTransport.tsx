@@ -1,12 +1,12 @@
 import { useInjection } from "@wirestate/react";
 import { formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
+import { EditorToolbarSeparator } from "@xrf/ui/editor/toolbar";
+import { EditorViewToggle } from "@xrf/ui/editor/view-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PauseIcon, PlayArrowIcon, RepeatIcon } from "@xrf/ui/icons";
 import { Tooltip, Typography } from "@xrf/ui/material";
-import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
-import { EditorToolbarSeparator } from "@xrf/ui/shell/editor/EditorToolbarSeparator";
-import { EditorViewToggle } from "@xrf/ui/shell/editor/EditorViewToggle";
 import { ReactElement, useCallback } from "react";
 
 import { MotionFrameSlider, MotionPlaybackRate } from "@/core/visuals/components/preview";

@@ -4,9 +4,9 @@ import { ArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
-import { EmptyState } from "@xrf/ui/layout/EmptyState";
-import { cn } from "@xrf/ui/theme/class-name";
+import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
+import { EmptyState } from "@xrf/ui/layout/empty-state";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, useEffect } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";

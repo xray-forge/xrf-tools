@@ -3,10 +3,10 @@ import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveSubject, EArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable, Optional } from "@xrf/types";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
+import { EditorLayout } from "@xrf/ui/editor/layout";
+import { EditorToolbarLocation, IEditorLocation } from "@xrf/ui/editor/toolbar";
 import { BarChartIcon, FileCopyIcon, LayersIcon, UnarchiveIcon } from "@xrf/ui/icons";
-import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
-import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
-import { EditorToolbarLocation, IEditorLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
 import { ReactElement, useCallback, useState } from "react";
 
 import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";

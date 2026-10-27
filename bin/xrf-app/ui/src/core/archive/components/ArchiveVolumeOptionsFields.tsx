@@ -1,7 +1,7 @@
 import { ArchivePackConfig, EArchivePackMode, EArchiveVolumeExtension } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { FormRow } from "@xrf/ui/form";
+import { FormRow } from "@xrf/ui/form/row";
 import { MenuItem, Stack, TextField } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement, useId } from "react";
 

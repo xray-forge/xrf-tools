@@ -2,7 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { render } from "@testing-library/react";
 
 import { DataGrid } from "#/data-grid";
-import { decimalColumn, textColumn } from "#/table/columns";
+
+import { decimalColumn, textColumn } from "./columns";
 
 describe("decimalColumn sorting", () => {
   it("sorts decimal values numerically while displaying two decimal places", async () => {

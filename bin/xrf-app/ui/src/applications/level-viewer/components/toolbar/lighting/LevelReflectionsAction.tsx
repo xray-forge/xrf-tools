@@ -7,11 +7,11 @@ import {
   RenderReflectionProbe,
   RenderTraceSize,
 } from "@xrf/ipc/types/xrf-renderer";
+import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { FlipIcon } from "@xrf/ui/icons";
 import { Button } from "@xrf/ui/material";
-import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/shell/editor/EditorPopoverGroup";
 import { ReactElement } from "react";
 
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";

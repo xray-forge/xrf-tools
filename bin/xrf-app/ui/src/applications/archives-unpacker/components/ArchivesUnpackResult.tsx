@@ -1,8 +1,7 @@
 import { formatBytes, formatDuration } from "@xrf/format";
 import { ArchiveUnpackResult } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
-import { CommandResult, ICommandResultStat } from "@xrf/ui/command-result/CommandResult";
-import { CommandResultPathList } from "@xrf/ui/command-result/CommandResultPathList";
+import { CommandResult, CommandResultPathList, ICommandResultStat } from "@xrf/ui/command-result";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useMemo } from "react";
 

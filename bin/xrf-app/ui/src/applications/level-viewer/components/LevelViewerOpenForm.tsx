@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ELevelSource, LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ChoiceListFormRow } from "@xrf/ui/form";
+import { ChoiceListFormRow } from "@xrf/ui/form/choice-list-row";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { LevelViewerListService } from "@/applications/level-viewer/services/level-viewer-list";

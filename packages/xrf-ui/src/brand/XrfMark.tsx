@@ -1,7 +1,7 @@
 import { ReactElement } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { cn } from "#/theme/class-name";
+import { cn } from "#/theme";
 
 /** The build a mark's core names: a release, a continuous-integration artifact, or a developer machine's own. */
 export type XrfMarkCore = "optimized" | "development" | "local";

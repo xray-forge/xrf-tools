@@ -1,10 +1,9 @@
 import { TranslationBuildLanguageSummary, TranslationBuildResult } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
-import { CommandResult, ICommandResultStat } from "@xrf/ui/command-result/CommandResult";
-import { CommandResultFindings } from "@xrf/ui/command-result/CommandResultFindings";
+import { CommandResult, CommandResultFindings, ICommandResultStat } from "@xrf/ui/command-result";
 import { GridColDef } from "@xrf/ui/data-grid";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { identifierColumn } from "@xrf/ui/table/columns";
+import { identifierColumn } from "@xrf/ui/table";
 import { ReactElement, useMemo } from "react";
 
 import { EApplicationId } from "@/core/routing/application";

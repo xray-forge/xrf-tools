@@ -1,7 +1,7 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { IconButton, Tooltip } from "@xrf/ui/material";
-import { RAIL_BUTTON_SX } from "@xrf/ui/shell/panel/rail/RailButton.styles";
-import { getControlStateSx } from "@xrf/ui/theme/control-state";
+import { RAIL_BUTTON_SX } from "@xrf/ui/shell/rail-button";
+import { getControlStateSx } from "@xrf/ui/theme/sx";
 import { ReactElement } from "react";
 
 import { IEditorPanel, TEditorPanelSide } from "@/core/shell/editor-shell";

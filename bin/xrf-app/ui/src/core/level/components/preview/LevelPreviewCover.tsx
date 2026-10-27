@@ -2,8 +2,8 @@ import { useInjection } from "@wirestate/react";
 import { RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
-import { cn } from "@xrf/ui/theme/class-name";
+import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { describeLevelLoad } from "@/core/level/lib/load/level-load-progress";

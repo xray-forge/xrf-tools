@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { LtxFileStructure, LtxResolvedIndexEntry } from "@xrf/ipc/types/xrf-ltx-inspect";
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
+import { ITreeNode } from "@xrf/ui/tree";
 
 import {
   filterConfigsIndex,

@@ -2,11 +2,11 @@ import { useInjection } from "@wirestate/react";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
-import { ConfirmDialog } from "@xrf/ui/dialog/ConfirmDialog";
+import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Inventory2Icon } from "@xrf/ui/icons";
 import { Typography } from "@xrf/ui/material";
-import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
 import { ReactElement, useCallback, useState } from "react";
 
 import {

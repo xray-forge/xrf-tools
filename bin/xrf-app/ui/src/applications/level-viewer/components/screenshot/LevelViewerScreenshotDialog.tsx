@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { formatBytes, formatMilliseconds, formatNumber } from "@xrf/format";
 import { RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
-import { DialogHeader } from "@xrf/ui/dialog/DialogHeader";
+import { DialogHeader } from "@xrf/ui/dialog/header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PhotoCameraOutlinedIcon as PhotoCameraIcon } from "@xrf/ui/icons";
 import { Button, Dialog, DialogActions, DialogContent, Typography } from "@xrf/ui/material";

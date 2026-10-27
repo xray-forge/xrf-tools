@@ -1,7 +1,7 @@
 import { ArchiveVolumeSummary } from "@xrf/ipc/types/xrf-archive-stats";
 import { getPathName } from "@xrf/path";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { IStatBreakdownRow } from "@xrf/ui/stats/StatBreakdownTable";
+import { IStatBreakdownRow } from "@xrf/ui/stats";
 import { ReactElement, useMemo } from "react";
 
 import { IArchiveStatisticsView } from "@/applications/archives-explorer/components/editor/statistics/archive-statistics-section";

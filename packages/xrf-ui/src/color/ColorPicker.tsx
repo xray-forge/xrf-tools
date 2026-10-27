@@ -2,11 +2,12 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect } from "react";
 import { RgbColorPicker } from "react-colorful";
 
-import { IPickedColor } from "#/color/color-intensity";
 import { BaseComponentProps } from "#/element-types";
 import { Box } from "#/material";
-import { useThrottledValue } from "#/react/use-throttled-value";
-import { RADIUS } from "#/theme/tokens";
+import { useThrottledValue } from "#/react/throttled-value";
+import { RADIUS } from "#/theme";
+
+import { IPickedColor } from "./color-intensity";
 
 /**
  * @param left - A colour told or shown.

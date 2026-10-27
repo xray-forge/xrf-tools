@@ -3,7 +3,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { exists } from "@tauri-apps/plugin-fs";
 import { act, renderHook } from "@testing-library/react";
 import { Nullable } from "@xrf/types";
-import { IPathRecord } from "@xrf/ui/form/file-picker/path-field-recents";
+import { IPathRecord } from "@xrf/ui/form/file-picker";
 import { StrictMode } from "react";
 
 import { EApplicationId } from "@/core/routing/application";

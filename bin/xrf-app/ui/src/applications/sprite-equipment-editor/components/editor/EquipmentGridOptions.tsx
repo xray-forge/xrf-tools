@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
+import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { AddCircleIcon as AddIcon, GridOnIcon as GridIcon, RemoveCircleIcon as RemoveIcon } from "@xrf/ui/icons";
 import { FormControlLabel, Switch, Typography } from "@xrf/ui/material";
-import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
-import { EditorPopoverAction } from "@xrf/ui/shell/editor/EditorPopoverAction";
 import { ReactElement, useCallback } from "react";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";

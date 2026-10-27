@@ -1,7 +1,7 @@
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveLevelAiDescription } from "@xrf/ipc/types/xrf-app-archives";
+import { EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";

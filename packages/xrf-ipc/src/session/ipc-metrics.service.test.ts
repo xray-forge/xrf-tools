@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
-import { mockInjectedService } from "../../test/container";
-
 import { IPC_METRICS, isIpcProfilingEnabled, setIpcProfilingEnabled } from "#/metrics/index";
 import { IpcMetricsService } from "#/session/ipc-metrics.service";
+
+import { mockInjectedService } from "../../test/container";
 
 describe("IpcMetricsService", () => {
   beforeEach(() => {

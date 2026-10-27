@@ -2,8 +2,8 @@ import { useInjection } from "@wirestate/react";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
-import { FormatCommandResult, IFormatCommandNouns } from "@xrf/ui/command-result/FormatCommandResult";
-import { CheckboxFormRow } from "@xrf/ui/form";
+import { FormatCommandResult, IFormatCommandNouns } from "@xrf/ui/command-result";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { ConfigsFormatterService } from "@/applications/configs-formatter/services/configs-formatter.service";

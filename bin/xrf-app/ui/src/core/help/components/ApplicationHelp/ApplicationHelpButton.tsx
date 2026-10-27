@@ -1,5 +1,5 @@
 import { HelpOutlineOutlinedIcon as HelpOutlineIcon } from "@xrf/ui/icons";
-import { RailButton } from "@xrf/ui/shell/panel/rail/RailButton";
+import { RailButton } from "@xrf/ui/shell/rail-button";
 import { ReactElement } from "react";
 
 export interface IApplicationHelpButtonProps {

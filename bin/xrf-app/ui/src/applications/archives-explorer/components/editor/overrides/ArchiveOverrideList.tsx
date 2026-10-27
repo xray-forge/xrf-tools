@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { LayoutList, useVirtualizer } from "@xrf/ui/virtualizer";
 import { ReactElement, useId, useMemo, useRef } from "react";
 

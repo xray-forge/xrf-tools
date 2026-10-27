@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
 import { formatDegrees, formatPercent } from "@xrf/format";
 import { LevelWeatherTexture } from "@xrf/ipc/types/xrf-app-levels";
+import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { NightsStayIcon } from "@xrf/ui/icons";
-import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/shell/editor/EditorPopoverGroup";
 import { ReactElement } from "react";
 
 import { LevelWeatherTextureField } from "@/applications/level-viewer/components/weather/LevelWeatherTextureField";

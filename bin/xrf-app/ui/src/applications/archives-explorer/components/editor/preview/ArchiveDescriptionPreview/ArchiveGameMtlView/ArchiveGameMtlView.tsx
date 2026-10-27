@@ -5,10 +5,10 @@ import {
   ArchiveGameMtlProperty,
 } from "@xrf/ipc/types/xrf-app-archives";
 import { filterByName } from "@xrf/search";
+import { EditorFilterInput } from "@xrf/ui/editor/filter-input";
+import { EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material";
-import { EditorFilterInput } from "@xrf/ui/shell/editor/EditorFilterInput";
-import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement, useMemo, useState } from "react";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";

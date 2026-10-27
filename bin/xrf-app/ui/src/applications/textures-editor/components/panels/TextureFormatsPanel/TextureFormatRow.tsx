@@ -1,9 +1,9 @@
 import { formatBytes } from "@xrf/format";
 import { TextureEncodingReport } from "@xrf/ipc/types/xrf-app-textures";
+import { EditorPanelProperty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Chip, ListItemButton, Typography } from "@xrf/ui/material";
-import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 interface ITextureFormatRowProps extends BaseComponentProps {

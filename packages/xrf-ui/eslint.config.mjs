@@ -10,7 +10,7 @@ import { createReactLayers, TESTING_LIBRARY_RESTRICTED_IMPORTS } from "@xrf/tool
 export default createEslintConfig(
   import.meta.dirname,
   ...createReactLayers({
-    tailwindStylesheet: fileURLToPath(new URL("./src/theme/tailwind.css", import.meta.url)),
+    tailwindStylesheet: fileURLToPath(new URL("./src/theme/root/tailwind.css", import.meta.url)),
     customClassNames: ["monospace"],
   }),
   {

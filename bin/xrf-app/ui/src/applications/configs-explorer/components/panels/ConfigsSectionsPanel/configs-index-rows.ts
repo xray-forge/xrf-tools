@@ -1,7 +1,7 @@
 import { LtxFileStructure, LtxResolvedIndexEntry, LtxStructureEntry } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { filterByName } from "@xrf/search";
 import { Nullable } from "@xrf/types";
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
+import { ITreeNode } from "@xrf/ui/tree";
 
 import { ROOT_SECTION, ROOT_SECTION_LABEL } from "@/applications/configs-explorer/lib/resolved";
 

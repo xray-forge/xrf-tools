@@ -5,7 +5,7 @@ import { EMPTY_ARRAY } from "@xrf/collections";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 import { GitHubIcon, InfoOutlinedIcon } from "@xrf/ui/icons";
-import { IMenubarItem, IMenubarMenu } from "@xrf/ui/shell/menu/components/Menubar/menubar-menu";
+import { IMenubarItem, IMenubarMenu } from "@xrf/ui/shell/menubar";
 import { useCallback, useState } from "react";
 
 import { KeybindCommandsService } from "@/core/commands";

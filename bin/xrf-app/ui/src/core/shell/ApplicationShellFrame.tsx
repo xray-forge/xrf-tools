@@ -1,9 +1,9 @@
 import { useInjection, useOnCommand, useOnQuery } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { EditorToolbarHostContext } from "@xrf/ui/editor/toolbar";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EditorToolbarHostContext } from "@xrf/ui/shell/header/editor-toolbar-host";
-import { RailButton } from "@xrf/ui/shell/panel/rail/RailButton";
-import { cn } from "@xrf/ui/theme/class-name";
+import { RailButton } from "@xrf/ui/shell/rail-button";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, ReactNode, Suspense, useCallback, useState } from "react";
 import { flushSync } from "react-dom";
 import { NavigateFunction, useLocation, useNavigate } from "react-router-dom";

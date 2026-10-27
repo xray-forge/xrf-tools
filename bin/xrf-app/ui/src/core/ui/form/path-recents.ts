@@ -1,6 +1,6 @@
 import { isSamePath } from "@xrf/path";
 import { Nullable } from "@xrf/types";
-import { IPathRecord } from "@xrf/ui/form/file-picker/path-field-recents";
+import { IPathRecord } from "@xrf/ui/form/file-picker";
 
 import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/core/storage";
 

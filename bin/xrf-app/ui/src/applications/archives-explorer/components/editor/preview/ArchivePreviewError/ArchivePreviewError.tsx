@@ -1,8 +1,8 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ErrorOutlineOutlinedIcon as ErrorOutlineIcon } from "@xrf/ui/icons";
-import { CenteredColumn } from "@xrf/ui/layout/CenteredColumn";
+import { CenteredColumn } from "@xrf/ui/layout/centered-column";
 import { Button, Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 interface IArchivePreviewErrorProps extends BaseComponentProps {

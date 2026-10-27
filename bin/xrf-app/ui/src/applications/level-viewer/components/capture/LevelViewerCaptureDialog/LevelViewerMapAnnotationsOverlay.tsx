@@ -1,6 +1,6 @@
 import { IPanZoomTransform, toPanZoomTransform } from "@xrf/math";
 import { Nullable } from "@xrf/types";
-import { IImageViewportView } from "@xrf/ui/media/ImageViewport";
+import { IImageViewportView } from "@xrf/ui/media/image-viewport";
 import { ReactElement, useLayoutEffect, useRef } from "react";
 
 interface ILevelViewerMapAnnotationsOverlayProps {

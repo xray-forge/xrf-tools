@@ -1,3 +1,6 @@
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
+import { EditorToolbarSeparator } from "@xrf/ui/editor/toolbar";
+import { EditorViewToggle } from "@xrf/ui/editor/view-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import {
   AccountTreeIcon,
@@ -9,9 +12,6 @@ import {
   TextureIcon,
   ThreeDRotationIcon,
 } from "@xrf/ui/icons";
-import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
-import { EditorToolbarSeparator } from "@xrf/ui/shell/editor/EditorToolbarSeparator";
-import { EditorViewToggle } from "@xrf/ui/shell/editor/EditorViewToggle";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { RenderLightingAction } from "@/core/render/components/lighting/RenderLightingAction";

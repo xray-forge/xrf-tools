@@ -1,11 +1,11 @@
 import { useInjection } from "@wirestate/react";
 import { LtxSchemeFieldReport, LtxSectionSchemeReport } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
+import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
-import { ErrorState } from "@xrf/ui/layout/ErrorState";
+import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
+import { ErrorState } from "@xrf/ui/layout/error-state";
 import { Divider } from "@xrf/ui/material";
-import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
 import { ReactElement, useEffect } from "react";
 
 import { ConfigsSchemeBinding } from "@/applications/configs-explorer/components/panels/ConfigsSchemePanel/ConfigsSchemeBinding";

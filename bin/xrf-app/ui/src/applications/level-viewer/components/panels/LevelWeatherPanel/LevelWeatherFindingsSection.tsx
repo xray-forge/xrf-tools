@@ -1,7 +1,7 @@
 import { EnvironmentFinding } from "@xrf/ipc/types/xrf-environment";
+import { EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material";
-import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
 
 interface ILevelWeatherFindingsSectionProps extends BaseComponentProps {

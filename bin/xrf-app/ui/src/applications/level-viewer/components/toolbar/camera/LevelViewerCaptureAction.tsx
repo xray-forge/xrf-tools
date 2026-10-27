@@ -1,10 +1,9 @@
 import { useInjection } from "@wirestate/react";
+import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PhotoCameraOutlinedIcon as PhotoCameraIcon } from "@xrf/ui/icons";
 import { MenuList } from "@xrf/ui/material";
-import { EditorPopoverAction } from "@xrf/ui/shell/editor/EditorPopoverAction";
-import { IMenubarItem } from "@xrf/ui/shell/menu/components/Menubar/menubar-menu";
-import { MenubarRow } from "@xrf/ui/shell/menu/components/Menubar/MenubarRow";
+import { IMenubarItem, MenubarRow } from "@xrf/ui/shell/menubar";
 import { ReactElement, useCallback } from "react";
 
 import {

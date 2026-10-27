@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
-import { DialogHeader } from "@xrf/ui/dialog/DialogHeader";
+import { DialogHeader } from "@xrf/ui/dialog/header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { UnarchiveIcon } from "@xrf/ui/icons";
 import { Button, Dialog, DialogActions, DialogContent, Typography } from "@xrf/ui/material";

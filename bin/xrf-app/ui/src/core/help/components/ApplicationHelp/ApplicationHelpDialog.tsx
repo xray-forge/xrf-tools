@@ -1,4 +1,4 @@
-import { DialogHeader } from "@xrf/ui/dialog/DialogHeader";
+import { DialogHeader } from "@xrf/ui/dialog/header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Dialog, DialogContent } from "@xrf/ui/material";
 import { ReactElement, useId } from "react";

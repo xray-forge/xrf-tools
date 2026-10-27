@@ -1,6 +1,6 @@
+import { EditorViewToggle } from "@xrf/ui/editor/view-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { VisibilityIcon, VisibilityOffIcon } from "@xrf/ui/icons";
-import { EditorViewToggle } from "@xrf/ui/shell/editor/EditorViewToggle";
 import { ReactElement } from "react";
 
 import { ILevelSpawnCategoryEntry } from "@/core/level/lib/spawn/level-spawn-categories";

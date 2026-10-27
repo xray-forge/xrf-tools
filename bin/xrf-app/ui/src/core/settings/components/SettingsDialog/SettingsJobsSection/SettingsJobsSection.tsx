@@ -2,10 +2,10 @@ import { formatDuration } from "@xrf/format";
 import { JobDescription } from "@xrf/ipc/types/xrf-app-core";
 import { Callable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DetailSection } from "@xrf/ui/layout/DetailSection";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { Button, Divider, Stack, Typography } from "@xrf/ui/material";
-import { StatFigure } from "@xrf/ui/stats/StatFigure";
-import { cn } from "@xrf/ui/theme/class-name";
+import { StatFigure } from "@xrf/ui/stats";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback } from "react";
 
 import { IJobKindSummary, IJobLease, listHeldLeases, summarizeJobKinds } from "@/core/jobs/lib/job-listing";

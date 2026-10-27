@@ -2,10 +2,10 @@ import { DialogFilter, open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ArchivePackConfig } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
-import { ConfirmDialog } from "@xrf/ui/dialog/ConfirmDialog";
+import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
+import { EditorLayout } from "@xrf/ui/editor/layout";
 import { TuneIcon } from "@xrf/ui/icons";
 import { Alert, Divider, Stack, Typography } from "@xrf/ui/material";
-import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ArchivesPackerService, EPackerSection } from "@/applications/archives-packer/services/archives-packer.service";

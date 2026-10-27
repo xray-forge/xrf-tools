@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { ARCHIVED_CAPTION, TreeRowLabel } from "./TreeRowLabel";
-
 import { renderWithTheme } from "#/testing/render";
+
+import { ARCHIVED_CAPTION, TreeRowLabel } from "./TreeRowLabel";
 
 describe("TreeRowLabel", () => {
   it("should render the name, which the tree shows nowhere else", () => {

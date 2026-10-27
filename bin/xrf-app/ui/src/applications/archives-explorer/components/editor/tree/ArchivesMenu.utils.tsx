@@ -1,5 +1,5 @@
 import { DescriptionIcon, FolderIcon, FolderOpenIcon } from "@xrf/ui/icons";
-import { IVirtualizedTreeIcons } from "@xrf/ui/tree/VirtualizedTree";
+import { IVirtualizedTreeIcons } from "@xrf/ui/tree";
 
 import { IArchiveEntry } from "@/core/archive/lib";
 

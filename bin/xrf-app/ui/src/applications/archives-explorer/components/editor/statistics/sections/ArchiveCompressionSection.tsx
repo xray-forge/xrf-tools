@@ -2,9 +2,9 @@ import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveCompression, ArchiveExtensionUsage } from "@xrf/ipc/types/xrf-archive-stats";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DetailSection } from "@xrf/ui/layout/DetailSection";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { Typography } from "@xrf/ui/material";
-import { StatFigure } from "@xrf/ui/stats/StatFigure";
+import { StatFigure } from "@xrf/ui/stats";
 import { ReactElement, useMemo } from "react";
 
 /**

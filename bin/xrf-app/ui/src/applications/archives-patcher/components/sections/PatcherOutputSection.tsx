@@ -1,6 +1,6 @@
 import { ArchivePatchConfig } from "@xrf/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { FormRow } from "@xrf/ui/form";
+import { FormRow } from "@xrf/ui/form/row";
 import { Stack, TextField } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement } from "react";
 

@@ -6,7 +6,7 @@ import {
   RenderDlssAvailability,
   RenderTextureFiltering,
 } from "@xrf/ipc/types/xrf-renderer";
-import { IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow/choice-form-row-option";
+import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 const RENDER_ANTIALIASING_NAMES: Readonly<Record<RenderAntialiasing, string>> = {
   [ERenderAntialiasing.NONE]: "None",

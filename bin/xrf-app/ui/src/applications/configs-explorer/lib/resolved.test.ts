@@ -7,7 +7,7 @@ import {
   LtxResolvedSection,
 } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
-import { ICodeLineSource } from "@xrf/ui/code/code-line";
+import { ICodeLineSource } from "@xrf/ui/code/lines";
 
 import {
   describeResolvedFieldOrigin,

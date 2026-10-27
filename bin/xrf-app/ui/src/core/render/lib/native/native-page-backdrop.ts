@@ -1,6 +1,6 @@
 import { RenderPageBackdrop, RenderPagePlane } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
-import { IWashStops } from "@xrf/ui/theme/surface";
+import { IWashStops } from "@xrf/ui/theme";
 
 import { INativePageClip, INativePagePlane, INativePagePlanes } from "@/core/render/lib/native/native-page-planes";
 import { toNativeRect } from "@/core/render/lib/native/native-rect";

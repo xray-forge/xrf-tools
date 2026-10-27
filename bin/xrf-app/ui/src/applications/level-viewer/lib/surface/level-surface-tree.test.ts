@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
+import { ITreeNode } from "@xrf/ui/tree";
 
 import { TLevelSurfaceTreeRow, toLevelSurfaceTree } from "@/applications/level-viewer/lib/surface/level-surface-tree";
 import { ILevelSurfaceSummary, listLevelSurfaces } from "@/core/level/lib/surface/level-surface-summary";

@@ -1,7 +1,7 @@
 import { ArchivePatchConfig } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { SwitchFormRow } from "@xrf/ui/form";
+import { SwitchFormRow } from "@xrf/ui/form/switch-row";
 import { Stack } from "@xrf/ui/material";
 import { ReactElement } from "react";
 

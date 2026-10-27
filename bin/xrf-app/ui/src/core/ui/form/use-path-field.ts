@@ -1,7 +1,7 @@
 import { DialogFilter } from "@tauri-apps/plugin-dialog";
 import { exists } from "@tauri-apps/plugin-fs";
 import { Nullable } from "@xrf/types";
-import { IPathFieldRecents } from "@xrf/ui/form/file-picker/path-field-recents";
+import { IPathFieldRecents } from "@xrf/ui/form/file-picker";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { EApplicationId } from "@/core/routing/application";

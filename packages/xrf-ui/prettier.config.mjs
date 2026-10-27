@@ -12,5 +12,5 @@ import base from "@xrf/toolchain/prettier";
 export default {
   ...base,
   plugins: [fileURLToPath(import.meta.resolve("prettier-plugin-tailwindcss"))],
-  tailwindStylesheet: fileURLToPath(new URL("./src/theme/tailwind.css", import.meta.url)),
+  tailwindStylesheet: fileURLToPath(new URL("./src/theme/root/tailwind.css", import.meta.url)),
 };

@@ -3,7 +3,7 @@ import { EnvFlagReading } from "@xrf/ipc/types/xrf-env-flags";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
-import { DetailSection } from "@xrf/ui/layout/DetailSection";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { Stack, Typography } from "@xrf/ui/material";
 import { ReactElement, useState } from "react";
 

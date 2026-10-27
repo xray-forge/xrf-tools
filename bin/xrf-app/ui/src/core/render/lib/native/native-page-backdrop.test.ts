@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
-import { getWashStops, IWashStops } from "@xrf/ui/theme/surface";
+import { getWashStops, IWashStops } from "@xrf/ui/theme";
 
 import { readNativePageBackdrop } from "@/core/render/lib/native/native-page-backdrop";
 import { INativePageClip, INativePagePlane } from "@/core/render/lib/native/native-page-planes";

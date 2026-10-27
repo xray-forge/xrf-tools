@@ -1,6 +1,6 @@
+import { EditorLayout } from "@xrf/ui/editor/layout";
 import { ExpandMoreIcon } from "@xrf/ui/icons";
 import { Accordion, AccordionDetails, AccordionSummary, Button, Typography } from "@xrf/ui/material";
-import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
 import { ReactElement, useCallback } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 

@@ -3,10 +3,10 @@ import { LevelWeatherCycle, LevelWeatherDescription } from "@xrf/ipc/types/xrf-a
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FilterDramaIcon } from "@xrf/ui/icons";
 import { Button, Typography } from "@xrf/ui/material";
-import { EditorPopoverAction } from "@xrf/ui/shell/editor/EditorPopoverAction";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";

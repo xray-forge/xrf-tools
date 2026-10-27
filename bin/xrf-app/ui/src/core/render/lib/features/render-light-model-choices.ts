@@ -1,5 +1,5 @@
 import { ERenderLightModel, RenderLightModel } from "@xrf/ipc/types/xrf-renderer";
-import { IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow/choice-form-row-option";
+import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 const RENDER_LIGHT_MODEL_DESCRIPTIONS: Readonly<Record<RenderLightModel, string>> = {
   [ERenderLightModel.ENGINE]: "Lights textures and colours as the stored display values they are, as the game does.",

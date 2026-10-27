@@ -1,7 +1,7 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EmptyState } from "@xrf/ui/layout/EmptyState";
-import { ErrorState } from "@xrf/ui/layout/ErrorState";
-import { cn } from "@xrf/ui/theme/class-name";
+import { EmptyState } from "@xrf/ui/layout/empty-state";
+import { ErrorState } from "@xrf/ui/layout/error-state";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 interface ILevelPreviewEmptyProps extends BaseComponentProps {

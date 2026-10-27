@@ -3,7 +3,7 @@ import { JobDescription } from "@xrf/ipc/types/xrf-app-core";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Collapse, Divider, Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { format } from "date-fns";
 import { ReactElement, useState } from "react";
 

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { CommandResult } from "./CommandResult";
-
 import { renderWithTheme } from "#/testing/render";
+
+import { CommandResult } from "./CommandResult";
 
 describe("CommandResult", () => {
   it("leads with the outcome, which is what the command was run to learn", () => {

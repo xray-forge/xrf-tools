@@ -1,4 +1,4 @@
-import { IPathRecord } from "@xrf/ui/form/file-picker/path-field-recents";
+import { IPathRecord } from "@xrf/ui/form/file-picker";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { forgetRecentPath, readRecentPaths, recordRecentPath, writeRecentPaths } from "@/core/ui/form/path-recents";

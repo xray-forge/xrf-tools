@@ -1,9 +1,8 @@
 import { Nullable } from "@xrf/types";
 import { ButtonBase, Tooltip } from "@xrf/ui/material";
-import { Menubar } from "@xrf/ui/shell/menu/components/Menubar/Menubar";
-import { IMenubarMenu } from "@xrf/ui/shell/menu/components/Menubar/menubar-menu";
-import { MenuGlyph } from "@xrf/ui/shell/title-bar/glyphs/MenuGlyph";
-import { cn } from "@xrf/ui/theme/class-name";
+import { IMenubarMenu, Menubar } from "@xrf/ui/shell/menubar";
+import { MenuGlyph } from "@xrf/ui/shell/window-controls";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback, useState } from "react";
 
 import { useApplicationMenus } from "@/core/shell/menu/use-application-menus";

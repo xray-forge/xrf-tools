@@ -1,12 +1,12 @@
 import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement, useId, useState } from "react";
 
-import { FilePickerRecentsMenu } from "./FilePickerRecentsMenu";
-
 import { BaseComponentProps } from "#/element-types";
-import { IPathFieldRecents } from "#/form/file-picker/path-field-recents";
 import { ClearIcon, FolderOpenIcon, HistoryIcon } from "#/icons";
 import { IconButton, TextField, Tooltip } from "#/material";
+
+import { FilePickerRecentsMenu } from "./FilePickerRecentsMenu";
+import { IPathFieldRecents } from "./path-field-recents";
 
 interface IFilePickerInputProps extends BaseComponentProps {
   /** IDs of the description and validation message rendered by the enclosing row. */

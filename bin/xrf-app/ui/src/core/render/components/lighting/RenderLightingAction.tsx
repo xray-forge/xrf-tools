@@ -1,8 +1,8 @@
 import { formatDegrees, formatNumber } from "@xrf/format";
+import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { WbSunnyIcon } from "@xrf/ui/icons";
 import { Button, Typography } from "@xrf/ui/material";
-import { EditorPopoverAction } from "@xrf/ui/shell/editor/EditorPopoverAction";
 import { ReactElement } from "react";
 
 import { RenderLightingControls } from "@/core/render/components/lighting/RenderLightingControls";

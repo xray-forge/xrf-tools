@@ -1,5 +1,5 @@
 import { ETextureEncodingFormat } from "@xrf/ipc/types/xrf-texture";
-import { IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow/choice-form-row-option";
+import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 /** What the level viewer's capture takes. */
 export enum ELevelCaptureMode {

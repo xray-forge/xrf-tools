@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { FormatCommandResult, IFormatCommandNouns, IFormatCommandOutcome } from "./FormatCommandResult";
-
 import { renderWithTheme } from "#/testing/render";
+
+import { FormatCommandResult, IFormatCommandNouns, IFormatCommandOutcome } from "./FormatCommandResult";
 
 const NOUNS: IFormatCommandNouns = { column: "Source", everything: "translation sources", item: "source" };
 

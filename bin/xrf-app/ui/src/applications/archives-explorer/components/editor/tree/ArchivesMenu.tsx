@@ -3,12 +3,17 @@ import { XrayAssetContainer } from "@xrf/ipc/types/xrf-vfs";
 import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EmptyListing } from "@xrf/ui/layout";
-import { getDirectoryItemPath, toFileItemId } from "@xrf/ui/tree/path-tree";
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
-import { ARCHIVED_CAPTION, TreeRowLabel } from "@xrf/ui/tree/TreeRowLabel";
-import { IUseTreeState, useTreeState } from "@xrf/ui/tree/use-tree-state";
-import { VirtualizedTree } from "@xrf/ui/tree/VirtualizedTree";
+import { EmptyListing } from "@xrf/ui/layout/empty-listing";
+import {
+  ARCHIVED_CAPTION,
+  getDirectoryItemPath,
+  ITreeNode,
+  IUseTreeState,
+  toFileItemId,
+  TreeRowLabel,
+  useTreeState,
+  VirtualizedTree,
+} from "@xrf/ui/tree";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";

@@ -1,5 +1,5 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { TGraphNode } from "@xrf/ui/graph/graph.types";
+import { TGraphNode } from "@xrf/ui/graph";
 import { NodeProps } from "@xyflow/react";
 import { ReactElement } from "react";
 

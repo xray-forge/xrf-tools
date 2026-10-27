@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ChoiceFormRow } from "@xrf/ui/form";
+import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { ReactElement, useCallback } from "react";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";

@@ -3,7 +3,7 @@ import { Nullable, Optional } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ClearIcon, SearchIcon } from "@xrf/ui/icons";
 import { IconButton, InputAdornment, TextField, Tooltip } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ChangeEvent, KeyboardEvent, ReactElement, RefObject, useCallback } from "react";
 
 import { formatChord, parseChord } from "@/core/keybinds";

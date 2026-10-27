@@ -2,7 +2,7 @@ import { EMPTY_ARRAY } from "@xrf/collections";
 import { LtxFileStructure, LtxStructureInclude, LtxStructureSection } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
 import { Maybe, Nullable } from "@xrf/types";
-import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@xrf/ui/code/code-line";
+import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@xrf/ui/code/lines";
 
 import { toLexicalLine } from "@/applications/configs-explorer/lib/lexical";
 

@@ -8,7 +8,7 @@ import {
 import { assertExhaustive } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { Fragment, ReactElement } from "react";
 
 import { inline } from "@/lib/callbacks/inline";

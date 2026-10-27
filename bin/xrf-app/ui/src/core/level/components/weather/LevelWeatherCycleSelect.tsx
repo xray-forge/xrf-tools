@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ListItemText, MenuItem, TextField } from "@xrf/ui/material";
-import { CONTROL } from "@xrf/ui/theme/tokens";
+import { CONTROL } from "@xrf/ui/theme";
 import { ChangeEvent, ReactElement } from "react";
 
 import {

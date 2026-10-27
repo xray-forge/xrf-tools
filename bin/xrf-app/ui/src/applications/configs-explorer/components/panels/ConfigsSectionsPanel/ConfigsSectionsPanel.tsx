@@ -2,9 +2,8 @@ import { useInjection } from "@wirestate/react";
 import { LtxFileStructure } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EmptyListing } from "@xrf/ui/layout";
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
-import { VirtualizedTree } from "@xrf/ui/tree/VirtualizedTree";
+import { EmptyListing } from "@xrf/ui/layout/empty-listing";
+import { ITreeNode, VirtualizedTree } from "@xrf/ui/tree";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import {

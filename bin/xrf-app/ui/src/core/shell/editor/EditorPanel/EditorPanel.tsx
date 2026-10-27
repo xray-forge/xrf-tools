@@ -1,5 +1,5 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, ReactNode } from "react";
 
 import { EditorPanelHeader } from "@/core/shell/editor/EditorPanelHeader";

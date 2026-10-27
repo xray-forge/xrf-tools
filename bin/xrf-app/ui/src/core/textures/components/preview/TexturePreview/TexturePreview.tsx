@@ -4,11 +4,11 @@ import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { PAN_ZOOM_FIT } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
-import { EmptyState } from "@xrf/ui/layout/EmptyState";
-import { ErrorState } from "@xrf/ui/layout/ErrorState";
-import { PanZoomController } from "@xrf/ui/media/pan-zoom-controller";
-import { cn } from "@xrf/ui/theme/class-name";
+import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
+import { EmptyState } from "@xrf/ui/layout/empty-state";
+import { ErrorState } from "@xrf/ui/layout/error-state";
+import { PanZoomController } from "@xrf/ui/media/image-viewport";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, useEffect, useState } from "react";
 
 import { describeTextureShape } from "@/core/assets/lib";

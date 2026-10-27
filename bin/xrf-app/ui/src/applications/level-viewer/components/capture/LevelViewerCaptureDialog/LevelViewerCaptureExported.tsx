@@ -3,7 +3,7 @@ import { getPathName } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Button, Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback } from "react";
 
 import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/level-viewer-capture-result";

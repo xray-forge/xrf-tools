@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { LtxFileStructure } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
-import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@xrf/ui/code/code-line";
+import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@xrf/ui/code/lines";
 
 import { toDocumentLineSource } from "@/applications/configs-explorer/lib/semantic";
 

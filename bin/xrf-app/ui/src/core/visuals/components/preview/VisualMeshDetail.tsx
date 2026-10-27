@@ -1,8 +1,8 @@
 import { formatPercent } from "@xrf/format";
+import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { TuneIcon } from "@xrf/ui/icons";
 import { Slider, Typography } from "@xrf/ui/material";
-import { EditorPopoverAction } from "@xrf/ui/shell/editor/EditorPopoverAction";
 import { ReactElement, useCallback } from "react";
 
 interface IVisualMeshDetailProps extends BaseComponentProps {
@@ -14,11 +14,6 @@ interface IVisualMeshDetailProps extends BaseComponentProps {
 
 /**
  * Mesh quality control for the model's continuous edge-collapse chain.
- *
- * Detail is a slider rather than a list of levels because an X-Ray slide-window table is one entry per edge collapse:
- * a measured character submesh carries 948 of them, so there is nothing to enumerate. Moving it costs a draw range
- * and nothing else, since every level is already in the uploaded index buffer. A model with nothing to decimate shows
- * the control disabled rather than hidden, so the toolbar does not change shape as the user steps through a tree.
  */
 export function VisualMeshDetail({
   "data-testid": dataTestId = "visual-mesh-detail",

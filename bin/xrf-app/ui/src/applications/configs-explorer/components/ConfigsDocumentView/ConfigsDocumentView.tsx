@@ -1,12 +1,12 @@
 import { useInjection } from "@wirestate/react";
 import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
 import { Nullable } from "@xrf/types";
+import { EditorFileHeader } from "@xrf/ui/editor/file-header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
-import { EmptyState } from "@xrf/ui/layout/EmptyState";
-import { ErrorState } from "@xrf/ui/layout/ErrorState";
-import { EditorFileHeader } from "@xrf/ui/shell/editor/EditorFileHeader";
-import { cn } from "@xrf/ui/theme/class-name";
+import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
+import { EmptyState } from "@xrf/ui/layout/empty-state";
+import { ErrorState } from "@xrf/ui/layout/error-state";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { ConfigsAuthoredView } from "@/applications/configs-explorer/components/ConfigsDocumentView/ConfigsAuthoredView";

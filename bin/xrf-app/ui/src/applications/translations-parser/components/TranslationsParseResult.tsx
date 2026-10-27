@@ -1,11 +1,10 @@
 import { Finding } from "@xrf/ipc/types/xrf-report";
 import { TranslationParseResult } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
-import { CommandResult, ICommandResultStat, TCommandResultTone } from "@xrf/ui/command-result/CommandResult";
-import { CommandResultFindings } from "@xrf/ui/command-result/CommandResultFindings";
+import { CommandResult, CommandResultFindings, ICommandResultStat, TCommandResultTone } from "@xrf/ui/command-result";
 import { GridColDef } from "@xrf/ui/data-grid";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { identifierColumn, pathColumn } from "@xrf/ui/table/columns";
+import { identifierColumn, pathColumn } from "@xrf/ui/table";
 import { ReactElement, useMemo } from "react";
 
 import { listTranslationParseFindings } from "@/applications/translations-parser/lib/parse-findings";

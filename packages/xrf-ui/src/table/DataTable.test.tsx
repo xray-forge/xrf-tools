@@ -2,10 +2,10 @@ import { describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 import { ReactElement, useState } from "react";
 
-import { DataTable } from "./DataTable";
-
 import { gridClasses, GridRowId } from "#/data-grid";
 import { renderWithTheme } from "#/testing/render";
+
+import { DataTable } from "./DataTable";
 
 interface IRow {
   name: string;

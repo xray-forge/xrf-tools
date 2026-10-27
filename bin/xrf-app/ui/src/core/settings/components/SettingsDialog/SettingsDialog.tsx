@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { DialogHeader } from "@xrf/ui/dialog/DialogHeader";
+import { DialogHeader } from "@xrf/ui/dialog/header";
 import {
   Box,
   Button,
@@ -10,7 +10,7 @@ import {
   ListItemButton,
   ListItemText,
 } from "@xrf/ui/material";
-import { FORM_SURFACE_SX } from "@xrf/ui/theme/form-surface";
+import { FORM_SURFACE_SX } from "@xrf/ui/theme/sx";
 import { ReactElement, useId } from "react";
 
 import { ESettingsSection, SETTINGS_SECTION_LABELS, SETTINGS_SECTIONS } from "@/core/settings/lib/settings-section";

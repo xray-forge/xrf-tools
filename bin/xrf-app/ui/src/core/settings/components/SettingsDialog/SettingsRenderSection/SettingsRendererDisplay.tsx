@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
-import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
-import { ChoiceFormRow } from "@xrf/ui/form/ChoiceFormRow";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
+import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { ReactElement, useEffect } from "react";
 
 import { RenderBackendFormRow } from "@/core/render/components/controls/RenderBackendFormRow";

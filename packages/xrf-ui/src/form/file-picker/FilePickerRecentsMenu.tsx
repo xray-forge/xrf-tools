@@ -3,10 +3,11 @@ import { Nullable } from "@xrf/types";
 import { formatDistanceToNowStrict } from "date-fns";
 import { MouseEvent, ReactElement } from "react";
 
-import { IPathFieldRecents, IPathRecord } from "#/form/file-picker/path-field-recents";
 import { CheckIcon, CloseIcon } from "#/icons";
 import { IconButton, ListItemText, Menu, MenuItem, Tooltip, Typography } from "#/material";
-import { MONOSPACE_CHARACTER_WIDTH } from "#/theme/tokens";
+import { MONOSPACE_CHARACTER_WIDTH } from "#/theme";
+
+import { IPathFieldRecents, IPathRecord } from "./path-field-recents";
 
 /** Room a row spends on things that are not the path: the mark, the age, the control that forgets it, the padding. */
 const ROW_FURNITURE_WIDTH: number = 190;

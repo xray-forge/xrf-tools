@@ -4,7 +4,7 @@ import { EXraySourceKind } from "@xrf/ipc/types/xrf-vfs";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Inventory2OutlinedIcon as ArchiveIcon, FolderOutlinedIcon as FolderIcon } from "@xrf/ui/icons";
 import { Chip, chipClasses, Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { ArchiveResolutionVolumeRow } from "./ArchiveResolutionVolumeRow";

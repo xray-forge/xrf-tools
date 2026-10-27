@@ -1,7 +1,7 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { GRAPH_LAYOUT_DEFAULTS } from "@xrf/ui/graph/graph.types";
+import { GRAPH_LAYOUT_DEFAULTS } from "@xrf/ui/graph";
 import { Box, Chip, Stack, Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { Handle, Position } from "@xyflow/react";
 import { ReactElement } from "react";
 

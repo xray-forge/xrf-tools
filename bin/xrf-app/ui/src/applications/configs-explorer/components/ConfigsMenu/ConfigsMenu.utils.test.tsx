@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { ELtxInventoryRole, LtxInventoryFile, LtxInventoryRole } from "@xrf/ipc/types/xrf-ltx-inspect";
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
+import { ITreeNode } from "@xrf/ui/tree";
 
 import { decorateConfigIcon } from "@/applications/configs-explorer/components/ConfigsMenu/ConfigsMenu.utils";
 

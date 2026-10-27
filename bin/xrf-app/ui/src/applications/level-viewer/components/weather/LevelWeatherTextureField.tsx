@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckIcon } from "@xrf/ui/icons";
 import { Autocomplete, TextField } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, SyntheticEvent, useCallback } from "react";
 
 interface ILevelWeatherTextureFieldProps extends BaseComponentProps {

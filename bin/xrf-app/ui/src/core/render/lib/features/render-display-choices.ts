@@ -1,5 +1,5 @@
 import { formatPercent } from "@xrf/format";
-import { IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow/choice-form-row-option";
+import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 import { IRenderLimits } from "@/core/render/lib/features/render-limits";
 import { FRAME_RATE_LIMITS, TFrameRateLimit } from "@/core/render/lib/settings/render-frame-rate-limit";

@@ -4,15 +4,22 @@ import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable } from "@xrf/types";
+import { IEditorSearchResultRow } from "@xrf/ui/editor/search-results";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FolderIcon, FolderOpenIcon, ViewInArIcon } from "@xrf/ui/icons";
-import { EmptyListing } from "@xrf/ui/layout";
-import { IEditorSearchResultRow } from "@xrf/ui/shell/editor/EditorSearchResults";
-import { IPathTreeItem, parsePathTree, toFileItemId } from "@xrf/ui/tree/path-tree";
-import { ITreeNode } from "@xrf/ui/tree/tree-node";
-import { ARCHIVED_CAPTION, TreeRowLabel } from "@xrf/ui/tree/TreeRowLabel";
-import { IUseTreeState, useTreeState } from "@xrf/ui/tree/use-tree-state";
-import { IVirtualizedTreeIcons, VirtualizedTree } from "@xrf/ui/tree/VirtualizedTree";
+import { EmptyListing } from "@xrf/ui/layout/empty-listing";
+import {
+  ARCHIVED_CAPTION,
+  IPathTreeItem,
+  ITreeNode,
+  IUseTreeState,
+  IVirtualizedTreeIcons,
+  parsePathTree,
+  toFileItemId,
+  TreeRowLabel,
+  useTreeState,
+  VirtualizedTree,
+} from "@xrf/ui/tree";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";

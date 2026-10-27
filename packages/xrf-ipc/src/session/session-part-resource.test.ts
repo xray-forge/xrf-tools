@@ -1,10 +1,10 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 
-import { mockContainer } from "../../test/container";
-
 import { SESSION_CHANGE_EVENT, SessionPartResource } from "#/session/index";
 import { ESessionRootChange, SessionChange, SessionSnapshot } from "#/types/xrf-app-core";
+
+import { mockContainer } from "../../test/container";
 
 const PART: string = "levelMap";
 

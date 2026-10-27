@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 
-import { readColorScheme, toColorSchemeSelector, watchColorScheme } from "#/theme/color-scheme";
-import { ColorScheme } from "#/theme/tokens";
+import { readColorScheme, toColorSchemeSelector, watchColorScheme } from "./color-scheme";
+import { ColorScheme } from "./tokens";
 
 /** Lets the attribute observer's queued records reach their callback. */
 async function settle(): Promise<void> {

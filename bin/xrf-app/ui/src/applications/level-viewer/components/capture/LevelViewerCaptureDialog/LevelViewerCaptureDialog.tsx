@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
-import { DialogHeader } from "@xrf/ui/dialog/DialogHeader";
+import { DialogHeader } from "@xrf/ui/dialog/header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ChoiceFormRow } from "@xrf/ui/form";
+import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { MapOutlinedIcon as MapIcon, PanoramaPhotosphereOutlinedIcon as PanoramaPhotosphereIcon } from "@xrf/ui/icons";
 import { Button, Dialog, DialogActions, DialogContent, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback, useId, useState } from "react";

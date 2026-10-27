@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { ArchiveProject } from "@xrf/ipc/types/xrf-archive";
 import { EPathEntryKind } from "@xrf/path";
-import { toDirectoryItemId, toFileItemId } from "@xrf/ui/tree/path-tree";
+import { toDirectoryItemId, toFileItemId } from "@xrf/ui/tree";
 
 import { mockArchiveFileDescriptor, mockArchivesProject } from "@/core/archive/fixtures/archive.mocks";
 

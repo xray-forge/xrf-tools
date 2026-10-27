@@ -3,7 +3,7 @@ import { TranslationProjectMode } from "@xrf/ipc/types/xrf-translation";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
-import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form";
+import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations.service";

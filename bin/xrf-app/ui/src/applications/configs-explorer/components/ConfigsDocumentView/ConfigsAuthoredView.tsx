@@ -2,10 +2,9 @@ import { useInjection } from "@wirestate/react";
 import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
 import { LtxAnchoredFinding, LtxStructureSection } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
-import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@xrf/ui/code/code-line";
-import { VirtualizedLines } from "@xrf/ui/code/VirtualizedLines";
+import { ECodeLineMark, ICodeLine, ICodeLineSource, VirtualizedLines } from "@xrf/ui/code/lines";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { EmptyState } from "@xrf/ui/layout/EmptyState";
+import { EmptyState } from "@xrf/ui/layout/empty-state";
 import { Alert } from "@xrf/ui/material";
 import { ReactElement, useCallback, useMemo } from "react";
 

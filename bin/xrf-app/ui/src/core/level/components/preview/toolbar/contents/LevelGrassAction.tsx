@@ -1,10 +1,10 @@
 import { useInjection } from "@wirestate/react";
 import { ERenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
+import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { GrassIcon } from "@xrf/ui/icons";
 import { Button } from "@xrf/ui/material";
-import { EditorPopoverToggle } from "@xrf/ui/shell/editor/EditorPopoverToggle";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";

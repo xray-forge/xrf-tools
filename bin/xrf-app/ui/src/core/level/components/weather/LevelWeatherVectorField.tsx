@@ -1,15 +1,15 @@
 import { saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import {
+  ColorPicker,
   fromPickedColor,
   IPickedColor,
   rescaleColor,
   TColorChannels,
   toColorIntensity,
   toPickedColor,
-} from "@xrf/ui/color/color-intensity";
-import { ColorPicker } from "@xrf/ui/color/ColorPicker";
-import { useOpenColorField } from "@xrf/ui/color/use-open-color-field";
+  useOpenColorField,
+} from "@xrf/ui/color";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ButtonBase, InputBase } from "@xrf/ui/material";
 import { FocusEvent, KeyboardEvent, ReactElement, useCallback, useId, useMemo, useState } from "react";

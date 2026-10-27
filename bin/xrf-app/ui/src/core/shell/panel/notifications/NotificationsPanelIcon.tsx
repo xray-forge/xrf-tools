@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { NotificationsIcon } from "@xrf/ui/icons";
 import { Badge, badgeClasses } from "@xrf/ui/material";
-import { LAYOUT } from "@xrf/ui/theme/tokens";
+import { LAYOUT } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { ENotificationSeverity } from "@/core/notifications/lib";

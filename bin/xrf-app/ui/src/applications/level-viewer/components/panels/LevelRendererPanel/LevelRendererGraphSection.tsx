@@ -1,10 +1,9 @@
 import { formatBytes, formatCount } from "@xrf/format";
 import { RenderGraphReport, RenderGraphSettings } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
+import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
-import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
-import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ReactElement } from "react";
 
 import { RenderGraphFormRows } from "@/core/render/components/controls/RenderGraphFormRows";

@@ -1,12 +1,12 @@
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Maybe } from "@xrf/types";
+import { EditorLayout } from "@xrf/ui/editor/layout";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { FormCommitContext, IFormCommitRegistry, useFormCommitRegistry } from "@xrf/ui/form/form-commit";
+import { FormCommitContext, IFormCommitRegistry, useFormCommitRegistry } from "@xrf/ui/form/commit";
 import { ExpandLessIcon, ExpandMoreIcon } from "@xrf/ui/icons";
 import { Alert, Button, Card, CircularProgress, IconButton, Tooltip, Typography } from "@xrf/ui/material";
-import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
-import { FORM_SURFACE_SX } from "@xrf/ui/theme/form-surface";
+import { FORM_SURFACE_SX } from "@xrf/ui/theme/sx";
 import { FormEvent, KeyboardEvent, ReactElement, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 

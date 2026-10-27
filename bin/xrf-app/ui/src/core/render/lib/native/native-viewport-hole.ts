@@ -1,7 +1,5 @@
 import { RenderPageBackdrop } from "@xrf/ipc/types/xrf-renderer";
-import { readColorScheme, watchColorScheme } from "@xrf/ui/theme/color-scheme";
-import { getWashStops, IWashStops } from "@xrf/ui/theme/surface";
-import { ColorScheme } from "@xrf/ui/theme/tokens";
+import { ColorScheme, getWashStops, IWashStops, readColorScheme, watchColorScheme } from "@xrf/ui/theme";
 
 import { readNativePageBackdrop } from "@/core/render/lib/native/native-page-backdrop";
 import { INativePagePlanes, readNativePagePlanes } from "@/core/render/lib/native/native-page-planes";

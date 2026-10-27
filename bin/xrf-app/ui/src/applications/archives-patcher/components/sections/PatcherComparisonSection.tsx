@@ -1,6 +1,6 @@
 import { ArchivePatchConfig } from "@xrf/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { Stack } from "@xrf/ui/material";
 import { ReactElement } from "react";
 

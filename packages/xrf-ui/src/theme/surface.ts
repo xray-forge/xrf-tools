@@ -1,6 +1,6 @@
 import { parseHexColor, toRawColor } from "@xrf/math";
 
-import { ACCENT, ColorScheme, HEADER_GLOSS, RECESS_TONE, STATE, toSharePercent, WASH } from "#/theme/tokens";
+import { ACCENT, ColorScheme, HEADER_GLOSS, RECESS_TONE, STATE, toSharePercent, WASH } from "./tokens";
 
 /** A gradient's colour stop: sRGB channels and alpha, each from 0 to 1. */
 export type TWashStop = [number, number, number, number];

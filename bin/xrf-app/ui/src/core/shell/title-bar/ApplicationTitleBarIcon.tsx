@@ -1,4 +1,4 @@
-import { XrfMark } from "@xrf/ui/brand/XrfMark";
+import { XrfMark } from "@xrf/ui/brand";
 import { ReactElement } from "react";
 
 import { getBuildKind, PRODUCT_NAME } from "@/core/configs";

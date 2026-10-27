@@ -1,11 +1,8 @@
 import { Nullable } from "@xrf/types";
+import { EditorToolbarCrumb, EditorToolbarPathSeparator, EditorToolbarSeparator } from "@xrf/ui/editor/toolbar";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Box, iconButtonClasses, svgIconClasses } from "@xrf/ui/material";
-import { EditorToolbarCrumb } from "@xrf/ui/shell/editor/EditorToolbarCrumb";
-import { EditorToolbarPathSeparator } from "@xrf/ui/shell/editor/EditorToolbarPathSeparator";
-import { EditorToolbarSeparator } from "@xrf/ui/shell/editor/EditorToolbarSeparator";
-import { cn } from "@xrf/ui/theme/class-name";
-import { CONTROL } from "@xrf/ui/theme/tokens";
+import { cn, CONTROL } from "@xrf/ui/theme";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { IApplicationDescriptor } from "@/core/routing/application";

@@ -1,7 +1,7 @@
 import { formatCount } from "@xrf/format";
 import { XrayPathCollision } from "@xrf/ipc/types/xrf-vfs";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DetailSection } from "@xrf/ui/layout/DetailSection";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
 import { ArchiveUnreachableRow } from "./ArchiveUnreachableRow";

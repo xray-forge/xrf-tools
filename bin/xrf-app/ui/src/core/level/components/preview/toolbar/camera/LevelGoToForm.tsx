@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Button, TextField, Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ChangeEvent, FormEvent, ReactElement, useCallback, useState } from "react";
 
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";

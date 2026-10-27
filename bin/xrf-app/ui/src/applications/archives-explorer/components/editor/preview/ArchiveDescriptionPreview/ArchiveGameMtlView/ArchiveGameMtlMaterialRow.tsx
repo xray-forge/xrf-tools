@@ -2,7 +2,7 @@ import { ArchiveGameMtlMaterial } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { describeFactors, describeMaterial, describePhysics } from "./ArchiveGameMtlView.utils";

@@ -5,9 +5,9 @@ import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FolderOpenIcon, SaveAltIcon, UnarchiveIcon } from "@xrf/ui/icons";
-import { CenteredColumn } from "@xrf/ui/layout/CenteredColumn";
+import { CenteredColumn } from "@xrf/ui/layout/centered-column";
 import { Alert, Button, Typography } from "@xrf/ui/material";
-import { cn } from "@xrf/ui/theme/class-name";
+import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { resolveDirectoryDestination } from "@/applications/archives-explorer/lib/resolve-directory-destination";
