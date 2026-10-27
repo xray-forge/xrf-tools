@@ -3,10 +3,10 @@ import { default as ListIcon } from "@mui/icons-material/FormatListBulleted";
 import { default as RuleIcon } from "@mui/icons-material/Rule";
 import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
 
-import { ConfigsMenuPanel } from "@/core/ltx/components/panels/ConfigsMenuPanel";
-import { ConfigsProblemsPanel } from "@/core/ltx/components/panels/ConfigsProblemsPanel";
-import { ConfigsSchemePanel } from "@/core/ltx/components/panels/ConfigsSchemePanel";
-import { ConfigsSectionsPanel } from "@/core/ltx/components/panels/ConfigsSectionsPanel";
+import { ConfigsMenuPanel } from "@/applications/configs-explorer/components/panels/ConfigsMenuPanel";
+import { ConfigsProblemsPanel } from "@/applications/configs-explorer/components/panels/ConfigsProblemsPanel";
+import { ConfigsSchemePanel } from "@/applications/configs-explorer/components/panels/ConfigsSchemePanel";
+import { ConfigsSectionsPanel } from "@/applications/configs-explorer/components/panels/ConfigsSectionsPanel";
 import { IEditorPanel } from "@/core/shell/editor-shell";
 
 /**

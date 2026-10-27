@@ -3,9 +3,9 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { ReactElement, useCallback } from "react";
 
+import { ConfigsProjectService } from "@/applications/configs-explorer/services/project";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { DIALECT_IDS, EConfigsDialect } from "@/core/ltx/lib/dialect";
-import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
