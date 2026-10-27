@@ -73,7 +73,7 @@ describe("LevelLoadService", () => {
 
     await service.onProvision();
 
-    expect(service.isReady).toBe(true);
+    expect(service.selection.isRestored).toBe(true);
     expect(service.level.value).toBeNull();
   });
 

@@ -115,12 +115,6 @@ export class LevelLoadService {
     return this.selection.isStale;
   }
 
-  /** Whether the restore has settled, one way or the other. */
-  @Computed()
-  public get isReady(): boolean {
-    return this.selection.isRestored;
-  }
-
   /** The objects the open level's spawn places, once listed; null before, and for a spawn that could not be read. */
   @Computed()
   public get spawn(): Nullable<LevelSpawnObjectsDescription> {

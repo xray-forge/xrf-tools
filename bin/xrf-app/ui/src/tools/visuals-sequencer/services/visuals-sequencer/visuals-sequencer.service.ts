@@ -32,12 +32,6 @@ export class VisualsSequencerService extends VisualInspectionService {
     return { frame: this.sequenceService.frame, motion: this.sequenceService.motion };
   }
 
-  /** Whether the backend has been asked what it still has selected, which holds the loader back. */
-  @Computed()
-  public get isReady(): boolean {
-    return this.loadService.selection.isRestored;
-  }
-
   /**
    * @returns Nothing: a sequencer composes motions rather than inspecting a skeleton, so its bone panel reads.
    *

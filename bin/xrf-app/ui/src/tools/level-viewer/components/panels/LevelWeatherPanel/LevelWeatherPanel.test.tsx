@@ -89,7 +89,7 @@ async function renderPanel(responses: IpcCommandMocks = {}): Promise<RenderResul
   const result: RenderResult = renderWithProviders(<LevelWeatherPanel />, { container });
 
   // Mounting provisions the container: that restores the level the backend holds, and its weather opens with it.
-  await waitFor(() => expect(load.isReady).toBe(true));
+  await waitFor(() => expect(load.selection.isRestored).toBe(true));
   await waitFor(() => expect(weather.description.isLoading || weather.cycle.isLoading).toBe(false));
 
   return { ...result, weather };

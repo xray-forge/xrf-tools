@@ -134,7 +134,7 @@ describe("SpawnFileService notifications", () => {
     await service.onProvision();
 
     // Left unready, the editor parks on a spinner with no route back to the open form.
-    expect(service.isReady).toBe(true);
+    expect(service.file.isRestored).toBe(true);
     expect(service.isOpen).toBe(false);
   });
 

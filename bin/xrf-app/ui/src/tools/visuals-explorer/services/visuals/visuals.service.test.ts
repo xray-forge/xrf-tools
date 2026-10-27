@@ -44,7 +44,6 @@ describe("VisualsService observability", () => {
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
     expect(isComputedProp(service, "visual")).toBe(true);
-    expect(isObservableProp(service, "isReady")).toBe(true);
     expect(isObservableProp(service, "highlightedBone")).toBe(true);
     expect(isObservableProp(service, "hiddenBones")).toBe(true);
     expect(isComputedProp(service, "selected")).toBe(true);
@@ -254,7 +253,7 @@ describe("VisualsService opening", () => {
   it("restores whatever the backend still has selected", async () => {
     // A reload re-provisions the service, and the backend keeps the selection for exactly this reason.
     const { selected } = mockOpenableVisual("C:\\gamedata\\stalker.ogf");
-    const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
+    const { container, service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
     mockIpcCommands({
       [EVisualsCommand.RESTORE_MODEL]: mockSessionResponse(selected),
@@ -262,18 +261,18 @@ describe("VisualsService opening", () => {
 
     await service.onProvision();
 
-    expect(service.isReady).toBe(true);
+    expect(container.get(VisualLoadService).selection.isRestored).toBe(true);
     expect(service.sourceLabel).toBe("C:\\gamedata\\stalker.ogf");
   });
 
   it("becomes ready with nothing open when the backend has no selection", async () => {
-    const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
+    const { container, service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
     mockIpcCommands({ [EVisualsCommand.RESTORE_MODEL]: mockSessionResponse(null) });
 
     await service.onProvision();
 
-    expect(service.isReady).toBe(true);
+    expect(container.get(VisualLoadService).selection.isRestored).toBe(true);
     expect(service.visual.value).toBeNull();
   });
 

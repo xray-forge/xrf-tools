@@ -39,7 +39,7 @@ async function renderMenu(): Promise<{ render: RenderResult; container: Containe
   const { container, service } = mockInjectedService(DialogsService, [DialogViewService]);
   const render = renderWithProviders(<DialogsTreeMenu />, { container });
 
-  await waitFor(() => expect(service.isReady).toBe(true));
+  await waitFor(() => expect(service.project.isRestored).toBe(true));
 
   return { container, render };
 }

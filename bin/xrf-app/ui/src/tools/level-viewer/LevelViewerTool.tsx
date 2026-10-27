@@ -6,7 +6,7 @@ import { ReactElement, useCallback, useState } from "react";
 
 import { describeLevelSource } from "@/core/level/lib/source/level-source";
 import { LevelLoadService } from "@/core/level/services/level-load";
-import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
+import { SessionTool } from "@/core/session/components/SessionTool";
 
 import { LevelViewerLayout } from "./components/LevelViewerLayout";
 import { LevelViewerOpenForm } from "./components/LevelViewerOpenForm";
@@ -34,26 +34,25 @@ export function LevelViewerTool({
 
   const onRetry = useCallback(() => void loadService.retry(), [loadService]);
 
-  if (!loadService.isReady) {
-    return <ToolLoader />;
-  }
-
-  if (isPickerOpen || (!description && !loadService.level.isLoading && !loadService.level.isFailed)) {
-    return <LevelViewerOpenForm onFinished={onFinished} />;
-  }
-
   return (
-    <LevelViewerLayout
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      name={description ? describeLevelSource(description.source) : null}
-      pending={loadService.opening ? describeLevelSource(loadService.opening) : null}
-      isLoading={loadService.level.isLoading}
-      error={loadService.level.error?.message}
-      onRetry={onRetry}
-      onBack={onBack}
-      onDeselect={onDeselect}
+    <SessionTool
+      root={loadService.selection}
+      isOpen={!isPickerOpen && (description !== null || loadService.level.isLoading || loadService.level.isFailed)}
+      openForm={<LevelViewerOpenForm onFinished={onFinished} />}
+      workspace={
+        <LevelViewerLayout
+          data-testid={dataTestId}
+          id={id}
+          className={className}
+          name={description ? describeLevelSource(description.source) : null}
+          pending={loadService.opening ? describeLevelSource(loadService.opening) : null}
+          isLoading={loadService.level.isLoading}
+          error={loadService.level.error?.message}
+          onRetry={onRetry}
+          onBack={onBack}
+          onDeselect={onDeselect}
+        />
+      }
     />
   );
 }

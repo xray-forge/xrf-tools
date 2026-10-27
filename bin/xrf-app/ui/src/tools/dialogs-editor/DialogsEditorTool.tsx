@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
+import { SessionTool } from "@/core/session/components/SessionTool";
 import { DialogsService } from "@/tools/dialogs-editor/services/dialogs";
 
 import { DialogsEditor } from "./components/DialogsEditor";
@@ -11,9 +11,7 @@ import { DialogsEditorOpenForm } from "./components/DialogsEditorOpenForm";
 export function DialogsEditorTool(): ReactElement {
   const dialogsService: DialogsService = useInjection(DialogsService);
 
-  if (dialogsService.isReady) {
-    return dialogsService.project.value ? <DialogsEditor /> : <DialogsEditorOpenForm />;
-  }
-
-  return <ToolLoader />;
+  return (
+    <SessionTool root={dialogsService.project} openForm={<DialogsEditorOpenForm />} workspace={<DialogsEditor />} />
+  );
 }

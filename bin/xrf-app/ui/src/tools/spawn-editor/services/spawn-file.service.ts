@@ -74,12 +74,6 @@ export class SpawnFileService {
     [ESpawnChunkKind.GRAPHS]: new CommandOperation(this.log),
   };
 
-  /** Whether the backend has been asked what it still holds, which holds the loader back. */
-  @Computed()
-  public get isReady(): boolean {
-    return this.file.isRestored;
-  }
-
   /** Whether a file is opening, closing or being restored. */
   @Computed()
   public get isOpening(): boolean {

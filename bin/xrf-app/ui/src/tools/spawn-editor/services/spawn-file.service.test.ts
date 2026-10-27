@@ -53,7 +53,7 @@ describe("SpawnFileService sessions", () => {
     expect(service.chunks.header.value).toEqual(session.header);
     expect(service.path).toBe(session.path);
     expect(service.chunks.graphs.value).toBeNull();
-    expect(service.isReady).toBe(true);
+    expect(service.file.isRestored).toBe(true);
   });
 
   it.each([
