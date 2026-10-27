@@ -19,8 +19,8 @@ import { BIND_POSE, IVisualRenderSource, NO_HIDDEN_BONES, VISUAL_RENDER_SOURCE }
 import { toVisualCamera, toVisualOverlays, toVisualViewOptions } from "@/core/visuals/lib/render/visual-render";
 import { DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG, IVisualPreviewSceneConfig } from "@/core/visuals/lib/scene/scene-config";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
-import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
-import { VisualViewService } from "@/core/visuals/services/visual-view/visual-view.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load";
+import { VisualViewService } from "@/core/visuals/services/visual-view";
 
 /**
  * Owns the native viewport the open model is drawn in, and everything said to it.

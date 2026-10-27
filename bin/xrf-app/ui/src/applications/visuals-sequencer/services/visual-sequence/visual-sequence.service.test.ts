@@ -8,7 +8,7 @@ import { Nullable } from "@xrf/types";
 import { ESequenceMotionState } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/visual-sequence";
 import { mockLoadedVisual, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
-import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load";
 import { mockSessionRead } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 

@@ -5,7 +5,7 @@ import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
 
 import { mockLoadedVisual, mockSelectedVisual, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
-import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { deferred } from "@/fixtures/utils/promise";

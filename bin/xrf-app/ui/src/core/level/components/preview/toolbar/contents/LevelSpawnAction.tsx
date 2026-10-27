@@ -4,7 +4,7 @@ import { ReactElement } from "react";
 
 import { ILevelSpawnCategoryEntry, LEVEL_SPAWN_CATEGORIES } from "@/core/level/lib/spawn/level-spawn-categories";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
+import { LevelViewService } from "@/core/level/services/level-view";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

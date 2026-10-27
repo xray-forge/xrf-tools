@@ -24,7 +24,7 @@ import {
 } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/level-viewer-snapshot";
 import { KeybindCommand } from "@/core/commands";
-import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
+import { LevelRenderService } from "@/core/level/services/level-render";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { CommandReporter, TCommandCompletion } from "@/core/operations/lib/command-reporter";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";

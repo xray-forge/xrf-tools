@@ -6,7 +6,7 @@ import { listMockInvokeCalls, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/
 import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
 
 import { mockLoadedVisual, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
-import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion/visual-motion.service";
 import { mockSessionRead, mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";

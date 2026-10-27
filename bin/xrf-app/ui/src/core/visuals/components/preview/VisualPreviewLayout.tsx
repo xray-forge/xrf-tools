@@ -13,7 +13,7 @@ import { VisualPreviewEmpty, VisualPreviewToolbar } from "@/core/visuals/compone
 import { VisualPreviewViewport } from "@/core/visuals/components/preview/VisualPreviewViewport";
 import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { countVisualTriangles, IVisualModelViews } from "@/core/visuals/lib/visual-views";
-import { VisualViewService } from "@/core/visuals/services/visual-view/visual-view.service";
+import { VisualViewService } from "@/core/visuals/services/visual-view";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IVisualPreviewLayoutProps extends BaseComponentProps {

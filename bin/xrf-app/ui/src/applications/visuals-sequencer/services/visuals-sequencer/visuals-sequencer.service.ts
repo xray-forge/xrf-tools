@@ -11,8 +11,8 @@ import { VisualSequenceService } from "@/applications/visuals-sequencer/services
 import { createRoots } from "@/core/assets/lib";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { IVisualPose } from "@/core/visuals/lib/render";
-import { VisualInspectionService } from "@/core/visuals/services/visual-inspection/visual-inspection.service";
-import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
+import { VisualInspectionService } from "@/core/visuals/services/visual-inspection";
+import { VisualLoadService } from "@/core/visuals/services/visual-load";
 
 /**
  * The visual a sequence is being written against, and the motions it can be written out of.

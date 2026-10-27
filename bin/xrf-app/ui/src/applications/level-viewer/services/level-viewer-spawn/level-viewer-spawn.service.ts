@@ -7,10 +7,10 @@ import { Nullable } from "@xrf/types";
 
 import { toLevelFramedGoTo } from "@/core/level/lib/camera/level-camera-frame";
 import { toLevelSpawnSphere } from "@/core/level/lib/spawn/level-spawn-sphere";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
-import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
-import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
-import { LevelViewportService } from "@/core/level/services/level-viewport/level-viewport.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
+import { LevelRenderService } from "@/core/level/services/level-render";
+import { LevelViewService } from "@/core/level/services/level-view";
+import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 
 /**

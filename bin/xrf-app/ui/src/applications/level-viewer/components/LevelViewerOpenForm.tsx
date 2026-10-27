@@ -7,7 +7,7 @@ import { LevelViewerListService } from "@/applications/level-viewer/services/lev
 import { createRoots } from "@/core/assets/lib";
 import { EngineChoiceFormRow } from "@/core/engine-target/components/EngineChoiceFormRow";
 import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib/use-engine-choice";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";

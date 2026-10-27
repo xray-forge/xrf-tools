@@ -31,7 +31,7 @@ import {
   writeLevelWeatherMemory,
 } from "@/core/level/lib/weather/level-weather-memory";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelWeatherService } from "@/core/level/services/level-weather/level-weather.service";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";

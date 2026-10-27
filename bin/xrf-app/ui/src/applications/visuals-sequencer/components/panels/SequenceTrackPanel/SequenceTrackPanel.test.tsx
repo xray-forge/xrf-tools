@@ -6,7 +6,7 @@ import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/visual-sequence";
 import { mockLoadedVisual, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
-import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load";
 import { mockSessionRead } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

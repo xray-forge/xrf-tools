@@ -11,7 +11,7 @@ import { Nullable } from "@xrf/types";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
-import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load";
 
 /**
  * Playing one of the open visual's motions.

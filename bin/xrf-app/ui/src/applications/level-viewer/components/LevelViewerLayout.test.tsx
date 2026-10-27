@@ -11,9 +11,9 @@ import { LevelViewerLayout } from "@/applications/level-viewer/components/LevelV
 import { container as LEVEL_VIEWER_CONTAINER } from "@/applications/level-viewer/runtime";
 import { noteLevelRevealed } from "@/core/level/fixtures/level-container";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
-import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
-import { LevelViewportService } from "@/core/level/services/level-viewport/level-viewport.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
+import { LevelRenderService } from "@/core/level/services/level-render";
+import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";

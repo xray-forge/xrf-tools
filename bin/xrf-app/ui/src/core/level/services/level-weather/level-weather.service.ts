@@ -50,7 +50,7 @@ import {
 } from "@/core/level/lib/weather/level-weather-memory";
 import { ILevelWeatherSeed } from "@/core/level/lib/weather/level-weather-seed";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
 
 /**
  * The open level's weather: what it plays, how, and where the renderer's clock stands. The renderer reads the cycle

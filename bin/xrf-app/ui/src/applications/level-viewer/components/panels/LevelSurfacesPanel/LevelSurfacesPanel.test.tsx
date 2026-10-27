@@ -11,7 +11,6 @@ import { LEVEL_SURFACES_PART } from "@xrf/ipc/types/xrf-app-levels";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Nullable } from "@xrf/types";
 
-import { LevelSurfacesPanel } from "@/applications/level-viewer/components/panels/LevelSurfacesPanel";
 import {
   mockLevelPartAnswer,
   mockLevelPartResponses,
@@ -21,17 +20,19 @@ import {
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { EMPTY_LEVEL_RESIDENT } from "@/core/level/lib/render/level-resident";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
-import { LevelLookService } from "@/core/level/services/level-look/level-look.service";
-import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
-import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
-import { LevelViewportService } from "@/core/level/services/level-viewport/level-viewport.service";
-import { LevelWeatherService } from "@/core/level/services/level-weather/level-weather.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
+import { LevelLookService } from "@/core/level/services/level-look";
+import { LevelRenderService } from "@/core/level/services/level-render";
+import { LevelViewService } from "@/core/level/services/level-view";
+import { LevelViewportService } from "@/core/level/services/level-viewport";
+import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { mockCommandAnswer } from "@/core/operations/fixtures/command-operation.mocks";
 import { mockSurfaceDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { LevelSurfacesPanel } from "./LevelSurfacesPanel";
 
 /** A table holding a scripted wall mark, an ordinary surface, and an entry naming nothing. */
 const TABLE: Array<XraySurfaceDescriptor> = [

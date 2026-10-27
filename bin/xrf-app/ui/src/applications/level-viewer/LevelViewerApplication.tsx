@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
 import { describeLevelSource } from "@/core/level/lib/source/level-source";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

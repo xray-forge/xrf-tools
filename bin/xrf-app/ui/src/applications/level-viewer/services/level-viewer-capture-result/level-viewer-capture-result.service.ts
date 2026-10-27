@@ -32,7 +32,7 @@ import {
   toLevelMapExportSettings,
   toMapExportRequest,
 } from "@/applications/level-viewer/lib/map/level-map-export";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { CommandReporter } from "@/core/operations/lib/command-reporter";
 import { noop } from "@/lib/callbacks/noop";

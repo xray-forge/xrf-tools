@@ -5,7 +5,7 @@ import { Binding } from "@wirestate/core";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { mockVisualModelViews } from "@/core/visuals/fixtures/visual.mocks";
 import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
-import { VisualViewService } from "@/core/visuals/services/visual-view/visual-view.service";
+import { VisualViewService } from "@/core/visuals/services/visual-view";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 let VisualPreviewLayout: typeof import("./VisualPreviewLayout").VisualPreviewLayout;

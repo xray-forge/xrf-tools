@@ -9,7 +9,7 @@ import { EXrayEngine, EXrayEngineChoice, EXrayEngineEvidence } from "@xrf/ipc/ty
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { MONOLITH_LEVEL_BLOOM, OPENXRAY_LEVEL_BLOOM } from "@/core/level/lib/look/level-look";
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelLookService } from "@/core/level/services/level-look/level-look.service";
 import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
 import { clearLocalStorage, getLocalStorageValue, LEVEL_LOOK_STORAGE_KEY } from "@/core/storage";

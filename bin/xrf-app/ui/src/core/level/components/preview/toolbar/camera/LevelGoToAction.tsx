@@ -5,9 +5,9 @@ import { ReactElement, useCallback } from "react";
 
 import { LevelGoToForm } from "@/core/level/components/preview/toolbar/camera/LevelGoToForm";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
-import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
-import { LevelViewportService } from "@/core/level/services/level-viewport/level-viewport.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
+import { LevelRenderService } from "@/core/level/services/level-render";
+import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

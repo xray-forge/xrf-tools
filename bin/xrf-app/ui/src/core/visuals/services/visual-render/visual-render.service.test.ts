@@ -29,9 +29,9 @@ import {
 } from "@/core/visuals/fixtures/visual.mocks";
 import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
-import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load";
 import { VisualRenderService } from "@/core/visuals/services/visual-render/visual-render.service";
-import { VisualViewService } from "@/core/visuals/services/visual-view/visual-view.service";
+import { VisualViewService } from "@/core/visuals/services/visual-view";
 import { mockContainer } from "@/fixtures/utils/container";
 import { flush } from "@/fixtures/utils/promise";
 
