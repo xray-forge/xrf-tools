@@ -7,6 +7,7 @@ import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { createRoots } from "@/core/assets/lib/roots";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { deferred, flush, IDeferred } from "@/fixtures/utils/promise";
 
 import { DialogViewService } from "./dialog-view.service";
 
@@ -63,6 +64,43 @@ describe("DialogViewService", () => {
         language: "rus",
       },
     });
+  });
+
+  it("keeps the dialog shown and inspected while its text in another language is fetched", async () => {
+    const { service } = await mockOpenedView();
+    const answer: IDeferred<typeof MOCK_DIALOG> = deferred();
+
+    await service.selectDialog("configs\\gameplay\\dialogs.xml", "trader");
+    service.inspectNode("0");
+
+    mockIpcCommands({ [EDialogsCommand.GET_DIALOG]: () => answer.promise });
+    service.setLanguage("rus");
+    await flush();
+
+    expect(service.dialog.isLoading).toBe(true);
+    expect(service.dialog.value).toBe(MOCK_DIALOG);
+    expect(service.inspectedNodeId).toBe("0");
+
+    answer.resolve({ ...MOCK_DIALOG, language: "rus" });
+    await flush();
+
+    expect(service.dialog.value?.language).toBe("rus");
+    expect(service.inspectedNodeId).toBe("0");
+  });
+
+  it("shows nothing of the previous dialog while another one is fetched", async () => {
+    const { service } = await mockOpenedView();
+
+    await service.selectDialog("configs\\gameplay\\dialogs.xml", "trader");
+    service.inspectNode("0");
+
+    mockIpcCommands({ [EDialogsCommand.GET_DIALOG]: () => deferred<typeof MOCK_DIALOG>().promise });
+    void service.selectDialog("configs\\gameplay\\dialogs.xml", "barman");
+    await flush();
+
+    expect(service.dialog.isLoading).toBe(true);
+    expect(service.dialog.value).toBeNull();
+    expect(service.inspectedNodeId).toBeNull();
   });
 
   it("keeps the selection when a dialog cannot be read, so the tree still shows what failed", async () => {

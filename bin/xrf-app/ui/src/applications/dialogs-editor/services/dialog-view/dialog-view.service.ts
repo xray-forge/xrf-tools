@@ -122,13 +122,16 @@ export class DialogViewService {
       return;
     }
 
-    // Only when the dialog actually changes. A language switch re-fetches the same one through here, and dropping the
-    // inspection then would close the panel the reader is comparing languages in.
+    // A language switch re-fetches the same dialog through here: it stays drawn and inspected while its text in the
+    // other language comes back, or the panel the reader compares languages in would close.
     const isSame: boolean = held.selection?.logicalPath === logicalPath && held.selection.id === id;
 
     this.view = { ...held, inspectedNodeId: isSame ? held.inspectedNodeId : null, selection: { id, logicalPath } };
     this.readFor = sessionId;
-    this.read.reset();
+
+    if (!isSame) {
+      this.read.reset();
+    }
 
     yield* this.read.run({
       name: "Read dialog",

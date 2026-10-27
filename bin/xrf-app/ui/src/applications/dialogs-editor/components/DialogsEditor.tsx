@@ -32,10 +32,7 @@ export function DialogsEditor(): ReactElement {
 
   const project: Nullable<DialogProjectDescriptor> = dialogsService.project.value;
   const fileCount: number = Object.keys(project?.files ?? {}).length;
-  const dialogCount: number = useMemo(
-    () => Object.values(project?.files ?? {}).reduce((total: number, file) => total + file.dialogs.length, 0),
-    [project]
-  );
+  const dialogCount: number = dialogsService.entries.length;
 
   const findings: ReadonlyArray<DialogFinding> = useMemo(() => project?.findings ?? [], [project]);
 
@@ -86,9 +83,9 @@ export function DialogsEditor(): ReactElement {
     `${formatCount(dialogCount)} dialogs`,
     // Zero text keys beside real dialogs is the signature of a layout pointed at the wrong place, so
     // it reads as a state rather than being left to infer from every phrase showing its key.
+    project?.textKeys ? `${formatCount(project.textKeys)} text keys` : "no text",
     // The language in force is state, so it reads here rather than from the toolbar action that changes
     // it — the division `EditorToolbar` states in its own contract.
-    project?.textKeys ? `${formatCount(project.textKeys)} text keys` : "no text",
     ...(viewService.resolvedLanguage ? [viewService.resolvedLanguage] : []),
     ...(findings.length ? [`${formatCount(findings.length)} problems`] : []),
   ]);

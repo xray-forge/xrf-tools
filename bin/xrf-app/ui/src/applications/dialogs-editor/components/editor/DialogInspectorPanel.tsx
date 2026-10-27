@@ -54,8 +54,8 @@ export function DialogInspectorPanel({
     );
   }
 
-  // A node the dialog no longer holds. Reachable while a language switch is in flight, because the
-  // canvas keeps its selection across the re-fetch.
+  // A node the dialog no longer holds: the canvas keeps its selection across a re-fetch of the same
+  // dialog, which may come back without it.
   if (!isDialogRoot && !phrase) {
     return (
       <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Phrase is gone"}>

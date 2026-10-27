@@ -19,7 +19,7 @@ import { DialogGraph } from "./editor/DialogGraph";
 export function DialogsEditorWorkspace(): ReactElement {
   const viewService: DialogViewService = useInjection(DialogViewService);
 
-  const dialog: AsyncState<Nullable<DialogDescriptor>> = viewService.dialog;
+  const dialog: AsyncState<DialogDescriptor> = viewService.dialog;
   const selection: Nullable<IDialogSelection> = viewService.selection;
 
   if (!selection) {
@@ -45,7 +45,13 @@ export function DialogsEditorWorkspace(): ReactElement {
       <div className={"flex min-h-0 min-w-0 grow overflow-hidden"}>
         {inline(() => {
           if (dialog.value) {
-            return <DialogGraph dialog={dialog.value} onSelect={viewService.inspectNode} />;
+            return (
+              <DialogGraph
+                dialog={dialog.value}
+                selectedNodeId={viewService.inspectedNodeId}
+                onSelect={viewService.inspectNode}
+              />
+            );
           }
 
           if (dialog.isLoading) {
