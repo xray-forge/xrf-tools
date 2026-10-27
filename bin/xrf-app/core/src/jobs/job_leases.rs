@@ -10,6 +10,7 @@ struct HeldLeases {
   resources: Vec<JobResource>,
 }
 
+/// What every running job holds: its exclusion group and the destinations it writes, by its identity.
 #[derive(Default)]
 pub(super) struct JobLeases {
   held: BTreeMap<Uuid, HeldLeases>,
@@ -24,12 +25,14 @@ impl JobLeases {
       {
         return Some((*id, group.to_owned()));
       }
+
       for resource in resources {
         if held.resources.iter().any(|other| resource.overlaps(other)) {
           return Some((*id, resource.describe()));
         }
       }
     }
+
     None
   }
 

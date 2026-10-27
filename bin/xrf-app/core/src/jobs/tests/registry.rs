@@ -161,7 +161,7 @@ fn a_concluded_job_is_retained_with_its_outcome() {
   let id: Uuid = Uuid::new_v4();
 
   {
-    let (_job, running): (JobHandle, JobRegistration) = registry
+    let (_job, mut running): (JobHandle, JobRegistration) = registry
       .register(JobStart::new(id, kinds::ARCHIVES_UNPACK))
       .expect("nothing is held");
 
@@ -195,7 +195,7 @@ fn a_failed_conclusion_carries_why() {
   let registry: Arc<JobRegistry> = new_registry();
 
   {
-    let (_job, running): (JobHandle, JobRegistration) = registry
+    let (_job, mut running): (JobHandle, JobRegistration) = registry
       .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK))
       .expect("nothing is held");
 
@@ -215,7 +215,7 @@ fn a_result_that_succeeded_after_a_cancellation_concludes_as_cancelled() {
   let registry: Arc<JobRegistry> = new_registry();
 
   {
-    let (_job, running): (JobHandle, JobRegistration) = registry
+    let (_job, mut running): (JobHandle, JobRegistration) = registry
       .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_UNPACK))
       .expect("nothing is held");
 
@@ -263,7 +263,7 @@ fn an_identity_starts_one_job() {
 
   registry.cancel(id);
 
-  let (first, running): (JobHandle, JobRegistration) = registry
+  let (first, mut running): (JobHandle, JobRegistration) = registry
     .register(JobStart::new(id, kinds::ARCHIVES_PACK))
     .expect("nothing is held");
 
@@ -290,7 +290,7 @@ fn the_retained_listing_is_bounded_and_keeps_the_newest() {
   let registry: Arc<JobRegistry> = new_registry();
 
   for index in 0..40 {
-    let (_job, running): (JobHandle, JobRegistration) = registry
+    let (_job, mut running): (JobHandle, JobRegistration) = registry
       .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_request(&index))
       .expect("nothing is held");
 
@@ -399,7 +399,7 @@ fn a_completed_job_retains_the_answer_it_gave() {
   let registry: Arc<JobRegistry> = new_registry();
 
   {
-    let (_job, running): (JobHandle, JobRegistration) = registry
+    let (_job, mut running): (JobHandle, JobRegistration) = registry
       .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK))
       .expect("nothing is held");
 
@@ -414,7 +414,7 @@ fn a_failed_job_retains_no_answer_because_it_gave_none() {
   let registry: Arc<JobRegistry> = new_registry();
 
   {
-    let (_job, running): (JobHandle, JobRegistration) = registry
+    let (_job, mut running): (JobHandle, JobRegistration) = registry
       .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK))
       .expect("nothing is held");
 
@@ -431,7 +431,7 @@ fn a_cancelled_job_retains_what_it_managed_to_do() {
   let registry: Arc<JobRegistry> = new_registry();
 
   {
-    let (_job, running): (JobHandle, JobRegistration) = registry
+    let (_job, mut running): (JobHandle, JobRegistration) = registry
       .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_UNPACK))
       .expect("nothing is held");
 
@@ -463,7 +463,7 @@ fn a_finished_job_still_describes_what_it_was_asked_to_do() {
   let registry: Arc<JobRegistry> = new_registry();
 
   {
-    let (_job, running): (JobHandle, JobRegistration) = registry
+    let (_job, mut running): (JobHandle, JobRegistration) = registry
       .register(JobStart::new(Uuid::new_v4(), kinds::ARCHIVES_PACK).with_request(&json!({ "name": "textures" })))
       .expect("nothing is held");
 
@@ -557,7 +557,7 @@ fn stops_reporting_a_job_that_has_finished() {
   let registry: Arc<JobRegistry> = new_registry_reporting_every(Duration::ZERO);
   let (channel, received): (Channel<JobProgress>, Arc<Mutex<Vec<String>>>) = new_watching_channel();
 
-  let (job, running): (JobHandle, JobRegistration) = registry
+  let (job, mut running): (JobHandle, JobRegistration) = registry
     .register(JobStart::new(Uuid::new_v4(), kinds::CONFIGS_VERIFY).with_progress(channel))
     .expect("the job registers");
 

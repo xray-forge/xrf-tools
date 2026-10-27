@@ -184,7 +184,7 @@ impl JobRegistry {
     F: FnOnce(JobHandle) -> Result<T, E> + Send + 'static,
   {
     let kind: JobKind = start.kind;
-    let (job, registration): (JobHandle, JobRegistration) = self.register(start)?;
+    let (job, mut registration): (JobHandle, JobRegistration) = self.register(start)?;
 
     execution
       .run_blocking(&format!("Job {kind}"), move || {
@@ -321,7 +321,8 @@ impl JobRegistry {
     true
   }
 
-  /// Ask a job to stop, whether or not it has registered yet.
+  /// Ask a job to stop, whether or not it has registered yet; answers whether one running was asked, a cancel held for
+  /// a job still on its way answering no.
   pub fn cancel(&self, id: Uuid) -> bool {
     let mut state: MutexGuard<RegistryState> = self.lock();
 
@@ -349,7 +350,8 @@ impl JobRegistry {
     false
   }
 
-  /// Starts asking running jobs where they have got to, and answers with the registry now doing it.
+  /// Starts asking running jobs where they have got to, and answers with the registry now doing it. Where no thread
+  /// can be started, jobs report only as they advance, and the next call tries again.
   pub fn start_reporting(self: Arc<Self>) -> Arc<Self> {
     if self.is_reporting.swap(true, Ordering::Relaxed) {
       return self;
@@ -357,17 +359,19 @@ impl JobRegistry {
 
     let registry: Weak<Self> = Arc::downgrade(&self);
     let interval: Duration = self.interval;
-
-    thread::spawn(move || {
-      loop {
-        match registry.upgrade() {
-          Some(registry) => registry.report_live(),
-          None => break,
-        }
-
+    let spawned = thread::Builder::new().name("xrf-job-reports".into()).spawn(move || {
+      // Held only while it asks, so the last owner letting the registry go ends the thread.
+      while let Some(live) = registry.upgrade() {
+        live.report_live();
+        drop(live);
         thread::sleep(interval);
       }
     });
+
+    if let Err(error) = spawned {
+      log::error!("Running jobs will report only as they advance, as no thread asks them: {error}");
+      self.is_reporting.store(false, Ordering::Relaxed);
+    }
 
     self
   }

@@ -1,5 +1,5 @@
 use std::fmt::{Debug, Display, Formatter, Result as FormatterResult};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::Arc;
 
 use serde::Serialize;
 use uuid::Uuid;
@@ -12,7 +12,7 @@ use crate::jobs::job_registry::JobRegistry;
 pub(crate) struct JobRegistration {
   registry: Arc<JobRegistry>,
   id: Uuid,
-  ending: Mutex<Option<JobEnding>>,
+  ending: Option<JobEnding>,
 }
 
 impl JobRegistration {
@@ -21,21 +21,16 @@ impl JobRegistration {
     Self {
       registry,
       id,
-      ending: Mutex::new(None),
+      ending: None,
     }
-  }
-
-  /// The identity the job registered under.
-  pub(crate) fn get_id(&self) -> Uuid {
-    self.id
   }
 
   /// Record how the job ended, before its leases are released.
   ///
   /// For a run with nothing to hand back. Where there is an answer, `conclude_with` keeps it.
   #[cfg(test)]
-  pub(super) fn conclude(&self, conclusion: JobConclusion, error: Option<String>) {
-    self.record(JobEnding {
+  pub(super) fn conclude(&mut self, conclusion: JobConclusion, error: Option<String>) {
+    self.ending = Some(JobEnding {
       conclusion,
       error,
       result: None,
@@ -43,8 +38,8 @@ impl JobRegistration {
   }
 
   /// Record the ending a `Result` describes, which is what a command has in hand.
-  pub(super) fn conclude_with<T: Serialize, E: Display>(&self, outcome: &Result<T, E>, cancelled: bool) {
-    let ending: JobEnding = match outcome {
+  pub(super) fn conclude_with<T: Serialize, E: Display>(&mut self, outcome: &Result<T, E>, cancelled: bool) {
+    self.ending = Some(match outcome {
       Ok(value) => JobEnding {
         conclusion: if cancelled {
           JobConclusion::Cancelled
@@ -61,13 +56,7 @@ impl JobRegistration {
         error: Some(error.to_string()),
         result: None,
       },
-    };
-
-    self.record(ending);
-  }
-
-  fn record(&self, ending: JobEnding) {
-    *self.ending.lock().unwrap_or_else(PoisonError::into_inner) = Some(ending);
+    });
   }
 }
 
@@ -82,16 +71,11 @@ impl Debug for JobRegistration {
 impl Drop for JobRegistration {
   /// Releases the leases and retains the job, concluding it as failed where nobody said otherwise.
   fn drop(&mut self) {
-    let ending: JobEnding = self
-      .ending
-      .lock()
-      .unwrap_or_else(PoisonError::into_inner)
-      .take()
-      .unwrap_or(JobEnding {
-        conclusion: JobConclusion::Failed,
-        error: None,
-        result: None,
-      });
+    let ending: JobEnding = self.ending.take().unwrap_or(JobEnding {
+      conclusion: JobConclusion::Failed,
+      error: None,
+      result: None,
+    });
 
     self.registry.finish(self.id, ending);
   }
