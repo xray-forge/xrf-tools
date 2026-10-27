@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { save } from "@tauri-apps/plugin-dialog";
 import { waitFor } from "@testing-library/react";
+import { EventBus, WireEvent } from "@wirestate/core";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockIpcCommands } from "@xrf/ipc/testing";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
@@ -12,7 +13,10 @@ import { DEFAULT_LEVEL_MAP_ANNOTATIONS } from "@/applications/level-viewer/lib/m
 import { DEFAULT_LEVEL_MAP_EXPORT } from "@/applications/level-viewer/lib/map/level-map-export";
 import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
 import { mockLevelViewContainer } from "@/core/level/fixtures/level-container";
+import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
+import { EApplicationId } from "@/core/routing/application";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockApplicationScope } from "@/fixtures/utils/container";
 
 const PATH: string = "appdata/level-viewer/screenshots/map_zaton-20261021-101500.png";
 
@@ -25,10 +29,20 @@ function mockMapCapture(url: string = "blob:map"): TLevelCapture {
   };
 }
 
-function mockResult(): LevelViewerCaptureResultService {
-  jest.spyOn(LevelViewerCaptureResultService.prototype, "sessionId", "get").mockReturnValue("session");
+function mockResult(raised: Array<INotificationPayload> = []): LevelViewerCaptureResultService {
+  const { container } = mockLevelViewContainer([
+    ...mockApplicationScope(EApplicationId.LEVEL_VIEWER),
+    LevelViewerCaptureResultService,
+  ]);
 
-  return mockLevelViewContainer([LevelViewerCaptureResultService]).container.get(LevelViewerCaptureResultService);
+  jest.spyOn(LevelViewerCaptureResultService.prototype, "sessionId", "get").mockReturnValue("session");
+  container
+    .get(EventBus)
+    .subscribe(EMIT_NOTIFICATION_EVENT, (event: WireEvent<INotificationPayload>) =>
+      raised.push(event.payload as INotificationPayload)
+    );
+
+  return container.get(LevelViewerCaptureResultService);
 }
 
 beforeEach(() => {
@@ -112,28 +126,48 @@ describe("LevelViewerCaptureResultService", () => {
     await exporting;
 
     expect(events).toEqual(["write 0", "written 0", "write 1", "export"]);
-    expect(service.exported).toBe("C:/out/map_zaton.dds");
+    expect(service.exported.value).toBe("C:/out/map_zaton.dds");
   });
 
-  it("lets the picture it replaces go, with the export written of it and why the last action failed", async () => {
-    const service: LevelViewerCaptureResultService = mockResult();
+  it("says why an action failed from the viewer, keeping the capture", async () => {
+    const raised: Array<INotificationPayload> = [];
+    const service: LevelViewerCaptureResultService = mockResult(raised);
 
+    jest.spyOn(service.log, "error").mockImplementation(() => undefined);
     mockIpcCommands({
       [ELevelsCommand.DELETE_SCREENSHOT]: () => {
         throw new Error("the file is open elsewhere");
       },
     });
 
-    service.show(mockMapCapture("blob:first"));
+    service.show(mockMapCapture());
     await service.remove();
 
-    expect(service.failure).toContain("the file is open elsewhere");
+    expect(service.captured).not.toBeNull();
+    expect(raised).toEqual([
+      expect.objectContaining({
+        details: `${PATH}\nthe file is open elsewhere`,
+        severity: ENotificationSeverity.ERROR,
+        source: EApplicationId.LEVEL_VIEWER,
+        title: "Could not delete the capture",
+      }),
+    ]);
+  });
+
+  it("lets the picture it replaces go, with the export written of it", async () => {
+    const service: LevelViewerCaptureResultService = mockResult();
+
+    jest.mocked(save).mockResolvedValueOnce("C:/out/map_zaton.dds");
+    mockIpcCommands({ [ELevelsCommand.EXPORT_MAP]: [2048, 2048] });
+
+    service.show(mockMapCapture("blob:first"));
+    await service.exportAs();
+    expect(service.exported.value).toBe("C:/out/map_zaton.dds");
 
     service.show(mockMapCapture("blob:second"));
 
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:first");
-    expect(service.failure).toBeNull();
-    expect(service.exported).toBeNull();
+    expect(service.exported.value).toBeNull();
   });
 
   it("puts every export and annotation setting back for a dialog opened afresh", () => {

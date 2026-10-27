@@ -25,7 +25,7 @@ export function LevelViewerScreenshotToast({
   className,
 }: BaseComponentProps): ReactElement {
   const screenshotService: LevelViewerScreenshotService = useInjection(LevelViewerScreenshotService);
-  const shot: Nullable<ILevelViewerScreenshot> = screenshotService.shot;
+  const shot: Nullable<ILevelViewerScreenshot> = screenshotService.shot.value;
   const [shownPath, setShownPath] = useState<Nullable<string>>(null);
   const [isHovered, setHovered] = useState<boolean>(false);
   const [isDeleteArmed, setDeleteArmed] = useState<boolean>(false);

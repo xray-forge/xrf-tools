@@ -2,7 +2,7 @@ import { join } from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, RefObservable } from "@wirestate/mobx";
-import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
+import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { systemCommands } from "@xrf/ipc/commands/system";
 import { BuildInfo } from "@xrf/ipc/types/xrf-build-info";
@@ -11,7 +11,6 @@ import { Logger } from "@xrf/logging";
 import { getPathName } from "@xrf/path";
 import { Maybe, Nullable } from "@xrf/types";
 
-import { describeLevelViewerFailure } from "@/applications/level-viewer/lib/files/level-viewer-failure";
 import {
   toLevelViewerFileStem,
   toLevelViewerLevelName,
@@ -48,6 +47,8 @@ import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { CommandOperation } from "@/core/operations/lib/command-operation";
+import { CommandReporter } from "@/core/operations/lib/command-reporter";
 import { mergeRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-choice";
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
@@ -66,16 +67,11 @@ export class LevelViewerSnapshotService {
   @RefObservable()
   public importing: Nullable<ILevelViewerImport> = null;
 
-  /** What the import applied, once it has. */
-  @RefObservable()
-  public result: Nullable<ILevelViewerSnapshotApplied> = null;
+  /** What the import applied of the file read, once it has; idle until applied, and again once the dialog closes. */
+  public readonly applied: CommandOperation<ILevelViewerSnapshotApplied> = new CommandOperation(this.log);
 
-  @RefObservable()
-  public isApplying: boolean = false;
-
-  /** Why the last export or import failed, until it is dismissed. */
-  @RefObservable()
-  public failure: Nullable<string> = null;
+  /** Reports the exports and the reads for import. */
+  private readonly reporter: CommandReporter = new CommandReporter(this.log);
 
   public constructor(
     private readonly viewService: LevelViewService = inject(LevelViewService),
@@ -114,82 +110,59 @@ export class LevelViewerSnapshotService {
   /** Writes the view as it stands where a save dialog answers, in the folder of views by default. */
   @ExclusiveFlow()
   public *exportView(): TFlow {
-    try {
-      const snapshot: ILevelViewerSnapshot = yield* call(this.exportSnapshot());
-      const folder: string = yield* call(levelsCommands.getViewFolder());
-      const defaultPath: string = yield* call(
-        join(folder, `${toLevelViewerFileStem(this.level, new Date())}.${EXrayExtension.JSON}`)
-      );
-      const path: Nullable<string> = yield* call(
-        save({ defaultPath, filters: LEVEL_VIEWER_SNAPSHOT_FILTERS, title: "Export view" })
-      );
-
-      if (path) {
-        this.log.info("Exported the view:", yield* call(writeLevelViewerSnapshot(path, snapshot)));
-      }
-    } catch (error: unknown) {
-      this.fail("export the view", error);
-    }
+    yield* this.reporter.run({
+      name: "Export view",
+      subject: this.level,
+      command: () => this.writeView(),
+      failure: "Could not export the view",
+    });
   }
 
   /** Reads the view an open dialog answers, from the folder of views by default, and compares it for import. */
   @ExclusiveFlow()
   public *beginImport(): TFlow {
-    try {
-      const defaultPath: string = yield* call(levelsCommands.getViewFolder());
-      const path: Nullable<string> = (yield* call(
-        open({
-          defaultPath,
-          directory: false,
-          filters: LEVEL_VIEWER_SNAPSHOT_FILTERS,
-          multiple: false,
-          title: "Import view",
-        })
-      )) as Nullable<string>;
+    const { result } = yield* this.reporter.run({
+      name: "Read view",
+      command: () => this.readView(),
+      failure: "Could not read the view",
+    });
 
-      if (path) {
-        const snapshot: ILevelViewerSnapshot = yield* call(readLevelViewerSnapshot(path));
-
-        this.result = null;
-        this.importing = { entries: this.compare(snapshot), fileName: getPathName(path), snapshot };
-      }
-    } catch (error: unknown) {
-      this.fail("read the view", error);
+    if (result) {
+      this.applied.reset();
+      this.importing = result;
     }
   }
 
   /**
-   * Applies the entries chosen of the file read for import, once: a call while they are being applied joins it.
+   * Applies the entries chosen of the file read for import, once: a call while they are being applied joins it. One
+   * that fails closes the dialog, its notice saying why.
    *
    * @param entries - The values chosen.
    */
   @ExclusiveFlow()
   public *applyImport(entries: ReadonlyArray<ILevelViewerSnapshotEntry>): TFlow {
-    if (!this.importing) {
+    const importing: Nullable<ILevelViewerImport> = this.importing;
+
+    if (!importing) {
       return;
     }
 
-    this.isApplying = true;
+    const { error } = yield* this.applied.run({
+      name: "Import view",
+      subject: importing.fileName,
+      command: () => this.apply(entries),
+      failure: "Could not import the view",
+    });
 
-    try {
-      this.result = yield* call(this.apply(entries));
-    } catch (error: unknown) {
+    if (error) {
       this.closeImport();
-      this.fail("import the view", error);
-    } finally {
-      this.isApplying = false;
     }
   }
 
   @BoundAction()
   public closeImport(): void {
     this.importing = null;
-    this.result = null;
-  }
-
-  @BoundAction()
-  public dismissFailure(): void {
-    this.failure = null;
+    this.applied.reset();
   }
 
   /**
@@ -332,10 +305,49 @@ export class LevelViewerSnapshotService {
     return result;
   }
 
-  @BoundAction()
-  private fail(what: string, error: unknown): void {
-    this.log.error(`Failed to ${what}:`, error);
-    this.failure = describeLevelViewerFailure(what, error);
+  /**
+   * Writes the view as it stands where a save dialog answers, in the folder of views by default.
+   *
+   * @returns Where it was written, or null where the dialog was dismissed.
+   */
+  private async writeView(): Promise<Nullable<string>> {
+    const snapshot: ILevelViewerSnapshot = await this.exportSnapshot();
+    const folder: string = await levelsCommands.getViewFolder();
+    const defaultPath: string = await join(
+      folder,
+      `${toLevelViewerFileStem(this.level, new Date())}.${EXrayExtension.JSON}`
+    );
+    const path: Nullable<string> = await save({
+      defaultPath,
+      filters: LEVEL_VIEWER_SNAPSHOT_FILTERS,
+      title: "Export view",
+    });
+
+    return path ? writeLevelViewerSnapshot(path, snapshot) : null;
+  }
+
+  /**
+   * Reads the view an open dialog answers, from the folder of views by default, compared with the view.
+   *
+   * @returns The file for import, or null where the dialog was dismissed.
+   */
+  private async readView(): Promise<Nullable<ILevelViewerImport>> {
+    const defaultPath: string = await levelsCommands.getViewFolder();
+    const path: Nullable<string> = (await open({
+      defaultPath,
+      directory: false,
+      filters: LEVEL_VIEWER_SNAPSHOT_FILTERS,
+      multiple: false,
+      title: "Import view",
+    })) as Nullable<string>;
+
+    if (!path) {
+      return null;
+    }
+
+    const snapshot: ILevelViewerSnapshot = await readLevelViewerSnapshot(path);
+
+    return { entries: this.compare(snapshot), fileName: getPathName(path), snapshot };
   }
 
   private async applyWeather(weather: TLevelViewerSnapshotPart): Promise<ILevelViewerSnapshotApplied["failed"]> {

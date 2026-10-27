@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { EventBus, WireEvent } from "@wirestate/core";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { ELevelsBulkRoute } from "@xrf/ipc/commands/levels-bulk";
 import { mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
@@ -14,6 +15,7 @@ import { ILevelViewContainerDescriptor, mockLevelViewContainer } from "@/core/le
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { LEVEL_WEATHER_NOON } from "@/core/level/lib/weather/level-weather-control";
+import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { clearLocalStorage } from "@/core/storage";
 import { mockFlow } from "@/fixtures/utils/flow";
 
@@ -34,17 +36,28 @@ const ZATON_MAP: LevelMapDescription = {
 function mockCapture(
   level: Nullable<SelectedLevelDescription> = ZATON,
   levelMap: Nullable<LevelMapDescription> = level ? ZATON_MAP : null
-): ILevelViewContainerDescriptor & { service: LevelViewerCaptureService; result: LevelViewerCaptureResultService } {
+): ILevelViewContainerDescriptor & {
+  service: LevelViewerCaptureService;
+  result: LevelViewerCaptureResultService;
+  raised: Array<INotificationPayload>;
+} {
   const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer([
     LevelViewerCaptureResultService,
     LevelViewerCaptureService,
   ]);
+  const raised: Array<INotificationPayload> = [];
 
+  descriptor.container
+    .get(EventBus)
+    .subscribe(EMIT_NOTIFICATION_EVENT, (event: WireEvent<INotificationPayload>) =>
+      raised.push(event.payload as INotificationPayload)
+    );
   jest.spyOn(LevelViewerCaptureService.prototype, "level", "get").mockReturnValue(level);
   jest.spyOn(LevelViewerCaptureService.prototype, "levelMap", "get").mockReturnValue(levelMap);
 
   return {
     ...descriptor,
+    raised,
     result: descriptor.container.get(LevelViewerCaptureResultService),
     service: descriptor.container.get(LevelViewerCaptureService),
   };
@@ -147,7 +160,7 @@ describe("LevelViewerCaptureService", () => {
   });
 
   it("captures at noon where the game has no map weather, then puts the clock back", async () => {
-    const { result, service, render, weather } = mockCapture();
+    const { raised, result, service, render, weather } = mockCapture();
     const timeDuring: Array<number> = [];
 
     mockFlow(weather, "cutTo", () => Promise.reject(new Error("no cycle 'map'")));
@@ -164,12 +177,12 @@ describe("LevelViewerCaptureService", () => {
 
     expect(timeDuring).toEqual([LEVEL_WEATHER_NOON]);
     expect(weather.time).toBe(3600);
-    expect(service.failure).toBeNull();
+    expect(raised.map((it: INotificationPayload) => it.severity)).toEqual([ENotificationSeverity.SUCCESS]);
     expect(result.captured?.mode).toBe(ELevelCaptureMode.MAP);
   });
 
   it("says why a capture failed, shows nothing, and puts the view back", async () => {
-    const { result, service, render, view, weather } = mockCapture();
+    const { raised, result, service, render, view, weather } = mockCapture();
     const release = mockFlow(weather, "release");
 
     view.setOptions({ ...DEFAULT_LEVEL_VIEW_OPTIONS, isSpawnedProps: true });
@@ -179,7 +192,13 @@ describe("LevelViewerCaptureService", () => {
     service.open();
     await service.capture();
 
-    expect(service.failure).toContain("the device was lost");
+    expect(raised).toEqual([
+      expect.objectContaining({
+        details: expect.stringContaining("the device was lost"),
+        severity: ENotificationSeverity.ERROR,
+        title: "Could not capture the level map",
+      }),
+    ]);
     expect(result.captured).toBeNull();
     expect(service.isCapturing).toBe(false);
     expect(view.options.isSpawnedProps).toBe(true);

@@ -6,12 +6,15 @@ import { RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useId, useState } from "react";
 
-import { ILevelViewerScreenshot } from "@/applications/level-viewer/lib/screenshot/level-viewer-screenshot";
+import {
+  ILevelViewerScreenshot,
+  ILevelViewerScreenshotReportFile,
+} from "@/applications/level-viewer/lib/screenshot/level-viewer-screenshot";
 import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/screenshot";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-/** What a screenshot's frame cost, as its report holds it; null until the report is written. */
+/** What a screenshot's frame cost, as its report holds it; null until the report is written or where it was not. */
 function toFrameLine(frame: Nullable<RenderFrameReport>): Nullable<string> {
   if (!frame?.framesPerSecond) {
     return null;
@@ -45,7 +48,8 @@ export function LevelViewerScreenshotDialog({
   const screenshotService: LevelViewerScreenshotService = useInjection(LevelViewerScreenshotService);
   const titleId: string = useId();
   const [isDeleteArmed, setDeleteArmed] = useState<boolean>(false);
-  const frame: Nullable<string> = toFrameLine(shot.frame);
+  const report: Nullable<ILevelViewerScreenshotReportFile> = screenshotService.report.value;
+  const frame: Nullable<string> = toFrameLine(report?.frame ?? null);
 
   const onArmDelete = useCallback(() => setDeleteArmed(true), []);
 
@@ -97,7 +101,7 @@ export function LevelViewerScreenshotDialog({
             {`${shot.width} × ${shot.height} pixels · ${formatBytes(shot.size)}`}
           </Typography>
           <Typography className={"text-text-secondary"} variant={"caption"}>
-            {frame ?? "Reading what the frame cost…"}
+            {frame ?? (screenshotService.report.error ? "Its report was not written." : "Reading what the frame cost…")}
           </Typography>
         </div>
       </DialogContent>
@@ -119,7 +123,7 @@ export function LevelViewerScreenshotDialog({
               Delete
             </Button>
             <Button onClick={onReveal}>Show in folder</Button>
-            <Button disabled={!shot.reportPath} onClick={onRevealReport}>
+            <Button disabled={!report} onClick={onRevealReport}>
               Show report
             </Button>
             <Button onClick={onCopyImage}>Copy image</Button>
