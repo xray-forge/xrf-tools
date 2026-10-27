@@ -31,10 +31,7 @@ impl LevelGraphPart {
   /// which every later ask answers with again.
   pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Result<Arc<SpawnLevelGraph>, String> {
     current.parts.get_or_record::<Self>(search, |search| {
-      let level: String = current
-        .source
-        .get_name()
-        .ok_or_else(|| format!("Level {} has no name to find its graph by", current.source.get_label()))?;
+      let level: String = current.source.require_name()?;
       let (path, chunks): (XrayLogicalPath, Vec<ChunkReader<InMemoryChunkDataSource>>) =
         LevelSpawnPart::read_chunks(search)?;
 

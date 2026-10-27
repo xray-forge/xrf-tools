@@ -1,14 +1,17 @@
 use std::fmt::Write;
+use std::path::Path;
 use std::sync::{Arc, OnceLock};
 
 use image::{Rgba, RgbaImage};
 use resvg::usvg::fontdb::Database;
 use resvg::{tiny_skia, usvg};
 use xrf_app_core::TauriResult;
+use xrf_utils::StagedFile;
 
 use crate::parts::LevelMapArea;
 use crate::viewer::map::annotations::{
   AnnotationOutline, AnnotationPoint, AnnotationVolume, LevelAnnotationKind, LevelAnnotations,
+  MapAnnotationsWriteRequest,
 };
 
 /// How a map's annotations are drawn: the area the map covers onto its pixels, what of them is drawn, and whether
@@ -37,6 +40,38 @@ impl AnnotationCanvas {
 
   /// A graph point's id against a label.
   const VERTEX_LABEL_SHARE: f32 = 0.75;
+
+  /// The canvas a write request asks for, over its map's pixels.
+  ///
+  /// # Errors
+  ///
+  /// Returns why the map's size cannot be read.
+  pub fn over_map(request: &MapAnnotationsWriteRequest) -> TauriResult<Self> {
+    let (width, height): (u32, u32) = image::image_dimensions(&request.path)
+      .map_err(|error| format!("Failed to read map '{}': {error}", request.path.display()))?;
+
+    Ok(Self {
+      area: request.area,
+      width,
+      height,
+      kinds: request.kinds.clone(),
+      is_labelled: request.is_labelled,
+    })
+  }
+
+  /// Draws `annotations` and writes them to `target` whole; answers the SVG written.
+  ///
+  /// # Errors
+  ///
+  /// Returns why the SVG could not be written.
+  pub fn write(&self, annotations: &LevelAnnotations, target: &Path) -> TauriResult<String> {
+    let svg: String = self.draw(annotations);
+
+    StagedFile::write(target, svg.as_bytes())
+      .map_err(|error| format!("Failed to write annotations '{}': {error}", target.display()))?;
+
+    Ok(svg)
+  }
 
   /// The annotations as an SVG over the map: its view box the map's pixels, a group a kind, the lowest first.
   pub fn draw(&self, annotations: &LevelAnnotations) -> String {

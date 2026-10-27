@@ -75,14 +75,21 @@ impl LevelSectionsPart {
       .chain([XrayReducedTextures::SECTION])
       .collect();
     let mut kept: Ltx = Ltx::new();
+    let mut missing: Vec<&str> = Vec::new();
 
     for name in names {
-      if let Some(section) = resolved.ltx.section(name) {
-        kept.entry(name.to_owned()).or_insert_with(|| section.clone());
+      match resolved.ltx.section(name) {
+        Some(section) => {
+          kept.entry(name.to_owned()).or_insert_with(|| section.clone());
+        }
+        // A game whose configs reduce no texture is not missing anything.
+        None if name == XrayReducedTextures::SECTION => {}
+        None => missing.push(name),
       }
     }
 
     LevelReport::sections(source, kept.len(), resolved.ltx.len(), started);
+    LevelReport::missing_sections_named(source, &missing);
 
     Ok(Arc::new(kept))
   }

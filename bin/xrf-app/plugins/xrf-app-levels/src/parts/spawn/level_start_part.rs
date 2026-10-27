@@ -37,9 +37,9 @@ impl LevelStartPart {
   pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Option<LevelStart> {
     current.parts.get_or_record::<Self>(search, |search| {
       let spawn = LevelSpawnPart::get(current, search).ok();
-      let open: Vec<bool> = spawn.as_deref().map_or_else(Vec::new, |spawn| {
-        Self::find_open(&current.source, search, &Self::list_eyes(spawn))
-      });
+      let open: Vec<bool> = spawn
+        .as_deref()
+        .map_or_else(Vec::new, |spawn| Self::find_open(&current.source, search, spawn));
 
       Self::resolve(
         spawn.as_deref(),
@@ -49,16 +49,18 @@ impl LevelStartPart {
     })
   }
 
-  /// Whether nothing of the collision form stands over each eye; every one for a level without a readable form, which
-  /// covers nothing.
-  pub fn find_open(source: &LevelSource, search: &XraySearch, eyes: &[Vector3d]) -> Vec<bool> {
+  /// Whether nothing of the collision form stands over each eye `list_eyes` lists of `spawn`; every one for a level
+  /// without a readable form, which covers nothing.
+  pub fn find_open(source: &LevelSource, search: &XraySearch, spawn: &LevelSpawn) -> Vec<bool> {
+    let eyes: Vec<Vector3d> = Self::list_eyes(spawn);
+
     source
       .read_optional_file(search, LevelCformFile::FILE_NAME)
       .inspect_err(|error| LevelReport::unreadable_open_sky(source, error))
       .ok()
       .flatten()
       .and_then(|bytes| {
-        LevelCformFile::read_open_above_from_bytes::<XRayByteOrder>(bytes, eyes)
+        LevelCformFile::read_open_above_from_bytes::<XRayByteOrder>(bytes, &eyes)
           .inspect_err(|error| {
             LevelReport::unreadable_open_sky(source, &source.describe_read_failure(LevelCformFile::FILE_NAME, error))
           })

@@ -109,13 +109,7 @@ impl OpenedLevel {
 
         let open: Vec<bool> = spawn.as_deref().map_or_else(
           |_| Vec::new(),
-          |spawn| {
-            LevelStartPart::find_open(
-              source,
-              &search.clone().with_recording(&start_inputs),
-              &LevelStartPart::list_eyes(spawn),
-            )
-          },
+          |spawn| LevelStartPart::find_open(source, &search.clone().with_recording(&start_inputs), spawn),
         );
 
         let sections: Option<Result<Arc<Ltx>, String>> = spawn.as_deref().ok().map(|spawn| {

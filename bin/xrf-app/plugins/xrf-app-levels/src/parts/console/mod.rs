@@ -1,1 +1,3 @@
-pub(super) mod level_console_part;
+mod level_console_part;
+
+pub(crate) use level_console_part::LevelConsolePart;

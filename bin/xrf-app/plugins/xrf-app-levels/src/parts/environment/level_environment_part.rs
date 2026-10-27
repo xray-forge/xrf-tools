@@ -36,6 +36,7 @@ impl LevelEnvironmentPart {
         &EnvironmentReadOptions::default().with_engine(current.engine.engine),
       )
       .map_err(|error| format!("Failed to read the game's environment configs: {error}"))?;
+      // A level the game does not know by name plays the `[default]` weathers, as one `game.ltx` leaves out does.
       let level: String = current.source.get_name().unwrap_or_default();
       let weather: LevelWeather = EnvironmentReader::read_level_weather(&project, &catalog, &level)
         .map_err(|error| format!("Failed to read which weathers level '{level}' plays: {error}"))?;

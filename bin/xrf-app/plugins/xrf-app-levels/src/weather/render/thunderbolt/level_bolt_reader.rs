@@ -7,18 +7,17 @@ use xrf_material::{XraySurfaceDraw, XraySurfaceResolver};
 use xrf_visual::LightAnimatorDescription;
 
 use crate::report::LevelReport;
-use crate::weather::render::{
-  LevelThunderbolt, LevelThunderboltGradient, LevelThunderboltModel, LevelWeatherModel, LevelWeatherSource,
-};
+use crate::weather::LevelWeatherSource;
+use crate::weather::render::{LevelThunderbolt, LevelThunderboltGradient, LevelThunderboltModel, LevelWeatherModel};
 
 /// Reads bolts, adding each model and colour animation once however many bolts name it, a missing one looked for once.
-pub(crate) struct LevelBoltReader<'s, 'a> {
+pub(super) struct LevelBoltReader<'s, 'a> {
   source: &'s LevelWeatherSource<'a>,
   resolver: XraySurfaceResolver,
   animations: Option<LightAnimFile>,
-  pub(crate) models: Vec<LevelThunderboltModel>,
+  pub(super) models: Vec<LevelThunderboltModel>,
   model_indices: HashMap<String, Option<u32>>,
-  pub(crate) animators: Vec<LightAnimatorDescription>,
+  pub(super) animators: Vec<LightAnimatorDescription>,
   animator_indices: HashMap<String, Option<u32>>,
 }
 
@@ -49,7 +48,7 @@ impl<'s, 'a> LevelBoltReader<'s, 'a> {
   };
 
   /// A reader over the level's weather source, its colour animations read once.
-  pub(crate) fn open(source: &'s LevelWeatherSource<'a>) -> Self {
+  pub(super) fn open(source: &'s LevelWeatherSource<'a>) -> Self {
     Self {
       animations: source
         .search
@@ -67,7 +66,7 @@ impl<'s, 'a> LevelBoltReader<'s, 'a> {
   }
 
   /// One bolt as the engine loads it, its model and colour animation added once.
-  pub(crate) fn read_bolt(&mut self, name: &str, bolt: &Thunderbolt) -> LevelThunderbolt {
+  pub(super) fn read_bolt(&mut self, name: &str, bolt: &Thunderbolt) -> LevelThunderbolt {
     let engine = self.source.catalog.engine;
 
     LevelThunderbolt {

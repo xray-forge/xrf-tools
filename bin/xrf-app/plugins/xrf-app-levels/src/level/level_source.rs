@@ -68,6 +68,17 @@ impl LevelSource {
     self.get_logical_directory().map(|path| path.file_name().to_owned())
   }
 
+  /// The level's name, for a read that finds the level's share of a game-wide file by it, as the spawn and its graph.
+  ///
+  /// # Errors
+  ///
+  /// Returns that the level has no engine identity to take a name from.
+  pub fn require_name(&self) -> TauriResult<String> {
+    self
+      .get_name()
+      .ok_or_else(|| format!("Level {} has no name the game knows it by", self.get_label()))
+  }
+
   /// One of the level's files, from disk or out of the mounted roots.
   ///
   /// # Errors

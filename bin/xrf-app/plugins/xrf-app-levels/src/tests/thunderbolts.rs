@@ -6,7 +6,8 @@ use xrf_material::fixtures::FixtureTree;
 use xrf_vfs::XraySearch;
 
 use crate::tests::fixtures;
-use crate::weather::render::{LevelThunderbolts, LevelWeatherSource};
+use crate::weather::LevelWeatherSource;
+use crate::weather::render::LevelThunderbolts;
 
 const FILE: &str = "environment\\thunderbolts.ltx";
 

@@ -1,16 +1,18 @@
 use std::sync::Arc;
 
+use xrf_app_core::TauriResult;
 use xrf_app_core::session::SessionSnapshot;
 use xrf_chunk::XRayByteOrder;
-use xrf_environment::{EnvironmentCatalog, LevelWeather, SunTable, WeatherCycle, WeatherKey};
+use xrf_environment::{EnvironmentCatalog, LevelWeather, SunTable, WeatherCycle, WeatherCycleId, WeatherKey};
 use xrf_level::{LevelEnvModFile, LevelEnvModifier};
 use xrf_vfs::XraySearch;
 
 use crate::level::SelectedLevel;
 use crate::parts::LevelWeatherPart;
 use crate::report::LevelReport;
-use crate::weather::render::LevelWeatherSource;
-use crate::weather::{EnvironmentCycleEntry, LevelWeatherCycle, LevelWeatherDescription, LevelWeatherTexture};
+use crate::weather::{
+  EnvironmentCycleEntry, LevelWeatherCycle, LevelWeatherDescription, LevelWeatherSource, LevelWeatherTexture,
+};
 
 /// The game's environment configs as the open level's engine reads them, and which of its cycles the level plays; kept
 /// as the level's environment part (`LevelEnvironmentPart`).
@@ -56,6 +58,19 @@ impl LevelEnvironment {
       thunderbolt_collections: catalog.thunderbolt_collections.clone(),
       weather: self.weather.clone(),
     }
+  }
+
+  /// Any cycle or effect of the game as the level's engine loads it, whether the level offers it or not.
+  ///
+  /// # Errors
+  ///
+  /// Returns that the game has no cycle or effect `id` names.
+  pub fn read_cycle(&self, id: &WeatherCycleId) -> TauriResult<LevelWeatherCycle> {
+    self
+      .catalog
+      .find_by_id(id)
+      .map(|cycle| LevelWeatherCycle::of(cycle, &self.catalog))
+      .ok_or_else(|| format!("There is no {} '{}'", id.kind.get_subject().to_lowercase(), id.name))
   }
 
   /// What the level's cycles are read against, its textures found in the search.

@@ -55,11 +55,7 @@ impl LevelSpawnPart {
   ///
   /// Returns the reason when the spawn cannot be read or the level has no name to find its objects by.
   pub fn read(source: &LevelSource, search: &XraySearch) -> Result<Arc<LevelSpawn>, String> {
-    let level: String = source
-      .get_name()
-      .ok_or_else(|| format!("Level {} has no name to find its spawn by", source.get_label()))?;
-
-    Self::read_level(search, &level).map(Arc::new)
+    Self::read_level(search, &source.require_name()?).map(Arc::new)
   }
 
   /// The game's spawn's root chunks, and the path it was read by.

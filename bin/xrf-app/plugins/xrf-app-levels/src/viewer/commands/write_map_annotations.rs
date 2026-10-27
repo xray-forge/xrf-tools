@@ -1,15 +1,11 @@
-use std::path::PathBuf;
-
 use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
-use xrf_utils::StagedFile;
 
 use crate::level::{SelectedLevel, SelectedLevels};
-use crate::parts::{LevelGraphPart, LevelSpawnPart};
 use crate::viewer::LevelViewerFolder;
 use crate::viewer::map::annotations::{AnnotationCanvas, LevelAnnotations, MapAnnotationsWriteRequest};
 
@@ -34,31 +30,10 @@ pub async fn levels_write_map_annotations(
     session_id,
     "Drawing a level map's annotations",
     move |current, search| {
-      let level: String = current
-        .source
-        .get_name()
-        .ok_or_else(|| format!("Level {} has no name to find its spawn by", current.source.get_label()))?;
-      let annotations: LevelAnnotations = LevelAnnotations::of(
-        &*LevelSpawnPart::get(current, search)?,
-        &*LevelGraphPart::get(current, search)?,
-        &level,
-      );
-      let (width, height): (u32, u32) = image::image_dimensions(&request.path)
-        .map_err(|error| format!("Failed to read map '{}': {error}", request.path.display()))?;
-      let svg: String = AnnotationCanvas {
-        area: request.area,
-        width,
-        height,
-        kinds: request.kinds,
-        is_labelled: request.is_labelled,
-      }
-      .draw(&annotations);
-      let target: PathBuf = LevelViewerFolder::get_annotations_path(&request.path);
-
-      StagedFile::write(&target, svg.as_bytes())
-        .map_err(|error| format!("Failed to write annotations '{}': {error}", target.display()))?;
-
-      Ok(svg)
+      AnnotationCanvas::over_map(&request)?.write(
+        &LevelAnnotations::read(current, search)?,
+        &LevelViewerFolder::get_annotations_path(&request.path),
+      )
     },
   )
   .await
