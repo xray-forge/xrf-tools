@@ -198,20 +198,8 @@ export class NativeViewport {
    * @param request - The point, in css pixels from the viewport's top left corner, and whether glass is passed by.
    * @returns What was hit, or null for nothing, a viewport not attached or a pick that failed.
    */
-  public async pick(request: RenderPickRequest): Promise<Nullable<RenderLevelHit>> {
-    const id: Nullable<RenderViewportId> = await this.attached;
-
-    if (id === null || this.isDisposed) {
-      return null;
-    }
-
-    try {
-      return await renderCommands.pick(id, request);
-    } catch (error: unknown) {
-      this.noteFailure("pick", error);
-
-      return null;
-    }
+  public pick(request: RenderPickRequest): Promise<Nullable<RenderLevelHit>> {
+    return this.ask("pick", (id: RenderViewportId) => renderCommands.pick(id, request), null).catch(() => null);
   }
 
   /**
@@ -219,63 +207,35 @@ export class NativeViewport {
    *
    * @returns Every entry something draws, or none for a viewport not attached; rejects for a measure that failed.
    */
-  public async measureSurfaces(): Promise<Array<WorldSurfaceGeometry>> {
-    const id: Nullable<RenderViewportId> = await this.attached;
-
-    if (id === null || this.isDisposed) {
-      return [];
-    }
-
-    try {
-      return await renderCommands.measureSurfaces(id);
-    } catch (error: unknown) {
-      this.noteFailure("measureSurfaces", error);
-
-      throw error;
-    }
+  public measureSurfaces(): Promise<Array<WorldSurfaceGeometry>> {
+    return this.ask("measureSurfaces", (id: RenderViewportId) => renderCommands.measureSurfaces(id), []);
   }
 
   /**
    * @returns What the viewport's level could not draw the way it asked; nothing for a viewport not attached; rejects
    *   for a description that failed.
    */
-  public async describeProblems(): Promise<WorldLevelProblems> {
-    const id: Nullable<RenderViewportId> = await this.attached;
-    const none: WorldLevelProblems = { models: [], sectors: [], skipped: [] };
-
-    if (id === null || this.isDisposed) {
-      return none;
-    }
-
-    try {
-      return await renderCommands.describeProblems(id);
-    } catch (error: unknown) {
-      this.noteFailure("describeProblems", error);
-
-      throw error;
-    }
+  public describeProblems(): Promise<WorldLevelProblems> {
+    return this.ask("describeProblems", (id: RenderViewportId) => renderCommands.describeProblems(id), {
+      models: [],
+      sectors: [],
+      skipped: [],
+    });
   }
 
   /**
    * @param object - A spawned object, by its index among the level's.
-   * @returns Its bounding sphere in renderer space, centre then radius; null until its model is drawn.
+   * @returns Its bounding sphere in renderer space, centre then radius; null until its model is drawn, for a viewport
+   *   not attached or a locate that failed.
    */
   public async locateSpawnObject(object: number): Promise<Nullable<[number, number, number, number]>> {
-    const id: Nullable<RenderViewportId> = await this.attached;
+    const sphere = await this.ask(
+      "locateSpawnObject",
+      (id: RenderViewportId) => renderCommands.locateSpawnObject(id, object),
+      null
+    ).catch(() => null);
 
-    if (id === null || this.isDisposed) {
-      return null;
-    }
-
-    try {
-      const sphere = await renderCommands.locateSpawnObject(id, object);
-
-      return sphere ? [sphere[0] ?? 0, sphere[1] ?? 0, sphere[2] ?? 0, sphere[3] ?? 0] : null;
-    } catch (error: unknown) {
-      this.noteFailure("locateSpawnObject", error);
-
-      return null;
-    }
+    return sphere ? [sphere[0] ?? 0, sphere[1] ?? 0, sphere[2] ?? 0, sphere[3] ?? 0] : null;
   }
 
   /**
@@ -284,20 +244,8 @@ export class NativeViewport {
    * @returns Each texture's reference and state, or none for a viewport not attached; rejects for a description that
    *   failed.
    */
-  public async describeTextureLoads(): Promise<Array<RenderTextureReport>> {
-    const id: Nullable<RenderViewportId> = await this.attached;
-
-    if (id === null || this.isDisposed) {
-      return [];
-    }
-
-    try {
-      return await renderCommands.describeTextureLoads(id);
-    } catch (error: unknown) {
-      this.noteFailure("describeTextureLoads", error);
-
-      throw error;
-    }
+  public describeTextureLoads(): Promise<Array<RenderTextureReport>> {
+    return this.ask("describeTextureLoads", (id: RenderViewportId) => renderCommands.describeTextureLoads(id), []);
   }
 
   /**
