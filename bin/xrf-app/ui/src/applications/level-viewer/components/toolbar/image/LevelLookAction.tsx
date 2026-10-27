@@ -27,7 +27,6 @@ import {
 } from "@/applications/level-viewer/lib/look/level-look-fields";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
-import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ILevelLook } from "@/core/level/lib/look/level-look";
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
 import { LevelLookService } from "@/core/level/services/level-look.service";
@@ -118,24 +117,21 @@ export function LevelLookAction({
   const lookService: LevelLookService = useInjection(LevelLookService);
   const viewService: LevelViewService = useInjection(LevelViewService);
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
-  const { settings, features } = useLevelRenderFeatures();
+  const { features, drawn } = useLevelRenderFeatures();
   const { set: setBloom, reset: resetBloom } = useLevelFeatureOverride("enhancedBloom");
   const { set: setGrading } = useLevelFeatureOverride("grading");
 
   // Which bloom the view draws, and the enhanced bloom's strengths.
-  const bloom: TRenderEnhancedBloomSettings = toLevelModeFeature("enhancedBloom", settings, features);
+  const bloom: TRenderEnhancedBloomSettings = drawn.enhancedBloom;
   // How the physical light's frame is graded before its display transform.
-  const grading: TRenderGradingSettings = toLevelModeFeature("grading", settings, features);
+  const grading: TRenderGradingSettings = drawn.grading;
   const isEnhancedBloom: boolean = bloom.mode === ERenderBloomMode.ENHANCED;
   // What the view lights in: its own choice, else the settings'.
-  const lightModel: RenderLightModel = features.lightModel ?? settings.lightModel;
+  const lightModel: RenderLightModel = drawn.lightModel;
   const isPhysical: boolean = lightModel === ERenderLightModel.PHYSICAL;
-  const displayTransform: RenderDisplayTransform = features.displayTransform ?? settings.displayTransform;
+  const displayTransform: RenderDisplayTransform = drawn.displayTransform;
   const isPhysicalLevelAvailable: boolean = renderSettingsService.isPhysicalLightLevelAvailable;
-  const lightLevel: RenderLightLevel = toDrawnRenderLightLevel(
-    features.lightLevel ?? settings.lightLevel,
-    isPhysicalLevelAvailable
-  );
+  const lightLevel: RenderLightLevel = toDrawnRenderLightLevel(drawn.lightLevel, isPhysicalLevelAvailable);
   const isPhysicalLevels: boolean = isPhysical && lightLevel === ERenderLightLevel.PHYSICAL;
 
   const { choice, look, defaults } = lookService;
@@ -254,7 +250,7 @@ export function LevelLookAction({
 
           <RenderValueSlider
             label={"Sun tint"}
-            value={features.sunTint ?? settings.sunTint}
+            value={drawn.sunTint}
             {...RENDER_SUN_TINT_LIMITS}
             isDisabled={!isPhysicalLevels}
             format={formatSunTint}

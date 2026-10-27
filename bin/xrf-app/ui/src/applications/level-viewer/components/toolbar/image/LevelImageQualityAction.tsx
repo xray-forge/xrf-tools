@@ -12,12 +12,16 @@ import {
   RenderScale,
 } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
-import { ReactElement } from "react";
+import { ReactElement, useCallback } from "react";
 
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
-import { describeLevelFeatureToggle, LEVEL_ANTIALIASING_MODES } from "@/core/level/lib/features/level-feature-options";
+import {
+  describeLevelFeatureToggle,
+  ILevelFeatureOptions,
+  LEVEL_ANTIALIASING_MODES,
+} from "@/core/level/lib/features/level-feature-options";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
@@ -44,7 +48,6 @@ import {
   RENDER_SHARPENING_LIMITS,
 } from "@/core/render/lib/features/render-upscaling-choices";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
-import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
@@ -53,6 +56,9 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderAntialiasing>> = LEVEL_ANTIALIASING_MODES.map(
   (value: RenderAntialiasing) => ({ label: describeRenderAntialiasing(value), value })
 );
+
+/** What the popover sets for the view, which its reset leaves to the settings again. */
+const IMAGE_QUALITY_FEATURES: ReadonlyArray<keyof ILevelFeatureOptions> = ["antialiasing", "upscaling", "output"];
 
 /** The modes offered where the GPU has no DLSS: DLSS greyed out, FSR standing in for it. */
 const MODE_OPTIONS_WITHOUT_DLSS: ReadonlyArray<IChoiceFormRowOption<RenderAntialiasing>> = MODE_OPTIONS.map(
@@ -71,43 +77,26 @@ export function LevelImageQualityAction({
 }: BaseComponentProps): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
-  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
-  const { settings, features } = useLevelRenderFeatures();
+  const { settings, features, drawn, output } = useLevelRenderFeatures();
   const { isOn, toggle } = useLevelViewToggle("isAntialiased");
   const { set: setUpscaling } = useLevelFeatureOverride("upscaling");
   const { set: setOutput } = useLevelFeatureOverride("output");
-  // What the settings draw every viewport with, which this view may set over, the mode only narrowed to none.
-  const settingsMode: RenderAntialiasing = settings.antialiasing;
-  const settingsScale: RenderScale = settings.upscaling.scale;
-  const settingsSharpening: number = settings.upscaling.sharpening;
-  const settingsDlssPreset: RenderDlssPreset = settings.upscaling.dlssPreset;
-  const settingsRayReconstruction: boolean = settings.upscaling.isRayReconstructed;
-  const settingsRayPreset: RenderRayReconstructionPreset = settings.upscaling.rayReconstructionPreset;
-  const settingsResolution: ERenderResolution = renderSettingsService.renderResolution;
-  const settingsOutputScale: number = renderSettingsService.renderOutputScale;
+  const { scale, sharpening, dlssPreset, rayReconstructionPreset: rayPreset } = drawn.upscaling;
   // Whether the scene holds linear light, the Enhanced tonemap or the physical light, which ray reconstruction needs.
   const isSceneLinear: boolean =
-    settings.tonemap === ERenderTonemapMode.ENHANCED ||
-    (features.lightModel ?? settings.lightModel) === ERenderLightModel.PHYSICAL;
+    drawn.tonemap === ERenderTonemapMode.ENHANCED || drawn.lightModel === ERenderLightModel.PHYSICAL;
   // Whether the frame is drawn smaller than the viewport, which sharpening applies to besides a temporal resolve.
   const isUpscaled: boolean = renderService.isUpscaled;
   // What the GPU can do: FSR smooths in place of DLSS, and DLSS upscales alone, where it lacks them.
   const dlss: RenderDlssAvailability = renderService.dlss;
   const rayReconstruction: RenderDlssAvailability = renderService.rayReconstruction;
 
-  const isAvailable: boolean = settingsMode !== ERenderAntialiasing.NONE;
-  const asked: RenderAntialiasing = features.antialiasing ?? settingsMode;
+  // The settings' mode is the view's to narrow to none alone: it cannot smooth what the settings do not.
+  const isAvailable: boolean = settings.antialiasing !== ERenderAntialiasing.NONE;
   const dlssProblem: Nullable<string> = describeDlssUnavailability(dlss);
-  const mode: RenderAntialiasing = toDrawnAntialiasing(asked, dlss);
-  const scale: RenderScale = features.upscaling.scale ?? settingsScale;
-  const sharpening: number = features.upscaling.sharpening ?? settingsSharpening;
-  const dlssPreset: RenderDlssPreset = features.upscaling.dlssPreset ?? settingsDlssPreset;
-  const rayPreset: RenderRayReconstructionPreset = features.upscaling.rayReconstructionPreset ?? settingsRayPreset;
+  const mode: RenderAntialiasing = toDrawnAntialiasing(drawn.antialiasing, dlss);
   const rayProblem: Nullable<string> = describeRayReconstructionUnavailability(rayReconstruction, isSceneLinear);
-  const isRayReconstructed: boolean =
-    !rayProblem && (features.upscaling.isRayReconstructed ?? settingsRayReconstruction);
-  const resolution: ERenderResolution = features.output.resolution ?? settingsResolution;
-  const outputScale: number = features.output.scale ?? settingsOutputScale;
+  const isRayReconstructed: boolean = !rayProblem && drawn.upscaling.isRayReconstructed;
   const isSharpenable: boolean = isUpscaled || (isOn && isTemporalAntialiasing(mode));
 
   const description: string = describeLevelFeatureToggle({
@@ -117,6 +106,8 @@ export function LevelImageQualityAction({
     off: "Antialiasing off, every edge as drawn",
     on: `Edges smoothed by ${describeRenderAntialiasing(mode)}`,
   });
+
+  const reset = useCallback(() => viewService.resetFeatures(IMAGE_QUALITY_FEATURES), [viewService]);
 
   return (
     <EditorPopoverAction
@@ -222,31 +213,21 @@ export function LevelImageQualityAction({
         <RenderValueChoice
           label={"Output resolution"}
           options={RENDER_RESOLUTION_OPTIONS}
-          value={resolution}
+          value={output.resolution}
           onChange={(next: ERenderResolution) => setOutput({ resolution: next })}
         />
 
-        {resolution === ERenderResolution.AUTO ? (
+        {output.resolution === ERenderResolution.AUTO ? (
           <RenderValueSlider
             label={"Output scale"}
-            value={outputScale}
+            value={output.scale}
             {...RENDER_OUTPUT_SCALE_LIMITS}
             format={formatOutputScale}
             onChange={(next: number) => setOutput({ scale: next })}
           />
         ) : null}
 
-        <Button
-          size={"small"}
-          onClick={() =>
-            viewService.setFeatures({
-              ...features,
-              antialiasing: null,
-              upscaling: {},
-              output: {},
-            })
-          }
-        >
+        <Button size={"small"} onClick={reset}>
           Reset to the preset
         </Button>
       </div>

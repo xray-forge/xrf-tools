@@ -11,6 +11,7 @@ import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND } from "@/applications/level-viewer/commands";
+import { describeLevelViewerFailure } from "@/applications/level-viewer/lib/files/level-viewer-failure";
 import { toLevelViewerFileStem } from "@/applications/level-viewer/lib/files/level-viewer-file-stem";
 import {
   copyLevelViewerImage,
@@ -245,7 +246,7 @@ export class LevelViewerScreenshotService {
   @BoundAction()
   private fail(what: string, error: unknown): void {
     this.log.error(`Failed to ${what}:`, error);
-    this.failure = `Failed to ${what}: ${error instanceof Error ? error.message : String(error)}`;
+    this.failure = describeLevelViewerFailure(what, error);
   }
 
   /** The screenshot written to `path`, read back for the page. */

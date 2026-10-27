@@ -121,6 +121,20 @@ export class LevelViewService {
   }
 
   /**
+   * @param keys - The features the view leaves to the settings again, as a popover's reset leaves its own; the rest
+   *   stay as the view sets them.
+   */
+  @BoundAction()
+  public resetFeatures(keys: ReadonlyArray<keyof ILevelFeatureOptions>): void {
+    const unset: ILevelFeatureOptions = toLevelFeatureOptions(null);
+
+    this.setFeatures({
+      ...this.features,
+      ...Object.fromEntries(keys.map((key: keyof ILevelFeatureOptions) => [key, unset[key]])),
+    });
+  }
+
+  /**
    * @param stored - The parsed stored features, `null` when none were stored.
    * @returns The stored features, or none where none were stored; a setting the schema does not take is dropped.
    */

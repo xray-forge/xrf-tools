@@ -37,7 +37,11 @@ import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-option
 import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
-import { toLevelRendererAntialiasing } from "@/core/level/lib/features/level-feature-options";
+import {
+  TLevelOutputOptions,
+  toLevelOutput,
+  toLevelRendererAntialiasing,
+} from "@/core/level/lib/features/level-feature-options";
 import { TLevelPick, toLevelPick } from "@/core/level/lib/pick/level-pick";
 import { toLevelPickSelection } from "@/core/level/lib/pick/level-pick-selection";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
@@ -165,16 +169,19 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   /** What the level is asked to be drawn with: the toolbar, the look and the settings together. */
   @Computed()
   public get viewOptions(): RenderViewOptions {
+    const output: Required<TLevelOutputOptions> = toLevelOutput(
+      this.viewService.features.output,
+      this.renderSettingsService.renderResolution,
+      this.renderSettingsService.renderOutputScale
+    );
+
     return toLevelViewOptions({
       features: this.renderSettingsService.rendererFeatures,
       hemiStrength: this.viewService.hemiStrength,
       lod: this.viewService.lod,
       look: this.lookService.look,
       options: this.viewService.options,
-      output: toRenderOutput(
-        this.viewService.features.output.resolution ?? this.renderSettingsService.renderResolution,
-        this.viewService.features.output.scale ?? this.renderSettingsService.renderOutputScale
-      ),
+      output: toRenderOutput(output.resolution, output.scale),
       shading: this.shading,
       sunShafts: this.weatherService.sunShafts,
       view: {

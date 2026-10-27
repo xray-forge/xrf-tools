@@ -19,6 +19,7 @@ import {
   LEVEL_MAP_BACKDROP,
   LEVEL_MAP_EXPORT_LONG_SIDES,
   TLevelMapExportKind,
+  toLevelMapExportLongSide,
   toLevelMapExportSize,
 } from "@/applications/level-viewer/lib/map/level-map-export";
 import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
@@ -184,7 +185,7 @@ export function LevelViewerMapResult({
             label: formatCount(side),
             isDisabled: side > captured,
           }))}
-          value={String(Math.min(settings.longSide, captured))}
+          value={String(toLevelMapExportLongSide(settings, captured))}
           onChange={onLongSide}
         />
         <div className={"flex flex-col"}>

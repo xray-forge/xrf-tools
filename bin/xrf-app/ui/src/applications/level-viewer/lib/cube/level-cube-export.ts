@@ -74,6 +74,15 @@ export function toCubeExportRequest(
     path,
     target,
     format: toCubeExportFormat(settings),
-    size: Math.min(settings.size, captured),
+    size: toLevelCubeExportSize(settings, captured),
   };
+}
+
+/**
+ * @param settings - The export asked for.
+ * @param captured - The capture's face size.
+ * @returns The export's face size: the one asked for, at most what was captured, since an export never enlarges.
+ */
+export function toLevelCubeExportSize(settings: ILevelCubeExportSettings, captured: number): number {
+  return Math.min(settings.size, captured);
 }
