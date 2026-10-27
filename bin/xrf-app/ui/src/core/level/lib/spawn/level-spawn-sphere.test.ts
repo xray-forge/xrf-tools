@@ -1,11 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 
-import {
-  ILevelSpawnSphere,
-  toLevelSpawnPosition,
-  toLevelSpawnSphere,
-} from "@/applications/level-viewer/lib/spawn/level-spawn-sphere";
 import { mockLevelSpawnObject } from "@/core/level/fixtures/level.mocks";
+import { ILevelSpawnSphere, toLevelSpawnPosition, toLevelSpawnSphere } from "@/core/level/lib/spawn/level-spawn-sphere";
 import { mockVisualTransform } from "@/core/visuals/fixtures/visual.mocks";
 
 describe("toLevelSpawnSphere", () => {

@@ -14,7 +14,6 @@ import {
 } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement, useCallback } from "react";
 
-import { LevelDebandingSettings } from "@/applications/level-viewer/components/toolbar/image/LevelDebandingSettings";
 import { LevelLookSection } from "@/applications/level-viewer/components/toolbar/image/LevelLookSection";
 import { LevelLookSliders } from "@/applications/level-viewer/components/toolbar/image/LevelLookSliders";
 import {
@@ -25,6 +24,7 @@ import {
   LEVEL_LOOK_LIGHT_SCALE_FIELDS,
   LEVEL_LOOK_TONEMAP_FIELDS,
 } from "@/applications/level-viewer/lib/look/level-look-fields";
+import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { ILevelLook } from "@/core/level/lib/look/level-look";
@@ -382,7 +382,7 @@ export function LevelLookAction({
             onEdit={onEdit}
           />
 
-          <LevelDebandingSettings className={"flex flex-col gap-2"} />
+          <LevelEnhancedFeatureSection feature={"debanding"} />
         </LevelLookSection>
       </div>
     </EditorPopoverAction>

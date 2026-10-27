@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Maybe, Nullable } from "@xrf/types";
-import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { describeLevelDescriptionWait } from "@/applications/level-viewer/lib/load/level-description-wait";
 import {
@@ -16,6 +16,7 @@ import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { ILevelSurfaceDressing } from "@/core/level/lib/surface/level-surface-dressing";
 import { ILevelSurfaceGeometry, NO_LEVEL_SURFACE_GEOMETRY } from "@/core/level/lib/surface/level-surface-geometry";
 import {
+  findLevelSurface,
   ILevelSurfaceSummary,
   listLevelSurfaces,
   listNamedLevelSurfaces,
@@ -54,6 +55,7 @@ export function LevelSurfacesPanel({
   const [filter, setFilter] = useState<string>("");
 
   const picked: Nullable<TLevelPick> = viewportService.picked;
+  const isPickRelocated: boolean = viewportService.isPickRelocated;
   const surfaces: Nullable<ReadonlyArray<XraySurfaceDescriptor>> = loadService.surfaces.value;
 
   const named: Array<ILevelSurfaceSummary> = useMemo(
@@ -87,7 +89,28 @@ export function LevelSurfacesPanel({
     ? (viewportService.surfaceGeometry.get(selected.shaderId) ?? NO_LEVEL_SURFACE_GEOMETRY)
     : NO_LEVEL_SURFACE_GEOMETRY;
 
-  const onSelect = useCallback((item: ITreeNode<TLevelSurfaceTreeRow>) => select(item.id), [select]);
+  // The entry chosen as the table it was chosen in read it, which a table read anew finds again; null for a shader's
+  // row, which its name keeps.
+  const chosen = useRef<Nullable<XraySurfaceDescriptor>>(null);
+  // The pick last heard, so the tree answers each once.
+  const heard = useRef<Nullable<TLevelPick>>(null);
+  // The table the entry was chosen in.
+  const read = useRef<Nullable<ReadonlyArray<XraySurfaceDescriptor>>>(surfaces);
+  const sessionId: Nullable<string> = loadService.level.value?.selected.sessionId ?? null;
+
+  const choose = useCallback(
+    (id: Nullable<string>, entry: Nullable<XraySurfaceDescriptor>) => {
+      chosen.current = entry;
+      select(id);
+    },
+    [select]
+  );
+
+  const onSelect = useCallback(
+    (item: ITreeNode<TLevelSurfaceTreeRow>) =>
+      choose(item.id, item.payload?.kind === "entry" ? item.payload.summary.descriptor : null),
+    [choose]
+  );
 
   const renderLabel = useCallback((item: ITreeNode<TLevelSurfaceTreeRow>): ReactNode => {
     const row: Maybe<TLevelSurfaceTreeRow> = item.payload;
@@ -113,21 +136,50 @@ export function LevelSurfacesPanel({
     );
   }, []);
 
-  // Another level's table is numbered afresh, so what was chosen names some other entry now.
-  useEffect(() => select(null), [named, select]);
+  // What was chosen belongs to the level it was chosen in.
+  useEffect(() => choose(null, null), [sessionId, choose]);
 
+  // A table read anew may number the entry chosen afresh: it is chosen where it stands now, or nothing where it is gone.
   useEffect(() => {
+    const before: Nullable<ReadonlyArray<XraySurfaceDescriptor>> = read.current;
+
+    read.current = surfaces;
+
+    if (!chosen.current || !before || surfaces === before) {
+      return;
+    }
+
+    const shaderId: Nullable<number> = surfaces ? findLevelSurface(chosen.current, surfaces) : null;
+
+    if (surfaces && shaderId !== null) {
+      choose(toLevelSurfaceEntryId(shaderId), surfaces[shaderId] ?? null);
+    } else {
+      choose(null, null);
+    }
+  }, [choose, surfaces]);
+
+  // The tree shows what is picked: the entry drawing a surface picked chosen, its shader opened and any filter hiding it
+  // cleared; anything else picked, or nothing, chooses nothing here. A pick found again in a table read anew leaves the
+  // tree to follow what it chose itself.
+  useEffect(() => {
+    // A surface picked before the table is read is chosen once it is.
+    if (picked === heard.current || isPickRelocated || (picked?.kind === ELevelPick.SURFACE && !surfaces)) {
+      return;
+    }
+
+    heard.current = picked;
+
     const summary: Maybe<ILevelSurfaceSummary> =
       picked?.kind === ELevelPick.SURFACE ? byId.get(toLevelSurfaceEntryId(picked.shaderId)) : undefined;
 
     if (summary) {
       setFilter("");
       expandAll([toLevelSurfaceShaderId(summary.shader)]);
-      select(toLevelSurfaceEntryId(summary.shaderId));
+      choose(toLevelSurfaceEntryId(summary.shaderId), summary.descriptor);
     } else {
-      select(null);
+      choose(null, null);
     }
-  }, [byId, expandAll, picked, select]);
+  }, [byId, choose, expandAll, isPickRelocated, picked, surfaces]);
 
   // A filter that matched inside a shader opens it, because a closed shader answering a query looks like no answer.
   useEffect(() => {

@@ -5,8 +5,8 @@ import { LevelSpawnObject, LevelSpawnObjectDetails } from "@xrf/ipc/types/xrf-ap
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { toLevelFramedGoTo } from "@/applications/level-viewer/lib/camera/level-camera-frame";
-import { toLevelSpawnSphere } from "@/applications/level-viewer/lib/spawn/level-spawn-sphere";
+import { toLevelFramedGoTo } from "@/core/level/lib/camera/level-camera-frame";
+import { toLevelSpawnSphere } from "@/core/level/lib/spawn/level-spawn-sphere";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { toRadians } from "@xrf/math";
 
-import { toLevelFramedGoTo } from "@/applications/level-viewer/lib/camera/level-camera-frame";
+import { toLevelFramedGoTo } from "@/core/level/lib/camera/level-camera-frame";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 
 describe("toLevelFramedGoTo", () => {

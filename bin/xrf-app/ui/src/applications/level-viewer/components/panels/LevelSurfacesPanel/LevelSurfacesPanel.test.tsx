@@ -1,15 +1,19 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, RenderResult, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { Container } from "@wirestate/core";
+import { Container, EventBus } from "@wirestate/core";
 import { AsyncState } from "@xrf/async";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
+import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
+import { LEVEL_SURFACES_PART } from "@xrf/ipc/types/xrf-app-levels";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Nullable } from "@xrf/types";
 
 import { LevelSurfacesPanel } from "@/applications/level-viewer/components/panels/LevelSurfacesPanel";
 import {
+  mockLevelPartAnswer,
   mockLevelPartResponses,
   mockLevelTextureReport,
   mockSelectedLevelDescription,
@@ -259,6 +263,43 @@ describe("LevelSurfacesPanel", () => {
 
     // The tree follows the viewport's selection, so one cleared there chooses nothing here.
     act(() => (viewport as unknown as LevelViewportService).notePicked(null));
+
+    await waitFor(() => expect(view.queryByTestId("level-surface-details")).not.toBeInTheDocument());
+  });
+
+  // A table read anew may number its entries afresh: the one chosen is found again by its shader and textures.
+  it("keeps the entry chosen across its table read anew, and chooses nothing once it is gone", async () => {
+    let container: Nullable<Container> = null;
+    const view: RenderResult = await renderPanel(undefined, (it: Container) => {
+      container = it;
+    });
+
+    async function reread(revision: number, table: Array<XraySurfaceDescriptor>): Promise<void> {
+      const held: Container = container as unknown as Container;
+      const load: LevelLoadService = held.get(LevelLoadService);
+
+      mockIpcCommands({ [ELevelsCommand.DESCRIBE_SURFACES]: mockLevelPartAnswer(table, revision) });
+      act(() =>
+        held.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
+          revision,
+          root: { kind: "kept" },
+          sessionId: load.level.value?.selected.sessionId as string,
+          staleParts: [LEVEL_SURFACES_PART],
+          isViewRenewed: false,
+        })
+      );
+      await waitFor(() => expect(load.surfaces.snapshot?.revision).toBe(revision));
+    }
+
+    await choose(view, "decal", "2 · decal\\decal_poteki");
+    await reread(1, [TABLE[0], TABLE[1], TABLE[3], TABLE[2]]);
+
+    expect(await view.findByTestId("level-surface-details")).toHaveTextContent(
+      "3 · effects\\wallmarkmult · decal\\decal_poteki"
+    );
+    expect(view.getByRole("textbox", { name: "Filter surfaces" })).toHaveValue("decal");
+
+    await reread(2, [TABLE[0], TABLE[1], TABLE[3]]);
 
     await waitFor(() => expect(view.queryByTestId("level-surface-details")).not.toBeInTheDocument());
   });

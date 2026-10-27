@@ -1,4 +1,5 @@
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
+import { Nullable } from "@xrf/types";
 
 /**
  * One row of a level's shader table, as a reader asking how it is drawn needs it.
@@ -50,6 +51,27 @@ export function toLevelSurfaceSummary(descriptor: XraySurfaceDescriptor, shaderI
  */
 export function listNamedLevelSurfaces(summaries: ReadonlyArray<ILevelSurfaceSummary>): Array<ILevelSurfaceSummary> {
   return summaries.filter((summary: ILevelSurfaceSummary) => summary.descriptor.shader !== null);
+}
+
+/**
+ * Finds an entry again in a table read anew, which may number it afresh: the first naming the same shader and textures.
+ *
+ * @param entry - The entry as it was.
+ * @param table - The table as read now.
+ * @returns Its shader id now, or null where no entry is it any longer.
+ */
+export function findLevelSurface(
+  entry: XraySurfaceDescriptor,
+  table: ReadonlyArray<XraySurfaceDescriptor>
+): Nullable<number> {
+  const shaderId: number = table.findIndex(
+    (it: XraySurfaceDescriptor) =>
+      it.shader === entry.shader &&
+      it.textures.length === entry.textures.length &&
+      it.textures.every((texture: string, index: number) => texture === entry.textures[index])
+  );
+
+  return shaderId === -1 ? null : shaderId;
 }
 
 /**

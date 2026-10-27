@@ -11,7 +11,7 @@ import {
 } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { LevelGlassSettings } from "@/applications/level-viewer/components/toolbar/lighting/LevelGlassSettings";
+import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
 import { ILevelFeature, useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
@@ -211,15 +211,14 @@ export function LevelReflectionsAction({
         isDisabled={!isTraceable}
         onToggle={() => set({ isTraced: !value.isTraced })}
       >
-        {isTraced ? (
-          <RenderValueSlider
-            label={"Re-trace"}
-            value={value.traceInterval}
-            {...RENDER_REFLECTION_LIMITS.traceInterval}
-            format={formatReflectionTraceInterval}
-            onChange={(traceInterval: number) => set({ traceInterval })}
-          />
-        ) : null}
+        <RenderValueSlider
+          label={"Re-trace"}
+          value={value.traceInterval}
+          {...RENDER_REFLECTION_LIMITS.traceInterval}
+          isDisabled={!isTraced}
+          format={formatReflectionTraceInterval}
+          onChange={(traceInterval: number) => set({ traceInterval })}
+        />
 
         {isTraced && isRayReconstructed && isSurfaces ? (
           <p className={"text-xs text-text-secondary"}>The surfaces re-trace every frame under ray reconstruction.</p>
@@ -230,7 +229,7 @@ export function LevelReflectionsAction({
         Reset to the preset
       </Button>
 
-      <LevelGlassSettings className={"border-t border-divider pt-2"} />
+      <LevelEnhancedFeatureSection feature={"glass"} />
     </EditorPopoverGroup>
   );
 }

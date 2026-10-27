@@ -8,7 +8,6 @@ import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useRef, useSt
 import { LevelSpawnDetails } from "@/applications/level-viewer/components/panels/LevelSpawnPanel/LevelSpawnDetails";
 import { LevelSpawnVisibilityToggle } from "@/applications/level-viewer/components/panels/LevelSpawnPanel/LevelSpawnVisibilityToggle";
 import { describeLevelSpawnRelease } from "@/applications/level-viewer/lib/spawn/level-spawn-release";
-import { toLevelSpawnPosition } from "@/applications/level-viewer/lib/spawn/level-spawn-sphere";
 import {
   listLevelSpawnGroupIds,
   TLevelSpawnTreeRow,
@@ -20,6 +19,7 @@ import {
 import { LevelViewerSpawnService } from "@/applications/level-viewer/services/spawn";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { ILevelSpawnReport, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
+import { toLevelSpawnPosition } from "@/core/level/lib/spawn/level-spawn-sphere";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
@@ -73,6 +73,7 @@ export function LevelSpawnPanel({
   // Read here rather than in the rows' callback, so a switch from the toolbar redraws the eyes.
   const options: ILevelViewOptions = viewService.options;
   const picked: Nullable<TLevelPick> = viewportService.picked;
+  const isPickRelocated: boolean = viewportService.isPickRelocated;
 
   // A spawn placing nothing reads as one not listed yet would: the empty state says which.
   const description: Nullable<LevelSpawnObjectsDescription> = loadService.spawn?.objects.length
@@ -99,24 +100,27 @@ export function LevelSpawnPanel({
   const sessionId: Nullable<string> = loadService.level.value?.selected.sessionId ?? null;
   const spawnRevision: Nullable<XrayRevision> = loadService.spawnRevision;
 
-  // The pick this panel made of the row it chose, which the tree already shows.
-  const made = useRef<Nullable<TLevelPick>>(null);
+  // The pick last heard, so the tree answers each once.
+  const heard = useRef<Nullable<TLevelPick>>(null);
+  // The pick the object chosen shows: made of the row chosen here, or picked elsewhere and followed; null for none.
+  const shown = useRef<Nullable<TLevelPick>>(null);
 
   // An object chosen here is picked as a click on it is, so the viewport marks it and the readout names it.
   const onSelect = useCallback(
     (item: ITreeNode<TLevelSpawnTreeRow>) => {
       select(item.id);
+      shown.current = null;
 
       if (item.payload?.kind === "object" && description) {
         const { object } = item.payload;
 
-        made.current = {
+        shown.current = {
           kind: ELevelPick.SPAWN,
           object,
           point: toLevelSpawnPosition(object.transform),
           visual: description.visuals[object.visual] ?? "",
         };
-        viewportService.notePicked(made.current);
+        viewportService.notePicked(shown.current);
       }
     },
     [description, select, viewportService]
@@ -190,8 +194,11 @@ export function LevelSpawnPanel({
     [options, viewService]
   );
 
-  // Another level's objects are numbered afresh, so what was chosen names some other object now.
-  useEffect(() => select(null), [description, select]);
+  // What was chosen belongs to the level it was chosen in.
+  useEffect(() => {
+    shown.current = null;
+    select(null);
+  }, [sessionId, select]);
 
   // The object chosen is read again for a listing read again, which may say something else of it.
   useEffect(() => {
@@ -199,22 +206,41 @@ export function LevelSpawnPanel({
   }, [selectedIndex, sessionId, spawnRevision, spawnService]);
 
   // The tree shows what is picked: an object picked elsewhere chosen, what stands above it opened and any filter
-  // hiding it cleared; anything else picked, or nothing, chooses nothing here.
+  // hiding it cleared; anything else picked, or nothing, chooses nothing here. The object shown, found again in a
+  // listing read anew, is chosen where it stands now, the tree otherwise left as it is.
   useEffect(() => {
-    if (picked && picked === made.current) {
+    // An object picked before the listing reaches the panel is chosen once it does.
+    if (picked === heard.current || (picked?.kind === ELevelPick.SPAWN && !description)) {
       return;
     }
 
-    if (description && picked?.kind === ELevelPick.SPAWN) {
+    heard.current = picked;
+
+    if (picked && picked === shown.current) {
+      return;
+    }
+
+    if (isPickRelocated) {
+      if (shown.current) {
+        shown.current = picked;
+        select(picked?.kind === ELevelPick.SPAWN ? toLevelSpawnObjectId(picked.object.index) : null);
+      }
+
+      return;
+    }
+
+    if (picked?.kind === ELevelPick.SPAWN) {
       const { category, index, section } = picked.object;
 
+      shown.current = picked;
       setFilter("");
       expandAll([toLevelSpawnCategoryId(category), toLevelSpawnSectionId(category, section)]);
       select(toLevelSpawnObjectId(index));
     } else {
+      shown.current = null;
       select(null);
     }
-  }, [description, expandAll, picked, select]);
+  }, [description, expandAll, isPickRelocated, picked, select]);
 
   // A filter that matched inside a group opens it, because a closed group answering a query looks like no answer.
   useEffect(() => {

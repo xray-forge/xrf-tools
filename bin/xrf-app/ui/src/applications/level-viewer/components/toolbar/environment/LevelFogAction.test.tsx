@@ -71,14 +71,15 @@ describe("LevelFogAction", () => {
     expect(view.options.isSkyHazed).toBe(true);
   });
 
-  it("draws the fog enhanced on asking, offering its strengths only then, and back to the settings", async () => {
-    const { getByRole, queryByRole, view } = await renderOpenAction();
+  it("draws the fog enhanced on asking, its strengths settable only then, and back to the settings", async () => {
+    const { getByRole, view } = await renderOpenAction();
 
-    expect(queryByRole("slider", { name: "Height" })).toBeNull();
+    expect(getByRole("slider", { name: "Height" })).toBeDisabled();
 
     await userEvent.click(getByRole("button", { name: "Enhanced" }));
 
     expect(view.features.fog).toEqual({ mode: ERenderFogMode.ENHANCED });
+    expect(getByRole("slider", { name: "Height" })).toBeEnabled();
     expect(getByRole("slider", { name: "Height" })).toHaveAttribute("aria-valuetext", "8.0 m");
     expect(getByRole("slider", { name: "Density" })).toHaveAttribute("aria-valuetext", "+40%");
     expect(getByRole("slider", { name: "Scattering" })).toHaveAttribute("aria-valuetext", "0%");
