@@ -1,3 +1,4 @@
+use xrf_app_core::TauriResult;
 use xrf_chunk::XRayByteOrder;
 use xrf_environment::EnvironmentCatalog;
 use xrf_level::DetailModel;
@@ -25,7 +26,7 @@ impl LevelWeatherSource<'_> {
   /// # Errors
   ///
   /// Returns why the model is not in the mounted roots or does not read.
-  pub fn read_model(&self, logical_path: &str) -> Result<DetailModel, String> {
+  pub fn read_model(&self, logical_path: &str) -> TauriResult<DetailModel> {
     let bytes: Vec<u8> = self.search.read(logical_path).map_err(error_to_string)?;
 
     DetailModel::read_from_bytes::<XRayByteOrder>(bytes).map_err(error_to_string)

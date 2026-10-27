@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_spawn::{SpawnFile, SpawnLevelGraph};
@@ -16,7 +17,7 @@ pub(crate) const LEVEL_GRAPH_PART: &str = "graph";
 pub(crate) struct LevelGraphPart;
 
 impl SessionPart for LevelGraphPart {
-  type Value = Result<Arc<SpawnLevelGraph>, String>;
+  type Value = TauriResult<Arc<SpawnLevelGraph>>;
 
   const NAME: &'static str = LEVEL_GRAPH_PART;
 }
@@ -29,7 +30,7 @@ impl LevelGraphPart {
   ///
   /// Returns the reason when the spawn's graph or patrols cannot be read or the level has no name to find them by,
   /// which every later ask answers with again.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Result<Arc<SpawnLevelGraph>, String> {
+  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<SpawnLevelGraph>> {
     current.parts.get_or_record::<Self>(search, |search| {
       let level: String = current.source.require_name()?;
       let (path, chunks): (XrayLogicalPath, Vec<ChunkReader<InMemoryChunkDataSource>>) =

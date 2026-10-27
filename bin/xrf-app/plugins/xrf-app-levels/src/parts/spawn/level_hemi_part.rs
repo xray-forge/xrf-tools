@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use rayon::prelude::*;
+use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelCformTracer, LevelLight, LevelLightsChunk, LevelLightsFile};
@@ -25,7 +26,7 @@ pub(crate) const LEVEL_HEMI_PART: &str = "hemi";
 pub(crate) struct LevelHemiPart;
 
 impl SessionPart for LevelHemiPart {
-  type Value = Result<Arc<HemiEstimator>, String>;
+  type Value = TauriResult<Arc<HemiEstimator>>;
 
   const NAME: &'static str = LEVEL_HEMI_PART;
 }
@@ -39,7 +40,7 @@ impl LevelHemiPart {
   /// # Errors
   ///
   /// Returns why the collision form cannot be read, which every later ask answers with again.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Result<Arc<HemiEstimator>, String> {
+  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<HemiEstimator>> {
     current.parts.get_or_record::<Self>(search, |search| {
       Self::read(current, search).inspect_err(|error| LevelReport::missing_hemi(&current.source, error))
     })
@@ -91,7 +92,7 @@ impl LevelHemiPart {
     Self::estimate_spawn(estimator, &spawn, &spheres)
   }
 
-  fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Result<Arc<HemiEstimator>, String> {
+  fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<HemiEstimator>> {
     let started: Instant = Instant::now();
     let tracer: Arc<LevelCformTracer> = LevelCollisionPart::get(current, search)?;
     let estimator: HemiEstimator = HemiEstimator::new(tracer, &Self::read_lights(&current.source, search));
@@ -103,7 +104,7 @@ impl LevelHemiPart {
 
   /// The compiled lights `CLight_DB::LoadHemi` reads, none for a level without `build.lights` or with one unreadable.
   fn read_lights(source: &LevelSource, search: &XraySearch) -> Vec<LevelLight> {
-    let file: Result<Option<LevelLightsFile>, String> =
+    let file: TauriResult<Option<LevelLightsFile>> =
       source.read_optional_file(search, Self::LIGHTS_FILE).and_then(|bytes| {
         bytes
           .map(|bytes| LevelLightsFile::read_from_bytes::<XRayByteOrder>(bytes).map_err(|error| error.to_string()))

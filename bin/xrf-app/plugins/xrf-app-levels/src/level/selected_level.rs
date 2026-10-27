@@ -43,7 +43,6 @@ impl SelectedLevel {
       bounds: SectorOutline::merge_bounds(&self.outlines),
       drawables: self.visuals.count_drawable() as u32,
       engine: self.engine.clone(),
-      has_sun: level.lights.as_ref().is_some_and(|it| it.get_sun().is_some()),
       sun: LevelSunDescription::of(level.lights.as_ref().and_then(|it| it.get_sun())),
       lights: level.lights.as_ref().map_or(0, |it| it.lights.len()) as u32,
       portals: level.get_portals().len() as u32,
