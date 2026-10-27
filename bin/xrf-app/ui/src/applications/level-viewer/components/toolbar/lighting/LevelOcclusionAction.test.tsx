@@ -88,16 +88,17 @@ describe("LevelOcclusionAction", () => {
     expect(rendered.getByText("RTAO needs a GPU that traces rays: VBAO searches in its place.")).toBeInTheDocument();
   });
 
-  it("turns the view's indirect light to enhanced, offering its intensity only then, and back to the settings", async () => {
-    const { getByRole, queryByRole, view } = await renderOpenAction();
+  it("turns the view's indirect light to enhanced, its intensity settable only then, and back to the settings", async () => {
+    const { getByRole, view } = await renderOpenAction();
 
     expect(getByRole("checkbox", { name: "Indirect light" })).not.toBeChecked();
-    expect(queryByRole("slider", { name: "Intensity" })).toBeNull();
+    expect(getByRole("slider", { name: "Intensity" })).toBeDisabled();
 
     await userEvent.click(getByRole("checkbox", { name: "Indirect light" }));
 
     expect(view.features.indirectLight).toEqual({ mode: ERenderIndirectLightMode.ENHANCED });
     expect(getByRole("checkbox", { name: "Indirect light" })).toBeChecked();
+    expect(getByRole("slider", { name: "Intensity" })).toBeEnabled();
     expect(getByRole("slider", { name: "Intensity" })).toHaveAttribute("aria-valuetext", "100%");
     expect(getByRole("button", { hidden: true, name: "Ambient light" })).toHaveAccessibleDescription(
       "GTAO occlusion over 1.00 m, 3 × 3 steps, indirect light, baked at 100%"

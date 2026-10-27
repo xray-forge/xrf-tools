@@ -30,6 +30,24 @@ describe("LevelGrassAction", () => {
     expect(view.features).toEqual({ ...before, grass: {} });
   });
 
+  it("keeps the shadows' reach settable only while the grass is shadowed", async () => {
+    const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
+
+    descriptor.view.setFeatures({ ...descriptor.view.features, grass: { isShadowed: false } });
+
+    const { getByRole, findByRole, view } = renderLevelView(<LevelGrassAction />, descriptor);
+
+    await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Grass" }) });
+    await findByRole("dialog", { name: "Grass" });
+
+    expect(getByRole("slider", { name: "Shadow radius" })).toBeDisabled();
+
+    await userEvent.click(getByRole("checkbox", { name: "Shadows" }));
+
+    expect(view.features.grass).toEqual({ isShadowed: true });
+    expect(getByRole("slider", { name: "Shadow radius" })).toBeEnabled();
+  });
+
   it("opens on a click, saying why, while the settings keep the grass off", async () => {
     const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
 

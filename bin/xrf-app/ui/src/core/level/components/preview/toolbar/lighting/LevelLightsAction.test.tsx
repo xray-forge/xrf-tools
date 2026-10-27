@@ -58,7 +58,7 @@ describe("LevelLightsAction", () => {
 
     await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Lamps" }) });
     await findByRole("dialog", { name: "Lamps" });
-    await userEvent.click(getByRole("button", { name: "Enhanced" }));
+    await userEvent.click(getByRole("checkbox", { name: "Enhanced volumetric light" }));
 
     expect(view.features.volumetric).toEqual({ mode: ERenderVolumetricMode.ENHANCED });
   });

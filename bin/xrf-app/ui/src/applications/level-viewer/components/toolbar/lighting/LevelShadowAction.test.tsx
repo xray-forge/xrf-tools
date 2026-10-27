@@ -44,19 +44,19 @@ describe("LevelShadowAction", () => {
     expect(view.features.shadows).toEqual({ cascades: [20] });
   });
 
-  it("turns the view's contact shadows on, offering their strengths only then", async () => {
-    const { getByRole, findByRole, queryByRole, view } = renderAction();
+  it("turns the view's contact shadows on, their strengths settable only then", async () => {
+    const { getByRole, findByRole, view } = renderAction();
 
     await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Sun shadows" }) });
     await findByRole("dialog", { name: "Sun shadows" });
 
-    expect(queryByRole("slider", { name: "Contact length" })).toBeNull();
+    expect(getByRole("slider", { name: "Contact length" })).toBeDisabled();
 
     await userEvent.click(getByRole("button", { name: "Enhanced" }));
 
     // Only the mode is the view's own, so the strengths still follow the settings.
     expect(view.features.shadows).toEqual({ contact: { mode: ERenderContactShadowMode.ENHANCED } });
-    expect(getByRole("slider", { name: "Contact length" })).toBeInTheDocument();
+    expect(getByRole("slider", { name: "Contact length" })).toBeEnabled();
     expect(getByRole("slider", { name: "Contact lights" })).toHaveAttribute("aria-valuetext", "4 lights");
     expect(getByRole("button", { hidden: true, name: "Sun shadows" })).toHaveAccessibleDescription(
       "Sun shadows in 4 cascades, the widest 480 m across, at 2048, with contact shadows. Right-click for its settings"

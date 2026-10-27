@@ -5,8 +5,8 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { describeLevelSpawnRelease } from "@/applications/level-viewer/lib/spawn/level-spawn-release";
-import { toLevelSpawnPosition } from "@/applications/level-viewer/lib/spawn/level-spawn-sphere";
 import { formatLevelPoint } from "@/core/level/lib/camera/level-camera";
+import { toLevelSpawnPosition } from "@/core/level/lib/spawn/level-spawn-sphere";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

@@ -129,24 +129,23 @@ export function LevelGrassAction({
         onChange={(isShadowed: boolean) => set({ isShadowed })}
       />
 
-      {grass.isShadowed ? (
-        <>
-          <RenderValueSlider
-            label={"Shadow radius"}
-            value={grass.shadowRadius}
-            {...RENDER_GRASS_LIMITS.shadowRadius}
-            format={formatGrassRadius}
-            onChange={(shadowRadius: number) => set({ shadowRadius })}
-          />
-          <RenderValueSlider
-            label={"Shadow cascades"}
-            value={grass.shadowCascades}
-            {...RENDER_GRASS_LIMITS.shadowCascades}
-            format={formatGrassShadowCascades}
-            onChange={(shadowCascades: number) => set({ shadowCascades })}
-          />
-        </>
-      ) : null}
+      <RenderValueSlider
+        label={"Shadow radius"}
+        value={grass.shadowRadius}
+        {...RENDER_GRASS_LIMITS.shadowRadius}
+        isDisabled={!grass.isShadowed}
+        format={formatGrassRadius}
+        onChange={(shadowRadius: number) => set({ shadowRadius })}
+      />
+
+      <RenderValueSlider
+        label={"Shadow cascades"}
+        value={grass.shadowCascades}
+        {...RENDER_GRASS_LIMITS.shadowCascades}
+        isDisabled={!grass.isShadowed}
+        format={formatGrassShadowCascades}
+        onChange={(shadowCascades: number) => set({ shadowCascades })}
+      />
 
       {foliage.mode === ERenderFoliageMode.ENHANCED ? (
         FOLIAGE_LIGHT.map(([key, label]) => (

@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 
 import {
+  findLevelSurface,
   ILevelSurfaceSummary,
   listLevelSurfaces,
   listNamedLevelSurfaces,
@@ -43,5 +44,21 @@ describe("listNamedLevelSurfaces", () => {
     const named: Array<ILevelSurfaceSummary> = listNamedLevelSurfaces(listLevelSurfaces(table));
 
     expect(named.map((it) => it.shaderId)).toEqual([0, 2]);
+  });
+});
+
+describe("findLevelSurface", () => {
+  it("finds an entry by its shader and every texture, in order, the first that matches", () => {
+    const entry: XraySurfaceDescriptor = mockSurfaceDescriptor({ shader: "default", textures: ["wall", "wall_bump"] });
+    const table: Array<XraySurfaceDescriptor> = [
+      mockSurfaceDescriptor({ shader: "default", textures: ["wall"] }),
+      mockSurfaceDescriptor({ shader: "default", textures: ["wall_bump", "wall"] }),
+      mockSurfaceDescriptor({ shader: "effects\\water", textures: ["wall", "wall_bump"] }),
+      mockSurfaceDescriptor({ shader: "default", textures: ["wall", "wall_bump"] }),
+      mockSurfaceDescriptor({ shader: "default", textures: ["wall", "wall_bump"] }),
+    ];
+
+    expect(findLevelSurface(entry, table)).toBe(3);
+    expect(findLevelSurface(entry, table.slice(0, 3))).toBeNull();
   });
 });

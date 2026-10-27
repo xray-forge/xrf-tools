@@ -133,5 +133,6 @@ describe("LevelReflectionsAction", () => {
     expect(traced).toBeDisabled();
     expect(traced).not.toBeChecked();
     expect(traced).toHaveAccessibleDescription("Needs a GPU that traces rays");
+    expect(rendered.getByRole("slider", { name: "Re-trace" })).toBeDisabled();
   });
 });

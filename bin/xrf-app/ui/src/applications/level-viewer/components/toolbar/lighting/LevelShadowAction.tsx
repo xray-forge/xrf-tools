@@ -141,58 +141,60 @@ export function LevelShadowAction({
 
       <p className={"text-xs text-text-secondary"}>{explainRenderContactShadowMode(contact.mode)}</p>
 
-      {isContactShadowed ? (
-        <>
-          <RenderValueSlider
-            label={"Contact length"}
-            value={contact.length}
-            {...RENDER_CONTACT_SHADOW_LIMITS.length}
-            format={formatContactShadowLength}
-            onChange={(length: number) => onSetContact({ length })}
-          />
+      <RenderValueSlider
+        label={"Contact length"}
+        value={contact.length}
+        {...RENDER_CONTACT_SHADOW_LIMITS.length}
+        isDisabled={!isContactShadowed}
+        format={formatContactShadowLength}
+        onChange={(length: number) => onSetContact({ length })}
+      />
 
-          <RenderValueSlider
-            label={"Contact intensity"}
-            value={contact.intensity}
-            {...RENDER_CONTACT_SHADOW_LIMITS.intensity}
-            format={formatContactShadowIntensity}
-            onChange={(intensity: number) => onSetContact({ intensity })}
-          />
+      <RenderValueSlider
+        label={"Contact intensity"}
+        value={contact.intensity}
+        {...RENDER_CONTACT_SHADOW_LIMITS.intensity}
+        isDisabled={!isContactShadowed}
+        format={formatContactShadowIntensity}
+        onChange={(intensity: number) => onSetContact({ intensity })}
+      />
 
-          <RenderValueSlider
-            label={"Contact thickness"}
-            value={contact.thickness}
-            {...RENDER_CONTACT_SHADOW_LIMITS.thickness}
-            format={formatContactShadowThickness}
-            onChange={(thickness: number) => onSetContact({ thickness })}
-          />
+      <RenderValueSlider
+        label={"Contact thickness"}
+        value={contact.thickness}
+        {...RENDER_CONTACT_SHADOW_LIMITS.thickness}
+        isDisabled={!isContactShadowed}
+        format={formatContactShadowThickness}
+        onChange={(thickness: number) => onSetContact({ thickness })}
+      />
 
-          <RenderValueSlider
-            label={"Contact steps"}
-            value={contact.steps}
-            {...RENDER_CONTACT_SHADOW_LIMITS.steps}
-            format={formatContactShadowSteps}
-            onChange={(steps: number) => onSetContact({ steps })}
-          />
+      <RenderValueSlider
+        label={"Contact steps"}
+        value={contact.steps}
+        {...RENDER_CONTACT_SHADOW_LIMITS.steps}
+        isDisabled={!isContactShadowed}
+        format={formatContactShadowSteps}
+        onChange={(steps: number) => onSetContact({ steps })}
+      />
 
-          <CheckboxFormRow
-            label={"Full resolution contact"}
-            description={
-              "Marches every pixel rather than one in four: thin foliage stops flickering, at four times the cost."
-            }
-            isChecked={contact.isFullResolution}
-            onChange={(isFullResolution: boolean) => onSetContact({ isFullResolution })}
-          />
+      <CheckboxFormRow
+        label={"Full resolution contact"}
+        description={
+          "Marches every pixel rather than one in four: thin foliage stops flickering, at four times the cost."
+        }
+        isChecked={contact.isFullResolution}
+        isDisabled={!isContactShadowed}
+        onChange={(isFullResolution: boolean) => onSetContact({ isFullResolution })}
+      />
 
-          <RenderValueSlider
-            label={"Contact lights"}
-            value={contact.lights}
-            {...RENDER_CONTACT_SHADOW_LIMITS.lights}
-            format={formatContactShadowLights}
-            onChange={(lights: number) => onSetContact({ lights })}
-          />
-        </>
-      ) : null}
+      <RenderValueSlider
+        label={"Contact lights"}
+        value={contact.lights}
+        {...RENDER_CONTACT_SHADOW_LIMITS.lights}
+        isDisabled={!isContactShadowed}
+        format={formatContactShadowLights}
+        onChange={(lights: number) => onSetContact({ lights })}
+      />
 
       <Button size={"small"} onClick={reset}>
         Reset to the preset

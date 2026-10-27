@@ -13,12 +13,20 @@ import {
   resetMockInvoke,
 } from "@xrf/ipc/testing";
 import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
-import { LEVEL_GEOMETRY_PART, LEVEL_MAP_PART } from "@xrf/ipc/types/xrf-app-levels";
+import {
+  LEVEL_GEOMETRY_PART,
+  LEVEL_MAP_PART,
+  LEVEL_SPAWN_PART,
+  LEVEL_SURFACES_PART,
+  LevelSpawnObject,
+} from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
+import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import {
   ERenderAntialiasing,
   ERenderDlssAvailability,
   ERenderLevelHit,
+  ERenderSelectionTarget,
   ERenderTextureFiltering,
   ERenderTextureGroup,
   ERenderViewportEvent,
@@ -42,7 +50,11 @@ import {
   LEVEL_VIEWPORT,
   mockAttachedLevelRender,
 } from "@/core/level/fixtures/level-render";
-import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
+import {
+  mockLevelPartAnswer,
+  mockLevelSpawnObject,
+  mockSelectedLevelDescription,
+} from "@/core/level/fixtures/level.mocks";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS } from "@/core/level/lib/weather/level-sun-shafts-options";
 import { DEFAULT_LEVEL_WEATHER_CONTROL } from "@/core/level/lib/weather/level-weather-control";
@@ -54,6 +66,7 @@ import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
 import { EMPTY_RENDER_FRAME_PHASES } from "@/core/render/lib/native/native-frame-report";
 import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
 import { clearLocalStorage } from "@/core/storage";
+import { mockSurfaceDescriptor, mockVisualTransform } from "@/core/visuals/fixtures/visual.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { flush } from "@/fixtures/utils/promise";
 
@@ -410,6 +423,95 @@ describe("LevelRenderService", () => {
       sector: 4,
       shaderId: 11,
     });
+  });
+
+  it("keeps a spawned object picked across its spawn read anew, found by its name, and lets it go once gone", async () => {
+    const { container, service } = await mockAttachedLevelRender();
+    const viewport: LevelViewportService = container.get(LevelViewportService);
+    const load: LevelLoadService = container.get(LevelLoadService);
+    const sessionId: string = load.level.value?.selected.sessionId as string;
+    const lamp = mockLevelSpawnObject({ index: 0, name: "lamp" });
+    const crate = mockLevelSpawnObject({
+      index: 1,
+      name: "crate",
+      transform: mockVisualTransform({ x: 1, y: 2, z: 3 }),
+    });
+
+    async function relist(revision: number, objects: Array<LevelSpawnObject>): Promise<void> {
+      mockIpcCommands({
+        [ELevelsCommand.DESCRIBE_SPAWN_OBJECTS]: mockLevelPartAnswer({ objects, visuals: ["lamp"] }, revision),
+        [ERenderCommand.PICK]: { kind: ERenderLevelHit.SPAWN, object: 1, point: [0, 0, 0] },
+      });
+      container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
+        revision,
+        root: { kind: "kept" },
+        sessionId,
+        staleParts: [LEVEL_SPAWN_PART],
+        isViewRenewed: false,
+      });
+      await waitFor(() => expect(load.spawnRevision).toBe(revision));
+    }
+
+    await relist(1, [lamp, crate]);
+    await service.pick({ x: 10, y: 20 }, false);
+    expect(viewport.picked).toMatchObject({ kind: ELevelPick.SPAWN, object: crate });
+
+    await relist(2, [
+      { ...crate, index: 0 },
+      { ...lamp, index: 1 },
+    ]);
+    expect(viewport.picked).toMatchObject({ kind: ELevelPick.SPAWN, object: { index: 0, name: "crate" } });
+    expect(viewport.isPickRelocated).toBe(true);
+    expect(listMockInvokeCalls(ERenderCommand.SET_SELECTION).at(-1)?.selection?.target).toEqual({
+      kind: ERenderSelectionTarget.SPAWN,
+      object: 0,
+    });
+
+    await relist(3, [lamp]);
+    expect(viewport.picked).toBeNull();
+  });
+
+  // A table read anew may number its entries afresh; the surface keeps the place it was picked at.
+  it("keeps a surface picked across its level streamed afresh, its entry found again by shader and textures", async () => {
+    const { container, service } = await mockAttachedLevelRender();
+    const viewport: LevelViewportService = container.get(LevelViewportService);
+    const load: LevelLoadService = container.get(LevelLoadService);
+    const sessionId: string = load.level.value?.selected.sessionId as string;
+    const wall = mockSurfaceDescriptor({ shader: "default", textures: ["wall"] });
+    const floor = mockSurfaceDescriptor({ shader: "default", textures: ["floor"] });
+
+    async function reread(revision: number, surfaces: Array<XraySurfaceDescriptor>): Promise<void> {
+      mockIpcCommands({
+        [ELevelsCommand.DESCRIBE_SURFACES]: mockLevelPartAnswer(surfaces, revision),
+        [ERenderCommand.PICK]: {
+          isImpostor: false,
+          kind: ERenderLevelHit.SURFACE,
+          mesh: null,
+          place: null,
+          point: [0, 0, 0],
+          sector: 4,
+          shaderId: 0,
+        },
+      });
+      container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
+        revision,
+        root: { kind: "kept" },
+        sessionId,
+        staleParts: [LEVEL_GEOMETRY_PART, LEVEL_SURFACES_PART],
+        isViewRenewed: true,
+      });
+      await waitFor(() => expect(load.surfaces.snapshot?.revision).toBe(revision));
+    }
+
+    await reread(1, [wall, floor]);
+    await service.pick({ x: 10, y: 20 }, false);
+    await reread(2, [floor, wall]);
+
+    expect(viewport.picked).toMatchObject({ kind: ELevelPick.SURFACE, sector: 4, shaderId: 1 });
+
+    await reread(3, [floor]);
+
+    expect(viewport.picked).toBeNull();
   });
 
   // The scene's keys act on it only while it has the keyboard, which leaving it or detaching takes away.

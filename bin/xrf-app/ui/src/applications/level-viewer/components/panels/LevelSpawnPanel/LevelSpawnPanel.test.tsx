@@ -1,16 +1,22 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, RenderResult, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { Container, Injectable } from "@wirestate/core";
+import { Container, EventBus, Injectable } from "@wirestate/core";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import { mockIpcCommands } from "@xrf/ipc/testing";
-import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
+import { ELevelSpawnCategory, LEVEL_SPAWN_PART, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
 import { LevelViewerSpawnService } from "@/applications/level-viewer/services/spawn";
-import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
+import {
+  mockLevelPartAnswer,
+  mockLevelSpawnObject,
+  mockSelectedLevelDescription,
+} from "@/core/level/fixtures/level.mocks";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
-import { ELevelPick } from "@/core/level/lib/pick/level-pick";
+import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
@@ -18,7 +24,7 @@ import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { mockVisualTransform } from "@/core/visuals/fixtures/visual.mocks";
-import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
+import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -70,6 +76,7 @@ async function renderPanel(
   objects: LevelSpawnObjectsDescription = OBJECTS
 ): Promise<{ container: Container; view: RenderResult }> {
   const level = mockSelectedLevelDescription({ sectors: [] });
+  let opened: number = 0;
 
   mockIpcCommands({
     [ELevelsCommand.DESCRIBE_SPAWN_OBJECT]: mockSessionResponse({
@@ -78,7 +85,8 @@ async function renderPanel(
       id: 400,
       levelVertexId: 3456,
     }),
-    [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(level),
+    // Each opening is a session of its own, as the backend's are.
+    [ELevelsCommand.OPEN_LEVEL]: () => mockSessionSnapshot(level, `level-session-${(opened += 1)}`),
     [ELevelsCommand.DESCRIBE_SPAWN_OBJECTS]: mockSessionResponse(objects),
   });
 
@@ -257,8 +265,45 @@ describe("LevelSpawnPanel", () => {
       await settle();
     });
 
-    await waitFor(() => expect(view.queryByTestId("level-spawn-details")).not.toBeInTheDocument());
     expect(await view.findByRole("tree", { name: "Spawned objects" })).toBeInTheDocument();
+    expect(view.queryByTestId("level-spawn-details")).not.toBeInTheDocument();
+    expect(view.queryByRole("treeitem", { selected: true })).not.toBeInTheDocument();
+  });
+
+  // A spawn read anew may number its objects afresh: the core finds what is picked again by its name, and the tree
+  // chooses it where it stands now, its filter kept.
+  it("keeps the object chosen across the spawn read anew", async () => {
+    const { container, view } = await renderPanel();
+    const load: LevelLoadService = container.get(LevelLoadService);
+    const viewportService: LevelViewportService = container.get(LevelViewportService);
+    const filter: HTMLElement = await view.findByRole("textbox", { name: "Filter spawned objects" });
+    const [first, second, medkit] = OBJECTS.objects;
+    const renumbered: LevelSpawnObjectsDescription = {
+      ...OBJECTS,
+      objects: [medkit, second, first].map((it, index) => ({ ...it, index })),
+    };
+
+    await userEvent.type(filter, "crate");
+    await userEvent.click(await view.findByText("crate_1"));
+    expect(await view.findByTestId("level-spawn-details")).toHaveTextContent("crate_1");
+
+    mockIpcCommands({ [ELevelsCommand.DESCRIBE_SPAWN_OBJECTS]: mockLevelPartAnswer(renumbered, 1) });
+    act(() =>
+      container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
+        revision: 1,
+        root: { kind: "kept" },
+        sessionId: load.level.value?.selected.sessionId as string,
+        staleParts: [LEVEL_SPAWN_PART],
+        isViewRenewed: false,
+      })
+    );
+    await waitFor(() => expect(load.spawnRevision).toBe(1));
+    act(() =>
+      viewportService.notePickRelocated({ ...(viewportService.picked as TLevelPick), object: renumbered.objects[2] })
+    );
+
+    expect(view.getByRole("treeitem", { name: "crate_1", selected: true })).toBeInTheDocument();
+    expect(filter).toHaveValue("crate");
   });
 
   // Before the spawn's objects are listed the report is the empty one, which reads as a spawn placing nothing.

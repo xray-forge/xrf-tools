@@ -117,49 +117,50 @@ export function LevelFogAction({
 
       <p className={"text-xs text-text-secondary"}>{explainRenderFogMode(value.mode)}</p>
 
-      {isEnhanced ? (
-        <>
-          <RenderValueSlider
-            label={"Height"}
-            value={value.height}
-            {...RENDER_FOG_LIMITS.height}
-            format={formatFogHeight}
-            onChange={(height: number) => set({ height })}
-          />
+      <RenderValueSlider
+        label={"Height"}
+        value={value.height}
+        {...RENDER_FOG_LIMITS.height}
+        isDisabled={!isEnhanced}
+        format={formatFogHeight}
+        onChange={(height: number) => set({ height })}
+      />
 
-          <RenderValueSlider
-            label={"Density"}
-            value={value.density}
-            {...RENDER_FOG_LIMITS.density}
-            format={formatFogDensity}
-            onChange={(density: number) => set({ density })}
-          />
+      <RenderValueSlider
+        label={"Density"}
+        value={value.density}
+        {...RENDER_FOG_LIMITS.density}
+        isDisabled={!isEnhanced}
+        format={formatFogDensity}
+        onChange={(density: number) => set({ density })}
+      />
 
-          <RenderValueSlider
-            label={"Sun colour"}
-            value={value.sunColor}
-            {...RENDER_FOG_LIMITS.sunColor}
-            format={formatFogShare}
-            onChange={(sunColor: number) => set({ sunColor })}
-          />
+      <RenderValueSlider
+        label={"Sun colour"}
+        value={value.sunColor}
+        {...RENDER_FOG_LIMITS.sunColor}
+        isDisabled={!isEnhanced}
+        format={formatFogShare}
+        onChange={(sunColor: number) => set({ sunColor })}
+      />
 
-          <RenderValueSlider
-            label={"Scattering"}
-            value={value.scattering}
-            {...RENDER_FOG_LIMITS.scattering}
-            format={formatFogShare}
-            onChange={(scattering: number) => set({ scattering })}
-          />
+      <RenderValueSlider
+        label={"Scattering"}
+        value={value.scattering}
+        {...RENDER_FOG_LIMITS.scattering}
+        isDisabled={!isEnhanced}
+        format={formatFogShare}
+        onChange={(scattering: number) => set({ scattering })}
+      />
 
-          <RenderValueSlider
-            label={"Sky fade from"}
-            value={value.skyFade}
-            {...RENDER_FOG_LIMITS.skyFade}
-            format={formatFogSkyFade}
-            onChange={(skyFade: number) => set({ skyFade })}
-          />
-        </>
-      ) : null}
+      <RenderValueSlider
+        label={"Sky fade from"}
+        value={value.skyFade}
+        {...RENDER_FOG_LIMITS.skyFade}
+        isDisabled={!isEnhanced}
+        format={formatFogSkyFade}
+        onChange={(skyFade: number) => set({ skyFade })}
+      />
 
       <Button size={"small"} onClick={reset}>
         Reset to the preset

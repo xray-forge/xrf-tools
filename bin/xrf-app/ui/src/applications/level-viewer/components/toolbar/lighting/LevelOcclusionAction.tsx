@@ -9,7 +9,7 @@ import {
 } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement, useCallback } from "react";
 
-import { LevelIndirectLightSection } from "@/applications/level-viewer/components/toolbar/lighting/LevelIndirectLightSection";
+import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
@@ -229,7 +229,7 @@ export function LevelOcclusionAction({
         </Button>
       </EditorPopoverGroupSection>
 
-      <LevelIndirectLightSection />
+      <LevelEnhancedFeatureSection feature={"indirectLight"} />
 
       <EditorPopoverGroupSection
         label={"Baked light"}

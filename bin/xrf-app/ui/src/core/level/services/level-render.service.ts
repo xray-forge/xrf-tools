@@ -42,7 +42,7 @@ import {
   toLevelOutput,
   toLevelRendererAntialiasing,
 } from "@/core/level/lib/features/level-feature-options";
-import { TLevelPick, toLevelPick } from "@/core/level/lib/pick/level-pick";
+import { ILevelPickParts, relocateLevelPick, TLevelPick, toLevelPick } from "@/core/level/lib/pick/level-pick";
 import { toLevelPickSelection } from "@/core/level/lib/pick/level-pick-selection";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { toLevelFrameOverlays } from "@/core/level/lib/render/level-render-frame";
@@ -347,6 +347,11 @@ export class LevelRenderService extends NativeRenderSurfaceService {
         { equals: comparer.structural, fireImmediately: true }
       ),
       reaction(
+        (): ILevelPickParts => ({ spawn: this.loadService.spawn, surfaces: this.loadService.surfaces.value }),
+        this.relocatePick,
+        { equals: comparer.shallow }
+      ),
+      reaction(
         () => this.viewportService.picked,
         (picked: Nullable<TLevelPick>) => viewport.setSelection(toLevelPickSelection(picked)),
         { fireImmediately: true }
@@ -570,13 +575,28 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     this.followed = this.scene ?? this.followed;
     this.scene = null;
     this.isRevealed = false;
-    // Its surfaces and objects are numbered afresh.
-    this.viewportService.notePicked(null);
+    // What is picked stays: the parts read again find it anew (`relocatePick`).
     this.viewportService.conceal();
 
     // The renderer reports the scene it streams as from the moment the backend moved it, which can be before now.
     if (this.loaded) {
       this.onLoad(this.loaded);
+    }
+  }
+
+  /**
+   * Keeps what is picked across the open level's parts read anew, found by what it is, or drops it with what it named.
+   *
+   * @param after - The parts as read now.
+   * @param before - The parts it was picked among.
+   */
+  @BoundAction()
+  private relocatePick(after: ILevelPickParts, before: ILevelPickParts): void {
+    const picked: Nullable<TLevelPick> = this.viewportService.picked;
+    const relocated: Nullable<TLevelPick> = picked ? relocateLevelPick(picked, before, after) : null;
+
+    if (relocated !== picked) {
+      this.viewportService.notePickRelocated(relocated);
     }
   }
 

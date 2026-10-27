@@ -3,7 +3,7 @@ import { Button } from "@mui/material";
 import { RenderLightShadowFilter } from "@xrf/ipc/types/xrf-renderer";
 import { ReactElement } from "react";
 
-import { LevelVolumetricSettings } from "@/core/level/components/preview/toolbar/lighting/LevelVolumetricSettings";
+import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
@@ -83,7 +83,7 @@ export function LevelLightsAction({
         Reset to the preset
       </Button>
 
-      <LevelVolumetricSettings className={"flex flex-col gap-2"} />
+      <LevelEnhancedFeatureSection feature={"volumetric"} />
     </EditorPopoverToggle>
   );
 }

@@ -42,6 +42,13 @@ export class LevelViewportService {
   @RefObservable()
   public picked: Nullable<TLevelPick> = null;
 
+  /**
+   * Whether what is picked was found again in the open level's parts read anew, or let go with what it named, rather
+   * than picked: what shows it follows it without showing it afresh.
+   */
+  @RefObservable()
+  public isPickRelocated: boolean = false;
+
   /** Whether the scene has the keyboard, so keys meant for it act on what it shows rather than on a panel's. */
   @RefObservable()
   public isSceneFocused: boolean = false;
@@ -130,6 +137,16 @@ export class LevelViewportService {
   @BoundAction()
   public notePicked(pick: Nullable<TLevelPick>): void {
     this.picked = pick;
+    this.isPickRelocated = false;
+  }
+
+  /**
+   * @param pick - What was picked, as the open level's parts read anew name it, or null where they name it no longer.
+   */
+  @BoundAction()
+  public notePickRelocated(pick: Nullable<TLevelPick>): void {
+    this.picked = pick;
+    this.isPickRelocated = true;
   }
 
   /**
@@ -146,7 +163,7 @@ export class LevelViewportService {
   })
   @BoundAction()
   public clearPicked(): void {
-    this.picked = null;
+    this.notePicked(null);
   }
 
   /**
@@ -162,7 +179,7 @@ export class LevelViewportService {
   public clear(): void {
     this.conceal();
     this.camera = null;
-    this.picked = null;
+    this.notePicked(null);
     this.isSceneFocused = false;
   }
 
