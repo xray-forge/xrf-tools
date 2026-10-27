@@ -7,7 +7,7 @@ export const CONFIGS_FORMATTER_HELP: IApplicationHelp = {
     "that is the verifier's job.",
   workflow: [
     "Pick the configs directory; every `*.ltx` under it, recursively, is included.",
-    "Leave `Check mode` on to report badly formatted files without writing, or turn it off to rewrite them.",
+    "Leave `Check only` on to report badly formatted files without writing, or turn it off to rewrite them.",
     "Review the counts and the list of affected files.",
   ],
   nuances: [
@@ -26,7 +26,8 @@ export const CONFIGS_FORMATTER_HELP: IApplicationHelp = {
   limitations: [
     "Does not repair broken syntax - a file that will not parse fails the run rather than being fixed.",
     "No diff preview, no backup, no undo: format mode rewrites in place.",
-    "If a file fails mid-run in format mode, files already processed stay rewritten.",
+    "Format mode writes every rewrite at once when the run ends: a file that cannot be read or parsed fails the " +
+      "run with nothing written, while a cancelled run writes the files it formatted before it stopped.",
     "Directory-only in this app; formatting individual files is available through `xrf-cli ltx format`.",
   ],
   relatedTools: [EApplicationId.CONFIGS_VERIFIER],

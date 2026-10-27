@@ -10,9 +10,7 @@ import { ConfigsSectionsPanel } from "@/core/ltx/components/panels/ConfigsSectio
 import { IEditorPanel } from "@/core/shell/editor-shell";
 
 /**
- * The panels the explorer offers.
- *
- * @returns The panels to register.
+ * What the explorer contributes to the panel stripes.
  */
 export const CONFIGS_EXPLORER_PANELS: Array<IEditorPanel> = [
   {
@@ -21,7 +19,7 @@ export const CONFIGS_EXPLORER_PANELS: Array<IEditorPanel> = [
     isOpenByDefault: true,
     label: "Configs",
     render: () => <ConfigsMenuPanel />,
-    side: "left" as const,
+    side: "left",
   },
   {
     icon: <ListIcon />,

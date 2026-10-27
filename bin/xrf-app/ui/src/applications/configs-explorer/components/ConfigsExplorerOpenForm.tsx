@@ -3,7 +3,7 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { ReactElement, useCallback } from "react";
 
-import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
+import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { DIALECT_IDS, EConfigsDialect } from "@/core/ltx/lib/dialect";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { EApplicationId } from "@/core/routing/application";
@@ -47,6 +47,11 @@ export function ConfigsExplorerOpenForm({
     await projectService.open(root.value, isDltx);
   }, [dialect, isDltx, log, projectService, root.value]);
 
+  const onDialectChange = useCallback(
+    (isDltx: boolean) => setDialect(isDltx ? EConfigsDialect.DLTX : EConfigsDialect.LTX),
+    [setDialect]
+  );
+
   return (
     <PickerForm
       data-testid={dataTestId}
@@ -66,11 +71,7 @@ export function ConfigsExplorerOpenForm({
         field={root}
       />
 
-      <ConfigsDialectFormRow
-        isDltx={isDltx}
-        isDisabled={projectService.project.isLoading}
-        onChange={(isDltx) => setDialect(isDltx ? EConfigsDialect.DLTX : EConfigsDialect.LTX)}
-      />
+      <ConfigsDialectFormRow isDltx={isDltx} isDisabled={projectService.project.isLoading} onChange={onDialectChange} />
     </PickerForm>
   );
 }

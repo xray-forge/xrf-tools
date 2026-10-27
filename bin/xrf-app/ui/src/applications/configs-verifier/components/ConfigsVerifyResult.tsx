@@ -3,7 +3,7 @@ import { formatCount, formatDuration } from "@xrf/format";
 import { LtxFinding, LtxProjectVerifyResult } from "@xrf/ipc/types/xrf-ltx";
 import { ReactElement, useMemo } from "react";
 
-import { toFindingMessage } from "@/core/ltx";
+import { toFindingMessage } from "@/core/ltx/lib/findings";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { identifierColumn } from "@/core/ui/table/columns";

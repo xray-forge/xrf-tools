@@ -4,9 +4,9 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { VerifierService } from "@/applications/configs-verifier/services/verifier";
+import { ConfigsVerifierService } from "@/applications/configs-verifier/services/verifier";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
-import { ConfigsDialectFormRow } from "@/core/ltx/components/configs-dialect/ConfigsDialectFormRow";
+import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
 import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 
@@ -15,7 +15,7 @@ import { ConfigsVerifyResult } from "./components/ConfigsVerifyResult";
 export function ConfigsVerifierApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const verifierService: VerifierService = useInjection(VerifierService);
+  const verifierService: ConfigsVerifierService = useInjection(ConfigsVerifierService);
 
   // The run rather than this view's own flag: a verification survives the window being reloaded, so returning here
   // finds it again instead of showing an idle form over a project it is still reading.

@@ -6,7 +6,7 @@ import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { CONFIGS_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-configs";
 import { LtxProjectVerifyResult } from "@xrf/ipc/types/xrf-ltx";
 
-import { VerifierService } from "@/applications/configs-verifier/services/verifier";
+import { ConfigsVerifierService } from "@/applications/configs-verifier/services/verifier";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT } from "@/core/notifications/lib";
@@ -27,13 +27,13 @@ const RESULT: LtxProjectVerifyResult = {
   validSections: 2,
 };
 
-describe("VerifierService operation", () => {
+describe("ConfigsVerifierService operation", () => {
   beforeEach(() => mockIpcCommands({}));
 
   it("preserves command arguments and emits one completion notification", async () => {
     mockIpcCommands({ [EConfigsCommand.VERIFY_DIRECTORY]: RESULT });
 
-    const { service, container } = mockInjectedService(VerifierService);
+    const { service, container } = mockInjectedService(ConfigsVerifierService);
     const notices: Array<unknown> = [];
 
     container.get(EventBus).subscribe(EMIT_NOTIFICATION_EVENT, (event) => notices.push(event.payload));
@@ -57,7 +57,7 @@ describe("VerifierService operation", () => {
   });
 
   it("receives an adopted result through the container event subscription", async () => {
-    const { service, container } = mockInjectedService(VerifierService);
+    const { service, container } = mockInjectedService(ConfigsVerifierService);
 
     await container.provision();
 
@@ -80,7 +80,7 @@ describe("VerifierService operation", () => {
 
     mockIpcCommands({ [EConfigsCommand.VERIFY_DIRECTORY]: () => response.promise });
 
-    const { service, container } = mockInjectedService(VerifierService);
+    const { service, container } = mockInjectedService(ConfigsVerifierService);
     const jobs = container.get(JobsService);
     const notices: Array<unknown> = [];
 
@@ -89,7 +89,7 @@ describe("VerifierService operation", () => {
     const running = service.verify("C:\\configs", false, false);
 
     // Leaving the tool takes its services and releases its scope.
-    container.unbind(VerifierService);
+    container.unbind(ConfigsVerifierService);
     container.get(SessionScopeService).release();
 
     expect(jobs.jobs).toHaveLength(1);

@@ -7,6 +7,7 @@ import { formatDuration } from "@xrf/format";
 import { configsCommands } from "@xrf/ipc/commands/configs";
 import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { LtxStructureParseError } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
@@ -80,7 +81,7 @@ export class ConfigsDocumentService {
    */
   @Computed()
   public get parseError(): Nullable<string> {
-    const error = this.document.value?.structure.parseError;
+    const error: Nullable<LtxStructureParseError> = this.document.value?.structure.parseError ?? null;
 
     return error ? `${error.line}:${error.column} ${error.message}` : null;
   }
@@ -94,9 +95,6 @@ export class ConfigsDocumentService {
 
   /**
    * Show one config of the open project.
-   *
-   * A superseding selection cancels this one rather than racing it, so clicking down a tree leaves the last click on
-   * screen instead of whichever read happened to finish last.
    *
    * @param path - Engine identity of the config to read.
    */
@@ -134,9 +132,6 @@ export class ConfigsDocumentService {
 
   /**
    * Read the selected config again, for a retry after a failure.
-   *
-   * Not a flow of its own: `select` already owns the document lane, and a flow starting another flow in the same lane
-   * cancels itself doing it.
    */
   public async retry(): Promise<void> {
     if (this.selected) {
@@ -187,10 +182,6 @@ export class ConfigsDocumentService {
 
   /**
    * Open one config at one of its lines, which is where a finding is anchored.
-   *
-   * The reveal is set after the read lands rather than before it: a request made while another config is still on
-   * screen would be spent by the view drawing that one. Authored, because a line belongs to a file - a resolved
-   * document is assembled out of sections and holds no line of any config.
    *
    * @param path - Engine identity of the config to open.
    * @param line - One-based line to bring into view.

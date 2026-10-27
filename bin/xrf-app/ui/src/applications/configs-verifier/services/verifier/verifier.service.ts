@@ -14,7 +14,7 @@ import { JobOperation } from "@/core/jobs/lib/job-operation";
  * The configs verification run and what it found.
  */
 @Injectable()
-export class VerifierService {
+export class ConfigsVerifierService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   public readonly operation: JobOperation<LtxProjectVerifyResult> = new JobOperation(this.log, {
