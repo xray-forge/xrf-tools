@@ -84,31 +84,28 @@ describe("TextureCatalogService", () => {
     expect(service.isBrowsing).toBe(true);
   });
 
-  it("lists what the tool still browsed again as it is restored, letting the restored opening go", async () => {
+  it("restores the listing the tool still holds without listing it again, and sweeps it", async () => {
     const { service, asked } = mockService();
-    const closed: Array<unknown> = [];
 
     mockIpcCommands({
-      [ETexturesCommand.DESCRIBE_CATALOG]: [mockTextureSummary(MOCK_TEXTURE)],
+      [ETexturesCommand.DESCRIBE_CATALOG]: () => {
+        asked.sweeps += 1;
+
+        return [mockTextureSummary(MOCK_TEXTURE)];
+      },
       [ETexturesCommand.RESTORE_BROWSE]: mockSessionSnapshot(
-        { mode: "looseDirectory", roots: createRoots(["C:\\work\\my-textures"]) },
+        mockTextureCatalog([mockTextureEntry(MOCK_TEXTURE)], { roots: createRoots(["C:\\gamedata"]) }),
         "restored"
       ),
-      [ETexturesCommand.OPEN_BROWSE]: mockSessionResponse((args?: Record<string, unknown>) => {
-        asked.openModes.push(args?.mode as TextureCatalogMode);
-
-        return mockTextureCatalog([mockTextureEntry(MOCK_TEXTURE)], { mode: args?.mode as TextureCatalogMode });
-      }),
-      [ETexturesCommand.CLOSE_BROWSE]: (args?: Record<string, unknown>) => void closed.push(args?.sessionIds),
     });
 
     await service.onProvision();
 
-    expect(asked.openModes).toEqual(["looseDirectory"]);
+    expect(asked.openModes).toEqual([]);
+    expect(asked.sweeps).toBe(1);
     expect(service.catalog.isRestored).toBe(true);
-    expect(service.isBrowsing).toBe(true);
-    expect(service.catalog.sessionId).not.toBe("restored");
-    expect(closed).toEqual([["restored"]]);
+    expect(service.catalog.sessionId).toBe("restored");
+    expect(service.nodes).toHaveLength(1);
   });
 
   it("opens a row by the address the listing put on it", async () => {
