@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 use std::sync::{Arc, OnceLock};
 
+use xrf_app_core::TauriResult;
 use xrf_app_core::session::SessionSnapshot;
 use xrf_chunk::XRayByteOrder;
 use xrf_error::{XrfError, XrfResult};
@@ -58,7 +59,7 @@ impl SpawnVisualReader {
   /// # Errors
   ///
   /// Returns why it cannot be read, reported the once it is tried: it is not read again.
-  pub fn get(&self, name: &str) -> Result<Arc<LevelSpawnVisual>, String> {
+  pub fn get(&self, name: &str) -> TauriResult<Arc<LevelSpawnVisual>> {
     self.visuals.get_or_read(name, || {
       self
         .read(name)
@@ -67,7 +68,7 @@ impl SpawnVisualReader {
     })
   }
 
-  fn read(&self, name: &str) -> Result<LevelSpawnVisual, String> {
+  fn read(&self, name: &str) -> TauriResult<LevelSpawnVisual> {
     let search: &XraySearch = &self.search;
     let file: Arc<OgfFile> = self
       .read_file(name)

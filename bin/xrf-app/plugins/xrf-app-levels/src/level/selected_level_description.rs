@@ -32,9 +32,8 @@ pub struct SelectedLevelDescription {
   pub portals: u32,
   /// Lights the level places, its sun among them.
   pub lights: u32,
-  /// Whether one of its lights is the sun.
-  pub has_sun: bool,
-  /// The directional light the level names its sun, which is what its baked occlusion was computed for.
+  /// The directional light the level names its sun, which is what its baked occlusion was computed for; none for a
+  /// level naming no sun.
   pub sun: Option<LevelSunDescription>,
   /// What each sector is and where, as the visuals declare them.
   pub sectors: Vec<SectorOutline>,

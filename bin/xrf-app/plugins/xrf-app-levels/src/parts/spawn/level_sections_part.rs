@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Instant;
 
+use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionParts, SessionSnapshot};
 use xrf_ltx::{Ltx, LtxResolution};
 use xrf_material::XrayReducedTextures;
@@ -20,7 +21,7 @@ pub(crate) const LEVEL_SECTIONS_PART: &str = "sections";
 pub(crate) struct LevelSectionsPart;
 
 impl SessionPart for LevelSectionsPart {
-  type Value = Result<Arc<Ltx>, String>;
+  type Value = TauriResult<Arc<Ltx>>;
 
   const NAME: &'static str = LEVEL_SECTIONS_PART;
 }
@@ -32,7 +33,7 @@ impl LevelSectionsPart {
   /// # Errors
   ///
   /// Returns the reason the spawn or the configs cannot be read, which every later ask answers with again.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Result<Arc<Ltx>, String> {
+  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<Ltx>> {
     current.parts.get_or_record::<Self>(search, |search| {
       let spawn: Arc<LevelSpawn> = LevelSpawnPart::get(current, search)?;
 
@@ -46,7 +47,7 @@ impl LevelSectionsPart {
   }
 
   /// `parts` with the sections an open read from `inputs` kept as the level's.
-  pub fn with(parts: SessionParts, sections: Result<Arc<Ltx>, String>, inputs: XrayInputRecord) -> SessionParts {
+  pub fn with(parts: SessionParts, sections: TauriResult<Arc<Ltx>>, inputs: XrayInputRecord) -> SessionParts {
     parts.with::<Self>(sections, inputs)
   }
 
@@ -62,7 +63,7 @@ impl LevelSectionsPart {
     search: &XraySearch,
     configs: &LevelConfigs,
     spawn: &LevelSpawn,
-  ) -> Result<Arc<Ltx>, String> {
+  ) -> TauriResult<Arc<Ltx>> {
     let started: Instant = Instant::now();
     let resolved: Arc<LtxResolution> = configs
       .open(search)?

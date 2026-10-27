@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use xrf_app_core::TauriResult;
 
 /// The ground a level map covers, engine space: its least and greatest `x` and `z`, as `bound_rect` places it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -19,7 +20,7 @@ impl LevelMapArea {
   /// # Errors
   ///
   /// Returns an error naming the corners when either least edge is not below its greatest.
-  pub fn require_ground(&self) -> Result<(), String> {
+  pub fn require_ground(&self) -> TauriResult<()> {
     let Self {
       min_x,
       min_z,

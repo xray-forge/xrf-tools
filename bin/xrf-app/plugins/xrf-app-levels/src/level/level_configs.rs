@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use xrf_app_core::TauriResult;
 use xrf_ltx::{LtxDialect, LtxProject, LtxProjectOptions};
 use xrf_vfs::{XrayRoots, XraySearch};
 
@@ -31,7 +32,7 @@ impl LevelConfigs {
   /// # Errors
   ///
   /// Returns the reason the configs directory cannot be named.
-  pub fn open(&self, search: &XraySearch) -> Result<LtxProject, String> {
+  pub fn open(&self, search: &XraySearch) -> TauriResult<LtxProject> {
     LtxProject::open_lean_at_search_opt(
       self.roots.describe(),
       search,

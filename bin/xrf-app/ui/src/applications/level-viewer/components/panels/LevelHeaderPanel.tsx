@@ -49,7 +49,7 @@ export function LevelHeaderPanel({
 
       <EditorPanelSection title={"Lighting"}>
         <EditorPanelProperty label={"Level lights"} value={formatCount(description.lights)} />
-        <EditorPanelProperty label={"Sun"} value={description.hasSun ? "Present" : "Absent"} />
+        <EditorPanelProperty label={"Sun"} value={description.sun ? "Present" : "Absent"} />
       </EditorPanelSection>
     </EditorPanel>
   );

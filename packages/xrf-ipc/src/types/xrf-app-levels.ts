@@ -442,9 +442,10 @@ export type SelectedLevelDescription = {
   portals: number;
   /** Lights the level places, its sun among them. */
   lights: number;
-  /** Whether one of its lights is the sun. */
-  hasSun: boolean;
-  /** The directional light the level names its sun, which is what its baked occlusion was computed for. */
+  /**
+   * The directional light the level names its sun, which is what its baked occlusion was computed for; none for a
+   * level naming no sun.
+   */
   sun: LevelSunDescription | null;
   /** What each sector is and where, as the visuals declare them. */
   sectors: Array<SectorOutline>;

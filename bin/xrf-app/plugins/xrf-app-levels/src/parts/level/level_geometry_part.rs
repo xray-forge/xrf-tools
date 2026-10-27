@@ -18,7 +18,7 @@ pub(crate) const LEVEL_GEOMETRY_PART: &str = "geometry";
 pub(crate) struct LevelGeometryPart;
 
 impl SessionPart for LevelGeometryPart {
-  type Value = Result<Arc<LevelGeomSource<InMemoryChunkDataSource>>, String>;
+  type Value = TauriResult<Arc<LevelGeomSource<InMemoryChunkDataSource>>>;
 
   const NAME: &'static str = LEVEL_GEOMETRY_PART;
 }
@@ -41,7 +41,7 @@ impl LevelGeometryPart {
   pub fn get(
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
-  ) -> Result<Arc<LevelGeomSource<InMemoryChunkDataSource>>, String> {
+  ) -> TauriResult<Arc<LevelGeomSource<InMemoryChunkDataSource>>> {
     current
       .parts
       .get_or_record::<Self>(search, |search| Self::read(&current.source, search).map(Arc::new))

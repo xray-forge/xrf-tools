@@ -100,7 +100,7 @@ impl OpenedLevel {
         )
       },
       || {
-        let spawn: Result<Arc<LevelSpawn>, String> =
+        let spawn: TauriResult<Arc<LevelSpawn>> =
           LevelSpawnPart::read(source, &search.clone().with_recording(&spawn_inputs));
 
         // Where the level starts is decided over its spawn, and the sections are those the spawn names.
@@ -112,7 +112,7 @@ impl OpenedLevel {
           |spawn| LevelStartPart::find_open(source, &search.clone().with_recording(&start_inputs), spawn),
         );
 
-        let sections: Option<Result<Arc<Ltx>, String>> = spawn.as_deref().ok().map(|spawn| {
+        let sections: Option<TauriResult<Arc<Ltx>>> = spawn.as_deref().ok().map(|spawn| {
           LevelSectionsPart::read(source, &search.clone().with_recording(&sections_inputs), configs, spawn)
         });
 

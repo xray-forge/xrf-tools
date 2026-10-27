@@ -87,7 +87,6 @@ export function mockSelectedLevelDescription(
     drawables: 1,
     engine: { engine: EXrayEngine.VANILLA, evidence: EXrayEngineEvidence.NAMED, subject: null },
     sun: null,
-    hasSun: true,
     lights: 2,
     portals: 0,
     roots: createRoots([]),
@@ -126,10 +125,14 @@ export function mockLevelPartResponses(parts: IMockLevelParts = {}): IpcCommandM
 
 /**
  * @param value - What a part query answers, null included.
+ * @param revision - The revision it is read at.
  * @returns A query answering it as a snapshot of the opening asked about.
  */
-export function mockLevelPartAnswer<T>(value: T): (args: { sessionId: string }) => SessionSnapshot<T> {
-  return (args: { sessionId: string }) => mockSessionSnapshot(value, args.sessionId);
+export function mockLevelPartAnswer<T>(
+  value: T,
+  revision: number = 0
+): (args: { sessionId: string }) => SessionSnapshot<T> {
+  return (args: { sessionId: string }) => mockSessionSnapshot(value, args.sessionId, revision);
 }
 
 /** What one reference came to, for a report fixture. */

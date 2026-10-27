@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_vfs::XraySearch;
 
@@ -15,7 +16,7 @@ pub(crate) const LEVEL_CONSOLE_PART: &str = "console";
 pub(crate) struct LevelConsolePart;
 
 impl SessionPart for LevelConsolePart {
-  type Value = Result<Arc<LevelConsoleDefaults>, String>;
+  type Value = TauriResult<Arc<LevelConsoleDefaults>>;
 
   const NAME: &'static str = LEVEL_CONSOLE_PART;
 
@@ -33,10 +34,7 @@ impl LevelConsolePart {
   /// # Errors
   ///
   /// Returns the reason the shipped defaults cannot be read, which every later ask answers with again.
-  pub fn get(
-    current: &SessionSnapshot<SelectedLevel>,
-    search: &XraySearch,
-  ) -> Result<Arc<LevelConsoleDefaults>, String> {
+  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<LevelConsoleDefaults>> {
     current.parts.get_or_record::<Self>(search, |search| {
       LevelConsoleDefaults::read(search, &current.roots)
         .map(Arc::new)

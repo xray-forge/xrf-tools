@@ -1,6 +1,7 @@
 use std::collections::{BTreeSet, HashMap};
 use std::time::Instant;
 
+use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
 use xrf_level::{LevelPsStaticFile, LevelPsStaticPlacement};
@@ -51,7 +52,7 @@ impl LevelParticlesPart {
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
     sections: Option<&Ltx>,
-  ) -> Result<PackedLevelParticles, String> {
+  ) -> TauriResult<PackedLevelParticles> {
     current
       .parts
       .record_read::<Self, _>(search, |search| Self::pack_recorded(current, search, sections))
@@ -79,7 +80,7 @@ impl LevelParticlesPart {
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
     sections: Option<&Ltx>,
-  ) -> Result<PackedLevelParticles, String> {
+  ) -> TauriResult<PackedLevelParticles> {
     let started: Instant = Instant::now();
     let library: ParticleLibrary = Self::read_library(search)?;
     let mut placements: Vec<RenderParticlePlacement> = Self::read_planted(&current.source, search)?;
@@ -130,7 +131,7 @@ impl LevelParticlesPart {
     })
   }
 
-  fn read_library(search: &XraySearch) -> Result<ParticleLibrary, String> {
+  fn read_library(search: &XraySearch) -> TauriResult<ParticleLibrary> {
     search
       .read(ParticlesFile::FILE_NAME)
       .and_then(ParticlesFile::read_from_bytes::<XRayByteOrder>)
@@ -139,7 +140,7 @@ impl LevelParticlesPart {
   }
 
   /// `CLevel::Load_GameSpecific_After`: each system the level plants for a single player game, lifted a centimetre.
-  fn read_planted(source: &LevelSource, search: &XraySearch) -> Result<Vec<RenderParticlePlacement>, String> {
+  fn read_planted(source: &LevelSource, search: &XraySearch) -> TauriResult<Vec<RenderParticlePlacement>> {
     let Some(bytes) = source.read_optional_file(search, LevelPsStaticFile::FILE_NAME)? else {
       return Ok(Vec::new());
     };

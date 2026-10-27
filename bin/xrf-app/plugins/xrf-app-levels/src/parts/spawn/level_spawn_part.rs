@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
+use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionParts, SessionSnapshot};
 use xrf_chunk::{ChunkReader, InMemoryChunkDataSource, XRayByteOrder};
 use xrf_spawn::{AlifeObject, ClsId, SpawnFile, SpawnLevelObjects};
@@ -20,7 +21,7 @@ pub(crate) const LEVEL_SPAWN_PART: &str = "spawn";
 pub(crate) struct LevelSpawnPart;
 
 impl SessionPart for LevelSpawnPart {
-  type Value = Result<Arc<LevelSpawn>, String>;
+  type Value = TauriResult<Arc<LevelSpawn>>;
 
   const NAME: &'static str = LEVEL_SPAWN_PART;
 }
@@ -38,14 +39,14 @@ impl LevelSpawnPart {
   ///
   /// Returns the reason when the spawn cannot be read or the level has no name to find its objects by, which every
   /// later ask answers with again.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Result<Arc<LevelSpawn>, String> {
+  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<LevelSpawn>> {
     current
       .parts
       .get_or_record::<Self>(search, |search| Self::read(&current.source, search))
   }
 
   /// `parts` with the spawn an open read from `inputs` kept as the level's.
-  pub fn with(parts: SessionParts, spawn: Result<Arc<LevelSpawn>, String>, inputs: XrayInputRecord) -> SessionParts {
+  pub fn with(parts: SessionParts, spawn: TauriResult<Arc<LevelSpawn>>, inputs: XrayInputRecord) -> SessionParts {
     parts.with::<Self>(spawn, inputs)
   }
 
@@ -54,7 +55,7 @@ impl LevelSpawnPart {
   /// # Errors
   ///
   /// Returns the reason when the spawn cannot be read or the level has no name to find its objects by.
-  pub fn read(source: &LevelSource, search: &XraySearch) -> Result<Arc<LevelSpawn>, String> {
+  pub fn read(source: &LevelSource, search: &XraySearch) -> TauriResult<Arc<LevelSpawn>> {
     Self::read_level(search, &source.require_name()?).map(Arc::new)
   }
 
@@ -63,9 +64,7 @@ impl LevelSpawnPart {
   /// # Errors
   ///
   /// Returns why the spawn cannot be named or read.
-  pub fn read_chunks(
-    search: &XraySearch,
-  ) -> Result<(XrayLogicalPath, Vec<ChunkReader<InMemoryChunkDataSource>>), String> {
+  pub fn read_chunks(search: &XraySearch) -> TauriResult<(XrayLogicalPath, Vec<ChunkReader<InMemoryChunkDataSource>>)> {
     let path: XrayLogicalPath = XrayLogicalPath::new(Self::SPAWNS_DIRECTORY)
       .and_then(|directory| directory.join(Self::SPAWN_FILE))
       .map_err(|error| format!("Failed to name '{}': {error}", Self::SPAWN_FILE))?;
@@ -80,7 +79,7 @@ impl LevelSpawnPart {
 
   /// The objects standing on a level when a new game starts, by the level each game vertex belongs to, reading nothing
   /// of the spawn but its objects and the head of its graph.
-  fn read_level(search: &XraySearch, level: &str) -> Result<LevelSpawn, String> {
+  fn read_level(search: &XraySearch, level: &str) -> TauriResult<LevelSpawn> {
     let started: Instant = Instant::now();
     let (path, chunks): (XrayLogicalPath, Vec<ChunkReader<InMemoryChunkDataSource>>) = Self::read_chunks(search)?;
     let read: SpawnLevelObjects = SpawnFile::read_level_objects_from_chunks::<XRayByteOrder, _>(&chunks, level)

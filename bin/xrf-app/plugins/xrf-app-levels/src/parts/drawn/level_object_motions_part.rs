@@ -1,4 +1,5 @@
 use xrf_anm::AnmFile;
+use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_chunk::XRayByteOrder;
 use xrf_extension::XrayExtension;
@@ -33,14 +34,14 @@ impl LevelObjectMotionsPart {
   /// # Errors
   ///
   /// Returns why the motion is no `.anm` file, is found nowhere, or cannot be read.
-  pub fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch, name: &str) -> Result<AnmFile, String> {
+  pub fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch, name: &str) -> TauriResult<AnmFile> {
     current
       .parts
       .record_read::<Self, _>(search, |search| Self::read_recorded(&current.source, search, name))
   }
 
   /// The motion read, every read through `search`.
-  fn read_recorded(source: &LevelSource, search: &XraySearch, name: &str) -> Result<AnmFile, String> {
+  fn read_recorded(source: &LevelSource, search: &XraySearch, name: &str) -> TauriResult<AnmFile> {
     // todo: Read `.anms` files, several motions of which `Play(true)` plays the first; no shipped spawn names one.
     if !XrayExtension::Anm.matches(name) {
       return Err(format!("Object motion '{name}' is not an '.anm' file"));

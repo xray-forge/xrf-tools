@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use xrf_app_core::TauriResult;
 use xrf_app_core::session::{SessionPart, SessionSnapshot};
 use xrf_environment::{EnvironmentCatalog, EnvironmentReadOptions, EnvironmentReader, LevelWeather};
 use xrf_ltx::LtxProject;
@@ -17,7 +18,7 @@ pub(crate) const LEVEL_ENVIRONMENT_PART: &str = "environment";
 pub(crate) struct LevelEnvironmentPart;
 
 impl SessionPart for LevelEnvironmentPart {
-  type Value = Result<Arc<LevelEnvironment>, String>;
+  type Value = TauriResult<Arc<LevelEnvironment>>;
 
   const NAME: &'static str = LEVEL_ENVIRONMENT_PART;
 }
@@ -28,7 +29,7 @@ impl LevelEnvironmentPart {
   /// # Errors
   ///
   /// Returns the reason the configs cannot be read, which every later ask answers with again.
-  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> Result<Arc<LevelEnvironment>, String> {
+  pub fn get(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Arc<LevelEnvironment>> {
     current.parts.get_or_record::<Self>(search, |search| {
       let project: LtxProject = LevelConfigs::of(current).open(search)?;
       let catalog: EnvironmentCatalog = EnvironmentReader::read_opt(
