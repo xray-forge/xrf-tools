@@ -14,8 +14,8 @@ import {
   ITexturePreviewGap,
   ITexturePreviewOptions,
 } from "@/core/textures/lib/texture-preview";
-import { TextureSelectionService } from "@/core/textures/services/selection";
-import { TextureViewService } from "@/core/textures/services/view";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
+import { TextureViewService } from "@/core/textures/services/texture-view";
 import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";

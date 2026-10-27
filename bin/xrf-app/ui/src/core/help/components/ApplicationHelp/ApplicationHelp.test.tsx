@@ -3,7 +3,7 @@ import { act, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
 
-import { HelpService } from "@/core/help/services/help";
+import { HelpService } from "@/core/help/services/help.service";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

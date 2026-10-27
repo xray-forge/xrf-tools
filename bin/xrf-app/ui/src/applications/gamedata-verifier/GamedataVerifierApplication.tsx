@@ -4,7 +4,7 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { GamedataVerifierService } from "@/applications/gamedata-verifier/services/verifier";
+import { GamedataVerifierService } from "@/applications/gamedata-verifier/services/gamedata-verifier.service";
 import { EngineChoiceFormRow } from "@/core/engine-target/components/EngineChoiceFormRow";
 import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib/use-engine-choice";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";

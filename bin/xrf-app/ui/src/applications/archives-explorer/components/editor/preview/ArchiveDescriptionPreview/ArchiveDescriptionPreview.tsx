@@ -10,7 +10,7 @@ import {
 import { assertExhaustive, Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
-import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import { TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";

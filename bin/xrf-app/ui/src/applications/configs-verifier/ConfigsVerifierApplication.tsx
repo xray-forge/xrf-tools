@@ -4,7 +4,7 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { ConfigsVerifierService } from "@/applications/configs-verifier/services/verifier";
+import { ConfigsVerifierService } from "@/applications/configs-verifier/services/configs-verifier.service";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";

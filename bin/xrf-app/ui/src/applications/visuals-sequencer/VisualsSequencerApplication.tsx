@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
-import { SequencerService } from "@/applications/visuals-sequencer/services/sequencer";
+import { VisualsSequencerService } from "@/applications/visuals-sequencer/services/visuals-sequencer";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { VisualPreviewLayout } from "@/core/visuals/components/preview/VisualPreviewLayout";
 import { IOpenVisual } from "@/core/visuals/services";
@@ -20,7 +20,7 @@ export function VisualsSequencerApplication({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const service: SequencerService = useInjection(SequencerService);
+  const service: VisualsSequencerService = useInjection(VisualsSequencerService);
 
   const [isPickerOpen, setPickerOpen] = useState(false);
 

@@ -11,9 +11,9 @@ import { ReactElement, useCallback } from "react";
 
 import { hasTextureFlag, withTextureFlag } from "@/applications/textures-editor/lib/texture-descriptor-flags";
 import { withTextureType } from "@/applications/textures-editor/lib/texture-type-change";
-import { TextureEditorService } from "@/applications/textures-editor/services/editor";
+import { TextureEditorService } from "@/applications/textures-editor/services/texture-editor";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { TextureSelectionService } from "@/core/textures/services/selection";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { TextureFlagField } from "./TextureFlagField";

@@ -4,8 +4,8 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { describeLevelLoad } from "@/core/level/lib/load/level-load-progress";
-import { LevelRenderService } from "@/core/level/services/level-render.service";
-import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
+import { LevelViewportService } from "@/core/level/services/level-viewport/level-viewport.service";
 import { RenderFailureNotice } from "@/core/render/components/overlay/RenderFailureNotice";
 import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";

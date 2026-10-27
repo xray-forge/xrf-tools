@@ -9,7 +9,7 @@ import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
 import { LEVEL_FOLIAGE_LIGHT_KEYS, resetLevelFoliageKeys } from "@/core/level/lib/features/level-foliage-keys";
-import { LevelViewService } from "@/core/level/services/level-view.service";
+import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
   formatFoliageStrength,

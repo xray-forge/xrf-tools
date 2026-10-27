@@ -2,8 +2,8 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
 import { ConfigsMenu } from "@/applications/configs-explorer/components/ConfigsMenu";
-import { ConfigsDocumentService } from "@/applications/configs-explorer/services/document";
-import { ConfigsProjectService } from "@/applications/configs-explorer/services/project";
+import { ConfigsDocumentService } from "@/applications/configs-explorer/services/configs-document";
+import { ConfigsProjectService } from "@/applications/configs-explorer/services/configs-project";
 
 /**
  * The project tree, wired to whichever config is on screen.

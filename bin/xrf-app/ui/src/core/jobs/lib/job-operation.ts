@@ -8,7 +8,7 @@ import { JobKind } from "@xrf/ipc/types/xrf-app-core";
 import { Logger } from "@xrf/logging";
 import { Nullable, Optional } from "@xrf/types";
 
-import { JobsService } from "@/core/jobs/services/jobs";
+import { JobsService } from "@/core/jobs/services/jobs.service";
 import { TCommandCompletion } from "@/core/operations/lib/command-reporter";
 
 import { IJobDescriptor, IJobRun, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "./jobs-types";

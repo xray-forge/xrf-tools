@@ -1,4 +1,4 @@
-import { TranslationsVerifierService } from "@/applications/translations-verifier/services/verifier";
+import { TranslationsVerifierService } from "@/applications/translations-verifier/services/translations-verifier.service";
 import { ContainerDefinition } from "@/lib/container/container-definition";
 
 export { TranslationsVerifierApplication as Component } from "./TranslationsVerifierApplication";

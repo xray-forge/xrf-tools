@@ -11,14 +11,14 @@ import {
   TEXTURE_OPEN_MODE_IDS,
   TEXTURE_OPEN_MODES,
 } from "@/applications/textures-explorer/lib/texture-open-mode";
-import { TextureCatalogService } from "@/applications/textures-explorer/services/catalog";
+import { TextureCatalogService } from "@/applications/textures-explorer/services/texture-catalog.service";
 import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
 import { useAssetRootField } from "@/core/assets/lib";
 import { useRootProbe } from "@/core/assets/lib/use-root-probe";
 import { TEXTURE_FILE_FILTERS } from "@/core/path/file-filters";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { TextureSelectionService } from "@/core/textures/services/selection";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import {
   ChoiceFormRow,
   IChoiceFormRowOption,

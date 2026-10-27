@@ -1,0 +1,203 @@
+import { inject, Injectable } from "@wirestate/core";
+import { Computed, Observable, runInAction } from "@wirestate/mobx";
+import { AsyncState } from "@xrf/async";
+import { transformError } from "@xrf/errors";
+import { call, cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
+import { formatDuration } from "@xrf/format";
+import { configsCommands } from "@xrf/ipc/commands/configs";
+import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { LtxResolvedIndex, LtxResolvedIndexEntry, LtxResolvedSection } from "@xrf/ipc/types/xrf-ltx-inspect";
+import { Logger, Timer } from "@xrf/logging";
+import { Nullable } from "@xrf/types";
+
+import { ConfigsProjectService } from "@/applications/configs-explorer/services/configs-project";
+
+/**
+ * What one entry point resolves to, indexed once and paged on demand.
+ */
+@Injectable()
+export class ConfigsResolvedService {
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
+
+  /** The entry point being read, or null when nothing is. */
+  @Observable()
+  public entry: Nullable<string> = null;
+
+  /** Every section the entry point resolves to, named and counted. */
+  @Observable()
+  public index: AsyncState<LtxResolvedIndex> = AsyncState.idle();
+
+  /** How many pages have landed, which is what a consumer re-reads `sections` on. */
+  @Observable()
+  public revision: number = 0;
+
+  /** Bodies that have arrived, by section name. Read it alongside `revision`. */
+  public readonly sections: Map<string, LtxResolvedSection> = new Map();
+
+  /**
+   * The config the view is narrowed to, or null for the whole root.
+   */
+  @Observable()
+  public narrowedTo: Nullable<string> = null;
+
+  /** Sections asked for and not yet answered, so a second viewport does not ask again. */
+  private readonly pending: Set<string> = new Set();
+
+  /**
+   * Identifies each opening, including reopening the same entry after clear.
+   * Page completion must belong to this generation before publishing or releasing pending names.
+   */
+  private generation: number = 0;
+
+  /**
+   * @returns Whether an index is on screen, which is what makes the resolved view showable.
+   */
+  @Computed()
+  public get isReady(): boolean {
+    return this.index.value !== null;
+  }
+
+  /**
+   * @returns The sections the view shows: the whole root, or only those the narrowed config declared.
+   */
+  @Computed()
+  public get visibleSections(): Array<LtxResolvedIndexEntry> {
+    const sections: Array<LtxResolvedIndexEntry> = this.index.value?.sections ?? [];
+
+    return this.narrowedTo ? sections.filter((section) => section.origin === this.narrowedTo) : sections;
+  }
+
+  public constructor(private readonly projectService: ConfigsProjectService = inject(ConfigsProjectService)) {}
+
+  /**
+   * Narrow the view to one config's own sections, or widen it back to the whole root.
+   *
+   * @param path - Engine identity of the config to narrow to, or null for the whole root.
+   */
+  public narrowTo(path: Nullable<string>): void {
+    runInAction(() => {
+      this.narrowedTo = path;
+    });
+  }
+
+  /**
+   * Read one entry point's resolution, replacing whatever was open.
+   *
+   * @param entry - Engine identity of the entry point to resolve.
+   */
+  @LatestFlow("index")
+  public *open(entry: string): TFlow {
+    const sessionId: Nullable<string> = this.projectService.project.sessionId;
+
+    if (!sessionId) {
+      this.log.error("Cannot resolve an entry point with no project open:", entry);
+
+      return;
+    }
+
+    if (this.entry === entry && this.index.isReady) {
+      return;
+    }
+
+    const timer: Timer = new Timer();
+
+    this.log.info("Resolving config entry point:", entry);
+    this.reset(entry);
+    this.index = this.index.asLoading();
+
+    try {
+      const { value: index }: SessionSnapshot<LtxResolvedIndex> = yield* call(
+        configsCommands.listResolvedSections({ entry, sessionId })
+      );
+
+      this.log.info("Resolved", entry, "to", index.sections.length, "sections, in", formatDuration(timer.elapsed()));
+
+      this.index = this.index.asReady(index);
+    } catch (error) {
+      this.log.error("Failed to resolve the entry point:", entry, "after", formatDuration(timer.elapsed()), error);
+
+      this.index = this.index.asFailed(transformError(error));
+    }
+  }
+
+  /**
+   * Fetch the bodies of sections that have scrolled into view.
+   *
+   * Not a flow, because neither lane policy fits: superseding would cancel a page for a different part of the document,
+   * and ignoring would drop one the viewport is waiting on. Pages are additive and addressed by name, so the guard is
+   * what has already been asked for rather than what is already running.
+   *
+   * @param names - Sections the viewport needs, in any order. Ones already held or in flight are dropped.
+   */
+  public async request(names: ReadonlyArray<string>): Promise<void> {
+    const sessionId: Nullable<string> = this.projectService.project.sessionId;
+    const entry: Nullable<string> = this.entry;
+    const generation: number = this.generation;
+
+    if (!sessionId || !entry) {
+      return;
+    }
+
+    const wanted: Array<string> = names.filter((name: string) => !this.sections.has(name) && !this.pending.has(name));
+
+    if (!wanted.length) {
+      return;
+    }
+
+    for (const name of wanted) {
+      this.pending.add(name);
+    }
+
+    try {
+      const { value: sections }: SessionSnapshot<Array<LtxResolvedSection>> =
+        await configsCommands.readResolvedSections({
+          entry,
+          names: wanted,
+          sessionId,
+        });
+
+      runInAction(() => {
+        // An entry path can be reopened while an earlier read is still in flight.
+        if (this.generation !== generation) {
+          return;
+        }
+
+        for (const section of sections) {
+          this.sections.set(section.name, section);
+        }
+
+        this.revision += 1;
+      });
+    } catch (error) {
+      this.log.error("Failed to read resolved sections of:", entry, error);
+    } finally {
+      if (this.generation === generation) {
+        for (const name of wanted) {
+          this.pending.delete(name);
+        }
+      }
+    }
+  }
+
+  /**
+   * Cancel the index read, abandon pending pages, and forget the resolution when its project closes.
+   */
+  public clear(): void {
+    cancelFlow(this, "index");
+    runInAction(() => this.reset(null));
+  }
+
+  /**
+   * Abandon previous page requests and drop everything held for the previous entry point.
+   *
+   * @param entry - Entry point taking its place, or null when none is.
+   */
+  private reset(entry: Nullable<string>): void {
+    this.generation += 1;
+    this.entry = entry;
+    this.index = this.index.asIdle(null);
+    this.sections.clear();
+    this.pending.clear();
+    this.revision += 1;
+  }
+}

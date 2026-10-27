@@ -10,7 +10,7 @@ import {
   ILevelViewerScreenshot,
   ILevelViewerScreenshotReportFile,
 } from "@/applications/level-viewer/lib/screenshot/level-viewer-screenshot";
-import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/screenshot";
+import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/level-viewer-screenshot";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

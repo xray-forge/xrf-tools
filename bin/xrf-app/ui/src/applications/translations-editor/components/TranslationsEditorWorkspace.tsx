@@ -8,7 +8,7 @@ import {
   ITranslationValidation,
   useTranslationValidation,
 } from "@/applications/translations-editor/lib/use-translation-validation";
-import { TranslationsService } from "@/applications/translations-editor/services/translations";
+import { TranslationsService } from "@/applications/translations-editor/services/translations.service";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 

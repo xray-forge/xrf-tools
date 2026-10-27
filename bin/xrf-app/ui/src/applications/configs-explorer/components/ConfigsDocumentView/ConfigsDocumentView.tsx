@@ -5,7 +5,10 @@ import { ReactElement } from "react";
 
 import { ConfigsAuthoredView } from "@/applications/configs-explorer/components/ConfigsDocumentView/ConfigsAuthoredView";
 import { ConfigsResolvedView } from "@/applications/configs-explorer/components/ConfigsDocumentView/ConfigsResolvedView";
-import { ConfigsDocumentService, EConfigsDocumentMode } from "@/applications/configs-explorer/services/document";
+import {
+  ConfigsDocumentService,
+  EConfigsDocumentMode,
+} from "@/applications/configs-explorer/services/configs-document";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";

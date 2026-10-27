@@ -3,7 +3,7 @@ import { useCallback } from "react";
 
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 /**
  * @param key - The renderer feature group a section sets.

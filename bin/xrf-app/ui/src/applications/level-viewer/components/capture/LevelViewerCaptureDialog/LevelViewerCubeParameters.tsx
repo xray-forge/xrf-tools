@@ -11,7 +11,7 @@ import {
   LEVEL_CUBE_SUPERSAMPLINGS,
   toLevelCubeCrossSize,
 } from "@/applications/level-viewer/lib/cube/level-cube-capture";
-import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { LevelViewerCaptureService } from "@/applications/level-viewer/services/level-viewer-capture";
 import { cn } from "@/core/theme/class-name";
 import { ChoiceFormRow } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";

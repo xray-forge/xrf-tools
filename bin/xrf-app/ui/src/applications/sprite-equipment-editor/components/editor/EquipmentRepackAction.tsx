@@ -9,7 +9,7 @@ import { ReactElement, useCallback, useState } from "react";
 import {
   IEquipmentRepackTargets,
   SpriteEquipmentEditorService,
-} from "@/applications/sprite-equipment-editor/services/editor";
+} from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { BaseComponentProps } from "@/lib/dom/element-types";

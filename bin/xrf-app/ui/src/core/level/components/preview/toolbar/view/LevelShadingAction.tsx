@@ -13,8 +13,8 @@ import {
   ILevelShadingChoice,
 } from "@/core/level/lib/view/level-shading";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { LevelRenderService } from "@/core/level/services/level-render.service";
-import { LevelViewService } from "@/core/level/services/level-view.service";
+import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
+import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
 import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { ChoiceListFormRow } from "@/core/ui/form";

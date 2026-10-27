@@ -10,9 +10,9 @@ import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/edi
 import { TexturePreview } from "@/core/textures/components/preview/TexturePreview";
 import { describeTextureCaption, describeTextureName } from "@/core/textures/lib/texture-caption";
 import { ITexturePreviewComparison } from "@/core/textures/lib/texture-preview";
-import { TextureSelectionService } from "@/core/textures/services/selection";
-import { TextureSurfaceService } from "@/core/textures/services/surface";
-import { TextureViewService } from "@/core/textures/services/view";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
+import { TextureSurfaceService } from "@/core/textures/services/texture-surface";
+import { TextureViewService } from "@/core/textures/services/texture-view";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { TextureWorkspaceToolbar } from "./TextureWorkspaceToolbar";

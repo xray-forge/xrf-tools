@@ -11,7 +11,7 @@ import {
 } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
 
-import { TextureCatalogService } from "@/applications/textures-explorer/services/catalog";
+import { TextureCatalogService } from "@/applications/textures-explorer/services/texture-catalog.service";
 import {
   MOCK_BUMP,
   MOCK_COMPANION,
@@ -24,7 +24,7 @@ import {
   mockTextureEntry,
   mockTextureSummary,
 } from "@/core/textures/fixtures/texture.mocks";
-import { TextureSelectionService } from "@/core/textures/services/selection";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

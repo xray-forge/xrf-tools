@@ -15,7 +15,7 @@ import {
   MockVisualBuffer,
   mockVisualDescription,
 } from "@/core/visuals/fixtures/visual.mocks";
-import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

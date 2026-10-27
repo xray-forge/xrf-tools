@@ -5,7 +5,7 @@ import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { Nullable } from "@xrf/types";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
+import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { mockArchiveStatistics, mockArchivesVolumes } from "@/core/archive/fixtures/archive.mocks";
 import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";

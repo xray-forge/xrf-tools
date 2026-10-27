@@ -8,7 +8,7 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { TranslationsService } from "@/applications/translations-editor/services/translations";
+import { TranslationsService } from "@/applications/translations-editor/services/translations.service";
 import { describeRoots } from "@/core/assets/lib";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";

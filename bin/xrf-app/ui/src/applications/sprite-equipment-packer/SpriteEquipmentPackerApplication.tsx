@@ -8,7 +8,7 @@ import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { DDS_FILE_FILTERS, LTX_FILE_FILTERS } from "@/core/path/file-filters";
 import { EApplicationId } from "@/core/routing/application";
-import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
+import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/sprite-equipment-packer.service";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 
 import { EquipmentPackResult } from "./components/EquipmentPackResult";

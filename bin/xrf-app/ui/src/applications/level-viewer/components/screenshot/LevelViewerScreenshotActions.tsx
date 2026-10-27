@@ -6,7 +6,7 @@ import { TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND } from "@/applications/level-view
 import { LevelViewerScreenshotDialog } from "@/applications/level-viewer/components/screenshot/LevelViewerScreenshotDialog";
 import { ILevelViewerScreenshot } from "@/applications/level-viewer/lib/screenshot/level-viewer-screenshot";
 import { LEVEL_VIEWER_FILE_MENU_EXTENSION } from "@/applications/level-viewer/menus";
-import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/screenshot";
+import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/level-viewer-screenshot";
 import { useEditorMenus } from "@/core/shell/editor-shell";
 import { IMenuContribution } from "@/core/shell/menu/lib";
 

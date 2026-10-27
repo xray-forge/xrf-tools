@@ -2,7 +2,7 @@ import { EventBus, WireEvent } from "@wirestate/core";
 import { EJobsCommand } from "@xrf/ipc/commands/jobs";
 
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
-import { JobsService } from "@/core/jobs/services/jobs";
+import { JobsService } from "@/core/jobs/services/jobs.service";
 import { EMIT_NOTIFICATION_EVENT, INotificationPayload } from "@/core/notifications/lib";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
 

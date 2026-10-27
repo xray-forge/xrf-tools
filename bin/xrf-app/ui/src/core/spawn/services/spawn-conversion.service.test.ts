@@ -7,7 +7,7 @@ import { listMockInvokeCalls, mockInvoke, mockIpcCommands } from "@xrf/ipc/testi
 import { SPAWN_JOB_UNPACK, SpawnConversionResult } from "@xrf/ipc/types/xrf-app-spawn";
 
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
-import { JobsService } from "@/core/jobs/services/jobs";
+import { JobsService } from "@/core/jobs/services/jobs.service";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { SpawnConversionService } from "@/core/spawn/services/spawn-conversion.service";
 import { mockApplicationScope, mockInjectedService } from "@/fixtures/utils/container";

@@ -5,7 +5,7 @@ import { ReactElement } from "react";
 
 import { isRenderFeatureChoiceCustom } from "@/core/render/lib/settings/render-feature-choice";
 import { describeRenderPreset, ERenderPreset } from "@/core/render/lib/settings/render-preset";
-import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 
 /** Which preset the renderer's features follow, whether anything is changed on top of it, and the way back. */

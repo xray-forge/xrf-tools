@@ -5,7 +5,7 @@ import { Logger } from "@xrf/logging";
 
 import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/applications/sprite-equipment-editor/commands";
 import { KeybindCommand } from "@/core/commands";
-import { HelpService } from "@/core/help/services/help";
+import { HelpService } from "@/core/help/services/help.service";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { SettingsService } from "@/core/settings/services/settings";
 import { mockContainer } from "@/fixtures/utils/container";

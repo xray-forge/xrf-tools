@@ -31,7 +31,7 @@ import { LevelPreviewPick } from "@/core/level/components/preview/LevelPreviewPi
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
 import { ILevelOverlay, LEVEL_OVERLAYS } from "@/core/level/lib/view/level-overlays";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { LevelViewService } from "@/core/level/services/level-view.service";
+import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorMenus, useEditorPanels } from "@/core/shell/editor-shell";

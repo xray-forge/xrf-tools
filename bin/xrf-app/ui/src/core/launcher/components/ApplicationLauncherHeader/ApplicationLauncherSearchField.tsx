@@ -6,7 +6,7 @@ import { Nullable, Optional } from "@xrf/types";
 import { ChangeEvent, KeyboardEvent, ReactElement, RefObject, useCallback } from "react";
 
 import { formatChord, parseChord } from "@/core/keybinds";
-import { KeymapService } from "@/core/keybinds/services/keymap";
+import { KeymapService } from "@/core/keybinds/services/keymap.service";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";

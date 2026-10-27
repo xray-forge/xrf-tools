@@ -8,7 +8,7 @@ import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 import { XrayPathCollision } from "@xrf/ipc/types/xrf-vfs";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
+import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import {
   mockArchiveFileDescriptor,
   mockArchivesVolumes,

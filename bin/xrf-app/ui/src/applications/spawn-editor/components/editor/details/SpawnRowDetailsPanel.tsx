@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { ISpawnRowSelection, SpawnFileService } from "@/applications/spawn-editor/services/spawn-file";
+import { ISpawnRowSelection, SpawnFileService } from "@/applications/spawn-editor/services/spawn-file.service";
 import {
   EditorPanel,
   EditorPanelEmpty,

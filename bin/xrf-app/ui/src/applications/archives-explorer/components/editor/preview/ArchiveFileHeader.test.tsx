@@ -8,7 +8,7 @@ import {
   mockArchivesExplorer,
   mockShownArchiveFile,
 } from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
-import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import { mockArchiveFileDescriptor } from "@/core/archive/fixtures/archive.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

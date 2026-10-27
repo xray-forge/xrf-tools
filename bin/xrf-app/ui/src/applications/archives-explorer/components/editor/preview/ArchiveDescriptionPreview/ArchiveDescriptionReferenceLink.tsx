@@ -4,7 +4,7 @@ import { ArchiveReference } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
-import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

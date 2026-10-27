@@ -4,7 +4,7 @@ import { JobDescription } from "@xrf/ipc/types/xrf-app-core";
 import { ReactElement, useCallback } from "react";
 
 import { useJobsListing } from "@/core/jobs/lib/use-jobs-listing";
-import { JobsService } from "@/core/jobs/services/jobs";
+import { JobsService } from "@/core/jobs/services/jobs.service";
 import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 import { JobRow } from "@/core/shell/panel/jobs/JobRow";
 

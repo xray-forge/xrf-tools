@@ -6,7 +6,10 @@ import { default as TuneIcon } from "@mui/icons-material/Tune";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { EPatcherSection, PatcherService } from "@/applications/archives-patcher/services/patcher";
+import {
+  ArchivesPatcherService,
+  EPatcherSection,
+} from "@/applications/archives-patcher/services/archives-patcher.service";
 import { EditorPanelHeader } from "@/core/shell/editor/EditorPanelHeader";
 import { EditorSideMenu, IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -35,7 +38,7 @@ export function PatcherSectionsMenu({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const patcherService: PatcherService = useInjection(PatcherService);
+  const patcherService: ArchivesPatcherService = useInjection(ArchivesPatcherService);
 
   const items: Array<IEditorSideMenuItem> = SECTIONS.map((section) => ({
     label: section.label,

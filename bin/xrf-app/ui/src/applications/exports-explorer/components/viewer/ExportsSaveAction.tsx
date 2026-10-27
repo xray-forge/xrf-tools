@@ -9,7 +9,7 @@ import {
   MANIFEST_FILTERS,
   withExternManifestExtension,
 } from "@/applications/exports-explorer/lib/extern-manifest";
-import { ExportsService } from "@/applications/exports-explorer/services/exports";
+import { ExportsService } from "@/applications/exports-explorer/services/exports.service";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

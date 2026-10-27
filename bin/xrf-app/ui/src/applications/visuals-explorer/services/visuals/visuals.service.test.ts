@@ -5,7 +5,7 @@ import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 
-import { VisualsService } from "@/applications/visuals-explorer/services/visuals/index";
+import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import {
   mockPackedSubmesh,
   mockSelectedVisual,
@@ -15,8 +15,8 @@ import {
   mockVisualTransform,
 } from "@/core/visuals/fixtures/visual.mocks";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
-import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
+import { VisualMotionService } from "@/core/visuals/services/visual-motion/visual-motion.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { deferred } from "@/fixtures/utils/promise";

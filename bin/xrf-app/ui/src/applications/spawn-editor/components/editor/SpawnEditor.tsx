@@ -6,7 +6,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 import { Route, Routes } from "react-router-dom";
 
-import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file";
+import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file.service";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";

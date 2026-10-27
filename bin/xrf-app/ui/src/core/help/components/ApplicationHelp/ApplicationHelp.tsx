@@ -6,7 +6,7 @@ import { useLocation } from "react-router-dom";
 import { XrfMark } from "@/core/brand/XrfMark";
 import { PRODUCT_NAME } from "@/core/configs";
 import { ApplicationHelpButton, ApplicationHelpDialog } from "@/core/help/components";
-import { HelpService } from "@/core/help/services/help";
+import { HelpService } from "@/core/help/services/help.service";
 import { LAUNCHER_HELP } from "@/core/launcher/help";
 import { IApplicationDescriptor, IApplicationHelp } from "@/core/routing/application";
 import { useCurrentApplication } from "@/core/routing/current-application.context";

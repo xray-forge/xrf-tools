@@ -6,7 +6,7 @@ import { ArchiveReadResult } from "@xrf/ipc/types/xrf-archive";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
 import { mockArchivesExplorer } from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
-import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
+import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import {
   mockArchiveShadowedCopy,
   mockArchivesVolumes,

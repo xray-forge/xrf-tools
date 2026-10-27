@@ -4,7 +4,7 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect } from "react";
 
-import { UnpackerService } from "@/applications/archives-unpacker/services/unpacker";
+import { ArchivesUnpackerService } from "@/applications/archives-unpacker/services/archives-unpacker.service";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
@@ -15,7 +15,7 @@ import { ArchivesUnpackResult } from "./components/ArchivesUnpackResult";
 export function ArchivesUnpackerApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const unpackerService: UnpackerService = useInjection(UnpackerService);
+  const unpackerService: ArchivesUnpackerService = useInjection(ArchivesUnpackerService);
 
   const isRunning: boolean = unpackerService.operation.isRunning;
 

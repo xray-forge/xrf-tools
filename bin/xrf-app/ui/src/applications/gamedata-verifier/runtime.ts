@@ -1,4 +1,4 @@
-import { GamedataVerifierService } from "@/applications/gamedata-verifier/services/verifier";
+import { GamedataVerifierService } from "@/applications/gamedata-verifier/services/gamedata-verifier.service";
 import { ContainerDefinition } from "@/lib/container/container-definition";
 
 export { GamedataVerifierApplication as Component } from "./GamedataVerifierApplication";

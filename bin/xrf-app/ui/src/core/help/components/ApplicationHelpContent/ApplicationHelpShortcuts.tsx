@@ -5,7 +5,7 @@ import { Fragment, ReactElement } from "react";
 
 import { EKeybindCommandCategory, IKeybindCommand, KEYBIND_COMMAND_CATEGORY_LABELS } from "@/core/commands";
 import { formatChord, parseChord } from "@/core/keybinds";
-import { KeymapService } from "@/core/keybinds/services/keymap";
+import { KeymapService } from "@/core/keybinds/services/keymap.service";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** One command and the chords it currently answers to. */

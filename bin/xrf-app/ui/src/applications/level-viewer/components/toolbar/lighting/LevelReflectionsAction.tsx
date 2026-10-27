@@ -16,7 +16,7 @@ import { ILevelFeature, useLevelFeature } from "@/core/level/components/preview/
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
-import { LevelRenderService } from "@/core/level/services/level-render.service";
+import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {

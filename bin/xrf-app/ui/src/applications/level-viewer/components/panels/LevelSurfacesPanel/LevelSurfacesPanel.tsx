@@ -23,9 +23,9 @@ import {
   listNamedLevelSurfaces,
 } from "@/core/level/lib/surface/level-surface-summary";
 import { listLevelSurfaceDressing } from "@/core/level/lib/texture/level-texture-report";
-import { LevelLoadService } from "@/core/level/services/level-load.service";
-import { LevelRenderService } from "@/core/level/services/level-render.service";
-import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
+import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
+import { LevelViewportService } from "@/core/level/services/level-viewport/level-viewport.service";
 import { describeSurfaceOutcome } from "@/core/materials/lib";
 import { EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";

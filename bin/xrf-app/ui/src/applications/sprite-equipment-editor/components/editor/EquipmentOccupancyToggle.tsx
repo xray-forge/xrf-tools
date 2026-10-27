@@ -2,8 +2,8 @@ import { default as HighlightIcon } from "@mui/icons-material/SelectAll";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
-import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
-import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/grid";
+import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/equipment-grid";
+import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

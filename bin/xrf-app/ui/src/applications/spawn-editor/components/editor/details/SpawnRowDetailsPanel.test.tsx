@@ -3,7 +3,7 @@ import { act, RenderResult } from "@testing-library/react";
 import { AnyObject } from "@xrf/types";
 
 import { mockAlifeObject } from "@/applications/spawn-editor/fixtures/spawn.mocks";
-import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file";
+import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file.service";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

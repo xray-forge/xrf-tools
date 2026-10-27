@@ -16,8 +16,8 @@ import { toLevelManualWeatherLtx } from "@/core/level/lib/weather/level-manual-w
 import { listLevelWeatherCycles } from "@/core/level/lib/weather/level-weather-cycle-choice";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
-import { LevelRenderService } from "@/core/level/services/level-render.service";
-import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
+import { LevelWeatherService } from "@/core/level/services/level-weather/level-weather.service";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 import { useCopiedText } from "@/lib/react/use-copied-text";

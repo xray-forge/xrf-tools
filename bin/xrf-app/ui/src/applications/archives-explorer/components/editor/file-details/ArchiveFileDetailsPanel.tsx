@@ -6,8 +6,8 @@ import { getFileExtension } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import { getArchiveVolumeOf, IArchiveEntry } from "@/core/archive/lib";
 import {
   EditorPanel,

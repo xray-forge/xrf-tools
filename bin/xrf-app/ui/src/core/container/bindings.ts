@@ -8,12 +8,12 @@ import {
 } from "@xrf/ipc/session";
 
 import { KeybindCommandsService } from "@/core/commands";
-import { HelpService } from "@/core/help/services/help";
-import { JobsService } from "@/core/jobs/services/jobs";
-import { KeymapService } from "@/core/keybinds/services/keymap";
-import { ErrorCaptureService } from "@/core/notifications/services/error-capture.service";
-import { NotificationsService } from "@/core/notifications/services/notifications.service";
-import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { HelpService } from "@/core/help/services/help.service";
+import { JobsService } from "@/core/jobs/services/jobs.service";
+import { KeymapService } from "@/core/keybinds/services/keymap.service";
+import { ErrorCaptureService } from "@/core/notifications/services/error-capture/error-capture.service";
+import { NotificationsService } from "@/core/notifications/services/notifications/notifications.service";
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { SettingsService } from "@/core/settings/services/settings";
 import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
 import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";

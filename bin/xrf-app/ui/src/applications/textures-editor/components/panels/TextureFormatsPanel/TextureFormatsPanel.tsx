@@ -6,14 +6,14 @@ import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
-import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
+import { TextureEncodingService } from "@/applications/textures-editor/services/texture-encoding";
 import {
   EditorPanel,
   EditorPanelEmpty,
   EditorPanelProperty,
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
-import { TextureSelectionService } from "@/core/textures/services/selection";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { TextureFormatRow } from "./TextureFormatRow";

@@ -6,8 +6,8 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
 import { DEFAULT_GLOSS_POWER, toBumpGloss } from "@/applications/textures-editor/lib/texture-bump-gloss";
-import { TextureBumpService } from "@/applications/textures-editor/services/bump";
-import { TextureEditorService } from "@/applications/textures-editor/services/editor";
+import { TextureBumpService } from "@/applications/textures-editor/services/texture-bump";
+import { TextureEditorService } from "@/applications/textures-editor/services/texture-editor";
 import { EApplicationId } from "@/core/routing/application";
 import {
   EditorPanel,
@@ -15,7 +15,7 @@ import {
   EditorPanelProperty,
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
-import { TextureSelectionService } from "@/core/textures/services/selection";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

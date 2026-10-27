@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { formatBytes } from "@xrf/format";
 import { ReactElement } from "react";
 
-import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import { IArchiveEntry } from "@/core/archive/lib";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { BaseComponentProps } from "@/lib/dom/element-types";

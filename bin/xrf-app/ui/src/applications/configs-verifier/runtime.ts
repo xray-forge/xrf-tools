@@ -1,4 +1,4 @@
-import { ConfigsVerifierService } from "@/applications/configs-verifier/services/verifier";
+import { ConfigsVerifierService } from "@/applications/configs-verifier/services/configs-verifier.service";
 import { ContainerDefinition } from "@/lib/container/container-definition";
 
 export { ConfigsVerifierApplication as Component } from "./ConfigsVerifierApplication";

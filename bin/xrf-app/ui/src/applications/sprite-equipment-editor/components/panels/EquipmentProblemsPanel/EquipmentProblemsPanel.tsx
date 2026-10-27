@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
-import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/grid";
+import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/equipment-grid";
+import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
 import { EditorProblemsPanel, IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

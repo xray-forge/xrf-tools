@@ -5,7 +5,7 @@ import { ReactElement } from "react";
 
 import { SpawnChunkView } from "@/applications/spawn-editor/components/editor/chunks/SpawnChunkView";
 import { TChunkTabChange, useChunkTab } from "@/applications/spawn-editor/components/editor/chunks/use-chunk-tab";
-import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file";
+import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file.service";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { SpawnEditorPatrolLinksTable } from "./SpawnEditorPatrolLinksTable";

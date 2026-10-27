@@ -1,6 +1,6 @@
-import { UnpackerService } from "@/applications/archives-unpacker/services/unpacker";
+import { ArchivesUnpackerService } from "@/applications/archives-unpacker/services/archives-unpacker.service";
 import { ContainerDefinition } from "@/lib/container/container-definition";
 
 export { ArchivesUnpackerApplication as Component } from "./ArchivesUnpackerApplication";
 
-export const container: ContainerDefinition = { bindings: [UnpackerService] };
+export const container: ContainerDefinition = { bindings: [ArchivesUnpackerService] };

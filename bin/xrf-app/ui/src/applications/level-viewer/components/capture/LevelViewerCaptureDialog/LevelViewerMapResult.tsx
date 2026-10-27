@@ -22,7 +22,7 @@ import {
   toLevelMapExportLongSide,
   toLevelMapExportSize,
 } from "@/applications/level-viewer/lib/map/level-map-export";
-import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
+import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/level-viewer-capture-result";
 import { cn } from "@/core/theme/class-name";
 import { CheckboxFormRow, ChoiceFormRow } from "@/core/ui/form";
 import { IImageViewportView, ImageViewport } from "@/core/ui/media/ImageViewport";
