@@ -1,10 +1,10 @@
-import { default as DescriptionOutlinedIcon } from "@mui/icons-material/DescriptionOutlined";
-import { Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DescriptionOutlinedIcon } from "@xrf/ui/icons";
+import { Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode } from "react";
 
-import { cn } from "@/core/theme/class-name";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEmptyStateProps extends BaseComponentProps {
   title: string;

@@ -1,6 +1,6 @@
-import { Tooltip, Typography } from "@mui/material";
-import { DataGrid, GridColDef, GridRenderCellParams, GridRowParams } from "@mui/x-data-grid";
 import { Nullable } from "@xrf/types";
+import { DataGrid, GridColDef, GridRenderCellParams, GridRowParams } from "@xrf/ui/data-grid";
+import { Tooltip, Typography } from "@xrf/ui/material";
 import { ReactElement, useMemo, useState } from "react";
 
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";

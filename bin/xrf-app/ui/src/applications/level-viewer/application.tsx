@@ -1,4 +1,4 @@
-import { default as TerrainIcon } from "@mui/icons-material/Terrain";
+import { TerrainIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

@@ -1,10 +1,10 @@
-import { Button, Typography } from "@mui/material";
 import { WorldAmbientReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Button, Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * @param milliseconds - Real milliseconds.

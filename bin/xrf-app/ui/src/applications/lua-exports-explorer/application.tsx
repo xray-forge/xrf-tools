@@ -1,4 +1,4 @@
-import { default as CodeIcon } from "@mui/icons-material/Code";
+import { CodeIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

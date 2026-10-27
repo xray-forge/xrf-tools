@@ -1,7 +1,8 @@
-import { default as RefreshIcon } from "@mui/icons-material/Refresh";
-import { Alert, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { RefreshIcon } from "@xrf/ui/icons";
+import { Alert, Typography } from "@xrf/ui/material";
 import { format } from "date-fns";
 import { ReactElement, useCallback } from "react";
 
@@ -21,7 +22,6 @@ import { EditorToolbarLocation, IEditorLocation } from "@/core/shell/editor/Edit
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorMenus, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { IMenuContribution } from "@/core/shell/menu/lib";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { EquipmentGridOptions } from "./EquipmentGridOptions";
 import { EquipmentOccupancyToggle } from "./EquipmentOccupancyToggle";

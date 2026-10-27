@@ -1,8 +1,9 @@
-import { default as AirIcon } from "@mui/icons-material/Air";
-import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatDegrees, formatNumber, formatPercent } from "@xrf/format";
 import { ERenderFoliageMode, RenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { AirIcon } from "@xrf/ui/icons";
+import { Button, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
@@ -26,7 +27,6 @@ import {
 } from "@/core/render/lib/features/render-grass-choices";
 import { TRenderFoliageSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** The enhanced foliage motion's strengths, each a slider. */
 const FOLIAGE_MOTION: ReadonlyArray<[keyof typeof RENDER_FOLIAGE_LIMITS, string]> = [

@@ -1,9 +1,8 @@
-import { Chip, ListItemButton, Typography } from "@mui/material";
 import { EEquipmentSlotClaim, EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Chip, ListItemButton, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
-
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEquipmentOccupantRowProps extends BaseComponentProps {
   occupant: EquipmentSlotOccupant;

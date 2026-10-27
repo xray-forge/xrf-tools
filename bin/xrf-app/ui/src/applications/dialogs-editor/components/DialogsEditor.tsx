@@ -1,12 +1,10 @@
-import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
-import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
-import { default as ReportProblemIcon } from "@mui/icons-material/ReportProblem";
 import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { DialogFinding, DialogProjectDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { AccountTreeIcon, InfoOutlinedIcon, ReportProblemIcon } from "@xrf/ui/icons";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { DialogViewService } from "@/applications/dialogs-editor/services/dialog-view";

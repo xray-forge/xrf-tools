@@ -1,17 +1,17 @@
-import { default as PlayArrowIcon } from "@mui/icons-material/PlayArrow";
-import { Tooltip } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { filterByName } from "@xrf/search";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { PlayArrowIcon } from "@xrf/ui/icons";
+import { Tooltip } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo } from "react";
 
 import { EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
-import { cn } from "@/core/theme/class-name";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { getMotionNodeName, groupMotionNames, listMotionGroupIds } from "./motion-groups";
 

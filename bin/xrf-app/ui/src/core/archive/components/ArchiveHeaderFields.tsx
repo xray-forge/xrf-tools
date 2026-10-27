@@ -1,5 +1,6 @@
-import { Stack, TextField } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Stack, TextField } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement, useId } from "react";
 
 import { ArchiveHeaderEntries } from "@/core/archive/components/ArchiveHeaderEntries";
@@ -13,7 +14,6 @@ import {
   writeHeaderValue,
 } from "@/core/archive/lib";
 import { FormRow, SwitchFormRow } from "@/core/ui/form";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArchiveHeaderFieldsProps extends BaseComponentProps {
   header: Nullable<string>;

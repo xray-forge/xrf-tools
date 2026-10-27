@@ -1,9 +1,8 @@
 import { formatCount } from "@xrf/format";
 import { ArchiveDescribeScope, ArchiveLevelFogVolume } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
-
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { describeReferenceStatus } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionReferenceLink } from "../ArchiveDescriptionReferenceLink";

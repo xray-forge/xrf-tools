@@ -1,15 +1,15 @@
-import { useForkRef } from "@mui/material/utils";
-import { LayoutList, useVirtualizer } from "@mui/x-virtualizer";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { useForkRef } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
+import { TREE } from "@xrf/ui/theme/tokens";
+import { LayoutList, useVirtualizer } from "@xrf/ui/virtualizer";
 import { KeyboardEvent, ReactElement, ReactNode, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
-import { cn } from "@/core/theme/class-name";
-import { TREE } from "@/core/theme/tokens";
 import { flattenTree, IFlatTreeRow } from "@/core/ui/tree/flatten";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { VirtualizedTreeRow } from "@/core/ui/tree/VirtualizedTree/VirtualizedTreeRow";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * How one row's icon is tinted, and what the tint says.

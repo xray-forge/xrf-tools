@@ -1,9 +1,9 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
-import { cn } from "@/core/theme/class-name";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelPreviewEmptyProps extends BaseComponentProps {
   /** Why the last open failed, or absent when nothing is open and nothing went wrong. */

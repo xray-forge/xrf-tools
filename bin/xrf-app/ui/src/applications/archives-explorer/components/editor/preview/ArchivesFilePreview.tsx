@@ -3,6 +3,8 @@ import { AsyncState } from "@xrf/async";
 import { formatBytes } from "@xrf/format";
 import { ARCHIVE_READ_POLICY } from "@xrf/ipc/types/xrf-archive";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
@@ -14,11 +16,9 @@ import {
   TArchiveSelection,
 } from "@/core/archive/lib";
 import { EPathEntryKind } from "@/core/path/entry-kind";
-import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { inline } from "@/lib/callbacks/inline";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchiveAudioPreview } from "./ArchiveAudioPreview";
 import { ArchiveCodePreview } from "./ArchiveCodePreview";

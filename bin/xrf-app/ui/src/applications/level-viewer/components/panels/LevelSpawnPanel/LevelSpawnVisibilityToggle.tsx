@@ -1,10 +1,9 @@
-import { default as VisibilityIcon } from "@mui/icons-material/Visibility";
-import { default as VisibilityOffIcon } from "@mui/icons-material/VisibilityOff";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { VisibilityIcon, VisibilityOffIcon } from "@xrf/ui/icons";
 import { ReactElement } from "react";
 
 import { ILevelSpawnCategoryEntry } from "@/core/level/lib/spawn/level-spawn-categories";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelSpawnVisibilityToggleProps extends BaseComponentProps {
   entry: ILevelSpawnCategoryEntry;

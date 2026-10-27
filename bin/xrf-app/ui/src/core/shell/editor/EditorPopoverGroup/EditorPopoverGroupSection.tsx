@@ -1,8 +1,8 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode } from "react";
 
-import { cn } from "@/core/theme/class-name";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IEditorPopoverGroupSectionProps extends BaseComponentProps {
   /** Names the toggle heading the section. */

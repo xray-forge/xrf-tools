@@ -1,7 +1,8 @@
-import { Chip } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Chip } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import {
@@ -19,7 +20,6 @@ import {
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * What the game builds for the selected texture, read from its `.thm` the way the engine reads it.

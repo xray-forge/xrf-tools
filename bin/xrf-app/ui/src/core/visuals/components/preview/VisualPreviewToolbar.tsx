@@ -1,11 +1,14 @@
-import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
-import { default as GrainIcon } from "@mui/icons-material/Grain";
-import { default as GridOnIcon } from "@mui/icons-material/GridOn";
-import { default as HexagonIcon } from "@mui/icons-material/Hexagon";
-import { default as OpacityIcon } from "@mui/icons-material/Opacity";
-import { default as PolylineIcon } from "@mui/icons-material/Polyline";
-import { default as TextureIcon } from "@mui/icons-material/Texture";
-import { default as ThreeDRotationIcon } from "@mui/icons-material/ThreeDRotation";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import {
+  AccountTreeIcon,
+  GrainIcon,
+  GridOnIcon,
+  HexagonIcon,
+  OpacityIcon,
+  PolylineIcon,
+  TextureIcon,
+  ThreeDRotationIcon,
+} from "@xrf/ui/icons";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { RenderLightingAction } from "@/core/render/components/lighting/RenderLightingAction";
@@ -15,7 +18,6 @@ import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { DEFAULT_VISUAL_LIGHTING, IVisualPreviewViewOptions } from "@/core/visuals/lib/scene";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { VisualMeshDetail } from "./VisualMeshDetail";
 

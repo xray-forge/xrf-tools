@@ -1,4 +1,5 @@
-import { Chip, Tooltip } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Chip, Tooltip } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import {
@@ -6,7 +7,6 @@ import {
   ETextureBadge,
   ITextureBadgeDescriptor,
 } from "@/applications/textures-explorer/lib/texture-catalog";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ITextureBadgeFiltersProps extends BaseComponentProps {
   /** How many textures each badge would select, over the whole listing rather than the filtered view. */

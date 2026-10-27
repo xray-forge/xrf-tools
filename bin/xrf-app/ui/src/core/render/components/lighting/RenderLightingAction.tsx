@@ -1,12 +1,12 @@
-import { default as WbSunnyIcon } from "@mui/icons-material/WbSunny";
-import { Button, Typography } from "@mui/material";
 import { formatDegrees, formatNumber } from "@xrf/format";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { WbSunnyIcon } from "@xrf/ui/icons";
+import { Button, Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { RenderLightingControls } from "@/core/render/components/lighting/RenderLightingControls";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IRenderLightingActionProps extends BaseComponentProps {
   lighting: IRenderLighting;

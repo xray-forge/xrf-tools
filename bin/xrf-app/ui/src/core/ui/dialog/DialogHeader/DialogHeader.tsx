@@ -1,9 +1,8 @@
-import { default as CloseIcon } from "@mui/icons-material/Close";
-import { DialogTitle, IconButton, Tooltip, Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CloseIcon } from "@xrf/ui/icons";
+import { DialogTitle, IconButton, Tooltip, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode } from "react";
-
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IDialogHeaderProps extends BaseComponentProps {
   title: string;

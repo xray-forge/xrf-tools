@@ -1,7 +1,8 @@
-import { GridColDef } from "@mui/x-data-grid";
 import { Finding } from "@xrf/ipc/types/xrf-report";
 import { TranslationParseResult } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
+import { GridColDef } from "@xrf/ui/data-grid";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useMemo } from "react";
 
 import { listTranslationParseFindings } from "@/applications/translations-parser/lib/parse-findings";
@@ -10,7 +11,6 @@ import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 import { identifierColumn, pathColumn } from "@/core/ui/table/columns";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface ITranslationsParseResultProps extends BaseComponentProps {
   result: TranslationParseResult;

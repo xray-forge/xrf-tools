@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Maybe, Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { formatLevelPoint } from "@/core/level/lib/camera/level-camera";
@@ -9,7 +10,6 @@ import { describeLevelSurface, toLevelSurfaceSummary } from "@/core/level/lib/su
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { RenderViewportOverlay } from "@/core/render/components/overlay";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** The sector, the entry, and which mesh or impostor of the sector's it is. */
 function toSurfaceHeading(picked: Extract<TLevelPick, { kind: ELevelPick.SURFACE }>): string {

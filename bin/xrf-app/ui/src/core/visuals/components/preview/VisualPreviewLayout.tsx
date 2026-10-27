@@ -1,20 +1,20 @@
-import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { AccountTreeIcon } from "@xrf/ui/icons";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode, useMemo } from "react";
 
 import { isAlphaRenderSurfaceDraw } from "@/core/render/lib/surface/render-surface-draw";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
-import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { VisualPreviewEmpty, VisualPreviewToolbar } from "@/core/visuals/components/preview";
 import { VisualPreviewViewport } from "@/core/visuals/components/preview/VisualPreviewViewport";
 import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { countVisualTriangles, IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { VisualViewService } from "@/core/visuals/services/visual-view";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IVisualPreviewLayoutProps extends BaseComponentProps {
   /** Shown in the toolbar beside the view toggles, usually where the model came from. */

@@ -1,4 +1,4 @@
-import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
+import { LightbulbIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

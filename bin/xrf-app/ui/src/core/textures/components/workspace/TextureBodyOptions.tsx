@@ -1,13 +1,13 @@
-import { default as ViewQuiltIcon } from "@mui/icons-material/ViewQuilt";
-import { ToggleButton, ToggleButtonGroup, Typography } from "@mui/material";
 import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ViewQuiltIcon } from "@xrf/ui/icons";
+import { ToggleButton, ToggleButtonGroup, Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { ETexturePreviewMode, ITexturePreviewOptions, TEXTURE_TILING_STEPS } from "@/core/textures/lib/texture-preview";
 import { describeTextureSurfaceAlpha, describeTextureSurfaceShape } from "@/core/textures/lib/texture-surface";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { SURFACE_ONLY } from "./TextureWorkspaceToolbar.utils";
 

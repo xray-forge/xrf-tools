@@ -1,4 +1,4 @@
-import { default as Inventory2Icon } from "@mui/icons-material/Inventory2";
+import { Inventory2Icon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

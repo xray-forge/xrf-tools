@@ -1,6 +1,7 @@
 import { formatCount, formatMilliseconds } from "@xrf/format";
 import { RenderFrameReport, RenderPassCost } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Fragment, ReactElement, ReactNode } from "react";
 
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
@@ -11,7 +12,6 @@ import {
 import { toRenderMeterLines } from "@/core/render/lib/frame/render-meter-lines";
 import { groupRenderPassCosts, IRenderPassGroup } from "@/core/render/lib/frame/render-pass-groups";
 import { abbreviateRenderBackend } from "@/core/render/lib/settings/render-backend-choice";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Where the scene is drawn or resolved at another size than the viewport's: what takes it from there and to which

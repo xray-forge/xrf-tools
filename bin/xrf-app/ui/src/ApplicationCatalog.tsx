@@ -1,21 +1,24 @@
-import { default as ArchiveIcon } from "@mui/icons-material/Archive";
-import { default as BlurOnIcon } from "@mui/icons-material/BlurOn";
-import { default as CodeIcon } from "@mui/icons-material/Code";
-import { default as FactCheckIcon } from "@mui/icons-material/FactCheck";
-import { default as ForumIcon } from "@mui/icons-material/Forum";
-import { default as GradientIcon } from "@mui/icons-material/Gradient";
-import { default as GraphicEqIcon } from "@mui/icons-material/GraphicEq";
-import { default as ImageIcon } from "@mui/icons-material/Image";
-import { default as LayersIcon } from "@mui/icons-material/Layers";
-import { default as MapIcon } from "@mui/icons-material/Map";
-import { default as SettingsApplicationsIcon } from "@mui/icons-material/SettingsApplications";
-import { default as SportsEsportsIcon } from "@mui/icons-material/SportsEsports";
-import { default as TerrainIcon } from "@mui/icons-material/Terrain";
-import { default as TextureIcon } from "@mui/icons-material/Texture";
-import { default as TranslateIcon } from "@mui/icons-material/Translate";
-import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
-import { default as WbSunnyIcon } from "@mui/icons-material/WbSunny";
 import { Nullable } from "@xrf/types";
+import {
+  ArchiveIcon,
+  BlurOnIcon,
+  CodeIcon,
+  FactCheckIcon,
+  ForumIcon,
+  GradientIcon,
+  GraphicEqIcon,
+  ImageIcon,
+  LayersIcon,
+  MapIcon,
+  SettingsApplicationsIcon,
+  SportsEsportsIcon,
+  TerrainIcon,
+  TextureIcon,
+  TranslateIcon,
+  ViewInArIcon,
+  WbSunnyIcon,
+} from "@xrf/ui/icons";
+import { CATALOG_ACCENT } from "@xrf/ui/theme/tokens";
 
 import { ARCHIVES_EXPLORER_APPLICATION } from "@/applications/archives-explorer";
 import { ARCHIVES_PACKER_APPLICATION } from "@/applications/archives-packer";
@@ -75,7 +78,6 @@ import { VISUALS_EXPLORER_APPLICATION } from "@/applications/visuals-explorer";
 import { VISUALS_SEQUENCER_APPLICATION } from "@/applications/visuals-sequencer";
 import { WEATHER_EDITOR_APPLICATION } from "@/applications/weather-editor";
 import { EApplicationGroupId, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
-import { CATALOG_ACCENT } from "@/core/theme/tokens";
 
 export interface IApplicationCatalog {
   readonly applications: ReadonlyArray<IApplicationDescriptor>;

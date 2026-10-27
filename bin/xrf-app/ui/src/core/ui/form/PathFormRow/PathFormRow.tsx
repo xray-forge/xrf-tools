@@ -1,11 +1,11 @@
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { FilePickerInput } from "@/core/ui/form/file-picker/FilePickerInput";
 import { useCommitOnSubmit } from "@/core/ui/form/form-commit";
 import { FormRow } from "@/core/ui/form/FormRow";
 import { IPathField } from "@/core/ui/form/use-path-field";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPathFormRowProps extends BaseComponentProps {
   label: string;

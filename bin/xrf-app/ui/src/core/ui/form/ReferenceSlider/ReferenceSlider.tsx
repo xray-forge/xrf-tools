@@ -1,8 +1,8 @@
-import { Slider, SliderProps } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { Slider, SliderProps } from "@xrf/ui/material";
+import { getSliderReferenceSx } from "@xrf/ui/theme/slider-reference";
 import { ReactElement, useMemo } from "react";
 
-import { getSliderReferenceSx } from "@/core/theme/slider-reference";
 import { isSliderWasted } from "@/core/ui/form/ReferenceSlider/slider-reference";
 
 export interface IReferenceSliderProps extends Omit<SliderProps, "marks" | "color" | "value"> {

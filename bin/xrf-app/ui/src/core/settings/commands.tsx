@@ -1,4 +1,4 @@
-import { default as SettingsIcon } from "@mui/icons-material/Settings";
+import { SettingsIcon } from "@xrf/ui/icons";
 
 import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
 

@@ -1,4 +1,4 @@
-import { default as SwapHorizIcon } from "@mui/icons-material/SwapHoriz";
+import { SwapHorizIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

@@ -1,4 +1,4 @@
-import { LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, Typography } from "@mui/material";
+import { LinearProgress, List, ListItemButton, ListItemIcon, ListItemText, Typography } from "@xrf/ui/material";
 import { ReactElement, ReactNode, useEffect, useRef } from "react";
 
 import { EmptyListing } from "@/core/ui/layout/EmptyListing";

@@ -1,4 +1,4 @@
-import { default as TuneIcon } from "@mui/icons-material/Tune";
+import { TuneIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

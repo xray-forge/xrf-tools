@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
+import { getWashStops, IWashStops } from "@xrf/ui/theme/surface";
 
 import { readNativePageBackdrop } from "@/core/render/lib/native/native-page-backdrop";
 import { INativePageClip, INativePagePlane } from "@/core/render/lib/native/native-page-planes";
-import { getWashStops, IWashStops } from "@/core/theme/surface";
 import { ICssBox } from "@/lib/dom/css-box";
 
 const STOPS: IWashStops = getWashStops("dark");

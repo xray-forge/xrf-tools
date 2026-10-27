@@ -1,4 +1,4 @@
-import { Typography } from "@mui/material";
+import { Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 export function EditorToolbarPathSeparator(): ReactElement {

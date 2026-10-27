@@ -1,6 +1,6 @@
-import { Button, ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { Button, ToggleButton, ToggleButtonGroup } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { isRenderFeatureChoiceCustom } from "@/core/render/lib/settings/render-feature-choice";

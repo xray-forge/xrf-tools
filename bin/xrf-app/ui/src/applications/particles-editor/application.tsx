@@ -1,4 +1,4 @@
-import { default as AutoAwesomeIcon } from "@mui/icons-material/AutoAwesome";
+import { AutoAwesomeIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

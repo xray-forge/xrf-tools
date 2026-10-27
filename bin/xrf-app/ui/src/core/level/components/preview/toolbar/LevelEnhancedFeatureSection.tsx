@@ -1,4 +1,5 @@
-import { Button } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Button } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
@@ -13,7 +14,6 @@ import { ILevelFeatureOptions, toLevelModeFeature } from "@/core/level/lib/featu
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface ILevelEnhancedFeatureSectionProps<K extends TLevelEnhancedFeatureKey> extends BaseComponentProps {
   feature: K;

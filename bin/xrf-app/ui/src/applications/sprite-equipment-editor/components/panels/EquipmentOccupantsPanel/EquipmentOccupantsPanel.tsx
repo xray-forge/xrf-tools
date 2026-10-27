@@ -1,13 +1,13 @@
-import { List, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { List, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/equipment-grid";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { isSameCell, TEquipmentCell } from "@/core/sprite-equipment/lib";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { IEquipmentOccupantRow, toEquipmentOccupantRows } from "./equipment-occupant-rows";
 import { EquipmentOccupantRow } from "./EquipmentOccupantRow";

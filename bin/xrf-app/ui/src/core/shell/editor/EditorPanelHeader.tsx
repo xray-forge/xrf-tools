@@ -1,9 +1,9 @@
-import { Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode } from "react";
 
 import { PanelCloseAction } from "@/core/shell/panel/PanelCloseAction";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorPanelHeaderProps extends BaseComponentProps {
   /** What the panel holds, as its heading. */

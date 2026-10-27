@@ -1,9 +1,8 @@
-import { default as ErrorOutlineIcon } from "@mui/icons-material/ErrorOutlineOutlined";
-import { default as WarningAmberIcon } from "@mui/icons-material/WarningAmber";
 import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
+import { ErrorOutlineOutlinedIcon as ErrorOutlineIcon, WarningAmberIcon } from "@xrf/ui/icons";
+import { CODE } from "@xrf/ui/theme/tokens";
 import { CSSProperties, Fragment, ReactElement, ReactNode } from "react";
 
-import { CODE } from "@/core/theme/tokens";
 import { ECodeLineMark, ICodeLine } from "@/core/ui/code/code-line";
 
 /** Titled so the mark is announced and can be found by name; the icon alone says nothing. */

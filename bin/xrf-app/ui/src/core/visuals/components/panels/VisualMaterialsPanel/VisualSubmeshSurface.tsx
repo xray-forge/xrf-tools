@@ -1,6 +1,7 @@
-import { Chip } from "@mui/material";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Chip } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import {
@@ -11,7 +12,6 @@ import {
   IMaterialStateDescriptor,
 } from "@/core/materials/lib";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IVisualSubmeshSurfaceProps extends BaseComponentProps {
   /** What the backend resolved for this submesh's shader name, absent when it declares no shader. */

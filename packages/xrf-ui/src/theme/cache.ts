@@ -10,7 +10,7 @@ const INSERTION_POINT_NAME: string = "emotion-insertion-point";
  * would then lose to a component's own `sx` on the same property. Both sides are unlayered - MUI's
  * `enableCssLayer` cannot be used because jsdom does not implement cascade layers, and every
  * `getComputedStyle` assertion in the suite would read empty - so source order is what decides, and this
- * is what sets it. `core/theme/tailwind.css` keeps Tailwind's utilities out of a layer for the same
+ * is what sets it. `tailwind.css` beside it keeps Tailwind's utilities out of a layer for the same
  * reason: an unlayered rule outranks every layer however the layers are ordered.
  */
 function getInsertionPoint(): Optional<HTMLElement> {

@@ -1,10 +1,10 @@
-import { IconButton, Tooltip } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { IconButton, Tooltip } from "@xrf/ui/material";
+import { getControlStateSx } from "@xrf/ui/theme/control-state";
 import { ReactElement } from "react";
 
 import { IEditorPanel, TEditorPanelSide } from "@/core/shell/editor-shell";
 import { RAIL_BUTTON_SX } from "@/core/shell/panel/rail/RailButton.styles";
-import { getControlStateSx } from "@/core/theme/control-state";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPanelStripeButtonProps extends BaseComponentProps {
   panel: IEditorPanel;

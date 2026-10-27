@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { default as RepeatIcon } from "@mui/icons-material/Repeat";
 import { userEvent } from "@testing-library/user-event";
+import { RepeatIcon } from "@xrf/ui/icons";
 
 import { renderWithProviders } from "@/fixtures/utils/render";
 

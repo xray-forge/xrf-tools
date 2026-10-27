@@ -1,7 +1,7 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, ReactNode } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IEditorViewToggleProps extends BaseComponentProps {
   /** Stable accessible name, independent of whether the toggle is on. */

@@ -1,15 +1,13 @@
-import { default as AddIcon } from "@mui/icons-material/AddCircle";
-import { default as GridIcon } from "@mui/icons-material/GridOn";
-import { default as RemoveIcon } from "@mui/icons-material/RemoveCircle";
-import { FormControlLabel, Switch, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { AddCircleIcon as AddIcon, GridOnIcon as GridIcon, RemoveCircleIcon as RemoveIcon } from "@xrf/ui/icons";
+import { FormControlLabel, Switch, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { ENGINE_GRID_SQUARE } from "@/core/sprite-equipment/lib";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** How much one step moves the cell size, in sheet pixels. */
 const GRID_SIZE_STEP: number = 5;

@@ -1,10 +1,10 @@
-import { default as ErrorOutlineIcon } from "@mui/icons-material/ErrorOutlineOutlined";
-import { Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ErrorOutlineOutlinedIcon as ErrorOutlineIcon } from "@xrf/ui/icons";
+import { Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
-import { cn } from "@/core/theme/class-name";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IRenderFailureNoticeProps extends BaseComponentProps {
   /** Why the renderer stopped, as it said. */

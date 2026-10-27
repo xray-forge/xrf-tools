@@ -1,12 +1,12 @@
-import { ListItemText, MenuItem, TextField } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ListItemText, MenuItem, TextField } from "@xrf/ui/material";
+import { CONTROL } from "@xrf/ui/theme/tokens";
 import { ChangeEvent, ReactElement } from "react";
 
 import {
   describeLevelManualWeatherKey,
   LEVEL_MANUAL_WEATHER_LABELS,
 } from "@/core/level/lib/weather/level-manual-weather-labels";
-import { CONTROL } from "@/core/theme/tokens";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** What the select holds for a keyframe that draws no sun. */
 const NONE: string = "";

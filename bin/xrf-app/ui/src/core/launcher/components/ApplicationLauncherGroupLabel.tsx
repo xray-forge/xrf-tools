@@ -1,10 +1,10 @@
-import { Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { toAccentColor } from "@/core/launcher/lib";
 import { IApplicationGroup } from "@/core/routing/application";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IApplicationLauncherGroupLabelProps extends BaseComponentProps {
   group: IApplicationGroup;

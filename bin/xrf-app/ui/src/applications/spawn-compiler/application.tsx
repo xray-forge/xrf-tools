@@ -1,4 +1,4 @@
-import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
+import { AccountTreeIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

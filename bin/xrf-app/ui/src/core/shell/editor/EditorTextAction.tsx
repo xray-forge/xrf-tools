@@ -1,8 +1,7 @@
-import { Button, buttonClasses, Tooltip } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Button, buttonClasses, Tooltip } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { MouseEventHandler, ReactElement, ReactNode } from "react";
-
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorTextActionProps extends BaseComponentProps {
   label: string;

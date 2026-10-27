@@ -1,11 +1,11 @@
-import { ListItem, ListItemButton, Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ListItem, ListItemButton, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
+import { TREE } from "@xrf/ui/theme/tokens";
 import { ReactElement } from "react";
 
 import { toAccentColor, useApplicationLauncherActions } from "@/core/launcher/lib";
 import { EApplicationStatus, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
-import { cn } from "@/core/theme/class-name";
-import { TREE } from "@/core/theme/tokens";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ApplicationLauncherGroupLabel } from "../ApplicationLauncherGroupLabel";
 import { ApplicationLauncherPlannedBadge } from "../ApplicationLauncherPlannedBadge";

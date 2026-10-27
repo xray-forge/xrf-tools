@@ -1,6 +1,7 @@
 import { formatBytes, formatCount } from "@xrf/format";
 import { RenderGraphReport, RenderGraphSettings } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { RenderGraphFormRows } from "@/core/render/components/controls/RenderGraphFormRows";
@@ -11,7 +12,6 @@ import {
 } from "@/core/render/lib/settings/render-graph-settings";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelRendererGraphSectionProps extends BaseComponentProps {
   /** What the frame graph made of the latest described frame, null before the first. */

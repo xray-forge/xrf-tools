@@ -1,4 +1,4 @@
-import { GridColDef, GridRowId, GridValidRowModel } from "@mui/x-data-grid";
+import { GridColDef, GridRowId, GridValidRowModel } from "@xrf/ui/data-grid";
 import { ReactElement } from "react";
 
 import { DataTable } from "@/core/ui/table";

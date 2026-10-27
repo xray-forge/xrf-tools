@@ -1,11 +1,11 @@
-import { Stack } from "@mui/material";
 import { ArchivePatchConfig } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Stack } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { ArchiveVolumeOptionsFields } from "@/core/archive/components/ArchiveVolumeOptionsFields";
 import { SwitchFormRow } from "@/core/ui/form";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPatcherOptionsSectionProps extends BaseComponentProps {
   config: ArchivePatchConfig;

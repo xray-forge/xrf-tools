@@ -1,7 +1,5 @@
-import { default as GrainIcon } from "@mui/icons-material/Grain";
-import { default as LightbulbIcon } from "@mui/icons-material/Lightbulb";
-import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
 import { Nullable } from "@xrf/types";
+import { GrainIcon, LightbulbIcon, ViewInArIcon } from "@xrf/ui/icons";
 import { ReactElement, useCallback } from "react";
 
 import { RenderLightingAction } from "@/core/render/components/lighting/RenderLightingAction";

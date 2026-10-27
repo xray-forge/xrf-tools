@@ -1,4 +1,4 @@
-import { default as GrassIcon } from "@mui/icons-material/Grass";
+import { GrassIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

@@ -1,5 +1,5 @@
-import { Stack, Typography } from "@mui/material";
 import { formatBytes } from "@xrf/format";
+import { Stack, Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { DetailSection } from "@/core/ui/layout/DetailSection";

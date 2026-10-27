@@ -1,12 +1,12 @@
-import { Typography } from "@mui/material";
-import { DataGrid, GridColDef, GridRowId, GridRowParams, GridValidRowModel } from "@mui/x-data-grid";
 import { filterByName } from "@xrf/search";
 import { Nullable } from "@xrf/types";
+import { DataGrid, GridColDef, GridRowId, GridRowParams, GridValidRowModel } from "@xrf/ui/data-grid";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IDataTableProps<T extends GridValidRowModel> extends BaseComponentProps {
   rows: Array<T>;

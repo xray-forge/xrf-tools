@@ -1,7 +1,6 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
-
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Where the spot meter reads, marked at the viewport's centre: a small square, drawn in the difference blend so it reads

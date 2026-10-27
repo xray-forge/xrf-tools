@@ -1,7 +1,8 @@
-import { default as FileOpenIcon } from "@mui/icons-material/FileOpenOutlined";
-import { Alert, Button, Dialog, DialogActions, DialogContent, Typography } from "@mui/material";
 import { formatCount, formatInstant } from "@xrf/format";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { FileOpenOutlinedIcon as FileOpenIcon } from "@xrf/ui/icons";
+import { Alert, Button, Dialog, DialogActions, DialogContent, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback, useId, useMemo, useState } from "react";
 
 import { LevelViewerImportGroup } from "@/applications/level-viewer/components/snapshot/LevelViewerImportDialog/LevelViewerImportGroup";
@@ -14,7 +15,6 @@ import {
 } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** A snapshot's values by what importing them does, and its changes by part. */
 interface ILevelViewerImportSort {

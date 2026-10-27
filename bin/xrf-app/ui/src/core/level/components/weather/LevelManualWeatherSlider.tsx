@@ -1,3 +1,4 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
@@ -9,7 +10,6 @@ import {
 import { LEVEL_MANUAL_WEATHER_LIMITS } from "@/core/level/lib/weather/level-manual-weather-limits";
 import { TLevelManualWeatherNumberKey } from "@/core/level/lib/weather/level-manual-weather-number-key";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelManualWeatherSliderProps extends BaseComponentProps {
   /** The number it sets, offered between its limits, its config key in the tooltip. */

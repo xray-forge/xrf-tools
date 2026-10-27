@@ -1,6 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { ConfigsAuthoredView } from "@/applications/configs-explorer/components/ConfigsDocumentView/ConfigsAuthoredView";
@@ -10,12 +12,10 @@ import {
   EConfigsDocumentMode,
 } from "@/applications/configs-explorer/services/configs-document";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
-import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { inline } from "@/lib/callbacks/inline";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IConfigsDocumentViewProps extends BaseComponentProps {
   /** Ends the selection without closing the project, which the header offers. */
@@ -24,10 +24,6 @@ interface IConfigsDocumentViewProps extends BaseComponentProps {
 
 /**
  * The config on screen, in whichever of the two views is open.
- *
- * The states that belong to neither view live here - nothing selected, a read that failed - so each view below can
- * assume it has something to show. The header names the selection rather than the document: a read still in flight is
- * already a config somebody picked, and one that failed stays named so the retry beneath it says what it retries.
  */
 export function ConfigsDocumentView({
   "data-testid": dataTestId = "configs-document-view",

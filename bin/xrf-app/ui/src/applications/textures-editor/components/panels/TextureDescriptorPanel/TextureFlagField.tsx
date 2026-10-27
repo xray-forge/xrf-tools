@@ -1,7 +1,6 @@
-import { Checkbox, FormControlLabel } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Checkbox, FormControlLabel } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement, useCallback } from "react";
-
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ITextureFlagFieldProps extends BaseComponentProps {
   label: string;

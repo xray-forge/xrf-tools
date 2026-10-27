@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
-import { DataGrid } from "@mui/x-data-grid";
 import { render } from "@testing-library/react";
+import { DataGrid } from "@xrf/ui/data-grid";
 
 import { decimalColumn, textColumn } from "@/core/ui/table/columns";
 

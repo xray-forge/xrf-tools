@@ -1,12 +1,12 @@
-import { Button, Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Button, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { LEVEL_WEATHER_NOON } from "@/core/level/lib/weather/level-weather-control";
 import { ILevelWeatherSeed } from "@/core/level/lib/weather/level-weather-seed";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelWeatherSeedNoteProps extends BaseComponentProps {
   /** What the keyframe set by hand was seeded from, or null for none the level played. */

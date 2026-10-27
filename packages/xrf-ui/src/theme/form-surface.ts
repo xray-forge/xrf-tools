@@ -1,8 +1,8 @@
 import { inputBaseClasses, outlinedInputClasses, Theme, toggleButtonClasses } from "@mui/material";
 import { SystemStyleObject } from "@mui/system";
 
-import { WELL_FILL } from "./surface";
-import { CONTROL, FORM } from "./tokens";
+import { WELL_FILL } from "#/theme/surface";
+import { CONTROL, FORM } from "#/theme/tokens";
 
 const CONTROL_LINE_HEIGHT: number = FORM.controlHeight - CONTROL.smallInputPaddingY * 2;
 const CONTROL_RADIUS: string = `${FORM.controlRadius}px`;

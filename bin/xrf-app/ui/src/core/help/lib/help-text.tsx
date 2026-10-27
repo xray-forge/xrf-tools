@@ -1,4 +1,4 @@
-import { Box } from "@mui/material";
+import { Box } from "@xrf/ui/material";
 import { Fragment, ReactNode } from "react";
 
 /**

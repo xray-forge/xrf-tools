@@ -1,11 +1,11 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { formatLevelFacing, formatLevelPosition, ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { RenderViewportOverlay } from "@/core/render/components/overlay";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Where the camera stands, over the scene it is standing in.

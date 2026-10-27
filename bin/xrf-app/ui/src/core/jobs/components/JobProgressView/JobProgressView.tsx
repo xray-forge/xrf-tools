@@ -1,12 +1,12 @@
-import { Button, LinearProgress, Typography } from "@mui/material";
 import { formatDuration } from "@xrf/format";
 import { ProgressLevel } from "@xrf/ipc/types/xrf-job";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Button, LinearProgress, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { IJobState } from "@/core/jobs/lib";
 import { describeActiveProgress, RENDERED_PROGRESS_LEVELS } from "@/core/jobs/lib/progress-format";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { JobProgressLevel } from "./JobProgressLevel";
 

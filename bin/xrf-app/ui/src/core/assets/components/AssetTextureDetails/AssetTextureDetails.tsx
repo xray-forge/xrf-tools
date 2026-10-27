@@ -2,12 +2,12 @@ import { formatBytes } from "@xrf/format";
 import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
 import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { getAssetContainerSource, isLooseContainer } from "@/core/assets/lib/container";
 import { formatMipmapLevels } from "@/core/assets/lib/texture-shape";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IAssetTextureDetailsProps extends BaseComponentProps {
   asset: XrayAsset;

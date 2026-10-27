@@ -1,13 +1,11 @@
-import { default as ArchiveIcon } from "@mui/icons-material/Archive";
-import { default as FileOpenIcon } from "@mui/icons-material/FileOpen";
-import { default as SaveAltIcon } from "@mui/icons-material/SaveAlt";
-import { Stack } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ArchiveIcon, FileOpenIcon, SaveAltIcon } from "@xrf/ui/icons";
+import { Stack } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorTextAction } from "@/core/shell/editor/EditorTextAction";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPackerToolbarActionsProps extends BaseComponentProps {
   isBusy: boolean;

@@ -1,12 +1,12 @@
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveOrigins, ArchiveSourceUsage } from "@xrf/ipc/types/xrf-archive-stats";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useMemo } from "react";
 
 import { IArchiveStatisticsView } from "@/applications/archives-explorer/components/editor/statistics/archive-statistics-section";
 import { ArchiveBreakdownSection } from "@/applications/archives-explorer/components/editor/statistics/ArchiveBreakdownSection";
 import { IStatBreakdownRow } from "@/core/ui/stats/StatBreakdownTable";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IArchiveOriginsSectionProps extends BaseComponentProps {
   origins: ArchiveOrigins;

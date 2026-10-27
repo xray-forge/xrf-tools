@@ -1,7 +1,7 @@
-import { default as ClearAllIcon } from "@mui/icons-material/ClearAll";
-import { IconButton, Tooltip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { ClearAllIcon } from "@xrf/ui/icons";
+import { IconButton, Tooltip, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { INotification } from "@/core/notifications/lib";

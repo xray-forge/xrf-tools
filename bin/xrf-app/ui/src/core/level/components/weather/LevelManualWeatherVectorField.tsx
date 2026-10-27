@@ -1,3 +1,4 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { LevelWeatherVectorField } from "@/core/level/components/weather/LevelWeatherVectorField";
@@ -8,7 +9,6 @@ import {
 } from "@/core/level/lib/weather/level-manual-weather-labels";
 import { TLevelManualWeatherVectorKey } from "@/core/level/lib/weather/level-manual-weather-vector-key";
 import { toLevelManualWeatherVectorPatch } from "@/core/level/lib/weather/level-weather-vector";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelManualWeatherVectorFieldProps extends BaseComponentProps {
   /** The numbers it sets, its config key in the tooltip. */

@@ -1,7 +1,8 @@
-import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { TextureCatalog } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Alert } from "@xrf/ui/material";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { selectUnreadTexturesLtx } from "@/applications/textures-explorer/lib/texture-catalog";
@@ -11,7 +12,6 @@ import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { IEditorPanel } from "@/core/shell/editor-shell";
 import { TexturePreviewLayout } from "@/core/textures/components/workspace/TexturePreviewLayout";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { createTexturesExplorerPanels } from "./panels/textures-explorer-panels";
 import { describeTexturesStatus } from "./TexturesExplorerWorkspace.utils";

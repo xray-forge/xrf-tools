@@ -1,9 +1,9 @@
-import { CircularProgress, Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CircularProgress, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
-import { cn } from "@/core/theme/class-name";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IDelayedProgressProps extends BaseComponentProps {
   /** Describes the pending read both visibly and to assistive technology. */

@@ -1,11 +1,11 @@
-import { MenuItem, Stack, TextField } from "@mui/material";
 import { ArchivePackConfig, EArchivePackMode, EArchiveVolumeExtension } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { MenuItem, Stack, TextField } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement, useId } from "react";
 
 import { ARCHIVE_VOLUME_SUFFIX } from "@/core/archive/lib";
 import { FormRow } from "@/core/ui/form";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 type ArchiveVolumeOptions = Pick<ArchivePackConfig, "mode" | "volumeExtension">;
 

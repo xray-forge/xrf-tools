@@ -1,9 +1,9 @@
 import { ArchiveLargestEntry } from "@xrf/ipc/types/xrf-archive-stats";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { IArchiveStatisticsView } from "@/applications/archives-explorer/components/editor/statistics/archive-statistics-section";
 import { ArchiveBreakdownSection } from "@/applications/archives-explorer/components/editor/statistics/ArchiveBreakdownSection";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IArchiveLargestSectionProps extends BaseComponentProps {
   largest: Array<ArchiveLargestEntry>;

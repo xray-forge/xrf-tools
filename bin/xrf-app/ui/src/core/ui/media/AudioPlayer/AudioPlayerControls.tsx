@@ -1,9 +1,6 @@
-import { default as PauseIcon } from "@mui/icons-material/Pause";
-import { default as PlayArrowIcon } from "@mui/icons-material/PlayArrow";
-import { default as RepeatIcon } from "@mui/icons-material/Repeat";
-import { default as VolumeUpIcon } from "@mui/icons-material/VolumeUp";
-import { IconButton, Slider, Tooltip, Typography } from "@mui/material";
 import { formatPlaybackTime } from "@xrf/format";
+import { PauseIcon, PlayArrowIcon, RepeatIcon, VolumeUpIcon } from "@xrf/ui/icons";
+import { IconButton, Slider, Tooltip, Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 interface IAudioPlayerControlsProps {

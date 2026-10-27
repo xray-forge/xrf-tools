@@ -1,6 +1,6 @@
-import { default as ConstructionIcon } from "@mui/icons-material/Construction";
-import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { ConstructionIcon } from "@xrf/ui/icons";
+import { Button } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { KeybindCommandsService } from "@/core/commands";

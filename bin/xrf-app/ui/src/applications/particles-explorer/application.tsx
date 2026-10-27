@@ -1,4 +1,4 @@
-import { default as BlurOnIcon } from "@mui/icons-material/BlurOn";
+import { BlurOnIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

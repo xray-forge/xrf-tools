@@ -1,8 +1,8 @@
-import { Box, Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Box, Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { renderHelpText } from "@/core/help/lib/help-text";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IApplicationHelpSectionProps extends BaseComponentProps {
   title: string;

@@ -1,13 +1,13 @@
-import { default as ArrowOutwardIcon } from "@mui/icons-material/ArrowOutward";
-import { Card, CardActionArea, Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ArrowOutwardIcon } from "@xrf/ui/icons";
+import { Card, CardActionArea, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { CSSProperties, ReactElement } from "react";
 
 import { ApplicationLauncherGroupLabel } from "@/core/launcher/components/ApplicationLauncherGroupLabel";
 import { ApplicationLauncherPlannedBadge } from "@/core/launcher/components/ApplicationLauncherPlannedBadge";
 import { toAccentColor, useApplicationLauncherActions } from "@/core/launcher/lib";
 import { EApplicationStatus, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IApplicationLauncherCardProps extends BaseComponentProps {
   application: IApplicationDescriptor;

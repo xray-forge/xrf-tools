@@ -1,6 +1,8 @@
-import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback } from "react";
 
 import { LEVEL_CAPTURE_SETTLE_FRAMES } from "@/applications/level-viewer/lib/capture/level-capture";
@@ -12,9 +14,7 @@ import {
   toLevelCubeCrossSize,
 } from "@/applications/level-viewer/lib/cube/level-cube-capture";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/level-viewer-capture";
-import { cn } from "@/core/theme/class-name";
 import { ChoiceFormRow } from "@/core/ui/form";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelViewerCubeParametersProps extends BaseComponentProps {
   parameters: ILevelCubeParameters;

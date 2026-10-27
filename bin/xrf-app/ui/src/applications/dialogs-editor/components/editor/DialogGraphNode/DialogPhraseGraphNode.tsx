@@ -1,17 +1,14 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { NodeProps } from "@xyflow/react";
 import { ReactElement } from "react";
 
 import { IDialogGraphNodeData } from "@/applications/dialogs-editor/lib";
 import { TGraphNode } from "@/core/ui/graph/graph.types";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { DialogGraphNodeFrame } from "./DialogGraphNodeFrame";
 
 /**
  * The accent a phrase draws in, which states which of three conditions its line is in.
- *
- * Ordered by what a reader needs to act on first: text missing for this language outranks a phrase
- * nothing leads to, because one is work to do and the other is a question for validation.
  */
 function toPhraseAccent(data: IDialogGraphNodeData): string {
   if (data.isUnresolved) {

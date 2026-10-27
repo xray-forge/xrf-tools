@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { AssetTextureDetails } from "@/core/assets/components/AssetTextureDetails";
@@ -11,7 +12,6 @@ import {
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ITextureFile, selectBoundTextureFiles } from "./TextureFilesPanel.utils";
 

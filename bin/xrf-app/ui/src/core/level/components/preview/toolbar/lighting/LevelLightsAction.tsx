@@ -1,6 +1,7 @@
-import { default as LightIcon } from "@mui/icons-material/Light";
-import { Button } from "@mui/material";
 import { RenderLightShadowFilter } from "@xrf/ipc/types/xrf-renderer";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { LightIcon } from "@xrf/ui/icons";
+import { Button } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
@@ -12,7 +13,6 @@ import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features/r
 import { TRenderLightsSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Whether this view lights the level with its lamps, and with the level file's own lights too; and how the light the

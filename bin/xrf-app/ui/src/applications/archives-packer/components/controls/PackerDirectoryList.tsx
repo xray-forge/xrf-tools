@@ -1,10 +1,10 @@
-import { FormControlLabel, Switch, TextField, Typography } from "@mui/material";
 import { ArchivePackDirectory } from "@xrf/ipc/types/xrf-pack";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { FormControlLabel, Switch, TextField, Typography } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement } from "react";
 
 import { withDirectoryAt } from "@/applications/archives-packer/lib/pack-config";
 import { EditableList, EditableListItem } from "@/core/ui/form";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 import { withoutAt } from "@/lib/types/array";
 
 interface IPackerDirectoryListProps extends BaseComponentProps {

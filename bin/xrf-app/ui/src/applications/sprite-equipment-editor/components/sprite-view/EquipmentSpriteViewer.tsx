@@ -1,7 +1,9 @@
-import { CircularProgress, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { IPanZoomPoint } from "@xrf/math";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CircularProgress, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback } from "react";
 
 import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/equipment-grid";
@@ -10,9 +12,7 @@ import {
   SpriteEquipmentEditorService,
 } from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
 import { describeEquipmentSheet, IEquipmentLayout, toCellAt } from "@/core/sprite-equipment/lib";
-import { cn } from "@/core/theme/class-name";
 import { IImageViewportView, ImageViewport } from "@/core/ui/media/ImageViewport";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { EquipmentGridCanvas } from "./EquipmentGridCanvas";
 import { EquipmentGridMoveOver } from "./EquipmentGridMoveOver";

@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { LtxFileStructure } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import {
@@ -13,7 +14,6 @@ import { EmptyListing } from "@/core/ui/layout";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { noop } from "@/lib/callbacks/noop";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import {
   filterConfigsIndex,

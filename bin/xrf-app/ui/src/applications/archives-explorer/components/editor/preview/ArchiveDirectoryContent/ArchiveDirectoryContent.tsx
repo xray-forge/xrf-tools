@@ -1,21 +1,19 @@
-import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
-import { default as SaveAltIcon } from "@mui/icons-material/SaveAlt";
-import { default as UnarchiveIcon } from "@mui/icons-material/Unarchive";
-import { Alert, Button, Typography } from "@mui/material";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { FolderOpenIcon, SaveAltIcon, UnarchiveIcon } from "@xrf/ui/icons";
+import { Alert, Button, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { resolveDirectoryDestination } from "@/applications/archives-explorer/lib/resolve-directory-destination";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { IArchiveEntry, isUnderArchiveDirectory } from "@/core/archive/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
-import { cn } from "@/core/theme/class-name";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArchiveDirectoryContentProps extends BaseComponentProps {
   path: string;

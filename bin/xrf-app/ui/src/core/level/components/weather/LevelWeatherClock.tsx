@@ -1,11 +1,10 @@
-import { default as PauseIcon } from "@mui/icons-material/Pause";
-import { default as PlayArrowIcon } from "@mui/icons-material/PlayArrow";
-import { IconButton, Slider, Tooltip, Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { PauseIcon, PlayArrowIcon } from "@xrf/ui/icons";
+import { IconButton, Slider, Tooltip, Typography } from "@xrf/ui/material";
 import { ReactElement, useMemo } from "react";
 
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { WEATHER_DAY_LENGTH } from "@/core/level/lib/weather/weather-day";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 import { IThrottledDraft, useThrottledDraft } from "@/lib/react/use-throttled-draft";
 
 /** A minute, the slider's step. */

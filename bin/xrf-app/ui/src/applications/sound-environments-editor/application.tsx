@@ -1,4 +1,4 @@
-import { default as SurroundSoundIcon } from "@mui/icons-material/SurroundSound";
+import { SurroundSoundIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

@@ -1,11 +1,11 @@
-import { Alert, Stack } from "@mui/material";
 import { ArchivePackConfig } from "@xrf/ipc/types/xrf-pack";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Alert, Stack } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { PackerDirectoryList } from "@/applications/archives-packer/components/controls/PackerDirectoryList";
 import { isWholeDirectory } from "@/applications/archives-packer/lib/pack-config";
 import { FormRow, StringListFormRow } from "@/core/ui/form";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPackerSelectionSectionProps extends BaseComponentProps {
   config: ArchivePackConfig;

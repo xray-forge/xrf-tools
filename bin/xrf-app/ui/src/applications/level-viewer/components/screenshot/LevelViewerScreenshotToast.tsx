@@ -1,16 +1,14 @@
-import { default as DeleteIcon } from "@mui/icons-material/DeleteOutlined";
-import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpenOutlined";
-import { default as LinkIcon } from "@mui/icons-material/Link";
-import { ButtonBase, IconButton, Paper, Tooltip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DeleteOutlinedIcon as DeleteIcon, FolderOpenOutlinedIcon as FolderOpenIcon, LinkIcon } from "@xrf/ui/icons";
+import { ButtonBase, IconButton, Paper, Tooltip, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { ILevelViewerScreenshot } from "@/applications/level-viewer/lib/screenshot/level-viewer-screenshot";
 import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/level-viewer-screenshot";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Milliseconds a screenshot's toast stays once its pointer leaves it. */
 const TOAST_LIFETIME: number = 6000;

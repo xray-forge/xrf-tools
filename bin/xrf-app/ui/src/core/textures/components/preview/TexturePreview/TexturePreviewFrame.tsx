@@ -1,9 +1,9 @@
-import { Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode } from "react";
 
-import { cn } from "@/core/theme/class-name";
 import { tid, uid } from "@/lib/dom/dom-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ITexturePreviewFrameProps extends BaseComponentProps {
   /** What the picture is, or what is happening to it, on the bar beneath. */

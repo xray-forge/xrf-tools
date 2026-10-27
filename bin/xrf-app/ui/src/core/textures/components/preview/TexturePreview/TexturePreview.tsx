@@ -3,6 +3,8 @@ import { AssetTextureShape } from "@xrf/ipc/types/xrf-app-core";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { PAN_ZOOM_FIT } from "@xrf/math";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useEffect, useState } from "react";
 
 import { describeTextureShape } from "@/core/assets/lib";
@@ -16,11 +18,9 @@ import {
 } from "@/core/textures/lib/texture-preview";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { TextureViewService } from "@/core/textures/services/texture-view";
-import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 import { PanZoomController } from "@/lib/media/pan-zoom-controller";
 
 import { TextureImagePane } from "./TextureImagePane";

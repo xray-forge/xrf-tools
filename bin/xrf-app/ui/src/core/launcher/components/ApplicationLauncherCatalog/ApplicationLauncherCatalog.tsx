@@ -1,14 +1,14 @@
-import { default as SearchOffIcon } from "@mui/icons-material/SearchOff";
-import { Button, Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { SearchOffIcon } from "@xrf/ui/icons";
+import { Button, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { ICatalogSection } from "@/core/launcher/lib";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { TCatalogView } from "@/core/settings/lib/catalog-view";
-import { cn } from "@/core/theme/class-name";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ApplicationLauncherCardGrid } from "./ApplicationLauncherCardGrid";
 import { ApplicationLauncherRowList } from "./ApplicationLauncherRowList";

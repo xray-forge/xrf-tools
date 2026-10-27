@@ -1,4 +1,4 @@
-import { default as FactCheckIcon } from "@mui/icons-material/FactCheck";
+import { FactCheckIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

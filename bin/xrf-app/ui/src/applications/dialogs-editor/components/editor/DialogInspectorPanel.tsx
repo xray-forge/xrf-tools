@@ -1,7 +1,8 @@
-import { Chip, Stack } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { DialogDescriptor, DialogElementDescriptor, DialogPhraseDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Chip, Stack } from "@xrf/ui/material";
 import { ReactElement, useMemo } from "react";
 
 import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";
@@ -13,7 +14,6 @@ import {
   EditorPanelProperty,
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { DialogInspectorSection } from "./DialogInspectorSection";
 

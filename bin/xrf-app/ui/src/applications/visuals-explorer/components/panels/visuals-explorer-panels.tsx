@@ -1,4 +1,4 @@
-import { default as AnimationIcon } from "@mui/icons-material/Animation";
+import { AnimationIcon } from "@xrf/ui/icons";
 
 import { VisualMotionsPanel } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel";
 import { IEditorPanel } from "@/core/shell/editor-shell";

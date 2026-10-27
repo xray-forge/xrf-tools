@@ -6,6 +6,7 @@ import {
   RenderViewOptions,
 } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import {
@@ -22,7 +23,6 @@ import { describeRenderLightShadowFilter, formatShadowFilter } from "@/core/rend
 import { describeRenderTraceSize } from "@/core/render/lib/features/render-trace-size-choices";
 import { describeRenderScale } from "@/core/render/lib/features/render-upscaling-choices";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Three channels as the panel reads them. */
 function formatTriple(values: ReadonlyArray<Nullable<number>>): string {

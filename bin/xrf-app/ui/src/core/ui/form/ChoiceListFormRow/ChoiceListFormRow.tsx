@@ -1,10 +1,10 @@
-import { List, TextField } from "@mui/material";
 import { filterByName } from "@xrf/search";
 import { Optional } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { List, TextField } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement, useCallback, useMemo, useState } from "react";
 
 import { FormRow } from "@/core/ui/form/FormRow";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { IChoiceListFormRowOption } from "./choice-list-form-row-option";
 import { IChoiceListFormRowSection, toChoiceListFormRowSections } from "./ChoiceListFormRow.utils";

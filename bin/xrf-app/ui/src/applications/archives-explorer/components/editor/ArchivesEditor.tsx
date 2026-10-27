@@ -1,12 +1,9 @@
-import { default as BarChartIcon } from "@mui/icons-material/BarChart";
-import { default as FileCopyIcon } from "@mui/icons-material/FileCopy";
-import { default as LayersIcon } from "@mui/icons-material/Layers";
-import { default as UnarchiveIcon } from "@mui/icons-material/Unarchive";
 import { CommandBus } from "@wirestate/core";
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveSubject, EArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable, Optional } from "@xrf/types";
+import { BarChartIcon, FileCopyIcon, LayersIcon, UnarchiveIcon } from "@xrf/ui/icons";
 import { ReactElement, useCallback, useState } from "react";
 
 import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";

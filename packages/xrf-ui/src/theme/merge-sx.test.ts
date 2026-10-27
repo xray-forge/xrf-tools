@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { SxProps, Theme } from "@mui/material/styles";
 
-import { mergeSx } from "./merge-sx";
+import { mergeSx } from "#/theme/merge-sx";
 
 describe("mergeSx", () => {
   it("preserves override order and defers theme callbacks to MUI", () => {

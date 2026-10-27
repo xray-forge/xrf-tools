@@ -1,7 +1,6 @@
-import { TextField } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { TextField } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement, useCallback } from "react";
-
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ITextureTextFieldProps extends BaseComponentProps {
   label: string;

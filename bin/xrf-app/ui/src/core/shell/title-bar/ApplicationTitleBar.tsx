@@ -1,11 +1,11 @@
-import { LinearProgress } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { LinearProgress } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, Ref } from "react";
 
 import { ApplicationMenu } from "@/core/shell/title-bar/ApplicationMenu";
 import { ApplicationTitleBarIcon } from "@/core/shell/title-bar/ApplicationTitleBarIcon";
 import { WindowControls } from "@/core/shell/title-bar/WindowControls";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IApplicationTitleBarProps extends BaseComponentProps {
   /** Where the active application portals its toolbar. The frame owns the element. */

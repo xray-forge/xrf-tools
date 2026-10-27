@@ -1,4 +1,4 @@
-import { PANEL } from "@/core/theme/tokens";
+import { PANEL } from "@xrf/ui/theme/tokens";
 
 /**
  * Resolves the width a panel actually renders at.

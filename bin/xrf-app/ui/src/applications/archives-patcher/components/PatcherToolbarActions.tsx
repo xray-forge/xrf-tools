@@ -1,14 +1,11 @@
-import { default as CompareArrowsIcon } from "@mui/icons-material/CompareArrows";
-import { default as DifferenceIcon } from "@mui/icons-material/Difference";
-import { default as FileOpenIcon } from "@mui/icons-material/FileOpen";
-import { default as SaveAltIcon } from "@mui/icons-material/SaveAlt";
-import { Stack } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CompareArrowsIcon, DifferenceIcon, FileOpenIcon, SaveAltIcon } from "@xrf/ui/icons";
+import { Stack } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorTextAction } from "@/core/shell/editor/EditorTextAction";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPatcherToolbarActionsProps extends BaseComponentProps {
   isBusy: boolean;

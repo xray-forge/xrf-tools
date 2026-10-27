@@ -1,5 +1,5 @@
-import { default as ExpandMoreIcon } from "@mui/icons-material/ExpandMore";
-import { Accordion, AccordionDetails, AccordionSummary, Button, Typography } from "@mui/material";
+import { ExpandMoreIcon } from "@xrf/ui/icons";
+import { Accordion, AccordionDetails, AccordionSummary, Button, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 

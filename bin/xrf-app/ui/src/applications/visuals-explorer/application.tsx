@@ -1,4 +1,4 @@
-import { default as ViewInArIcon } from "@mui/icons-material/ViewInAr";
+import { ViewInArIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

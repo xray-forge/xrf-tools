@@ -1,20 +1,20 @@
-import { default as ContentCopyIcon } from "@mui/icons-material/ContentCopy";
-import { Alert, CircularProgress, Dialog, DialogContent, TextField } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveWorldEntry } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchiveSourceUsage, ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ContentCopyIcon } from "@xrf/ui/icons";
+import { Alert, CircularProgress, Dialog, DialogContent, TextField } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ChangeEvent, ReactElement, useCallback, useEffect, useId, useMemo, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { cn } from "@/core/theme/class-name";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { EStatMeasure } from "@/core/ui/stats/stat-measure";
 import { IStatBreakdownRow, StatBreakdownTable } from "@/core/ui/stats/StatBreakdownTable";
 import { StatMeasureToggle } from "@/core/ui/stats/StatMeasureToggle";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { filterOverrides, flattenOverrides, TArchiveOverrideRow } from "./archive-override-rows";
 import { ArchiveOverrideList } from "./ArchiveOverrideList";

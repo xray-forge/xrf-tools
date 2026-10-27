@@ -1,7 +1,4 @@
-import { default as ImageIcon } from "@mui/icons-material/Image";
-import { default as InfoIcon } from "@mui/icons-material/Info";
-import { default as LayersIcon } from "@mui/icons-material/Layers";
-import { default as TuneIcon } from "@mui/icons-material/Tune";
+import { ImageIcon, InfoIcon, LayersIcon, TuneIcon } from "@xrf/ui/icons";
 
 import { TexturesMenu } from "@/applications/textures-explorer/components/tree/TexturesMenu";
 import { IEditorPanel } from "@/core/shell/editor-shell";

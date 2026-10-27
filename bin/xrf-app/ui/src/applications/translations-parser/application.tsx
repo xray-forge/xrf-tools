@@ -1,4 +1,4 @@
-import { default as ImportExportIcon } from "@mui/icons-material/ImportExport";
+import { ImportExportIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

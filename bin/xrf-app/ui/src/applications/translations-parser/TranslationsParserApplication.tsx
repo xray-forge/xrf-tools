@@ -1,6 +1,6 @@
-import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { Button } from "@xrf/ui/material";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { TranslationsParserService } from "@/applications/translations-parser/services/translations-parser.service";

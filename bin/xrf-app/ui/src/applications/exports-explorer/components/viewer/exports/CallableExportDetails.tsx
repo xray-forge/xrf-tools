@@ -1,10 +1,10 @@
-import { Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
 import { ABSENT_VALUE } from "@xrf/format";
 import { ExportParameterDescriptor } from "@xrf/ipc/types/xrf-export";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { TCallableExportDescriptor } from "@/applications/exports-explorer/lib/export-descriptors";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ExportSection } from "./ExportSection";
 

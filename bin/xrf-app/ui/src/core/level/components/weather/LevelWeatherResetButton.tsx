@@ -1,8 +1,8 @@
-import { Button } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Button } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelWeatherResetButtonProps extends BaseComponentProps {
   /** The keys it sets back. */

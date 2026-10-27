@@ -1,16 +1,16 @@
-import { GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { formatDuration } from "@xrf/format";
 import { GamedataCheckSummary, GamedataVerifySummary } from "@xrf/ipc/types/xrf-app-gamedata";
 import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { EStatus, Status } from "@xrf/ipc/types/xrf-report";
+import { GridColDef, GridRenderCellParams } from "@xrf/ui/data-grid";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useMemo } from "react";
 
 import { selectFailedChecks } from "@/applications/gamedata-verifier/lib/describe-gamedata-verify-outcome";
-import { cn } from "@/core/theme/class-name";
 import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { identifierColumn } from "@/core/ui/table/columns";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * How each verdict reads in the tone system.

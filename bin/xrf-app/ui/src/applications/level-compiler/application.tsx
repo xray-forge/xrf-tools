@@ -1,4 +1,4 @@
-import { default as BuildIcon } from "@mui/icons-material/Build";
+import { BuildIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

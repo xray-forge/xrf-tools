@@ -1,9 +1,9 @@
 import { formatDegrees, formatNumber } from "@xrf/format";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { IRenderLighting, RENDER_LIGHTING_LIMITS } from "@/core/render/lib/lighting/render-lighting";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 import { usePartialChange } from "@/lib/react/use-partial-change";
 
 /** Decimals a strength reads with, which is read against the other strength rather than in any unit. */

@@ -1,4 +1,4 @@
-import { default as ArchiveIcon } from "@mui/icons-material/Archive";
+import { ArchiveIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

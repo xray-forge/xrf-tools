@@ -1,9 +1,8 @@
-import { default as ChevronRightIcon } from "@mui/icons-material/ChevronRight";
-import { default as ExpandMoreIcon } from "@mui/icons-material/ExpandMore";
 import { Nullable } from "@xrf/types";
+import { ChevronRightIcon, ExpandMoreIcon } from "@xrf/ui/icons";
+import { TREE } from "@xrf/ui/theme/tokens";
 import { CSSProperties, MouseEvent, ReactElement, ReactNode } from "react";
 
-import { TREE } from "@/core/theme/tokens";
 import { IFlatTreeRow } from "@/core/ui/tree/flatten";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ITreeIconDecoration } from "@/core/ui/tree/VirtualizedTree/VirtualizedTree";

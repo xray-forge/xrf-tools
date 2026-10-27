@@ -1,11 +1,11 @@
-import { Chip, ListItemButton, Typography } from "@mui/material";
 import { formatBytes } from "@xrf/format";
 import { TextureEncodingReport } from "@xrf/ipc/types/xrf-app-textures";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Chip, ListItemButton, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ITextureFormatRowProps extends BaseComponentProps {
   candidate: TextureEncodingReport;

@@ -1,5 +1,7 @@
-import { Checkbox, Typography } from "@mui/material";
 import { ABSENT_VALUE } from "@xrf/format";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Checkbox, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ChangeEvent, ReactElement, useCallback } from "react";
 
 import {
@@ -7,8 +9,6 @@ import {
   ILevelViewerSnapshotEntry,
 } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * @param key - The value's key, which says how it reads: the weather's clock as a time of day.

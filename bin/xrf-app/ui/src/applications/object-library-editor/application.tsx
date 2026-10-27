@@ -1,4 +1,4 @@
-import { default as CollectionsBookmarkIcon } from "@mui/icons-material/CollectionsBookmark";
+import { CollectionsBookmarkIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

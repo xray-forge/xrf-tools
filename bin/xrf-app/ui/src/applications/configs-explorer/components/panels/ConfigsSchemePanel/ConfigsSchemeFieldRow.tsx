@@ -1,9 +1,9 @@
-import { Chip, Typography } from "@mui/material";
 import { LtxSchemeFieldReport } from "@xrf/ipc/types/xrf-ltx-inspect";
+import { Chip, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { describeResolvedFieldOrigin } from "@/applications/configs-explorer/lib/resolved";
-import { cn } from "@/core/theme/class-name";
 
 interface IConfigsSchemeFieldRowProps {
   field: LtxSchemeFieldReport;

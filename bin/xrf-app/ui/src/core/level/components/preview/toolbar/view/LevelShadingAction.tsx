@@ -1,6 +1,7 @@
-import { default as TextureIcon } from "@mui/icons-material/Texture";
 import { useInjection } from "@wirestate/react";
 import { ERenderParallaxMode } from "@xrf/ipc/types/xrf-renderer";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { TextureIcon } from "@xrf/ui/icons";
 import { ReactElement } from "react";
 
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
@@ -18,7 +19,6 @@ import { LevelViewService } from "@/core/level/services/level-view";
 import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { ChoiceListFormRow } from "@/core/ui/form";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * How the level is shaded: the frame as dressed, as clay or by shader, or one of the targets it is built from, listed

@@ -1,9 +1,9 @@
-import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ToggleButton, ToggleButtonGroup } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { FormRow } from "@/core/ui/form/FormRow";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { IChoiceFormRowOption } from "./choice-form-row-option";
 

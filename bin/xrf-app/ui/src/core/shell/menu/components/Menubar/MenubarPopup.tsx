@@ -1,4 +1,4 @@
-import { Divider, MenuList, Paper, Popper } from "@mui/material";
+import { Divider, MenuList, Paper, Popper } from "@xrf/ui/material";
 import { KeyboardEvent, ReactElement } from "react";
 
 import { IMenubarItem, IMenubarMenu } from "./menubar-menu";

@@ -1,9 +1,9 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Shown while an application is still arriving - its chunk fetched, or its services provisioning.

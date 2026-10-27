@@ -1,9 +1,9 @@
 import { ESyntaxLanguage } from "@xrf/syntax";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useMemo } from "react";
 
-import { cn } from "@/core/theme/class-name";
 import { SyntaxContent } from "@/core/ui/code/SyntaxContent";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ICodeViewProps extends BaseComponentProps {
   content: string;

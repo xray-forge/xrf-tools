@@ -1,12 +1,12 @@
 import { useInjection } from "@wirestate/react";
 import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback, useState } from "react";
 
 import { describeLevelSource } from "@/core/level/lib/source/level-source";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { LevelViewerLayout } from "./components/LevelViewerLayout";
 import { LevelViewerOpenForm } from "./components/LevelViewerOpenForm";

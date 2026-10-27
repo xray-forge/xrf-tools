@@ -1,8 +1,9 @@
-import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { ConfigsProjectDescriptor } from "@xrf/ipc/types/xrf-app-configs";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { AccountTreeIcon } from "@xrf/ui/icons";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { ConfigsDocumentView } from "@/applications/configs-explorer/components/ConfigsDocumentView";
@@ -17,7 +18,6 @@ import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { CONFIGS_EXPLORER_PANELS } from "./panels";
 

@@ -1,5 +1,7 @@
-import { Button, TextField, Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Button, TextField, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ChangeEvent, FormEvent, ReactElement, useCallback, useState } from "react";
 
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
@@ -13,8 +15,6 @@ import {
   toLevelGoTo,
   toLevelGoToTexts,
 } from "@/core/level/lib/camera/level-camera-goto";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelGoToFormProps extends BaseComponentProps {
   /** Where the camera is as the form mounts, which the fields start at; null before the viewport has drawn. */

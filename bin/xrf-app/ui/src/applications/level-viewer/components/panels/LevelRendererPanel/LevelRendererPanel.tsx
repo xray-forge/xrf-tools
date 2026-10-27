@@ -1,5 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { LevelRendererAppliedSection } from "@/applications/level-viewer/components/panels/LevelRendererPanel/LevelRendererAppliedSection";
@@ -19,7 +20,6 @@ import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * What the viewport is holding and what it costs, measured rather than estimated.

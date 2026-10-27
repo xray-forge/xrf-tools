@@ -1,5 +1,5 @@
-import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText } from "@xrf/ui/material";
 import { ReactElement, ReactNode, useId } from "react";
 
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";

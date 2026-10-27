@@ -1,10 +1,10 @@
 import { useInjection } from "@wirestate/react";
 import { SpawnALifeSpawnsChunk } from "@xrf/ipc/types/xrf-spawn";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { SpawnChunkView } from "@/applications/spawn-editor/components/editor/chunks/SpawnChunkView";
 import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file.service";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { SpawnEditorAlifeObjectsTable } from "./SpawnEditorAlifeObjectsTable";
 

@@ -1,9 +1,9 @@
-import { Stack, TextField } from "@mui/material";
 import { ArchivePatchConfig } from "@xrf/ipc/types/xrf-pack";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Stack, TextField } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement } from "react";
 
 import { FormRow, IPathField, PathFormRow } from "@/core/ui/form";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPatcherOutputSectionProps extends BaseComponentProps {
   config: ArchivePatchConfig;

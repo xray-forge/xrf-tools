@@ -1,7 +1,6 @@
 import { ArchiveOmfDescription } from "@xrf/ipc/types/xrf-app-archives";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
-
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { ArchiveOmfBankSection } from "./ArchiveOmfBankSection";

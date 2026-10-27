@@ -1,13 +1,13 @@
 import { describe, expect, it } from "@jest/globals";
 import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@xrf/ipc/types/xrf-app-textures";
 import { RenderViewOptions } from "@xrf/ipc/types/xrf-renderer";
+import { VIEWPORT } from "@xrf/ui/theme/tokens";
 
 import { mockRenderFeatures } from "@/core/render/fixtures/render.mocks";
 import { MOCK_TEXTURE, mockTextureDescription } from "@/core/textures/fixtures/texture.mocks";
 import { toTexturesShowRequest, toTextureViewOptions } from "@/core/textures/lib/render/texture-surface-render";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
 import { ITextureSurfaceOptions } from "@/core/textures/lib/texture-surface";
-import { VIEWPORT } from "@/core/theme/tokens";
 
 const OPTIONS: ITextureSurfaceOptions = {
   alpha: ETextureSurfaceAlpha.BLENDED,

@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { listItemButtonClasses } from "@mui/material";
 import { userEvent } from "@testing-library/user-event";
+import { listItemButtonClasses } from "@xrf/ui/material";
 
 import { EditorSideMenu } from "@/core/shell/editor/EditorSideMenu";
 import { renderWithProviders } from "@/fixtures/utils/render";

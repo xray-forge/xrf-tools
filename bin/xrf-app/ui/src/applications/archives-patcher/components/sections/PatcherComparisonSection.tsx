@@ -1,9 +1,9 @@
-import { Stack } from "@mui/material";
 import { ArchivePatchConfig } from "@xrf/ipc/types/xrf-pack";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Stack } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { CheckboxFormRow, IPathField, PathFormRow } from "@/core/ui/form";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPatcherComparisonSectionProps extends BaseComponentProps {
   config: ArchivePatchConfig;

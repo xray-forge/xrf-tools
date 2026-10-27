@@ -1,9 +1,8 @@
-import { Divider, Typography } from "@mui/material";
 import { formatCount } from "@xrf/format";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Divider, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode } from "react";
-
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export type TCommandResultTone = "success" | "warning" | "error" | "info";
 

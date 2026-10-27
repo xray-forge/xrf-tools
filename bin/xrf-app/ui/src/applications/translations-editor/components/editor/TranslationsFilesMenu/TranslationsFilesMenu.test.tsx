@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { listItemButtonClasses } from "@mui/material";
 import { fireEvent } from "@testing-library/react";
 import { TranslationFile } from "@xrf/ipc/types/xrf-translation";
+import { listItemButtonClasses } from "@xrf/ui/material";
 
 import { renderWithProviders } from "@/fixtures/utils/render";
 

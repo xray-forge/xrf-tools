@@ -1,15 +1,15 @@
-import { Chip } from "@mui/material";
 import { ABSENT_VALUE } from "@xrf/format";
 import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { VisualSubmesh, VisualTextureDependency } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Chip } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { VisualSubmeshMaterial } from "./VisualSubmeshMaterial";
 import { VisualSubmeshSurface } from "./VisualSubmeshSurface";

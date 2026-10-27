@@ -1,11 +1,11 @@
-import { Alert, Stack } from "@mui/material";
 import { ArchivePatchConfig } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Alert, Stack } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { ArchiveHeaderFields } from "@/core/archive/components/ArchiveHeaderFields";
 import { DEFAULT_ENTRY_POINT, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPatcherHeaderSectionProps extends BaseComponentProps {
   config: ArchivePatchConfig;

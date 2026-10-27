@@ -1,9 +1,9 @@
-import { Button, Divider, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ABSENT_VALUE, formatBytes, formatDuration } from "@xrf/format";
 import { IIpcCommandMetrics, IIpcMetricsSnapshot } from "@xrf/ipc";
 import { IpcMetricsService } from "@xrf/ipc/session";
 import { Nullable } from "@xrf/types";
+import { Button, Divider, Stack, Typography } from "@xrf/ui/material";
 import { ReactElement, useState } from "react";
 
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";

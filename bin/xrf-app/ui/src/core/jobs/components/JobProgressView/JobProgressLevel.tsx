@@ -1,6 +1,6 @@
-import { LinearProgress, Typography } from "@mui/material";
 import { ProgressLevel } from "@xrf/ipc/types/xrf-job";
 import { Nullable } from "@xrf/types";
+import { LinearProgress, Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { formatProgressCounts, toProgressPercent } from "@/core/jobs/lib/progress-format";

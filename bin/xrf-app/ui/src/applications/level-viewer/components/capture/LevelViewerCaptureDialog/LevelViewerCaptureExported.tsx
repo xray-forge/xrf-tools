@@ -1,12 +1,12 @@
-import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { getPathName } from "@xrf/path";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Button, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback } from "react";
 
 import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/level-viewer-capture-result";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Where the capture's last export was written, to show in its folder; nothing until one is written. */
 export function LevelViewerCaptureExported({

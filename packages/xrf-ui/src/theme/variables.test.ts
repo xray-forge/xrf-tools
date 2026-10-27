@@ -4,13 +4,16 @@ import { resolve } from "path";
 import { describe, expect, it } from "@jest/globals";
 import { Theme } from "@mui/material";
 
-import { createApplicationTheme } from "./creation";
-import { getSchemeVariables, getThemeVariables } from "./variables";
+import { createApplicationTheme } from "#/theme/creation";
+import { getSchemeVariables, getThemeVariables } from "#/theme/variables";
 
-/** The stylesheets and markup that read the published properties, which is the whole other half of the bridge. */
-const CONSUMERS: ReadonlyArray<string> = ["./tailwind.css", "../../index.html"];
+/**
+ * The stylesheets that read the published properties, which is the whole other half of the bridge. A page reading
+ * them before the stylesheets load checks its own names against `getThemeVariables`.
+ */
+const CONSUMERS: ReadonlyArray<string> = ["./tailwind.css", "./base.css", "./syntax.css"];
 
-/** Every `--xrf-*` name the application publishes, whether it is scheme-dependent or not. */
+/** Every `--xrf-*` name the theme publishes, whether it is scheme-dependent or not. */
 function readPublished(): Array<string> {
   const theme: Theme = createApplicationTheme();
 
@@ -33,7 +36,7 @@ function readConsumed(): Array<string> {
 }
 
 describe("theme variables", () => {
-  it("publishes every property the stylesheets and markup read", () => {
+  it("publishes every property the stylesheets read", () => {
     const published: Set<string> = new Set(readPublished());
 
     // A name read but never published resolves to nothing, which is a silent blank rather than a build failure.
@@ -42,7 +45,7 @@ describe("theme variables", () => {
     }
   });
 
-  it("publishes nothing the stylesheets and markup do not read", () => {
+  it("publishes nothing the stylesheets do not read", () => {
     const consumed: Set<string> = new Set(readConsumed());
 
     // A name published but never read is dead weight in every document the preload sheet lands in.

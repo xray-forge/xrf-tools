@@ -1,16 +1,19 @@
-import { default as CheckCircleOutlineIcon } from "@mui/icons-material/CheckCircleOutlineOutlined";
-import { default as ContentCopyIcon } from "@mui/icons-material/ContentCopy";
-import { default as ErrorOutlineIcon } from "@mui/icons-material/ErrorOutlineOutlined";
-import { default as ExpandLessIcon } from "@mui/icons-material/ExpandLess";
-import { default as ExpandMoreIcon } from "@mui/icons-material/ExpandMore";
-import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
-import { default as TerminalIcon } from "@mui/icons-material/Terminal";
-import { default as WarningAmberIcon } from "@mui/icons-material/WarningAmber";
-import { Box, Button, IconButton, Tooltip, Typography } from "@mui/material";
 import { formatCount } from "@xrf/format";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import {
+  CheckCircleOutlineOutlinedIcon as CheckCircleOutlineIcon,
+  ContentCopyIcon,
+  ErrorOutlineOutlinedIcon as ErrorOutlineIcon,
+  ExpandLessIcon,
+  ExpandMoreIcon,
+  InfoOutlinedIcon,
+  TerminalIcon,
+  WarningAmberIcon,
+} from "@xrf/ui/icons";
+import { Box, Button, IconButton, Tooltip, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { format } from "date-fns";
 import { ReactElement, ReactNode, useCallback, useState } from "react";
 
@@ -18,7 +21,6 @@ import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { INotificationEntry, isAttentionSeverity } from "@/core/shell/panel/notifications/notification-list";
-import { cn } from "@/core/theme/class-name";
 import { ICopiedText, useCopiedText } from "@/lib/react/use-copied-text";
 
 /** Lines of `details` shown inline before the rest has to be asked for. */

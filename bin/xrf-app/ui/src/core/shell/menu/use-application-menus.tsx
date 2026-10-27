@@ -1,10 +1,9 @@
-import { default as GitHubIcon } from "@mui/icons-material/GitHub";
-import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
 import { Window } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-shell";
 import { useInjection } from "@wirestate/react";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
+import { GitHubIcon, InfoOutlinedIcon } from "@xrf/ui/icons";
 import { useCallback, useState } from "react";
 
 import { KeybindCommandsService } from "@/core/commands";

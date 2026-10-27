@@ -1,7 +1,8 @@
-import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { filterByName } from "@xrf/search";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
 import { ReactElement, useMemo, useState } from "react";
 
 import { SequenceMotionRow } from "@/applications/visuals-sequencer/components/panels/SequenceMotionsPanel/SequenceMotionRow";
@@ -9,7 +10,6 @@ import { VisualSequenceService } from "@/applications/visuals-sequencer/services
 import { VisualsSequencerService } from "@/applications/visuals-sequencer/services/visuals-sequencer";
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** How many matches are drawn at once. */
 const SHOWN_LIMIT: number = 200;

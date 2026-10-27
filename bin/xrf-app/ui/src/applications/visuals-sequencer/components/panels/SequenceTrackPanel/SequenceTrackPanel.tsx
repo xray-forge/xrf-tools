@@ -1,5 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { formatDuration } from "@xrf/format";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/visual-sequence";
@@ -9,7 +10,6 @@ import {
   EditorPanelProperty,
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { SequenceClipRow } from "./SequenceClipRow";
 

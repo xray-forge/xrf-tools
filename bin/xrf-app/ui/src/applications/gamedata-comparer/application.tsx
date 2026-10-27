@@ -1,4 +1,4 @@
-import { default as CompareArrowsIcon } from "@mui/icons-material/CompareArrows";
+import { CompareArrowsIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

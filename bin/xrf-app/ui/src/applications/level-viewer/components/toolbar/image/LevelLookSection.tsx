@@ -1,7 +1,6 @@
-import { Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
 import { ReactElement, ReactNode } from "react";
-
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface ILevelLookSectionProps extends BaseComponentProps {
   /** What the section's controls set, as its heading names it. */

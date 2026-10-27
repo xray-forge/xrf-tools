@@ -1,11 +1,11 @@
-import { default as HighlightIcon } from "@mui/icons-material/SelectAll";
 import { useInjection } from "@wirestate/react";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { SelectAllIcon as HighlightIcon } from "@xrf/ui/icons";
 import { ReactElement, useCallback } from "react";
 
 import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/equipment-grid";
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Whether the slots the configuration claims are shaded over the sheet.

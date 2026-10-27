@@ -1,4 +1,4 @@
-import { default as ImageIcon } from "@mui/icons-material/Image";
+import { ImageIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

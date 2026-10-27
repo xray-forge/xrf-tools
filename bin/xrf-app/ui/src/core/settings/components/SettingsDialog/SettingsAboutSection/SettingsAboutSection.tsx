@@ -1,7 +1,6 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
-
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { SettingsBuildSection } from "./SettingsBuildSection";
 import { SettingsEnvironmentSection } from "./SettingsEnvironmentSection";

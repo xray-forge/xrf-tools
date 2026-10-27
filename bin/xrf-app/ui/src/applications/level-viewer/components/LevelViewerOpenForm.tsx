@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ELevelSource, LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { LevelViewerListService } from "@/applications/level-viewer/services/level-viewer-list";
@@ -12,7 +13,6 @@ import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormR
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceListFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelViewerOpenFormProps extends BaseComponentProps {
   /** Called once a level has been opened. */

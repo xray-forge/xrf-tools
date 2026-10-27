@@ -1,4 +1,4 @@
-import { default as TextureIcon } from "@mui/icons-material/Texture";
+import { TextureIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

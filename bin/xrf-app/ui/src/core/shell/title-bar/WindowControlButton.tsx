@@ -1,7 +1,6 @@
-import { ButtonBase } from "@mui/material";
+import { ButtonBase } from "@xrf/ui/material";
+import { LAYOUT } from "@xrf/ui/theme/tokens";
 import { ReactElement, ReactNode } from "react";
-
-import { LAYOUT } from "@/core/theme/tokens";
 
 /** Windows tints only the close button, and keeps the same red in both schemes. */
 const CLOSE_HOVER: string = "#c42b1c";

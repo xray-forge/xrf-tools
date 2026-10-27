@@ -1,9 +1,9 @@
-import { useColorScheme } from "@mui/material/styles";
 import { useInjection } from "@wirestate/react";
+import { useColorScheme } from "@xrf/ui/material";
+import { COLOR_SCHEME_MODES, ColorSchemeMode, DEFAULT_COLOR_SCHEME_MODE } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { SettingsService } from "@/core/settings/services/settings";
-import { COLOR_SCHEME_MODES, ColorSchemeMode, DEFAULT_COLOR_SCHEME_MODE } from "@/core/theme";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 

@@ -1,9 +1,9 @@
-import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ToggleButton, ToggleButtonGroup } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { EStatMeasure } from "@/core/ui/stats/stat-measure";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IStatMeasureToggleProps extends BaseComponentProps {
   measure: EStatMeasure;

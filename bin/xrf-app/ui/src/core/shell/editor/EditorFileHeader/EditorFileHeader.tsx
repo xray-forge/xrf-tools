@@ -1,11 +1,10 @@
-import { default as CloseIcon } from "@mui/icons-material/Close";
-import { default as DescriptionOutlinedIcon } from "@mui/icons-material/DescriptionOutlined";
-import { Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CloseIcon, DescriptionOutlinedIcon } from "@xrf/ui/icons";
+import { Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorFileHeaderProps extends BaseComponentProps {
   /** What is open, as the engine names it, which is the whole path rather than the last segment of it. */

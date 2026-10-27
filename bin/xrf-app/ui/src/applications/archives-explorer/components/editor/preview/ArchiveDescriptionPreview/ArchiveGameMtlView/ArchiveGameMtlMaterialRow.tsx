@@ -1,10 +1,9 @@
-import { Typography } from "@mui/material";
 import { ArchiveGameMtlMaterial } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
-
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { describeFactors, describeMaterial, describePhysics } from "./ArchiveGameMtlView.utils";
 

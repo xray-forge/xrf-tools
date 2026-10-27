@@ -1,13 +1,11 @@
-import { default as ClearIcon } from "@mui/icons-material/Clear";
-import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
-import { default as HistoryIcon } from "@mui/icons-material/History";
-import { IconButton, TextField, Tooltip } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ClearIcon, FolderOpenIcon, HistoryIcon } from "@xrf/ui/icons";
+import { IconButton, TextField, Tooltip } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement, useId, useState } from "react";
 
 import { FilePickerRecentsMenu } from "@/core/ui/form/file-picker/FilePickerRecentsMenu";
 import { IPathFieldRecents } from "@/core/ui/form/path-recents";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IFilePickerInputProps extends BaseComponentProps {
   /** IDs of the description and validation message rendered by the enclosing row. */

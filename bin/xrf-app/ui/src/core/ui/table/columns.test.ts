@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { GridColDef } from "@mui/x-data-grid";
+import { GridColDef } from "@xrf/ui/data-grid";
 
 import {
   decimalColumn,

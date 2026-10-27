@@ -1,14 +1,14 @@
-import { default as SaveAltIcon } from "@mui/icons-material/SaveAlt";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { getFileExtension, splitLogicalPath } from "@xrf/path";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { SaveAltIcon } from "@xrf/ui/icons";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { IArchiveEntry } from "@/core/archive/lib";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IArchiveFileExtractActionProps extends BaseComponentProps {
   entry: IArchiveEntry;

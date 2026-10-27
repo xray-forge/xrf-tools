@@ -1,8 +1,9 @@
-import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
 import { VisualDescription, VisualTextureDependency } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
 import { ReactElement, useMemo } from "react";
 
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
@@ -12,7 +13,6 @@ import {
   IVisualTextureSummary,
   summarizeVisualTextures,
 } from "@/core/visuals/lib/visual-texture-summary";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { VisualSubmeshSection } from "./VisualSubmeshSection";
 

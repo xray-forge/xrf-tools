@@ -1,10 +1,11 @@
-import { default as FilterDramaIcon } from "@mui/icons-material/FilterDrama";
-import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { LevelWeatherCycle, LevelWeatherDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { FilterDramaIcon } from "@xrf/ui/icons";
+import { Button, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
@@ -19,7 +20,6 @@ import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-t
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 import { useCopiedText } from "@/lib/react/use-copied-text";
 
 /**

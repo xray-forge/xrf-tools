@@ -1,9 +1,8 @@
-import { Chip } from "@mui/material";
 import { ArchiveThmFlag } from "@xrf/ipc/types/xrf-app-archives";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Chip } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
-
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArchiveThmFlagListProps extends BaseComponentProps {
   flags: Array<ArchiveThmFlag>;

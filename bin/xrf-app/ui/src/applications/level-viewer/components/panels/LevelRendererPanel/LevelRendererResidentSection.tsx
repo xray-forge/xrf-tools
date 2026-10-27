@@ -1,10 +1,10 @@
 import { formatBytes, formatCount } from "@xrf/format";
 import { RenderLoadReport, RenderMemoryReport } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * @param bytes - A count of bytes the report may leave out.

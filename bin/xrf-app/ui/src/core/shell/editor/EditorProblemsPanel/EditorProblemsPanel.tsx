@@ -1,10 +1,10 @@
-import { Chip, List, ListItem, ListItemButton, Typography } from "@mui/material";
 import { getPathName } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Chip, List, ListItem, ListItemButton, Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Where a problem can be opened, for a surface that can take a reader there. */
 export interface IEditorProblemLocation {

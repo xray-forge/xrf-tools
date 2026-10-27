@@ -1,7 +1,7 @@
-import { Button, Divider, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
+import { Button, Divider, Stack, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback, useState } from "react";
 
 import { SettingsService } from "@/core/settings/services/settings";

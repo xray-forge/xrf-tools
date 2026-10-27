@@ -1,14 +1,14 @@
-import { Button } from "@mui/material";
 import { AsyncState } from "@xrf/async";
 import { LevelSpawnObject, LevelSpawnObjectDetails } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Button } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { describeLevelSpawnRelease } from "@/applications/level-viewer/lib/spawn/level-spawn-release";
 import { formatLevelPoint } from "@/core/level/lib/camera/level-camera";
 import { toLevelSpawnPosition } from "@/core/level/lib/spawn/level-spawn-sphere";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelSpawnDetailsProps extends BaseComponentProps {
   object: LevelSpawnObject;

@@ -1,4 +1,4 @@
-import { default as RouteIcon } from "@mui/icons-material/Route";
+import { RouteIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

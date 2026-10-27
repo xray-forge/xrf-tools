@@ -1,9 +1,8 @@
-import { default as AddIcon } from "@mui/icons-material/Add";
-import { Button, Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { AddIcon } from "@xrf/ui/icons";
+import { Button, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
-
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditableListProps extends BaseComponentProps {
   addLabel: string;

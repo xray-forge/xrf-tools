@@ -1,7 +1,6 @@
-import { default as SaveIcon } from "@mui/icons-material/Save";
-import { default as UndoIcon } from "@mui/icons-material/Undo";
 import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
+import { SaveIcon, UndoIcon } from "@xrf/ui/icons";
 import { ReactElement, useCallback, useState } from "react";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations.service";

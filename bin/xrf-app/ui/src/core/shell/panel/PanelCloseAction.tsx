@@ -1,7 +1,7 @@
-import { default as CloseIcon } from "@mui/icons-material/Close";
 import { CommandBus } from "@wirestate/core";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { CloseIcon } from "@xrf/ui/icons";
 import { ReactElement, useEffect, useRef, useState } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";

@@ -1,10 +1,9 @@
-import { default as FolderIcon } from "@mui/icons-material/Folder";
-import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
-import { default as ImageIcon } from "@mui/icons-material/Image";
 import { useInjection } from "@wirestate/react";
 import { TextureSource } from "@xrf/ipc/types/xrf-app-textures";
 import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { FolderIcon, FolderOpenIcon, ImageIcon } from "@xrf/ui/icons";
 import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 
 import { TextureBadgeFilters } from "@/applications/textures-explorer/components/tree/TextureBadgeFilters";
@@ -26,7 +25,6 @@ import { IPathTreeItem, parsePathTree, toFileItemId } from "@/core/ui/tree/path-
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { describeEmptyTextureTree } from "./TexturesMenu.utils";
 import { TextureTreeLabel } from "./TextureTreeLabel";

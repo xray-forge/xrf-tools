@@ -1,5 +1,6 @@
-import { Chip } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Chip } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { describeLevelSurfacePass } from "@/applications/level-viewer/lib/surface/level-surface-pass";
@@ -17,7 +18,6 @@ import {
   IMaterialStateDescriptor,
 } from "@/core/materials/lib";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelSurfaceDetailsProps extends BaseComponentProps {
   summary: ILevelSurfaceSummary;

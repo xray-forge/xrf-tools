@@ -1,12 +1,12 @@
-import { Typography } from "@mui/material";
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveCompression, ArchiveExtensionUsage } from "@xrf/ipc/types/xrf-archive-stats";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
 import { ReactElement, useMemo } from "react";
 
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * What a payload set compressed to, as stored bytes over unpacked ones.

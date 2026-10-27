@@ -1,4 +1,4 @@
-import { default as EditNoteIcon } from "@mui/icons-material/EditNote";
+import { EditNoteIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

@@ -1,12 +1,12 @@
-import { Tab, Tabs } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { SpawnGraphsChunk } from "@xrf/ipc/types/xrf-spawn";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Tab, Tabs } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { SpawnChunkView } from "@/applications/spawn-editor/components/editor/chunks/SpawnChunkView";
 import { TChunkTabChange, useChunkTab } from "@/applications/spawn-editor/components/editor/chunks/use-chunk-tab";
 import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file.service";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { SpawnEditorGraphCrossTable } from "./SpawnEditorGraphCrossTable";
 import { SpawnEditorGraphEdgesTable } from "./SpawnEditorGraphEdgesTable";

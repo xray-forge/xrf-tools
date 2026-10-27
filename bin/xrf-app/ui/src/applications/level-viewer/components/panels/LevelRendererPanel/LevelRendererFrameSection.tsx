@@ -1,10 +1,10 @@
 import { ABSENT_VALUE, formatCount, formatMilliseconds } from "@xrf/format";
 import { RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { describeRenderBackend } from "@/core/render/lib/settings/render-backend-choice";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelRendererFrameSectionProps extends BaseComponentProps {
   frame: RenderFrameReport;

@@ -1,10 +1,10 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { TEditorStatusSegment, useEditorStatusSegments } from "@/core/shell/editor-shell";
 import { ApplicationMemoryStatus } from "@/core/shell/footer/ApplicationMemoryStatus";
 import { ApplicationStatusSegment } from "@/core/shell/footer/ApplicationStatusSegment";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Bottom status strip: what the application publishes, then what the process holds in memory.

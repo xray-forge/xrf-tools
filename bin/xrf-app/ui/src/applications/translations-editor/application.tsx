@@ -1,4 +1,4 @@
-import { default as TranslateIcon } from "@mui/icons-material/Translate";
+import { TranslateIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,
