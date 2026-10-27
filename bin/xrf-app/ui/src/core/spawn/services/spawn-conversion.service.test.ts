@@ -11,18 +11,9 @@ import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { SpawnConversionService } from "@/core/spawn/services/spawn-conversion.service";
 import { mockApplicationScope, mockInjectedService } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 
 const RESULT: SpawnConversionResult = { operation: "pack", destination: "C:\\out\\all.spawn", outcome: "completed" };
-
-function deferred() {
-  let resolve: (result: SpawnConversionResult) => void = noop;
-  const promise = new Promise<SpawnConversionResult>((settle) => {
-    resolve = settle;
-  });
-
-  return { promise, resolve };
-}
 
 describe("SpawnConversionService", () => {
   beforeEach(() => mockIpcCommands({}));
@@ -53,7 +44,7 @@ describe("SpawnConversionService", () => {
   });
 
   it("ignores repeated and opposite actions while the shared flow is running", async () => {
-    const response = deferred();
+    const response = deferred<SpawnConversionResult>();
 
     mockIpcCommands({ [ESpawnCommand.PACK_FILE]: () => response.promise });
 
@@ -75,7 +66,7 @@ describe("SpawnConversionService", () => {
   });
 
   it("also refuses a conversion in a new tool scope while the root jobs service tracks one", async () => {
-    const response = deferred();
+    const response = deferred<SpawnConversionResult>();
 
     mockIpcCommands({ [ESpawnCommand.PACK_FILE]: () => response.promise });
 
@@ -96,7 +87,7 @@ describe("SpawnConversionService", () => {
   });
 
   it("keeps a cancelled job exclusive until the backend settles and reports completed writes as success", async () => {
-    const response = deferred();
+    const response = deferred<SpawnConversionResult>();
 
     mockIpcCommands({ [ESpawnCommand.PACK_FILE]: () => response.promise });
 
@@ -193,7 +184,7 @@ describe("SpawnConversionService", () => {
   });
 
   it("stops publishing after deactivation while the job continues and notifies once", async () => {
-    const response = deferred();
+    const response = deferred<SpawnConversionResult>();
 
     mockIpcCommands({ [ESpawnCommand.PACK_FILE]: () => response.promise });
 

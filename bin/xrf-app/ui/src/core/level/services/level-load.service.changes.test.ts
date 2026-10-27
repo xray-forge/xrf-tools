@@ -23,6 +23,7 @@ import {
 } from "@/core/level/fixtures/level.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
+import { flush } from "@/fixtures/utils/promise";
 
 import { LevelLoadService } from "./level-load.service";
 
@@ -33,12 +34,6 @@ function listing(objects: number): LevelSpawnObjectsDescription {
     objects: Array.from({ length: objects }, (_, index: number) => mockLevelSpawnObject({ index, visual: 0 })),
     visuals: ["dynamics\\box"],
   };
-}
-
-async function flush(): Promise<void> {
-  for (let index: number = 0; index < 10; index += 1) {
-    await Promise.resolve();
-  }
 }
 
 function countListings(): number {

@@ -9,6 +9,7 @@ import { EApplicationId } from "@/core/routing/application";
 import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import { IPathRecord } from "@/core/ui/form/path-recents";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
+import { deferred, IDeferred } from "@/fixtures/utils/promise";
 
 const mockOpen = jest.mocked(open<{ multiple: false }>);
 
@@ -24,25 +25,6 @@ describe("usePathField", () => {
     return renderHook(() => usePathField({ application: EApplicationId.ARCHIVES_PACKER, id: "source", seed }), {
       wrapper: StrictMode,
     });
-  }
-
-  interface IDeferred<T> {
-    promise: Promise<T>;
-    resolve: (value: T) => void;
-    reject: (reason: unknown) => void;
-  }
-
-  /** A guess whose completion the test decides, which is what every race here is about. */
-  function deferred<T>(): IDeferred<T> {
-    let resolve!: (value: T) => void;
-    let reject!: (reason: unknown) => void;
-
-    const promise: Promise<T> = new Promise<T>((resolveIt, rejectIt) => {
-      resolve = resolveIt;
-      reject = rejectIt;
-    });
-
-    return { promise, resolve, reject };
   }
 
   beforeEach(() => {

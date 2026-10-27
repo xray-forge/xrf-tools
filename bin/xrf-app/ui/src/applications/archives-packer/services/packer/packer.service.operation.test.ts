@@ -13,19 +13,10 @@ import { mockArchivePackResult } from "@/core/archive/fixtures/archive.mocks";
 import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 
 const CONFIG: ArchivePackConfig = { ...FALLBACK_PACK_CONFIG, source: "C:\\in", destination: "C:\\out" };
 const RESULT: ArchivePackResult = mockArchivePackResult();
-
-function mockDeferred<T>() {
-  let resolve: (value: T) => void = noop;
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-
-  return { promise, resolve };
-}
 
 function mockPacker() {
   const descriptor = mockInjectedService(PackerService);
@@ -39,7 +30,7 @@ describe("PackerService operation", () => {
   beforeEach(resetMockInvoke);
 
   it("locks configuration I/O for a locally started pack", async () => {
-    const response = mockDeferred<ArchivePackResult>();
+    const response = deferred<ArchivePackResult>();
 
     mockIpcCommands({ [EArchivesCommand.PACK_DIRECTORY]: () => response.promise });
 
@@ -98,7 +89,7 @@ describe("PackerService operation", () => {
   });
 
   it("keeps the eventual partial result after requesting pack cancellation", async () => {
-    const response = mockDeferred<ArchivePackResult>();
+    const response = deferred<ArchivePackResult>();
 
     mockIpcCommands({ [EArchivesCommand.PACK_DIRECTORY]: () => response.promise });
 
@@ -121,7 +112,7 @@ describe("PackerService operation", () => {
   });
 
   it("unlocks an abandoned view without cancelling the backend pack or publishing its response", async () => {
-    const response = mockDeferred<ArchivePackResult>();
+    const response = deferred<ArchivePackResult>();
 
     mockIpcCommands({ [EArchivesCommand.PACK_DIRECTORY]: () => response.promise });
 
@@ -142,7 +133,7 @@ describe("PackerService operation", () => {
   });
 
   it("keeps the old configuration and pack result until an import succeeds", async () => {
-    const response = mockDeferred<ArchivePackConfig>();
+    const response = deferred<ArchivePackConfig>();
 
     mockIpcCommands({
       [EArchivesCommand.PACK_DIRECTORY]: RESULT,
@@ -189,7 +180,7 @@ describe("PackerService operation", () => {
   });
 
   it("clears a previous pack error while exporting without discarding its partial result", async () => {
-    const response = mockDeferred<null>();
+    const response = deferred<null>();
 
     mockIpcCommands({ [EArchivesCommand.EXPORT_PACK_CONFIG]: () => response.promise });
 

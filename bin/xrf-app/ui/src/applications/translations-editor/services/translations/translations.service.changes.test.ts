@@ -12,6 +12,7 @@ import { createRoots } from "@/core/assets/lib/roots";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { flush } from "@/fixtures/utils/promise";
 
 import { TranslationsService } from "./translations.service";
 
@@ -37,12 +38,6 @@ function createProject(value: string): TranslationProjectDescriptor {
     },
     findings: [],
   };
-}
-
-async function flush(): Promise<void> {
-  for (let index: number = 0; index < 10; index += 1) {
-    await Promise.resolve();
-  }
 }
 
 function countReads(): number {

@@ -11,7 +11,7 @@ import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT } from "@/core/notifications/lib";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 
 const RESULT: LtxProjectVerifyResult = {
   outcome: "completed",
@@ -76,12 +76,9 @@ describe("VerifierService operation", () => {
   });
 
   it("stops publication on deactivation while the backend still finishes and notifies", async () => {
-    let finish: (result: LtxProjectVerifyResult) => void = noop;
-    const response = new Promise<LtxProjectVerifyResult>((resolve) => {
-      finish = resolve;
-    });
+    const response = deferred<LtxProjectVerifyResult>();
 
-    mockIpcCommands({ [EConfigsCommand.VERIFY_DIRECTORY]: () => response });
+    mockIpcCommands({ [EConfigsCommand.VERIFY_DIRECTORY]: () => response.promise });
 
     const { service, container } = mockInjectedService(VerifierService);
     const jobs = container.get(JobsService);
@@ -97,9 +94,9 @@ describe("VerifierService operation", () => {
 
     expect(jobs.jobs).toHaveLength(1);
 
-    finish(RESULT);
+    response.resolve(RESULT);
     await running;
-    await response;
+    await response.promise;
 
     expect(service.operation.result).toBeNull();
     expect(jobs.jobs).toHaveLength(0);

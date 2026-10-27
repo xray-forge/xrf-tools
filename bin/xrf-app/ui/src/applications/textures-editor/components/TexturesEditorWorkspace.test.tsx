@@ -29,8 +29,8 @@ import {
 } from "@/core/textures/fixtures/texture.mocks";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { mockContainer } from "@/fixtures/utils/container";
+import { deferred } from "@/fixtures/utils/promise";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { noop } from "@/lib/callbacks/noop";
 
 import { TexturesEditorWorkspace } from "./TexturesEditorWorkspace";
 
@@ -102,15 +102,6 @@ async function renderWorkspace(
   return { container, editorService: container.get(TextureEditorService), render, selectionService };
 }
 
-function mockDeferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
-  let resolve: (value: T) => void = noop;
-  const promise: Promise<T> = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-
-  return { promise, resolve };
-}
-
 describe("TexturesEditorWorkspace", () => {
   beforeEach(() => resetMockInvoke());
 
@@ -171,7 +162,7 @@ describe("TexturesEditorWorkspace", () => {
   it("stays open while a bump pair is being generated", async () => {
     // The pair is written beside the texture when the job finishes, and the descriptor is pointed at it only while the
     // editor is still there to take the edit.
-    const answer = mockDeferred<TextureMakeBumpOutcome>();
+    const answer = deferred<TextureMakeBumpOutcome>();
     const {
       container,
       render: { getByRole },
@@ -207,7 +198,7 @@ describe("TexturesEditorWorkspace", () => {
   });
 
   it("stays open while encodings are being compared", async () => {
-    const answer = mockDeferred<TextureEncodingComparison>();
+    const answer = deferred<TextureEncodingComparison>();
     const {
       container,
       render: { getByRole },

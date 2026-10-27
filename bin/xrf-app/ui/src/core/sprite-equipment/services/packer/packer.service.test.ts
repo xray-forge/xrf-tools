@@ -11,7 +11,7 @@ import { EMIT_NOTIFICATION_EVENT } from "@/core/notifications/lib";
 import { mockEquipmentSpritePackResult } from "@/core/sprite-equipment/fixtures/sprite.mocks";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 
 const RESULT: EquipmentSpritePackResult = mockEquipmentSpritePackResult();
 
@@ -59,12 +59,9 @@ describe("SpriteEquipmentPackerService", () => {
   });
 
   it("abandons publication on deactivation while the backend finishes and notifies", async () => {
-    let finish: (result: EquipmentSpritePackResult) => void = noop;
-    const response = new Promise<EquipmentSpritePackResult>((resolve) => {
-      finish = resolve;
-    });
+    const response = deferred<EquipmentSpritePackResult>();
 
-    mockIpcCommands({ [ESpriteEquipmentCommand.PACK_SPRITE]: () => response });
+    mockIpcCommands({ [ESpriteEquipmentCommand.PACK_SPRITE]: () => response.promise });
 
     const { service, container } = mockInjectedService(SpriteEquipmentPackerService);
     const jobs = container.get(JobsService);
@@ -80,9 +77,9 @@ describe("SpriteEquipmentPackerService", () => {
 
     expect(jobs.jobs).toHaveLength(1);
 
-    finish(RESULT);
+    response.resolve(RESULT);
     await running;
-    await response;
+    await response.promise;
 
     expect(service.operation.result).toBeNull();
     expect(jobs.jobs).toHaveLength(0);

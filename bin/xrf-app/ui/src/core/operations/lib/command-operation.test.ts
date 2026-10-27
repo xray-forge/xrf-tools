@@ -6,20 +6,10 @@ import { Logger } from "@xrf/logging";
 
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockContainer } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 
 import { CommandOperation } from "./command-operation";
 import { CommandReporter, ICommandReport } from "./command-reporter";
-
-function deferred<T>() {
-  let resolve: (value: T) => void = noop;
-
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-
-  return { promise, resolve };
-}
 
 function setup() {
   const bus: EventBus = mockContainer().get(EventBus);

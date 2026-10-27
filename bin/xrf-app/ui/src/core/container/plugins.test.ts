@@ -3,7 +3,7 @@ import { Container, Injectable, OnDeactivation, OnProvision, WireStatus } from "
 import { flowResult, isObservableProp, Observable, reaction } from "@wirestate/mobx";
 import { call, LatestFlow, TFlow } from "@xrf/flow";
 
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 
 import { createContainerPlugins } from "./plugins";
 
@@ -60,16 +60,12 @@ describe("createContainerPlugins", () => {
     const service = container.get(PluginTestService);
     const status = WireStatus.for(service);
 
-    let resolve: (value: number) => void = noop;
-
-    const response = new Promise<number>((settle) => {
-      resolve = settle;
-    });
+    const response = deferred<number>();
 
     container.provision();
 
     const firstCycle = status.provisionId;
-    const loading = flowResult(service.load(response));
+    const loading = flowResult(service.load(response.promise));
 
     container.deprovision();
     container.provision();
@@ -83,8 +79,8 @@ describe("createContainerPlugins", () => {
     expect(service.events).toEqual(["provision", "provision", "deactivation", "settled"]);
     expect(status.isDeactivated).toBe(true);
 
-    resolve(42);
-    await response;
+    response.resolve(42);
+    await response.promise;
 
     expect(service.result).toBe(0);
   });

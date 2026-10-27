@@ -9,7 +9,7 @@ import { Logger } from "@xrf/logging";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockApplicationScope, mockInjectedService } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred, flush } from "@/fixtures/utils/promise";
 
 import { SessionRootResource } from "./session-root-resource";
 
@@ -38,16 +38,6 @@ class UnrestoredHolderService {
   });
 }
 
-function deferred<T>() {
-  let resolve: (value: T) => void = noop;
-
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-
-  return { promise, resolve };
-}
-
 function setup() {
   const { container, service } = mockInjectedService(HolderService, mockApplicationScope("exports-explorer"));
   const raised: Array<INotificationPayload> = [];
@@ -59,12 +49,6 @@ function setup() {
     );
 
   return { container, raised, root: service.root };
-}
-
-async function flush(): Promise<void> {
-  for (let index: number = 0; index < 5; index += 1) {
-    await Promise.resolve();
-  }
 }
 
 function opened(value: string) {

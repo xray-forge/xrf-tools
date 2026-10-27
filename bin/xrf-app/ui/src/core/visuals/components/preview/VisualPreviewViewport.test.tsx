@@ -20,17 +20,12 @@ import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/vis
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualRenderService } from "@/core/visuals/services/visual-render.service";
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
+import { flush } from "@/fixtures/utils/promise";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { VisualPreviewViewport } from "./VisualPreviewViewport";
 
 let bindings: Array<Binding>;
-
-async function flush(): Promise<void> {
-  for (let index: number = 0; index < 10; index += 1) {
-    await Promise.resolve();
-  }
-}
 
 beforeEach(() => {
   resetMockInvoke();

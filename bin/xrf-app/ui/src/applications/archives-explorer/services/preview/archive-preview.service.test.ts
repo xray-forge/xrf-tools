@@ -13,10 +13,9 @@ import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/core/archive/f
 import { EPathEntryKind } from "@/core/path/entry-kind";
 import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { deferred } from "@/fixtures/utils/promise";
 
 import { ArchivePreviewService } from "./archive-preview.service";
-
-function ignoreReadResult(): void {}
 
 function mockExplorer(files: Array<ArchiveFileDescriptor>): IArchivesExplorerMock {
   return mockArchivesExplorer(mockSessionSnapshot(mockArchivesVolumes(files)));
@@ -104,18 +103,12 @@ describe("ArchivePreviewService", () => {
   it("allows only the latest selection to publish a completed read", async () => {
     const first = mockArchiveFileDescriptor({ name: "configs\\first.ltx" });
     const second = mockArchiveFileDescriptor({ name: "configs\\second.ltx" });
-    let resolveFirst: (value: ArchiveReadResult) => void = ignoreReadResult;
-    let resolveSecond: (value: ArchiveReadResult) => void = ignoreReadResult;
-    const firstResult: Promise<ArchiveReadResult> = new Promise((resolve) => {
-      resolveFirst = resolve;
-    });
-    const secondResult: Promise<ArchiveReadResult> = new Promise((resolve) => {
-      resolveSecond = resolve;
-    });
+    const firstResult = deferred<ArchiveReadResult>();
+    const secondResult = deferred<ArchiveReadResult>();
 
     mockIpcCommands({
       [EArchivesCommand.READ_FILE]: mockSessionRead((args?: Record<string, unknown>) =>
-        args?.name === first.name ? firstResult : secondResult
+        args?.name === first.name ? firstResult.promise : secondResult.promise
       ),
     });
 
@@ -123,9 +116,9 @@ describe("ArchivePreviewService", () => {
     const firstRead: Promise<void> = flowResult(service.selectFile(first));
     const secondRead: Promise<void> = flowResult(service.selectFile(second));
 
-    resolveSecond({ name: second.name, content: "second", size: 6 });
+    secondResult.resolve({ name: second.name, content: "second", size: 6 });
     await secondRead;
-    resolveFirst({ name: first.name, content: "first", size: 5 });
+    firstResult.resolve({ name: first.name, content: "first", size: 5 });
     await firstRead;
 
     expect(service.selectedEntry).toStrictEqual(second);

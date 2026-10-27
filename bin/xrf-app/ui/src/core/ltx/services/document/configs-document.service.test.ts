@@ -18,7 +18,7 @@ import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { mockSessionRead } from "@/fixtures/mocks/session.mocks";
 import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 
 function mockDocumentOf(path: string): ConfigsDocument {
   return {
@@ -43,18 +43,15 @@ async function mockOpenedService(): Promise<IInjectedServiceMockDescriptor<Confi
 
 describe("ConfigsDocumentService", () => {
   it("keeps a cleared document empty when its read finishes", async () => {
-    let resolve: (document: ConfigsDocument) => void = noop;
-    const response = new Promise<ConfigsDocument>((settle) => {
-      resolve = settle;
-    });
+    const response = deferred<ConfigsDocument>();
 
-    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: mockSessionRead(() => response) });
+    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: mockSessionRead(() => response.promise) });
 
     const { service } = await mockOpenedService();
     const reading = service.select("system.ltx");
 
     service.clear();
-    resolve(mockDocumentOf("system.ltx"));
+    response.resolve(mockDocumentOf("system.ltx"));
     await reading;
 
     expect(service.selected).toBeNull();
@@ -63,18 +60,15 @@ describe("ConfigsDocumentService", () => {
   });
 
   it("keeps a cleared document idle when its read fails", async () => {
-    let reject: (error: Error) => void = noop;
-    const response = new Promise<ConfigsDocument>((_resolve, fail) => {
-      reject = fail;
-    });
+    const response = deferred<ConfigsDocument>();
 
-    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: mockSessionRead(() => response) });
+    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: mockSessionRead(() => response.promise) });
 
     const { service } = await mockOpenedService();
     const reading = service.select("system.ltx");
 
     service.clear();
-    reject(new Error("Project closed"));
+    response.reject(new Error("Project closed"));
     await reading;
 
     expect(service.document.isIdle).toBe(true);
@@ -84,24 +78,21 @@ describe("ConfigsDocumentService", () => {
   it("keeps the current document visible until its replacement arrives", async () => {
     const previous = mockDocumentOf("previous.ltx");
     const replacement = mockDocumentOf("replacement.ltx");
-    let resolve: (document: ConfigsDocument) => void = noop;
-    const response = new Promise<ConfigsDocument>((settle) => {
-      resolve = settle;
-    });
+    const response = deferred<ConfigsDocument>();
 
     mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: mockSessionRead(previous) });
 
     const { service } = await mockOpenedService();
 
     await service.select("previous.ltx");
-    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: mockSessionRead(() => response) });
+    mockIpcCommands({ [EConfigsCommand.READ_DOCUMENT]: mockSessionRead(() => response.promise) });
 
     const reading = service.select("replacement.ltx");
 
     expect(service.document.isLoading).toBe(true);
     expect(service.document.value).toEqual(previous);
 
-    resolve(replacement);
+    response.resolve(replacement);
     await reading;
 
     expect(service.document.isReady).toBe(true);
@@ -164,16 +155,13 @@ describe("ConfigsDocumentService", () => {
       service.setMode(EConfigsDocumentMode.RESOLVED);
 
       const projectValue = project.project.value;
-      let finish: () => void = noop;
-      const pending = new Promise<void>((resolve, reject) => {
-        finish = () => (outcome === "succeed" ? resolve() : reject(new Error("Late read failed")));
-      });
+      const pending = deferred<void>();
 
       mockIpcCommands({
-        [EConfigsCommand.READ_DOCUMENT]: mockSessionRead(() => pending.then(() => mockDocumentOf("other.ltx"))),
-        [EConfigsCommand.READ_RESOLVED_SECTIONS]: mockSessionRead(() => pending.then(() => [section])),
-        [EConfigsCommand.LIST_FINDINGS]: mockSessionRead(() => pending.then(() => findings)),
-        [EConfigsCommand.READ_SECTION_SCHEME]: mockSessionRead(() => pending.then(() => report)),
+        [EConfigsCommand.READ_DOCUMENT]: mockSessionRead(() => pending.promise.then(() => mockDocumentOf("other.ltx"))),
+        [EConfigsCommand.READ_RESOLVED_SECTIONS]: mockSessionRead(() => pending.promise.then(() => [section])),
+        [EConfigsCommand.LIST_FINDINGS]: mockSessionRead(() => pending.promise.then(() => findings)),
+        [EConfigsCommand.READ_SECTION_SCHEME]: mockSessionRead(() => pending.promise.then(() => report)),
       });
 
       const reads = [
@@ -199,7 +187,12 @@ describe("ConfigsDocumentService", () => {
 
       const revision = resolved.revision;
 
-      finish();
+      if (outcome === "succeed") {
+        pending.resolve();
+      } else {
+        pending.reject(new Error("Late read failed"));
+      }
+
       await Promise.all(reads);
 
       expect(service.selected).toBeNull();
@@ -226,19 +219,16 @@ describe("ConfigsDocumentService", () => {
   );
 
   it("abandons an index read when the document selection is cleared", async () => {
-    let finish: (index: LtxResolvedIndex) => void = noop;
-    const pending = new Promise<LtxResolvedIndex>((resolve) => {
-      finish = resolve;
-    });
+    const pending = deferred<LtxResolvedIndex>();
 
-    mockIpcCommands({ [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(() => pending) });
+    mockIpcCommands({ [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(() => pending.promise) });
 
     const { service, container } = await mockOpenedService();
     const resolved = container.get(ConfigsResolvedService);
     const reading = resolved.open("system.ltx");
 
     service.clear();
-    finish({ dialect: "ltx", diagnostics: [], entry: "system.ltx", sections: [] });
+    pending.resolve({ dialect: "ltx", diagnostics: [], entry: "system.ltx", sections: [] });
     await reading;
 
     expect(resolved.entry).toBeNull();

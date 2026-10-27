@@ -8,16 +8,13 @@ import { ConfigsFindingsService } from "@/core/ltx/services/findings";
 import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { mockSessionRead } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 
 describe("ConfigsFindingsService", () => {
   it("keeps cleared findings idle when verification finishes", async () => {
-    let resolve: (findings: Array<LtxAnchoredFinding>) => void = noop;
-    const response = new Promise<Array<LtxAnchoredFinding>>((settle) => {
-      resolve = settle;
-    });
+    const response = deferred<Array<LtxAnchoredFinding>>();
 
-    mockIpcCommands({ [EConfigsCommand.LIST_FINDINGS]: mockSessionRead(() => response) });
+    mockIpcCommands({ [EConfigsCommand.LIST_FINDINGS]: mockSessionRead(() => response.promise) });
 
     const { service, container } = mockInjectedService(ConfigsFindingsService, [ConfigsProjectService]);
 
@@ -26,7 +23,7 @@ describe("ConfigsFindingsService", () => {
     const verifying = service.open("system.ltx");
 
     service.clear();
-    resolve([]);
+    response.resolve([]);
     await verifying;
 
     expect(service.entry).toBeNull();

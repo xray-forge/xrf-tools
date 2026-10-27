@@ -15,7 +15,7 @@ import { Nullable } from "@xrf/types";
 import { IJobNotice, IJobOutcome, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 
 import { JobsService } from "./jobs.service";
 
@@ -31,22 +31,18 @@ function progress(completed: number, total: Nullable<number> = 10): JobProgress 
 
 /** A descriptor whose command never settles, so the job stays running for the assertion. */
 function pending(): { descriptor: Parameters<JobsService["run"]>[0]; settle: (value: unknown) => void } {
-  let settle: (value: unknown) => void = noop;
-
-  const promise: Promise<unknown> = new Promise((resolve) => {
-    settle = resolve;
-  });
+  const command = deferred<unknown>();
 
   return {
     descriptor: {
       kind: ARCHIVES_JOB_PACK,
-      invoke: () => promise,
+      invoke: () => command.promise,
       describe: (): IJobNotice => ({
         severity: ENotificationSeverity.SUCCESS,
         title: "Packed",
       }),
     } as Parameters<JobsService["run"]>[0],
-    settle,
+    settle: command.resolve,
   };
 }
 
@@ -247,19 +243,15 @@ describe("JobsService", () => {
       return { severity: ENotificationSeverity.INFO, source: "archives-packer", title: "Stopped" };
     });
 
-    let settle: (value: unknown) => void = noop;
-    const pendingPromise: Promise<unknown> = new Promise((resolve) => {
-      settle = resolve;
-    });
-
+    const command = deferred<unknown>();
     const run = service.run({
       kind: ARCHIVES_JOB_PACK,
-      invoke: () => pendingPromise,
+      invoke: () => command.promise,
       describe,
     });
 
     service.cancel(run.id);
-    settle(null);
+    command.resolve(null);
 
     await run.promise;
 

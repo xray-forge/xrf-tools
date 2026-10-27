@@ -18,6 +18,7 @@ import { EMPTY_LEVEL_SPAWN_REPORT, isLevelSpawnReading } from "@/core/level/lib/
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { flush } from "@/fixtures/utils/promise";
 
 import { LevelLoadService } from "./level-load.service";
 
@@ -32,12 +33,6 @@ const SPAWN: LevelSpawnObjectsDescription = {
 
 function countCalls(command: string): number {
   return mockInvoke.mock.calls.filter(([name]) => name === command).length;
-}
-
-async function flush(): Promise<void> {
-  for (let index: number = 0; index < 10; index += 1) {
-    await Promise.resolve();
-  }
 }
 
 /** Arms an open of a one-sector level whose spawn lists the two objects above. */

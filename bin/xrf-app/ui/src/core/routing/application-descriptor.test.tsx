@@ -15,6 +15,7 @@ import { createApplicationDescriptor } from "@/core/routing/application-descript
 import { CurrentApplicationProvider } from "@/core/routing/current-application.context";
 import { ApplicationScope } from "@/core/shell/ApplicationScope";
 import { ApplicationShell } from "@/core/shell/ApplicationShell";
+import { deferred } from "@/fixtures/utils/promise";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { noop } from "@/lib/callbacks/noop";
 
@@ -134,11 +135,8 @@ describe("createApplicationDescriptor", () => {
   });
 
   it("waits for bindings before rendering the component and uses the same load", async () => {
-    let resolveRuntime: (runtime: IApplicationRuntime) => void = noop;
-    const pending = new Promise<IApplicationRuntime>((resolve) => {
-      resolveRuntime = resolve;
-    });
-    const loadRuntime = jest.fn(() => pending);
+    const pending = deferred<IApplicationRuntime>();
+    const loadRuntime = jest.fn(() => pending.promise);
     const application = createApplicationDescriptor(METADATA, {
       load: loadRuntime,
     });
@@ -155,7 +153,7 @@ describe("createApplicationDescriptor", () => {
     expect(view.getByText("Loading runtime")).toBeInTheDocument();
     expect(constructed).not.toHaveBeenCalled();
 
-    await act(async () => resolveRuntime(RUNTIME));
+    await act(async () => pending.resolve(RUNTIME));
 
     expect(view.getByText("Loaded runtime service")).toBeInTheDocument();
     expect(view.queryByText("Loading runtime")).not.toBeInTheDocument();

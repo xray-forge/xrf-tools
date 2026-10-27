@@ -15,6 +15,7 @@ import { LevelWeatherService } from "@/core/level/services/level-weather.service
 import { clearLocalStorage } from "@/core/storage";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
+import { flush } from "@/fixtures/utils/promise";
 
 const READ_WEATHER: string = ELevelsCommand.DESCRIBE_WEATHER;
 /** The level `restore_level` restores, as `mockSessionResponse` names a call carrying no session. */
@@ -22,12 +23,6 @@ const SESSION: string = "fixture-session";
 
 function countReads(): number {
   return mockInvoke.mock.calls.filter(([name]) => name === READ_WEATHER).length;
-}
-
-async function flush(): Promise<void> {
-  for (let index: number = 0; index < 10; index += 1) {
-    await Promise.resolve();
-  }
 }
 
 /** Provisions the weather over a restored level, once its first cycle plays. */

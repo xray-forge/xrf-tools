@@ -4,13 +4,13 @@ import { IIpcCommandSignatures } from "@xrf/ipc/commands/signatures";
 import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
 import { listMockInvokeCalls, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
-import { Nullable } from "@xrf/types";
 
 import { mockLoadedVisual, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { mockSessionRead, mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { deferred } from "@/fixtures/utils/promise";
 
 const BAKE: VisualMotionBake = mockVisualMotionBake();
 
@@ -78,16 +78,9 @@ describe("VisualMotionService", () => {
   });
 
   it("does not repopulate motions listed for a model that was cleared mid-flight", async () => {
-    const listing: { resolve: Nullable<(names: Array<string>) => void> } = { resolve: null };
+    const listing = deferred<Array<string>>();
 
-    mockIpcCommands({
-      [EVisualsCommand.LIST_MOTIONS]: mockSessionRead(
-        () =>
-          new Promise<Array<string>>((resolve) => {
-            listing.resolve = resolve;
-          })
-      ),
-    });
+    mockIpcCommands({ [EVisualsCommand.LIST_MOTIONS]: mockSessionRead(() => listing.promise) });
 
     const { service } = mockService();
 
@@ -95,7 +88,7 @@ describe("VisualMotionService", () => {
     const listed: Promise<void> = service.list() as unknown as Promise<void>;
 
     service.clear();
-    listing.resolve?.(["norm_walk_fwd_1"]);
+    listing.resolve(["norm_walk_fwd_1"]);
 
     await listed;
 
@@ -275,11 +268,7 @@ describe("VisualMotionService playback state", () => {
     const first: VisualMotionBake = mockVisualMotionBake({ name: "norm_walk_fwd_1" });
     const second: VisualMotionBake = mockVisualMotionBake({ name: "norm_idle_0", frameCount: 5 });
 
-    let releaseSecond: Nullable<() => void> = null;
-
-    const pendingSecond: Promise<VisualMotionBake> = new Promise((resolve) => {
-      releaseSecond = () => resolve(second);
-    });
+    const pendingSecond = deferred<VisualMotionBake>();
 
     mockIpcCommands({
       [EVisualsCommand.OPEN_MOTION]: mockSessionResponse((parameters?: Record<string, unknown>) => {
@@ -287,7 +276,7 @@ describe("VisualMotionService playback state", () => {
           return first;
         }
 
-        return pendingSecond;
+        return pendingSecond.promise;
       }),
     });
 
@@ -306,7 +295,7 @@ describe("VisualMotionService playback state", () => {
     expect(service.posed.value?.name).toBe(first.name);
     expect(service.frame).toBe(2);
 
-    (releaseSecond as unknown as () => void)();
+    pendingSecond.resolve(second);
     await opening;
 
     expect(service.posed.value?.name).toBe(second.name);
