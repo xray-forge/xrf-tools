@@ -1,4 +1,5 @@
 import { formatCount } from "@xrf/format";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { TranslationVerifyResult } from "@xrf/ipc/types/xrf-translation";
 
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
@@ -25,7 +26,7 @@ export function describeTranslationVerifyOutcome(
     return describeJobFailure("Could not check translations", sources, error);
   }
 
-  if (result?.outcome === "cancelled") {
+  if (result?.outcome === EJobOutcome.CANCELLED) {
     return {
       details: [`Checked ${formatCount(result.checkedTranslationsCount)} id(s) before stopping.`, sources].join("\n"),
       severity: ENotificationSeverity.INFO,

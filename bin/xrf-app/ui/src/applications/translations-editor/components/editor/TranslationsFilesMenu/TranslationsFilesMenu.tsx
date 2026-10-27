@@ -1,4 +1,5 @@
 import { default as CircleIcon } from "@mui/icons-material/Circle";
+import { formatCount } from "@xrf/format";
 import { TranslationFile } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
@@ -20,7 +21,7 @@ function toFileRow(entry: IFileEntry): IEditorSearchResultRow {
   return {
     id: entry.name,
     label: entry.name,
-    description: `${entry.entryCount} entries`,
+    description: `${formatCount(entry.entryCount)} entries`,
     // The 8px dot names no step of the type scale, so its size stays a raw value.
     icon: entry.isDirty ? (
       <CircleIcon aria-label={"Unsaved changes"} className={"text-badge text-warning"} />

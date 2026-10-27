@@ -1,4 +1,5 @@
 import { GridColDef } from "@mui/x-data-grid";
+import { formatCount } from "@xrf/format";
 import {
   TranslationFinding,
   TranslationVerifyLanguageSummary,
@@ -140,10 +141,10 @@ export function TranslationsVerifyResult({
  */
 function describeHeadline(result: TranslationVerifyResult, incomplete: number): string {
   if (result.problems.length) {
-    return `${result.problems.length} problem(s) the game would refuse or show wrong`;
+    return `${formatCount(result.problems.length)} problem(s) the game would refuse or show wrong`;
   }
 
   return result.missingTranslationsCount
-    ? `${result.missingTranslationsCount} translation(s) missing across ${incomplete} language(s)`
-    : `Every language is complete across ${result.checkedTranslationsCount} id(s)`;
+    ? `${formatCount(result.missingTranslationsCount)} translation(s) missing across ${formatCount(incomplete)} language(s)`
+    : `Every language is complete across ${formatCount(result.checkedTranslationsCount)} id(s)`;
 }

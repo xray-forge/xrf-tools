@@ -1,6 +1,7 @@
 import { default as ReportProblemIcon } from "@mui/icons-material/ReportProblem";
 import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
+import { formatCount } from "@xrf/format";
 import { TranslationFinding, TranslationProjectDescriptor } from "@xrf/ipc/types/xrf-translation";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
@@ -55,10 +56,10 @@ export function TranslationsEditor(): ReactElement {
   );
 
   useEditorStatus([
-    `${fileCount} files`,
-    `${project?.languages.length ?? 0} languages`,
-    ...(dirtyCount ? [`${dirtyCount} unsaved`] : []),
-    ...(project?.findings.length ? [`${project.findings.length} problems`] : []),
+    `${formatCount(fileCount)} ${fileCount === 1 ? "file" : "files"}`,
+    `${formatCount(project?.languages.length ?? 0)} languages`,
+    ...(dirtyCount ? [`${formatCount(dirtyCount)} unsaved`] : []),
+    ...(findings.length ? [`${formatCount(findings.length)} problems`] : []),
   ]);
 
   useEditorLifecycle({
