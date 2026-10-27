@@ -21,7 +21,7 @@ import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
  */
 @Injectable()
 export class VisualMotionService {
-  public readonly log: Logger = new Logger(this.constructor.name);
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** The posed motion, an opening of this viewer's own beside the model's: what it plays is its view, not the model. */
   public readonly posed: SessionRootResource<VisualMotionBake> = new SessionRootResource(this.log, {
