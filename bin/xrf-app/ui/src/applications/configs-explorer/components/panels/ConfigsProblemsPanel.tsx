@@ -3,8 +3,8 @@ import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { ConfigsDocumentService } from "@/applications/configs-explorer/services/document";
-import { ConfigsFindingsService } from "@/applications/configs-explorer/services/findings";
+import { ConfigsDocumentService } from "@/applications/configs-explorer/services/configs-document";
+import { ConfigsFindingsService } from "@/applications/configs-explorer/services/configs-findings";
 import { toFindingMessage, toOrderedFindings } from "@/core/ltx/lib/findings";
 import { EditorProblemsPanel, IEditorProblem, IEditorProblemLocation } from "@/core/shell/editor/EditorProblemsPanel";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";

@@ -10,7 +10,7 @@ import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { IJobDescriptor, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
-import { JobsService } from "@/core/jobs/services/jobs";
+import { JobsService } from "@/core/jobs/services/jobs.service";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { mockContainer } from "@/fixtures/utils/container";
 import { deferred } from "@/fixtures/utils/promise";

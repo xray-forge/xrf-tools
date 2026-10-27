@@ -1,4 +1,4 @@
-import { ConfigsFormatterService } from "@/applications/configs-formatter/services/formatter";
+import { ConfigsFormatterService } from "@/applications/configs-formatter/services/configs-formatter.service";
 import { ContainerDefinition } from "@/lib/container/container-definition";
 
 export { ConfigsFormatterApplication as Component } from "./ConfigsFormatterApplication";

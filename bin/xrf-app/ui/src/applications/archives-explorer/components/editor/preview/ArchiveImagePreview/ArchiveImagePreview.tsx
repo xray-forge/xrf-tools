@@ -6,7 +6,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError/ArchivePreviewError";
-import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
 import { cn } from "@/core/theme/class-name";

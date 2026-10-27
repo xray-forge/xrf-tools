@@ -21,10 +21,10 @@ import {
   LEVEL_SUN_SHAFTS_MINIMUM_LIMITS,
   LEVEL_SUN_SHAFTS_STEPS_LIMITS,
 } from "@/core/level/lib/weather/level-sun-shafts-options";
-import { LevelLoadService } from "@/core/level/services/level-load.service";
-import { LevelRenderService } from "@/core/level/services/level-render.service";
-import { LevelViewService } from "@/core/level/services/level-view.service";
-import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
+import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
+import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
+import { LevelWeatherService } from "@/core/level/services/level-weather/level-weather.service";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";

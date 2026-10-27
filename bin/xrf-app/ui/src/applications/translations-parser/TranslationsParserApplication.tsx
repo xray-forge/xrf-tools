@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { TranslationsParserService } from "@/applications/translations-parser/services/parser";
+import { TranslationsParserService } from "@/applications/translations-parser/services/translations-parser.service";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
 import { TranslationLanguageField } from "@/core/translations/components/TranslationLanguageField";

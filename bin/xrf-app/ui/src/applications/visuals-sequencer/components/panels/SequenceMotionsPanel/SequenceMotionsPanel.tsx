@@ -5,8 +5,8 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo, useState } from "react";
 
 import { SequenceMotionRow } from "@/applications/visuals-sequencer/components/panels/SequenceMotionsPanel/SequenceMotionRow";
-import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
-import { SequencerService } from "@/applications/visuals-sequencer/services/sequencer";
+import { VisualSequenceService } from "@/applications/visuals-sequencer/services/visual-sequence";
+import { VisualsSequencerService } from "@/applications/visuals-sequencer/services/visuals-sequencer";
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -22,7 +22,7 @@ export function SequenceMotionsPanel({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const sequencerService: SequencerService = useInjection(SequencerService);
+  const sequencerService: VisualsSequencerService = useInjection(VisualsSequencerService);
   const sequenceService: VisualSequenceService = useInjection(VisualSequenceService);
 
   const [filter, setFilter] = useState<string>("");

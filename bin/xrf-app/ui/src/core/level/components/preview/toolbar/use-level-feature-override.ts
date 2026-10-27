@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { useCallback, useMemo } from "react";
 
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
-import { LevelViewService } from "@/core/level/services/level-view.service";
+import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
 
 /** A group of features the view sets part of over the settings, rather than one value. */
 export type TLevelFeatureGroupKey = {

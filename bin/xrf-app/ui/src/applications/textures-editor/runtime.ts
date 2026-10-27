@@ -1,11 +1,11 @@
-import { TextureBumpService } from "@/applications/textures-editor/services/bump";
-import { TextureEditorService } from "@/applications/textures-editor/services/editor";
-import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
+import { TextureBumpService } from "@/applications/textures-editor/services/texture-bump";
+import { TextureEditorService } from "@/applications/textures-editor/services/texture-editor";
+import { TextureEncodingService } from "@/applications/textures-editor/services/texture-encoding";
 import { AssetService } from "@/core/assets/services";
-import { TextureRenderService } from "@/core/textures/services/render";
-import { TextureSelectionService } from "@/core/textures/services/selection";
-import { TextureSurfaceService } from "@/core/textures/services/surface";
-import { TextureViewService } from "@/core/textures/services/view";
+import { TextureRenderService } from "@/core/textures/services/texture-render";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
+import { TextureSurfaceService } from "@/core/textures/services/texture-surface";
+import { TextureViewService } from "@/core/textures/services/texture-view";
 import { ContainerDefinition } from "@/lib/container/container-definition";
 
 export const container: ContainerDefinition = {

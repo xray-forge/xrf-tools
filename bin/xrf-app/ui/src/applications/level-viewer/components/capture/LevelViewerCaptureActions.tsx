@@ -7,7 +7,7 @@ import {
 } from "@/applications/level-viewer/commands";
 import { LevelViewerCaptureDialog } from "@/applications/level-viewer/components/capture/LevelViewerCaptureDialog";
 import { LEVEL_VIEWER_FILE_MENU_EXTENSION } from "@/applications/level-viewer/menus";
-import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { LevelViewerCaptureService } from "@/applications/level-viewer/services/level-viewer-capture";
 import { useEditorMenus } from "@/core/shell/editor-shell";
 import { IMenuContribution } from "@/core/shell/menu/lib";
 

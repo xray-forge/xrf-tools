@@ -7,7 +7,7 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useState } from "react";
 
-import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { useMountEffect } from "@/lib/react/use-mount-effect";
 

@@ -6,7 +6,7 @@ import { ExportSourceContent } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { ExportsService } from "@/applications/exports-explorer/services/exports";
+import { ExportsService } from "@/applications/exports-explorer/services/exports.service";
 import { getSyntaxLanguage } from "@/core/syntax/lib/syntax-language";
 import { cn } from "@/core/theme/class-name";
 import { CodeView } from "@/core/ui/code/CodeView";

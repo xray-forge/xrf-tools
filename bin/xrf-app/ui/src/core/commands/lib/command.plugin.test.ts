@@ -3,7 +3,7 @@ import { Container, Injectable } from "@wirestate/core";
 import { BoundAction, Observable } from "@wirestate/mobx";
 
 import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
-import { KeybindCommandsService } from "@/core/commands/services/commands";
+import { KeybindCommandsService } from "@/core/commands/services/keybind-commands.service";
 import { mockContainer } from "@/fixtures/utils/container";
 
 import { KeybindCommand } from "./command.decorator";

@@ -7,7 +7,7 @@ import { ExportDescriptor, ExportsProject } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
-import { ExportsService } from "@/applications/exports-explorer/services/exports";
+import { ExportsService } from "@/applications/exports-explorer/services/exports.service";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";

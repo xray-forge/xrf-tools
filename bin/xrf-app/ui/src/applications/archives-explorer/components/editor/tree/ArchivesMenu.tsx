@@ -4,8 +4,8 @@ import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import { IArchiveEntry, IArchiveTreeItem, parseTree, toArchiveSelectionItemId } from "@/core/archive/lib";
 import { isLooseContainer } from "@/core/assets/lib";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";

@@ -6,9 +6,12 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { ConfigsDocumentView } from "@/applications/configs-explorer/components/ConfigsDocumentView";
-import { ConfigsDocumentService, EConfigsDocumentMode } from "@/applications/configs-explorer/services/document";
-import { ConfigsProjectService } from "@/applications/configs-explorer/services/project";
-import { ConfigsResolvedService } from "@/applications/configs-explorer/services/resolved";
+import {
+  ConfigsDocumentService,
+  EConfigsDocumentMode,
+} from "@/applications/configs-explorer/services/configs-document";
+import { ConfigsProjectService } from "@/applications/configs-explorer/services/configs-project";
+import { ConfigsResolvedService } from "@/applications/configs-explorer/services/configs-resolved";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";

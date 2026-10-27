@@ -4,7 +4,7 @@ import { getPathName } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
-import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
+import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/level-viewer-capture-result";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

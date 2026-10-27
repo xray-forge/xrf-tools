@@ -4,11 +4,11 @@ import { IPanZoomPoint } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
+import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/equipment-grid";
 import {
   IOpenEquipmentSprite,
   SpriteEquipmentEditorService,
-} from "@/applications/sprite-equipment-editor/services/editor";
-import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/grid";
+} from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
 import { describeEquipmentSheet, IEquipmentLayout, toCellAt } from "@/core/sprite-equipment/lib";
 import { cn } from "@/core/theme/class-name";
 import { IImageViewportView, ImageViewport } from "@/core/ui/media/ImageViewport";

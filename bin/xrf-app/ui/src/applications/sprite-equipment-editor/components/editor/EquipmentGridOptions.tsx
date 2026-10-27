@@ -5,7 +5,7 @@ import { FormControlLabel, Switch, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
-import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
+import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { ENGINE_GRID_SQUARE } from "@/core/sprite-equipment/lib";

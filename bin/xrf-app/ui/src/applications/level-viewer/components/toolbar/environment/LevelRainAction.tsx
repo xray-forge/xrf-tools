@@ -15,8 +15,8 @@ import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWe
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { LEVEL_MANUAL_WEATHER_RAIN_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
-import { LevelViewService } from "@/core/level/services/level-view.service";
-import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
+import { LevelWeatherService } from "@/core/level/services/level-weather/level-weather.service";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { formatGrassRadius } from "@/core/render/lib/features/render-grass-choices";
 import {

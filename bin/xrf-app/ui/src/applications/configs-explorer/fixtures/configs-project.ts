@@ -1,7 +1,7 @@
 import { mockInvoke } from "@xrf/ipc/testing";
 import { ConfigsProjectDescriptor } from "@xrf/ipc/types/xrf-app-configs";
 
-import { ConfigsProjectService } from "@/applications/configs-explorer/services/project";
+import { ConfigsProjectService } from "@/applications/configs-explorer/services/configs-project";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 
 /**

@@ -6,7 +6,7 @@ import { RenderSurface } from "@/core/render/components/RenderSurface";
 import { DOLLY_STEP } from "@/core/render/lib/frame/render-dolly";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
-import { VisualRenderService } from "@/core/visuals/services/visual-render.service";
+import { VisualRenderService } from "@/core/visuals/services/visual-render/visual-render.service";
 
 /**
  * Where the open visual is drawn.

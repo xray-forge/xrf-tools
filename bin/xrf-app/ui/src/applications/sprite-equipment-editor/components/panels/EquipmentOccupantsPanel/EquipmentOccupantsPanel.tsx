@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
-import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/grid";
+import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/equipment-grid";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { isSameCell, TEquipmentCell } from "@/core/sprite-equipment/lib";
 import { cn } from "@/core/theme/class-name";

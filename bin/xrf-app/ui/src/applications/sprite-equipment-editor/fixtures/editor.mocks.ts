@@ -4,7 +4,7 @@ import { EquipmentSpriteMetadata } from "@xrf/ipc/types/xrf-app-sprite-equipment
 import {
   IOpenEquipmentSprite,
   SpriteEquipmentEditorService,
-} from "@/applications/sprite-equipment-editor/services/editor";
+} from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
 import { mockCommandAnswer } from "@/core/operations/fixtures/command-operation.mocks";
 import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { mockEquipmentSpriteMetadata } from "@/core/sprite-equipment/fixtures/sprite.mocks";

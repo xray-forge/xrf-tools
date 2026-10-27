@@ -5,11 +5,11 @@ import { ETexturesCommand } from "@xrf/ipc/commands/textures";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { TextureDescription, TextureVocabulary } from "@xrf/ipc/types/xrf-app-textures";
 
-import { TextureEditorService } from "@/applications/textures-editor/services/editor";
-import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
-import { JobsService } from "@/core/jobs/services/jobs";
+import { TextureEditorService } from "@/applications/textures-editor/services/texture-editor";
+import { TextureEncodingService } from "@/applications/textures-editor/services/texture-encoding";
+import { JobsService } from "@/core/jobs/services/jobs.service";
 import { MOCK_TEXTURE, mockTextureDescription, mockTextureVocabulary } from "@/core/textures/fixtures/texture.mocks";
-import { TextureSelectionService } from "@/core/textures/services/selection";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

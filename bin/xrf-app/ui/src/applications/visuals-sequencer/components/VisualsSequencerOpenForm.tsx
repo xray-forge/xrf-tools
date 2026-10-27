@@ -3,7 +3,7 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { ReactElement, useCallback } from "react";
 
-import { SequencerService } from "@/applications/visuals-sequencer/services/sequencer";
+import { VisualsSequencerService } from "@/applications/visuals-sequencer/services/visuals-sequencer";
 import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
 import { useAssetRootField } from "@/core/assets/lib";
 import { OGF_FILE_FILTERS } from "@/core/path/file-filters";
@@ -21,7 +21,7 @@ interface IVisualsSequencerOpenFormProps extends BaseComponentProps {
  * The way into the sequencer: one model, whose motions a track is written out of.
  */
 export function VisualsSequencerOpenForm({ onFinished }: IVisualsSequencerOpenFormProps): ReactElement {
-  const sequencerService: SequencerService = useInjection(SequencerService);
+  const sequencerService: VisualsSequencerService = useInjection(VisualsSequencerService);
 
   const log: Logger = useLogger(__MODULE_NAME__);
 

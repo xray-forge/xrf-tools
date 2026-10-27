@@ -7,7 +7,7 @@ import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
 import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
 
 /**
  * Availability of a motion's description.

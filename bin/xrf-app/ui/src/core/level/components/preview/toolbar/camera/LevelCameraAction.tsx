@@ -10,7 +10,7 @@ import {
   ILevelCameraOptions,
   LEVEL_CAMERA_LIMITS,
 } from "@/core/level/lib/camera/level-camera-options";
-import { LevelViewService } from "@/core/level/services/level-view.service";
+import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";

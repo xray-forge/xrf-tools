@@ -1,5 +1,5 @@
 export * from "./lib";
-export * from "./services/commands";
+export * from "./services/keybind-commands.service";
 
 /**
  * `root-commands.ts` is deliberately absent: the domains listed there import this barrel to declare their commands, so

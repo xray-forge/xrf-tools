@@ -17,9 +17,9 @@ import {
 import { Nullable } from "@xrf/types";
 
 import { TEXTURES_EDITOR_APPLICATION } from "@/applications/textures-editor/application";
-import { ITextureBumpSources, TextureBumpService } from "@/applications/textures-editor/services/bump";
-import { TextureEditorService } from "@/applications/textures-editor/services/editor";
-import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
+import { ITextureBumpSources, TextureBumpService } from "@/applications/textures-editor/services/texture-bump";
+import { TextureEditorService } from "@/applications/textures-editor/services/texture-editor";
+import { TextureEncodingService } from "@/applications/textures-editor/services/texture-encoding";
 import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";
 import {
   MOCK_TEXTURE,
@@ -27,7 +27,7 @@ import {
   mockTextureEncodingComparison,
   mockTextureVocabulary,
 } from "@/core/textures/fixtures/texture.mocks";
-import { TextureSelectionService } from "@/core/textures/services/selection";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { mockContainer } from "@/fixtures/utils/container";
 import { deferred } from "@/fixtures/utils/promise";
 import { renderWithProviders } from "@/fixtures/utils/render";

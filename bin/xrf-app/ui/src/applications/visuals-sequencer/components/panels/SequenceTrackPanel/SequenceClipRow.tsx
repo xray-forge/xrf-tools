@@ -8,7 +8,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ESequenceMotionState, ISequenceMotion } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
-import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
+import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/visual-sequence";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";

@@ -5,7 +5,7 @@ import { ARCHIVE_READ_POLICY } from "@xrf/ipc/types/xrf-archive";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
-import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import {
   ArchivePreviewSupport,
   getArchivePreviewSupport,

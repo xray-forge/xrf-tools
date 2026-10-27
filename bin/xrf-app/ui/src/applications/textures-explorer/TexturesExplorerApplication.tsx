@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { TextureCatalogService } from "@/applications/textures-explorer/services/catalog";
+import { TextureCatalogService } from "@/applications/textures-explorer/services/texture-catalog.service";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
-import { TextureSelectionService } from "@/core/textures/services/selection";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { TexturesExplorerOpenForm } from "./components/TexturesExplorerOpenForm";

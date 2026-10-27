@@ -3,7 +3,7 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { ReactElement, useCallback } from "react";
 
-import { ConfigsProjectService } from "@/applications/configs-explorer/services/project";
+import { ConfigsProjectService } from "@/applications/configs-explorer/services/configs-project";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { DIALECT_IDS, EConfigsDialect } from "@/core/ltx/lib/dialect";
 import { EApplicationId } from "@/core/routing/application";

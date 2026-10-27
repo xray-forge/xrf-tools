@@ -5,7 +5,7 @@ import { PointerEvent, ReactElement, useCallback, useRef } from "react";
 import { RenderFailureCover, RenderFrameReadout } from "@/core/render/components/overlay";
 import { RenderSurface } from "@/core/render/components/RenderSurface";
 import { DOLLY_STEP } from "@/core/render/lib/frame/render-dolly";
-import { TextureRenderService } from "@/core/textures/services/render";
+import { TextureRenderService } from "@/core/textures/services/texture-render";
 import { cn } from "@/core/theme/class-name";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ViewportControls } from "@/core/ui/media/ViewportControls";

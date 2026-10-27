@@ -12,8 +12,8 @@ import {
 } from "@/core/shell/editor/EditorPanel";
 import { ETextureBumpPlane, toTextureBumpPlane } from "@/core/textures/lib/texture-bump-plane";
 import { ITextureBumpTexels, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
-import { TextureSelectionService } from "@/core/textures/services/selection";
-import { TextureSurfaceService } from "@/core/textures/services/surface";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
+import { TextureSurfaceService } from "@/core/textures/services/texture-surface";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import {

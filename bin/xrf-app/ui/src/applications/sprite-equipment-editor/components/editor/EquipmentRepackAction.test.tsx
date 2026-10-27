@@ -6,10 +6,10 @@ import { EquipmentSpriteMetadata } from "@xrf/ipc/types/xrf-app-sprite-equipment
 import { Nullable } from "@xrf/types";
 
 import { mockShownEquipmentSprite } from "@/applications/sprite-equipment-editor/fixtures/editor.mocks";
-import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
+import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
 import { AssetService } from "@/core/assets/services";
 import { mockEquipmentSpriteMetadata, mockEquipmentSpriteOpen } from "@/core/sprite-equipment/fixtures/sprite.mocks";
-import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
+import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/sprite-equipment-packer.service";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { EquipmentRepackAction } from "./EquipmentRepackAction";

@@ -9,7 +9,7 @@ import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
 import { ELevelSpawnCategory, LEVEL_SPAWN_PART, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
-import { LevelViewerSpawnService } from "@/applications/level-viewer/services/spawn";
+import { LevelViewerSpawnService } from "@/applications/level-viewer/services/level-viewer-spawn";
 import {
   mockLevelPartAnswer,
   mockLevelSpawnObject,
@@ -17,12 +17,12 @@ import {
 } from "@/core/level/fixtures/level.mocks";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
-import { LevelLoadService } from "@/core/level/services/level-load.service";
-import { LevelLookService } from "@/core/level/services/level-look.service";
-import { LevelRenderService } from "@/core/level/services/level-render.service";
-import { LevelViewService } from "@/core/level/services/level-view.service";
-import { LevelViewportService } from "@/core/level/services/level-viewport.service";
-import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
+import { LevelLookService } from "@/core/level/services/level-look/level-look.service";
+import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
+import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
+import { LevelViewportService } from "@/core/level/services/level-viewport/level-viewport.service";
+import { LevelWeatherService } from "@/core/level/services/level-weather/level-weather.service";
 import { mockVisualTransform } from "@/core/visuals/fixtures/visual.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";

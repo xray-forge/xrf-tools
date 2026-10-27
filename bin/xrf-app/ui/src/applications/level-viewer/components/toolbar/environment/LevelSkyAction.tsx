@@ -14,8 +14,8 @@ import {
   describeLevelManualWeatherKey,
   LEVEL_MANUAL_WEATHER_LABELS,
 } from "@/core/level/lib/weather/level-manual-weather-labels";
-import { LevelViewService } from "@/core/level/services/level-view.service";
-import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
+import { LevelWeatherService } from "@/core/level/services/level-weather/level-weather.service";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

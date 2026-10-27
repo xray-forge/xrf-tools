@@ -3,7 +3,7 @@ import { Nullable, Optional } from "@xrf/types";
 import { KeyboardEvent, ReactElement, useRef } from "react";
 
 import { formatChord, parseChord } from "@/core/keybinds";
-import { KeymapService } from "@/core/keybinds/services/keymap";
+import { KeymapService } from "@/core/keybinds/services/keymap.service";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { useSearchFocusTarget } from "@/core/search/lib";
 import { BaseComponentProps } from "@/lib/dom/element-types";

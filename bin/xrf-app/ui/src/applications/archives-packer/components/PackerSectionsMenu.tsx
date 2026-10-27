@@ -5,7 +5,7 @@ import { default as TuneIcon } from "@mui/icons-material/Tune";
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { EPackerSection, PackerService } from "@/applications/archives-packer/services/packer";
+import { ArchivesPackerService, EPackerSection } from "@/applications/archives-packer/services/archives-packer.service";
 import { EditorPanelHeader } from "@/core/shell/editor/EditorPanelHeader";
 import { EditorSideMenu, IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -30,7 +30,7 @@ export function PackerSectionsMenu({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const packerService: PackerService = useInjection(PackerService);
+  const packerService: ArchivesPackerService = useInjection(ArchivesPackerService);
 
   const items: Array<IEditorSideMenuItem> = SECTIONS.map((section) => ({
     label: section.label,

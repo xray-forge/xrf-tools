@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { LEVEL_CAPTURE_NAMES } from "@/applications/level-viewer/lib/capture/level-capture";
-import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { LevelViewerCaptureService } from "@/applications/level-viewer/services/level-viewer-capture";
 import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { BaseComponentProps } from "@/lib/dom/element-types";

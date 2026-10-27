@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { useCallback, useMemo } from "react";
 
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { LevelViewService } from "@/core/level/services/level-view.service";
+import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
 
 /** One of the toolbar's switches, and how it is turned over. */
 export interface ILevelViewToggle {

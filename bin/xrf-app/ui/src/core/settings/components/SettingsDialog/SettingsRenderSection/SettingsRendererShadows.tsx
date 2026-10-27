@@ -14,7 +14,7 @@ import {
 } from "@/core/render/lib/features/render-shadow-choices";
 import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/render-feature-defaults";
 import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";

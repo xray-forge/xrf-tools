@@ -11,7 +11,7 @@ import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { NativeViewportTarget } from "@/core/render/lib/native/native-viewport-target";
 import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
-import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 /**
  * A service owning one native viewport: attached where a view hands it an element, told everything through reactions

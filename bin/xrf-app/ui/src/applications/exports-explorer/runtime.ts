@@ -1,4 +1,4 @@
-import { ExportsService } from "@/applications/exports-explorer/services/exports";
+import { ExportsService } from "@/applications/exports-explorer/services/exports.service";
 import { ContainerDefinition } from "@/lib/container/container-definition";
 
 export { ExportsExplorerApplication as Component } from "./ExportsExplorerApplication";

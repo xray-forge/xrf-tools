@@ -6,7 +6,7 @@ import { ArchivePackConfig } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
-import { EPackerSection, PackerService } from "@/applications/archives-packer/services/packer";
+import { ArchivesPackerService, EPackerSection } from "@/applications/archives-packer/services/archives-packer.service";
 import { ARCHIVE_CONFIG_EXTENSIONS, withArchiveConfigExtension } from "@/core/archive/lib";
 import { ARCHIVE_CONFIG_EXPORT_FILTERS } from "@/core/archive/lib/config-format";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
@@ -37,7 +37,7 @@ const IMPORT_CONFIG_FILTERS: Array<DialogFilter> = [
 ];
 
 export function ArchivesPackerApplication(): ReactElement {
-  const packerService: PackerService = useInjection(PackerService);
+  const packerService: ArchivesPackerService = useInjection(ArchivesPackerService);
 
   const [isConfirming, setIsConfirming] = useState<boolean>(false);
 

@@ -1,2 +1,2 @@
-export * from "./error-capture.service";
-export * from "./notifications.service";
+export * from "./error-capture/error-capture.service";
+export * from "./notifications/notifications.service";

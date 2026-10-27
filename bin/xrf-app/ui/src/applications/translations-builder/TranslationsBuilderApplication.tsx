@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { TranslationsBuilderService } from "@/applications/translations-builder/services/builder";
+import { TranslationsBuilderService } from "@/applications/translations-builder/services/translations-builder.service";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
 import { TranslationLanguageField } from "@/core/translations/components/TranslationLanguageField";

@@ -3,11 +3,11 @@ import { ELevelSource, LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
-import { LevelViewerListService } from "@/applications/level-viewer/services/list";
+import { LevelViewerListService } from "@/applications/level-viewer/services/level-viewer-list";
 import { createRoots } from "@/core/assets/lib";
 import { EngineChoiceFormRow } from "@/core/engine-target/components/EngineChoiceFormRow";
 import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib/use-engine-choice";
-import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";

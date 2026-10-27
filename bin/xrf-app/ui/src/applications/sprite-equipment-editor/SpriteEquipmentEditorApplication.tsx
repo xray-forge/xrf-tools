@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
+import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 
 import { EquipmentSpriteEditor, SpriteEquipmentOpenForm } from "./components/editor";

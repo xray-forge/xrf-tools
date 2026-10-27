@@ -5,7 +5,7 @@ import { RenderBackendFormRow } from "@/core/render/components/controls/RenderBa
 import { RenderGpuFormRow } from "@/core/render/components/controls/RenderGpuFormRow";
 import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
 import { RENDER_FRAME_RATE_OPTIONS } from "@/core/render/lib/features/render-display-choices";
-import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 

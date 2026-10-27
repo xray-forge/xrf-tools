@@ -5,7 +5,7 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { TranslationsService } from "@/applications/translations-editor/services/translations";
+import { TranslationsService } from "@/applications/translations-editor/services/translations.service";
 import { createRoots } from "@/core/assets/lib/roots";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";

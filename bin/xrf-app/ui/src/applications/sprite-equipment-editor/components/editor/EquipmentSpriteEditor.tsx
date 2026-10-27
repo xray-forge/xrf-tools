@@ -8,11 +8,11 @@ import { ReactElement, useCallback } from "react";
 import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/applications/sprite-equipment-editor/commands";
 import { SPRITE_EQUIPMENT_EDITOR_PANELS } from "@/applications/sprite-equipment-editor/components/panels/sprite-equipment-editor-panels";
 import { SPRITE_EQUIPMENT_EDITOR_MENU } from "@/applications/sprite-equipment-editor/menus";
+import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/equipment-grid";
 import {
   IOpenEquipmentSprite,
   SpriteEquipmentEditorService,
-} from "@/applications/sprite-equipment-editor/services/editor";
-import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/grid";
+} from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
 import { toAssetLocation } from "@/core/assets/lib";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";

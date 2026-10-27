@@ -4,7 +4,7 @@ import { ReactElement } from "react";
 
 import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features/render-shadow-choices";
 import { TRenderLightsSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";

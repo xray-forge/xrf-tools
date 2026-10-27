@@ -10,7 +10,10 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
-import { EPatcherSection, PatcherService } from "@/applications/archives-patcher/services/patcher";
+import {
+  ArchivesPatcherService,
+  EPatcherSection,
+} from "@/applications/archives-patcher/services/archives-patcher.service";
 import { ARCHIVE_CONFIG_EXTENSIONS, withArchiveConfigExtension } from "@/core/archive/lib";
 import { ARCHIVE_CONFIG_EXPORT_FILTERS } from "@/core/archive/lib/config-format";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
@@ -45,7 +48,7 @@ const IMPORT_CONFIG_FILTERS: Array<DialogFilter> = [
 export function ArchivesPatcherApplication(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const patcherService: PatcherService = useInjection(PatcherService);
+  const patcherService: ArchivesPatcherService = useInjection(ArchivesPatcherService);
 
   const config: Nullable<ArchivePatchConfig> = patcherService.config;
   const job: Nullable<IJobState> = patcherService.operation.job;

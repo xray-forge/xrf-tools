@@ -5,12 +5,12 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { selectUnreadTexturesLtx } from "@/applications/textures-explorer/lib/texture-catalog";
-import { TextureCatalogService } from "@/applications/textures-explorer/services/catalog";
+import { TextureCatalogService } from "@/applications/textures-explorer/services/texture-catalog.service";
 import { describeRoots } from "@/core/assets/lib";
 import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { IEditorPanel } from "@/core/shell/editor-shell";
 import { TexturePreviewLayout } from "@/core/textures/components/workspace/TexturePreviewLayout";
-import { TextureSelectionService } from "@/core/textures/services/selection";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { createTexturesExplorerPanels } from "./panels/textures-explorer-panels";

@@ -5,11 +5,11 @@ import { Container } from "@wirestate/core";
 import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
 import { LtxFileStructure } from "@xrf/ipc/types/xrf-ltx-inspect";
 
-import { ConfigsDocumentService } from "@/applications/configs-explorer/services/document";
-import { ConfigsFindingsService } from "@/applications/configs-explorer/services/findings";
-import { ConfigsProjectService } from "@/applications/configs-explorer/services/project";
-import { ConfigsResolvedService } from "@/applications/configs-explorer/services/resolved";
-import { ConfigsSchemeService } from "@/applications/configs-explorer/services/scheme";
+import { ConfigsDocumentService } from "@/applications/configs-explorer/services/configs-document";
+import { ConfigsFindingsService } from "@/applications/configs-explorer/services/configs-findings";
+import { ConfigsProjectService } from "@/applications/configs-explorer/services/configs-project";
+import { ConfigsResolvedService } from "@/applications/configs-explorer/services/configs-resolved";
+import { ConfigsSchemeService } from "@/applications/configs-explorer/services/configs-scheme";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

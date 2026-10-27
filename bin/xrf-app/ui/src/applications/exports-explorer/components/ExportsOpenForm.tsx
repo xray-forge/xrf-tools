@@ -3,7 +3,7 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { ReactElement, useCallback } from "react";
 
-import { ExportsService } from "@/applications/exports-explorer/services/exports";
+import { ExportsService } from "@/applications/exports-explorer/services/exports.service";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";

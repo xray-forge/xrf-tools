@@ -29,8 +29,8 @@ import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { ILevelLook } from "@/core/level/lib/look/level-look";
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
-import { LevelLookService } from "@/core/level/services/level-look.service";
-import { LevelViewService } from "@/core/level/services/level-view.service";
+import { LevelLookService } from "@/core/level/services/level-look/level-look.service";
+import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
@@ -60,7 +60,7 @@ import {
   TRenderEnhancedBloomSettings,
   TRenderGradingSettings,
 } from "@/core/render/lib/settings/render-feature-settings";
-import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { ChoiceListFormRow, IChoiceFormRowOption } from "@/core/ui/form";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";

@@ -4,14 +4,14 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { TEXTURES_EDITOR_PANELS } from "@/applications/textures-editor/components/panels/textures-editor-panels";
-import { TextureBumpService } from "@/applications/textures-editor/services/bump";
-import { TextureEditorService } from "@/applications/textures-editor/services/editor";
-import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
+import { TextureBumpService } from "@/applications/textures-editor/services/texture-bump";
+import { TextureEditorService } from "@/applications/textures-editor/services/texture-editor";
+import { TextureEncodingService } from "@/applications/textures-editor/services/texture-encoding";
 import { EditorSaver, useEditorLifecycle } from "@/core/shell/editor-lifecycle";
 import { IEditorPanel } from "@/core/shell/editor-shell";
 import { TexturePreviewLayout } from "@/core/textures/components/workspace/TexturePreviewLayout";
 import { ITexturePreviewComparison } from "@/core/textures/lib/texture-preview";
-import { TextureSelectionService } from "@/core/textures/services/selection";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { describeEditedTextureStatus } from "./TexturesEditorWorkspace.utils";

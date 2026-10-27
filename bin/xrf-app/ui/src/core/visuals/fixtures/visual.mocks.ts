@@ -18,7 +18,7 @@ import { createRoots } from "@/core/assets/lib";
 import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { MOTION_DEFAULT_SPEED, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
-import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
 
 const ALIGNMENT: number = 4;
 

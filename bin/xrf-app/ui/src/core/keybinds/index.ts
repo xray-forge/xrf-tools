@@ -1,3 +1,3 @@
 export * from "./KeybindsDispatcher";
 export * from "./lib";
-export * from "./services/keymap";
+export * from "./services/keymap.service";

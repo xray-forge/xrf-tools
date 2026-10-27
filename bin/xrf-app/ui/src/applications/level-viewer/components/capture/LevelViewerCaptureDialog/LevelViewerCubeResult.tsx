@@ -14,7 +14,7 @@ import {
   toLevelCubeExportSize,
 } from "@/applications/level-viewer/lib/cube/level-cube-export";
 import { ILevelViewerImage } from "@/applications/level-viewer/lib/files/level-viewer-image";
-import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
+import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/level-viewer-capture-result";
 import { cn } from "@/core/theme/class-name";
 import { CheckboxFormRow, ChoiceFormRow } from "@/core/ui/form";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";

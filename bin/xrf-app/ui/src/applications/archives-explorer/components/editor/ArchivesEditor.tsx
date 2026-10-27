@@ -9,8 +9,8 @@ import { ArchiveSubject, EArchiveSubject } from "@xrf/ipc/types/xrf-app-archives
 import { Nullable, Optional } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import {
   getEntryEngineIdentity,
   getSubjectRoot,

@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { formatDuration } from "@xrf/format";
 import { ReactElement } from "react";
 
-import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
+import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/visual-sequence";
 import {
   EditorPanel,
   EditorPanelEmpty,

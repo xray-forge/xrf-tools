@@ -4,7 +4,7 @@ import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
 import {
   EditorPanel,
   EditorPanelEmpty,

@@ -7,7 +7,7 @@ import { Paper, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback } from "react";
 
-import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
+import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/visual-sequence";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";

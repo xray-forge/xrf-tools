@@ -5,8 +5,8 @@ import { ArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { Nullable } from "@xrf/types";
 
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import { mockArchivesVolumes } from "@/core/archive/fixtures/archive.mocks";
 import { IArchiveEntry, TArchiveContent } from "@/core/archive/lib";
 import { mockCommandAnswer } from "@/core/operations/fixtures/command-operation.mocks";

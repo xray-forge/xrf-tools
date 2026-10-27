@@ -8,8 +8,8 @@ import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
+import { VisualsBrowseService } from "@/applications/visuals-explorer/services/visuals-browse";
 import { isLooseContainer } from "@/core/assets/lib/container";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";

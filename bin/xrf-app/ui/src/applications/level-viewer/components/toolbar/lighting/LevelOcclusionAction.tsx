@@ -14,8 +14,8 @@ import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-lev
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { DEFAULT_LEVEL_HEMI_STRENGTH, ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { LevelRenderService } from "@/core/level/services/level-render.service";
-import { LevelViewService } from "@/core/level/services/level-view.service";
+import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
+import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {

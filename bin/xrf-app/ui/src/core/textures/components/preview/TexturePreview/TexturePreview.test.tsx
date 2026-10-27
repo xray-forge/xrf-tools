@@ -14,8 +14,8 @@ import {
   ETexturePreviewMode,
   ITexturePreviewComparison,
 } from "@/core/textures/lib/texture-preview";
-import { TextureSelectionService } from "@/core/textures/services/selection";
-import { TextureViewService } from "@/core/textures/services/view";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
+import { TextureViewService } from "@/core/textures/services/texture-view";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

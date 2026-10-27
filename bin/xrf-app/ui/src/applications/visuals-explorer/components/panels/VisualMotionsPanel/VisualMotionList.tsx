@@ -10,7 +10,7 @@ import { cn } from "@/core/theme/class-name";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
-import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
+import { VisualMotionService } from "@/core/visuals/services/visual-motion/visual-motion.service";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { getMotionNodeName, groupMotionNames, listMotionGroupIds } from "./motion-groups";

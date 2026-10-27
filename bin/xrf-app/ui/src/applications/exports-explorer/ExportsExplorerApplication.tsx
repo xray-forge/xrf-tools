@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ExportsService } from "@/applications/exports-explorer/services/exports";
+import { ExportsService } from "@/applications/exports-explorer/services/exports.service";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 
 import { ExportsOpenForm } from "./components/ExportsOpenForm";

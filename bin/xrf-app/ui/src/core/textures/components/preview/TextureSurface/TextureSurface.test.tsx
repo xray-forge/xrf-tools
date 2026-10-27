@@ -4,10 +4,10 @@ import { ERenderCommand } from "@xrf/ipc/commands/render";
 import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { EWorldInputEvent, WorldInputEvent } from "@xrf/ipc/types/xrf-world";
 
-import { TextureRenderService } from "@/core/textures/services/render";
-import { TextureSelectionService } from "@/core/textures/services/selection";
-import { TextureSurfaceService } from "@/core/textures/services/surface";
-import { TextureViewService } from "@/core/textures/services/view";
+import { TextureRenderService } from "@/core/textures/services/texture-render";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
+import { TextureSurfaceService } from "@/core/textures/services/texture-surface";
+import { TextureViewService } from "@/core/textures/services/texture-view";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { TextureSurface } from "./TextureSurface";

@@ -4,7 +4,7 @@ import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
 import { ReactElement, useCallback, useState } from "react";
 
-import { TranslationsService } from "@/applications/translations-editor/services/translations";
+import { TranslationsService } from "@/applications/translations-editor/services/translations.service";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 

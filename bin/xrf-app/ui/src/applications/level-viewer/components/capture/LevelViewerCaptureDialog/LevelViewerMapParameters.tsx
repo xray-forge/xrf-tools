@@ -15,7 +15,7 @@ import {
   toLevelMapMetresPerPixel,
   toLevelMapTileCount,
 } from "@/applications/level-viewer/lib/map/level-map-capture";
-import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { LevelViewerCaptureService } from "@/applications/level-viewer/services/level-viewer-capture";
 import { cn } from "@/core/theme/class-name";
 import { CheckboxFormRow, ChoiceFormRow, FormRow, IChoiceFormRowOption } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";

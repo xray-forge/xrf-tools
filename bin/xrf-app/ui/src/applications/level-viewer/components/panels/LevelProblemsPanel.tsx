@@ -7,8 +7,8 @@ import { describeLevelResidentWait } from "@/applications/level-viewer/lib/load/
 import { listLevelProblems } from "@/applications/level-viewer/lib/problems/level-problems";
 import { EMPTY_LEVEL_RESIDENT, ILevelResident } from "@/core/level/lib/render/level-resident";
 import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
-import { LevelLoadService } from "@/core/level/services/level-load.service";
-import { LevelRenderService } from "@/core/level/services/level-render.service";
+import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
+import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { EditorProblemsPanel, IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";

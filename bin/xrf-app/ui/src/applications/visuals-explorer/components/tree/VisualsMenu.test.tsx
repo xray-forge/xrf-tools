@@ -6,11 +6,11 @@ import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
 import { mockIpcCommands } from "@xrf/ipc/testing";
 import { XrayAsset, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
-import { VisualsBrowseService } from "@/applications/visuals-explorer/services/browse";
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
+import { VisualsBrowseService } from "@/applications/visuals-explorer/services/visuals-browse";
 import { createRoots } from "@/core/assets/lib";
-import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
+import { VisualMotionService } from "@/core/visuals/services/visual-motion/visual-motion.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

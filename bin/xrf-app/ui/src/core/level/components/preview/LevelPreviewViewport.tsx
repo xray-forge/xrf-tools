@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { LevelRenderService } from "@/core/level/services/level-render.service";
+import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
 import { RenderSurface } from "@/core/render/components/RenderSurface";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

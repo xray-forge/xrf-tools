@@ -1,13 +1,13 @@
 import { Container } from "@wirestate/core";
 
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { ArchivesExplorerKeybindsService } from "@/applications/archives-explorer/services/keybinds";
-import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
+import { ArchivesExplorerKeybindsService } from "@/applications/archives-explorer/services/archives-explorer-keybinds";
 import { AssetService } from "@/core/assets/services";
 import { VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { VisualLoadService } from "@/core/visuals/services";
-import { VisualRenderService } from "@/core/visuals/services/visual-render.service";
-import { VisualViewService } from "@/core/visuals/services/visual-view.service";
+import { VisualRenderService } from "@/core/visuals/services/visual-render/visual-render.service";
+import { VisualViewService } from "@/core/visuals/services/visual-view/visual-view.service";
 import { ContainerDefinition } from "@/lib/container/container-definition";
 
 export { ArchivesExplorerApplication as Component } from "./ArchivesExplorerApplication";

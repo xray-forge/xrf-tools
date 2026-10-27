@@ -4,7 +4,7 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
-import { ConfigsFormatterService } from "@/applications/configs-formatter/services/formatter";
+import { ConfigsFormatterService } from "@/applications/configs-formatter/services/configs-formatter.service";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
 import { FormatCommandResult, IFormatCommandNouns } from "@/core/ui/command-result/FormatCommandResult";

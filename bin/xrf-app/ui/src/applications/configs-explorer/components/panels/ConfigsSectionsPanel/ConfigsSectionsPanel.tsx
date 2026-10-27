@@ -3,8 +3,11 @@ import { LtxFileStructure } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
-import { ConfigsDocumentService, EConfigsDocumentMode } from "@/applications/configs-explorer/services/document";
-import { ConfigsResolvedService } from "@/applications/configs-explorer/services/resolved";
+import {
+  ConfigsDocumentService,
+  EConfigsDocumentMode,
+} from "@/applications/configs-explorer/services/configs-document";
+import { ConfigsResolvedService } from "@/applications/configs-explorer/services/configs-resolved";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { EmptyListing } from "@/core/ui/layout";
 import { ITreeNode } from "@/core/ui/tree/tree-node";

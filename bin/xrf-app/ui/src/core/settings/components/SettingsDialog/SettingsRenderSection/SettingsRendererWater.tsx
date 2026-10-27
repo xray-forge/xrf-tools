@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { TRenderWaterSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 

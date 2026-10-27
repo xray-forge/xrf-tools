@@ -6,8 +6,8 @@ import { ReactElement, useEffect } from "react";
 
 import { ConfigsSchemeBinding } from "@/applications/configs-explorer/components/panels/ConfigsSchemePanel/ConfigsSchemeBinding";
 import { ConfigsSchemeFieldRow } from "@/applications/configs-explorer/components/panels/ConfigsSchemePanel/ConfigsSchemeFieldRow";
-import { ConfigsDocumentService } from "@/applications/configs-explorer/services/document";
-import { ConfigsSchemeService } from "@/applications/configs-explorer/services/scheme";
+import { ConfigsDocumentService } from "@/applications/configs-explorer/services/configs-document";
+import { ConfigsSchemeService } from "@/applications/configs-explorer/services/configs-scheme";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { ErrorState } from "@/core/ui/layout/ErrorState";

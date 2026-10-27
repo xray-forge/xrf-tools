@@ -8,8 +8,8 @@ import {
   CAPTURE_LEVEL_MAP_KEYBIND_COMMAND,
   TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND,
 } from "@/applications/level-viewer/commands";
-import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
-import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/screenshot";
+import { LevelViewerCaptureService } from "@/applications/level-viewer/services/level-viewer-capture";
+import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/level-viewer-screenshot";
 import { IKeybindCommand, KeybindCommandsService } from "@/core/commands";
 import { KeymapService } from "@/core/keybinds";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";

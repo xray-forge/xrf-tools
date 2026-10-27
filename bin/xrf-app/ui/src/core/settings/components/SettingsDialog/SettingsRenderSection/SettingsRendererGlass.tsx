@@ -9,7 +9,7 @@ import {
   RENDER_GLASS_MODE_OPTIONS,
 } from "@/core/render/lib/features/render-glass-choices";
 import { TRenderGlassSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { RenderSettingsService } from "@/core/render/services/render-settings";
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
 import { DetailSection } from "@/core/ui/layout/DetailSection";

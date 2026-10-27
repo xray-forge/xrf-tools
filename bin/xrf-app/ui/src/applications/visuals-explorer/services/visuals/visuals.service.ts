@@ -11,9 +11,9 @@ import { createRoots } from "@/core/assets/lib";
 import { IVisualBoneControls } from "@/core/visuals/components/panels/visual-inspection";
 import { IVisualPose } from "@/core/visuals/lib/render";
 import { selectAddonBones, selectHiddenBoneIndices } from "@/core/visuals/lib/visual-bones";
-import { VisualInspectionService } from "@/core/visuals/services/visual-inspection.service";
-import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
+import { VisualInspectionService } from "@/core/visuals/services/visual-inspection/visual-inspection.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
+import { VisualMotionService } from "@/core/visuals/services/visual-motion/visual-motion.service";
 
 /**
  * What one open asked for, kept so the same request can be made again.

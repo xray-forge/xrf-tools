@@ -3,7 +3,7 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { ReactElement, useCallback } from "react";
 
-import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file";
+import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file.service";
 import { SPAWN_FILE_FILTERS } from "@/core/path/file-filters";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";

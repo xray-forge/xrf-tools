@@ -2,7 +2,7 @@ import { Container, ContainerConfig } from "@wirestate/core";
 import { ContainerProvider, useContainer } from "@wirestate/react";
 import { ReactElement, useMemo } from "react";
 
-import { LauncherKeybindsService } from "@/core/launcher/services/launcher-keybinds";
+import { LauncherKeybindsService } from "@/core/launcher/services/launcher-keybinds.service";
 
 import { ApplicationLauncherScreen, IApplicationLauncherProps } from "./ApplicationLauncherScreen";
 

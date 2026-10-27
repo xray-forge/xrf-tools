@@ -8,10 +8,10 @@ import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngine, EXrayEngineEvidence, XrayEngineResolution } from "@xrf/ipc/types/xrf-engine-target";
 
-import { LevelViewerListService } from "@/applications/level-viewer/services/list";
+import { LevelViewerListService } from "@/applications/level-viewer/services/level-viewer-list";
 import { AssetService } from "@/core/assets/services";
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
-import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
