@@ -38,7 +38,7 @@ impl TextureWatcher {
 
     let watcher: Option<Mutex<RecommendedWatcher>> = match watcher {
       Ok(watcher) => std::thread::Builder::new()
-        .name("texture watcher".to_owned())
+        .name("xrf-texture-watcher".into())
         .spawn(move || Self::forward(&receiver, &queue))
         .inspect_err(|error| log::warn!("Textures will not reload as their files change: {error}"))
         .ok()
