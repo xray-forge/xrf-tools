@@ -11,6 +11,7 @@ import {
   isLevelCubeExportSingle,
   LEVEL_CUBE_EXPORT_SIZES,
   TLevelCubeExportKind,
+  toLevelCubeExportSize,
 } from "@/applications/level-viewer/lib/cube/level-cube-export";
 import { ILevelViewerImage } from "@/applications/level-viewer/lib/files/level-viewer-image";
 import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
@@ -38,7 +39,7 @@ export function LevelViewerCubeResult({
   const resultService: LevelViewerCaptureResultService = useInjection(LevelViewerCaptureResultService);
   const settings: ILevelCubeExportSettings = resultService.cubeExport;
   const captured: number = toLevelCubeFaceSize(cross.width);
-  const size: number = Math.min(settings.size, captured);
+  const size: number = toLevelCubeExportSize(settings, captured);
   const isDds: boolean = isLevelCubeExportSingle(settings.kind);
 
   const onKind = useCallback((kind: TLevelCubeExportKind) => resultService.setCubeExport({ kind }), [resultService]);

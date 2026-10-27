@@ -89,6 +89,22 @@ describe("LevelViewService", () => {
     expect(service.features.reflections).toEqual({ steps: 48 });
   });
 
+  // A popover's reset gives back what it sets alone: a value the view set from another popover stays.
+  it("leaves the features asked to the settings again, and the rest as the view set them", () => {
+    const { service } = mockInjectedService(LevelViewService);
+
+    service.setFeatures({
+      ...mockLevelFeatureOptions(),
+      antialiasing: ERenderAntialiasing.TAA,
+      output: { scale: 0.75 },
+      upscaling: { sharpening: 0.4 },
+      reflections: { steps: 48 },
+    });
+    service.resetFeatures(["antialiasing", "upscaling", "output"]);
+
+    expect(service.features).toEqual({ ...mockLevelFeatureOptions(), reflections: { steps: 48 } });
+  });
+
   it("starts from the defaults where what was stored does not read", () => {
     setLocalStorageValue("xrf.preference.level-camera", "{not json");
     setLocalStorageValue("xrf.preference.level-features", JSON.stringify({ antialiasing: "none", grass: 4 }));

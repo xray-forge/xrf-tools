@@ -5,7 +5,6 @@ import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { systemCommands } from "@xrf/ipc/commands/system";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { Logger } from "@xrf/logging";
-import { getPathName } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 
 import { ELevelCaptureMode, LEVEL_CAPTURE_NAMES } from "@/applications/level-viewer/lib/capture/level-capture";
@@ -17,7 +16,11 @@ import {
   ILevelCubeExportSettings,
   toCubeExportRequest,
 } from "@/applications/level-viewer/lib/cube/level-cube-export";
-import { toLevelViewerLevelName } from "@/applications/level-viewer/lib/files/level-viewer-file-stem";
+import { describeLevelViewerFailure } from "@/applications/level-viewer/lib/files/level-viewer-failure";
+import {
+  toLevelViewerFileName,
+  toLevelViewerLevelName,
+} from "@/applications/level-viewer/lib/files/level-viewer-file-stem";
 import { copyLevelViewerImage } from "@/applications/level-viewer/lib/files/level-viewer-image";
 import {
   DEFAULT_LEVEL_MAP_ANNOTATIONS,
@@ -193,7 +196,7 @@ export class LevelViewerCaptureResultService {
     const name: string = LEVEL_CAPTURE_NAMES[mode];
     const level: Nullable<string> = toLevelViewerLevelName(this.loadService.level.value?.selected.value.source);
     const target: Nullable<string> = yield* call(
-      askLevelCaptureExportTarget(mode, level ? getPathName(level) : "level", {
+      askLevelCaptureExportTarget(mode, toLevelViewerFileName(level), {
         cube: this.cubeExport,
         map: this.mapExport,
       })
@@ -303,7 +306,7 @@ export class LevelViewerCaptureResultService {
   @BoundAction()
   private fail(what: string, error: unknown): void {
     this.log.error(`Failed to ${what}:`, error);
-    this.failure = `Failed to ${what}: ${error instanceof Error ? error.message : String(error)}`;
+    this.failure = describeLevelViewerFailure(what, error);
   }
 
   /** Shows the annotations drawn at `url`, or none, letting the ones they replace go. */

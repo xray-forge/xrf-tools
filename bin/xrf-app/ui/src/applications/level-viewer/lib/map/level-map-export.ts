@@ -129,10 +129,19 @@ export function toMapExportRequest(
     path,
     target,
     format: toMapExportFormat(settings),
-    longSide: Math.min(settings.longSide, captured),
+    longSide: toLevelMapExportLongSide(settings, captured),
     backdrop: settings.backdrop,
     annotations: settings.annotations,
   };
+}
+
+/**
+ * @param settings - The export asked for.
+ * @param captured - The capture's longer side.
+ * @returns The export's longer side: the one asked for, at most what was captured, since an export never enlarges.
+ */
+export function toLevelMapExportLongSide(settings: ILevelMapExportSettings, captured: number): number {
+  return Math.min(settings.longSide, captured);
 }
 
 /**

@@ -1,7 +1,7 @@
 import { join } from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { inject, Injectable } from "@wirestate/core";
-import { BoundAction, flowResult, RefObservable } from "@wirestate/mobx";
+import { BoundAction, Computed, flowResult, RefObservable } from "@wirestate/mobx";
 import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { systemCommands } from "@xrf/ipc/commands/system";
@@ -11,6 +11,7 @@ import { Logger } from "@xrf/logging";
 import { getPathName } from "@xrf/path";
 import { Maybe, Nullable } from "@xrf/types";
 
+import { describeLevelViewerFailure } from "@/applications/level-viewer/lib/files/level-viewer-failure";
 import {
   toLevelViewerFileStem,
   toLevelViewerLevelName,
@@ -34,6 +35,7 @@ import { isLevelGoTo, toLevelGoTo, toRoundedLevelGoTo } from "@/core/level/lib/c
 import {
   ILevelFeatureOptions,
   LEVEL_FEATURE_TOGGLES_ON,
+  toLevelOutput,
   toLevelRendererFeatures,
 } from "@/core/level/lib/features/level-feature-options";
 import { ELevelLookSource, ILevelLookChoice, toLevelLookChoice } from "@/core/level/lib/look/level-look-choice";
@@ -97,6 +99,7 @@ export class LevelViewerSnapshotService {
   ) {}
 
   /** The open level as a snapshot names it, engine paths with forward slashes; null with none open. */
+  @Computed()
   public get level(): Nullable<string> {
     return toLevelViewerLevelName(this.loadService.level.value?.selected.value.source);
   }
@@ -228,10 +231,11 @@ export class LevelViewerSnapshotService {
         isPlaying: !weather.control.isPaused,
       },
       look: { source: look.source, ...(look.source === ELevelLookSource.CUSTOM ? { custom: look.custom } : {}) },
-      output: {
-        resolution: features.output.resolution ?? this.renderSettingsService.renderResolution,
-        scale: features.output.scale ?? this.renderSettingsService.renderOutputScale,
-      },
+      output: toLevelOutput(
+        features.output,
+        this.renderSettingsService.renderResolution,
+        this.renderSettingsService.renderOutputScale
+      ),
       options: { ...this.viewService.options },
       settings: {
         ...toLevelRendererFeatures(this.renderSettingsService.rendererFeatures, features, LEVEL_FEATURE_TOGGLES_ON),
@@ -342,7 +346,7 @@ export class LevelViewerSnapshotService {
   @BoundAction()
   private fail(what: string, error: unknown): void {
     this.log.error(`Failed to ${what}:`, error);
-    this.failure = error instanceof Error ? error.message : String(error);
+    this.failure = describeLevelViewerFailure(what, error);
   }
 
   private async applyWeather(weather: TLevelViewerSnapshotPart): Promise<ILevelViewerSnapshotApplied["failed"]> {

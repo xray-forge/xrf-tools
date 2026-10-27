@@ -29,6 +29,7 @@ import {
   toLevelCubeSupersampling,
   toRenderCubeCapture,
 } from "@/applications/level-viewer/lib/cube/level-cube-capture";
+import { describeLevelViewerFailure } from "@/applications/level-viewer/lib/files/level-viewer-failure";
 import {
   toLevelViewerFileStem,
   toLevelViewerLevelName,
@@ -385,7 +386,7 @@ export class LevelViewerCaptureService {
       });
 
       if (completion?.error) {
-        this.failure = `Failed to capture the ${name}: ${completion.error.message}`;
+        this.failure = describeLevelViewerFailure(`capture the ${name}`, completion.error);
       } else if (completion?.result?.outcome === EJobOutcome.COMPLETED) {
         this.resultService.show(toLevelCapture(request, yield* call(readLevelViewerImage(path))));
         this.log.info(`Captured a ${name}:`, path);
@@ -501,6 +502,6 @@ export class LevelViewerCaptureService {
   @BoundAction()
   private fail(what: string, error: unknown): void {
     this.log.error(`Failed to ${what}:`, error);
-    this.failure = `Failed to ${what}: ${error instanceof Error ? error.message : String(error)}`;
+    this.failure = describeLevelViewerFailure(what, error);
   }
 }

@@ -21,7 +21,15 @@ export function toLevelViewerFileStem(level: Nullable<string>, at: Date): string
   const date: string = `${at.getFullYear()}${pad(at.getMonth() + 1)}${pad(at.getDate())}`;
   const time: string = `${pad(at.getHours())}${pad(at.getMinutes())}${pad(at.getSeconds())}`;
 
-  return `${level ? getPathName(level) : "view"}-${date}-${time}`;
+  return `${toLevelViewerFileName(level)}-${date}-${time}`;
+}
+
+/**
+ * @param level - The level a file is of, as a snapshot names it, or null for none.
+ * @returns What the viewer's files are named after: the level's own name, its directories left off.
+ */
+export function toLevelViewerFileName(level: Nullable<string>): string {
+  return level ? getPathName(level) : "view";
 }
 
 function pad(value: number): string {

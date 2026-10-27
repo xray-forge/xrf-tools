@@ -503,3 +503,17 @@ export function toLevelRendererAntialiasing(
 
   return view.antialiasing ?? features;
 }
+
+/**
+ * @param view - The output the view sets.
+ * @param resolution - The resolution the settings resolve every viewport at.
+ * @param scale - The scale the settings give an automatic resolution.
+ * @returns What the view resolves its frame at: its own resolution and scale over the settings'.
+ */
+export function toLevelOutput(
+  view: TLevelOutputOptions,
+  resolution: ERenderResolution,
+  scale: number
+): Required<TLevelOutputOptions> {
+  return { resolution: view.resolution ?? resolution, scale: view.scale ?? scale };
+}

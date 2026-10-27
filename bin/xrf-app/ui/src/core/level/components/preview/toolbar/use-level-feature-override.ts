@@ -53,7 +53,7 @@ export function useLevelFeatureOverride<K extends TLevelFeatureGroupKey>(key: K)
     [viewService, key]
   );
 
-  const reset = useCallback(() => viewService.setFeatures({ ...viewService.features, [key]: {} }), [viewService, key]);
+  const reset = useCallback(() => viewService.resetFeatures([key]), [viewService, key]);
 
   return useMemo(() => ({ reset, set, setNested }), [reset, set, setNested]);
 }
