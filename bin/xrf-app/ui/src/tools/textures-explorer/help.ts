@@ -67,7 +67,7 @@ export const TEXTURES_EXPLORER_HELP: IToolHelp = {
     "`Plane` is a thin slab rather than a true plane, so orbiting past its edge shows a dark side rather than an " +
       "empty viewport. Its proportions are the texture's own, and only its front face carries the texture.",
     "The session survives a reload; the texture that was open does not, because the backend parks no selection. " +
-      "Leaving the application closes the browsed roots.",
+      "Leaving the tool closes the browsed roots.",
   ],
   limitations: [
     "Read-only: no editing, saving, or export. Changing what a descriptor declares is the textures editor, which " +
