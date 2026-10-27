@@ -12,6 +12,7 @@ import { LevelRendererParticlesSection } from "@/applications/level-viewer/compo
 import { LevelRendererResidentSection } from "@/applications/level-viewer/components/panels/LevelRendererPanel/LevelRendererResidentSection";
 import { LevelRendererStaticDrawsSection } from "@/applications/level-viewer/components/panels/LevelRendererPanel/LevelRendererStaticDrawsSection";
 import { LevelRendererTexturesSection } from "@/applications/level-viewer/components/panels/LevelRendererPanel/LevelRendererTexturesSection";
+import { EMPTY_LEVEL_RESIDENT } from "@/core/level/lib/render/level-resident";
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
@@ -34,7 +35,7 @@ export function LevelRendererPanel({
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
   const frame: RenderFrameReport = renderService.frame;
-  const textures: ILevelTextureReport = viewportService.textureReport;
+  const textures: ILevelTextureReport = (renderService.resident.value ?? EMPTY_LEVEL_RESIDENT).textures;
 
   if (!loadService.level.value) {
     return (

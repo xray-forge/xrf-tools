@@ -1,23 +1,25 @@
 import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 
+import { ILevelResident } from "@/core/level/lib/render/level-resident";
+
 /**
- * @param description - How asking the renderer what the resident level draws went.
+ * @param resident - How asking the renderer what the resident level draws went.
  * @param subject - What a panel waits for from it, as "what it could not draw".
  * @returns What the panel says in place of that, or null once the renderer has said it.
  */
-export function describeLevelDescriptionWait(description: AsyncState<void>, subject: string): Nullable<string> {
-  if (description.isReady) {
+export function describeLevelResidentWait(resident: AsyncState<ILevelResident>, subject: string): Nullable<string> {
+  if (resident.isReady) {
     return null;
   }
 
-  if (description.isFailed) {
-    const reason: string = description.error?.message.replace(/\.$/, "") || "the renderer did not say why";
+  if (resident.isFailed) {
+    const reason: string = resident.error?.message.replace(/\.$/, "") || "the renderer did not say why";
 
     return `Could not read ${subject}: ${reason}.`;
   }
 
-  if (description.isLoading) {
+  if (resident.isLoading) {
     return `Reading ${subject}…`;
   }
 

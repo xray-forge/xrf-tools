@@ -9,6 +9,7 @@ import { Nullable } from "@xrf/types";
 
 import { LevelViewerLayout } from "@/applications/level-viewer/components/LevelViewerLayout";
 import { container as LEVEL_VIEWER_CONTAINER } from "@/applications/level-viewer/runtime";
+import { noteLevelRevealed } from "@/core/level/fixtures/level-container";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
@@ -136,7 +137,7 @@ describe("LevelViewerLayout", () => {
   it("keeps the level covered and says why when the renderer fails", () => {
     const container: Container = mockLevelViewerContainer();
 
-    container.get(LevelViewportService).reveal();
+    noteLevelRevealed(container.get(LevelRenderService));
     runInAction(() => {
       container.get(LevelRenderService)["drawFailure"] = "No GPU adapter";
     });

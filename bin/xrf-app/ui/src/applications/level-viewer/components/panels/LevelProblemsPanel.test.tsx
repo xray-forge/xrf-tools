@@ -1,12 +1,12 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult, waitFor, within } from "@testing-library/react";
-import { Container } from "@wirestate/core";
 import { AsyncState } from "@xrf/async";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockIpcCommands } from "@xrf/ipc/testing";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 import { ERenderTextureGroup, RenderLoadFailure } from "@xrf/ipc/types/xrf-renderer";
 
+import { mockLevelViewContainer } from "@/core/level/fixtures/level-container";
 import {
   mockLevelPartResponses,
   mockLevelSpawnObject,
@@ -14,11 +14,10 @@ import {
   mockSectorOutline,
   mockSelectedLevelDescription,
 } from "@/core/level/fixtures/level.mocks";
+import { ILevelResident } from "@/core/level/lib/render/level-resident";
 import { EMPTY_LEVEL_TEXTURE_REPORT } from "@/core/level/lib/texture/level-texture-report";
-import { LevelLoadService } from "@/core/level/services/level-load.service";
-import { LevelViewportService } from "@/core/level/services/level-viewport.service";
+import { mockCommandAnswer } from "@/core/operations/fixtures/command-operation.mocks";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { LevelProblemsPanel } from "./LevelProblemsPanel";
@@ -28,15 +27,11 @@ interface IRenderProblemsOptions {
   isPresent: boolean;
   /** A spawned visual the renderer could not read, if any. */
   unreadable?: RenderLoadFailure;
-  /** How asking the renderer about the resident level went: answered unless said. */
-  description?: AsyncState<void>;
+  /** How asking the renderer about the resident level went, where it did not answer. */
+  resident?: AsyncState<ILevelResident>;
 }
 
-async function renderProblems({
-  isPresent,
-  unreadable,
-  description = AsyncState.ready<void>(null),
-}: IRenderProblemsOptions): Promise<RenderResult> {
+async function renderProblems({ isPresent, unreadable, resident }: IRenderProblemsOptions): Promise<RenderResult> {
   const level = mockSelectedLevelDescription({ sectors: [mockSectorOutline({ sector: 0 })] });
 
   mockIpcCommands({
@@ -48,9 +43,7 @@ async function renderProblems({
     ),
   });
 
-  const container: Container = mockContainer([LevelLoadService, LevelViewportService]);
-  const service: LevelLoadService = container.get(LevelLoadService);
-  const viewport: LevelViewportService = container.get(LevelViewportService);
+  const { container, load: service, render } = mockLevelViewContainer();
 
   await service.load({
     source: { kind: "asset", logicalPath: "levels\\zaton" },
@@ -63,8 +56,10 @@ async function renderProblems({
 
   // What the textures came to and what the level could not draw are the renderer's answers, so the panel is given
   // them rather than reaching for what it can no longer see.
-  viewport.noteTextures(
-    isPresent
+  const answered: ILevelResident = {
+    problems: { models: unreadable ? [unreadable] : [], sectors: [], skipped: [] },
+    surfaces: new Map(),
+    textures: isPresent
       ? EMPTY_LEVEL_TEXTURE_REPORT
       : {
           deferred: 0,
@@ -77,10 +72,10 @@ async function renderProblems({
             },
           ],
           uploaded: 0,
-        }
-  );
-  viewport.noteProblems({ models: unreadable ? [unreadable] : [], sectors: [], skipped: [] });
-  viewport.noteDescription(description);
+        },
+  };
+
+  mockCommandAnswer(render.resident, resident ?? AsyncState.ready(answered));
 
   return renderWithProviders(<LevelProblemsPanel />, { container });
 }
@@ -96,7 +91,7 @@ describe("LevelProblemsPanel", () => {
 
   // Before the level is resident the renderer has said nothing, which is not the same as having found nothing.
   it("says the renderer's part is not read yet rather than calling the level clean", async () => {
-    const { getByTestId } = await renderProblems({ description: AsyncState.idle(), isPresent: true });
+    const { getByTestId } = await renderProblems({ isPresent: true, resident: AsyncState.idle() });
     const panel: HTMLElement = getByTestId("level-problems-panel");
 
     expect(getByTestId("editor-problems-status")).toHaveTextContent(
@@ -107,8 +102,8 @@ describe("LevelProblemsPanel", () => {
 
   it("says why the renderer's part could not be read", async () => {
     const { getByTestId } = await renderProblems({
-      description: AsyncState.failed(new Error("The viewport is gone")),
       isPresent: true,
+      resident: AsyncState.failed(new Error("The viewport is gone")),
     });
 
     expect(getByTestId("editor-problems-status")).toHaveTextContent(
@@ -140,7 +135,7 @@ describe("LevelProblemsPanel", () => {
 
   it("stands empty until a level is open", () => {
     const { getByTestId } = renderWithProviders(<LevelProblemsPanel />, {
-      container: mockContainer([LevelLoadService, LevelViewportService]),
+      container: mockLevelViewContainer().container,
     });
 
     expect(getByTestId("level-problems-panel").textContent).toContain("No level open");

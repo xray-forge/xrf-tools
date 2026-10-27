@@ -10,13 +10,14 @@ import { ReactNode } from "react";
 
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { mockLevelWeatherDescription } from "@/core/level/fixtures/weather.mocks";
+import { LevelSceneShow } from "@/core/level/lib/render/level-scene-show";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
-import { mockRenderAppliedReport } from "@/core/render/fixtures/render.mocks";
+import { mockRenderAppliedReport, mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
@@ -120,6 +121,22 @@ export function noteLevelFrame(render: LevelRenderService, report: Partial<Rende
     runInAction(() => {
       render.frame = { ...EMPTY_RENDER_FRAME_REPORT, ...report };
     });
+  });
+}
+
+/**
+ * Stands in for a level the viewport drew whole, with none attached to ask what it holds.
+ *
+ * @param render - The service hearing the viewport.
+ */
+export function noteLevelRevealed(render: LevelRenderService): void {
+  const shown: LevelSceneShow = render["shown"];
+  const scene: number = 1;
+
+  act(() => {
+    shown.open("revealed", null);
+    shown.noteShown(scene);
+    shown.noteLoad(mockRenderLoadReport({ isReady: true, scene }));
   });
 }
 

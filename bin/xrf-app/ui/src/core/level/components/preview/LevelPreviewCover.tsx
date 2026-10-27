@@ -32,7 +32,7 @@ export function LevelPreviewCover({
 
   const load: Nullable<RenderLoadReport> = viewportService.load;
   const failure: Nullable<string> = renderService.failure;
-  const isCovering: boolean = failure !== null || isLoading || !viewportService.isRevealed;
+  const isCovering: boolean = failure !== null || isLoading || !renderService.isRevealed;
 
   let label: string = "Preparing the level…";
 

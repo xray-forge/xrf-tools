@@ -1,42 +1,21 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, RefObservable } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
 import { RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
-import { WorldLevelProblems } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 
 import { KeybindCommand } from "@/core/commands";
 import { CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND } from "@/core/level/commands";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { TLevelPick } from "@/core/level/lib/pick/level-pick";
-import { ILevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
-import { EMPTY_LEVEL_TEXTURE_REPORT, ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-
-/** No surface measured, which is what a level not yet resident reports. */
-const NO_LEVEL_SURFACES_GEOMETRY: ReadonlyMap<number, ILevelSurfaceGeometry> = new Map();
-
-/** Nothing the level could not draw, which is also what a level not yet resident reports. */
-const NO_LEVEL_PROBLEMS: WorldLevelProblems = { models: [], sectors: [], skipped: [] };
 
 /**
- * What the viewport reports about itself while it draws.
+ * What the viewport reports about itself while it draws, and what is selected in it.
  */
 @Injectable()
 export class LevelViewportService {
   /** Where the camera is and where it faces, or null until the viewport has drawn a frame. */
   @RefObservable()
   public camera: Nullable<ILevelCamera> = null;
-
-  /** What the level's textures came to, which is the answer of whichever side uploaded them. */
-  @RefObservable()
-  public textureReport: ILevelTextureReport = EMPTY_LEVEL_TEXTURE_REPORT;
-
-  /**
-   * Whether the viewport shows the level: not until a frame has been drawn with everything the level opens with, so
-   * a level never assembles in front of whoever opened it.
-   */
-  @RefObservable()
-  public isRevealed: boolean = false;
 
   /** What the last click in the viewport picked, or null where it picked nothing of the level or none was made. */
   @RefObservable()
@@ -53,82 +32,16 @@ export class LevelViewportService {
   @RefObservable()
   public isSceneFocused: boolean = false;
 
-  /** What each shader table entry draws across the open level, keyed by shader id; empty until it is all resident. */
-  @RefObservable()
-  public surfaceGeometry: ReadonlyMap<number, ILevelSurfaceGeometry> = NO_LEVEL_SURFACES_GEOMETRY;
-
   /** How far the renderer has read the open level and put it on the GPU, or null until it says. */
   @RefObservable()
   public load: Nullable<RenderLoadReport> = null;
 
-  /** What the open level could not draw the way it asked, as the renderer said once it was resident. */
-  @RefObservable()
-  public problems: WorldLevelProblems = NO_LEVEL_PROBLEMS;
-
   /**
-   * How asking the renderer what the resident level draws went: its surfaces, textures and problems. Idle until the
-   * level is resident, and failed with why where it could not say.
-   */
-  @RefObservable()
-  public description: AsyncState<void> = AsyncState.idle();
-
-  /** Shows the level, drawn whole. */
-  @BoundAction()
-  public reveal(): void {
-    this.isRevealed = true;
-  }
-
-  /** Hides it again, for a level about to open. */
-  @BoundAction()
-  public conceal(): void {
-    this.isRevealed = false;
-    this.surfaceGeometry = NO_LEVEL_SURFACES_GEOMETRY;
-    this.textureReport = EMPTY_LEVEL_TEXTURE_REPORT;
-    this.load = null;
-    this.problems = NO_LEVEL_PROBLEMS;
-    this.description = AsyncState.idle();
-  }
-
-  /**
-   * @param report - How far the renderer has read the open level.
+   * @param report - How far the renderer has read the open level, or null for a level about to open.
    */
   @BoundAction()
   public noteLoad(report: Nullable<RenderLoadReport>): void {
     this.load = report;
-  }
-
-  /**
-   * @param description - How asking the renderer what the resident level draws went.
-   */
-  @BoundAction()
-  public noteDescription(description: AsyncState<void>): void {
-    this.description = description;
-  }
-
-  /**
-   * @param problems - What the open level could not draw the way it asked.
-   */
-  @BoundAction()
-  public noteProblems(problems: WorldLevelProblems): void {
-    this.problems = problems;
-  }
-
-  /**
-   * @param geometry - What each shader table entry draws across the open level, keyed by shader id.
-   */
-  @BoundAction()
-  public noteSurfaceGeometry(geometry: ReadonlyMap<number, ILevelSurfaceGeometry>): void {
-    this.surfaceGeometry = geometry;
-  }
-
-  /**
-   * Takes what the textures came to.
-   *
-   * @param report - What each reference became, once the renderer had uploaded it.
-   */
-  @BoundAction()
-  public noteTextures(report: ILevelTextureReport): void {
-    this.textureReport = report;
   }
 
   /**
@@ -177,7 +90,7 @@ export class LevelViewportService {
   /** Forgets the open level's telemetry, so a closed viewer reports nothing rather than its last frame. */
   @BoundAction()
   public clear(): void {
-    this.conceal();
+    this.load = null;
     this.camera = null;
     this.notePicked(null);
     this.isSceneFocused = false;

@@ -1,8 +1,7 @@
 import { Channel } from "@tauri-apps/api/core";
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, comparer, Computed, reaction } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
-import { transformError } from "@xrf/errors";
+import { call, cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
@@ -47,14 +46,15 @@ import { toLevelPickSelection } from "@/core/level/lib/pick/level-pick-selection
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { toLevelFrameOverlays } from "@/core/level/lib/render/level-render-frame";
 import { toLevelCameraAt, toLevelViewOptions } from "@/core/level/lib/render/level-render-view";
-import { toLevelSurfaceGeometry } from "@/core/level/lib/surface/level-surface-geometry";
-import { toLevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
+import { ILevelResident, toLevelResident } from "@/core/level/lib/render/level-resident";
+import { LevelSceneShow } from "@/core/level/lib/render/level-scene-show";
 import { ELevelShading, toShownLevelShading } from "@/core/level/lib/view/level-shading";
-import { ILevelScene, LevelLoadService } from "@/core/level/services/level-load.service";
+import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { toDrawnAntialiasing } from "@/core/render/lib/features/render-antialiasing-choices";
 import { toDrawnRenderLightLevel } from "@/core/render/lib/features/render-light-level-choices";
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
@@ -65,35 +65,34 @@ import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
 
 /**
- * Owns the native viewport the open level is drawn in, and everything said to it.
+ * Owns the native viewport the open level is drawn in: everything said to it, the scene it shows the level as, and what
+ * it is asked of the level once resident.
  */
 @Injectable()
 export class LevelRenderService extends NativeRenderSurfaceService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
+  /**
+   * What the renderer says of the open level once it is resident whole: idle until then, and failed with why where it
+   * could not say, which the panels show.
+   */
+  public readonly resident: CommandOperation<ILevelResident> = new CommandOperation(this.log);
+
   private readonly config: ILevelRenderConfig = DEFAULT_LEVEL_RENDER_CONFIG;
+
+  /** Which scene shows the open level, and whether it is revealed. */
+  private readonly shown: LevelSceneShow = new LevelSceneShow({
+    onLeft: () => this.leaveScene(),
+    onResident: () => void this.describeResident(),
+  });
 
   /** The level open, whose extent and start frame the camera. */
   private level: Nullable<SelectedLevelDescription> = null;
-  /** The session of the level open, whose later snapshots the backend moves the viewport's scene onto itself. */
-  private sessionId: Nullable<string> = null;
   /**
    * Where the camera was last stood: the level's start, or a place gone to. The toolbar's speeds and lens are sent
    * with it, so changing one leaves the camera where it has flown rather than taking it back.
    */
   private viewpoint: Nullable<ILevelViewpoint> = null;
-  /** Bumped by every level opened or closed, so a pick asked of one since replaced notes nothing. */
-  private opening: number = 0;
-  /** The scene the level open is drawn as, once the renderer has named it: only its load reports reveal the level. */
-  private scene: Nullable<number> = null;
-  /** The scene shown before the level was streamed afresh, until the scene it streams as is ready; null otherwise. */
-  private followed: Nullable<number> = null;
-  /** The scene of the open level last followed, whose next move the viewport waits for anew. */
-  private shownScene: Nullable<ILevelScene> = null;
-  /** The last load report, of whichever scene the viewport drew. */
-  private loaded: Nullable<RenderLoadReport> = null;
-  /** Whether the scene shown was revealed and described: its later reports change its counts, not what it holds. */
-  private isRevealed: boolean = false;
   /** Stops hearing the viewport's focus, while one is attached. */
   private unlisten: Nullable<() => void> = null;
 
@@ -106,6 +105,15 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     renderSettingsService: RenderSettingsService = inject(RenderSettingsService)
   ) {
     super(renderSettingsService);
+  }
+
+  /**
+   * Whether the viewport shows the open level: not until a frame has been drawn with everything the level opens with, so
+   * a level never assembles in front of whoever opened it.
+   */
+  @Computed()
+  public get isRevealed(): boolean {
+    return this.shown.isRevealed;
   }
 
   /**
@@ -214,29 +222,23 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   /**
-   * Says what of the open level is drawn under a point of the viewport, which is then what is selected.
+   * Says what of the open level is drawn under a point of the viewport, which is then what is selected. The scene shown
+   * let go meanwhile cancels it, as what it hit names something else now.
    *
    * @param point - Where, in css pixels from the viewport's top left corner.
    * @param isThrough - Whether glass is passed by, picking what stands behind it.
-   * @returns Settles once the pick is noted: what it hit, or nothing.
    */
-  public async pick(point: IRenderViewPoint, isThrough: boolean): Promise<void> {
-    const { viewport, opening } = this;
+  @LatestFlow()
+  public *pick(point: IRenderViewPoint, isThrough: boolean): TFlow {
+    const viewport: Nullable<NativeViewport> = this.viewport;
 
     if (!viewport || !this.level) {
       return;
     }
 
-    const hit: Nullable<RenderLevelHit> = await viewport.pick({ x: point.x, y: point.y, isThrough });
+    const hit: Nullable<RenderLevelHit> = yield* call(viewport.pick({ x: point.x, y: point.y, isThrough }));
 
-    // Asked of a viewport or a level since replaced, it names something else now.
-    if (viewport !== this.viewport || opening !== this.opening) {
-      return;
-    }
-
-    const picked: Nullable<TLevelPick> = hit ? toLevelPick(hit, this.loadService.spawn) : null;
-
-    this.viewportService.notePicked(picked);
+    this.viewportService.notePicked(hit ? toLevelPick(hit, this.loadService.spawn) : null);
   }
 
   /**
@@ -334,7 +336,8 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   protected start(viewport: NativeViewport): Array<() => void> {
     return [
       this.loadService.followLevel(this.openLevel),
-      this.loadService.followScene(this.moveScene),
+      // What is picked stays as the level streams afresh: the parts read again find it anew (`relocatePick`).
+      this.loadService.followScene(this.shown.move),
       reaction(() => this.viewService.cameraOptions, this.applyCamera),
       reaction(
         () => this.viewOptions,
@@ -430,14 +433,9 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   protected release(): void {
-    this.opening += 1;
-    this.sessionId = null;
     this.level = null;
     this.viewpoint = null;
-    this.scene = null;
-    this.followed = null;
-    this.loaded = null;
-    this.isRevealed = false;
+    this.shown.release();
   }
 
   protected onCamera(pose: WorldCameraPose): void {
@@ -450,138 +448,61 @@ export class LevelRenderService extends NativeRenderSurfaceService {
 
   protected onLoad(report: RenderLoadReport): void {
     this.viewportService.noteLoad(report);
-    this.loaded = report;
-
-    // A level read again streams as a scene of its own, which the viewport's reports name once it shows it.
-    if (this.followed !== null && report.scene !== this.followed) {
-      this.scene = report.scene;
-    }
-
-    this.revealWhenReady();
-  }
-
-  /**
-   * Reveals the level once everything it opens with is resident, so it is never seen half read, and describes it then,
-   * once a scene; a report of the level drawn before it, still loading when this one was asked for, reveals nothing.
-   */
-  private revealWhenReady(): void {
-    const report: Nullable<RenderLoadReport> = this.loaded;
-
-    if (!this.isRevealed && report?.isReady && this.level && this.scene !== null && report.scene === this.scene) {
-      this.isRevealed = true;
-      this.followed = null;
-      this.viewportService.reveal();
-      void this.describeResident();
-    }
+    this.shown.noteLoad(report);
   }
 
   /**
    * Asks what each shader table entry draws, what each texture came to and what the level could not draw, once it is
-   * resident whole; a failure is held for the panels to say.
+   * resident whole; the scene shown let go meanwhile cancels it, as it describes something else.
    */
-  private async describeResident(): Promise<void> {
-    const { viewport, opening } = this;
+  @LatestFlow("resident")
+  private *describeResident(): TFlow {
+    const viewport: Nullable<NativeViewport> = this.viewport;
 
     if (!viewport) {
       return;
     }
 
-    // Asked of a viewport or a level since replaced, it describes something else.
-    const isCurrent = (): boolean => viewport === this.viewport && opening === this.opening;
+    yield* this.resident.run({
+      name: "Describe resident level",
+      command: () =>
+        Promise.all([viewport.measureSurfaces(), viewport.describeTextureLoads(), viewport.describeProblems()]).then(
+          ([measured, textures, problems]) => toLevelResident(measured, textures, problems)
+        ),
+      failure: "Could not describe the resident level",
+    });
+  }
 
-    this.viewportService.noteDescription(AsyncState.loading());
-
-    try {
-      const [measured, textures, problems] = await Promise.all([
-        viewport.measureSurfaces(),
-        viewport.describeTextureLoads(),
-        viewport.describeProblems(),
-      ]);
-
-      if (isCurrent()) {
-        this.viewportService.noteSurfaceGeometry(toLevelSurfaceGeometry(measured));
-        this.viewportService.noteTextures(toLevelTextureReport(textures));
-        this.viewportService.noteProblems(problems);
-        this.viewportService.noteDescription(AsyncState.ready<void>(null));
-      }
-    } catch (error: unknown) {
-      if (isCurrent()) {
-        this.log.error("Failed to describe the resident level:", transformError(error));
-        this.viewportService.noteDescription(AsyncState.failed(transformError(error)));
-      }
-    }
+  /** Lets go of what was asked of the scene shown: what it described and what a click picked in it name it alone. */
+  @BoundAction()
+  private leaveScene(): void {
+    cancelFlow(this, "resident");
+    cancelFlow(this, "pick");
+    this.resident.reset();
   }
 
   @BoundAction()
   private openLevel(selected: Nullable<SessionSnapshot<SelectedLevelDescription>>): void {
     const level: Nullable<SelectedLevelDescription> = selected?.value ?? null;
+    const sessionId: Nullable<string> = selected?.sessionId ?? null;
 
-    // A level read again in its session stays shown: the scene it streams as moves apart (`moveScene`).
-    if (selected && this.isShowing(selected.sessionId)) {
-      this.level = level;
+    this.level = level;
 
+    // A level read again in its session stays shown: the scene it streams as moves apart (`shown.move`).
+    if (!this.shown.open(sessionId, this.loadService.scene)) {
       return;
     }
 
-    this.opening += 1;
-    this.sessionId = selected?.sessionId ?? null;
-    this.level = level;
-    this.shownScene = this.loadService.scene;
-    this.scene = null;
-    this.followed = null;
-    this.isRevealed = false;
     this.stand(toLevelStartViewpoint(level?.bounds ?? null, this.loadService.start.value));
-    // Another level's surfaces and objects are numbered afresh.
+    // Another level's surfaces and objects are numbered afresh, and its load starts from nothing read.
     this.viewportService.notePicked(null);
-    this.viewportService.conceal();
+    this.viewportService.noteLoad(null);
 
     this.show(
       (viewport: NativeViewport) =>
-        viewport.ask(
-          "showLevel",
-          (id: RenderViewportId) => levelsCommands.showLevel(id, selected?.sessionId ?? null),
-          null
-        ),
-      (scene: Nullable<number>) => {
-        this.scene = scene;
-        this.revealWhenReady();
-      }
+        viewport.ask("showLevel", (id: RenderViewportId) => levelsCommands.showLevel(id, sessionId), null),
+      this.shown.noteShown
     );
-  }
-
-  /**
-   * @param sessionId - The level session a snapshot belongs to.
-   * @returns Whether the viewport shows that session already, its scene named or a level read again on its way.
-   */
-  private isShowing(sessionId: string): boolean {
-    return this.level !== null && this.sessionId === sessionId && (this.scene !== null || this.followed !== null);
-  }
-
-  /**
-   * Follows the level shown into the scene the backend streams it as afresh, in its session: the camera stays where it
-   * has flown and the viewport is revealed again once that scene is ready. A scene of another level, or the one the
-   * level opened as, is the opening's own.
-   *
-   * @param scene - The scene the open level streams as now.
-   */
-  @BoundAction()
-  private moveScene(scene: Nullable<ILevelScene>): void {
-    if (!scene || scene === this.shownScene || !this.isShowing(scene.sessionId)) {
-      return;
-    }
-
-    this.shownScene = scene;
-    this.opening += 1;
-    this.followed = this.scene ?? this.followed;
-    this.scene = null;
-    this.isRevealed = false;
-    // What is picked stays: the parts read again find it anew (`relocatePick`).
-    this.viewportService.conceal();
-
-    // The renderer reports the scene it streams as from the moment the backend moved it, which can be before now.
-    if (this.loaded) {
-      this.onLoad(this.loaded);
-    }
   }
 
   /**
