@@ -10,6 +10,7 @@ import { Nullable, Optional } from "@xrf/types";
 import { ReactElement, useCallback, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import {
   getEntryEngineIdentity,
   getSubjectRoot,
@@ -36,6 +37,7 @@ import { ArchiveUnpackDialog } from "./unpack";
 
 export function ArchivesEditor(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
+  const previewService: ArchivePreviewService = useInjection(ArchivePreviewService);
   const commandBus: CommandBus = useInjection(CommandBus);
 
   const [isStatisticsOpen, setStatisticsOpen] = useState<boolean>(false);
@@ -45,19 +47,18 @@ export function ArchivesEditor(): ReactElement {
 
   // The run rather than the service's own flag: an extraction survives the window being reloaded, so returning here
   // finds it again instead of showing an idle tree over files it is still writing.
-  const job: Nullable<IJobState> = archivesService.job;
+  const job: Nullable<IJobState> = archivesService.extraction.job;
 
   const subject: Nullable<ArchiveSubject> = archivesService.subject.value;
   const root: string = getSubjectRoot(subject);
   const overriddenCount: number = archivesService.overridden.length;
 
   const isWorld: boolean = subject?.kind === EArchiveSubject.WORLD;
-  const isExtracting: boolean = archivesService.operation.isLoading;
-  const isBusy: boolean = archivesService.subject.isLoading || isExtracting;
+  const isBusy: boolean = archivesService.subject.isLoading || archivesService.isWriting;
 
   const location: Nullable<IEditorLocation> = root ? { path: root } : null;
 
-  const onCancelExtraction = useCallback(() => archivesService.cancelExtraction(), [archivesService]);
+  const onCancelExtraction = useCallback(() => archivesService.extraction.cancel(), [archivesService]);
 
   const onClose = useCallback((): void => void archivesService.closeSubject(), [archivesService]);
 
@@ -80,9 +81,9 @@ export function ArchivesEditor(): ReactElement {
         { optional: true }
       );
 
-      void archivesService.selectArchiveFile(entry);
+      void previewService.selectFile(entry);
     },
-    [archivesService, commandBus]
+    [archivesService, commandBus, previewService]
   );
 
   useEditorPanels(() => ARCHIVE_EXPLORER_PANELS, []);

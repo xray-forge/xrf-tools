@@ -4,7 +4,7 @@ import { ArchiveReference } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -21,15 +21,15 @@ export function ArchiveDescriptionReferenceLink({
   className,
   reference,
 }: IArchiveDescriptionReferenceLinkProps): ReactElement {
-  const archivesService: ArchivesService = useInjection(ArchivesService);
+  const previewService: ArchivePreviewService = useInjection(ArchivePreviewService);
 
   const entry: Nullable<string> = reference.entry;
 
   const onOpenReference = useCallback(() => {
     if (entry) {
-      archivesService.openArchiveFileByName(entry);
+      previewService.selectFileByName(entry);
     }
-  }, [archivesService, entry]);
+  }, [entry, previewService]);
 
   if (!entry) {
     return (

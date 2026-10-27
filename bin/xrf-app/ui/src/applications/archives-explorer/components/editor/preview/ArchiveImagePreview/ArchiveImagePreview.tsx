@@ -6,7 +6,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError/ArchivePreviewError";
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
 import { cn } from "@/core/theme/class-name";
@@ -23,8 +23,8 @@ export function ArchiveImagePreview({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const archivesService: ArchivesService = useInjection(ArchivesService);
-  const content: AsyncState<Nullable<TArchiveContent>> = archivesService.content;
+  const previewService: ArchivePreviewService = useInjection(ArchivePreviewService);
+  const content: AsyncState<Nullable<TArchiveContent>> = previewService.content;
 
   // The previous picture stays on screen while the next one loads, the same courtesy the other previews extend.
   const image: Nullable<TArchiveContent & { kind: "image" }> = useLastContent(
@@ -45,7 +45,7 @@ export function ArchiveImagePreview({
         id={id}
         className={className}
         error={content.error}
-        onRetry={archivesService.retrySelectedFile}
+        onRetry={previewService.retry}
       />
     );
   }
@@ -67,7 +67,7 @@ export function ArchiveImagePreview({
   return (
     <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 min-w-0 grow flex-col", className)}>
       <ImageViewport
-        alt={archivesService.selectedEntry?.name ?? "Picture"}
+        alt={previewService.selectedEntry?.name ?? "Picture"}
         src={url}
         width={shape.width}
         height={shape.height}

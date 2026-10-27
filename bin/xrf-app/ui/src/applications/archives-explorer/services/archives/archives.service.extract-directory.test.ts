@@ -1,23 +1,27 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
-import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
-import { Nullable } from "@xrf/types";
+import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 
 import {
   mockArchiveExtractDirectoryResult,
   mockArchiveFileDescriptor,
   mockArchivesVolumes,
 } from "@/core/archive/fixtures/archive.mocks";
-import { EPathEntryKind } from "@/core/path/entry-kind";
 import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { ArchivesService } from "./archives.service";
 
-function getExtractedDirectory(service: ArchivesService): Nullable<ArchiveExtractDirectoryResult> {
-  return service.operation.value?.kind === "extract-directory" ? service.operation.value.result : null;
+const FILE: ArchiveFileDescriptor = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
+
+function mockService(): ArchivesService {
+  const { service } = mockInjectedService(ArchivesService);
+
+  mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
+
+  return service;
 }
 
 describe("ArchivesService directory extraction", () => {
@@ -26,9 +30,7 @@ describe("ArchivesService directory extraction", () => {
   });
 
   it("sends the directory prefix and destination root", async () => {
-    const { service } = mockInjectedService(ArchivesService);
-
-    mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
+    const service: ArchivesService = mockService();
 
     mockIpcCommands({
       [EArchivesCommand.EXTRACT_DIRECTORY]: mockArchiveExtractDirectoryResult({
@@ -39,7 +41,7 @@ describe("ArchivesService directory extraction", () => {
       }),
     });
 
-    await service.extractArchiveDirectory("configs", "C:\\out");
+    await service.extractDirectory("configs", "C:\\out");
 
     // The identity and the channel are minted per run, so this names what the caller chose and lets the job's own two
     // arguments be whatever the jobs service made them.
@@ -47,19 +49,13 @@ describe("ArchivesService directory extraction", () => {
       EArchivesCommand.EXTRACT_DIRECTORY,
       expect.objectContaining({ request: { sessionId: "fixture-session", prefix: "configs", destination: "C:\\out" } })
     );
-    expect(getExtractedDirectory(service)?.extractedCount).toBe(12);
+    expect(service.extraction.result?.extractedCount).toBe(12);
   });
 
   it("treats the archive root as an empty prefix", async () => {
-    const { service } = mockInjectedService(ArchivesService);
+    const service: ArchivesService = mockService();
 
-    mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
-
-    service.selectArchiveDirectory("");
-
-    expect(service.selection).toEqual({ kind: EPathEntryKind.DIRECTORY, path: "" });
-
-    await service.extractArchiveDirectory("", "C:\\out");
+    await service.extractDirectory("", "C:\\out");
 
     expect(mockInvoke).toHaveBeenCalledWith(
       EArchivesCommand.EXTRACT_DIRECTORY,
@@ -68,9 +64,7 @@ describe("ArchivesService directory extraction", () => {
   });
 
   it("reports a refused extraction instead of staying loading", async () => {
-    const { service } = mockInjectedService(ArchivesService);
-
-    mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
+    const service: ArchivesService = mockService();
 
     mockIpcCommands({
       [EArchivesCommand.EXTRACT_DIRECTORY]: () => {
@@ -78,29 +72,20 @@ describe("ArchivesService directory extraction", () => {
       },
     });
 
-    await expect(service.extractArchiveDirectory("configs", "C:\\out")).rejects.toThrow("read only");
+    await service.extractDirectory("configs", "C:\\out");
 
-    expect(service.operation.isLoading).toBe(false);
-    expect(String(service.operation.error)).toContain("read only");
+    expect(service.extraction.isRunning).toBe(false);
+    expect(service.extraction.error).toContain("read only");
   });
 
-  it("keeps file and directory selection mutually exclusive", async () => {
-    const { service } = mockInjectedService(ArchivesService);
+  it("starts no directory while a file is written, as one write runs at a time", () => {
+    const service: ArchivesService = mockService();
 
-    mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
+    mockIpcCommands({ [EArchivesCommand.EXTRACT_FILE]: () => new Promise(() => {}) });
 
-    service.selectArchiveDirectory("configs");
-    expect(service.selection).toEqual({ kind: EPathEntryKind.DIRECTORY, path: "configs" });
+    void service.extractFile(FILE, "C:\\out\\system.ltx");
+    void service.extractDirectory("configs", "C:\\out");
 
-    // Both being set at once would leave the content area with two things claiming to be selected.
-    const entry = mockArchiveFileDescriptor({ name: "configs\\system.ltx" });
-
-    await service.selectArchiveFile(entry);
-    expect(service.selection).toEqual({ kind: EPathEntryKind.FILE, entry });
-    expect(service.selectedEntry).toEqual(entry);
-
-    service.selectArchiveDirectory("configs");
-    expect(service.selection).toEqual({ kind: EPathEntryKind.DIRECTORY, path: "configs" });
-    expect(service.selectedEntry).toBeNull();
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.EXTRACT_DIRECTORY, expect.anything());
   });
 });

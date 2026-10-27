@@ -1,8 +1,6 @@
 import { default as SaveAltIcon } from "@mui/icons-material/SaveAlt";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
-import { Logger } from "@xrf/logging";
-import { useLogger } from "@xrf/logging/react";
 import { getFileExtension, splitLogicalPath } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
@@ -25,11 +23,9 @@ export function ArchiveFileExtractAction({
   className,
   entry,
 }: IArchiveFileExtractActionProps): ReactElement {
-  const log: Logger = useLogger(__MODULE_NAME__);
-
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
-  const isExtracting: boolean = archivesService.operation.isLoading;
+  const isWriting: boolean = archivesService.isWriting;
 
   const onExtract = useCallback(async () => {
     // The engine name is a full logical path; only its leaf is a file name.
@@ -42,17 +38,11 @@ export function ArchiveFileExtractAction({
       filters: extension ? [{ name: `${extension.toUpperCase()} file`, extensions: [extension] }] : undefined,
     });
 
-    if (!destination) {
-      return;
-    }
-
-    try {
+    if (destination) {
+      // How it ends is told as a notice.
       await archivesService.extractFile(entry, destination);
-    } catch (error) {
-      // Published on the service as the extraction failure, which the header reports. Logged for the stack.
-      log.error("Failed to extract archive file:", error);
     }
-  }, [archivesService, entry, log]);
+  }, [archivesService, entry]);
 
   return (
     <EditorIconAction
@@ -62,7 +52,7 @@ export function ArchiveFileExtractAction({
       label={"Extract file"}
       description={"Extract this file to disk"}
       icon={<SaveAltIcon />}
-      isDisabled={isExtracting}
+      isDisabled={isWriting}
       onClick={onExtract}
     />
   );

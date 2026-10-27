@@ -6,7 +6,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError/ArchivePreviewError";
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
 import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
@@ -27,8 +27,8 @@ export function ArchiveAudioPreview({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const archivesService: ArchivesService = useInjection(ArchivesService);
-  const content: AsyncState<Nullable<TArchiveContent>> = archivesService.content;
+  const previewService: ArchivePreviewService = useInjection(ArchivePreviewService);
+  const content: AsyncState<Nullable<TArchiveContent>> = previewService.content;
 
   // The previous sound stays on screen while the next one loads, so the transport is never torn down mid-selection.
   const audio: Nullable<TArchiveContent & { kind: "audio" }> = useLastContent(
@@ -47,7 +47,7 @@ export function ArchiveAudioPreview({
         id={id}
         className={className}
         error={content.error}
-        onRetry={archivesService.retrySelectedFile}
+        onRetry={previewService.retry}
       />
     );
   }

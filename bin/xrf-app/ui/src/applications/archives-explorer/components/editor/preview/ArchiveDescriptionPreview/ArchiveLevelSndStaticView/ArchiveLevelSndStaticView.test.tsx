@@ -6,9 +6,8 @@ import {
   EArchiveDescribeScope,
 } from "@xrf/ipc/types/xrf-app-archives";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { mockArchivesExplorer } from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
 import { mockArchiveLevelSndStaticDescription } from "@/core/archive/fixtures/archive.mocks";
-import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveLevelSndStaticView } from "./ArchiveLevelSndStaticView";
@@ -18,7 +17,7 @@ const SCOPE: ArchiveDescribeScope = { kind: EArchiveDescribeScope.VOLUMES, volum
 function renderView(
   description: ArchiveLevelSndStaticDescription = mockArchiveLevelSndStaticDescription()
 ): RenderResult {
-  const { container } = mockInjectedService(ArchivesService);
+  const { container } = mockArchivesExplorer();
 
   return renderWithProviders(<ArchiveLevelSndStaticView description={description} scope={SCOPE} />, { container });
 }

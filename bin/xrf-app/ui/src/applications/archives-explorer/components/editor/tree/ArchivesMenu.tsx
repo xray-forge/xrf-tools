@@ -5,6 +5,7 @@ import { Nullable, Optional } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import { IArchiveEntry, IArchiveTreeItem, parseTree, toArchiveSelectionItemId } from "@/core/archive/lib";
 import { isLooseContainer } from "@/core/assets/lib";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
@@ -28,10 +29,11 @@ export function ArchivesMenu({
   className,
 }: BaseComponentProps): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
+  const previewService: ArchivePreviewService = useInjection(ArchivePreviewService);
 
   const isWriting: boolean = archivesService.isWriting;
   const files: Array<IArchiveEntry> = archivesService.entries;
-  const openItemId: Nullable<string> = toArchiveSelectionItemId(archivesService.selection);
+  const openItemId: Nullable<string> = toArchiveSelectionItemId(previewService.selection);
 
   const tree: IUseTreeState = useTreeState();
   const { reveal, select } = tree;
@@ -48,9 +50,9 @@ export function ArchivesMenu({
       // the request, not derived from what came back, so a failed read leaves the row selected to retry.
       reveal(toFileItemId(entry.name));
 
-      void archivesService.selectArchiveFile(entry);
+      void previewService.selectFile(entry);
     },
-    [archivesService, isWriting, reveal]
+    [isWriting, previewService, reveal]
   );
 
   // Only a world knows where a file is read from: inside a volume set no entry carries a container, every entry is
@@ -87,10 +89,10 @@ export function ArchivesMenu({
       // The synthetic root node stands for the whole tree, which the backend spells as an empty prefix rather than a
       // literal path - which is what `getDirectoryItemPath` answers for it.
       if (directoryPath !== null) {
-        archivesService.selectArchiveDirectory(directoryPath);
+        previewService.selectDirectory(directoryPath);
       }
     },
-    [archivesService, isWriting, onOpenEntry]
+    [isWriting, onOpenEntry, previewService]
   );
 
   useEffect(() => {

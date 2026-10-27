@@ -7,13 +7,12 @@ import {
   EArchiveReferenceStatus,
 } from "@xrf/ipc/types/xrf-app-archives";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { mockArchivesExplorer } from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
 import {
   mockArchiveReference,
   mockArchiveShadersBlender,
   mockArchiveShadersDescription,
 } from "@/core/archive/fixtures/archive.mocks";
-import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveShadersDescriptionView } from "./ArchiveShadersDescriptionView";
@@ -21,7 +20,7 @@ import { ArchiveShadersDescriptionView } from "./ArchiveShadersDescriptionView";
 const VOLUMES: ArchiveDescribeScope = { kind: EArchiveDescribeScope.VOLUMES, volumes: 3 };
 
 function renderView(description: ArchiveShadersDescription = mockArchiveShadersDescription()): RenderResult {
-  const { container } = mockInjectedService(ArchivesService);
+  const { container } = mockArchivesExplorer();
 
   return renderWithProviders(<ArchiveShadersDescriptionView description={description} scope={VOLUMES} />, {
     container,

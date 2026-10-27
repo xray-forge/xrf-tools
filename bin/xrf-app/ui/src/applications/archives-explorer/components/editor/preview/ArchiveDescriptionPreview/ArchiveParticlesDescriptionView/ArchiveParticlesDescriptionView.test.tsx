@@ -7,14 +7,13 @@ import {
   EArchiveReferenceStatus,
 } from "@xrf/ipc/types/xrf-app-archives";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { mockArchivesExplorer } from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
 import {
   mockArchiveParticlesDescription,
   mockArchiveParticlesEffect,
   mockArchiveParticlesGroup,
   mockArchiveReference,
 } from "@/core/archive/fixtures/archive.mocks";
-import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveParticlesDescriptionView } from "./ArchiveParticlesDescriptionView";
@@ -22,7 +21,7 @@ import { ArchiveParticlesDescriptionView } from "./ArchiveParticlesDescriptionVi
 const VOLUMES: ArchiveDescribeScope = { kind: EArchiveDescribeScope.VOLUMES, volumes: 3 };
 
 function renderView(description: ArchiveParticlesDescription = mockArchiveParticlesDescription()): RenderResult {
-  const { container } = mockInjectedService(ArchivesService);
+  const { container } = mockArchivesExplorer();
 
   return renderWithProviders(<ArchiveParticlesDescriptionView description={description} scope={VOLUMES} />, {
     container,

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
-import { AsyncState } from "@xrf/async";
 import {
   ArchiveFileDescription,
   EArchiveDescribeRefusal,
@@ -8,23 +7,27 @@ import {
   EArchiveFormatDescription,
 } from "@xrf/ipc/types/xrf-app-archives";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import {
+  IArchivesExplorerMock,
+  mockArchivesExplorer,
+  mockShownArchiveFile,
+} from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
 import {
   mockArchiveFileDescription,
+  mockArchiveFileDescriptor,
   mockArchiveReference,
   mockArchiveThmDescription,
 } from "@/core/archive/fixtures/archive.mocks";
-import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveDescriptionPreview } from "./ArchiveDescriptionPreview";
 
 function renderPreview(description: ArchiveFileDescription): RenderResult {
-  const { service, container } = mockInjectedService(ArchivesService);
+  const explorer: IArchivesExplorerMock = mockArchivesExplorer();
 
-  service.content = AsyncState.ready({ kind: "description" as const, description });
+  mockShownArchiveFile(explorer, mockArchiveFileDescriptor(), { kind: "description" as const, description });
 
-  return renderWithProviders(<ArchiveDescriptionPreview />, { container });
+  return renderWithProviders(<ArchiveDescriptionPreview />, { container: explorer.container });
 }
 
 describe("ArchiveDescriptionPreview", () => {

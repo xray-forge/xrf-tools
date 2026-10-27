@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { formatBytes } from "@xrf/format";
 import { ReactElement } from "react";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import { IArchiveEntry } from "@/core/archive/lib";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -14,7 +14,7 @@ interface IArchiveFileHeaderProps extends BaseComponentProps {
 }
 
 export function ArchiveFileHeader({ entry }: IArchiveFileHeaderProps): ReactElement {
-  const archivesService: ArchivesService = useInjection(ArchivesService);
+  const previewService: ArchivePreviewService = useInjection(ArchivePreviewService);
 
   return (
     <EditorFileHeader
@@ -23,7 +23,7 @@ export function ArchiveFileHeader({ entry }: IArchiveFileHeaderProps): ReactElem
       caption={formatBytes(entry.sizeReal)}
       actions={<ArchiveFileExtractAction entry={entry} />}
       closeDescription={"Clear the selection and close this preview"}
-      onClose={archivesService.clearFileSelection}
+      onClose={previewService.clearSelection}
     />
   );
 }

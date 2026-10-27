@@ -7,6 +7,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import { getArchiveVolumeOf, IArchiveEntry } from "@/core/archive/lib";
 import {
   EditorPanel,
@@ -28,11 +29,12 @@ export function ArchiveFileDetailsPanel({
   className,
 }: BaseComponentProps): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
+  const previewService: ArchivePreviewService = useInjection(ArchivePreviewService);
 
   const subject: Nullable<ArchiveSubject> = archivesService.subject.value;
-  const entry: Nullable<IArchiveEntry> = archivesService.selectedEntry;
-  const descriptor: Nullable<ArchiveFileDescriptor> = archivesService.selectedDescriptor;
-  const origin: Nullable<ArchiveWorldEntry> = archivesService.selectedOrigin;
+  const entry: Nullable<IArchiveEntry> = previewService.selectedEntry;
+  const descriptor: Nullable<ArchiveFileDescriptor> = previewService.selectedDescriptor;
+  const origin: Nullable<ArchiveWorldEntry> = previewService.selectedOrigin;
 
   const volume: Nullable<ArchiveDescriptor> = getArchiveVolumeOf(
     subject?.kind === EArchiveSubject.VOLUMES ? subject.project : null,
@@ -82,7 +84,7 @@ export function ArchiveFileDetailsPanel({
               isMonospace
             />
 
-            <ArchiveSharedPayloadDetail descriptor={descriptor} sharedPayloads={archivesService.sharedPayloads} />
+            <ArchiveSharedPayloadDetail descriptor={descriptor} sharedPayloads={archivesService.sharedPayloads.state} />
           </>
         ) : null}
       </EditorPanelSection>

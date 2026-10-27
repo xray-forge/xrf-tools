@@ -2,13 +2,12 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { ArchiveDescribeScope, ArchivePpeDescription, EArchiveDescribeScope } from "@xrf/ipc/types/xrf-app-archives";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { mockArchivesExplorer } from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
 import {
   mockArchiveAnimationChannel,
   mockArchivePpeColor,
   mockArchivePpeDescription,
 } from "@/core/archive/fixtures/archive.mocks";
-import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchivePpeDescriptionView } from "./ArchivePpeDescriptionView";
@@ -16,7 +15,7 @@ import { ArchivePpeDescriptionView } from "./ArchivePpeDescriptionView";
 const SCOPE: ArchiveDescribeScope = { kind: EArchiveDescribeScope.VOLUMES, volumes: 3 };
 
 function renderView(description: ArchivePpeDescription = mockArchivePpeDescription()): RenderResult {
-  const { container } = mockInjectedService(ArchivesService);
+  const { container } = mockArchivesExplorer();
 
   return renderWithProviders(<ArchivePpeDescriptionView description={description} scope={SCOPE} />, { container });
 }

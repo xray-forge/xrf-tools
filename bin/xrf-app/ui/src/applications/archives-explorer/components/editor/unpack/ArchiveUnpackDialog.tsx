@@ -3,8 +3,6 @@ import { Button, Dialog, DialogActions, DialogContent, Typography } from "@mui/m
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
-import { Logger } from "@xrf/logging";
-import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useId } from "react";
 
@@ -31,8 +29,6 @@ export function ArchiveUnpackDialog({
   isOpen,
   onClose,
 }: IArchiveUnpackDialogProps): ReactElement {
-  const log: Logger = useLogger(__MODULE_NAME__);
-
   const archivesService: ArchivesService = useInjection(ArchivesService);
   const titleId: string = useId();
 
@@ -58,13 +54,9 @@ export function ArchiveUnpackDialog({
     destination.commit();
     onClose();
 
-    try {
-      await archivesService.extractArchiveDirectory("", destination.value);
-    } catch (error: unknown) {
-      // Published on the service and reported by the run's notice. Logged here for the stack.
-      log.error("Failed to unpack archive tree:", error);
-    }
-  }, [archivesService, destination, log, onClose]);
+    // How it ends is published on the extraction and told by the run's notice.
+    await archivesService.extractDirectory("", destination.value);
+  }, [archivesService, destination, onClose]);
 
   return (
     <Dialog

@@ -2,6 +2,7 @@ import { Container } from "@wirestate/core";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { ArchivesExplorerKeybindsService } from "@/applications/archives-explorer/services/keybinds";
+import { ArchivePreviewService } from "@/applications/archives-explorer/services/preview";
 import { AssetService } from "@/core/assets/services";
 import { VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { VisualLoadService } from "@/core/visuals/services";
@@ -15,6 +16,7 @@ export const container: ContainerDefinition = {
   bindings: [
     AssetService,
     ArchivesService,
+    ArchivePreviewService,
     ArchivesExplorerKeybindsService,
     VisualLoadService,
     VisualViewService,

@@ -69,7 +69,7 @@ describe("ArchivesService notifications", () => {
       },
     });
 
-    await expect(service.extractFile(FILE, "C:\\out\\wpn.dds")).rejects.toThrow("read only");
+    await service.extractFile(FILE, "C:\\out\\wpn.dds");
 
     expect(raised).toHaveLength(1);
     expect(raised[0].severity).toBe(ENotificationSeverity.ERROR);
@@ -89,7 +89,7 @@ describe("ArchivesService notifications", () => {
         }),
     });
 
-    await service.extractArchiveDirectory("textures", "C:\\out");
+    await service.extractDirectory("textures", "C:\\out");
 
     expect(raised).toHaveLength(1);
     expect(raised[0].severity).toBe(ENotificationSeverity.SUCCESS);

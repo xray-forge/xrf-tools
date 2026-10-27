@@ -2,9 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { ArchiveDetailLibraryDescription } from "@xrf/ipc/types/xrf-app-archives";
 
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import { mockArchivesExplorer } from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
 import { mockArchiveDetailLibraryDescription } from "@/core/archive/fixtures/archive.mocks";
-import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ArchiveDetailLibraryDescriptionView } from "./ArchiveDetailLibraryDescriptionView";
@@ -12,7 +11,7 @@ import { ArchiveDetailLibraryDescriptionView } from "./ArchiveDetailLibraryDescr
 function renderView(
   description: ArchiveDetailLibraryDescription = mockArchiveDetailLibraryDescription()
 ): RenderResult {
-  const { container } = mockInjectedService(ArchivesService);
+  const { container } = mockArchivesExplorer();
 
   return renderWithProviders(<ArchiveDetailLibraryDescriptionView description={description} />, { container });
 }

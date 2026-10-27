@@ -4,17 +4,15 @@ import { default as UnarchiveIcon } from "@mui/icons-material/Unarchive";
 import { Alert, Button, Typography } from "@mui/material";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
-import { AsyncState } from "@xrf/async";
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
-import { Logger } from "@xrf/logging";
-import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { resolveDirectoryDestination } from "@/applications/archives-explorer/lib/resolve-directory-destination";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { IArchiveEntry, isUnderArchiveDirectory, TArchiveOperation } from "@/core/archive/lib";
+import { IArchiveEntry, isUnderArchiveDirectory } from "@/core/archive/lib";
+import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { cn } from "@/core/theme/class-name";
 import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -39,16 +37,12 @@ export function ArchiveDirectoryContent({
   path,
   onUnpack,
 }: IArchiveDirectoryContentProps): ReactElement {
-  const log: Logger = useLogger(__MODULE_NAME__);
-
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
   const files: Array<IArchiveEntry> = archivesService.entries;
-  const operation: AsyncState<Nullable<TArchiveOperation>> = archivesService.operation;
+  const extraction: JobOperation<ArchiveExtractDirectoryResult> = archivesService.extraction;
   const isWriting: boolean = archivesService.isWriting;
-  // A file extraction started elsewhere must not be reported here as if this directory had been written.
-  const extracted: Nullable<ArchiveExtractDirectoryResult> =
-    operation.value?.kind === "extract-directory" ? operation.value.result : null;
+  const extracted: Nullable<ArchiveExtractDirectoryResult> = extraction.result;
 
   const summary = useMemo(() => {
     let count: number = 0;
@@ -71,17 +65,11 @@ export function ArchiveDirectoryContent({
       directory: true,
     })) as Nullable<string>;
 
-    if (!picked) {
-      return;
+    if (picked) {
+      // How it ends is published on the extraction, which the alerts below render.
+      await archivesService.extractDirectory(path, await resolveDirectoryDestination(picked, path));
     }
-
-    try {
-      await archivesService.extractArchiveDirectory(path, await resolveDirectoryDestination(picked, path));
-    } catch (error: unknown) {
-      // Published on the service, which the alert below renders. Logged here for the stack.
-      log.error("Failed to extract archive directory:", error);
-    }
-  }, [archivesService, log, path]);
+  }, [archivesService, path]);
 
   return (
     <CenteredColumn data-testid={dataTestId} id={id} className={cn("gap-2 p-6", className)}>
@@ -103,7 +91,7 @@ export function ArchiveDirectoryContent({
           startIcon={<SaveAltIcon fontSize={"small"} />}
           onClick={onExtract}
         >
-          {operation.isLoading ? "Extracting..." : "Extract directory"}
+          {extraction.isRunning ? "Extracting..." : "Extract directory"}
         </Button>
       ) : (
         <Button
@@ -118,11 +106,11 @@ export function ArchiveDirectoryContent({
         </Button>
       )}
 
-      {operation.error ? (
+      {extraction.error ? (
         <div className={"mt-4 max-w-120"}>
-          <Alert severity={"error"} variant={"outlined"} onClose={archivesService.clearOperation}>
+          <Alert severity={"error"} variant={"outlined"} onClose={extraction.reset}>
             <Typography className={"wrap-break-word"} variant={"caption"}>
-              {operation.error.message}
+              {extraction.error}
             </Typography>
           </Alert>
         </div>
@@ -130,7 +118,7 @@ export function ArchiveDirectoryContent({
 
       {extracted ? (
         <div className={"mt-4 max-w-120"}>
-          <Alert severity={"success"} variant={"outlined"} onClose={archivesService.clearOperation}>
+          <Alert severity={"success"} variant={"outlined"} onClose={extraction.reset}>
             <Typography className={"wrap-break-word"} variant={"caption"}>
               {`Extracted ${formatCount(extracted.extractedCount)} files to ${extracted.destination}`}
             </Typography>

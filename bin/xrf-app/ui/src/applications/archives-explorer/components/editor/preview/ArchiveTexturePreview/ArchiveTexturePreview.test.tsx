@@ -1,13 +1,16 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
-import { AsyncState } from "@xrf/async";
 import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
 import { Nullable } from "@xrf/types";
 
 import { ArchiveTexturePreview } from "@/applications/archives-explorer/components/editor/preview/ArchiveTexturePreview";
-import { ArchivesService } from "@/applications/archives-explorer/services/archives";
+import {
+  IArchivesExplorerMock,
+  mockArchivesExplorer,
+  mockShownArchiveFile,
+} from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
+import { mockArchiveFileDescriptor } from "@/core/archive/fixtures/archive.mocks";
 import { TArchiveBytes } from "@/core/archive/lib";
-import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 const BYTES: TArchiveBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47]);
@@ -24,11 +27,15 @@ const MIPPED: AssetTextureDescriptor = {
  * @returns The render result.
  */
 function renderPreview(descriptor: Nullable<AssetTextureDescriptor>): RenderResult {
-  const { service, container } = mockInjectedService(ArchivesService);
+  const explorer: IArchivesExplorerMock = mockArchivesExplorer();
 
-  service.content = AsyncState.ready(descriptor ? { kind: "texture" as const, descriptor, bytes: BYTES } : null);
+  mockShownArchiveFile(
+    explorer,
+    mockArchiveFileDescriptor(),
+    descriptor ? { kind: "texture" as const, descriptor, bytes: BYTES } : null
+  );
 
-  return renderWithProviders(<ArchiveTexturePreview />, { container });
+  return renderWithProviders(<ArchiveTexturePreview />, { container: explorer.container });
 }
 
 describe("ArchiveTexturePreview", () => {

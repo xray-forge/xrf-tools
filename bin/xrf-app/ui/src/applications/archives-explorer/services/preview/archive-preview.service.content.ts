@@ -10,60 +10,52 @@ import { IArchiveEntry, TArchiveContent } from "@/core/archive/lib";
  * session, so the bytes always come from what the subject lists.
  */
 export class ArchiveContentReader {
-  /** The session every read of the open subject is addressed by, which only the service knows. */
-  private readonly session: () => SessionId;
-
-  public constructor(session: () => SessionId) {
-    this.session = session;
-  }
-
   /**
    * Reads one file as the representation asked for.
    *
+   * @param sessionId - The open subject's session, which every read is addressed by.
    * @param entry - File to read.
    * @param kind - Representation to request.
    * @returns What a preview draws.
    */
-  public read(entry: IArchiveEntry, kind: TArchiveContent["kind"]): Promise<TArchiveContent> {
+  public read(sessionId: SessionId, entry: IArchiveEntry, kind: TArchiveContent["kind"]): Promise<TArchiveContent> {
     // Exhaustive by the union rather than by a default, so a new previewable kind fails to compile here first.
     switch (kind) {
       case "audio":
-        return this.readAudio(entry);
+        return this.readAudio(sessionId, entry);
 
       case "texture":
-        return this.readTexture(entry);
+        return this.readTexture(sessionId, entry);
 
       case "image":
-        return this.readImage(entry);
+        return this.readImage(sessionId, entry);
 
       case "description":
-        return this.readDescription(entry);
+        return this.readDescription(sessionId, entry);
 
       case "text":
-        return this.readText(entry);
+        return this.readText(sessionId, entry);
     }
   }
 
   /** Reads a file as the Windows-1251 text an engine surface shows. */
-  private async readText(entry: IArchiveEntry): Promise<TArchiveContent> {
-    return { kind: "text", result: (await archivesCommands.readFile(this.session(), entry.name)).value };
+  private async readText(sessionId: SessionId, entry: IArchiveEntry): Promise<TArchiveContent> {
+    return { kind: "text", result: (await archivesCommands.readFile(sessionId, entry.name)).value };
   }
 
   /**
    * Reads what the backend can say about a binary format in words, which may be it saying it has no describer for
    * this format yet.
    */
-  private async readDescription(entry: IArchiveEntry): Promise<TArchiveContent> {
+  private async readDescription(sessionId: SessionId, entry: IArchiveEntry): Promise<TArchiveContent> {
     return {
-      description: (await archivesCommands.describeFile(this.session(), entry.name)).value,
+      description: (await archivesCommands.describeFile(sessionId, entry.name)).value,
       kind: "description",
     };
   }
 
   /** Reads a sound as the description the engine would read plus the bytes the webview plays. */
-  private async readAudio(entry: IArchiveEntry): Promise<TArchiveContent> {
-    const sessionId: SessionId = this.session();
-
+  private async readAudio(sessionId: SessionId, entry: IArchiveEntry): Promise<TArchiveContent> {
     const [audio, bytes] = await Promise.all([
       archivesCommands.describeAudio(sessionId, entry.name),
       fetchBulk(archivesBulkRoutes.readEntry(sessionId, entry.name)),
@@ -73,9 +65,7 @@ export class ArchiveContentReader {
   }
 
   /** Reads a texture as its source shape plus the png the backend decoded it into. */
-  private async readTexture(entry: IArchiveEntry): Promise<TArchiveContent> {
-    const sessionId: SessionId = this.session();
-
+  private async readTexture(sessionId: SessionId, entry: IArchiveEntry): Promise<TArchiveContent> {
     const [texture, bytes] = await Promise.all([
       archivesCommands.describeTexture(sessionId, entry.name),
       fetchBulk(archivesBulkRoutes.readTexture(sessionId, entry.name)),
@@ -85,9 +75,7 @@ export class ArchiveContentReader {
   }
 
   /** Reads a picture the webview draws itself: its shape plus the bytes exactly as stored. */
-  private async readImage(entry: IArchiveEntry): Promise<TArchiveContent> {
-    const sessionId: SessionId = this.session();
-
+  private async readImage(sessionId: SessionId, entry: IArchiveEntry): Promise<TArchiveContent> {
     const [image, bytes] = await Promise.all([
       archivesCommands.describeImage(sessionId, entry.name),
       fetchBulk(archivesBulkRoutes.readEntry(sessionId, entry.name)),
