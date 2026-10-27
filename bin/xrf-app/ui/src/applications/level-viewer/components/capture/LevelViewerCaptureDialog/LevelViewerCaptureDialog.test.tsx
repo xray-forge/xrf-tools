@@ -12,6 +12,7 @@ import { LevelViewerSnapshotService } from "@/applications/level-viewer/services
 import { mockLevelViewContainer, renderLevelView, TLevelViewRenderResult } from "@/core/level/fixtures/level-container";
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { clearLocalStorage } from "@/core/storage";
+import { mockFlow } from "@/fixtures/utils/flow";
 
 /**
  * @returns The capture's dialog over a level, a capture answering with a 2048 pixel map, and the services behind it.
@@ -25,8 +26,8 @@ function renderDialog(): TLevelViewRenderResult & { service: LevelViewerCaptureS
     mockLevelViewContainer([LevelViewerCaptureService, LevelViewerCaptureResultService, LevelViewerSnapshotService])
   );
 
-  jest.spyOn(rendered.weather, "cutTo").mockResolvedValue();
-  jest.spyOn(rendered.weather, "release").mockResolvedValue();
+  mockFlow(rendered.weather, "cutTo");
+  mockFlow(rendered.weather, "release");
   jest.spyOn(rendered.render, "captureMap").mockResolvedValue({ outcome: "completed", width: 2048, height: 2048 });
 
   return { ...rendered, service: rendered.container.get(LevelViewerCaptureService) };
