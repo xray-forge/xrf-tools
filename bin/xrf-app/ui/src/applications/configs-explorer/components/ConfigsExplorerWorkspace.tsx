@@ -5,10 +5,10 @@ import { ConfigsProjectDescriptor } from "@xrf/ipc/types/xrf-app-configs";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { ConfigsDocumentView } from "@/core/ltx/components/ConfigsDocumentView";
-import { ConfigsDocumentService, EConfigsDocumentMode } from "@/core/ltx/services/document";
-import { ConfigsProjectService } from "@/core/ltx/services/project";
-import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
+import { ConfigsDocumentView } from "@/applications/configs-explorer/components/ConfigsDocumentView";
+import { ConfigsDocumentService, EConfigsDocumentMode } from "@/applications/configs-explorer/services/document";
+import { ConfigsProjectService } from "@/applications/configs-explorer/services/project";
+import { ConfigsResolvedService } from "@/applications/configs-explorer/services/resolved";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";

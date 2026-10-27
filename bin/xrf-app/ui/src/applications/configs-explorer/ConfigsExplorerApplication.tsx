@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ConfigsProjectService } from "@/core/ltx/services/project";
+import { ConfigsProjectService } from "@/applications/configs-explorer/services/project";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
