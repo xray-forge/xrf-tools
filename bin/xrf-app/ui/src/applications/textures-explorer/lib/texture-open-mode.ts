@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 
-import { TextureCatalogService } from "@/core/textures/services/catalog";
+import { TextureCatalogService } from "@/applications/textures-explorer/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 
 /** Which of the four things the picker is opening. */

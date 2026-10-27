@@ -14,10 +14,10 @@ import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
+import { buildTextureNodes, ITextureNode } from "@/applications/textures-explorer/lib/texture-catalog";
 import { createRoots, describeRoots } from "@/core/assets/lib";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { ISessionRootOpening, SessionRootResource } from "@/core/session/lib/session-root-resource";
-import { buildTextureNodes, ITextureNode } from "@/core/textures/lib/texture-catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 
 /**

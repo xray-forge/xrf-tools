@@ -2,8 +2,8 @@ import { describe, expect, it } from "@jest/globals";
 import { act, RenderResult } from "@testing-library/react";
 import { AnyObject } from "@xrf/types";
 
-import { mockAlifeObject } from "@/core/spawn/fixtures/spawn.mocks";
-import { SpawnFileService } from "@/core/spawn/services";
+import { mockAlifeObject } from "@/applications/spawn-editor/fixtures/spawn.mocks";
+import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

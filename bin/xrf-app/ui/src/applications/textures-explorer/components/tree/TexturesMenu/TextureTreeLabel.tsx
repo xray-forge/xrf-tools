@@ -1,7 +1,7 @@
 import { ReactElement } from "react";
 
-import { TextureBadgeMarks } from "@/core/textures/components/tree/TextureBadgeMarks";
-import { ITextureNode } from "@/core/textures/lib/texture-catalog";
+import { TextureBadgeMarks } from "@/applications/textures-explorer/components/tree/TextureBadgeMarks";
+import { ITextureNode } from "@/applications/textures-explorer/lib/texture-catalog";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

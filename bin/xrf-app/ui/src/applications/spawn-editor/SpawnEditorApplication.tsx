@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
+import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
-import { SpawnFileService } from "@/core/spawn/services";
 
 import { SpawnEditor } from "./components/editor/SpawnEditor";
 import { SpawnEditorOpenForm } from "./components/SpawnEditorOpenForm";

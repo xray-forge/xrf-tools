@@ -3,10 +3,10 @@ import { EventBus, WireEvent } from "@wirestate/core";
 import { ESpawnCommand } from "@xrf/ipc/commands/spawn";
 import { mockIpcCommands } from "@xrf/ipc/testing";
 
+import { mockSpawnSession } from "@/applications/spawn-editor/fixtures/spawn.mocks";
+import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file/spawn-file.service";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
-import { mockSpawnSession } from "@/core/spawn/fixtures/spawn.mocks";
-import { SpawnFileService } from "@/core/spawn/services/spawn-file.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { IInjectedServiceMockDescriptor, mockApplicationScope, mockInjectedService } from "@/fixtures/utils/container";
 

@@ -1,7 +1,11 @@
 import { Chip, Tooltip } from "@mui/material";
 import { ReactElement, useCallback } from "react";
 
-import { describeTextureBadge, ETextureBadge, ITextureBadgeDescriptor } from "@/core/textures/lib/texture-catalog";
+import {
+  describeTextureBadge,
+  ETextureBadge,
+  ITextureBadgeDescriptor,
+} from "@/applications/textures-explorer/lib/texture-catalog";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ITextureBadgeFiltersProps extends BaseComponentProps {

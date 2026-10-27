@@ -1,5 +1,5 @@
+import { TextureCatalogService } from "@/applications/textures-explorer/services/catalog";
 import { AssetService } from "@/core/assets/services";
-import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureRenderService } from "@/core/textures/services/render";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureSurfaceService } from "@/core/textures/services/surface";

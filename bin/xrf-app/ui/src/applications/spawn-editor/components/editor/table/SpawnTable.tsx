@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
-import { SpawnFileService } from "@/core/spawn/services";
+import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file";
 import { DataTable } from "@/core/ui/table";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

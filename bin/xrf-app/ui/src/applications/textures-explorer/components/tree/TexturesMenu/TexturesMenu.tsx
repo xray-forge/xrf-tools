@@ -7,19 +7,19 @@ import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 
-import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
-import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
-import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
-import { TextureBadgeFilters } from "@/core/textures/components/tree/TextureBadgeFilters";
+import { TextureBadgeFilters } from "@/applications/textures-explorer/components/tree/TextureBadgeFilters";
 import {
   countTextureBadges,
   ETextureBadge,
   filterTextureNodes,
   ITextureNode,
   toTextureNodePath,
-} from "@/core/textures/lib/texture-catalog";
+} from "@/applications/textures-explorer/lib/texture-catalog";
+import { TextureCatalogService } from "@/applications/textures-explorer/services/catalog";
+import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
+import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
+import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { getTextureSourceKey } from "@/core/textures/lib/texture-identity";
-import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { EmptyListing } from "@/core/ui/layout/EmptyListing";
 import { IPathTreeItem, parsePathTree, toFileItemId } from "@/core/ui/tree/path-tree";
