@@ -1,4 +1,5 @@
 import { formatCount } from "@xrf/format";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { TranslationBuildResult } from "@xrf/ipc/types/xrf-translation";
 
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
@@ -24,7 +25,7 @@ export function describeTranslationBuildOutcome(
     return describeJobFailure("Could not build translations", output, error);
   }
 
-  if (result?.outcome === "cancelled") {
+  if (result?.outcome === EJobOutcome.CANCELLED) {
     return {
       details: [
         `Wrote ${formatCount(result.files)} string table(s) from ${formatCount(result.sources)} source(s).`,

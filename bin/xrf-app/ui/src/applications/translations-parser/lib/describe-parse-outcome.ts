@@ -1,4 +1,5 @@
 import { formatCount } from "@xrf/format";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { TranslationParseResult } from "@xrf/ipc/types/xrf-translation";
 
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
@@ -26,7 +27,7 @@ export function describeTranslationParseOutcome(
     return describeJobFailure("Could not import translations", output, error);
   }
 
-  if (result?.outcome === "cancelled") {
+  if (result?.outcome === EJobOutcome.CANCELLED) {
     return {
       details: [
         `Read ${formatCount(result.census.filesRead)} table(s) before stopping.`,

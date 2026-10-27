@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { formatCount } from "@xrf/format";
 import { TranslationFile, TranslationProjectDescriptor } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
@@ -96,7 +97,7 @@ export function TranslationsEditorWorkspace(): ReactElement {
           <EditorFileHeader
             data-testid={"translations-file-header"}
             name={selectedFile}
-            caption={file ? `${Object.keys(file.entries).length} entries` : undefined}
+            caption={file ? `${formatCount(Object.keys(file.entries).length)} entries` : undefined}
             closeLabel={"Close file"}
             closeDescription={"Clear the selection and close this translation file"}
             onClose={onDeselect}

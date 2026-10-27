@@ -1,4 +1,5 @@
 import { formatCount } from "@xrf/format";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { TranslationFormatResult } from "@xrf/ipc/types/xrf-translation";
 
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
@@ -27,12 +28,12 @@ export function describeFormatOutcome(
     );
   }
 
-  if (result?.outcome === "cancelled") {
+  if (result?.outcome === EJobOutcome.CANCELLED) {
     return {
       details: [
         isCheck
-          ? `Read ${formatCount(result.totalFiles)} source(s), ${result.invalidFiles} unformatted so far.`
-          : `Read ${formatCount(result.totalFiles)} source(s), of which ${result.invalidFiles} were rewritten.`,
+          ? `Read ${formatCount(result.totalFiles)} source(s), ${formatCount(result.invalidFiles)} unformatted so far.`
+          : `Read ${formatCount(result.totalFiles)} source(s), of which ${formatCount(result.invalidFiles)} were rewritten.`,
         isCheck
           ? "The rest of the tree was not read."
           : "The rest were left as they were; running it again finishes the job.",
