@@ -2,6 +2,7 @@ import { Alert, Button, List, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatBytes } from "@xrf/format";
 import { TextureDescription, TextureEncodingComparison, TextureEncodingReport } from "@xrf/ipc/types/xrf-app-textures";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
@@ -101,7 +102,7 @@ export function TextureFormatsPanel({
           </Typography>
         )}
 
-        {comparison?.outcome === "cancelled" ? (
+        {comparison?.outcome === EJobOutcome.CANCELLED ? (
           <Alert className={"mt-2"} severity={"info"}>
             Stopped before every format was weighed. The ones listed are real measurements and can still be saved.
           </Alert>

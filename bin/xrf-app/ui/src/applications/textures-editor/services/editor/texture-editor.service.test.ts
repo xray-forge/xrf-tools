@@ -6,6 +6,7 @@ import { ETexturesCommand } from "@xrf/ipc/commands/textures";
 import { ETexturesBulkRoute } from "@xrf/ipc/commands/textures-bulk";
 import { mockInvoke, mockIpcBulkRoutes, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { TextureDescription, TextureVocabulary } from "@xrf/ipc/types/xrf-app-textures";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
 import { JobsService } from "@/core/jobs/services/jobs";
@@ -254,6 +255,47 @@ describe("TextureEditorService", () => {
     // The second read is the proof: without it the panels would still be holding the description the save invalidated.
     expect(describeCount).toBe(2);
     expect(selectionService.selected.value?.form?.bumpName).toBe("read-2");
+  });
+
+  it("keeps the held candidate and reads nothing again after a stopped save, which wrote nothing", async () => {
+    const container: Container = mockContainer([
+      JobsService,
+      TextureSelectionService,
+      TextureEncodingService,
+      TextureEditorService,
+    ]);
+    const selection: TextureSelectionService = container.get(TextureSelectionService);
+    const encoding: TextureEncodingService = container.get(TextureEncodingService);
+    const editor: TextureEditorService = container.get(TextureEditorService);
+
+    let describeCount: number = 0;
+
+    mockIpcCommands({
+      [ETexturesCommand.DESCRIBE]: () => {
+        describeCount += 1;
+
+        return describedTexture(MOCK_TEXTURE);
+      },
+      [ETexturesCommand.COMPARE_ENCODINGS]: mockTextureEncodingComparison(),
+      [ETexturesCommand.SAVE]: { outcome: EJobOutcome.CANCELLED, written: [] },
+    });
+
+    mockIpcBulkRoutes({
+      [EAssetsBulkRoute.READ_TEXTURE]: new ArrayBuffer(0),
+      [ETexturesBulkRoute.READ_CANDIDATE]: new ArrayBuffer(8),
+    });
+
+    await selection.openFile("C:/gamedata/textures/ston/ston_beton05.dds");
+
+    editor.bind(selection.selected.value);
+
+    await encoding.run(null);
+    await encoding.choose("bc3");
+    await editor.commit();
+
+    expect(encoding.chosen).toBe("bc3");
+    expect(editor.isDirty).toBe(true);
+    expect(describeCount).toBe(1);
   });
 
   it("does not keep a draft for the same reference under different roots", () => {
