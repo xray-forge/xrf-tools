@@ -57,7 +57,7 @@ fn grouped_modes_stay_exclusive_until_cancelled_work_settles() {
   for first_kind in [kinds::CONFIGS_FORMAT, kinds::CONFIGS_CHECK_FORMAT] {
     let registry: Arc<JobRegistry> = Arc::new(JobRegistry::new());
     let id: Uuid = Uuid::new_v4();
-    let (_job, registration): (JobHandle, JobRegistration) = registry
+    let (_job, mut registration): (JobHandle, JobRegistration) = registry
       .register(
         JobStart::new(id, first_kind)
           .with_exclusion_group("formatter")
