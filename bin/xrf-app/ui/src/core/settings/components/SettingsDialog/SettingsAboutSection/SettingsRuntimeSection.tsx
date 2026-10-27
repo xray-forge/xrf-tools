@@ -4,12 +4,12 @@ import { MemoryUsage, RuntimeSnapshot } from "@xrf/ipc/types/xrf-app-system";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { DetailSection } from "@xrf/ui/layout/DetailSection";
 import { Typography } from "@xrf/ui/material";
+import { StatFigure } from "@xrf/ui/stats/StatFigure";
 import { ReactElement } from "react";
 
 import { useMemoryUsage } from "@/core/diagnostics/lib";
-import { DetailSection } from "@/core/ui/layout/DetailSection";
-import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { usePolledValue } from "@/lib/react/use-polled-value";
 
 import { describeBackendMemory, describeWebviewMemory } from "./SettingsRuntimeSection.utils";

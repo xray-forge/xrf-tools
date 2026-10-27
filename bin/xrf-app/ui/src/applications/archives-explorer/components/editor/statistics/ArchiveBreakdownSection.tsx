@@ -1,10 +1,9 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DetailSection } from "@xrf/ui/layout/DetailSection";
+import { IStatBreakdownRow, StatBreakdownTable } from "@xrf/ui/stats/StatBreakdownTable";
+import { StatMeasureToggle } from "@xrf/ui/stats/StatMeasureToggle";
 import { ReactElement, ReactNode } from "react";
-
-import { DetailSection } from "@/core/ui/layout/DetailSection";
-import { IStatBreakdownRow, StatBreakdownTable } from "@/core/ui/stats/StatBreakdownTable";
-import { StatMeasureToggle } from "@/core/ui/stats/StatMeasureToggle";
 
 import { IArchiveStatisticsView } from "./archive-statistics-section";
 

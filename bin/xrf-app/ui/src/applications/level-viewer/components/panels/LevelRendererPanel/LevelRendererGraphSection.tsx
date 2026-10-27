@@ -2,6 +2,9 @@ import { formatBytes, formatCount } from "@xrf/format";
 import { RenderGraphReport, RenderGraphSettings } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
 
 import { RenderGraphFormRows } from "@/core/render/components/controls/RenderGraphFormRows";
@@ -10,8 +13,6 @@ import {
   isRenderGraphBisected,
   SERIAL_RENDER_GRAPH_SETTINGS,
 } from "@/core/render/lib/settings/render-graph-settings";
-import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 
 interface ILevelRendererGraphSectionProps extends BaseComponentProps {
   /** What the frame graph made of the latest described frame, null before the first. */

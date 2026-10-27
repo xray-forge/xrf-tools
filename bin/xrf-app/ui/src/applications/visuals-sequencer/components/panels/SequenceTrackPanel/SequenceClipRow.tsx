@@ -4,12 +4,12 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ArrowDownwardIcon, ArrowUpwardIcon, DeleteOutlinedIcon } from "@xrf/ui/icons";
 import { Chip, Typography } from "@xrf/ui/material";
+import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { ESequenceMotionState, ISequenceMotion } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/visual-sequence";
-import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 
 interface ISequenceClipRowProps extends BaseComponentProps {
   clip: ISequenceClip;

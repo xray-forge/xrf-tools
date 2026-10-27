@@ -1,12 +1,12 @@
 import { useInjection } from "@wirestate/react";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Inventory2Icon } from "@xrf/ui/icons";
+import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/shell/editor/EditorPopoverGroup";
 import { ReactElement } from "react";
 
 import { ILevelSpawnCategoryEntry, LEVEL_SPAWN_CATEGORIES } from "@/core/level/lib/spawn/level-spawn-categories";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 
 /**
  * Which of the level's spawned objects are drawn, by what the game spawns them as.

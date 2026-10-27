@@ -3,6 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { SaveAltIcon } from "@xrf/ui/icons";
+import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
 import { ReactElement, useCallback } from "react";
 
 import {
@@ -11,7 +12,6 @@ import {
   withExternManifestExtension,
 } from "@/applications/exports-explorer/lib/extern-manifest";
 import { ExportsService } from "@/applications/exports-explorer/services/exports.service";
-import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 
 export interface IExportsSaveActionProps extends BaseComponentProps {
   isDisabled?: boolean;

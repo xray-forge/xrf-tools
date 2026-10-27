@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
+import { DialogHeader } from "@xrf/ui/dialog/DialogHeader";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { UnarchiveIcon } from "@xrf/ui/icons";
 import { Button, Dialog, DialogActions, DialogContent, Typography } from "@xrf/ui/material";
@@ -11,7 +12,6 @@ import { ArchivesService } from "@/applications/archives-explorer/services/archi
 import { getSubjectRoot, getSubjectSize } from "@/core/archive/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
-import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 
 interface IArchiveUnpackDialogProps extends BaseComponentProps {

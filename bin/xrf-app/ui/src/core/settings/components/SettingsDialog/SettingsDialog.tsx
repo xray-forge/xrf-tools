@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { DialogHeader } from "@xrf/ui/dialog/DialogHeader";
 import {
   Box,
   Button,
@@ -14,7 +15,6 @@ import { ReactElement, useId } from "react";
 
 import { ESettingsSection, SETTINGS_SECTION_LABELS, SETTINGS_SECTIONS } from "@/core/settings/lib/settings-section";
 import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
-import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { inline } from "@/lib/callbacks/inline";
 
 import { SettingsAboutSection } from "./SettingsAboutSection";

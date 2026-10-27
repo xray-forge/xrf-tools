@@ -1,12 +1,12 @@
 import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
+import { EmptyState } from "@xrf/ui/layout/EmptyState";
+import { ErrorState } from "@xrf/ui/layout/ErrorState";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode } from "react";
 
-import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
-import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { useMountEffect } from "@/lib/react/use-mount-effect";
 
 export interface ISpawnChunkViewProps<T> extends BaseComponentProps {

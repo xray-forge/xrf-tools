@@ -1,10 +1,10 @@
 import { ETranslationLanguage } from "@xrf/ipc/types/xrf-translation";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { FormRow } from "@xrf/ui/form";
 import { MenuItem, Select } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES_WITH_ALL } from "@/core/translations/translations.config";
-import { FormRow } from "@/core/ui/form";
 
 export interface ITranslationLanguageFieldProps extends BaseComponentProps {
   description: string;

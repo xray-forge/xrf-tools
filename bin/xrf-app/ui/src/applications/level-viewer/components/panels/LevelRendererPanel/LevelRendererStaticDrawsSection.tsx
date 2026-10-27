@@ -1,9 +1,9 @@
 import { formatCount } from "@xrf/format";
 import { RenderPoolUse, RenderStaticReport } from "@xrf/ipc/types/xrf-renderer";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
-
-import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 
 /** How full one static draw pool is: what it holds against what it has room for. */
 function formatPoolUse({ used, capacity }: RenderPoolUse): string {

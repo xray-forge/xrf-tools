@@ -1,9 +1,9 @@
 import { formatNumber } from "@xrf/format";
 import { ERenderTonemapMode, RenderTonemapMode } from "@xrf/ipc/types/xrf-renderer";
+import { IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow/choice-form-row-option";
 
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
-import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** The bounds each exposure value is offered between: the console's own. */
 export const RENDER_EXPOSURE_LIMITS = {

@@ -3,11 +3,11 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { TranslateIcon } from "@xrf/ui/icons";
 import { Menu, MenuItem } from "@xrf/ui/material";
+import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
 import { MouseEvent, ReactElement, useCallback, useId, useState } from "react";
 
 import { DialogViewService } from "@/applications/dialogs-editor/services/dialog-view";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
-import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 
 /**
  * Which language the phrase lines are read in.

@@ -2,8 +2,11 @@ import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
 import { formatBytes } from "@xrf/format";
 import { ARCHIVE_READ_POLICY } from "@xrf/ipc/types/xrf-archive";
+import { EPathEntryKind } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
+import { EmptyState } from "@xrf/ui/layout/EmptyState";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback } from "react";
 
@@ -15,9 +18,6 @@ import {
   TArchiveContent,
   TArchiveSelection,
 } from "@/core/archive/lib";
-import { EPathEntryKind } from "@/core/path/entry-kind";
-import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { inline } from "@/lib/callbacks/inline";
 
 import { ArchiveAudioPreview } from "./ArchiveAudioPreview";

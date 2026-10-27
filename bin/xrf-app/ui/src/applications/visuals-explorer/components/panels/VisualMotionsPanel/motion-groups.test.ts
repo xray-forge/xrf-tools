@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-
-import { ITreeNode } from "@/core/ui/tree/tree-node";
+import { ITreeNode } from "@xrf/ui/tree/tree-node";
 
 import { getMotionNodeName, groupMotionNames, listMotionGroupIds, toMotionNodeId } from "./motion-groups";
 

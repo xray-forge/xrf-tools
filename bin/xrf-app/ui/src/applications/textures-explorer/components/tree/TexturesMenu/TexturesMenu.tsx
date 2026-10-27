@@ -4,6 +4,12 @@ import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FolderIcon, FolderOpenIcon, ImageIcon } from "@xrf/ui/icons";
+import { EmptyListing } from "@xrf/ui/layout/EmptyListing";
+import { IEditorSearchResultRow } from "@xrf/ui/shell/editor/EditorSearchResults";
+import { IPathTreeItem, parsePathTree, toFileItemId } from "@xrf/ui/tree/path-tree";
+import { ITreeNode } from "@xrf/ui/tree/tree-node";
+import { IUseTreeState, useTreeState } from "@xrf/ui/tree/use-tree-state";
+import { IVirtualizedTreeIcons, VirtualizedTree } from "@xrf/ui/tree/VirtualizedTree";
 import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 
 import { TextureBadgeFilters } from "@/applications/textures-explorer/components/tree/TextureBadgeFilters";
@@ -17,14 +23,8 @@ import {
 import { TextureCatalogService } from "@/applications/textures-explorer/services/texture-catalog.service";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
-import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { getTextureSourceKey } from "@/core/textures/lib/texture-identity";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
-import { EmptyListing } from "@/core/ui/layout/EmptyListing";
-import { IPathTreeItem, parsePathTree, toFileItemId } from "@/core/ui/tree/path-tree";
-import { ITreeNode } from "@/core/ui/tree/tree-node";
-import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
-import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 
 import { describeEmptyTextureTree } from "./TexturesMenu.utils";
 import { TextureTreeLabel } from "./TextureTreeLabel";

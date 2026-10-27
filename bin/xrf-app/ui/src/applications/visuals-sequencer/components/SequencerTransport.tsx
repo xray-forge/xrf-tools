@@ -1,12 +1,12 @@
 import { useInjection } from "@wirestate/react";
 import { PauseIcon, PlayArrowIcon, RepeatIcon, SkipNextIcon, SkipPreviousIcon } from "@xrf/ui/icons";
 import { Paper, Typography } from "@xrf/ui/material";
+import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
+import { EditorToolbarSeparator } from "@xrf/ui/shell/editor/EditorToolbarSeparator";
+import { EditorViewToggle } from "@xrf/ui/shell/editor/EditorViewToggle";
 import { ReactElement, useCallback } from "react";
 
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/visual-sequence";
-import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
-import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { MotionFrameSlider, MotionPlaybackRate } from "@/core/visuals/components/preview";
 
 /**

@@ -4,6 +4,7 @@ import { ERenderFoliageMode, RenderFoliageMode } from "@xrf/ipc/types/xrf-render
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { AirIcon } from "@xrf/ui/icons";
 import { Button, Typography } from "@xrf/ui/material";
+import { EditorPopoverToggle } from "@xrf/ui/shell/editor/EditorPopoverToggle";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
@@ -26,7 +27,6 @@ import {
   RENDER_FOLIAGE_MODE_OPTIONS,
 } from "@/core/render/lib/features/render-grass-choices";
 import { TRenderFoliageSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 
 /** The enhanced foliage motion's strengths, each a slider. */
 const FOLIAGE_MOTION: ReadonlyArray<[keyof typeof RENDER_FOLIAGE_LIMITS, string]> = [

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { ITreeNode } from "@xrf/ui/tree/tree-node";
 
 import {
   listLevelSpawnGroupIds,
@@ -9,7 +10,6 @@ import {
   toLevelSpawnTree,
 } from "@/applications/level-viewer/lib/spawn/level-spawn-tree";
 import { mockLevelSpawnObject } from "@/core/level/fixtures/level.mocks";
-import { ITreeNode } from "@/core/ui/tree/tree-node";
 
 /** Three crates and a barrel among the props, a medkit among the items, nothing among the weapons or lamps. */
 function mockDescription(): LevelSpawnObjectsDescription {

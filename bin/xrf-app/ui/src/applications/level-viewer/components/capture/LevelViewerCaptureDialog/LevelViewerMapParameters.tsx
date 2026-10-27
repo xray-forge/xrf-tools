@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { formatCount, formatNumber } from "@xrf/format";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckboxFormRow, ChoiceFormRow, FormRow, IChoiceFormRowOption } from "@xrf/ui/form";
 import { Button, Typography } from "@xrf/ui/material";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback } from "react";
@@ -18,7 +19,6 @@ import {
   toLevelMapTileCount,
 } from "@/applications/level-viewer/lib/map/level-map-capture";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/level-viewer-capture";
-import { CheckboxFormRow, ChoiceFormRow, FormRow, IChoiceFormRowOption } from "@/core/ui/form";
 
 import { LevelViewerMapNumberField } from "./LevelViewerMapNumberField";
 

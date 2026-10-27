@@ -1,5 +1,6 @@
+import { ITreeNode } from "@xrf/ui/tree/tree-node";
+
 import { ILevelSurfaceSummary } from "@/core/level/lib/surface/level-surface-summary";
-import { ITreeNode } from "@/core/ui/tree/tree-node";
 
 /** What one row of the surfaces tree stands for: a shader, or one entry of the table naming it. */
 export type TLevelSurfaceTreeRow =

@@ -1,4 +1,5 @@
 import { formatPercent } from "@xrf/format";
+import { IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow/choice-form-row-option";
 
 import { IRenderLimits } from "@/core/render/lib/features/render-limits";
 import { FRAME_RATE_LIMITS, TFrameRateLimit } from "@/core/render/lib/settings/render-frame-rate-limit";
@@ -7,7 +8,6 @@ import {
   RENDER_OUTPUT_SCALES,
   RENDER_RESOLUTIONS,
 } from "@/core/render/lib/settings/render-resolution";
-import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** The frame rate limits, in the order they are offered. */
 export const RENDER_FRAME_RATE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<TFrameRateLimit>> = FRAME_RATE_LIMITS.map(

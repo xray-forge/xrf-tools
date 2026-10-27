@@ -1,6 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EmptyState } from "@xrf/ui/layout/EmptyState";
+import { ViewportControls } from "@xrf/ui/media/ViewportControls";
 import { cn } from "@xrf/ui/theme/class-name";
 import { PointerEvent, ReactElement, useCallback, useRef } from "react";
 
@@ -8,8 +10,6 @@ import { RenderFailureCover, RenderFrameReadout } from "@/core/render/components
 import { RenderSurface } from "@/core/render/components/RenderSurface";
 import { DOLLY_STEP } from "@/core/render/lib/frame/render-dolly";
 import { TextureRenderService } from "@/core/textures/services/texture-render";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
-import { ViewportControls } from "@/core/ui/media/ViewportControls";
 
 /** Where a light drag started, so each move swings by its own delta rather than the whole gesture. */
 interface IDragOrigin {

@@ -4,11 +4,11 @@ import { RenderLibraries } from "@xrf/ipc/types/xrf-renderer";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { DetailSection } from "@xrf/ui/layout/DetailSection";
 import { Stack, Typography } from "@xrf/ui/material";
 import { ReactElement, useState } from "react";
 
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { useMountEffect } from "@/lib/react/use-mount-effect";
 
 import { IAboutRow } from "./about-row";

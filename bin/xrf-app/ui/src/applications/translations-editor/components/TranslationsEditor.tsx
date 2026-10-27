@@ -6,13 +6,13 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReportProblemIcon } from "@xrf/ui/icons";
+import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
+import { EditorToolbarLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations.service";
 import { describeRoots } from "@/core/assets/lib";
-import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { EditorSaver, useEditorLifecycle } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 

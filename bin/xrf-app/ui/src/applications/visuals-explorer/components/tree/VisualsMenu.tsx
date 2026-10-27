@@ -1,10 +1,18 @@
 import { useInjection } from "@wirestate/react";
+import { EMPTY_ARRAY } from "@xrf/collections";
 import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FolderIcon, FolderOpenIcon, ViewInArIcon } from "@xrf/ui/icons";
+import { EmptyListing } from "@xrf/ui/layout";
+import { IEditorSearchResultRow } from "@xrf/ui/shell/editor/EditorSearchResults";
+import { IPathTreeItem, parsePathTree, toFileItemId } from "@xrf/ui/tree/path-tree";
+import { ITreeNode } from "@xrf/ui/tree/tree-node";
+import { ARCHIVED_CAPTION, TreeRowLabel } from "@xrf/ui/tree/TreeRowLabel";
+import { IUseTreeState, useTreeState } from "@xrf/ui/tree/use-tree-state";
+import { IVirtualizedTreeIcons, VirtualizedTree } from "@xrf/ui/tree/VirtualizedTree";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
@@ -12,14 +20,6 @@ import { VisualsBrowseService } from "@/applications/visuals-explorer/services/v
 import { isLooseContainer } from "@/core/assets/lib/container";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
-import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
-import { EmptyListing } from "@/core/ui/layout";
-import { IPathTreeItem, parsePathTree, toFileItemId } from "@/core/ui/tree/path-tree";
-import { ITreeNode } from "@/core/ui/tree/tree-node";
-import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
-import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
-import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
-import { EMPTY_ARRAY } from "@/lib/types/array";
 
 /** Hoisted so the tree is handed the same icons every render rather than a fresh set. */
 const VISUAL_TREE_ICONS: IVirtualizedTreeIcons = {

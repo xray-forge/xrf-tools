@@ -2,11 +2,11 @@ import { formatDegrees, formatNumber } from "@xrf/format";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { WbSunnyIcon } from "@xrf/ui/icons";
 import { Button, Typography } from "@xrf/ui/material";
+import { EditorPopoverAction } from "@xrf/ui/shell/editor/EditorPopoverAction";
 import { ReactElement } from "react";
 
 import { RenderLightingControls } from "@/core/render/components/lighting/RenderLightingControls";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
-import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 
 interface IRenderLightingActionProps extends BaseComponentProps {
   lighting: IRenderLighting;

@@ -2,13 +2,14 @@ import { useInjection } from "@wirestate/react";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { FormatCommandResult, IFormatCommandNouns } from "@xrf/ui/command-result/FormatCommandResult";
+import { CheckboxFormRow } from "@xrf/ui/form";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { TranslationsFormatterService } from "@/applications/translations-formatter/services/translations-formatter.service";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
-import { FormatCommandResult, IFormatCommandNouns } from "@/core/ui/command-result/FormatCommandResult";
-import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 
 /** What this formatter's items are called in its result. */
 const TRANSLATIONS_FORMAT_NOUNS: IFormatCommandNouns = {

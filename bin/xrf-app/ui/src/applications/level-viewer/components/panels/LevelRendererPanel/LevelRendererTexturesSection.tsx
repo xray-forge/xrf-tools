@@ -1,9 +1,10 @@
 import { formatCount } from "@xrf/format";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
 
 import { ILevelTextureReport } from "@/core/level/lib/texture/level-texture-report";
-import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 
 interface ILevelRendererTexturesSectionProps extends BaseComponentProps {
   textures: ILevelTextureReport;

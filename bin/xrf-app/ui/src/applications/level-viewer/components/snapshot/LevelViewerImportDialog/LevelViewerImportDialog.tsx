@@ -1,7 +1,9 @@
 import { formatCount, formatInstant } from "@xrf/format";
 import { Nullable } from "@xrf/types";
+import { DialogHeader } from "@xrf/ui/dialog/DialogHeader";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FileOpenOutlinedIcon as FileOpenIcon } from "@xrf/ui/icons";
+import { DetailSection } from "@xrf/ui/layout/DetailSection";
 import { Alert, Button, Dialog, DialogActions, DialogContent, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback, useId, useMemo, useState } from "react";
 
@@ -13,8 +15,6 @@ import {
   ILevelViewerSnapshotApplied,
   ILevelViewerSnapshotEntry,
 } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
-import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
-import { DetailSection } from "@/core/ui/layout/DetailSection";
 
 /** A snapshot's values by what importing them does, and its changes by part. */
 interface ILevelViewerImportSort {

@@ -1,8 +1,8 @@
 import { formatNumber, formatPercent } from "@xrf/format";
 import { ERenderParallaxMode, RenderParallaxMode } from "@xrf/ipc/types/xrf-renderer";
+import { IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow/choice-form-row-option";
 
 import { IRenderLimits } from "@/core/render/lib/features/render-limits";
-import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** The bounds each enhanced parallax value is offered between: narrower than the renderer takes, where relief reads. */
 export const RENDER_PARALLAX_LIMITS = {

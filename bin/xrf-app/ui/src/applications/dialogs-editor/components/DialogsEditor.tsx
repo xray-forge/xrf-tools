@@ -5,14 +5,14 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { AccountTreeIcon, InfoOutlinedIcon, ReportProblemIcon } from "@xrf/ui/icons";
+import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
+import { EditorToolbarLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { DialogViewService } from "@/applications/dialogs-editor/services/dialog-view";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { describeRoots } from "@/core/assets/lib";
-import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 

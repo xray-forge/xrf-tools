@@ -1,7 +1,7 @@
+import { IMenubarItem } from "@xrf/ui/shell/menu/components/Menubar/menubar-menu";
+
 import { IKeybindCommand, KeybindCommandsService } from "@/core/commands";
 import { formatChord, KeymapService, parseChord } from "@/core/keybinds";
-
-import { IMenubarItem } from "./menubar-menu";
 
 /**
  * @param command - A command a menu offers.

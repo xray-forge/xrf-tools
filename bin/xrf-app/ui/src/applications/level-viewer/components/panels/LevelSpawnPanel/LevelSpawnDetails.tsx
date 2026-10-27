@@ -3,12 +3,13 @@ import { LevelSpawnObject, LevelSpawnObjectDetails } from "@xrf/ipc/types/xrf-ap
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Button } from "@xrf/ui/material";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
 
 import { describeLevelSpawnRelease } from "@/applications/level-viewer/lib/spawn/level-spawn-release";
 import { formatLevelPoint } from "@/core/level/lib/camera/level-camera";
 import { toLevelSpawnPosition } from "@/core/level/lib/spawn/level-spawn-sphere";
-import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 
 interface ILevelSpawnDetailsProps extends BaseComponentProps {
   object: LevelSpawnObject;

@@ -1,10 +1,10 @@
 import { useInjection } from "@wirestate/react";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { LocalFireDepartmentIcon } from "@xrf/ui/icons";
+import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/shell/editor/EditorPopoverGroup";
 import { ReactElement } from "react";
 
 import { LevelViewService } from "@/core/level/services/level-view";
-import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 
 /**
  * Whether the particle systems the level plants and its zones play are drawn, whether its campfires burn, and whether

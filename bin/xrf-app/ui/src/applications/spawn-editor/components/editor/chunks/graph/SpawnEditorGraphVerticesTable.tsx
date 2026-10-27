@@ -1,10 +1,10 @@
 import { GraphVertex } from "@xrf/ipc/types/xrf-spawn";
 import { GridColDef, GridRowId } from "@xrf/ui/data-grid";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { textColumn, tupleColumn, vectorColumn } from "@xrf/ui/table";
 import { ReactElement, useMemo } from "react";
 
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
-import { textColumn, tupleColumn, vectorColumn } from "@/core/ui/table";
 
 /** Offsets locate a vertex inside the file rather than in the roots; available, off by default. */
 const HIDDEN_COLUMNS: Array<string> = ["edgesOffset", "levelPointsOffset"];

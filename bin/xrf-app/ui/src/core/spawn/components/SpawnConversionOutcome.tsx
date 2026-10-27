@@ -1,8 +1,7 @@
 import { ESpawnConversion, SpawnConversionResult } from "@xrf/ipc/types/xrf-app-spawn";
 import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
+import { CommandResult } from "@xrf/ui/command-result/CommandResult";
 import { ReactElement } from "react";
-
-import { CommandResult } from "@/core/ui/command-result/CommandResult";
 
 interface ISpawnConversionOutcomeProps {
   result: SpawnConversionResult;

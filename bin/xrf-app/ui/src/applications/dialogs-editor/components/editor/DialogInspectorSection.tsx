@@ -1,8 +1,8 @@
 import { DialogElementDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
-
-import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 
 export interface IDialogInspectorSectionProps extends BaseComponentProps {
   title: string;

@@ -3,17 +3,15 @@ import { DialogDescriptor, DialogElementDescriptor, DialogPhraseDescriptor } fro
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Chip, Stack } from "@xrf/ui/material";
+import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement, useMemo } from "react";
 
 import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";
 import { groupDialogElements, IDialogElementGroup } from "@/applications/dialogs-editor/lib/dialog-elements";
 import { DialogViewService } from "@/applications/dialogs-editor/services/dialog-view";
-import {
-  EditorPanel,
-  EditorPanelEmpty,
-  EditorPanelProperty,
-  EditorPanelSection,
-} from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 
 import { DialogInspectorSection } from "./DialogInspectorSection";
 

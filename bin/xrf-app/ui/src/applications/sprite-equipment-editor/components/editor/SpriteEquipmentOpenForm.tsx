@@ -5,6 +5,7 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ChoiceFormRow, FormRow } from "@xrf/ui/form";
 import { TextField } from "@xrf/ui/material";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
@@ -14,7 +15,7 @@ import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormR
 import { DDS_FILE_FILTERS, LTX_FILE_FILTERS } from "@/core/path/file-filters";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { ChoiceFormRow, FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
+import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 
 import {
   DEFAULT_SHEET_REFERENCE,

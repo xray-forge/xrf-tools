@@ -11,8 +11,11 @@ import {
   RenderLightModel,
 } from "@xrf/ipc/types/xrf-renderer";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ChoiceListFormRow, IChoiceFormRowOption } from "@xrf/ui/form";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
 import { ExposureIcon } from "@xrf/ui/icons";
 import { Button } from "@xrf/ui/material";
+import { EditorPopoverAction } from "@xrf/ui/shell/editor/EditorPopoverAction";
 import { ReactElement, useCallback } from "react";
 
 import { LevelLookSection } from "@/applications/level-viewer/components/toolbar/image/LevelLookSection";
@@ -62,9 +65,6 @@ import {
   TRenderGradingSettings,
 } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
-import { ChoiceListFormRow, IChoiceFormRowOption } from "@/core/ui/form";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 
 /** What the list's option for values edited by hand stands for. */
 const EDITED: string = "edited";

@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
 import { ReactElement, useCallback, useMemo, useRef } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
@@ -8,7 +9,6 @@ import { PRODUCT_NAME } from "@/core/configs";
 import { IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
 import { useSearchFocusTarget } from "@/core/search/lib";
 import { SettingsService } from "@/core/settings/services/settings";
-import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 
 import { ApplicationLauncherCatalog, IApplicationLauncherCatalogSearch } from "./components/ApplicationLauncherCatalog";

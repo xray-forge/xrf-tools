@@ -1,13 +1,13 @@
 import { useInjection } from "@wirestate/react";
 import { ConstructionIcon } from "@xrf/ui/icons";
+import { EmptyState } from "@xrf/ui/layout/EmptyState";
 import { Button } from "@xrf/ui/material";
+import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
 import { ReactElement, useCallback } from "react";
 
 import { KeybindCommandsService } from "@/core/commands";
 import { CLOSE_TOOL_KEYBIND_COMMAND } from "@/core/shell/commands";
-import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
 
 interface IPlannedApplicationProps {
   /** What this application will do once it exists, in the present tense. */

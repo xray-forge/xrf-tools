@@ -2,8 +2,10 @@ import { useInjection } from "@wirestate/react";
 import { formatPercent } from "@xrf/format";
 import { ERenderWaterMode, RenderWaterMode } from "@xrf/ipc/types/xrf-renderer";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
 import { WaterIcon } from "@xrf/ui/icons";
 import { Button } from "@xrf/ui/material";
+import { EditorPopoverToggle } from "@xrf/ui/shell/editor/EditorPopoverToggle";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
@@ -35,8 +37,6 @@ import {
   TRenderReflectionSettings,
   TRenderWaterSettings,
 } from "@/core/render/lib/settings/render-feature-settings";
-import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 
 /**
  * Whether this view draws the water, how strongly the weather has it reflect, and how it moves, reflects and

@@ -1,13 +1,13 @@
 import { useInjection } from "@wirestate/react";
 import { formatNumber } from "@xrf/format";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
+import { SliderFormRow } from "@xrf/ui/form/SliderFormRow";
+import { DetailSection } from "@xrf/ui/layout/DetailSection";
 import { ReactElement } from "react";
 
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
 import { TRenderLodSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
-import { DetailSection } from "@/core/ui/layout/DetailSection";
 
 /** One threshold, and the console variable it is. */
 interface ILodThreshold {

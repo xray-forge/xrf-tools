@@ -1,11 +1,11 @@
 import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
+import { ConfirmDialog } from "@xrf/ui/dialog/ConfirmDialog";
 import { SaveIcon, UndoIcon } from "@xrf/ui/icons";
+import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
 import { ReactElement, useCallback, useState } from "react";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations.service";
-import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 
 export function TranslationsEditorActions(): ReactElement {
   const translationsService: TranslationsService = useInjection(TranslationsService);

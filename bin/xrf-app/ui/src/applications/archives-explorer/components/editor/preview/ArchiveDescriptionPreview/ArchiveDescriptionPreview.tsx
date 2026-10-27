@@ -9,12 +9,12 @@ import {
 } from "@xrf/ipc/types/xrf-app-archives";
 import { assertExhaustive, Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
+import { EmptyState } from "@xrf/ui/layout/EmptyState";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import { TArchiveContent, useLastContent } from "@/core/archive/lib";
-import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
 
 import { ArchivePreviewError } from "../ArchivePreviewError";
 import { ArchiveAnmDescriptionView } from "./ArchiveAnmDescriptionView";

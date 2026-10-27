@@ -1,9 +1,9 @@
 import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
+import { IEditorLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
 
 import { toAssetLocation } from "@/core/assets/lib";
-import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 
 /**
  * Where a single opened visual was read from, for a session that browses no root.

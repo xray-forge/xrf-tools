@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
 import { ReactElement, useMemo } from "react";
 
 import { describeLevelResidentWait } from "@/applications/level-viewer/lib/load/level-resident-wait";
@@ -10,7 +11,7 @@ import { EMPTY_LEVEL_RESIDENT, ILevelResident } from "@/core/level/lib/render/le
 import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelRenderService } from "@/core/level/services/level-render";
-import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 import { EditorProblemsPanel, IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
 
 /**

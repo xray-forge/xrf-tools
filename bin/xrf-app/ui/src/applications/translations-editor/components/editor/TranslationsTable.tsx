@@ -1,10 +1,9 @@
 import { Nullable } from "@xrf/types";
 import { DataGrid, GridColDef, GridRenderCellParams, GridRowParams } from "@xrf/ui/data-grid";
 import { Tooltip, Typography } from "@xrf/ui/material";
+import { EditorFilterInput } from "@xrf/ui/shell/editor/EditorFilterInput";
+import { pathColumn } from "@xrf/ui/table/columns";
 import { ReactElement, useMemo, useState } from "react";
-
-import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
-import { pathColumn } from "@/core/ui/table/columns";
 
 /** One id, as the pair of languages currently in view sees it. */
 export interface ITranslationRow {

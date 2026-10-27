@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
+import { ConfirmDialog } from "@xrf/ui/dialog/ConfirmDialog";
+import { UnsavedChangesDialog } from "@xrf/ui/dialog/UnsavedChangesDialog";
 import { ReactElement } from "react";
 
 import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";
-import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
-import { UnsavedChangesDialog } from "@/core/ui/dialog/UnsavedChangesDialog";
 
 /** Renders the root lifecycle service's pending leave decision, and an exit asked while work still runs. */
 export function EditorLeaveDialog(): ReactElement {

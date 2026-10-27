@@ -1,11 +1,10 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ArchiveIcon, FileOpenIcon, SaveAltIcon } from "@xrf/ui/icons";
 import { Stack } from "@xrf/ui/material";
+import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
+import { EditorTextAction } from "@xrf/ui/shell/editor/EditorTextAction";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
-
-import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { EditorTextAction } from "@/core/shell/editor/EditorTextAction";
 
 interface IPackerToolbarActionsProps extends BaseComponentProps {
   isBusy: boolean;

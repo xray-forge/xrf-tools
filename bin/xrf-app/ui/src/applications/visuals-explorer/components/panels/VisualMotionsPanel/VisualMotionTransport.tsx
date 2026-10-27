@@ -4,11 +4,11 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PauseIcon, PlayArrowIcon, RepeatIcon } from "@xrf/ui/icons";
 import { Tooltip, Typography } from "@xrf/ui/material";
+import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
+import { EditorToolbarSeparator } from "@xrf/ui/shell/editor/EditorToolbarSeparator";
+import { EditorViewToggle } from "@xrf/ui/shell/editor/EditorViewToggle";
 import { ReactElement, useCallback } from "react";
 
-import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
-import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { MotionFrameSlider, MotionPlaybackRate } from "@/core/visuals/components/preview";
 import { formatMotionTiming } from "@/core/visuals/lib/visual-motion";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion";

@@ -1,10 +1,10 @@
 import { GraphEdge } from "@xrf/ipc/types/xrf-spawn";
 import { GridColDef, GridRowId } from "@xrf/ui/data-grid";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { decimalColumn, textColumn } from "@xrf/ui/table";
 import { ReactElement, useMemo } from "react";
 
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
-import { decimalColumn, textColumn } from "@/core/ui/table";
 
 interface IGraphEdgeRow extends GraphEdge {
   index: number;

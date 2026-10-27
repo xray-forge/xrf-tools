@@ -1,11 +1,11 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PauseIcon, PlayArrowIcon } from "@xrf/ui/icons";
 import { IconButton, Slider, Tooltip, Typography } from "@xrf/ui/material";
+import { IThrottledDraft, useThrottledDraft } from "@xrf/ui/react/use-throttled-draft";
 import { ReactElement, useMemo } from "react";
 
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { WEATHER_DAY_LENGTH } from "@/core/level/lib/weather/weather-day";
-import { IThrottledDraft, useThrottledDraft } from "@/lib/react/use-throttled-draft";
 
 /** A minute, the slider's step. */
 const MINUTE: number = 60;

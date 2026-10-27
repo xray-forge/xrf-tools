@@ -2,6 +2,8 @@ import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { TranslationFile, TranslationProjectDescriptor } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
+import { EmptyState } from "@xrf/ui/layout/EmptyState";
+import { EditorFileHeader } from "@xrf/ui/shell/editor/EditorFileHeader";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -9,8 +11,6 @@ import {
   useTranslationValidation,
 } from "@/applications/translations-editor/lib/use-translation-validation";
 import { TranslationsService } from "@/applications/translations-editor/services/translations.service";
-import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
 
 import { TranslationsFilesMenu } from "./editor/TranslationsFilesMenu";
 import { TranslationsLanguageBar } from "./editor/TranslationsLanguageBar";

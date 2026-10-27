@@ -5,17 +5,15 @@ import { ArchiveDescriptor, ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-arc
 import { getFileExtension } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { getArchiveVolumeOf, IArchiveEntry } from "@/core/archive/lib";
-import {
-  EditorPanel,
-  EditorPanelEmpty,
-  EditorPanelProperty,
-  EditorPanelSection,
-} from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 
 import { ArchiveOriginDetail } from "./ArchiveOriginDetail";
 import { ArchiveSharedPayloadDetail } from "./ArchiveSharedPayloadDetail";

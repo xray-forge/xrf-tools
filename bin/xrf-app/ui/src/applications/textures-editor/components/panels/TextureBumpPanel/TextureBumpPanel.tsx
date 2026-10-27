@@ -4,18 +4,16 @@ import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Alert, Button, Checkbox, FormControlLabel, Stack, Typography } from "@xrf/ui/material";
+import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement, useCallback, useState } from "react";
 
 import { DEFAULT_GLOSS_POWER, toBumpGloss } from "@/applications/textures-editor/lib/texture-bump-gloss";
 import { TextureBumpService } from "@/applications/textures-editor/services/texture-bump";
 import { TextureEditorService } from "@/applications/textures-editor/services/texture-editor";
 import { EApplicationId } from "@/core/routing/application";
-import {
-  EditorPanel,
-  EditorPanelEmpty,
-  EditorPanelProperty,
-  EditorPanelSection,
-} from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 

@@ -1,10 +1,10 @@
 import { useInjection } from "@wirestate/react";
+import { ViewportControls } from "@xrf/ui/media/ViewportControls";
 import { ReactElement, useCallback } from "react";
 
 import { RenderFailureCover, RenderFrameReadout } from "@/core/render/components/overlay";
 import { RenderSurface } from "@/core/render/components/RenderSurface";
 import { DOLLY_STEP } from "@/core/render/lib/frame/render-dolly";
-import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { VisualRenderService } from "@/core/visuals/services/visual-render";
 

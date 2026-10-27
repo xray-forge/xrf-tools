@@ -1,11 +1,11 @@
 import { ArchiveVolumeSummary } from "@xrf/ipc/types/xrf-archive-stats";
 import { getPathName } from "@xrf/path";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { IStatBreakdownRow } from "@xrf/ui/stats/StatBreakdownTable";
 import { ReactElement, useMemo } from "react";
 
 import { IArchiveStatisticsView } from "@/applications/archives-explorer/components/editor/statistics/archive-statistics-section";
 import { ArchiveBreakdownSection } from "@/applications/archives-explorer/components/editor/statistics/ArchiveBreakdownSection";
-import { IStatBreakdownRow } from "@/core/ui/stats/StatBreakdownTable";
 
 export interface IArchiveVolumesSectionProps extends BaseComponentProps {
   volumes: Array<ArchiveVolumeSummary>;

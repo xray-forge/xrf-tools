@@ -2,7 +2,10 @@ import { useInjection } from "@wirestate/react";
 import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
 import { LtxAnchoredFinding, LtxStructureSection } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
+import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@xrf/ui/code/code-line";
+import { VirtualizedLines } from "@xrf/ui/code/VirtualizedLines";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EmptyState } from "@xrf/ui/layout/EmptyState";
 import { Alert } from "@xrf/ui/material";
 import { ReactElement, useCallback, useMemo } from "react";
 
@@ -12,9 +15,6 @@ import { toDocumentLineSource } from "@/applications/configs-explorer/lib/semant
 import { ConfigsDocumentService } from "@/applications/configs-explorer/services/configs-document";
 import { ConfigsFindingsService } from "@/applications/configs-explorer/services/configs-findings";
 import { toFindingMarks } from "@/core/ltx/lib/findings";
-import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
-import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
 
 interface IConfigsAuthoredViewProps extends BaseComponentProps {
   document: ConfigsDocument;

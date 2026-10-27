@@ -1,6 +1,7 @@
 import { RenderBackendAvailability, RenderGpu, RenderGpuDescription } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow";
 import { ReactElement } from "react";
 
 import { resolveRenderBackend, TRenderBackendChoice } from "@/core/render/lib/settings/render-backend-choice";
@@ -12,7 +13,6 @@ import {
   toRenderGpuKey,
   TRenderGpuKey,
 } from "@/core/render/lib/settings/render-gpu-choice";
-import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 
 /**
  * @param gpu - The GPU the settings ask for, or null for the automatic one.

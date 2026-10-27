@@ -1,11 +1,11 @@
 import { Nullable } from "@xrf/types";
+import { CloseGlyph } from "@xrf/ui/shell/title-bar/glyphs/CloseGlyph";
+import { MaximizeGlyph } from "@xrf/ui/shell/title-bar/glyphs/MaximizeGlyph";
+import { MinimizeGlyph } from "@xrf/ui/shell/title-bar/glyphs/MinimizeGlyph";
+import { RestoreGlyph } from "@xrf/ui/shell/title-bar/glyphs/RestoreGlyph";
+import { WindowControlButton } from "@xrf/ui/shell/title-bar/WindowControlButton";
 import { ReactElement } from "react";
 
-import { CloseGlyph } from "@/core/shell/title-bar/glyphs/CloseGlyph";
-import { MaximizeGlyph } from "@/core/shell/title-bar/glyphs/MaximizeGlyph";
-import { MinimizeGlyph } from "@/core/shell/title-bar/glyphs/MinimizeGlyph";
-import { RestoreGlyph } from "@/core/shell/title-bar/glyphs/RestoreGlyph";
-import { WindowControlButton } from "@/core/shell/title-bar/WindowControlButton";
 import { IWindowControls, useWindowControls } from "@/lib/tauri/use-window-controls";
 
 /**

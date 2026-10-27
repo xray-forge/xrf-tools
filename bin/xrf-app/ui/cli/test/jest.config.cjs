@@ -20,7 +20,7 @@ module.exports = createJestConfig({
     "\\.(css|less|svg|png|jpg|woff2?)$": require.resolve("@xrf/toolchain/jest-asset-stub"),
     "^@/(.*)$": "<rootDir>/src/$1",
   },
-  setupFiles: [path.resolve(__dirname, "./jest-global.cjs")],
+  setupFiles: [require.resolve("@xrf/toolchain/jest-jsdom-globals")],
   setupFilesAfterEnv: [path.resolve(__dirname, "./jest-setup.ts")],
   testEnvironment: "jsdom",
   transform: {

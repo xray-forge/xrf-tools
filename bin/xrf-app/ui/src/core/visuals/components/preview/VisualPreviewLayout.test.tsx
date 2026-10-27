@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
 import { Binding } from "@wirestate/core";
+import { EditorToolbarLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
 
-import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { mockVisualModelViews } from "@/core/visuals/fixtures/visual.mocks";
 import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { VisualViewService } from "@/core/visuals/services/visual-view";

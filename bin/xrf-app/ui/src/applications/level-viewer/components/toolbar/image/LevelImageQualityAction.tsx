@@ -11,8 +11,11 @@ import {
 } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
+import { IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow/choice-form-row-option";
 import { HighQualityIcon } from "@xrf/ui/icons";
 import { Button, Typography } from "@xrf/ui/material";
+import { EditorPopoverAction } from "@xrf/ui/shell/editor/EditorPopoverAction";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
@@ -49,9 +52,6 @@ import {
   RENDER_SHARPENING_LIMITS,
 } from "@/core/render/lib/features/render-upscaling-choices";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
-import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderAntialiasing>> = LEVEL_ANTIALIASING_MODES.map(
   (value: RenderAntialiasing) => ({ label: describeRenderAntialiasing(value), value })

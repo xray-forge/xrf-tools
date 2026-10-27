@@ -7,5 +7,5 @@
     // Tests read the stylesheets from disk, and the jsdom virtualizer switch resolves through `require`.
     "types": ["node"]
   },
-  "include": ["src"]
+  "include": ["src", "test"]
 }

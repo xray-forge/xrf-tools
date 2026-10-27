@@ -9,6 +9,10 @@ import {
   RenderScale,
   RenderTextureFiltering,
 } from "@xrf/ipc/types/xrf-renderer";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
+import { ChoiceFormRow } from "@xrf/ui/form/ChoiceFormRow";
+import { SliderFormRow } from "@xrf/ui/form/SliderFormRow";
+import { DetailSection } from "@xrf/ui/layout/DetailSection";
 import { ReactElement } from "react";
 
 import {
@@ -35,10 +39,6 @@ import {
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
-import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
-import { DetailSection } from "@/core/ui/layout/DetailSection";
 
 /**
  * What every viewport resolves its frame at and how much of that the scene is drawn at before it is upscaled to it,

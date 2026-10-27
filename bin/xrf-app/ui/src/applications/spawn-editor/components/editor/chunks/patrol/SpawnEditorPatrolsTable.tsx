@@ -1,10 +1,10 @@
 import { Patrol } from "@xrf/ipc/types/xrf-spawn";
 import { GridColDef, GridRowId } from "@xrf/ui/data-grid";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { identifierColumn, textColumn } from "@xrf/ui/table";
 import { ReactElement, useMemo } from "react";
 
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
-import { identifierColumn, textColumn } from "@/core/ui/table";
 
 interface IPatrolRow {
   name: string;

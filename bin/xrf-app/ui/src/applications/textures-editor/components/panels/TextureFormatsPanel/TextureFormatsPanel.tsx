@@ -5,15 +5,13 @@ import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Alert, Button, List, Stack, Typography } from "@xrf/ui/material";
+import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement, useCallback } from "react";
 
 import { TextureEncodingService } from "@/applications/textures-editor/services/texture-encoding";
-import {
-  EditorPanel,
-  EditorPanelEmpty,
-  EditorPanelProperty,
-  EditorPanelSection,
-} from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 
 import { TextureFormatRow } from "./TextureFormatRow";

@@ -3,8 +3,10 @@ import { formatPercent, formatSeconds } from "@xrf/format";
 import { ThunderboltCollection } from "@xrf/ipc/types/xrf-environment";
 import { ERenderRainDropsMode, ERenderRainMode } from "@xrf/ipc/types/xrf-renderer";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
 import { WaterDropIcon } from "@xrf/ui/icons";
 import { Button } from "@xrf/ui/material";
+import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/shell/editor/EditorPopoverGroup";
 import { ReactElement } from "react";
 
 import { LevelWeatherCollectionSelect } from "@/applications/level-viewer/components/weather/LevelWeatherCollectionSelect";
@@ -28,8 +30,6 @@ import {
   RENDER_RAIN_LIMITS,
 } from "@/core/render/lib/features/render-rain-choices";
 import { TRenderRainSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 
 /** What the thunder's list offers before the level's weather is read. */
 const NO_COLLECTIONS: ReadonlyArray<ThunderboltCollection> = [];

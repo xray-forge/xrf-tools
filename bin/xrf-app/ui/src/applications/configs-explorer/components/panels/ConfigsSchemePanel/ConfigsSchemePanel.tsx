@@ -2,16 +2,17 @@ import { useInjection } from "@wirestate/react";
 import { LtxSchemeFieldReport, LtxSectionSchemeReport } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
+import { ErrorState } from "@xrf/ui/layout/ErrorState";
 import { Divider } from "@xrf/ui/material";
+import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
 import { ReactElement, useEffect } from "react";
 
 import { ConfigsSchemeBinding } from "@/applications/configs-explorer/components/panels/ConfigsSchemePanel/ConfigsSchemeBinding";
 import { ConfigsSchemeFieldRow } from "@/applications/configs-explorer/components/panels/ConfigsSchemePanel/ConfigsSchemeFieldRow";
 import { ConfigsDocumentService } from "@/applications/configs-explorer/services/configs-document";
 import { ConfigsSchemeService } from "@/applications/configs-explorer/services/configs-scheme";
-import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
-import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
-import { ErrorState } from "@/core/ui/layout/ErrorState";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 
 /**
  * What judges the selected section, and how the section measures against it.

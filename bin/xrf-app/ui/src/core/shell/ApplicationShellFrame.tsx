@@ -1,6 +1,8 @@
 import { useInjection, useOnCommand, useOnQuery } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EditorToolbarHostContext } from "@xrf/ui/shell/header/editor-toolbar-host";
+import { RailButton } from "@xrf/ui/shell/panel/rail/RailButton";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode, Suspense, useCallback, useState } from "react";
 import { flushSync } from "react-dom";
@@ -16,7 +18,6 @@ import { useIsEditorBusy } from "@/core/shell/editor-lifecycle";
 import { IEditorPanel, selectPanelsOnSide, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
 import { ApplicationCrash } from "@/core/shell/error/ApplicationCrash";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
-import { EditorToolbarHostContext } from "@/core/shell/header/editor-toolbar-host";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 import { ApplicationPanelSlot } from "@/core/shell/panel/ApplicationPanelSlot";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
@@ -29,7 +30,7 @@ import {
   PANEL_CLOSE_COMMAND,
   PANEL_SET_ACTIVE_COMMAND,
 } from "@/core/shell/panel/panel-messages";
-import { ApplicationRail, RailButton } from "@/core/shell/panel/rail";
+import { ApplicationRail } from "@/core/shell/panel/rail";
 import { IPanelSelection, usePanelSelection } from "@/core/shell/panel/use-panel-selection";
 import { IPanelWidth, usePanelWidth } from "@/core/shell/panel/use-panel-width";
 import { APPLICATION_OPEN_QUERY, CLOSE_APPLICATION_COMMAND } from "@/core/shell/shell-messages";

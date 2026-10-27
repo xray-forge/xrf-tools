@@ -1,11 +1,11 @@
+import { withoutAt } from "@xrf/collections";
 import { ArchivePackDirectory } from "@xrf/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EditableList, EditableListItem } from "@xrf/ui/form";
 import { FormControlLabel, Switch, TextField, Typography } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement } from "react";
 
 import { withDirectoryAt } from "@/applications/archives-packer/lib/pack-config";
-import { EditableList, EditableListItem } from "@/core/ui/form";
-import { withoutAt } from "@/lib/types/array";
 
 interface IPackerDirectoryListProps extends BaseComponentProps {
   directories: Array<ArchivePackDirectory>;

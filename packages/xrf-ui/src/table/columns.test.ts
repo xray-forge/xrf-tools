@@ -1,0 +1,98 @@
+import { describe, expect, it } from "@jest/globals";
+
+import { GridColDef } from "#/data-grid";
+import {
+  decimalColumn,
+  flagsColumn,
+  identifierColumn,
+  pathColumn,
+  textColumn,
+  tupleColumn,
+  vectorColumn,
+} from "#/table/columns";
+
+/**
+ * Reads a value through a column's value getter.
+ *
+ * @param column - Column whose value getter to invoke.
+ * @param value - Cell value passed as the getter's first argument.
+ * @returns Value returned by the getter, if present.
+ */
+function readCell(column: GridColDef, value: unknown): unknown {
+  return column.valueGetter?.(value as never, {} as never, column, {} as never);
+}
+
+describe("table columns", () => {
+  it("lets a path column take the rest of the row, in monospace, down to its floor", () => {
+    expect(pathColumn("file", "File")).toEqual({
+      cellClassName: "monospace",
+      field: "file",
+      flex: 1,
+      headerName: "File",
+      minWidth: 320,
+    });
+    expect(pathColumn("id", "Id", 220).minWidth).toBe(220);
+  });
+
+  it("leaves a plain column without a getter", () => {
+    expect(textColumn("version", "Version")).toEqual({ field: "version", headerName: "Version" });
+    expect(textColumn("version", "Version", 120).width).toBe(120);
+  });
+
+  it("marks identifiers monospace, which is what makes them comparable by eye", () => {
+    expect(identifierColumn("guid", "Guid").cellClassName).toBe("monospace");
+  });
+
+  it("renders a vector as its components rather than as JSON", () => {
+    const column: GridColDef = vectorColumn("position", "Position");
+
+    // Was `{"x":12.5,"y":1.25,"z":-30}` in every cell, spending the width on punctuation.
+    expect(readCell(column, { x: 12.5, y: 1.25, z: -30 })).toBe("12.50, 1.25, -30.00");
+  });
+
+  it("leaves a missing vector empty rather than printing null", () => {
+    expect(readCell(vectorColumn("position", "Position"), undefined)).toBeNull();
+    expect(readCell(vectorColumn("position", "Position"), 4)).toBeNull();
+  });
+
+  it("leaves vectors with string components empty", () => {
+    const column: GridColDef = vectorColumn("position", "Position");
+
+    expect(readCell(column, { x: "1", y: 2, z: 3 })).toBeNull();
+    expect(readCell(column, { x: 1, y: "2", z: 3 })).toBeNull();
+    expect(readCell(column, { x: 1, y: 2, z: "3" })).toBeNull();
+  });
+
+  it("leaves vectors with null components empty", () => {
+    const column: GridColDef = vectorColumn("position", "Position");
+
+    expect(readCell(column, { x: null, y: 2, z: 3 })).toBeNull();
+    expect(readCell(column, { x: 1, y: null, z: 3 })).toBeNull();
+    expect(readCell(column, { x: 1, y: 2, z: null })).toBeNull();
+  });
+
+  it("renders flags as hex, since decimal bit fields cannot be read as flags", () => {
+    const column: GridColDef = flagsColumn("scriptFlags", "Script flags");
+
+    expect(readCell(column, 255)).toBe(255);
+    expect(readCell(column, 0)).toBe(0);
+    expect(readCell(column, null)).toBeNull();
+    expect(column.valueFormatter?.(255 as never, {} as never, column, {} as never)).toBe("0xFF");
+    expect(column.valueFormatter?.(0 as never, {} as never, column, {} as never)).toBe("0x0");
+    expect(column.valueFormatter?.(null as never, {} as never, column, {} as never)).toBeNull();
+  });
+
+  it("renders a tuple as a compact list", () => {
+    expect(readCell(tupleColumn("vertexType", "Vertex type"), [1, 2, 3, 4])).toBe("1, 2, 3, 4");
+    expect(readCell(tupleColumn("vertexType", "Vertex type"), null)).toBeNull();
+  });
+
+  it("renders a float at fixed precision", () => {
+    const column: GridColDef = decimalColumn("distance", "Distance");
+
+    expect(readCell(column, 1.23456)).toBe(1.23456);
+    expect(readCell(column, null)).toBeNull();
+    expect(column.valueFormatter?.(1.23456 as never, {} as never, column, {} as never)).toBe("1.23");
+    expect(column.valueFormatter?.(null as never, {} as never, column, {} as never)).toBeNull();
+  });
+});

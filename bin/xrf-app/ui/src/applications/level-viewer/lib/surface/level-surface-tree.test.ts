@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
+import { ITreeNode } from "@xrf/ui/tree/tree-node";
 
 import { TLevelSurfaceTreeRow, toLevelSurfaceTree } from "@/applications/level-viewer/lib/surface/level-surface-tree";
 import { ILevelSurfaceSummary, listLevelSurfaces } from "@/core/level/lib/surface/level-surface-summary";
-import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { mockSurfaceDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 
 function mockSummaries(): Array<ILevelSurfaceSummary> {

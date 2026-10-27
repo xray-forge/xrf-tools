@@ -3,7 +3,10 @@ import { AsyncState } from "@xrf/async";
 import { AssetTextureShape } from "@xrf/ipc/types/xrf-app-core";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
+import { EmptyState } from "@xrf/ui/layout/EmptyState";
 import { Typography } from "@xrf/ui/material";
+import { ImageViewport } from "@xrf/ui/media/ImageViewport";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
@@ -12,9 +15,6 @@ import { ArchivePreviewService } from "@/applications/archives-explorer/services
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { describeTextureShape } from "@/core/assets/lib";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
-import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
-import { ImageViewport } from "@/core/ui/media/ImageViewport";
 
 /**
  * Shows an archived texture the backend decoded into a PNG.

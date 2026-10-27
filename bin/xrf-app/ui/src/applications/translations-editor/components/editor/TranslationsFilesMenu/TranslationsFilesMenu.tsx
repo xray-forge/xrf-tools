@@ -2,12 +2,12 @@ import { formatCount } from "@xrf/format";
 import { TranslationFile } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
 import { CircleIcon } from "@xrf/ui/icons";
+import { EmptyListing } from "@xrf/ui/layout";
+import { IEditorSearchResultRow } from "@xrf/ui/shell/editor/EditorSearchResults";
+import { IEditorSideMenuItem } from "@xrf/ui/shell/editor/EditorSideMenu";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
-import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
-import { IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
-import { EmptyListing } from "@/core/ui/layout";
 
 /** One file, with enough on it to rank a search and label a row. */
 interface IFileEntry {

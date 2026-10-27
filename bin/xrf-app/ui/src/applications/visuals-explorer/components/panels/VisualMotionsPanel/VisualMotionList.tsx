@@ -4,13 +4,13 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PlayArrowIcon } from "@xrf/ui/icons";
 import { Tooltip } from "@xrf/ui/material";
+import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
 import { cn } from "@xrf/ui/theme/class-name";
+import { ITreeNode } from "@xrf/ui/tree/tree-node";
+import { IUseTreeState, useTreeState } from "@xrf/ui/tree/use-tree-state";
+import { VirtualizedTree } from "@xrf/ui/tree/VirtualizedTree";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo } from "react";
 
-import { EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
-import { ITreeNode } from "@/core/ui/tree/tree-node";
-import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
-import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion";
 
 import { getMotionNodeName, groupMotionNames, listMotionGroupIds } from "./motion-groups";

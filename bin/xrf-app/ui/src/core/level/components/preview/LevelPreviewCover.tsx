@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
@@ -9,7 +10,6 @@ import { describeLevelLoad } from "@/core/level/lib/load/level-load-progress";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { RenderFailureNotice } from "@/core/render/components/overlay/RenderFailureNotice";
-import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 
 interface ILevelPreviewCoverProps extends BaseComponentProps {
   /** Whether the level itself is being opened, before any of it is read. */

@@ -1,12 +1,12 @@
 import { formatBytes, formatDuration } from "@xrf/format";
 import { ArchiveUnpackResult } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
+import { CommandResult, ICommandResultStat } from "@xrf/ui/command-result/CommandResult";
+import { CommandResultPathList } from "@xrf/ui/command-result/CommandResultPathList";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useMemo } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
-import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
-import { CommandResultPathList } from "@/core/ui/command-result/CommandResultPathList";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 
 interface IArchivesUnpackResultProps extends BaseComponentProps {

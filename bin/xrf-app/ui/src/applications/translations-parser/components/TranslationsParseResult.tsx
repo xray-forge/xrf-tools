@@ -1,16 +1,16 @@
 import { Finding } from "@xrf/ipc/types/xrf-report";
 import { TranslationParseResult } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
+import { CommandResult, ICommandResultStat, TCommandResultTone } from "@xrf/ui/command-result/CommandResult";
+import { CommandResultFindings } from "@xrf/ui/command-result/CommandResultFindings";
 import { GridColDef } from "@xrf/ui/data-grid";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { identifierColumn, pathColumn } from "@xrf/ui/table/columns";
 import { ReactElement, useMemo } from "react";
 
 import { listTranslationParseFindings } from "@/applications/translations-parser/lib/parse-findings";
 import { EApplicationId } from "@/core/routing/application";
-import { CommandResult, ICommandResultStat, TCommandResultTone } from "@/core/ui/command-result/CommandResult";
-import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
-import { identifierColumn, pathColumn } from "@/core/ui/table/columns";
 
 export interface ITranslationsParseResultProps extends BaseComponentProps {
   result: TranslationParseResult;

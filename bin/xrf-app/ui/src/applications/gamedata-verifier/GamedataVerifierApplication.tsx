@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { CheckboxFormRow } from "@xrf/ui/form";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { GamedataVerifierService } from "@/applications/gamedata-verifier/services/gamedata-verifier.service";
@@ -9,7 +10,7 @@ import { EngineChoiceFormRow } from "@/core/engine-target/components/EngineChoic
 import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib/use-engine-choice";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
-import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 
 import { GamedataVerifyResult } from "./components/GamedataVerifyResult";
 

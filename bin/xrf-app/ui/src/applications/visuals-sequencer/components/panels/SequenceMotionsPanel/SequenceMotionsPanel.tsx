@@ -3,13 +3,14 @@ import { filterByName } from "@xrf/search";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material";
+import { EditorFilterInput } from "@xrf/ui/shell/editor/EditorFilterInput";
+import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
 import { ReactElement, useMemo, useState } from "react";
 
 import { SequenceMotionRow } from "@/applications/visuals-sequencer/components/panels/SequenceMotionsPanel/SequenceMotionRow";
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/visual-sequence";
 import { VisualsSequencerService } from "@/applications/visuals-sequencer/services/visuals-sequencer";
-import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
-import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 
 /** How many matches are drawn at once. */
 const SHOWN_LIMIT: number = 200;

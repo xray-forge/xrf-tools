@@ -4,6 +4,7 @@ import { AsyncState } from "@xrf/async";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
+import { EPathEntryKind } from "@xrf/path";
 
 import {
   IArchivesExplorerMock,
@@ -11,7 +12,6 @@ import {
 } from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
 import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/core/archive/fixtures/archive.mocks";
 import { mockCommandAnswer } from "@/core/operations/fixtures/command-operation.mocks";
-import { EPathEntryKind } from "@/core/path/entry-kind";
 import { mockSessionRead, mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

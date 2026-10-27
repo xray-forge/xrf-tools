@@ -2,13 +2,14 @@ import { useInjection } from "@wirestate/react";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { CheckboxFormRow } from "@xrf/ui/form";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { ConfigsVerifierService } from "@/applications/configs-verifier/services/configs-verifier.service";
 import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { EApplicationId } from "@/core/routing/application";
-import { CheckboxFormRow, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 
 import { ConfigsVerifyResult } from "./components/ConfigsVerifyResult";
 

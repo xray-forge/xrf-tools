@@ -7,8 +7,7 @@ import {
 } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
 import { assertExhaustive, Nullable } from "@xrf/types";
-
-import { ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
+import { ICodeLine, ICodeLineSource } from "@xrf/ui/code/code-line";
 
 /** The unnamed section a resolution carries whatever was written before the first header in. */
 export const ROOT_SECTION: string = "";

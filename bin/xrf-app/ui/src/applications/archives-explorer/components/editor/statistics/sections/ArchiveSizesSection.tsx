@@ -1,11 +1,11 @@
 import { formatBytes } from "@xrf/format";
 import { ArchiveSizeBand } from "@xrf/ipc/types/xrf-archive-stats";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { IStatBreakdownRow } from "@xrf/ui/stats/StatBreakdownTable";
 import { ReactElement, useMemo } from "react";
 
 import { IArchiveStatisticsView } from "@/applications/archives-explorer/components/editor/statistics/archive-statistics-section";
 import { ArchiveBreakdownSection } from "@/applications/archives-explorer/components/editor/statistics/ArchiveBreakdownSection";
-import { IStatBreakdownRow } from "@/core/ui/stats/StatBreakdownTable";
 import { inline } from "@/lib/callbacks/inline";
 
 export interface IArchiveSizesSectionProps extends BaseComponentProps {

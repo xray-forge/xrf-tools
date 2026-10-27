@@ -1,5 +1,6 @@
 import { ERenderParallaxMode, RenderParallaxMode } from "@xrf/ipc/types/xrf-renderer";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
 import { Button } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
@@ -18,7 +19,6 @@ import {
   RENDER_PARALLAX_MODE_OPTIONS,
 } from "@/core/render/lib/features/render-parallax-choices";
 import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 
 /** How this view's surfaces are displaced by their height: the engine's steep parallax, or the enhanced terrain march. */
 export function LevelParallaxSettings({

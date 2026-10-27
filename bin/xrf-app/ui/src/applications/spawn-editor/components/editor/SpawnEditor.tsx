@@ -4,13 +4,13 @@ import { SpawnHeaderChunk } from "@xrf/ipc/types/xrf-spawn";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ViewListIcon } from "@xrf/ui/icons";
+import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
+import { EditorToolbarLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
 import { ReactElement, useCallback } from "react";
 import { Route, Routes } from "react-router-dom";
 
 import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file.service";
-import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 

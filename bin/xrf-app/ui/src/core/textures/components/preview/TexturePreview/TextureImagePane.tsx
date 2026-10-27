@@ -2,13 +2,13 @@ import { AsyncState } from "@xrf/async";
 import { AssetTextureShape } from "@xrf/ipc/types/xrf-app-core";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
+import { ErrorState } from "@xrf/ui/layout/ErrorState";
+import { ImageViewport } from "@xrf/ui/media/ImageViewport";
+import { PanZoomController } from "@xrf/ui/media/pan-zoom-controller";
 import { ReactElement } from "react";
 
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
-import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
-import { ErrorState } from "@/core/ui/layout/ErrorState";
-import { ImageViewport } from "@/core/ui/media/ImageViewport";
-import { PanZoomController } from "@/lib/media/pan-zoom-controller";
 
 import { TexturePreviewFrame } from "./TexturePreviewFrame";
 

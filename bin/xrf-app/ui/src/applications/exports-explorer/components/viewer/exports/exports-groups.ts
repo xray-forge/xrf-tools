@@ -1,8 +1,8 @@
 import { ExportDescriptor } from "@xrf/ipc/types/xrf-export";
+import { EPathEntryKind } from "@xrf/path";
+import { IPathTreeItem, toDirectoryItemId, toFileItemId } from "@xrf/ui/tree/path-tree";
 
 import { TCallableExportDescriptor } from "@/applications/exports-explorer/lib/export-descriptors";
-import { EPathEntryKind } from "@/core/path/entry-kind";
-import { IPathTreeItem, toDirectoryItemId, toFileItemId } from "@/core/ui/tree/path-tree";
 
 export const ROOT_EXPORT_GROUP_ID: string = "group:root";
 

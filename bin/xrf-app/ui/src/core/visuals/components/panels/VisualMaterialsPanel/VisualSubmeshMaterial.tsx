@@ -2,6 +2,7 @@ import { XrayMaterialDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Chip } from "@xrf/ui/material";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
 import { ReactElement } from "react";
 
 import {
@@ -13,7 +14,6 @@ import {
   describeVirtualHeight,
   IMaterialStateDescriptor,
 } from "@/core/materials/lib";
-import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 
 import { describeBumpUpload } from "./VisualSubmeshMaterial.utils";

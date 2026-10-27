@@ -1,9 +1,9 @@
 import { LtxFileStructure, LtxResolvedIndexEntry, LtxStructureEntry } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { filterByName } from "@xrf/search";
 import { Nullable } from "@xrf/types";
+import { ITreeNode } from "@xrf/ui/tree/tree-node";
 
 import { ROOT_SECTION, ROOT_SECTION_LABEL } from "@/applications/configs-explorer/lib/resolved";
-import { ITreeNode } from "@/core/ui/tree/tree-node";
 
 /**
  * One row of the index, and where clicking it goes.

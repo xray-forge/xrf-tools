@@ -3,13 +3,13 @@ import { ABSENT_VALUE, formatBytes, formatDuration } from "@xrf/format";
 import { IIpcCommandMetrics, IIpcMetricsSnapshot } from "@xrf/ipc";
 import { IpcMetricsService } from "@xrf/ipc/session";
 import { Nullable } from "@xrf/types";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
+import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow";
+import { DetailSection } from "@xrf/ui/layout/DetailSection";
 import { Button, Divider, Stack, Typography } from "@xrf/ui/material";
+import { StatFigure } from "@xrf/ui/stats/StatFigure";
 import { ReactElement, useState } from "react";
 
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
-import { DetailSection } from "@/core/ui/layout/DetailSection";
-import { StatFigure } from "@/core/ui/stats/StatFigure";
 import { usePolledValue } from "@/lib/react/use-polled-value";
 
 import {

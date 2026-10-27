@@ -6,6 +6,7 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FilterDramaIcon } from "@xrf/ui/icons";
 import { Button, Typography } from "@xrf/ui/material";
+import { EditorPopoverAction } from "@xrf/ui/shell/editor/EditorPopoverAction";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
@@ -19,7 +20,6 @@ import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-sour
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
-import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { useCopiedText } from "@/lib/react/use-copied-text";
 
 /**

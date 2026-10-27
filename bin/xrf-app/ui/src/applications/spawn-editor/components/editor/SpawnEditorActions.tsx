@@ -1,15 +1,15 @@
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { ConfirmDialog } from "@xrf/ui/dialog/ConfirmDialog";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ImportExportIcon, SaveIcon } from "@xrf/ui/icons";
+import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback, useState } from "react";
 
 import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file.service";
 import { SPAWN_FILE_FILTERS } from "@/core/path/file-filters";
-import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 
 /**
  * Commands that act on the open spawn file.

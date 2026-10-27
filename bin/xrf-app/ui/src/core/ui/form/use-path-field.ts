@@ -1,6 +1,7 @@
 import { DialogFilter } from "@tauri-apps/plugin-dialog";
 import { exists } from "@tauri-apps/plugin-fs";
 import { Nullable } from "@xrf/types";
+import { IPathFieldRecents } from "@xrf/ui/form/file-picker/path-field-recents";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
@@ -12,7 +13,6 @@ import {
 } from "@/core/storage";
 import { resolveDialogStart } from "@/core/ui/form/file-picker/dialog-start";
 import { usePathState } from "@/core/ui/form/file-picker/use-path-state";
-import { IPathFieldRecents } from "@/core/ui/form/path-recents";
 import { IPathRecents, usePathRecents } from "@/core/ui/form/use-path-recents";
 import { IPathSeed, TPathSeed, usePathSeed } from "@/core/ui/form/use-path-seed";
 

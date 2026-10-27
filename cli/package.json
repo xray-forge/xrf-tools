@@ -9,6 +9,7 @@
     "./eslint-react": "./lint/eslint.react.mjs",
     "./jest": "./test/jest.base.cjs",
     "./jest-asset-stub": "./test/asset-stub.cjs",
+    "./jest-jsdom-globals": "./test/jsdom-globals.cjs",
     "./prettier": "./prettier.config.mjs",
     "./tsconfig.base.json": "./tsconfig.base.json",
     "./workspace": "./workspace.cjs"

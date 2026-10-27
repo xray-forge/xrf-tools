@@ -1,5 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { SwitchFormRow } from "@xrf/ui/form";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { TranslationsBuilderService } from "@/applications/translations-builder/services/translations-builder.service";
@@ -7,7 +8,7 @@ import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
 import { EApplicationId } from "@/core/routing/application";
 import { TranslationLanguageField } from "@/core/translations/components/TranslationLanguageField";
 import { ALL_TRANSLATION_LANGUAGES, TRANSLATION_LANGUAGES_WITH_ALL } from "@/core/translations/translations.config";
-import { IPathField, PathFormRow, SwitchFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
+import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 
 import { TranslationsBuildResult } from "./components/TranslationsBuildResult";
 

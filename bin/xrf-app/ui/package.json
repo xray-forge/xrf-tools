@@ -22,7 +22,6 @@
     "format": "prettier --write \"**/*.(js|ts|tsx|md)\" && pnpm run lint --fix"
   },
   "dependencies": {
-    "@dagrejs/dagre": "^3.1.1",
     "@tauri-apps/api": "^2.12.4",
     "@tauri-apps/plugin-dialog": "^2.8.3",
     "@tauri-apps/plugin-fs": "^2.7.1",
@@ -32,6 +31,7 @@
     "@wirestate/react": "1.0.0",
     "@wirestate/react-mobx": "1.0.0",
     "@xrf/async": "workspace:*",
+    "@xrf/collections": "workspace:*",
     "@xrf/errors": "workspace:*",
     "@xrf/flow": "workspace:*",
     "@xrf/format": "workspace:*",
@@ -43,10 +43,9 @@
     "@xrf/syntax": "workspace:*",
     "@xrf/types": "workspace:*",
     "@xrf/ui": "workspace:*",
-    "@xyflow/react": "^12.12.0",
+    "@xyflow/react": "catalog:",
     "date-fns": "catalog:",
     "react": "^19.3.1",
-    "react-colorful": "^5.8.1",
     "react-dom": "^19.3.1",
     "react-router-dom": "^7.18.4"
   },

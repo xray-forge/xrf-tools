@@ -1,9 +1,5 @@
 import { saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
-import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ButtonBase, InputBase } from "@xrf/ui/material";
-import { FocusEvent, KeyboardEvent, ReactElement, useCallback, useId, useMemo, useState } from "react";
-
 import {
   fromPickedColor,
   IPickedColor,
@@ -11,9 +7,12 @@ import {
   TColorChannels,
   toColorIntensity,
   toPickedColor,
-} from "@/core/ui/color/color-intensity";
-import { ColorPicker } from "@/core/ui/color/ColorPicker";
-import { useOpenColorField } from "@/core/ui/color/use-open-color-field";
+} from "@xrf/ui/color/color-intensity";
+import { ColorPicker } from "@xrf/ui/color/ColorPicker";
+import { useOpenColorField } from "@xrf/ui/color/use-open-color-field";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ButtonBase, InputBase } from "@xrf/ui/material";
+import { FocusEvent, KeyboardEvent, ReactElement, useCallback, useId, useMemo, useState } from "react";
 
 interface ILevelWeatherVectorDraft {
   index: number;

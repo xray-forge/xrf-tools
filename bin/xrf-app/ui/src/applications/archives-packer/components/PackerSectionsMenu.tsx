@@ -1,11 +1,11 @@
 import { useInjection } from "@wirestate/react";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FolderIcon, SettingsIcon, TitleIcon, TuneIcon } from "@xrf/ui/icons";
+import { EditorSideMenu, IEditorSideMenuItem } from "@xrf/ui/shell/editor/EditorSideMenu";
 import { ReactElement } from "react";
 
 import { ArchivesPackerService, EPackerSection } from "@/applications/archives-packer/services/archives-packer.service";
 import { EditorPanelHeader } from "@/core/shell/editor/EditorPanelHeader";
-import { EditorSideMenu, IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
 
 const SECTIONS: Array<{ id: EPackerSection; label: string; description: string; icon: ReactElement }> = [
   {

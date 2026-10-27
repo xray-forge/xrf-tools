@@ -1,4 +1,6 @@
 import { useInjection } from "@wirestate/react";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
+import { ChoiceFormRow } from "@xrf/ui/form/ChoiceFormRow";
 import { ReactElement, useEffect } from "react";
 
 import { RenderBackendFormRow } from "@/core/render/components/controls/RenderBackendFormRow";
@@ -6,8 +8,6 @@ import { RenderGpuFormRow } from "@/core/render/components/controls/RenderGpuFor
 import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
 import { RENDER_FRAME_RATE_OPTIONS } from "@/core/render/lib/features/render-display-choices";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
 
 /**
  * On which graphics API and how often every viewport draws, and whether its passes are timed: nothing a preset sets.

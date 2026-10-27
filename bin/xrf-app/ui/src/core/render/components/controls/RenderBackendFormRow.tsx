@@ -1,6 +1,7 @@
 import { RenderBackend, RenderBackendAvailability, RenderGpu } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow";
 import { ReactElement } from "react";
 
 import {
@@ -14,7 +15,6 @@ import {
   resolveRenderDrawing,
   TRenderBackendChoice,
 } from "@/core/render/lib/settings/render-backend-choice";
-import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow";
 
 /**
  * @param value - The graphics API the settings ask for.

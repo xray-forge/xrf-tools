@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import { LtxFileStructure } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
+import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@xrf/ui/code/code-line";
 
 import { toDocumentLineSource } from "@/applications/configs-explorer/lib/semantic";
-import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
 
 /** A structure carrying only what a case is about, with the rest of the record empty. */
 function structureOf(structure: Partial<LtxFileStructure>): LtxFileStructure {

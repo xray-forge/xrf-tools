@@ -1,13 +1,13 @@
 import { Nullable } from "@xrf/types";
 import { GrainIcon, LightbulbIcon, ViewInArIcon } from "@xrf/ui/icons";
+import { EditorToolbarLocation, IEditorLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
+import { EditorToolbarSeparator } from "@xrf/ui/shell/editor/EditorToolbarSeparator";
+import { EditorViewToggle } from "@xrf/ui/shell/editor/EditorViewToggle";
 import { ReactElement, useCallback } from "react";
 
 import { RenderLightingAction } from "@/core/render/components/lighting/RenderLightingAction";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { EditorToolbarLocation, IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
-import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
-import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
 import { ETexturePreviewMode, ITexturePreviewOptions } from "@/core/textures/lib/texture-preview";
 

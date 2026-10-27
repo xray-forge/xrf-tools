@@ -7,13 +7,13 @@ import {
   LtxResolvedSection,
 } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { ESyntaxToken, ISyntaxSpan } from "@xrf/syntax";
+import { ICodeLineSource } from "@xrf/ui/code/code-line";
 
 import {
   describeResolvedFieldOrigin,
   IResolvedLayout,
   toResolvedLayout,
 } from "@/applications/configs-explorer/lib/resolved";
-import { ICodeLineSource } from "@/core/ui/code/code-line";
 
 const ENTRY: string = "configs\\system.ltx";
 

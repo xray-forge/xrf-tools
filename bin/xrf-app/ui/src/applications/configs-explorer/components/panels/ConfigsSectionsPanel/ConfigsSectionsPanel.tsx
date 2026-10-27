@@ -2,6 +2,9 @@ import { useInjection } from "@wirestate/react";
 import { LtxFileStructure } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EmptyListing } from "@xrf/ui/layout";
+import { ITreeNode } from "@xrf/ui/tree/tree-node";
+import { VirtualizedTree } from "@xrf/ui/tree/VirtualizedTree";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import {
@@ -10,9 +13,6 @@ import {
 } from "@/applications/configs-explorer/services/configs-document";
 import { ConfigsResolvedService } from "@/applications/configs-explorer/services/configs-resolved";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
-import { EmptyListing } from "@/core/ui/layout";
-import { ITreeNode } from "@/core/ui/tree/tree-node";
-import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { noop } from "@/lib/callbacks/noop";
 
 import {

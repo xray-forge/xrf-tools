@@ -1,6 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { SearchOffIcon } from "@xrf/ui/icons";
+import { EmptyState } from "@xrf/ui/layout/EmptyState";
 import { Button, Typography } from "@xrf/ui/material";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
@@ -8,7 +9,6 @@ import { ReactElement } from "react";
 import { ICatalogSection } from "@/core/launcher/lib";
 import { IApplicationDescriptor } from "@/core/routing/application";
 import { TCatalogView } from "@/core/settings/lib/catalog-view";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
 
 import { ApplicationLauncherCardGrid } from "./ApplicationLauncherCardGrid";
 import { ApplicationLauncherRowList } from "./ApplicationLauncherRowList";

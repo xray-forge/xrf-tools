@@ -3,13 +3,14 @@ import { TranslationProjectMode } from "@xrf/ipc/types/xrf-translation";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations.service";
 import { createRoots } from "@/core/assets/lib/roots";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { ChoiceFormRow, IChoiceFormRowOption, IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 
 const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<TranslationProjectMode>> = [
   { value: "source", label: "Project sources" },

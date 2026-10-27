@@ -3,6 +3,7 @@ import { IPanZoomPoint } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CircularProgress, Typography } from "@xrf/ui/material";
+import { IImageViewportView, ImageViewport } from "@xrf/ui/media/ImageViewport";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback } from "react";
 
@@ -12,7 +13,6 @@ import {
   SpriteEquipmentEditorService,
 } from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
 import { describeEquipmentSheet, IEquipmentLayout, toCellAt } from "@/core/sprite-equipment/lib";
-import { IImageViewportView, ImageViewport } from "@/core/ui/media/ImageViewport";
 
 import { EquipmentGridCanvas } from "./EquipmentGridCanvas";
 import { EquipmentGridMoveOver } from "./EquipmentGridMoveOver";

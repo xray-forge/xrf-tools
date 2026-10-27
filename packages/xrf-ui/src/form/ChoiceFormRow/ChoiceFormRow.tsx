@@ -1,0 +1,67 @@
+import { Nullable } from "@xrf/types";
+import { ReactElement } from "react";
+
+import { FormRow } from "../FormRow";
+
+import { BaseComponentProps } from "#/element-types";
+import { IChoiceFormRowOption } from "#/form/ChoiceFormRow/choice-form-row-option";
+import { ToggleButton, ToggleButtonGroup } from "#/material";
+
+export interface IChoiceFormRowProps<T extends string> extends BaseComponentProps {
+  label: string;
+  description?: string;
+  options: ReadonlyArray<IChoiceFormRowOption<T>>;
+  value: T;
+  isRequired?: boolean;
+  isDisabled?: boolean;
+  onChange: (value: T) => void;
+}
+
+/** A labelled, controlled choice that keeps one option selected. */
+export function ChoiceFormRow<T extends string>({
+  "data-testid": dataTestId = "choice-form-row",
+  id,
+  className,
+  label,
+  description,
+  options,
+  value,
+  isRequired = true,
+  isDisabled = false,
+  onChange,
+}: IChoiceFormRowProps<T>): ReactElement {
+  return (
+    <FormRow label={label} description={description} controlId={id} isRequired={isRequired} isGroup>
+      {({ id: controlId, "aria-labelledby": labelId, "aria-describedby": describedBy }) => (
+        <ToggleButtonGroup
+          data-testid={dataTestId}
+          id={controlId}
+          className={className}
+          aria-labelledby={labelId}
+          aria-describedby={describedBy}
+          exclusive
+          color={"primary"}
+          size={"small"}
+          value={value}
+          disabled={isDisabled}
+          onChange={(_, next: Nullable<T>) => {
+            if (next !== null) {
+              onChange(next);
+            }
+          }}
+        >
+          {options.map((option) => (
+            <ToggleButton
+              key={option.value}
+              aria-label={option["aria-label"]}
+              value={option.value}
+              disabled={option.isDisabled}
+            >
+              {option.label}
+            </ToggleButton>
+          ))}
+        </ToggleButtonGroup>
+      )}
+    </FormRow>
+  );
+}

@@ -1,5 +1,6 @@
 import { isSamePath } from "@xrf/path";
 import { Nullable } from "@xrf/types";
+import { IPathRecord } from "@xrf/ui/form/file-picker/path-field-recents";
 
 import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/core/storage";
 
@@ -10,25 +11,6 @@ import { parseLocalStorageValueSafe, setLocalStorageValueSafe } from "@/core/sto
  * picked and would only occupy storage.
  */
 export const RECENT_PATHS_LIMIT: number = 10;
-
-/** One path a field was given, and when. */
-export interface IPathRecord {
-  path: string;
-  /** Milliseconds since the epoch, for saying how old the entry is. Order is carried by position, not by this. */
-  at: number;
-}
-
-/**
- * A field's history as the surfaces that offer it see it.
- */
-export interface IPathFieldRecents {
-  /** The remembered paths, newest first. */
-  records: ReadonlyArray<IPathRecord>;
-  /** Takes one of them. */
-  pick: (path: string) => void;
-  /** Drops one of them. */
-  forget: (path: string) => void;
-}
 
 /**
  * Reads one field's history, tolerating anything.

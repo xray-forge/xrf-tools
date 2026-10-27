@@ -1,9 +1,9 @@
 import { describe, expect, it } from "@jest/globals";
 import { ExportDescriptor } from "@xrf/ipc/types/xrf-export";
+import { EPathEntryKind } from "@xrf/path";
+import { getFileItemPath, IPathTreeItem, toDirectoryItemId, TREE_ROOT_ID } from "@xrf/ui/tree/path-tree";
 
 import { TCallableExportDescriptor } from "@/applications/exports-explorer/lib/export-descriptors";
-import { EPathEntryKind } from "@/core/path/entry-kind";
-import { getFileItemPath, IPathTreeItem, toDirectoryItemId, TREE_ROOT_ID } from "@/core/ui/tree/path-tree";
 
 import { exportGroupsToTree, groupExports, ROOT_EXPORT_GROUP_ID } from "./exports-groups";
 

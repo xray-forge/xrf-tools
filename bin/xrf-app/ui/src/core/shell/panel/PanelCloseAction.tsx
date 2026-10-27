@@ -2,9 +2,9 @@ import { CommandBus } from "@wirestate/core";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { CloseIcon } from "@xrf/ui/icons";
+import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
 import { ReactElement, useEffect, useRef, useState } from "react";
 
-import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { TEditorPanelSide } from "@/core/shell/editor-shell";
 import { IPanelSideCommand, PANEL_CLOSE_COMMAND } from "@/core/shell/panel/panel-messages";
 

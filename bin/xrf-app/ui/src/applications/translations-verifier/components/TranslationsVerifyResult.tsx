@@ -4,13 +4,12 @@ import {
   TranslationVerifyLanguageSummary,
   TranslationVerifyResult,
 } from "@xrf/ipc/types/xrf-translation";
+import { CommandResult, ICommandResultStat } from "@xrf/ui/command-result/CommandResult";
+import { CommandResultFindings } from "@xrf/ui/command-result/CommandResultFindings";
 import { GridColDef } from "@xrf/ui/data-grid";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { identifierColumn, pathColumn } from "@xrf/ui/table/columns";
 import { ReactElement, useMemo } from "react";
-
-import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
-import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
-import { identifierColumn, pathColumn } from "@/core/ui/table/columns";
 
 type TLanguageRow = TranslationVerifyLanguageSummary & { id: string; complete: number };
 

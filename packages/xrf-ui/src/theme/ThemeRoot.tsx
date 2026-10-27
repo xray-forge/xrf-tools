@@ -13,7 +13,7 @@ import { createApplicationTheme } from "#/theme/creation";
 interface IThemeRootProps {
   /** Local storage key the chosen colour scheme is kept under. */
   colorSchemeStorageKey: string;
-  children: ReactNode;
+  children?: ReactNode;
 }
 
 /**
