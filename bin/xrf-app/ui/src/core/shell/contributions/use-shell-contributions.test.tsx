@@ -4,8 +4,9 @@ import { userEvent } from "@testing-library/user-event";
 import { Fragment, ReactElement, useState } from "react";
 
 import { IShellContributed, useShellContributions, useShellPanels, useShellStatus } from "@/core/shell/contributions";
-import { IEditorPanel, IEditorStatusSegment, TEditorStatusSegment } from "@/core/shell/editor-shell";
-import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
+import { IShellPanel } from "@/core/shell/panels/shell-panel";
+import { ApplicationStatusBar } from "@/core/shell/status-bar/ApplicationStatusBar";
+import { IShellStatusSegment, TShellStatusSegment } from "@/core/shell/status-bar/shell-status-segment";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 function DynamicPublisher(): ReactElement {
@@ -28,24 +29,24 @@ function DynamicPublisher(): ReactElement {
 
 /** Renders what the open tool publishes, and only that. */
 function ToolPanelOutlet(): ReactElement {
-  const { tool }: IShellContributed<IEditorPanel> = useShellContributions("panels");
+  const { tool }: IShellContributed<IShellPanel> = useShellContributions("panels");
 
   return (
     <>
-      {tool.map((panel: IEditorPanel) => (
+      {tool.map((panel: IShellPanel) => (
         <Fragment key={panel.id}>{panel.render()}</Fragment>
       ))}
     </>
   );
 }
 
-function StatusPublisher({ segments }: { segments: Array<TEditorStatusSegment> }): ReactElement {
+function StatusPublisher({ segments }: { segments: Array<TShellStatusSegment> }): ReactElement {
   useShellStatus(segments);
 
   return <div>publisher</div>;
 }
 
-function memorySegment(backend: string, gpu: string): IEditorStatusSegment {
+function memorySegment(backend: string, gpu: string): IShellStatusSegment {
   return {
     id: "memory",
     text: `Backend ${backend}`,

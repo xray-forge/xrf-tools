@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
-import { ToolLoader } from "@/core/shell/loading/ToolLoader";
+import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
 import { ConfigsProjectService } from "@/tools/configs-explorer/services/configs-project";
 
 import { ConfigsExplorerOpenForm } from "./components/ConfigsExplorerOpenForm";

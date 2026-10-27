@@ -16,7 +16,7 @@ import { LevelOverlaysAction } from "@/core/level/components/preview/toolbar/vie
 import { LevelShadingAction } from "@/core/level/components/preview/toolbar/view/LevelShadingAction";
 import { RenderSliderReference } from "@/core/render/components/controls/RenderSliderReference";
 import { ERenderSliderReferenceSource } from "@/core/render/lib/settings/render-slider-reference-source";
-import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { LevelViewerCaptureAction } from "@/tools/level-viewer/components/toolbar/camera/LevelViewerCaptureAction";
 import { LevelFogAction } from "@/tools/level-viewer/components/toolbar/environment/LevelFogAction";
 import { LevelRainAction } from "@/tools/level-viewer/components/toolbar/environment/LevelRainAction";

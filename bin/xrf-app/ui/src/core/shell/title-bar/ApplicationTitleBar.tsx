@@ -10,7 +10,7 @@ import { WindowControls } from "@/core/shell/title-bar/WindowControls";
 interface IApplicationTitleBarProps extends BaseComponentProps {
   /** Where the active tool portals its toolbar. The frame owns the element. */
   toolbarRef?: Ref<HTMLDivElement>;
-  /** Draws the band's own progress line. Every editor already publishes this through `useEditorBusy`. */
+  /** Draws the band's own progress line. Every tool already publishes this through `useToolBusy`. */
   isBusy?: boolean;
 }
 

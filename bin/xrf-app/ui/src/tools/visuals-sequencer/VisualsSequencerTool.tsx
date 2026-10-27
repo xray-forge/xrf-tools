@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback, useState } from "react";
 
-import { ToolLoader } from "@/core/shell/loading/ToolLoader";
+import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
 import { VisualPreviewLayout } from "@/core/visuals/components/preview/VisualPreviewLayout";
 import { IOpenVisual } from "@/core/visuals/services";
 import { VisualsSequencerService } from "@/tools/visuals-sequencer/services/visuals-sequencer";

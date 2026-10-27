@@ -2,7 +2,7 @@ import { DialogFinding } from "@xrf/ipc/types/xrf-dialog";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
-import { EditorProblemsPanel } from "@/core/shell/editor/EditorProblemsPanel";
+import { EditorProblemsPanel } from "@/core/shell/chrome/EditorProblemsPanel";
 
 export interface IDialogsProblemsPanelProps extends BaseComponentProps {
   findings: ReadonlyArray<DialogFinding>;

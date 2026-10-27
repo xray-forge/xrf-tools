@@ -1,7 +1,7 @@
 import { ERenderTextureGroup } from "@xrf/ipc/types/xrf-renderer";
 
 import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-report";
-import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
+import { IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
 
 import { ELevelProblemRule } from "./level-problem-rule";
 

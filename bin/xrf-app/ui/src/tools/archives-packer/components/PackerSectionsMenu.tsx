@@ -7,7 +7,7 @@ import { TitleIcon } from "@xrf/ui/icons/title";
 import { TuneIcon } from "@xrf/ui/icons/tune";
 import { ReactElement } from "react";
 
-import { EditorPanelHeader } from "@/core/shell/editor/EditorPanelHeader";
+import { EditorPanelHeader } from "@/core/shell/chrome/EditorPanelHeader";
 import { ArchivesPackerService, EPackerSection } from "@/tools/archives-packer/services/archives-packer.service";
 
 const SECTIONS: Array<{ id: EPackerSection; label: string; description: string; icon: ReactElement }> = [

@@ -9,7 +9,7 @@ import { ReactElement, useCallback } from "react";
 import { createRoot } from "@/core/assets/lib";
 import { useRootProbe } from "@/core/assets/lib/use-root-probe";
 import { EToolId } from "@/core/routing/tool";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { PickerForm } from "@/core/shell/chrome/PickerForm";
 import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { inline } from "@/lib/callbacks/inline";
 import { ArchivesService } from "@/tools/archives-explorer/services/archives";

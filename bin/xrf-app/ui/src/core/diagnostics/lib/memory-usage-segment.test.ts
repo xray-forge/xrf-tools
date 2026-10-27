@@ -8,7 +8,7 @@ import {
 } from "@xrf/ipc/types/xrf-app-system";
 
 import { describeMemoryUsage } from "@/core/diagnostics/lib/memory-usage-segment";
-import { IEditorStatusSegment } from "@/core/shell/editor-shell/editor-status-segment";
+import { IShellStatusSegment } from "@/core/shell/status-bar/shell-status-segment";
 
 const MB: number = 1024 * 1024;
 
@@ -30,7 +30,7 @@ function usage(webview: Array<WebviewProcessMemory>, gpu: GpuMemoryUsage | null 
 
 describe("describeMemoryUsage", () => {
   it("says what the backend and the whole webview have in use, not what they committed", () => {
-    const segment: IEditorStatusSegment = describeMemoryUsage(
+    const segment: IShellStatusSegment = describeMemoryUsage(
       usage([
         process(EWebviewProcessKind.GPU, 766, 3667),
         process(EWebviewProcessKind.RENDERER, 2000, 2400),
@@ -43,7 +43,7 @@ describe("describeMemoryUsage", () => {
   });
 
   it("lists the webview's kinds under it, most in use first, then the commit of both", () => {
-    const segment: IEditorStatusSegment = describeMemoryUsage(
+    const segment: IShellStatusSegment = describeMemoryUsage(
       usage([
         process(EWebviewProcessKind.BROWSER, 90, 120, 1),
         process(EWebviewProcessKind.UTILITY, 20, 30, 2),
@@ -67,7 +67,7 @@ describe("describeMemoryUsage", () => {
   });
 
   it("counts the whole working set where the host reports no private one", () => {
-    const segment: IEditorStatusSegment = describeMemoryUsage(
+    const segment: IShellStatusSegment = describeMemoryUsage(
       {
         application: { committed: 410 * MB, workingSet: 300 * MB, privateWorkingSet: null },
         webview: [
@@ -86,7 +86,7 @@ describe("describeMemoryUsage", () => {
   });
 
   it("adds the caller's rows after the commit, in order", () => {
-    const segment: IEditorStatusSegment = describeMemoryUsage(usage([process(EWebviewProcessKind.GPU, 1, 1)]), [
+    const segment: IShellStatusSegment = describeMemoryUsage(usage([process(EWebviewProcessKind.GPU, 1, 1)]), [
       { label: "Script heap", value: "42 MB / 4 GB" },
       { label: "Renderer copies", value: "8 MB" },
     ]);
@@ -99,7 +99,7 @@ describe("describeMemoryUsage", () => {
   });
 
   it("says only the backend when the webview reported no processes, and still adds the caller's rows", () => {
-    const segment: IEditorStatusSegment = describeMemoryUsage(usage([]), [
+    const segment: IShellStatusSegment = describeMemoryUsage(usage([]), [
       { label: "Script heap", value: "42 MB / 4 GB" },
     ]);
 
@@ -114,7 +114,7 @@ describe("describeMemoryUsage", () => {
   });
 
   it("says what video memory has in use after the processes, with what the renderer allocated and the budget", () => {
-    const segment: IEditorStatusSegment = describeMemoryUsage(
+    const segment: IShellStatusSegment = describeMemoryUsage(
       usage([process(EWebviewProcessKind.GPU, 480, 900)], { used: 1434 * MB, budget: 7680 * MB, allocated: 1147 * MB }),
       []
     );
@@ -132,7 +132,7 @@ describe("describeMemoryUsage", () => {
   });
 
   it("leaves video memory out of the text and its unread figures out of the hover where the driver said nothing", () => {
-    const segment: IEditorStatusSegment = describeMemoryUsage(
+    const segment: IShellStatusSegment = describeMemoryUsage(
       usage([], { used: null, budget: null, allocated: 1147 * MB }),
       []
     );
@@ -148,8 +148,8 @@ describe("describeMemoryUsage", () => {
   });
 
   it("names every reading the same segment, whatever it says", () => {
-    const first: IEditorStatusSegment = describeMemoryUsage(usage([]), []);
-    const second: IEditorStatusSegment = describeMemoryUsage(usage([process(EWebviewProcessKind.GPU, 480, 900)]), []);
+    const first: IShellStatusSegment = describeMemoryUsage(usage([]), []);
+    const second: IShellStatusSegment = describeMemoryUsage(usage([process(EWebviewProcessKind.GPU, 480, 900)]), []);
 
     expect(second.text).not.toBe(first.text);
     expect(second.id).toBe(first.id);

@@ -7,7 +7,7 @@ import { Chip } from "@xrf/ui/material/chip";
 import { Stack } from "@xrf/ui/material/stack";
 import { ReactElement, useMemo } from "react";
 
-import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { DIALOG_NODE_ID } from "@/tools/dialogs-editor/lib";
 import { groupDialogElements, IDialogElementGroup } from "@/tools/dialogs-editor/lib/dialog-elements";
 import { DialogViewService } from "@/tools/dialogs-editor/services/dialog-view";

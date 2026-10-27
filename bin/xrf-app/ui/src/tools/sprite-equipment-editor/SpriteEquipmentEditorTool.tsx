@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ToolLoader } from "@/core/shell/loading/ToolLoader";
+import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
 import { SpriteEquipmentEditorService } from "@/tools/sprite-equipment-editor/services/sprite-equipment-editor";
 
 import { EquipmentSpriteEditor, SpriteEquipmentOpenForm } from "./components/editor";

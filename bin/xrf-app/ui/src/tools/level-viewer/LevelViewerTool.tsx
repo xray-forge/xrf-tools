@@ -6,7 +6,7 @@ import { ReactElement, useCallback, useState } from "react";
 
 import { describeLevelSource } from "@/core/level/lib/source/level-source";
 import { LevelLoadService } from "@/core/level/services/level-load";
-import { ToolLoader } from "@/core/shell/loading/ToolLoader";
+import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
 
 import { LevelViewerLayout } from "./components/LevelViewerLayout";
 import { LevelViewerOpenForm } from "./components/LevelViewerOpenForm";

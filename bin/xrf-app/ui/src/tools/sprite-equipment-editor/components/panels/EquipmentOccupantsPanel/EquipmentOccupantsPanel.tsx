@@ -6,7 +6,7 @@ import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
-import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
+import { EditorSearchHeader } from "@/core/shell/chrome/EditorSearchHeader";
 import { isSameCell, TEquipmentCell } from "@/core/sprite-equipment/lib";
 import { EquipmentGridService } from "@/tools/sprite-equipment-editor/services/equipment-grid";
 

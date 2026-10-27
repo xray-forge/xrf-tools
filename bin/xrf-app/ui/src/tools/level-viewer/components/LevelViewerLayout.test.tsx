@@ -14,7 +14,7 @@ import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
-import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
+import { ApplicationStatusBar } from "@/core/shell/status-bar/ApplicationStatusBar";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { LevelViewerLayout } from "@/tools/level-viewer/components/LevelViewerLayout";

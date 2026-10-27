@@ -1,7 +1,7 @@
 import { FolderOpenIcon } from "@xrf/ui/icons/folder-open";
 import { InfoIcon } from "@xrf/ui/icons/info";
 
-import { IEditorPanel } from "@/core/shell/editor-shell";
+import { IShellPanel } from "@/core/shell/panels/shell-panel";
 
 import { ArchiveFileDetailsPanel } from "./file-details";
 import { ArchivesMenu } from "./tree";
@@ -13,7 +13,7 @@ export enum EArchivePanelId {
 }
 
 /** What the archives explorer contributes to the panel stripe. */
-export const ARCHIVE_EXPLORER_PANELS: Array<IEditorPanel> = [
+export const ARCHIVE_EXPLORER_PANELS: Array<IShellPanel> = [
   {
     id: EArchivePanelId.FILES,
     label: "Archives",

@@ -12,9 +12,9 @@ import { ReportProblemIcon } from "@xrf/ui/icons/report-problem";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { describeRoots } from "@/core/assets/lib";
+import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
-import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { useEditorBusy } from "@/core/shell/editor-lifecycle";
+import { useToolBusy } from "@/core/shell/lifecycle";
 import { DialogViewService } from "@/tools/dialogs-editor/services/dialog-view";
 import { DialogsService } from "@/tools/dialogs-editor/services/dialogs";
 
@@ -42,7 +42,7 @@ export function DialogsEditor(): ReactElement {
     await dialogsService.closeProject();
   }, [dialogsService, log]);
 
-  useEditorBusy(dialogsService.project.isLoading);
+  useToolBusy(dialogsService.project.isLoading);
 
   useShellPanels(
     () => [

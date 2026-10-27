@@ -4,7 +4,7 @@ import { useLogger } from "@xrf/logging/react";
 import { ReactElement, useCallback } from "react";
 
 import { EToolId } from "@/core/routing/tool";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { PickerForm } from "@/core/shell/chrome/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { ExportsService } from "@/tools/exports-explorer/services/exports.service";
 

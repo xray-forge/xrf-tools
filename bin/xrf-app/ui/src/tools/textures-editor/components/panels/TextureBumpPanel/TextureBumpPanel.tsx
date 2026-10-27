@@ -13,7 +13,7 @@ import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback, useState } from "react";
 
 import { EToolId } from "@/core/routing/tool";
-import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { DEFAULT_GLOSS_POWER, toBumpGloss } from "@/tools/textures-editor/lib/texture-bump-gloss";

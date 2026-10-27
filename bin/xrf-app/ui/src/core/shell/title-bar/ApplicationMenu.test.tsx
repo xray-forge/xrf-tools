@@ -5,9 +5,9 @@ import { ReactElement } from "react";
 import { useLocation } from "react-router-dom";
 
 import { NotificationsService } from "@/core/notifications/services";
-import { ApplicationShell } from "@/core/shell/ApplicationShell";
 import { useShellMenus } from "@/core/shell/contributions";
-import { useEditorBusy, useEditorDirty } from "@/core/shell/editor-lifecycle";
+import { ApplicationShell } from "@/core/shell/frame/ApplicationShell";
+import { useToolBusy, useToolDirty } from "@/core/shell/lifecycle";
 import { IMenuContribution } from "@/core/shell/menu/lib";
 import { clearLocalStorage } from "@/core/storage";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -18,8 +18,8 @@ const PLANNED_ROUTE: string = "/level-compiler";
 function Location({ dirtyCount = 0, isBusy = false }: { dirtyCount?: number; isBusy?: boolean }): ReactElement {
   const { pathname } = useLocation();
 
-  useEditorDirty(dirtyCount);
-  useEditorBusy(isBusy);
+  useToolDirty(dirtyCount);
+  useToolBusy(isBusy);
 
   return <div>at {pathname}</div>;
 }

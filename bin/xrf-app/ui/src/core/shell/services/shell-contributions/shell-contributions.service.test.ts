@@ -1,8 +1,8 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
 import { EToolId } from "@/core/routing/tool";
-import { IEditorPanel } from "@/core/shell/editor-shell/editor-panel";
 import { defineMenu, IMenu, IMenuContribution } from "@/core/shell/menu/lib";
+import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { ShellContributionsService } from "./shell-contributions.service";
@@ -11,7 +11,7 @@ const TOOL: EToolId = EToolId.TRANSLATIONS_EDITOR;
 
 const MENU: IMenu<"only"> = defineMenu({ id: "test/menu", label: "Menu", sections: ["only"] });
 
-const PANEL: IEditorPanel = { id: "files", label: "Files", icon: null, render: jest.fn(() => null) };
+const PANEL: IShellPanel = { id: "files", label: "Files", icon: null, render: jest.fn(() => null) };
 
 const MENU_CONTRIBUTION: IMenuContribution = {
   section: MENU.sections.only,

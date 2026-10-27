@@ -3,7 +3,7 @@ import { fireEvent } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { PickerForm } from "@/core/shell/chrome/PickerForm";
 import { IPathField } from "@/core/ui/form/use-path-field";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

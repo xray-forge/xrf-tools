@@ -7,7 +7,7 @@ import { ReactElement, useCallback } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
 import { IErrorBoundaryFallbackProps } from "@/core/error/components/ErrorBoundary";
-import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 
 /**
  * What the application shell shows in place of a tool that failed to render.

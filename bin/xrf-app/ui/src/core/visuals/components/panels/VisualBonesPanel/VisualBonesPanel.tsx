@@ -6,7 +6,7 @@ import { cn } from "@xrf/ui/theme";
 import { ITreeNode, IUseTreeState, useTreeState, VirtualizedTree } from "@xrf/ui/tree";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { toBoneTree } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBonesPanel.utils";
 import { VisualBoneVisibility } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBoneVisibility";

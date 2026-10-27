@@ -1,0 +1,122 @@
+import { getPathName } from "@xrf/path";
+import { Nullable, Optional } from "@xrf/types";
+import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Chip } from "@xrf/ui/material/chip";
+import { List, ListItem, ListItemButton } from "@xrf/ui/material/list";
+import { Typography } from "@xrf/ui/material/typography";
+import { ReactElement } from "react";
+
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
+
+/** Where a problem can be opened, for a surface that can take a reader there. */
+export interface IEditorProblemLocation {
+  /** Engine identity of the file to open. */
+  path: string;
+  /** One-based line inside it, where the finding reached one. */
+  line: Nullable<number>;
+}
+
+/** A problem reported while reading an editor project. */
+export interface IEditorProblem {
+  rule: string;
+  subject: Nullable<string>;
+  message: string;
+  /**
+   * Where opening this problem would take a reader, when anything can.
+   */
+  location?: IEditorProblemLocation;
+}
+
+interface IEditorProblemsPanelProps extends BaseComponentProps {
+  findings: ReadonlyArray<IEditorProblem>;
+  /** Namespace to omit from the start of rule labels, including its separator. */
+  rulePrefix?: string;
+  /** Explains what was checked when no problems were found. */
+  emptyDescription: string;
+  /** Says the findings are not all in, shown above them and in place of the verdict that there are none. */
+  status?: Nullable<string>;
+  /** A finding naming a place was chosen. Rows without a location never call it. */
+  onSelect?: (location: IEditorProblemLocation) => void;
+}
+
+/**
+ * Project findings with compact subjects and the original identifiers available in tooltips.
+ */
+export function EditorProblemsPanel({
+  "data-testid": dataTestId = "editor-problems-panel",
+  id,
+  className,
+  findings,
+  rulePrefix = "",
+  emptyDescription,
+  status = null,
+  onSelect,
+}: IEditorProblemsPanelProps): ReactElement {
+  return (
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Problems"}>
+      {status ? <EditorPanelEmpty data-testid={"editor-problems-status"} label={status} /> : null}
+
+      {findings.length ? (
+        <List dense disablePadding>
+          {findings.map((finding: IEditorProblem, index: number) => {
+            const rule: string = finding.rule.startsWith(rulePrefix)
+              ? finding.rule.slice(rulePrefix.length)
+              : finding.rule;
+            const subject: Nullable<string> = finding.subject ? getPathName(finding.subject) || finding.subject : null;
+
+            const location: Optional<IEditorProblemLocation> = onSelect ? finding.location : undefined;
+            const content: ReactElement = (
+              <>
+                <div className={"flex min-w-0 flex-wrap items-center gap-1.5"}>
+                  <Chip
+                    className={"max-w-full"}
+                    size={"small"}
+                    variant={"outlined"}
+                    label={rule}
+                    title={finding.rule}
+                  />
+
+                  {subject ? (
+                    <Typography
+                      className={"monospace min-w-0 wrap-anywhere text-text-secondary"}
+                      component={"span"}
+                      variant={"caption"}
+                      title={finding.subject ?? undefined}
+                    >
+                      {subject}
+                    </Typography>
+                  ) : null}
+                </div>
+
+                <Typography className={"mt-1 wrap-anywhere text-text-secondary"} variant={"body2"}>
+                  {finding.message}
+                </Typography>
+              </>
+            );
+
+            return (
+              <ListItem
+                key={`${finding.rule}-${finding.subject}-${index}`}
+                data-testid={"editor-problems-row"}
+                className={"block"}
+                divider
+                disablePadding={Boolean(location)}
+              >
+                {location ? (
+                  <ListItemButton className={"block"} onClick={() => onSelect?.(location)}>
+                    {content}
+                  </ListItemButton>
+                ) : (
+                  content
+                )}
+              </ListItem>
+            );
+          })}
+        </List>
+      ) : status ? null : (
+        <EditorPanelEmpty label={`No problems found. ${emptyDescription}`} />
+      )}
+    </EditorPanel>
+  );
+}

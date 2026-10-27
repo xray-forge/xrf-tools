@@ -4,7 +4,7 @@ import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
-import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { ISequenceClip, VisualSequenceService } from "@/tools/visuals-sequencer/services/visual-sequence";
 
 import { SequenceClipRow } from "./SequenceClipRow";

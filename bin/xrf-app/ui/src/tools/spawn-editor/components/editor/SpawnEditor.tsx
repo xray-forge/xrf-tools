@@ -9,9 +9,9 @@ import { ViewListIcon } from "@xrf/ui/icons/view-list";
 import { ReactElement, useCallback } from "react";
 import { Route, Routes } from "react-router-dom";
 
+import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
-import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { useEditorBusy } from "@/core/shell/editor-lifecycle";
+import { useToolBusy } from "@/core/shell/lifecycle";
 import { SpawnFileService } from "@/tools/spawn-editor/services/spawn-file.service";
 
 import { SpawnEditorAlife } from "./chunks/alife/SpawnEditorAlife";
@@ -51,7 +51,7 @@ export function SpawnEditor({
     []
   );
 
-  useEditorBusy(spawnFileService.isBusy);
+  useToolBusy(spawnFileService.isBusy);
 
   useShellStatus(
     header

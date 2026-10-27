@@ -21,10 +21,10 @@ import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EToolId } from "@/core/routing/tool";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
+import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
+import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
 import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
-import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { useEditorLifecycle } from "@/core/shell/editor-lifecycle";
-import { ToolLoader } from "@/core/shell/loading/ToolLoader";
+import { useToolLifecycle } from "@/core/shell/lifecycle";
 import { IPathField, usePathField } from "@/core/ui/form";
 import { ArchivesPatcherService, EPatcherSection } from "@/tools/archives-patcher/services/archives-patcher.service";
 
@@ -211,7 +211,7 @@ export function ArchivesPatcherTool(): ReactElement {
       : []),
   ]);
 
-  useEditorLifecycle({
+  useToolLifecycle({
     isBusy,
     dirtyCount: patcherService.isDirty ? 1 : 0,
     save: null,

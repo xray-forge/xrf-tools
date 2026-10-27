@@ -10,7 +10,7 @@ import { useAssetRootField } from "@/core/assets/lib";
 import { useRootProbe } from "@/core/assets/lib/use-root-probe";
 import { TEXTURE_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { PickerForm } from "@/core/shell/chrome/PickerForm";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import {

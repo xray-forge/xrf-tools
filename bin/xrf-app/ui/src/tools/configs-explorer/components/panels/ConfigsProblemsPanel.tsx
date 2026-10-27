@@ -7,7 +7,7 @@ import { ErrorState } from "@xrf/ui/layout/error-state";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { toFindingMessage, toOrderedFindings } from "@/core/ltx/lib/findings";
-import { EditorProblemsPanel, IEditorProblem, IEditorProblemLocation } from "@/core/shell/editor/EditorProblemsPanel";
+import { EditorProblemsPanel, IEditorProblem, IEditorProblemLocation } from "@/core/shell/chrome/EditorProblemsPanel";
 import { ConfigsDocumentService } from "@/tools/configs-explorer/services/configs-document";
 import { ConfigsFindingsService } from "@/tools/configs-explorer/services/configs-findings";
 

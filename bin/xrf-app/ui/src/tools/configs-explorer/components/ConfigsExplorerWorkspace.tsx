@@ -9,8 +9,8 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { AccountTreeIcon } from "@xrf/ui/icons/account-tree";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
+import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
-import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { ConfigsDocumentView } from "@/tools/configs-explorer/components/ConfigsDocumentView";
 import { ConfigsDocumentService, EConfigsDocumentMode } from "@/tools/configs-explorer/services/configs-document";
 import { ConfigsProjectService } from "@/tools/configs-explorer/services/configs-project";

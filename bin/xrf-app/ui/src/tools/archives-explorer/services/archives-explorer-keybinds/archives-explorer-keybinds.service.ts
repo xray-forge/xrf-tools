@@ -9,7 +9,7 @@ import {
   IPanelSideCommand,
   PANEL_ACTIVE_QUERY,
   PANEL_SET_ACTIVE_COMMAND,
-} from "@/core/shell/panel/panel-messages";
+} from "@/core/shell/panels/panel-messages";
 import { EArchivePanelId } from "@/tools/archives-explorer/components/editor/archive-panels";
 import { ArchivesService } from "@/tools/archives-explorer/services/archives";
 

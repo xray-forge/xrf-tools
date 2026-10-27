@@ -7,7 +7,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useMemo, useState } from "react";
 
-import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { SequenceMotionRow } from "@/tools/visuals-sequencer/components/panels/SequenceMotionsPanel/SequenceMotionRow";
 import { VisualSequenceService } from "@/tools/visuals-sequencer/services/visual-sequence";
 import { VisualsSequencerService } from "@/tools/visuals-sequencer/services/visuals-sequencer";

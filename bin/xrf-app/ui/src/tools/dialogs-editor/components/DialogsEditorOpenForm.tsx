@@ -8,7 +8,7 @@ import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { createRoots } from "@/core/assets/lib/roots";
 import { EToolId } from "@/core/routing/tool";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { PickerForm } from "@/core/shell/chrome/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { DialogsService } from "@/tools/dialogs-editor/services/dialogs";
 

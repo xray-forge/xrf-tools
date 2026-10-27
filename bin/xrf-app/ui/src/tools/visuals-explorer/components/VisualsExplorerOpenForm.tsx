@@ -9,7 +9,7 @@ import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
 import { useAssetRootField } from "@/core/assets/lib";
 import { OGF_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { PickerForm } from "@/core/shell/chrome/PickerForm";
 import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { VisualsService } from "@/tools/visuals-explorer/services/visuals";
 import { VisualsBrowseService } from "@/tools/visuals-explorer/services/visuals-browse";

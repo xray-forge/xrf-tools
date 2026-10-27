@@ -16,7 +16,7 @@ import {
 } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
 
-import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";
+import { ToolLifecycleService } from "@/core/shell/services/tool-lifecycle";
 import {
   MOCK_TEXTURE,
   mockTextureDescription,
@@ -168,7 +168,7 @@ describe("TexturesEditorWorkspace", () => {
       render: { getByRole },
       selectionService,
     } = await renderWorkspace(describedTexture(), { [ETexturesCommand.MAKE_BUMP]: () => answer.promise });
-    const lifecycle: EditorLifecycleService = container.get(EditorLifecycleService);
+    const lifecycle: ToolLifecycleService = container.get(ToolLifecycleService);
 
     let generation: Promise<void> = Promise.resolve();
 
@@ -204,7 +204,7 @@ describe("TexturesEditorWorkspace", () => {
       render: { getByRole },
       selectionService,
     } = await renderWorkspace(describedTexture(), { [ETexturesCommand.COMPARE_ENCODINGS]: () => answer.promise });
-    const lifecycle: EditorLifecycleService = container.get(EditorLifecycleService);
+    const lifecycle: ToolLifecycleService = container.get(ToolLifecycleService);
 
     let comparison: Promise<void> = Promise.resolve();
 

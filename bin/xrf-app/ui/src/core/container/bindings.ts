@@ -16,9 +16,10 @@ import { NotificationsService } from "@/core/notifications/services/notification
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { SettingsService } from "@/core/settings/services/settings";
 import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
-import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";
 import { ShellContributionsService } from "@/core/shell/services/shell-contributions";
 import { ShellKeybindsService } from "@/core/shell/services/shell-keybinds";
+import { ShellToolService } from "@/core/shell/services/shell-tool";
+import { ToolLifecycleService } from "@/core/shell/services/tool-lifecycle";
 
 /**
  * The services the root container binds, which every tool resolves through. The shell's own openings are held
@@ -27,7 +28,6 @@ import { ShellKeybindsService } from "@/core/shell/services/shell-keybinds";
 export const ROOT_BINDINGS: ReadonlyArray<Binding> = [
   { token: SESSION_TOOL, value: SHELL_SESSION_TOOL },
   SessionScopeService,
-  EditorLifecycleService,
   ErrorCaptureService,
   HelpService,
   IpcMetricsService,
@@ -41,4 +41,6 @@ export const ROOT_BINDINGS: ReadonlyArray<Binding> = [
   SettingsService,
   ShellContributionsService,
   ShellKeybindsService,
+  ShellToolService,
+  ToolLifecycleService,
 ];

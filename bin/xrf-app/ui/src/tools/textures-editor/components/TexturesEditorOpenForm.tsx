@@ -8,7 +8,7 @@ import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
 import { useAssetRootField } from "@/core/assets/lib";
 import { TEXTURE_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { PickerForm } from "@/core/shell/chrome/PickerForm";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 

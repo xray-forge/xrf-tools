@@ -4,7 +4,7 @@ import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
-import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 
 export function NavigationError(): ReactElement {
   const navigate: NavigateFunction = useNavigate();

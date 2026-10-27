@@ -8,7 +8,7 @@ import { ErrorState } from "@xrf/ui/layout/error-state";
 import { Divider } from "@xrf/ui/material/divider";
 import { ReactElement, useEffect } from "react";
 
-import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { ConfigsSchemeBinding } from "@/tools/configs-explorer/components/panels/ConfigsSchemePanel/ConfigsSchemeBinding";
 import { ConfigsSchemeFieldRow } from "@/tools/configs-explorer/components/panels/ConfigsSchemePanel/ConfigsSchemeFieldRow";
 import { ConfigsDocumentService } from "@/tools/configs-explorer/services/configs-document";

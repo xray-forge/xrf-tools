@@ -19,8 +19,8 @@ import { ILevelOverlay, LEVEL_OVERLAYS } from "@/core/level/lib/view/level-overl
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { useShellMenus, useShellPanels } from "@/core/shell/contributions";
-import { IEditorPanel } from "@/core/shell/editor-shell";
 import { IMenuContribution, TMenuEntry } from "@/core/shell/menu/lib";
+import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import { LevelViewerCaptureActions } from "@/tools/level-viewer/components/capture/LevelViewerCaptureActions";
 import { LevelViewerCaptureCover } from "@/tools/level-viewer/components/capture/LevelViewerCaptureCover";
 import { LevelViewerToolbar } from "@/tools/level-viewer/components/LevelViewerToolbar";
@@ -83,7 +83,7 @@ export function LevelViewerLayout({
   const heading: Nullable<string> = name ?? pending;
 
   useShellPanels(
-    (): Array<IEditorPanel> => [
+    (): Array<IShellPanel> => [
       {
         icon: <WbCloudyIcon />,
         id: ELevelViewerPanelId.WEATHER,

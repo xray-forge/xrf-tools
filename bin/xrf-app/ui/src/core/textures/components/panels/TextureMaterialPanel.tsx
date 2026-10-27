@@ -14,7 +14,7 @@ import {
   describeVirtualHeight,
   IMaterialStateDescriptor,
 } from "@/core/materials/lib";
-import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 
 /**

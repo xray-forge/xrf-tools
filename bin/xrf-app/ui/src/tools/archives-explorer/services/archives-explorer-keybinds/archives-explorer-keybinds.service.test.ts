@@ -11,7 +11,7 @@ import {
   IPanelSetActiveCommand,
   PANEL_ACTIVE_QUERY,
   PANEL_SET_ACTIVE_COMMAND,
-} from "@/core/shell/panel/panel-messages";
+} from "@/core/shell/panels/panel-messages";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 import { ArchivesService } from "@/tools/archives-explorer/services/archives";

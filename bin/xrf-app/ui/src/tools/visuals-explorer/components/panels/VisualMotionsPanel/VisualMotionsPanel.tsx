@@ -8,7 +8,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useEffect, useState } from "react";
 
-import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion";
 import { VisualsService } from "@/tools/visuals-explorer/services/visuals";
 
