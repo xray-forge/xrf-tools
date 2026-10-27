@@ -2,6 +2,7 @@ import { default as ListAltIcon } from "@mui/icons-material/ListAlt";
 import { default as RefreshIcon } from "@mui/icons-material/Refresh";
 import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { formatCount } from "@xrf/format";
 import { ExportDescriptor, ExportsProject } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
@@ -68,8 +69,8 @@ export function ExportsEditor(): ReactElement {
 
   useEditorBusy(isBusy);
   useEditorStatus([
-    `${declarations.length} exports`,
-    `${groups.length} groups`,
+    `${formatCount(declarations.length)} ${declarations.length === 1 ? "export" : "exports"}`,
+    `${formatCount(groups.length)} ${groups.length === 1 ? "group" : "groups"}`,
     ...(exportsService.project.isLoading ? ["Refreshing"] : []),
   ]);
 
