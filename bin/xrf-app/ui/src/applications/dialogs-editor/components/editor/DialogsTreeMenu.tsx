@@ -7,6 +7,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { IDialogTreeEntry, IDialogTreeLeaf } from "@/applications/dialogs-editor/lib/dialog-tree";
+import { DialogViewService } from "@/applications/dialogs-editor/services/dialog-view";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
 import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
@@ -34,11 +35,10 @@ export function DialogsTreeMenu({
   className,
 }: BaseComponentProps): ReactElement {
   const dialogsService: DialogsService = useInjection(DialogsService);
+  const viewService: DialogViewService = useInjection(DialogViewService);
 
   const entries: Array<IDialogTreeEntry> = dialogsService.entries;
-  const selectedItemId: Nullable<string> = dialogsService.selectedPath
-    ? toFileItemId(dialogsService.selectedPath)
-    : null;
+  const selectedItemId: Nullable<string> = viewService.selectedPath ? toFileItemId(viewService.selectedPath) : null;
 
   const tree: IUseTreeState = useTreeState();
   const { reveal, select } = tree;
@@ -49,8 +49,8 @@ export function DialogsTreeMenu({
   );
 
   const onOpenLeaf = useCallback(
-    (leaf: IDialogTreeLeaf) => void dialogsService.selectDialog(leaf.logicalPath, leaf.id),
-    [dialogsService]
+    (leaf: IDialogTreeLeaf) => void viewService.selectDialog(leaf.logicalPath, leaf.id),
+    [viewService]
   );
 
   const onOpenEntry = useCallback((entry: IDialogTreeEntry) => onOpenLeaf(entry.payload), [onOpenLeaf]);

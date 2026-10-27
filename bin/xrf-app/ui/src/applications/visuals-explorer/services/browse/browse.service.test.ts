@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { isComputedProp, isObservableProp } from "@wirestate/mobx";
+import { isComputedProp } from "@wirestate/mobx";
 import { EAssetsCommand } from "@xrf/ipc/commands/assets";
 import { ESessionsCommand } from "@xrf/ipc/commands/sessions";
 import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
@@ -28,8 +28,6 @@ describe("VisualsBrowseService", () => {
   it("applies its mobx annotations", () => {
     const { service } = mockInjectedService(VisualsBrowseService);
 
-    expect(isObservableProp(service, "browsed")).toBe(true);
-    expect(isObservableProp(service, "visuals")).toBe(true);
     expect(isComputedProp(service, "isBrowsing")).toBe(true);
     expect(isComputedProp(service, "rootsLabel")).toBe(true);
     expect(isComputedProp(service, "rootPaths")).toBe(true);
@@ -68,11 +66,56 @@ describe("VisualsBrowseService", () => {
       },
     });
 
-    await service.openRoot("C:\\missing");
+    await expect(service.openRoot("C:\\missing")).resolves.toBe(true);
 
     expect(service.visuals.error?.message).toBe("root does not exist");
     expect(service.visuals.isLoading).toBe(false);
     expect(service.isBrowsing).toBe(true);
+  });
+
+  it("lists a new root from nothing, never showing the last root's visuals where its listing fails", async () => {
+    const { service } = mockInjectedService(VisualsBrowseService);
+
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_BROWSE]: mockSessionResponse(({ roots }: { roots: XrayRoots }) => roots),
+      [EAssetsCommand.LIST_ASSETS]: [mockVisual("meshes\\actors\\stalker.ogf")],
+    });
+
+    await service.openRoot("C:\\gamedata");
+
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_BROWSE]: mockSessionResponse(({ roots }: { roots: XrayRoots }) => roots),
+      [EAssetsCommand.LIST_ASSETS]: () => {
+        throw new Error("root does not exist");
+      },
+    });
+
+    await service.openRoot("C:\\missing");
+
+    expect(service.rootPaths).toEqual(["C:\\missing"]);
+    expect(service.visuals.value).toBeNull();
+  });
+
+  it("reports a root that did not open, keeping what was browsed", async () => {
+    const { service } = mockInjectedService(VisualsBrowseService);
+
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_BROWSE]: mockSessionResponse(({ roots }: { roots: XrayRoots }) => roots),
+      [EAssetsCommand.LIST_ASSETS]: [],
+    });
+
+    await service.openRoot("C:\\gamedata");
+
+    mockIpcCommands({
+      [EVisualsCommand.OPEN_BROWSE]: () => {
+        throw new Error("not a directory");
+      },
+    });
+
+    await expect(service.openRoot("C:\\missing")).resolves.toBe(false);
+
+    expect(service.rootPaths).toEqual(["C:\\gamedata"]);
+    expect(service.roots.error?.message).toBe("not a directory");
   });
 
   it("records the browsed roots in the backend rather than keeping it to itself", async () => {
@@ -111,9 +154,9 @@ describe("VisualsBrowseService", () => {
     expect(service.visuals.value ?? []).toHaveLength(1);
   });
 
-  it("forgets the browsed roots on deactivation, and the tool's scope closes them in place", async () => {
+  it("forgets the browsed roots as its tool is left, and the tool's scope closes them in place", async () => {
     // The selection is dropped on the way out, so a session left open would come back beside a model the backend no
-    // longer has. A reload runs no deactivation, which is what keeps the restore above working.
+    // longer has. A reload releases no scope, which is what keeps the restore above working.
     const released: Array<string> = [];
 
     mockIpcCommands({
@@ -131,11 +174,10 @@ describe("VisualsBrowseService", () => {
 
     await service.openRoot("C:\\gamedata");
 
-    service.onDeactivation();
     container.get(SessionScopeService).release();
 
     expect(service.rootsLabel).toBeNull();
-    expect(service.visuals.value ?? []).toEqual([]);
+    expect(service.isBrowsing).toBe(false);
     expect(released).toEqual(["scope released"]);
   });
 

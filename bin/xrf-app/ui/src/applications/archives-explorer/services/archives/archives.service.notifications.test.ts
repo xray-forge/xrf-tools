@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
-import { AsyncState } from "@xrf/async";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
@@ -11,8 +10,10 @@ import {
   mockArchivesVolumes,
 } from "@/core/archive/fixtures/archive.mocks";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
+import { EApplicationId } from "@/core/routing/application";
+import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
+import { IInjectedServiceMockDescriptor, mockApplicationScope, mockInjectedService } from "@/fixtures/utils/container";
 
 import { ArchivesService } from "./archives.service";
 
@@ -24,9 +25,12 @@ interface IWatchedService {
 }
 
 function mockWatchedNotifications(): IWatchedService {
-  const { container, service }: IInjectedServiceMockDescriptor<ArchivesService> = mockInjectedService(ArchivesService);
+  const { container, service }: IInjectedServiceMockDescriptor<ArchivesService> = mockInjectedService(
+    ArchivesService,
+    mockApplicationScope(EApplicationId.ARCHIVES_EXPLORER)
+  );
 
-  service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
+  mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
 
   const raised: Array<INotificationPayload> = [];
 

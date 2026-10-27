@@ -1,19 +1,16 @@
 import { path } from "@tauri-apps/api";
 import { exists } from "@tauri-apps/plugin-fs";
-import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
+import { inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
-import { transformError } from "@xrf/errors";
-import { all, call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
-import { formatDuration } from "@xrf/format";
+import { all, call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { fetchBulk } from "@xrf/ipc";
 import { spriteEquipmentCommands } from "@xrf/ipc/commands/sprite-equipment";
 import { spriteEquipmentBulkRoutes } from "@xrf/ipc/commands/sprite-equipment-bulk";
-import { requireSessionId, Session, SessionScopeService } from "@xrf/ipc/session";
-import { AssetSource, EAssetSource, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { AssetSource, EAssetSource, SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { EquipmentSpriteMetadata, EquipmentSpriteOpen } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
-import { Logger, Timer } from "@xrf/logging";
+import { Logger } from "@xrf/logging";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
@@ -21,10 +18,12 @@ import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/applications/sprite-e
 import { urlToImage } from "@/core/assets/lib/image";
 import { AssetService } from "@/core/assets/services";
 import { KeybindCommand } from "@/core/commands";
-import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
-import { EApplicationGroupId } from "@/core/routing/application";
+import { CommandOperation } from "@/core/operations/lib/command-operation";
+import { TCommandCompletion } from "@/core/operations/lib/command-reporter";
+import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 import { describeEquipmentSheet, ENGINE_GRID_SQUARE } from "@/core/sprite-equipment/lib";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
+import { noop } from "@/lib/callbacks/noop";
 
 /**
  * The sheet on screen: what the backend answered, and the image decoded from it.
@@ -48,10 +47,19 @@ export interface IEquipmentRepackTargets {
 export class SpriteEquipmentEditorService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(spriteEquipmentCommands.closeSprite, inject(SessionScopeService));
+  /** The sheet the backend holds open, and what it says of it. */
+  public readonly sprite: SessionRootResource<EquipmentSpriteMetadata> = new SessionRootResource(this.log, {
+    subject: "equipment sprite",
+    close: spriteEquipmentCommands.closeSprite,
+    restore: spriteEquipmentCommands.restoreSprite,
+    adopted: (snapshot: SessionSnapshot<EquipmentSpriteMetadata>) => this.decode(snapshot),
+  });
 
-  @Observable()
-  public isReady: boolean = false;
+  /** The sheet's picture, decoded for each sheet adopted; the last one stays on screen while the next decodes. */
+  public readonly picture: CommandOperation<IOpenEquipmentSprite> = new CommandOperation(this.log);
+
+  /** The last repack, which a person is told about and whose failure the editor keeps showing. */
+  public readonly repack: CommandOperation<Nullable<EquipmentSpritePackResult>> = new CommandOperation(this.log);
 
   @Observable()
   public isGridVisible: boolean = true;
@@ -65,9 +73,6 @@ export class SpriteEquipmentEditorService {
   @Observable()
   public gridSize: number = ENGINE_GRID_SQUARE;
 
-  @Observable()
-  public spriteImage: AsyncState<IOpenEquipmentSprite> = AsyncState.idle();
-
   /**
    * Directory the sprite can be rebuilt from, or null when there is nothing to rebuild from.
    */
@@ -78,18 +83,49 @@ export class SpriteEquipmentEditorService {
   @Observable()
   public repackedAt: Nullable<number> = null;
 
+  /** The failure a person dismissed, shown no longer while it is still the latest. */
+  @Observable()
+  private dismissed: Nullable<Error> = null;
+
   public constructor(
     private readonly assetService: AssetService = inject(AssetService),
-    private readonly eventBus: EventBus = inject(EventBus),
     private readonly packerService: SpriteEquipmentPackerService = inject(SpriteEquipmentPackerService)
   ) {}
+
+  /** Whether the backend has been asked what it still holds, which holds the loader back. */
+  @Computed()
+  public get isReady(): boolean {
+    return this.sprite.isRestored;
+  }
+
+  /**
+   * The sheet as the editor shows it: its picture while one is held, loading while the sheet, its picture or a repack
+   * is, and the latest failure of the three a person has not dismissed.
+   */
+  @Computed()
+  public get spriteImage(): AsyncState<IOpenEquipmentSprite> {
+    const value: Nullable<IOpenEquipmentSprite> = this.sprite.value ? this.picture.value : null;
+    const failures: Array<Nullable<Error>> = [this.repack.error, this.sprite.error, this.picture.error];
+    const error: Nullable<Error> =
+      failures.find((failure: Nullable<Error>) => failure !== null && failure !== this.dismissed) ?? null;
+
+    if (this.sprite.isLoading || this.picture.isLoading || this.repack.isLoading) {
+      return AsyncState.loading(value);
+    }
+
+    if (error) {
+      return AsyncState.failed(error, value);
+    }
+
+    return value ? AsyncState.ready(value) : AsyncState.idle();
+  }
 
   /**
    * The paths a repack would write from and to, or null when this open cannot be repacked.
    */
   @Computed()
   public get repackTargets(): Nullable<IEquipmentRepackTargets> {
-    const metadata: Nullable<EquipmentSpriteMetadata> = this.spriteImage.value?.metadata ?? null;
+    const metadata: Nullable<EquipmentSpriteMetadata> = this.sprite.value;
 
     if (!metadata) {
       return null;
@@ -103,13 +139,7 @@ export class SpriteEquipmentEditorService {
 
   @OnProvision()
   public async onProvision(): Promise<void> {
-    try {
-      await flowResult(this.restore());
-    } catch (error: unknown) {
-      this.log.error("Failed to restore equipment sprite:", error);
-
-      throw error;
-    }
+    await flowResult(this.sprite.restore());
   }
 
   /**
@@ -117,40 +147,7 @@ export class SpriteEquipmentEditorService {
    */
   @OnDeactivation()
   public onDeactivation(): void {
-    cancelFlow(this, "spriteImage");
-
-    this.assetService.release(this.spriteImage.value?.image.src ?? null);
-  }
-
-  /**
-   * Restores the committed session without superseding a user action in the same flow.
-   */
-  @ExclusiveFlow("spriteImage")
-  private *restore(): TFlow {
-    const response: Nullable<SessionSnapshot<EquipmentSpriteMetadata>> = yield* call(
-      spriteEquipmentCommands.restoreSprite(this.session.tool)
-    );
-
-    if (!response) {
-      this.log.info("No existing sprite detected file");
-      this.spriteImage = this.spriteImage.asReady(null);
-      this.isReady = true;
-
-      return;
-    }
-
-    this.log.info("Existing equipment sprite detected");
-    this.session.adopt(response);
-    this.isReady = true;
-
-    yield* this.viewSprite(response);
-
-    this.log.info(
-      "Equipment sprite restored:",
-      response.value.location.path,
-      response.value.occupants.length,
-      "occupants"
-    );
+    this.assetService.release(this.picture.value?.image.src ?? null);
   }
 
   @BoundAction()
@@ -168,9 +165,7 @@ export class SpriteEquipmentEditorService {
    */
   @BoundAction()
   public clearSpriteError(): void {
-    if (this.spriteImage.isFailed) {
-      this.spriteImage = this.spriteImage.value === null ? this.spriteImage.asIdle() : this.spriteImage.asReady();
-    }
+    this.dismissed = this.spriteImage.error;
   }
 
   @BoundAction()
@@ -183,103 +178,42 @@ export class SpriteEquipmentEditorService {
    *
    * @param open - What to read: the trees to search, the sheet, and the configuration that annotates it. Kept by the
    *   backend so a reload repeats the request rather than the paths it happened to resolve to.
+   * @returns Whether the sheet opened.
    */
-  @LatestFlow("spriteImage")
-  public *openEquipmentProject(open: EquipmentSpriteOpen): TFlow {
-    const timer: Timer = new Timer();
-
-    this.log.info("Opening equipment project:", describeEquipmentSheet(open.sheet));
-
-    try {
-      this.spriteImage = this.spriteImage.asLoading();
-
-      const response: SessionSnapshot<EquipmentSpriteMetadata> = yield* call(
-        this.session.open((sessionId) => spriteEquipmentCommands.openSprite({ sessionId, ...open }))
-      );
-
-      yield* this.viewSprite(response);
-
-      this.log.info(
-        "Equipment project opened:",
-        response.value.location.path,
-        response.value.occupants.length,
-        "occupants, in",
-        formatDuration(timer.elapsed())
-      );
-    } catch (error) {
-      this.log.error(
-        "Failed to open equipment editor project:",
-        describeEquipmentSheet(open.sheet),
-        "after",
-        formatDuration(timer.elapsed()),
-        error
-      );
-
-      this.spriteImage = this.spriteImage.asFailed(error as Error);
-
-      emitNotification(this.eventBus, {
-        details: `${describeEquipmentSheet(open.sheet)}\n${transformError(error).message}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationGroupId.SPRITES,
-        title: "Could not open equipment sprite",
-      });
-    }
+  @BoundAction()
+  public openEquipmentProject(open: EquipmentSpriteOpen): Promise<boolean> {
+    return flowResult(
+      this.sprite.open(describeEquipmentSheet(open.sheet), (sessionId: SessionId) =>
+        spriteEquipmentCommands.openSprite({ sessionId, ...open })
+      )
+    );
   }
 
   /**
    * Reads the open sprite again, from the toolbar or from `F5`.
+   *
+   * @returns Whether the sheet was read again.
    */
   @KeybindCommand(RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND, {
     isEnabled: (service: SpriteEquipmentEditorService) =>
       service.spriteImage.value !== null && !service.spriteImage.isLoading,
   })
-  @LatestFlow("spriteImage")
-  public *reopenEquipmentProject(): TFlow {
-    yield* this.reopen();
+  @BoundAction()
+  public reopenEquipmentProject(): Promise<boolean> {
+    return this.reopen();
   }
 
   /**
-   * Reads the sprite the backend holds and puts it back on screen.
+   * Rebuilds the sheet from the icons unpacked beside it, then reads it again.
+   *
+   * @throws {Error} When nothing is open, or the sheet cannot be repacked: refusals the action never offers.
    */
-  private *reopen(): TFlow {
-    const timer: Timer = new Timer();
-
-    this.log.info("Reopening equipment editor project");
-
-    try {
-      this.spriteImage = this.spriteImage.asLoading();
-
-      const response: SessionSnapshot<EquipmentSpriteMetadata> = yield* call(
-        this.session.open((sessionId) =>
-          spriteEquipmentCommands.reloadSprite(sessionId, requireSessionId(this.spriteImage.value))
-        )
-      );
-
-      yield* this.viewSprite(response);
-
-      this.log.info(
-        "Equipment project reopened:",
-        response.value.location.path,
-        response.value.occupants.length,
-        "occupants, in",
-        formatDuration(timer.elapsed())
-      );
-    } catch (error) {
-      this.log.error("Failed to reopen equipment editor project:", "after", formatDuration(timer.elapsed()), error);
-
-      // Left loading, this disables every command in the editor for the rest of the session, and the
-      // only way out is closing the project. The previous sprite stays on screen behind the error.
-      this.spriteImage = this.spriteImage.asFailed(error as Error);
-
-      throw error;
-    }
-  }
-
-  @ExclusiveFlow("spriteImage")
+  @ExclusiveFlow("repack")
   public *repackAndOpenProject(): TFlow {
-    const { spriteImage: spriteImage, repackSourcePath } = this;
+    const { repackSourcePath, spriteImage } = this;
+    const metadata: Nullable<EquipmentSpriteMetadata> = this.sprite.value;
 
-    if (!spriteImage.value || spriteImage.isLoading) {
+    if (!metadata || spriteImage.isLoading) {
       throw new Error("Invalid attempt to reopen project that is loading or not open.");
     }
 
@@ -295,53 +229,97 @@ export class SpriteEquipmentEditorService {
       throw new Error(`Invalid attempt to repack DDS without base icons for '${targets.sheet}'.`);
     }
 
-    this.log.info("Repack and reopen equipment editor project");
-
-    try {
-      this.spriteImage = this.spriteImage.asLoading();
-
-      const result: Nullable<EquipmentSpritePackResult> = yield* call(
+    const completion: TCommandCompletion<Nullable<EquipmentSpritePackResult>> = yield* this.repack.run({
+      name: "Repack equipment sprite",
+      subject: targets.sheet,
+      command: () =>
         flowResult(
-          this.packerService.packEquipmentSprite(
-            repackSourcePath,
-            targets.sheet,
-            targets.config,
-            spriteImage.value.metadata.open.isDltx
-          )
-        )
-      );
+          this.packerService.packEquipmentSprite(repackSourcePath, targets.sheet, targets.config, metadata.open.isDltx)
+        ),
+      failure: "Could not repack equipment sprite",
+      // A busy or cancelled repack wrote nothing, so it says nothing and the sheet is not read again.
+      success: (result: Nullable<EquipmentSpritePackResult>) =>
+        result?.outcome === "completed"
+          ? { details: `${repackSourcePath}\n${targets.sheet}`, title: "Repacked equipment sprite" }
+          : null,
+    });
 
-      if (!result || result.outcome !== "completed") {
-        this.spriteImage = spriteImage;
+    if (completion.error) {
+      throw completion.error;
+    }
 
-        return;
-      }
-
+    if (completion.result?.outcome === "completed") {
       this.repackedAt = Date.now();
 
-      emitNotification(this.eventBus, {
-        details: `${repackSourcePath}\n${targets.sheet}`,
-        severity: ENotificationSeverity.SUCCESS,
-        source: EApplicationGroupId.SPRITES,
-        title: "Repacked equipment sprite",
+      yield* call(this.reopen());
+    }
+  }
+
+  /**
+   * Lets the sheet go, and its picture with it.
+   */
+  @BoundAction()
+  public async closeEquipmentProject(): Promise<void> {
+    const image: Nullable<string> = this.picture.value?.image.src ?? null;
+
+    if (await flowResult(this.sprite.close())) {
+      this.forget(image);
+    }
+  }
+
+  @BoundAction()
+  private forget(image: Nullable<string>): void {
+    this.assetService.release(image);
+    this.picture.reset();
+    this.repack.reset();
+    this.repackSourcePath = null;
+    this.repackedAt = null;
+  }
+
+  /** Reads the sheet the backend holds again, in a fresh opening the held one is replaced by. */
+  private reopen(): Promise<boolean> {
+    const held: Nullable<SessionSnapshot<EquipmentSpriteMetadata>> = this.sprite.snapshot;
+
+    if (!held) {
+      return Promise.resolve(false);
+    }
+
+    return flowResult(
+      this.sprite.refresh(describeEquipmentSheet(held.value.open.sheet), (sessionId: SessionId) =>
+        spriteEquipmentCommands.reloadSprite(sessionId, held.sessionId)
+      )
+    );
+  }
+
+  /**
+   * Decodes an adopted sheet's picture, releasing the one it replaces once it shows and any a newer sheet abandoned.
+   *
+   * @param snapshot - The sheet the backend answered.
+   */
+  private *decode(snapshot: SessionSnapshot<EquipmentSpriteMetadata>): TFlow {
+    const held: Nullable<IOpenEquipmentSprite> = this.picture.value;
+    const pending: Promise<IOpenEquipmentSprite> = this.spriteFromResponse(snapshot);
+
+    let published: boolean = false;
+
+    try {
+      const completion: TCommandCompletion<IOpenEquipmentSprite> = yield* this.picture.run({
+        name: "Decode equipment sprite",
+        subject: describeEquipmentSheet(snapshot.value.open.sheet),
+        command: () => pending,
+        failure: "Could not decode the equipment sprite",
       });
 
-      yield* this.reopen();
-    } catch (error) {
-      this.log.error("Failed to repack equipment editor project:", error);
+      if (completion.error === null) {
+        published = true;
+        this.assetService.release(held?.image.src ?? null);
 
-      // Kept as a failure rather than reset to ready. Discarding it here is what made a repack that
-      // wrote nothing look exactly like one that succeeded.
-      this.spriteImage = this.spriteImage.asFailed(error as Error);
-
-      emitNotification(this.eventBus, {
-        details: `${targets.sheet}\n${transformError(error).message}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationGroupId.SPRITES,
-        title: "Could not repack equipment sprite",
-      });
-
-      throw error;
+        yield* this.resolveRepackSource(completion.result.metadata.location.path);
+      }
+    } finally {
+      if (!published) {
+        void pending.then((sprite: IOpenEquipmentSprite) => this.assetService.release(sprite.image.src), noop);
+      }
     }
   }
 
@@ -349,9 +327,7 @@ export class SpriteEquipmentEditorService {
    * Work out whether this sprite has an unpacked icons directory beside it.
    *
    * @param spritePath - Path of the open equipment sprite.
-   * @returns Resolves whether an unpacked sibling directory is available.
    */
-  @BoundAction()
   private *resolveRepackSource(spritePath: Nullable<string>): TFlow {
     if (!spritePath) {
       // An archived sheet has no directory to look beside, which is not a failure - it is a sheet nothing can repack.
@@ -372,63 +348,6 @@ export class SpriteEquipmentEditorService {
       this.log.error("Failed to resolve repack source directory:", error);
 
       this.repackSourcePath = null;
-    }
-  }
-
-  @LatestFlow("spriteImage")
-  public *closeEquipmentProject(): TFlow {
-    this.log.info("Closing equipment project");
-
-    try {
-      this.spriteImage = this.spriteImage.asLoading();
-
-      yield* call(this.session.close());
-
-      this.assetService.release(this.spriteImage.value?.image.src ?? null);
-
-      this.log.info("Equipment project closed");
-
-      this.spriteImage = this.spriteImage.asIdle();
-      this.repackSourcePath = null;
-      this.repackedAt = null;
-    } catch (error) {
-      this.log.error("Failed to close equipment editor project:", error);
-
-      this.spriteImage = this.spriteImage.asFailed(new Error(error as string));
-
-      emitNotification(this.eventBus, {
-        details: transformError(error).message,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationGroupId.SPRITES,
-        title: "Could not close equipment sprite",
-      });
-    }
-  }
-
-  /**
-   * Publishes a decoded sprite and releases candidates abandoned by cancellation.
-   *
-   * @param response - Native snapshot whose preview should be displayed.
-   */
-  private *viewSprite(response: SessionSnapshot<EquipmentSpriteMetadata>): TFlow {
-    const pending: Promise<IOpenEquipmentSprite> = this.spriteFromResponse(response);
-
-    let published: boolean = false;
-
-    try {
-      const spriteImage: IOpenEquipmentSprite = yield* call(pending);
-
-      this.assetService.release(this.spriteImage.value?.image.src ?? null);
-      this.spriteImage = this.spriteImage.asReady(spriteImage);
-      published = true;
-      yield* this.resolveRepackSource(spriteImage.metadata.location.path);
-    } finally {
-      if (!published) {
-        void pending.then(
-          (sprite) => this.assetService.release(sprite.image.src),
-          () => undefined
-        );
-      }
     }
   }
 

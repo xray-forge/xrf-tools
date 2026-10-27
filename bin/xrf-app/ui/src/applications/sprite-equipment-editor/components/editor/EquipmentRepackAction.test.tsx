@@ -5,6 +5,7 @@ import { Injectable } from "@wirestate/core";
 import { EquipmentSpriteMetadata } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 import { Nullable } from "@xrf/types";
 
+import { mockShownEquipmentSprite } from "@/applications/sprite-equipment-editor/fixtures/editor.mocks";
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/editor";
 import { AssetService } from "@/core/assets/services";
 import { mockEquipmentSpriteMetadata, mockEquipmentSpriteOpen } from "@/core/sprite-equipment/fixtures/sprite.mocks";
@@ -40,11 +41,7 @@ class TestSpriteEquipmentEditorService extends SpriteEquipmentEditorService {
   public constructor() {
     super();
 
-    this.spriteImage = this.spriteImage.asReady({
-      sessionId: "fixture-session",
-      metadata: seed.metadata,
-      image: new Image(),
-    });
+    mockShownEquipmentSprite(this, seed.metadata);
     this.repackSourcePath = seed.repackSourcePath;
 
     captureRendered(this);

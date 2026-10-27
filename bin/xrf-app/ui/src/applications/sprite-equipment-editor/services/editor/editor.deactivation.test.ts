@@ -3,9 +3,8 @@ import { ESessionsCommand } from "@xrf/ipc/commands/sessions";
 import { ESpriteEquipmentCommand } from "@xrf/ipc/commands/sprite-equipment";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 
-import { mockEquipmentSpriteMetadata } from "@/core/sprite-equipment/fixtures/sprite.mocks";
+import { mockShownEquipmentSprite } from "@/applications/sprite-equipment-editor/fixtures/editor.mocks";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
-import { mockRestoredSession } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { SpriteEquipmentEditorService } from "./editor.service";
@@ -22,13 +21,7 @@ function hasClosedItself(): boolean {
 
 /** Puts a sprite on screen the way a restore does, so the service owns the opening its teardown releases. */
 function showSprite(service: SpriteEquipmentEditorService): void {
-  service.spriteImage = service.spriteImage.asReady(
-    mockRestoredSession(service, {
-      sessionId: "fixture-session",
-      metadata: mockEquipmentSpriteMetadata(),
-      image: new Image(),
-    })
-  );
+  mockShownEquipmentSprite(service);
 }
 
 /**

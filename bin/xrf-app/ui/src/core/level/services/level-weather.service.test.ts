@@ -13,6 +13,7 @@ import { EWorldWeatherPlay, EWorldWeatherTransition } from "@xrf/ipc/types/xrf-w
 import {
   createLevelWeatherService,
   LEVEL_WEATHER_SELECTED,
+  mockOpenLevelWeather,
   toWeatherKeyframe,
 } from "@/core/level/fixtures/level-weather";
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
@@ -48,7 +49,7 @@ describe("LevelWeatherService", () => {
 
     const service: LevelWeatherService = createLevelWeatherService();
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
     expect(service.cycle.value?.name).toBe("default_clear");
     expect(service.weather).toEqual({ kind: EWorldWeatherPlay.CYCLE, name: "default_clear" });
@@ -63,7 +64,7 @@ describe("LevelWeatherService", () => {
 
     const service: LevelWeatherService = createLevelWeatherService();
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
     expect(service.isManual).toBe(true);
     expect(toWeatherKeyframe(service.weather)?.skyTexture).toBe(DEFAULT_LEVEL_MANUAL_WEATHER.skyTexture);
@@ -104,7 +105,7 @@ describe("LevelWeatherService", () => {
 
     const service: LevelWeatherService = createLevelWeatherService();
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
     expect(service.cycle.value?.name).toBe("w_clear");
     expect(service.isManual).toBe(false);
@@ -131,7 +132,7 @@ describe("LevelWeatherService", () => {
 
     const service: LevelWeatherService = createLevelWeatherService();
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
     expect(service.cycle.value?.name).toBe("w_clear");
     expect(service.weather).toEqual({ kind: EWorldWeatherPlay.CYCLE, name: "w_clear" });
@@ -146,7 +147,7 @@ describe("LevelWeatherService", () => {
 
     const service: LevelWeatherService = createLevelWeatherService();
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
     expect(toWeatherKeyframe(service.weather)).not.toBeNull();
     expect(service.failure).toBe("No weather");
@@ -165,12 +166,12 @@ describe("LevelWeatherService", () => {
 
     const service: LevelWeatherService = createLevelWeatherService();
 
-    await service.open(LEVEL_WEATHER_SELECTED);
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
     expect(reads).toBe(1);
 
-    await service.open(null);
+    await mockOpenLevelWeather(service, null);
 
     expect(service.weather).toBeNull();
     expect(service.description.isIdle).toBe(true);
@@ -187,7 +188,7 @@ describe("LevelWeatherService", () => {
 
     const service: LevelWeatherService = createLevelWeatherService();
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
     await service.selectCycle("default_rain");
     service.setFactor(5_000);
     service.setPlaying(true);
@@ -210,12 +211,12 @@ describe("LevelWeatherService", () => {
 
     // The clock heard back is remembered as the level closes.
     service.noteReport(mockWorldWeatherReport({ time: 9_000, weight: 0.25 }));
-    await service.open(null);
+    await mockOpenLevelWeather(service, null);
 
     expect(readLevelWeatherMemory(toLevelWeatherMemoryKey(LEVEL_WEATHER_SELECTED.value))?.time).toBe(9_000);
     expect(service.control.isPaused).toBe(true);
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
     expect(service.cycle.value?.name).toBe("default_rain");
     expect(service.time).toBe(9_000);
@@ -233,7 +234,7 @@ describe("LevelWeatherService", () => {
     const service: LevelWeatherService = createLevelWeatherService();
     const key: string = toLevelWeatherMemoryKey(LEVEL_WEATHER_SELECTED.value);
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
     await service.selectCycle("default_rain");
     service.setPlaying(true);
 
@@ -275,17 +276,17 @@ describe("LevelWeatherService", () => {
     const service: LevelWeatherService = createLevelWeatherService();
     const shafts = { minimum: 0.3, steps: 15 };
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
     service.setSunShafts(shafts);
 
     // Remembered as it is set, so a window closed straight after keeps it.
     expect(readLevelWeatherMemory(toLevelWeatherMemoryKey(LEVEL_WEATHER_SELECTED.value))?.sunShafts).toEqual(shafts);
 
-    await service.open(other);
+    await mockOpenLevelWeather(service, other);
 
     expect(service.sunShafts).toEqual(DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS);
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
     expect(service.sunShafts).toEqual(shafts);
   });
@@ -306,7 +307,7 @@ describe("LevelWeatherService", () => {
 
     const service: LevelWeatherService = createLevelWeatherService();
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
     const rain: Promise<void> = service.selectCycle("default_rain");
 
@@ -353,11 +354,11 @@ describe("LevelWeatherService", () => {
 
     const service: LevelWeatherService = createLevelWeatherService();
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
     const rain: Promise<void> = service.selectCycle("default_rain");
 
-    await service.open(other);
+    await mockOpenLevelWeather(service, other);
     release();
     await rain;
 
@@ -378,7 +379,7 @@ describe("LevelWeatherService", () => {
       engines.push(service.engine);
     });
 
-    await service.open({
+    await mockOpenLevelWeather(service, {
       sessionId: "extended",
       revision: 0,
       value: mockSelectedLevelDescription({
@@ -408,7 +409,7 @@ describe("LevelWeatherService", () => {
 
     const service: LevelWeatherService = createLevelWeatherService();
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
     expect(service.cycle.value?.name).toBe("default_clear");
     expect(service.failure).toBeNull();

@@ -24,9 +24,6 @@ interface IVisualsExplorerOpenFormProps extends BaseComponentProps {
 
 /**
  * The way into the explorer: browse a root, or look at one model.
- *
- * One row whose dialog follows the mode rather than two rows and a rule for when both are filled. Each mode keeps its
- * own remembered path, so switching back does not cost the last folder or the last file.
  */
 export function VisualsExplorerOpenForm({
   "data-testid": dataTestId = "visuals-explorer-open-form",
@@ -39,7 +36,8 @@ export function VisualsExplorerOpenForm({
 
   const log: Logger = useLogger(__MODULE_NAME__);
 
-  const isLoading: boolean = visualsService.visual.isLoading || browseService.visuals.isLoading;
+  const isLoading: boolean =
+    visualsService.visual.isLoading || browseService.roots.isLoading || browseService.visuals.isLoading;
 
   // Browsing is the primary workflow, so it is the fallback - but what someone last opened is a better guess than
   // that, and a person who only ever looks at single models should not re-pick the mode every session.
@@ -82,7 +80,11 @@ export function VisualsExplorerOpenForm({
     // tree that does not contain it is the kind of disagreement the viewport is supposed to prevent.
     if (mode === EVisualOpenMode.FOLDER) {
       await visualsService.close();
-      await browseService.openRoot(field.value, assetRoot.value);
+
+      // A root that did not open leaves the picker up, saying why.
+      if (!(await browseService.openRoot(field.value, assetRoot.value))) {
+        return;
+      }
     } else {
       await browseService.close();
       await visualsService.openFile(field.value, assetRoot.value);
@@ -103,7 +105,11 @@ export function VisualsExplorerOpenForm({
           ? "Lists every visual under the root, archives included. Nothing is written."
           : "Reads the model and shows its bind pose. Nothing is written."
       }
-      error={visualsService.visual.error?.message ?? browseService.visuals.error?.message}
+      error={
+        visualsService.visual.error?.message ??
+        browseService.roots.error?.message ??
+        browseService.visuals.error?.message
+      }
       submitLabel={mode === EVisualOpenMode.FOLDER ? "Browse" : "Open"}
       isSubmitDisabled={!field.isValid}
       onSubmit={onOpen}

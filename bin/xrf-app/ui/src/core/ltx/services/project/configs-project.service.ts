@@ -56,9 +56,10 @@ export class ConfigsProjectService {
    * @param root - Filesystem path of a configs directory or a game installation root.
    * @param isDltx - Whether to resolve with the Monolith/Anomaly patch dialect.
    * @param prefix - Logical subtree holding the configs, or null for the whole root.
+   * @returns Whether the project opened.
    */
   @BoundAction()
-  public open(root: string, isDltx: boolean, prefix: Nullable<string> = null): Promise<void> {
+  public open(root: string, isDltx: boolean, prefix: Nullable<string> = null): Promise<boolean> {
     return flowResult(
       this.project.open(root, (sessionId) =>
         configsCommands.openProject({ sessionId, isDltx, prefix, roots: createRoots([root]) })

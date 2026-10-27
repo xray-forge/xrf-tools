@@ -1,13 +1,9 @@
-import { inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
-import { transformError } from "@xrf/errors";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
-import { formatDuration } from "@xrf/format";
+import { inject, Injectable, OnProvision } from "@wirestate/core";
+import { BoundAction, Computed, flowResult } from "@wirestate/mobx";
+import { TFlow } from "@xrf/flow";
 import { toEnumMember } from "@xrf/ipc";
 import { texturesCommands } from "@xrf/ipc/commands/textures";
-import { Session, SessionScopeService } from "@xrf/ipc/session";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import {
   ETextureCatalogMode,
   TextureBrowse,
@@ -16,10 +12,12 @@ import {
   TextureSource,
 } from "@xrf/ipc/types/xrf-app-textures";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
-import { Logger, Timer } from "@xrf/logging";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { createRoots, describeRoots } from "@/core/assets/lib";
+import { CommandOperation } from "@/core/operations/lib/command-operation";
+import { ISessionRootOpening, SessionRootResource } from "@/core/session/lib/session-root-resource";
 import { buildTextureNodes, ITextureNode } from "@/core/textures/lib/texture-catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 
@@ -30,33 +28,30 @@ import { TextureSelectionService } from "@/core/textures/services/selection";
 export class TextureCatalogService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(texturesCommands.closeBrowse, inject(SessionScopeService));
-
-  /**
-   * Whether the backend has been asked what it still has open.
-   */
-  @Observable()
-  public isReady: boolean = false;
-
-  /** Every texture of the browsed roots, or null when nothing is open. */
-  @Observable()
-  private catalogState: AsyncState<SessionSnapshot<TextureCatalog>> = AsyncState.idle();
-
-  @Computed()
-  public get catalog(): AsyncState<TextureCatalog> {
-    return this.catalogState.map((snapshot) => snapshot.value);
-  }
+  /** Every texture of the browsed roots, or none when nothing is open. */
+  public readonly catalog: SessionRootResource<TextureCatalog, TextureBrowse> = new SessionRootResource(this.log, {
+    subject: "texture catalog",
+    close: texturesCommands.closeBrowse,
+    // A restore answers what was browsed, not its listing, so the roots are listed again.
+    reopen: {
+      restore: texturesCommands.restoreBrowse,
+      open: (browse: TextureBrowse) =>
+        TextureCatalogService.toOpening(browse.roots, toEnumMember(ETextureCatalogMode, browse.mode)),
+    },
+    adopted: (snapshot: SessionSnapshot<TextureCatalog>) => this.sweep(snapshot.value),
+  });
 
   /** What each descriptor of those roots declares, empty until the sweep behind the listing finishes. */
-  @Observable()
-  public summaries: AsyncState<Array<TextureMaterialSummary>> = AsyncState.idle([]);
+  public readonly summaries: CommandOperation<Array<TextureMaterialSummary>> = new CommandOperation(this.log);
+
+  public constructor(private readonly selectionService: TextureSelectionService = inject(TextureSelectionService)) {}
 
   /**
    * @returns Whether a root set is open, which is what publishes the tree.
    */
   @Computed()
   public get isBrowsing(): boolean {
-    return this.catalogState.value !== null;
+    return this.catalog.value !== null;
   }
 
   /**
@@ -75,25 +70,12 @@ export class TextureCatalogService {
     return buildTextureNodes(this.catalog.value?.entries ?? [], this.summaries.value ?? []);
   }
 
-  public constructor(private readonly selectionService: TextureSelectionService = inject(TextureSelectionService)) {}
-
   /**
    * Restore whatever roots the backend is still browsing.
    */
   @OnProvision()
   public async onProvision(): Promise<void> {
-    await flowResult(this.restore());
-  }
-
-  /**
-   * Forget the browsed roots on the way out of the application, which the tool's scope closes.
-   */
-  @OnDeactivation()
-  public onDeactivation(): void {
-    runInAction(() => {
-      this.catalogState = this.catalogState.asIdle();
-      this.summaries = this.summaries.asIdle([]);
-    });
+    await flowResult(this.catalog.restore());
   }
 
   /**
@@ -102,11 +84,11 @@ export class TextureCatalogService {
    * @param root - Filesystem path of the directory or installation to browse.
    * @param assetRoot - A further tree listed and searched behind it, or null to list only the root itself.
    */
-  @LatestFlow("catalog")
-  public *openRoot(root: string, assetRoot: Nullable<string> = null): TFlow {
+  @BoundAction()
+  public async openRoot(root: string, assetRoot: Nullable<string> = null): Promise<void> {
     // The named root joins the listing, not just the resolution: a mod tree carrying only what it changed folds with
     // the tree behind it, which is what makes one row per engine reference the right shape.
-    yield* this.list(createRoots([root, assetRoot]), ETextureCatalogMode.ROOTS);
+    await this.open(TextureCatalogService.toOpening(createRoots([root, assetRoot]), ETextureCatalogMode.ROOTS));
   }
 
   /**
@@ -114,30 +96,19 @@ export class TextureCatalogService {
    *
    * @param directory - Filesystem path of the folder to list.
    */
-  @LatestFlow("catalog")
-  public *openLooseDirectory(directory: string): TFlow {
-    yield* this.list(createRoots([directory]), ETextureCatalogMode.LOOSE_DIRECTORY);
+  @BoundAction()
+  public async openLooseDirectory(directory: string): Promise<void> {
+    await this.open(TextureCatalogService.toOpening(createRoots([directory]), ETextureCatalogMode.LOOSE_DIRECTORY));
   }
 
   /**
    * End the session: stop browsing, and drop whatever texture was being inspected.
    */
-  @LatestFlow("catalog")
-  public *close(): TFlow {
-    const roots: Nullable<XrayRoots> = this.roots;
-
-    try {
-      yield* call(this.session.close());
-
-      this.catalogState = this.catalogState.asIdle();
-      this.summaries = this.summaries.asIdle([]);
+  @BoundAction()
+  public async close(): Promise<void> {
+    if (await flowResult(this.catalog.close())) {
+      this.summaries.reset();
       this.selectionService.clear();
-
-      if (roots) {
-        this.log.info("Texture catalog closed:", describeRoots(roots));
-      }
-    } catch (error) {
-      this.log.error("Failed to close browsed texture roots:", error);
     }
   }
 
@@ -159,115 +130,41 @@ export class TextureCatalogService {
   }
 
   /**
-   * Puts an already browsed session back on screen, for one the backend still holds.
-   */
-  @ExclusiveFlow("catalog")
-  private *restore(): TFlow {
-    try {
-      const session: Nullable<SessionSnapshot<TextureBrowse>> = yield* call(
-        texturesCommands.restoreBrowse(this.session.tool)
-      );
-
-      this.session.adopt(session);
-
-      if (session) {
-        this.log.info("Restoring texture catalog:", describeRoots(session.value.roots), session.value.mode);
-        yield* this.list(session.value.roots, toEnumMember(ETextureCatalogMode, session.value.mode));
-      }
-    } catch (error) {
-      this.log.error("Failed to restore browsed texture roots:", error);
-    } finally {
-      this.isReady = true;
-    }
-  }
-
-  /**
-   * Lists a root set, then reads every descriptor it holds.
-   *
-   * @param roots - Roots to list and sweep.
+   * @param roots - Roots to list.
    * @param mode - How to address what is found, which also decides whether a sweep can say anything.
+   * @returns The open listing them.
    */
-  private *list(roots: XrayRoots, mode: ETextureCatalogMode): TFlow {
-    const timer: Timer = new Timer();
+  private static toOpening(roots: XrayRoots, mode: ETextureCatalogMode): ISessionRootOpening<TextureCatalog> {
+    return {
+      label: describeRoots(roots),
+      command: (sessionId: SessionId) => texturesCommands.openBrowse(sessionId, roots, mode),
+    };
+  }
 
-    this.log.info("Listing textures:", describeRoots(roots), mode);
-    this.catalogState = this.catalogState.asLoading();
-    this.summaries = this.summaries.asIdle([]);
-
-    try {
-      const catalog: SessionSnapshot<TextureCatalog> = yield* call(
-        this.session.open(texturesCommands.openBrowse, roots, mode)
-      );
-
-      this.catalogState = this.catalogState.asReady(catalog);
-      // Announced here rather than after the sweep: the tree can be drawn from the listing alone, and waiting for
-      // thousands of descriptors would hold a loader over a screen that is ready to browse. A cancelled flow never
-      // reaches this line, which is what keeps a superseded restore from announcing a screen it no longer owns.
-      this.isReady = true;
-
-      this.log.info(
-        `Listed ${catalog.value.entries.length} textures:`,
-        describeRoots(catalog.value.roots),
-        "in",
-        formatDuration(timer.elapsed())
-      );
-
-      // The sweep reads descriptors by engine reference, which a loose listing has none of. Skipped rather than run
-      // and ignored, so a folder of one's own textures lists at once instead of waiting on a sweep with nothing to say.
-      if (mode === ETextureCatalogMode.ROOTS) {
-        yield* this.sweep(catalog.value.roots);
-      }
-    } catch (error: unknown) {
-      const transformed: Error = transformError(error);
-
-      this.log.error(
-        "Failed to list textures:",
-        describeRoots(roots),
-        mode,
-        "after",
-        formatDuration(timer.elapsed()),
-        transformed
-      );
-
-      this.catalogState = this.catalogState.asFailed(transformed);
-      this.isReady = true;
-    }
+  private async open(opening: ISessionRootOpening<TextureCatalog>): Promise<void> {
+    await flowResult(this.catalog.open(opening.label, opening.command));
   }
 
   /**
-   * Reads every descriptor of the listed roots, which is what badges the rows already on screen.
+   * Reads every descriptor of a listing, which is what badges the rows already on screen. The tree is drawn from the
+   * listing alone, so the sweep runs after it is shown rather than holding a loader over it.
    *
-   * @param roots - The roots the listing came from, so both read the same world.
+   * @param catalog - The listing, so both read the same world.
    */
-  private *sweep(roots: XrayRoots): TFlow {
-    const timer: Timer = new Timer();
+  private *sweep(catalog: TextureCatalog): TFlow {
+    this.summaries.reset();
 
-    this.log.info("Reading texture descriptors:", describeRoots(roots));
-    this.summaries = this.summaries.asLoading();
-
-    try {
-      const summaries: Array<TextureMaterialSummary> = yield* call(texturesCommands.describeCatalog(roots));
-
-      this.summaries = this.summaries.asReady(summaries);
-
-      this.log.info(
-        `Described ${summaries.length} texture descriptors:`,
-        describeRoots(roots),
-        "in",
-        formatDuration(timer.elapsed())
-      );
-    } catch (error: unknown) {
-      const transformed: Error = transformError(error);
-
-      this.log.error(
-        "Failed to describe texture descriptors:",
-        describeRoots(roots),
-        "after",
-        formatDuration(timer.elapsed()),
-        transformed
-      );
-
-      this.summaries = this.summaries.asFailed(transformed, []);
+    // The sweep reads descriptors by engine reference, which a loose listing has none of. Skipped rather than run and
+    // ignored, so a folder of one's own textures lists at once instead of waiting on a sweep with nothing to say.
+    if (toEnumMember(ETextureCatalogMode, catalog.mode) !== ETextureCatalogMode.ROOTS) {
+      return;
     }
+
+    yield* this.summaries.run({
+      name: "Read texture descriptors",
+      subject: describeRoots(catalog.roots),
+      command: () => texturesCommands.describeCatalog(catalog.roots),
+      failure: "Could not read the texture descriptors",
+    });
   }
 }

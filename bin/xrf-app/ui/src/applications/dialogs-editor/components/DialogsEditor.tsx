@@ -8,6 +8,7 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useMemo } from "react";
 
+import { DialogViewService } from "@/applications/dialogs-editor/services/dialog-view";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { describeRoots } from "@/core/assets/lib";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
@@ -26,6 +27,7 @@ export function DialogsEditor(): ReactElement {
   const log: Logger = useLogger(__MODULE_NAME__);
 
   const dialogsService: DialogsService = useInjection(DialogsService);
+  const viewService: DialogViewService = useInjection(DialogViewService);
 
   const project: Nullable<DialogProjectDescriptor> = dialogsService.project.value;
   const fileCount: number = Object.keys(project?.files ?? {}).length;
@@ -86,7 +88,7 @@ export function DialogsEditor(): ReactElement {
     // The language in force is state, so it reads here rather than from the toolbar action that changes
     // it — the division `EditorToolbar` states in its own contract.
     project?.textKeys ? ` text keys` : "no text",
-    ...(dialogsService.resolvedLanguage ? [dialogsService.resolvedLanguage] : []),
+    ...(viewService.resolvedLanguage ? [viewService.resolvedLanguage] : []),
     ...(findings.length ? [`${findings.length} problems`] : []),
   ]);
 

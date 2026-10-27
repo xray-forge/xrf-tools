@@ -15,8 +15,10 @@ import {
 } from "@xrf/ipc/types/xrf-visual";
 
 import { createRoots } from "@/core/assets/lib";
+import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { MOTION_DEFAULT_SPEED, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
+import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 
 const ALIGNMENT: number = 4;
 
@@ -211,6 +213,21 @@ export function mockSelectedVisual(overrides: Partial<SelectedVisualDescription>
     texturesLtx: null,
     ...overrides,
   };
+}
+
+/**
+ * Puts a visual on a loader as a restore would, for a test whose setup cannot wait for one.
+ *
+ * @param loadService - Loader to hold the visual.
+ * @param selected - The visual.
+ * @param sessionId - Identity of its opening.
+ */
+export function mockLoadedVisual(
+  loadService: VisualLoadService,
+  selected: SelectedVisualDescription = mockSelectedVisual(),
+  sessionId: string = "fixture-session"
+): void {
+  mockHeldSessionRoot(loadService.selection, { revision: 0, sessionId, value: selected });
 }
 
 /**

@@ -1,19 +1,16 @@
-import { inject, Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, Computed, Observable, runInAction } from "@wirestate/mobx";
+import { Injectable } from "@wirestate/core";
+import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
-import { transformError } from "@xrf/errors";
-import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
-import { formatDuration } from "@xrf/format";
 import { visualsCommands } from "@xrf/ipc/commands/visuals";
-import { Session, SessionScopeService } from "@xrf/ipc/session";
-import { AssetSource, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { AssetSource, SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 import { RenderTextureReport } from "@xrf/ipc/types/xrf-renderer";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
-import { Logger, Timer } from "@xrf/logging";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { IRenderSurfaceDraw } from "@/core/render/lib/surface/render-surface-draw";
+import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 import { IVisualRenderSource } from "@/core/visuals/lib/render/visual-render-source";
 import { IVisualBumpStatus, toLoadableBumps } from "@/core/visuals/lib/visual-bump";
 import { describeVisualSource } from "@/core/visuals/lib/visual-source";
@@ -28,6 +25,12 @@ export interface IOpenVisual {
   views: IVisualModelViews;
 }
 
+/** What the renderer last said of the textures of one opening. */
+interface IVisualTextureReports {
+  sessionId: SessionId;
+  reports: Array<RenderTextureReport>;
+}
+
 /**
  * Opens a visual's session and publishes what the viewer reads of it; the renderer reads its geometry and textures
  * through the session itself, and says what became of each texture once it has.
@@ -36,10 +39,30 @@ export interface IOpenVisual {
 export class VisualLoadService implements IVisualRenderSource {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(visualsCommands.closeModel, inject(SessionScopeService));
+  /** The open visual's session and description. */
+  public readonly selection: SessionRootResource<SelectedVisualDescription> = new SessionRootResource(this.log, {
+    subject: "visual",
+    close: visualsCommands.closeModel,
+    restore: visualsCommands.restoreModel,
+  });
 
+  /** What the renderer last said of the textures of the visual it drew. */
   @Observable()
-  public visual: AsyncState<IOpenVisual> = AsyncState.idle();
+  private textureReports: Nullable<IVisualTextureReports> = null;
+
+  /** The visual being shown, with the views the scene draws of it. */
+  @Computed()
+  public get visual(): AsyncState<IOpenVisual> {
+    return this.selection.mapSnapshot((selected: SessionSnapshot<SelectedVisualDescription>): IOpenVisual => {
+      // Joined once, for the toolbar and the panels to read how each submesh is drawn.
+      const surfaces: Map<number, IRenderSurfaceDraw> = createVisualSurfaces(
+        selected.value.description.submeshes,
+        selected.value.surfaces
+      );
+
+      return { selected, views: createVisualViews(selected.value.description, surfaces) };
+    });
+  }
 
   /**
    * @returns The model on screen, or null while nothing is open. What a viewport draws, as opposed to what the
@@ -50,20 +73,28 @@ export class VisualLoadService implements IVisualRenderSource {
     return this.visual.value?.views ?? null;
   }
 
-  /** What became of each submesh's texture, so a panel can report it rather than leaving a submesh unexplained. */
-  @Observable()
-  public textureStatuses: ReadonlyMap<number, IVisualTextureStatus> = new Map();
+  /** What became of each submesh's texture, every located texture loading until the renderer says. */
+  @Computed()
+  public get textureStatuses(): ReadonlyMap<number, IVisualTextureStatus> {
+    const selected: Nullable<SelectedVisualDescription> = this.selection.value;
+
+    return selected ? toVisualTextureStatuses(selected, this.reports) : new Map();
+  }
 
   /** What became of each submesh's bump inputs, each half on its own. */
-  @Observable()
-  public bumpStatuses: ReadonlyMap<number, IVisualBumpStatus> = new Map();
+  @Computed()
+  public get bumpStatuses(): ReadonlyMap<number, IVisualBumpStatus> {
+    const selected: Nullable<SelectedVisualDescription> = this.selection.value;
+
+    return selected ? toVisualBumpStatuses(selected, this.reports) : new Map();
+  }
 
   /**
    * @returns The open visual's session, which the renderer reads it through, or null while nothing is open.
    */
   @Computed()
   public get sessionId(): Nullable<string> {
-    return this.visual.value?.selected.sessionId ?? null;
+    return this.selection.sessionId;
   }
 
   /**
@@ -71,7 +102,7 @@ export class VisualLoadService implements IVisualRenderSource {
    */
   @Computed()
   public get hasBump(): boolean {
-    const selected: Nullable<SelectedVisualDescription> = this.visual.value?.selected.value ?? null;
+    const selected: Nullable<SelectedVisualDescription> = this.selection.value;
 
     return Boolean(selected && toLoadableBumps(selected.dependencies.textures, selected.materials).length);
   }
@@ -81,9 +112,9 @@ export class VisualLoadService implements IVisualRenderSource {
    */
   @Computed()
   public get sourceLabel(): Nullable<string> {
-    const source: Nullable<AssetSource> = this.visual.value?.selected.value.source ?? null;
+    const selected: Nullable<SelectedVisualDescription> = this.selection.value;
 
-    return source ? describeVisualSource(source) : null;
+    return selected ? describeVisualSource(selected.source) : null;
   }
 
   /**
@@ -91,14 +122,15 @@ export class VisualLoadService implements IVisualRenderSource {
    */
   @Computed()
   public get hasMotions(): boolean {
-    const selected: Nullable<SelectedVisualDescription> = this.visual.value?.selected.value ?? null;
+    const selected: Nullable<SelectedVisualDescription> = this.selection.value;
 
     return Boolean(selected && (selected.dependencies.motions.length || selected.description.embeddedMotions.length));
   }
 
-  @OnDeactivation()
-  public onDeactivation(): void {
-    this.clear();
+  /** What the renderer said of the visual held, or nothing for one it has not drawn yet. */
+  @Computed()
+  private get reports(): Array<RenderTextureReport> {
+    return this.textureReports?.sessionId === this.selection.sessionId ? this.textureReports.reports : [];
   }
 
   /**
@@ -106,90 +138,35 @@ export class VisualLoadService implements IVisualRenderSource {
    *
    * @param source - Visual source to open.
    * @param roots - Roots the source and its references are searched in.
+   * @returns Whether the visual opened.
    */
-  @LatestFlow("visual")
-  public *load(source: AssetSource, roots: XrayRoots): TFlow {
-    const timer: Timer = new Timer();
-
-    this.log.info("Loading visual:", describeVisualSource(source));
-
-    try {
-      this.visual = this.visual.asLoading();
-
-      const selected: SessionSnapshot<SelectedVisualDescription> = yield* call(
-        this.session.open(visualsCommands.openModel, source, roots)
-      );
-
-      this.log.info("Visual described in:", formatDuration(timer.lap()));
-
-      this.view(selected);
-
-      this.log.info("Visual loaded:", describeVisualSource(source), "in", formatDuration(timer.elapsed()));
-    } catch (error: unknown) {
-      const transformed: Error = transformError(error);
-
-      this.log.error(
-        "Failed to load visual:",
-        describeVisualSource(source),
-        "after",
-        formatDuration(timer.elapsed()),
-        transformed
-      );
-
-      this.visual = this.visual.asFailed(transformed);
-    }
+  @BoundAction()
+  public load(source: AssetSource, roots: XrayRoots): Promise<boolean> {
+    return flowResult(this.selection.open(describeVisualSource(source), visualsCommands.openModel, source, roots));
   }
 
   /**
    * Restores the native selection unless a user action has taken the visual flow.
    */
-  @ExclusiveFlow("visual")
-  public *restore(): TFlow {
-    const timer: Timer = new Timer();
-    const snapshot: Nullable<SessionSnapshot<SelectedVisualDescription>> = yield* call(
-      visualsCommands.restoreModel(this.session.tool)
-    );
-
-    this.session.adopt(snapshot);
-
-    if (snapshot) {
-      this.log.info("Restoring visual:", describeVisualSource(snapshot.value.source));
-      this.view(snapshot);
-
-      this.log.info(
-        "Visual restored:",
-        describeVisualSource(snapshot.value.source),
-        "in",
-        formatDuration(timer.elapsed())
-      );
-    }
+  @BoundAction()
+  public restore(): Promise<void> {
+    return flowResult(this.selection.restore());
   }
 
   /**
    * Closes this loader's document without clearing a newer view.
    */
-  @LatestFlow("visual")
-  public *close(): TFlow {
-    const selected = this.visual.value?.selected;
-
-    yield* call(this.session.close());
-
-    this.clearView();
-
-    if (selected) {
-      this.log.info("Visual closed:", describeVisualSource(selected.value.source));
-    }
+  @BoundAction()
+  public async close(): Promise<void> {
+    await flowResult(this.selection.close());
   }
 
   /**
-   * Abandons pending loads and releases the current document and textures.
+   * Abandons pending loads and releases the current document and textures, for a surface leaving while its tool stays.
    */
   @BoundAction()
   public clear(): void {
-    cancelFlow(this, "visual");
-    this.session.release();
-
-    this.clearView();
+    this.selection.release();
   }
 
   /**
@@ -200,37 +177,8 @@ export class VisualLoadService implements IVisualRenderSource {
    */
   @BoundAction()
   public noteTextures(sessionId: string, reports: Array<RenderTextureReport>): void {
-    const selected: Nullable<SessionSnapshot<SelectedVisualDescription>> = this.visual.value?.selected ?? null;
-
-    if (selected?.sessionId === sessionId) {
-      this.textureStatuses = toVisualTextureStatuses(selected.value, reports);
-      this.bumpStatuses = toVisualBumpStatuses(selected.value, reports);
+    if (this.selection.sessionId === sessionId) {
+      this.textureReports = { sessionId, reports };
     }
-  }
-
-  private clearView(): void {
-    runInAction(() => {
-      this.visual = this.visual.asIdle();
-      this.textureStatuses = new Map();
-      this.bumpStatuses = new Map();
-    });
-  }
-
-  /**
-   * Publish what the viewer reads of a described visual, every located texture loading until the renderer says.
-   *
-   * @param snapshot - Native visual description and its session identity.
-   */
-  private view(snapshot: SessionSnapshot<SelectedVisualDescription>): void {
-    const selected: SelectedVisualDescription = snapshot.value;
-    // Joined once, for the toolbar and the panels to read how each submesh is drawn.
-    const surfaces: Map<number, IRenderSurfaceDraw> = createVisualSurfaces(
-      selected.description.submeshes,
-      selected.surfaces
-    );
-
-    this.visual = this.visual.asReady({ selected: snapshot, views: createVisualViews(selected.description, surfaces) });
-    this.textureStatuses = toVisualTextureStatuses(selected, []);
-    this.bumpStatuses = toVisualBumpStatuses(selected, []);
   }
 }

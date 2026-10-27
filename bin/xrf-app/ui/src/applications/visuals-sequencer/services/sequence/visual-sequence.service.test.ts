@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
 import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
@@ -8,9 +7,9 @@ import { Nullable } from "@xrf/types";
 
 import { ESequenceMotionState } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
-import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
+import { mockLoadedVisual, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockSessionRead } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 /** Frames each mocked motion holds, keyed by name, so a boundary is reached at a known tick. */
@@ -19,10 +18,7 @@ const FRAMES: Record<string, number> = { first: 2, second: 3, third: 2 };
 function mockService() {
   const result = mockInjectedService(VisualSequenceService, [VisualLoadService]);
 
-  result.container.get(VisualLoadService).visual = AsyncState.ready({
-    selected: mockSessionSnapshot(mockSelectedVisual()),
-    views: mockVisualModelViews(),
-  });
+  mockLoadedVisual(result.container.get(VisualLoadService));
 
   return result;
 }

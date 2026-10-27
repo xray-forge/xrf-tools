@@ -1,4 +1,3 @@
-import { ISessionIdentity, Session } from "@xrf/ipc/session";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { Nullable, Optional } from "@xrf/types";
 
@@ -15,19 +14,6 @@ export function mockSessionSnapshot<T>(
   revision: number = 0
 ): SessionSnapshot<T> {
   return { sessionId, revision, value };
-}
-
-/**
- * Hands a service the opening a fixture installed straight into its state.
- *
- * @param service - Service holding the session to seed.
- * @param session - Identity the fixture put on screen.
- * @returns The same identity, so it can be passed straight into the state it seeds.
- */
-export function mockRestoredSession<T extends ISessionIdentity>(service: object, session: T): T {
-  (service as unknown as { session: Session }).session.adopt(session);
-
-  return session;
 }
 
 /**

@@ -19,7 +19,7 @@ export function TexturesExplorerApplication({
   const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
   const isOpen: boolean = catalogService.isBrowsing || selectionService.selected.value !== null;
 
-  if (!catalogService.isReady) {
+  if (!catalogService.catalog.isRestored) {
     return <ApplicationLoader />;
   }
 

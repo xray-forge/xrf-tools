@@ -1,18 +1,16 @@
-import { inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
-import { transformError } from "@xrf/errors";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
-import { formatDuration } from "@xrf/format";
+import { Injectable, OnProvision } from "@wirestate/core";
+import { BoundAction, Computed, flowResult } from "@wirestate/mobx";
+import { TFlow } from "@xrf/flow";
 import { assetsCommands } from "@xrf/ipc/commands/assets";
 import { visualsCommands } from "@xrf/ipc/commands/visuals";
-import { Session, SessionScopeService } from "@xrf/ipc/session";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { EXrayAssetType, XrayAsset, XrayRoot, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
-import { Logger, Timer } from "@xrf/logging";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { createRoots, describeRoots } from "@/core/assets/lib";
+import { CommandOperation } from "@/core/operations/lib/command-operation";
+import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 
 /**
  * The roots being browsed, and every visual in them.
@@ -21,21 +19,23 @@ import { createRoots, describeRoots } from "@/core/assets/lib";
 export class VisualsBrowseService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(visualsCommands.closeBrowse, inject(SessionScopeService));
+  /** What is being browsed, or nothing when a single model was opened directly. */
+  public readonly roots: SessionRootResource<XrayRoots> = new SessionRootResource(this.log, {
+    subject: "visual roots",
+    close: visualsCommands.closeBrowse,
+    restore: visualsCommands.restoreBrowse,
+    adopted: (snapshot: SessionSnapshot<XrayRoots>) => this.list(snapshot.value),
+  });
 
-  /** What is being browsed, or null when a single model was opened directly. */
-  @Observable()
-  private browsed: Nullable<SessionSnapshot<XrayRoots>> = null;
-
-  @Observable()
-  public visuals: AsyncState<Array<XrayAsset>> = AsyncState.idle([]);
+  /** Every visual the browsed roots hold, listed afresh for each root adopted. */
+  public readonly visuals: CommandOperation<Array<XrayAsset>> = new CommandOperation(this.log);
 
   /**
    * @returns Whether anything is open, which is what publishes the tree panel.
    */
   @Computed()
   public get isBrowsing(): boolean {
-    return this.browsed !== null;
+    return this.roots.value !== null;
   }
 
   /**
@@ -43,7 +43,7 @@ export class VisualsBrowseService {
    */
   @Computed()
   public get rootsLabel(): Nullable<string> {
-    return this.browsed ? describeRoots(this.browsed.value) : null;
+    return this.roots.value ? describeRoots(this.roots.value) : null;
   }
 
   /**
@@ -51,7 +51,7 @@ export class VisualsBrowseService {
    */
   @Computed()
   public get rootPaths(): Array<string> {
-    return this.browsed?.value.roots.map((root: XrayRoot) => root.path) ?? [];
+    return this.roots.value?.roots.map((root: XrayRoot) => root.path) ?? [];
   }
 
   /**
@@ -59,18 +59,7 @@ export class VisualsBrowseService {
    */
   @OnProvision()
   public async onProvision(): Promise<void> {
-    await flowResult(this.restore());
-  }
-
-  /**
-   * Forget the browsed roots on the way out of the application, which the tool's scope closes.
-   */
-  @OnDeactivation()
-  public onDeactivation(): void {
-    runInAction(() => {
-      this.browsed = null;
-      this.visuals = this.visuals.asIdle([]);
-    });
+    await flowResult(this.roots.restore());
   }
 
   /**
@@ -78,98 +67,38 @@ export class VisualsBrowseService {
    *
    * @param root - Filesystem path of the directory or installation to browse.
    * @param assetRoot - A further tree searched behind it, or null to read only the root itself.
+   * @returns Whether the root opened; a listing that failed after it still counts, and shows its own failure.
    */
-  @LatestFlow("visuals")
-  public *openRoot(root: string, assetRoot: Nullable<string> = null): TFlow {
+  @BoundAction()
+  public openRoot(root: string, assetRoot: Nullable<string> = null): Promise<boolean> {
     // Both go to the backend, which keeps them for the session: a reload restores the pair rather than the first of
     // them, so a later read searches what the open searched.
     const roots: XrayRoots = createRoots([root, assetRoot]);
 
-    this.log.info("Browsing root:", root);
-
-    let opened: SessionSnapshot<XrayRoots>;
-
-    try {
-      opened = yield* call(this.session.open(visualsCommands.openBrowse, roots));
-    } catch (error: unknown) {
-      this.log.error("Failed to open visual roots:", describeRoots(roots), error);
-
-      throw error;
-    }
-
-    yield* this.list(opened);
+    return flowResult(this.roots.open(describeRoots(roots), visualsCommands.openBrowse, roots));
   }
 
   /** Stop browsing, leaving whatever model is open on screen. */
-  @LatestFlow("visuals")
-  public *close(): TFlow {
-    const roots: Nullable<string> = this.rootsLabel;
-
-    try {
-      yield* call(this.session.close());
-
-      this.browsed = null;
-      this.visuals = this.visuals.asIdle([]);
-
-      if (roots) {
-        this.log.info("Visual roots closed:", roots);
-      }
-    } catch (error) {
-      this.log.error("Failed to close browsed roots:", roots, error);
+  @BoundAction()
+  public async close(): Promise<void> {
+    if (await flowResult(this.roots.close())) {
+      this.visuals.reset();
     }
   }
 
   /**
-   * Restores browsed roots unless a user action has taken the browsing flow.
-   */
-  @ExclusiveFlow("visuals")
-  private *restore(): TFlow {
-    try {
-      const snapshot: Nullable<SessionSnapshot<XrayRoots>> = yield* call(
-        visualsCommands.restoreBrowse(this.session.tool)
-      );
-
-      this.session.adopt(snapshot);
-
-      if (snapshot) {
-        this.log.info("Restoring visual roots:", describeRoots(snapshot.value));
-        yield* this.list(snapshot);
-      }
-    } catch (error) {
-      this.log.error("Failed to restore browsed roots:", error);
-    }
-  }
-
-  /**
-   * Lists roots and puts the result on screen.
+   * Lists the roots adopted, starting from nothing so a failed listing never shows another root's visuals.
    *
-   * @param opened - Roots and identity already committed by the backend.
+   * @param roots - Roots the backend committed.
    */
-  private *list(opened: SessionSnapshot<XrayRoots>): TFlow {
-    const roots: XrayRoots = opened.value;
-    const timer: Timer = new Timer();
+  private *list(roots: XrayRoots): TFlow {
+    this.visuals.reset();
 
-    this.browsed = opened;
-    this.visuals = this.visuals.asLoading();
-
-    try {
-      const visuals: Array<XrayAsset> = yield* call(assetsCommands.listAssets(roots, EXrayAssetType.OGF));
-
-      this.visuals = this.visuals.asReady(visuals);
-
-      this.log.info(`Listed ${visuals.length} visuals:`, describeRoots(roots), "in", formatDuration(timer.elapsed()));
-    } catch (error: unknown) {
-      const transformed: Error = transformError(error);
-
-      this.log.error(
-        "Failed to list visuals:",
-        describeRoots(roots),
-        "after",
-        formatDuration(timer.elapsed()),
-        transformed
-      );
-
-      this.visuals = this.visuals.asFailed(transformed, []);
-    }
+    yield* this.visuals.run({
+      name: "List visuals",
+      subject: describeRoots(roots),
+      command: () => assetsCommands.listAssets(roots, EXrayAssetType.OGF),
+      failure: "Could not list the visuals",
+    });
   }
 }

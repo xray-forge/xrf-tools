@@ -4,10 +4,11 @@ import { ESpawnCommand } from "@xrf/ipc/commands/spawn";
 import { mockIpcCommands } from "@xrf/ipc/testing";
 
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
+import { EApplicationId } from "@/core/routing/application";
 import { mockSpawnSession } from "@/core/spawn/fixtures/spawn.mocks";
 import { SpawnFileService } from "@/core/spawn/services/spawn-file.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { IInjectedServiceMockDescriptor, mockInjectedService } from "@/fixtures/utils/container";
+import { IInjectedServiceMockDescriptor, mockApplicationScope, mockInjectedService } from "@/fixtures/utils/container";
 
 interface IWatchedService {
   service: SpawnFileService;
@@ -15,8 +16,10 @@ interface IWatchedService {
 }
 
 function watchNotifications(): IWatchedService {
-  const { container, service }: IInjectedServiceMockDescriptor<SpawnFileService> =
-    mockInjectedService(SpawnFileService);
+  const { container, service }: IInjectedServiceMockDescriptor<SpawnFileService> = mockInjectedService(
+    SpawnFileService,
+    mockApplicationScope(EApplicationId.SPAWN_EDITOR)
+  );
   const raised: Array<INotificationPayload> = [];
 
   container
@@ -43,7 +46,8 @@ describe("SpawnFileService notifications", () => {
 
     expect(raised).toHaveLength(1);
     expect(raised[0].severity).toBe(ENotificationSeverity.SUCCESS);
-    expect(raised[0].source).toBe("spawns");
+    // Every notice names the application it came from, not the group the spawn tools share.
+    expect(raised[0].source).toBe(EApplicationId.SPAWN_EDITOR);
     expect(raised[0].details).toContain("C:\\out\\all.spawn");
   });
 
@@ -127,7 +131,7 @@ describe("SpawnFileService notifications", () => {
       },
     });
 
-    await service.onProvision(1);
+    await service.onProvision();
 
     // Left unready, the editor parks on a spinner with no route back to the open form.
     expect(service.isReady).toBe(true);

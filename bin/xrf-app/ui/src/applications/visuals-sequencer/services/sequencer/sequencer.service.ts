@@ -1,20 +1,16 @@
-import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
-import { transformError } from "@xrf/errors";
-import { formatDuration } from "@xrf/format";
+import { inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
+import { BoundAction, Computed, flowResult } from "@wirestate/mobx";
+import { cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { visualsCommands } from "@xrf/ipc/commands/visuals";
 import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
-import { Logger, Timer } from "@xrf/logging";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
 import { createRoots } from "@/core/assets/lib";
-import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
-import { EApplicationId } from "@/core/routing/application";
+import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { IVisualPose } from "@/core/visuals/lib/render";
-import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { VisualInspectionService } from "@/core/visuals/services/visual-inspection.service";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 
@@ -25,12 +21,8 @@ import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 export class SequencerService extends VisualInspectionService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  @Observable()
-  public isReady: boolean = false;
-
   /** Every motion the open visual can play, which is what clips are picked from. */
-  @Observable()
-  public motions: AsyncState<Array<string>> = AsyncState.idle([]);
+  public readonly motions: CommandOperation<Array<string>> = new CommandOperation(this.log);
 
   /**
    * @returns How the model stands, which here is the track rather than any one picked motion.
@@ -38,6 +30,12 @@ export class SequencerService extends VisualInspectionService {
   @Computed()
   public get pose(): IVisualPose {
     return { frame: this.sequenceService.frame, motion: this.sequenceService.motion };
+  }
+
+  /** Whether the backend has been asked what it still has selected, which holds the loader back. */
+  @Computed()
+  public get isReady(): boolean {
+    return this.loadService.selection.isRestored;
   }
 
   /**
@@ -51,7 +49,6 @@ export class SequencerService extends VisualInspectionService {
   }
 
   public constructor(
-    private readonly eventBus: EventBus = inject(EventBus),
     loadService: VisualLoadService = inject(VisualLoadService),
     private readonly sequenceService: VisualSequenceService = inject(VisualSequenceService)
   ) {
@@ -63,24 +60,13 @@ export class SequencerService extends VisualInspectionService {
    */
   @OnProvision()
   public async onProvision(): Promise<void> {
-    try {
-      await flowResult(this.loadService.restore());
-      await this.list();
-    } catch (error) {
-      this.log.error("Failed to restore selected visual:", error);
-    } finally {
-      runInAction(() => {
-        this.isReady = true;
-      });
-    }
+    await this.loadService.restore();
+    await flowResult(this.list());
   }
 
   @OnDeactivation()
   public onDeactivation(): void {
-    this.log.info("Deactivating and disposing the sequencer");
-
     this.sequenceService.clear();
-    this.loadService.clear();
   }
 
   /**
@@ -99,21 +85,13 @@ export class SequencerService extends VisualInspectionService {
   /** Close what is open, on screen and in the backend. */
   @BoundAction()
   public async close(): Promise<void> {
-    this.sequenceService.clear();
+    this.forgetMotions();
 
-    runInAction(() => {
-      this.motions = this.motions.asIdle([]);
-    });
-
-    try {
-      await flowResult(this.loadService.close());
-    } catch (error) {
-      this.log.error("Failed to close visual:", error);
-    }
+    await this.loadService.close();
   }
 
   /**
-   * Load a visual and report a failure the way this application reports one.
+   * Load a visual and list what it can play.
    *
    * @param source - Visual source to open.
    * @param asset - Asset the roots are centred on, whose own tree is searched first.
@@ -124,80 +102,39 @@ export class SequencerService extends VisualInspectionService {
     asset: Nullable<string> = null,
     assetRoot: Nullable<string> = null
   ): Promise<void> {
+    this.forgetMotions();
+
+    if (await this.loadService.load(source, await this.getRoots(asset, assetRoot))) {
+      await flowResult(this.list());
+    }
+  }
+
+  /** Lets the motions of the visual held go, with the track written against them. */
+  @BoundAction()
+  private forgetMotions(): void {
     // A track names motions of the model it was written against, and the backend is about to park a different one.
     this.sequenceService.clear();
-
-    runInAction(() => {
-      this.motions = this.motions.asIdle([]);
-    });
-
-    await this.loadService.load(source, await this.getRoots(asset, assetRoot));
-
-    const error: Nullable<Error> = this.visual.error;
-
-    if (error) {
-      emitNotification(this.eventBus, {
-        details: `${describeVisualSource(source)}\n${transformError(error).message}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.VISUALS_SEQUENCER,
-        title: "Could not open visual",
-      });
-
-      return;
-    }
-
-    await this.list();
+    cancelFlow(this, "motions");
+    this.motions.reset();
   }
 
   /**
-   * Names what the open visual can play.
+   * Names what the open visual can play; a newer listing, for the visual opened since, replaces this one.
    */
-  private async list(): Promise<void> {
-    const sessionId = this.visual.value?.selected.sessionId;
+  @LatestFlow("motions")
+  private *list(): TFlow {
+    const sessionId: Nullable<string> = this.sessionId;
 
     if (!this.hasMotions || !sessionId) {
       return;
     }
 
-    const timer: Timer = new Timer();
-
-    this.log.info("Listing sequencer motions:", sessionId);
-
-    runInAction(() => {
-      this.motions = this.motions.asLoading();
+    yield* this.motions.run({
+      name: "List sequencer motions",
+      subject: sessionId,
+      command: () => visualsCommands.listMotions(sessionId).then((listed) => listed.value),
+      failure: "Could not list the motions",
     });
-
-    try {
-      const names: Array<string> = (await visualsCommands.listMotions(sessionId)).value;
-
-      runInAction(() => {
-        if (this.visual.value?.selected.sessionId !== sessionId) {
-          return;
-        }
-
-        this.motions = this.motions.asReady(names);
-
-        this.log.info(
-          "Sequencer motions listed:",
-          sessionId,
-          names.length,
-          "motions, in",
-          formatDuration(timer.elapsed())
-        );
-      });
-    } catch (error: unknown) {
-      const transformed: Error = transformError(error);
-
-      this.log.error("Failed to list motions:", sessionId, "after", formatDuration(timer.elapsed()), transformed);
-
-      runInAction(() => {
-        if (this.visual.value?.selected.sessionId !== sessionId) {
-          return;
-        }
-
-        this.motions = this.motions.asFailed(transformed, []);
-      });
-    }
   }
 
   /**

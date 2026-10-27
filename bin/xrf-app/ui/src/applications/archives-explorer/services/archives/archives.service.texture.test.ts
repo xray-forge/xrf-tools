@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { AsyncState } from "@xrf/async";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { EArchivesBulkRoute } from "@xrf/ipc/commands/archives-bulk";
 import { listMockBulkCalls, mockInvoke, mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
@@ -11,6 +10,7 @@ import {
   mockArchiveReadPolicy,
   mockArchivesVolumes,
 } from "@/core/archive/fixtures/archive.mocks";
+import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -34,7 +34,7 @@ const DESCRIPTOR: AssetTextureDescriptor = {
 function mockService(texture: ArchiveFileDescriptor = TEXTURE): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes([texture, TEXT]), SESSION));
+  mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes([texture, TEXT]), SESSION));
 
   return service;
 }

@@ -1,72 +1,39 @@
-import { EventBus, inject, Injectable, OnProvision } from "@wirestate/core";
-import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
-import { transformError } from "@xrf/errors";
-import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
-import { formatDuration } from "@xrf/format";
+import { Injectable, OnProvision } from "@wirestate/core";
+import { BoundAction, Computed, flowResult } from "@wirestate/mobx";
 import { dialogsCommands } from "@xrf/ipc/commands/dialogs";
-import { requireSessionId, Session, SessionScopeService } from "@xrf/ipc/session";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
-import { DialogDescriptor, DialogProjectDescriptor, DialogProjectMode } from "@xrf/ipc/types/xrf-dialog";
+import { SessionId } from "@xrf/ipc/types/xrf-app-core";
+import { DialogProjectDescriptor, DialogProjectMode } from "@xrf/ipc/types/xrf-dialog";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
-import { Logger, Timer } from "@xrf/logging";
+import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { IDialogTreeEntry, toDialogTreeEntries } from "@/applications/dialogs-editor/lib/dialog-tree";
 import { describeRoots } from "@/core/assets/lib/roots";
-import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
-import { EApplicationId } from "@/core/routing/application";
+import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 
-/** Which dialog is open, by the pair that addresses one: the file holding it and its id. */
-export interface IDialogSelection {
-  logicalPath: string;
-  id: string;
-}
-
+/**
+ * The open dialogs project and what it holds; which of its dialogs is shown is `DialogViewService`'s.
+ */
 @Injectable()
 export class DialogsService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(dialogsCommands.closeProject, inject(SessionScopeService));
+  public readonly project: SessionRootResource<DialogProjectDescriptor> = new SessionRootResource(this.log, {
+    subject: "dialogs project",
+    close: dialogsCommands.closeProject,
+    restore: dialogsCommands.restoreProject,
+  });
 
-  @Observable()
-  public isReady: boolean = false;
-
-  @Observable()
-  private projectState: AsyncState<SessionSnapshot<DialogProjectDescriptor>> = AsyncState.idle();
-
+  /** Whether the backend has been asked what it still holds, which holds the loader back. */
   @Computed()
-  public get project(): AsyncState<DialogProjectDescriptor> {
-    return this.projectState.map((snapshot) => snapshot.value);
+  public get isReady(): boolean {
+    return this.project.isRestored;
   }
-
-  /**
-   * The dialog being looked at, fetched on selection.
-   */
-  @Observable()
-  public dialog: AsyncState<DialogDescriptor> = AsyncState.idle();
-
-  @Observable()
-  public selection: Nullable<IDialogSelection> = null;
-
-  /** Which node of the open dialog the inspector describes. */
-  @Observable()
-  public inspectedNodeId: Nullable<string> = null;
-
-  /** Which language phrase text is shown in. */
-  @Observable()
-  public language: Nullable<string> = null;
 
   /** Languages the open project's text tree offers, empty when it read none. */
   @Computed()
   public get languages(): Array<string> {
     return this.project.value?.languages ?? [];
-  }
-
-  /** The language phrase text is actually resolved in, once a dialog has come back. */
-  @Computed()
-  public get resolvedLanguage(): Nullable<string> {
-    return this.dialog.value?.language ?? this.language ?? this.languages[0] ?? null;
   }
 
   /** Every dialog the open project holds, as a `<file>\<dialog id>` path apiece. */
@@ -75,54 +42,9 @@ export class DialogsService {
     return toDialogTreeEntries(this.project.value);
   }
 
-  /** @returns The path, or null while nothing is open or the selection names no dialog this project holds. */
-  @Computed()
-  public get selectedPath(): Nullable<string> {
-    const selection: Nullable<IDialogSelection> = this.selection;
-
-    if (!selection) {
-      return null;
-    }
-
-    return (
-      this.entries.find(
-        (it: IDialogTreeEntry) => it.payload.id === selection.id && it.payload.logicalPath === selection.logicalPath
-      )?.path ?? null
-    );
-  }
-
-  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
-
   @OnProvision()
   public async onProvision(): Promise<void> {
-    try {
-      await flowResult(this.restore());
-    } catch (error: unknown) {
-      this.log.error("Failed to restore dialogs project:", error);
-
-      throw error;
-    }
-  }
-
-  /**
-   * Restores the committed session without superseding a user action in the same flow.
-   */
-  @ExclusiveFlow("project")
-  private *restore(): TFlow {
-    const response: Nullable<SessionSnapshot<DialogProjectDescriptor>> = yield* call(
-      dialogsCommands.restoreProject(this.session.tool)
-    );
-
-    this.log.info(
-      response ? "Dialogs project restored:" : "No existing dialogs project",
-      response ? describeRoots(response.value.roots) : null
-    );
-
-    this.session.adopt(response);
-
-    this.isReady = true;
-
-    this.projectState = this.projectState.asReady(response);
+    await flowResult(this.project.restore());
   }
 
   /** Reports the layout roots look like, so the open form can preselect it. */
@@ -136,160 +58,22 @@ export class DialogsService {
     }
   }
 
-  @LatestFlow("project")
-  public *openProject(roots: XrayRoots, mode: DialogProjectMode): TFlow {
-    const timer: Timer = new Timer();
-
-    this.log.info("Opening dialogs project:", describeRoots(roots), mode);
-
-    try {
-      this.projectState = this.projectState.asLoading();
-
-      const response: SessionSnapshot<DialogProjectDescriptor> = yield* call(
-        this.session.open((sessionId) =>
-          dialogsCommands.openProject({ sessionId, roots, mode, dialogsPrefix: null, translationsPrefix: null })
-        )
-      );
-
-      this.log.info(
-        "Dialogs project opened:",
-        describeRoots(roots),
-        Object.keys(response.value.files).length,
-        "files,",
-        response.value.textKeys,
-        "text keys, in",
-        formatDuration(timer.elapsed())
-      );
-
-      cancelFlow(this, "dialog");
-
-      this.projectState = this.projectState.asReady(response);
-      this.selection = null;
-      this.dialog = this.dialog.asIdle();
-      this.inspectedNodeId = null;
-      this.language = null;
-    } catch (error) {
-      this.log.error(
-        "Failed to open dialogs project:",
-        describeRoots(roots),
-        mode,
-        "after",
-        formatDuration(timer.elapsed()),
-        error
-      );
-
-      this.projectState = this.projectState.asFailed(error as Error);
-
-      emitNotification(this.eventBus, {
-        details: `${describeRoots(roots)}
-${transformError(error).message}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.DIALOGS_EDITOR,
-        title: "Could not open dialogs project",
-      });
-    }
-  }
-
-  @LatestFlow("project")
-  public *closeProject(): TFlow {
-    const roots = this.projectState.value?.value.roots;
-    const subject = roots ? describeRoots(roots) : null;
-
-    try {
-      yield* call(this.session.close());
-    } catch (error: unknown) {
-      this.log.error("Failed to close dialogs project:", subject, error);
-
-      throw error;
-    }
-
-    cancelFlow(this, "dialog");
-    this.projectState = this.projectState.asIdle();
-    this.dialog = this.dialog.asIdle();
-    this.selection = null;
-    this.inspectedNodeId = null;
-    this.language = null;
-
-    if (subject) {
-      this.log.info("Dialogs project closed:", subject);
-    }
-  }
-
   /**
-   * Fetch one dialog's phrases.
-   *
-   * Latest rather than exclusive, on its own lane: clicking through a tree starts a fetch per row, and
-   * the one that matters is the last one clicked. The selection is set before the call so the tree
-   * highlights immediately rather than after the round trip.
-   */
-  @LatestFlow("dialog")
-  public *selectDialog(logicalPath: string, id: string): TFlow {
-    const timer: Timer = new Timer();
-
-    // Only when the dialog actually changes. A language switch re-fetches the same one through here,
-    // and dropping the inspection then would close the panel the reader is comparing languages in.
-    if (this.selection?.logicalPath !== logicalPath || this.selection.id !== id) {
-      this.inspectedNodeId = null;
-    }
-
-    this.selection = { id, logicalPath };
-    this.dialog = this.dialog.asLoading(null);
-
-    try {
-      const response: DialogDescriptor = yield* call(
-        dialogsCommands.getDialog({
-          sessionId: requireSessionId(this.projectState.value),
-          logicalPath,
-          id,
-          language: this.language,
-        })
-      );
-
-      this.dialog = this.dialog.asReady(response);
-
-      this.log.info(
-        "Dialog read:",
-        logicalPath,
-        id,
-        response.language,
-        response.phrases.length,
-        "phrases, in",
-        formatDuration(timer.elapsed())
-      );
-    } catch (error) {
-      this.log.error("Failed to read dialog:", logicalPath, id, "after", formatDuration(timer.elapsed()), error);
-
-      this.dialog = this.dialog.asFailed(error as Error, null);
-    }
-  }
-
-  /**
-   * Close the open dialog without closing the project.
+   * @param roots - Roots the project is read from.
+   * @param mode - The layout they hold.
+   * @returns Whether the project opened.
    */
   @BoundAction()
-  public clearSelection(): void {
-    cancelFlow(this, "dialog");
-
-    this.dialog = this.dialog.asIdle();
-    this.selection = null;
-    this.inspectedNodeId = null;
+  public openProject(roots: XrayRoots, mode: DialogProjectMode): Promise<boolean> {
+    return flowResult(
+      this.project.open(describeRoots(roots), (sessionId: SessionId) =>
+        dialogsCommands.openProject({ sessionId, roots, mode, dialogsPrefix: null, translationsPrefix: null })
+      )
+    );
   }
 
-  /** Point the inspector at one node of the open dialog, or at nothing. */
   @BoundAction()
-  public inspectNode(nodeId: Nullable<string>): void {
-    this.inspectedNodeId = nodeId;
-  }
-
-  /**
-   * Show phrase text in another language.
-   */
-  @BoundAction()
-  public setLanguage(language: Nullable<string>): void {
-    this.language = language;
-
-    if (this.selection) {
-      void flowResult(this.selectDialog(this.selection.logicalPath, this.selection.id));
-    }
+  public async closeProject(): Promise<void> {
+    await flowResult(this.project.close());
   }
 }

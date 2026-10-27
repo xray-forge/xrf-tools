@@ -1,17 +1,15 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
-import { BoundAction, Computed, Observable } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
-import { transformError } from "@xrf/errors";
-import { call, cancelFlows, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
-import { formatDuration } from "@xrf/format";
+import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
+import { cancelFlows, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { visualsCommands } from "@xrf/ipc/commands/visuals";
-import { requireSessionId, Session, SessionScopeService } from "@xrf/ipc/session";
-import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SessionId } from "@xrf/ipc/types/xrf-app-core";
 import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
-import { Logger, Timer } from "@xrf/logging";
+import { Logger } from "@xrf/logging";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
+import { CommandOperation } from "@/core/operations/lib/command-operation";
+import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 
@@ -26,9 +24,10 @@ export class VisualMotionService {
   public readonly log: Logger = new Logger(this.constructor.name);
 
   /** The posed motion, an opening of this viewer's own beside the model's: what it plays is its view, not the model. */
-  private readonly session: Session = new Session(visualsCommands.closeMotion, inject(SessionScopeService));
-
-  private ticker: Nullable<ReturnType<typeof setInterval>> = null;
+  public readonly posed: SessionRootResource<VisualMotionBake> = new SessionRootResource(this.log, {
+    subject: "motion",
+    close: visualsCommands.closeMotion,
+  });
 
   /**
    * Names the open visual can play, listed on demand.
@@ -36,11 +35,9 @@ export class VisualMotionService {
    * Not fetched with the model: naming them means reading every animation file it references, about fifty milliseconds
    * each, and most models are opened to be looked at rather than played.
    */
-  @Observable()
-  public motions: AsyncState<Array<string>> = AsyncState.idle([]);
+  public readonly motions: CommandOperation<Array<string>> = new CommandOperation(this.log);
 
-  @Observable()
-  public posed: AsyncState<VisualMotionBake> = AsyncState.idle();
+  private ticker: Nullable<ReturnType<typeof setInterval>> = null;
 
   @Observable()
   public frame: number = 0;
@@ -78,39 +75,20 @@ export class VisualMotionService {
   }
 
   /** Lists what the open visual can play, once. */
-  @ExclusiveFlow()
+  @ExclusiveFlow("motions")
   public *list(): TFlow {
-    if (this.motions.isLoading || this.motions.value?.length) {
+    const sessionId: Nullable<string> = this.loadService.sessionId;
+
+    if (!sessionId || this.motions.value?.length) {
       return;
     }
 
-    const timer: Timer = new Timer();
-    const sessionId: Nullable<string> = this.loadService.visual.value?.selected.sessionId ?? null;
-
-    this.log.info("Listing visual motions:", sessionId);
-    this.motions = this.motions.asLoading();
-
-    try {
-      const names: SessionSnapshot<Array<string>> = yield* call(
-        visualsCommands.listMotions(requireSessionId(this.loadService.visual.value?.selected ?? null))
-      );
-
-      this.motions = this.motions.asReady(names.value);
-
-      this.log.info(
-        "Visual motions listed:",
-        sessionId,
-        names.value.length,
-        "motions, in",
-        formatDuration(timer.elapsed())
-      );
-    } catch (error: unknown) {
-      const transformed: Error = transformError(error);
-
-      this.log.error("Failed to list motions:", sessionId, "after", formatDuration(timer.elapsed()), transformed);
-
-      this.motions = this.motions.asFailed(transformed, []);
-    }
+    yield* this.motions.run({
+      name: "List visual motions",
+      subject: sessionId,
+      command: () => visualsCommands.listMotions(sessionId).then((listed) => listed.value),
+      failure: "Could not list the motions",
+    });
   }
 
   /**
@@ -120,55 +98,36 @@ export class VisualMotionService {
    * stays paused on frame zero, so comparing two motions frame by frame does not mean pausing each one again. The first
    * pick of a session plays, because picking a motion with nothing posed is asking to see it move.
    *
+   * The pose on screen is kept while the next one bakes, rather than dropped. Dropping it put the model back in its bind
+   * pose for the length of a read, so switching between two motions meant watching the skeleton snap flat in between -
+   * the frame stays put with it, since a frame index means nothing without the bake it counts into.
+   *
    * @param name - Motion to pose, as `list` reported it.
    */
-  @LatestFlow()
-  public *open(name: string): TFlow {
-    const timer: Timer = new Timer();
+  @BoundAction()
+  public async open(name: string): Promise<void> {
     const resume: boolean = this.isPlaying || !this.posed.value;
+    const sessionId: Nullable<string> = this.loadService.sessionId;
 
-    this.log.info("Loading motion:", name);
+    if (!sessionId) {
+      this.log.info("Cannot pose a motion with no visual open:", name);
+
+      return;
+    }
 
     this.stopTicker();
-
-    // Cleared rather than left standing: `play` below is a no-op while this says playback is already running, which
-    // would leave the controls claiming to play a motion whose ticker was just stopped.
+    // Cleared rather than left standing: `play` is a no-op while this says playback is already running, which would
+    // leave the controls claiming to play a motion whose ticker was just stopped.
     this.isPlaying = false;
-    // The pose on screen is kept while the next one bakes, rather than dropped. Dropping it put the model back in its
-    // bind pose for the length of a read, so switching between two motions meant watching the skeleton snap flat in
-    // between - the frame stays put with it, since a frame index means nothing without the bake it counts into.
-    this.posed = this.posed.asLoading();
 
-    try {
-      const sessionId: string = requireSessionId(this.loadService.visual.value?.selected ?? null);
-      const snapshot: SessionSnapshot<VisualMotionBake> = yield* call(
-        this.session.open((motionId: SessionId) => visualsCommands.openMotion(sessionId, motionId, name))
-      );
-
-      const bake: VisualMotionBake = snapshot.value;
-
-      this.frame = 0;
-      this.posed = this.posed.asReady(bake);
-
-      this.log.info(
-        "Motion loaded:",
-        name,
-        bake.frameCount,
-        "frames,",
-        bake.boneCount,
-        "bones, in",
-        formatDuration(timer.elapsed())
-      );
-
-      if (resume) {
-        this.play();
-      }
-    } catch (error: unknown) {
-      const transformed: Error = transformError(error);
-
-      this.log.error(`Failed to pose motion '${name}':`, "after", formatDuration(timer.elapsed()), transformed);
-
-      this.posed = this.posed.asFailed(transformed, null);
+    // A pose that failed answers false and one a newer pose superseded answers nothing, so only the latest picked, once
+    // it lands, shows its first frame.
+    if (
+      await flowResult(
+        this.posed.open(name, (motionId: SessionId) => visualsCommands.openMotion(sessionId, motionId, name))
+      )
+    ) {
+      this.showFirstFrame(resume);
     }
   }
 
@@ -232,13 +191,26 @@ export class VisualMotionService {
   @BoundAction()
   public clear(): void {
     cancelFlows(this);
-    this.session.release();
+    this.posed.release();
 
     this.stopTicker();
     this.isPlaying = false;
     this.frame = 0;
-    this.posed = this.posed.asIdle();
-    this.motions = this.motions.asIdle([]);
+    this.motions.reset();
+  }
+
+  /**
+   * Shows a motion just posed from its first frame, playing on where playback ran before it.
+   *
+   * @param resume - Whether to play.
+   */
+  @BoundAction()
+  private showFirstFrame(resume: boolean): void {
+    this.frame = 0;
+
+    if (resume) {
+      this.play();
+    }
   }
 
   /** One frame on, wrapping or stopping at the end depending on the loop toggle. */

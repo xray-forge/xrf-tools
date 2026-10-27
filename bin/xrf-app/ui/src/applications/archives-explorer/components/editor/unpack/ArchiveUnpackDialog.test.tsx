@@ -32,7 +32,7 @@ async function renderDialog(onClose: () => void): Promise<RenderResult> {
     container,
   });
 
-  await waitFor(() => expect(service.subject.isReady).toBe(true));
+  await waitFor(() => expect(service.subject.isRestored).toBe(true));
 
   return render;
 }

@@ -126,7 +126,7 @@ describe("ArchivesService world subject", () => {
 
     const { service } = mockInjectedService(ArchivesService);
 
-    await service.onProvision(1);
+    await service.onProvision();
 
     expect(service.subject.value?.kind).toBe(EArchiveSubject.WORLD);
   });

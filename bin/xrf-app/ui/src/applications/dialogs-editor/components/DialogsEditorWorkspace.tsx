@@ -4,7 +4,7 @@ import { DialogDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { DialogsService, IDialogSelection } from "@/applications/dialogs-editor/services/dialogs";
+import { DialogViewService, IDialogSelection } from "@/applications/dialogs-editor/services/dialog-view";
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
@@ -17,10 +17,10 @@ import { DialogGraph } from "./editor/DialogGraph";
  * The centre of the editor: the graph, and nothing competing with it for room.
  */
 export function DialogsEditorWorkspace(): ReactElement {
-  const dialogsService: DialogsService = useInjection(DialogsService);
+  const viewService: DialogViewService = useInjection(DialogViewService);
 
-  const dialog: AsyncState<Nullable<DialogDescriptor>> = dialogsService.dialog;
-  const selection: Nullable<IDialogSelection> = dialogsService.selection;
+  const dialog: AsyncState<Nullable<DialogDescriptor>> = viewService.dialog;
+  const selection: Nullable<IDialogSelection> = viewService.selection;
 
   if (!selection) {
     return (
@@ -39,13 +39,13 @@ export function DialogsEditorWorkspace(): ReactElement {
         caption={selection.logicalPath}
         closeLabel={"Close dialog"}
         closeDescription={"Clear the selection and close this dialog"}
-        onClose={dialogsService.clearSelection}
+        onClose={viewService.clearSelection}
       />
 
       <div className={"flex min-h-0 min-w-0 grow overflow-hidden"}>
         {inline(() => {
           if (dialog.value) {
-            return <DialogGraph dialog={dialog.value} onSelect={dialogsService.inspectNode} />;
+            return <DialogGraph dialog={dialog.value} onSelect={viewService.inspectNode} />;
           }
 
           if (dialog.isLoading) {

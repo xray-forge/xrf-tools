@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { Container } from "@wirestate/core";
 import { makeAutoObservable, runInAction } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
 import { ERenderCommand } from "@xrf/ipc/commands/render";
 import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
 import {
@@ -22,13 +21,17 @@ import {
 import { EWorldCameraCommand } from "@xrf/ipc/types/xrf-world";
 
 import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
-import { mockSelectedVisual, mockTextureDependency, mockVisualModelViews } from "@/core/visuals/fixtures/visual.mocks";
+import {
+  mockLoadedVisual,
+  mockSelectedVisual,
+  mockTextureDependency,
+  mockVisualModelViews,
+} from "@/core/visuals/fixtures/visual.mocks";
 import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { EVisualTextureState } from "@/core/visuals/lib/visual-texture";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualRenderService } from "@/core/visuals/services/visual-render.service";
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
-import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
 const VIEWPORT: number = 3;
@@ -176,13 +179,11 @@ describe("VisualRenderService", () => {
     const { container, service } = await mockAttached(source);
     const loadService: VisualLoadService = container.get(VisualLoadService);
 
-    loadService.visual = AsyncState.ready({
-      selected: mockSessionSnapshot(
-        mockSelectedVisual({ dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] } }),
-        "first"
-      ),
-      views: mockVisualModelViews(),
-    });
+    mockLoadedVisual(
+      loadService,
+      mockSelectedVisual({ dependencies: { motions: [], textures: [mockTextureDependency({ submeshIndex: 0 })] } }),
+      "first"
+    );
     mockIpcCommands({
       [ERenderCommand.DESCRIBE_TEXTURE_LOADS]: [
         {
