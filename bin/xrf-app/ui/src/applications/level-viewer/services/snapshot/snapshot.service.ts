@@ -1,7 +1,8 @@
 import { join } from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { inject, Injectable } from "@wirestate/core";
-import { BoundAction, flowResult, RefObservable, runInAction } from "@wirestate/mobx";
+import { BoundAction, flowResult, RefObservable } from "@wirestate/mobx";
+import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { systemCommands } from "@xrf/ipc/commands/system";
 import { BuildInfo } from "@xrf/ipc/types/xrf-build-info";
@@ -119,20 +120,20 @@ export class LevelViewerSnapshotService {
   }
 
   /** Writes the view as it stands where a save dialog answers, in the folder of views by default. */
-  public async exportView(): Promise<void> {
+  @ExclusiveFlow()
+  public *exportView(): TFlow {
     try {
-      const snapshot: ILevelViewerSnapshot = await this.exportSnapshot();
-      const path: Nullable<string> = await save({
-        defaultPath: await join(
-          await levelsCommands.getViewFolder(),
-          `${toLevelViewerFileStem(this.level, new Date())}.${EXrayExtension.JSON}`
-        ),
-        filters: LEVEL_VIEWER_SNAPSHOT_FILTERS,
-        title: "Export view",
-      });
+      const snapshot: ILevelViewerSnapshot = yield* call(this.exportSnapshot());
+      const folder: string = yield* call(levelsCommands.getViewFolder());
+      const defaultPath: string = yield* call(
+        join(folder, `${toLevelViewerFileStem(this.level, new Date())}.${EXrayExtension.JSON}`)
+      );
+      const path: Nullable<string> = yield* call(
+        save({ defaultPath, filters: LEVEL_VIEWER_SNAPSHOT_FILTERS, title: "Export view" })
+      );
 
       if (path) {
-        this.log.info("Exported the view:", await writeLevelViewerSnapshot(path, snapshot));
+        this.log.info("Exported the view:", yield* call(writeLevelViewerSnapshot(path, snapshot)));
       }
     } catch (error: unknown) {
       this.fail("export the view", error);
@@ -140,23 +141,25 @@ export class LevelViewerSnapshotService {
   }
 
   /** Reads the view an open dialog answers, from the folder of views by default, and compares it for import. */
-  public async beginImport(): Promise<void> {
+  @ExclusiveFlow()
+  public *beginImport(): TFlow {
     try {
-      const path: Nullable<string> = (await open({
-        defaultPath: await levelsCommands.getViewFolder(),
-        directory: false,
-        filters: LEVEL_VIEWER_SNAPSHOT_FILTERS,
-        multiple: false,
-        title: "Import view",
-      })) as Nullable<string>;
+      const defaultPath: string = yield* call(levelsCommands.getViewFolder());
+      const path: Nullable<string> = (yield* call(
+        open({
+          defaultPath,
+          directory: false,
+          filters: LEVEL_VIEWER_SNAPSHOT_FILTERS,
+          multiple: false,
+          title: "Import view",
+        })
+      )) as Nullable<string>;
 
       if (path) {
-        const snapshot: ILevelViewerSnapshot = await readLevelViewerSnapshot(path);
+        const snapshot: ILevelViewerSnapshot = yield* call(readLevelViewerSnapshot(path));
 
-        runInAction(() => {
-          this.result = null;
-          this.importing = { entries: this.compare(snapshot), fileName: getPathName(path), snapshot };
-        });
+        this.result = null;
+        this.importing = { entries: this.compare(snapshot), fileName: getPathName(path), snapshot };
       }
     } catch (error: unknown) {
       this.fail("read the view", error);
@@ -164,32 +167,25 @@ export class LevelViewerSnapshotService {
   }
 
   /**
-   * Applies the entries chosen of the file read for import, once; nothing while they are being applied.
+   * Applies the entries chosen of the file read for import, once: a call while they are being applied joins it.
    *
    * @param entries - The values chosen.
    */
-  public async applyImport(entries: ReadonlyArray<ILevelViewerSnapshotEntry>): Promise<void> {
-    if (!this.importing || this.isApplying) {
+  @ExclusiveFlow()
+  public *applyImport(entries: ReadonlyArray<ILevelViewerSnapshotEntry>): TFlow {
+    if (!this.importing) {
       return;
     }
 
-    runInAction(() => {
-      this.isApplying = true;
-    });
+    this.isApplying = true;
 
     try {
-      const result: ILevelViewerSnapshotApplied = await this.apply(entries);
-
-      runInAction(() => {
-        this.result = result;
-      });
+      this.result = yield* call(this.apply(entries));
     } catch (error: unknown) {
       this.closeImport();
       this.fail("import the view", error);
     } finally {
-      runInAction(() => {
-        this.isApplying = false;
-      });
+      this.isApplying = false;
     }
   }
 

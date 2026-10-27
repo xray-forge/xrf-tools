@@ -1,16 +1,14 @@
 import { useInjection } from "@wirestate/react";
-import { AsyncState } from "@xrf/async";
 import { formatCount } from "@xrf/format";
-import { LevelSpawnObject, LevelSpawnObjectDetails, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelSpawnObject, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { XrayRevision } from "@xrf/ipc/types/xrf-vfs";
 import { Maybe, Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { LevelSpawnDetails } from "@/applications/level-viewer/components/panels/LevelSpawnPanel/LevelSpawnDetails";
 import { LevelSpawnVisibilityToggle } from "@/applications/level-viewer/components/panels/LevelSpawnPanel/LevelSpawnVisibilityToggle";
-import { useLevelSpawnDetails } from "@/applications/level-viewer/components/panels/LevelSpawnPanel/use-level-spawn-details";
-import { toLevelFramedGoTo } from "@/applications/level-viewer/lib/camera/level-camera-frame";
 import { describeLevelSpawnRelease } from "@/applications/level-viewer/lib/spawn/level-spawn-release";
-import { toLevelSpawnPosition, toLevelSpawnSphere } from "@/applications/level-viewer/lib/spawn/level-spawn-sphere";
+import { toLevelSpawnPosition } from "@/applications/level-viewer/lib/spawn/level-spawn-sphere";
 import {
   listLevelSpawnGroupIds,
   TLevelSpawnTreeRow,
@@ -19,11 +17,11 @@ import {
   toLevelSpawnSectionId,
   toLevelSpawnTree,
 } from "@/applications/level-viewer/lib/spawn/level-spawn-tree";
+import { LevelViewerSpawnService } from "@/applications/level-viewer/services/spawn";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { ILevelSpawnReport, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
-import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
@@ -67,7 +65,7 @@ export function LevelSpawnPanel({
   const loadService: LevelLoadService = useInjection(LevelLoadService);
   const viewService: LevelViewService = useInjection(LevelViewService);
   const viewportService: LevelViewportService = useInjection(LevelViewportService);
-  const renderService: LevelRenderService = useInjection(LevelRenderService);
+  const spawnService: LevelViewerSpawnService = useInjection(LevelViewerSpawnService);
 
   const tree: IUseTreeState = useTreeState();
   const { expandAll, select } = tree;
@@ -97,36 +95,12 @@ export function LevelSpawnPanel({
   );
 
   const selected: Nullable<LevelSpawnObject> = tree.selectedId ? (byId.get(tree.selectedId) ?? null) : null;
-  const details: AsyncState<LevelSpawnObjectDetails> = useLevelSpawnDetails(
-    loadService.level.value?.selected.sessionId ?? null,
-    selected?.index ?? null,
-    loadService.spawnRevision
-  );
+  const selectedIndex: Nullable<number> = selected?.index ?? null;
+  const sessionId: Nullable<string> = loadService.level.value?.selected.sessionId ?? null;
+  const spawnRevision: Nullable<XrayRevision> = loadService.spawnRevision;
 
   // The pick this panel made of the row it chose, which the tree already shows.
   const made = useRef<Nullable<TLevelPick>>(null);
-
-  // Framed by the sphere its model spans, as the renderer holds it: asked when gone to, since it stands only once drawn.
-  const onGoTo = useCallback(
-    async (object: LevelSpawnObject) => {
-      const sessionId: Maybe<string> = loadService.level.value?.selected.sessionId;
-      const sphere = await renderService.locateSpawnObject(object.index);
-
-      // Another level opened while the renderer answered: the object is not where the camera now is.
-      if (loadService.level.value?.selected.sessionId !== sessionId) {
-        return;
-      }
-
-      renderService.goTo(
-        toLevelFramedGoTo(
-          viewportService.camera,
-          toLevelSpawnSphere(object, sphere),
-          viewService.cameraOptions.fieldOfView
-        )
-      );
-    },
-    [loadService, renderService, viewportService, viewService]
-  );
 
   // An object chosen here is picked as a click on it is, so the viewport marks it and the readout names it.
   const onSelect = useCallback(
@@ -151,11 +125,17 @@ export function LevelSpawnPanel({
   const onActivate = useCallback(
     (item: ITreeNode<TLevelSpawnTreeRow>) => {
       if (item.payload?.kind === "object") {
-        void onGoTo(item.payload.object);
+        void spawnService.goTo(item.payload.object);
       }
     },
-    [onGoTo]
+    [spawnService]
   );
+
+  const onGoToSelected = useCallback(() => {
+    if (selected) {
+      void spawnService.goTo(selected);
+    }
+  }, [selected, spawnService]);
 
   const renderLabel = useCallback((item: ITreeNode<TLevelSpawnTreeRow>): ReactNode => {
     const row: Maybe<TLevelSpawnTreeRow> = item.payload;
@@ -212,6 +192,11 @@ export function LevelSpawnPanel({
 
   // Another level's objects are numbered afresh, so what was chosen names some other object now.
   useEffect(() => select(null), [description, select]);
+
+  // The object chosen is read again for a listing read again, which may say something else of it.
+  useEffect(() => {
+    void spawnService.describe(selectedIndex);
+  }, [selectedIndex, sessionId, spawnRevision, spawnService]);
 
   // The tree shows what is picked: an object picked elsewhere chosen, what stands above it opened and any filter
   // hiding it cleared; anything else picked, or nothing, chooses nothing here.
@@ -296,8 +281,8 @@ export function LevelSpawnPanel({
           <LevelSpawnDetails
             object={selected}
             visual={description.visuals[selected.visual] ?? ""}
-            details={details}
-            onGoTo={() => void onGoTo(selected)}
+            details={spawnService.details.state}
+            onGoTo={onGoToSelected}
           />
         </div>
       ) : null}

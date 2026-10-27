@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { isComputedProp, isObservableProp } from "@wirestate/mobx";
+import { EventBus, WireEvent } from "@wirestate/core";
+import { isComputedProp } from "@wirestate/mobx";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
@@ -7,7 +8,9 @@ import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
 import { LevelViewerListService } from "@/applications/level-viewer/services/list";
 import { createRoots } from "@/core/assets/lib";
-import { mockInjectedService } from "@/fixtures/utils/container";
+import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
+import { EApplicationId } from "@/core/routing/application";
+import { mockApplicationScope, mockInjectedService } from "@/fixtures/utils/container";
 
 const ROOTS: XrayRoots = createRoots(["C:\\game\\db"]);
 
@@ -23,7 +26,6 @@ describe("LevelViewerListService", () => {
   it("applies its mobx annotations", () => {
     const { service } = mockInjectedService(LevelViewerListService);
 
-    expect(isObservableProp(service, "levels")).toBe(true);
     expect(isComputedProp(service, "drawable")).toBe(true);
   });
 
@@ -61,9 +63,18 @@ describe("LevelViewerListService", () => {
     expect(service.drawable).toEqual([]);
   });
 
-  it("records a failure as state rather than throwing it at the caller", async () => {
-    const { service } = mockInjectedService(LevelViewerListService);
+  it("records a failure as state and says it from the viewer, rather than throwing it at the caller", async () => {
+    const { container, service } = mockInjectedService(
+      LevelViewerListService,
+      mockApplicationScope(EApplicationId.LEVEL_VIEWER)
+    );
+    const raised: Array<INotificationPayload> = [];
 
+    container
+      .get(EventBus)
+      .subscribe(EMIT_NOTIFICATION_EVENT, (event: WireEvent<INotificationPayload>) =>
+        raised.push(event.payload as INotificationPayload)
+      );
     mockIpcCommands({
       [ELevelsCommand.LIST_LEVELS]: () => {
         throw new Error("no roots are mounted");
@@ -74,5 +85,28 @@ describe("LevelViewerListService", () => {
 
     expect(service.levels.value).toBeNull();
     expect(service.levels.error?.message).toBe("no roots are mounted");
+    expect(raised).toEqual([
+      expect.objectContaining({
+        severity: ENotificationSeverity.ERROR,
+        source: EApplicationId.LEVEL_VIEWER,
+        title: "Could not list the levels",
+      }),
+    ]);
+  });
+
+  // A failed listing offers none of the levels another root listed before it.
+  it("forgets the levels listed before a listing that fails", async () => {
+    const { service } = mockInjectedService(LevelViewerListService);
+
+    mockIpcCommands({ [ELevelsCommand.LIST_LEVELS]: [mockEntry("zaton")] });
+    await service.list(ROOTS);
+    mockIpcCommands({
+      [ELevelsCommand.LIST_LEVELS]: () => {
+        throw new Error("no roots are mounted");
+      },
+    });
+    await service.list(ROOTS);
+
+    expect(service.drawable).toEqual([]);
   });
 });

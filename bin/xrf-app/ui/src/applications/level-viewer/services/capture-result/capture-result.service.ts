@@ -235,48 +235,69 @@ export class LevelViewerCaptureResultService {
   }
 
   /** Deletes what was captured for good, with its annotations once they are written; nothing while it is exported. */
-  public async remove(): Promise<void> {
-    if (this.isExporting) {
-      return;
+  @ExclusiveFlow()
+  public *remove(): TFlow {
+    if (!this.isExporting) {
+      yield* this.attempt("delete the capture", (captured: TLevelCapture) => this.delete(captured));
     }
-
-    await this.attempt("delete the capture", async ({ image }: TLevelCapture) => {
-      await this.annotationsWritten;
-      await levelsCommands.deleteScreenshot(image.path);
-      this.log.info("Deleted a capture:", image.path);
-      this.show(null);
-    });
   }
 
   /** Shows what was captured selected in its folder. */
-  public reveal(): Promise<void> {
-    return this.attempt("show the capture", ({ image }: TLevelCapture) => systemCommands.revealPath(image.path));
+  @ExclusiveFlow()
+  public *reveal(): TFlow {
+    yield* this.attempt("show the capture", ({ image }: TLevelCapture) => call(systemCommands.revealPath(image.path)));
   }
 
   /** Shows the last export selected in its folder. */
-  public async revealExport(): Promise<void> {
-    if (this.exported) {
-      await systemCommands.revealPath(this.exported).catch((error: unknown) => this.fail("show the export", error));
+  @ExclusiveFlow()
+  public *revealExport(): TFlow {
+    const exported: Nullable<string> = this.exported;
+
+    if (!exported) {
+      return;
+    }
+
+    try {
+      yield* call(systemCommands.revealPath(exported));
+    } catch (error: unknown) {
+      this.fail("show the export", error);
     }
   }
 
   /** Puts the capture's path on the clipboard. */
-  public copyPath(): Promise<void> {
-    return this.attempt("copy the capture's path", ({ image }: TLevelCapture) =>
-      navigator.clipboard.writeText(image.path)
+  @ExclusiveFlow()
+  public *copyPath(): TFlow {
+    yield* this.attempt("copy the capture's path", ({ image }: TLevelCapture) =>
+      call(navigator.clipboard.writeText(image.path))
     );
   }
 
   /** Puts the capture's image on the clipboard. */
-  public copyImage(): Promise<void> {
-    return this.attempt("copy the capture", ({ image }: TLevelCapture) => copyLevelViewerImage(image));
+  @ExclusiveFlow()
+  public *copyImage(): TFlow {
+    yield* this.attempt("copy the capture", ({ image }: TLevelCapture) => call(copyLevelViewerImage(image)));
   }
 
   /** Does `action` with what was captured, if anything; a failure is kept as `failure`, as `what` says. */
-  private async attempt(what: string, action: (captured: TLevelCapture) => Promise<unknown>): Promise<void> {
-    if (this.captured) {
-      await action(this.captured).catch((error: unknown) => this.fail(what, error));
+  private *attempt(what: string, action: (captured: TLevelCapture) => TFlow<unknown>): TFlow {
+    if (!this.captured) {
+      return;
     }
+
+    try {
+      yield* action(this.captured);
+    } catch (error: unknown) {
+      this.fail(what, error);
+    }
+  }
+
+  /** Deletes `captured` once the annotations drawn over it are written, and lets it go. */
+  private *delete({ image }: TLevelCapture): TFlow {
+    yield* call(this.annotationsWritten);
+    yield* call(levelsCommands.deleteScreenshot(image.path));
+
+    this.log.info("Deleted a capture:", image.path);
+    this.show(null);
   }
 
   @BoundAction()

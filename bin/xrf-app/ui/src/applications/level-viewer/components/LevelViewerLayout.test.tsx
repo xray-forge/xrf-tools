@@ -10,17 +10,11 @@ import { IPoint3 } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { LevelViewerLayout } from "@/applications/level-viewer/components/LevelViewerLayout";
-import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
-import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
-import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/screenshot";
-import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
+import { container as LEVEL_VIEWER_CONTAINER } from "@/applications/level-viewer/runtime";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
-import { LevelLookService } from "@/core/level/services/level-look.service";
 import { LevelRenderService } from "@/core/level/services/level-render.service";
-import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
-import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
 import { RenderSettingsService } from "@/core/render/services/render-settings";
@@ -39,24 +33,17 @@ function camera(position: Partial<IPoint3> = {}): ILevelCamera {
   };
 }
 
+function mockLevelViewerContainer(): Container {
+  return mockContainer([...(LEVEL_VIEWER_CONTAINER.bindings ?? [])]);
+}
+
 function renderReporting(onRender: () => void = () => undefined): {
   loader: LevelLoadService;
   renderer: LevelRenderService;
   view: RenderResult;
   viewport: LevelViewportService;
 } {
-  const container: Container = mockContainer([
-    LevelLoadService,
-    LevelRenderService,
-    LevelViewService,
-    LevelViewportService,
-    LevelWeatherService,
-    LevelLookService,
-    LevelViewerScreenshotService,
-    LevelViewerCaptureService,
-    LevelViewerCaptureResultService,
-    LevelViewerSnapshotService,
-  ]);
+  const container: Container = mockLevelViewerContainer();
 
   const view: RenderResult = renderWithProviders(
     <>
@@ -85,18 +72,7 @@ function renderLayout(
   overrides: Partial<Parameters<typeof LevelViewerLayout>[0]> = {},
   load: Nullable<RenderLoadReport> = null
 ): RenderResult {
-  const container: Container = mockContainer([
-    LevelLoadService,
-    LevelRenderService,
-    LevelViewService,
-    LevelViewportService,
-    LevelWeatherService,
-    LevelLookService,
-    LevelViewerScreenshotService,
-    LevelViewerCaptureService,
-    LevelViewerCaptureResultService,
-    LevelViewerSnapshotService,
-  ]);
+  const container: Container = mockLevelViewerContainer();
 
   container.get(LevelViewportService).noteLoad(load);
 
@@ -168,19 +144,7 @@ describe("LevelViewerLayout", () => {
 
   // A renderer that failed never draws the level, so the cover stays, and says why rather than waiting on.
   it("keeps the level covered and says why when the renderer fails", () => {
-    const container: Container = mockContainer([
-      LevelLoadService,
-      LevelRenderService,
-      LevelViewService,
-      LevelViewportService,
-      LevelWeatherService,
-      LevelLookService,
-      LevelViewerScreenshotService,
-      LevelViewerScreenshotService,
-      LevelViewerCaptureService,
-      LevelViewerCaptureResultService,
-      LevelViewerSnapshotService,
-    ]);
+    const container: Container = mockLevelViewerContainer();
 
     container.get(LevelViewportService).reveal();
     runInAction(() => {
@@ -331,19 +295,7 @@ describe("LevelViewerLayout", () => {
   it("times the passes from the overlays' popover and from the settings alike", async () => {
     clearLocalStorage();
 
-    const container: Container = mockContainer([
-      LevelLoadService,
-      LevelRenderService,
-      LevelViewService,
-      LevelViewportService,
-      LevelWeatherService,
-      LevelLookService,
-      LevelViewerScreenshotService,
-      LevelViewerScreenshotService,
-      LevelViewerCaptureService,
-      LevelViewerCaptureResultService,
-      LevelViewerSnapshotService,
-    ]);
+    const container: Container = mockLevelViewerContainer();
     const settings: RenderSettingsService = container.get(RenderSettingsService);
     const view: RenderResult = renderWithProviders(
       <>
