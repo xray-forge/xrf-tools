@@ -9,8 +9,9 @@ import { ApplicationProvider } from "@/ApplicationProvider";
 import { createContainerPlugins, ROOT_BINDINGS } from "@/core/container";
 import { CurrentToolProvider } from "@/core/routing/current-tool.context";
 import { IToolDescriptor } from "@/core/routing/tool";
+import { IShellContributed, useShellContributions } from "@/core/shell/contributions";
 import { EditorLeaveDialog } from "@/core/shell/editor-lifecycle";
-import { IEditorPanel, selectPanelsOnSide, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
+import { IEditorPanel, selectPanelsOnSide } from "@/core/shell/editor-shell";
 import { TOOL_CATALOG } from "@/ToolCatalog";
 
 export interface IRenderOptions {
@@ -27,14 +28,15 @@ export interface IRenderOptions {
 }
 
 /**
- * Renders whatever the subject publishes to the left, standing in for `ApplicationPanelSlot`.
+ * Renders whatever the subject publishes to the left, for the open tool or the shell, standing in for
+ * `ApplicationPanelSlot`.
  */
 function LeftPanelsOutlet(): ReactElement {
-  const panels: ReadonlyArray<IEditorPanel> = useEditorPanelsRegistry();
+  const { shell, tool }: IShellContributed<IEditorPanel> = useShellContributions("panels");
 
   return (
     <>
-      {selectPanelsOnSide(panels, "left").map((panel: IEditorPanel) => (
+      {selectPanelsOnSide([...tool, ...shell], "left").map((panel: IEditorPanel) => (
         <Fragment key={panel.id}>{panel.render()}</Fragment>
       ))}
     </>

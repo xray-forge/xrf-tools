@@ -1,3 +1,4 @@
+import { EToolId } from "@/core/routing/tool";
 import { defineMenu, defineMenuExtension, IMenu, IMenuExtension } from "@/core/shell/menu/lib";
 import { FILE_MENU } from "@/core/shell/menu/menus";
 
@@ -10,7 +11,7 @@ export const LEVEL_VIEWER_VIEW_MENU: IMenu<"overlays"> = defineMenu({
 
 /** What the level viewer adds to File: the view written to a file and read back, and the screenshot. */
 export const LEVEL_VIEWER_FILE_MENU_EXTENSION: IMenuExtension<"view" | "screenshot"> = defineMenuExtension(FILE_MENU, {
-  owner: "level-viewer",
+  owner: EToolId.LEVEL_VIEWER,
   sections: ["view", "screenshot"],
 });
 

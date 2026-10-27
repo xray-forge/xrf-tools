@@ -9,9 +9,9 @@ import { ViewListIcon } from "@xrf/ui/icons/view-list";
 import { ReactElement, useCallback } from "react";
 import { Route, Routes } from "react-router-dom";
 
+import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
-import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { SpawnFileService } from "@/tools/spawn-editor/services/spawn-file.service";
 
 import { SpawnEditorAlife } from "./chunks/alife/SpawnEditorAlife";
@@ -36,7 +36,7 @@ export function SpawnEditor({
   // Closing does not navigate: the tool shows its own picker again once nothing is open.
   const onClose = useCallback(() => spawnFileService.closeFile(), [spawnFileService]);
 
-  useEditorPanels(
+  useShellPanels(
     () => [
       {
         icon: <ViewListIcon />,
@@ -53,7 +53,7 @@ export function SpawnEditor({
 
   useEditorBusy(spawnFileService.isBusy);
 
-  useEditorStatus(
+  useShellStatus(
     header
       ? [
           `version ${header.version}`,

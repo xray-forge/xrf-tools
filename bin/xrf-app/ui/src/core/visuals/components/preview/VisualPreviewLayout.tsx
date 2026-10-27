@@ -9,7 +9,8 @@ import { cn } from "@xrf/ui/theme";
 import { ReactElement, ReactNode, useMemo } from "react";
 
 import { isAlphaRenderSurfaceDraw } from "@/core/render/lib/surface/render-surface-draw";
-import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
+import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
+import { IEditorPanel } from "@/core/shell/editor-shell";
 import { VisualPreviewEmpty, VisualPreviewToolbar } from "@/core/visuals/components/preview";
 import { VisualPreviewViewport } from "@/core/visuals/components/preview/VisualPreviewViewport";
 import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
@@ -81,7 +82,7 @@ export function VisualPreviewLayout({
       : ["No visual open"];
   }, [isLoading, model, triangleCount]);
 
-  useEditorPanels(() => {
+  useShellPanels(() => {
     const stripe: Array<IEditorPanel> = panels ? [...panels] : [];
 
     return tree
@@ -99,7 +100,7 @@ export function VisualPreviewLayout({
       : stripe;
   }, [tree, panels]);
 
-  useEditorStatus(status);
+  useShellStatus(status);
 
   return (
     <EditorLayout

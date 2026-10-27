@@ -3,7 +3,7 @@ import { ESystemCommand } from "@xrf/ipc/commands/system";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { ReactElement } from "react";
 
-import { useEditorStatus } from "@/core/shell/editor-shell";
+import { useShellStatus } from "@/core/shell/contributions";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -12,7 +12,7 @@ const MB: number = 1024 * 1024;
 const STATUS: ReadonlyArray<string> = ["3 files"];
 
 function Tool(): ReactElement {
-  useEditorStatus(STATUS);
+  useShellStatus(STATUS);
 
   return <></>;
 }

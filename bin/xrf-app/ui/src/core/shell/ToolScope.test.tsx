@@ -7,7 +7,8 @@ import { Fragment, ReactElement, Suspense } from "react";
 
 import { EToolGroupId, EToolId, EToolStatus, IToolDescriptor } from "@/core/routing/tool";
 import { createToolDescriptor } from "@/core/routing/tool-descriptor";
-import { IEditorPanel, selectPanelsOnSide, useEditorPanels, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
+import { IShellContributed, useShellContributions, useShellPanels } from "@/core/shell/contributions";
+import { IEditorPanel, selectPanelsOnSide } from "@/core/shell/editor-shell";
 import { ToolScope } from "@/core/shell/ToolScope";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -45,18 +46,18 @@ function TrackedPanel(): ReactElement {
 
 /** Publishes a panel and nothing else, the way an editor does. */
 function Publisher(): ReactElement {
-  useEditorPanels(() => [PANEL], []);
+  useShellPanels(() => [PANEL], []);
 
   return <div>content</div>;
 }
 
 /** Stands in for `ApplicationPanelSlot`, which is the thing that renders a published panel. */
 function PanelSlot(): ReactElement {
-  const panels: ReadonlyArray<IEditorPanel> = useEditorPanelsRegistry();
+  const { shell, tool }: IShellContributed<IEditorPanel> = useShellContributions("panels");
 
   return (
     <>
-      {selectPanelsOnSide(panels, "left").map((panel: IEditorPanel) => (
+      {selectPanelsOnSide([...tool, ...shell], "left").map((panel: IEditorPanel) => (
         <Fragment key={panel.id}>{panel.render()}</Fragment>
       ))}
     </>

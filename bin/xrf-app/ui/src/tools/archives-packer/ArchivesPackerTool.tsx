@@ -17,9 +17,9 @@ import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EToolId } from "@/core/routing/tool";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
+import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorLifecycle } from "@/core/shell/editor-lifecycle";
-import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { ToolLoader } from "@/core/shell/loading/ToolLoader";
 import { IPathField, usePathField } from "@/core/ui/form";
 import { ArchivesPackerService, EPackerSection } from "@/tools/archives-packer/services/archives-packer.service";
@@ -138,7 +138,7 @@ export function ArchivesPackerTool(): ReactElement {
 
   // Drawn by the shell beside every other tool's navigation, rather than as a column of this
   // tool's own. The menu reads the open section from the service, so this registers once.
-  useEditorPanels(
+  useShellPanels(
     () => [
       {
         icon: <TuneIcon />,
@@ -152,7 +152,7 @@ export function ArchivesPackerTool(): ReactElement {
     []
   );
 
-  useEditorStatus([
+  useShellStatus([
     packerService.configName ?? "no configuration",
     ...(packerService.isDirty ? ["unsaved changes"] : []),
     ...(packerService.operation.result ? [`${packerService.operation.result.volumes.length} volume(s)`] : []),

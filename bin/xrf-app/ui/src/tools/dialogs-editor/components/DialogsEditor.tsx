@@ -12,9 +12,9 @@ import { ReportProblemIcon } from "@xrf/ui/icons/report-problem";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { describeRoots } from "@/core/assets/lib";
+import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
-import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { DialogViewService } from "@/tools/dialogs-editor/services/dialog-view";
 import { DialogsService } from "@/tools/dialogs-editor/services/dialogs";
 
@@ -44,7 +44,7 @@ export function DialogsEditor(): ReactElement {
 
   useEditorBusy(dialogsService.project.isLoading);
 
-  useEditorPanels(
+  useShellPanels(
     () => [
       {
         icon: <AccountTreeIcon />,
@@ -78,7 +78,7 @@ export function DialogsEditor(): ReactElement {
     [findings]
   );
 
-  useEditorStatus([
+  useShellStatus([
     `${formatCount(fileCount)} ${fileCount === 1 ? "file" : "files"}`,
     `${formatCount(dialogCount)} dialogs`,
     // Zero text keys beside real dialogs is the signature of a layout pointed at the wrong place, so

@@ -1,4 +1,4 @@
-import { XrfApplicationError } from "@xrf/errors";
+import { EToolId } from "@/core/routing/tool";
 
 import { createMenuSections, IMenu, IMenuSection } from "./menu-descriptor";
 
@@ -9,8 +9,8 @@ import { createMenuSections, IMenu, IMenuSection } from "./menu-descriptor";
 export interface IMenuExtension<S extends string = string> {
   /** The menu the sections go into. */
   readonly menuId: string;
-  /** The tool adding them, whose slug prefixes each section's id so it never meets the menu's own. */
-  readonly owner: string;
+  /** The tool adding them, whose id prefixes each section's id so it never meets the menu's own. */
+  readonly owner: EToolId;
   /** Each section by name, which is how a contribution addresses one. */
   readonly sections: { readonly [K in S]: IMenuSection };
   /** The same sections in the order they are drawn. */
@@ -19,13 +19,11 @@ export interface IMenuExtension<S extends string = string> {
 
 /** An extension as authored. */
 export interface IMenuExtensionInit<S extends string> {
-  /** The slug of the tool adding the sections. */
-  owner: string;
+  /** The tool adding the sections. */
+  owner: EToolId;
   /** Section names in drawing order, kebab case. */
   sections: ReadonlyArray<S>;
 }
-
-const OWNER_PATTERN: RegExp = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /**
  * Declares sections a tool adds to another menu, whose `sections` are what its contributions name.
@@ -35,10 +33,6 @@ const OWNER_PATTERN: RegExp = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
  * @returns The frozen extension.
  */
 export function defineMenuExtension<S extends string>(menu: IMenu, init: IMenuExtensionInit<S>): IMenuExtension<S> {
-  if (!OWNER_PATTERN.test(init.owner)) {
-    throw new XrfApplicationError(`Menu extension owner '${init.owner}' is not a kebab case application slug.`);
-  }
-
   const sections: Record<S, IMenuSection> = createMenuSections(menu.id, init.sections, init.owner);
 
   return Object.freeze({

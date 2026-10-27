@@ -2,19 +2,22 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
-import { TEditorStatusSegment, useEditorStatusSegments } from "@/core/shell/editor-shell";
+import { IShellContributed, useShellContributions } from "@/core/shell/contributions";
+import { TEditorStatusSegment } from "@/core/shell/editor-shell";
 import { ApplicationMemoryStatus } from "@/core/shell/footer/ApplicationMemoryStatus";
 import { ApplicationStatusSegment } from "@/core/shell/footer/ApplicationStatusSegment";
 
 /**
- * Bottom status strip: what the open tool publishes, then what the process holds in memory.
+ * Bottom status strip: what the open tool publishes, then what the shell publishes, then what the process holds in
+ * memory.
  */
 export function ApplicationStatusBar({
   "data-testid": dataTestId = "application-status-bar",
   id = "application-status-bar",
   className,
 }: BaseComponentProps): ReactElement {
-  const segments: ReadonlyArray<TEditorStatusSegment> = useEditorStatusSegments();
+  const contributed: IShellContributed<TEditorStatusSegment> = useShellContributions("status");
+  const segments: Array<TEditorStatusSegment> = [...contributed.tool, ...contributed.shell];
 
   return (
     <div

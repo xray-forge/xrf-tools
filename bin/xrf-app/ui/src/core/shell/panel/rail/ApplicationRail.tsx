@@ -13,15 +13,21 @@ import { IEditorPanel } from "@/core/shell/editor-shell";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
 
 interface IApplicationRailProps {
-  panels: Array<IEditorPanel>;
+  panels: ReadonlyArray<IEditorPanel>;
+  shellPanels: ReadonlyArray<IEditorPanel>;
   activePanelId: Nullable<string>;
   onTogglePanel: (id: string) => void;
 }
 
 /**
- * The left edge: the active tool's navigation panels, then the window's own controls.
+ * The left edge: the active tool's navigation panels, then the shell's own panels and the window's own controls.
  */
-export function ApplicationRail({ panels, activePanelId, onTogglePanel }: IApplicationRailProps): ReactElement {
+export function ApplicationRail({
+  panels,
+  shellPanels,
+  activePanelId,
+  onTogglePanel,
+}: IApplicationRailProps): ReactElement {
   const { mode, setMode, systemMode } = useColorScheme();
 
   const settingsDialogService: SettingsDialogService = useInjection(SettingsDialogService);
@@ -37,6 +43,7 @@ export function ApplicationRail({ panels, activePanelId, onTogglePanel }: IAppli
     <ApplicationPanelStripe
       side={"left"}
       panels={panels}
+      shellPanels={shellPanels}
       activePanelId={activePanelId}
       footer={
         <>

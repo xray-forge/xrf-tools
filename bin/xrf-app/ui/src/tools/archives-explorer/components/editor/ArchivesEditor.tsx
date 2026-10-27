@@ -21,9 +21,9 @@ import {
 } from "@/core/archive/lib";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
+import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
-import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { IPanelSetActiveCommand, PANEL_SET_ACTIVE_COMMAND } from "@/core/shell/panel/panel-messages";
 import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";
 import { ArchivesService } from "@/tools/archives-explorer/services/archives";
@@ -86,11 +86,11 @@ export function ArchivesEditor(): ReactElement {
     [archivesService, commandBus, previewService]
   );
 
-  useEditorPanels(() => ARCHIVE_EXPLORER_PANELS, []);
+  useShellPanels(() => ARCHIVE_EXPLORER_PANELS, []);
 
   useEditorBusy(isBusy || Boolean(job));
 
-  useEditorStatus([
+  useShellStatus([
     `${formatCount(getSubjectSourceCount(subject))} ${isWorld ? "sources" : "archives"}`,
     `${formatCount(archivesService.entries.length)} files`,
     formatBytes(getSubjectSize(subject)),

@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { useEditorMenus } from "@/core/shell/editor-shell";
+import { useShellMenus } from "@/core/shell/contributions";
 import { IMenuContribution } from "@/core/shell/menu/lib";
 import { TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND } from "@/tools/level-viewer/commands";
 import { LevelViewerScreenshotDialog } from "@/tools/level-viewer/components/screenshot/LevelViewerScreenshotDialog";
@@ -17,7 +17,7 @@ export function LevelViewerScreenshotActions(): ReactElement {
   const screenshotService: LevelViewerScreenshotService = useInjection(LevelViewerScreenshotService);
   const shot: Nullable<ILevelViewerScreenshot> = screenshotService.shot.value;
 
-  useEditorMenus(
+  useShellMenus(
     (): Array<IMenuContribution> => [
       {
         section: LEVEL_VIEWER_FILE_MENU_EXTENSION.sections.screenshot,

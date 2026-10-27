@@ -11,9 +11,9 @@ import { format } from "date-fns";
 import { ReactElement, useCallback } from "react";
 
 import { toAssetLocation } from "@/core/assets/lib";
+import { useShellMenus, useShellPanels, useShellStatus } from "@/core/shell/contributions";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
-import { useEditorMenus, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { IMenuContribution } from "@/core/shell/menu/lib";
 import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/tools/sprite-equipment-editor/commands";
 import { SPRITE_EQUIPMENT_EDITOR_PANELS } from "@/tools/sprite-equipment-editor/components/panels/sprite-equipment-editor-panels";
@@ -52,9 +52,9 @@ export function EquipmentSpriteEditor({
   // Closing does not navigate: the tool shows its own picker again once nothing is open.
   const onClose = useCallback(() => spriteEquipmentService.closeEquipmentProject(), [spriteEquipmentService]);
 
-  useEditorPanels(() => SPRITE_EQUIPMENT_EDITOR_PANELS, []);
+  useShellPanels(() => SPRITE_EQUIPMENT_EDITOR_PANELS, []);
 
-  useEditorMenus(
+  useShellMenus(
     (): Array<IMenuContribution> => [
       {
         section: SPRITE_EQUIPMENT_EDITOR_MENU.sections.sprite,
@@ -64,7 +64,7 @@ export function EquipmentSpriteEditor({
     []
   );
 
-  useEditorStatus(
+  useShellStatus(
     spriteImage
       ? [
           `${spriteImage.image.width} x ${spriteImage.image.height}`,

@@ -18,7 +18,8 @@ import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/c
 import { ILevelOverlay, LEVEL_OVERLAYS } from "@/core/level/lib/view/level-overlays";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { IEditorPanel, useEditorMenus, useEditorPanels } from "@/core/shell/editor-shell";
+import { useShellMenus, useShellPanels } from "@/core/shell/contributions";
+import { IEditorPanel } from "@/core/shell/editor-shell";
 import { IMenuContribution, TMenuEntry } from "@/core/shell/menu/lib";
 import { LevelViewerCaptureActions } from "@/tools/level-viewer/components/capture/LevelViewerCaptureActions";
 import { LevelViewerCaptureCover } from "@/tools/level-viewer/components/capture/LevelViewerCaptureCover";
@@ -81,7 +82,7 @@ export function LevelViewerLayout({
   const isOpen: boolean = Boolean(name);
   const heading: Nullable<string> = name ?? pending;
 
-  useEditorPanels(
+  useShellPanels(
     (): Array<IEditorPanel> => [
       {
         icon: <WbCloudyIcon />,
@@ -128,7 +129,7 @@ export function LevelViewerLayout({
     []
   );
 
-  useEditorMenus(
+  useShellMenus(
     (): Array<IMenuContribution> => [
       {
         section: LEVEL_VIEWER_VIEW_MENU.sections.overlays,

@@ -27,7 +27,7 @@ export default createEslintConfig(
     tailwindStylesheet: fileURLToPath(import.meta.resolve("@xrf/ui/theme/tailwind.css")),
     // `monospace` is declared by the theme; the other two are markers a parent selects on rather than styles directly.
     customClassNames: ["monospace", "workspace"],
-    effectHooks: "^useEditor(Panels|Menus)$",
+    effectHooks: "^useShell(Panels|Menus)$",
   }),
   {
     files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.mjs", "**/*.cjs"],

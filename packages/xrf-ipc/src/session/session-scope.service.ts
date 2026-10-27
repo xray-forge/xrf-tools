@@ -10,7 +10,7 @@ import { SessionId } from "#/types/xrf-app-core";
 export const SESSION_TOOL: InjectionToken<string> = new InjectionToken<string>("SessionTool");
 
 /** What the shell itself holds open, beside every application. */
-export const SHELL_SESSION_TOOL: string = "shell";
+export const SHELL_SESSION_TOOL = "shell" as const;
 
 /**
  * The scope a container's openings are held in: its tool, named alike across the window's page loads, so a reloaded

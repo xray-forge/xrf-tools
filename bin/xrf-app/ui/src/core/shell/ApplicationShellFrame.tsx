@@ -1,8 +1,7 @@
-import { useInjection, useOnCommand, useOnQuery } from "@wirestate/react";
+import { useOnCommand, useOnQuery } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { EditorToolbarHostContext } from "@xrf/ui/editor/toolbar";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { RailButton } from "@xrf/ui/shell/rail-button";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, ReactNode, Suspense, useCallback, useState } from "react";
 import { flushSync } from "react-dom";
@@ -12,16 +11,15 @@ import { ErrorBoundary, IErrorBoundaryFallbackProps } from "@/core/error/compone
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
 import { useCurrentTool } from "@/core/routing/current-tool.context";
 import { APPLICATION_SOURCE, IToolDescriptor } from "@/core/routing/tool";
-import { SettingsService } from "@/core/settings/services/settings";
+import { IShellContributed, useShellContributions } from "@/core/shell/contributions";
 import { useIsEditorBusy } from "@/core/shell/editor-lifecycle";
-import { IEditorPanel, selectPanelsOnSide, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
+import { IEditorPanel, selectPanelsOnSide } from "@/core/shell/editor-shell";
 import { ToolCrash } from "@/core/shell/error/ToolCrash";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { ToolLoader } from "@/core/shell/loading/ToolLoader";
+import { useShellOwnMenus } from "@/core/shell/menu/use-shell-own-menus";
 import { ApplicationPanelSlot } from "@/core/shell/panel/ApplicationPanelSlot";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
-import { JOBS_PANEL } from "@/core/shell/panel/jobs/jobs-panel";
-import { NOTIFICATIONS_PANEL } from "@/core/shell/panel/notifications/notification-panel";
 import {
   IPanelSetActiveCommand,
   IPanelSideCommand,
@@ -32,6 +30,7 @@ import {
 import { ApplicationRail } from "@/core/shell/panel/rail";
 import { IPanelSelection, usePanelSelection } from "@/core/shell/panel/use-panel-selection";
 import { IPanelWidth, usePanelWidth } from "@/core/shell/panel/use-panel-width";
+import { useShellOwnPanels } from "@/core/shell/panel/use-shell-own-panels";
 import { CLOSE_TOOL_COMMAND, TOOL_OPEN_QUERY } from "@/core/shell/shell-messages";
 import { ApplicationTitleBar } from "@/core/shell/title-bar/ApplicationTitleBar";
 import { ToolScope } from "@/core/shell/ToolScope";
@@ -53,12 +52,11 @@ export function ApplicationShellFrame({
   const tool: Nullable<IToolDescriptor> = useCurrentTool();
   const notify: TEmitNotification = useEmitNotification();
   const navigate: NavigateFunction = useNavigate();
-  const panels: ReadonlyArray<IEditorPanel> = useEditorPanelsRegistry();
+  const panels: IShellContributed<IEditorPanel> = useShellContributions("panels");
 
   const { pathname } = useLocation();
 
   const isBusy: boolean = useIsEditorBusy();
-  const settingsService: SettingsService = useInjection(SettingsService);
 
   // The element the routed content portals its toolbar into. Held here rather than in a provider of
   // its own: the frame hands it down and never reads it back.
@@ -66,14 +64,13 @@ export function ApplicationShellFrame({
 
   const toolPath: string = tool?.path ?? "root";
 
-  const leftPanels: Array<IEditorPanel> = selectPanelsOnSide(panels, "left");
-  const toolRightPanels: Array<IEditorPanel> = selectPanelsOnSide(panels, "right");
-  // Registered rather than merely hidden, so a build without dev mode never mounts a panel that polls the backend.
-  const rightPanels: Array<IEditorPanel> = [
-    ...toolRightPanels,
-    ...(settingsService.isDevModeEnabled ? [JOBS_PANEL] : []),
-    NOTIFICATIONS_PANEL,
-  ];
+  const toolLeftPanels: Array<IEditorPanel> = selectPanelsOnSide(panels.tool, "left");
+  const shellLeftPanels: Array<IEditorPanel> = selectPanelsOnSide(panels.shell, "left");
+  const toolRightPanels: Array<IEditorPanel> = selectPanelsOnSide(panels.tool, "right");
+  const shellRightPanels: Array<IEditorPanel> = selectPanelsOnSide(panels.shell, "right");
+
+  const leftPanels: Array<IEditorPanel> = [...toolLeftPanels, ...shellLeftPanels];
+  const rightPanels: Array<IEditorPanel> = [...toolRightPanels, ...shellRightPanels];
 
   const leftSelection: IPanelSelection = usePanelSelection("left", leftPanels, tool?.id ?? "root");
   const rightSelection: IPanelSelection = usePanelSelection("right", rightPanels, "global");
@@ -94,6 +91,10 @@ export function ApplicationShellFrame({
       }),
     [tool, notify]
   );
+
+  // The shell contributes its own entries and panels the way a tool does, under its own key.
+  useShellOwnPanels();
+  useShellOwnMenus();
 
   // Flushed so the command is synchronous for its caller: whoever opens a panel to reach something inside it finds
   // that content mounted when the dispatch returns, with no frame to wait for and no retry to write.
@@ -130,7 +131,8 @@ export function ApplicationShellFrame({
 
         <div className={"flex min-h-0 grow flex-nowrap"}>
           <ApplicationRail
-            panels={leftPanels}
+            panels={toolLeftPanels}
+            shellPanels={shellLeftPanels}
             activePanelId={leftSelection.activePanelId}
             onTogglePanel={leftSelection.onTogglePanel}
           />
@@ -166,28 +168,8 @@ export function ApplicationShellFrame({
           <ApplicationPanelStripe
             side={"right"}
             panels={toolRightPanels}
+            shellPanels={shellRightPanels}
             activePanelId={rightSelection.activePanelId}
-            footer={
-              <>
-                {settingsService.isDevModeEnabled ? (
-                  <RailButton
-                    label={JOBS_PANEL.label}
-                    icon={JOBS_PANEL.icon}
-                    tooltipPlacement={"left"}
-                    isSelected={rightSelection.activePanelId === JOBS_PANEL.id}
-                    onClick={() => rightSelection.onTogglePanel(JOBS_PANEL.id)}
-                  />
-                ) : null}
-
-                <RailButton
-                  label={NOTIFICATIONS_PANEL.label}
-                  icon={NOTIFICATIONS_PANEL.icon}
-                  tooltipPlacement={"left"}
-                  isSelected={rightSelection.activePanelId === NOTIFICATIONS_PANEL.id}
-                  onClick={() => rightSelection.onTogglePanel(NOTIFICATIONS_PANEL.id)}
-                />
-              </>
-            }
             onTogglePanel={rightSelection.onTogglePanel}
           />
         </div>

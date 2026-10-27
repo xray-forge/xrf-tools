@@ -10,9 +10,9 @@ import { RefreshIcon } from "@xrf/ui/icons/refresh";
 import { Alert } from "@xrf/ui/material/alert";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
+import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
-import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { ExportsService } from "@/tools/exports-explorer/services/exports.service";
 
 import { groupExports, IExportGroup } from "./exports/exports-groups";
@@ -51,7 +51,7 @@ export function ExportsEditor(): ReactElement {
     }
   }, [selectedDeclaration, selectedName]);
 
-  useEditorPanels(
+  useShellPanels(
     () => [
       {
         icon: <ListAltIcon />,
@@ -68,7 +68,7 @@ export function ExportsEditor(): ReactElement {
   );
 
   useEditorBusy(isBusy);
-  useEditorStatus([
+  useShellStatus([
     `${formatCount(declarations.length)} ${declarations.length === 1 ? "export" : "exports"}`,
     `${formatCount(groups.length)} ${groups.length === 1 ? "group" : "groups"}`,
     ...(exportsService.project.isLoading ? ["Refreshing"] : []),

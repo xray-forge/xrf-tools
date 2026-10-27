@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { useEditorMenus } from "@/core/shell/editor-shell";
+import { useShellMenus } from "@/core/shell/contributions";
 import { IMenuContribution } from "@/core/shell/menu/lib";
 import {
   CAPTURE_LEVEL_CUBEMAP_KEYBIND_COMMAND,
@@ -18,7 +18,7 @@ import { LevelViewerCaptureService } from "@/tools/level-viewer/services/level-v
 export function LevelViewerCaptureActions(): ReactElement {
   const captureService: LevelViewerCaptureService = useInjection(LevelViewerCaptureService);
 
-  useEditorMenus(
+  useShellMenus(
     (): Array<IMenuContribution> => [
       {
         section: LEVEL_VIEWER_FILE_MENU_EXTENSION.sections.screenshot,
