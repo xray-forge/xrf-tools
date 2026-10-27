@@ -7,6 +7,7 @@ import { mockIpcCommands } from "@xrf/ipc/testing";
 import { ELevelSpawnCategory, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
+import { LevelViewerSpawnService } from "@/applications/level-viewer/services/spawn";
 import { mockLevelSpawnObject, mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
@@ -88,6 +89,7 @@ async function renderPanel(
     LevelViewportService,
     LevelWeatherService,
     LevelLookService,
+    LevelViewerSpawnService,
   ]);
   const service: LevelLoadService = container.get(LevelLoadService);
 

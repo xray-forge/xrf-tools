@@ -1,15 +1,13 @@
 import { Injectable } from "@wirestate/core";
-import { BoundAction, Computed, Observable } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
-import { transformError } from "@xrf/errors";
-import { call, LatestFlow, TFlow } from "@xrf/flow";
-import { formatDuration } from "@xrf/format";
+import { BoundAction, Computed } from "@wirestate/mobx";
+import { LatestFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { LevelEntry } from "@xrf/ipc/types/xrf-app-levels";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
-import { Logger, Timer } from "@xrf/logging";
+import { Logger } from "@xrf/logging";
 
 import { describeRoots } from "@/core/assets/lib";
+import { CommandOperation } from "@/core/operations/lib/command-operation";
 
 /**
  * What levels the mounted roots hold, for a picker to choose from.
@@ -18,8 +16,8 @@ import { describeRoots } from "@/core/assets/lib";
 export class LevelViewerListService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  @Observable()
-  public levels: AsyncState<Array<LevelEntry>> = AsyncState.idle();
+  /** Every level the roots last listed hold. */
+  public readonly levels: CommandOperation<Array<LevelEntry>> = new CommandOperation(this.log);
 
   /**
    * @returns Levels that ship render geometry, which are the ones there is anything to draw for.
@@ -32,46 +30,23 @@ export class LevelViewerListService {
   /** Forgets a listing, which is what roots that are no longer the ones it was made for makes it. */
   @BoundAction()
   public reset(): void {
-    this.levels = AsyncState.idle();
+    this.levels.reset();
   }
 
   /**
-   * Lists the levels of mounted roots.
+   * Lists the levels of mounted roots, starting from nothing so a failed listing never offers another root's levels.
    *
    * @param roots - Roots to search, loose or archived alike.
    */
-  @LatestFlow("levels")
+  @LatestFlow()
   public *list(roots: XrayRoots): TFlow {
-    const timer: Timer = new Timer();
+    this.levels.reset();
 
-    this.log.info("Listing levels:", describeRoots(roots));
-
-    try {
-      this.levels = this.levels.asLoading();
-
-      const entries: Array<LevelEntry> = yield* call(levelsCommands.listLevels(roots));
-
-      this.log.info(
-        "Listed levels:",
-        describeRoots(roots),
-        entries.length,
-        "levels, in",
-        formatDuration(timer.elapsed())
-      );
-
-      this.levels = this.levels.asReady(entries);
-    } catch (error: unknown) {
-      const transformed: Error = transformError(error);
-
-      this.log.error(
-        "Failed to list levels:",
-        describeRoots(roots),
-        "after",
-        formatDuration(timer.elapsed()),
-        transformed
-      );
-
-      this.levels = this.levels.asFailed(transformed);
-    }
+    yield* this.levels.run({
+      name: "List levels",
+      subject: describeRoots(roots),
+      command: () => levelsCommands.listLevels(roots),
+      failure: "Could not list the levels",
+    });
   }
 }
