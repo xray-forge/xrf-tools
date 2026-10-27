@@ -11,6 +11,7 @@ import {
   TextureSaveOutcome,
   TextureVocabulary,
 } from "@xrf/ipc/types/xrf-app-textures";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { TextureEncodingFormat } from "@xrf/ipc/types/xrf-texture";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
@@ -214,7 +215,8 @@ export class TextureEditorService {
         describeTextureSaveOutcome(reference ?? "texture", outcome),
     });
 
-    if (!completion || completion.error) {
+    // A stopped save published neither file, so the candidate held for it is still the pending change.
+    if (!completion || completion.error || completion.result.outcome === EJobOutcome.CANCELLED) {
       return;
     }
 

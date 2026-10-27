@@ -1,4 +1,5 @@
 import { TextureEncodingComparison } from "@xrf/ipc/types/xrf-app-textures";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
@@ -22,7 +23,7 @@ export function describeTextureCompareOutcome(
 
   const count: number = result?.candidates.length ?? 0;
 
-  if (result?.outcome === "cancelled") {
+  if (result?.outcome === EJobOutcome.CANCELLED) {
     return {
       details: [reference, `Weighed ${count} format(s) before stopping; those are still available to save.`].join("\n"),
       severity: ENotificationSeverity.INFO,

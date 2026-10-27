@@ -8,6 +8,7 @@ import {
   TextureMakeBumpOutcome,
   TEXTURES_JOB_MAKE_BUMP,
 } from "@xrf/ipc/types/xrf-app-textures";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
@@ -111,7 +112,7 @@ export class TextureBumpService {
         ),
     });
 
-    if (!completion || completion.error || completion.result?.outcome === "cancelled") {
+    if (!completion || completion.error || completion.result?.outcome === EJobOutcome.CANCELLED) {
       return;
     }
 

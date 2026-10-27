@@ -1,4 +1,5 @@
 import { TextureSaveOutcome } from "@xrf/ipc/types/xrf-app-textures";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { ENotificationSeverity } from "@/core/notifications/lib";
@@ -17,7 +18,7 @@ export function describeTextureSaveOutcome(reference: string, outcome: IJobOutco
     return describeJobFailure("Could not save texture", reference, error);
   }
 
-  if (result?.outcome === "cancelled") {
+  if (result?.outcome === EJobOutcome.CANCELLED) {
     return {
       details: [reference, "Nothing was written: both files are prepared before either is published."].join("\n"),
       severity: ENotificationSeverity.INFO,
