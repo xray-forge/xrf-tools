@@ -13,7 +13,7 @@ import {
   TLevelCubeExportKind,
 } from "@/applications/level-viewer/lib/cube/level-cube-export";
 import { ILevelViewerImage } from "@/applications/level-viewer/lib/files/level-viewer-image";
-import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
 import { cn } from "@/core/theme/class-name";
 import { CheckboxFormRow, ChoiceFormRow } from "@/core/ui/form";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";
@@ -35,27 +35,24 @@ export function LevelViewerCubeResult({
   className,
   cross,
 }: ILevelViewerCubeResultProps): ReactElement {
-  const captureService: LevelViewerCaptureService = useInjection(LevelViewerCaptureService);
-  const settings: ILevelCubeExportSettings = captureService.cubeExport;
+  const resultService: LevelViewerCaptureResultService = useInjection(LevelViewerCaptureResultService);
+  const settings: ILevelCubeExportSettings = resultService.cubeExport;
   const captured: number = toLevelCubeFaceSize(cross.width);
   const size: number = Math.min(settings.size, captured);
   const isDds: boolean = isLevelCubeExportSingle(settings.kind);
 
-  const onKind = useCallback((kind: TLevelCubeExportKind) => captureService.setCubeExport({ kind }), [captureService]);
+  const onKind = useCallback((kind: TLevelCubeExportKind) => resultService.setCubeExport({ kind }), [resultService]);
 
   const onFormat = useCallback(
-    (format: ETextureEncodingFormat) => captureService.setCubeExport({ format }),
-    [captureService]
+    (format: ETextureEncodingFormat) => resultService.setCubeExport({ format }),
+    [resultService]
   );
 
-  const onSize = useCallback(
-    (value: string) => captureService.setCubeExport({ size: Number(value) }),
-    [captureService]
-  );
+  const onSize = useCallback((value: string) => resultService.setCubeExport({ size: Number(value) }), [resultService]);
 
   const onMipmapped = useCallback(
-    (isMipmapped: boolean) => captureService.setCubeExport({ isMipmapped }),
-    [captureService]
+    (isMipmapped: boolean) => resultService.setCubeExport({ isMipmapped }),
+    [resultService]
   );
 
   return (

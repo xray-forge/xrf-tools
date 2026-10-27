@@ -21,7 +21,7 @@ import {
   TLevelMapExportKind,
   toLevelMapExportSize,
 } from "@/applications/level-viewer/lib/map/level-map-export";
-import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
 import { cn } from "@/core/theme/class-name";
 import { CheckboxFormRow, ChoiceFormRow } from "@/core/ui/form";
 import { IImageViewportView, ImageViewport } from "@/core/ui/media/ImageViewport";
@@ -48,8 +48,8 @@ export function LevelViewerMapResult({
   className,
   map,
 }: ILevelViewerMapResultProps): ReactElement {
-  const captureService: LevelViewerCaptureService = useInjection(LevelViewerCaptureService);
-  const settings: ILevelMapExportSettings = captureService.mapExport;
+  const resultService: LevelViewerCaptureResultService = useInjection(LevelViewerCaptureResultService);
+  const settings: ILevelMapExportSettings = resultService.mapExport;
   const captured: number = Math.max(map.width, map.height);
   const [width, height]: [number, number] = toLevelMapExportSize(
     map.width,
@@ -59,8 +59,8 @@ export function LevelViewerMapResult({
   );
   const isDds: boolean = settings.kind === "dds";
   const isSvg: boolean = settings.kind === "svg";
-  const annotations: ILevelMapAnnotations = captureService.mapAnnotations;
-  const annotationsUrl: Nullable<string> = captureService.annotationsUrl;
+  const annotations: ILevelMapAnnotations = resultService.mapAnnotations;
+  const annotationsUrl: Nullable<string> = resultService.annotationsUrl;
 
   const renderOverlay = useCallback(
     (view: IImageViewportView): ReactNode =>
@@ -70,43 +70,43 @@ export function LevelViewerMapResult({
 
   const onAnnotationKind = useCallback(
     (kind: ELevelAnnotationKind, isShown: boolean) =>
-      captureService.setMapAnnotations(toLevelMapAnnotationsWith(annotations, kind, isShown)),
-    [annotations, captureService]
+      resultService.setMapAnnotations(toLevelMapAnnotationsWith(annotations, kind, isShown)),
+    [annotations, resultService]
   );
 
   const onLabelled = useCallback(
-    (isLabelled: boolean) => captureService.setMapAnnotations({ ...annotations, isLabelled }),
-    [annotations, captureService]
+    (isLabelled: boolean) => resultService.setMapAnnotations({ ...annotations, isLabelled }),
+    [annotations, resultService]
   );
 
   const onExportAnnotations = useCallback(
     (value: string) =>
-      captureService.setMapExport({
+      resultService.setMapExport({
         annotations: value === ANNOTATIONS_NONE ? null : (value as EMapExportAnnotations),
       }),
-    [captureService]
+    [resultService]
   );
 
-  const onKind = useCallback((kind: TLevelMapExportKind) => captureService.setMapExport({ kind }), [captureService]);
+  const onKind = useCallback((kind: TLevelMapExportKind) => resultService.setMapExport({ kind }), [resultService]);
 
   const onFormat = useCallback(
-    (format: ETextureEncodingFormat) => captureService.setMapExport({ format }),
-    [captureService]
+    (format: ETextureEncodingFormat) => resultService.setMapExport({ format }),
+    [resultService]
   );
 
   const onLongSide = useCallback(
-    (value: string) => captureService.setMapExport({ longSide: Number(value) }),
-    [captureService]
+    (value: string) => resultService.setMapExport({ longSide: Number(value) }),
+    [resultService]
   );
 
   const onCoverage = useCallback(
-    (isKept: boolean) => captureService.setMapExport({ backdrop: isKept ? null : LEVEL_MAP_BACKDROP }),
-    [captureService]
+    (isKept: boolean) => resultService.setMapExport({ backdrop: isKept ? null : LEVEL_MAP_BACKDROP }),
+    [resultService]
   );
 
   const onMipmapped = useCallback(
-    (isMipmapped: boolean) => captureService.setMapExport({ isMipmapped }),
-    [captureService]
+    (isMipmapped: boolean) => resultService.setMapExport({ isMipmapped }),
+    [resultService]
   );
 
   return (

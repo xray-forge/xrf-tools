@@ -1,4 +1,5 @@
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
 import { LevelViewerListService } from "@/applications/level-viewer/services/list";
 import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/screenshot";
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
@@ -20,6 +21,7 @@ export const container: ContainerDefinition = {
     LevelRenderService,
     LevelViewService,
     LevelViewerCaptureService,
+    LevelViewerCaptureResultService,
     LevelViewerScreenshotService,
     LevelViewerSnapshotService,
     LevelViewportService,

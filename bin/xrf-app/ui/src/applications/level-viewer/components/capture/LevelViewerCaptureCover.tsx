@@ -2,7 +2,8 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { CAPTURE_NAMES, LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { LEVEL_CAPTURE_NAMES } from "@/applications/level-viewer/lib/capture/level-capture";
+import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
 import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -28,7 +29,7 @@ export function LevelViewerCaptureCover({
       id={id}
       className={cn("absolute inset-0 z-20 flex items-center justify-center bg-viewport-backdrop", className)}
     >
-      <DelayedProgress isOnViewport={true} label={`Capturing the ${CAPTURE_NAMES[captureService.mode]}…`} />
+      <DelayedProgress isOnViewport={true} label={`Capturing the ${LEVEL_CAPTURE_NAMES[captureService.mode]}…`} />
     </div>
   );
 }

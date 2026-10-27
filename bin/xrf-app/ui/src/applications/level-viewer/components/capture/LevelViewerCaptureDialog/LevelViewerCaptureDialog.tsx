@@ -5,9 +5,11 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useId, useState } from "react";
 
-import { ELevelCaptureMode } from "@/applications/level-viewer/lib/capture/level-capture";
+import { ELevelCaptureMode, LEVEL_CAPTURE_NAMES } from "@/applications/level-viewer/lib/capture/level-capture";
+import { TLevelCapture } from "@/applications/level-viewer/lib/capture/level-captured";
 import { ILevelMapParameters } from "@/applications/level-viewer/lib/map/level-map-capture";
-import { CAPTURE_NAMES, LevelViewerCaptureService, TLevelCapture } from "@/applications/level-viewer/services/capture";
+import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
@@ -30,16 +32,18 @@ export function LevelViewerCaptureDialog({
   className,
 }: BaseComponentProps): ReactElement {
   const captureService: LevelViewerCaptureService = useInjection(LevelViewerCaptureService);
+  const resultService: LevelViewerCaptureResultService = useInjection(LevelViewerCaptureResultService);
   const titleId: string = useId();
   const [isDeleteArmed, setDeleteArmed] = useState<boolean>(false);
   const mode: ELevelCaptureMode = captureService.mode;
   const mapParameters: Nullable<ILevelMapParameters> = captureService.mapParameters;
-  const captured: Nullable<TLevelCapture> = captureService.captured;
+  const captured: Nullable<TLevelCapture> = resultService.captured;
   const job: Nullable<IJobState> = captureService.operation.job;
   const isCapturing: boolean = captureService.isCapturing;
-  const isExporting: boolean = captureService.isExporting;
+  const isExporting: boolean = resultService.isExporting;
+  const failure: Nullable<string> = captureService.failure ?? resultService.failure;
   const isMap: boolean = (captured?.mode ?? mode) === ELevelCaptureMode.MAP;
-  const name: string = CAPTURE_NAMES[captured?.mode ?? mode];
+  const name: string = LEVEL_CAPTURE_NAMES[captured?.mode ?? mode];
 
   const onClose = useCallback(() => captureService.close(), [captureService]);
 
@@ -49,15 +53,15 @@ export function LevelViewerCaptureDialog({
 
   const onStop = useCallback(() => captureService.stop(), [captureService]);
 
-  const onBack = useCallback(() => captureService.back(), [captureService]);
+  const onBack = useCallback(() => resultService.back(), [resultService]);
 
-  const onExport = useCallback(() => void captureService.exportAs(), [captureService]);
+  const onExport = useCallback(() => void resultService.exportAs(), [resultService]);
 
-  const onReveal = useCallback(() => void captureService.reveal(), [captureService]);
+  const onReveal = useCallback(() => void resultService.reveal(), [resultService]);
 
-  const onCopyImage = useCallback(() => void captureService.copyImage(), [captureService]);
+  const onCopyImage = useCallback(() => void resultService.copyImage(), [resultService]);
 
-  const onCopyPath = useCallback(() => void captureService.copyPath(), [captureService]);
+  const onCopyPath = useCallback(() => void resultService.copyPath(), [resultService]);
 
   const onArmDelete = useCallback(() => setDeleteArmed(true), []);
 
@@ -65,8 +69,8 @@ export function LevelViewerCaptureDialog({
 
   const onDelete = useCallback(() => {
     setDeleteArmed(false);
-    void captureService.remove();
-  }, [captureService]);
+    void resultService.remove();
+  }, [resultService]);
 
   return (
     <Dialog
@@ -121,9 +125,9 @@ export function LevelViewerCaptureDialog({
           </>
         )}
 
-        {captureService.failure ? (
+        {failure ? (
           <Typography className={"text-error"} variant={"body2"} role={"alert"}>
-            {captureService.failure}
+            {failure}
           </Typography>
         ) : null}
       </DialogContent>

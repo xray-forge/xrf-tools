@@ -1,23 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { save } from "@tauri-apps/plugin-dialog";
-import { waitFor } from "@testing-library/react";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { ELevelsBulkRoute } from "@xrf/ipc/commands/levels-bulk";
 import { mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
-import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
-import { ELevelAnnotationKind, LevelMapDescription, SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelMapDescription, SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { RenderCubeCapture, RenderMapCapture } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 
 import { ELevelCaptureMode } from "@/applications/level-viewer/lib/capture/level-capture";
 import { ELevelMapArea, ELevelMapLook } from "@/applications/level-viewer/lib/map/level-map-capture";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
 import { ILevelViewContainerDescriptor, mockLevelViewContainer } from "@/core/level/fixtures/level-container";
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { LEVEL_WEATHER_NOON } from "@/core/level/lib/weather/level-weather-control";
 import { clearLocalStorage } from "@/core/storage";
-import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 
 const PATH: string = "appdata/level-viewer/screenshots/map_zaton-20261021-101500.png";
 
@@ -36,13 +33,20 @@ const ZATON_MAP: LevelMapDescription = {
 function mockCapture(
   level: Nullable<SelectedLevelDescription> = ZATON,
   levelMap: Nullable<LevelMapDescription> = level ? ZATON_MAP : null
-): ILevelViewContainerDescriptor & { service: LevelViewerCaptureService } {
-  const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer([LevelViewerCaptureService]);
+): ILevelViewContainerDescriptor & { service: LevelViewerCaptureService; result: LevelViewerCaptureResultService } {
+  const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer([
+    LevelViewerCaptureResultService,
+    LevelViewerCaptureService,
+  ]);
 
   jest.spyOn(LevelViewerCaptureService.prototype, "level", "get").mockReturnValue(level);
   jest.spyOn(LevelViewerCaptureService.prototype, "levelMap", "get").mockReturnValue(levelMap);
 
-  return { ...descriptor, service: descriptor.container.get(LevelViewerCaptureService) };
+  return {
+    ...descriptor,
+    result: descriptor.container.get(LevelViewerCaptureResultService),
+    service: descriptor.container.get(LevelViewerCaptureService),
+  };
 }
 
 beforeEach(() => {
@@ -94,7 +98,7 @@ describe("LevelViewerCaptureService", () => {
   });
 
   it("captures under the map weather with the spawned objects hidden, and puts the view back after", async () => {
-    const { service, render, view, weather } = mockCapture();
+    const { result, service, render, view, weather } = mockCapture();
     const capturingDuring: Array<boolean> = [];
     const cutTo = jest.spyOn(weather, "cutTo").mockImplementation(async () => {
       capturingDuring.push(service.isCapturing);
@@ -135,14 +139,14 @@ describe("LevelViewerCaptureService", () => {
     expect(view.options.isSpawnedProps).toBe(true);
     expect(release).toHaveBeenCalledTimes(1);
     expect(service.isCapturing).toBe(false);
-    expect(service.captured).toMatchObject({
+    expect(result.captured).toMatchObject({
       mode: ELevelCaptureMode.MAP,
       image: { path: PATH, width: 2048, height: 2048 },
     });
   });
 
   it("captures at noon where the game has no map weather, then puts the clock back", async () => {
-    const { service, render, weather } = mockCapture();
+    const { result, service, render, weather } = mockCapture();
     const timeDuring: Array<number> = [];
 
     jest.spyOn(weather, "cutTo").mockRejectedValue(new Error("no cycle 'map'"));
@@ -160,11 +164,11 @@ describe("LevelViewerCaptureService", () => {
     expect(timeDuring).toEqual([LEVEL_WEATHER_NOON]);
     expect(weather.time).toBe(3600);
     expect(service.failure).toBeNull();
-    expect(service.captured?.mode).toBe(ELevelCaptureMode.MAP);
+    expect(result.captured?.mode).toBe(ELevelCaptureMode.MAP);
   });
 
   it("says why a capture failed, shows nothing, and puts the view back", async () => {
-    const { service, render, view, weather } = mockCapture();
+    const { result, service, render, view, weather } = mockCapture();
     const release = jest.spyOn(weather, "release").mockResolvedValue();
 
     view.setOptions({ ...DEFAULT_LEVEL_VIEW_OPTIONS, isSpawnedProps: true });
@@ -175,100 +179,14 @@ describe("LevelViewerCaptureService", () => {
     await service.capture();
 
     expect(service.failure).toContain("the device was lost");
-    expect(service.captured).toBeNull();
+    expect(result.captured).toBeNull();
     expect(service.isCapturing).toBe(false);
     expect(view.options.isSpawnedProps).toBe(true);
     expect(release).toHaveBeenCalledTimes(1);
   });
 
-  it("draws the map's annotations over the ground it covers, and again when what is drawn changes", async () => {
-    jest.spyOn(LevelViewerCaptureService.prototype, "sessionId", "get").mockReturnValue("session");
-
-    const { service, render, weather } = mockCapture();
-    const asked: Array<Record<string, unknown>> = [];
-
-    jest.spyOn(weather, "cutTo").mockResolvedValue();
-    jest.spyOn(weather, "release").mockResolvedValue();
-    jest.spyOn(render, "captureMap").mockResolvedValue({ outcome: "completed", width: 2048, height: 2048 });
-    mockIpcCommands({
-      [ELevelsCommand.FIND_SCREENSHOT_PATH]: PATH,
-      [ELevelsCommand.WRITE_MAP_ANNOTATIONS]: ({ request }) => {
-        asked.push(request);
-
-        return mockSessionSnapshot("<svg/>", "session");
-      },
-    });
-
-    service.open();
-    await service.capture();
-    await service.drawAnnotations();
-
-    expect(asked[0]).toEqual({
-      path: PATH,
-      area: { minX: -600, minZ: -615, maxX: 600, maxZ: 585 },
-      kinds: [],
-      isLabelled: false,
-    });
-    expect(service.annotationsUrl).toBe("blob:map");
-
-    service.setMapAnnotations({ kinds: [ELevelAnnotationKind.GRAPH_POINTS], isLabelled: true });
-    await service.drawAnnotations();
-
-    expect(asked.at(-1)).toMatchObject({ kinds: [ELevelAnnotationKind.GRAPH_POINTS], isLabelled: true });
-  });
-
-  it("writes the annotations in the order drawn and exports once the last is written, the capture held meanwhile", async () => {
-    jest.spyOn(LevelViewerCaptureService.prototype, "sessionId", "get").mockReturnValue("session");
-
-    const { service, render, weather } = mockCapture();
-    const events: Array<string> = [];
-    const firstWrite: { finish: () => void } = { finish: () => undefined };
-
-    jest.spyOn(weather, "cutTo").mockResolvedValue();
-    jest.spyOn(weather, "release").mockResolvedValue();
-    jest.spyOn(render, "captureMap").mockResolvedValue({ outcome: "completed", width: 2048, height: 2048 });
-    jest.mocked(save).mockResolvedValueOnce("C:/out/map_zaton.dds");
-    mockIpcCommands({
-      [ELevelsCommand.FIND_SCREENSHOT_PATH]: PATH,
-      [ELevelsCommand.WRITE_MAP_ANNOTATIONS]: ({ request }) => {
-        events.push(`write ${request.kinds.length}`);
-
-        return request.kinds.length
-          ? mockSessionSnapshot("<svg/>", "session")
-          : new Promise((resolve: (value: SessionSnapshot<string>) => void) => {
-              firstWrite.finish = () => {
-                events.push("written 0");
-                resolve(mockSessionSnapshot("<svg/>", "session"));
-              };
-            });
-      },
-      [ELevelsCommand.EXPORT_MAP]: () => {
-        events.push("export");
-
-        return [2048, 2048];
-      },
-    });
-
-    service.open();
-    await service.capture();
-    service.setMapAnnotations({ kinds: [ELevelAnnotationKind.GRAPH_POINTS], isLabelled: false });
-
-    const exporting: Promise<void> = service.exportAs() as unknown as Promise<void>;
-
-    await waitFor(() => expect(service.isExporting).toBe(true));
-    service.back();
-
-    expect(service.captured).not.toBeNull();
-
-    firstWrite.finish();
-    await exporting;
-
-    expect(events).toEqual(["write 0", "written 0", "write 1", "export"]);
-    expect(service.exported).toBe("C:/out/map_zaton.dds");
-  });
-
   it("keeps the parameters and shows no map where the capture was stopped", async () => {
-    const { service, render, weather } = mockCapture();
+    const { result, service, render, weather } = mockCapture();
 
     jest.spyOn(weather, "cutTo").mockResolvedValue();
     jest.spyOn(weather, "release").mockResolvedValue();
@@ -277,12 +195,12 @@ describe("LevelViewerCaptureService", () => {
     service.open();
     await service.capture();
 
-    expect(service.captured).toBeNull();
+    expect(result.captured).toBeNull();
     expect(service.mapParameters).not.toBeNull();
   });
 
   it("captures a cubemap around the camera under the view's own weather, its clock held", async () => {
-    const { service, render, weather } = mockCapture();
+    const { result, service, render, weather } = mockCapture();
     const cutTo = jest.spyOn(weather, "cutTo").mockResolvedValue();
     const release = jest.spyOn(weather, "release").mockResolvedValue();
     const pausedDuring: Array<boolean> = [];
@@ -303,7 +221,7 @@ describe("LevelViewerCaptureService", () => {
     expect(pausedDuring).toEqual([true]);
     expect(captured).toEqual([{ size: 1024, supersampling: 2, settleFrames: 16 }]);
     expect(release).toHaveBeenCalledTimes(1);
-    expect(service.captured?.mode).toBe(ELevelCaptureMode.CUBEMAP);
+    expect(result.captured?.mode).toBe(ELevelCaptureMode.CUBEMAP);
   });
 
   it("opens on a cubemap where the level covers no box to map", () => {

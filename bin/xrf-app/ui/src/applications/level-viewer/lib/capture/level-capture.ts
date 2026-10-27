@@ -10,6 +10,12 @@ export enum ELevelCaptureMode {
   CUBEMAP = "cubemap",
 }
 
+/** What each mode's capture is called, in its notices and failures. */
+export const LEVEL_CAPTURE_NAMES: Record<ELevelCaptureMode, string> = {
+  [ELevelCaptureMode.MAP]: "level map",
+  [ELevelCaptureMode.CUBEMAP]: "cubemap",
+};
+
 /** The settling frames a tile or face is offered, fewest first. */
 export const LEVEL_CAPTURE_SETTLE_FRAMES: ReadonlyArray<number> = [8, 16, 32, 64];
 

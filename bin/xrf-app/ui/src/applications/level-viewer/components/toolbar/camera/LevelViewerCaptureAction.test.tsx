@@ -6,6 +6,7 @@ import { LevelViewerCaptureActions } from "@/applications/level-viewer/component
 import { LevelViewerCaptureAction } from "@/applications/level-viewer/components/toolbar/camera/LevelViewerCaptureAction";
 import { ELevelCaptureMode } from "@/applications/level-viewer/lib/capture/level-capture";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
 import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/screenshot";
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
 import { mockLevelViewContainer, renderLevelView } from "@/core/level/fixtures/level-container";
@@ -25,7 +26,12 @@ describe("LevelViewerCaptureAction", () => {
         <LevelViewerCaptureAction />
         <LevelViewerCaptureActions />
       </>,
-      mockLevelViewContainer([LevelViewerCaptureService, LevelViewerScreenshotService, LevelViewerSnapshotService])
+      mockLevelViewContainer([
+        LevelViewerCaptureService,
+        LevelViewerCaptureResultService,
+        LevelViewerScreenshotService,
+        LevelViewerSnapshotService,
+      ])
     );
     const service: LevelViewerCaptureService = container.get(LevelViewerCaptureService);
 

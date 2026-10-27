@@ -11,6 +11,7 @@ import { Nullable } from "@xrf/types";
 
 import { LevelViewerLayout } from "@/applications/level-viewer/components/LevelViewerLayout";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
 import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/screenshot";
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
@@ -53,6 +54,7 @@ function renderReporting(onRender: () => void = () => undefined): {
     LevelLookService,
     LevelViewerScreenshotService,
     LevelViewerCaptureService,
+    LevelViewerCaptureResultService,
     LevelViewerSnapshotService,
   ]);
 
@@ -92,6 +94,7 @@ function renderLayout(
     LevelLookService,
     LevelViewerScreenshotService,
     LevelViewerCaptureService,
+    LevelViewerCaptureResultService,
     LevelViewerSnapshotService,
   ]);
 
@@ -175,6 +178,7 @@ describe("LevelViewerLayout", () => {
       LevelViewerScreenshotService,
       LevelViewerScreenshotService,
       LevelViewerCaptureService,
+      LevelViewerCaptureResultService,
       LevelViewerSnapshotService,
     ]);
 
@@ -337,6 +341,7 @@ describe("LevelViewerLayout", () => {
       LevelViewerScreenshotService,
       LevelViewerScreenshotService,
       LevelViewerCaptureService,
+      LevelViewerCaptureResultService,
       LevelViewerSnapshotService,
     ]);
     const settings: RenderSettingsService = container.get(RenderSettingsService);
