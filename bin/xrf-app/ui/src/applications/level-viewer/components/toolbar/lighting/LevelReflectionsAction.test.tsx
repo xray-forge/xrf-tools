@@ -50,17 +50,19 @@ beforeEach(() => {
 });
 
 describe("LevelReflectionsAction", () => {
-  it("turns the surfaces' reflections on, offering their parameters only then, and back to the preset", async () => {
+  it("turns the surfaces' reflections on, their parameters settable only then, and back to the preset", async () => {
     const rendered: TLevelViewRenderResult = renderAction();
-    const { getByRole, queryByRole, view } = rendered;
+    const { getByRole, view } = rendered;
 
     await open(rendered);
 
-    expect(queryByRole("slider", { name: "Steps" })).toBeNull();
+    expect(getByRole("slider", { name: "Steps" })).toBeDisabled();
+    expect(getByRole("checkbox", { name: "Ray budgets" })).toBeDisabled();
 
     await userEvent.click(getByRole("checkbox", { name: "Surfaces" }));
 
     expect(view.features.reflections).toEqual({ mode: ERenderReflectionMode.ENHANCED });
+    expect(getByRole("slider", { name: "Steps" })).toBeEnabled();
     expect(getByRole("slider", { name: "Steps" })).toHaveAttribute("aria-valuetext", "96");
     expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "150 m");
     expect(getByRole("checkbox", { name: "Ray budgets" })).toBeChecked();

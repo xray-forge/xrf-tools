@@ -66,11 +66,12 @@ export function LevelOcclusionAction({
   const vbao: TRenderAmbientOcclusionVbaoSettings = occlusion.vbao;
   const isScreen: boolean = options.isOccluded && state.isAvailable;
   const isGtao: boolean = occlusion.method === ERenderAmbientOcclusionMethod.GTAO;
-  const isVbao: boolean = occlusion.method === ERenderAmbientOcclusionMethod.VBAO;
   const isRtao: boolean = occlusion.method === ERenderAmbientOcclusionMethod.RTAO;
   // VBAO and RTAO both gather over frames and bounce light back from their creases.
   const isGathered: boolean = occlusion.method !== ERenderAmbientOcclusionMethod.GTAO;
-  const isUntraced: boolean = occlusion.method === ERenderAmbientOcclusionMethod.RTAO && !isTraceable;
+  const isUntraced: boolean = isRtao && !isTraceable;
+  // Whether VBAO's bitmask searches: chosen, or in place of RTAO on a GPU that traces no rays.
+  const isVbaoSearched: boolean = occlusion.method === ERenderAmbientOcclusionMethod.VBAO || isUntraced;
   const isIndirect: boolean = indirectLight.mode === ERenderIndirectLightMode.ENHANCED;
 
   const onSetVbao = useCallback(
@@ -146,14 +147,14 @@ export function LevelOcclusionAction({
               onChange={(steps: number) => onSetGtao({ steps })}
             />
           </>
-        ) : null}
-
-        {isVbao ? (
+        ) : (
+          // VBAO's search, which RTAO traces in place of and falls back to on a GPU that traces no rays.
           <>
             <RenderValueSlider
               label={"Slices"}
               value={vbao.slices}
               {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.slices}
+              isDisabled={!isVbaoSearched}
               format={formatCount}
               onChange={(slices: number) => onSetVbao({ slices })}
             />
@@ -162,21 +163,21 @@ export function LevelOcclusionAction({
               label={"Steps"}
               value={vbao.steps}
               {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.steps}
+              isDisabled={!isVbaoSearched}
               format={formatCount}
               onChange={(steps: number) => onSetVbao({ steps })}
             />
           </>
-        ) : null}
+        )}
 
-        {isRtao ? (
-          <RenderValueSlider
-            label={"Rays"}
-            value={occlusion.rtao.rays}
-            {...RENDER_AMBIENT_OCCLUSION_LIMITS.rays}
-            format={formatCount}
-            onChange={(rays: number) => onSetRtao({ rays })}
-          />
-        ) : null}
+        <RenderValueSlider
+          label={"Rays"}
+          value={occlusion.rtao.rays}
+          {...RENDER_AMBIENT_OCCLUSION_LIMITS.rays}
+          isDisabled={!isRtao || isUntraced}
+          format={formatCount}
+          onChange={(rays: number) => onSetRtao({ rays })}
+        />
 
         <RenderValueSlider
           label={"Radius"}
@@ -194,35 +195,32 @@ export function LevelOcclusionAction({
           onChange={(strength: number) => set({ strength })}
         />
 
-        {isVbao ? (
-          <RenderValueSlider
-            label={"Thickness"}
-            value={vbao.thickness}
-            {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.thickness}
-            format={formatOcclusionThickness}
-            onChange={(thickness: number) => onSetVbao({ thickness })}
-          />
-        ) : null}
+        <RenderValueSlider
+          label={"Thickness"}
+          value={vbao.thickness}
+          {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.thickness}
+          isDisabled={!isVbaoSearched}
+          format={formatOcclusionThickness}
+          onChange={(thickness: number) => onSetVbao({ thickness })}
+        />
 
-        {isGathered ? (
-          <>
-            <RenderValueSlider
-              label={"Bounce"}
-              value={vbao.bounce}
-              {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.bounce}
-              format={formatOcclusionBounce}
-              onChange={(bounce: number) => onSetVbao({ bounce })}
-            />
+        <RenderValueSlider
+          label={"Bounce"}
+          value={vbao.bounce}
+          {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.bounce}
+          isDisabled={!isGathered}
+          format={formatOcclusionBounce}
+          onChange={(bounce: number) => onSetVbao({ bounce })}
+        />
 
-            <RenderValueSlider
-              label={"Accumulation"}
-              value={vbao.accumulation}
-              {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.accumulation}
-              format={formatOcclusionAccumulation}
-              onChange={(accumulation: number) => onSetVbao({ accumulation })}
-            />
-          </>
-        ) : null}
+        <RenderValueSlider
+          label={"Accumulation"}
+          value={vbao.accumulation}
+          {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.accumulation}
+          isDisabled={!isGathered}
+          format={formatOcclusionAccumulation}
+          onChange={(accumulation: number) => onSetVbao({ accumulation })}
+        />
 
         <Button size={"small"} aria-label={"Reset the ambient occlusion to the preset"} onClick={reset}>
           Reset to the preset

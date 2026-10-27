@@ -65,18 +65,17 @@ export function SettingsRendererAntialiasing(): ReactElement {
           onChange={renderSettingsService.setRenderResolution}
         />
 
-        {renderSettingsService.renderResolution === ERenderResolution.AUTO ? (
-          <SliderFormRow
-            label={"Output scale"}
-            description={
-              "Share of the viewport's size the frame is resolved at: below 100% upscales, above supersamples."
-            }
-            value={renderSettingsService.renderOutputScale}
-            {...RENDER_OUTPUT_SCALE_LIMITS}
-            format={formatOutputScale}
-            onChange={renderSettingsService.setRenderOutputScale}
-          />
-        ) : null}
+        <SliderFormRow
+          label={"Output scale"}
+          description={
+            "Share of the viewport's size the frame is resolved at: below 100% upscales, above supersamples."
+          }
+          value={renderSettingsService.renderOutputScale}
+          {...RENDER_OUTPUT_SCALE_LIMITS}
+          isDisabled={renderSettingsService.renderResolution !== ERenderResolution.AUTO}
+          format={formatOutputScale}
+          onChange={renderSettingsService.setRenderOutputScale}
+        />
 
         <ChoiceFormRow
           label={"Upscaling quality"}

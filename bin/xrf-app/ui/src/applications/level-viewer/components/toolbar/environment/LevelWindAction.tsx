@@ -55,6 +55,7 @@ export function LevelWindAction({
 
   const manual: ILevelManualWeather = weatherService.shown;
   const foliage: TRenderFoliageSettings = state.value.foliage;
+  const isEnhancedFoliage: boolean = foliage.mode === ERenderFoliageMode.ENHANCED;
 
   const setFoliage = useCallback(
     (part: Partial<TRenderFoliageSettings>): void => setNested("foliage", part),
@@ -137,28 +138,26 @@ export function LevelWindAction({
 
       <p className={"text-xs text-text-secondary"}>{explainRenderFoliageMode(foliage.mode)}</p>
 
-      {foliage.mode === ERenderFoliageMode.ENHANCED ? (
-        <>
-          <RenderValueSlider
-            label={"Least wind"}
-            value={foliage.minSpeed}
-            {...RENDER_FOLIAGE_LIMITS.minSpeed}
-            format={formatPercent}
-            onChange={(minSpeed: number) => setFoliage({ minSpeed })}
-          />
+      <RenderValueSlider
+        label={"Least wind"}
+        value={foliage.minSpeed}
+        {...RENDER_FOLIAGE_LIMITS.minSpeed}
+        isDisabled={!isEnhancedFoliage}
+        format={formatPercent}
+        onChange={(minSpeed: number) => setFoliage({ minSpeed })}
+      />
 
-          {FOLIAGE_MOTION.map(([key, label]) => (
-            <RenderValueSlider
-              key={key}
-              label={label}
-              value={foliage[key]}
-              {...RENDER_FOLIAGE_LIMITS[key]}
-              format={formatFoliageStrength}
-              onChange={(value: number) => setFoliage({ [key]: value })}
-            />
-          ))}
-        </>
-      ) : null}
+      {FOLIAGE_MOTION.map(([key, label]) => (
+        <RenderValueSlider
+          key={key}
+          label={label}
+          value={foliage[key]}
+          {...RENDER_FOLIAGE_LIMITS[key]}
+          isDisabled={!isEnhancedFoliage}
+          format={formatFoliageStrength}
+          onChange={(value: number) => setFoliage({ [key]: value })}
+        />
+      ))}
 
       <Button size={"small"} aria-label={"Reset the foliage motion to the preset"} onClick={resetFoliage}>
         Reset to the preset

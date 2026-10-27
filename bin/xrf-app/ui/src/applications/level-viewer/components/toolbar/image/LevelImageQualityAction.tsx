@@ -98,6 +98,7 @@ export function LevelImageQualityAction({
   const rayProblem: Nullable<string> = describeRayReconstructionUnavailability(rayReconstruction, isSceneLinear);
   const isRayReconstructed: boolean = !rayProblem && drawn.upscaling.isRayReconstructed;
   const isSharpenable: boolean = isUpscaled || (isOn && isTemporalAntialiasing(mode));
+  const isDlss: boolean = isAvailable && mode === ERenderAntialiasing.DLSS;
 
   const description: string = describeLevelFeatureToggle({
     isAvailable,
@@ -132,14 +133,13 @@ export function LevelImageQualityAction({
           onChange={toggle}
         />
 
-        {isAvailable ? (
-          <RenderValueChoice
-            label={"Mode"}
-            options={dlssProblem ? MODE_OPTIONS_WITHOUT_DLSS : MODE_OPTIONS}
-            value={mode}
-            onChange={(antialiasing: RenderAntialiasing) => viewService.setFeatures({ ...features, antialiasing })}
-          />
-        ) : null}
+        <RenderValueChoice
+          label={"Mode"}
+          options={dlssProblem ? MODE_OPTIONS_WITHOUT_DLSS : MODE_OPTIONS}
+          value={mode}
+          isDisabled={!isAvailable}
+          onChange={(antialiasing: RenderAntialiasing) => viewService.setFeatures({ ...features, antialiasing })}
+        />
 
         {isAvailable && dlssProblem ? (
           <Typography className={"text-text-secondary"} variant={"caption"}>
@@ -155,44 +155,38 @@ export function LevelImageQualityAction({
           onChange={(next: RenderScale) => setUpscaling({ scale: next })}
         />
 
-        {isAvailable && mode === ERenderAntialiasing.DLSS ? (
-          <>
-            <CheckboxFormRow
-              label={"Ray reconstruction"}
-              description={rayProblem ?? "Denoises and upscales in one network, over each surface's albedo and normal."}
-              isChecked={isRayReconstructed}
-              isDisabled={Boolean(rayProblem)}
-              onChange={(next: boolean) => setUpscaling({ isRayReconstructed: next })}
-            />
+        <CheckboxFormRow
+          label={"Ray reconstruction"}
+          description={
+            isDlss
+              ? (rayProblem ?? "Denoises and upscales in one network, over each surface's albedo and normal.")
+              : "Comes with DLSS, under Mode."
+          }
+          isChecked={isDlss && isRayReconstructed}
+          isDisabled={!isDlss || Boolean(rayProblem)}
+          onChange={(next: boolean) => setUpscaling({ isRayReconstructed: next })}
+        />
 
-            {isRayReconstructed ? (
-              <>
-                <RenderValueChoice
-                  label={"Ray reconstruction model"}
-                  options={RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS}
-                  value={rayPreset}
-                  onChange={(next: RenderRayReconstructionPreset) => setUpscaling({ rayReconstructionPreset: next })}
-                />
+        <RenderValueChoice
+          label={"DLSS model"}
+          options={RENDER_DLSS_PRESET_SHORT_OPTIONS}
+          value={dlssPreset}
+          isDisabled={!isDlss || isRayReconstructed}
+          onChange={(next: RenderDlssPreset) => setUpscaling({ dlssPreset: next })}
+        />
 
-                <Typography className={"text-text-secondary"} variant={"caption"}>
-                  {describeRayReconstructionPreset(rayPreset)}
-                </Typography>
-              </>
-            ) : (
-              <>
-                <RenderValueChoice
-                  label={"DLSS model"}
-                  options={RENDER_DLSS_PRESET_SHORT_OPTIONS}
-                  value={dlssPreset}
-                  onChange={(next: RenderDlssPreset) => setUpscaling({ dlssPreset: next })}
-                />
+        <RenderValueChoice
+          label={"Ray reconstruction model"}
+          options={RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS}
+          value={rayPreset}
+          isDisabled={!isDlss || !isRayReconstructed}
+          onChange={(next: RenderRayReconstructionPreset) => setUpscaling({ rayReconstructionPreset: next })}
+        />
 
-                <Typography className={"text-text-secondary"} variant={"caption"}>
-                  {describeDlssPreset(dlssPreset)}
-                </Typography>
-              </>
-            )}
-          </>
+        {isDlss ? (
+          <Typography className={"text-text-secondary"} variant={"caption"}>
+            {isRayReconstructed ? describeRayReconstructionPreset(rayPreset) : describeDlssPreset(dlssPreset)}
+          </Typography>
         ) : null}
 
         <RenderValueSlider
@@ -217,15 +211,14 @@ export function LevelImageQualityAction({
           onChange={(next: ERenderResolution) => setOutput({ resolution: next })}
         />
 
-        {output.resolution === ERenderResolution.AUTO ? (
-          <RenderValueSlider
-            label={"Output scale"}
-            value={output.scale}
-            {...RENDER_OUTPUT_SCALE_LIMITS}
-            format={formatOutputScale}
-            onChange={(next: number) => setOutput({ scale: next })}
-          />
-        ) : null}
+        <RenderValueSlider
+          label={"Output scale"}
+          value={output.scale}
+          {...RENDER_OUTPUT_SCALE_LIMITS}
+          isDisabled={output.resolution !== ERenderResolution.AUTO}
+          format={formatOutputScale}
+          onChange={(next: number) => setOutput({ scale: next })}
+        />
 
         <Button size={"small"} onClick={reset}>
           Reset to the preset

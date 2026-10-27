@@ -30,6 +30,7 @@ export function LevelParallaxSettings({
   const { set, reset } = useLevelFeatureOverride("parallax");
 
   const value: TRenderParallaxSettings = toLevelModeFeature("parallax", settings, features);
+  const isEnhanced: boolean = value.mode === ERenderParallaxMode.ENHANCED;
 
   return (
     <div data-testid={dataTestId} id={id} className={className}>
@@ -49,79 +50,84 @@ export function LevelParallaxSettings({
         onChange={(isSteep: boolean) => set({ isSteep })}
       />
 
-      {value.mode === ERenderParallaxMode.ENHANCED ? (
-        <>
-          <RenderValueSlider
-            label={"Steps"}
-            value={value.steps}
-            {...RENDER_PARALLAX_LIMITS.steps}
-            format={formatParallaxSteps}
-            onChange={(steps: number) => set({ steps })}
-          />
+      <RenderValueSlider
+        label={"Steps"}
+        value={value.steps}
+        {...RENDER_PARALLAX_LIMITS.steps}
+        isDisabled={!isEnhanced}
+        format={formatParallaxSteps}
+        onChange={(steps: number) => set({ steps })}
+      />
 
-          <RenderValueSlider
-            label={"Range"}
-            value={value.range}
-            {...RENDER_PARALLAX_LIMITS.range}
-            format={formatParallaxRange}
-            onChange={(range: number) => set({ range })}
-          />
+      <RenderValueSlider
+        label={"Range"}
+        value={value.range}
+        {...RENDER_PARALLAX_LIMITS.range}
+        isDisabled={!isEnhanced}
+        format={formatParallaxRange}
+        onChange={(range: number) => set({ range })}
+      />
 
-          <RenderValueSlider
-            label={"Height"}
-            value={value.height}
-            {...RENDER_PARALLAX_LIMITS.height}
-            format={formatParallaxHeight}
-            onChange={(height: number) => set({ height })}
-          />
+      <RenderValueSlider
+        label={"Height"}
+        value={value.height}
+        {...RENDER_PARALLAX_LIMITS.height}
+        isDisabled={!isEnhanced}
+        format={formatParallaxHeight}
+        onChange={(height: number) => set({ height })}
+      />
 
-          <RenderValueSlider
-            label={"Surface height"}
-            value={value.surfaceHeight}
-            {...RENDER_PARALLAX_LIMITS.surfaceHeight}
-            format={formatParallaxHeight}
-            onChange={(surfaceHeight: number) => set({ surfaceHeight })}
-          />
+      <RenderValueSlider
+        label={"Surface height"}
+        value={value.surfaceHeight}
+        {...RENDER_PARALLAX_LIMITS.surfaceHeight}
+        isDisabled={!isEnhanced}
+        format={formatParallaxHeight}
+        onChange={(surfaceHeight: number) => set({ surfaceHeight })}
+      />
 
-          <RenderValueSlider
-            label={"Surface range"}
-            value={value.surfaceRange}
-            {...RENDER_PARALLAX_LIMITS.surfaceRange}
-            format={formatParallaxRange}
-            onChange={(surfaceRange: number) => set({ surfaceRange })}
-          />
+      <RenderValueSlider
+        label={"Surface range"}
+        value={value.surfaceRange}
+        {...RENDER_PARALLAX_LIMITS.surfaceRange}
+        isDisabled={!isEnhanced}
+        format={formatParallaxRange}
+        onChange={(surfaceRange: number) => set({ surfaceRange })}
+      />
 
-          <CheckboxFormRow
-            label={"Refined"}
-            isChecked={value.isRefined}
-            onChange={(isRefined: boolean) => set({ isRefined })}
-          />
+      <CheckboxFormRow
+        label={"Refined"}
+        isChecked={value.isRefined}
+        isDisabled={!isEnhanced}
+        onChange={(isRefined: boolean) => set({ isRefined })}
+      />
 
-          <RenderValueSlider
-            label={"Self-shadowing"}
-            value={value.shadow}
-            {...RENDER_PARALLAX_LIMITS.shadow}
-            format={formatParallaxStrength}
-            onChange={(shadow: number) => set({ shadow })}
-          />
+      <RenderValueSlider
+        label={"Self-shadowing"}
+        value={value.shadow}
+        {...RENDER_PARALLAX_LIMITS.shadow}
+        isDisabled={!isEnhanced}
+        format={formatParallaxStrength}
+        onChange={(shadow: number) => set({ shadow })}
+      />
 
-          <RenderValueSlider
-            label={"Height blending"}
-            value={value.blending}
-            {...RENDER_PARALLAX_LIMITS.blending}
-            format={formatParallaxStrength}
-            onChange={(blending: number) => set({ blending })}
-          />
+      <RenderValueSlider
+        label={"Height blending"}
+        value={value.blending}
+        {...RENDER_PARALLAX_LIMITS.blending}
+        isDisabled={!isEnhanced}
+        format={formatParallaxStrength}
+        onChange={(blending: number) => set({ blending })}
+      />
 
-          <RenderValueSlider
-            label={"Cavities"}
-            value={value.cavity}
-            {...RENDER_PARALLAX_LIMITS.cavity}
-            format={formatParallaxStrength}
-            onChange={(cavity: number) => set({ cavity })}
-          />
-        </>
-      ) : null}
+      <RenderValueSlider
+        label={"Cavities"}
+        value={value.cavity}
+        {...RENDER_PARALLAX_LIMITS.cavity}
+        isDisabled={!isEnhanced}
+        format={formatParallaxStrength}
+        onChange={(cavity: number) => set({ cavity })}
+      />
 
       <Button size={"small"} onClick={reset}>
         Reset to the preset

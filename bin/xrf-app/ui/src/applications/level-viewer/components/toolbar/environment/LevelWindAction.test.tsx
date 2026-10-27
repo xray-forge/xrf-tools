@@ -16,7 +16,7 @@ beforeEach(() => {
 });
 
 describe("LevelWindAction", () => {
-  it("moves the foliage by the enhanced flow, its strengths offered only then", async () => {
+  it("moves the foliage by the enhanced flow, its strengths settable only then", async () => {
     const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
 
     descriptor.renderSettings.setRendererOverrides({ grass: { foliage: { mode: ERenderFoliageMode.ENGINE } } });
@@ -26,13 +26,13 @@ describe("LevelWindAction", () => {
     await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Wind" }) });
     await findByRole("dialog", { name: "Wind" });
 
-    expect(queryByRole("slider", { name: "Trunk bend" })).not.toBeInTheDocument();
+    expect(getByRole("slider", { name: "Trunk bend" })).toBeDisabled();
 
     await userEvent.click(getByRole("button", { name: "Enhanced" }));
 
     expect(view.features.grass.foliage?.mode).toBe(ERenderFoliageMode.ENHANCED);
-    expect(getByRole("slider", { name: "Trunk bend" })).toBeInTheDocument();
-    expect(getByRole("slider", { name: "Grass speed" })).toBeInTheDocument();
+    expect(getByRole("slider", { name: "Trunk bend" })).toBeEnabled();
+    expect(getByRole("slider", { name: "Grass speed" })).toBeEnabled();
     expect(queryByRole("slider", { name: "Light through leaves" })).not.toBeInTheDocument();
   });
 

@@ -95,10 +95,10 @@ export const LEVEL_LOOK_LIGHT_SCALE_FIELDS: ReadonlyArray<ILevelLookField> = [
   },
 ];
 
-/** The engine bloom's sliders, which the enhanced bloom's replace. */
+/** The engine bloom's sliders, which the enhanced bloom's replace; its threshold named apart from the enhanced one's. */
 export const LEVEL_LOOK_BLOOM_FIELDS: ReadonlyArray<ILevelLookField> = [
   {
-    label: "Threshold",
+    label: "Engine threshold",
     max: 1,
     min: 0,
     read: (look) => look.bloom.threshold,

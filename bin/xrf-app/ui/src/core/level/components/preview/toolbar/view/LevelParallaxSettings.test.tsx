@@ -12,25 +12,26 @@ beforeEach(() => {
 });
 
 describe("LevelParallaxSettings", () => {
-  it("sets the view's own mode over the settings, showing the enhanced strengths only then, and gives it back", async () => {
+  it("sets the view's own mode over the settings, the enhanced strengths settable only then, and gives it back", async () => {
     const { container, renderSettings, view } = mockLevelViewContainer();
 
     // The settings draw the engine's, so the view's own choice is what turns it enhanced.
     renderSettings.setRendererOverrides({ parallax: { mode: ERenderParallaxMode.ENGINE } });
 
-    const { getByRole, queryByRole } = renderWithProviders(<LevelParallaxSettings />, { container });
+    const { getByRole } = renderWithProviders(<LevelParallaxSettings />, { container });
 
-    expect(queryByRole("slider", { name: "Steps" })).toBeNull();
+    expect(getByRole("slider", { name: "Steps" })).toBeDisabled();
 
     await userEvent.click(getByRole("button", { name: "Enhanced" }));
 
     expect(view.features.parallax).toEqual({ mode: ERenderParallaxMode.ENHANCED });
+    expect(getByRole("slider", { name: "Steps" })).toBeEnabled();
     expect(getByRole("slider", { name: "Steps" })).toHaveAttribute("aria-valuetext", "8");
     expect(getByRole("slider", { name: "Range" })).toHaveAttribute("aria-valuetext", "60 m");
 
     await userEvent.click(getByRole("button", { name: "Reset to the preset" }));
 
     expect(view.features.parallax).toEqual({});
-    expect(queryByRole("slider", { name: "Steps" })).toBeNull();
+    expect(getByRole("slider", { name: "Steps" })).toBeDisabled();
   });
 });

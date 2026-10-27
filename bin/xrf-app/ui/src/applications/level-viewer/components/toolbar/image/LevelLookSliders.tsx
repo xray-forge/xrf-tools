@@ -15,6 +15,8 @@ export interface ILevelLookSlidersProps {
   isPhysical: boolean;
   /** Whether the physical light stands at real-world levels, which leave the game's flat ambient off too. */
   isPhysicalLevels: boolean;
+  /** Whether every one is off, as where another mode draws in place of what they set. */
+  isDisabled?: boolean;
   /** Takes the look a slider edited. */
   onEdit: (look: ILevelLook) => void;
 }
@@ -25,6 +27,7 @@ export function LevelLookSliders({
   look,
   isPhysical,
   isPhysicalLevels,
+  isDisabled = false,
   onEdit,
 }: ILevelLookSlidersProps): ReactElement {
   const isOff = useCallback(
@@ -53,7 +56,7 @@ export function LevelLookSliders({
           min={field.min}
           max={field.max}
           step={field.step}
-          isDisabled={isOff(field)}
+          isDisabled={isDisabled || isOff(field)}
           format={onFormat}
           onChange={(value: number) => onEdit(field.write(look, value))}
         />

@@ -333,37 +333,36 @@ export function LevelLookAction({
             onChange={onBloomMode}
           />
 
-          {isEnhancedBloom ? (
-            <div className={"flex flex-col gap-1"}>
-              {LEVEL_ENHANCED_BLOOM_FIELDS.map((field: ILevelEnhancedBloomField) => (
-                <RenderValueSlider
-                  key={field.key}
-                  label={field.label}
-                  value={bloom[field.key]}
-                  {...RENDER_ENHANCED_BLOOM_LIMITS[field.key]}
-                  format={formatBloomStrength}
-                  onChange={(value: number) => onBloomStrength(field.key, value)}
-                />
-              ))}
-            </div>
-          ) : (
-            <>
-              <CheckboxFormRow
-                label={"Bloom"}
-                description={"Blurs the frame's bright parts over it. Game setting: phase_bloom."}
-                isChecked={look.bloom.isEnabled}
-                onChange={onEngineBloom}
+          <div className={"flex flex-col gap-1"}>
+            {LEVEL_ENHANCED_BLOOM_FIELDS.map((field: ILevelEnhancedBloomField) => (
+              <RenderValueSlider
+                key={field.key}
+                label={field.label}
+                value={bloom[field.key]}
+                {...RENDER_ENHANCED_BLOOM_LIMITS[field.key]}
+                isDisabled={!isEnhancedBloom}
+                format={formatBloomStrength}
+                onChange={(value: number) => onBloomStrength(field.key, value)}
               />
+            ))}
+          </div>
 
-              <LevelLookSliders
-                fields={LEVEL_LOOK_BLOOM_FIELDS}
-                look={look}
-                isPhysical={isPhysical}
-                isPhysicalLevels={isPhysicalLevels}
-                onEdit={onEdit}
-              />
-            </>
-          )}
+          <CheckboxFormRow
+            label={"Bloom"}
+            description={"Blurs the frame's bright parts over it. Game setting: phase_bloom."}
+            isChecked={look.bloom.isEnabled}
+            isDisabled={isEnhancedBloom}
+            onChange={onEngineBloom}
+          />
+
+          <LevelLookSliders
+            fields={LEVEL_LOOK_BLOOM_FIELDS}
+            look={look}
+            isPhysical={isPhysical}
+            isPhysicalLevels={isPhysicalLevels}
+            isDisabled={isEnhancedBloom}
+            onEdit={onEdit}
+          />
 
           <Button size={"small"} aria-label={"Reset the bloom to the preset"} onClick={resetBloom}>
             Reset to the preset

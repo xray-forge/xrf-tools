@@ -81,21 +81,21 @@ describe("LevelLookAction", () => {
     // The settings draw the engine bloom, so the view's own choice is what turns it enhanced.
     descriptor.renderSettings.setRendererOverrides({ enhancedBloom: { mode: ERenderBloomMode.ENGINE } });
 
-    const { getByRole, findByRole, queryByRole } = renderWithProviders(<LevelLookAction />, {
+    const { getByRole, findByRole } = renderWithProviders(<LevelLookAction />, {
       container: descriptor.container,
     });
 
     await userEvent.click(getByRole("button", { name: "Look" }));
     await findByRole("dialog", { name: "Look" });
 
-    expect(getByRole("checkbox", { name: "Bloom" })).toBeInTheDocument();
-    expect(queryByRole("slider", { name: "Vibrance" })).toBeNull();
+    expect(getByRole("checkbox", { name: "Bloom" })).toBeEnabled();
+    expect(getByRole("slider", { name: "Vibrance" })).toBeDisabled();
 
     await userEvent.click(getByRole("button", { name: "Enhanced" }));
 
     expect(descriptor.view.features.enhancedBloom).toEqual({ mode: ERenderBloomMode.ENHANCED });
-    expect(queryByRole("checkbox", { name: "Bloom" })).toBeNull();
-    expect(queryByRole("slider", { name: "Radius" })).toBeNull();
+    expect(getByRole("checkbox", { name: "Bloom" })).toBeDisabled();
+    expect(getByRole("slider", { name: "Radius" })).toBeDisabled();
     expect(getByRole("slider", { name: "Threshold" })).toHaveAttribute("aria-valuetext", "5.0");
     expect(getByRole("slider", { name: "Vibrance" })).toHaveAttribute("aria-valuetext", "1.0");
   });
