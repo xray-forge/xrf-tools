@@ -1,16 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { isComputedProp, isObservableProp } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
 import { IIpcCommandSignatures } from "@xrf/ipc/commands/signatures";
 import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
 import { listMockInvokeCalls, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 
-import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
+import { mockLoadedVisual, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
-import { mockSessionRead, mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockSessionRead, mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 const BAKE: VisualMotionBake = mockVisualMotionBake();
@@ -18,10 +17,7 @@ const BAKE: VisualMotionBake = mockVisualMotionBake();
 function mockService() {
   const result = mockInjectedService(VisualMotionService, [VisualLoadService]);
 
-  result.container.get(VisualLoadService).visual = AsyncState.ready({
-    selected: mockSessionSnapshot(mockSelectedVisual()),
-    views: mockVisualModelViews(),
-  });
+  mockLoadedVisual(result.container.get(VisualLoadService));
 
   return result;
 }
@@ -54,8 +50,6 @@ describe("VisualMotionService", () => {
   it("applies its mobx annotations", () => {
     const { service } = mockService();
 
-    expect(isObservableProp(service, "motions")).toBe(true);
-    expect(isObservableProp(service, "posed")).toBe(true);
     expect(isObservableProp(service, "frame")).toBe(true);
     expect(isObservableProp(service, "isPlaying")).toBe(true);
     expect(isObservableProp(service, "isLooping")).toBe(true);

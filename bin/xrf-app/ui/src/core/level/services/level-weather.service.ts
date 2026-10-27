@@ -115,9 +115,6 @@ export class LevelWeatherService {
   private sessionId: Nullable<string> = null;
   /** What the level's weather is remembered under. */
   private memoryKey: Nullable<string> = null;
-  /** The level open, which a cycle is read against and the engine is named by. */
-  @RefObservable()
-  private selected: Nullable<SessionSnapshot<SelectedLevelDescription>> = null;
   /** The cycle the level was last played with, kept until one plays so a level left early forgets nothing. */
   private remembered: string = "";
   /** The cycle last asked for, which a read of another one since gives way to. */
@@ -210,6 +207,11 @@ export class LevelWeatherService {
     return this.selected?.value.engine.engine ?? EXrayEngine.VANILLA;
   }
 
+  /** The level open, as its loader holds it, which a cycle is read against and the engine is named by. */
+  private get selected(): Nullable<SessionSnapshot<SelectedLevelDescription>> {
+    return this.loadService.level.value?.selected ?? null;
+  }
+
   /** The keyframe on screen as one set by hand: the one set, or the weather's mix, which a first edit seeds it from. */
   @Computed()
   public get shown(): ILevelManualWeather {
@@ -246,9 +248,6 @@ export class LevelWeatherService {
 
     this.sessionId = selected.sessionId;
     this.memoryKey = memoryKey;
-    runInAction(() => {
-      this.selected = selected;
-    });
 
     if (memory) {
       this.restore(memory);
@@ -558,7 +557,6 @@ export class LevelWeatherService {
     this.persist();
     this.sessionId = null;
     this.memoryKey = null;
-    this.selected = null;
     this.remembered = "";
     this.described.detach();
     this.cycle = AsyncState.idle();

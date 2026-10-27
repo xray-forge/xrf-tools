@@ -4,6 +4,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { MouseEvent, ReactElement, useCallback, useId, useState } from "react";
 
+import { DialogViewService } from "@/applications/dialogs-editor/services/dialog-view";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -17,6 +18,7 @@ export function DialogsEditorActions({
   className,
 }: BaseComponentProps): Nullable<ReactElement> {
   const dialogsService: DialogsService = useInjection(DialogsService);
+  const viewService: DialogViewService = useInjection(DialogViewService);
 
   const generatedActionId: string = useId();
   const actionId: string = id ?? generatedActionId;
@@ -25,7 +27,7 @@ export function DialogsEditorActions({
   const [anchor, setAnchor] = useState<Nullable<HTMLElement>>(null);
 
   const languages: Array<string> = dialogsService.languages;
-  const selected: Nullable<string> = dialogsService.resolvedLanguage;
+  const selected: Nullable<string> = viewService.resolvedLanguage;
 
   const onOpen = useCallback((event: MouseEvent<HTMLElement>) => setAnchor(event.currentTarget), []);
 
@@ -33,10 +35,10 @@ export function DialogsEditorActions({
 
   const onSelect = useCallback(
     (language: string) => {
-      dialogsService.setLanguage(language);
+      viewService.setLanguage(language);
       setAnchor(null);
     },
-    [dialogsService]
+    [viewService]
   );
 
   if (!languages.length) {

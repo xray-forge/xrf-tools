@@ -11,10 +11,12 @@ import { emitNotification, ENotificationSeverity } from "@/core/notifications/li
 /** A finished command: its answer, or why it failed. */
 export type TCommandCompletion<T> = { result: T; error: null } | { result: null; error: Error };
 
-/** What a finished command tells the notification centre; the reporter adds its severity and source. */
+/** What a finished command tells the notification centre; the reporter adds its source. */
 export interface ICommandNotice {
   title: string;
   details?: string;
+  /** How urgent it is, where a success is worth a warning: one that did what was asked of a world that moved on. */
+  severity?: ENotificationSeverity;
 }
 
 /** One native command as a person sees it run: what it is called, what it acts on, and what it says when done. */
@@ -29,8 +31,8 @@ export interface ICommandReport<T> {
   failure: string;
   /** How urgent a failure is: an error, unless the person did not ask for the command. */
   failureSeverity?: ENotificationSeverity;
-  /** The notice a success raises, or none. */
-  success?: (result: T) => ICommandNotice;
+  /** The notice a success raises, or none: absent, or null for an answer that did nothing worth telling. */
+  success?: (result: T) => Nullable<ICommandNotice>;
 }
 
 /**
@@ -70,8 +72,10 @@ export class CommandReporter {
 
       this.log.info(`${name} done:`, ...subjects, "in", formatDuration(timer.elapsed()));
 
-      if (success) {
-        this.notify(ENotificationSeverity.SUCCESS, success(result));
+      const notice: Nullable<ICommandNotice> = success?.(result) ?? null;
+
+      if (notice) {
+        this.notify(notice.severity ?? ENotificationSeverity.SUCCESS, notice);
       }
 
       return { result, error: null };
@@ -88,7 +92,14 @@ export class CommandReporter {
     }
   }
 
-  private notify(severity: ENotificationSeverity, notice: ICommandNotice): void {
+  /**
+   * Tells the notification centre of something no command answered, such as a change the backend could not read past,
+   * from the same application as every command it reports.
+   *
+   * @param severity - How urgent it is.
+   * @param notice - What to say.
+   */
+  public notify(severity: ENotificationSeverity, notice: ICommandNotice): void {
     emitNotification(this.eventBus, { ...notice, severity, source: this.source });
   }
 }

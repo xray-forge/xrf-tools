@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { AsyncState } from "@xrf/async";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 import { Nullable } from "@xrf/types";
 
 import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/core/archive/fixtures/archive.mocks";
+import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -25,7 +25,7 @@ describe("ArchivesService extraction", () => {
   it("asks the backend for the file by its archived name", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
+    mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
 
     await service.extractFile(FILE, "C:\\out\\system.ltx");
 
@@ -41,7 +41,7 @@ describe("ArchivesService extraction", () => {
   it("reports a refused extraction instead of staying loading", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
+    mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
 
     mockIpcCommands({
       [EArchivesCommand.EXTRACT_FILE]: () => {
@@ -59,7 +59,7 @@ describe("ArchivesService extraction", () => {
   it("clears a reported outcome", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
+    mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
 
     await service.extractFile(FILE, "C:\\out\\system.ltx");
 

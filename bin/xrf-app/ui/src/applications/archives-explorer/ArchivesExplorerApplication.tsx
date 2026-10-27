@@ -9,7 +9,7 @@ import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
 export function ArchivesExplorerApplication(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
 
-  if (archivesService.subject.isIdle) {
+  if (!archivesService.subject.isRestored) {
     return <ApplicationLoader />;
   }
 

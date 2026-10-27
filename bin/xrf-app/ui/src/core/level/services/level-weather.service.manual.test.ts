@@ -8,6 +8,7 @@ import { Nullable } from "@xrf/types";
 import {
   createLevelWeatherService,
   LEVEL_WEATHER_SELECTED,
+  mockOpenLevelWeather,
   toWeatherKeyframe,
 } from "@/core/level/fixtures/level-weather";
 import { mockLevelWeatherDescription, mockWorldWeatherReport } from "@/core/level/fixtures/weather.mocks";
@@ -31,7 +32,7 @@ describe("LevelWeatherService, set by hand", () => {
 
     const service: LevelWeatherService = createLevelWeatherService();
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
     const cycle: Nullable<WorldWeatherPlay> = service.weather;
 
@@ -62,7 +63,7 @@ describe("LevelWeatherService, set by hand", () => {
 
     const service: LevelWeatherService = createLevelWeatherService();
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
     service.noteReport(
       mockWorldWeatherReport({
         current: { ...mockWorldWeatherReport().current, skyTexture: "sky\\sky_night" },
@@ -90,7 +91,7 @@ describe("LevelWeatherService, set by hand", () => {
 
     const service: LevelWeatherService = createLevelWeatherService();
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
     service.noteReport(
       mockWorldWeatherReport({
         current: {
@@ -131,7 +132,7 @@ describe("LevelWeatherService, set by hand", () => {
 
     const service: LevelWeatherService = createLevelWeatherService();
 
-    await service.open(LEVEL_WEATHER_SELECTED);
+    await mockOpenLevelWeather(service, LEVEL_WEATHER_SELECTED);
 
     const shown: Array<ILevelManualWeather> = [];
     const stop: () => void = autorun(() => void shown.push(service.shown));

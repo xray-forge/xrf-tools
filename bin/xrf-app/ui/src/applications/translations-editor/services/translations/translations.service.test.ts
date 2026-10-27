@@ -171,9 +171,10 @@ describe("TranslationsService", () => {
 
     mockIpcCommands({
       [ETranslationsCommand.OPEN_PROJECT]: mockSessionResponse(() => PROJECT),
-      [ETranslationsCommand.SAVE_FILE]: () => ({
+      // Answered for the opening that saved, as the backend answers.
+      [ETranslationsCommand.SAVE_FILE]: (args?: Record<string, unknown>) => ({
         kind: ETranslationSaveOutcome.SAVED,
-        project: mockSessionSnapshot(OTHER_PROJECT),
+        project: mockSessionSnapshot(OTHER_PROJECT, args?.sessionId as string),
       }),
     });
 
@@ -283,7 +284,7 @@ describe("TranslationsService", () => {
       expect.objectContaining({
         details: "backend refused",
         severity: ENotificationSeverity.ERROR,
-        title: "Could not close translations project",
+        title: "Could not close the translations project",
       }),
     ]);
 

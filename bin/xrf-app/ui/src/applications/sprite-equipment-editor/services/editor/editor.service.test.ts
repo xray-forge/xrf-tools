@@ -4,17 +4,19 @@ import { ESpriteEquipmentCommand } from "@xrf/ipc/commands/sprite-equipment";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { SPRITE_EQUIPMENT_JOB_PACK } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 
+import { mockShownEquipmentSprite } from "@/applications/sprite-equipment-editor/fixtures/editor.mocks";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
-import {
-  mockEquipmentSpriteMetadata,
-  mockEquipmentSpritePackResult,
-} from "@/core/sprite-equipment/fixtures/sprite.mocks";
+import { mockEquipmentSpriteOpen, mockEquipmentSpritePackResult } from "@/core/sprite-equipment/fixtures/sprite.mocks";
 import { SpriteEquipmentPackerService } from "@/core/sprite-equipment/services/packer";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 import { SpriteEquipmentEditorService } from "./editor.service";
+
+function mockService() {
+  return mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
+}
 
 describe("SpriteEquipmentEditorService", () => {
   beforeEach(() => {
@@ -22,35 +24,28 @@ describe("SpriteEquipmentEditorService", () => {
   });
 
   it("reports a failed reload instead of staying loading forever", async () => {
-    const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
+    const { service } = mockService();
 
+    mockShownEquipmentSprite(service);
     mockIpcCommands({
       [ESpriteEquipmentCommand.RELOAD_SPRITE]: mockSessionResponse(() => {
         throw new Error("backend refused");
       }),
     });
 
-    service.spriteImage = service.spriteImage.asReady({
-      sessionId: "fixture-session",
-      metadata: mockEquipmentSpriteMetadata(),
-      image: new Image(),
-    });
-    await expect(service.reopenEquipmentProject()).rejects.toThrow("backend refused");
+    await expect(service.reopenEquipmentProject()).resolves.toBe(false);
 
     // Left loading, every command in the editor stays disabled for the rest of the session and the
     // only way out is closing the project.
     expect(service.spriteImage.isLoading).toBe(false);
     expect(String(service.spriteImage.error)).toContain("backend refused");
+    expect(service.spriteImage.value).not.toBeNull();
   });
 
   it("refuses to repack when nothing has been unpacked beside the sprite", async () => {
-    const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
+    const { service } = mockService();
 
-    service.spriteImage = service.spriteImage.asReady({
-      sessionId: "fixture-session",
-      metadata: mockEquipmentSpriteMetadata(),
-      image: new Image(),
-    });
+    mockShownEquipmentSprite(service);
     service.repackSourcePath = null;
 
     await expect(service.repackAndOpenProject()).rejects.toThrow("without base icons");
@@ -60,13 +55,9 @@ describe("SpriteEquipmentEditorService", () => {
   });
 
   it("keeps a failed repack reported rather than silently returning to ready", async () => {
-    const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
+    const { service } = mockService();
 
-    service.spriteImage = service.spriteImage.asReady({
-      sessionId: "fixture-session",
-      metadata: mockEquipmentSpriteMetadata(),
-      image: new Image(),
-    });
+    mockShownEquipmentSprite(service);
     service.repackSourcePath = "C:\\game\\equipment";
 
     mockIpcCommands({
@@ -91,10 +82,18 @@ describe("SpriteEquipmentEditorService", () => {
     expect(service.spriteImage.error).toBeNull();
   });
 
-  it("resets a dismissed failure with no sprite to idle", () => {
-    const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
+  it("resets a dismissed failure with no sprite to idle", async () => {
+    const { service } = mockService();
 
-    service.spriteImage = service.spriteImage.asFailed(new Error("boom"), null);
+    mockIpcCommands({
+      [ESpriteEquipmentCommand.OPEN_SPRITE]: mockSessionResponse(() => {
+        throw new Error("boom");
+      }),
+    });
+
+    await service.openEquipmentProject(mockEquipmentSpriteOpen());
+
+    expect(service.spriteImage.error?.message).toBe("boom");
 
     service.clearSpriteError();
 
@@ -104,29 +103,35 @@ describe("SpriteEquipmentEditorService", () => {
   });
 
   it("does not mark an in-progress load ready when dismissing an error", () => {
-    const { service } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
+    const { service } = mockService();
 
-    service.spriteImage = service.spriteImage.asLoading();
+    mockIpcCommands({ [ESpriteEquipmentCommand.OPEN_SPRITE]: () => new Promise(() => {}) });
+
+    void service.openEquipmentProject(mockEquipmentSpriteOpen());
     service.clearSpriteError();
 
     expect(service.spriteImage.isLoading).toBe(true);
   });
 
   it.each(["busy", "cancelled"])("does not report or reload a %s repack", async (outcome) => {
-    const { service, container } = mockInjectedService(SpriteEquipmentEditorService, [SpriteEquipmentPackerService]);
+    const { service, container } = mockService();
     const notices: Array<unknown> = [];
 
     container.get(EventBus).subscribe(EMIT_NOTIFICATION_EVENT, (event) => notices.push(event.payload));
-    service.spriteImage = service.spriteImage.asReady({
-      sessionId: "fixture-session",
-      metadata: mockEquipmentSpriteMetadata(),
-      image: new Image(),
-    });
+    mockShownEquipmentSprite(service);
     service.repackSourcePath = "icons";
 
-    const previous = service.spriteImage.asFailed(new Error("previous failure"));
+    // A failure already on screen, which a repack that wrote nothing has to leave as it is.
+    mockIpcCommands({
+      [ESpriteEquipmentCommand.RELOAD_SPRITE]: mockSessionResponse(() => {
+        throw new Error("previous failure");
+      }),
+    });
+    await service.reopenEquipmentProject();
 
-    service.spriteImage = previous;
+    const previous = service.spriteImage;
+
+    mockInvoke.mockClear();
 
     if (outcome === "busy") {
       container.get(JobsService).jobs = [

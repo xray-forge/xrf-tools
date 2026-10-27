@@ -7,6 +7,7 @@ import { Nullable } from "@xrf/types";
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
+import { mockHeldSessionRoot, mockLetGoSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
 /** The level the weather tests open. */
@@ -19,6 +20,28 @@ export const LEVEL_WEATHER_SELECTED: SessionSnapshot<SelectedLevelDescription> =
 /** A weather service over a level load service of its own. */
 export function createLevelWeatherService(): LevelWeatherService {
   return mockContainer([LevelLoadService, LevelWeatherService]).get(LevelWeatherService);
+}
+
+/**
+ * Opens a level's weather as its loader tells it of one: the loader holds the level, or none, then the weather hears.
+ *
+ * @param service - The weather to open.
+ * @param selected - The level open, or null for none.
+ * @returns Once the weather settled.
+ */
+export async function mockOpenLevelWeather(
+  service: LevelWeatherService,
+  selected: Nullable<SessionSnapshot<SelectedLevelDescription>>
+): Promise<void> {
+  const loader: LevelLoadService = service["loadService"];
+
+  if (selected) {
+    mockHeldSessionRoot(loader.selection, selected);
+  } else {
+    mockLetGoSessionRoot(loader.selection);
+  }
+
+  await service.open(selected);
 }
 
 /** The keyframe set by hand a play hands over, or null for a play of anything else. */

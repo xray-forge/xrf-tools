@@ -144,6 +144,53 @@ describe("SessionRootResource", () => {
     expect(root.isRestored).toBe(true);
   });
 
+  it("never restores over a root opened before the restore was asked for", async () => {
+    const { root } = setup();
+
+    await flowResult(root.open("C:\\project", open, "C:\\project"));
+    await flowResult(root.restore());
+
+    expect(restore).not.toHaveBeenCalled();
+    expect(root.value).toBe("opened");
+    expect(root.isRestored).toBe(true);
+  });
+
+  it("reads what the root's view needs in the flow that adopted it, which a newer open cancels", async () => {
+    const listed: Array<string> = [];
+    const listing = deferred<void>();
+
+    @Injectable()
+    class ListingHolderService {
+      public readonly log: Logger = new Logger("holder");
+
+      public readonly root: SessionRootResource<string> = new SessionRootResource(this.log, {
+        subject: "test project",
+        close,
+        restore,
+        adopted: function* (snapshot: SessionSnapshot<string>) {
+          yield listing.promise;
+          listed.push(snapshot.value);
+        },
+      });
+    }
+
+    const { service } = mockInjectedService(ListingHolderService);
+
+    open.mockImplementationOnce(opened("first")).mockImplementationOnce(opened("second"));
+
+    const older = flowResult(service.root.open("C:\\first", open, "C:\\first"));
+
+    await flush();
+
+    const newer = flowResult(service.root.open("C:\\second", open, "C:\\second"));
+
+    listing.resolve();
+    await Promise.all([older, newer]);
+
+    expect(service.root.value).toBe("second");
+    expect(listed).toEqual(["second"]);
+  });
+
   it("opens in place of what it holds, a newer open replacing an older one", async () => {
     const { root } = setup();
     const first = deferred<SessionSnapshot<string>>();

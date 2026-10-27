@@ -1,27 +1,9 @@
-import {
-  EventBus,
-  inject,
-  Injectable,
-  OnDeprovision,
-  OnEvent,
-  OnProvision,
-  ProvisionId,
-  WireEvent,
-} from "@wirestate/core";
+import { inject, Injectable, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
-import { transformError } from "@xrf/errors";
 import { call, cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
-import { formatDuration } from "@xrf/format";
 import { archivesCommands } from "@xrf/ipc/commands/archives";
-import {
-  isOlderSessionAnswer,
-  isSessionMovedPast,
-  requireSessionId,
-  Session,
-  SESSION_CHANGE_EVENT,
-  SessionScopeService,
-} from "@xrf/ipc/session";
+import { isOlderSessionAnswer, requireSessionId } from "@xrf/ipc/session";
 import {
   ArchiveOverrideReport,
   ArchiveResolution,
@@ -30,13 +12,13 @@ import {
   ArchiveWorldEntry,
   EArchiveSubject,
 } from "@xrf/ipc/types/xrf-app-archives";
-import { ESessionRootChange, SessionChange, SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { ArchiveDescriptor, ArchiveFileDescriptor, ArchiveSharedPayload } from "@xrf/ipc/types/xrf-archive";
 import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
 import { EXrayAssetContainer, XrayPathCollision, XrayRoots } from "@xrf/ipc/types/xrf-vfs";
-import { Logger, Timer } from "@xrf/logging";
-import { assertExhaustive, Nullable, Optional } from "@xrf/types";
+import { Logger } from "@xrf/logging";
+import { Nullable, Optional } from "@xrf/types";
 
 import { describeExtractOutcome } from "@/applications/archives-explorer/lib/describe-extract-outcome";
 import {
@@ -49,11 +31,12 @@ import {
   TArchiveOperation,
   TArchiveSelection,
 } from "@/core/archive/lib";
+import { describeRoots } from "@/core/assets/lib";
 import { IJobNotice, IJobOutcome, IJobRun, IJobState } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
-import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
+import { CommandReporter, TCommandCompletion } from "@/core/operations/lib/command-reporter";
 import { EPathEntryKind } from "@/core/path/entry-kind";
-import { EApplicationId } from "@/core/routing/application";
+import { SessionRootResource } from "@/core/session/lib/session-root-resource";
 
 import { ArchiveContentReader } from "./archives.service.content";
 
@@ -64,7 +47,21 @@ const EMPTY_OVERRIDES: ArchiveOverrideReport = { overridden: [], unreachable: []
 export class ArchivesService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  private readonly session: Session = new Session(archivesCommands.closeSubject, inject(SessionScopeService));
+  /**
+   * What the explorer is browsing: a volume set, or a mounted world. A world is listed again once a commit lists it
+   * anew; a volume set follows nothing, so no change names it.
+   */
+  public readonly subject: SessionRootResource<ArchiveSubject> = new SessionRootResource(this.log, {
+    subject: "archives",
+    close: archivesCommands.closeSubject,
+    restore: archivesCommands.restoreSubject,
+    follow: {
+      reread: archivesCommands.restoreSubject,
+      staleNotice: "Could not list the changed game folder again",
+      refreshed: () => this.onListedAgain(),
+    },
+    adopted: () => this.loadPanels(),
+  });
 
   /** The extraction this service started, while it runs. */
   @Observable()
@@ -73,16 +70,6 @@ export class ArchivesService {
   @Computed()
   public get job(): Nullable<IJobState> {
     return this.jobId ? this.jobsService.getJob(this.jobId) : this.jobsService.getJobOfKind(ARCHIVES_JOB_EXTRACT);
-  }
-
-  /** Idle until restoration settles; a closed explorer is ready with no value. */
-  @Observable()
-  private subjectState: AsyncState<SessionSnapshot<ArchiveSubject>> = AsyncState.idle();
-
-  /** What the explorer is browsing: a volume set, or a mounted world. */
-  @Computed()
-  public get subject(): AsyncState<ArchiveSubject> {
-    return this.subjectState.map((snapshot) => snapshot.value);
   }
 
   /** What the open subject answers twice over, and what it cannot reach at all. */
@@ -223,176 +210,45 @@ export class ArchivesService {
   /** What each previewable kind has to be asked for, which is a table rather than state. */
   private readonly reader: ArchiveContentReader = new ArchiveContentReader(() => this.requireSubjectSession());
 
-  public constructor(
-    private readonly eventBus: EventBus = inject(EventBus),
-    private readonly jobsService: JobsService = inject(JobsService)
-  ) {}
+  private readonly reporter: CommandReporter = new CommandReporter(this.log);
+
+  public constructor(private readonly jobsService: JobsService = inject(JobsService)) {}
 
   @OnProvision()
-  public async onProvision(provisionId: ProvisionId): Promise<void> {
-    this.log.info("Provisioning:", provisionId);
-
-    await flowResult(this.restore());
-  }
-
-  @OnDeprovision()
-  public onDeprovision(provisionId: ProvisionId): void {
-    this.log.info("Deprovisioning:", provisionId);
-  }
-
-  /**
-   * Reads the open world again once a commit listed it anew; a world the backend could not list again stays as shown,
-   * with a notice saying why. A volume set follows nothing, so no change names it.
-   */
-  @OnEvent(SESSION_CHANGE_EVENT)
-  public onSessionChange({ payload: change }: WireEvent<SessionChange>): void {
-    const held: Nullable<SessionSnapshot<ArchiveSubject>> = this.subjectState.value;
-
-    if (!change || !held || held.sessionId !== change.sessionId) {
-      return;
-    }
-
-    switch (change.root.kind) {
-      // A later notice says what a derivation under way derived.
-      case ESessionRootChange.KEPT:
-      case ESessionRootChange.DERIVING:
-        return;
-
-      case ESessionRootChange.DERIVED:
-        if (isSessionMovedPast(held, change)) {
-          void this.refresh();
-        }
-
-        return;
-
-      case ESessionRootChange.STALE:
-      case ESessionRootChange.FAILED:
-        this.log.warn("The archive world was not listed again:", change.root);
-
-        emitNotification(this.eventBus, {
-          details: change.root.kind === ESessionRootChange.FAILED ? change.root.reason : undefined,
-          severity: ENotificationSeverity.WARNING,
-          source: EApplicationId.ARCHIVES_EXPLORER,
-          title: "Could not list the changed game folder again",
-        });
-
-        return;
-
-      default:
-        return assertExhaustive(change.root);
-    }
-  }
-
-  /** Reads the committed subject again, for `onSessionChange`; a failure leaves what is shown, stale. */
-  private async refresh(): Promise<void> {
-    try {
-      this.adoptRefreshed(await archivesCommands.restoreSubject(this.session.tool));
-    } catch (error: unknown) {
-      this.log.warn("Could not read the archive world again:", transformError(error));
-    }
-  }
-
-  /**
-   * Shows a subject read again where it is still the one shown and no older than it; an open or close in flight
-   * decides what is shown instead.
-   */
-  @BoundAction()
-  private adoptRefreshed(answer: Nullable<SessionSnapshot<ArchiveSubject>>): void {
-    const held: Nullable<SessionSnapshot<ArchiveSubject>> = this.subjectState.value;
-
-    if (
-      !answer ||
-      !held ||
-      this.subjectState.isLoading ||
-      answer.sessionId !== held.sessionId ||
-      isOlderSessionAnswer(held, answer)
-    ) {
-      return;
-    }
-
-    this.log.info("Archive world listed again at revision:", answer.revision);
-
-    this.subjectState = this.subjectState.map(() => answer);
-    // Both describe the listing they were read for, so the dialogs read them again when next opened.
-    this.statistics = this.statistics.asIdle(null);
-    this.resolution = this.resolution.asIdle(null);
-
-    void this.reloadPanels();
-  }
-
-  /** Reads what the side panels report again, for a subject listed anew; a later listing supersedes it. */
-  @LatestFlow("overrides")
-  private *reloadPanels(): TFlow {
-    yield* this.loadPanels();
-  }
-
-  /**
-   * Restores the committed session without superseding a user action in the same flow.
-   */
-  @ExclusiveFlow("subject")
-  private *restore(): TFlow {
-    this.log.info("Restoring");
-
-    try {
-      const existing: Nullable<SessionSnapshot<ArchiveSubject>> = yield* call(
-        archivesCommands.restoreSubject(this.session.tool)
-      );
-
-      this.log.info(existing ? `Existing archives ${existing.value.kind} detected` : "No existing archives subject");
-
-      this.session.adopt(existing);
-      this.subjectState = this.subjectState.asReady(existing);
-
-      if (existing) {
-        yield* this.loadPanels();
-      }
-    } catch (error: unknown) {
-      this.log.error("Failed to restore archives subject:", error);
-
-      this.subjectState = this.subjectState.asFailed(transformError(error));
-    }
+  public async onProvision(): Promise<void> {
+    await flowResult(this.subject.restore());
   }
 
   /**
    * Opens a set of `.db` volumes at a path: one volume, or every volume beneath a directory.
    *
    * @param path - Volume or directory of volumes to index.
+   * @returns Whether they opened.
    */
-  @LatestFlow("subject")
-  public *openVolumes(path: string): TFlow {
-    yield* this.open("archive volumes", path, "Could not open archive volumes", () =>
-      this.session.open(archivesCommands.openVolumes, path)
-    );
+  @BoundAction()
+  public openVolumes(path: string): Promise<boolean> {
+    this.forgetReads();
+
+    return flowResult(this.subject.open(path, archivesCommands.openVolumes, path));
   }
 
   /**
    * Opens a game folder as the engine mounts it, so a loose `gamedata` tree stands in front of the archives behind it.
    *
    * @param roots - Where to read from, as the open form named it.
+   * @returns Whether it opened.
    */
-  @LatestFlow("subject")
-  public *openWorld(roots: XrayRoots): TFlow {
-    yield* this.open("archive world", roots.roots[0]?.path ?? "", "Could not open game folder", () =>
-      this.session.open(archivesCommands.openWorld, roots)
-    );
+  @BoundAction()
+  public openWorld(roots: XrayRoots): Promise<boolean> {
+    this.forgetReads();
+
+    return flowResult(this.subject.open(describeRoots(roots), archivesCommands.openWorld, roots));
   }
 
-  @LatestFlow("subject")
-  public *closeSubject(): TFlow {
-    const timer: Timer = new Timer();
-
-    this.log.info("Closing existing archives subject");
-
-    try {
-      yield* call(this.session.close());
-
-      this.log.info("Archives subject closed in:", formatDuration(timer.elapsed()));
-
-      this.resetSubject();
-    } catch (error: unknown) {
-      this.log.error("Failed to close archives subject after:", formatDuration(timer.elapsed()), error);
-
-      throw transformError(error);
+  @BoundAction()
+  public async closeSubject(): Promise<void> {
+    if (await flowResult(this.subject.close())) {
+      this.forgetReads();
     }
   }
 
@@ -419,18 +275,6 @@ export class ArchivesService {
     if (job) {
       this.jobsService.cancel(job.id);
     }
-  }
-
-  @BoundAction()
-  public resetSubject(): void {
-    this.log.info("Reset archives subject");
-
-    this.clearFileSelection();
-    this.subjectState = this.subjectState.asReady(null);
-    this.overrides = this.overrides.asIdle(EMPTY_OVERRIDES);
-    this.sharedPayloads = this.sharedPayloads.asIdle([]);
-    this.statistics = this.statistics.asIdle(null);
-    this.resolution = this.resolution.asIdle(null);
   }
 
   /**
@@ -485,39 +329,23 @@ export class ArchivesService {
       return;
     }
 
-    const timer: Timer = new Timer();
+    this.operation = this.operation.asLoading(null);
 
-    this.log.info("Extracting file:", entry.name, destination);
+    const completion: TCommandCompletion<unknown> = yield* this.reporter.run({
+      name: "Extract archive file",
+      subject: destination,
+      command: () => archivesCommands.extractFile(this.requireSubjectSession(), entry.name, destination),
+      failure: `Could not extract ${entry.name}`,
+      success: () => ({ details: destination, title: `Extracted ${entry.name}` }),
+    });
 
-    try {
-      this.operation = this.operation.asLoading(null);
+    if (completion.error) {
+      this.operation = this.operation.asFailed(completion.error, null);
 
-      yield* call(archivesCommands.extractFile(this.requireSubjectSession(), entry.name, destination));
-
-      this.log.info("File extracted in:", formatDuration(timer.elapsed()));
-
-      this.operation = this.operation.asReady({ kind: "extract-file", destination });
-
-      emitNotification(this.eventBus, {
-        details: destination,
-        severity: ENotificationSeverity.SUCCESS,
-        source: EApplicationId.ARCHIVES_EXPLORER,
-        title: `Extracted ${entry.name}`,
-      });
-    } catch (error: unknown) {
-      this.log.error("Failed to extract file after:", formatDuration(timer.elapsed()), error);
-
-      this.operation = this.operation.asFailed(transformError(error), null);
-
-      emitNotification(this.eventBus, {
-        details: `${destination}\n${transformError(error).message}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.ARCHIVES_EXPLORER,
-        title: `Could not extract ${entry.name}`,
-      });
-
-      throw transformError(error);
+      throw completion.error;
     }
+
+    this.operation = this.operation.asReady({ kind: "extract-file", destination });
   }
 
   /**
@@ -531,8 +359,6 @@ export class ArchivesService {
     if (this.isWriting) {
       return;
     }
-
-    const timer: Timer = new Timer();
 
     this.log.info("Extracting directory:", prefix || "<root>", destination);
 
@@ -554,15 +380,13 @@ export class ArchivesService {
 
       const result: ArchiveExtractDirectoryResult = yield* call(run.promise);
 
-      this.log.info("Directory extracted in:", formatDuration(timer.elapsed()));
-
       this.operation = this.operation.asReady({ kind: "extract-directory", result });
     } catch (error: unknown) {
-      this.log.error("Failed to extract directory after:", formatDuration(timer.elapsed()), error);
+      this.log.error("Failed to extract directory:", prefix || "<root>", error);
 
-      this.operation = this.operation.asFailed(transformError(error), null);
+      this.operation = this.operation.asFailed(error as Error, null);
 
-      throw transformError(error);
+      throw error;
     } finally {
       this.jobId = null;
     }
@@ -586,50 +410,80 @@ export class ArchivesService {
   }
 
   /**
-   * Opens whichever subject the form asked for, which differs only in the command it dispatches.
-   *
-   * @param what - Subject being opened, for the log line.
-   * @param path - Path the person named, for the failure notice.
-   * @param failureTitle - What to call a failure in the notification.
-   * @param dispatch - Sends the open, called once the previous subject has left the screen.
+   * Loads the breakdown of the open subject, once.
    */
-  private *open(
-    what: string,
-    path: string,
-    failureTitle: string,
-    dispatch: () => Promise<SessionSnapshot<ArchiveSubject>>
-  ): TFlow {
-    const timer: Timer = new Timer();
-
-    this.log.info(`Opening ${what}:`, path);
-
-    try {
-      this.clearFileSelection();
-
-      this.subjectState = this.subjectState.asLoading();
-      this.overrides = this.overrides.asIdle(EMPTY_OVERRIDES);
-      this.sharedPayloads = this.sharedPayloads.asIdle([]);
-      // Both are loaded once and kept, so a new subject has to discard them or the dialogs describe the previous one.
-      this.statistics = this.statistics.asIdle(null);
-      this.resolution = this.resolution.asIdle(null);
-
-      this.subjectState = this.subjectState.asReady(yield* call(dispatch()));
-
-      this.log.info(`Opened ${what} in:`, formatDuration(timer.elapsed()));
-
-      yield* this.loadPanels();
-    } catch (error: unknown) {
-      this.log.error(`Failed to open ${what} after:`, formatDuration(timer.elapsed()), error);
-
-      this.subjectState = this.subjectState.asFailed(transformError(error));
-
-      emitNotification(this.eventBus, {
-        details: `${path}\n${transformError(error).message}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.ARCHIVES_EXPLORER,
-        title: failureTitle,
-      });
+  @LatestFlow("statistics")
+  public *loadStatistics(): TFlow {
+    if (this.statistics.value || this.statistics.isLoading) {
+      return;
     }
+
+    this.statistics = this.statistics.asLoading(null);
+
+    const completion: TCommandCompletion<Optional<ArchiveStatistics>> = yield* this.readReport(
+      "Describe archives statistics",
+      "Could not describe what the archives hold",
+      archivesCommands.describeStatistics
+    );
+
+    if (completion.error) {
+      this.statistics = this.statistics.asFailed(completion.error, null);
+    } else if (completion.result !== undefined) {
+      this.statistics = this.statistics.asReady(completion.result);
+    }
+  }
+
+  /**
+   * Loads where the open subject looks for an engine path, once.
+   */
+  @LatestFlow("resolution")
+  public *loadResolution(): TFlow {
+    if (this.resolution.value || this.resolution.isLoading) {
+      return;
+    }
+
+    this.resolution = this.resolution.asLoading(null);
+
+    const completion: TCommandCompletion<Optional<ArchiveResolution>> = yield* this.readReport(
+      "Describe archives resolution",
+      "Could not describe where the archives look for a file",
+      archivesCommands.describeResolution
+    );
+
+    if (completion.error) {
+      this.resolution = this.resolution.asFailed(completion.error, null);
+    } else if (completion.result !== undefined) {
+      this.resolution = this.resolution.asReady(completion.result);
+    }
+  }
+
+  /**
+   * Lets everything read of the subject held go: the selection, its content, the panels and the reports, so a subject
+   * opened next or none at all shows none of it.
+   */
+  @BoundAction()
+  private forgetReads(): void {
+    this.clearFileSelection();
+    this.overrides = this.overrides.asIdle(EMPTY_OVERRIDES);
+    this.sharedPayloads = this.sharedPayloads.asIdle([]);
+    // Both are loaded once and kept, so a new subject has to discard them or the dialogs describe the previous one.
+    this.statistics = this.statistics.asIdle(null);
+    this.resolution = this.resolution.asIdle(null);
+  }
+
+  /** A world listed anew: what describes its listing is read again, the reports when next asked for. */
+  @BoundAction()
+  private onListedAgain(): void {
+    this.statistics = this.statistics.asIdle(null);
+    this.resolution = this.resolution.asIdle(null);
+
+    void flowResult(this.reloadPanels());
+  }
+
+  /** Reads what the side panels report again, for a subject listed anew; a later listing supersedes it. */
+  @LatestFlow("overrides")
+  private *reloadPanels(): TFlow {
+    yield* this.loadPanels();
   }
 
   /**
@@ -648,111 +502,61 @@ export class ArchivesService {
     }
   }
 
-  /**
-   * Loads the breakdown of the open subject, once.
-   */
-  @LatestFlow("statistics")
-  public *loadStatistics(): TFlow {
-    if (this.statistics.value || this.statistics.isLoading) {
-      return;
-    }
-
-    try {
-      this.statistics = this.statistics.asLoading(null);
-
-      const answer: SessionSnapshot<ArchiveStatistics> = yield* call(
-        archivesCommands.describeStatistics(this.requireSubjectSession())
-      );
-
-      if (this.isOlderThanShown(answer)) {
-        return;
-      }
-
-      this.log.info("Archives statistics:", answer.value.overview.total.files, "files");
-
-      this.statistics = this.statistics.asReady(answer.value);
-    } catch (error: unknown) {
-      this.log.error("Failed to describe archives statistics:", error);
-
-      this.statistics = this.statistics.asFailed(transformError(error), null);
-    }
-  }
-
-  /**
-   * Loads where the open subject looks for an engine path, once.
-   */
-  @LatestFlow("resolution")
-  public *loadResolution(): TFlow {
-    if (this.resolution.value || this.resolution.isLoading) {
-      return;
-    }
-
-    try {
-      this.resolution = this.resolution.asLoading(null);
-
-      const answer: SessionSnapshot<ArchiveResolution> = yield* call(
-        archivesCommands.describeResolution(this.requireSubjectSession())
-      );
-
-      if (this.isOlderThanShown(answer)) {
-        return;
-      }
-
-      this.log.info("Archives resolution:", answer.value.sources.length, "sources");
-
-      this.resolution = this.resolution.asReady(answer.value);
-    } catch (error: unknown) {
-      this.log.error("Failed to describe archives resolution:", error);
-
-      this.resolution = this.resolution.asFailed(transformError(error), null);
-    }
-  }
-
   private *loadOverrides(): TFlow {
-    try {
-      this.overrides = this.overrides.asLoading(EMPTY_OVERRIDES);
+    this.overrides = this.overrides.asLoading(EMPTY_OVERRIDES);
 
-      const answer: SessionSnapshot<ArchiveOverrideReport> = yield* call(
-        archivesCommands.listOverrides(this.requireSubjectSession())
-      );
+    const completion: TCommandCompletion<Optional<ArchiveOverrideReport>> = yield* this.readReport(
+      "List archive overrides",
+      "Could not list the overridden archive files",
+      archivesCommands.listOverrides
+    );
 
-      if (this.isOlderThanShown(answer)) {
-        return;
-      }
-
-      this.log.info(
-        "Archives overrides:",
-        answer.value.overridden.length,
-        "overridden,",
-        answer.value.unreachable.length,
-        "unreachable"
-      );
-
-      this.overrides = this.overrides.asReady(answer.value);
-    } catch (error: unknown) {
-      this.log.error("Failed to describe archives overrides:", error);
-
-      this.overrides = this.overrides.asFailed(transformError(error), EMPTY_OVERRIDES);
+    if (completion.error) {
+      this.overrides = this.overrides.asFailed(completion.error, EMPTY_OVERRIDES);
+    } else if (completion.result !== undefined) {
+      this.overrides = this.overrides.asReady(completion.result);
     }
   }
 
   private *loadSharedPayloads(): TFlow {
-    try {
-      this.sharedPayloads = this.sharedPayloads.asLoading([]);
+    this.sharedPayloads = this.sharedPayloads.asLoading([]);
 
-      // A volume set follows no commit, so its payloads are never older than what is shown.
-      const answer: SessionSnapshot<Array<ArchiveSharedPayload>> = yield* call(
-        archivesCommands.listSharedPayloads(this.requireSubjectSession())
-      );
+    // A volume set follows no commit, so its payloads are never older than what is shown.
+    const completion: TCommandCompletion<Optional<Array<ArchiveSharedPayload>>> = yield* this.readReport(
+      "List archive shared payloads",
+      "Could not list the archives' shared payloads",
+      archivesCommands.listSharedPayloads
+    );
 
-      this.log.info("Archives shared payloads:", answer.value.length);
-
-      this.sharedPayloads = this.sharedPayloads.asReady(answer.value);
-    } catch (error: unknown) {
-      this.log.error("Failed to list archives shared payloads:", error);
-
-      this.sharedPayloads = this.sharedPayloads.asFailed(transformError(error), []);
+    if (completion.error) {
+      this.sharedPayloads = this.sharedPayloads.asFailed(completion.error, []);
+    } else if (completion.result !== undefined) {
+      this.sharedPayloads = this.sharedPayloads.asReady(completion.result);
     }
+  }
+
+  /**
+   * Reads one report of the open subject through the reporter.
+   *
+   * @param name - What the read is, as its log lines name it.
+   * @param failure - The failure notice's title.
+   * @param query - The report's query, addressed by the subject's session.
+   * @returns The report, or nothing for one read from an older listing than the one shown, having lost a race to a
+   *   commit's listing anew: the reads that listing started answer instead.
+   */
+  private *readReport<T>(
+    name: string,
+    failure: string,
+    query: (sessionId: SessionId) => Promise<SessionSnapshot<T>>
+  ): TFlow<TCommandCompletion<Optional<T>>> {
+    return yield* this.reporter.run({
+      name,
+      failure,
+      command: () =>
+        query(this.requireSubjectSession()).then((answer: SessionSnapshot<T>) =>
+          this.isOlderThanShown(answer) ? undefined : answer.value
+        ),
+    });
   }
 
   /**
@@ -791,27 +595,23 @@ export class ArchivesService {
    * @param kind - Preview representation to request from the backend.
    */
   private *readContent(entry: IArchiveEntry, kind: TArchiveContent["kind"]): TFlow {
-    const timer: Timer = new Timer();
-
-    this.log.info("Reading archive content:", kind, entry.name);
     this.content = this.content.asLoading(null);
 
-    try {
-      const content: TArchiveContent = yield* call(this.reader.read(entry, kind));
+    const completion: TCommandCompletion<TArchiveContent> = yield* this.reporter.run({
+      name: `Read archive ${kind}`,
+      subject: entry.name,
+      command: () => this.reader.read(entry, kind),
+      failure: `Could not read ${entry.name}`,
+    });
 
-      this.log.info("Archive content read in:", formatDuration(timer.elapsed()));
-
-      this.content = this.content.asReady(content);
-    } catch (error: unknown) {
-      this.log.error("Failed to read archive content after:", formatDuration(timer.elapsed()), entry.name, error);
-
-      this.content = this.content.asFailed(transformError(error), null);
-    }
+    this.content = completion.error
+      ? this.content.asFailed(completion.error, null)
+      : this.content.asReady(completion.result);
   }
 
   /** The session every read and write of the open subject is addressed by. */
   private requireSubjectSession(): SessionId {
-    return requireSessionId(this.subjectState.value);
+    return requireSessionId(this.subject.snapshot);
   }
 
   /**
@@ -820,7 +620,7 @@ export class ArchivesService {
    *   anew; the reads that listing started answer instead, so the report is dropped.
    */
   private isOlderThanShown(answer: SessionSnapshot<unknown>): boolean {
-    const held: Nullable<SessionSnapshot<ArchiveSubject>> = this.subjectState.value;
+    const held: Nullable<SessionSnapshot<ArchiveSubject>> = this.subject.snapshot;
 
     return Boolean(held && isOlderSessionAnswer(held, answer));
   }

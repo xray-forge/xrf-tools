@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { AsyncState } from "@xrf/async";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
@@ -11,6 +10,7 @@ import {
   mockArchivesVolumes,
 } from "@/core/archive/fixtures/archive.mocks";
 import { EPathEntryKind } from "@/core/path/entry-kind";
+import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -28,7 +28,7 @@ describe("ArchivesService directory extraction", () => {
   it("sends the directory prefix and destination root", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
+    mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
 
     mockIpcCommands({
       [EArchivesCommand.EXTRACT_DIRECTORY]: mockArchiveExtractDirectoryResult({
@@ -53,7 +53,7 @@ describe("ArchivesService directory extraction", () => {
   it("treats the archive root as an empty prefix", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
+    mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
 
     service.selectArchiveDirectory("");
 
@@ -70,7 +70,7 @@ describe("ArchivesService directory extraction", () => {
   it("reports a refused extraction instead of staying loading", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
+    mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
 
     mockIpcCommands({
       [EArchivesCommand.EXTRACT_DIRECTORY]: () => {
@@ -87,7 +87,7 @@ describe("ArchivesService directory extraction", () => {
   it("keeps file and directory selection mutually exclusive", async () => {
     const { service } = mockInjectedService(ArchivesService);
 
-    service["subjectState"] = AsyncState.ready(mockSessionSnapshot(mockArchivesVolumes()));
+    mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
 
     service.selectArchiveDirectory("configs");
     expect(service.selection).toEqual({ kind: EPathEntryKind.DIRECTORY, path: "configs" });

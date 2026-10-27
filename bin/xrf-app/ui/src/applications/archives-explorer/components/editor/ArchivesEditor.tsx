@@ -2,7 +2,6 @@ import { default as BarChartIcon } from "@mui/icons-material/BarChart";
 import { default as FileCopyIcon } from "@mui/icons-material/FileCopy";
 import { default as LayersIcon } from "@mui/icons-material/Layers";
 import { default as UnarchiveIcon } from "@mui/icons-material/Unarchive";
-import { Alert } from "@mui/material";
 import { CommandBus } from "@wirestate/core";
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
@@ -39,8 +38,6 @@ export function ArchivesEditor(): ReactElement {
   const archivesService: ArchivesService = useInjection(ArchivesService);
   const commandBus: CommandBus = useInjection(CommandBus);
 
-  const [isClosing, setClosing] = useState<boolean>(false);
-  const [closeError, setCloseError] = useState<Nullable<string>>(null);
   const [isStatisticsOpen, setStatisticsOpen] = useState<boolean>(false);
   const [isResolutionOpen, setResolutionOpen] = useState<boolean>(false);
   const [isOverridesOpen, setOverridesOpen] = useState<boolean>(false);
@@ -56,24 +53,13 @@ export function ArchivesEditor(): ReactElement {
 
   const isWorld: boolean = subject?.kind === EArchiveSubject.WORLD;
   const isExtracting: boolean = archivesService.operation.isLoading;
-  const isBusy: boolean = isClosing || isExtracting;
+  const isBusy: boolean = archivesService.subject.isLoading || isExtracting;
 
   const location: Nullable<IEditorLocation> = root ? { path: root } : null;
 
   const onCancelExtraction = useCallback(() => archivesService.cancelExtraction(), [archivesService]);
 
-  const onClose = useCallback(async (): Promise<void> => {
-    setClosing(true);
-    setCloseError(null);
-
-    try {
-      await archivesService.closeSubject();
-    } catch (error: unknown) {
-      setCloseError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setClosing(false);
-    }
-  }, [archivesService]);
+  const onClose = useCallback((): void => void archivesService.closeSubject(), [archivesService]);
 
   /**
    * Opens the file a contested path names, and raises the tree that shows where it sits.
@@ -155,24 +141,14 @@ export function ArchivesEditor(): ReactElement {
               />
             </>
           }
-          onBack={() => void onClose()}
+          onBack={onClose}
         />
       }
       banner={
-        job || closeError ? (
-          <>
-            {job ? (
-              <div className={"px-4 py-2"}>
-                <JobProgressView job={job} onCancel={onCancelExtraction} />
-              </div>
-            ) : null}
-
-            {closeError ? (
-              <Alert severity={"error"} onClose={() => setCloseError(null)}>
-                Could not close archives: {closeError}
-              </Alert>
-            ) : null}
-          </>
+        job ? (
+          <div className={"px-4 py-2"}>
+            <JobProgressView job={job} onCancel={onCancelExtraction} />
+          </div>
         ) : null
       }
     >

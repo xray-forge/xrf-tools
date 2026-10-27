@@ -1,14 +1,13 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { AsyncState } from "@xrf/async";
 import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 
 import { VisualSequenceService } from "@/applications/visuals-sequencer/services/sequence";
-import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
+import { mockLoadedVisual, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
-import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockSessionRead } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -18,10 +17,7 @@ async function renderTrack(names: ReadonlyArray<string> = ["first", "second"]) {
   const { container, service } = mockInjectedService(VisualSequenceService, [VisualLoadService]);
   const bake = mockVisualMotionBake({ frameCount: 4 });
 
-  container.get(VisualLoadService).visual = AsyncState.ready({
-    selected: mockSessionSnapshot(mockSelectedVisual()),
-    views: mockVisualModelViews(),
-  });
+  mockLoadedVisual(container.get(VisualLoadService));
 
   mockIpcCommands({
     [EVisualsCommand.DESCRIBE_MOTION]: mockSessionRead(bake),

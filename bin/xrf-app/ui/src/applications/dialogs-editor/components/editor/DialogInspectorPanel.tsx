@@ -6,7 +6,7 @@ import { ReactElement, useMemo } from "react";
 
 import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";
 import { groupDialogElements, IDialogElementGroup } from "@/applications/dialogs-editor/lib/dialog-elements";
-import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
+import { DialogViewService } from "@/applications/dialogs-editor/services/dialog-view";
 import {
   EditorPanel,
   EditorPanelEmpty,
@@ -25,10 +25,10 @@ export function DialogInspectorPanel({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const dialogsService: DialogsService = useInjection(DialogsService);
+  const viewService: DialogViewService = useInjection(DialogViewService);
 
-  const dialog: Nullable<DialogDescriptor> = dialogsService.dialog.value;
-  const nodeId: Nullable<string> = dialogsService.inspectedNodeId;
+  const dialog: Nullable<DialogDescriptor> = viewService.dialog.value;
+  const nodeId: Nullable<string> = viewService.inspectedNodeId;
   const isDialogRoot: boolean = nodeId === DIALOG_NODE_ID;
 
   const phrase: Nullable<DialogPhraseDescriptor> = useMemo(

@@ -1,11 +1,10 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { reaction } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
 import { visualsCommands } from "@xrf/ipc/commands/visuals";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { VisualMotionBake } from "@xrf/ipc/types/xrf-visual";
 
-import { mockSelectedVisual, mockVisualModelViews, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
+import { mockLoadedVisual, mockSelectedVisual, mockVisualMotionBake } from "@/core/visuals/fixtures/visual.mocks";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -20,10 +19,7 @@ function mockCache() {
     return mockSessionSnapshot({ ...bake, name }, sessionId);
   });
 
-  loadService.visual = AsyncState.ready({
-    selected: mockSessionSnapshot(mockSelectedVisual(), "model-session"),
-    views: mockVisualModelViews(),
-  });
+  mockLoadedVisual(loadService, mockSelectedVisual(), "model-session");
 
   return { cache: new SequenceMotionCache(loadService), loadService, open, bake };
 }

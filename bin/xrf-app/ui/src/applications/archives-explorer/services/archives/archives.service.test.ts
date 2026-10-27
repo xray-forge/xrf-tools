@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
 import { flowResult, isComputedProp } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { ESessionsCommand } from "@xrf/ipc/commands/sessions";
 import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
@@ -16,12 +15,8 @@ import {
   mockArchivesVolumes,
   mockPathCollision,
 } from "@/core/archive/fixtures/archive.mocks";
-import {
-  mockRestoredSession,
-  mockSessionRead,
-  mockSessionResponse,
-  mockSessionSnapshot,
-} from "@/fixtures/mocks/session.mocks";
+import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
+import { mockSessionRead, mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 function ignoreReadResult(): void {}
@@ -29,9 +24,7 @@ function ignoreReadResult(): void {}
 function mockArchivesService(files: Array<ArchiveFileDescriptor>): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service["subjectState"] = AsyncState.ready(
-    mockRestoredSession(service, mockSessionSnapshot(mockArchivesVolumes(files)))
-  );
+  mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes(files)));
 
   return service;
 }
@@ -193,20 +186,8 @@ describe("ArchivesService file selection", () => {
     await service.selectArchiveFile(descriptor);
     await service.closeSubject();
 
-    expect(service.subject.isReady).toBe(true);
-    expect(service.subject.value).toBeNull();
-    expect(service.selectedEntry).toBeNull();
-    expect(service.content.value?.kind === "text" ? service.content.value.result : null).toBeNull();
-  });
-
-  it("clears file state when the project is reset", async () => {
-    const descriptor = mockArchiveFileDescriptor({ name: "textures\\ui.dds" });
-    const service: ArchivesService = mockArchivesService([descriptor]);
-
-    await service.selectArchiveFile(descriptor);
-    service.resetSubject();
-
-    expect(service.subject.isReady).toBe(true);
+    // Closed is still restored, with nothing held: the explorer shows its open form, not its loader.
+    expect(service.subject.isRestored).toBe(true);
     expect(service.subject.value).toBeNull();
     expect(service.selectedEntry).toBeNull();
     expect(service.content.value?.kind === "text" ? service.content.value.result : null).toBeNull();
@@ -225,7 +206,10 @@ describe("ArchivesService file selection", () => {
 
     await service.selectArchiveFile(descriptor);
 
-    await expect(service.closeSubject()).rejects.toThrow("archive is busy");
+    // A close that fails is told as a notice; the subject is still open, so what is shown of it stays.
+    await service.closeSubject();
+
+    expect(service.subject.value).not.toBeNull();
     expect(service.selectedEntry).toStrictEqual(descriptor);
   });
 });
@@ -261,9 +245,7 @@ describe("ArchivesService visual preview lifecycle", () => {
 
     const { service, container } = mockInjectedService(ArchivesService);
 
-    service["subjectState"] = AsyncState.ready(
-      mockRestoredSession(service, mockSessionSnapshot(mockArchivesVolumes([])))
-    );
+    mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes([])));
     container.get(SessionScopeService).release();
     // Retired with the scope, the document is no longer the service's to close.
     await service.closeSubject();

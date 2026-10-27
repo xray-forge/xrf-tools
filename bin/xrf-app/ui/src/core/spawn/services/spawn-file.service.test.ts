@@ -57,7 +57,7 @@ describe("SpawnFileService sessions", () => {
     expect(mockInvoke).not.toHaveBeenCalled();
 
     mockIpcCommands({ [ESpawnCommand.RESTORE_FILE]: mockSessionSnapshot(session, "restored") });
-    await service.onProvision(1);
+    await service.onProvision();
 
     expect(mockInvoke.mock.calls).toEqual([[ESpawnCommand.RESTORE_FILE, { tool: "shell" }]]);
     expect(service.sessionId).toBe("restored");

@@ -5,6 +5,7 @@ import { ETexturesCommand } from "@xrf/ipc/commands/textures";
 import { mockIpcBulkRoutes, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { TextureCatalogMode } from "@xrf/ipc/types/xrf-app-textures";
 
+import { createRoots } from "@/core/assets/lib";
 import {
   MOCK_TEXTURE,
   mockTextureCatalog,
@@ -13,7 +14,7 @@ import {
   mockTextureSummary,
 } from "@/core/textures/fixtures/texture.mocks";
 import { TextureSelectionService } from "@/core/textures/services/selection";
-import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
+import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 
 import { TextureCatalogService } from "./texture-catalog.service";
@@ -81,6 +82,33 @@ describe("TextureCatalogService", () => {
     expect(asked.openModes).toEqual(["looseDirectory"]);
     expect(asked.sweeps).toBe(0);
     expect(service.isBrowsing).toBe(true);
+  });
+
+  it("lists what the tool still browsed again as it is restored, letting the restored opening go", async () => {
+    const { service, asked } = mockService();
+    const closed: Array<unknown> = [];
+
+    mockIpcCommands({
+      [ETexturesCommand.DESCRIBE_CATALOG]: [mockTextureSummary(MOCK_TEXTURE)],
+      [ETexturesCommand.RESTORE_BROWSE]: mockSessionSnapshot(
+        { mode: "looseDirectory", roots: createRoots(["C:\\work\\my-textures"]) },
+        "restored"
+      ),
+      [ETexturesCommand.OPEN_BROWSE]: mockSessionResponse((args?: Record<string, unknown>) => {
+        asked.openModes.push(args?.mode as TextureCatalogMode);
+
+        return mockTextureCatalog([mockTextureEntry(MOCK_TEXTURE)], { mode: args?.mode as TextureCatalogMode });
+      }),
+      [ETexturesCommand.CLOSE_BROWSE]: (args?: Record<string, unknown>) => void closed.push(args?.sessionIds),
+    });
+
+    await service.onProvision();
+
+    expect(asked.openModes).toEqual(["looseDirectory"]);
+    expect(service.catalog.isRestored).toBe(true);
+    expect(service.isBrowsing).toBe(true);
+    expect(service.catalog.sessionId).not.toBe("restored");
+    expect(closed).toEqual([["restored"]]);
   });
 
   it("opens a row by the address the listing put on it", async () => {

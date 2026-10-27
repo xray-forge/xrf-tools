@@ -79,15 +79,15 @@ export class ExportsService {
   }
 
   @BoundAction()
-  public openExportsProject(path: string): Promise<void> {
+  public openExportsProject(path: string): Promise<boolean> {
     return flowResult(this.project.open(path, exportsCommands.openProject, path));
   }
 
   @BoundAction()
-  public refreshExportsProject(): Promise<void> {
+  public refreshExportsProject(): Promise<boolean> {
     const root: Nullable<string> = this.project.value?.root ?? null;
 
-    return root ? flowResult(this.project.refresh(root, exportsCommands.openProject, root)) : Promise.resolve();
+    return root ? flowResult(this.project.refresh(root, exportsCommands.openProject, root)) : Promise.resolve(false);
   }
 
   @BoundAction()

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
 import { flowResult } from "@wirestate/mobx";
-import { AsyncState } from "@xrf/async";
 import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
@@ -8,7 +7,8 @@ import { Nullable } from "@xrf/types";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives/index";
 import { mockArchiveStatistics, mockArchivesVolumes } from "@/core/archive/fixtures/archive.mocks";
-import { mockRestoredSession, mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
+import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
 function getStatisticsCallsCount(): number {
@@ -19,7 +19,7 @@ function getStatisticsCallsCount(): number {
 function mockArchivesService(): ArchivesService {
   const { service } = mockInjectedService(ArchivesService);
 
-  service["subjectState"] = AsyncState.ready(mockRestoredSession(service, mockSessionSnapshot(mockArchivesVolumes())));
+  mockHeldSessionRoot(service.subject, mockSessionSnapshot(mockArchivesVolumes()));
 
   return service;
 }
@@ -44,13 +44,13 @@ describe("ArchivesService statistics", () => {
     expect(getStatisticsCallsCount()).toBe(1);
   });
 
-  it("drops the answer when the subject is reset, so the next one is described afresh", async () => {
+  it("drops the answer when the subject is closed, so the next one is described afresh", async () => {
     mockIpcCommands({ [EArchivesCommand.DESCRIBE_STATISTICS]: mockSessionRead(mockArchiveStatistics()) });
 
     const service: ArchivesService = mockArchivesService();
 
     await flowResult(service.loadStatistics());
-    service.resetSubject();
+    await service.closeSubject();
 
     expect(service.statistics.value).toBeNull();
   });

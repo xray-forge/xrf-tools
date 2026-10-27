@@ -5,6 +5,7 @@ import { EDialogsCommand } from "@xrf/ipc/commands/dialogs";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { DialogProjectDescriptor } from "@xrf/ipc/types/xrf-dialog";
 
+import { DialogViewService } from "@/applications/dialogs-editor/services/dialog-view";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -35,7 +36,7 @@ async function renderMenu(): Promise<{ render: RenderResult; container: Containe
   // A dialog read answers the null every unlisted command does: these tests count reads, never render one.
   mockIpcCommands({ [EDialogsCommand.RESTORE_PROJECT]: mockSessionResponse(PROJECT) });
 
-  const { container, service } = mockInjectedService(DialogsService);
+  const { container, service } = mockInjectedService(DialogsService, [DialogViewService]);
   const render = renderWithProviders(<DialogsTreeMenu />, { container });
 
   await waitFor(() => expect(service.isReady).toBe(true));

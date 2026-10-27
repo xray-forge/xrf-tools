@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
-import { AsyncState } from "@xrf/async";
 import { EDialogsCommand } from "@xrf/ipc/commands/dialogs";
 import { mockIpcCommands } from "@xrf/ipc/testing";
 import { DialogDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { Nullable } from "@xrf/types";
 
+import { mockShownDialog } from "@/applications/dialogs-editor/fixtures/dialogs.mocks";
 import { DIALOG_NODE_ID } from "@/applications/dialogs-editor/lib";
+import { DialogViewService } from "@/applications/dialogs-editor/services/dialog-view";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -41,11 +42,9 @@ const DIALOG: DialogDescriptor = {
 
 /** Renders the panel against a service holding one dialog with `nodeId` inspected. */
 function renderPanel(nodeId: Nullable<string>, dialog: Nullable<DialogDescriptor> = DIALOG): RenderResult {
-  const container = mockContainer([DialogsService]);
-  const service: DialogsService = container.get(DialogsService);
+  const container = mockContainer([DialogsService, DialogViewService]);
 
-  service.dialog = AsyncState.ready(dialog);
-  service.inspectedNodeId = nodeId;
+  mockShownDialog(container.get(DialogsService), container.get(DialogViewService), dialog, nodeId);
 
   return renderWithProviders(<DialogInspectorPanel />, { container });
 }

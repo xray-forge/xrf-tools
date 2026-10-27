@@ -1,6 +1,5 @@
-import { EventBus, inject, Injectable, OnDeactivation, OnProvision } from "@wirestate/core";
-import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
-import { transformError } from "@xrf/errors";
+import { inject, Injectable, OnProvision } from "@wirestate/core";
+import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { Vector3d } from "@xrf/ipc/types/xrf-math";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
@@ -10,21 +9,15 @@ import { findLastSeparator } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 
 import { createRoots } from "@/core/assets/lib";
-import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
-import { EApplicationId } from "@/core/routing/application";
 import { IVisualBoneControls } from "@/core/visuals/components/panels/visual-inspection";
 import { IVisualPose } from "@/core/visuals/lib/render";
 import { selectAddonBones, selectHiddenBoneIndices } from "@/core/visuals/lib/visual-bones";
-import { describeVisualSource } from "@/core/visuals/lib/visual-source";
 import { VisualInspectionService } from "@/core/visuals/services/visual-inspection.service";
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 
 /**
  * What one open asked for, kept so the same request can be made again.
- *
- * The arguments rather than the roots they resolved to: a retry re-derives them, so a root corrected after
- * the failure is picked up instead of being repeated as it was wrong.
  */
 interface IVisualOpenAttempt {
   source: AssetSource;
@@ -34,17 +27,10 @@ interface IVisualOpenAttempt {
 
 /**
  * The visual the explorer has open, and everything about choosing it.
- *
- * Loading itself belongs to `VisualLoadService`, which the archives preview uses too. What is here is what only this
- * application decides: which roots a source is searched in, that a failure is worth a notification, and that leaving
- * drops the backend's selection.
  */
 @Injectable()
 export class VisualsService extends VisualInspectionService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
-
-  @Observable()
-  public isReady: boolean = false;
 
   /**
    * Bone the viewport marks, by name, or null when none is selected.
@@ -100,6 +86,12 @@ export class VisualsService extends VisualInspectionService {
     return selectAddonBones(this.bones);
   }
 
+  /** Whether the backend has been asked what it still has selected, which holds the loader back. */
+  @Computed()
+  public get isReady(): boolean {
+    return this.loadService.selection.isRestored;
+  }
+
   /**
    * @returns Itself, because the explorer is a viewer: it marks and hides bones.
    *
@@ -111,9 +103,6 @@ export class VisualsService extends VisualInspectionService {
 
   /**
    * @returns The directory the open model sits in, or null when there is nothing to browse from.
-   *
-   * Only a loose file has one: an asset is already being browsed, and its bytes may sit inside a volume that no
-   * directory contains.
    */
   @Computed()
   public get containingRoot(): Nullable<string> {
@@ -130,13 +119,11 @@ export class VisualsService extends VisualInspectionService {
 
   /**
    * The open a retry repeats, or null before anything has been asked for.
-   *
    * Not observable: what offers the retry is the failure already on screen, so nothing renders this.
    */
   private attempt: Nullable<IVisualOpenAttempt> = null;
 
   public constructor(
-    private readonly eventBus: EventBus = inject(EventBus),
     loadService: VisualLoadService = inject(VisualLoadService),
     private readonly motionService: VisualMotionService = inject(VisualMotionService)
   ) {
@@ -145,28 +132,10 @@ export class VisualsService extends VisualInspectionService {
 
   /**
    * Restore whatever the backend still has selected.
-   *
-   * A reload re-provisions this service, and the backend keeps the selection for exactly this reason, so the viewer
-   * comes back showing the same model rather than an empty picker.
    */
   @OnProvision()
   public async onProvision(): Promise<void> {
-    try {
-      await flowResult(this.loadService.restore());
-    } catch (error) {
-      this.log.error("Failed to restore selected visual:", error);
-    } finally {
-      runInAction(() => {
-        this.isReady = true;
-      });
-    }
-  }
-
-  @OnDeactivation()
-  public onDeactivation(): void {
-    this.log.info("Deactivating and disposing visuals");
-
-    this.loadService.clear();
+    await this.loadService.restore();
   }
 
   /**
@@ -217,9 +186,6 @@ export class VisualsService extends VisualInspectionService {
   /**
    * Open a visual of a browsed roots, loose or archived alike.
    *
-   * The roots come from the caller because the browsed root is what makes the asset addressable at all: opening
-   * `meshes\wpn\wpn_ak74.ogf` means nothing without the roots it names.
-   *
    * @param logicalPath - Engine identity of the visual, as the listing reported it.
    * @param roots - Roots searched ahead of the project's own, usually the browsed one.
    */
@@ -230,9 +196,6 @@ export class VisualsService extends VisualInspectionService {
 
   /**
    * Open again whatever the last attempt asked for, or do nothing when nothing has been asked for yet.
-   *
-   * The way out of a failed open. Re-activating the row works too - selection survives a failure by design - but that
-   * is a navigation gesture standing in for a recovery action, and a single-model session has no row to activate.
    */
   @BoundAction()
   public async retryOpen(): Promise<void> {
@@ -248,15 +211,11 @@ export class VisualsService extends VisualInspectionService {
   public async close(): Promise<void> {
     this.motionService.clear();
 
-    try {
-      await flowResult(this.loadService.close());
-    } catch (error) {
-      this.log.error("Failed to close visual:", error);
-    }
+    await this.loadService.close();
   }
 
   /**
-   * Load a visual in the roots this application composes, and report a failure the way this application reports one.
+   * Load a visual in the roots this application composes.
    *
    * @param source - Visual source to open.
    * @param roots - Roots searched ahead of the project's own.
@@ -274,25 +233,10 @@ export class VisualsService extends VisualInspectionService {
     this.motionService.clear();
 
     await this.loadService.load(source, await this.getRoots(roots, asset));
-
-    const error: Nullable<Error> = this.visual.error;
-
-    if (error) {
-      emitNotification(this.eventBus, {
-        details: `${describeVisualSource(source)}\n${transformError(error).message}`,
-        severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.VISUALS_EXPLORER,
-        title: "Could not open visual",
-      });
-    }
   }
 
   /**
    * The roots a visual's references are searched in, after the visual's own tree.
-   *
-   * Only the frontend knows which project is configured, which is why the roots is named on every call rather than
-   * derived by the backend: it can derive the roots implied by an asset, but not an ambient one. Naming it rather than
-   * holding a handle is also what lets a reload pick up where it left off, and another surface address the same assets.
    *
    * @param roots - Roots searched ahead of the project's own.
    * @param asset - Asset the roots is centred on.

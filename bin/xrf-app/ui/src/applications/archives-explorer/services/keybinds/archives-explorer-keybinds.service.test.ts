@@ -1,6 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
 import { CommandBus, CommandType, Container, QueryBus } from "@wirestate/core";
-import { AsyncState } from "@xrf/async";
 import { Nullable } from "@xrf/types";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -9,12 +8,13 @@ import { mockArchivesVolumes } from "@/core/archive/fixtures/archive.mocks";
 import { KeybindCommandsService } from "@/core/commands";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { FOCUS_SEARCH_FIELD_COMMAND } from "@/core/search/lib";
+import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import {
   IPanelSetActiveCommand,
   PANEL_ACTIVE_QUERY,
   PANEL_SET_ACTIVE_COMMAND,
 } from "@/core/shell/panel/panel-messages";
-import { mockRestoredSession, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 
 interface IKeybindsHarness {
@@ -46,9 +46,7 @@ function mockKeybinds(activePanelId: Nullable<string>): IKeybindsHarness {
 function openSubject(container: Container): void {
   const archivesService: ArchivesService = container.get(ArchivesService);
 
-  archivesService["subjectState"] = AsyncState.ready(
-    mockRestoredSession(archivesService, mockSessionSnapshot(mockArchivesVolumes([])))
-  );
+  mockHeldSessionRoot(archivesService.subject, mockSessionSnapshot(mockArchivesVolumes([])));
 }
 
 describe("ArchivesExplorerKeybindsService", () => {

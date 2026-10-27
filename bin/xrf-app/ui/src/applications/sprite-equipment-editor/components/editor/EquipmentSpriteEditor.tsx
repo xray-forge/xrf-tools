@@ -1,8 +1,6 @@
 import { default as RefreshIcon } from "@mui/icons-material/Refresh";
 import { Alert, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { Logger } from "@xrf/logging";
-import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { format } from "date-fns";
 import { ReactElement, useCallback } from "react";
@@ -35,8 +33,6 @@ export function EquipmentSpriteEditor({
   id,
   className,
 }: BaseComponentProps): ReactElement {
-  const log: Logger = useLogger(__MODULE_NAME__);
-
   const spriteEquipmentService: SpriteEquipmentEditorService = useInjection(SpriteEquipmentEditorService);
   const gridService: EquipmentGridService = useInjection(EquipmentGridService);
   const spriteImage: Nullable<IOpenEquipmentSprite> = spriteEquipmentService.spriteImage.value;
@@ -49,14 +45,7 @@ export function EquipmentSpriteEditor({
   const repackedAt: Nullable<number> = spriteEquipmentService.repackedAt;
   const error: Nullable<Error> = spriteEquipmentService.spriteImage.error;
 
-  const onReload = useCallback(async () => {
-    try {
-      await spriteEquipmentService.reopenEquipmentProject();
-    } catch (error) {
-      // Published as the sprite failure and rendered by the menu. Logged here for the stack.
-      log.error("Failed to reload DDS:", error);
-    }
-  }, [log, spriteEquipmentService]);
+  const onReload = useCallback(() => void spriteEquipmentService.reopenEquipmentProject(), [spriteEquipmentService]);
 
   // Closing does not navigate: the application shows its own picker again once nothing is open.
   const onClose = useCallback(() => spriteEquipmentService.closeEquipmentProject(), [spriteEquipmentService]);
