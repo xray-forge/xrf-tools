@@ -193,9 +193,9 @@ describe("PackerService operation", () => {
 
     mockIpcCommands({ [EArchivesCommand.EXPORT_PACK_CONFIG]: () => response.promise });
 
-    const { service } = mockPacker();
+    const { service, container } = mockPacker();
 
-    service.operation.adopt({
+    container.get(EventBus).emit<IJobSettledPayload>(JOB_SETTLED_EVENT, {
       id: "failed-pack",
       kind: ARCHIVES_JOB_PACK,
       conclusion: "failed",

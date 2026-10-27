@@ -1,4 +1,4 @@
-import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { Injectable } from "@wirestate/core";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { configsCommands } from "@xrf/ipc/commands/configs";
 import { CONFIGS_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-configs";
@@ -7,9 +7,8 @@ import { Logger } from "@xrf/logging";
 
 import { describeVerifyOutcome } from "@/applications/configs-verifier/lib/describe-verify-outcome";
 import { createRoots } from "@/core/assets/lib";
-import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
-import { JobsService } from "@/core/jobs/services/jobs";
 
 /**
  * The configs verification run and what it found.
@@ -18,11 +17,9 @@ import { JobsService } from "@/core/jobs/services/jobs";
 export class VerifierService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  public readonly operation: JobOperation<LtxProjectVerifyResult>;
-
-  public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [CONFIGS_JOB_VERIFY]);
-  }
+  public readonly operation: JobOperation<LtxProjectVerifyResult> = new JobOperation(this.log, {
+    kinds: [CONFIGS_JOB_VERIFY],
+  });
 
   /**
    * Verifies every LTX file the directory exposes.
@@ -35,10 +32,6 @@ export class VerifierService {
    */
   @ExclusiveFlow("operation")
   public *verify(directory: string, isDltx: boolean, isStrict: boolean): TFlow {
-    if (this.operation.isRunning) {
-      return;
-    }
-
     this.log.info("Verifying:", directory);
 
     yield* this.operation.run({
@@ -51,10 +44,5 @@ export class VerifierService {
         ),
       describe: (outcome: IJobOutcome<LtxProjectVerifyResult>): IJobNotice => describeVerifyOutcome(directory, outcome),
     });
-  }
-
-  @OnEvent(JOB_SETTLED_EVENT)
-  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    this.operation.adopt(event.payload);
   }
 }

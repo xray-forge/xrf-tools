@@ -1,4 +1,4 @@
-import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { Injectable } from "@wirestate/core";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { translationsCommands } from "@xrf/ipc/commands/translations";
 import { TRANSLATIONS_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-translations";
@@ -7,9 +7,8 @@ import { Logger } from "@xrf/logging";
 
 import { describeTranslationVerifyOutcome } from "@/applications/translations-verifier/lib/describe-verify-outcome";
 import { createRoots } from "@/core/assets/lib";
-import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
-import { JobsService } from "@/core/jobs/services/jobs";
 
 /**
  * The translation completeness check and what it found.
@@ -18,11 +17,9 @@ import { JobsService } from "@/core/jobs/services/jobs";
 export class TranslationsVerifierService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  public readonly operation: JobOperation<TranslationVerifyResult>;
-
-  public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [TRANSLATIONS_JOB_VERIFY]);
-  }
+  public readonly operation: JobOperation<TranslationVerifyResult> = new JobOperation(this.log, {
+    kinds: [TRANSLATIONS_JOB_VERIFY],
+  });
 
   /**
    * Checks every translation source under a tree for missing text.
@@ -32,10 +29,6 @@ export class TranslationsVerifierService {
    */
   @ExclusiveFlow("operation")
   public *verify(sources: string, language: ETranslationLanguage): TFlow {
-    if (this.operation.isRunning) {
-      return;
-    }
-
     this.log.info("Verifying translations:", sources, language);
 
     yield* this.operation.run({
@@ -45,10 +38,5 @@ export class TranslationsVerifierService {
       describe: (outcome: IJobOutcome<TranslationVerifyResult>): IJobNotice =>
         describeTranslationVerifyOutcome(sources, outcome),
     });
-  }
-
-  @OnEvent(JOB_SETTLED_EVENT)
-  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    this.operation.adopt(event.payload);
   }
 }

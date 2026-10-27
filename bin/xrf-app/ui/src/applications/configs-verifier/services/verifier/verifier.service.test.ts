@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 import { EConfigsCommand } from "@xrf/ipc/commands/configs";
+import { SessionScopeService } from "@xrf/ipc/session";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { CONFIGS_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-configs";
 import { LtxProjectVerifyResult } from "@xrf/ipc/types/xrf-ltx";
@@ -90,7 +91,9 @@ describe("VerifierService operation", () => {
 
     const running = service.verify("C:\\configs", false, false);
 
+    // Leaving the tool takes its services and releases its scope.
     container.unbind(VerifierService);
+    container.get(SessionScopeService).release();
 
     expect(jobs.jobs).toHaveLength(1);
 

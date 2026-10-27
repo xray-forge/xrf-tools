@@ -1,18 +1,21 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { Container, EventBus } from "@wirestate/core";
 import { autorun, flow } from "@wirestate/mobx";
 import { EJobsCommand } from "@xrf/ipc/commands/jobs";
+import { SessionScopeService } from "@xrf/ipc/session";
 import { mockInvoke, resetMockInvoke } from "@xrf/ipc/testing";
 import { CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT, CONFIGS_JOB_VERIFY } from "@xrf/ipc/types/xrf-app-configs";
-import { JobKind } from "@xrf/ipc/types/xrf-app-core";
 import { TRANSLATIONS_JOB_BUILD } from "@xrf/ipc/types/xrf-app-translations";
+import { Logger } from "@xrf/logging";
+import { Nullable } from "@xrf/types";
 
-import { IJobDescriptor, IJobSettledPayload } from "@/core/jobs/lib";
+import { IJobDescriptor, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { ENotificationSeverity } from "@/core/notifications/lib";
-import { mockInjectedService } from "@/fixtures/utils/container";
+import { mockContainer } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 
-import { JobOperation } from "./job-operation";
+import { IJobOperationOptions, JobOperation } from "./job-operation";
 
 interface IResult {
   count: number;
@@ -28,17 +31,24 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-function setup(kinds: ReadonlyArray<JobKind> = [CONFIGS_JOB_VERIFY]) {
-  const { service: jobs } = mockInjectedService(JobsService);
-  const operation = new JobOperation<IResult>(jobs, kinds);
+function setup(options: IJobOperationOptions<IResult> = { kinds: [CONFIGS_JOB_VERIFY] }) {
+  const container: Container = mockContainer();
+  const jobs: JobsService = container.get(JobsService);
+  const scope: SessionScopeService = container.get(SessionScopeService);
+  const bus: EventBus = container.get(EventBus);
+  const operation: JobOperation<IResult> = new JobOperation(new Logger("job-operation"), options, jobs, scope, bus);
 
-  return { operation, jobs };
+  function settle(patch: Partial<IJobSettledPayload> = {}): void {
+    bus.emit<IJobSettledPayload>(JOB_SETTLED_EVENT, settled(patch));
+  }
+
+  return { operation, jobs, scope, settle };
 }
 
 function descriptor(answer: Promise<IResult>): IJobDescriptor<IResult> {
   return {
     kind: CONFIGS_JOB_VERIFY,
-    invoke: () => answer,
+    invoke: jest.fn(() => answer),
     describe: () => ({ title: "Verified", severity: ENotificationSeverity.SUCCESS }),
   };
 }
@@ -82,9 +92,9 @@ describe("JobOperation", () => {
   });
 
   it("normalizes rejection and clears the previous result before retrying", async () => {
-    const { operation } = setup();
+    const { operation, settle } = setup();
 
-    operation.adopt(settled());
+    settle();
 
     const running = flow(function* () {
       return yield* operation.run(descriptor(Promise.reject("backend refused")));
@@ -123,7 +133,7 @@ describe("JobOperation", () => {
     expect(operation.result).toEqual({ count: 2 });
   });
 
-  it("keeps an abandoned run from publishing over its replacement", async () => {
+  it("ignores a run while an abandoned one still runs, and shows the abandoned one's answer as it settles", async () => {
     const { operation, jobs } = setup();
     const oldAnswer = deferred<IResult>();
     const oldRun = flow(function* () {
@@ -136,20 +146,48 @@ describe("JobOperation", () => {
     expect(jobs.jobs).toHaveLength(1);
     expect(operation.isRunning).toBe(true);
 
-    await flow(function* () {
-      yield* operation.run(descriptor(Promise.resolve({ count: 9 })));
+    const next: IJobDescriptor<IResult> = descriptor(Promise.resolve({ count: 9 }));
+    const ignored = flow(function* () {
+      return yield* operation.run(next);
     })();
+
+    await expect(ignored).resolves.toBeNull();
+    expect(next.invoke).not.toHaveBeenCalled();
 
     oldAnswer.resolve({ count: 1 });
     await abandoned;
     await oldAnswer.promise;
 
-    expect(operation.result).toEqual({ count: 9 });
+    expect(operation.result).toEqual({ count: 1 });
     expect(jobs.jobs).toHaveLength(0);
   });
 
+  it("ignores a run while a job of its kinds found after a reload is in flight", async () => {
+    const { operation, jobs } = setup();
+
+    jobs.jobs = [
+      {
+        id: "found",
+        kind: CONFIGS_JOB_VERIFY,
+        request: null,
+        progress: null,
+        isAdopted: true,
+        isCancelRequested: false,
+      },
+    ];
+
+    const next: IJobDescriptor<IResult> = descriptor(Promise.resolve({ count: 9 }));
+    const ignored = flow(function* () {
+      return yield* operation.run(next);
+    })();
+
+    await expect(ignored).resolves.toBeNull();
+    expect(next.invoke).not.toHaveBeenCalled();
+    expect(operation.isRunning).toBe(true);
+  });
+
   it("rediscovers either formatter mode and cancels the adopted job", () => {
-    const { operation, jobs } = setup([CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT]);
+    const { operation, jobs } = setup({ kinds: [CONFIGS_JOB_CHECK_FORMAT, CONFIGS_JOB_FORMAT] });
 
     jobs.jobs = [
       {
@@ -169,32 +207,33 @@ describe("JobOperation", () => {
     expect(mockInvoke).toHaveBeenCalledWith(EJobsCommand.CANCEL, { id: "format" });
   });
 
-  it("adopts matching success and failure outcomes but ignores other commands", () => {
-    const { operation } = setup();
+  it("shows settled success and failure of its kinds, telling the owner, and ignores other commands", () => {
+    const adopted: Array<Nullable<IResult>> = [];
+    const { operation, settle } = setup({
+      kinds: [CONFIGS_JOB_VERIFY],
+      adopted: (result: Nullable<IResult>) => adopted.push(result),
+    });
 
-    expect(operation.adopt(settled())).toBe(true);
-    expect(operation.adopt(settled({ kind: TRANSLATIONS_JOB_BUILD, result: { count: 99 } }))).toBe(false);
+    settle();
+    settle({ kind: TRANSLATIONS_JOB_BUILD, result: { count: 99 } });
 
     expect(operation.result).toEqual({ count: 4 });
 
-    expect(operation.adopt(settled({ conclusion: "failed", error: "cannot read", result: null }))).toBe(true);
+    settle({ conclusion: "failed", error: "cannot read", result: null });
 
     expect(operation.result).toBeNull();
     expect(operation.error).toBe("cannot read");
-
-    expect(operation.adopt(undefined)).toBe(false);
-
-    expect(operation.error).toBe("cannot read");
+    expect(adopted).toEqual([{ count: 4 }, null]);
   });
 
-  it("does not let an adopted outcome replace a run it is awaiting", async () => {
-    const { operation } = setup();
+  it("does not let a settled outcome replace a run it is awaiting", async () => {
+    const { operation, settle } = setup();
     const answer = deferred<IResult>();
     const running = flow(function* () {
       return yield* operation.run(descriptor(answer.promise));
     })();
 
-    expect(operation.adopt(settled())).toBe(false);
+    settle();
     operation.reset();
 
     expect(operation.result).toBeNull();
@@ -204,6 +243,15 @@ describe("JobOperation", () => {
     await running;
 
     expect(operation.result).toEqual({ count: 3 });
+  });
+
+  it("stops following settled jobs once its tool's scope is released", () => {
+    const { operation, scope, settle } = setup();
+
+    scope.release();
+    settle();
+
+    expect(operation.result).toBeNull();
   });
 
   it("reports a start failure without leaving the operation loading", async () => {
@@ -222,9 +270,9 @@ describe("JobOperation", () => {
   });
 
   it("clears a failure without discarding its partial result", () => {
-    const { operation } = setup();
+    const { operation, settle } = setup();
 
-    operation.adopt(settled({ conclusion: "failed", error: "could not finish", result: { count: 2 } }));
+    settle({ conclusion: "failed", error: "could not finish", result: { count: 2 } });
     operation.clearError();
 
     expect(operation.error).toBeNull();

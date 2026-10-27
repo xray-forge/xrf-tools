@@ -5,12 +5,10 @@ import { formatDuration } from "@xrf/format";
 import { JobKind } from "@xrf/ipc/types/xrf-app-core";
 import { Logger, Timer } from "@xrf/logging";
 import { getPathName } from "@xrf/path";
-import { Nullable, Optional } from "@xrf/types";
+import { Nullable } from "@xrf/types";
 
 import { IResolvedArchiveVolumeSize, resolveArchiveVolumeSize } from "@/core/archive/lib/volume-size";
-import { IJobSettledPayload } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
-import { JobsService } from "@/core/jobs/services/jobs";
 
 /** What every archive configuration carries that this editor reads: the packer's own volume ceiling. */
 export interface IArchiveEditedConfig {
@@ -24,8 +22,6 @@ export interface IArchiveEditedConfig {
  * on the service itself: a composed editor would hold a lane of its own and let an import land over a run.
  */
 export abstract class ArchiveConfigEditorService<TConfig extends IArchiveEditedConfig, TResult> {
-  public abstract readonly log: Logger;
-
   public readonly operation: JobOperation<TResult>;
 
   @Observable()
@@ -59,8 +55,21 @@ export abstract class ArchiveConfigEditorService<TConfig extends IArchiveEditedC
   @Observable()
   private savedState: Nullable<string> = null;
 
-  protected constructor(jobsService: JobsService, kinds: ReadonlyArray<JobKind>) {
-    this.operation = new JobOperation(jobsService, kinds);
+  /**
+   * @param log - The subclass's logger, taken here because a subclass's fields are set only after this runs.
+   * @param kinds - The kinds of run the configuration is used for.
+   */
+  protected constructor(
+    public readonly log: Logger,
+    kinds: ReadonlyArray<JobKind>
+  ) {
+    this.operation = new JobOperation(log, {
+      kinds,
+      // A run this window did not await answers for the configuration as if it had: an I/O failure shown is past.
+      adopted: () => {
+        this.configError = null;
+      },
+    });
   }
 
   /**
@@ -245,18 +254,6 @@ export abstract class ArchiveConfigEditorService<TConfig extends IArchiveEditedC
       this.configError = transformError(error).message;
     } finally {
       this.isBusy = false;
-    }
-  }
-
-  /**
-   * Shows what a run this window watched rather than started has answered: the reload case, where the command replied
-   * to a page that is gone and what the backend retained arrives instead.
-   *
-   * @param settled - Settled job announced by the jobs service.
-   */
-  protected adoptSettled(settled: Optional<IJobSettledPayload>): void {
-    if (this.operation.adopt(settled)) {
-      this.configError = null;
     }
   }
 

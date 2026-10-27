@@ -1,4 +1,4 @@
-import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { inject, Injectable } from "@wirestate/core";
 import { Computed, flowResult } from "@wirestate/mobx";
 import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { texturesCommands } from "@xrf/ipc/commands/textures";
@@ -14,9 +14,9 @@ import { Nullable } from "@xrf/types";
 import { describeTextureBumpOutcome } from "@/applications/textures-editor/lib/describe-texture-bump-outcome";
 import { toBumpTarget } from "@/applications/textures-editor/lib/texture-bump-target";
 import { TextureEditorService } from "@/applications/textures-editor/services/editor";
-import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
-import { JobsService } from "@/core/jobs/services/jobs";
+import { TCommandCompletion } from "@/core/operations/lib/command-reporter";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 
 /** What a generation was asked to build the pair from. */
@@ -42,7 +42,9 @@ export interface ITextureBumpSources {
 export class TextureBumpService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  public readonly generate: JobOperation<TextureMakeBumpOutcome>;
+  public readonly generate: JobOperation<TextureMakeBumpOutcome> = new JobOperation(this.log, {
+    kinds: [TEXTURES_JOB_MAKE_BUMP],
+  });
 
   /**
    * @returns Where the pair would be written, or null when the open texture has no file on disk.
@@ -62,11 +64,8 @@ export class TextureBumpService {
 
   public constructor(
     private readonly selectionService: TextureSelectionService = inject(TextureSelectionService),
-    private readonly editorService: TextureEditorService = inject(TextureEditorService),
-    jobsService: JobsService = inject(JobsService)
-  ) {
-    this.generate = new JobOperation(jobsService, [TEXTURES_JOB_MAKE_BUMP]);
-  }
+    private readonly editorService: TextureEditorService = inject(TextureEditorService)
+  ) {}
 
   /**
    * Build the pair, then point the descriptor at it.
@@ -87,7 +86,7 @@ export class TextureBumpService {
 
     this.log.info("Generating bump pair for:", destination);
 
-    const { result, error } = yield* this.generate.run({
+    const completion: Nullable<TCommandCompletion<TextureMakeBumpOutcome>> = yield* this.generate.run({
       kind: TEXTURES_JOB_MAKE_BUMP,
       invoke: (id: string, progress) =>
         texturesCommands.makeBump(
@@ -112,7 +111,7 @@ export class TextureBumpService {
         ),
     });
 
-    if (error || result?.outcome === "cancelled") {
+    if (!completion || completion.error || completion.result?.outcome === "cancelled") {
       return;
     }
 
@@ -126,10 +125,5 @@ export class TextureBumpService {
     // Through `flowResult`, because the lane decorator hands back a cancellable rather than a generator:
     // `yield*` on it iterates nothing and the re-read silently never happens.
     yield* call(flowResult(this.selectionService.retry()));
-  }
-
-  @OnEvent(JOB_SETTLED_EVENT)
-  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    this.generate.adopt(event.payload);
   }
 }

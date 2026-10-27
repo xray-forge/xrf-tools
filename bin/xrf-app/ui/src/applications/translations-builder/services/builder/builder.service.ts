@@ -1,4 +1,4 @@
-import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { Injectable } from "@wirestate/core";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { translationsCommands } from "@xrf/ipc/commands/translations";
 import { TRANSLATIONS_JOB_BUILD } from "@xrf/ipc/types/xrf-app-translations";
@@ -7,9 +7,8 @@ import { Logger } from "@xrf/logging";
 
 import { describeTranslationBuildOutcome } from "@/applications/translations-builder/lib/describe-build-outcome";
 import { createRoots } from "@/core/assets/lib";
-import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
-import { JobsService } from "@/core/jobs/services/jobs";
 
 /**
  * The translation build and what it produced.
@@ -22,11 +21,9 @@ export class TranslationsBuilderService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** Cancellation leaves written string tables complete; another build supplies those not reached. */
-  public readonly operation: JobOperation<TranslationBuildResult>;
-
-  public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [TRANSLATIONS_JOB_BUILD]);
-  }
+  public readonly operation: JobOperation<TranslationBuildResult> = new JobOperation(this.log, {
+    kinds: [TRANSLATIONS_JOB_BUILD],
+  });
 
   /**
    * Compiles every translation source under a tree into per-language string tables.
@@ -38,10 +35,6 @@ export class TranslationsBuilderService {
    */
   @ExclusiveFlow("operation")
   public *build(sources: string, language: ETranslationLanguage, outputDir: string, isSorted: boolean): TFlow {
-    if (this.operation.isRunning) {
-      return;
-    }
-
     this.log.info("Building translations:", sources, language, outputDir);
 
     yield* this.operation.run({
@@ -55,10 +48,5 @@ export class TranslationsBuilderService {
       describe: (outcome: IJobOutcome<TranslationBuildResult>): IJobNotice =>
         describeTranslationBuildOutcome(outputDir, outcome),
     });
-  }
-
-  @OnEvent(JOB_SETTLED_EVENT)
-  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    this.operation.adopt(event.payload);
   }
 }

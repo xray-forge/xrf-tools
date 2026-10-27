@@ -1,4 +1,4 @@
-import { EventBus, inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
+import { EventBus, inject, Injectable, OnProvision } from "@wirestate/core";
 import { BoundAction, flowResult, Observable } from "@wirestate/mobx";
 import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { archivesCommands } from "@xrf/ipc/commands/archives";
@@ -9,8 +9,7 @@ import { Logger } from "@xrf/logging";
 import { describePackOutcome } from "@/applications/archives-packer/lib/describe-pack-outcome";
 import { FALLBACK_PACK_CONFIG } from "@/applications/archives-packer/lib/pack-config";
 import { ArchiveConfigEditorService } from "@/core/archive/services/config-editor";
-import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
-import { JobsService } from "@/core/jobs/services/jobs";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 
@@ -33,17 +32,12 @@ export enum EPackerSection {
  */
 @Injectable()
 export class PackerService extends ArchiveConfigEditorService<ArchivePackConfig, ArchivePackResult> {
-  public readonly log: Logger = new Logger(__MODULE_NAME__);
-
   /** Which section of the configuration is open. */
   @Observable()
   public section: EPackerSection = EPackerSection.OUTPUT;
 
-  public constructor(
-    private readonly eventBus: EventBus = inject(EventBus),
-    public readonly jobsService: JobsService = inject(JobsService)
-  ) {
-    super(jobsService, [ARCHIVES_JOB_PACK]);
+  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {
+    super(new Logger(__MODULE_NAME__), [ARCHIVES_JOB_PACK]);
   }
 
   /**
@@ -86,10 +80,6 @@ export class PackerService extends ArchiveConfigEditorService<ArchivePackConfig,
    */
   @ExclusiveFlow("isBusy")
   public *pack(config: ArchivePackConfig, isForced: boolean): TFlow {
-    if (this.operation.isRunning) {
-      return;
-    }
-
     this.log.info("Packing:", config.source);
 
     this.isBusy = true;
@@ -105,19 +95,6 @@ export class PackerService extends ArchiveConfigEditorService<ArchivePackConfig,
       // Releasing this view unlocks the form; the job continues through JobsService.
       this.isBusy = false;
     }
-  }
-
-  /**
-   * Shows what a pack this window watched rather than started has answered.
-   *
-   * The reload case: the command replied to a page that is gone, so nothing here ever awaited this run. What the
-   * backend retained arrives instead, and the editor renders it exactly as if this service had packed it.
-   *
-   * @param event - Settled job announced by the jobs service.
-   */
-  @OnEvent(JOB_SETTLED_EVENT)
-  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    this.adoptSettled(event.payload);
   }
 
   protected override onExported(path: string): void {

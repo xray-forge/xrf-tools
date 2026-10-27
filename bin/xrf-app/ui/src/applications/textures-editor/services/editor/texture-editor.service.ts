@@ -1,4 +1,4 @@
-import { inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
+import { inject, Injectable, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, Observable, runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
@@ -18,9 +18,9 @@ import { Nullable } from "@xrf/types";
 import { describeTextureSaveOutcome } from "@/applications/textures-editor/lib/describe-texture-save-outcome";
 import { isSameDescriptorForm, toEditableForm } from "@/applications/textures-editor/lib/texture-descriptor-form";
 import { TextureEncodingService } from "@/applications/textures-editor/services/encoding";
-import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
-import { JobsService } from "@/core/jobs/services/jobs";
+import { TCommandCompletion } from "@/core/operations/lib/command-reporter";
 import { getTextureIdentity } from "@/core/textures/lib/texture-identity";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 
@@ -31,7 +31,7 @@ import { TextureSelectionService } from "@/core/textures/services/selection";
 export class TextureEditorService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  public readonly save: JobOperation<TextureSaveOutcome>;
+  public readonly save: JobOperation<TextureSaveOutcome> = new JobOperation(this.log, { kinds: [TEXTURES_JOB_SAVE] });
 
   /** The names the SDK gives the numbers a descriptor stores, asked for once when the editor opens. */
   @Observable()
@@ -96,11 +96,8 @@ export class TextureEditorService {
 
   public constructor(
     private readonly selectionService: TextureSelectionService = inject(TextureSelectionService),
-    private readonly encodingService: TextureEncodingService = inject(TextureEncodingService),
-    jobsService: JobsService = inject(JobsService)
-  ) {
-    this.save = new JobOperation(jobsService, [TEXTURES_JOB_SAVE]);
-  }
+    private readonly encodingService: TextureEncodingService = inject(TextureEncodingService)
+  ) {}
 
   /**
    * Ask for the vocabulary the form's numeric fields are named by.
@@ -197,7 +194,7 @@ export class TextureEditorService {
 
     this.log.info("Saving texture descriptor:", reference);
 
-    const { error } = yield* this.save.run({
+    const completion: Nullable<TCommandCompletion<TextureSaveOutcome>> = yield* this.save.run({
       kind: TEXTURES_JOB_SAVE,
       invoke: (id: string, progress) =>
         texturesCommands.save(
@@ -217,7 +214,7 @@ export class TextureEditorService {
         describeTextureSaveOutcome(reference ?? "texture", outcome),
     });
 
-    if (error) {
+    if (!completion || completion.error) {
       return;
     }
 
@@ -229,10 +226,5 @@ export class TextureEditorService {
     // Through `flowResult`, because the lane decorator hands back a cancellable rather than a generator:
     // `yield*` on it iterates nothing and the re-read silently never happens.
     yield* call(flowResult(this.selectionService.retry()));
-  }
-
-  @OnEvent(JOB_SETTLED_EVENT)
-  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    this.save.adopt(event.payload);
   }
 }

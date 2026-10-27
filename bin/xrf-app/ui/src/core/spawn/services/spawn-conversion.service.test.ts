@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
-import { EventBus } from "@wirestate/core";
+import { Container, EventBus } from "@wirestate/core";
 import { EJobsCommand } from "@xrf/ipc/commands/jobs";
 import { ESpawnCommand } from "@xrf/ipc/commands/spawn";
+import { SessionScopeService } from "@xrf/ipc/session";
 import { listMockInvokeCalls, mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { SPAWN_JOB_UNPACK, SpawnConversionResult } from "@xrf/ipc/types/xrf-app-spawn";
 
@@ -9,7 +10,7 @@ import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { SpawnConversionService } from "@/core/spawn/services/spawn-conversion.service";
-import { mockInjectedService } from "@/fixtures/utils/container";
+import { mockApplicationScope, mockInjectedService } from "@/fixtures/utils/container";
 import { noop } from "@/lib/callbacks/noop";
 
 const RESULT: SpawnConversionResult = { operation: "pack", destination: "C:\\out\\all.spawn", outcome: "completed" };
@@ -79,7 +80,10 @@ describe("SpawnConversionService", () => {
     mockIpcCommands({ [ESpawnCommand.PACK_FILE]: () => response.promise });
 
     const { service, container } = mockInjectedService(SpawnConversionService);
-    const nextTool = new SpawnConversionService(container.get(JobsService));
+    const nextTool: SpawnConversionService = new Container({
+      bindings: [...mockApplicationScope("spawn-packer"), SpawnConversionService],
+      parent: container,
+    }).get(SpawnConversionService);
     const running = service.pack("source", "output");
 
     await nextTool.unpack("output", "chunks");
@@ -201,7 +205,9 @@ describe("SpawnConversionService", () => {
 
     const running = service.pack("source", "output");
 
+    // Leaving the tool takes its services and releases its scope.
     container.unbind(SpawnConversionService);
+    container.get(SessionScopeService).release();
 
     expect(jobs.jobs).toHaveLength(1);
 
