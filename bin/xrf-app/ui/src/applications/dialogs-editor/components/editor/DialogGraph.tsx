@@ -8,8 +8,8 @@ import {
   DialogPhraseGraphNode,
 } from "@/applications/dialogs-editor/components/editor/DialogGraphNode";
 import { buildDialogGraph, EDialogGraphNodeType, IDialogGraph } from "@/applications/dialogs-editor/lib";
-import { GraphCanvas } from "@/core/graph/components";
-import { TGraphEdge, TGraphNode } from "@/core/graph/lib";
+import { TGraphEdge, TGraphNode } from "@/core/ui/graph/graph.types";
+import { GraphCanvas } from "@/core/ui/graph/GraphCanvas";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 const NODE_TYPES: NodeTypes = {

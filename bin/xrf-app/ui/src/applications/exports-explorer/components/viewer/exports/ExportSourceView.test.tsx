@@ -6,8 +6,8 @@ import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ExportSourceContent } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
 
+import { mockExportsProject } from "@/applications/exports-explorer/fixtures/exports.mocks";
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
-import { mockExportsProject } from "@/core/exports/fixtures/project.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";

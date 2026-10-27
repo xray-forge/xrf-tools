@@ -3,7 +3,7 @@ import { ABSENT_VALUE } from "@xrf/format";
 import { ExportParameterDescriptor } from "@xrf/ipc/types/xrf-export";
 import { ReactElement } from "react";
 
-import { TCallableExportDescriptor } from "@/core/exports";
+import { TCallableExportDescriptor } from "@/applications/exports-explorer/lib/export-descriptors";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ExportSection } from "./ExportSection";

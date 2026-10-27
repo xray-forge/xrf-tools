@@ -7,9 +7,9 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
-import { CodeView } from "@/core/syntax/components/CodeView";
 import { getSyntaxLanguage } from "@/core/syntax/lib/syntax-language";
 import { cn } from "@/core/theme/class-name";
+import { CodeView } from "@/core/ui/code/CodeView";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";

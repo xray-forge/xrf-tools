@@ -16,7 +16,7 @@ import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
 import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/applications/sprite-equipment-editor/commands";
-import { urlToImage } from "@/core/assets/lib/image";
+import { urlToImage } from "@/applications/sprite-equipment-editor/lib/url-to-image";
 import { AssetService } from "@/core/assets/services";
 import { KeybindCommand } from "@/core/commands";
 import { CommandOperation } from "@/core/operations/lib/command-operation";

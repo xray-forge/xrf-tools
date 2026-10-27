@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { TGraphEdge, TGraphNode } from "@/core/graph/lib/graph.types";
+import { TGraphEdge, TGraphNode } from "@/core/ui/graph/graph.types";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { GraphCanvas } from "./GraphCanvas";

@@ -3,7 +3,7 @@ import { EventBus, WireEvent } from "@wirestate/core";
 import { EExportsCommand } from "@xrf/ipc/commands/exports";
 import { mockIpcCommands } from "@xrf/ipc/testing";
 
-import { mockExportsProject } from "@/core/exports/fixtures/project.mocks";
+import { mockExportsProject } from "@/applications/exports-explorer/fixtures/exports.mocks";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
