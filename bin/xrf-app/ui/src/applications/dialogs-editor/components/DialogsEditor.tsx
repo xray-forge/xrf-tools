@@ -2,6 +2,7 @@ import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
 import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
 import { default as ReportProblemIcon } from "@mui/icons-material/ReportProblem";
 import { useInjection } from "@wirestate/react";
+import { formatCount } from "@xrf/format";
 import { DialogFinding, DialogProjectDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
@@ -81,15 +82,15 @@ export function DialogsEditor(): ReactElement {
   );
 
   useEditorStatus([
-    `${fileCount} ${fileCount === 1 ? "file" : "files"}`,
-    `${dialogCount} dialogs`,
+    `${formatCount(fileCount)} ${fileCount === 1 ? "file" : "files"}`,
+    `${formatCount(dialogCount)} dialogs`,
     // Zero text keys beside real dialogs is the signature of a layout pointed at the wrong place, so
     // it reads as a state rather than being left to infer from every phrase showing its key.
     // The language in force is state, so it reads here rather than from the toolbar action that changes
     // it — the division `EditorToolbar` states in its own contract.
-    project?.textKeys ? ` text keys` : "no text",
+    project?.textKeys ? `${formatCount(project.textKeys)} text keys` : "no text",
     ...(viewService.resolvedLanguage ? [viewService.resolvedLanguage] : []),
-    ...(findings.length ? [`${findings.length} problems`] : []),
+    ...(findings.length ? [`${formatCount(findings.length)} problems`] : []),
   ]);
 
   return (
