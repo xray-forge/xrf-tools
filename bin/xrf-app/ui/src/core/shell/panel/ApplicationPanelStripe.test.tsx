@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
+import { Nullable } from "@xrf/types";
 
 import { IEditorPanel } from "@/core/shell/editor-shell";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
@@ -71,6 +72,33 @@ describe("ApplicationPanelStripe", () => {
 
     // What the shell owns sits under what the tool published, on both sides.
     expect(order.at(-1)).toBe("settings");
+  });
+
+  it("draws the shell's panels between the tool's and the footer, toggling them like the tool's", async () => {
+    const onTogglePanel = jest.fn();
+
+    const { container, getByLabelText } = renderWithProviders(
+      <ApplicationPanelStripe
+        side={"right"}
+        panels={PANELS}
+        shellPanels={[{ id: "log", label: "Log", icon: <span>l</span>, render: () => <div>log panel</div> }]}
+        activePanelId={"log"}
+        footer={<span>settings</span>}
+        onTogglePanel={onTogglePanel}
+      />
+    );
+
+    const labels: Array<Nullable<string>> = Array.from(container.querySelectorAll("button, span")).map(
+      (it: Element) => it.getAttribute("aria-label") ?? it.textContent
+    );
+
+    expect(labels.indexOf("Log")).toBeGreaterThan(labels.indexOf("Bones"));
+    expect(labels.indexOf("Log")).toBeLessThan(labels.lastIndexOf("settings"));
+    expect(getByLabelText("Log")).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(getByLabelText("Log"));
+
+    expect(onTogglePanel).toHaveBeenCalledWith("log");
   });
 
   it("stays present when a tool declares nothing, so the frame does not shift", () => {

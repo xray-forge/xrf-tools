@@ -8,7 +8,7 @@ import { ReactElement, ReactNode } from "react";
 
 import { NotificationsService } from "@/core/notifications/services";
 import { ApplicationShellFrame } from "@/core/shell/ApplicationShellFrame";
-import { useEditorPanels } from "@/core/shell/editor-shell";
+import { useShellPanels } from "@/core/shell/contributions";
 import {
   IPanelSetActiveCommand,
   IPanelSideCommand,
@@ -21,7 +21,7 @@ import { renderWithProviders } from "@/fixtures/utils/render";
 
 /** Stands in for an editor whose browse panel starts closed, which is the case the panel command exists for. */
 function EditorWithClosedLeftPanel(): ReactElement {
-  useEditorPanels(
+  useShellPanels(
     () => [
       {
         icon: <span>t</span>,

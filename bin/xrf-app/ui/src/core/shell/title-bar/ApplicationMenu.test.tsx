@@ -6,8 +6,8 @@ import { useLocation } from "react-router-dom";
 
 import { NotificationsService } from "@/core/notifications/services";
 import { ApplicationShell } from "@/core/shell/ApplicationShell";
+import { useShellMenus } from "@/core/shell/contributions";
 import { useEditorBusy, useEditorDirty } from "@/core/shell/editor-lifecycle";
-import { useEditorMenus } from "@/core/shell/editor-shell";
 import { IMenuContribution } from "@/core/shell/menu/lib";
 import { clearLocalStorage } from "@/core/storage";
 import { renderWithProviders } from "@/fixtures/utils/render";
@@ -25,7 +25,7 @@ function Location({ dirtyCount = 0, isBusy = false }: { dirtyCount?: number; isB
 }
 
 function SpriteMenuPublisher({ onRepack }: { onRepack: () => void }): ReactElement {
-  useEditorMenus(
+  useShellMenus(
     (): Array<IMenuContribution> => [
       {
         section: SPRITE_EQUIPMENT_EDITOR_MENU.sections.sprite,

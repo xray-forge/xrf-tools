@@ -9,8 +9,8 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { AccountTreeIcon } from "@xrf/ui/icons/account-tree";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
+import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { ConfigsDocumentView } from "@/tools/configs-explorer/components/ConfigsDocumentView";
 import { ConfigsDocumentService, EConfigsDocumentMode } from "@/tools/configs-explorer/services/configs-document";
 import { ConfigsProjectService } from "@/tools/configs-explorer/services/configs-project";
@@ -63,9 +63,9 @@ export function ConfigsExplorerWorkspace({
     resolvedService.narrowTo(selected && selected !== entry ? selected : null);
   }, [entry, resolvedService, selected]);
 
-  useEditorPanels(() => CONFIGS_EXPLORER_PANELS, []);
+  useShellPanels(() => CONFIGS_EXPLORER_PANELS, []);
 
-  useEditorStatus(
+  useShellStatus(
     useMemo(
       () =>
         project

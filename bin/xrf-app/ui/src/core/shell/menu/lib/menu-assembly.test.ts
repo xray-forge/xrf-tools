@@ -1,5 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 
+import { EToolId } from "@/core/routing/tool";
+
 import { assembleMenus, IAssembledMenu } from "./menu-assembly";
 import { defineMenu, IMenu } from "./menu-descriptor";
 import { IMenuContribution, TMenuEntry } from "./menu-entry";
@@ -36,21 +38,26 @@ describe("defineMenu", () => {
 
 describe("defineMenuExtension", () => {
   it("prefixes each section with its owner, so an added section never meets one the menu declares", () => {
-    const extension: IMenuExtension<"top"> = defineMenuExtension(SLOTTED, { owner: "level-editor", sections: ["top"] });
+    const extension: IMenuExtension<"top"> = defineMenuExtension(SLOTTED, {
+      owner: EToolId.LEVEL_EDITOR,
+      sections: ["top"],
+    });
 
     expect(extension.sections.top).toEqual({ id: "level-editor/top", menuId: "test/slotted" });
-    expect(() => defineMenuExtension(SLOTTED, { owner: "Level Editor", sections: ["top"] })).toThrow(/slug/);
-    expect(() => defineMenuExtension(SLOTTED, { owner: "level-editor", sections: [] })).toThrow(/no section/);
+    expect(() => defineMenuExtension(SLOTTED, { owner: EToolId.LEVEL_EDITOR, sections: [] })).toThrow(/no section/);
   });
 });
 
 describe("assembleMenus", () => {
   it("draws the sections a tool adds at the menu's extension point, or after its last without one", () => {
     const open: IMenuExtension<"open" | "compile"> = defineMenuExtension(SLOTTED, {
-      owner: "level-editor",
+      owner: EToolId.LEVEL_EDITOR,
       sections: ["open", "compile"],
     });
-    const tail: IMenuExtension<"extra"> = defineMenuExtension(FIRST, { owner: "level-editor", sections: ["extra"] });
+    const tail: IMenuExtension<"extra"> = defineMenuExtension(FIRST, {
+      owner: EToolId.LEVEL_EDITOR,
+      sections: ["extra"],
+    });
     const contributions: Array<IMenuContribution> = [
       { section: SLOTTED.sections.top, entries: [action("top")] },
       { section: SLOTTED.sections.bottom, entries: [action("bottom")] },

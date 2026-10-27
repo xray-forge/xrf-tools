@@ -1,14 +1,46 @@
 import { describe, expect, it } from "@jest/globals";
 import { within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { ReactElement, useState } from "react";
+import { Fragment, ReactElement, useState } from "react";
 
-import { IEditorStatusSegment, TEditorStatusSegment, useEditorStatus } from "@/core/shell/editor-shell";
+import { IShellContributed, useShellContributions, useShellPanels, useShellStatus } from "@/core/shell/contributions";
+import { IEditorPanel, IEditorStatusSegment, TEditorStatusSegment } from "@/core/shell/editor-shell";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
-function Publisher({ segments }: { segments: Array<TEditorStatusSegment> }): ReactElement {
-  useEditorStatus(segments);
+function DynamicPublisher(): ReactElement {
+  const [label, setLabel] = useState<string>("First");
+
+  useShellPanels(
+    () => [
+      {
+        icon: <span>p</span>,
+        id: "dynamic",
+        label: "Dynamic",
+        render: () => <div>{label}</div>,
+      },
+    ],
+    [label]
+  );
+
+  return <button onClick={() => setLabel("Second")}>Update panel</button>;
+}
+
+/** Renders what the open tool publishes, and only that. */
+function ToolPanelOutlet(): ReactElement {
+  const { tool }: IShellContributed<IEditorPanel> = useShellContributions("panels");
+
+  return (
+    <>
+      {tool.map((panel: IEditorPanel) => (
+        <Fragment key={panel.id}>{panel.render()}</Fragment>
+      ))}
+    </>
+  );
+}
+
+function StatusPublisher({ segments }: { segments: Array<TEditorStatusSegment> }): ReactElement {
+  useShellStatus(segments);
 
   return <div>publisher</div>;
 }
@@ -29,14 +61,67 @@ function Toggle(): ReactElement {
 
   return (
     <>
-      {isMounted ? <Publisher segments={["12 340 objects"]} /> : null}
+      {isMounted ? <StatusPublisher segments={["12 340 objects"]} /> : null}
       <button onClick={() => setMounted(false)}>unmount</button>
     </>
   );
 }
 
-describe("useEditorStatus", () => {
-  it("renders nothing when no editor publishes anything", () => {
+describe("useShellPanels", () => {
+  it("releases panels when their publisher unmounts", async () => {
+    const { findByText, queryByText, rerender } = renderWithProviders(
+      <>
+        <DynamicPublisher />
+        <ToolPanelOutlet />
+      </>,
+      { route: "/archives-explorer" }
+    );
+
+    expect(await findByText("First")).toBeInTheDocument();
+
+    rerender(
+      <>
+        <ToolPanelOutlet />
+      </>
+    );
+
+    expect(queryByText("First")).not.toBeInTheDocument();
+  });
+
+  it("publishes a new renderer when the panel array changes", async () => {
+    const { findByText, getByText, queryByText } = renderWithProviders(
+      <>
+        <DynamicPublisher />
+        <ToolPanelOutlet />
+      </>,
+      { route: "/archives-explorer" }
+    );
+
+    expect(await findByText("First")).toBeInTheDocument();
+
+    await userEvent.click(getByText("Update panel"));
+
+    expect(await findByText("Second")).toBeInTheDocument();
+    expect(queryByText("First")).not.toBeInTheDocument();
+  });
+
+  it("publishes under the shell's key where no tool is open, never as a tool's", async () => {
+    const { findByText, queryByText } = renderWithProviders(
+      <>
+        <DynamicPublisher />
+        <ToolPanelOutlet />
+      </>,
+      { route: "/" }
+    );
+
+    // The fixture's own outlet draws left panels only, and this one goes on the right.
+    expect(await findByText("Update panel")).toBeInTheDocument();
+    expect(queryByText("First")).not.toBeInTheDocument();
+  });
+});
+
+describe("useShellStatus", () => {
+  it("renders nothing when nothing publishes", () => {
     const { getByTestId } = renderWithProviders(<ApplicationStatusBar />);
 
     expect(getByTestId("application-status-bar")).toBeEmptyDOMElement();
@@ -45,7 +130,7 @@ describe("useEditorStatus", () => {
   it("renders published segments verbatim", async () => {
     const { findByText, getByText } = renderWithProviders(
       <>
-        <Publisher segments={["3 archives", "512 files"]} />
+        <StatusPublisher segments={["3 archives", "512 files"]} />
         <ApplicationStatusBar />
       </>
     );
@@ -57,7 +142,7 @@ describe("useEditorStatus", () => {
   it("keeps segments containing spaces intact", async () => {
     const { findByText } = renderWithProviders(
       <>
-        <Publisher segments={["12 340 objects"]} />
+        <StatusPublisher segments={["12 340 objects"]} />
         <ApplicationStatusBar />
       </>
     );
@@ -68,7 +153,7 @@ describe("useEditorStatus", () => {
   it("shows a segment's details when it is hovered", async () => {
     const { findByRole, findByText } = renderWithProviders(
       <>
-        <Publisher segments={["3 sectors", memorySegment("350 MB", "90 MB")]} />
+        <StatusPublisher segments={["3 sectors", memorySegment("350 MB", "90 MB")]} />
         <ApplicationStatusBar />
       </>
     );
@@ -86,7 +171,7 @@ describe("useEditorStatus", () => {
   it("keeps a hovered segment's details open while its reading changes, and shows the new one", async () => {
     const { findByRole, findByText, getByText, rerender } = renderWithProviders(
       <>
-        <Publisher segments={["3 sectors", memorySegment("350 MB", "90 MB")]} />
+        <StatusPublisher segments={["3 sectors", memorySegment("350 MB", "90 MB")]} />
         <ApplicationStatusBar />
       </>
     );
@@ -97,7 +182,7 @@ describe("useEditorStatus", () => {
 
     rerender(
       <>
-        <Publisher segments={["Streaming", "4 sectors", memorySegment("420 MB", "130 MB")]} />
+        <StatusPublisher segments={["Streaming", "4 sectors", memorySegment("420 MB", "130 MB")]} />
         <ApplicationStatusBar />
       </>
     );
@@ -110,7 +195,7 @@ describe("useEditorStatus", () => {
     expect(within(tooltip).queryByText("350 MB")).not.toBeInTheDocument();
   });
 
-  it("clears the status when the publishing editor unmounts", async () => {
+  it("clears the status when the publisher unmounts", async () => {
     const { findByText, getByTestId, getByText } = renderWithProviders(
       <>
         <Toggle />

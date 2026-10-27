@@ -11,9 +11,9 @@ import { ReportProblemIcon } from "@xrf/ui/icons/report-problem";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { describeRoots } from "@/core/assets/lib";
+import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorSaver, useEditorLifecycle } from "@/core/shell/editor-lifecycle";
-import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { TranslationsService } from "@/tools/translations-editor/services/translations.service";
 
 import { TranslationsEditorActions } from "./editor/TranslationsEditorActions";
@@ -39,7 +39,7 @@ export function TranslationsEditor(): ReactElement {
 
   const onSave: EditorSaver = useCallback(() => flowResult(translationsService.saveAll()), [translationsService]);
 
-  useEditorPanels(
+  useShellPanels(
     () => [
       {
         icon: <ReportProblemIcon />,
@@ -55,7 +55,7 @@ export function TranslationsEditor(): ReactElement {
     [findings]
   );
 
-  useEditorStatus([
+  useShellStatus([
     `${formatCount(fileCount)} ${fileCount === 1 ? "file" : "files"}`,
     `${formatCount(project?.languages.length ?? 0)} languages`,
     ...(dirtyCount ? [`${formatCount(dirtyCount)} unsaved`] : []),

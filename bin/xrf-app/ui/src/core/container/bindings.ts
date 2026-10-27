@@ -17,7 +17,7 @@ import { RenderSettingsService } from "@/core/render/services/render-settings.se
 import { SettingsService } from "@/core/settings/services/settings";
 import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
 import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";
-import { EditorShellService } from "@/core/shell/services/editor-shell";
+import { ShellContributionsService } from "@/core/shell/services/shell-contributions";
 import { ShellKeybindsService } from "@/core/shell/services/shell-keybinds";
 
 /**
@@ -28,7 +28,6 @@ export const ROOT_BINDINGS: ReadonlyArray<Binding> = [
   { token: SESSION_TOOL, value: SHELL_SESSION_TOOL },
   SessionScopeService,
   EditorLifecycleService,
-  EditorShellService,
   ErrorCaptureService,
   HelpService,
   IpcMetricsService,
@@ -40,5 +39,6 @@ export const ROOT_BINDINGS: ReadonlyArray<Binding> = [
   SessionChangesService,
   SettingsDialogService,
   SettingsService,
+  ShellContributionsService,
   ShellKeybindsService,
 ];

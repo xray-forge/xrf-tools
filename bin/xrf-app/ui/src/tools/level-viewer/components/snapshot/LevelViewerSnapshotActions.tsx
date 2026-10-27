@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
-import { useEditorMenus } from "@/core/shell/editor-shell";
+import { useShellMenus } from "@/core/shell/contributions";
 import { IMenuContribution } from "@/core/shell/menu/lib";
 import { LevelViewerImportDialog } from "@/tools/level-viewer/components/snapshot/LevelViewerImportDialog";
 import { ILevelViewerImport, ILevelViewerSnapshotEntry } from "@/tools/level-viewer/lib/snapshot/level-viewer-snapshot";
@@ -23,7 +23,7 @@ export function LevelViewerSnapshotActions(): ReactElement {
     [snapshotService]
   );
 
-  useEditorMenus(
+  useShellMenus(
     (): Array<IMenuContribution> => [
       {
         section: LEVEL_VIEWER_FILE_MENU_EXTENSION.sections.view,

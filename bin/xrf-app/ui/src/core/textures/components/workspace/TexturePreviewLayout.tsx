@@ -7,7 +7,8 @@ import { IEditorLocation } from "@xrf/ui/editor/toolbar";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, ReactNode, useEffect } from "react";
 
-import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
+import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
+import { IEditorPanel } from "@/core/shell/editor-shell";
 import { TexturePreview } from "@/core/textures/components/preview/TexturePreview";
 import { describeTextureCaption, describeTextureName } from "@/core/textures/lib/texture-caption";
 import { ITexturePreviewComparison } from "@/core/textures/lib/texture-preview";
@@ -69,9 +70,9 @@ export function TexturePreviewLayout({
 
   useEffect(() => () => surfaceService.clear(), [surfaceService]);
 
-  useEditorPanels(() => panels, [panels]);
+  useShellPanels(() => panels, [panels]);
 
-  useEditorStatus(status);
+  useShellStatus(status);
 
   return (
     <EditorLayout

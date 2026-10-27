@@ -6,7 +6,7 @@ import { ReactElement } from "react";
 import { NavigateFunction, Route, Routes, useNavigate } from "react-router-dom";
 
 import { ApplicationShell } from "@/core/shell/ApplicationShell";
-import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
+import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
 import { clearLocalStorage } from "@/core/storage";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { ArchivesService } from "@/tools/archives-explorer/services/archives";
@@ -20,9 +20,9 @@ function ArchivesScopedPanel(): ReactElement {
 function ArchivesLikeEditor(): ReactElement {
   const navigate: NavigateFunction = useNavigate();
 
-  useEditorStatus(["Archive project status"]);
+  useShellStatus(["Archive project status"]);
 
-  useEditorPanels(
+  useShellPanels(
     () => [
       {
         icon: <span>a</span>,
