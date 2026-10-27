@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
+import { SessionId } from "@xrf/ipc/types/xrf-app-core";
 import { ExportSourceContent } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback, useEffect, useState } from "react";
@@ -29,6 +30,9 @@ export function ExportSourceView({
 }: IExportSourceViewProps): ReactElement {
   const exportsService: ExportsService = useInjection(ExportsService);
 
+  // A refresh opens the project again under a new session, whose source may have moved since.
+  const sessionId: Nullable<SessionId> = exportsService.project.sessionId;
+
   const [source, setSource] = useState<AsyncState<Nullable<ExportSourceContent>>>(() =>
     AsyncState.loading<ExportSourceContent>()
   );
@@ -50,7 +54,7 @@ export function ExportSourceView({
     return () => {
       isActive = false;
     };
-  }, [exportsService, name, retry]);
+  }, [exportsService, name, retry, sessionId]);
 
   if (source.isLoading) {
     return <DelayedProgress data-testid={dataTestId} id={id} className={className} label={"Reading export source…"} />;

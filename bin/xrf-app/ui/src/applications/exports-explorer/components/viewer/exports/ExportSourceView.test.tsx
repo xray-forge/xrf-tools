@@ -8,7 +8,7 @@ import { Nullable } from "@xrf/types";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports";
 import { mockExportsProject } from "@/core/exports/fixtures/project.mocks";
-import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -79,6 +79,37 @@ describe("ExportSourceView", () => {
       [EExportsCommand.GET_SOURCE, { name: "play", sessionId: "fixture-session" }],
       [EExportsCommand.GET_SOURCE, { name: "play", sessionId: "fixture-session" }],
     ]);
+  });
+
+  it("reads the source again once the project is refreshed, which may have moved it", async () => {
+    const container = mockContainer([ExportsService]);
+    const service: ExportsService = container.get(ExportsService);
+
+    mockIpcCommands({
+      [EExportsCommand.RESTORE_PROJECT]: mockSessionSnapshot(mockExportsProject()),
+      [EExportsCommand.GET_SOURCE]: mockSource("play", "first source"),
+    });
+    await service.onProvision();
+
+    const { findByLabelText } = renderWithProviders(<ExportSourceView name={"play"} />, { container });
+
+    expect(await findByLabelText("Source of play")).toHaveTextContent("first source");
+
+    mockIpcCommands({
+      [EExportsCommand.OPEN_PROJECT]: mockSessionResponse(() => mockExportsProject()),
+      [EExportsCommand.CLOSE_PROJECT]: undefined,
+      [EExportsCommand.GET_SOURCE]: mockSource("play", "edited source"),
+    });
+
+    await act(async () => {
+      await service.refreshExportsProject();
+    });
+
+    expect(await findByLabelText("Source of play")).toHaveTextContent("edited source");
+    expect(mockInvoke).toHaveBeenLastCalledWith(EExportsCommand.GET_SOURCE, {
+      name: "play",
+      sessionId: service.project.sessionId,
+    });
   });
 
   it("ignores a read abandoned by a newer selection", async () => {
