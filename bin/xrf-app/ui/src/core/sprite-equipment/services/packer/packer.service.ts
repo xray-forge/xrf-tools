@@ -1,4 +1,4 @@
-import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { Injectable } from "@wirestate/core";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { spriteEquipmentCommands } from "@xrf/ipc/commands/sprite-equipment";
 import { SPRITE_EQUIPMENT_JOB_PACK } from "@xrf/ipc/types/xrf-app-sprite-equipment";
@@ -6,9 +6,9 @@ import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
-import { JobCompletion, JobOperation } from "@/core/jobs/lib/job-operation";
-import { JobsService } from "@/core/jobs/services/jobs";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { JobOperation } from "@/core/jobs/lib/job-operation";
+import { TCommandCompletion } from "@/core/operations/lib/command-reporter";
 import { describePackSpriteOutcome } from "@/core/sprite-equipment/lib";
 
 /** Packing shared by the standalone runner and the editor's repack action. */
@@ -17,11 +17,9 @@ export class SpriteEquipmentPackerService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** The sheet is written once at the end; a cancelled pack leaves the output unchanged. */
-  public readonly operation: JobOperation<EquipmentSpritePackResult>;
-
-  public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [SPRITE_EQUIPMENT_JOB_PACK]);
-  }
+  public readonly operation: JobOperation<EquipmentSpritePackResult> = new JobOperation(this.log, {
+    kinds: [SPRITE_EQUIPMENT_JOB_PACK],
+  });
 
   /**
    * Draws every declared icon into one sprite sheet.
@@ -42,13 +40,9 @@ export class SpriteEquipmentPackerService {
     systemLtxPath: string,
     isDltx: boolean
   ): TFlow<Nullable<EquipmentSpritePackResult>> {
-    if (this.operation.isRunning) {
-      return null;
-    }
-
     this.log.info("Packing equipment editor:", sourcePath, outputPath, systemLtxPath);
 
-    const completion: JobCompletion<EquipmentSpritePackResult> = yield* this.operation.run({
+    const completion: Nullable<TCommandCompletion<EquipmentSpritePackResult>> = yield* this.operation.run({
       kind: SPRITE_EQUIPMENT_JOB_PACK,
       invoke: (id: string, progress) =>
         spriteEquipmentCommands.packSprite({ sourcePath, outputPath, systemLtxPath, isDltx }, id, progress),
@@ -56,15 +50,10 @@ export class SpriteEquipmentPackerService {
         describePackSpriteOutcome(outputPath, outcome),
     });
 
-    if (completion.error !== null) {
+    if (completion?.error) {
       throw completion.error;
     }
 
-    return completion.result;
-  }
-
-  @OnEvent(JOB_SETTLED_EVENT)
-  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    this.operation.adopt(event.payload);
+    return completion?.result ?? null;
   }
 }

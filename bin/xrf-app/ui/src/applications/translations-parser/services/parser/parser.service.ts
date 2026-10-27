@@ -1,4 +1,4 @@
-import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { Injectable } from "@wirestate/core";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { translationsCommands } from "@xrf/ipc/commands/translations";
 import { TRANSLATIONS_JOB_PARSE } from "@xrf/ipc/types/xrf-app-translations";
@@ -6,9 +6,8 @@ import { ETranslationLanguage, TranslationParseResult } from "@xrf/ipc/types/xrf
 import { Logger } from "@xrf/logging";
 
 import { describeTranslationParseOutcome } from "@/applications/translations-parser/lib/describe-parse-outcome";
-import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
-import { JobsService } from "@/core/jobs/services/jobs";
 
 /**
  * The translation import and what it wrote.
@@ -18,11 +17,9 @@ export class TranslationsParserService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** Each source uses a staged replace, so cancellation leaves written sources complete and the rest untouched. */
-  public readonly operation: JobOperation<TranslationParseResult>;
-
-  public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [TRANSLATIONS_JOB_PARSE]);
-  }
+  public readonly operation: JobOperation<TranslationParseResult> = new JobOperation(this.log, {
+    kinds: [TRANSLATIONS_JOB_PARSE],
+  });
 
   /**
    * Imports one language's raw string tables into JSON sources.
@@ -41,10 +38,6 @@ export class TranslationsParserService {
     isOverwrite: boolean,
     isDryRun: boolean
   ): TFlow {
-    if (this.operation.isRunning) {
-      return;
-    }
-
     this.log.info("Importing translations:", sources, language, outputDir);
 
     yield* this.operation.run({
@@ -68,10 +61,5 @@ export class TranslationsParserService {
       describe: (outcome: IJobOutcome<TranslationParseResult>): IJobNotice =>
         describeTranslationParseOutcome(outputDir, outcome),
     });
-  }
-
-  @OnEvent(JOB_SETTLED_EVENT)
-  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    this.operation.adopt(event.payload);
   }
 }

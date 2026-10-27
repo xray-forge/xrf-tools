@@ -1,4 +1,4 @@
-import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { Injectable } from "@wirestate/core";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { gamedataCommands } from "@xrf/ipc/commands/gamedata";
 import { GAMEDATA_JOB_VERIFY, GamedataVerifySummary } from "@xrf/ipc/types/xrf-app-gamedata";
@@ -6,9 +6,8 @@ import { Logger } from "@xrf/logging";
 
 import { describeGamedataVerifyOutcome } from "@/applications/gamedata-verifier/lib/describe-gamedata-verify-outcome";
 import { IGamedataVerification } from "@/applications/gamedata-verifier/lib/gamedata-verification";
-import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
-import { JobsService } from "@/core/jobs/services/jobs";
 
 /**
  * The gamedata verification run and what it found.
@@ -17,11 +16,9 @@ import { JobsService } from "@/core/jobs/services/jobs";
 export class GamedataVerifierService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  public readonly operation: JobOperation<GamedataVerifySummary>;
-
-  public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [GAMEDATA_JOB_VERIFY]);
-  }
+  public readonly operation: JobOperation<GamedataVerifySummary> = new JobOperation(this.log, {
+    kinds: [GAMEDATA_JOB_VERIFY],
+  });
 
   /**
    * Runs every check this build knows over a gamedata root.
@@ -31,10 +28,6 @@ export class GamedataVerifierService {
   @ExclusiveFlow("operation")
   public *verify(verification: IGamedataVerification): TFlow {
     const { root, isStrict } = verification;
-
-    if (this.operation.isRunning) {
-      return;
-    }
 
     this.log.info("Verifying gamedata:", root, isStrict);
 
@@ -46,10 +39,5 @@ export class GamedataVerifierService {
       describe: (outcome: IJobOutcome<GamedataVerifySummary>): IJobNotice =>
         describeGamedataVerifyOutcome(root, outcome),
     });
-  }
-
-  @OnEvent(JOB_SETTLED_EVENT)
-  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    this.operation.adopt(event.payload);
   }
 }

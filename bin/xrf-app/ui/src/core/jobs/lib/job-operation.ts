@@ -1,31 +1,67 @@
+import { EventBus, EventUnsubscribe, inject, WireEvent } from "@wirestate/core";
 import { BoundAction, Computed, makeObservable, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
 import { call, TFlow } from "@xrf/flow";
+import { IScopedSession, SessionScopeService } from "@xrf/ipc/session";
 import { JobKind } from "@xrf/ipc/types/xrf-app-core";
 import { Logger } from "@xrf/logging";
 import { Nullable, Optional } from "@xrf/types";
 
 import { JobsService } from "@/core/jobs/services/jobs";
+import { TCommandCompletion } from "@/core/operations/lib/command-reporter";
 
-import { IJobDescriptor, IJobRun, IJobSettledPayload, IJobState } from "./jobs-types";
+import { IJobDescriptor, IJobRun, IJobSettledPayload, IJobState, JOB_SETTLED_EVENT } from "./jobs-types";
 
-/** A reported failure, or the typed answer a follow-up operation can use. */
-export type JobCompletion<T> = { result: T; error: null } | { result: null; error: Error };
+/** What a job operation runs and follows. */
+export interface IJobOperationOptions<T> {
+  /** The kinds of work it starts, and whose settled outcomes it shows when it did not await them. */
+  kinds: ReadonlyArray<JobKind>;
+  /**
+   * Told after an outcome this operation did not await is shown, the reload and navigation cases.
+   *
+   * @param result - What the backend retained of the answer, or null where it kept none.
+   */
+  adopted?: (result: Nullable<T>) => void;
+}
 
 /**
  * One application's command state, including a run rediscovered after a reload.
- * The owner delegates with `yield*` inside its flow and forwards settled events; it owns the lifetime.
- * Notifications and backend cancellation remain with `JobsService`.
+ *
+ * The owner delegates with `yield*` inside its flow; the operation ignores a run while one of its kinds is in flight,
+ * and shows an outcome it did not await as the jobs service announces it, following those announcements until its
+ * tool's scope is released. Notifications and backend cancellation remain with `JobsService`.
  */
-export class JobOperation<T> {
-  public readonly log: Logger = new Logger(__MODULE_NAME__);
-
+export class JobOperation<T> implements IScopedSession {
   @Observable()
   private state: AsyncState<T> = AsyncState.idle<T>();
 
   @Observable()
   private jobId: Nullable<string> = null;
+
+  private unsubscribe: Nullable<EventUnsubscribe> = null;
+
+  /**
+   * @param log - The owning service's logger.
+   * @param options - The kinds it runs and what to tell the owner.
+   * @param jobsService - Runs the jobs and lists the running ones.
+   * @param scopeService - The tool's scope, whose release stops the following.
+   * @param eventBus - The bus settled jobs are announced on.
+   */
+  public constructor(
+    private readonly log: Logger,
+    private readonly options: IJobOperationOptions<T>,
+    private readonly jobsService: JobsService = inject(JobsService),
+    scopeService: SessionScopeService = inject(SessionScopeService),
+    eventBus: EventBus = inject(EventBus)
+  ) {
+    scopeService.register(this);
+
+    // Composed state is not activated by the container's observable plugin; it binds the handler subscribed below.
+    makeObservable(this);
+
+    this.unsubscribe = eventBus.subscribe(JOB_SETTLED_EVENT, this.onJobSettled);
+  }
 
   @Computed()
   public get job(): Nullable<IJobState> {
@@ -33,7 +69,7 @@ export class JobOperation<T> {
       return this.jobsService.getJob(this.jobId);
     }
 
-    for (const kind of this.kinds) {
+    for (const kind of this.options.kinds) {
       const job: Nullable<IJobState> = this.jobsService.getJobOfKind(kind);
 
       if (job) {
@@ -57,14 +93,6 @@ export class JobOperation<T> {
   @Computed()
   public get error(): Nullable<string> {
     return this.state.error?.message ?? null;
-  }
-
-  public constructor(
-    private readonly jobsService: JobsService,
-    private readonly kinds: ReadonlyArray<JobKind>
-  ) {
-    // Composed state is not activated by the container's observable plugin.
-    makeObservable(this);
   }
 
   /** Clears the displayed outcome without cancelling work in progress. */
@@ -91,8 +119,20 @@ export class JobOperation<T> {
     }
   }
 
-  /** Runs inside the owner's flow so superseding or deactivating it cannot publish a late answer. */
-  public *run(descriptor: IJobDescriptor<T>): TFlow<JobCompletion<T>> {
+  /**
+   * Runs inside the owner's flow so superseding or deactivating it cannot publish a late answer.
+   *
+   * @param descriptor - What to run.
+   * @returns How the run ended, or null where one of its kinds was already in flight, this window's or one found
+   *   running after a reload, and nothing was started.
+   */
+  public *run(descriptor: IJobDescriptor<T>): TFlow<Nullable<TCommandCompletion<T>>> {
+    if (this.isRunning) {
+      this.log.info("Ignoring a run while one is in flight:", descriptor.kind);
+
+      return null;
+    }
+
     this.state = this.state.asLoading(null);
 
     try {
@@ -125,16 +165,23 @@ export class JobOperation<T> {
     }
   }
 
+  /** Stops following settled jobs as the tool is left. */
+  public retire(): void {
+    this.unsubscribe?.();
+    this.unsubscribe = null;
+  }
+
   /**
-   * Accepts only this operation's job kinds; an awaited run publishes through its own flow.
+   * Shows an outcome of this operation's kinds that it did not await; an awaited run publishes through its own flow.
    *
-   * @param settled - Retained outcome announced by the jobs service, if available.
-   * @returns Whether the outcome was accepted.
+   * @param event - The settled job the jobs service announced.
    */
   @BoundAction()
-  public adopt(settled: Optional<IJobSettledPayload>): boolean {
-    if (!settled || !this.kinds.some((kind) => kind === settled.kind) || this.jobId !== null) {
-      return false;
+  private onJobSettled(event: WireEvent<IJobSettledPayload>): void {
+    const settled: Optional<IJobSettledPayload> = event.payload;
+
+    if (!settled || !this.options.kinds.some((kind) => kind === settled.kind) || this.jobId !== null) {
+      return;
     }
 
     // The owner pairs these kinds with T from the generated binding. Retained backend results use that same shape.
@@ -143,6 +190,6 @@ export class JobOperation<T> {
     this.state =
       settled.error === null ? this.state.asReady(result) : this.state.asFailed(new Error(settled.error), result);
 
-    return true;
+    this.options.adopted?.(result);
   }
 }

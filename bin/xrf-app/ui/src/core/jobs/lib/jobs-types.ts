@@ -91,7 +91,8 @@ export interface IJobRun<T> {
  * Announces completion of a locally started or adopted job.
  *
  * A replacement tool scope receives the result after navigation. After a window reload, the result comes from the
- * backend's retained listing. The scope awaiting the command publishes through its own flow instead.
+ * backend's retained listing. The scope awaiting the command publishes through its own flow instead. Every
+ * `JobOperation` follows it for its own kinds.
  */
 export const JOB_SETTLED_EVENT: EventType = Symbol("@/jobs/settled");
 

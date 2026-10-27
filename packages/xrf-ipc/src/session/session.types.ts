@@ -13,9 +13,15 @@ export interface ISessionRevision extends ISessionIdentity {
   revision: XrayRevision;
 }
 
-/** What a scope's release retires: the openings one service holds in it, which the backend closes with the scope. */
+/**
+ * What a scope's release retires: what one service holds for its tool, the openings the backend closes with the scope,
+ * or a following of the backend that ends with the tool, such as a job operation's.
+ */
 export interface IScopedSession {
-  /** Forgets every opening without closing it one by one, so a publication landing later closes itself. */
+  /**
+   * Forgets every opening without closing it one by one, so a publication landing later closes itself, and stops
+   * following what the tool no longer shows.
+   */
   retire(): void;
 }
 

@@ -1,4 +1,4 @@
-import { inject, Injectable, OnDeactivation, OnEvent, WireEvent } from "@wirestate/core";
+import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { transformError } from "@xrf/errors";
@@ -20,9 +20,8 @@ import { Logger, Timer } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { describeTextureCompareOutcome } from "@/applications/textures-editor/lib/describe-texture-compare-outcome";
-import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
-import { JobsService } from "@/core/jobs/services/jobs";
 import { getTextureIdentity } from "@/core/textures/lib/texture-identity";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 
@@ -35,7 +34,11 @@ export class TextureEncodingService {
 
   private readonly session: Session = new Session(texturesCommands.closeComparison, inject(SessionScopeService));
 
-  public readonly compare: JobOperation<TextureEncodingComparison>;
+  /** The comparison, whose opening is held as the session's once a run this window did not await is shown. */
+  public readonly compare: JobOperation<TextureEncodingComparison> = new JobOperation(this.log, {
+    kinds: [TEXTURES_JOB_COMPARE_ENCODINGS],
+    adopted: (comparison: Nullable<TextureEncodingComparison>) => this.session.adopt(comparison),
+  });
 
   /**
    * The candidate chosen to replace the base texture, or null when the file on disk still stands.
@@ -85,12 +88,7 @@ export class TextureEncodingService {
     return this.comparison?.candidates.find((candidate) => candidate.format === chosen) ?? null;
   }
 
-  public constructor(
-    private readonly selectionService: TextureSelectionService = inject(TextureSelectionService),
-    jobsService: JobsService = inject(JobsService)
-  ) {
-    this.compare = new JobOperation(jobsService, [TEXTURES_JOB_COMPARE_ENCODINGS]);
-  }
+  public constructor(private readonly selectionService: TextureSelectionService = inject(TextureSelectionService)) {}
 
   @OnDeactivation()
   public onDeactivation(): void {
@@ -188,7 +186,7 @@ export class TextureEncodingService {
   public *run(mipFilter: Nullable<string>): TFlow {
     const description: Nullable<TextureDescription> = this.selectionService.selected.value;
 
-    if (!description || this.compare.isRunning) {
+    if (!description) {
       return;
     }
 
@@ -211,11 +209,5 @@ export class TextureEncodingService {
       describe: (outcome: IJobOutcome<TextureEncodingComparison>): IJobNotice =>
         describeTextureCompareOutcome(description.reference, outcome),
     });
-  }
-
-  @OnEvent(JOB_SETTLED_EVENT)
-  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    this.compare.adopt(event.payload);
-    this.session.adopt(this.compare.result);
   }
 }

@@ -1,4 +1,4 @@
-import { inject, Injectable, OnEvent, OnProvision, WireEvent } from "@wirestate/core";
+import { Injectable, OnProvision } from "@wirestate/core";
 import { BoundAction, Observable } from "@wirestate/mobx";
 import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { archivesCommands } from "@xrf/ipc/commands/archives";
@@ -9,8 +9,7 @@ import { Logger } from "@xrf/logging";
 
 import { describePatchOutcome } from "@/applications/archives-patcher/lib/describe-patch-outcome";
 import { ArchiveConfigEditorService } from "@/core/archive/services/config-editor";
-import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
-import { JobsService } from "@/core/jobs/services/jobs";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 
 import { toSavedState } from "./patcher.service.utils";
 
@@ -28,14 +27,12 @@ export enum EPatcherSection {
  */
 @Injectable()
 export class PatcherService extends ArchiveConfigEditorService<ArchivePatchConfig, ArchivePatchResult> {
-  public readonly log: Logger = new Logger(__MODULE_NAME__);
-
   /** Which section of the configuration is open. */
   @Observable()
   public section: EPatcherSection = EPatcherSection.COMPARISON;
 
-  public constructor(jobsService: JobsService = inject(JobsService)) {
-    super(jobsService, [ARCHIVES_JOB_COMPARE, ARCHIVES_JOB_PATCH]);
+  public constructor() {
+    super(new Logger(__MODULE_NAME__), [ARCHIVES_JOB_COMPARE, ARCHIVES_JOB_PATCH]);
   }
 
   /**
@@ -82,10 +79,6 @@ export class PatcherService extends ArchiveConfigEditorService<ArchivePatchConfi
   }
 
   private *run(kind: JobKind, request: ArchivesPatchRequest): TFlow {
-    if (this.operation.isRunning) {
-      return;
-    }
-
     const config: ArchivePatchConfig = request.config;
 
     this.log.info(
@@ -104,11 +97,6 @@ export class PatcherService extends ArchiveConfigEditorService<ArchivePatchConfi
           : archivesCommands.compareArchives(request, id, progress),
       describe: (outcome: IJobOutcome<ArchivePatchResult>): IJobNotice => describePatchOutcome(config, outcome),
     });
-  }
-
-  @OnEvent(JOB_SETTLED_EVENT)
-  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    this.adoptSettled(event.payload);
   }
 
   protected override toSavedState(config: ArchivePatchConfig): string {

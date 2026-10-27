@@ -1,6 +1,6 @@
 import { Channel } from "@tauri-apps/api/core";
 import { open as openDialog, save } from "@tauri-apps/plugin-dialog";
-import { inject, Injectable, OnDeactivation, OnEvent, WireEvent } from "@wirestate/core";
+import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable, runInAction } from "@wirestate/mobx";
 import { call, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
@@ -76,9 +76,8 @@ import {
   toMapExportRequest,
 } from "@/applications/level-viewer/lib/map/level-map-export";
 import { KeybindCommand } from "@/core/commands";
-import { describeJobFailure, IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
-import { JobsService } from "@/core/jobs/services/jobs";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LEVEL_WEATHER_NOON } from "@/core/level/lib/weather/level-weather-control";
@@ -89,6 +88,7 @@ import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { ENotificationSeverity } from "@/core/notifications/lib";
+import { TCommandCompletion } from "@/core/operations/lib/command-reporter";
 import { noop } from "@/lib/callbacks/noop";
 
 /** The weather cycle `CDemoRecord` captures a level map under. */
@@ -147,7 +147,9 @@ export class LevelViewerCaptureService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** The capture's job: its progress, and stopping it. */
-  public readonly operation: JobOperation<CaptureOutcome>;
+  public readonly operation: JobOperation<CaptureOutcome> = new JobOperation(this.log, {
+    kinds: [LEVELS_JOB_CAPTURE_MAP, LEVELS_JOB_CAPTURE_CUBE],
+  });
 
   @RefObservable()
   public isOpen: boolean = false;
@@ -207,11 +209,8 @@ export class LevelViewerCaptureService {
     private readonly renderService: LevelRenderService = inject(LevelRenderService),
     private readonly viewService: LevelViewService = inject(LevelViewService),
     private readonly viewportService: LevelViewportService = inject(LevelViewportService),
-    private readonly weatherService: LevelWeatherService = inject(LevelWeatherService),
-    jobsService: JobsService = inject(JobsService)
-  ) {
-    this.operation = new JobOperation(jobsService, [LEVELS_JOB_CAPTURE_MAP, LEVELS_JOB_CAPTURE_CUBE]);
-  }
+    private readonly weatherService: LevelWeatherService = inject(LevelWeatherService)
+  ) {}
 
   @OnDeactivation()
   public onDeactivation(): void {
@@ -509,7 +508,7 @@ export class LevelViewerCaptureService {
 
       this.log.info(`Capturing a ${name}:`, path);
 
-      const { result, error } = yield* this.operation.run({
+      const completion: Nullable<TCommandCompletion<CaptureOutcome>> = yield* this.operation.run({
         kind: CAPTURE_JOB_KINDS[mode],
         invoke: async (id, progress): Promise<CaptureOutcome> => {
           const outcome: Nullable<CaptureOutcome> = await this.captureShots(request, path, [id, progress]);
@@ -523,9 +522,9 @@ export class LevelViewerCaptureService {
         describe: (outcome: IJobOutcome<CaptureOutcome>): IJobNotice => this.describe(mode, path, outcome),
       });
 
-      if (error) {
-        this.failure = `Failed to capture the ${name}: ${error.message}`;
-      } else if (result?.outcome === "completed") {
+      if (completion?.error) {
+        this.failure = `Failed to capture the ${name}: ${completion.error.message}`;
+      } else if (completion?.result?.outcome === "completed") {
         this.show(toLevelCapture(request, yield* call(readLevelViewerImage(path))));
         this.log.info(`Captured a ${name}:`, path);
         void this.drawAnnotations();
@@ -631,11 +630,6 @@ export class LevelViewerCaptureService {
   /** Puts the capture's image on the clipboard. */
   public copyImage(): Promise<void> {
     return this.attempt("copy the capture", ({ image }: TLevelCapture) => copyLevelViewerImage(image));
-  }
-
-  @OnEvent(JOB_SETTLED_EVENT)
-  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    this.operation.adopt(event.payload);
   }
 
   /**

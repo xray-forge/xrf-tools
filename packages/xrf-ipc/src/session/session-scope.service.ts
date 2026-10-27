@@ -42,9 +42,9 @@ export class SessionScopeService {
   }
 
   /**
-   * Takes a service's sessions as ones the scope's release retires; a session registers itself as it is made.
+   * Takes what a service holds for its tool as what the scope's release retires; each registers itself as it is made.
    *
-   * @param session - The session to retire with the scope.
+   * @param session - The session, or the follower, to retire with the scope.
    */
   public register(session: IScopedSession): void {
     this.sessions.add(session);

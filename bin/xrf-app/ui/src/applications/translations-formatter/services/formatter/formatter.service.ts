@@ -1,4 +1,4 @@
-import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { Injectable } from "@wirestate/core";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { translationsCommands } from "@xrf/ipc/commands/translations";
 import { TRANSLATIONS_JOB_CHECK_FORMAT, TRANSLATIONS_JOB_FORMAT } from "@xrf/ipc/types/xrf-app-translations";
@@ -6,9 +6,8 @@ import { TranslationFormatResult } from "@xrf/ipc/types/xrf-translation";
 import { Logger } from "@xrf/logging";
 
 import { describeFormatOutcome } from "@/applications/translations-formatter/lib/describe-format-outcome";
-import { IJobNotice, IJobOutcome, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
-import { JobsService } from "@/core/jobs/services/jobs";
 
 /**
  * The translations formatting run and what it rewrote.
@@ -17,11 +16,9 @@ import { JobsService } from "@/core/jobs/services/jobs";
 export class TranslationsFormatterService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  public readonly operation: JobOperation<TranslationFormatResult>;
-
-  public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [TRANSLATIONS_JOB_CHECK_FORMAT, TRANSLATIONS_JOB_FORMAT]);
-  }
+  public readonly operation: JobOperation<TranslationFormatResult> = new JobOperation(this.log, {
+    kinds: [TRANSLATIONS_JOB_CHECK_FORMAT, TRANSLATIONS_JOB_FORMAT],
+  });
 
   /**
    * Normalizes the translation sources under a directory, or reports which are not normalized.
@@ -34,10 +31,6 @@ export class TranslationsFormatterService {
    */
   @ExclusiveFlow("operation")
   public *format(directory: string, isCheck: boolean): TFlow {
-    if (this.operation.isRunning) {
-      return;
-    }
-
     this.log.info("Formatting translations:", directory, isCheck);
 
     yield* this.operation.run({
@@ -49,10 +42,5 @@ export class TranslationsFormatterService {
       describe: (outcome: IJobOutcome<TranslationFormatResult>): IJobNotice =>
         describeFormatOutcome(directory, isCheck, outcome),
     });
-  }
-
-  @OnEvent(JOB_SETTLED_EVENT)
-  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    this.operation.adopt(event.payload);
   }
 }

@@ -1,12 +1,10 @@
-import { inject, Injectable, OnEvent, WireEvent } from "@wirestate/core";
+import { Injectable } from "@wirestate/core";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { spawnCommands } from "@xrf/ipc/commands/spawn";
 import { SPAWN_JOB_PACK, SPAWN_JOB_UNPACK, SpawnConversionResult } from "@xrf/ipc/types/xrf-app-spawn";
 import { Logger } from "@xrf/logging";
 
-import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
-import { JobsService } from "@/core/jobs/services/jobs";
 import { describeSpawnConversionOutcome } from "@/core/spawn/lib/describe-spawn-conversion-outcome";
 
 /** Standalone spawn conversions share one lane and remain visible through the root jobs service. */
@@ -14,11 +12,9 @@ import { describeSpawnConversionOutcome } from "@/core/spawn/lib/describe-spawn-
 export class SpawnConversionService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
-  public readonly operation: JobOperation<SpawnConversionResult>;
-
-  public constructor(jobsService: JobsService = inject(JobsService)) {
-    this.operation = new JobOperation(jobsService, [SPAWN_JOB_PACK, SPAWN_JOB_UNPACK]);
-  }
+  public readonly operation: JobOperation<SpawnConversionResult> = new JobOperation(this.log, {
+    kinds: [SPAWN_JOB_PACK, SPAWN_JOB_UNPACK],
+  });
 
   /**
    * Packs chunks into a spawn file while no spawn conversion is running.
@@ -28,10 +24,6 @@ export class SpawnConversionService {
    */
   @ExclusiveFlow("operation")
   public *pack(source: string, destination: string): TFlow {
-    if (this.operation.isRunning) {
-      return;
-    }
-
     this.log.info("Packing spawn:", source, "to", destination);
 
     yield* this.operation.run({
@@ -49,10 +41,6 @@ export class SpawnConversionService {
    */
   @ExclusiveFlow("operation")
   public *unpack(source: string, destination: string): TFlow {
-    if (this.operation.isRunning) {
-      return;
-    }
-
     this.log.info("Unpacking spawn:", source, "to", destination);
 
     yield* this.operation.run({
@@ -60,10 +48,5 @@ export class SpawnConversionService {
       invoke: (id, progress) => spawnCommands.unpackFile({ source, destination }, id, progress),
       describe: (outcome) => describeSpawnConversionOutcome("unpack", source, destination, outcome),
     });
-  }
-
-  @OnEvent(JOB_SETTLED_EVENT)
-  public onJobSettled(event: WireEvent<IJobSettledPayload>): void {
-    this.operation.adopt(event.payload);
   }
 }

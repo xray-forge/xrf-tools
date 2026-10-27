@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { EventBus } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
 import { ESpriteEquipmentCommand } from "@xrf/ipc/commands/sprite-equipment";
+import { SessionScopeService } from "@xrf/ipc/session";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
 
@@ -73,7 +74,9 @@ describe("SpriteEquipmentPackerService", () => {
 
     const running = flowResult(service.packEquipmentSprite("C:\\icons", RESULT.savedAt, "C:\\system.ltx", false));
 
+    // Leaving the tool takes its services and releases its scope.
     container.unbind(SpriteEquipmentPackerService);
+    container.get(SessionScopeService).release();
 
     expect(jobs.jobs).toHaveLength(1);
 
