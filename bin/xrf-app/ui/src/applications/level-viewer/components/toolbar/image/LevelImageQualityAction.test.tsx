@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
-import { act } from "@testing-library/react";
+import { act, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ERenderCommand } from "@xrf/ipc/commands/render";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
@@ -121,7 +121,7 @@ describe("LevelImageQualityAction", () => {
     expect(rendered.view.features.upscaling).toEqual({ scale: ERenderScale.ULTRA_PERFORMANCE });
   });
 
-  it("turns DLSS ray reconstruction on for the view, hiding the super resolution model it replaces", async () => {
+  it("turns DLSS ray reconstruction on for the view, disabling the super resolution model it replaces", async () => {
     const rendered = renderAction({
       isRayReconstructed: true,
       mode: ERenderAntialiasing.DLSS,
@@ -131,9 +131,11 @@ describe("LevelImageQualityAction", () => {
     await openSettings(rendered);
 
     expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toBeChecked();
-    expect(rendered.queryByRole("button", { name: "J" })).toBeNull();
+    expect(rendered.getByRole("button", { name: "J" })).toBeDisabled();
 
-    await userEvent.click(rendered.getByRole("button", { name: "E" }));
+    await userEvent.click(
+      within(rendered.getByRole("group", { name: "Ray reconstruction model" })).getByRole("button", { name: "E" })
+    );
 
     expect(rendered.view.features.upscaling).toEqual({ rayReconstructionPreset: ERenderRayReconstructionPreset.E });
 
@@ -190,17 +192,17 @@ describe("LevelImageQualityAction", () => {
     expect(rendered.getByText("DLSS needs an NVIDIA RTX GPU and a current driver.")).toBeInTheDocument();
   });
 
-  it("sets the view's own output resolution, with its scale offered while automatic", async () => {
+  it("sets the view's own output resolution, its scale settable only while automatic", async () => {
     const rendered = renderAction({ mode: ERenderAntialiasing.TAA });
 
     await openSettings(rendered);
 
-    expect(rendered.getByRole("slider", { name: "Output scale" })).toBeInTheDocument();
+    expect(rendered.getByRole("slider", { name: "Output scale" })).toBeEnabled();
 
     await userEvent.click(rendered.getByRole("button", { name: "1440p" }));
 
     expect(rendered.view.features.output).toEqual({ resolution: ERenderResolution.HEIGHT_1440 });
-    expect(rendered.queryByRole("slider", { name: "Output scale" })).toBeNull();
+    expect(rendered.getByRole("slider", { name: "Output scale" })).toBeDisabled();
   });
 
   it("picks the view's own DLSS model while DLSS smooths it, and its own sharpening", async () => {
@@ -250,7 +252,7 @@ describe("LevelImageQualityAction", () => {
       "Antialiasing is off in Settings, under Rendering"
     );
     expect(rendered.getByRole("checkbox", { name: "Antialiasing" })).toBeDisabled();
-    expect(rendered.queryByRole("group", { name: "Mode" })).not.toBeInTheDocument();
+    expect(within(rendered.getByRole("group", { name: "Mode" })).getByRole("button", { name: "TAA" })).toBeDisabled();
     expect(rendered.queryByRole("group", { name: "Texture filtering" })).not.toBeInTheDocument();
   });
 });

@@ -95,41 +95,41 @@ export function LevelRainAction({
           }
         />
 
-        {isRefracted ? (
-          <>
-            <RenderValueSlider
-              label={"Drop area"}
-              value={puddles.dropSquare}
-              {...RENDER_RAIN_LIMITS.dropSquare}
-              format={formatGrassRadius}
-              onChange={(dropSquare: number) => setPuddles({ dropSquare })}
-            />
+        <RenderValueSlider
+          label={"Drop area"}
+          value={puddles.dropSquare}
+          {...RENDER_RAIN_LIMITS.dropSquare}
+          isDisabled={!isRefracted}
+          format={formatGrassRadius}
+          onChange={(dropSquare: number) => setPuddles({ dropSquare })}
+        />
 
-            <RenderValueSlider
-              label={"Ring distance"}
-              value={puddles.ringDistance}
-              {...RENDER_RAIN_LIMITS.ringDistance}
-              format={formatGrassRadius}
-              onChange={(ringDistance: number) => setPuddles({ ringDistance })}
-            />
+        <RenderValueSlider
+          label={"Ring distance"}
+          value={puddles.ringDistance}
+          {...RENDER_RAIN_LIMITS.ringDistance}
+          isDisabled={!isRefracted}
+          format={formatGrassRadius}
+          onChange={(ringDistance: number) => setPuddles({ ringDistance })}
+        />
 
-            <RenderValueSlider
-              label={"Ring strength"}
-              value={puddles.ringStrength}
-              {...RENDER_RAIN_LIMITS.ringStrength}
-              format={formatRainShare}
-              onChange={(ringStrength: number) => setPuddles({ ringStrength })}
-            />
+        <RenderValueSlider
+          label={"Ring strength"}
+          value={puddles.ringStrength}
+          {...RENDER_RAIN_LIMITS.ringStrength}
+          isDisabled={!isRefracted}
+          format={formatRainShare}
+          onChange={(ringStrength: number) => setPuddles({ ringStrength })}
+        />
 
-            <RenderValueSlider
-              label={"Ring size"}
-              value={puddles.ringSize}
-              {...RENDER_RAIN_LIMITS.ringSize}
-              format={formatRainShare}
-              onChange={(ringSize: number) => setPuddles({ ringSize })}
-            />
-          </>
-        ) : null}
+        <RenderValueSlider
+          label={"Ring size"}
+          value={puddles.ringSize}
+          {...RENDER_RAIN_LIMITS.ringSize}
+          isDisabled={!isRefracted}
+          format={formatRainShare}
+          onChange={(ringSize: number) => setPuddles({ ringSize })}
+        />
 
         <RenderValueSlider
           label={"Wetting pace"}
@@ -174,48 +174,49 @@ export function LevelRainAction({
         isOn={isPuddled}
         onToggle={() => setPuddles({ mode: isPuddled ? ERenderRainMode.ENGINE : ERenderRainMode.ENHANCED })}
       >
-        {isPuddled ? (
-          <>
-            <RenderValueSlider
-              label={"Puddles"}
-              value={puddles.puddles}
-              {...RENDER_RAIN_LIMITS.puddles}
-              format={formatRainShare}
-              onChange={(share: number) => setPuddles({ puddles: share })}
-            />
+        <RenderValueSlider
+          label={"Puddles"}
+          value={puddles.puddles}
+          {...RENDER_RAIN_LIMITS.puddles}
+          isDisabled={!isPuddled}
+          format={formatRainShare}
+          onChange={(share: number) => setPuddles({ puddles: share })}
+        />
 
-            <RenderValueSlider
-              label={"Reflectivity"}
-              value={puddles.reflectivity}
-              {...RENDER_RAIN_LIMITS.reflectivity}
-              format={formatRainShare}
-              onChange={(reflectivity: number) => setPuddles({ reflectivity })}
-            />
+        <RenderValueSlider
+          label={"Reflectivity"}
+          value={puddles.reflectivity}
+          {...RENDER_RAIN_LIMITS.reflectivity}
+          isDisabled={!isPuddled}
+          format={formatRainShare}
+          onChange={(reflectivity: number) => setPuddles({ reflectivity })}
+        />
 
-            <RenderValueSlider
-              label={"Distance"}
-              value={puddles.distance}
-              {...RENDER_RAIN_LIMITS.distance}
-              format={formatGrassRadius}
-              onChange={(distance: number) => setPuddles({ distance })}
-            />
+        <RenderValueSlider
+          label={"Distance"}
+          value={puddles.distance}
+          {...RENDER_RAIN_LIMITS.distance}
+          isDisabled={!isPuddled}
+          format={formatGrassRadius}
+          onChange={(distance: number) => setPuddles({ distance })}
+        />
 
-            <RenderValueSlider
-              label={"Ripples"}
-              value={puddles.ripples}
-              {...RENDER_RAIN_LIMITS.ripples}
-              format={formatRainShare}
-              onChange={(ripples: number) => setPuddles({ ripples })}
-            />
+        <RenderValueSlider
+          label={"Ripples"}
+          value={puddles.ripples}
+          {...RENDER_RAIN_LIMITS.ripples}
+          isDisabled={!isPuddled}
+          format={formatRainShare}
+          onChange={(ripples: number) => setPuddles({ ripples })}
+        />
 
-            <CheckboxFormRow
-              label={"Fill the relief"}
-              description={"Water fills the ground's hollows first where the enhanced parallax marches it."}
-              isChecked={puddles.isReliefFlooded}
-              onChange={(isReliefFlooded: boolean) => setPuddles({ isReliefFlooded })}
-            />
-          </>
-        ) : null}
+        <CheckboxFormRow
+          label={"Fill the relief"}
+          description={"Water fills the ground's hollows first where the enhanced parallax marches it."}
+          isChecked={puddles.isReliefFlooded}
+          isDisabled={!isPuddled}
+          onChange={(isReliefFlooded: boolean) => setPuddles({ isReliefFlooded })}
+        />
 
         <Button size={"small"} onClick={resetPuddles}>
           Reset to the preset

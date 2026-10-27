@@ -50,6 +50,7 @@ export function LevelGrassAction({
 
   const grass: TRenderGrassSettings = state.value;
   const foliage: TRenderFoliageSettings = grass.foliage;
+  const isEnhancedFoliage: boolean = foliage.mode === ERenderFoliageMode.ENHANCED;
 
   const setFoliage = useCallback(
     (part: Partial<TRenderFoliageSettings>): void => setNested("foliage", part),
@@ -147,22 +148,23 @@ export function LevelGrassAction({
         onChange={(shadowCascades: number) => set({ shadowCascades })}
       />
 
-      {foliage.mode === ERenderFoliageMode.ENHANCED ? (
-        FOLIAGE_LIGHT.map(([key, label]) => (
-          <RenderValueSlider
-            key={key}
-            label={label}
-            value={foliage[key]}
-            {...RENDER_FOLIAGE_LIMITS[key]}
-            format={formatFoliageStrength}
-            onChange={(value: number) => setFoliage({ [key]: value })}
-          />
-        ))
-      ) : (
+      {isEnhancedFoliage ? null : (
         <p className={"text-xs text-text-secondary"}>
           Light through leaves comes with the Enhanced foliage motion, under Wind.
         </p>
       )}
+
+      {FOLIAGE_LIGHT.map(([key, label]) => (
+        <RenderValueSlider
+          key={key}
+          label={label}
+          value={foliage[key]}
+          {...RENDER_FOLIAGE_LIMITS[key]}
+          isDisabled={!isEnhancedFoliage}
+          format={formatFoliageStrength}
+          onChange={(value: number) => setFoliage({ [key]: value })}
+        />
+      ))}
 
       <Button size={"small"} onClick={reset}>
         Reset to the preset

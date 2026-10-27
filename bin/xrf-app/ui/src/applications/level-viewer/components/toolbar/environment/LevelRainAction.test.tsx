@@ -69,20 +69,21 @@ describe("LevelRainAction", () => {
     expect(weather.manual?.thunderboltCollection).toBe("collection_default");
   });
 
-  it("gathers puddles on the ground as the rain's third section, offering their strengths only then", async () => {
-    const { getByRole, findByRole, queryByRole, view } = await renderAction();
+  it("gathers puddles on the ground as the rain's third section, their strengths settable only then", async () => {
+    const { getByRole, findByRole, view } = await renderAction();
 
     expect(getByRole("button", { name: "Rain" })).toHaveAccessibleDescription("No rain, no thunder, no puddles");
 
     await userEvent.click(getByRole("button", { name: "Rain" }));
     await findByRole("dialog", { name: "Rain" });
 
-    expect(queryByRole("slider", { name: "Puddles" })).toBeNull();
+    expect(getByRole("slider", { name: "Puddles" })).toBeDisabled();
 
     await userEvent.click(getByRole("checkbox", { name: "Puddles" }));
 
     expect(view.features.rain).toEqual({ mode: ERenderRainMode.ENHANCED });
     expect(getByRole("checkbox", { name: "Puddles" })).toBeChecked();
+    expect(getByRole("slider", { name: "Puddles" })).toBeEnabled();
     expect(getByRole("slider", { name: "Puddles" })).toHaveAttribute("aria-valuetext", "50%");
     expect(getByRole("slider", { name: "Reflectivity" })).toHaveAttribute("aria-valuetext", "40%");
     expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "300 m");

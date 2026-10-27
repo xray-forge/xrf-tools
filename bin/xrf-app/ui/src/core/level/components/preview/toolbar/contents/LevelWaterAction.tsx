@@ -56,6 +56,7 @@ export function LevelWaterAction({
   const manual: ILevelManualWeather = weatherService.shown;
   const water: TRenderWaterSettings = state.value;
   const enhanced: TRenderEnhancedWaterSettings = water.enhanced;
+  const isEnhanced: boolean = water.mode === ERenderWaterMode.ENHANCED;
   // The water's reflection is set in the Reflections group, beside the surfaces' and the ray trace both share.
   const reflections: TRenderReflectionSettings = toLevelModeFeature(
     "reflections",
@@ -80,10 +81,9 @@ export function LevelWaterAction({
         isOn,
         label: "Water",
         off: "Water off, what lies under it showing",
-        on:
-          water.mode === ERenderWaterMode.ENHANCED
-            ? `Enhanced water refracting what lies under it${water.isDistorted ? ", distorting" : ""}`
-            : `Water reflecting the sky${water.isSoft ? ", soft" : ""}${water.isDistorted ? ", distorting" : ""}`,
+        on: isEnhanced
+          ? `Enhanced water refracting what lies under it${water.isDistorted ? ", distorting" : ""}`
+          : `Water reflecting the sky${water.isSoft ? ", soft" : ""}${water.isDistorted ? ", distorting" : ""}`,
       })}
       icon={<WaterIcon />}
       isOn={isOn && state.isAvailable}
@@ -109,129 +109,141 @@ export function LevelWaterAction({
 
       <p className={"text-xs text-text-secondary"}>{explainRenderWaterMode(water.mode)}</p>
 
-      {water.mode === ERenderWaterMode.ENHANCED ? (
-        <>
-          <RenderValueSlider
-            label={"Refraction"}
-            value={enhanced.refraction}
-            {...RENDER_ENHANCED_WATER_LIMITS.refraction}
-            format={formatWaterStrength}
-            onChange={(refraction: number) => onSetEnhanced({ refraction })}
-          />
+      <RenderValueSlider
+        label={"Refraction"}
+        value={enhanced.refraction}
+        {...RENDER_ENHANCED_WATER_LIMITS.refraction}
+        isDisabled={!isEnhanced}
+        format={formatWaterStrength}
+        onChange={(refraction: number) => onSetEnhanced({ refraction })}
+      />
 
-          <RenderValueSlider
-            label={"Turbidity"}
-            value={enhanced.turbidity}
-            {...RENDER_ENHANCED_WATER_LIMITS.turbidity}
-            format={formatWaterStrength}
-            onChange={(turbidity: number) => onSetEnhanced({ turbidity })}
-          />
+      <RenderValueSlider
+        label={"Turbidity"}
+        value={enhanced.turbidity}
+        {...RENDER_ENHANCED_WATER_LIMITS.turbidity}
+        isDisabled={!isEnhanced}
+        format={formatWaterStrength}
+        onChange={(turbidity: number) => onSetEnhanced({ turbidity })}
+      />
 
-          <RenderValueSlider
-            label={"Soft border"}
-            value={enhanced.softBorder}
-            {...RENDER_ENHANCED_WATER_LIMITS.softBorder}
-            format={formatWaterBorder}
-            onChange={(softBorder: number) => onSetEnhanced({ softBorder })}
-          />
+      <RenderValueSlider
+        label={"Soft border"}
+        value={enhanced.softBorder}
+        {...RENDER_ENHANCED_WATER_LIMITS.softBorder}
+        isDisabled={!isEnhanced}
+        format={formatWaterBorder}
+        onChange={(softBorder: number) => onSetEnhanced({ softBorder })}
+      />
 
-          <RenderValueSlider
-            label={"Reflectivity"}
-            value={enhanced.reflectivity}
-            {...RENDER_ENHANCED_WATER_LIMITS.reflectivity}
-            format={formatWaterStrength}
-            onChange={(reflectivity: number) => onSetEnhanced({ reflectivity })}
-          />
+      <RenderValueSlider
+        label={"Reflectivity"}
+        value={enhanced.reflectivity}
+        {...RENDER_ENHANCED_WATER_LIMITS.reflectivity}
+        isDisabled={!isEnhanced}
+        format={formatWaterStrength}
+        onChange={(reflectivity: number) => onSetEnhanced({ reflectivity })}
+      />
 
-          <p className={"text-xs text-text-secondary"}>
-            {!reflections.isWaterReflected
-              ? "It reflects the sky's cube alone: Reflections, Water reflects the screen."
-              : isReflectionTraced
-                ? "It reflects the screen, what that misses ray-traced: Reflections, Water and Ray tracing."
-                : "It reflects the screen, the sky's cube where that misses: Reflections, Water and Ray tracing."}
-          </p>
-
-          <RenderValueSlider
-            label={"Reflection blur"}
-            value={enhanced.reflectionBlur}
-            {...RENDER_ENHANCED_WATER_LIMITS.reflectionBlur}
-            format={formatWaterStrength}
-            onChange={(reflectionBlur: number) => onSetEnhanced({ reflectionBlur })}
-          />
-
-          <RenderValueSlider
-            label={"Blur noise"}
-            value={enhanced.blurNoise}
-            {...RENDER_ENHANCED_WATER_LIMITS.blurNoise}
-            format={formatWaterStrength}
-            onChange={(blurNoise: number) => onSetEnhanced({ blurNoise })}
-          />
-
-          <RenderValueSlider
-            label={"Vibrance"}
-            value={enhanced.vibrance}
-            {...RENDER_ENHANCED_WATER_LIMITS.vibrance}
-            format={formatPercent}
-            onChange={(vibrance: number) => onSetEnhanced({ vibrance })}
-          />
-
-          <RenderValueSlider
-            label={"Specular"}
-            value={enhanced.specular}
-            {...RENDER_ENHANCED_WATER_LIMITS.specular}
-            format={formatWaterStrength}
-            onChange={(specular: number) => onSetEnhanced({ specular })}
-          />
-
-          <RenderValueSlider
-            label={"Caustics"}
-            value={enhanced.caustics}
-            {...RENDER_ENHANCED_WATER_LIMITS.caustics}
-            format={formatWaterStrength}
-            onChange={(caustics: number) => onSetEnhanced({ caustics })}
-          />
-
-          <RenderValueSlider
-            label={"Parallax height"}
-            value={enhanced.parallaxHeight}
-            {...RENDER_ENHANCED_WATER_LIMITS.parallaxHeight}
-            format={formatWaveHeight}
-            onChange={(parallaxHeight: number) => onSetEnhanced({ parallaxHeight })}
-          />
-
-          <RenderValueSlider
-            label={"Flow"}
-            value={enhanced.flow}
-            {...RENDER_ENHANCED_WATER_LIMITS.flow}
-            format={formatWaterMultiple}
-            onChange={(flow: number) => onSetEnhanced({ flow })}
-          />
-
-          <RenderValueSlider
-            label={"Calm flow"}
-            value={enhanced.calmFlow}
-            {...RENDER_ENHANCED_WATER_LIMITS.calmFlow}
-            format={formatPercent}
-            onChange={(calmFlow: number) => onSetEnhanced({ calmFlow })}
-          />
-
-          <RenderValueSlider
-            label={"Variation"}
-            value={enhanced.variation}
-            {...RENDER_ENHANCED_WATER_LIMITS.variation}
-            format={formatWaterStrength}
-            onChange={(variation: number) => onSetEnhanced({ variation })}
-          />
-
-          <RenderValueSlider
-            label={"Rain ripples"}
-            value={enhanced.ripples}
-            {...RENDER_ENHANCED_WATER_LIMITS.ripples}
-            format={formatWaterStrength}
-            onChange={(ripples: number) => onSetEnhanced({ ripples })}
-          />
-        </>
+      {isEnhanced ? (
+        <p className={"text-xs text-text-secondary"}>
+          {!reflections.isWaterReflected
+            ? "It reflects the sky's cube alone: Reflections, Water reflects the screen."
+            : isReflectionTraced
+              ? "It reflects the screen, what that misses ray-traced: Reflections, Water and Ray tracing."
+              : "It reflects the screen, the sky's cube where that misses: Reflections, Water and Ray tracing."}
+        </p>
       ) : null}
+
+      <RenderValueSlider
+        label={"Reflection blur"}
+        value={enhanced.reflectionBlur}
+        {...RENDER_ENHANCED_WATER_LIMITS.reflectionBlur}
+        isDisabled={!isEnhanced}
+        format={formatWaterStrength}
+        onChange={(reflectionBlur: number) => onSetEnhanced({ reflectionBlur })}
+      />
+
+      <RenderValueSlider
+        label={"Blur noise"}
+        value={enhanced.blurNoise}
+        {...RENDER_ENHANCED_WATER_LIMITS.blurNoise}
+        isDisabled={!isEnhanced}
+        format={formatWaterStrength}
+        onChange={(blurNoise: number) => onSetEnhanced({ blurNoise })}
+      />
+
+      <RenderValueSlider
+        label={"Vibrance"}
+        value={enhanced.vibrance}
+        {...RENDER_ENHANCED_WATER_LIMITS.vibrance}
+        isDisabled={!isEnhanced}
+        format={formatPercent}
+        onChange={(vibrance: number) => onSetEnhanced({ vibrance })}
+      />
+
+      <RenderValueSlider
+        label={"Specular"}
+        value={enhanced.specular}
+        {...RENDER_ENHANCED_WATER_LIMITS.specular}
+        isDisabled={!isEnhanced}
+        format={formatWaterStrength}
+        onChange={(specular: number) => onSetEnhanced({ specular })}
+      />
+
+      <RenderValueSlider
+        label={"Caustics"}
+        value={enhanced.caustics}
+        {...RENDER_ENHANCED_WATER_LIMITS.caustics}
+        isDisabled={!isEnhanced}
+        format={formatWaterStrength}
+        onChange={(caustics: number) => onSetEnhanced({ caustics })}
+      />
+
+      <RenderValueSlider
+        label={"Parallax height"}
+        value={enhanced.parallaxHeight}
+        {...RENDER_ENHANCED_WATER_LIMITS.parallaxHeight}
+        isDisabled={!isEnhanced}
+        format={formatWaveHeight}
+        onChange={(parallaxHeight: number) => onSetEnhanced({ parallaxHeight })}
+      />
+
+      <RenderValueSlider
+        label={"Flow"}
+        value={enhanced.flow}
+        {...RENDER_ENHANCED_WATER_LIMITS.flow}
+        isDisabled={!isEnhanced}
+        format={formatWaterMultiple}
+        onChange={(flow: number) => onSetEnhanced({ flow })}
+      />
+
+      <RenderValueSlider
+        label={"Calm flow"}
+        value={enhanced.calmFlow}
+        {...RENDER_ENHANCED_WATER_LIMITS.calmFlow}
+        isDisabled={!isEnhanced}
+        format={formatPercent}
+        onChange={(calmFlow: number) => onSetEnhanced({ calmFlow })}
+      />
+
+      <RenderValueSlider
+        label={"Variation"}
+        value={enhanced.variation}
+        {...RENDER_ENHANCED_WATER_LIMITS.variation}
+        isDisabled={!isEnhanced}
+        format={formatWaterStrength}
+        onChange={(variation: number) => onSetEnhanced({ variation })}
+      />
+
+      <RenderValueSlider
+        label={"Rain ripples"}
+        value={enhanced.ripples}
+        {...RENDER_ENHANCED_WATER_LIMITS.ripples}
+        isDisabled={!isEnhanced}
+        format={formatWaterStrength}
+        onChange={(ripples: number) => onSetEnhanced({ ripples })}
+      />
 
       <CheckboxFormRow
         label={"Soft water"}

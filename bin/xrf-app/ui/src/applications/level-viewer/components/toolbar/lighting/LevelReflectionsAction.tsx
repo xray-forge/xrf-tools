@@ -81,101 +81,107 @@ export function LevelReflectionsAction({
         isOn={isSurfaces}
         onToggle={() => set({ mode: isSurfaces ? ERenderReflectionMode.ENGINE : ERenderReflectionMode.ENHANCED })}
       >
-        {isSurfaces ? (
-          <>
-            {isRayReconstructed ? (
-              <p className={"text-xs text-text-secondary"}>
-                Traced at full size every frame: ray reconstruction takes each pixel&apos;s own ray.
-              </p>
-            ) : null}
-
-            <RenderValueChoice
-              label={"Trace size"}
-              options={RENDER_TRACE_SIZE_OPTIONS}
-              value={isRayReconstructed ? ERenderTraceSize.FULL : value.traceSize}
-              isDisabled={isRayReconstructed}
-              onChange={(traceSize: RenderTraceSize) => set({ traceSize })}
-            />
-
-            <RenderValueSlider
-              label={"Steps"}
-              value={value.steps}
-              {...RENDER_REFLECTION_LIMITS.steps}
-              format={formatCount}
-              onChange={(steps: number) => set({ steps })}
-            />
-
-            <RenderValueChoice
-              label={"Surroundings"}
-              options={RENDER_REFLECTION_PROBE_OPTIONS}
-              value={value.probe}
-              onChange={(probe: RenderReflectionProbe) => set({ probe })}
-            />
-
-            <RenderValueSlider
-              label={"Intensity"}
-              value={value.intensity}
-              {...RENDER_REFLECTION_LIMITS.intensity}
-              format={formatReflectionIntensity}
-              onChange={(intensity: number) => set({ intensity })}
-            />
-
-            <RenderValueSlider
-              label={"Distance"}
-              value={value.distance}
-              {...RENDER_REFLECTION_LIMITS.distance}
-              format={formatReflectionDistance}
-              onChange={(distance: number) => set({ distance })}
-            />
-
-            <RenderValueSlider
-              label={"Wet reach"}
-              value={value.reach}
-              {...RENDER_REFLECTION_LIMITS.reach}
-              format={formatReflectionDistance}
-              onChange={(reach: number) => set({ reach })}
-            />
-
-            <RenderValueSlider
-              label={"Sky light"}
-              value={value.skyGain}
-              {...RENDER_REFLECTION_LIMITS.skyGain}
-              format={formatReflectionSkyGain}
-              onChange={(skyGain: number) => set({ skyGain })}
-            />
-
-            <RenderValueSlider
-              label={"Trace roughness"}
-              value={value.traceRoughness}
-              {...RENDER_REFLECTION_LIMITS.traceRoughness}
-              format={formatReflectionTraceRoughness}
-              onChange={(traceRoughness: number) => set({ traceRoughness })}
-            />
-
-            <CheckboxFormRow
-              label={"Trace dry surfaces"}
-              description={"Off, a dry level traces only metal and glass-like surfaces until the rain wets it"}
-              isChecked={value.isDryTraced}
-              onChange={(isDryTraced: boolean) => set({ isDryTraced })}
-            />
-
-            <CheckboxFormRow
-              label={"Ray budgets"}
-              description={
-                "Fewer rays where a reflection is dim or rough, shared in each quad; saves most at full size and " +
-                "under ray reconstruction"
-              }
-              isChecked={value.isRayBudgeted}
-              onChange={(isRayBudgeted: boolean) => set({ isRayBudgeted })}
-            />
-
-            <CheckboxFormRow
-              label={"Reflect grass"}
-              isChecked={value.isGrassReflected}
-              onChange={(isGrassReflected: boolean) => set({ isGrassReflected })}
-            />
-          </>
+        {isSurfaces && isRayReconstructed ? (
+          <p className={"text-xs text-text-secondary"}>
+            Traced at full size every frame: ray reconstruction takes each pixel&apos;s own ray.
+          </p>
         ) : null}
+
+        <RenderValueChoice
+          label={"Trace size"}
+          options={RENDER_TRACE_SIZE_OPTIONS}
+          value={isRayReconstructed ? ERenderTraceSize.FULL : value.traceSize}
+          isDisabled={!isSurfaces || isRayReconstructed}
+          onChange={(traceSize: RenderTraceSize) => set({ traceSize })}
+        />
+
+        <RenderValueSlider
+          label={"Steps"}
+          value={value.steps}
+          {...RENDER_REFLECTION_LIMITS.steps}
+          isDisabled={!isSurfaces}
+          format={formatCount}
+          onChange={(steps: number) => set({ steps })}
+        />
+
+        <RenderValueChoice
+          label={"Surroundings"}
+          options={RENDER_REFLECTION_PROBE_OPTIONS}
+          value={value.probe}
+          isDisabled={!isSurfaces}
+          onChange={(probe: RenderReflectionProbe) => set({ probe })}
+        />
+
+        <RenderValueSlider
+          label={"Intensity"}
+          value={value.intensity}
+          {...RENDER_REFLECTION_LIMITS.intensity}
+          isDisabled={!isSurfaces}
+          format={formatReflectionIntensity}
+          onChange={(intensity: number) => set({ intensity })}
+        />
+
+        <RenderValueSlider
+          label={"Distance"}
+          value={value.distance}
+          {...RENDER_REFLECTION_LIMITS.distance}
+          isDisabled={!isSurfaces}
+          format={formatReflectionDistance}
+          onChange={(distance: number) => set({ distance })}
+        />
+
+        <RenderValueSlider
+          label={"Wet reach"}
+          value={value.reach}
+          {...RENDER_REFLECTION_LIMITS.reach}
+          isDisabled={!isSurfaces}
+          format={formatReflectionDistance}
+          onChange={(reach: number) => set({ reach })}
+        />
+
+        <RenderValueSlider
+          label={"Sky light"}
+          value={value.skyGain}
+          {...RENDER_REFLECTION_LIMITS.skyGain}
+          isDisabled={!isSurfaces}
+          format={formatReflectionSkyGain}
+          onChange={(skyGain: number) => set({ skyGain })}
+        />
+
+        <RenderValueSlider
+          label={"Trace roughness"}
+          value={value.traceRoughness}
+          {...RENDER_REFLECTION_LIMITS.traceRoughness}
+          isDisabled={!isSurfaces}
+          format={formatReflectionTraceRoughness}
+          onChange={(traceRoughness: number) => set({ traceRoughness })}
+        />
+
+        <CheckboxFormRow
+          label={"Trace dry surfaces"}
+          description={"Off, a dry level traces only metal and glass-like surfaces until the rain wets it"}
+          isChecked={value.isDryTraced}
+          isDisabled={!isSurfaces}
+          onChange={(isDryTraced: boolean) => set({ isDryTraced })}
+        />
+
+        <CheckboxFormRow
+          label={"Ray budgets"}
+          description={
+            "Fewer rays where a reflection is dim or rough, shared in each quad; saves most at full size and " +
+            "under ray reconstruction"
+          }
+          isChecked={value.isRayBudgeted}
+          isDisabled={!isSurfaces}
+          onChange={(isRayBudgeted: boolean) => set({ isRayBudgeted })}
+        />
+
+        <CheckboxFormRow
+          label={"Reflect grass"}
+          isChecked={value.isGrassReflected}
+          isDisabled={!isSurfaces}
+          onChange={(isGrassReflected: boolean) => set({ isGrassReflected })}
+        />
       </EditorPopoverGroupSection>
 
       <EditorPopoverGroupSection
@@ -189,15 +195,14 @@ export function LevelReflectionsAction({
         isDisabled={!isWaterEnhanced}
         onToggle={() => set({ isWaterReflected: !value.isWaterReflected })}
       >
-        {isWater ? (
-          <RenderValueSlider
-            label={"March steps"}
-            value={value.waterSteps}
-            {...RENDER_REFLECTION_LIMITS.waterSteps}
-            format={formatCount}
-            onChange={(waterSteps: number) => set({ waterSteps })}
-          />
-        ) : null}
+        <RenderValueSlider
+          label={"March steps"}
+          value={value.waterSteps}
+          {...RENDER_REFLECTION_LIMITS.waterSteps}
+          isDisabled={!isWater}
+          format={formatCount}
+          onChange={(waterSteps: number) => set({ waterSteps })}
+        />
       </EditorPopoverGroupSection>
 
       <EditorPopoverGroupSection

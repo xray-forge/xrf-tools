@@ -58,14 +58,16 @@ describe("LevelOcclusionAction", () => {
     expect(view.hemiStrength).toBe(1);
   });
 
-  it("switches the view to VBAO, offering its strengths only then", async () => {
-    const { getByRole, queryByRole, view } = await renderOpenAction();
+  it("switches the view to VBAO, its strengths settable only then", async () => {
+    const { getByRole, view } = await renderOpenAction();
 
-    expect(queryByRole("slider", { name: "Thickness" })).toBeNull();
+    expect(getByRole("slider", { name: "Thickness" })).toBeDisabled();
+    expect(getByRole("slider", { name: "Accumulation" })).toBeDisabled();
 
     await userEvent.click(getByRole("button", { name: "VBAO" }));
 
     expect(view.features.ambientOcclusion).toEqual({ method: ERenderAmbientOcclusionMethod.VBAO });
+    expect(getByRole("slider", { name: "Thickness" })).toBeEnabled();
     expect(getByRole("slider", { name: "Thickness" })).toHaveAttribute("aria-valuetext", "0.25 m");
     expect(getByRole("slider", { name: "Accumulation" })).toHaveAttribute("aria-valuetext", "8 frames");
     expect(getByRole("button", { hidden: true, name: "Ambient light" })).toHaveAccessibleDescription(
@@ -79,13 +81,17 @@ describe("LevelOcclusionAction", () => {
     );
 
     expect(rendered.getByRole("button", { name: "RTAO" })).toBeEnabled();
-    expect(rendered.getByRole("slider", { name: "Accumulation" })).toBeInTheDocument();
-    expect(rendered.queryByRole("slider", { name: "Thickness" })).toBeNull();
+    expect(rendered.getByRole("slider", { name: "Accumulation" })).toBeEnabled();
+    expect(rendered.getByRole("slider", { name: "Rays" })).toBeEnabled();
+    expect(rendered.getByRole("slider", { name: "Thickness" })).toBeDisabled();
 
     noteLevelFrame(rendered.render, { adapter: "Test GPU", hasRayQueries: false });
 
     expect(rendered.getByRole("button", { name: "RTAO" })).toBeDisabled();
     expect(rendered.getByText("RTAO needs a GPU that traces rays: VBAO searches in its place.")).toBeInTheDocument();
+    // VBAO's values are what search then.
+    expect(rendered.getByRole("slider", { name: "Rays" })).toBeDisabled();
+    expect(rendered.getByRole("slider", { name: "Thickness" })).toBeEnabled();
   });
 
   it("turns the view's indirect light to enhanced, its intensity settable only then, and back to the settings", async () => {

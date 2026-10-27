@@ -49,17 +49,17 @@ describe("SettingsRenderSection", () => {
   });
 
   // The output resolution sits beside the upscaling quality; only Auto has a scale to set.
-  it("sets the output resolution on Image, with the scale offered while it follows the viewport", async () => {
+  it("sets the output resolution on Image, the scale settable only while it follows the viewport", async () => {
     const { settings, view } = renderSection();
 
     await userEvent.click(view.getByRole("tab", { name: "Image" }));
 
-    expect(view.getByRole("slider", { name: "Output scale" })).toBeInTheDocument();
+    expect(view.getByRole("slider", { name: "Output scale" })).toBeEnabled();
 
     await userEvent.click(view.getByRole("button", { name: "1080p" }));
 
     expect(settings.renderResolution).toBe(ERenderResolution.HEIGHT_1080);
-    expect(view.queryByRole("slider", { name: "Output scale" })).not.toBeInTheDocument();
+    expect(view.getByRole("slider", { name: "Output scale" })).toBeDisabled();
   });
 
   // Timing changes nothing drawn, so it leaves the preset as it was and marks no tab.
