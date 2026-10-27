@@ -32,7 +32,7 @@ export const KEYBIND_COMMAND_CATEGORY_LABELS: Readonly<Record<EKeybindCommandCat
 
 /**
  * `<domain>/<verb-noun>`, where the domain is the `<subject>-<role>` slug that already names the directory, route,
- * launcher entry and tests. An id therefore greps straight back to its owner, and two applications may both declare
+ * launcher entry and tests. An id therefore greps straight back to its owner, and two tools may both declare
  * a `repack` without colliding.
  */
 const KEYBIND_COMMAND_ID_PATTERN: RegExp = /^[a-z0-9]+(?:-[a-z0-9]+)*\/[a-z0-9]+(?:-[a-z0-9]+)*$/;

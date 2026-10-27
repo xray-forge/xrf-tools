@@ -60,7 +60,7 @@ describe("useAssetUrl", () => {
 
     unmount();
 
-    // Leaving an editor unmounts its preview without deactivating the application that owns the service, so a url
+    // Leaving an editor unmounts its preview without deactivating the tool that owns the service, so a url
     // nobody releases here outlives every session until the window closes.
     expect(revoked).toEqual(["blob:asset/1"]);
     expect(container.get(AssetService).heldCount).toBe(0);

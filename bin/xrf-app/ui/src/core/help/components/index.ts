@@ -1,2 +1,2 @@
-export * from "./ApplicationHelp";
-export * from "./ApplicationHelpContent";
+export * from "./ToolHelp";
+export * from "./ToolHelpContent";

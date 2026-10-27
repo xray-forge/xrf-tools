@@ -14,7 +14,7 @@ export interface IAssembledMenu {
  * Lays published entries out in declared section order, dropping empty sections and menus.
  *
  * @param menus - The bar's menus, in bar order.
- * @param extensions - Sections the open application adds to those menus, drawn at each one's extension point.
+ * @param extensions - Sections the open tool adds to those menus, drawn at each one's extension point.
  * @param contributions - Everything published, in publication order.
  * @returns The menus that have something to show.
  */

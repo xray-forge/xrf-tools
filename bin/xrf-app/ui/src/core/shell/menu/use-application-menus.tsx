@@ -11,10 +11,10 @@ import { useCallback, useState } from "react";
 
 import { KeybindCommandsService } from "@/core/commands";
 import { REPOSITORY_URL } from "@/core/configs";
-import { OPEN_APPLICATION_HELP_KEYBIND_COMMAND } from "@/core/help/commands";
+import { OPEN_TOOL_HELP_KEYBIND_COMMAND } from "@/core/help/commands";
 import { KeymapService } from "@/core/keybinds";
-import { IApplicationDescriptor } from "@/core/routing/application";
-import { useCurrentApplication } from "@/core/routing/current-application.context";
+import { useCurrentTool } from "@/core/routing/current-tool.context";
+import { IToolDescriptor } from "@/core/routing/tool";
 import { OPEN_SETTINGS_KEYBIND_COMMAND } from "@/core/settings/commands";
 import { ESettingsSection } from "@/core/settings/lib/settings-section";
 import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
@@ -26,8 +26,8 @@ import { FILE_MENU, HELP_MENU } from "@/core/shell/menu/menus";
 import { resolveAppWindow } from "@/lib/tauri/app-window";
 
 /**
- * The window's menus as the menubar draws them: File, the open application's own menus, then Help, with the sections
- * the application adds to File and Help, each holding the shell's entries and whatever the open screen publishes.
+ * The window's menus as the menubar draws them: File, the open tool's own menus, then Help, with the sections
+ * the tool adds to File and Help, each holding the shell's entries and whatever the open screen publishes.
  *
  * @returns The menus with something in them, in bar order.
  */
@@ -35,7 +35,7 @@ export function useApplicationMenus(): Array<IMenubarMenu> {
   const commandsService: KeybindCommandsService = useInjection(KeybindCommandsService);
   const keymapService: KeymapService = useInjection(KeymapService);
   const settingsDialogService: SettingsDialogService = useInjection(SettingsDialogService);
-  const application: Nullable<IApplicationDescriptor> = useCurrentApplication();
+  const tool: Nullable<IToolDescriptor> = useCurrentTool();
   const published: ReadonlyArray<IMenuContribution> = useEditorMenusRegistry();
   const [appWindow] = useState<Nullable<Window>>(resolveAppWindow);
 
@@ -99,7 +99,7 @@ export function useApplicationMenus(): Array<IMenubarMenu> {
     },
     {
       section: HELP_MENU.sections.help,
-      entries: [{ kind: "command", command: OPEN_APPLICATION_HELP_KEYBIND_COMMAND }],
+      entries: [{ kind: "command", command: OPEN_TOOL_HELP_KEYBIND_COMMAND }],
     },
     {
       section: HELP_MENU.sections.about,
@@ -122,11 +122,10 @@ export function useApplicationMenus(): Array<IMenubarMenu> {
     },
   ];
 
-  return assembleMenus(
-    [FILE_MENU, ...(application?.menus ?? EMPTY_ARRAY), HELP_MENU],
-    application?.menuExtensions ?? EMPTY_ARRAY,
-    [...shell, ...published]
-  ).map(({ menu, sections }: IAssembledMenu) => ({
+  return assembleMenus([FILE_MENU, ...(tool?.menus ?? EMPTY_ARRAY), HELP_MENU], tool?.menuExtensions ?? EMPTY_ARRAY, [
+    ...shell,
+    ...published,
+  ]).map(({ menu, sections }: IAssembledMenu) => ({
     id: menu.id,
     label: menu.label,
     // Asked as the menu opens, so a command's guard is read then rather than kept current while nobody looks.

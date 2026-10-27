@@ -2,43 +2,35 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 
-import { ApplicationLauncher } from "@/core/launcher";
-import { IApplicationDescriptor } from "@/core/routing/application";
-import { CurrentApplicationProvider } from "@/core/routing/current-application.context";
+import { ToolLauncher } from "@/core/launcher";
+import { CurrentToolProvider } from "@/core/routing/current-tool.context";
+import { IToolDescriptor } from "@/core/routing/tool";
 import { ApplicationShell } from "@/core/shell/ApplicationShell";
 import { NavigationError } from "@/core/shell/error/NavigationError";
 
-import { APPLICATION_CATALOG } from "./ApplicationCatalog";
+import { TOOL_CATALOG } from "./ToolCatalog";
 
 /**
- * Maps urls onto applications inside the window chrome that outlives every route.
+ * Maps urls onto tools inside the window chrome that outlives every route.
  */
 export function ApplicationRouter(): ReactElement {
   const { pathname } = useLocation();
 
-  const application: Nullable<IApplicationDescriptor> = APPLICATION_CATALOG.findApplicationByPath(pathname);
+  const tool: Nullable<IToolDescriptor> = TOOL_CATALOG.findToolByPath(pathname);
 
   return (
-    <CurrentApplicationProvider application={application}>
+    <CurrentToolProvider tool={tool}>
       <ApplicationShell>
         <Routes>
-          <Route
-            path={"/"}
-            element={
-              <ApplicationLauncher
-                applications={APPLICATION_CATALOG.applications}
-                groups={APPLICATION_CATALOG.groups}
-              />
-            }
-          />
+          <Route path={"/"} element={<ToolLauncher tools={TOOL_CATALOG.tools} groups={TOOL_CATALOG.groups} />} />
 
-          {APPLICATION_CATALOG.applications.map(({ path, Component }: IApplicationDescriptor) => (
+          {TOOL_CATALOG.tools.map(({ path, Component }: IToolDescriptor) => (
             <Route key={path} path={`${path}/*`} element={<Component />} />
           ))}
 
           <Route path={"*"} element={<NavigationError />} />
         </Routes>
       </ApplicationShell>
-    </CurrentApplicationProvider>
+    </CurrentToolProvider>
   );
 }

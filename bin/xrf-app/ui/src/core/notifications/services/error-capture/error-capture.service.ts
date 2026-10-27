@@ -4,7 +4,7 @@ import { transformError } from "@xrf/errors";
 import { Logger } from "@xrf/logging";
 
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
-import { APPLICATION_SOURCE } from "@/core/routing/application";
+import { APPLICATION_SOURCE } from "@/core/routing/tool";
 
 /**
  * Records the failures nothing else reports.

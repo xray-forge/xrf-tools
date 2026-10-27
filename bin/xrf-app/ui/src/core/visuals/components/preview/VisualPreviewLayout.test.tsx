@@ -36,7 +36,7 @@ function renderLayout(footer?: string): RenderResult {
 }
 
 describe("VisualPreviewLayout footer", () => {
-  it("returns to the picker through the application breadcrumb", () => {
+  it("returns to the picker through the tool breadcrumb", () => {
     const onBack = jest.fn();
     const view = renderWithProviders(<VisualPreviewLayout onBack={onBack} />, {
       bindings: BINDINGS,

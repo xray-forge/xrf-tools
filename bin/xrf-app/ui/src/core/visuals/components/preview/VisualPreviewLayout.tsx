@@ -23,7 +23,7 @@ interface IVisualPreviewLayoutProps extends BaseComponentProps {
   name?: Nullable<string>;
   /** Published as a left panel when given. Opening a single visual has nothing to browse. */
   tree?: ReactNode;
-  /** Data panels the owning application contributes to the right stripe. */
+  /** Data panels the owning tool contributes to the right stripe. */
   panels?: Array<IEditorPanel>;
   /** Drawn under the viewport, at whatever height it asks for. */
   footer?: ReactNode;
@@ -31,9 +31,9 @@ interface IVisualPreviewLayoutProps extends BaseComponentProps {
   isLoading?: boolean;
   /** Why the last open failed, shown in place of a model rather than dismissing the session. */
   error?: string;
-  /** Reads the failed open's source again. Absent while an application cannot repeat its last attempt. */
+  /** Reads the failed open's source again. Absent while a tool cannot repeat its last attempt. */
   onRetry?: () => void;
-  /** Reopens the picker. Absent while an application has no way to choose a different visual. */
+  /** Reopens the picker. Absent while a tool has no way to choose a different visual. */
   onBack?: () => void;
   /** Promotes a single-model session to a browsed one. Absent while already browsing. */
   onBrowse?: () => void;

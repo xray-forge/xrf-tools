@@ -1,0 +1,77 @@
+import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ReactElement, useCallback } from "react";
+
+import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
+import { useAssetRootField } from "@/core/assets/lib";
+import { TEXTURE_FILE_FILTERS } from "@/core/path/file-filters";
+import { EToolId } from "@/core/routing/tool";
+import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
+import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+
+/**
+ * The way into the editor: one texture.
+ */
+export function TexturesEditorOpenForm({
+  "data-testid": dataTestId = "textures-editor-open-form",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
+  const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
+
+  const log: Logger = useLogger(__MODULE_NAME__);
+
+  const isLoading: boolean = selectionService.selected.isLoading;
+
+  const texture: IPathField = usePathField({
+    tool: EToolId.TEXTURES_EDITOR,
+    id: "texture",
+    title: "Select dds texture or thm descriptor",
+    filters: TEXTURE_FILE_FILTERS,
+    isDisabled: isLoading,
+  });
+
+  const assetRoot: IPathField = useAssetRootField(EToolId.TEXTURES_EDITOR, isLoading);
+
+  const onOpen = useCallback(async () => {
+    if (!texture.value) {
+      log.info("Cannot open a texture without a path");
+
+      return;
+    }
+
+    selectionService.setAssetRoot(assetRoot.value);
+
+    await selectionService.openFile(texture.value);
+  }, [assetRoot.value, log, selectionService, texture.value]);
+
+  return (
+    <PickerForm
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      isLoading={isLoading}
+      title={"Open a texture to work on"}
+      description={
+        "Opens one texture and the descriptor beside it, authoring a descriptor where there is none. The bump pair " +
+        "and detail texture it names are resolved in its own tree, and in whatever further tree is named below."
+      }
+      error={selectionService.selected.error?.message}
+      submitLabel={"Open"}
+      isSubmitDisabled={!texture.isValid}
+      onSubmit={onOpen}
+    >
+      <PathFormRow
+        label={"Texture file"}
+        description={"Dds texture, or the thm descriptor beside it"}
+        isDisabled={isLoading}
+        field={texture}
+      />
+
+      <AssetRootFormRow field={assetRoot} isDisabled={isLoading} />
+    </PickerForm>
+  );
+}

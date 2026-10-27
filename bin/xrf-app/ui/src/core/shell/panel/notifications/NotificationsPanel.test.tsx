@@ -5,7 +5,7 @@ import { Container } from "@wirestate/core";
 
 import { ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { NotificationsService } from "@/core/notifications/services";
-import { EApplicationId } from "@/core/routing/application";
+import { EToolId } from "@/core/routing/tool";
 import { SettingsService } from "@/core/settings/services/settings";
 import { NotificationsPanel } from "@/core/shell/panel/notifications/NotificationsPanel";
 import { mockContainer } from "@/fixtures/utils/container";
@@ -49,7 +49,7 @@ describe("NotificationsPanel", () => {
     const { render } = renderPanel([
       {
         severity: ENotificationSeverity.SUCCESS,
-        source: EApplicationId.ARCHIVES_EXPLORER,
+        source: EToolId.ARCHIVES_EXPLORER,
         title: "Extracted textures",
       },
     ]);
@@ -60,8 +60,8 @@ describe("NotificationsPanel", () => {
 
   it("shows the newest record first", () => {
     const { render } = renderPanel([
-      { severity: ENotificationSeverity.INFO, source: EApplicationId.ARCHIVES_EXPLORER, title: "Older" },
-      { severity: ENotificationSeverity.INFO, source: EApplicationId.ARCHIVES_EXPLORER, title: "Newer" },
+      { severity: ENotificationSeverity.INFO, source: EToolId.ARCHIVES_EXPLORER, title: "Older" },
+      { severity: ENotificationSeverity.INFO, source: EToolId.ARCHIVES_EXPLORER, title: "Newer" },
     ]);
 
     const titles: Array<string> = render.getAllByText(/Older|Newer/).map((it: HTMLElement) => it.textContent as string);
@@ -71,7 +71,7 @@ describe("NotificationsPanel", () => {
 
   it("reads what it was opened onto", () => {
     const { service } = renderPanel([
-      { severity: ENotificationSeverity.ERROR, source: EApplicationId.ARCHIVES_EXPLORER, title: "Failed" },
+      { severity: ENotificationSeverity.ERROR, source: EToolId.ARCHIVES_EXPLORER, title: "Failed" },
     ]);
 
     expect(service.unreadCount).toBe(0);
@@ -81,7 +81,7 @@ describe("NotificationsPanel", () => {
     const { service } = renderPanel();
 
     act(() =>
-      service.push({ severity: ENotificationSeverity.ERROR, source: EApplicationId.ARCHIVES_EXPLORER, title: "Failed" })
+      service.push({ severity: ENotificationSeverity.ERROR, source: EToolId.ARCHIVES_EXPLORER, title: "Failed" })
     );
 
     // Left unread, the badge counts records the user is looking at and nothing can dismiss it.
@@ -93,7 +93,7 @@ describe("NotificationsPanel", () => {
       {
         details: "Read 4128 entries\nC:\\gamedata\\gamedata.db0",
         severity: ENotificationSeverity.INFO,
-        source: EApplicationId.ARCHIVES_EXPLORER,
+        source: EToolId.ARCHIVES_EXPLORER,
         title: "Opened archive",
       },
     ]);
@@ -110,7 +110,7 @@ describe("NotificationsPanel", () => {
       {
         details: "Access denied\nC:\\out\\system.ltx",
         severity: ENotificationSeverity.ERROR,
-        source: EApplicationId.ARCHIVES_EXPLORER,
+        source: EToolId.ARCHIVES_EXPLORER,
         title: "Could not extract",
       },
     ]);
@@ -131,7 +131,7 @@ describe("NotificationsPanel", () => {
       {
         details: lines.join("\n"),
         severity: ENotificationSeverity.INFO,
-        source: EApplicationId.ARCHIVES_EXPLORER,
+        source: EToolId.ARCHIVES_EXPLORER,
         title: "Read archive",
       },
     ]);
@@ -152,7 +152,7 @@ describe("NotificationsPanel", () => {
       {
         details: "Wrote 214 files",
         severity: ENotificationSeverity.SUCCESS,
-        source: EApplicationId.ARCHIVES_EXPLORER,
+        source: EToolId.ARCHIVES_EXPLORER,
         title: "Extracted textures",
       },
     ]);
@@ -165,13 +165,13 @@ describe("NotificationsPanel", () => {
       {
         details: "Older body",
         severity: ENotificationSeverity.INFO,
-        source: EApplicationId.ARCHIVES_EXPLORER,
+        source: EToolId.ARCHIVES_EXPLORER,
         title: "Older",
       },
       {
         details: "Newer body",
         severity: ENotificationSeverity.INFO,
-        source: EApplicationId.ARCHIVES_EXPLORER,
+        source: EToolId.ARCHIVES_EXPLORER,
         title: "Newer",
       },
     ]);
@@ -189,9 +189,9 @@ describe("NotificationsPanel", () => {
 
   it("collapses a repeated outcome into one counted row", () => {
     const { render } = renderPanel([
-      { severity: ENotificationSeverity.INFO, source: EApplicationId.ARCHIVES_EXPLORER, title: "Rebuilt index" },
-      { severity: ENotificationSeverity.INFO, source: EApplicationId.ARCHIVES_EXPLORER, title: "Rebuilt index" },
-      { severity: ENotificationSeverity.INFO, source: EApplicationId.ARCHIVES_EXPLORER, title: "Rebuilt index" },
+      { severity: ENotificationSeverity.INFO, source: EToolId.ARCHIVES_EXPLORER, title: "Rebuilt index" },
+      { severity: ENotificationSeverity.INFO, source: EToolId.ARCHIVES_EXPLORER, title: "Rebuilt index" },
+      { severity: ENotificationSeverity.INFO, source: EToolId.ARCHIVES_EXPLORER, title: "Rebuilt index" },
     ]);
 
     expect(render.getAllByText("Rebuilt index")).toHaveLength(1);
@@ -200,8 +200,8 @@ describe("NotificationsPanel", () => {
 
   it("names the tool on every record, however long the run from it", () => {
     const { render } = renderPanel([
-      { severity: ENotificationSeverity.INFO, source: EApplicationId.ARCHIVES_EXPLORER, title: "Older" },
-      { severity: ENotificationSeverity.SUCCESS, source: EApplicationId.ARCHIVES_EXPLORER, title: "Newer" },
+      { severity: ENotificationSeverity.INFO, source: EToolId.ARCHIVES_EXPLORER, title: "Older" },
+      { severity: ENotificationSeverity.SUCCESS, source: EToolId.ARCHIVES_EXPLORER, title: "Newer" },
     ]);
 
     // Which tool reported an outcome is never the thing to drop: a log that hides it reads as one tool.
@@ -210,7 +210,7 @@ describe("NotificationsPanel", () => {
 
   it("offers no expander for a record with nothing more to say", () => {
     const { render } = renderPanel([
-      { severity: ENotificationSeverity.INFO, source: EApplicationId.ARCHIVES_EXPLORER, title: "Nothing to expand" },
+      { severity: ENotificationSeverity.INFO, source: EToolId.ARCHIVES_EXPLORER, title: "Nothing to expand" },
     ]);
 
     expect(render.queryByLabelText("Show details")).not.toBeInTheDocument();
@@ -218,10 +218,10 @@ describe("NotificationsPanel", () => {
 
   it("hides dev traces while dev mode is off", () => {
     const { render } = renderPanel([
-      { severity: ENotificationSeverity.DEV, source: EApplicationId.SPRITE_EQUIPMENT_EDITOR, title: "grid recomputed" },
+      { severity: ENotificationSeverity.DEV, source: EToolId.SPRITE_EQUIPMENT_EDITOR, title: "grid recomputed" },
       {
         severity: ENotificationSeverity.SUCCESS,
-        source: EApplicationId.SPRITE_EQUIPMENT_EDITOR,
+        source: EToolId.SPRITE_EQUIPMENT_EDITOR,
         title: "Packed sprite",
       },
     ]);
@@ -235,7 +235,7 @@ describe("NotificationsPanel", () => {
       [
         {
           severity: ENotificationSeverity.DEV,
-          source: EApplicationId.SPRITE_EQUIPMENT_EDITOR,
+          source: EToolId.SPRITE_EQUIPMENT_EDITOR,
           title: "grid recomputed",
         },
       ],
@@ -255,7 +255,7 @@ describe("NotificationsPanel", () => {
       [
         {
           severity: ENotificationSeverity.SUCCESS,
-          source: EApplicationId.SPRITE_EQUIPMENT_EDITOR,
+          source: EToolId.SPRITE_EQUIPMENT_EDITOR,
           title: "Packed sprite",
         },
       ],
@@ -267,7 +267,7 @@ describe("NotificationsPanel", () => {
 
   it("clears the log on request", async () => {
     const { render, service } = renderPanel([
-      { severity: ENotificationSeverity.INFO, source: EApplicationId.ARCHIVES_EXPLORER, title: "Something" },
+      { severity: ENotificationSeverity.INFO, source: EToolId.ARCHIVES_EXPLORER, title: "Something" },
     ]);
 
     await userEvent.click(render.getByRole("button", { name: "Clear all" }));

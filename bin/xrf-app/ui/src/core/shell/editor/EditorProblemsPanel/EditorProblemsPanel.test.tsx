@@ -52,7 +52,7 @@ describe("EditorProblemsPanel", () => {
     expect(getAllByRole("listitem")).toHaveLength(2);
   });
 
-  it("keeps the panel identity and application copy when no problems are present", () => {
+  it("keeps the panel identity and tool copy when no problems are present", () => {
     const { getByTestId, getByText, queryByRole } = renderWithProviders(
       <EditorProblemsPanel
         data-testid={"problems"}

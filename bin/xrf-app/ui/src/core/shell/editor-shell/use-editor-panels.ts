@@ -1,17 +1,17 @@
 import { useInjection } from "@wirestate/react";
 import { DependencyList, useEffect, useId, useMemo } from "react";
 
-import { useCurrentApplication } from "@/core/routing/current-application.context";
+import { useCurrentTool } from "@/core/routing/current-tool.context";
 import { EditorShellService } from "@/core/shell/services/editor-shell";
 
 import { IEditorPanel } from "./editor-panel";
 
-/** Returns panels whose owning application matches the container currently rendering them. */
+/** Returns panels whose owning tool matches the container currently rendering them. */
 export function useEditorPanelsRegistry(): ReadonlyArray<IEditorPanel> {
   const editorShellService: EditorShellService = useInjection(EditorShellService);
-  const application: string = useCurrentApplication()?.path ?? "root";
+  const tool: string = useCurrentTool()?.path ?? "root";
 
-  return editorShellService.getPanels(application);
+  return editorShellService.getPanels(tool);
 }
 
 /**
@@ -23,15 +23,15 @@ export function useEditorPanelsRegistry(): ReadonlyArray<IEditorPanel> {
 export function useEditorPanels(createPanels: () => Array<IEditorPanel>, dependencies: DependencyList): void {
   const editorShellService: EditorShellService = useInjection(EditorShellService);
   const owner: string = useId();
-  const application: string = useCurrentApplication()?.path ?? "root";
+  const tool: string = useCurrentTool()?.path ?? "root";
 
   // Call sites are checked as dependency-aware hooks by ESLint.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const panels: Array<IEditorPanel> = useMemo(createPanels, dependencies);
 
   useEffect(() => {
-    editorShellService.publishPanels(owner, application, panels);
-  }, [application, owner, panels, editorShellService]);
+    editorShellService.publishPanels(owner, tool, panels);
+  }, [tool, owner, panels, editorShellService]);
 
-  useEffect(() => () => editorShellService.releasePanels(owner), [application, owner, editorShellService]);
+  useEffect(() => () => editorShellService.releasePanels(owner), [tool, owner, editorShellService]);
 }

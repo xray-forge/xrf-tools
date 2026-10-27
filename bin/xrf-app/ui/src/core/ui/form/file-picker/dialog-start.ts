@@ -15,7 +15,7 @@ export interface IDialogStartOptions {
 /**
  * Where a native dialog should open for a field that already holds a path.
  *
- * Answering nothing leaves it to the host, which means wherever a dialog was last used - in any application, for any
+ * Answering nothing leaves it to the host, which means wherever a dialog was last used - in any tool, for any
  * purpose - so a field plainly showing one game data tree would open in another. The path on screen is a better guess
  * than that whenever it leads anywhere: the path itself when it is there, otherwise the directory above it, which is
  * where something moved or renamed was last seen.

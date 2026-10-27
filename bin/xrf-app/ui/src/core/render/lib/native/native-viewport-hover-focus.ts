@@ -6,7 +6,7 @@ import { isTextEntryTarget } from "@/lib/dom/text-entry";
 /**
  * Whether a viewport the pointer enters may take the keyboard focus, so its keys reach it without a click first.
  *
- * Not while another application is active, text is being entered, a dialog or a menu is open, or a button is held,
+ * Not while another tool is active, text is being entered, a dialog or a menu is open, or a button is held,
  * which is a drag under way somewhere.
  *
  * @param pointer - The pointer entering the viewport.

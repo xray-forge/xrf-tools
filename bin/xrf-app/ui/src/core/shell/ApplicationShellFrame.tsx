@@ -10,15 +10,14 @@ import { NavigateFunction, useLocation, useNavigate } from "react-router-dom";
 
 import { ErrorBoundary, IErrorBoundaryFallbackProps } from "@/core/error/components/ErrorBoundary";
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
-import { APPLICATION_SOURCE, IApplicationDescriptor } from "@/core/routing/application";
-import { useCurrentApplication } from "@/core/routing/current-application.context";
+import { useCurrentTool } from "@/core/routing/current-tool.context";
+import { APPLICATION_SOURCE, IToolDescriptor } from "@/core/routing/tool";
 import { SettingsService } from "@/core/settings/services/settings";
-import { ApplicationScope } from "@/core/shell/ApplicationScope";
 import { useIsEditorBusy } from "@/core/shell/editor-lifecycle";
 import { IEditorPanel, selectPanelsOnSide, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
-import { ApplicationCrash } from "@/core/shell/error/ApplicationCrash";
+import { ToolCrash } from "@/core/shell/error/ToolCrash";
 import { ApplicationStatusBar } from "@/core/shell/footer/ApplicationStatusBar";
-import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
+import { ToolLoader } from "@/core/shell/loading/ToolLoader";
 import { ApplicationPanelSlot } from "@/core/shell/panel/ApplicationPanelSlot";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
 import { JOBS_PANEL } from "@/core/shell/panel/jobs/jobs-panel";
@@ -33,8 +32,9 @@ import {
 import { ApplicationRail } from "@/core/shell/panel/rail";
 import { IPanelSelection, usePanelSelection } from "@/core/shell/panel/use-panel-selection";
 import { IPanelWidth, usePanelWidth } from "@/core/shell/panel/use-panel-width";
-import { APPLICATION_OPEN_QUERY, CLOSE_APPLICATION_COMMAND } from "@/core/shell/shell-messages";
+import { CLOSE_TOOL_COMMAND, TOOL_OPEN_QUERY } from "@/core/shell/shell-messages";
 import { ApplicationTitleBar } from "@/core/shell/title-bar/ApplicationTitleBar";
+import { ToolScope } from "@/core/shell/ToolScope";
 
 interface IApplicationShellFrameProps extends BaseComponentProps {
   children: ReactNode;
@@ -50,7 +50,7 @@ export function ApplicationShellFrame({
   className,
   children,
 }: IApplicationShellFrameProps): ReactElement {
-  const application: Nullable<IApplicationDescriptor> = useCurrentApplication();
+  const tool: Nullable<IToolDescriptor> = useCurrentTool();
   const notify: TEmitNotification = useEmitNotification();
   const navigate: NavigateFunction = useNavigate();
   const panels: ReadonlyArray<IEditorPanel> = useEditorPanelsRegistry();
@@ -64,35 +64,35 @@ export function ApplicationShellFrame({
   // its own: the frame hands it down and never reads it back.
   const [toolbarHost, setToolbarHost] = useState<Nullable<HTMLElement>>(null);
 
-  const applicationPath: string = application?.path ?? "root";
+  const toolPath: string = tool?.path ?? "root";
 
   const leftPanels: Array<IEditorPanel> = selectPanelsOnSide(panels, "left");
-  const applicationRightPanels: Array<IEditorPanel> = selectPanelsOnSide(panels, "right");
+  const toolRightPanels: Array<IEditorPanel> = selectPanelsOnSide(panels, "right");
   // Registered rather than merely hidden, so a build without dev mode never mounts a panel that polls the backend.
   const rightPanels: Array<IEditorPanel> = [
-    ...applicationRightPanels,
+    ...toolRightPanels,
     ...(settingsService.isDevModeEnabled ? [JOBS_PANEL] : []),
     NOTIFICATIONS_PANEL,
   ];
 
-  const leftSelection: IPanelSelection = usePanelSelection("left", leftPanels, application?.id ?? "root");
+  const leftSelection: IPanelSelection = usePanelSelection("left", leftPanels, tool?.id ?? "root");
   const rightSelection: IPanelSelection = usePanelSelection("right", rightPanels, "global");
 
   const openCount: number = (leftSelection.activePanel ? 1 : 0) + (rightSelection.activePanel ? 1 : 0);
   const leftSizing: IPanelWidth = usePanelWidth("left", openCount);
   const rightSizing: IPanelWidth = usePanelWidth("right", openCount);
 
-  const onError = useCallback((props: IErrorBoundaryFallbackProps) => <ApplicationCrash {...props} />, []);
+  const onError = useCallback((props: IErrorBoundaryFallbackProps) => <ToolCrash {...props} />, []);
 
   const onCaught = useCallback(
     (error: Error, componentStack: Nullable<string>) =>
       notify({
         details: componentStack ? `${error.message}\n${componentStack}` : error.message,
         severity: ENotificationSeverity.ERROR,
-        source: application?.id ?? APPLICATION_SOURCE,
+        source: tool?.id ?? APPLICATION_SOURCE,
         title: "The interface crashed and was replaced",
       }),
-    [application, notify]
+    [tool, notify]
   );
 
   // Flushed so the command is synchronous for its caller: whoever opens a panel to reach something inside it finds
@@ -110,9 +110,9 @@ export function ApplicationShellFrame({
     }
   });
 
-  useOnCommand(CLOSE_APPLICATION_COMMAND, () => navigate("/", { replace: true }));
+  useOnCommand(CLOSE_TOOL_COMMAND, () => navigate("/", { replace: true }));
 
-  useOnQuery(APPLICATION_OPEN_QUERY, () => application !== null);
+  useOnQuery(TOOL_OPEN_QUERY, () => tool !== null);
 
   useOnQuery(
     PANEL_ACTIVE_QUERY,
@@ -137,8 +137,8 @@ export function ApplicationShellFrame({
 
           <div className={"flex min-h-0 min-w-0 grow overflow-hidden rounded-surface border border-divider"}>
             <ErrorBoundary resetKey={pathname} fallback={onError} onCaught={onCaught}>
-              <Suspense key={applicationPath} fallback={<ApplicationLoader />}>
-                <ApplicationScope application={application}>
+              <Suspense key={toolPath} fallback={<ToolLoader />}>
+                <ToolScope tool={tool}>
                   <ApplicationPanelSlot
                     side={"left"}
                     panel={leftSelection.activePanel}
@@ -158,14 +158,14 @@ export function ApplicationShellFrame({
                     width={rightSizing.width}
                     onResize={rightSizing.onResize}
                   />
-                </ApplicationScope>
+                </ToolScope>
               </Suspense>
             </ErrorBoundary>
           </div>
 
           <ApplicationPanelStripe
             side={"right"}
-            panels={applicationRightPanels}
+            panels={toolRightPanels}
             activePanelId={rightSelection.activePanelId}
             footer={
               <>

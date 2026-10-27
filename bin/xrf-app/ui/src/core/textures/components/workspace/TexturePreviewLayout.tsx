@@ -18,15 +18,15 @@ import { TextureViewService } from "@/core/textures/services/texture-view";
 import { TextureWorkspaceToolbar } from "./TextureWorkspaceToolbar";
 
 interface ITexturePreviewLayoutProps extends BaseComponentProps {
-  /** The panels this application offers, already built. */
+  /** The panels this tool offers, already built. */
   panels: Array<IEditorPanel>;
-  /** What the status bar says about the session, which only the application knows. */
+  /** What the status bar says about the session, which only the tool knows. */
   status: Array<string>;
   /** Shown above the viewport, for a notice that belongs to the session rather than to the texture. */
   banner?: ReactNode;
-  /** Leaving the session, which each application ends its own way. */
+  /** Leaving the session, which each tool ends its own way. */
   onBack: () => void;
-  /** Another encoding of the open texture to show beside it, for an application that can produce one. */
+  /** Another encoding of the open texture to show beside it, for a tool that can produce one. */
   comparison?: Nullable<ITexturePreviewComparison>;
   /**
    * Where the session is, for the toolbar to fall back to while no one texture is open.
@@ -37,7 +37,7 @@ interface ITexturePreviewLayoutProps extends BaseComponentProps {
 }
 
 /**
- * Everything both texture applications put around a texture: the viewport, its options, and the panels beside it.
+ * Everything both texture tools put around a texture: the viewport, its options, and the panels beside it.
  */
 export function TexturePreviewLayout({
   "data-testid": dataTestId = "texture-preview-layout",

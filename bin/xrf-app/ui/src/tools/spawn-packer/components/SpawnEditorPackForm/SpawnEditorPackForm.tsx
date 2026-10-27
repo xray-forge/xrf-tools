@@ -1,0 +1,82 @@
+import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
+import { ReactElement, useCallback, useEffect } from "react";
+
+import { JobPickerForm } from "@/core/jobs/components/JobPickerForm";
+import { SPAWN_FILE_FILTERS } from "@/core/path/file-filters";
+import { EToolId } from "@/core/routing/tool";
+import { resolveOutputPath } from "@/core/settings/lib/output-path";
+import { SpawnConversionOutcome } from "@/core/spawn/components/SpawnConversionOutcome";
+import { SpawnConversionService } from "@/core/spawn/services/spawn-conversion.service";
+import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+
+/**
+ * Build a packed spawn file from chunks on disk.
+ */
+export function SpawnEditorPackForm(): ReactElement {
+  const log: Logger = useLogger(__MODULE_NAME__);
+
+  const conversionService: SpawnConversionService = useInjection(SpawnConversionService);
+  const isLoading: boolean = conversionService.operation.isRunning;
+
+  const source: IPathField = usePathField({
+    tool: EToolId.SPAWN_PACKER,
+    id: "source",
+    title: "Select unpacked spawn directory",
+    isDirectory: true,
+    isDisabled: isLoading,
+    seed: () => resolveOutputPath(EToolId.SPAWN_UNPACKER),
+  });
+
+  const destination: IPathField = usePathField({
+    tool: EToolId.SPAWN_PACKER,
+    id: "destination",
+    title: "Select spawn file output",
+    filters: SPAWN_FILE_FILTERS,
+    isSave: true,
+    isDisabled: isLoading,
+    seed: () => resolveOutputPath(EToolId.SPAWN_PACKER, "all.spawn"),
+  });
+
+  const onPack = useCallback(async () => {
+    if (!source.value || !destination.value) {
+      return log.error("Cannot pack spawn file, expected correct paths");
+    }
+
+    await conversionService.pack(source.value, destination.value);
+  }, [conversionService, destination.value, log, source.value]);
+
+  useEffect(() => {
+    conversionService.operation.reset();
+  }, [conversionService, source.value, destination.value]);
+
+  return (
+    <JobPickerForm
+      operation={conversionService.operation}
+      isSubmitDisabled={!source.isValid || !destination.isValid}
+      title={"Pack spawn file"}
+      description={
+        "Builds one spawn file from the unpacked chunks. The output file is overwritten. " +
+        "Cancellation stops before writing; a write already started finishes."
+      }
+      submitLabel={"Pack"}
+      renderResult={(result) => <SpawnConversionOutcome result={result} />}
+      onSubmit={onPack}
+    >
+      <PathFormRow
+        isDisabled={isLoading}
+        label={"Source"}
+        description={"Directory holding the unpacked spawn chunks"}
+        field={source}
+      />
+
+      <PathFormRow
+        isDisabled={isLoading}
+        label={"Output spawn"}
+        description={"Where the packed *.spawn file is written"}
+        field={destination}
+      />
+    </JobPickerForm>
+  );
+}

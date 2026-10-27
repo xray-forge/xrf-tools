@@ -3,10 +3,10 @@ import { autorun, IReactionDisposer } from "@wirestate/mobx";
 
 import { ENotificationSeverity, INotification } from "@/core/notifications/lib";
 import { NotificationsService } from "@/core/notifications/services/notifications/notifications.service";
-import { EApplicationId } from "@/core/routing/application";
+import { EToolId } from "@/core/routing/tool";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
-const SOURCE: EApplicationId = EApplicationId.SPRITE_EQUIPMENT_EDITOR;
+const SOURCE: EToolId = EToolId.SPRITE_EQUIPMENT_EDITOR;
 
 describe("NotificationsService dev traces", () => {
   it("keeps traces out of the list real outcomes live in", () => {
@@ -80,7 +80,7 @@ describe("NotificationsService dev traces", () => {
 
     service.push({ severity: ENotificationSeverity.ERROR, source: SOURCE, title: "Pack failed" });
 
-    // Computed values only cache while something observes them, which in the application is the panel
+    // Computed values only cache while something observes them, which in the tool is the panel
     // rendering as an observer.
     const dispose: IReactionDisposer = autorun(() => service.allNotifications);
 

@@ -1,0 +1,258 @@
+import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
+import { act, within } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
+import { ERenderCommand } from "@xrf/ipc/commands/render";
+import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
+import {
+  ERenderAntialiasing,
+  ERenderDlssAvailability,
+  ERenderDlssPreset,
+  ERenderRayReconstructionPreset,
+  ERenderScale,
+  ERenderTonemapMode,
+  RenderAntialiasing,
+  RenderBackendAvailability,
+  RenderDlssAvailability,
+  RenderScale,
+} from "@xrf/ipc/types/xrf-renderer";
+
+import {
+  ILevelViewContainerDescriptor,
+  mockLevelViewContainer,
+  noteLevelFrame,
+  renderLevelView,
+  TLevelViewRenderResult,
+} from "@/core/level/fixtures/level-container";
+import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
+import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
+import { clearLocalStorage } from "@/core/storage";
+import { LevelImageQualityAction } from "@/tools/level-viewer/components/toolbar/image/LevelImageQualityAction";
+
+/** What the settings draw with, what the GPU can do, and what the view already sets, as one case needs them. */
+interface IImageQualitySetup {
+  mode?: RenderAntialiasing;
+  scale?: RenderScale;
+  isRayReconstructed?: boolean;
+  isSceneLinear?: boolean;
+  isUpscaled?: boolean;
+  dlss?: RenderDlssAvailability;
+  rayReconstruction?: RenderDlssAvailability;
+  features?: Partial<ILevelFeatureOptions>;
+  backends?: Array<RenderBackendAvailability>;
+}
+
+/**
+ * @param setup - The case: SMAA at the native scale on a GPU with DLSS, drawn smaller than the viewport, unless said.
+ * @returns The rendered action and the services behind it.
+ */
+function renderAction(setup: IImageQualitySetup = {}): TLevelViewRenderResult {
+  if (setup.backends) {
+    mockIpcCommands({ [ERenderCommand.LIST_BACKENDS]: setup.backends });
+  }
+
+  const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
+  const isUpscaled: boolean = setup.isUpscaled ?? true;
+
+  descriptor.renderSettings.setRendererOverrides({
+    antialiasing: setup.mode ?? ERenderAntialiasing.SMAA,
+    tonemap: setup.isSceneLinear === false ? ERenderTonemapMode.ENGINE : ERenderTonemapMode.ENHANCED,
+    upscaling: {
+      dlssPreset: ERenderDlssPreset.DEFAULT,
+      isRayReconstructed: setup.isRayReconstructed ?? false,
+      scale: setup.scale ?? ERenderScale.NATIVE,
+      sharpening: 0.5,
+    },
+  });
+
+  if (setup.features) {
+    descriptor.view.setFeatures({ ...descriptor.view.features, ...setup.features });
+  }
+
+  noteLevelFrame(descriptor.render, {
+    adapter: "Test GPU",
+    dlss: setup.dlss ?? ERenderDlssAvailability.AVAILABLE,
+    hasRayQueries: true,
+    rayReconstruction: setup.rayReconstruction ?? ERenderDlssAvailability.AVAILABLE,
+    renderWidth: isUpscaled ? 960 : 1920,
+    width: 1920,
+  });
+
+  return renderLevelView(<LevelImageQualityAction />, descriptor);
+}
+
+/** Opens the popover by its settings gesture. */
+async function openSettings(rendered: TLevelViewRenderResult): Promise<void> {
+  await userEvent.pointer({ keys: "[MouseRight]", target: rendered.getByRole("button", { name: "Image quality" }) });
+  await rendered.findByRole("dialog", { name: "Image quality" });
+}
+
+beforeEach(() => {
+  clearLocalStorage();
+});
+
+afterEach(() => {
+  resetMockInvoke();
+});
+
+describe("LevelImageQualityAction", () => {
+  it("picks the view's own mode, and goes back to the settings'", async () => {
+    const rendered = renderAction();
+    const before: ILevelFeatureOptions = rendered.view.features;
+
+    await openSettings(rendered);
+    await userEvent.click(rendered.getByRole("button", { name: "FXAA" }));
+
+    expect(rendered.view.features).toEqual({ ...before, antialiasing: ERenderAntialiasing.FXAA });
+
+    await userEvent.click(rendered.getByRole("button", { name: "Reset to the preset" }));
+
+    expect(rendered.view.features).toEqual(before);
+  });
+
+  it("picks the view's own render scale over the settings'", async () => {
+    const rendered = renderAction({ mode: ERenderAntialiasing.DLSS, scale: ERenderScale.QUALITY });
+
+    await openSettings(rendered);
+
+    expect(rendered.getByRole("button", { name: "Quality" })).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(rendered.getByRole("button", { name: "Ultra performance" }));
+
+    expect(rendered.view.features.upscaling).toEqual({ scale: ERenderScale.ULTRA_PERFORMANCE });
+  });
+
+  it("turns DLSS ray reconstruction on for the view, disabling the super resolution model it replaces", async () => {
+    const rendered = renderAction({
+      isRayReconstructed: true,
+      mode: ERenderAntialiasing.DLSS,
+      scale: ERenderScale.QUALITY,
+    });
+
+    await openSettings(rendered);
+
+    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toBeChecked();
+    expect(rendered.getByRole("button", { name: "J" })).toBeDisabled();
+
+    await userEvent.click(
+      within(rendered.getByRole("group", { name: "Ray reconstruction model" })).getByRole("button", { name: "E" })
+    );
+
+    expect(rendered.view.features.upscaling).toEqual({ rayReconstructionPreset: ERenderRayReconstructionPreset.E });
+
+    await userEvent.click(rendered.getByRole("checkbox", { name: "Ray reconstruction" }));
+
+    expect(rendered.view.features.upscaling).toEqual({
+      isRayReconstructed: false,
+      rayReconstructionPreset: ERenderRayReconstructionPreset.E,
+    });
+  });
+
+  it("greys DLSS ray reconstruction out with what it needs: the GPU's support, then the Enhanced tonemap", async () => {
+    const rendered = renderAction({
+      isRayReconstructed: true,
+      mode: ERenderAntialiasing.DLSS,
+      rayReconstruction: ERenderDlssAvailability.UNSUPPORTED,
+      scale: ERenderScale.QUALITY,
+    });
+
+    await openSettings(rendered);
+
+    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toBeDisabled();
+    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).not.toBeChecked();
+    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toHaveAccessibleDescription(
+      "Needs an NVIDIA RTX GPU and a driver with DLSS ray reconstruction."
+    );
+
+    noteLevelFrame(rendered.render, {
+      adapter: "Test GPU",
+      dlss: ERenderDlssAvailability.AVAILABLE,
+      rayReconstruction: ERenderDlssAvailability.AVAILABLE,
+      renderWidth: 960,
+      width: 1920,
+    });
+    act(() => rendered.renderSettings.setRendererOverrides({ tonemap: ERenderTonemapMode.ENGINE }));
+
+    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toBeDisabled();
+    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toHaveAccessibleDescription(
+      "Needs the Enhanced tonemap: ray reconstruction works on linear light."
+    );
+  });
+
+  it("shows FSR standing in for DLSS where the GPU has none, DLSS greyed out with what it needs", async () => {
+    const rendered = renderAction({
+      dlss: ERenderDlssAvailability.UNSUPPORTED,
+      mode: ERenderAntialiasing.DLSS,
+      rayReconstruction: ERenderDlssAvailability.UNSUPPORTED,
+    });
+
+    await openSettings(rendered);
+
+    expect(rendered.getByRole("button", { name: "FSR 3.1" })).toHaveAttribute("aria-pressed", "true");
+    expect(rendered.getByRole("button", { name: "DLSS" })).toBeDisabled();
+    expect(rendered.getByText("DLSS needs an NVIDIA RTX GPU and a current driver.")).toBeInTheDocument();
+  });
+
+  it("sets the view's own output resolution, its scale settable only while automatic", async () => {
+    const rendered = renderAction({ mode: ERenderAntialiasing.TAA });
+
+    await openSettings(rendered);
+
+    expect(rendered.getByRole("slider", { name: "Output scale" })).toBeEnabled();
+
+    await userEvent.click(rendered.getByRole("button", { name: "1440p" }));
+
+    expect(rendered.view.features.output).toEqual({ resolution: ERenderResolution.HEIGHT_1440 });
+    expect(rendered.getByRole("slider", { name: "Output scale" })).toBeDisabled();
+  });
+
+  it("picks the view's own DLSS model while DLSS smooths it, and its own sharpening", async () => {
+    const rendered = renderAction({
+      features: { upscaling: { scale: ERenderScale.BALANCED } },
+      mode: ERenderAntialiasing.DLSS,
+      scale: ERenderScale.QUALITY,
+    });
+
+    await openSettings(rendered);
+
+    expect(rendered.getByText(/NVIDIA's pick by quality/)).toBeInTheDocument();
+    expect(rendered.getByRole("slider", { name: "Sharpening" })).toBeInTheDocument();
+
+    await userEvent.click(rendered.getByRole("button", { name: "K" }));
+
+    expect(rendered.view.features.upscaling).toEqual({ dlssPreset: ERenderDlssPreset.K, scale: ERenderScale.BALANCED });
+  });
+
+  // The graphics API is every viewport's, so only Settings sets it.
+  it("greys sharpening out where nothing is upscaled or resolved temporally, and offers no graphics API", async () => {
+    const rendered = renderAction({
+      dlss: ERenderDlssAvailability.UNSUPPORTED,
+      isUpscaled: false,
+      mode: ERenderAntialiasing.FXAA,
+      rayReconstruction: ERenderDlssAvailability.UNSUPPORTED,
+    });
+
+    await openSettings(rendered);
+
+    expect(rendered.getByRole("slider", { name: "Sharpening" })).toBeDisabled();
+    expect(
+      rendered.getByText("Sharpens only a frame drawn smaller than the viewport or resolved temporally.")
+    ).toBeInTheDocument();
+    expect(rendered.queryByText("Graphics API")).not.toBeInTheDocument();
+  });
+
+  it("opens on a click, its settings still reached, while the settings smooth nothing", async () => {
+    const rendered = renderAction({ mode: ERenderAntialiasing.NONE });
+    const trigger: HTMLElement = rendered.getByRole("button", { name: "Image quality" });
+
+    expect(trigger).toHaveAccessibleDescription("Antialiasing is off in Settings, under Rendering");
+
+    await userEvent.click(trigger);
+
+    expect(await rendered.findByRole("dialog", { name: "Image quality" })).toHaveTextContent(
+      "Antialiasing is off in Settings, under Rendering"
+    );
+    expect(rendered.getByRole("checkbox", { name: "Antialiasing" })).toBeDisabled();
+    expect(within(rendered.getByRole("group", { name: "Mode" })).getByRole("button", { name: "TAA" })).toBeDisabled();
+    expect(rendered.queryByRole("group", { name: "Texture filtering" })).not.toBeInTheDocument();
+  });
+});

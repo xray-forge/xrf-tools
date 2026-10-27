@@ -1,12 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import {
-  EApplicationGroupId,
-  EApplicationId,
-  EApplicationStatus,
-  IApplicationDescriptor,
-  IApplicationGroup,
-} from "@/core/routing/application";
+import { EToolGroupId, EToolId, EToolStatus, IToolDescriptor, IToolGroup } from "@/core/routing/tool";
 
 import {
   getCatalogSummary,
@@ -19,15 +13,11 @@ import {
   toRankedSections,
 } from "./catalog";
 
-function mockGroup(id: EApplicationGroupId, label: string): IApplicationGroup {
+function mockGroup(id: EToolGroupId, label: string): IToolGroup {
   return { accent: { light: "#000000", dark: "#ffffff" }, id, icon: null as never, label };
 }
 
-function mockApplication(
-  id: EApplicationId,
-  group: EApplicationGroupId,
-  status: EApplicationStatus = EApplicationStatus.READY
-): IApplicationDescriptor {
+function mockTool(id: EToolId, group: EToolGroupId, status: EToolStatus = EToolStatus.READY): IToolDescriptor {
   return {
     Component: () => null,
     description: `${id} description`,
@@ -40,41 +30,41 @@ function mockApplication(
   };
 }
 
-const ARCHIVES: IApplicationGroup = mockGroup(EApplicationGroupId.ARCHIVES, "Archives");
-const SPAWNS: IApplicationGroup = mockGroup(EApplicationGroupId.SPAWNS, "Spawns");
-const TEXTURES: IApplicationGroup = mockGroup(EApplicationGroupId.TEXTURES, "Textures");
+const ARCHIVES: IToolGroup = mockGroup(EToolGroupId.ARCHIVES, "Archives");
+const SPAWNS: IToolGroup = mockGroup(EToolGroupId.SPAWNS, "Spawns");
+const TEXTURES: IToolGroup = mockGroup(EToolGroupId.TEXTURES, "Textures");
 
-const APPLICATIONS: Array<IApplicationDescriptor> = [
-  mockApplication(EApplicationId.SPAWN_EDITOR, EApplicationGroupId.SPAWNS),
-  mockApplication(EApplicationId.ARCHIVES_EXPLORER, EApplicationGroupId.ARCHIVES),
-  mockApplication(EApplicationId.ARCHIVES_PACKER, EApplicationGroupId.ARCHIVES, EApplicationStatus.PLANNED),
+const TOOLS: Array<IToolDescriptor> = [
+  mockTool(EToolId.SPAWN_EDITOR, EToolGroupId.SPAWNS),
+  mockTool(EToolId.ARCHIVES_EXPLORER, EToolGroupId.ARCHIVES),
+  mockTool(EToolId.ARCHIVES_PACKER, EToolGroupId.ARCHIVES, EToolStatus.PLANNED),
 ];
 
 describe("toCatalogSections", () => {
   it("files tools under their group, in the order the groups were given", () => {
-    const sections: Array<ICatalogSection> = toCatalogSections(APPLICATIONS, [ARCHIVES, SPAWNS]);
+    const sections: Array<ICatalogSection> = toCatalogSections(TOOLS, [ARCHIVES, SPAWNS]);
 
     expect(sections.map(({ group }: ICatalogSection) => group?.id)).toEqual([
-      EApplicationGroupId.ARCHIVES,
-      EApplicationGroupId.SPAWNS,
+      EToolGroupId.ARCHIVES,
+      EToolGroupId.SPAWNS,
     ]);
-    expect(sections[0].entries.map(({ application }: ICatalogEntry) => application.id)).toEqual([
-      EApplicationId.ARCHIVES_EXPLORER,
-      EApplicationId.ARCHIVES_PACKER,
+    expect(sections[0].entries.map(({ tool }: ICatalogEntry) => tool.id)).toEqual([
+      EToolId.ARCHIVES_EXPLORER,
+      EToolId.ARCHIVES_PACKER,
     ]);
   });
 
   it("drops a group with nothing in it, which would otherwise head an empty run", () => {
-    const sections: Array<ICatalogSection> = toCatalogSections(APPLICATIONS, [ARCHIVES, TEXTURES, SPAWNS]);
+    const sections: Array<ICatalogSection> = toCatalogSections(TOOLS, [ARCHIVES, TEXTURES, SPAWNS]);
 
     expect(sections.map(({ group }: ICatalogSection) => group?.id)).toEqual([
-      EApplicationGroupId.ARCHIVES,
-      EApplicationGroupId.SPAWNS,
+      EToolGroupId.ARCHIVES,
+      EToolGroupId.SPAWNS,
     ]);
   });
 
   it("carries the group on every entry, which a ranked result no longer implies", () => {
-    const [section]: Array<ICatalogSection> = toCatalogSections(APPLICATIONS, [ARCHIVES]);
+    const [section]: Array<ICatalogSection> = toCatalogSections(TOOLS, [ARCHIVES]);
 
     expect(section.entries.every(({ group }: ICatalogEntry) => group === ARCHIVES)).toBe(true);
   });
@@ -82,7 +72,7 @@ describe("toCatalogSections", () => {
 
 describe("toRankedSections", () => {
   it("gathers results into one section that carries no heading", () => {
-    const [section]: Array<ICatalogSection> = toCatalogSections(APPLICATIONS, [ARCHIVES]);
+    const [section]: Array<ICatalogSection> = toCatalogSections(TOOLS, [ARCHIVES]);
 
     expect(toRankedSections(section.entries)).toEqual([{ group: null, entries: section.entries }]);
   });
@@ -94,20 +84,20 @@ describe("toRankedSections", () => {
 
 describe("getCatalogSummary", () => {
   it("counts the tools and the groups they came from", () => {
-    const sections: Array<ICatalogSection> = toCatalogSections(APPLICATIONS, [ARCHIVES, SPAWNS]);
+    const sections: Array<ICatalogSection> = toCatalogSections(TOOLS, [ARCHIVES, SPAWNS]);
 
     expect(getCatalogSummary(sections, null)).toBe("3 tools · 2 groups");
   });
 
   it("drops the group count once one group is chosen, which its own chip already says", () => {
-    const sections: Array<ICatalogSection> = toCatalogSections(APPLICATIONS, [ARCHIVES]);
+    const sections: Array<ICatalogSection> = toCatalogSections(TOOLS, [ARCHIVES]);
 
-    expect(getCatalogSummary(sections, EApplicationGroupId.ARCHIVES)).toBe("2 tools");
+    expect(getCatalogSummary(sections, EToolGroupId.ARCHIVES)).toBe("2 tools");
   });
 
   it("says tool and group in the singular", () => {
     const sections: Array<ICatalogSection> = toCatalogSections(
-      [mockApplication(EApplicationId.SPAWN_EDITOR, EApplicationGroupId.SPAWNS)],
+      [mockTool(EToolId.SPAWN_EDITOR, EToolGroupId.SPAWNS)],
       [SPAWNS]
     );
 
@@ -117,21 +107,21 @@ describe("getCatalogSummary", () => {
 
 describe("catalog search text", () => {
   it("ranks an entry by its label alone", () => {
-    const [{ entries }]: Array<ICatalogSection> = toCatalogSections(APPLICATIONS, [SPAWNS]);
+    const [{ entries }]: Array<ICatalogSection> = toCatalogSections(TOOLS, [SPAWNS]);
 
-    expect(toCatalogSearchText(entries[0])).toBe(EApplicationId.SPAWN_EDITOR);
+    expect(toCatalogSearchText(entries[0])).toBe(EToolId.SPAWN_EDITOR);
   });
 
   it("matches the description and the group name without ranking by them", () => {
-    const [{ entries }]: Array<ICatalogSection> = toCatalogSections(APPLICATIONS, [SPAWNS]);
+    const [{ entries }]: Array<ICatalogSection> = toCatalogSections(TOOLS, [SPAWNS]);
 
-    expect(toCatalogSecondaryText(entries[0])).toBe(`${EApplicationId.SPAWN_EDITOR} description Spawns`);
+    expect(toCatalogSecondaryText(entries[0])).toBe(`${EToolId.SPAWN_EDITOR} description Spawns`);
   });
 });
 
 describe("toCatalogGroupFilters", () => {
   it("counts each headed section for its chip", () => {
-    const sections: Array<ICatalogSection> = toCatalogSections(APPLICATIONS, [ARCHIVES, SPAWNS]);
+    const sections: Array<ICatalogSection> = toCatalogSections(TOOLS, [ARCHIVES, SPAWNS]);
 
     expect(toCatalogGroupFilters(sections)).toEqual([
       { group: ARCHIVES, count: 2 },
@@ -140,7 +130,7 @@ describe("toCatalogGroupFilters", () => {
   });
 
   it("offers no chip for a headless section, which names no group to choose", () => {
-    const [section]: Array<ICatalogSection> = toCatalogSections(APPLICATIONS, [ARCHIVES]);
+    const [section]: Array<ICatalogSection> = toCatalogSections(TOOLS, [ARCHIVES]);
 
     expect(toCatalogGroupFilters(toRankedSections(section.entries))).toEqual([]);
   });

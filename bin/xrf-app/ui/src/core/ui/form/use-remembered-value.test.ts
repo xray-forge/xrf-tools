@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act, renderHook } from "@testing-library/react";
 
-import { EApplicationId } from "@/core/routing/application";
+import { EToolId } from "@/core/routing/tool";
 import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import { useRememberedValue } from "@/core/ui/form/use-remembered-value";
 
@@ -11,7 +11,7 @@ describe("useRememberedValue", () => {
   function renderField() {
     return renderHook(() =>
       useRememberedValue({
-        application: EApplicationId.TRANSLATIONS_PARSER,
+        tool: EToolId.TRANSLATIONS_PARSER,
         id: "language",
         fallback: "eng",
         allowed: ["eng", "ukr"],

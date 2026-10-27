@@ -1,0 +1,68 @@
+import { EditorLayout } from "@xrf/ui/editor/layout";
+import { ExpandMoreIcon } from "@xrf/ui/icons/expand-more";
+import { Accordion, AccordionDetails, AccordionSummary } from "@xrf/ui/material/accordion";
+import { Button } from "@xrf/ui/material/button";
+import { Typography } from "@xrf/ui/material/typography";
+import { ReactElement, useCallback } from "react";
+import { NavigateFunction, useNavigate } from "react-router-dom";
+
+import { IErrorBoundaryFallbackProps } from "@/core/error/components/ErrorBoundary";
+import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+
+/**
+ * What the application shell shows in place of a tool that failed to render.
+ */
+export function ToolCrash({ error, onRetry }: IErrorBoundaryFallbackProps): ReactElement {
+  const navigate: NavigateFunction = useNavigate();
+
+  const onGoHome = useCallback(() => {
+    navigate("/", { replace: true });
+  }, [navigate]);
+
+  const onReload = useCallback(() => {
+    window.location.reload();
+  }, []);
+
+  return (
+    <EditorLayout toolbar={<EditorToolbar title={"Something went wrong"} />}>
+      <div className={"h-full w-full overflow-y-auto p-6"}>
+        <Typography variant={"subtitle1"}>This tool stopped rendering</Typography>
+
+        <Typography className={"mt-1 mb-4 text-text-secondary"} variant={"body2"}>
+          The rest of the application is still running. Try again to re-render it, or switch to another tool from the
+          rail.
+        </Typography>
+
+        <div className={"mb-6 flex flex-row gap-2"}>
+          <Button variant={"contained"} onClick={onRetry}>
+            Try again
+          </Button>
+
+          <Button variant={"outlined"} onClick={onGoHome}>
+            Go home
+          </Button>
+
+          <Button color={"inherit"} onClick={onReload}>
+            Reload window
+          </Button>
+        </div>
+
+        <Accordion disableGutters variant={"outlined"}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon fontSize={"small"} />}>
+            <Typography variant={"body2"}>Details</Typography>
+          </AccordionSummary>
+
+          <AccordionDetails>
+            <Typography
+              className={"monospace m-0 wrap-break-word whitespace-pre-wrap text-text-secondary"}
+              component={"pre"}
+              variant={"caption"}
+            >
+              {error.stack ?? String(error)}
+            </Typography>
+          </AccordionDetails>
+        </Accordion>
+      </div>
+    </EditorLayout>
+  );
+}

@@ -1,0 +1,250 @@
+import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { open } from "@tauri-apps/plugin-dialog";
+import { RenderResult } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
+import { Container } from "@wirestate/core";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
+import { Maybe } from "@xrf/types";
+
+import { AssetService } from "@/core/assets/services";
+import { clearLocalStorage } from "@/core/storage";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
+import { mockContainer } from "@/fixtures/utils/container";
+import { renderWithProviders } from "@/fixtures/utils/render";
+import { ArchivesService } from "@/tools/archives-explorer/services/archives";
+
+import { ArchivesEditorOpenForm } from "./ArchivesEditorOpenForm";
+
+const ARCHIVES_DIRECTORY: string = "C:\\game\\database";
+const ARCHIVE_VOLUME: string = "C:\\downloads\\gamedata.db0";
+const INSTALLATION: string = "C:\\game";
+const GAMEDATA: string = "C:\\game\\gamedata";
+
+describe("ArchivesEditorOpenForm", () => {
+  const mockOpen = jest.mocked(open<{ multiple: false }>);
+
+  beforeEach(() => {
+    clearLocalStorage();
+
+    // The opens themselves are not what these tests read, so they answer the null every unlisted command does.
+    mockIpcCommands({ [EArchivesCommand.RESTORE_SUBJECT]: mockSessionResponse(null) });
+  });
+
+  function renderForm(): RenderResult {
+    const container: Container = mockContainer([AssetService, ArchivesService]);
+
+    return renderWithProviders(<ArchivesEditorOpenForm />, { route: "/archives-explorer", container });
+  }
+
+  it("asks for a directory in directory mode", async () => {
+    mockOpen.mockResolvedValue(ARCHIVES_DIRECTORY);
+
+    const { getByLabelText, getByText } = renderForm();
+
+    expect(getByText("Indexes every archive in the directory for browsing.")).toBeInTheDocument();
+
+    await userEvent.click(getByLabelText("Browse"));
+
+    expect(open).toHaveBeenCalledWith({
+      title: "Select archives directory",
+      filters: undefined,
+      directory: true,
+      // Nothing is configured and nothing has been picked here yet, so the host decides where to open.
+      defaultPath: undefined,
+    });
+  });
+
+  it("associates the open mode with its visible label and description", async () => {
+    const { findByRole } = renderForm();
+
+    expect(await findByRole("group", { name: "Open" })).toHaveAccessibleDescription(
+      "A game folder, loose gamedata, a directory of volumes, or one archive"
+    );
+  });
+
+  it("asks for a file, filtered to volumes, in archive mode", async () => {
+    mockOpen.mockResolvedValue(ARCHIVE_VOLUME);
+
+    const { getByLabelText, getByText } = renderForm();
+
+    await userEvent.click(getByLabelText("Open archive"));
+
+    expect(getByText("Indexes one archive volume for browsing.")).toBeInTheDocument();
+
+    await userEvent.click(getByLabelText("Browse"));
+
+    // Directory-only is the whole defect: a native dialog offering directories cannot select `gamedata.db0` at all.
+    expect(open).toHaveBeenCalledWith({
+      title: "Select archive volume",
+      filters: [
+        { name: "Archive volume", extensions: expect.any(Array) },
+        { name: "All files", extensions: ["*"] },
+      ],
+      directory: false,
+    });
+
+    // Both stems unindexed and at every index a set is published with, and nothing past the last.
+    const extensions: Maybe<Array<string>> = jest.mocked(open).mock.calls[0][0]?.filters?.[0].extensions;
+
+    expect(extensions).toHaveLength(202);
+    expect(extensions).toEqual(expect.arrayContaining(["db", "db0", "db10", "db99", "xdb", "xdb0", "xdb99"]));
+    expect(extensions).not.toContain("db100");
+  });
+
+  it("opens the volume that was picked, not its directory", async () => {
+    mockOpen.mockResolvedValue(ARCHIVE_VOLUME);
+
+    const { getByLabelText, getByRole } = renderForm();
+
+    await userEvent.click(getByLabelText("Open archive"));
+    await userEvent.click(getByLabelText("Browse"));
+    await userEvent.click(getByRole("button", { name: "Open" }));
+
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.OPEN_VOLUMES, {
+      sessionId: expect.any(String),
+      path: ARCHIVE_VOLUME,
+    });
+  });
+
+  it("opens on the directory mode until something else is chosen", async () => {
+    const { findByText } = renderForm();
+
+    expect(await findByText("Indexes every archive in the directory for browsing.")).toBeInTheDocument();
+  });
+
+  it("comes back on the mode last used, because that is a better guess than the common one", async () => {
+    const first = renderForm();
+
+    await userEvent.click(first.getByLabelText("Open archive"));
+    first.unmount();
+
+    const { findByText } = renderForm();
+
+    expect(await findByText("Indexes one archive volume for browsing.")).toBeInTheDocument();
+  });
+
+  it("keeps each mode's path across a switch", async () => {
+    const { getByDisplayValue, getByLabelText } = renderForm();
+
+    mockOpen.mockResolvedValue(ARCHIVES_DIRECTORY);
+
+    await userEvent.click(getByLabelText("Browse"));
+    await userEvent.click(getByLabelText("Open archive"));
+
+    mockOpen.mockResolvedValue(ARCHIVE_VOLUME);
+
+    await userEvent.click(getByLabelText("Browse"));
+
+    expect(getByDisplayValue(ARCHIVE_VOLUME)).toBeInTheDocument();
+
+    // Two fields rather than one, so returning to a mode returns to what it was pointed at.
+    await userEvent.click(getByLabelText("Open directory"));
+
+    expect(getByDisplayValue(ARCHIVES_DIRECTORY)).toBeInTheDocument();
+  });
+  it("opens a game folder as a world rather than as a set of volumes", async () => {
+    mockOpen.mockResolvedValue(INSTALLATION);
+
+    const { getByLabelText, getByRole, getByText } = renderForm();
+
+    await userEvent.click(getByLabelText("Open game"));
+
+    expect(
+      getByText(
+        "Indexes the game the way the engine mounts it: its archives, and the loose gamedata tree standing in " +
+          "front of them."
+      )
+    ).toBeInTheDocument();
+
+    await userEvent.click(getByLabelText("Browse"));
+    await userEvent.click(getByRole("button", { name: "Open" }));
+
+    // `auto` rather than `installation`: a folder that declares no `fsgame.ltx` is still read as the game data tree
+    // it looks like, instead of being refused for not declaring one.
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.OPEN_WORLD, {
+      sessionId: expect.any(String),
+      roots: { asset: null, roots: [{ mode: "auto", path: INSTALLATION }] },
+    });
+  });
+
+  it("keeps the game folder apart from the archives directory", async () => {
+    // A game folder is the parent of the `db` directory the other mode wants, so one shared field would hand each
+    // mode the other's answer.
+    const { getByDisplayValue, getByLabelText, queryByDisplayValue } = renderForm();
+
+    mockOpen.mockResolvedValue(ARCHIVES_DIRECTORY);
+
+    await userEvent.click(getByLabelText("Browse"));
+    await userEvent.click(getByLabelText("Open game"));
+
+    expect(queryByDisplayValue(ARCHIVES_DIRECTORY)).not.toBeInTheDocument();
+
+    mockOpen.mockResolvedValue(INSTALLATION);
+
+    await userEvent.click(getByLabelText("Browse"));
+    await userEvent.click(getByLabelText("Open directory"));
+
+    expect(getByDisplayValue(ARCHIVES_DIRECTORY)).toBeInTheDocument();
+  });
+
+  it("opens gamedata as a loose directory without detecting installation or archive mounts", async () => {
+    mockOpen.mockResolvedValue(GAMEDATA);
+
+    const { getByLabelText, getByRole, getByText } = renderForm();
+
+    await userEvent.click(getByLabelText("Open gamedata"));
+
+    expect(getByText("Indexes the loose files in a gamedata directory for browsing.")).toBeInTheDocument();
+    expect(getByRole("button", { name: "Open" })).toBeDisabled();
+
+    await userEvent.click(getByLabelText("Browse"));
+
+    expect(open).toHaveBeenCalledWith({
+      title: "Select gamedata directory",
+      directory: true,
+      filters: undefined,
+      defaultPath: undefined,
+    });
+
+    await userEvent.click(getByRole("button", { name: "Open" }));
+
+    expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.OPEN_WORLD, {
+      sessionId: expect.any(String),
+      roots: { asset: null, roots: [{ mode: "directory", path: GAMEDATA }] },
+    });
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.OPEN_VOLUMES, expect.anything());
+  });
+
+  it("remembers gamedata independently of the game and archives directories", async () => {
+    const first = renderForm();
+
+    mockOpen.mockResolvedValue(ARCHIVES_DIRECTORY);
+    await userEvent.click(first.getByLabelText("Browse"));
+    await userEvent.click(first.getByLabelText("Open game"));
+
+    mockOpen.mockResolvedValue(INSTALLATION);
+    await userEvent.click(first.getByLabelText("Browse"));
+    await userEvent.click(first.getByLabelText("Open gamedata"));
+
+    expect(first.queryByDisplayValue(INSTALLATION)).not.toBeInTheDocument();
+
+    mockOpen.mockResolvedValue(GAMEDATA);
+    await userEvent.click(first.getByLabelText("Browse"));
+    first.unmount();
+
+    const second = renderForm();
+
+    expect(second.getByLabelText("Open gamedata")).toHaveAttribute("aria-pressed", "true");
+    expect(second.getByDisplayValue(GAMEDATA)).toBeInTheDocument();
+
+    await userEvent.click(second.getByLabelText("Open game"));
+    expect(second.getByDisplayValue(INSTALLATION)).toBeInTheDocument();
+
+    await userEvent.click(second.getByLabelText("Open directory"));
+    expect(second.getByDisplayValue(ARCHIVES_DIRECTORY)).toBeInTheDocument();
+
+    await userEvent.click(second.getByLabelText("Open gamedata"));
+    expect(second.getByDisplayValue(GAMEDATA)).toBeInTheDocument();
+  });
+});

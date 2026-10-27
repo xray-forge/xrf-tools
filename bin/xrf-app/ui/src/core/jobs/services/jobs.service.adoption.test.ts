@@ -10,7 +10,7 @@ import {
   JOBS_SLOW_LISTING,
   mockWatchedJobsService,
 } from "@/core/jobs/fixtures/jobs-service";
-import { EApplicationId } from "@/core/routing/application";
+import { EToolId } from "@/core/routing/tool";
 
 describe("JobsService adoption", () => {
   beforeEach(() => {
@@ -207,7 +207,7 @@ describe("JobsService adoption", () => {
   });
 
   it("attributes an adopted job to the tool that owns its kind", async () => {
-    // The notification panel resolves a record's source through the application catalog. Attributing it to the kind
+    // The notification panel resolves a record's source through the tool catalog. Attributing it to the kind
     // string instead left the panel with nothing to look up, and the user with a row labelled `archives.pack`.
     mockIpcCommands({ [JOBS_LIST_COMMAND]: [mockJobDescription()], [JOBS_ATTACH_COMMAND]: true });
 
@@ -222,7 +222,7 @@ describe("JobsService adoption", () => {
 
     await jest.advanceTimersByTimeAsync(JOBS_POLL_INTERVAL);
 
-    expect(raised[0].source).toBe(EApplicationId.ARCHIVES_PACKER);
+    expect(raised[0].source).toBe(EToolId.ARCHIVES_PACKER);
     expect(raised[0].details).toContain("Archive packing");
   });
 });

@@ -8,7 +8,7 @@ import { Logger } from "@xrf/logging";
 
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
-import { mockApplicationScope, mockInjectedService } from "@/fixtures/utils/container";
+import { mockInjectedService, mockToolScope } from "@/fixtures/utils/container";
 import { deferred, flush } from "@/fixtures/utils/promise";
 
 import { SessionRootResource } from "./session-root-resource";
@@ -39,7 +39,7 @@ class UnrestoredHolderService {
 }
 
 function setup() {
-  const { container, service } = mockInjectedService(HolderService, mockApplicationScope("exports-explorer"));
+  const { container, service } = mockInjectedService(HolderService, mockToolScope("exports-explorer"));
   const raised: Array<INotificationPayload> = [];
 
   container

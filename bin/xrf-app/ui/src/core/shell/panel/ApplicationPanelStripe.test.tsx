@@ -53,7 +53,7 @@ describe("ApplicationPanelStripe", () => {
     expect(onTogglePanel).toHaveBeenCalledWith("header");
   });
 
-  it("keeps the footer last, below whatever the application declared", () => {
+  it("keeps the footer last, below whatever the tool declared", () => {
     const { container } = renderWithProviders(
       <ApplicationPanelStripe
         side={"left"}
@@ -69,11 +69,11 @@ describe("ApplicationPanelStripe", () => {
       .map((it: Element) => it.textContent ?? "")
       .filter((it: string) => it.length > 0);
 
-    // What the shell owns sits under what the application published, on both sides.
+    // What the shell owns sits under what the tool published, on both sides.
     expect(order.at(-1)).toBe("settings");
   });
 
-  it("stays present when an application declares nothing, so the frame does not shift", () => {
+  it("stays present when a tool declares nothing, so the frame does not shift", () => {
     const { container } = renderWithProviders(
       <ApplicationPanelStripe side={"right"} panels={[]} activePanelId={null} onTogglePanel={jest.fn()} />
     );

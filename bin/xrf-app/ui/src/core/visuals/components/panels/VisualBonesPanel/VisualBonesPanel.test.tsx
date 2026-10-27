@@ -5,7 +5,6 @@ import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
 import { mockIpcCommands } from "@xrf/ipc/testing";
 import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 
-import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
 import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VisualBonesPanel } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBonesPanel";
 import {
@@ -20,6 +19,7 @@ import { VisualMotionService } from "@/core/visuals/services/visual-motion";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { VisualsService } from "@/tools/visuals-explorer/services/visuals";
 
 async function renderPanel(): Promise<{ render: RenderResult; service: VisualsService }> {
   const buffer: MockVisualBuffer = new MockVisualBuffer();
@@ -42,7 +42,7 @@ async function renderPanel(): Promise<{ render: RenderResult; service: VisualsSe
     VisualLoadService,
     VisualMotionService,
     VisualsService,
-    // The binding an application makes at its composition root, which is what the panel resolves through.
+    // The binding a tool makes at its composition root, which is what the panel resolves through.
     { token: VISUAL_INSPECTION, factory: (it: Container) => it.get(VisualsService) },
   ]);
   const service: VisualsService = container.get(VisualsService);

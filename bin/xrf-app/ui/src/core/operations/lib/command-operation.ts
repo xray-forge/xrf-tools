@@ -19,7 +19,7 @@ export class CommandOperation<T> {
 
   /**
    * @param log - The owning service's logger.
-   * @param reporter - Reports each run; built from the container's bus and application by default.
+   * @param reporter - Reports each run; built from the container's bus and tool by default.
    */
   public constructor(
     log: Logger,

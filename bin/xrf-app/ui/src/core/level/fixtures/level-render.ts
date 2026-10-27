@@ -27,7 +27,7 @@ export function sentOverlayKinds(): Array<string> {
 }
 
 /**
- * A level open and provisioned as the application provisions it, its render service attached to `element`.
+ * A level open and provisioned as the tool provisions it, its render service attached to `element`.
  *
  * @param element - Where the viewport is attached.
  * @returns The container and the attached service.
@@ -52,7 +52,7 @@ export async function mockAttachedLevelRender(
     LevelRenderService,
   ]);
 
-  // Provisioned as the application provisions it, so the level's look and weather open with the level.
+  // Provisioned as the tool provisions it, so the level's look and weather open with the level.
   container.provision();
   await waitFor(() => expect(container.get(LevelLoadService).isReady).toBe(true));
 

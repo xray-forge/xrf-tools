@@ -10,7 +10,7 @@ export interface IInjectedServiceMockDescriptor<T> {
 }
 
 /**
- * Builds a container wired the way the application wires one.
+ * Builds a container wired the way the tool wires one.
  *
  * @param bindings - Services to register beside the root ones; one naming a root binding's token replaces it.
  * @returns A container ready to resolve them.
@@ -23,18 +23,18 @@ export function mockContainer(bindings: Array<Binding> = []): Container {
 }
 
 /**
- * The bindings an application's container adds over the root, as `ApplicationScope` adds them: the application's id as
+ * The bindings a tool's container adds over the root, as `ApplicationScope` adds them: the tool's id as
  * the tool its openings are held for and its notices name, and a scope of its own.
  *
- * @param application - The application's id.
+ * @param tool - The tool's id.
  * @returns The bindings to pass beside the service under test.
  */
-export function mockApplicationScope(application: string): Array<Binding> {
-  return [{ token: SESSION_TOOL, value: application }, SessionScopeService];
+export function mockToolScope(tool: string): Array<Binding> {
+  return [{ token: SESSION_TOOL, value: tool }, SessionScopeService];
 }
 
 /**
- * Builds a service through the same container path as the application.
+ * Builds a service through the same container path as the tool.
  *
  * Services that resolve dependencies with `inject()` cannot be constructed with `new`: there is no
  * injection context, and the call throws. Resolving without provisioning on purpose, so `@OnProvision`

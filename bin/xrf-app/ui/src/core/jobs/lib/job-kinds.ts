@@ -26,7 +26,7 @@ import {
 } from "@xrf/ipc/types/xrf-app-translations";
 import { Nullable } from "@xrf/types";
 
-import { EApplicationId } from "@/core/routing/application";
+import { EToolId } from "@/core/routing/tool";
 
 /**
  * Display metadata for a backend job kind.
@@ -34,9 +34,9 @@ import { EApplicationId } from "@/core/routing/application";
 export interface IJobKindDescriptor {
   kind: JobKind;
   /**
-   * Application credited in job notifications.
+   * Tool credited in job notifications.
    */
-  source: EApplicationId;
+  source: EToolId;
   /**
    * Display label for the job kind.
    */
@@ -44,123 +44,123 @@ export interface IJobKindDescriptor {
 }
 
 /**
- * Job metadata available independently of application lifetimes, keyed by the generated job kind constants; a test
+ * Job metadata available independently of tool lifetimes, keyed by the generated job kind constants; a test
  * holds it to every kind the backend declares.
  */
 export const JOB_KINDS: Readonly<Record<JobKind, IJobKindDescriptor>> = {
   [ARCHIVES_JOB_COMPARE]: {
     kind: ARCHIVES_JOB_COMPARE,
-    source: EApplicationId.ARCHIVES_PATCHER,
+    source: EToolId.ARCHIVES_PATCHER,
     label: "Archive comparison",
   },
   [ARCHIVES_JOB_PATCH]: {
     kind: ARCHIVES_JOB_PATCH,
-    source: EApplicationId.ARCHIVES_PATCHER,
+    source: EToolId.ARCHIVES_PATCHER,
     label: "Archive patching",
   },
   [SPAWN_JOB_PACK]: {
     kind: SPAWN_JOB_PACK,
-    source: EApplicationId.SPAWN_PACKER,
+    source: EToolId.SPAWN_PACKER,
     label: "Spawn packing",
   },
   [SPAWN_JOB_UNPACK]: {
     kind: SPAWN_JOB_UNPACK,
-    source: EApplicationId.SPAWN_UNPACKER,
+    source: EToolId.SPAWN_UNPACKER,
     label: "Spawn unpacking",
   },
   [ARCHIVES_JOB_EXTRACT]: {
     kind: ARCHIVES_JOB_EXTRACT,
-    source: EApplicationId.ARCHIVES_EXPLORER,
+    source: EToolId.ARCHIVES_EXPLORER,
     label: "Archive extraction",
   },
   [ARCHIVES_JOB_PACK]: {
     kind: ARCHIVES_JOB_PACK,
-    source: EApplicationId.ARCHIVES_PACKER,
+    source: EToolId.ARCHIVES_PACKER,
     label: "Archive packing",
   },
   [ARCHIVES_JOB_UNPACK]: {
     kind: ARCHIVES_JOB_UNPACK,
-    source: EApplicationId.ARCHIVES_UNPACKER,
+    source: EToolId.ARCHIVES_UNPACKER,
     label: "Archive unpacking",
   },
   [CONFIGS_JOB_CHECK_FORMAT]: {
     kind: CONFIGS_JOB_CHECK_FORMAT,
-    source: EApplicationId.CONFIGS_FORMATTER,
+    source: EToolId.CONFIGS_FORMATTER,
     label: "Config format check",
   },
   [CONFIGS_JOB_FORMAT]: {
     kind: CONFIGS_JOB_FORMAT,
-    source: EApplicationId.CONFIGS_FORMATTER,
+    source: EToolId.CONFIGS_FORMATTER,
     label: "Config formatting",
   },
   [CONFIGS_JOB_VERIFY]: {
     kind: CONFIGS_JOB_VERIFY,
-    source: EApplicationId.CONFIGS_VERIFIER,
+    source: EToolId.CONFIGS_VERIFIER,
     label: "Config verification",
   },
   [TRANSLATIONS_JOB_BUILD]: {
     kind: TRANSLATIONS_JOB_BUILD,
-    source: EApplicationId.TRANSLATIONS_BUILDER,
+    source: EToolId.TRANSLATIONS_BUILDER,
     label: "Translation build",
   },
   [TRANSLATIONS_JOB_CHECK_FORMAT]: {
     kind: TRANSLATIONS_JOB_CHECK_FORMAT,
-    source: EApplicationId.TRANSLATIONS_FORMATTER,
+    source: EToolId.TRANSLATIONS_FORMATTER,
     label: "Translation format check",
   },
   [TRANSLATIONS_JOB_FORMAT]: {
     kind: TRANSLATIONS_JOB_FORMAT,
-    source: EApplicationId.TRANSLATIONS_FORMATTER,
+    source: EToolId.TRANSLATIONS_FORMATTER,
     label: "Translation formatting",
   },
   [TRANSLATIONS_JOB_PARSE]: {
     kind: TRANSLATIONS_JOB_PARSE,
-    source: EApplicationId.TRANSLATIONS_PARSER,
+    source: EToolId.TRANSLATIONS_PARSER,
     label: "Translation import",
   },
   [TRANSLATIONS_JOB_VERIFY]: {
     kind: TRANSLATIONS_JOB_VERIFY,
-    source: EApplicationId.TRANSLATIONS_VERIFIER,
+    source: EToolId.TRANSLATIONS_VERIFIER,
     label: "Translation check",
   },
   [SPRITE_EQUIPMENT_JOB_PACK]: {
     kind: SPRITE_EQUIPMENT_JOB_PACK,
-    source: EApplicationId.SPRITE_EQUIPMENT_PACKER,
+    source: EToolId.SPRITE_EQUIPMENT_PACKER,
     label: "Equipment sprite packing",
   },
   [GAMEDATA_JOB_VERIFY]: {
     kind: GAMEDATA_JOB_VERIFY,
-    source: EApplicationId.GAMEDATA_VERIFIER,
+    source: EToolId.GAMEDATA_VERIFIER,
     label: "Gamedata verification",
   },
   [LEVELS_JOB_CAPTURE_CUBE]: {
     kind: LEVELS_JOB_CAPTURE_CUBE,
-    source: EApplicationId.LEVEL_VIEWER,
+    source: EToolId.LEVEL_VIEWER,
     label: "Cubemap capture",
   },
   [LEVELS_JOB_CAPTURE_MAP]: {
     kind: LEVELS_JOB_CAPTURE_MAP,
-    source: EApplicationId.LEVEL_VIEWER,
+    source: EToolId.LEVEL_VIEWER,
     label: "Level map capture",
   },
   [TEXTURES_JOB_SAVE]: {
     kind: TEXTURES_JOB_SAVE,
-    source: EApplicationId.TEXTURES_EXPLORER,
+    source: EToolId.TEXTURES_EXPLORER,
     label: "Texture save",
   },
   [TEXTURES_JOB_BUILD]: {
     kind: TEXTURES_JOB_BUILD,
-    source: EApplicationId.TEXTURES_EXPLORER,
+    source: EToolId.TEXTURES_EXPLORER,
     label: "Texture build",
   },
   [TEXTURES_JOB_MAKE_BUMP]: {
     kind: TEXTURES_JOB_MAKE_BUMP,
-    source: EApplicationId.TEXTURES_EXPLORER,
+    source: EToolId.TEXTURES_EXPLORER,
     label: "Bump pair generation",
   },
   [TEXTURES_JOB_COMPARE_ENCODINGS]: {
     kind: TEXTURES_JOB_COMPARE_ENCODINGS,
-    source: EApplicationId.TEXTURES_EXPLORER,
+    source: EToolId.TEXTURES_EXPLORER,
     label: "Texture format comparison",
   },
 };

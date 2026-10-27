@@ -1,9 +1,9 @@
-import { IApplicationHelp } from "@/core/routing/application";
+import { IToolHelp } from "@/core/routing/tool";
 
 /**
- * Help for the home screen, which is a screen rather than an application and so carries its own.
+ * Help for the home screen, which is a screen rather than a tool and so carries its own.
  */
-export const LAUNCHER_HELP: IApplicationHelp = {
+export const LAUNCHER_HELP: IToolHelp = {
   summary: "Find and open XRF tools by group or search. Choose `File` > `Close` to return here from a tool.",
   workflow: [
     "Choose a group or type in `Search tools`. Search stays within the selected group; select `All` to search " +

@@ -26,7 +26,7 @@ export interface IJobOperationOptions<T> {
 }
 
 /**
- * One application's command state, including a run rediscovered after a reload.
+ * One tool's command state, including a run rediscovered after a reload.
  *
  * The owner delegates with `yield*` inside its flow; the operation ignores a run while one of its kinds is in flight,
  * and shows an outcome it did not await as the jobs service announces it, following those announcements until its

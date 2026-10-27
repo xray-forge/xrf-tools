@@ -3,7 +3,7 @@ import { Logger } from "@xrf/logging";
 import { noop } from "@/lib/callbacks/noop";
 
 /**
- * Disables application logging for tests.
+ * Disables tool logging for tests.
  *
  */
 export function mockLogger(): void {

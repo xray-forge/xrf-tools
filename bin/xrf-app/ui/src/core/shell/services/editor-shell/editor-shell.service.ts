@@ -9,7 +9,7 @@ import { IMenuContribution } from "@/core/shell/menu/lib";
 
 interface IEditorShellRegistration<T> {
   owner: string;
-  application: string;
+  tool: string;
   values: ReadonlyArray<T>;
 }
 
@@ -37,38 +37,38 @@ export class EditorShellService {
     });
   }
 
-  /** Returns status only for the application currently being rendered. */
-  public getStatus(application: string): ReadonlyArray<TEditorStatusSegment> {
-    return this.status?.application === application ? this.status.values : EMPTY_ARRAY;
+  /** Returns status only for the tool currently being rendered. */
+  public getStatus(tool: string): ReadonlyArray<TEditorStatusSegment> {
+    return this.status?.tool === tool ? this.status.values : EMPTY_ARRAY;
   }
 
-  /** Returns panels only for the application whose container can render them. */
-  public getPanels(application: string): ReadonlyArray<IEditorPanel> {
-    return this.panels?.application === application ? this.panels.values : EMPTY_ARRAY;
+  /** Returns panels only for the tool whose container can render them. */
+  public getPanels(tool: string): ReadonlyArray<IEditorPanel> {
+    return this.panels?.tool === tool ? this.panels.values : EMPTY_ARRAY;
   }
 
-  /** Returns menu entries only for the application whose container can run them, in publication order. */
-  public getMenus(application: string): ReadonlyArray<IMenuContribution> {
+  /** Returns menu entries only for the tool whose container can run them, in publication order. */
+  public getMenus(tool: string): ReadonlyArray<IMenuContribution> {
     return this.menus
-      .filter((it: IEditorShellRegistration<IMenuContribution>) => it.application === application)
+      .filter((it: IEditorShellRegistration<IMenuContribution>) => it.tool === tool)
       .flatMap((it: IEditorShellRegistration<IMenuContribution>) => it.values);
   }
 
   /** Publishes status, retaining its snapshot when the same owner repeats unchanged segments. */
   @BoundAction()
-  public publishStatus(owner: string, application: string, segments: ReadonlyArray<TEditorStatusSegment>): void {
+  public publishStatus(owner: string, tool: string, segments: ReadonlyArray<TEditorStatusSegment>): void {
     const previous = this.status;
 
     if (
       previous?.owner === owner &&
-      previous.application === application &&
+      previous.tool === tool &&
       previous.values.length === segments.length &&
       previous.values.every((value: TEditorStatusSegment, index: number) => isSameStatusSegment(value, segments[index]))
     ) {
       return;
     }
 
-    this.status = { owner, application, values: [...segments] };
+    this.status = { owner, tool, values: [...segments] };
   }
 
   /** Releases only the status published by this registration. */
@@ -81,8 +81,8 @@ export class EditorShellService {
 
   /** Publishes a panel snapshot, preserving descriptor and renderer identities. */
   @BoundAction()
-  public publishPanels(owner: string, application: string, panels: ReadonlyArray<IEditorPanel>): void {
-    this.panels = { owner, application, values: [...panels] };
+  public publishPanels(owner: string, tool: string, panels: ReadonlyArray<IEditorPanel>): void {
+    this.panels = { owner, tool, values: [...panels] };
   }
 
   /** Releases only the panels published by this registration. */
@@ -95,10 +95,10 @@ export class EditorShellService {
 
   /** Publishes one owner's menu entries, keeping the place it first published at. */
   @BoundAction()
-  public publishMenus(owner: string, application: string, contributions: ReadonlyArray<IMenuContribution>): void {
+  public publishMenus(owner: string, tool: string, contributions: ReadonlyArray<IMenuContribution>): void {
     const registration: IEditorShellRegistration<IMenuContribution> = {
       owner,
-      application,
+      tool,
       values: [...contributions],
     };
     const index: number = this.menus.findIndex((it: IEditorShellRegistration<IMenuContribution>) => it.owner === owner);

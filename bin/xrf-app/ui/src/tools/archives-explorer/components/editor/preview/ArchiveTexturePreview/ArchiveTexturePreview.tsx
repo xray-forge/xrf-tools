@@ -1,0 +1,85 @@
+import { useInjection } from "@wirestate/react";
+import { AsyncState } from "@xrf/async";
+import { AssetTextureShape } from "@xrf/ipc/types/xrf-app-core";
+import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
+import { EmptyState } from "@xrf/ui/layout/empty-state";
+import { Typography } from "@xrf/ui/material/typography";
+import { ImageViewport } from "@xrf/ui/media/image-viewport";
+import { cn } from "@xrf/ui/theme";
+import { ReactElement } from "react";
+
+import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
+import { describeTextureShape } from "@/core/assets/lib";
+import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
+import { ArchivePreviewError } from "@/tools/archives-explorer/components/editor/preview/ArchivePreviewError/ArchivePreviewError";
+import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";
+
+/**
+ * Shows an archived texture the backend decoded into a PNG.
+ */
+export function ArchiveTexturePreview({
+  "data-testid": dataTestId = "archive-texture-preview",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
+  const previewService: ArchivePreviewService = useInjection(ArchivePreviewService);
+  const content: AsyncState<Nullable<TArchiveContent>> = previewService.content;
+
+  // The previous texture stays on screen while the next one decodes, rather than the panel blanking between clicks.
+  const texture: Nullable<TArchiveContent & { kind: "texture" }> = useLastContent(
+    content.value?.kind === "texture" ? content.value : null,
+    content.isLoading
+  );
+
+  // The shape is the source DDS's rather than the png's, so the caption can name a format and a mip chain the transcode
+  // has already thrown away. A header that would not parse leaves nothing to lay the viewport out against.
+  const shape: Nullable<AssetTextureShape> = texture?.descriptor.shape ?? null;
+  const bytes: Nullable<TArchiveBytes> = texture?.bytes ?? null;
+
+  const url: Nullable<string> = useAssetUrl(`${__MODULE_NAME__}/archive-texture`, bytes, "image/png");
+
+  if (content.error) {
+    return (
+      <ArchivePreviewError
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        error={content.error}
+        onRetry={previewService.retry}
+      />
+    );
+  }
+
+  if (!shape || !url) {
+    return content.isLoading ? (
+      <DelayedProgress data-testid={dataTestId} id={id} className={className} />
+    ) : (
+      <EmptyState
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        title={"Preview unavailable"}
+        description={"This texture could not be decoded."}
+      />
+    );
+  }
+
+  return (
+    <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 min-w-0 grow flex-col", className)}>
+      <ImageViewport
+        alt={previewService.selectedEntry?.name ?? "Texture"}
+        src={url}
+        width={shape.width}
+        height={shape.height}
+      />
+
+      <div className={"shrink-0 border-t border-divider px-3 py-1"}>
+        <Typography className={"text-text-secondary"} variant={"caption"}>
+          {describeTextureShape(shape)}
+        </Typography>
+      </div>
+    </div>
+  );
+}

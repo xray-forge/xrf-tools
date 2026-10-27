@@ -1,16 +1,16 @@
 import { useInjection } from "@wirestate/react";
 import { DependencyList, useEffect, useId, useMemo } from "react";
 
-import { useCurrentApplication } from "@/core/routing/current-application.context";
+import { useCurrentTool } from "@/core/routing/current-tool.context";
 import { IMenuContribution } from "@/core/shell/menu/lib";
 import { EditorShellService } from "@/core/shell/services/editor-shell";
 
-/** Returns menu entries published by the application currently rendering, beside whatever else publishes. */
+/** Returns menu entries published by the tool currently rendering, beside whatever else publishes. */
 export function useEditorMenusRegistry(): ReadonlyArray<IMenuContribution> {
   const editorShellService: EditorShellService = useInjection(EditorShellService);
-  const application: string = useCurrentApplication()?.path ?? "root";
+  const tool: string = useCurrentTool()?.path ?? "root";
 
-  return editorShellService.getMenus(application);
+  return editorShellService.getMenus(tool);
 }
 
 /**
@@ -25,15 +25,15 @@ export function useEditorMenus(
 ): void {
   const editorShellService: EditorShellService = useInjection(EditorShellService);
   const owner: string = useId();
-  const application: string = useCurrentApplication()?.path ?? "root";
+  const tool: string = useCurrentTool()?.path ?? "root";
 
   // Call sites are checked as dependency-aware hooks by ESLint.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const contributions: Array<IMenuContribution> = useMemo(createContributions, dependencies);
 
   useEffect(() => {
-    editorShellService.publishMenus(owner, application, contributions);
-  }, [application, owner, contributions, editorShellService]);
+    editorShellService.publishMenus(owner, tool, contributions);
+  }, [tool, owner, contributions, editorShellService]);
 
   useEffect(() => () => editorShellService.releaseMenus(owner), [editorShellService, owner]);
 }

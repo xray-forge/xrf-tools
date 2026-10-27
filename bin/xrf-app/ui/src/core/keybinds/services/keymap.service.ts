@@ -9,7 +9,7 @@ import { ROOT_KEYBIND_COMMANDS } from "@/core/commands/root-commands";
 import { parseChord } from "@/core/keybinds/lib/chord";
 import { buildKeymap, IKeymap } from "@/core/keybinds/lib/keymap";
 import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
-import { IApplicationDescriptor } from "@/core/routing/application";
+import { IToolDescriptor } from "@/core/routing/tool";
 import { jsonCodec, KEYBINDS_STORAGE_KEY, StoredValue } from "@/core/storage";
 
 /** Stored shape of the overlay: command id to the chords bound in its place. */
@@ -28,7 +28,7 @@ export class KeymapService {
   );
 
   @Observable()
-  private application: Nullable<IApplicationDescriptor> = null;
+  private tool: Nullable<IToolDescriptor> = null;
 
   /**
    * Reads the overlay, discarding entries it cannot use rather than the whole map.
@@ -81,8 +81,8 @@ export class KeymapService {
   @Computed()
   public get commands(): ReadonlyArray<IKeybindCommand> {
     const byId: Map<string, IKeybindCommand> = new Map();
-    const screen: ReadonlyArray<IKeybindCommand> = this.application
-      ? (this.application.keybindCommands ?? EMPTY_ARRAY)
+    const screen: ReadonlyArray<IKeybindCommand> = this.tool
+      ? (this.tool.keybindCommands ?? EMPTY_ARRAY)
       : LAUNCHER_KEYBIND_COMMANDS;
 
     for (const command of [...ROOT_KEYBIND_COMMANDS, ...screen]) {
@@ -100,17 +100,17 @@ export class KeymapService {
 
   @OnDeprovision()
   public onDeprovision(): void {
-    this.setApplication(null);
+    this.setTool(null);
   }
 
   /**
-   * Publishes the routed application, whose declarations decide what is reachable beside the root commands.
+   * Publishes the routed tool, whose declarations decide what is reachable beside the root commands.
    *
-   * @param application - Application currently routed, or null outside one.
+   * @param tool - Tool currently routed, or null outside one.
    */
   @BoundAction()
-  public setApplication(application: Nullable<IApplicationDescriptor>): void {
-    this.application = application;
+  public setTool(tool: Nullable<IToolDescriptor>): void {
+    this.tool = tool;
   }
 
   /**

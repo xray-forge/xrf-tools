@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 import { IPathFieldRecents } from "@xrf/ui/form/file-picker";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { EApplicationId } from "@/core/routing/application";
+import { EToolId } from "@/core/routing/tool";
 import {
   getFieldRecentsStorageKey,
   getFieldValueStorageKey,
@@ -19,9 +19,9 @@ import { IPathSeed, TPathSeed, usePathSeed } from "@/core/ui/form/use-path-seed"
 const VALIDATE_DEBOUNCE_MS: number = 250;
 
 export interface IPathFieldOptions {
-  /** The application that owns this field. */
-  application: EApplicationId;
-  /** Names the field inside its own form, for example `source`. Only unique within the application. */
+  /** The tool that owns this field. */
+  tool: EToolId;
+  /** Names the field inside its own form, for example `source`. Only unique within the tool. */
   id: string;
   title?: string;
   filters?: Nullable<Array<DialogFilter>>;
@@ -32,7 +32,7 @@ export interface IPathFieldOptions {
   /**
    * Produces a first guess when nothing has been remembered yet.
    *
-   * Only the output fields have one: a destination is a fact about the application, so it can be guessed. Every other
+   * Only the output fields have one: a destination is a fact about the tool, so it can be guessed. Every other
    * path is named where it is used, and its history is what offers it again.
    */
   seed?: TPathSeed;
@@ -67,8 +67,8 @@ export interface IPathField {
  * would remember every prefix of every path anyone ever typed here.
  *
  * @param options - Field identity, dialog behavior, and validation options.
- * @param options.application - Application the field belongs to, used to scope persistence.
- * @param options.id - Field name within that application, used for persistence.
+ * @param options.tool - Tool the field belongs to, used to scope persistence.
+ * @param options.id - Field name within that tool, used for persistence.
  * @param options.title - Path dialog title.
  * @param options.filters - File filters shown by the dialog.
  * @param options.isDirectory - Whether the dialog selects a directory.
@@ -79,7 +79,7 @@ export interface IPathField {
  * @returns The current path state, validation result, and field actions.
  */
 export function usePathField({
-  application,
+  tool,
   id,
   title,
   filters = null,
@@ -89,7 +89,7 @@ export function usePathField({
   isRequired = true,
   seed,
 }: IPathFieldOptions): IPathField {
-  const storageKey: string = getFieldValueStorageKey(application, id);
+  const storageKey: string = getFieldValueStorageKey(tool, id);
 
   // Read by the dialog resolver below, which cannot close over a value this same call produces.
   const valueRef = useRef<Nullable<string>>(null);
@@ -111,7 +111,7 @@ export function usePathField({
   // A guess fills the field without being stored, so every session re-derives it until the user picks a path.
   const { request: requestSeed, supersede: supersedeSeed }: IPathSeed = usePathSeed({ seed, onSeeded: setPath });
 
-  const history: IPathRecents = usePathRecents(getFieldRecentsStorageKey(application, id));
+  const history: IPathRecents = usePathRecents(getFieldRecentsStorageKey(tool, id));
 
   const setValue = useCallback(
     (next: Nullable<string>): void => {

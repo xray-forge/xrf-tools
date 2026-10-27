@@ -11,11 +11,11 @@ import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load";
 
 /**
- * The visual an application has open, forwarded from the loader for the panels that inspect it.
+ * The visual a tool has open, forwarded from the loader for the panels that inspect it.
  *
  * Forwarded rather than mirrored: two copies of one state is how a screen ends up disagreeing with itself. What an
- * application decides for itself - where a source is searched, how the model stands, whether bones can be marked -
- * stays with the application's own service.
+ * tool decides for itself - where a source is searched, how the model stands, whether bones can be marked -
+ * stays with the tool's own service.
  */
 export abstract class VisualInspectionService implements IVisualInspection {
   protected constructor(protected readonly loadService: VisualLoadService) {}

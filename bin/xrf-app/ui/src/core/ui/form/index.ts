@@ -1,5 +1,5 @@
 /**
- * The path and remembered-value fields an application composes with, bound to the native dialogs and storage. The rows
+ * The path and remembered-value fields a tool composes with, bound to the native dialogs and storage. The rows
  * they sit beside are `@xrf/ui/form`'s.
  */
 

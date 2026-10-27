@@ -20,7 +20,7 @@ function panel(id: string): IEditorPanel {
 }
 
 describe("EditorShellService", () => {
-  it("hides outgoing contributions before the next application publishes", () => {
+  it("hides outgoing contributions before the next tool publishes", () => {
     const { service } = mockInjectedService(EditorShellService);
 
     service.publishStatus("old-status", FIRST, ["3 files"]);
@@ -32,25 +32,25 @@ describe("EditorShellService", () => {
     expect(service.getPanels(FIRST)).toHaveLength(1);
   });
 
-  it.each([FIRST, SECOND])("does not let old cleanup erase new publications for %s", (application) => {
+  it.each([FIRST, SECOND])("does not let old cleanup erase new publications for %s", (tool) => {
     const { service } = mockInjectedService(EditorShellService);
     const current = panel("current");
 
     service.publishStatus("old-status", FIRST, ["old"]);
     service.publishPanels("old-panels", FIRST, [panel("old")]);
-    service.publishStatus("new-status", application, ["current"]);
-    service.publishPanels("new-panels", application, [current]);
+    service.publishStatus("new-status", tool, ["current"]);
+    service.publishPanels("new-panels", tool, [current]);
     service.releaseStatus("old-status");
     service.releasePanels("old-panels");
 
-    expect(service.getStatus(application)).toEqual(["current"]);
-    expect(service.getPanels(application)).toEqual([current]);
+    expect(service.getStatus(tool)).toEqual(["current"]);
+    expect(service.getPanels(tool)).toEqual([current]);
 
     service.releaseStatus("new-status");
     service.releasePanels("new-panels");
 
-    expect(service.getStatus(application)).toEqual([]);
-    expect(service.getPanels(application)).toEqual([]);
+    expect(service.getStatus(tool)).toEqual([]);
+    expect(service.getPanels(tool)).toEqual([]);
   });
 
   it("keeps equal status text stable while still transferring ownership", () => {

@@ -3,7 +3,7 @@ import { CommandBus, inject, Injectable, QueryBus } from "@wirestate/core";
 import { KeybindCommand } from "@/core/commands";
 import { CLOSE_TOOL_KEYBIND_COMMAND } from "@/core/shell/commands";
 import { EditorLifecycleService } from "@/core/shell/services/editor-lifecycle";
-import { APPLICATION_OPEN_QUERY, CLOSE_APPLICATION_COMMAND } from "@/core/shell/shell-messages";
+import { CLOSE_TOOL_COMMAND, TOOL_OPEN_QUERY } from "@/core/shell/shell-messages";
 
 /**
  * Answers the shell's commands, which every screen reaches.
@@ -20,7 +20,7 @@ export class ShellKeybindsService {
   public get canCloseTool(): boolean {
     return (
       !this.lifecycleService.isBusy &&
-      (this.queryBus.query<boolean>(APPLICATION_OPEN_QUERY, undefined, { optional: true }) ?? false)
+      (this.queryBus.query<boolean>(TOOL_OPEN_QUERY, undefined, { optional: true }) ?? false)
     );
   }
 
@@ -30,7 +30,7 @@ export class ShellKeybindsService {
   @KeybindCommand(CLOSE_TOOL_KEYBIND_COMMAND, { isEnabled: (service: ShellKeybindsService) => service.canCloseTool })
   public closeTool(): void {
     this.lifecycleService.requestLeave(() =>
-      this.commandBus.execute(CLOSE_APPLICATION_COMMAND, undefined, { optional: true })
+      this.commandBus.execute(CLOSE_TOOL_COMMAND, undefined, { optional: true })
     );
   }
 }

@@ -1,0 +1,198 @@
+import { useInjection } from "@wirestate/react";
+import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
+import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
+import { Nullable } from "@xrf/types";
+import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Alert } from "@xrf/ui/material/alert";
+import { Button } from "@xrf/ui/material/button";
+import { Checkbox } from "@xrf/ui/material/checkbox";
+import { FormControlLabel } from "@xrf/ui/material/form-control-label";
+import { Stack } from "@xrf/ui/material/stack";
+import { Typography } from "@xrf/ui/material/typography";
+import { ReactElement, useCallback, useState } from "react";
+
+import { EToolId } from "@/core/routing/tool";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
+import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { DEFAULT_GLOSS_POWER, toBumpGloss } from "@/tools/textures-editor/lib/texture-bump-gloss";
+import { TextureBumpService } from "@/tools/textures-editor/services/texture-bump";
+import { TextureEditorService } from "@/tools/textures-editor/services/texture-editor";
+
+import { TextureGlossField } from "./TextureGlossField";
+
+/** Images the generator can read a plane out of, which is whatever `image` decodes. */
+const IMAGE_FILTERS = [
+  {
+    extensions: [EXrayExtension.PNG, EXrayExtension.TGA, EXrayExtension.BMP, EXrayExtension.JPG, EXrayExtension.JPEG],
+    name: "Image",
+  },
+];
+
+/**
+ * Build the `_bump` and `_bump#` pair this texture binds, from a height map.
+ *
+ * A port of the SDK's own generator, so the inputs are its inputs: the relief is required and everything else refines
+ * it. There is no destination field - the pair belongs to the texture that is open, and its two names are derived, not
+ * chosen.
+ */
+export function TextureBumpPanel({
+  "data-testid": dataTestId = "texture-bump-panel",
+  id,
+  className,
+}: BaseComponentProps): ReactElement {
+  const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
+  const editorService: TextureEditorService = useInjection(TextureEditorService);
+  const bumpService: TextureBumpService = useInjection(TextureBumpService);
+
+  const [glossConstant, setGlossConstant] = useState<number>(DEFAULT_GLOSS_POWER);
+  const [isGlossFromHeight, setIsGlossFromHeight] = useState<boolean>(false);
+
+  const description: Nullable<TextureDescription> = selectionService.selected.value;
+  const isRunning: boolean = bumpService.generate.isRunning;
+
+  const height: IPathField = usePathField({
+    tool: EToolId.TEXTURES_EDITOR,
+    filters: IMAGE_FILTERS,
+    id: "bump-height",
+    isDisabled: isRunning,
+    title: "Select the height map",
+  });
+
+  const gloss: IPathField = usePathField({
+    tool: EToolId.TEXTURES_EDITOR,
+    filters: IMAGE_FILTERS,
+    id: "bump-gloss",
+    isDisabled: isRunning,
+    title: "Select a gloss mask",
+  });
+
+  const normalMap: IPathField = usePathField({
+    tool: EToolId.TEXTURES_EDITOR,
+    filters: IMAGE_FILTERS,
+    id: "bump-normal-map",
+    isDisabled: isRunning,
+    title: "Select an external normal map",
+  });
+
+  const onGenerate = useCallback(
+    () =>
+      void bumpService.run({
+        gloss: toBumpGloss(isGlossFromHeight, gloss.value, glossConstant),
+        height: height.value ?? "",
+        normalMap: normalMap.value,
+        // The descriptor's own, so generating twice at different depths is a deliberate act rather than a surprise.
+        virtualHeight: editorService.draft?.virtualHeight ?? null,
+      }),
+    [
+      bumpService,
+      editorService.draft?.virtualHeight,
+      gloss.value,
+      glossConstant,
+      height.value,
+      isGlossFromHeight,
+      normalMap.value,
+    ]
+  );
+
+  if (!description) {
+    return (
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Bump"}>
+        <EditorPanelEmpty label={"No texture selected. The generator for its bump pair shows here."} />
+      </EditorPanel>
+    );
+  }
+
+  return (
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Bump"}>
+      {bumpService.destination === null ? (
+        <Alert className={"mb-2"} severity={"info"}>
+          This texture is served out of an archive, so there is nowhere beside it to write a pair.
+        </Alert>
+      ) : null}
+
+      <EditorPanelSection title={"Writes"} caption={"Derived from the texture, not chosen"} isFirst>
+        <EditorPanelProperty label={"Bump"} value={description.generatedBump.bump} isMonospace />
+        <EditorPanelProperty label={"Companion"} value={description.generatedBump.companion} isMonospace />
+      </EditorPanelSection>
+
+      <EditorPanelSection title={"Sources"} caption={"The relief is required; everything else refines it"}>
+        <PathFormRow
+          label={"Height map"}
+          description={"Averaged across its colour channels, as the SDK does"}
+          isDisabled={isRunning}
+          field={height}
+        />
+
+        <FormControlLabel
+          data-testid={"texture-bump-gloss-from-height"}
+          label={"Gloss from the height map's alpha, as the SDK's bump source carries it"}
+          disabled={isRunning}
+          control={
+            <Checkbox
+              size={"small"}
+              checked={isGlossFromHeight}
+              onChange={(_, isChecked: boolean) => setIsGlossFromHeight(isChecked)}
+            />
+          }
+        />
+
+        {isGlossFromHeight ? null : (
+          <PathFormRow
+            label={"Gloss mask"}
+            description={"Optional. Without one, the level below is used everywhere"}
+            isDisabled={isRunning}
+            field={gloss}
+          />
+        )}
+
+        {isGlossFromHeight || gloss.value ? null : (
+          <TextureGlossField
+            value={glossConstant}
+            minimum={editorService.vocabulary.value?.minimumGlossPower ?? null}
+            isDisabled={isRunning}
+            onChange={setGlossConstant}
+          />
+        )}
+
+        <PathFormRow
+          label={"Normal map"}
+          description={"Optional. Replaces the normals the height implies, and must match its size"}
+          isDisabled={isRunning}
+          field={normalMap}
+        />
+      </EditorPanelSection>
+
+      <EditorPanelSection title={"Generate"}>
+        <Stack direction={"row"} spacing={1}>
+          <Button
+            data-testid={"texture-bump-generate"}
+            size={"small"}
+            variant={"contained"}
+            disabled={!bumpService.canGenerate || !height.isValid}
+            onClick={onGenerate}
+          >
+            Generate pair
+          </Button>
+
+          {isRunning ? (
+            <Button data-testid={"texture-bump-cancel"} size={"small"} onClick={bumpService.generate.cancel}>
+              Stop
+            </Button>
+          ) : null}
+        </Stack>
+
+        <Typography className={"mt-2 block"} variant={"caption"} color={"text.secondary"}>
+          Both halves are written at once, and the descriptor is pointed at them. Saving is still a separate act.
+        </Typography>
+
+        {bumpService.generate.error ? (
+          <Alert className={"mt-2"} severity={"error"}>
+            {bumpService.generate.error}
+          </Alert>
+        ) : null}
+      </EditorPanelSection>
+    </EditorPanel>
+  );
+}

@@ -1,43 +1,43 @@
 import { Nullable } from "@xrf/types";
 
-import { EApplicationGroupId, IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
+import { EToolGroupId, IToolDescriptor, IToolGroup } from "@/core/routing/tool";
 
-/** One application together with the group it was found under, which a ranked result no longer implies. */
+/** One tool together with the group it was found under, which a ranked result no longer implies. */
 export interface ICatalogEntry {
-  application: IApplicationDescriptor;
-  group: IApplicationGroup;
+  tool: IToolDescriptor;
+  group: IToolGroup;
 }
 
 /** Tools the catalog draws together, under the group heading they share. */
 export interface ICatalogSection {
   /** `null` for ranked results, where a heading would claim a grouping the order does not have. */
-  group: Nullable<IApplicationGroup>;
+  group: Nullable<IToolGroup>;
   entries: Array<ICatalogEntry>;
 }
 
 /** One group chip: the group and how much of the catalog choosing it would leave. */
 export interface ICatalogGroupFilter {
-  group: IApplicationGroup;
+  group: IToolGroup;
   count: number;
 }
 
 /**
  * Files the catalog under its groups.
  *
- * @param applications - Every application the catalog offers.
+ * @param tools - Every tool the catalog offers.
  * @param groups - Groups in the order the catalog presents them.
  * @returns One section per group that has tools, in group order.
  */
 export function toCatalogSections(
-  applications: ReadonlyArray<IApplicationDescriptor>,
-  groups: ReadonlyArray<IApplicationGroup>
+  tools: ReadonlyArray<IToolDescriptor>,
+  groups: ReadonlyArray<IToolGroup>
 ): Array<ICatalogSection> {
   return groups
-    .map((group: IApplicationGroup): ICatalogSection => ({
+    .map((group: IToolGroup): ICatalogSection => ({
       group,
-      entries: applications
-        .filter((application: IApplicationDescriptor) => application.group === group.id)
-        .map((application: IApplicationDescriptor): ICatalogEntry => ({ application, group })),
+      entries: tools
+        .filter((tool: IToolDescriptor) => tool.group === group.id)
+        .map((tool: IToolDescriptor): ICatalogEntry => ({ tool, group })),
     }))
     .filter((section: ICatalogSection) => section.entries.length > 0);
 }
@@ -77,7 +77,7 @@ export function getCatalogEntries(sections: ReadonlyArray<ICatalogSection>): Arr
  */
 export function getCatalogSummary(
   sections: ReadonlyArray<ICatalogSection>,
-  selectedGroupId: Nullable<EApplicationGroupId>
+  selectedGroupId: Nullable<EToolGroupId>
 ): string {
   const count: number = sections.reduce((total: number, section: ICatalogSection) => total + section.entries.length, 0);
   const parts: Array<string> = [`${count} ${count === 1 ? "tool" : "tools"}`];
@@ -95,7 +95,7 @@ export function getCatalogSummary(
  * @returns The text a search ranks the entry by.
  */
 export function toCatalogSearchText(entry: ICatalogEntry): string {
-  return entry.application.label;
+  return entry.tool.label;
 }
 
 /**
@@ -106,5 +106,5 @@ export function toCatalogSearchText(entry: ICatalogEntry): string {
  * @returns Text that matches without outranking a label match.
  */
 export function toCatalogSecondaryText(entry: ICatalogEntry): string {
-  return `${entry.application.description} ${entry.group.label}`;
+  return `${entry.tool.description} ${entry.group.label}`;
 }

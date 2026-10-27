@@ -8,11 +8,11 @@ import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback, useState } from "react";
 
 import { ENotificationSeverity, TEmitNotification, useEmitNotification } from "@/core/notifications/lib";
-import { EApplicationId } from "@/core/routing/application";
+import { EToolId } from "@/core/routing/tool";
 
 interface IRevealPathButtonProps extends BaseComponentProps {
-  /** Which application the failure notification is attributed to. */
-  application: EApplicationId;
+  /** Which tool the failure notification is attributed to. */
+  tool: EToolId;
   /** Path to show; a missing one disables the button rather than hiding it. */
   path: Nullable<string>;
   label?: string;
@@ -26,7 +26,7 @@ export function RevealPathButton({
   "data-testid": dataTestId = "reveal-path-button",
   id,
   className,
-  application,
+  tool,
   path,
   label = "Show in file manager",
   isDisabled,
@@ -55,13 +55,13 @@ export function RevealPathButton({
       notify({
         details: `${path}\n${String(error)}`,
         severity: ENotificationSeverity.ERROR,
-        source: application,
+        source: tool,
         title: "Could not open the file manager",
       });
     } finally {
       setIsRevealing(false);
     }
-  }, [application, log, notify, path]);
+  }, [tool, log, notify, path]);
 
   return (
     <Button

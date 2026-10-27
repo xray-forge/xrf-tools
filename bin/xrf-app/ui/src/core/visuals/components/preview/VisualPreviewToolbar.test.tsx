@@ -53,7 +53,7 @@ describe("VisualPreviewToolbar order", () => {
       (it: Element) => it.getAttribute("aria-label")
     );
 
-    // A value picker goes last in every toolbar of this application, so a row always reads as things you flip and
+    // A value picker goes last in every toolbar of this tool, so a row always reads as things you flip and
     // then the thing you set. Mesh detail led this row until the rule was settled.
     expect(labels).toEqual([
       "Browse folder",

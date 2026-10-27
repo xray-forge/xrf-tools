@@ -10,7 +10,7 @@ import {
   useEmitNotification,
 } from "@/core/notifications/lib/index";
 import { NotificationsService } from "@/core/notifications/services";
-import { EApplicationId } from "@/core/routing/application";
+import { EToolId } from "@/core/routing/tool";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 /**
@@ -32,7 +32,7 @@ function NotifyingPage(): ReactElement {
           notify({
             details: "C:\\configs",
             severity: ENotificationSeverity.WARNING,
-            source: EApplicationId.CONFIGS_VERIFIER,
+            source: EToolId.CONFIGS_VERIFIER,
             title: "Configs did not pass validation",
           })
         }

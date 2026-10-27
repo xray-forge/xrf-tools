@@ -1,0 +1,77 @@
+import { useInjection } from "@wirestate/react";
+import { Nullable } from "@xrf/types";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { TranslateIcon } from "@xrf/ui/icons/translate";
+import { Menu, MenuItem } from "@xrf/ui/material/menu";
+import { MouseEvent, ReactElement, useCallback, useId, useState } from "react";
+
+import { DialogViewService } from "@/tools/dialogs-editor/services/dialog-view";
+import { DialogsService } from "@/tools/dialogs-editor/services/dialogs";
+
+/**
+ * Which language the phrase lines are read in.
+ */
+export function DialogsEditorActions({
+  "data-testid": dataTestId = "dialogs-editor-actions",
+  id,
+  className,
+}: BaseComponentProps): Nullable<ReactElement> {
+  const dialogsService: DialogsService = useInjection(DialogsService);
+  const viewService: DialogViewService = useInjection(DialogViewService);
+
+  const generatedActionId: string = useId();
+  const actionId: string = id ?? generatedActionId;
+  const menuId: string = useId();
+
+  const [anchor, setAnchor] = useState<Nullable<HTMLElement>>(null);
+
+  const languages: Array<string> = dialogsService.languages;
+  const selected: Nullable<string> = viewService.resolvedLanguage;
+
+  const onOpen = useCallback((event: MouseEvent<HTMLElement>) => setAnchor(event.currentTarget), []);
+
+  const onClose = useCallback(() => setAnchor(null), []);
+
+  const onSelect = useCallback(
+    (language: string) => {
+      viewService.setLanguage(language);
+      setAnchor(null);
+    },
+    [viewService]
+  );
+
+  if (!languages.length) {
+    return null;
+  }
+
+  return (
+    <>
+      <EditorIconAction
+        data-testid={dataTestId}
+        id={actionId}
+        className={className}
+        label={"Change language"}
+        description={`Language: ${selected ?? "none"}`}
+        icon={<TranslateIcon />}
+        aria-haspopup={"menu"}
+        aria-expanded={Boolean(anchor)}
+        aria-controls={anchor ? menuId : undefined}
+        onClick={onOpen}
+      />
+
+      <Menu
+        open={Boolean(anchor)}
+        anchorEl={anchor}
+        slotProps={{ list: { id: menuId, "aria-labelledby": actionId } }}
+        onClose={onClose}
+      >
+        {languages.map((it: string) => (
+          <MenuItem key={it} selected={it === selected} onClick={() => onSelect(it)}>
+            {it}
+          </MenuItem>
+        ))}
+      </Menu>
+    </>
+  );
+}

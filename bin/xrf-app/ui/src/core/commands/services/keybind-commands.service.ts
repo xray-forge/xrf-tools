@@ -5,7 +5,7 @@ import { Logger } from "@xrf/logging";
 
 import { IKeybindCommand, toKeybindCommandEnabledQuery } from "@/core/commands/lib/command-descriptor";
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
-import { APPLICATION_SOURCE } from "@/core/routing/application";
+import { APPLICATION_SOURCE } from "@/core/routing/tool";
 
 /** Invokes declared keybind commands and answers whether one can be invoked, for every surface that offers them. */
 @Injectable()

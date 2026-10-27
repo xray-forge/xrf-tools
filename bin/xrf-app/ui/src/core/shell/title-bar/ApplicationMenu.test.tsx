@@ -4,7 +4,6 @@ import { userEvent } from "@testing-library/user-event";
 import { ReactElement } from "react";
 import { useLocation } from "react-router-dom";
 
-import { SPRITE_EQUIPMENT_EDITOR_MENU } from "@/applications/sprite-equipment-editor/menus";
 import { NotificationsService } from "@/core/notifications/services";
 import { ApplicationShell } from "@/core/shell/ApplicationShell";
 import { useEditorBusy, useEditorDirty } from "@/core/shell/editor-lifecycle";
@@ -12,6 +11,7 @@ import { useEditorMenus } from "@/core/shell/editor-shell";
 import { IMenuContribution } from "@/core/shell/menu/lib";
 import { clearLocalStorage } from "@/core/storage";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { SPRITE_EQUIPMENT_EDITOR_MENU } from "@/tools/sprite-equipment-editor/menus";
 
 const PLANNED_ROUTE: string = "/level-compiler";
 

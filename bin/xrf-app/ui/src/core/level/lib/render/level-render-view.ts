@@ -51,7 +51,7 @@ export interface ILevelViewOptionsInputs {
   lod: ILevelLodOptions;
   /** What the view sets over the settings' features for itself, which their toggles gate. */
   view: ILevelFeatureOptions;
-  /** What the application sets every viewport's features to, which the level's toolbar narrows. */
+  /** What the tool sets every viewport's features to, which the level's toolbar narrows. */
   features: IRenderFeatureSettings;
   /** How the level is exposed, lit and corrected. */
   look: TNativeLook;

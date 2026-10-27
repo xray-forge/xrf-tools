@@ -76,7 +76,7 @@ const NEUTRAL_NATIVE_LOOK: Omit<TNativeLook, "exposure"> = {
 
 /**
  * @param shading - How the view shades its scene.
- * @param features - What the application sets every viewport's features to, as the view narrows them.
+ * @param features - What the tool sets every viewport's features to, as the view narrows them.
  * @param switches - What the view switches of its scene.
  * @param look - How the scene is exposed, lit and corrected.
  * @param output - What the frame is resolved at before the viewport: a height, or a share of its sides.
@@ -179,7 +179,7 @@ export function toNativeWorldToggles(switches: WorldToggles): WorldToggles {
  * with the exposure held, since one asset is no scene to adapt it to, and with no sky or weather.
  *
  * @param shading - What the viewer's toolbar switches of the asset's shading.
- * @param features - What the application sets every viewport's features to.
+ * @param features - What the tool sets every viewport's features to.
  * @param output - What the asset's frame is resolved at before the viewport.
  * @returns What a native viewport draws the asset with, before the viewer's light and backdrop.
  */

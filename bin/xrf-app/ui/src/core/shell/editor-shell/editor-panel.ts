@@ -7,7 +7,7 @@ export interface IEditorPanel {
   id: string;
   label: string;
   icon: ReactNode;
-  /** Left is where an application browses, right is where it inspects. */
+  /** Left is where a tool browses, right is where it inspects. */
   side?: TEditorPanelSide;
   isOpenByDefault?: boolean;
   render: () => ReactNode;

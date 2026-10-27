@@ -3,7 +3,7 @@ import { fireEvent, waitFor } from "@testing-library/react";
 import { ESystemCommand } from "@xrf/ipc/commands/system";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 
-import { EApplicationId } from "@/core/routing/application";
+import { EToolId } from "@/core/routing/tool";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
@@ -17,9 +17,7 @@ describe("RevealPathButton", () => {
 
     mockIpcCommands({ [ESystemCommand.REVEAL_PATH]: revealPath });
 
-    const { getByRole } = renderWithProviders(
-      <RevealPathButton application={EApplicationId.ARCHIVES_PACKER} path={"C:\\out"} />
-    );
+    const { getByRole } = renderWithProviders(<RevealPathButton tool={EToolId.ARCHIVES_PACKER} path={"C:\\out"} />);
 
     fireEvent.click(getByRole("button"));
 
@@ -27,9 +25,7 @@ describe("RevealPathButton", () => {
   });
 
   it("has nothing to show without a path", () => {
-    const { getByRole } = renderWithProviders(
-      <RevealPathButton application={EApplicationId.ARCHIVES_PACKER} path={null} />
-    );
+    const { getByRole } = renderWithProviders(<RevealPathButton tool={EToolId.ARCHIVES_PACKER} path={null} />);
 
     expect(getByRole("button")).toBeDisabled();
   });
@@ -41,9 +37,7 @@ describe("RevealPathButton", () => {
       },
     });
 
-    const { getByRole } = renderWithProviders(
-      <RevealPathButton application={EApplicationId.ARCHIVES_PACKER} path={"C:\\out"} />
-    );
+    const { getByRole } = renderWithProviders(<RevealPathButton tool={EToolId.ARCHIVES_PACKER} path={"C:\\out"} />);
 
     fireEvent.click(getByRole("button"));
 
