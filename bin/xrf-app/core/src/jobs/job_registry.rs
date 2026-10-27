@@ -80,7 +80,26 @@ struct RegistryState {
   tombstones: VecDeque<Uuid>,
 }
 
+/// Why a job was not admitted.
+enum JobRefusal {
+  /// Its identity already started a job, running or retained as finished.
+  Repeated,
+  /// It cannot start now, for the reason given.
+  Refused(String),
+}
+
+impl From<String> for JobRefusal {
+  fn from(reason: String) -> Self {
+    Self::Refused(reason)
+  }
+}
+
 impl RegistryState {
+  /// Whether this identity already started a job, still running or retained as finished.
+  fn is_known(&self, id: Uuid) -> bool {
+    self.live.contains_key(&id) || self.has_finished(id)
+  }
+
   /// Whether a job with this identity is already among the retained finished ones.
   fn has_finished(&self, id: Uuid) -> bool {
     self.finished.iter().any(|finished| finished.id == id)
@@ -197,17 +216,33 @@ impl JobRegistry {
     let id: Uuid = start.id;
     let kind: JobKind = start.kind;
 
-    self
-      .admit(start)
-      .inspect(|(handle, _)| match handle.is_cancelled() {
-        true => log::info!("Started job {kind} '{id}', already cancelled"),
-        false => log::info!("Started job {kind} '{id}'"),
-      })
-      .inspect_err(|reason| log::warn!("{reason}"))
+    match self.admit(start) {
+      Ok((handle, registration)) => {
+        match handle.is_cancelled() {
+          true => log::info!("Started job {kind} '{id}', already cancelled"),
+          false => log::info!("Started job {kind} '{id}'"),
+        }
+
+        Ok((handle, registration))
+      }
+      // Expected rather than a fault: Tauri sends every command whose custom-protocol request failed again over
+      // `postMessage`, and a page reload fails each one still in flight, so a job's start comes back once its page is
+      // gone. Running it again would repeat the work for nobody.
+      Err(JobRefusal::Repeated) => {
+        log::info!("Ignored a repeated start of job {kind} '{id}'");
+
+        Err(format!("Job '{id}' has already been started"))
+      }
+      Err(JobRefusal::Refused(reason)) => {
+        log::warn!("{reason}");
+
+        Err(reason)
+      }
+    }
   }
 
   /// Take the leases and start reporting the job as running, or answer why it cannot start.
-  fn admit(self: &Arc<Self>, start: JobStart) -> TauriResult<(JobHandle, JobRegistration)> {
+  fn admit(self: &Arc<Self>, start: JobStart) -> Result<(JobHandle, JobRegistration), JobRefusal> {
     let JobStart {
       id,
       kind,
@@ -233,17 +268,17 @@ impl JobRegistry {
     let handle: JobHandle = JobHandle::with_interval(reporting, self.interval);
     let mut state: MutexGuard<RegistryState> = self.lock();
 
-    if state.live.contains_key(&id) {
-      return Err(format!("Job '{id}' has already been registered"));
+    if state.is_known(id) {
+      return Err(JobRefusal::Repeated);
     }
 
     if let Some((owner, taken)) = state.leases.find_conflict(exclusion_group.as_deref(), &resources) {
       let holder: Option<&LiveJob> = state.live.get(&owner);
 
-      return Err(format!(
+      return Err(JobRefusal::Refused(format!(
         "Cannot start {kind}: {} is already working on '{taken}'.",
         holder.map_or("another job", |job| job.kind.as_str())
-      ));
+      )));
     }
 
     // A cancel that arrived first still counts. Without this the frontend would have to know not to offer the control
