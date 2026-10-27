@@ -3,7 +3,7 @@ import { SpawnHeaderChunk } from "@xrf/ipc/types/xrf-spawn";
 import { ReactElement } from "react";
 
 import { SpawnChunkView } from "@/applications/spawn-editor/components/editor/chunks/SpawnChunkView";
-import { SpawnFileService } from "@/core/spawn/services";
+import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { SpawnEditorHeaderTable } from "./SpawnEditorHeaderTable";

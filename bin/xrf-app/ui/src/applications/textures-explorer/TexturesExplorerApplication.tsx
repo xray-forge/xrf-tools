@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
+import { TextureCatalogService } from "@/applications/textures-explorer/services/catalog";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
-import { TextureCatalogService } from "@/core/textures/services/catalog";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

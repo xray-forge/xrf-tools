@@ -1,7 +1,11 @@
 import { Box } from "@mui/material";
 import { ReactElement } from "react";
 
-import { describeTextureBadge, ETextureBadge, ITextureBadgeDescriptor } from "@/core/textures/lib/texture-catalog";
+import {
+  describeTextureBadge,
+  ETextureBadge,
+  ITextureBadgeDescriptor,
+} from "@/applications/textures-explorer/lib/texture-catalog";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Severity order, so a row with several badges leads with the one worth acting on. */

@@ -7,8 +7,8 @@ import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { ESpawnChunkKind, SpawnChunk, SpawnSessionDescriptor } from "@xrf/ipc/types/xrf-app-spawn";
 import { SpawnGraphsChunk } from "@xrf/ipc/types/xrf-spawn";
 
-import { mockSpawnFile, mockSpawnSession } from "@/core/spawn/fixtures/spawn.mocks";
-import { SpawnFileService } from "@/core/spawn/services/spawn-file.service";
+import { mockSpawnFile, mockSpawnSession } from "@/applications/spawn-editor/fixtures/spawn.mocks";
+import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file/spawn-file.service";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
 import { deferred } from "@/fixtures/utils/promise";

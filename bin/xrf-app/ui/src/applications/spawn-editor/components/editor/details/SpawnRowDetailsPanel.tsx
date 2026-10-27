@@ -2,13 +2,13 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
+import { ISpawnRowSelection, SpawnFileService } from "@/applications/spawn-editor/services/spawn-file";
 import {
   EditorPanel,
   EditorPanelEmpty,
   EditorPanelProperty,
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
-import { ISpawnRowSelection, SpawnFileService } from "@/core/spawn/services";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { formatSpawnRowDetailsValue } from "./SpawnRowDetailsPanel.utils";

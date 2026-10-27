@@ -6,12 +6,12 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 import { Route, Routes } from "react-router-dom";
 
+import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
-import { SpawnFileService } from "@/core/spawn/services";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { SpawnEditorAlife } from "./chunks/alife/SpawnEditorAlife";

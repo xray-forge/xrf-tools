@@ -3,10 +3,10 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { ReactElement, useCallback } from "react";
 
+import { SpawnFileService } from "@/applications/spawn-editor/services/spawn-file";
 import { SPAWN_FILE_FILTERS } from "@/core/path/file-filters";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
-import { SpawnFileService } from "@/core/spawn/services";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
