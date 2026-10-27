@@ -11,7 +11,7 @@ import {
   SelectedLevelDescription,
 } from "@xrf/ipc/types/xrf-app-levels";
 import { CaptureOutcome } from "@xrf/ipc/types/xrf-app-render";
-import { JobProgress } from "@xrf/ipc/types/xrf-job";
+import { EJobOutcome, JobProgress } from "@xrf/ipc/types/xrf-job";
 import { Logger } from "@xrf/logging";
 import { assertExhaustive, Nullable } from "@xrf/types";
 
@@ -386,7 +386,7 @@ export class LevelViewerCaptureService {
 
       if (completion?.error) {
         this.failure = `Failed to capture the ${name}: ${completion.error.message}`;
-      } else if (completion?.result?.outcome === "completed") {
+      } else if (completion?.result?.outcome === EJobOutcome.COMPLETED) {
         this.resultService.show(toLevelCapture(request, yield* call(readLevelViewerImage(path))));
         this.log.info(`Captured a ${name}:`, path);
         void this.resultService.drawAnnotations();
