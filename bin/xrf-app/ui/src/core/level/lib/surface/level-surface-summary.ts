@@ -23,12 +23,23 @@ export const UNNAMED_LEVEL_SURFACE: string = "(no shader)";
  * @returns One row per entry.
  */
 export function listLevelSurfaces(surfaces: ReadonlyArray<XraySurfaceDescriptor>): Array<ILevelSurfaceSummary> {
-  return surfaces.map((descriptor: XraySurfaceDescriptor, shaderId: number) => ({
+  return surfaces.map(toLevelSurfaceSummary);
+}
+
+/**
+ * Summarises one entry of a level's shader table.
+ *
+ * @param descriptor - The entry as the backend resolved it.
+ * @param shaderId - Its position in the table.
+ * @returns Its row.
+ */
+export function toLevelSurfaceSummary(descriptor: XraySurfaceDescriptor, shaderId: number): ILevelSurfaceSummary {
+  return {
     descriptor,
     shader: descriptor.shader ?? UNNAMED_LEVEL_SURFACE,
     shaderId,
     textures: descriptor.textures,
-  }));
+  };
 }
 
 /**

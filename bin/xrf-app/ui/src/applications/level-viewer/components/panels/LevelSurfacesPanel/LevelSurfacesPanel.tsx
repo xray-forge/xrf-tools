@@ -35,7 +35,7 @@ import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { noop } from "@/lib/callbacks/noop";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-import { LevelSurfaceRow } from "./LevelSurfaceRow";
+import { LevelSurfaceDetails } from "./LevelSurfaceDetails";
 
 /**
  * How every surface of the open level is drawn: its shader table's entries by shader, found by shader, texture or id,
@@ -181,12 +181,11 @@ export function LevelSurfacesPanel({
 
       {selected ? (
         <div className={"max-h-1/2 shrink-0 overflow-y-auto border-t border-divider"}>
-          <LevelSurfaceRow
+          <LevelSurfaceDetails
             summary={selected}
             dressing={dressing}
             geometry={geometry}
             unmeasured={describeLevelDescriptionWait(viewportService.description, "how much it draws")}
-            isFirst
           />
         </div>
       ) : null}

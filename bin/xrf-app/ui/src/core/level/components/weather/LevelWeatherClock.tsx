@@ -11,6 +11,9 @@ import { IThrottledDraft, useThrottledDraft } from "@/lib/react/use-throttled-dr
 /** A minute, the slider's step. */
 const MINUTE: number = 60;
 
+/** No keyframe marked, one array kept so the marks are not built again on every render. */
+const NO_KEYFRAMES: ReadonlyArray<number> = [];
+
 interface ILevelWeatherClockProps extends BaseComponentProps {
   /** Seconds since midnight. */
   time: number;
@@ -31,7 +34,7 @@ export function LevelWeatherClock({
   className,
   time,
   isPlaying,
-  keyframes = [],
+  keyframes = NO_KEYFRAMES,
   isDisabled = false,
   onSeek,
   onPlaying,

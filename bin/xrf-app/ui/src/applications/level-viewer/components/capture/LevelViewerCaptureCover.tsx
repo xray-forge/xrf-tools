@@ -1,5 +1,4 @@
 import { useInjection } from "@wirestate/react";
-import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { LEVEL_CAPTURE_NAMES } from "@/applications/level-viewer/lib/capture/level-capture";
@@ -16,11 +15,11 @@ export function LevelViewerCaptureCover({
   "data-testid": dataTestId = "level-viewer-capture-cover",
   id,
   className,
-}: BaseComponentProps): Nullable<ReactElement> {
+}: BaseComponentProps): ReactElement {
   const captureService: LevelViewerCaptureService = useInjection(LevelViewerCaptureService);
 
   if (!captureService.isCapturing) {
-    return null;
+    return <></>;
   }
 
   return (

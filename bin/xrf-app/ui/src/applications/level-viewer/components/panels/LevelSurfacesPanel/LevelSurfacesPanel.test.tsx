@@ -111,7 +111,7 @@ async function choose(view: RenderResult, filter: string, label: string): Promis
   await userEvent.paste(filter);
   await userEvent.click(await view.findByText(label));
 
-  return view.findByTestId("level-surface-row");
+  return view.findByTestId("level-surface-details");
 }
 
 function listRows(view: RenderResult): Array<string> {
@@ -252,7 +252,7 @@ describe("LevelSurfacesPanel", () => {
       })
     );
 
-    expect(await view.findByTestId("level-surface-row")).toHaveTextContent(
+    expect(await view.findByTestId("level-surface-details")).toHaveTextContent(
       "3 · effects\\wallmarkmult · decal\\decal_rza_a"
     );
     expect(filter).toHaveValue("");
@@ -260,6 +260,6 @@ describe("LevelSurfacesPanel", () => {
     // The tree follows the viewport's selection, so one cleared there chooses nothing here.
     act(() => (viewport as unknown as LevelViewportService).notePicked(null));
 
-    await waitFor(() => expect(view.queryByTestId("level-surface-row")).not.toBeInTheDocument());
+    await waitFor(() => expect(view.queryByTestId("level-surface-details")).not.toBeInTheDocument());
   });
 });

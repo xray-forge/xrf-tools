@@ -4,6 +4,10 @@ import { WorldWeatherEffectReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement } from "react";
 
+import {
+  formatLevelWeatherFindings,
+  formatLevelWeatherKeyframes,
+} from "@/core/level/lib/weather/level-weather-cycle-choice";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { CONTROL } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
@@ -61,8 +65,8 @@ export function LevelWeatherEffectSelect({
           <ListItemText
             primary={effect.name}
             secondary={[
-              `${effect.keyframes.length} keyframes`,
-              effect.findings.length ? `${effect.findings.length} findings` : null,
+              formatLevelWeatherKeyframes(effect.keyframes.length),
+              formatLevelWeatherFindings(effect.findings.length),
             ]
               .filter(Boolean)
               .join(" · ")}

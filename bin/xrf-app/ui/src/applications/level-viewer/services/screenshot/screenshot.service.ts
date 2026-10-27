@@ -1,6 +1,7 @@
 import { save } from "@tauri-apps/plugin-dialog";
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, reaction, RefObservable, runInAction } from "@wirestate/mobx";
+import { all, call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { systemCommands } from "@xrf/ipc/commands/system";
 import { BuildInfo } from "@xrf/ipc/types/xrf-build-info";
@@ -93,12 +94,16 @@ export class LevelViewerScreenshotService {
    * Saves the viewport's next finished frame to the screenshots folder, then its report once its frame's cost is read;
    * the passes are timed on the GPU meanwhile, the timing setting left as it is.
    *
-   * @returns The screenshot, or null where none was taken: one is being taken, no level is open, or it failed.
+   * One left running when the tool is left is cancelled, so it holds no screenshot a tool no longer shows.
+   *
+   * @returns The screenshot, or null where none was taken: no level is open, or it failed; a call while one is being
+   *   taken answers that one's.
    */
   @KeybindCommand(TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND, {
     isEnabled: (service: LevelViewerScreenshotService) => service.canTake,
   })
-  public async take(): Promise<Nullable<ILevelViewerScreenshot>> {
+  @ExclusiveFlow()
+  public *take(): TFlow<Nullable<ILevelViewerScreenshot>> {
     const level: Nullable<string> = this.snapshotService.level;
 
     if (!this.canTake || !level) {
@@ -113,34 +118,29 @@ export class LevelViewerScreenshotService {
       : this.waitForTimedFrame();
     const build: Promise<Nullable<BuildInfo>> = this.snapshotService.readBuild();
 
-    runInAction(() => {
-      this.isTaking = true;
-      this.failure = null;
-    });
+    this.isTaking = true;
+    this.failure = null;
 
     try {
-      const path: string = await levelsCommands.findScreenshotPath(toLevelViewerFileStem(level, new Date()));
+      const path: string = yield* call(levelsCommands.findScreenshotPath(toLevelViewerFileStem(level, new Date())));
       // The view as it stands for the frame asked for next, before the camera moves on.
       const view: ILevelViewerSnapshot = this.snapshotService.describe(null);
 
-      if (!(await this.renderService.saveScreenshot(path))) {
+      if (!(yield* call(this.renderService.saveScreenshot(path)))) {
         throw new Error("The level viewer has no viewport attached");
       }
 
-      const shot: ILevelViewerScreenshot = await this.read(path);
+      const shot: ILevelViewerScreenshot = yield* call(this.read(path));
 
       this.replace(shot);
       this.log.info("Took a screenshot:", path);
 
       try {
-        const built: Nullable<BuildInfo> = await build;
+        const [built, frame] = yield* all([build, timedFrame]);
         const { format, ...described } = view;
 
-        await this.writeReport(
-          shot,
-          { format, ...(built ? { build: built } : {}), ...described },
-          await timedFrame,
-          !isTimed
+        yield* call(
+          this.writeReport(shot, { format, ...(built ? { build: built } : {}), ...described }, frame, !isTimed)
         );
       } catch (error: unknown) {
         this.fail("write the screenshot's report", error);
@@ -153,9 +153,7 @@ export class LevelViewerScreenshotService {
       return null;
     } finally {
       releaseTiming();
-      runInAction(() => {
-        this.isTaking = false;
-      });
+      this.isTaking = false;
     }
   }
 

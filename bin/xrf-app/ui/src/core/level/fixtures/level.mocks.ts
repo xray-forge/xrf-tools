@@ -3,7 +3,6 @@ import { IpcCommandMocks } from "@xrf/ipc/testing";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import {
   ELevelSpawnCategory,
-  LevelEntry,
   LevelMapDescription,
   LevelSpawnObject,
   LevelStart,
@@ -72,17 +71,6 @@ export function mockLevelSpawnObject(overrides: Partial<LevelSpawnObject> = {}):
     visual: 0,
     ...overrides,
   };
-}
-
-/**
- * One compiled level a picker lists.
- *
- * @param name - What the installation knows it by.
- * @param hasGeometry - Whether `level.geom` sits beside its bundle.
- * @returns An entry fixture.
- */
-export function mockLevelEntry(name: string, hasGeometry: boolean = true): LevelEntry {
-  return { hasGeometry, logicalPath: `levels\${name}`, name };
 }
 
 /**

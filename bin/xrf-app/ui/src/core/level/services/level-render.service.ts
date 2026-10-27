@@ -88,6 +88,8 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   private shownScene: Nullable<ILevelScene> = null;
   /** The last load report, of whichever scene the viewport drew. */
   private loaded: Nullable<RenderLoadReport> = null;
+  /** Whether the scene shown was revealed and described: its later reports change its counts, not what it holds. */
+  private isRevealed: boolean = false;
   /** Stops hearing the viewport's focus, while one is attached. */
   private unlisten: Nullable<() => void> = null;
 
@@ -423,6 +425,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     this.scene = null;
     this.followed = null;
     this.loaded = null;
+    this.isRevealed = false;
   }
 
   protected onCamera(pose: WorldCameraPose): void {
@@ -446,13 +449,14 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   /**
-   * Reveals the level once everything it opens with is resident, so it is never seen half read; a report of the level
-   * drawn before it, still loading when this one was asked for, reveals nothing.
+   * Reveals the level once everything it opens with is resident, so it is never seen half read, and describes it then,
+   * once a scene; a report of the level drawn before it, still loading when this one was asked for, reveals nothing.
    */
   private revealWhenReady(): void {
     const report: Nullable<RenderLoadReport> = this.loaded;
 
-    if (report?.isReady && this.level && this.scene !== null && report.scene === this.scene) {
+    if (!this.isRevealed && report?.isReady && this.level && this.scene !== null && report.scene === this.scene) {
+      this.isRevealed = true;
       this.followed = null;
       this.viewportService.reveal();
       void this.describeResident();
@@ -513,6 +517,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     this.shownScene = this.loadService.scene;
     this.scene = null;
     this.followed = null;
+    this.isRevealed = false;
     this.stand(toLevelStartViewpoint(level?.bounds ?? null, this.loadService.start.value));
     // Another level's surfaces and objects are numbered afresh.
     this.viewportService.notePicked(null);
@@ -557,6 +562,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     this.opening += 1;
     this.followed = this.scene ?? this.followed;
     this.scene = null;
+    this.isRevealed = false;
     // Its surfaces and objects are numbered afresh.
     this.viewportService.notePicked(null);
     this.viewportService.conceal();

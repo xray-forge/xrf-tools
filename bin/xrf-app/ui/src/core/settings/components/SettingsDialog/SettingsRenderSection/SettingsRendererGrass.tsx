@@ -6,6 +6,7 @@ import {
   formatGrassHeight,
   formatGrassRadius,
   formatGrassShadowCascades,
+  formatGrassSlopeLimit,
   fromGrassDensityScale,
   RENDER_GRASS_LIMITS,
   toGrassDensityScale,
@@ -67,10 +68,8 @@ export function SettingsRendererGrass(): ReactElement {
           label={"Slope limit"}
           description={"Degrees of slope past which no grass grows, thinning out over the last fifth; 90 for none."}
           value={grass.slopeLimit}
-          min={10}
-          max={90}
-          step={1}
-          format={(value: number) => `${value.toFixed(0)}°`}
+          {...RENDER_GRASS_LIMITS.slopeLimit}
+          format={formatGrassSlopeLimit}
           onChange={(slopeLimit: number) => onSet({ slopeLimit })}
         />
 

@@ -17,6 +17,7 @@ import {
   formatGrassHeight,
   formatGrassRadius,
   formatGrassShadowCascades,
+  formatGrassSlopeLimit,
   fromGrassDensityScale,
   RENDER_FOLIAGE_LIMITS,
   RENDER_GRASS_LIMITS,
@@ -111,10 +112,8 @@ export function LevelGrassAction({
       <RenderValueSlider
         label={"Slope limit"}
         value={grass.slopeLimit}
-        min={10}
-        max={90}
-        step={1}
-        format={(value: number) => `${value.toFixed(0)}°`}
+        {...RENDER_GRASS_LIMITS.slopeLimit}
+        format={formatGrassSlopeLimit}
         onChange={(slopeLimit: number) => set({ slopeLimit })}
       />
 

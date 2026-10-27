@@ -2,7 +2,11 @@ import { ListItemText, MenuItem, TextField } from "@mui/material";
 import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement } from "react";
 
-import { ILevelWeatherCycleChoice } from "@/core/level/lib/weather/level-weather-cycle-choice";
+import {
+  formatLevelWeatherFindings,
+  formatLevelWeatherKeyframes,
+  ILevelWeatherCycleChoice,
+} from "@/core/level/lib/weather/level-weather-cycle-choice";
 import { CONTROL } from "@/core/theme/tokens";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -52,9 +56,9 @@ export function LevelWeatherCycleSelect({
           <ListItemText
             primary={cycle.isOffered ? `${cycle.name} · level` : cycle.name}
             secondary={[
-              `${cycle.keyframes} keyframes`,
+              formatLevelWeatherKeyframes(cycle.keyframes),
               ...cycle.states,
-              cycle.findings ? `${cycle.findings} findings` : null,
+              formatLevelWeatherFindings(cycle.findings),
             ]
               .filter(Boolean)
               .join(" · ")}

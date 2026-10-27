@@ -1,4 +1,4 @@
-import { formatNumber } from "@xrf/format";
+import { formatDegrees, formatNumber } from "@xrf/format";
 import { ERenderFoliageMode, RenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
@@ -39,6 +39,7 @@ export const RENDER_GRASS_LIMITS = {
   radius: toRenderLimits(RENDER_FEATURE_SCHEMA.grass.radius, 1),
   shadowCascades: toRenderLimits(RENDER_FEATURE_SCHEMA.grass.shadowCascades, 1),
   shadowRadius: toRenderLimits(RENDER_FEATURE_SCHEMA.grass.shadowRadius, 1),
+  slopeLimit: toRenderLimits(RENDER_FEATURE_SCHEMA.grass.slopeLimit, 1),
 } as const;
 
 /** The bounds each enhanced foliage motion value is offered between. */
@@ -77,6 +78,11 @@ export function formatGrassShadowCascades(cascades: number): string {
   }
 
   return cascades === 1 ? "1 cascade" : `${formatNumber(cascades, 0)} cascades`;
+}
+
+/** @returns The slope past which no grass grows, in degrees. */
+export function formatGrassSlopeLimit(slope: number): string {
+  return formatDegrees(slope);
 }
 
 /** @returns A grass height, as the multiple of the game's it is. */

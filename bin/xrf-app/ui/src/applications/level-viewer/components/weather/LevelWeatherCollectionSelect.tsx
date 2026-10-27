@@ -1,4 +1,5 @@
 import { ListItemText, MenuItem, TextField } from "@mui/material";
+import { formatCount } from "@xrf/format";
 import { ThunderboltCollection } from "@xrf/ipc/types/xrf-environment";
 import { ChangeEvent, ReactElement } from "react";
 
@@ -11,6 +12,11 @@ import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** What the select holds for a keyframe that strikes with nothing. */
 const NONE: string = "";
+
+/** How many bolts a collection strikes with. */
+function formatThunderbolts(count: number): string {
+  return `${formatCount(count)} ${count === 1 ? "bolt" : "bolts"}`;
+}
 
 interface ILevelWeatherCollectionSelectProps extends BaseComponentProps {
   /** The collection struck with, empty for none. */
@@ -63,7 +69,7 @@ export function LevelWeatherCollectionSelect({
       ) : null}
       {collections.map((collection: ThunderboltCollection) => (
         <MenuItem key={collection.name} dense value={collection.name}>
-          <ListItemText primary={collection.name} secondary={`${collection.thunderbolts.length} bolts`} />
+          <ListItemText primary={collection.name} secondary={formatThunderbolts(collection.thunderbolts.length)} />
         </MenuItem>
       ))}
     </TextField>

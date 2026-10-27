@@ -55,6 +55,7 @@ import { EMPTY_RENDER_FRAME_PHASES } from "@/core/render/lib/native/native-frame
 import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
+import { flush } from "@/fixtures/utils/promise";
 
 const SPAN: WorldSurfaceSpan = { uMax: 2, uMin: 0, vMax: 1, vMin: -1 };
 
@@ -229,6 +230,31 @@ describe("LevelRenderService", () => {
         reference: "act\\act_none",
       },
     ]);
+  });
+
+  it("describes a resident level once, however its later reports change its counts", async () => {
+    const { container } = await mockAttachedLevelRender();
+    const viewport: LevelViewportService = container.get(LevelViewportService);
+
+    mockIpcCommands({
+      [ERenderCommand.DESCRIBE_PROBLEMS]: { models: [], sectors: [], skipped: [] },
+      [ERenderCommand.DESCRIBE_TEXTURE_LOADS]: [],
+      [ERenderCommand.MEASURE_SURFACES]: [],
+    });
+    emitViewportEvent({
+      kind: ERenderViewportEvent.LOAD,
+      report: mockRenderLoadReport({ bytes: 20, isReady: true, scene: LEVEL_SCENE }),
+    });
+    await waitFor(() => expect(viewport.description.isReady).toBe(true));
+
+    emitViewportEvent({
+      kind: ERenderViewportEvent.LOAD,
+      report: mockRenderLoadReport({ bytes: 30, isReady: true, scene: LEVEL_SCENE }),
+    });
+    await flush();
+
+    expect(viewport.description.isReady).toBe(true);
+    expect(listMockInvokeCalls(ERenderCommand.MEASURE_SURFACES)).toHaveLength(1);
   });
 
   // The backend moves the scene onto a level its session read again, so the page neither shows it again nor stands the

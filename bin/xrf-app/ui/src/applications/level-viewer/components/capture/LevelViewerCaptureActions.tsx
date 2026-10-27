@@ -1,5 +1,4 @@
 import { useInjection } from "@wirestate/react";
-import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import {
@@ -16,7 +15,7 @@ import { IMenuContribution } from "@/core/shell/menu/lib";
  * The level viewer's File › Capture map and Capture cubemap, after Take screenshot, and the capture's dialog while it is
  * open.
  */
-export function LevelViewerCaptureActions(): Nullable<ReactElement> {
+export function LevelViewerCaptureActions(): ReactElement {
   const captureService: LevelViewerCaptureService = useInjection(LevelViewerCaptureService);
 
   useEditorMenus(
@@ -32,5 +31,5 @@ export function LevelViewerCaptureActions(): Nullable<ReactElement> {
     []
   );
 
-  return captureService.isOpen ? <LevelViewerCaptureDialog /> : null;
+  return captureService.isOpen ? <LevelViewerCaptureDialog /> : <></>;
 }
