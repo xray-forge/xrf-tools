@@ -1,5 +1,8 @@
 use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
 
+use image::RgbaImage;
 use uuid::Uuid;
 use xrf_app_core::TauriResult;
 use xrf_math::Vector3d;
@@ -7,11 +10,13 @@ use xrf_spawn::{
   AlifeLevelChanger, AlifeObject, AlifeObjectAbstract, AlifeObjectInherited, AlifeObjectSpaceRestrictor, ClsId,
   GraphLevel, Patrol, PatrolLink, PatrolPoint, Shape, SpawnLevelGraph,
 };
+use xrf_test_utils::GeneratedResources;
 
 use crate::parts::{LevelMapArea, LevelSpawn};
 use crate::tests::fixtures;
 use crate::viewer::map::annotations::{
   AnnotationCanvas, AnnotationOutline, AnnotationVolume, LevelAnnotationKind, LevelAnnotations,
+  MapAnnotationsWriteRequest,
 };
 
 fn new_restrictor(shape: Vec<Shape>, restrictor_type: u8) -> AlifeObjectSpaceRestrictor {
@@ -87,18 +92,31 @@ fn new_graph() -> SpawnLevelGraph {
   }
 }
 
+fn zaton_area() -> LevelMapArea {
+  LevelMapArea {
+    min_x: -600.0,
+    min_z: -615.0,
+    max_x: 600.0,
+    max_z: 585.0,
+  }
+}
+
 fn zaton_canvas(kinds: Vec<LevelAnnotationKind>, is_labelled: bool) -> AnnotationCanvas {
   AnnotationCanvas {
-    area: LevelMapArea {
-      min_x: -600.0,
-      min_z: -615.0,
-      max_x: 600.0,
-      max_z: 585.0,
-    },
+    area: zaton_area(),
     width: 1200,
     height: 1200,
     kinds,
     is_labelled,
+  }
+}
+
+fn zaton_request(root: &Path) -> MapAnnotationsWriteRequest {
+  MapAnnotationsWriteRequest {
+    path: root.join("map.png"),
+    area: zaton_area(),
+    kinds: LevelAnnotationKind::ALL.to_vec(),
+    is_labelled: false,
   }
 }
 
@@ -263,6 +281,42 @@ fn rasterises_the_svg_at_any_size_clear_where_it_draws_nothing() -> TauriResult<
   assert_eq!(image.get_pixel(35, 10).0[3], 0);
 
   Ok(())
+}
+
+// A map's annotations are drawn at the size the map was captured at, whatever the request's area, and the SVG answered
+// is the one written beside it.
+#[test]
+fn writes_the_annotations_over_a_map_at_the_size_it_was_captured() -> TauriResult<()> {
+  let root: PathBuf = GeneratedResources::path("level_annotations/write");
+  let map: PathBuf = root.join("map.png");
+  let target: PathBuf = root.join("map.svg");
+
+  let _ = fs::remove_dir_all(&root);
+
+  fs::create_dir_all(&root).expect("directory created");
+  RgbaImage::new(40, 20).save(&map).expect("map written");
+
+  let canvas: AnnotationCanvas = AnnotationCanvas::over_map(&MapAnnotationsWriteRequest {
+    path: map,
+    ..zaton_request(&root)
+  })?;
+  let svg: String = canvas.write(
+    &LevelAnnotations::of(&new_spawn(Vec::new()), &new_graph(), "zaton"),
+    &target,
+  )?;
+
+  assert_eq!((canvas.width, canvas.height), (40, 20));
+  assert!(svg.contains(r#"viewBox="0 0 40 20""#));
+  assert_eq!(fs::read_to_string(&target).expect("annotations written"), svg);
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_map_it_cannot_read() {
+  let root: PathBuf = GeneratedResources::path("level_annotations/no_map");
+
+  assert!(AnnotationCanvas::over_map(&zaton_request(&root)).is_err());
 }
 
 #[test]

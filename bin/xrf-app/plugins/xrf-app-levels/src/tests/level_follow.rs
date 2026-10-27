@@ -315,6 +315,50 @@ fn a_commit_to_a_texture_of_a_shown_level_moves_its_scene_onto_the_next_snapshot
   );
 }
 
+/// A level that cannot be read again stays drawn as it was, as one nothing reads again does: its session keeps the
+/// snapshot it was drawn from.
+#[test]
+fn a_shown_level_that_fails_to_read_again_stays_drawn_as_it_was() {
+  let (assets, roots, search) = level_tree("failed");
+  let levels: SelectedLevels = new_levels(&assets, None);
+  let world: WorldState = WorldState::new(RenderWorkers::new(test_pool()));
+  let shown: ShownLevels = ShownLevels::default();
+  let log: ChangeLog = ChangeLog::default();
+  let viewport: RenderViewportId = RenderViewportId(1);
+
+  assets.add_subscriber(LevelSceneFollower {
+    levels: levels.clone(),
+    shown: shown.clone(),
+    world: world.clone(),
+  });
+  assets.add_subscriber(log.clone());
+
+  let opened: Arc<SessionSnapshot<SelectedLevel>> = open(&levels, &assets, &roots);
+  let source: Arc<LevelRenderSource> = shown.get_source(Arc::clone(&opened), &assets);
+  let scene: RenderSceneId = {
+    let mut world = world.lock();
+
+    world.attach(viewport, Box::new(Silence));
+    world
+      .show_level(viewport, Some(Arc::clone(&source) as Arc<dyn RenderLevelSource>))
+      .expect("the level shown")
+  };
+
+  write(&assets, &search, &format!("{LEVEL}\\level"), "broken");
+
+  let change: SessionChange = take_change(&log);
+
+  assert!(matches!(change.root, SessionRootChange::Failed { .. }), "{change:?}");
+  assert_eq!(world.lock().get_asked_scene(viewport), Some(scene), "the scene stays");
+  assert!(
+    Arc::ptr_eq(
+      &shown.find_source(opened.session_id).expect("a source is drawn"),
+      &source
+    ),
+    "the source drawn before stays drawn"
+  );
+}
+
 #[test]
 fn a_show_holding_a_snapshot_a_commit_moved_past_draws_the_source_the_commit_moved_on() {
   let (assets, roots, search) = level_tree("late_show");

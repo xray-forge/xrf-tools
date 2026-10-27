@@ -4,6 +4,7 @@ mod console_defaults;
 mod cube_export;
 mod fixtures;
 mod lens_flares;
+mod level_entries;
 mod level_files;
 mod level_follow;
 mod level_map;
