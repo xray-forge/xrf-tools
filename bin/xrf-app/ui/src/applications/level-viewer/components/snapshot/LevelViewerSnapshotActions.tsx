@@ -11,11 +11,10 @@ import { LEVEL_VIEWER_FILE_MENU_EXTENSION } from "@/applications/level-viewer/me
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
 import { useEditorMenus } from "@/core/shell/editor-shell";
 import { IMenuContribution } from "@/core/shell/menu/lib";
-import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 
 /**
- * The level viewer's File › Export view… and Import view…, offered while a level is open, the import dialog, and why
- * either failed.
+ * The level viewer's File › Export view… and Import view…, offered while a level is open, and the import dialog; what
+ * fails with either is noticed.
  */
 export function LevelViewerSnapshotActions(): ReactElement {
   const snapshotService: LevelViewerSnapshotService = useInjection(LevelViewerSnapshotService);
@@ -52,29 +51,18 @@ export function LevelViewerSnapshotActions(): ReactElement {
     [isDisabled, snapshotService]
   );
 
-  return (
-    <>
-      {importing ? (
-        <LevelViewerImportDialog
-          fileName={importing.fileName}
-          snapshot={importing.snapshot}
-          entries={importing.entries}
-          level={snapshotService.level}
-          result={snapshotService.result}
-          isApplying={snapshotService.isApplying}
-          onApply={onApply}
-          onClose={snapshotService.closeImport}
-        />
-      ) : null}
-
-      <ConfirmDialog
-        isOpen={snapshotService.failure !== null}
-        title={"Level view"}
-        description={snapshotService.failure}
-        confirmLabel={"OK"}
-        onConfirm={snapshotService.dismissFailure}
-        onClose={snapshotService.dismissFailure}
-      />
-    </>
+  return importing ? (
+    <LevelViewerImportDialog
+      fileName={importing.fileName}
+      snapshot={importing.snapshot}
+      entries={importing.entries}
+      level={snapshotService.level}
+      result={snapshotService.applied.value}
+      isApplying={snapshotService.applied.isLoading}
+      onApply={onApply}
+      onClose={snapshotService.closeImport}
+    />
+  ) : (
+    <></>
   );
 }

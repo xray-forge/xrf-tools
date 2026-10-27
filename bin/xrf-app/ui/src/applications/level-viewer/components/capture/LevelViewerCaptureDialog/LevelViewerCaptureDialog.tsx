@@ -41,7 +41,6 @@ export function LevelViewerCaptureDialog({
   const job: Nullable<IJobState> = captureService.operation.job;
   const isCapturing: boolean = captureService.isCapturing;
   const isExporting: boolean = resultService.isExporting;
-  const failure: Nullable<string> = captureService.failure ?? resultService.failure;
   const isMap: boolean = (captured?.mode ?? mode) === ELevelCaptureMode.MAP;
   const name: string = LEVEL_CAPTURE_NAMES[captured?.mode ?? mode];
 
@@ -124,12 +123,6 @@ export function LevelViewerCaptureDialog({
             ) : null}
           </>
         )}
-
-        {failure ? (
-          <Typography className={"text-error"} variant={"body2"} role={"alert"}>
-            {failure}
-          </Typography>
-        ) : null}
       </DialogContent>
 
       <DialogActions className={"px-dialog"}>

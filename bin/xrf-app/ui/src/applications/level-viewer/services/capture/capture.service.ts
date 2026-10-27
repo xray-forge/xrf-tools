@@ -1,6 +1,7 @@
 import { Channel } from "@tauri-apps/api/core";
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, RefObservable, runInAction } from "@wirestate/mobx";
+import { transformError } from "@xrf/errors";
 import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { JobKind } from "@xrf/ipc/types/xrf-app-core";
@@ -29,7 +30,6 @@ import {
   toLevelCubeSupersampling,
   toRenderCubeCapture,
 } from "@/applications/level-viewer/lib/cube/level-cube-capture";
-import { describeLevelViewerFailure } from "@/applications/level-viewer/lib/files/level-viewer-failure";
 import {
   toLevelViewerFileStem,
   toLevelViewerLevelName,
@@ -64,7 +64,8 @@ import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
-import { TCommandCompletion } from "@/core/operations/lib/command-reporter";
+import { ENotificationSeverity } from "@/core/notifications/lib";
+import { CommandReporter, TCommandCompletion } from "@/core/operations/lib/command-reporter";
 
 /** The weather cycle `CDemoRecord` captures a level map under. */
 const MAP_WEATHER_CYCLE: string = "map";
@@ -129,13 +130,12 @@ export class LevelViewerCaptureService {
   @RefObservable()
   public cubeParameters: ILevelCubeParameters = toDefaultLevelCubeParameters();
 
-  /** Why the last capture failed, until another is asked for or the dialog opens again. */
-  @RefObservable()
-  public failure: Nullable<string> = null;
-
   /** Whether a capture has the view, from its look applied until the view is put back as it was. */
   @RefObservable()
   private isViewHeld: boolean = false;
+
+  /** Tells what fails around a capture's job: naming its file, applying its look and putting the view back. */
+  private readonly reporter: CommandReporter = new CommandReporter(this.log);
 
   public constructor(
     private readonly loadService: LevelLoadService = inject(LevelLoadService),
@@ -359,7 +359,6 @@ export class LevelViewerCaptureService {
     const stem: string = toLevelViewerFileStem(toLevelViewerLevelName(this.level?.source), new Date());
 
     this.isViewHeld = true;
-    this.failure = null;
 
     try {
       const path: string = yield* call(levelsCommands.findScreenshotPath(`${CAPTURE_PREFIXES[mode]}_${stem}`));
@@ -385,9 +384,8 @@ export class LevelViewerCaptureService {
           describeLevelCaptureOutcome(mode, path, outcome),
       });
 
-      if (completion?.error) {
-        this.failure = describeLevelViewerFailure(`capture the ${name}`, completion.error);
-      } else if (completion?.result?.outcome === EJobOutcome.COMPLETED) {
+      // A job that failed or stopped is told by its own notice.
+      if (completion?.result?.outcome === EJobOutcome.COMPLETED) {
         this.resultService.show(toLevelCapture(request, yield* call(readLevelViewerImage(path))));
         this.log.info(`Captured a ${name}:`, path);
         void this.resultService.drawAnnotations();
@@ -419,7 +417,6 @@ export class LevelViewerCaptureService {
 
     runInAction(() => {
       this.resultService.reset();
-      this.failure = null;
       this.mode = mode;
       this.mapParameters = volume ? toDefaultLevelMapParameters(this.levelMapRect, volume) : null;
       this.cubeParameters = toDefaultLevelCubeParameters();
@@ -482,7 +479,7 @@ export class LevelViewerCaptureService {
   }
 
   /**
-   * Puts the view back as it was before the capture; a weather that cannot be played again is kept as `failure`.
+   * Puts the view back as it was before the capture; a weather that cannot be played again is noticed.
    *
    * @param options - Its options then.
    * @param weather - Its weather then.
@@ -499,9 +496,14 @@ export class LevelViewerCaptureService {
     }
   }
 
-  @BoundAction()
+  /**
+   * @param what - What failed, as a sentence goes on from "Could not": `capture the level map`.
+   * @param error - Why.
+   */
   private fail(what: string, error: unknown): void {
-    this.log.error(`Failed to ${what}:`, error);
-    this.failure = describeLevelViewerFailure(what, error);
+    const failure: Error = transformError(error);
+
+    this.log.error(`Failed to ${what}:`, failure);
+    this.reporter.notify(ENotificationSeverity.ERROR, { details: failure.message, title: `Could not ${what}` });
   }
 }

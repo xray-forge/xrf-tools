@@ -1,6 +1,6 @@
 import { inject, Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable } from "@wirestate/mobx";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
+import { cancelFlow, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { systemCommands } from "@xrf/ipc/commands/system";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
@@ -16,7 +16,6 @@ import {
   ILevelCubeExportSettings,
   toCubeExportRequest,
 } from "@/applications/level-viewer/lib/cube/level-cube-export";
-import { describeLevelViewerFailure } from "@/applications/level-viewer/lib/files/level-viewer-failure";
 import {
   toLevelViewerFileName,
   toLevelViewerLevelName,
@@ -34,6 +33,8 @@ import {
   toMapExportRequest,
 } from "@/applications/level-viewer/lib/map/level-map-export";
 import { LevelLoadService } from "@/core/level/services/level-load.service";
+import { CommandOperation } from "@/core/operations/lib/command-operation";
+import { CommandReporter } from "@/core/operations/lib/command-reporter";
 import { noop } from "@/lib/callbacks/noop";
 
 /**
@@ -62,16 +63,11 @@ export class LevelViewerCaptureResultService {
   @RefObservable()
   public cubeExport: ILevelCubeExportSettings = DEFAULT_LEVEL_CUBE_EXPORT;
 
-  /** Where the last export was written, its first file for six, until another capture is shown. */
-  @RefObservable()
-  public exported: Nullable<string> = null;
+  /** The capture's export: where the last was written, its first file for six, until another capture is shown. */
+  public readonly exported: CommandOperation<string> = new CommandOperation(this.log);
 
-  @RefObservable()
-  public isExporting: boolean = false;
-
-  /** Why the last thing done with the capture failed, until another capture is shown or exported. */
-  @RefObservable()
-  public failure: Nullable<string> = null;
+  /** Reports what else is done with the capture: its annotations drawn, deleting, showing and copying it. */
+  private readonly reporter: CommandReporter = new CommandReporter(this.log);
 
   /**
    * The last of the annotations' writes beside the map, each sent once the one before it ended, so the file on disk is
@@ -92,9 +88,15 @@ export class LevelViewerCaptureResultService {
     return this.loadService.level.value?.selected.sessionId ?? null;
   }
 
+  /** Whether the capture is being exported, during which it is neither deleted nor left. */
+  @Computed()
+  public get isExporting(): boolean {
+    return this.exported.isLoading;
+  }
+
   /**
-   * Shows `captured`, or nothing, letting what it replaces go, with the export written of it and why the last thing
-   * done with it failed.
+   * Shows `captured`, or nothing, letting what it replaces go with the export written of it: an export still running
+   * lands on no other capture.
    *
    * @param captured - What was captured, or null for nothing.
    */
@@ -104,9 +106,9 @@ export class LevelViewerCaptureResultService {
       URL.revokeObjectURL(this.captured.image.url);
     }
 
+    cancelFlow(this, "exportAs");
     this.captured = captured;
-    this.exported = null;
-    this.failure = null;
+    this.exported.reset();
     this.showAnnotations(null);
   }
 
@@ -153,14 +155,15 @@ export class LevelViewerCaptureResultService {
 
     this.annotationsWritten = writing.catch(noop);
 
-    try {
-      const { value } = yield* call(writing);
+    const { result } = yield* this.reporter.run({
+      name: "Draw map annotations",
+      subject: captured.image.path,
+      command: () => writing,
+      failure: "Could not draw the map's annotations",
+    });
 
-      if (this.captured === captured) {
-        this.showAnnotations(URL.createObjectURL(new Blob([value], { type: "image/svg+xml" })));
-      }
-    } catch (error: unknown) {
-      this.fail("draw the map's annotations", error);
+    if (result && this.captured === captured) {
+      this.showAnnotations(URL.createObjectURL(new Blob([result.value], { type: "image/svg+xml" })));
     }
   }
 
@@ -192,121 +195,133 @@ export class LevelViewerCaptureResultService {
       return;
     }
 
-    const { mode, image } = captured;
-    const name: string = LEVEL_CAPTURE_NAMES[mode];
+    const name: string = LEVEL_CAPTURE_NAMES[captured.mode];
     const level: Nullable<string> = toLevelViewerLevelName(this.loadService.level.value?.selected.value.source);
-    const target: Nullable<string> = yield* call(
-      askLevelCaptureExportTarget(mode, toLevelViewerFileName(level), {
-        cube: this.cubeExport,
-        map: this.mapExport,
-      })
-    );
+    const { result: target } = yield* this.reporter.run({
+      name: `Choose where to export the ${name}`,
+      command: () =>
+        askLevelCaptureExportTarget(captured.mode, toLevelViewerFileName(level), {
+          cube: this.cubeExport,
+          map: this.mapExport,
+        }),
+      failure: `Could not export the ${name}`,
+    });
 
     if (!target || this.captured !== captured) {
       return;
     }
 
-    this.isExporting = true;
-    this.failure = null;
-
-    try {
-      let exported: string = target;
-
-      if (mode === ELevelCaptureMode.MAP) {
-        const request = toMapExportRequest(this.mapExport, image.path, target, Math.max(image.width, image.height));
-
-        // The annotations drawn last are on disk before the export reads them.
-        yield* call(this.annotationsWritten);
-        yield* call(levelsCommands.exportMap(request));
-      } else {
-        const request = toCubeExportRequest(this.cubeExport, image.path, target, toLevelCubeFaceSize(image.width));
-        const written: Array<string> = yield* call(levelsCommands.exportCube(request));
-
-        exported = written[0] ?? target;
-      }
-
-      if (this.captured === captured) {
-        this.exported = exported;
-      }
-
-      this.log.info(`Exported a ${name}:`, target);
-    } catch (error: unknown) {
-      this.fail(`export the ${name}`, error);
-    } finally {
-      this.isExporting = false;
-    }
+    yield* this.exported.run({
+      name: `Export ${name}`,
+      subject: target,
+      command: () => this.writeExport(captured, target),
+      failure: `Could not export the ${name}`,
+    });
   }
 
   /** Deletes what was captured for good, with its annotations once they are written; nothing while it is exported. */
   @ExclusiveFlow()
   public *remove(): TFlow {
-    if (!this.isExporting) {
-      yield* this.attempt("delete the capture", (captured: TLevelCapture) => this.delete(captured));
+    const captured: Nullable<TLevelCapture> = this.captured;
+
+    if (!captured || this.isExporting) {
+      return;
+    }
+
+    const { error } = yield* this.reporter.run({
+      name: "Delete capture",
+      subject: captured.image.path,
+      command: () => this.delete(captured),
+      failure: "Could not delete the capture",
+    });
+
+    if (!error) {
+      this.show(null);
     }
   }
 
   /** Shows what was captured selected in its folder. */
   @ExclusiveFlow()
   public *reveal(): TFlow {
-    yield* this.attempt("show the capture", ({ image }: TLevelCapture) => call(systemCommands.revealPath(image.path)));
+    yield* this.attempt("Show capture", "Could not show the capture", ({ image }) =>
+      systemCommands.revealPath(image.path)
+    );
   }
 
   /** Shows the last export selected in its folder. */
   @ExclusiveFlow()
   public *revealExport(): TFlow {
-    const exported: Nullable<string> = this.exported;
+    const exported: Nullable<string> = this.exported.value;
 
-    if (!exported) {
-      return;
-    }
-
-    try {
-      yield* call(systemCommands.revealPath(exported));
-    } catch (error: unknown) {
-      this.fail("show the export", error);
+    if (exported) {
+      yield* this.reporter.run({
+        name: "Show export",
+        subject: exported,
+        command: () => systemCommands.revealPath(exported),
+        failure: "Could not show the export",
+      });
     }
   }
 
   /** Puts the capture's path on the clipboard. */
   @ExclusiveFlow()
   public *copyPath(): TFlow {
-    yield* this.attempt("copy the capture's path", ({ image }: TLevelCapture) =>
-      call(navigator.clipboard.writeText(image.path))
+    yield* this.attempt("Copy capture path", "Could not copy the capture's path", ({ image }) =>
+      navigator.clipboard.writeText(image.path)
     );
   }
 
   /** Puts the capture's image on the clipboard. */
   @ExclusiveFlow()
   public *copyImage(): TFlow {
-    yield* this.attempt("copy the capture", ({ image }: TLevelCapture) => call(copyLevelViewerImage(image)));
+    yield* this.attempt("Copy capture", "Could not copy the capture", ({ image }) => copyLevelViewerImage(image));
   }
 
-  /** Does `action` with what was captured, if anything; a failure is kept as `failure`, as `what` says. */
-  private *attempt(what: string, action: (captured: TLevelCapture) => TFlow<unknown>): TFlow {
-    if (!this.captured) {
-      return;
+  /**
+   * Does something with what was captured, if anything, reported as one command.
+   *
+   * @param name - What it does, as its log lines name it.
+   * @param failure - The failure notice's title.
+   * @param action - Does it with the capture.
+   */
+  private *attempt(name: string, failure: string, action: (captured: TLevelCapture) => Promise<unknown>): TFlow {
+    const captured: Nullable<TLevelCapture> = this.captured;
+
+    if (captured) {
+      yield* this.reporter.run({ name, subject: captured.image.path, command: () => action(captured), failure });
+    }
+  }
+
+  /**
+   * Writes `captured` again as its export settings ask.
+   *
+   * @param captured - What was captured.
+   * @param target - The file, or a cubemap's folder for six faces, the save dialog answered.
+   * @returns Where it was written, its first file for six.
+   */
+  private async writeExport(captured: TLevelCapture, target: string): Promise<string> {
+    const { mode, image } = captured;
+
+    if (mode === ELevelCaptureMode.MAP) {
+      const request = toMapExportRequest(this.mapExport, image.path, target, Math.max(image.width, image.height));
+
+      // The annotations drawn last are on disk before the export reads them.
+      await this.annotationsWritten;
+      await levelsCommands.exportMap(request);
+
+      return target;
     }
 
-    try {
-      yield* action(this.captured);
-    } catch (error: unknown) {
-      this.fail(what, error);
-    }
+    const request = toCubeExportRequest(this.cubeExport, image.path, target, toLevelCubeFaceSize(image.width));
+    const written: Array<string> = await levelsCommands.exportCube(request);
+
+    return written[0] ?? target;
   }
 
-  /** Deletes `captured` once the annotations drawn over it are written, and lets it go. */
-  private *delete({ image }: TLevelCapture): TFlow {
-    yield* call(this.annotationsWritten);
-    yield* call(levelsCommands.deleteScreenshot(image.path));
-
-    this.log.info("Deleted a capture:", image.path);
-    this.show(null);
-  }
-
-  @BoundAction()
-  private fail(what: string, error: unknown): void {
-    this.log.error(`Failed to ${what}:`, error);
-    this.failure = describeLevelViewerFailure(what, error);
+  /** Deletes `captured` once the annotations drawn over it are written. */
+  private async delete({ image }: TLevelCapture): Promise<void> {
+    await this.annotationsWritten;
+    await levelsCommands.deleteScreenshot(image.path);
   }
 
   /** Shows the annotations drawn at `url`, or none, letting the ones they replace go. */

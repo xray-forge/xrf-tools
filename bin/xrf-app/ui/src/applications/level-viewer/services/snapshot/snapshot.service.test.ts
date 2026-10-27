@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { EventBus, WireEvent } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
 import { ERenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
 
@@ -11,8 +12,11 @@ import {
 } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
 import { ILevelViewContainerDescriptor, mockLevelViewContainer } from "@/core/level/fixtures/level-container";
+import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { EApplicationId } from "@/core/routing/application";
 import { clearLocalStorage } from "@/core/storage";
+import { mockApplicationScope } from "@/fixtures/utils/container";
 
 beforeEach(() => {
   clearLocalStorage();
@@ -32,8 +36,42 @@ describe("LevelViewerSnapshotService", () => {
     await Promise.all([snapshot.applyImport([]), snapshot.applyImport([])]);
 
     expect(apply).toHaveBeenCalledTimes(1);
-    expect(snapshot.result).toEqual(applied);
-    expect(snapshot.isApplying).toBe(false);
+    expect(snapshot.applied.value).toEqual(applied);
+    expect(snapshot.applied.isLoading).toBe(false);
+  });
+
+  // The dialog showed values it could not apply; its notice says why, and the dialog closes.
+  it("closes an import that failed and says why from the viewer", async () => {
+    const { container }: ILevelViewContainerDescriptor = mockLevelViewContainer([
+      ...mockApplicationScope(EApplicationId.LEVEL_VIEWER),
+      LevelViewerSnapshotService,
+    ]);
+    const snapshot: LevelViewerSnapshotService = container.get(LevelViewerSnapshotService);
+    const raised: Array<INotificationPayload> = [];
+
+    container
+      .get(EventBus)
+      .subscribe(EMIT_NOTIFICATION_EVENT, (event: WireEvent<INotificationPayload>) =>
+        raised.push(event.payload as INotificationPayload)
+      );
+    jest.spyOn(snapshot.log, "error").mockImplementation(() => undefined);
+    jest.spyOn(snapshot, "apply").mockRejectedValue(new Error("the weather is not read"));
+    runInAction(() => {
+      snapshot.importing = { entries: [], fileName: "zaton.json", snapshot: { format: LEVEL_VIEWER_SNAPSHOT_FORMAT } };
+    });
+
+    await snapshot.applyImport([]);
+
+    expect(snapshot.importing).toBeNull();
+    expect(snapshot.applied.state.isIdle).toBe(true);
+    expect(raised).toEqual([
+      expect.objectContaining({
+        details: "zaton.json\nthe weather is not read",
+        severity: ENotificationSeverity.ERROR,
+        source: EApplicationId.LEVEL_VIEWER,
+        title: "Could not import the view",
+      }),
+    ]);
   });
 
   it("describes every setting as the view draws it, its toggles and its camera's lens", () => {

@@ -15,7 +15,7 @@ export function LevelViewerCaptureExported({
   className,
 }: BaseComponentProps): ReactElement {
   const resultService: LevelViewerCaptureResultService = useInjection(LevelViewerCaptureResultService);
-  const exported: Nullable<string> = resultService.exported;
+  const exported: Nullable<string> = resultService.exported.value;
 
   const onReveal = useCallback(() => void resultService.revealExport(), [resultService]);
 

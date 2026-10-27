@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { waitFor } from "@testing-library/react";
+import { EventBus, WireEvent } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { ELevelsBulkRoute } from "@xrf/ipc/commands/levels-bulk";
@@ -15,22 +16,35 @@ import {
   mockLevelViewContainer,
   noteLevelFrame,
 } from "@/core/level/fixtures/level-container";
+import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
+import { EApplicationId } from "@/core/routing/application";
 import { clearLocalStorage } from "@/core/storage";
+import { mockApplicationScope } from "@/fixtures/utils/container";
 import { deferred } from "@/fixtures/utils/promise";
 
 const PATH: string = "appdata/level-viewer/screenshots/zaton-20261020-070509.png";
 const REPORT_PATH: string = "appdata/level-viewer/screenshots/zaton-20261020-070509.json";
 
-function mockScreenshots(): ILevelViewContainerDescriptor & { screenshots: LevelViewerScreenshotService } {
+function mockScreenshots(): ILevelViewContainerDescriptor & {
+  screenshots: LevelViewerScreenshotService;
+  raised: Array<INotificationPayload>;
+} {
   const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer([
+    ...mockApplicationScope(EApplicationId.LEVEL_VIEWER),
     LevelViewerScreenshotService,
     LevelViewerSnapshotService,
   ]);
+  const raised: Array<INotificationPayload> = [];
 
+  descriptor.container
+    .get(EventBus)
+    .subscribe(EMIT_NOTIFICATION_EVENT, (event: WireEvent<INotificationPayload>) =>
+      raised.push(event.payload as INotificationPayload)
+    );
   jest.spyOn(LevelViewerSnapshotService.prototype, "level", "get").mockReturnValue("levels/zaton");
   jest.spyOn(descriptor.render, "saveScreenshot").mockResolvedValue(true);
 
-  return { ...descriptor, screenshots: descriptor.container.get(LevelViewerScreenshotService) };
+  return { ...descriptor, raised, screenshots: descriptor.container.get(LevelViewerScreenshotService) };
 }
 
 beforeEach(() => {
@@ -72,9 +86,9 @@ describe("LevelViewerScreenshotService", () => {
     // Asked again while it is taken, it is the same screenshot.
     const again: Promise<Nullable<ILevelViewerScreenshot>> = flowResult(screenshots.take());
 
-    await waitFor(() => expect(screenshots.shot).not.toBeNull());
+    await waitFor(() => expect(screenshots.shot.value).not.toBeNull());
 
-    expect(screenshots.shot).toMatchObject({
+    expect(screenshots.shot.value).toMatchObject({
       height: 1080,
       name: "zaton-20261020-070509.png",
       path: PATH,
@@ -93,8 +107,8 @@ describe("LevelViewerScreenshotService", () => {
       frame: { framesPerSecond: 61, isGpuTimed: true },
       screenshot: { file: "zaton-20261020-070509.png", height: 1080, isTimingSwitched: true, width: 1920 },
     });
-    expect(shot?.frame?.framesPerSecond).toBe(61);
-    expect(shot?.reportPath).toBe(REPORT_PATH);
+    expect(screenshots.report.value?.frame.framesPerSecond).toBe(61);
+    expect(screenshots.report.value?.path).toBe(REPORT_PATH);
     await expect(again).resolves.toBe(shot);
     expect(renderSettings.renderSettings.isGpuTimed).toBe(false);
     expect(screenshots.canTake).toBe(true);
@@ -134,16 +148,56 @@ describe("LevelViewerScreenshotService", () => {
       },
     });
 
-    const { screenshots, render, renderSettings } = mockScreenshots();
+    const { raised, screenshots, render, renderSettings } = mockScreenshots();
 
+    jest.spyOn(screenshots.log, "error").mockImplementation(() => undefined);
     renderSettings.setGpuTimed(true);
     noteLevelFrame(render, { isGpuTimed: true });
 
     const shot: Nullable<ILevelViewerScreenshot> = await flowResult(screenshots.take());
 
     expect(shot?.path).toBe(PATH);
-    expect(shot?.reportPath).toBeNull();
-    expect(screenshots.failure).toContain("write the screenshot's report");
+    expect(screenshots.shot.value).toBe(shot);
+    expect(screenshots.report.value).toBeNull();
+    expect(screenshots.report.error?.message).toBe("disk full");
+    expect(raised).toEqual([
+      expect.objectContaining({
+        details: `${PATH}\ndisk full`,
+        severity: ENotificationSeverity.ERROR,
+        source: EApplicationId.LEVEL_VIEWER,
+        title: "Could not write the screenshot's report",
+      }),
+    ]);
+  });
+
+  // A failed screenshot leaves the one before it shown, its report with it.
+  it("says why a screenshot failed from the viewer, keeping the one before it", async () => {
+    mockIpcCommands({
+      [ELevelsCommand.FIND_SCREENSHOT_PATH]: PATH,
+      [ELevelsCommand.WRITE_SCREENSHOT_REPORT]: REPORT_PATH,
+    });
+
+    const { raised, screenshots, render, renderSettings } = mockScreenshots();
+
+    jest.spyOn(screenshots.log, "error").mockImplementation(() => undefined);
+    renderSettings.setGpuTimed(true);
+    noteLevelFrame(render, { isGpuTimed: true });
+
+    const first: Nullable<ILevelViewerScreenshot> = await flowResult(screenshots.take());
+
+    jest.mocked(render.saveScreenshot).mockResolvedValue(false);
+
+    await expect(flowResult(screenshots.take())).resolves.toBeNull();
+    expect(screenshots.shot.value).toBe(first);
+    expect(screenshots.report.value?.path).toBe(REPORT_PATH);
+    expect(screenshots.canTake).toBe(true);
+    expect(raised).toEqual([
+      expect.objectContaining({
+        details: "levels/zaton\nThe level viewer has no viewport attached",
+        source: EApplicationId.LEVEL_VIEWER,
+        title: "Could not take a screenshot",
+      }),
+    ]);
   });
 
   it("holds no screenshot taken while the tool was left", async () => {
@@ -162,8 +216,7 @@ describe("LevelViewerScreenshotService", () => {
     path.resolve(PATH);
 
     await expect(taking).resolves.toBeUndefined();
-    expect(render.saveScreenshot).not.toHaveBeenCalled();
-    expect(screenshots.shot).toBeNull();
+    expect(screenshots.shot.value).toBeNull();
     expect(screenshots.isTaking).toBe(false);
   });
 
@@ -187,7 +240,8 @@ describe("LevelViewerScreenshotService", () => {
     await screenshots.remove();
 
     expect(deleted).toEqual([PATH]);
-    expect(screenshots.shot).toBeNull();
+    expect(screenshots.shot.value).toBeNull();
+    expect(screenshots.report.value).toBeNull();
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:screenshot");
   });
 });
