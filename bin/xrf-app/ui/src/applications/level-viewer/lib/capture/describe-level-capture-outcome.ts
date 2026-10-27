@@ -1,4 +1,5 @@
 import { CaptureOutcome } from "@xrf/ipc/types/xrf-app-render";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 
 import { ELevelCaptureMode, LEVEL_CAPTURE_NAMES } from "@/applications/level-viewer/lib/capture/level-capture";
 import { toLevelCubeFaceSize } from "@/applications/level-viewer/lib/cube/level-cube-capture";
@@ -25,7 +26,7 @@ export function describeLevelCaptureOutcome(
     return describeJobFailure(`Could not capture the ${name}`, path, error);
   }
 
-  if (result?.outcome === "cancelled") {
+  if (result?.outcome === EJobOutcome.CANCELLED) {
     return {
       details: `Nothing was written: the ${name} is written only once every ${
         mode === ELevelCaptureMode.MAP ? "tile" : "face"
