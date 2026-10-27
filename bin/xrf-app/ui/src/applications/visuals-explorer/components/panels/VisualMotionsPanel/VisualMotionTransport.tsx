@@ -12,7 +12,7 @@ import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparat
 import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { MotionFrameSlider, MotionPlaybackRate } from "@/core/visuals/components/preview";
 import { formatMotionTiming } from "@/core/visuals/lib/visual-motion";
-import { VisualMotionService } from "@/core/visuals/services/visual-motion/visual-motion.service";
+import { VisualMotionService } from "@/core/visuals/services/visual-motion";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**

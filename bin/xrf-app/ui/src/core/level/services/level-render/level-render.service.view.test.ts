@@ -18,8 +18,8 @@ import {
 } from "@/core/level/fixtures/level-render";
 import { mockWorldWeatherReport } from "@/core/level/fixtures/weather.mocks";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
-import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
-import { LevelWeatherService } from "@/core/level/services/level-weather/level-weather.service";
+import { LevelViewService } from "@/core/level/services/level-view";
+import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { SettingsService } from "@/core/settings/services/settings";

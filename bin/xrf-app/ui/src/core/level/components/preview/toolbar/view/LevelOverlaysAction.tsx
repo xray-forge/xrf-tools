@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { ILevelOverlay, LEVEL_OVERLAYS } from "@/core/level/lib/view/level-overlays";
-import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
+import { LevelViewService } from "@/core/level/services/level-view";
 import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";

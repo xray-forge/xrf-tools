@@ -8,7 +8,7 @@ import { IVisualBoneControls, IVisualInspection } from "@/core/visuals/component
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
-import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
+import { IOpenVisual, VisualLoadService } from "@/core/visuals/services/visual-load";
 
 /**
  * The visual an application has open, forwarded from the loader for the panels that inspect it.

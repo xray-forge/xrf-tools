@@ -8,7 +8,7 @@ import { VisualsService } from "@/applications/visuals-explorer/services/visuals
 import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { cn } from "@/core/theme/class-name";
-import { VisualMotionService } from "@/core/visuals/services/visual-motion/visual-motion.service";
+import { VisualMotionService } from "@/core/visuals/services/visual-motion";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { VisualMotionList } from "./VisualMotionList";

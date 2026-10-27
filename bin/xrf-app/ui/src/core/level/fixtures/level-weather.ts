@@ -5,8 +5,8 @@ import { EWorldWeatherPlay, WorldWeatherPlay } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
-import { LevelWeatherService } from "@/core/level/services/level-weather/level-weather.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
+import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { mockHeldSessionRoot, mockLetGoSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { mockContainer } from "@/fixtures/utils/container";
 

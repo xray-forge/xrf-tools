@@ -8,7 +8,7 @@ import {
   toLevelOutput,
   toLevelRendererFeatures,
 } from "@/core/level/lib/features/level-feature-options";
-import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
+import { LevelViewService } from "@/core/level/services/level-view";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";

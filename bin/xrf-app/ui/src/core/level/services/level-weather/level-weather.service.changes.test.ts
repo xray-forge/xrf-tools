@@ -10,7 +10,7 @@ import { EWorldWeatherPlay } from "@xrf/ipc/types/xrf-world";
 
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { mockLevelWeatherCycle, mockLevelWeatherDescription } from "@/core/level/fixtures/weather.mocks";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelWeatherService } from "@/core/level/services/level-weather/level-weather.service";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";

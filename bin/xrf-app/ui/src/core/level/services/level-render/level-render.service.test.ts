@@ -62,8 +62,8 @@ import { DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS } from "@/core/level/lib/weather/level
 import { DEFAULT_LEVEL_WEATHER_CONTROL } from "@/core/level/lib/weather/level-weather-control";
 import { toLevelWeatherMemoryKey, writeLevelWeatherMemory } from "@/core/level/lib/weather/level-weather-memory";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
-import { LevelViewportService } from "@/core/level/services/level-viewport/level-viewport.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
+import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
 import { EMPTY_RENDER_FRAME_PHASES } from "@/core/render/lib/native/native-frame-report";

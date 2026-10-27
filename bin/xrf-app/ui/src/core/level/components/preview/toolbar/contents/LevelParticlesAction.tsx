@@ -2,7 +2,7 @@ import { default as LocalFireDepartmentIcon } from "@mui/icons-material/LocalFir
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
+import { LevelViewService } from "@/core/level/services/level-view";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 

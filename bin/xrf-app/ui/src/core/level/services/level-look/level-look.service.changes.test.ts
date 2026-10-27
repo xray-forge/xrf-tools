@@ -8,7 +8,7 @@ import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
 import { LEVEL_CONSOLE_PART, LEVEL_SPAWN_PART, LevelConsoleDefaults } from "@xrf/ipc/types/xrf-app-levels";
 
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelLookService } from "@/core/level/services/level-look/level-look.service";
 import { clearLocalStorage } from "@/core/storage";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";

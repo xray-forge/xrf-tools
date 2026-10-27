@@ -2,8 +2,8 @@ import { inject, Injectable } from "@wirestate/core";
 import { EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 
 import { createRoots } from "@/core/assets/lib";
-import { VisualInspectionService } from "@/core/visuals/services/visual-inspection/visual-inspection.service";
-import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
+import { VisualInspectionService } from "@/core/visuals/services/visual-inspection";
+import { VisualLoadService } from "@/core/visuals/services/visual-load";
 
 /**
  * An inspection over the loader alone, for panel tests that need a visual open and no application around it.

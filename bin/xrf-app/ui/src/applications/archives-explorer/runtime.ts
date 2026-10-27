@@ -6,8 +6,8 @@ import { ArchivesExplorerKeybindsService } from "@/applications/archives-explore
 import { AssetService } from "@/core/assets/services";
 import { VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { VisualLoadService } from "@/core/visuals/services";
-import { VisualRenderService } from "@/core/visuals/services/visual-render/visual-render.service";
-import { VisualViewService } from "@/core/visuals/services/visual-view/visual-view.service";
+import { VisualRenderService } from "@/core/visuals/services/visual-render";
+import { VisualViewService } from "@/core/visuals/services/visual-view";
 import { ContainerDefinition } from "@/lib/container/container-definition";
 
 export { ArchivesExplorerApplication as Component } from "./ArchivesExplorerApplication";

@@ -49,11 +49,11 @@ import { toLevelCameraAt, toLevelViewOptions } from "@/core/level/lib/render/lev
 import { ILevelResident, toLevelResident } from "@/core/level/lib/render/level-resident";
 import { LevelSceneShow } from "@/core/level/lib/render/level-scene-show";
 import { ELevelShading, toShownLevelShading } from "@/core/level/lib/view/level-shading";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
-import { LevelLookService } from "@/core/level/services/level-look/level-look.service";
-import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
-import { LevelViewportService } from "@/core/level/services/level-viewport/level-viewport.service";
-import { LevelWeatherService } from "@/core/level/services/level-weather/level-weather.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
+import { LevelLookService } from "@/core/level/services/level-look";
+import { LevelViewService } from "@/core/level/services/level-view";
+import { LevelViewportService } from "@/core/level/services/level-viewport";
+import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { toDrawnAntialiasing } from "@/core/render/lib/features/render-antialiasing-choices";
 import { toDrawnRenderLightLevel } from "@/core/render/lib/features/render-light-level-choices";

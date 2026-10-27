@@ -9,7 +9,7 @@ import {
   SequenceMotionCache,
 } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
 import { clampMotionFps, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
-import { VisualLoadService } from "@/core/visuals/services/visual-load/visual-load.service";
+import { VisualLoadService } from "@/core/visuals/services/visual-load";
 
 /** One clip of the track: a motion, at the position its author put it. */
 export interface ISequenceClip {

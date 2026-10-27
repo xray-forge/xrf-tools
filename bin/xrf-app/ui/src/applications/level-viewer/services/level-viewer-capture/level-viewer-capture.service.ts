@@ -59,11 +59,11 @@ import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LEVEL_WEATHER_NOON } from "@/core/level/lib/weather/level-weather-control";
 import { ILevelWeatherHold } from "@/core/level/lib/weather/level-weather-hold";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
-import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
-import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
-import { LevelViewportService } from "@/core/level/services/level-viewport/level-viewport.service";
-import { LevelWeatherService } from "@/core/level/services/level-weather/level-weather.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
+import { LevelRenderService } from "@/core/level/services/level-render";
+import { LevelViewService } from "@/core/level/services/level-view";
+import { LevelViewportService } from "@/core/level/services/level-viewport";
+import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { CommandReporter, TCommandCompletion } from "@/core/operations/lib/command-reporter";
 

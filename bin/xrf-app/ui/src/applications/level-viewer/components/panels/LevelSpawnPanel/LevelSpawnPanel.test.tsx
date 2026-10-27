@@ -17,12 +17,12 @@ import {
 } from "@/core/level/fixtures/level.mocks";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
-import { LevelLoadService } from "@/core/level/services/level-load/level-load.service";
-import { LevelLookService } from "@/core/level/services/level-look/level-look.service";
-import { LevelRenderService } from "@/core/level/services/level-render/level-render.service";
-import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
-import { LevelViewportService } from "@/core/level/services/level-viewport/level-viewport.service";
-import { LevelWeatherService } from "@/core/level/services/level-weather/level-weather.service";
+import { LevelLoadService } from "@/core/level/services/level-load";
+import { LevelLookService } from "@/core/level/services/level-look";
+import { LevelRenderService } from "@/core/level/services/level-render";
+import { LevelViewService } from "@/core/level/services/level-view";
+import { LevelViewportService } from "@/core/level/services/level-viewport";
+import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { mockVisualTransform } from "@/core/visuals/fixtures/visual.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";

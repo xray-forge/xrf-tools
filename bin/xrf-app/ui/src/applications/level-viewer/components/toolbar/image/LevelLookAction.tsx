@@ -29,8 +29,8 @@ import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { ILevelLook } from "@/core/level/lib/look/level-look";
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
-import { LevelLookService } from "@/core/level/services/level-look/level-look.service";
-import { LevelViewService } from "@/core/level/services/level-view/level-view.service";
+import { LevelLookService } from "@/core/level/services/level-look";
+import { LevelViewService } from "@/core/level/services/level-view";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
