@@ -1,8 +1,7 @@
-import { TextField } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { TextField } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement, useCallback } from "react";
-
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ITextureNumberFieldProps extends BaseComponentProps {
   label: string;

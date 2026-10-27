@@ -1,6 +1,7 @@
 import { LtxInventoryFile } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
@@ -12,7 +13,6 @@ import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { ARCHIVED_CAPTION, TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { CONFIG_TREE_ICONS, decorateConfigIcon } from "./ConfigsMenu.utils";
 

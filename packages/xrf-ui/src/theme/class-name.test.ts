@@ -3,7 +3,7 @@ import { resolve } from "path";
 
 import { describe, expect, it } from "@jest/globals";
 
-import { cn } from "@/core/theme/class-name";
+import { cn } from "#/theme/class-name";
 
 /**
  * Namespaces whose custom names a merger has to be told about; colours it matches generically.

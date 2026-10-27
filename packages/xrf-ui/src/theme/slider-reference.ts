@@ -3,7 +3,7 @@ import { SystemStyleObject } from "@mui/system";
 import { saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
-import { SLIDER_REFERENCE } from "@/core/theme/tokens";
+import { SLIDER_REFERENCE } from "#/theme/tokens";
 
 /**
  * @param recommended - The range xrf recommends, none where the setting is not rated.

@@ -1,4 +1,4 @@
-import { default as HubIcon } from "@mui/icons-material/Hub";
+import { HubIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

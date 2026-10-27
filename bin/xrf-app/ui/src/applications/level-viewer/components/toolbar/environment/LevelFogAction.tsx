@@ -1,8 +1,9 @@
-import { default as FoggyIcon } from "@mui/icons-material/Foggy";
-import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatNumber, formatPercent } from "@xrf/format";
 import { ERenderFogMode, RenderFogMode } from "@xrf/ipc/types/xrf-renderer";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { FoggyIcon } from "@xrf/ui/icons";
+import { Button } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
@@ -30,7 +31,6 @@ import {
 import { TRenderFogSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** What the distance fades into: the sky as the engine fades it, or its haze. */
 const FADE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<"sky" | "haze">> = [

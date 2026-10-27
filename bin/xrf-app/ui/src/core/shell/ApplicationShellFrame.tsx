@@ -1,5 +1,7 @@
 import { useInjection, useOnCommand, useOnQuery } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode, Suspense, useCallback, useState } from "react";
 import { flushSync } from "react-dom";
 import { NavigateFunction, useLocation, useNavigate } from "react-router-dom";
@@ -32,8 +34,6 @@ import { IPanelSelection, usePanelSelection } from "@/core/shell/panel/use-panel
 import { IPanelWidth, usePanelWidth } from "@/core/shell/panel/use-panel-width";
 import { APPLICATION_OPEN_QUERY, CLOSE_APPLICATION_COMMAND } from "@/core/shell/shell-messages";
 import { ApplicationTitleBar } from "@/core/shell/title-bar/ApplicationTitleBar";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IApplicationShellFrameProps extends BaseComponentProps {
   children: ReactNode;

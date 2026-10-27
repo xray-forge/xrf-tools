@@ -1,4 +1,4 @@
-import { default as AssignmentIcon } from "@mui/icons-material/Assignment";
+import { AssignmentIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

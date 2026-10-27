@@ -1,12 +1,12 @@
-import { Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { KeyboardEvent, ReactElement, RefObject } from "react";
 
 import { ICatalogGroupFilter } from "@/core/launcher/lib";
 import { EApplicationGroupId } from "@/core/routing/application";
 import { TCatalogView } from "@/core/settings/lib/catalog-view";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ApplicationLauncherGroupFilters } from "./ApplicationLauncherGroupFilters";
 import { ApplicationLauncherSearchField } from "./ApplicationLauncherSearchField";

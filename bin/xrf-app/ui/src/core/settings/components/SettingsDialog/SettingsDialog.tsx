@@ -1,10 +1,19 @@
-import { Box, Button, Dialog, DialogActions, DialogContent, List, ListItemButton, ListItemText } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  List,
+  ListItemButton,
+  ListItemText,
+} from "@xrf/ui/material";
+import { FORM_SURFACE_SX } from "@xrf/ui/theme/form-surface";
 import { ReactElement, useId } from "react";
 
 import { ESettingsSection, SETTINGS_SECTION_LABELS, SETTINGS_SECTIONS } from "@/core/settings/lib/settings-section";
 import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
-import { FORM_SURFACE_SX } from "@/core/theme/form-surface";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { inline } from "@/lib/callbacks/inline";
 

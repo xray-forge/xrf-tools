@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { LevelWeatherCycle, LevelWeatherDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngine } from "@xrf/ipc/types/xrf-engine-target";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelWeatherAmbientSection } from "@/applications/level-viewer/components/panels/LevelWeatherPanel/LevelWeatherAmbientSection";
@@ -15,7 +16,6 @@ import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * The level's weather: what lights it, the time of day and how it runs, the sun, the effects over it, the level's own

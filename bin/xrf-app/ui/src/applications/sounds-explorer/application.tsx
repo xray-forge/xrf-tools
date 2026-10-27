@@ -1,4 +1,4 @@
-import { default as LibraryMusicIcon } from "@mui/icons-material/LibraryMusic";
+import { LibraryMusicIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

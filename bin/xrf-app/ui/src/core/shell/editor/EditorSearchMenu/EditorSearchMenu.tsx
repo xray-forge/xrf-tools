@@ -1,10 +1,10 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, ReactNode, useCallback, useMemo } from "react";
 
 import { IUseRankedSearchOptions, useRankedSearch } from "@/core/search/lib";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
 import { EditorSearchResults, IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
 import { EditorSideMenu, IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IEditorSearchMenuProps<T> extends BaseComponentProps, IUseRankedSearchOptions<T> {
   title: string;

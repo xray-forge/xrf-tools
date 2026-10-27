@@ -1,7 +1,6 @@
-import { TextField } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { TextField } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement, useCallback, useEffect, useState } from "react";
-
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Metres to a tenth, dropping a trailing `.0`. */
 function formatMetres(value: number): string {

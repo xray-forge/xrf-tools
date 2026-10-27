@@ -1,8 +1,7 @@
 import { saturate } from "@xrf/math";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
-
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IStatBarProps extends BaseComponentProps {
   /** What this row holds, against {@link total}. */

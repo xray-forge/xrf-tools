@@ -1,5 +1,3 @@
-import { default as HighQualityIcon } from "@mui/icons-material/HighQuality";
-import { Button, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import {
   ERenderAntialiasing,
@@ -12,6 +10,9 @@ import {
   RenderScale,
 } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { HighQualityIcon } from "@xrf/ui/icons";
+import { Button, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
@@ -51,7 +52,6 @@ import { ERenderResolution } from "@/core/render/lib/settings/render-resolution"
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderAntialiasing>> = LEVEL_ANTIALIASING_MODES.map(
   (value: RenderAntialiasing) => ({ label: describeRenderAntialiasing(value), value })

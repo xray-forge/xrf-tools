@@ -3,15 +3,15 @@ import { AsyncState } from "@xrf/async";
 import { ArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useEffect } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { VisualPreviewViewport } from "@/core/visuals/components/preview";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IArchiveModelPreviewProps extends BaseComponentProps {
   name: string;

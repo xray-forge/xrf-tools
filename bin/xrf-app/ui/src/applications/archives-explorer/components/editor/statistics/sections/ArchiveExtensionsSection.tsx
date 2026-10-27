@@ -1,11 +1,11 @@
-import { Chip } from "@mui/material";
 import { ArchiveExtensionUsage } from "@xrf/ipc/types/xrf-archive-stats";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Chip } from "@xrf/ui/material";
 import { ReactElement, useMemo } from "react";
 
 import { IArchiveStatisticsView } from "@/applications/archives-explorer/components/editor/statistics/archive-statistics-section";
 import { ArchiveBreakdownSection } from "@/applications/archives-explorer/components/editor/statistics/ArchiveBreakdownSection";
 import { IStatBreakdownRow } from "@/core/ui/stats/StatBreakdownTable";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IArchiveExtensionsSectionProps extends BaseComponentProps {
   extensions: Array<ArchiveExtensionUsage>;

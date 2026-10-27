@@ -1,4 +1,3 @@
-import { Alert, Button, Stack } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import {
   TextureDescription,
@@ -7,6 +6,8 @@ import {
   TextureVocabulary,
 } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Alert, Button, Stack } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { hasTextureFlag, withTextureFlag } from "@/applications/textures-editor/lib/texture-descriptor-flags";
@@ -14,7 +15,6 @@ import { withTextureType } from "@/applications/textures-editor/lib/texture-type
 import { TextureEditorService } from "@/applications/textures-editor/services/texture-editor";
 import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { TextureFlagField } from "./TextureFlagField";
 import { TextureNumberField } from "./TextureNumberField";

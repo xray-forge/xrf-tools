@@ -1,14 +1,14 @@
-import { default as QueryStatsIcon } from "@mui/icons-material/QueryStats";
-import { Alert, CircularProgress, Dialog, DialogContent, List, ListItemButton, ListItemText } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { Nullable, Optional } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { QueryStatsIcon } from "@xrf/ui/icons";
+import { Alert, CircularProgress, Dialog, DialogContent, List, ListItemButton, ListItemText } from "@xrf/ui/material";
 import { ReactElement, useEffect, useId, useMemo, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { EStatMeasure } from "@/core/ui/stats/stat-measure";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { EArchiveStatisticsSection, IArchiveStatisticsSection } from "./archive-statistics-section";
 import { listArchiveStatisticsSections } from "./archive-statistics-sections";

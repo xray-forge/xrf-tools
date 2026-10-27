@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useMemo } from "react";
 
 import { describeLevelResidentWait } from "@/applications/level-viewer/lib/load/level-resident-wait";
@@ -11,7 +12,6 @@ import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { EditorProblemsPanel, IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Everything the viewer could not draw the way the level asked for it; what the renderer could not draw is said once

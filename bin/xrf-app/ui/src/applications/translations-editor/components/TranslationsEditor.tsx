@@ -1,4 +1,3 @@
-import { default as ReportProblemIcon } from "@mui/icons-material/ReportProblem";
 import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
@@ -6,6 +5,7 @@ import { TranslationFinding, TranslationProjectDescriptor } from "@xrf/ipc/types
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { ReportProblemIcon } from "@xrf/ui/icons";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations.service";

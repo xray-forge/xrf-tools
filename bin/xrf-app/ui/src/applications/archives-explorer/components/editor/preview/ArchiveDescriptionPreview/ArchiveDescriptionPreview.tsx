@@ -8,13 +8,13 @@ import {
   EArchiveFormatDescription,
 } from "@xrf/ipc/types/xrf-app-archives";
 import { assertExhaustive, Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import { TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchivePreviewError } from "../ArchivePreviewError";
 import { ArchiveAnmDescriptionView } from "./ArchiveAnmDescriptionView";

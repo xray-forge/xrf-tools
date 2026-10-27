@@ -1,7 +1,6 @@
-import { Tooltip, Typography } from "@mui/material";
+import { Tooltip, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
-
-import { cn } from "@/core/theme/class-name";
 
 interface IEditorToolbarCrumbProps {
   label: string;

@@ -1,4 +1,4 @@
-import { default as ForumIcon } from "@mui/icons-material/Forum";
+import { ForumIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

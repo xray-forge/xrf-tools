@@ -1,13 +1,13 @@
-import { GridColDef } from "@mui/x-data-grid";
 import { formatCount, formatDuration } from "@xrf/format";
 import { LtxFinding, LtxProjectVerifyResult } from "@xrf/ipc/types/xrf-ltx";
+import { GridColDef } from "@xrf/ui/data-grid";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useMemo } from "react";
 
 import { toFindingMessage } from "@/core/ltx/lib/findings";
 import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { identifierColumn } from "@/core/ui/table/columns";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * One finding as a row, keyed by where it came in the run: two findings can say the same thing about the same place.

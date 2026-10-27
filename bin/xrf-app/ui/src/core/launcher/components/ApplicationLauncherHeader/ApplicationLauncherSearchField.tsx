@@ -1,15 +1,14 @@
-import { default as ClearIcon } from "@mui/icons-material/Clear";
-import { default as SearchIcon } from "@mui/icons-material/Search";
-import { IconButton, InputAdornment, TextField, Tooltip } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { Nullable, Optional } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ClearIcon, SearchIcon } from "@xrf/ui/icons";
+import { IconButton, InputAdornment, TextField, Tooltip } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ChangeEvent, KeyboardEvent, ReactElement, RefObject, useCallback } from "react";
 
 import { formatChord, parseChord } from "@/core/keybinds";
 import { KeymapService } from "@/core/keybinds/services/keymap.service";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IApplicationLauncherSearchFieldProps extends BaseComponentProps {
   /** Lets the launcher's keyboard shortcut reach the field it does not own. */

@@ -1,6 +1,7 @@
-import { default as PhotoCameraIcon } from "@mui/icons-material/PhotoCameraOutlined";
-import { MenuList } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { PhotoCameraOutlinedIcon as PhotoCameraIcon } from "@xrf/ui/icons";
+import { MenuList } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import {
@@ -14,7 +15,6 @@ import { IKeybindCommand, KeybindCommandsService } from "@/core/commands";
 import { KeymapService } from "@/core/keybinds";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { IMenubarItem, MenubarRow, toCommandMenubarItem } from "@/core/shell/menu/components/Menubar";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** What the capture's menu offers, in its order. */
 const CAPTURES: ReadonlyArray<IKeybindCommand> = [

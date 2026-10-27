@@ -1,6 +1,7 @@
-import { ButtonBase, InputBase } from "@mui/material";
 import { saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ButtonBase, InputBase } from "@xrf/ui/material";
 import { FocusEvent, KeyboardEvent, ReactElement, useCallback, useId, useMemo, useState } from "react";
 
 import {
@@ -13,7 +14,6 @@ import {
 } from "@/core/ui/color/color-intensity";
 import { ColorPicker } from "@/core/ui/color/ColorPicker";
 import { useOpenColorField } from "@/core/ui/color/use-open-color-field";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelWeatherVectorDraft {
   index: number;

@@ -1,10 +1,10 @@
-import { GridColDef, GridRowId } from "@mui/x-data-grid";
 import { GraphLevel } from "@xrf/ipc/types/xrf-spawn";
+import { GridColDef, GridRowId } from "@xrf/ui/data-grid";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useMemo } from "react";
 
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
 import { identifierColumn, textColumn, vectorColumn } from "@/core/ui/table";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ISpawnEditorGraphLevelsTableProps extends BaseComponentProps {
   levels: Array<GraphLevel>;

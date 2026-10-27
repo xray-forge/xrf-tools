@@ -1,9 +1,9 @@
-import { Stack, Typography } from "@mui/material";
 import { systemCommands } from "@xrf/ipc/commands/system";
 import { BuildInfo } from "@xrf/ipc/types/xrf-build-info";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { Stack, Typography } from "@xrf/ui/material";
 import { ReactElement, useState } from "react";
 
 import { DetailSection } from "@/core/ui/layout/DetailSection";

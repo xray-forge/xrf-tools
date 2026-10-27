@@ -1,9 +1,9 @@
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback } from "react";
 
 import { FormRow } from "@/core/ui/form/FormRow";
 import { ISliderReference, ReferenceSlider, SliderReadout, useSliderReference } from "@/core/ui/form/ReferenceSlider";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 import { IThrottledDraft, useThrottledDraft } from "@/lib/react/use-throttled-draft";
 
 export interface ISliderFormRowProps extends BaseComponentProps {

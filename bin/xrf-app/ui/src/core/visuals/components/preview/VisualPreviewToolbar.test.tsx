@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { popoverClasses } from "@mui/material";
 import { fireEvent, RenderResult, waitFor } from "@testing-library/react";
 import { Nullable } from "@xrf/types";
+import { popoverClasses } from "@xrf/ui/material";
 
 import { VisualPreviewToolbar } from "@/core/visuals/components/preview/VisualPreviewToolbar";
 import {

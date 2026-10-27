@@ -1,10 +1,10 @@
-import { default as TuneIcon } from "@mui/icons-material/Tune";
-import { Slider, Typography } from "@mui/material";
 import { formatPercent } from "@xrf/format";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { TuneIcon } from "@xrf/ui/icons";
+import { Slider, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IVisualMeshDetailProps extends BaseComponentProps {
   /** Position in each submesh's collapse chain: 0 is full detail, 1 is coarsest. */

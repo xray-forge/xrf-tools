@@ -1,8 +1,8 @@
 import { RenderGraphSettings } from "@xrf/ipc/types/xrf-renderer";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IRenderGraphFormRowsProps extends BaseComponentProps {
   /** Which of the frame graph's mechanisms the frames compile with. */

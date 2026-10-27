@@ -1,4 +1,4 @@
-import { GridColDef } from "@mui/x-data-grid";
+import { GridColDef } from "@xrf/ui/data-grid";
 import { ReactElement, useMemo } from "react";
 
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";

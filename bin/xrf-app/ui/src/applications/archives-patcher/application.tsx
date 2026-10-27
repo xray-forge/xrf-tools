@@ -1,4 +1,4 @@
-import { default as DifferenceIcon } from "@mui/icons-material/Difference";
+import { DifferenceIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

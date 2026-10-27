@@ -6,8 +6,8 @@ import { createTheme, PaletteOptions, Theme } from "@mui/material/styles";
 import type {} from "@mui/material/themeCssVarsAugmentation";
 import type {} from "@mui/x-data-grid/themeAugmentation";
 
-import { COLOR_SCHEME_ATTRIBUTE, toColorSchemeSelector } from "./color-scheme";
-import { getHeaderGlossImage, getWashImage, WELL_FILL } from "./surface";
+import { COLOR_SCHEME_ATTRIBUTE, toColorSchemeSelector } from "#/theme/color-scheme";
+import { getHeaderGlossImage, getWashImage, WELL_FILL } from "#/theme/surface";
 import {
   ACCENT,
   ColorScheme,
@@ -25,7 +25,7 @@ import {
   SURFACE,
   TEXT,
   toSharePercent,
-} from "./tokens";
+} from "#/theme/tokens";
 
 declare module "@mui/material/styles" {
   interface TypeBackground {

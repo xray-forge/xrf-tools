@@ -1,9 +1,9 @@
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { RenderFailureNotice } from "@/core/render/components/overlay/RenderFailureNotice";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IRenderFailureCoverProps extends BaseComponentProps {
   /** Why the renderer stopped, or null while it draws. */

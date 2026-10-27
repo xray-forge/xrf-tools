@@ -1,8 +1,8 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode } from "react";
 
 import { EditorPanelHeader } from "@/core/shell/editor/EditorPanelHeader";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorPanelProps extends BaseComponentProps {
   /** The name this panel's stripe button carries. */

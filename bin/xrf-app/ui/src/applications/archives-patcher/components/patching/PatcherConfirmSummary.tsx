@@ -1,13 +1,13 @@
-import { Alert, Checkbox, FormControlLabel, Stack, Typography } from "@mui/material";
 import { bytesToWholeMegabytes } from "@xrf/format";
 import { ArchivePatchConfig, EArchivePackMode } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Alert, Checkbox, FormControlLabel, Stack, Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { ArchivePathText } from "@/core/archive/components/ArchivePathText";
 import { ArchiveSummaryRow } from "@/core/archive/components/ArchiveSummaryRow";
 import { ARCHIVE_VOLUME_SUFFIX, HEADER_ENTRY_POINT, readHeaderValue } from "@/core/archive/lib";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IPatcherConfirmSummaryProps extends BaseComponentProps {
   config: ArchivePatchConfig;

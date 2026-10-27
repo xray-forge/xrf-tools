@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { RenderSurface } from "@/core/render/components/RenderSurface";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export type ILevelPreviewViewportProps = BaseComponentProps;
 

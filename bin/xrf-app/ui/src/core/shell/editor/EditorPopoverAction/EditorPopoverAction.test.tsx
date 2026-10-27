@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
-import { default as TuneIcon } from "@mui/icons-material/Tune";
 import { fireEvent, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { TuneIcon } from "@xrf/ui/icons";
 
 import { renderWithProviders } from "@/fixtures/utils/render";
 

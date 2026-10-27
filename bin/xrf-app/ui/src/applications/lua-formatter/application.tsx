@@ -1,4 +1,4 @@
-import { default as FormatAlignLeftIcon } from "@mui/icons-material/FormatAlignLeft";
+import { FormatAlignLeftIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

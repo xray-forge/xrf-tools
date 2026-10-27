@@ -1,4 +1,4 @@
-import { default as AccessibilityNewIcon } from "@mui/icons-material/AccessibilityNew";
+import { AccessibilityNewIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

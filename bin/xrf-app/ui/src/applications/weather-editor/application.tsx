@@ -1,4 +1,4 @@
-import { default as WbSunnyIcon } from "@mui/icons-material/WbSunny";
+import { WbSunnyIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

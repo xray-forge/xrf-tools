@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 
-import { readColorScheme, toColorSchemeSelector, watchColorScheme } from "@/core/theme/color-scheme";
-import { ColorScheme } from "@/core/theme/tokens";
-import { flush } from "@/fixtures/utils/promise";
+import { readColorScheme, toColorSchemeSelector, watchColorScheme } from "#/theme/color-scheme";
+import { ColorScheme } from "#/theme/tokens";
+
+/** Lets the attribute observer's queued records reach their callback. */
+async function settle(): Promise<void> {
+  await new Promise((resolve: (value: unknown) => void) => setTimeout(resolve, 0));
+}
 
 describe("color-scheme", () => {
   afterEach(() => {
@@ -23,13 +27,13 @@ describe("color-scheme", () => {
     const stop: () => void = watchColorScheme(listener);
 
     document.documentElement.setAttribute("data-color-scheme", "light");
-    await flush();
+    await settle();
 
     expect(listener).toHaveBeenCalledWith("light");
 
     stop();
     document.documentElement.setAttribute("data-color-scheme", "dark");
-    await flush();
+    await settle();
 
     expect(listener).toHaveBeenCalledTimes(1);
   });

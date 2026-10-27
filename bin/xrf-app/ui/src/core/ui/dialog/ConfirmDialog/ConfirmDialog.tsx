@@ -1,4 +1,4 @@
-import { Breakpoint, Button, Dialog, DialogActions, DialogContent, DialogContentText } from "@mui/material";
+import { Breakpoint, Button, Dialog, DialogActions, DialogContent, DialogContentText } from "@xrf/ui/material";
 import { ReactElement, ReactNode, useId } from "react";
 
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";

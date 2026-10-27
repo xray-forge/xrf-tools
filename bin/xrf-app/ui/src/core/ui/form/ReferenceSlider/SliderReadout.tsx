@@ -1,16 +1,16 @@
-import { default as RestartAltIcon } from "@mui/icons-material/RestartAlt";
-import { IconButton, Tooltip, Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { RestartAltIcon } from "@xrf/ui/icons";
+import { IconButton, Tooltip, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
+import { SLIDER_REFERENCE } from "@xrf/ui/theme/tokens";
 import { ReactElement, useCallback } from "react";
 
-import { cn } from "@/core/theme/class-name";
-import { SLIDER_REFERENCE } from "@/core/theme/tokens";
 import {
   describeSliderRecommendation,
   ISliderReference,
   isSliderWasted,
 } from "@/core/ui/form/ReferenceSlider/slider-reference";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface ISliderReadoutProps extends BaseComponentProps {
   value: number;

@@ -1,5 +1,5 @@
-import { ListSubheader } from "@mui/material";
 import { Optional } from "@xrf/types";
+import { ListSubheader } from "@xrf/ui/material";
 import { ReactElement, ReactNode, useId } from "react";
 
 interface IChoiceListFormRowSectionProps {

@@ -1,5 +1,4 @@
-import { default as AnimationIcon } from "@mui/icons-material/Animation";
-import { default as PlaylistPlayIcon } from "@mui/icons-material/PlaylistPlay";
+import { AnimationIcon, PlaylistPlayIcon } from "@xrf/ui/icons";
 
 import { SequenceMotionsPanel } from "@/applications/visuals-sequencer/components/panels/SequenceMotionsPanel";
 import { SequenceTrackPanel } from "@/applications/visuals-sequencer/components/panels/SequenceTrackPanel";

@@ -1,4 +1,4 @@
-import { default as LayersIcon } from "@mui/icons-material/Layers";
+import { LayersIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

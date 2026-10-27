@@ -1,10 +1,10 @@
-import { Checkbox, Typography } from "@mui/material";
 import { formatCount } from "@xrf/format";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Checkbox, Typography } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement, useCallback, useMemo } from "react";
 
 import { LevelViewerImportRow } from "@/applications/level-viewer/components/snapshot/LevelViewerImportDialog/LevelViewerImportRow";
 import { ILevelViewerSnapshotEntry } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** The parts of a snapshot that are not renderer settings, by their key, as the dialog heads them. */
 const GROUP_LABELS: Readonly<Record<string, string>> = {

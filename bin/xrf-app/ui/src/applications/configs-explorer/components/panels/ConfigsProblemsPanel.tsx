@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { ConfigsDocumentService } from "@/applications/configs-explorer/services/configs-document";
@@ -9,13 +10,9 @@ import { toFindingMessage, toOrderedFindings } from "@/core/ltx/lib/findings";
 import { EditorProblemsPanel, IEditorProblem, IEditorProblemLocation } from "@/core/shell/editor/EditorProblemsPanel";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * One finding as a row: what broke, where it is written, and where opening it leads.
- *
- * A finding the anchor could not place carries no location, and the row stays text rather than becoming a button to
- * nowhere - which is what a dialect diagnostic about a root rather than a config comes back as.
  *
  * @param finding - The finding to draw.
  * @returns The row.

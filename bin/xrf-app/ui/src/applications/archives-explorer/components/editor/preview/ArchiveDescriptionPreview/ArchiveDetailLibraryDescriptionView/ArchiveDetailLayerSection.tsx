@@ -1,9 +1,9 @@
 import { formatCount } from "@xrf/format";
 import { ArchiveDetailLibraryDescription } from "@xrf/ipc/types/xrf-app-archives";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 import { describeCoverage, describePlanting, DETAIL_SLOT_METERS } from "./ArchiveDetailLibraryDescriptionView.utils";

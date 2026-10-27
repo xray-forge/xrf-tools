@@ -1,7 +1,6 @@
-import { Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
-
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IVisualMotionNamesProps extends BaseComponentProps {
   names: Array<string>;

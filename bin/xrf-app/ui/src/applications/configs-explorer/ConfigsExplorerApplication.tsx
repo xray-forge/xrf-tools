@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { ConfigsProjectService } from "@/applications/configs-explorer/services/configs-project";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ConfigsExplorerOpenForm } from "./components/ConfigsExplorerOpenForm";
 import { ConfigsExplorerWorkspace } from "./components/ConfigsExplorerWorkspace";

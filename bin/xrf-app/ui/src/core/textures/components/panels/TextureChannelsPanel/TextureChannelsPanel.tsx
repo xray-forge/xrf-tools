@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ABSENT_VALUE } from "@xrf/format";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable, Optional } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PointerEvent, ReactElement, RefCallback, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -14,7 +15,6 @@ import { ETextureBumpPlane, toTextureBumpPlane } from "@/core/textures/lib/textu
 import { ITextureBumpTexels, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { TextureSurfaceService } from "@/core/textures/services/texture-surface";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import {
   describeTextureTexel,

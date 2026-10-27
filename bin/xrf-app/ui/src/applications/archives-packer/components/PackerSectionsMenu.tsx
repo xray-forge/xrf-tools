@@ -1,14 +1,11 @@
-import { default as FolderIcon } from "@mui/icons-material/Folder";
-import { default as SettingsIcon } from "@mui/icons-material/Settings";
-import { default as TitleIcon } from "@mui/icons-material/Title";
-import { default as TuneIcon } from "@mui/icons-material/Tune";
 import { useInjection } from "@wirestate/react";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { FolderIcon, SettingsIcon, TitleIcon, TuneIcon } from "@xrf/ui/icons";
 import { ReactElement } from "react";
 
 import { ArchivesPackerService, EPackerSection } from "@/applications/archives-packer/services/archives-packer.service";
 import { EditorPanelHeader } from "@/core/shell/editor/EditorPanelHeader";
 import { EditorSideMenu, IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 const SECTIONS: Array<{ id: EPackerSection; label: string; description: string; icon: ReactElement }> = [
   {

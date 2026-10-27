@@ -1,5 +1,6 @@
-import { Popover } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Popover } from "@xrf/ui/material";
 import {
   CSSProperties,
   MouseEvent,
@@ -13,7 +14,6 @@ import {
 } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { TEditorPopoverKind } from "./editor-popover-kind";
 

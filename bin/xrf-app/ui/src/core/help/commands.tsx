@@ -1,4 +1,4 @@
-import { default as HelpOutlineIcon } from "@mui/icons-material/HelpOutlineOutlined";
+import { HelpOutlineOutlinedIcon as HelpOutlineIcon } from "@xrf/ui/icons";
 
 import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
 

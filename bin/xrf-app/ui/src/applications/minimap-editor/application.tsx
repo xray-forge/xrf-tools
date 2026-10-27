@@ -1,4 +1,4 @@
-import { default as MapIcon } from "@mui/icons-material/Map";
+import { MapIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

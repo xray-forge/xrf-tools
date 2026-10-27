@@ -1,9 +1,4 @@
-import { default as CompareIcon } from "@mui/icons-material/Compare";
-import { default as EditNoteIcon } from "@mui/icons-material/EditNote";
-import { default as GradientIcon } from "@mui/icons-material/Gradient";
-import { default as InfoIcon } from "@mui/icons-material/Info";
-import { default as LayersIcon } from "@mui/icons-material/Layers";
-import { default as TuneIcon } from "@mui/icons-material/Tune";
+import { CompareIcon, EditNoteIcon, GradientIcon, InfoIcon, LayersIcon, TuneIcon } from "@xrf/ui/icons";
 
 import { TextureBumpPanel } from "@/applications/textures-editor/components/panels/TextureBumpPanel";
 import { TextureDescriptorPanel } from "@/applications/textures-editor/components/panels/TextureDescriptorPanel";

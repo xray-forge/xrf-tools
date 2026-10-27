@@ -1,4 +1,4 @@
-import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
+import { FolderOpenIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

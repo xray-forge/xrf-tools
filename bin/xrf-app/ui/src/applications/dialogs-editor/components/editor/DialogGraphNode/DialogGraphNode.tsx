@@ -1,16 +1,14 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { NodeProps } from "@xyflow/react";
 import { ReactElement } from "react";
 
 import { IDialogGraphNodeData } from "@/applications/dialogs-editor/lib";
 import { TGraphNode } from "@/core/ui/graph/graph.types";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { DialogGraphNodeFrame } from "./DialogGraphNodeFrame";
 
 /**
  * The dialog itself: its id, and the conditions gating the whole conversation.
- *
- * Draws no target handle, because a conversation starts here. Nothing in the graph leads to it.
  */
 export function DialogGraphNode({
   "data-testid": dataTestId = "dialog-graph-node",

@@ -1,14 +1,14 @@
-import { useForkRef } from "@mui/material/utils";
-import { LayoutList, RenderContext, useVirtualizer, Virtualization } from "@mui/x-virtualizer";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { useForkRef } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
+import { CODE, MONOSPACE_CHARACTER_WIDTH } from "@xrf/ui/theme/tokens";
+import { LayoutList, RenderContext, useVirtualizer, Virtualization } from "@xrf/ui/virtualizer";
 import { KeyboardEvent, ReactElement, useCallback, useEffect, useId, useMemo, useRef } from "react";
 
-import { cn } from "@/core/theme/class-name";
-import { CODE, MONOSPACE_CHARACTER_WIDTH } from "@/core/theme/tokens";
 import { ICodeLine, ICodeLineRange, ICodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLinesRow } from "@/core/ui/code/VirtualizedLines/VirtualizedLinesRow";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Where a reveal leaves the line it was handed.

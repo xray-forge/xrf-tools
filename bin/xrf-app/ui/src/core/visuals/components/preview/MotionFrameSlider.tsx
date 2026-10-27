@@ -1,7 +1,6 @@
-import { Slider, sliderClasses } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Slider, sliderClasses } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
-
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Kills the easing MUI gives a slider's thumb and track.

@@ -1,10 +1,10 @@
-import { Dialog, DialogContent } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Dialog, DialogContent } from "@xrf/ui/material";
 import { ReactElement, useId } from "react";
 
 import { ApplicationHelpContent } from "@/core/help/components/ApplicationHelpContent";
 import { IApplicationHelp } from "@/core/routing/application";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IApplicationHelpDialogProps extends BaseComponentProps {
   /** What the help is about, named as its own screen names itself. */

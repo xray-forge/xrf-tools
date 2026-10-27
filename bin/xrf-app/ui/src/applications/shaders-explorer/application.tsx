@@ -1,4 +1,4 @@
-import { default as GradientIcon } from "@mui/icons-material/Gradient";
+import { GradientIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

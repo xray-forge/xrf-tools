@@ -1,9 +1,9 @@
 import { EBuildKind } from "@xrf/ipc/types/xrf-build-info";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { getBuildKind } from "@/core/configs";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Core colour per build kind, matching the application icons in `bin/xrf-app/app/icons`. */
 const CORE_COLORS: Readonly<Record<EBuildKind, string>> = {

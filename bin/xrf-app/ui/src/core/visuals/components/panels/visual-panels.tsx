@@ -1,6 +1,4 @@
-import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
-import { default as InfoIcon } from "@mui/icons-material/Info";
-import { default as LayersIcon } from "@mui/icons-material/Layers";
+import { AccountTreeIcon, InfoIcon, LayersIcon } from "@xrf/ui/icons";
 
 import { IEditorPanel } from "@/core/shell/editor-shell";
 import { VisualBonesPanel } from "@/core/visuals/components/panels/VisualBonesPanel";

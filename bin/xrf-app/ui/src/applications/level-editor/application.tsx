@@ -1,4 +1,4 @@
-import { default as EditLocationAltIcon } from "@mui/icons-material/EditLocationAlt";
+import { EditLocationAltIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

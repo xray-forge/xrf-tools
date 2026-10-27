@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback } from "react";
 
 import { ConfigsProjectService } from "@/applications/configs-explorer/services/configs-project";
@@ -9,7 +10,6 @@ import { DIALECT_IDS, EConfigsDialect } from "@/core/ltx/lib/dialect";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * The way into the explorer: name a configs tree, and say which rules resolve it.

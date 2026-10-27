@@ -1,0 +1,63 @@
+{
+  "name": "@xrf/ui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "The application's look: its tokens, theme and stylesheets, and the component library it draws with.",
+  "exports": {
+    "./data-grid": "./src/data-grid.ts",
+    "./element-types": "./src/element-types.ts",
+    "./icons": "./src/icons.ts",
+    "./material": "./src/material.ts",
+    "./testing/virtualization": "./src/testing/virtualization.ts",
+    "./theme": "./src/theme/index.ts",
+    "./theme/ThemeRoot": "./src/theme/ThemeRoot.tsx",
+    "./theme/tailwind.css": "./src/theme/tailwind.css",
+    "./theme/*": "./src/theme/*.ts",
+    "./virtualizer": "./src/virtualizer.ts"
+  },
+  "imports": {
+    "#/*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "lint": "eslint . --max-warnings 0 --cache --cache-location target/eslint/cache.json --cache-strategy content",
+    "format": "prettier --write --ignore-path ../../.prettierignore \"**/*.(js|cjs|mjs|ts|tsx|md)\" && pnpm run lint --fix"
+  },
+  "dependencies": {
+    "@emotion/cache": "^11.14.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^9.5.0",
+    "@mui/material": "^9.5.0",
+    "@mui/system": "^9.5.0",
+    "@mui/x-data-grid": "^9.15.0",
+    "@mui/x-virtualizer": "0.7.3",
+    "@xrf/math": "workspace:*",
+    "@xrf/types": "workspace:*",
+    "clsx": "2.1.1",
+    "tailwind-merge": "3.7.0",
+    "tailwindcss": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@jest/globals": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@typescript/native": "catalog:",
+    "@xrf/toolchain": "workspace:*",
+    "eslint": "catalog:",
+    "jest": "catalog:",
+    "jest-environment-jsdom": "catalog:",
+    "prettier": "catalog:",
+    "prettier-plugin-tailwindcss": "catalog:",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "catalog:"
+  }
+}

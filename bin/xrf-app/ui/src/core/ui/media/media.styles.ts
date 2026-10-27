@@ -1,4 +1,4 @@
-import { VIEWPORT } from "@/core/theme/tokens";
+import { VIEWPORT } from "@xrf/ui/theme/tokens";
 
 /**
  * The checkerboard, sized so its squares stay the same size on screen whatever the content is scaled to.

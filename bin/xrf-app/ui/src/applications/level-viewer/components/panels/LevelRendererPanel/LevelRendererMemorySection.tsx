@@ -1,9 +1,9 @@
 import { formatBytes, formatCount, formatPercent } from "@xrf/format";
 import { RenderMemoryReport, RenderMemorySection } from "@xrf/ipc/types/xrf-renderer";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * @param section - A share of what the GPU allocator holds allocated.

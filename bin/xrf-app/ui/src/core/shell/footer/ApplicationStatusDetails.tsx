@@ -1,8 +1,8 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { Fragment, ReactElement } from "react";
 
 import { IEditorStatusDetail } from "@/core/shell/editor-shell";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IApplicationStatusDetailsProps extends BaseComponentProps {
   details: ReadonlyArray<IEditorStatusDetail>;

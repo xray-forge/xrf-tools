@@ -1,10 +1,10 @@
-import { Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode } from "react";
 
 import { renderHelpText } from "@/core/help/lib/help-text";
 import { IApplicationHelp } from "@/core/routing/application";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ApplicationHelpRelated } from "./ApplicationHelpRelated";
 import { ApplicationHelpSection } from "./ApplicationHelpSection";

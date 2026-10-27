@@ -4,13 +4,13 @@ import { RenderViewOptions } from "@xrf/ipc/types/xrf-renderer";
 import { EWorldCamera, WorldCamera } from "@xrf/ipc/types/xrf-world";
 import { parseHexColor, toRawColor } from "@xrf/math";
 import { Nullable } from "@xrf/types";
+import { VIEWPORT } from "@xrf/ui/theme/tokens";
 
 import { IRenderLighting, toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";
 import { toNativeAssetViewOptions } from "@/core/render/lib/native/native-view-options";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { NATIVE_RENDER_OUTPUT, TRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { ITextureSurfaceOptions, toTextureAspect } from "@/core/textures/lib/texture-surface";
-import { VIEWPORT } from "@/core/theme/tokens";
 
 /** A texture laid on a body, as the renderer is asked to draw one, or null for none. */
 export type TTexturesShowRequest = Parameters<typeof texturesCommands.showTexture>[1];

@@ -1,4 +1,4 @@
-import { default as DescriptionIcon } from "@mui/icons-material/Description";
+import { DescriptionIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

@@ -1,5 +1,6 @@
-import { default as GridOnIcon } from "@mui/icons-material/GridOn";
 import { useInjection } from "@wirestate/react";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { GridOnIcon } from "@xrf/ui/icons";
 import { ReactElement } from "react";
 
 import { ILevelOverlay, LEVEL_OVERLAYS } from "@/core/level/lib/view/level-overlays";
@@ -7,7 +8,6 @@ import { LevelViewService } from "@/core/level/services/level-view";
 import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * What is laid over the level: the grid with its extent, the axes at the origin, the sun's direction, and the readouts;

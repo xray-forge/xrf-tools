@@ -1,8 +1,6 @@
-import { default as CenterFocusStrongIcon } from "@mui/icons-material/CenterFocusStrong";
-import { default as ZoomInIcon } from "@mui/icons-material/ZoomIn";
-import { default as ZoomOutIcon } from "@mui/icons-material/ZoomOut";
-import { ButtonBase, IconButton, Paper, Tooltip, Typography } from "@mui/material";
 import { formatPercent } from "@xrf/format";
+import { CenterFocusStrongIcon, ZoomInIcon, ZoomOutIcon } from "@xrf/ui/icons";
+import { ButtonBase, IconButton, Paper, Tooltip, Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 interface IViewportControlsProps {

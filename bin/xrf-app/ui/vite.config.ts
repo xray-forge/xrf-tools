@@ -1,3 +1,4 @@
+import { createRequire } from "module";
 import * as path from "path";
 
 import { default as tailwindcss } from "@tailwindcss/vite";
@@ -14,12 +15,14 @@ import { default as manifest } from "./package.json" with { type: "json" };
  * Inlines the first-paint theme stylesheet into `index.html`.
  */
 function preloadThemePlugin(): Plugin {
-  const entry: string = normalizePath(path.resolve(import.meta.dirname, "./src/core/theme/preload.ts"));
+  const entry: string = normalizePath(
+    createRequire(path.resolve(import.meta.dirname, "package.json")).resolve("@xrf/ui/theme/preload")
+  );
   let files: ReadonlySet<string> = new Set([entry]);
   let css: Promise<string> | null = null;
 
   async function load(): Promise<string> {
-    const { module, dependencies } = await runnerImport<typeof import("./src/core/theme/preload.ts")>(entry);
+    const { module, dependencies } = await runnerImport<typeof import("@xrf/ui/theme/preload")>(entry);
 
     files = new Set([entry, ...dependencies.map(normalizePath)]);
 

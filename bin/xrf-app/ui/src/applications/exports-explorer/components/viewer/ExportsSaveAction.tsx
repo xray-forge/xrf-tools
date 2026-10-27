@@ -1,7 +1,8 @@
-import { default as SaveAltIcon } from "@mui/icons-material/SaveAlt";
 import * as dialog from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { SaveAltIcon } from "@xrf/ui/icons";
 import { ReactElement, useCallback } from "react";
 
 import {
@@ -11,7 +12,6 @@ import {
 } from "@/applications/exports-explorer/lib/extern-manifest";
 import { ExportsService } from "@/applications/exports-explorer/services/exports.service";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IExportsSaveActionProps extends BaseComponentProps {
   isDisabled?: boolean;

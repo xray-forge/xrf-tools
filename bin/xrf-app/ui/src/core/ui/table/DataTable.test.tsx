@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
-import { gridClasses, GridRowId } from "@mui/x-data-grid";
 import { userEvent } from "@testing-library/user-event";
+import { gridClasses, GridRowId } from "@xrf/ui/data-grid";
 import { ReactElement, useState } from "react";
 
 import { DataTable } from "@/core/ui/table/DataTable";

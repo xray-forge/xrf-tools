@@ -1,4 +1,4 @@
-import { Tooltip, Typography } from "@mui/material";
+import { Tooltip, Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { TEditorStatusSegment } from "@/core/shell/editor-shell";

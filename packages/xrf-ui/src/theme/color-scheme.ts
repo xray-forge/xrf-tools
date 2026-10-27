@@ -1,4 +1,4 @@
-import { ColorScheme } from "./tokens";
+import { ColorScheme } from "#/theme/tokens";
 
 /**
  * The attribute on the document element naming the colour scheme shown: MUI writes it and the theme's rules read it.

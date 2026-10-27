@@ -1,4 +1,4 @@
-import { default as PeopleIcon } from "@mui/icons-material/People";
+import { PeopleIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

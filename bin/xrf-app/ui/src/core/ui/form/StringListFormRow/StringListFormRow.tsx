@@ -1,4 +1,4 @@
-import { TextField } from "@mui/material";
+import { TextField } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement } from "react";
 
 import { EditableList, EditableListItem } from "@/core/ui/form/EditableList";

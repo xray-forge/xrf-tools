@@ -1,4 +1,4 @@
-import { default as PlaylistPlayIcon } from "@mui/icons-material/PlaylistPlay";
+import { PlaylistPlayIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

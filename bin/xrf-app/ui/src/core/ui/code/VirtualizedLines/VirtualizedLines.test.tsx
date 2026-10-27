@@ -2,12 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals
 import { userEvent } from "@testing-library/user-event";
 import { ESyntaxToken } from "@xrf/syntax";
 import { Nullable } from "@xrf/types";
+import { setVirtualizationEnabled } from "@xrf/ui/testing/virtualization";
+import { CODE } from "@xrf/ui/theme/tokens";
 
-import { CODE } from "@/core/theme/tokens";
 import { ECodeLineMark, ICodeLine, ICodeLineRange, ICodeLineSource, toCodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines/VirtualizedLines";
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { setVirtualizationEnabled } from "@/fixtures/utils/virtualization";
 
 const VIEWPORT_HEIGHT: number = 400;
 

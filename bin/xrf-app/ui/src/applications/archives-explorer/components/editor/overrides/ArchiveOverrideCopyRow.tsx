@@ -1,11 +1,11 @@
-import { Chip, chipClasses, Typography } from "@mui/material";
 import { formatBytes } from "@xrf/format";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Chip, chipClasses, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
+import { BADGE_FONT_SIZE } from "@xrf/ui/theme/tokens";
 import { ReactElement } from "react";
 
 import { describeAssetContainer, isLooseContainer } from "@/core/assets/lib";
-import { cn } from "@/core/theme/class-name";
-import { BADGE_FONT_SIZE } from "@/core/theme/tokens";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ARCHIVE_OVERRIDE_ROW_HEIGHT, EArchiveOverrideRow, IArchiveOverrideCopyRow } from "./archive-override-rows";
 

@@ -1,5 +1,3 @@
-import { default as ExposureIcon } from "@mui/icons-material/Exposure";
-import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
 import { LevelConsoleDefaults } from "@xrf/ipc/types/xrf-app-levels";
@@ -12,6 +10,9 @@ import {
   RenderLightLevel,
   RenderLightModel,
 } from "@xrf/ipc/types/xrf-renderer";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ExposureIcon } from "@xrf/ui/icons";
+import { Button } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { LevelLookSection } from "@/applications/level-viewer/components/toolbar/image/LevelLookSection";
@@ -64,7 +65,6 @@ import { RenderSettingsService } from "@/core/render/services/render-settings.se
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { ChoiceListFormRow, IChoiceFormRowOption } from "@/core/ui/form";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** What the list's option for values edited by hand stands for. */
 const EDITED: string = "edited";

@@ -1,7 +1,8 @@
-import { Typography } from "@mui/material";
 import { LevelWeatherCycle } from "@xrf/ipc/types/xrf-app-levels";
 import { WorldWeatherEffectReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { LevelWeatherCycleSelect } from "@/core/level/components/weather/LevelWeatherCycleSelect";
@@ -12,7 +13,6 @@ import { ILevelWeatherCycleChoice } from "@/core/level/lib/weather/level-weather
 import { ILevelWeatherSeed } from "@/core/level/lib/weather/level-weather-seed";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelWeatherPlaySectionProps extends BaseComponentProps {
   source: ELevelWeatherSource;

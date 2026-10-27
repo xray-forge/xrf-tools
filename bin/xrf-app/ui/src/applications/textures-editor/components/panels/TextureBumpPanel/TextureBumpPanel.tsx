@@ -1,8 +1,9 @@
-import { Alert, Button, Checkbox, FormControlLabel, Stack, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Alert, Button, Checkbox, FormControlLabel, Stack, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback, useState } from "react";
 
 import { DEFAULT_GLOSS_POWER, toBumpGloss } from "@/applications/textures-editor/lib/texture-bump-gloss";
@@ -17,7 +18,6 @@ import {
 } from "@/core/shell/editor/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { TextureGlossField } from "./TextureGlossField";
 

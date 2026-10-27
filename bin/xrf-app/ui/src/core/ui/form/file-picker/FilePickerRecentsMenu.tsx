@@ -1,12 +1,11 @@
-import { default as CheckIcon } from "@mui/icons-material/Check";
-import { default as CloseIcon } from "@mui/icons-material/Close";
-import { IconButton, ListItemText, Menu, MenuItem, Tooltip, Typography } from "@mui/material";
 import { isSamePath, truncatePathHead } from "@xrf/path";
 import { Nullable } from "@xrf/types";
+import { CheckIcon, CloseIcon } from "@xrf/ui/icons";
+import { IconButton, ListItemText, Menu, MenuItem, Tooltip, Typography } from "@xrf/ui/material";
+import { MONOSPACE_CHARACTER_WIDTH } from "@xrf/ui/theme/tokens";
 import { formatDistanceToNowStrict } from "date-fns";
 import { MouseEvent, ReactElement } from "react";
 
-import { MONOSPACE_CHARACTER_WIDTH } from "@/core/theme/tokens";
 import { IPathFieldRecents, IPathRecord } from "@/core/ui/form/path-recents";
 
 /** Room a row spends on things that are not the path: the mark, the age, the control that forgets it, the padding. */

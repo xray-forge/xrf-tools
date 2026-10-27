@@ -1,10 +1,9 @@
-import { ClickAwayListener, Typography } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ClickAwayListener, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { KeyboardEvent, ReactElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { IMenubarItem, IMenubarMenu } from "./menubar-menu";
 import { MenubarPopup } from "./MenubarPopup";

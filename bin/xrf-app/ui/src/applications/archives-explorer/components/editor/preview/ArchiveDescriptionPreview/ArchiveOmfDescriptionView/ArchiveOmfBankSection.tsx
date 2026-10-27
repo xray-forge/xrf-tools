@@ -1,10 +1,10 @@
 import { formatSeconds } from "@xrf/format";
 import { ArchiveOmfBank } from "@xrf/ipc/types/xrf-app-archives";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";
 

@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, ReactNode, useEffect } from "react";
 
 import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
@@ -13,7 +14,6 @@ import { ITexturePreviewComparison } from "@/core/textures/lib/texture-preview";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { TextureSurfaceService } from "@/core/textures/services/texture-surface";
 import { TextureViewService } from "@/core/textures/services/texture-view";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { TextureWorkspaceToolbar } from "./TextureWorkspaceToolbar";
 

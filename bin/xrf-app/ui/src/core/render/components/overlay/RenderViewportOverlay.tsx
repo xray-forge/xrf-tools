@@ -1,7 +1,6 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode } from "react";
-
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Which corner of the viewport a readout sits in. */
 export type TRenderOverlayCorner = "top-left" | "top-right" | "bottom-left" | "bottom-right";

@@ -1,12 +1,10 @@
-import { useTheme } from "@mui/material";
-import { useColorScheme } from "@mui/material/styles";
-import { useForkRef } from "@mui/material/utils";
 import { formatPlaybackTime } from "@xrf/format";
 import { clamp, extractPeaks } from "@xrf/math";
 import { Nullable } from "@xrf/types";
+import { useColorScheme, useForkRef, useTheme } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { KeyboardEvent, MouseEvent, ReactElement, useLayoutEffect, useMemo, useRef } from "react";
 
-import { cn } from "@/core/theme/class-name";
 import { useElementSize } from "@/lib/react/use-element-size";
 
 import { useAudioSamples } from "./use-audio-samples";

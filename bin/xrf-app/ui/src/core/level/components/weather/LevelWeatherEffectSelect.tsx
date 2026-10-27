@@ -1,7 +1,9 @@
-import { ListItemText, MenuItem, TextField } from "@mui/material";
 import { LevelWeatherCycle } from "@xrf/ipc/types/xrf-app-levels";
 import { WorldWeatherEffectReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ListItemText, MenuItem, TextField } from "@xrf/ui/material";
+import { CONTROL } from "@xrf/ui/theme/tokens";
 import { ChangeEvent, ReactElement } from "react";
 
 import {
@@ -9,8 +11,6 @@ import {
   formatLevelWeatherKeyframes,
 } from "@/core/level/lib/weather/level-weather-cycle-choice";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
-import { CONTROL } from "@/core/theme/tokens";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** What the select holds while no effect plays. */
 const NONE: string = "";

@@ -1,9 +1,7 @@
-import { default as DarkModeIcon } from "@mui/icons-material/DarkMode";
-import { default as LightModeIcon } from "@mui/icons-material/LightMode";
-import { default as SettingsIcon } from "@mui/icons-material/Settings";
-import { useColorScheme } from "@mui/material/styles";
 import { useInjection } from "@wirestate/react";
 import { Maybe, Nullable } from "@xrf/types";
+import { DarkModeIcon, LightModeIcon, SettingsIcon } from "@xrf/ui/icons";
+import { useColorScheme } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { ApplicationHelp } from "@/core/help/components/ApplicationHelp/ApplicationHelp";

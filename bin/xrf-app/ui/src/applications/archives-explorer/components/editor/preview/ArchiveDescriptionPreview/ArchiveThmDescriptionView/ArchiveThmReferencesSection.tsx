@@ -6,10 +6,10 @@ import {
   ArchiveThmDetail,
 } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { NOT_DECLARED } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionReference } from "../ArchiveDescriptionReference";

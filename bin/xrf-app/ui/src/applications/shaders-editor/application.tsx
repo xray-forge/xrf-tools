@@ -1,4 +1,4 @@
-import { default as PaletteIcon } from "@mui/icons-material/Palette";
+import { PaletteIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

@@ -1,13 +1,9 @@
-import { default as AccountTreeIcon } from "@mui/icons-material/AccountTree";
-import { default as GroupsIcon } from "@mui/icons-material/Groups";
-import { default as InfoIcon } from "@mui/icons-material/Info";
-import { default as RouteIcon } from "@mui/icons-material/Route";
-import { default as ScienceIcon } from "@mui/icons-material/Science";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { AccountTreeIcon, GroupsIcon, InfoIcon, RouteIcon, ScienceIcon } from "@xrf/ui/icons";
 import { ReactElement, ReactNode, useMemo } from "react";
 import { NavigateFunction, useLocation, useNavigate } from "react-router-dom";
 
 import { EditorSideMenu, IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ISpawnChunkSection {
   label: string;

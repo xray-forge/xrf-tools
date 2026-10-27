@@ -1,17 +1,15 @@
-import { default as ArrowDownwardIcon } from "@mui/icons-material/ArrowDownward";
-import { default as ArrowUpwardIcon } from "@mui/icons-material/ArrowUpward";
-import { default as DeleteOutlinedIcon } from "@mui/icons-material/DeleteOutlined";
-import { Chip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatSeconds } from "@xrf/format";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ArrowDownwardIcon, ArrowUpwardIcon, DeleteOutlinedIcon } from "@xrf/ui/icons";
+import { Chip, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { ESequenceMotionState, ISequenceMotion } from "@/applications/visuals-sequencer/lib/sequence-motion-cache";
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/visual-sequence";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ISequenceClipRowProps extends BaseComponentProps {
   clip: ISequenceClip;

@@ -1,10 +1,6 @@
-import { default as PauseIcon } from "@mui/icons-material/Pause";
-import { default as PlayArrowIcon } from "@mui/icons-material/PlayArrow";
-import { default as RepeatIcon } from "@mui/icons-material/Repeat";
-import { default as SkipNextIcon } from "@mui/icons-material/SkipNext";
-import { default as SkipPreviousIcon } from "@mui/icons-material/SkipPrevious";
-import { Paper, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { PauseIcon, PlayArrowIcon, RepeatIcon, SkipNextIcon, SkipPreviousIcon } from "@xrf/ui/icons";
+import { Paper, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/visual-sequence";

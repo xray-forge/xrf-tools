@@ -1,6 +1,7 @@
-import { GridColDef } from "@mui/x-data-grid";
 import { TranslationBuildLanguageSummary, TranslationBuildResult } from "@xrf/ipc/types/xrf-translation";
 import { Nullable } from "@xrf/types";
+import { GridColDef } from "@xrf/ui/data-grid";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useMemo } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
@@ -8,7 +9,6 @@ import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/Comm
 import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
 import { identifierColumn } from "@/core/ui/table/columns";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 type TLanguageRow = TranslationBuildLanguageSummary & { id: string };
 

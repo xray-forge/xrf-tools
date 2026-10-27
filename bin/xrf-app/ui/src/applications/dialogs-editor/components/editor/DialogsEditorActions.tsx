@@ -1,13 +1,13 @@
-import { default as TranslateIcon } from "@mui/icons-material/Translate";
-import { Menu, MenuItem } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { TranslateIcon } from "@xrf/ui/icons";
+import { Menu, MenuItem } from "@xrf/ui/material";
 import { MouseEvent, ReactElement, useCallback, useId, useState } from "react";
 
 import { DialogViewService } from "@/applications/dialogs-editor/services/dialog-view";
 import { DialogsService } from "@/applications/dialogs-editor/services/dialogs";
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Which language the phrase lines are read in.

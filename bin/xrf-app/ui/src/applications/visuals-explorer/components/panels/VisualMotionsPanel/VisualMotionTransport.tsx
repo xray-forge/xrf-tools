@@ -1,10 +1,9 @@
-import { default as PauseIcon } from "@mui/icons-material/Pause";
-import { default as PlayArrowIcon } from "@mui/icons-material/PlayArrow";
-import { default as RepeatIcon } from "@mui/icons-material/Repeat";
-import { Tooltip, Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatDuration } from "@xrf/format";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { PauseIcon, PlayArrowIcon, RepeatIcon } from "@xrf/ui/icons";
+import { Tooltip, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
@@ -13,7 +12,6 @@ import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { MotionFrameSlider, MotionPlaybackRate } from "@/core/visuals/components/preview";
 import { formatMotionTiming } from "@/core/visuals/lib/visual-motion";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Playing what is posed: which frame, how fast, and whether it repeats.

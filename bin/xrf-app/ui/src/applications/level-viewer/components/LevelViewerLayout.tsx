@@ -1,11 +1,15 @@
-import { default as InfoOutlinedIcon } from "@mui/icons-material/InfoOutlined";
-import { default as Inventory2Icon } from "@mui/icons-material/Inventory2";
-import { default as LayersIcon } from "@mui/icons-material/Layers";
-import { default as SpeedIcon } from "@mui/icons-material/Speed";
-import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
-import { default as WbCloudyIcon } from "@mui/icons-material/WbCloudy";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import {
+  InfoOutlinedIcon,
+  Inventory2Icon,
+  LayersIcon,
+  SpeedIcon,
+  WarningAmberIcon as WarningIcon,
+  WbCloudyIcon,
+} from "@xrf/ui/icons";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode } from "react";
 
 import { LevelViewerCaptureActions } from "@/applications/level-viewer/components/capture/LevelViewerCaptureActions";
@@ -36,8 +40,6 @@ import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorMenus, useEditorPanels } from "@/core/shell/editor-shell";
 import { IMenuContribution, TMenuEntry } from "@/core/shell/menu/lib";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelViewerLayoutProps extends BaseComponentProps {
   /** What the open level is called, which heads the viewport. Its presence is what offers stats and picks. */

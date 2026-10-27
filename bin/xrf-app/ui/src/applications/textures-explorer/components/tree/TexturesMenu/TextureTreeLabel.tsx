@@ -1,9 +1,9 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { TextureBadgeMarks } from "@/applications/textures-explorer/components/tree/TextureBadgeMarks";
 import { ITextureNode } from "@/applications/textures-explorer/lib/texture-catalog";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ITextureTreeLabelProps extends BaseComponentProps {
   /** Node being labelled; only a leaf stands for a texture and carries marks. */

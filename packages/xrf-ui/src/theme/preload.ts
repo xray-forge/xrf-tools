@@ -1,8 +1,8 @@
 import { Theme } from "@mui/material";
 
-import { toColorSchemeSelector } from "./color-scheme";
-import { createApplicationTheme } from "./creation";
-import { getSchemeVariables, getThemeVariables } from "./variables";
+import { toColorSchemeSelector } from "#/theme/color-scheme";
+import { createApplicationTheme } from "#/theme/creation";
+import { getSchemeVariables, getThemeVariables } from "#/theme/variables";
 
 /** Serializes one of MUI's generated style objects, which arrive as selector-keyed rule trees rather than as text. */
 function toCssRules(rule: Record<string, unknown>, selector?: string): string {

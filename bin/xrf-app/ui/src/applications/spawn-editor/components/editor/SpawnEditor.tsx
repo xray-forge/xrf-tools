@@ -1,8 +1,9 @@
-import { default as ViewListIcon } from "@mui/icons-material/ViewList";
 import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { SpawnHeaderChunk } from "@xrf/ipc/types/xrf-spawn";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ViewListIcon } from "@xrf/ui/icons";
 import { ReactElement, useCallback } from "react";
 import { Route, Routes } from "react-router-dom";
 
@@ -12,7 +13,6 @@ import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { SpawnEditorAlife } from "./chunks/alife/SpawnEditorAlife";
 import { SpawnEditorArtefacts } from "./chunks/artefacts/SpawnEditorArtefacts";

@@ -1,9 +1,9 @@
 import { formatCount } from "@xrf/format";
 import { RenderGrassReport } from "@xrf/ipc/types/xrf-renderer";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelRendererGrassSectionProps extends BaseComponentProps {
   grass: RenderGrassReport;

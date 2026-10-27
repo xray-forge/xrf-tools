@@ -1,16 +1,12 @@
-import { EmotionCache } from "@emotion/cache";
-import { CacheProvider } from "@emotion/react";
-import { default as CssBaseline } from "@mui/material/CssBaseline";
-import { Theme, ThemeProvider } from "@mui/material/styles";
 import { ContainerConfig } from "@wirestate/core";
 import { ContainerProvider } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { ThemeRoot } from "@xrf/ui/theme/ThemeRoot";
 import { ComponentType, PropsWithChildren, ReactElement, ReactNode, useMemo } from "react";
 import { BrowserRouter } from "react-router-dom";
 
 import { createContainerPlugins, ROOT_BINDINGS } from "@/core/container";
 import { THEME_STORAGE_KEY } from "@/core/storage";
-import { createApplicationStyleCache, createApplicationTheme } from "@/core/theme";
 import { isDevelopmentBuild } from "@/lib/env/build-mode";
 
 interface IApplicationProviderProps {
@@ -22,9 +18,6 @@ export function ApplicationProvider({
   router: Router = BrowserRouter,
   children,
 }: IApplicationProviderProps): ReactElement {
-  const theme: Theme = useMemo(() => createApplicationTheme(), []);
-  const cache: EmotionCache = useMemo(() => createApplicationStyleCache(), []);
-
   const config: Nullable<ContainerConfig> = useMemo(
     () => ({
       bindings: ROOT_BINDINGS,
@@ -35,19 +28,9 @@ export function ApplicationProvider({
 
   return (
     <ContainerProvider config={config}>
-      <CacheProvider value={cache}>
-        <ThemeProvider
-          defaultMode={"dark"}
-          disableTransitionOnChange={true}
-          modeStorageKey={THEME_STORAGE_KEY}
-          noSsr={true}
-          theme={theme}
-        >
-          <CssBaseline enableColorScheme={true} />
-
-          <Router>{children}</Router>
-        </ThemeProvider>
-      </CacheProvider>
+      <ThemeRoot colorSchemeStorageKey={THEME_STORAGE_KEY}>
+        <Router>{children}</Router>
+      </ThemeRoot>
     </ContainerProvider>
   );
 }

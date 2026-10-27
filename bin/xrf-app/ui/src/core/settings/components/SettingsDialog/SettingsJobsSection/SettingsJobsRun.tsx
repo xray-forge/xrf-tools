@@ -1,15 +1,15 @@
-import { Collapse, Divider, Typography } from "@mui/material";
 import { ABSENT_VALUE, formatDuration } from "@xrf/format";
 import { JobDescription } from "@xrf/ipc/types/xrf-app-core";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Collapse, Divider, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { format } from "date-fns";
 import { ReactElement, useState } from "react";
 
 import { describeJobStatus, IJobStatus } from "@/core/jobs/lib/job-status";
 import { formatProgressRate, formatProgressUnits } from "@/core/jobs/lib/progress-format";
 import { IJobPhase, IJobProfile } from "@/core/jobs/metrics";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { toPhaseShare } from "./SettingsJobsSection.utils";
 

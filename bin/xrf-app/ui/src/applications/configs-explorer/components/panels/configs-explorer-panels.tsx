@@ -1,7 +1,9 @@
-import { default as DescriptionIcon } from "@mui/icons-material/Description";
-import { default as ListIcon } from "@mui/icons-material/FormatListBulleted";
-import { default as RuleIcon } from "@mui/icons-material/Rule";
-import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
+import {
+  DescriptionIcon,
+  FormatListBulletedIcon as ListIcon,
+  RuleIcon,
+  WarningAmberIcon as WarningIcon,
+} from "@xrf/ui/icons";
 
 import { ConfigsMenuPanel } from "@/applications/configs-explorer/components/panels/ConfigsMenuPanel";
 import { ConfigsProblemsPanel } from "@/applications/configs-explorer/components/panels/ConfigsProblemsPanel";

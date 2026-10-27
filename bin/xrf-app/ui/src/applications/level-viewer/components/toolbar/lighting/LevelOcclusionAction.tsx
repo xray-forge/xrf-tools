@@ -1,5 +1,3 @@
-import { default as GradientIcon } from "@mui/icons-material/Gradient";
-import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatCount, formatPercent } from "@xrf/format";
 import {
@@ -7,6 +5,9 @@ import {
   ERenderIndirectLightMode,
   RenderAmbientOcclusionMethod,
 } from "@xrf/ipc/types/xrf-renderer";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { GradientIcon } from "@xrf/ui/icons";
+import { Button } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
@@ -40,7 +41,6 @@ import {
   TRenderIndirectLightSettings,
 } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * What darkens creases and corners and what lights them back: the ambient occlusion, GTAO (XeGTAO), VBAO, whose

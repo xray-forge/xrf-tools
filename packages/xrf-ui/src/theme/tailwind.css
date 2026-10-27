@@ -8,6 +8,9 @@
 @import "tailwindcss/preflight.css" layer(base);
 @import "tailwindcss/utilities.css";
 
+/* The page's bundler scans its own sources only; this package's components sit outside them. */
+@source "..";
+
 /* The design vocabulary, aliased onto variables the theme already emits at build time. */
 @theme {
   --color-*: initial;

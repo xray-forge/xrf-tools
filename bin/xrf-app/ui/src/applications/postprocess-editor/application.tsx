@@ -1,4 +1,4 @@
-import { default as FilterIcon } from "@mui/icons-material/Filter";
+import { FilterIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

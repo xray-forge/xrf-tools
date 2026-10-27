@@ -3,9 +3,9 @@ import { userEvent } from "@testing-library/user-event";
 import { ArchiveReadResult } from "@xrf/ipc/types/xrf-archive";
 import { ESyntaxToken } from "@xrf/syntax";
 import { Nullable } from "@xrf/types";
+import { setVirtualizationEnabled } from "@xrf/ui/testing/virtualization";
 
 import { renderWithProviders } from "@/fixtures/utils/render";
-import { setVirtualizationEnabled } from "@/fixtures/utils/virtualization";
 
 import { ArchiveCodePreview } from "./ArchiveCodePreview";
 

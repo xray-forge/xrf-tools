@@ -1,8 +1,8 @@
-import { Checkbox } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Checkbox } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { FormRow } from "@/core/ui/form/FormRow";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface ICheckboxFormRowProps extends BaseComponentProps {
   label: string;

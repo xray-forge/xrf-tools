@@ -1,6 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
-import { default as SaveIcon } from "@mui/icons-material/Save";
 import { userEvent } from "@testing-library/user-event";
+import { SaveIcon } from "@xrf/ui/icons";
 
 import { renderWithProviders } from "@/fixtures/utils/render";
 

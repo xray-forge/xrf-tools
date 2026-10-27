@@ -1,16 +1,16 @@
-import { Button, Divider, Stack, Typography } from "@mui/material";
 import { formatDuration } from "@xrf/format";
 import { JobDescription } from "@xrf/ipc/types/xrf-app-core";
 import { Callable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Button, Divider, Stack, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback } from "react";
 
 import { IJobKindSummary, IJobLease, listHeldLeases, summarizeJobKinds } from "@/core/jobs/lib/job-listing";
 import { useJobsListing } from "@/core/jobs/lib/use-jobs-listing";
 import { JOB_PROFILES } from "@/core/jobs/metrics";
-import { cn } from "@/core/theme/class-name";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { StatFigure } from "@/core/ui/stats/StatFigure";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 import { useForceUpdate } from "@/lib/react/use-force-update";
 
 import { SettingsJobsRun } from "./SettingsJobsRun";

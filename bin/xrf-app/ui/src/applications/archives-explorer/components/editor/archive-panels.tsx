@@ -1,5 +1,4 @@
-import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
-import { default as InfoIcon } from "@mui/icons-material/Info";
+import { FolderOpenIcon, InfoIcon } from "@xrf/ui/icons";
 
 import { IEditorPanel } from "@/core/shell/editor-shell";
 

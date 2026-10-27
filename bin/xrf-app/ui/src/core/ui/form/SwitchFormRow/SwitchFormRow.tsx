@@ -1,8 +1,8 @@
-import { Switch } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Switch } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { FormRow } from "@/core/ui/form/FormRow";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface ISwitchFormRowProps extends BaseComponentProps {
   label: string;

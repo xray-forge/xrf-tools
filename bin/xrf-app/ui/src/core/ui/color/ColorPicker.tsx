@@ -1,11 +1,11 @@
-import { Box } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Box } from "@xrf/ui/material";
+import { RADIUS } from "@xrf/ui/theme/tokens";
 import { ReactElement, useCallback, useEffect } from "react";
 import { RgbColorPicker } from "react-colorful";
 
-import { RADIUS } from "@/core/theme/tokens";
 import { IPickedColor } from "@/core/ui/color/color-intensity";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 import { useThrottledValue } from "@/lib/react/use-throttled-value";
 
 /**

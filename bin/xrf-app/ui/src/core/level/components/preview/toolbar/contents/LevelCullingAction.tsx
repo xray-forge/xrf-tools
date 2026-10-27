@@ -1,6 +1,7 @@
-import { default as LayersIcon } from "@mui/icons-material/Layers";
-import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { LayersIcon } from "@xrf/ui/icons";
+import { Button } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
@@ -14,7 +15,6 @@ import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * What is spared drawing: static draws the depth hides, opaque pixels shaded more than once, and distant trees drawn as

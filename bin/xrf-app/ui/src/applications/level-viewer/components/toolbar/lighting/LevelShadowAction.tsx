@@ -1,6 +1,7 @@
-import { default as TonalityIcon } from "@mui/icons-material/Tonality";
-import { Button } from "@mui/material";
 import { ERenderContactShadowMode, RenderContactShadowMode } from "@xrf/ipc/types/xrf-renderer";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { TonalityIcon } from "@xrf/ui/icons";
+import { Button } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
@@ -32,7 +33,6 @@ import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/render-
 import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Whether the sun casts shadows in this view, in how many cascades, how fine and how soft, how often and how far out

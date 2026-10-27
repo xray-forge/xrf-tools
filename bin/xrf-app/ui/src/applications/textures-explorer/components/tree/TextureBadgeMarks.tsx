@@ -1,4 +1,5 @@
-import { Box } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Box } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import {
@@ -6,7 +7,6 @@ import {
   ETextureBadge,
   ITextureBadgeDescriptor,
 } from "@/applications/textures-explorer/lib/texture-catalog";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** Severity order, so a row with several badges leads with the one worth acting on. */
 const BADGE_ORDER: ReadonlyArray<ETextureBadge> = [

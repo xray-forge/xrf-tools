@@ -1,12 +1,12 @@
-import { default as NotificationsIcon } from "@mui/icons-material/Notifications";
-import { Badge, badgeClasses } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { NotificationsIcon } from "@xrf/ui/icons";
+import { Badge, badgeClasses } from "@xrf/ui/material";
+import { LAYOUT } from "@xrf/ui/theme/tokens";
 import { ReactElement } from "react";
 
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { NotificationsService } from "@/core/notifications/services";
-import { LAYOUT } from "@/core/theme/tokens";
 
 const BADGE_COLORS: Record<ENotificationSeverity, "default" | "success" | "info" | "warning" | "error"> = {
   [ENotificationSeverity.DEV]: "default",

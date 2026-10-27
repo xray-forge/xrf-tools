@@ -1,4 +1,4 @@
-import { default as UnarchiveIcon } from "@mui/icons-material/Unarchive";
+import { UnarchiveIcon } from "@xrf/ui/icons";
 
 import {
   EApplicationGroupId,

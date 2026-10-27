@@ -1,8 +1,7 @@
-import { default as DataObjectIcon } from "@mui/icons-material/DataObject";
-import { default as FolderIcon } from "@mui/icons-material/Folder";
-import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
 import { ExportDescriptor } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DataObjectIcon, FolderIcon, FolderOpenIcon } from "@xrf/ui/icons";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
@@ -12,7 +11,6 @@ import { IPathTreeItem, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { IVirtualizedTreeIcons, VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { exportGroupsToTree, getExportSearchText, IExportGroup } from "./exports-groups";
 

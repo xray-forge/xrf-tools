@@ -17,7 +17,7 @@ module.exports = createJestConfig({
     __REPOSITORY_URL__: require(path.join(ROOT_DIR, "package.json")).repository.url,
   },
   moduleNameMapper: {
-    "\\.(css|less|svg|png|jpg|woff2?)$": path.resolve(__dirname, "./asset-stub.cjs"),
+    "\\.(css|less|svg|png|jpg|woff2?)$": require.resolve("@xrf/toolchain/jest-asset-stub"),
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   setupFiles: [path.resolve(__dirname, "./jest-global.cjs")],

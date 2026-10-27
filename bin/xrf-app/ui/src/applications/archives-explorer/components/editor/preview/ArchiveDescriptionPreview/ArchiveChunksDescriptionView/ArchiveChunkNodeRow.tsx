@@ -1,10 +1,9 @@
-import { Typography } from "@mui/material";
 import { formatBytes } from "@xrf/format";
 import { ArchiveChunkNode } from "@xrf/ipc/types/xrf-app-archives";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { Fragment, ReactElement } from "react";
-
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { formatChunkId } from "../ArchiveDescriptionPreview.utils";
 

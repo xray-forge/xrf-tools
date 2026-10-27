@@ -1,7 +1,8 @@
-import { default as NightsStayIcon } from "@mui/icons-material/NightsStay";
 import { useInjection } from "@wirestate/react";
 import { formatDegrees, formatPercent } from "@xrf/format";
 import { LevelWeatherTexture } from "@xrf/ipc/types/xrf-app-levels";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { NightsStayIcon } from "@xrf/ui/icons";
 import { ReactElement } from "react";
 
 import { LevelWeatherTextureField } from "@/applications/level-viewer/components/weather/LevelWeatherTextureField";
@@ -17,7 +18,6 @@ import {
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /** What the sky and clouds lists offer before the level's weather is read. */
 const NO_TEXTURES: ReadonlyArray<LevelWeatherTexture> = [];

@@ -1,5 +1,5 @@
-import { default as CheckIcon } from "@mui/icons-material/Check";
-import { ListItemText, MenuItem, Typography } from "@mui/material";
+import { CheckIcon } from "@xrf/ui/icons";
+import { ListItemText, MenuItem, Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { IMenubarItem } from "./menubar-menu";

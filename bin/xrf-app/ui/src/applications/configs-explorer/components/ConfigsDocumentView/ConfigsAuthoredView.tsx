@@ -1,8 +1,9 @@
-import { Alert } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
 import { LtxAnchoredFinding, LtxStructureSection } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Alert } from "@xrf/ui/material";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { useRevealed } from "@/applications/configs-explorer/components/ConfigsDocumentView/use-revealed";
@@ -14,7 +15,6 @@ import { toFindingMarks } from "@/core/ltx/lib/findings";
 import { ECodeLineMark, ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
 import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IConfigsAuthoredViewProps extends BaseComponentProps {
   document: ConfigsDocument;

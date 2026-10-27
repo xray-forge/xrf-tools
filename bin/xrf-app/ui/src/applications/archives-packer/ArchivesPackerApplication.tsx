@@ -1,9 +1,9 @@
-import { default as TuneIcon } from "@mui/icons-material/Tune";
-import { Alert, Divider, Stack, Typography } from "@mui/material";
 import { DialogFilter, open, save } from "@tauri-apps/plugin-dialog";
 import { useInjection } from "@wirestate/react";
 import { ArchivePackConfig } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
+import { TuneIcon } from "@xrf/ui/icons";
+import { Alert, Divider, Stack, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ArchivesPackerService, EPackerSection } from "@/applications/archives-packer/services/archives-packer.service";

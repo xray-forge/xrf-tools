@@ -1,5 +1,3 @@
-import { default as FlipIcon } from "@mui/icons-material/Flip";
-import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import {
@@ -9,6 +7,9 @@ import {
   RenderReflectionProbe,
   RenderTraceSize,
 } from "@xrf/ipc/types/xrf-renderer";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { FlipIcon } from "@xrf/ui/icons";
+import { Button } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
@@ -33,7 +34,6 @@ import { RENDER_TRACE_SIZE_OPTIONS } from "@/core/render/lib/features/render-tra
 import { TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * What the view reflects, in three sections: the surfaces (the ground, puddles, wet and glossy surfaces), the

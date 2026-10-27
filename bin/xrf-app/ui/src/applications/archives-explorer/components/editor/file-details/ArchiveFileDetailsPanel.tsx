@@ -4,6 +4,7 @@ import { ArchiveSubject, ArchiveWorldEntry, EArchiveSubject } from "@xrf/ipc/typ
 import { ArchiveDescriptor, ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 import { getFileExtension } from "@xrf/path";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
@@ -15,7 +16,6 @@ import {
   EditorPanelProperty,
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { ArchiveOriginDetail } from "./ArchiveOriginDetail";
 import { ArchiveSharedPayloadDetail } from "./ArchiveSharedPayloadDetail";

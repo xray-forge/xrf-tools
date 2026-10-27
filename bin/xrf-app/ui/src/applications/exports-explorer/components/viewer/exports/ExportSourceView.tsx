@@ -4,16 +4,16 @@ import { transformError } from "@xrf/errors";
 import { SessionId } from "@xrf/ipc/types/xrf-app-core";
 import { ExportSourceContent } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports.service";
 import { getSyntaxLanguage } from "@/core/syntax/lib/syntax-language";
-import { cn } from "@/core/theme/class-name";
 import { CodeView } from "@/core/ui/code/CodeView";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IExportSourceViewProps extends BaseComponentProps {
   name: string;

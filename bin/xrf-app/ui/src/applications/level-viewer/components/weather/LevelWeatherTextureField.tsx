@@ -1,11 +1,10 @@
-import { default as CheckIcon } from "@mui/icons-material/Check";
-import { Autocomplete, TextField } from "@mui/material";
 import { LevelWeatherTexture } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckIcon } from "@xrf/ui/icons";
+import { Autocomplete, TextField } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, SyntheticEvent, useCallback } from "react";
-
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelWeatherTextureFieldProps extends BaseComponentProps {
   label: string;

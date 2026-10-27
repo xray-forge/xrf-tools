@@ -1,6 +1,6 @@
 import { Theme } from "@mui/material";
 
-import { getHeaderGlossImage, getWashImage, getWellFill } from "./surface";
+import { getHeaderGlossImage, getWashImage, getWellFill } from "#/theme/surface";
 import {
   BADGE_FONT_SIZE,
   CODE,
@@ -16,7 +16,7 @@ import {
   TREE,
   VIEWPORT,
   VIEWPORT_INK,
-} from "./tokens";
+} from "#/theme/tokens";
 
 /** Every published property, so a consumer and a test name the same thing. */
 export type TThemeVariableName =

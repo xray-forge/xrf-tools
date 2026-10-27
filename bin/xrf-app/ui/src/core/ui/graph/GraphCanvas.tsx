@@ -1,4 +1,6 @@
-import { useColorScheme } from "@mui/material/styles";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { useColorScheme } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import {
   Background,
   ColorMode,
@@ -15,9 +17,7 @@ import {
 } from "@xyflow/react";
 import { ReactElement, ReactNode } from "react";
 
-import { cn } from "@/core/theme/class-name";
 import { TGraphEdge, TGraphNode } from "@/core/ui/graph/graph.types";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import "@xyflow/react/dist/style.css";
 

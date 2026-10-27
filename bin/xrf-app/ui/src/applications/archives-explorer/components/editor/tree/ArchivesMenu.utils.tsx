@@ -1,6 +1,4 @@
-import { default as DescriptionIcon } from "@mui/icons-material/Description";
-import { default as FolderIcon } from "@mui/icons-material/Folder";
-import { default as FolderOpenIcon } from "@mui/icons-material/FolderOpen";
+import { DescriptionIcon, FolderIcon, FolderOpenIcon } from "@xrf/ui/icons";
 
 import { IArchiveEntry } from "@/core/archive/lib";
 import { IVirtualizedTreeIcons } from "@/core/ui/tree/VirtualizedTree";

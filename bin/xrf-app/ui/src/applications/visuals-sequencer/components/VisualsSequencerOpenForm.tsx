@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback } from "react";
 
 import { VisualsSequencerService } from "@/applications/visuals-sequencer/services/visuals-sequencer";
@@ -10,7 +11,6 @@ import { OGF_FILE_FILTERS } from "@/core/path/file-filters";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IVisualsSequencerOpenFormProps extends BaseComponentProps {
   /** Called once an open attempt has finished, successfully or not. */

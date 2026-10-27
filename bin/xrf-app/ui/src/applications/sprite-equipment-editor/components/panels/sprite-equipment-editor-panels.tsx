@@ -1,5 +1,4 @@
-import { default as ListIcon } from "@mui/icons-material/FormatListBulleted";
-import { default as WarningIcon } from "@mui/icons-material/WarningAmber";
+import { FormatListBulletedIcon as ListIcon, WarningAmberIcon as WarningIcon } from "@xrf/ui/icons";
 
 import { EquipmentOccupantsPanel } from "@/applications/sprite-equipment-editor/components/panels/EquipmentOccupantsPanel";
 import { EquipmentProblemsPanel } from "@/applications/sprite-equipment-editor/components/panels/EquipmentProblemsPanel";

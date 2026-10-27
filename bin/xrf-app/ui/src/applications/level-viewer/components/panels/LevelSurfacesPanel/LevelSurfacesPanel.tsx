@@ -2,6 +2,8 @@ import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Maybe, Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { describeLevelResidentWait } from "@/applications/level-viewer/lib/load/level-resident-wait";
@@ -29,14 +31,12 @@ import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { describeSurfaceOutcome } from "@/core/materials/lib";
 import { EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
-import { cn } from "@/core/theme/class-name";
 import { EmptyListing } from "@/core/ui/layout";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
 import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { noop } from "@/lib/callbacks/noop";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { LevelSurfaceDetails } from "./LevelSurfaceDetails";
 

@@ -1,61 +1,44 @@
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { fixupConfigRules } from "@eslint/compat";
 import { createEslintConfig } from "@xrf/toolchain/eslint";
-import reactPlugin from "eslint-plugin-react";
-import reactHooksPlugin from "eslint-plugin-react-hooks";
-import tailwindPlugin from "eslint-plugin-tailwindcss";
+import { createReactLayers, TESTING_LIBRARY_RESTRICTED_IMPORTS } from "@xrf/toolchain/eslint-react";
 
-const RESTRICTED_IMPORT_PATHS = [
+/**
+ * MUI and Emotion reach the application only through `@xrf/ui`, which owns the look they draw.
+ */
+const KIT_RESTRICTED_IMPORT_PATTERNS = [
   {
-    name: "@testing-library/react",
-    importNames: ["screen"],
+    group: ["@mui/**", "@emotion/**"],
     message:
-      "Query through the render result instead: `const { findByRole } = renderWithProviders(...)`. " +
-      "`screen` searches the whole document, so a test cannot say which render it is asserting on.",
+      "MUI and Emotion are `@xrf/ui`'s to import. Take the name from its subpath (`@xrf/ui/material`, `/icons`, " +
+      "`/data-grid`, `/virtualizer`), adding it there if it is missing.",
   },
 ];
 
 /**
- * Flat configuration for the desktop frontend: the workspace rules, plus what only a React and Tailwind
- * application needs.
- *
- * Mirrors the layout of the engine repository so both codebases are linted the same way, but keeps this
- * package's own rule set: the shared part is the mechanism, not the policy.
+ * Flat configuration for the desktop frontend: the workspace rules and the React and Tailwind layers it shares with
+ * `@xrf/ui`, plus the boundaries only this application keeps: core and libraries apart from applications, MUI and
+ * Emotion behind the kit, and colour behind the theme.
  */
 export default createEslintConfig(
   path.resolve(import.meta.dirname, "..", ".."),
-  ...fixupConfigRules(reactPlugin.configs.flat.recommended),
+  ...createReactLayers({
+    tailwindStylesheet: fileURLToPath(import.meta.resolve("@xrf/ui/theme/tailwind.css")),
+    // `monospace` is declared by the theme; the other two are markers a parent selects on rather than styles directly.
+    customClassNames: ["monospace", "workspace"],
+    effectHooks: "^useEditor(Panels|Menus)$",
+  }),
   {
     files: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.mjs", "**/*.cjs"],
-    settings: {
-      react: { version: "detect" },
-    },
-    plugins: {
-      "react-hooks": reactHooksPlugin,
-    },
     rules: {
       "no-restricted-imports": [
         "error",
         {
-          paths: RESTRICTED_IMPORT_PATHS,
+          paths: TESTING_LIBRARY_RESTRICTED_IMPORTS,
+          patterns: KIT_RESTRICTED_IMPORT_PATTERNS,
         },
       ],
-      "react/jsx-curly-brace-presence": [
-        "error",
-        {
-          props: "always",
-          children: "never",
-          propElementValues: "always",
-        },
-      ],
-      "react/jsx-key": ["error", { checkFragmentShorthand: true }],
-      "react/jsx-no-undef": "off",
-      "react/no-unknown-property": "off",
-      "react/prop-types": "off",
-      "react/react-in-jsx-scope": "off",
-      "react-hooks/exhaustive-deps": ["warn", { additionalHooks: "^useEditor(Panels|Menus)$" }],
-      "react-hooks/rules-of-hooks": "error",
     },
   },
   {
@@ -66,8 +49,9 @@ export default createEslintConfig(
       "no-restricted-imports": [
         "error",
         {
-          paths: RESTRICTED_IMPORT_PATHS,
+          paths: TESTING_LIBRARY_RESTRICTED_IMPORTS,
           patterns: [
+            ...KIT_RESTRICTED_IMPORT_PATTERNS,
             {
               group: ["@/applications", "@/applications/**"],
               message: "Core must not depend on applications. Inject application behavior at the composition root.",
@@ -78,31 +62,9 @@ export default createEslintConfig(
     },
   },
   {
-    // A name absent from `@theme` generates no CSS and fails silently, which is the one way Tailwind can
-    // break a screen without anything reporting it.
-    files: ["src/**/*.tsx"],
-    plugins: { tailwindcss: tailwindPlugin },
-    settings: { tailwindcss: { cssConfigPath: "src/core/theme/tailwind.css" } },
-    rules: {
-      "tailwindcss/classnames-order": "warn",
-      "tailwindcss/no-contradicting-classname": "error",
-      // Real classes the application declares itself: `monospace` in the theme, and two markers a
-      // parent selects on rather than styles directly.
-      "tailwindcss/no-custom-classname": ["error", { whitelist: ["monospace", "workspace"] }],
-    },
-  },
-  {
-    // A test names a class to prove the prop reaches the DOM; the name is the assertion, not styling.
-    files: ["src/**/*.test.tsx"],
-    rules: {
-      "tailwindcss/no-custom-classname": "off",
-    },
-  },
-  {
-    // Chrome colour belongs to the theme, where it is contrast-tested against every surface it can land on.
+    // Chrome colour belongs to the theme in `@xrf/ui`, where it is contrast-tested against every surface it can land on.
     files: ["src/**/*.{ts,tsx}"],
     ignores: [
-      "src/core/theme/**",
       "**/*.test.{ts,tsx}",
       "src/core/brand/XrfMark.tsx",
       "src/core/shell/title-bar/WindowControlButton.tsx",
@@ -115,13 +77,13 @@ export default createEslintConfig(
         {
           selector: String.raw`Literal[value=/#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/]`,
           message:
-            "Raw colour outside `core/theme`. Use a palette path or a theme token, so the value stays inside the " +
+            "Raw colour outside the theme. Use a palette path or a theme token, so the value stays inside the " +
             "contrast rules the tokens define.",
         },
         {
           selector: String.raw`TemplateElement[value.raw=/#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/]`,
           message:
-            "Raw colour outside `core/theme`. Use a palette path or a theme token, so the value stays inside the " +
+            "Raw colour outside the theme. Use a palette path or a theme token, so the value stays inside the " +
             "contrast rules the tokens define.",
         },
       ],
@@ -134,8 +96,9 @@ export default createEslintConfig(
       "no-restricted-imports": [
         "error",
         {
-          paths: RESTRICTED_IMPORT_PATHS,
+          paths: TESTING_LIBRARY_RESTRICTED_IMPORTS,
           patterns: [
+            ...KIT_RESTRICTED_IMPORT_PATTERNS,
             {
               group: ["@/core", "@/core/**", "@/applications", "@/applications/**"],
               message: "Library utilities must not depend on core or applications. Move domain behavior to its owner.",

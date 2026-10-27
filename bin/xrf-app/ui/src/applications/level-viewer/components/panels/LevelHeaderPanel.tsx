@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { LevelLoadService } from "@/core/level/services/level-load";
@@ -11,7 +12,6 @@ import {
   EditorPanelProperty,
   EditorPanelSection,
 } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * What the open level is built out of, which is everything the open read without touching its geometry.

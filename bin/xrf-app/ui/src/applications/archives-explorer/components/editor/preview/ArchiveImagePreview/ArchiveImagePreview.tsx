@@ -1,19 +1,19 @@
-import { Typography } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
 import { ImageShape } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { ArchivePreviewError } from "@/applications/archives-explorer/components/editor/preview/ArchivePreviewError/ArchivePreviewError";
 import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
-import { cn } from "@/core/theme/class-name";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ImageViewport } from "@/core/ui/media/ImageViewport";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Shows a picture the webview draws as it stands, which the engine does not load.

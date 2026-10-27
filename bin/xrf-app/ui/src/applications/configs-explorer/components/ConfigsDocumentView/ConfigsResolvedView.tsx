@@ -1,8 +1,9 @@
-import { Alert, Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { LtxResolvedIndexEntry } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Alert, Button } from "@xrf/ui/material";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { useRevealed } from "@/applications/configs-explorer/components/ConfigsDocumentView/use-revealed";
@@ -15,7 +16,6 @@ import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines";
 import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { ErrorState } from "@/core/ui/layout/ErrorState";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * What the open config's entry point resolves to, with every value's origin beside it.

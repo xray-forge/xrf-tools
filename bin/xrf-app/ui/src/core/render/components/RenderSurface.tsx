@@ -1,8 +1,8 @@
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useEffect, useRef } from "react";
 
 import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
-import { cn } from "@/core/theme/class-name";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IRenderSurfaceProps extends BaseComponentProps {
   /** Whatever draws here, which is told where and nothing else. */

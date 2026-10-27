@@ -1,9 +1,9 @@
-import { Typography } from "@mui/material";
 import { EnvironmentFinding } from "@xrf/ipc/types/xrf-environment";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelWeatherFindingsSectionProps extends BaseComponentProps {
   /** The cycle's config, as a logical path. */

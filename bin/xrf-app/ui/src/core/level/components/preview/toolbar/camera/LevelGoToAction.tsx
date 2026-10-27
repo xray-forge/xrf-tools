@@ -1,6 +1,7 @@
-import { default as MyLocationIcon } from "@mui/icons-material/MyLocation";
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { MyLocationIcon } from "@xrf/ui/icons";
 import { ReactElement, useCallback } from "react";
 
 import { LevelGoToForm } from "@/core/level/components/preview/toolbar/camera/LevelGoToForm";
@@ -9,7 +10,6 @@ import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Stands the camera at a place typed in, in the coordinates the readout shows, or pasted from it.

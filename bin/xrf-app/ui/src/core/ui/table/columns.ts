@@ -1,5 +1,5 @@
-import { GridColDef } from "@mui/x-data-grid";
 import { formatHex } from "@xrf/format";
+import { GridColDef } from "@xrf/ui/data-grid";
 
 /** Applied by the theme to render a cell in monospace. */
 const MONOSPACE_CLASS: string = "monospace";

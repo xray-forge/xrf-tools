@@ -1,8 +1,9 @@
-import { default as WaterIcon } from "@mui/icons-material/Water";
-import { Button } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { formatPercent } from "@xrf/format";
 import { ERenderWaterMode, RenderWaterMode } from "@xrf/ipc/types/xrf-renderer";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { WaterIcon } from "@xrf/ui/icons";
+import { Button } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
@@ -36,7 +37,6 @@ import {
 } from "@/core/render/lib/settings/render-feature-settings";
 import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
 import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 /**
  * Whether this view draws the water, how strongly the weather has it reflect, and how it moves, reflects and

@@ -1,10 +1,11 @@
-import { TextField } from "@mui/material";
 import { useInjection } from "@wirestate/react";
 import { EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { EEquipmentSheetSource, EquipmentSpriteOpen } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { TextField } from "@xrf/ui/material";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
@@ -14,7 +15,6 @@ import { DDS_FILE_FILTERS, LTX_FILE_FILTERS } from "@/core/path/file-filters";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { ChoiceFormRow, FormRow, IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import {
   DEFAULT_SHEET_REFERENCE,

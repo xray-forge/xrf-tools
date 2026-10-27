@@ -2,9 +2,9 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { LOGICAL_PATH_SEPARATOR } from "@xrf/path";
+import { TREE } from "@xrf/ui/theme/tokens";
 import { ReactElement } from "react";
 
-import { TREE } from "@/core/theme/tokens";
 import { IPathTreeItem, parsePathTree, toDirectoryItemId, toFileItemId } from "@/core/ui/tree/path-tree";
 import { ITreeNode } from "@/core/ui/tree/tree-node";
 import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";

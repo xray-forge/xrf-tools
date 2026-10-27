@@ -1,11 +1,11 @@
-import { Box, Chip, Stack, Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Box, Chip, Stack, Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { Handle, Position } from "@xyflow/react";
 import { ReactElement } from "react";
 
 import { IDialogGraphNodeData } from "@/applications/dialogs-editor/lib";
-import { cn } from "@/core/theme/class-name";
 import { GRAPH_LAYOUT_DEFAULTS } from "@/core/ui/graph/graph.types";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export interface IDialogGraphNodeFrameProps extends BaseComponentProps {
   data: IDialogGraphNodeData;
@@ -20,15 +20,6 @@ export interface IDialogGraphNodeFrameProps extends BaseComponentProps {
 
 /**
  * The frame both dialog node kinds draw in.
- *
- * Shared because the two differ only in their accent and which handles they carry — everything a
- * reader looks at is the same, so drawing it twice would let the two drift apart visually.
- *
- * Handles render but never connect: this canvas is read-only, and a handle that refuses reads better
- * than one that is absent, because it says where a link will attach once editing exists.
- *
- * Sized from the layouter's own default rather than a matching literal, so a node and the rank holding
- * it cannot disagree about how wide it is.
  */
 export function DialogGraphNodeFrame({
   "data-testid": dataTestId = "dialog-graph-node-frame",

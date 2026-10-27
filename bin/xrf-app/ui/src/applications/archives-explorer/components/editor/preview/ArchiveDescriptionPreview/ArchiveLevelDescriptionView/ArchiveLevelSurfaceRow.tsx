@@ -1,4 +1,3 @@
-import { Typography } from "@mui/material";
 import {
   ArchiveDescribeScope,
   ArchiveLevelSurface,
@@ -7,11 +6,12 @@ import {
   EArchiveReferenceStatus,
 } from "@xrf/ipc/types/xrf-app-archives";
 import { assertExhaustive } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
 import { Fragment, ReactElement } from "react";
 
-import { cn } from "@/core/theme/class-name";
 import { inline } from "@/lib/callbacks/inline";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 import { describeReferenceStatus } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionReferenceLink } from "../ArchiveDescriptionReferenceLink";

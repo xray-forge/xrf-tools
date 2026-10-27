@@ -1,5 +1,8 @@
-import { Box, iconButtonClasses, svgIconClasses } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Box, iconButtonClasses, svgIconClasses } from "@xrf/ui/material";
+import { cn } from "@xrf/ui/theme/class-name";
+import { CONTROL } from "@xrf/ui/theme/tokens";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { IApplicationDescriptor } from "@/core/routing/application";
@@ -8,9 +11,6 @@ import { EditorToolbarCrumb } from "@/core/shell/editor/EditorToolbarCrumb";
 import { EditorToolbarPathSeparator } from "@/core/shell/editor/EditorToolbarPathSeparator";
 import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 import { useIsEditorBusy, useRequestLeave } from "@/core/shell/editor-lifecycle";
-import { cn } from "@/core/theme/class-name";
-import { CONTROL } from "@/core/theme/tokens";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IEditorToolbarProps extends BaseComponentProps {
   /** Overrides the application name resolved from the route. Rarely needed. */

@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ABSENT_VALUE } from "@xrf/format";
 import { VisualDescription } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import {
@@ -12,7 +13,6 @@ import {
 } from "@/core/shell/editor/EditorPanel";
 import { VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VisualBoundsSection } from "@/core/visuals/components/panels/VisualHeaderPanel/VisualBoundsSection";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 export function VisualHeaderPanel({
   "data-testid": dataTestId = "visual-header-panel",

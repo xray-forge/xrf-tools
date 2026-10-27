@@ -1,9 +1,9 @@
-import { ToggleButton, ToggleButtonGroup } from "@mui/material";
 import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ToggleButton, ToggleButtonGroup } from "@xrf/ui/material";
 import { ReactElement } from "react";
 
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface ILevelWeatherSourceChoiceProps extends BaseComponentProps {
   source: ELevelWeatherSource;

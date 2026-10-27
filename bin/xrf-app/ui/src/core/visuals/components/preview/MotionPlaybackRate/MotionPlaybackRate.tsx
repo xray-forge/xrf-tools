@@ -1,10 +1,10 @@
-import { default as SpeedIcon } from "@mui/icons-material/Speed";
-import { Slider, Typography } from "@mui/material";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { SpeedIcon } from "@xrf/ui/icons";
+import { Slider, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback } from "react";
 
 import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { MOTION_MAX_FPS, MOTION_MIN_FPS, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";
-import { BaseComponentProps } from "@/lib/dom/element-types";
 
 interface IMotionPlaybackRateProps extends BaseComponentProps {
   fps: number;
