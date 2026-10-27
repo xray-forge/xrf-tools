@@ -2,7 +2,6 @@ import { inject, Injectable, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, Observable } from "@wirestate/mobx";
 import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { Vector3d } from "@xrf/ipc/types/xrf-math";
-import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 import { VisualBone } from "@xrf/ipc/types/xrf-visual";
 import { Logger } from "@xrf/logging";
 import { findLastSeparator } from "@xrf/path";
@@ -232,19 +231,8 @@ export class VisualsService extends VisualInspectionService {
     // A motion belongs to the skeleton it was baked against, and the backend has just parked a different selection.
     this.motionService.clear();
 
-    await this.loadService.load(source, await this.getRoots(roots, asset));
-  }
-
-  /**
-   * The roots a visual's references are searched in, after the visual's own tree.
-   *
-   * @param roots - Roots searched ahead of the project's own.
-   * @param asset - Asset the roots is centred on.
-   * @returns The roots spec to open with.
-   */
-  private async getRoots(roots: Array<Nullable<string>> = [], asset: Nullable<string> = null): Promise<XrayRoots> {
     // Whatever the caller named, in the order it named them, and nothing else: a browsed session already carries the
     // extra root it was opened with, so there is no ambient set to fall in behind them.
-    return createRoots([...roots], asset);
+    await this.loadService.load(source, createRoots(roots, asset));
   }
 }
