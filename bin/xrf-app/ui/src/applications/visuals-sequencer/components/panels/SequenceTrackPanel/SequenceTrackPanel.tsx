@@ -1,15 +1,13 @@
 import { useInjection } from "@wirestate/react";
 import { formatDuration } from "@xrf/format";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
 
 import { ISequenceClip, VisualSequenceService } from "@/applications/visuals-sequencer/services/visual-sequence";
-import {
-  EditorPanel,
-  EditorPanelEmpty,
-  EditorPanelProperty,
-  EditorPanelSection,
-} from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 
 import { SequenceClipRow } from "./SequenceClipRow";
 

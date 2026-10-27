@@ -6,8 +6,10 @@ import { ArchivePatchConfig } from "@xrf/ipc/types/xrf-pack";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { ConfirmDialog } from "@xrf/ui/dialog/ConfirmDialog";
 import { TuneIcon } from "@xrf/ui/icons";
 import { Alert, Divider, Stack, Typography } from "@xrf/ui/material";
+import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -20,12 +22,10 @@ import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { EApplicationId } from "@/core/routing/application";
 import { resolveOutputPath } from "@/core/settings/lib/output-path";
-import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorLifecycle } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { ApplicationLoader } from "@/core/shell/loading/ApplicationLoader";
-import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
 import { IPathField, usePathField } from "@/core/ui/form";
 
 import { ArchivesPatchResult } from "./components/ArchivesPatchResult";

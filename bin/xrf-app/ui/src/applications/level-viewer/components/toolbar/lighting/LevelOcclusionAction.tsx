@@ -8,6 +8,7 @@ import {
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { GradientIcon } from "@xrf/ui/icons";
 import { Button } from "@xrf/ui/material";
+import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/shell/editor/EditorPopoverGroup";
 import { ReactElement, useCallback } from "react";
 
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
@@ -40,7 +41,6 @@ import {
   TRenderAmbientOcclusionVbaoSettings,
   TRenderIndirectLightSettings,
 } from "@/core/render/lib/settings/render-feature-settings";
-import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
 
 /**
  * What darkens creases and corners and what lights them back: the ambient occlusion, GTAO (XeGTAO), VBAO, whose

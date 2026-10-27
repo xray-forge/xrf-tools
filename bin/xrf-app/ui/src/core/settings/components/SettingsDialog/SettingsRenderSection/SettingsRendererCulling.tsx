@@ -1,9 +1,9 @@
 import { useInjection } from "@wirestate/react";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
+import { DetailSection } from "@xrf/ui/layout/DetailSection";
 import { ReactElement } from "react";
 
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { DetailSection } from "@/core/ui/layout/DetailSection";
 
 /** What the renderer leaves out of a frame because none of it would show. */
 export function SettingsRendererCulling(): ReactElement {

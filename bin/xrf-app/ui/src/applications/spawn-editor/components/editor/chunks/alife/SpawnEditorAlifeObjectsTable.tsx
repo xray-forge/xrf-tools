@@ -1,10 +1,10 @@
 import { AlifeObject } from "@xrf/ipc/types/xrf-spawn";
 import { GridColDef, GridRowId } from "@xrf/ui/data-grid";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { flagsColumn, identifierColumn, textColumn, vectorColumn } from "@xrf/ui/table";
 import { ReactElement, useMemo } from "react";
 
 import { SpawnTable } from "@/applications/spawn-editor/components/editor/table/SpawnTable";
-import { flagsColumn, identifierColumn, textColumn, vectorColumn } from "@/core/ui/table";
 
 interface IAlifeObjectRow extends AlifeObject {
   index: number;

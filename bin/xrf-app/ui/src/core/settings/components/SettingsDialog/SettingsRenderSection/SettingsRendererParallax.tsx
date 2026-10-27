@@ -1,5 +1,9 @@
 import { useInjection } from "@wirestate/react";
 import { ERenderParallaxMode, RenderParallaxMode } from "@xrf/ipc/types/xrf-renderer";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
+import { ChoiceFormRow } from "@xrf/ui/form/ChoiceFormRow";
+import { SliderFormRow } from "@xrf/ui/form/SliderFormRow";
+import { DetailSection } from "@xrf/ui/layout/DetailSection";
 import { ReactElement } from "react";
 
 import {
@@ -13,10 +17,6 @@ import {
 } from "@/core/render/lib/features/render-parallax-choices";
 import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
-import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
-import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
-import { DetailSection } from "@/core/ui/layout/DetailSection";
 
 import { useRendererOverride } from "./use-renderer-override";
 

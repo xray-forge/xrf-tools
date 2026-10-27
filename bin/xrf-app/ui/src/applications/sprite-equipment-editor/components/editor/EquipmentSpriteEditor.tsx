@@ -3,6 +3,9 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { RefreshIcon } from "@xrf/ui/icons";
 import { Alert, Typography } from "@xrf/ui/material";
+import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
+import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
+import { EditorToolbarLocation, IEditorLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
 import { format } from "date-fns";
 import { ReactElement, useCallback } from "react";
 
@@ -15,10 +18,7 @@ import {
   SpriteEquipmentEditorService,
 } from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
 import { toAssetLocation } from "@/core/assets/lib";
-import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { EditorToolbarLocation, IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorMenus, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { IMenuContribution } from "@/core/shell/menu/lib";

@@ -1,11 +1,11 @@
 import { useInjection } from "@wirestate/react";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { SelectAllIcon as HighlightIcon } from "@xrf/ui/icons";
+import { EditorViewToggle } from "@xrf/ui/shell/editor/EditorViewToggle";
 import { ReactElement, useCallback } from "react";
 
 import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/equipment-grid";
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";
-import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 
 /**
  * Whether the slots the configuration claims are shaded over the sheet.

@@ -3,18 +3,18 @@ import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveWorldEntry } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchiveSourceUsage, ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { Nullable } from "@xrf/types";
+import { DialogHeader } from "@xrf/ui/dialog/DialogHeader";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ContentCopyIcon } from "@xrf/ui/icons";
+import { DetailSection } from "@xrf/ui/layout/DetailSection";
 import { Alert, CircularProgress, Dialog, DialogContent, TextField } from "@xrf/ui/material";
+import { EStatMeasure } from "@xrf/ui/stats/stat-measure";
+import { IStatBreakdownRow, StatBreakdownTable } from "@xrf/ui/stats/StatBreakdownTable";
+import { StatMeasureToggle } from "@xrf/ui/stats/StatMeasureToggle";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ChangeEvent, ReactElement, useCallback, useEffect, useId, useMemo, useState } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
-import { DetailSection } from "@/core/ui/layout/DetailSection";
-import { EStatMeasure } from "@/core/ui/stats/stat-measure";
-import { IStatBreakdownRow, StatBreakdownTable } from "@/core/ui/stats/StatBreakdownTable";
-import { StatMeasureToggle } from "@/core/ui/stats/StatMeasureToggle";
 
 import { filterOverrides, flattenOverrides, TArchiveOverrideRow } from "./archive-override-rows";
 import { ArchiveOverrideList } from "./ArchiveOverrideList";

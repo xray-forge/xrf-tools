@@ -2,9 +2,9 @@ import { describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, RenderResult } from "@testing-library/react";
 import { LtxInventoryFile } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
+import { ARCHIVED_CAPTION } from "@xrf/ui/tree/TreeRowLabel";
 
 import { ConfigsMenu } from "@/applications/configs-explorer/components/ConfigsMenu/ConfigsMenu";
-import { ARCHIVED_CAPTION } from "@/core/ui/tree/TreeRowLabel";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 /** The committed fixture's shape: an entry point and the config it includes, one directory deep. */

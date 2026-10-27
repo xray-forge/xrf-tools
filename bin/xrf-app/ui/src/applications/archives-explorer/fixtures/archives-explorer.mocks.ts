@@ -3,6 +3,7 @@ import { runInAction } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { ArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { EPathEntryKind } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 
 import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
@@ -10,7 +11,6 @@ import { ArchivesService } from "@/applications/archives-explorer/services/archi
 import { mockArchivesVolumes } from "@/core/archive/fixtures/archive.mocks";
 import { IArchiveEntry, TArchiveContent } from "@/core/archive/lib";
 import { mockCommandAnswer } from "@/core/operations/fixtures/command-operation.mocks";
-import { EPathEntryKind } from "@/core/path/entry-kind";
 import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";

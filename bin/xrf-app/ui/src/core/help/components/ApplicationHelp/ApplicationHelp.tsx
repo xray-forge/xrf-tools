@@ -1,10 +1,10 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { XrfMark } from "@xrf/ui/brand/XrfMark";
 import { ReactElement, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
-import { XrfMark } from "@/core/brand/XrfMark";
-import { PRODUCT_NAME } from "@/core/configs";
+import { getBuildKind, PRODUCT_NAME } from "@/core/configs";
 import { ApplicationHelpButton, ApplicationHelpDialog } from "@/core/help/components";
 import { HelpService } from "@/core/help/services/help.service";
 import { LAUNCHER_HELP } from "@/core/launcher/help";
@@ -34,7 +34,7 @@ export function ApplicationHelp(): ReactElement {
       {help ? (
         <ApplicationHelpDialog
           title={application?.label ?? PRODUCT_NAME}
-          icon={application?.icon ?? <XrfMark />}
+          icon={application?.icon ?? <XrfMark core={getBuildKind()} />}
           help={help}
           isOpen={helpService.isOpen}
           onClose={helpService.close}

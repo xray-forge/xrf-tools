@@ -1,7 +1,7 @@
 import { DialogFilter } from "@tauri-apps/plugin-dialog";
+import { IChoiceFormRowOption } from "@xrf/ui/form";
 
 import { ARCHIVE_VOLUME_FILE_EXTENSIONS } from "@/core/archive/lib";
-import { IChoiceFormRowOption } from "@/core/ui/form";
 
 /** Which source the picker opens. */
 export enum EArchiveOpenMode {

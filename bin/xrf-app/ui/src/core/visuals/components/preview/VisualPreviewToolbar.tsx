@@ -9,14 +9,14 @@ import {
   TextureIcon,
   ThreeDRotationIcon,
 } from "@xrf/ui/icons";
+import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
+import { EditorToolbarSeparator } from "@xrf/ui/shell/editor/EditorToolbarSeparator";
+import { EditorViewToggle } from "@xrf/ui/shell/editor/EditorViewToggle";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { RenderLightingAction } from "@/core/render/components/lighting/RenderLightingAction";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
-import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
-import { EditorViewToggle } from "@/core/shell/editor/EditorViewToggle";
 import { DEFAULT_VISUAL_LIGHTING, IVisualPreviewViewOptions } from "@/core/visuals/lib/scene";
 
 import { VisualMeshDetail } from "./VisualMeshDetail";

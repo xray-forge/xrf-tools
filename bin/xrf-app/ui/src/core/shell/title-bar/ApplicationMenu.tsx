@@ -1,12 +1,13 @@
 import { Nullable } from "@xrf/types";
 import { ButtonBase, Tooltip } from "@xrf/ui/material";
+import { Menubar } from "@xrf/ui/shell/menu/components/Menubar/Menubar";
+import { IMenubarMenu } from "@xrf/ui/shell/menu/components/Menubar/menubar-menu";
+import { MenuGlyph } from "@xrf/ui/shell/title-bar/glyphs/MenuGlyph";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback, useState } from "react";
 
-import { IMenubarMenu, Menubar } from "@/core/shell/menu/components/Menubar";
 import { useApplicationMenus } from "@/core/shell/menu/use-application-menus";
 import { useMenubarAccessKeys } from "@/core/shell/menu/use-menubar-access-keys";
-import { MenuGlyph } from "@/core/shell/title-bar/glyphs/MenuGlyph";
 
 /** What showed the menubar: a click opens File at once, as a click on a menubar does; a key only marks it. */
 type TMenubarShownBy = "pointer" | "keyboard";

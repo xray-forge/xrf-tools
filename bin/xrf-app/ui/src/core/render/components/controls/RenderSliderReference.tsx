@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { ISliderReferenceSource, SliderReferenceContext } from "@xrf/ui/form/ReferenceSlider";
 import { ReactElement, ReactNode, useMemo } from "react";
 
 import { readRenderFeatureNumber, TRenderFeaturePath } from "@/core/render/lib/settings/render-feature-path";
@@ -6,7 +7,6 @@ import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-featur
 import { describeRenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
 import { ERenderSliderReferenceSource } from "@/core/render/lib/settings/render-slider-reference-source";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { ISliderReferenceSource, SliderReferenceContext } from "@/core/ui/form/ReferenceSlider";
 
 export interface IRenderSliderReferenceProps {
   source: ERenderSliderReferenceSource;

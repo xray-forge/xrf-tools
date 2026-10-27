@@ -3,7 +3,13 @@ import { formatCount } from "@xrf/format";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Maybe, Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EmptyListing } from "@xrf/ui/layout";
+import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
 import { cn } from "@xrf/ui/theme/class-name";
+import { ITreeNode } from "@xrf/ui/tree/tree-node";
+import { TreeRowLabel } from "@xrf/ui/tree/TreeRowLabel";
+import { IUseTreeState, useTreeState } from "@xrf/ui/tree/use-tree-state";
+import { VirtualizedTree } from "@xrf/ui/tree/VirtualizedTree";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { describeLevelResidentWait } from "@/applications/level-viewer/lib/load/level-resident-wait";
@@ -29,13 +35,7 @@ import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { describeSurfaceOutcome } from "@/core/materials/lib";
-import { EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
 import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
-import { EmptyListing } from "@/core/ui/layout";
-import { ITreeNode } from "@/core/ui/tree/tree-node";
-import { TreeRowLabel } from "@/core/ui/tree/TreeRowLabel";
-import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
-import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
 import { noop } from "@/lib/callbacks/noop";
 
 import { LevelSurfaceDetails } from "./LevelSurfaceDetails";

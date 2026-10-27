@@ -1,7 +1,7 @@
+import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form";
 import { ReactElement } from "react";
 
 import { EConfigsDialect } from "@/core/ltx/lib/dialect";
-import { ChoiceFormRow, IChoiceFormRowOption } from "@/core/ui/form";
 
 const DIALECT_OPTIONS: ReadonlyArray<IChoiceFormRowOption<EConfigsDialect>> = [
   { value: EConfigsDialect.LTX, label: "LTX" },

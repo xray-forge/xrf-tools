@@ -4,6 +4,9 @@ import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveSubject, EArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable, Optional } from "@xrf/types";
 import { BarChartIcon, FileCopyIcon, LayersIcon, UnarchiveIcon } from "@xrf/ui/icons";
+import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
+import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
+import { EditorToolbarLocation, IEditorLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
 import { ReactElement, useCallback, useState } from "react";
 
 import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
@@ -17,10 +20,7 @@ import {
 } from "@/core/archive/lib";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
-import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { EditorToolbarLocation, IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { IPanelSetActiveCommand, PANEL_SET_ACTIVE_COMMAND } from "@/core/shell/panel/panel-messages";

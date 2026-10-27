@@ -1,10 +1,9 @@
 import { formatCount, formatDuration } from "@xrf/format";
 import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { EquipmentSpritePackResult } from "@xrf/ipc/types/xrf-texture";
+import { CommandResult } from "@xrf/ui/command-result/CommandResult";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
-
-import { CommandResult } from "@/core/ui/command-result/CommandResult";
 
 interface IEquipmentPackResultProps extends BaseComponentProps {
   result: EquipmentSpritePackResult;

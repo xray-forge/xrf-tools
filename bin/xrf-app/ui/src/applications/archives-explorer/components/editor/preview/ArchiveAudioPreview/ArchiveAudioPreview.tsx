@@ -3,7 +3,12 @@ import { AsyncState } from "@xrf/async";
 import { AudioDescriptor } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CenteredColumn } from "@xrf/ui/layout/CenteredColumn";
+import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
+import { EmptyState } from "@xrf/ui/layout/EmptyState";
 import { Divider, Typography } from "@xrf/ui/material";
+import { AudioPlayer } from "@xrf/ui/media/AudioPlayer";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
@@ -11,11 +16,7 @@ import { ArchivePreviewError } from "@/applications/archives-explorer/components
 import { ArchivePreviewService } from "@/applications/archives-explorer/services/archive-preview";
 import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
 import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
-import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
-import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
-import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
-import { AudioPlayer } from "@/core/ui/media/AudioPlayer";
+import { IMediaVolume, useMediaVolume } from "@/core/ui/media/use-media-volume";
 
 import { formatAudioChannels } from "./ArchiveAudioPreview.utils";
 
@@ -39,6 +40,7 @@ export function ArchiveAudioPreview({
   const descriptor: Nullable<AudioDescriptor> = audio?.descriptor ?? null;
   const bytes: Nullable<TArchiveBytes> = audio?.bytes ?? null;
   const url: Nullable<string> = useAssetUrl(`${__MODULE_NAME__}/archive-audio`, bytes, descriptor?.mediaType);
+  const volume: IMediaVolume = useMediaVolume();
 
   if (content.error) {
     return (
@@ -73,7 +75,7 @@ export function ArchiveAudioPreview({
       className={cn("justify-center-safe gap-5 overflow-y-auto p-6", className)}
     >
       <div className={"w-full max-w-160 shrink-0"}>
-        <AudioPlayer src={url} bytes={bytes} />
+        <AudioPlayer src={url} bytes={bytes} volume={volume.value} onVolumeChange={volume.set} />
       </div>
 
       <div className={"w-full max-w-160 shrink-0"}>

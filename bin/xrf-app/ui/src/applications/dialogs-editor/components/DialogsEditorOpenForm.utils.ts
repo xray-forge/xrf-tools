@@ -1,6 +1,5 @@
 import { DialogProjectMode } from "@xrf/ipc/types/xrf-dialog";
-
-import { IChoiceFormRowOption } from "@/core/ui/form";
+import { IChoiceFormRowOption } from "@xrf/ui/form";
 
 export const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<DialogProjectMode>> = [
   { value: "gamedata", label: "Game data" },

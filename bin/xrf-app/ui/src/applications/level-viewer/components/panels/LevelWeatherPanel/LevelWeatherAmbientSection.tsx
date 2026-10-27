@@ -2,9 +2,9 @@ import { WorldAmbientReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Button, Typography } from "@xrf/ui/material";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
-
-import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 
 /**
  * @param milliseconds - Real milliseconds.

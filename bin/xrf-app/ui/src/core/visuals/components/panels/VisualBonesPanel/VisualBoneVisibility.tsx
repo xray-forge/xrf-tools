@@ -2,10 +2,10 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { VisibilityIcon, VisibilityOffIcon } from "@xrf/ui/icons";
 import { Button, Chip, FormControlLabel, Switch, Typography } from "@xrf/ui/material";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
-import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VISIBILITY_MASK_BONES } from "@/core/visuals/lib/visual-bones";
 

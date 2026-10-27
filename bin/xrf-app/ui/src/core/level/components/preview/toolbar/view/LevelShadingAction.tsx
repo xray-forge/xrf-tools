@@ -1,7 +1,9 @@
 import { useInjection } from "@wirestate/react";
 import { ERenderParallaxMode } from "@xrf/ipc/types/xrf-renderer";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ChoiceListFormRow } from "@xrf/ui/form";
 import { TextureIcon } from "@xrf/ui/icons";
+import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/shell/editor/EditorPopoverGroup";
 import { ReactElement } from "react";
 
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
@@ -17,8 +19,6 @@ import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
-import { ChoiceListFormRow } from "@/core/ui/form";
 
 /**
  * How the level is shaded: the frame as dressed, as clay or by shader, or one of the targets it is built from, listed

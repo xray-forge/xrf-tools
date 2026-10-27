@@ -7,6 +7,7 @@ import { SessionId } from "@xrf/ipc/types/xrf-app-core";
 import { ArchiveDescriptor, ArchiveFileDescriptor } from "@xrf/ipc/types/xrf-archive";
 import { EXrayAssetContainer } from "@xrf/ipc/types/xrf-vfs";
 import { Logger } from "@xrf/logging";
+import { EPathEntryKind } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
@@ -19,7 +20,6 @@ import {
   TArchiveSelection,
 } from "@/core/archive/lib";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
-import { EPathEntryKind } from "@/core/path/entry-kind";
 
 import { ArchiveContentReader } from "./archive-preview.service.content";
 

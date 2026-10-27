@@ -1,11 +1,11 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { GRAPH_LAYOUT_DEFAULTS } from "@xrf/ui/graph/graph.types";
 import { Box, Chip, Stack, Typography } from "@xrf/ui/material";
 import { cn } from "@xrf/ui/theme/class-name";
 import { Handle, Position } from "@xyflow/react";
 import { ReactElement } from "react";
 
 import { IDialogGraphNodeData } from "@/applications/dialogs-editor/lib";
-import { GRAPH_LAYOUT_DEFAULTS } from "@/core/ui/graph/graph.types";
 
 export interface IDialogGraphNodeFrameProps extends BaseComponentProps {
   data: IDialogGraphNodeData;

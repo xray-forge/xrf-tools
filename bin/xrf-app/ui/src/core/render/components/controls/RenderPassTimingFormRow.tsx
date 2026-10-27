@@ -1,7 +1,6 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
 import { ReactElement } from "react";
-
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 
 export interface IRenderPassTimingFormRowProps extends BaseComponentProps {
   /** Whether the settings time every pass on the GPU. */

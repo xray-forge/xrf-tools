@@ -1,6 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { DialogHeader } from "@xrf/ui/dialog/DialogHeader";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { ChoiceFormRow } from "@xrf/ui/form";
 import { MapOutlinedIcon as MapIcon, PanoramaPhotosphereOutlinedIcon as PanoramaPhotosphereIcon } from "@xrf/ui/icons";
 import { Button, Dialog, DialogActions, DialogContent, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback, useId, useState } from "react";
@@ -12,8 +14,6 @@ import { LevelViewerCaptureService } from "@/applications/level-viewer/services/
 import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/level-viewer-capture-result";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
-import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
-import { ChoiceFormRow } from "@/core/ui/form";
 
 import { LevelViewerCubeParameters } from "./LevelViewerCubeParameters";
 import { LevelViewerCubeResult } from "./LevelViewerCubeResult";

@@ -1,9 +1,8 @@
 import { ArchivePatchConfig } from "@xrf/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { StringListFormRow } from "@xrf/ui/form";
 import { Stack } from "@xrf/ui/material";
 import { ReactElement } from "react";
-
-import { StringListFormRow } from "@/core/ui/form";
 
 interface IPatcherSelectionSectionProps extends BaseComponentProps {
   config: ArchivePatchConfig;

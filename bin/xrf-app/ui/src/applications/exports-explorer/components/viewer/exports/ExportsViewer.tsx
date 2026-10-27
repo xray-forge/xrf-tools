@@ -2,9 +2,8 @@ import { ExportDescriptor } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DataObjectIcon } from "@xrf/ui/icons";
+import { EmptyState } from "@xrf/ui/layout/EmptyState";
 import { ReactElement } from "react";
-
-import { EmptyState } from "@/core/ui/layout/EmptyState";
 
 import { ExportDeclarationView } from "./ExportDeclarationView";
 

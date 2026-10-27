@@ -1,6 +1,5 @@
 import { ILogicalPathParts, splitLogicalPath } from "@xrf/path";
-
-import { IEditorSearchResultRow } from "@/core/shell/editor/EditorSearchResults";
+import { IEditorSearchResultRow } from "@xrf/ui/shell/editor/EditorSearchResults";
 
 /**
  * A search result for a logical path: its name, with the directory it sits in beneath.

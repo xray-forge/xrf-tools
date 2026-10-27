@@ -1,7 +1,9 @@
 import { RenderLightShadowFilter } from "@xrf/ipc/types/xrf-renderer";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
 import { LightIcon } from "@xrf/ui/icons";
 import { Button } from "@xrf/ui/material";
+import { EditorPopoverToggle } from "@xrf/ui/shell/editor/EditorPopoverToggle";
 import { ReactElement } from "react";
 
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
@@ -11,8 +13,6 @@ import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feat
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features/render-shadow-choices";
 import { TRenderLightsSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 
 /**
  * Whether this view lights the level with its lamps, and with the level file's own lights too; and how the light the

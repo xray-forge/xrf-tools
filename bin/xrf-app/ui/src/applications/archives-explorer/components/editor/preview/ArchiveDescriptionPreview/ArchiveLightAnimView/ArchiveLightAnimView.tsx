@@ -3,10 +3,9 @@ import { ArchiveLightAnimDescription, ArchiveLightAnimItem } from "@xrf/ipc/type
 import { filterByName } from "@xrf/search";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material";
+import { EditorFilterInput } from "@xrf/ui/shell/editor/EditorFilterInput";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement, useMemo, useState } from "react";
-
-import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
-import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";

@@ -1,9 +1,8 @@
 import { formatHex } from "@xrf/format";
 import { ArchiveDescribeScope, ArchiveDetailModel } from "@xrf/ipc/types/xrf-app-archives";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
-
-import { EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 
 import { NOT_DECLARED } from "../ArchiveDescriptionPreview.utils";
 import { ArchiveDescriptionReference } from "../ArchiveDescriptionReference";

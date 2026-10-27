@@ -1,4 +1,5 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EditorToolbarSeparator } from "@xrf/ui/shell/editor/EditorToolbarSeparator";
 import { ReactElement } from "react";
 
 import { LevelViewerCaptureAction } from "@/applications/level-viewer/components/toolbar/camera/LevelViewerCaptureAction";
@@ -26,7 +27,6 @@ import { LevelShadingAction } from "@/core/level/components/preview/toolbar/view
 import { RenderSliderReference } from "@/core/render/components/controls/RenderSliderReference";
 import { ERenderSliderReferenceSource } from "@/core/render/lib/settings/render-slider-reference-source";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { EditorToolbarSeparator } from "@/core/shell/editor/EditorToolbarSeparator";
 
 interface ILevelViewerToolbarProps extends BaseComponentProps {
   onBack?: () => void;

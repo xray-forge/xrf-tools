@@ -4,13 +4,13 @@ import { ExportDescriptor, ExportsProject } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
 import { ListAltIcon, RefreshIcon } from "@xrf/ui/icons";
 import { Alert } from "@xrf/ui/material";
+import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
+import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
+import { EditorToolbarLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ExportsService } from "@/applications/exports-explorer/services/exports.service";
-import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
-import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { EditorToolbarLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { useEditorBusy } from "@/core/shell/editor-lifecycle";
 import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 

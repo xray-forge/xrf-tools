@@ -1,7 +1,7 @@
 import { DescriptionIcon, FolderIcon, FolderOpenIcon } from "@xrf/ui/icons";
+import { IVirtualizedTreeIcons } from "@xrf/ui/tree/VirtualizedTree";
 
 import { IArchiveEntry } from "@/core/archive/lib";
-import { IVirtualizedTreeIcons } from "@/core/ui/tree/VirtualizedTree";
 
 /** Hoisted so the tree is handed the same icons every render rather than a fresh set. */
 export const ARCHIVE_TREE_ICONS: IVirtualizedTreeIcons = {

@@ -1,7 +1,6 @@
 import { HelpOutlineOutlinedIcon as HelpOutlineIcon } from "@xrf/ui/icons";
+import { RailButton } from "@xrf/ui/shell/panel/rail/RailButton";
 import { ReactElement } from "react";
-
-import { RailButton } from "@/core/shell/panel/rail/RailButton";
 
 export interface IApplicationHelpButtonProps {
   isDisabled?: boolean;

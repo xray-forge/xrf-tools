@@ -2,11 +2,11 @@ import { useInjection } from "@wirestate/react";
 import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EditorFileHeader } from "@xrf/ui/shell/editor/EditorFileHeader";
+import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
+import { IEditorLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
 import { ReactElement, ReactNode, useEffect } from "react";
 
-import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
-import { EditorLayout } from "@/core/shell/editor/EditorLayout";
-import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 import { IEditorPanel, useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
 import { TexturePreview } from "@/core/textures/components/preview/TexturePreview";
 import { describeTextureCaption, describeTextureName } from "@/core/textures/lib/texture-caption";

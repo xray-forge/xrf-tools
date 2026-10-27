@@ -8,8 +8,10 @@ import {
   RenderTraceSize,
 } from "@xrf/ipc/types/xrf-renderer";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
 import { FlipIcon } from "@xrf/ui/icons";
 import { Button } from "@xrf/ui/material";
+import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/shell/editor/EditorPopoverGroup";
 import { ReactElement } from "react";
 
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
@@ -32,8 +34,6 @@ import {
 } from "@/core/render/lib/features/render-reflection-choices";
 import { RENDER_TRACE_SIZE_OPTIONS } from "@/core/render/lib/features/render-trace-size-choices";
 import { TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { EditorPopoverGroup, EditorPopoverGroupSection } from "@/core/shell/editor/EditorPopoverGroup";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 
 /**
  * What the view reflects, in three sections: the surfaces (the ground, puddles, wet and glossy surfaces), the

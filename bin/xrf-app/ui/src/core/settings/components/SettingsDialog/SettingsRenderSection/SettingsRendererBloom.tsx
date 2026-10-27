@@ -1,5 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { ERenderBloomMode, RenderBloomMode } from "@xrf/ipc/types/xrf-renderer";
+import { ChoiceFormRow } from "@xrf/ui/form/ChoiceFormRow";
+import { SliderFormRow } from "@xrf/ui/form/SliderFormRow";
+import { DetailSection } from "@xrf/ui/layout/DetailSection";
 import { ReactElement } from "react";
 
 import {
@@ -10,9 +13,6 @@ import {
 } from "@/core/render/lib/features/render-bloom-choices";
 import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { ChoiceFormRow } from "@/core/ui/form/ChoiceFormRow";
-import { SliderFormRow } from "@/core/ui/form/SliderFormRow";
-import { DetailSection } from "@/core/ui/layout/DetailSection";
 
 import { useRendererOverride } from "./use-renderer-override";
 

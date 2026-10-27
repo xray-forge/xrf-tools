@@ -1,9 +1,11 @@
 import { Window } from "@tauri-apps/api/window";
 import { open } from "@tauri-apps/plugin-shell";
 import { useInjection } from "@wirestate/react";
+import { EMPTY_ARRAY } from "@xrf/collections";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 import { GitHubIcon, InfoOutlinedIcon } from "@xrf/ui/icons";
+import { IMenubarItem, IMenubarMenu } from "@xrf/ui/shell/menu/components/Menubar/menubar-menu";
 import { useCallback, useState } from "react";
 
 import { KeybindCommandsService } from "@/core/commands";
@@ -17,11 +19,10 @@ import { ESettingsSection } from "@/core/settings/lib/settings-section";
 import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
 import { CLOSE_TOOL_KEYBIND_COMMAND } from "@/core/shell/commands";
 import { useEditorMenusRegistry } from "@/core/shell/editor-shell/use-editor-menus";
-import { IMenubarItem, IMenubarMenu, toCommandMenubarItem } from "@/core/shell/menu/components/Menubar";
+import { toCommandMenubarItem } from "@/core/shell/menu/components/Menubar";
 import { assembleMenus, IAssembledMenu, IMenuContribution, TMenuEntry } from "@/core/shell/menu/lib";
 import { FILE_MENU, HELP_MENU } from "@/core/shell/menu/menus";
 import { resolveAppWindow } from "@/lib/tauri/app-window";
-import { EMPTY_ARRAY } from "@/lib/types/array";
 
 /**
  * The window's menus as the menubar draws them: File, the open application's own menus, then Help, with the sections

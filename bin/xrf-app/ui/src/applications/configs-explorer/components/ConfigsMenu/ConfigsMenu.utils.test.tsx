@@ -1,8 +1,8 @@
 import { describe, expect, it } from "@jest/globals";
 import { ELtxInventoryRole, LtxInventoryFile, LtxInventoryRole } from "@xrf/ipc/types/xrf-ltx-inspect";
+import { ITreeNode } from "@xrf/ui/tree/tree-node";
 
 import { decorateConfigIcon } from "@/applications/configs-explorer/components/ConfigsMenu/ConfigsMenu.utils";
-import { ITreeNode } from "@/core/ui/tree/tree-node";
 
 function mockFileOf(role: LtxInventoryRole): LtxInventoryFile {
   return { includedBy: [], isPhysical: true, path: "configs\\items\\w_ak74.ltx", role, source: "gamedata" };

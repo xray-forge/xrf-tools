@@ -1,10 +1,10 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { FilePickerInput } from "@xrf/ui/form/file-picker/FilePickerInput";
+import { useCommitOnSubmit } from "@xrf/ui/form/form-commit";
+import { FormRow } from "@xrf/ui/form/FormRow";
 import { ReactElement } from "react";
 
-import { FilePickerInput } from "@/core/ui/form/file-picker/FilePickerInput";
-import { useCommitOnSubmit } from "@/core/ui/form/form-commit";
-import { FormRow } from "@/core/ui/form/FormRow";
 import { IPathField } from "@/core/ui/form/use-path-field";
 
 interface IPathFormRowProps extends BaseComponentProps {

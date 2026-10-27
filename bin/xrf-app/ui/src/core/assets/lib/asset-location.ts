@@ -1,8 +1,8 @@
 import { XrayAsset } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
+import { IEditorLocation } from "@xrf/ui/shell/editor/EditorToolbarLocation";
 
 import { describeAssetContainer } from "@/core/assets/lib/container";
-import { IEditorLocation } from "@/core/shell/editor/EditorToolbarLocation";
 
 /**
  * Where an asset the VFS located was read out of.

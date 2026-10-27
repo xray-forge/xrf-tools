@@ -1,13 +1,13 @@
 import { useInjection } from "@wirestate/react";
 import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
+import { ConfirmDialog } from "@xrf/ui/dialog/ConfirmDialog";
+import { DetailSection } from "@xrf/ui/layout/DetailSection";
 import { Button, Divider, Stack, Typography } from "@xrf/ui/material";
 import { ReactElement, useCallback, useState } from "react";
 
 import { SettingsService } from "@/core/settings/services/settings";
 import { useLocalStorageRevision } from "@/core/storage";
-import { ConfirmDialog } from "@/core/ui/dialog/ConfirmDialog";
-import { DetailSection } from "@/core/ui/layout/DetailSection";
 
 import { SettingsStorageKeys } from "./SettingsStorageKeys";
 import {

@@ -8,12 +8,14 @@ import {
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Alert, Button, Stack } from "@xrf/ui/material";
+import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement, useCallback } from "react";
 
 import { hasTextureFlag, withTextureFlag } from "@/applications/textures-editor/lib/texture-descriptor-flags";
 import { withTextureType } from "@/applications/textures-editor/lib/texture-type-change";
 import { TextureEditorService } from "@/applications/textures-editor/services/texture-editor";
-import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 
 import { TextureFlagField } from "./TextureFlagField";

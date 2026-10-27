@@ -2,14 +2,13 @@ import { useInjection } from "@wirestate/react";
 import { Maybe, Nullable } from "@xrf/types";
 import { DarkModeIcon, LightModeIcon, SettingsIcon } from "@xrf/ui/icons";
 import { useColorScheme } from "@xrf/ui/material";
+import { RailButton } from "@xrf/ui/shell/panel/rail/RailButton";
 import { ReactElement, useCallback } from "react";
 
 import { ApplicationHelp } from "@/core/help/components/ApplicationHelp/ApplicationHelp";
 import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
 import { IEditorPanel } from "@/core/shell/editor-shell";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
-
-import { RailButton } from "./RailButton";
 
 interface IApplicationRailProps {
   panels: Array<IEditorPanel>;

@@ -2,6 +2,9 @@ import { useInjection } from "@wirestate/react";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PhotoCameraOutlinedIcon as PhotoCameraIcon } from "@xrf/ui/icons";
 import { MenuList } from "@xrf/ui/material";
+import { EditorPopoverAction } from "@xrf/ui/shell/editor/EditorPopoverAction";
+import { IMenubarItem } from "@xrf/ui/shell/menu/components/Menubar/menubar-menu";
+import { MenubarRow } from "@xrf/ui/shell/menu/components/Menubar/MenubarRow";
 import { ReactElement, useCallback } from "react";
 
 import {
@@ -13,8 +16,7 @@ import { LevelViewerCaptureService } from "@/applications/level-viewer/services/
 import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/level-viewer-screenshot";
 import { IKeybindCommand, KeybindCommandsService } from "@/core/commands";
 import { KeymapService } from "@/core/keybinds";
-import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
-import { IMenubarItem, MenubarRow, toCommandMenubarItem } from "@/core/shell/menu/components/Menubar";
+import { toCommandMenubarItem } from "@/core/shell/menu/components/Menubar";
 
 /** What the capture's menu offers, in its order. */
 const CAPTURES: ReadonlyArray<IKeybindCommand> = [

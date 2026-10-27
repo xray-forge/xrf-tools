@@ -1,10 +1,9 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { AddIcon } from "@xrf/ui/icons";
 import { Typography } from "@xrf/ui/material";
+import { EditorIconAction } from "@xrf/ui/shell/editor/EditorIconAction";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
-
-import { EditorIconAction } from "@/core/shell/editor/EditorIconAction";
 
 export interface ISequenceMotionRowProps extends BaseComponentProps {
   motion: string;

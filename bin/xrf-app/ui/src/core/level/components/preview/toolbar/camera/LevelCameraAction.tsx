@@ -3,6 +3,7 @@ import { formatDegrees } from "@xrf/format";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { VideocamIcon } from "@xrf/ui/icons";
 import { Button, Typography } from "@xrf/ui/material";
+import { EditorPopoverAction } from "@xrf/ui/shell/editor/EditorPopoverAction";
 import { ReactElement } from "react";
 
 import {
@@ -13,7 +14,6 @@ import {
 } from "@/core/level/lib/camera/level-camera-options";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { usePartialChange } from "@/lib/react/use-partial-change";
 
 /**

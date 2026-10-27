@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form";
 import { ReactElement, useCallback } from "react";
 
 import {
@@ -19,14 +20,7 @@ import { TEXTURE_FILE_FILTERS } from "@/core/path/file-filters";
 import { EApplicationId } from "@/core/routing/application";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
-import {
-  ChoiceFormRow,
-  IChoiceFormRowOption,
-  IPathField,
-  PathFormRow,
-  usePathField,
-  useRememberedValue,
-} from "@/core/ui/form";
+import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 
 const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ETextureOpenMode>> = TEXTURE_OPEN_MODES.map(
   (mode: ITextureOpenModeDescriptor) => ({

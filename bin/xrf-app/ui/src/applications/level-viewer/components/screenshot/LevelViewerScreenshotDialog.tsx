@@ -2,6 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { formatBytes, formatMilliseconds, formatNumber } from "@xrf/format";
 import { RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
+import { DialogHeader } from "@xrf/ui/dialog/DialogHeader";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PhotoCameraOutlinedIcon as PhotoCameraIcon } from "@xrf/ui/icons";
 import { Button, Dialog, DialogActions, DialogContent, Typography } from "@xrf/ui/material";
@@ -12,7 +13,6 @@ import {
   ILevelViewerScreenshotReportFile,
 } from "@/applications/level-viewer/lib/screenshot/level-viewer-screenshot";
 import { LevelViewerScreenshotService } from "@/applications/level-viewer/services/level-viewer-screenshot";
-import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 
 /** What a screenshot's frame cost, as its report holds it; null until the report is written or where it was not. */
 function toFrameLine(frame: Nullable<RenderFrameReport>): Nullable<string> {

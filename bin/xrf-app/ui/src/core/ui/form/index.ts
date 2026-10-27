@@ -1,16 +1,8 @@
 /**
- * The form vocabulary an application composes with.
+ * The path and remembered-value fields an application composes with, bound to the native dialogs and storage. The rows
+ * they sit beside are `@xrf/ui/form`'s.
  */
 
-export * from "./CheckboxFormRow";
-export * from "./ChoiceFormRow";
-export * from "./ChoiceListFormRow";
-export * from "./EditableList";
-export * from "./FormRow";
 export * from "./PathFormRow";
-export * from "./ReferenceSlider";
-export * from "./SliderFormRow";
-export * from "./StringListFormRow";
-export * from "./SwitchFormRow";
 export * from "./use-path-field";
 export * from "./use-remembered-value";

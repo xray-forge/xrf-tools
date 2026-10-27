@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CompareArrowsIcon, FolderIcon, SettingsIcon, TitleIcon, TuneIcon } from "@xrf/ui/icons";
+import { EditorSideMenu, IEditorSideMenuItem } from "@xrf/ui/shell/editor/EditorSideMenu";
 import { ReactElement } from "react";
 
 import {
@@ -8,7 +9,6 @@ import {
   EPatcherSection,
 } from "@/applications/archives-patcher/services/archives-patcher.service";
 import { EditorPanelHeader } from "@/core/shell/editor/EditorPanelHeader";
-import { EditorSideMenu, IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
 
 /** Named once, because the panel and its own heading must not drift apart. */
 export const PATCHER_SECTIONS_PANEL_LABEL: string = "Configuration";

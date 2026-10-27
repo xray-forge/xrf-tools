@@ -1,10 +1,9 @@
 import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveOverview } from "@xrf/ipc/types/xrf-archive-stats";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DetailSection } from "@xrf/ui/layout/DetailSection";
+import { StatFigure } from "@xrf/ui/stats/StatFigure";
 import { ReactElement } from "react";
-
-import { DetailSection } from "@/core/ui/layout/DetailSection";
-import { StatFigure } from "@/core/ui/stats/StatFigure";
 
 export interface IArchiveOverviewSectionProps extends BaseComponentProps {
   overview: ArchiveOverview;

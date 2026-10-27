@@ -1,10 +1,10 @@
 import { AsyncState } from "@xrf/async";
 import { ArchiveFileDescriptor, ArchiveSharedPayload } from "@xrf/ipc/types/xrf-archive";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
 import { ReactElement, useMemo } from "react";
 
 import { listPayloadSharersOf } from "@/core/archive/lib";
-import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 
 interface IArchiveSharedPayloadDetailProps extends BaseComponentProps {
   descriptor: ArchiveFileDescriptor;

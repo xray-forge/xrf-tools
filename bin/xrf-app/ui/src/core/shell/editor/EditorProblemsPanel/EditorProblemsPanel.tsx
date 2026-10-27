@@ -2,9 +2,10 @@ import { getPathName } from "@xrf/path";
 import { Nullable, Optional } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Chip, List, ListItem, ListItemButton, Typography } from "@xrf/ui/material";
+import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
 import { ReactElement } from "react";
 
-import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 
 /** Where a problem can be opened, for a surface that can take a reader there. */
 export interface IEditorProblemLocation {

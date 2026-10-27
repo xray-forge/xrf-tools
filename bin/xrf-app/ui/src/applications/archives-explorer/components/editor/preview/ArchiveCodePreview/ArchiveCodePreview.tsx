@@ -1,14 +1,14 @@
 import { ArchiveReadResult } from "@xrf/ipc/types/xrf-archive";
 import { ESyntaxLanguage } from "@xrf/syntax";
 import { Nullable } from "@xrf/types";
+import { ICodeLine, ICodeLineSource } from "@xrf/ui/code/code-line";
+import { toTextLineSource } from "@xrf/ui/code/text-line-source";
+import { VirtualizedLines } from "@xrf/ui/code/VirtualizedLines";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { getSyntaxLanguage } from "@/core/syntax/lib/syntax-language";
-import { ICodeLine, ICodeLineSource } from "@/core/ui/code/code-line";
-import { toTextLineSource } from "@/core/ui/code/text-line-source";
-import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines";
 
 /** A line the reader marked, and the document it was a line of. */
 interface ISelectedLine {

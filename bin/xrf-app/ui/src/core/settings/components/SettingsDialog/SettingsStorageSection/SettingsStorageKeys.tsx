@@ -1,8 +1,7 @@
 import { formatBytes } from "@xrf/format";
+import { DetailSection } from "@xrf/ui/layout/DetailSection";
 import { Stack, Typography } from "@xrf/ui/material";
 import { ReactElement } from "react";
-
-import { DetailSection } from "@/core/ui/layout/DetailSection";
 
 import { describeKeyCount, IStorageEntry } from "./SettingsStorageSection.utils";
 

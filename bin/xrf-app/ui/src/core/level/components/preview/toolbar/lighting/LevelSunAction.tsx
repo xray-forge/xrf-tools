@@ -4,8 +4,10 @@ import { LevelSunDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
 import { WbSunnyIcon } from "@xrf/ui/icons";
 import { Button, Typography } from "@xrf/ui/material";
+import { EditorPopoverAction } from "@xrf/ui/shell/editor/EditorPopoverAction";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
@@ -27,8 +29,6 @@ import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 
 /** Lens flares while the weather is not read yet. */
 const NO_SUNS: ReadonlyArray<string> = [];

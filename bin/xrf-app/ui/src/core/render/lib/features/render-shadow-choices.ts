@@ -1,10 +1,10 @@
 import { formatNumber, formatPercent } from "@xrf/format";
 import { ERenderLightShadowFilter, RenderLightShadowFilter } from "@xrf/ipc/types/xrf-renderer";
+import { IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow/choice-form-row-option";
 
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/render-feature-defaults";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
-import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** How many cascades are offered, as counts. */
 export const RENDER_SHADOW_CASCADE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<string>> =

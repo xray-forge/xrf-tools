@@ -2,6 +2,10 @@ import { useInjection } from "@wirestate/react";
 import { ConfigsDocument } from "@xrf/ipc/types/xrf-app-configs";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
+import { EmptyState } from "@xrf/ui/layout/EmptyState";
+import { ErrorState } from "@xrf/ui/layout/ErrorState";
+import { EditorFileHeader } from "@xrf/ui/shell/editor/EditorFileHeader";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
@@ -11,10 +15,6 @@ import {
   ConfigsDocumentService,
   EConfigsDocumentMode,
 } from "@/applications/configs-explorer/services/configs-document";
-import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
-import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
-import { ErrorState } from "@/core/ui/layout/ErrorState";
 import { inline } from "@/lib/callbacks/inline";
 
 interface IConfigsDocumentViewProps extends BaseComponentProps {

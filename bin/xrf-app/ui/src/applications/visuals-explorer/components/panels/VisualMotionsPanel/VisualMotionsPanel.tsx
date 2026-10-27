@@ -3,12 +3,14 @@ import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 import { VisualMotionDependency } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EditorFilterInput } from "@xrf/ui/shell/editor/EditorFilterInput";
+import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useEffect, useState } from "react";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals";
-import { EditorFilterInput } from "@/core/shell/editor/EditorFilterInput";
-import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion";
 
 import { VisualMotionList } from "./VisualMotionList";

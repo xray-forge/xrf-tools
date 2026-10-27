@@ -1,9 +1,9 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { TGraphNode } from "@xrf/ui/graph/graph.types";
 import { NodeProps } from "@xyflow/react";
 import { ReactElement } from "react";
 
 import { IDialogGraphNodeData } from "@/applications/dialogs-editor/lib";
-import { TGraphNode } from "@/core/ui/graph/graph.types";
 
 import { DialogGraphNodeFrame } from "./DialogGraphNodeFrame";
 

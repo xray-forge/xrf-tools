@@ -4,13 +4,13 @@ import { EArchivesCommand } from "@xrf/ipc/commands/archives";
 import { mockInvoke, mockIpcCommands } from "@xrf/ipc/testing";
 import { ArchiveFileDescription } from "@xrf/ipc/types/xrf-app-archives";
 import { ArchiveFileDescriptor, ArchiveReadResult } from "@xrf/ipc/types/xrf-archive";
+import { EPathEntryKind } from "@xrf/path";
 
 import {
   IArchivesExplorerMock,
   mockArchivesExplorer,
 } from "@/applications/archives-explorer/fixtures/archives-explorer.mocks";
 import { mockArchiveFileDescriptor, mockArchivesVolumes } from "@/core/archive/fixtures/archive.mocks";
-import { EPathEntryKind } from "@/core/path/entry-kind";
 import { mockHeldSessionRoot } from "@/core/session/fixtures/session-root.mocks";
 import { mockSessionRead, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { deferred } from "@/fixtures/utils/promise";

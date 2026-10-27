@@ -1,0 +1,45 @@
+import { ReactElement } from "react";
+
+import { GridColDef, GridRowId, GridValidRowModel } from "#/data-grid";
+import { DataTable } from "#/table/index";
+
+interface ICommandResultFindingsProps<T extends GridValidRowModel> {
+  rows: Array<T>;
+  columns: Array<GridColDef<T>>;
+  getRowId: (row: T) => GridRowId;
+  /** Everything about a row that a search should match, flattened into one string. */
+  getSearchText: (row: T) => string;
+  emptyLabel: string;
+  searchPlaceholder?: string;
+  /** Columns worth keeping but not worth the width by default; the columns panel still offers them. */
+  hiddenColumns?: Array<string>;
+}
+
+/**
+ * The findings a command produced, as a sortable and filterable table.
+ *
+ * Kept as its own name because "findings" is what the result surfaces call these, and it pins the noun
+ * the count is phrased with. Everything else is the shared table.
+ */
+export function CommandResultFindings<T extends GridValidRowModel>({
+  rows,
+  columns,
+  getRowId,
+  getSearchText,
+  emptyLabel,
+  searchPlaceholder = "Filter findings",
+  hiddenColumns,
+}: ICommandResultFindingsProps<T>): ReactElement {
+  return (
+    <DataTable<T>
+      columns={columns}
+      countNoun={"finding"}
+      emptyLabel={emptyLabel}
+      getRowId={getRowId}
+      getSearchText={getSearchText}
+      hiddenColumns={hiddenColumns}
+      rows={rows}
+      searchPlaceholder={searchPlaceholder}
+    />
+  );
+}

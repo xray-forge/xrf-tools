@@ -1,9 +1,10 @@
 import { ArchivePatchConfig } from "@xrf/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { FormRow } from "@xrf/ui/form";
 import { Stack, TextField } from "@xrf/ui/material";
 import { ChangeEvent, ReactElement } from "react";
 
-import { FormRow, IPathField, PathFormRow } from "@/core/ui/form";
+import { IPathField, PathFormRow } from "@/core/ui/form";
 
 interface IPatcherOutputSectionProps extends BaseComponentProps {
   config: ArchivePatchConfig;

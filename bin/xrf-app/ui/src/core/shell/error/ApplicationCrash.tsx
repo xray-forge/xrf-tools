@@ -1,10 +1,10 @@
 import { ExpandMoreIcon } from "@xrf/ui/icons";
 import { Accordion, AccordionDetails, AccordionSummary, Button, Typography } from "@xrf/ui/material";
+import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
 import { ReactElement, useCallback } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
 import { IErrorBoundaryFallbackProps } from "@/core/error/components/ErrorBoundary";
-import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 
 /**

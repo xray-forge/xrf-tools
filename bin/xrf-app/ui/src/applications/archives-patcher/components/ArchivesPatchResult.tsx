@@ -1,18 +1,18 @@
 import { formatBytes, formatDuration } from "@xrf/format";
 import { ArchivePatchClass, ArchivePatchResult } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
+import { CommandResult, ICommandResultStat } from "@xrf/ui/command-result/CommandResult";
+import { CommandResultFindings } from "@xrf/ui/command-result/CommandResultFindings";
 import { GridColDef, GridRenderCellParams } from "@xrf/ui/data-grid";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { pathColumn } from "@xrf/ui/table/columns";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useMemo } from "react";
 
 import { describePatchHeadline } from "@/applications/archives-patcher/lib/describe-patch-headline";
 import { type IPatchChangeRow, toPatchChangeRows } from "@/applications/archives-patcher/lib/patch-change-rows";
 import { EApplicationId } from "@/core/routing/application";
-import { CommandResult, ICommandResultStat } from "@/core/ui/command-result/CommandResult";
-import { CommandResultFindings } from "@/core/ui/command-result/CommandResultFindings";
 import { RevealPathButton } from "@/core/ui/reveal/RevealPathButton";
-import { pathColumn } from "@/core/ui/table/columns";
 
 const CHANGE_LABELS: Record<ArchivePatchClass, string> = {
   added: "Added",

@@ -2,7 +2,12 @@ import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { LtxResolvedIndexEntry } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
+import { ICodeLine, ICodeLineRange, ICodeLineSource } from "@xrf/ui/code/code-line";
+import { VirtualizedLines } from "@xrf/ui/code/VirtualizedLines";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
+import { EmptyState } from "@xrf/ui/layout/EmptyState";
+import { ErrorState } from "@xrf/ui/layout/ErrorState";
 import { Alert, Button } from "@xrf/ui/material";
 import { ReactElement, useCallback, useMemo } from "react";
 
@@ -11,11 +16,6 @@ import { IResolvedLayout, toResolvedLayout } from "@/applications/configs-explor
 import { TConfigsReveal } from "@/applications/configs-explorer/lib/reveal";
 import { ConfigsDocumentService } from "@/applications/configs-explorer/services/configs-document";
 import { ConfigsResolvedService } from "@/applications/configs-explorer/services/configs-resolved";
-import { ICodeLine, ICodeLineRange, ICodeLineSource } from "@/core/ui/code/code-line";
-import { VirtualizedLines } from "@/core/ui/code/VirtualizedLines";
-import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
-import { ErrorState } from "@/core/ui/layout/ErrorState";
 
 /**
  * What the open config's entry point resolves to, with every value's origin beside it.

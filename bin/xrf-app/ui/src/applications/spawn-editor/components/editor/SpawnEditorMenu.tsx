@@ -1,9 +1,8 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { AccountTreeIcon, GroupsIcon, InfoIcon, RouteIcon, ScienceIcon } from "@xrf/ui/icons";
+import { EditorSideMenu, IEditorSideMenuItem } from "@xrf/ui/shell/editor/EditorSideMenu";
 import { ReactElement, ReactNode, useMemo } from "react";
 import { NavigateFunction, useLocation, useNavigate } from "react-router-dom";
-
-import { EditorSideMenu, IEditorSideMenuItem } from "@/core/shell/editor/EditorSideMenu";
 
 interface ISpawnChunkSection {
   label: string;

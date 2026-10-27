@@ -4,11 +4,11 @@ import { VisualTextureDependency } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Chip } from "@xrf/ui/material";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
 import { ReactElement } from "react";
 
 import { AssetTextureDetails } from "@/core/assets/components/AssetTextureDetails";
 import { describeResolution, getLocatedAsset } from "@/core/assets/lib/resolution";
-import { EditorPanelProperty } from "@/core/shell/editor/EditorPanel";
 import { EVisualTextureState, IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 
 import { describeTextureState, IVisualTextureStateDescriptor } from "./VisualSubmeshTexture.utils";

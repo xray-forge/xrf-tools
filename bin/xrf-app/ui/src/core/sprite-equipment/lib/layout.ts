@@ -1,8 +1,8 @@
+import { EMPTY_ARRAY } from "@xrf/collections";
 import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
 
 import { TEquipmentCell } from "@/core/sprite-equipment/lib/equipment";
 import { IEquipmentGrid, isOccupantOutsideSheet, toEquipmentGrid } from "@/core/sprite-equipment/lib/grid";
-import { EMPTY_ARRAY } from "@/lib/types/array";
 
 /** Nothing occupies most cells, and every caller reads the same array back for them. */
 

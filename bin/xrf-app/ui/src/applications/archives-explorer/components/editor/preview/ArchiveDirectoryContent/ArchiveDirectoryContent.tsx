@@ -5,6 +5,7 @@ import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FolderOpenIcon, SaveAltIcon, UnarchiveIcon } from "@xrf/ui/icons";
+import { CenteredColumn } from "@xrf/ui/layout/CenteredColumn";
 import { Alert, Button, Typography } from "@xrf/ui/material";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useCallback, useMemo } from "react";
@@ -13,7 +14,6 @@ import { resolveDirectoryDestination } from "@/applications/archives-explorer/li
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
 import { IArchiveEntry, isUnderArchiveDirectory } from "@/core/archive/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
-import { CenteredColumn } from "@/core/ui/layout/CenteredColumn";
 
 interface IArchiveDirectoryContentProps extends BaseComponentProps {
   path: string;

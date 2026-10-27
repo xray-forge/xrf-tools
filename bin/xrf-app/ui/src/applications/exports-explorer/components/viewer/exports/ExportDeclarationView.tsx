@@ -2,9 +2,8 @@ import { ExportDescriptor } from "@xrf/ipc/types/xrf-export";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { DataObjectIcon } from "@xrf/ui/icons";
 import { Chip, Typography } from "@xrf/ui/material";
+import { EditorFileHeader } from "@xrf/ui/shell/editor/EditorFileHeader";
 import { ReactElement } from "react";
-
-import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
 
 import { CallableExportDetails } from "./CallableExportDetails";
 import { ExportSection } from "./ExportSection";

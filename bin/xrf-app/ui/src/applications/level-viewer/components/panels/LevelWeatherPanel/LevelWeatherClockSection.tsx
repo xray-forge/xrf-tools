@@ -2,15 +2,16 @@ import { formatPercent } from "@xrf/format";
 import { WorldWeatherReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
 import { Typography } from "@xrf/ui/material";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
 
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
 import { ILevelWeatherControl, LEVEL_WEATHER_FACTOR_LIMITS } from "@/core/level/lib/weather/level-weather-control";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 
 interface ILevelWeatherClockSectionProps extends BaseComponentProps {
   /** Seconds since midnight. */

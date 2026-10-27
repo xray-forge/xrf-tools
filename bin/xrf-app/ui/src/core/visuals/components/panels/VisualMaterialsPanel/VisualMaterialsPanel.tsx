@@ -4,9 +4,10 @@ import { VisualDescription, VisualTextureDependency } from "@xrf/ipc/types/xrf-v
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material";
+import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
 import { ReactElement, useMemo } from "react";
 
-import { EditorPanel, EditorPanelEmpty } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import {
   describeVisualTextureSummary,

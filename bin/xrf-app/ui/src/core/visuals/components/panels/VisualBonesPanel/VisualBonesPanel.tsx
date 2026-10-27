@@ -1,13 +1,15 @@
 import { useInjection } from "@wirestate/react";
 import { VisualBone } from "@xrf/ipc/types/xrf-visual";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { EditorPanelEmpty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelEmpty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { cn } from "@xrf/ui/theme/class-name";
+import { ITreeNode } from "@xrf/ui/tree/tree-node";
+import { IUseTreeState, useTreeState } from "@xrf/ui/tree/use-tree-state";
+import { VirtualizedTree } from "@xrf/ui/tree/VirtualizedTree";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { EditorPanel, EditorPanelEmpty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
-import { ITreeNode } from "@/core/ui/tree/tree-node";
-import { IUseTreeState, useTreeState } from "@/core/ui/tree/use-tree-state";
-import { VirtualizedTree } from "@/core/ui/tree/VirtualizedTree";
+import { EditorPanel } from "@/core/shell/editor/EditorPanel";
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { toBoneTree } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBonesPanel.utils";
 import { VisualBoneVisibility } from "@/core/visuals/components/panels/VisualBonesPanel/VisualBoneVisibility";

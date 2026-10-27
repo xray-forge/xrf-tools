@@ -4,12 +4,12 @@ import { ArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
+import { EmptyState } from "@xrf/ui/layout/EmptyState";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, useEffect } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
-import { EmptyState } from "@/core/ui/layout/EmptyState";
 import { VisualPreviewViewport } from "@/core/visuals/components/preview";
 import { IOpenVisual, VisualLoadService } from "@/core/visuals/services";
 

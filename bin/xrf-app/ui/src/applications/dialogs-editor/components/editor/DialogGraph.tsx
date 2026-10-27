@@ -1,6 +1,8 @@
 import { DialogDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { TGraphEdge, TGraphNode } from "@xrf/ui/graph/graph.types";
+import { GraphCanvas } from "@xrf/ui/graph/GraphCanvas";
 import { NodeTypes, OnSelectionChangeParams, useEdgesState, useNodesState } from "@xyflow/react";
 import { ReactElement, useCallback, useEffect, useEffectEvent, useMemo } from "react";
 
@@ -9,8 +11,6 @@ import {
   DialogPhraseGraphNode,
 } from "@/applications/dialogs-editor/components/editor/DialogGraphNode";
 import { buildDialogGraph, EDialogGraphNodeType, IDialogGraph } from "@/applications/dialogs-editor/lib";
-import { TGraphEdge, TGraphNode } from "@/core/ui/graph/graph.types";
-import { GraphCanvas } from "@/core/ui/graph/GraphCanvas";
 
 const NODE_TYPES: NodeTypes = {
   [EDialogGraphNodeType.DIALOG]: DialogGraphNode,

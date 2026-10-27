@@ -1,0 +1,136 @@
+import { describe, expect, it } from "@jest/globals";
+import { fireEvent, waitFor } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
+
+import { EditorPopoverAction } from "./EditorPopoverAction";
+
+import { TuneIcon } from "#/icons";
+import { renderWithTheme } from "#/testing/render";
+
+describe("EditorPopoverAction", () => {
+  it("opens a named dialog from the keyboard and restores focus when dismissed", async () => {
+    const { getByRole, findByRole, queryByRole, getByTestId } = renderWithTheme(
+      <EditorPopoverAction
+        data-testid={"options"}
+        id={"preview-options"}
+        className={"preview-control"}
+        label={"Options"}
+        description={"Adjust the preview"}
+        icon={<TuneIcon />}
+      >
+        <button>Setting</button>
+      </EditorPopoverAction>
+    );
+    const button: HTMLElement = getByRole("button", { name: "Options" });
+
+    expect(getByTestId("options")).toBe(button);
+    expect(button).toHaveAttribute("id", "preview-options");
+    expect(button).toHaveClass("preview-control");
+    expect(button).toHaveAccessibleDescription("Adjust the preview");
+    expect(button).toHaveAttribute("aria-expanded", "false");
+
+    // The machine-readable half of the corner mark this action draws: both say a trigger opens something rather
+    // than acting, and the mark itself is a pseudo-element, which jsdom cannot compute.
+    expect(button).toHaveAttribute("aria-haspopup", "dialog");
+    expect(button).toHaveAttribute("data-cue", "popover");
+
+    await userEvent.tab();
+    await userEvent.keyboard("{Enter}");
+
+    const dialog: HTMLElement = await findByRole("dialog", { name: "Options" });
+
+    expect(button).toHaveAttribute("aria-expanded", "true");
+    expect(button).toHaveAttribute("aria-controls", dialog.id);
+
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() => expect(queryByRole("dialog")).not.toBeInTheDocument());
+    expect(button).toHaveFocus();
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(button).not.toHaveAttribute("aria-controls");
+  });
+
+  it("opens from a right click as from a left one, keeping the browser's menu shut", async () => {
+    const { getByRole, findByRole } = renderWithTheme(
+      <EditorPopoverAction label={"Options"} description={"Adjust the preview"} icon={<TuneIcon />}>
+        <button>Setting</button>
+      </EditorPopoverAction>
+    );
+
+    const isDefaultAllowed: boolean = fireEvent.contextMenu(getByRole("button", { name: "Options" }));
+
+    expect(isDefaultAllowed).toBe(false);
+    expect(await findByRole("dialog", { name: "Options" })).toBeInTheDocument();
+  });
+
+  it("explains a disabled action without opening its dialog", async () => {
+    const { getByRole, getByTitle, findByRole, queryByRole } = renderWithTheme(
+      <EditorPopoverAction label={"Options"} description={"No preview available"} icon={<TuneIcon />} isDisabled={true}>
+        <button>Setting</button>
+      </EditorPopoverAction>
+    );
+    const wrapper: HTMLElement = getByTitle("No preview available");
+
+    expect(getByRole("button", { name: "Options" })).toBeDisabled();
+
+    await userEvent.hover(wrapper);
+
+    expect(await findByRole("tooltip")).toHaveTextContent("No preview available");
+
+    await userEvent.click(wrapper);
+
+    expect(queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("closes when disabled and stays closed when enabled again", async () => {
+    const { getByRole, findByRole, queryByRole, rerender } = renderWithTheme(
+      <EditorPopoverAction label={"Options"} description={"Adjust the preview"} icon={<TuneIcon />}>
+        <button>Setting</button>
+      </EditorPopoverAction>
+    );
+
+    await userEvent.click(getByRole("button", { name: "Options" }));
+
+    expect(await findByRole("dialog", { name: "Options" })).toBeInTheDocument();
+
+    rerender(
+      <>
+        <EditorPopoverAction
+          label={"Options"}
+          description={"No preview available"}
+          icon={<TuneIcon />}
+          isDisabled={true}
+        >
+          <button>Setting</button>
+        </EditorPopoverAction>
+      </>
+    );
+
+    await waitFor(() => expect(queryByRole("dialog")).not.toBeInTheDocument());
+
+    rerender(
+      <>
+        <EditorPopoverAction label={"Options"} description={"Adjust the preview"} icon={<TuneIcon />}>
+          <button>Setting</button>
+        </EditorPopoverAction>
+      </>
+    );
+
+    expect(getByRole("button", { name: "Options" })).toHaveAttribute("aria-expanded", "false");
+    expect(queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("hands what it opens a way to close it, as a list of actions closes once one is taken", async () => {
+    const { getByRole, findByRole, queryByRole } = renderWithTheme(
+      <EditorPopoverAction label={"Capture"} description={"Capture the view"} icon={<TuneIcon />}>
+        {(close: () => void) => <button onClick={close}>Take screenshot</button>}
+      </EditorPopoverAction>
+    );
+
+    await userEvent.click(getByRole("button", { name: "Capture" }));
+    await findByRole("dialog", { name: "Capture" });
+    await userEvent.click(getByRole("button", { name: "Take screenshot" }));
+
+    await waitFor(() => expect(queryByRole("dialog")).not.toBeInTheDocument());
+  });
+});

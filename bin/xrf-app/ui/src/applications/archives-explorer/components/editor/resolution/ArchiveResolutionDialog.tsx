@@ -1,14 +1,14 @@
 import { useInjection } from "@wirestate/react";
 import { ArchiveResolution, ArchiveResolutionSource, ArchiveUnreadSource } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
+import { DialogHeader } from "@xrf/ui/dialog/DialogHeader";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { LayersIcon } from "@xrf/ui/icons";
+import { DetailSection } from "@xrf/ui/layout/DetailSection";
 import { Alert, CircularProgress, Dialog, DialogContent } from "@xrf/ui/material";
 import { ReactElement, useEffect, useId } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";
-import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
-import { DetailSection } from "@/core/ui/layout/DetailSection";
 
 import { ArchiveResolutionSourceRow } from "./ArchiveResolutionSourceRow";
 import { ArchiveResolutionUnreadRow } from "./ArchiveResolutionUnreadRow";

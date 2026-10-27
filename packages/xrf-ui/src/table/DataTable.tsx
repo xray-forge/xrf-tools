@@ -1,0 +1,108 @@
+import { filterByName } from "@xrf/search";
+import { Nullable } from "@xrf/types";
+import { ReactElement, useCallback, useMemo, useState } from "react";
+
+import { DataGrid, GridColDef, GridRowId, GridRowParams, GridValidRowModel } from "#/data-grid";
+import { BaseComponentProps } from "#/element-types";
+import { Typography } from "#/material";
+import { EditorFilterInput } from "#/shell/editor/EditorFilterInput/index";
+import { cn } from "#/theme/class-name";
+
+interface IDataTableProps<T extends GridValidRowModel> extends BaseComponentProps {
+  rows: Array<T>;
+  columns: Array<GridColDef<T>>;
+  getRowId: (row: T) => GridRowId;
+  /** Everything about a row a filter should match, flattened into one string. Omit for no filter. */
+  getSearchText?: (row: T) => string;
+  emptyLabel: string;
+  /** Noun the row count is phrased with, singularised by the caller. */
+  countNoun?: string;
+  searchPlaceholder?: string;
+  searchLabel?: string;
+  /** Column visibility the caller wants off by default; the columns panel still offers them. */
+  hiddenColumns?: Array<string>;
+  selectedRowId?: Nullable<GridRowId>;
+  onRowSelect?: (row: T) => void;
+}
+
+export function DataTable<T extends GridValidRowModel>({
+  "data-testid": dataTestId,
+  id,
+  className,
+  rows,
+  columns,
+  getRowId,
+  getSearchText,
+  emptyLabel,
+  countNoun = "row",
+  searchPlaceholder = "Filter",
+  searchLabel = "Filter rows",
+  hiddenColumns,
+  selectedRowId,
+  onRowSelect,
+}: IDataTableProps<T>): ReactElement {
+  const [search, setSearch] = useState<string>("");
+
+  const filtered: Array<T> = useMemo(
+    () => (getSearchText ? filterByName(rows, search, getSearchText) : rows),
+    [rows, search, getSearchText]
+  );
+
+  const initialState = useMemo(
+    () => ({
+      columns: {
+        columnVisibilityModel: Object.fromEntries((hiddenColumns ?? []).map((field: string) => [field, false])),
+      },
+      pagination: { paginationModel: { pageSize: 50 } },
+    }),
+    // Read once by the grid, so a changing identity here would be ignored anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const onRowClick = useCallback((params: GridRowParams<T>) => onRowSelect?.(params.row), [onRowSelect]);
+
+  if (!rows.length) {
+    return (
+      <Typography data-testid={dataTestId} id={id} className={cn("text-text-secondary", className)} variant={"body2"}>
+        {emptyLabel}
+      </Typography>
+    );
+  }
+
+  return (
+    <div data-testid={dataTestId} id={id} className={cn("flex min-h-0 w-full grow flex-col gap-2", className)}>
+      {getSearchText ? (
+        <EditorFilterInput
+          ariaLabel={searchLabel}
+          placeholder={searchPlaceholder}
+          query={search}
+          className={"max-w-80"}
+          onQueryChange={setSearch}
+        />
+      ) : null}
+
+      <Typography className={"text-text-secondary"} variant={"caption"}>
+        {filtered.length === rows.length
+          ? `${rows.length} ${countNoun}(s)`
+          : `${filtered.length} of ${rows.length} ${countNoun}(s)`}
+      </Typography>
+
+      <div className={"min-h-50 w-full grow"}>
+        <DataGrid
+          columns={columns}
+          getRowId={getRowId}
+          initialState={initialState}
+          pageSizeOptions={[25, 50, 100]}
+          rowSelectionModel={
+            selectedRowId === null || selectedRowId === undefined
+              ? undefined
+              : { type: "include", ids: new Set([selectedRowId]) }
+          }
+          rows={filtered}
+          onRowClick={onRowSelect ? onRowClick : undefined}
+        />
+      </div>
+    </div>
+  );
+}

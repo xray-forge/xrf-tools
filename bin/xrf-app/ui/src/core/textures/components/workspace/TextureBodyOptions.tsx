@@ -3,9 +3,9 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ViewQuiltIcon } from "@xrf/ui/icons";
 import { ToggleButton, ToggleButtonGroup, Typography } from "@xrf/ui/material";
+import { EditorPopoverAction } from "@xrf/ui/shell/editor/EditorPopoverAction";
 import { ReactElement } from "react";
 
-import { EditorPopoverAction } from "@/core/shell/editor/EditorPopoverAction";
 import { ETexturePreviewMode, ITexturePreviewOptions, TEXTURE_TILING_STEPS } from "@/core/textures/lib/texture-preview";
 import { describeTextureSurfaceAlpha, describeTextureSurfaceShape } from "@/core/textures/lib/texture-surface";
 

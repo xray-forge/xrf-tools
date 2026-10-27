@@ -2,16 +2,16 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Maybe } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { FormCommitContext, IFormCommitRegistry, useFormCommitRegistry } from "@xrf/ui/form/form-commit";
 import { ExpandLessIcon, ExpandMoreIcon } from "@xrf/ui/icons";
 import { Alert, Button, Card, CircularProgress, IconButton, Tooltip, Typography } from "@xrf/ui/material";
+import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
 import { FORM_SURFACE_SX } from "@xrf/ui/theme/form-surface";
 import { FormEvent, KeyboardEvent, ReactElement, ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
-import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 import { useEditorBusy, useRequestLeave } from "@/core/shell/editor-lifecycle";
-import { FormCommitContext, IFormCommitRegistry, useFormCommitRegistry } from "@/core/ui/form/form-commit";
 
 export interface IPickerFormProps extends BaseComponentProps {
   title?: ReactNode;

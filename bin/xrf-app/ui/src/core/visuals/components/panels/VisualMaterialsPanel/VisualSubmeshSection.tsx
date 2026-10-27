@@ -5,9 +5,10 @@ import { VisualSubmesh, VisualTextureDependency } from "@xrf/ipc/types/xrf-visua
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Chip } from "@xrf/ui/material";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
 
-import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { IVisualBumpStatus } from "@/core/visuals/lib/visual-bump";
 import { IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
 

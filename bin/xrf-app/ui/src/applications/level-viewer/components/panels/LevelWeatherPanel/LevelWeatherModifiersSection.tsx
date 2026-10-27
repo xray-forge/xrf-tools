@@ -1,8 +1,8 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material";
+import { EditorPanelProperty } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelProperty";
+import { EditorPanelSection } from "@xrf/ui/shell/editor/EditorPanel/EditorPanelSection";
 import { ReactElement } from "react";
-
-import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 
 interface ILevelWeatherModifiersSectionProps extends BaseComponentProps {
   /** The level's `level.env_mod` volumes. */

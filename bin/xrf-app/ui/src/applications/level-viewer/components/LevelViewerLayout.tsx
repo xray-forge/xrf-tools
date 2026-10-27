@@ -9,6 +9,8 @@ import {
   WarningAmberIcon as WarningIcon,
   WbCloudyIcon,
 } from "@xrf/ui/icons";
+import { EditorFileHeader } from "@xrf/ui/shell/editor/EditorFileHeader";
+import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode } from "react";
 
@@ -36,8 +38,6 @@ import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/c
 import { ILevelOverlay, LEVEL_OVERLAYS } from "@/core/level/lib/view/level-overlays";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { EditorFileHeader } from "@/core/shell/editor/EditorFileHeader";
-import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { IEditorPanel, useEditorMenus, useEditorPanels } from "@/core/shell/editor-shell";
 import { IMenuContribution, TMenuEntry } from "@/core/shell/menu/lib";
 

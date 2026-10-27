@@ -2,14 +2,14 @@ import { useInjection } from "@wirestate/react";
 import { LtxAnchoredFinding } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
+import { ErrorState } from "@xrf/ui/layout/ErrorState";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { ConfigsDocumentService } from "@/applications/configs-explorer/services/configs-document";
 import { ConfigsFindingsService } from "@/applications/configs-explorer/services/configs-findings";
 import { toFindingMessage, toOrderedFindings } from "@/core/ltx/lib/findings";
 import { EditorProblemsPanel, IEditorProblem, IEditorProblemLocation } from "@/core/shell/editor/EditorProblemsPanel";
-import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
-import { ErrorState } from "@/core/ui/layout/ErrorState";
 
 /**
  * One finding as a row: what broke, where it is written, and where opening it leads.

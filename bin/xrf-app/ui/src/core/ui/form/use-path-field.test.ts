@@ -3,11 +3,11 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { exists } from "@tauri-apps/plugin-fs";
 import { act, renderHook } from "@testing-library/react";
 import { Nullable } from "@xrf/types";
+import { IPathRecord } from "@xrf/ui/form/file-picker/path-field-recents";
 import { StrictMode } from "react";
 
 import { EApplicationId } from "@/core/routing/application";
 import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
-import { IPathRecord } from "@/core/ui/form/path-recents";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { deferred, IDeferred } from "@/fixtures/utils/promise";
 

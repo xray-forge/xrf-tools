@@ -1,7 +1,9 @@
 import { ERenderContactShadowMode, RenderContactShadowMode } from "@xrf/ipc/types/xrf-renderer";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckboxFormRow } from "@xrf/ui/form/CheckboxFormRow";
 import { TonalityIcon } from "@xrf/ui/icons";
 import { Button } from "@xrf/ui/material";
+import { EditorPopoverToggle } from "@xrf/ui/shell/editor/EditorPopoverToggle";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
@@ -31,8 +33,6 @@ import {
 } from "@/core/render/lib/features/render-shadow-choices";
 import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/render-feature-defaults";
 import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { EditorPopoverToggle } from "@/core/shell/editor/EditorPopoverToggle";
-import { CheckboxFormRow } from "@/core/ui/form/CheckboxFormRow";
 
 /**
  * Whether the sun casts shadows in this view, in how many cascades, how fine and how soft, how often and how far out

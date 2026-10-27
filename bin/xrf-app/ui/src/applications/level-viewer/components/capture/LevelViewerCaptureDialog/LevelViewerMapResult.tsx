@@ -4,7 +4,9 @@ import { ELevelAnnotationKind, EMapExportAnnotations } from "@xrf/ipc/types/xrf-
 import { ETextureEncodingFormat } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckboxFormRow, ChoiceFormRow } from "@xrf/ui/form";
 import { Typography } from "@xrf/ui/material";
+import { IImageViewportView, ImageViewport } from "@xrf/ui/media/ImageViewport";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement, ReactNode, useCallback } from "react";
 
@@ -25,8 +27,6 @@ import {
   toLevelMapExportSize,
 } from "@/applications/level-viewer/lib/map/level-map-export";
 import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/level-viewer-capture-result";
-import { CheckboxFormRow, ChoiceFormRow } from "@/core/ui/form";
-import { IImageViewportView, ImageViewport } from "@/core/ui/media/ImageViewport";
 
 import { LevelViewerCaptureExported } from "./LevelViewerCaptureExported";
 import { LevelViewerMapAnnotationsOverlay } from "./LevelViewerMapAnnotationsOverlay";

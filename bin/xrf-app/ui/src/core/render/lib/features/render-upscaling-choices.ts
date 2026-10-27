@@ -10,10 +10,10 @@ import {
   RenderScale,
 } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
+import { IChoiceFormRowOption } from "@xrf/ui/form/ChoiceFormRow/choice-form-row-option";
 
 import { IRenderLimits, toRenderLimits } from "@/core/render/lib/features/render-limits";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
-import { IChoiceFormRowOption } from "@/core/ui/form/ChoiceFormRow/choice-form-row-option";
 
 /** How far the upscaled frame's sharpening goes. */
 export const RENDER_SHARPENING_LIMITS: IRenderLimits = toRenderLimits(RENDER_FEATURE_SCHEMA.upscaling.sharpening, 0.05);

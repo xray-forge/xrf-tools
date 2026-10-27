@@ -1,11 +1,11 @@
 import { useInjection } from "@wirestate/react";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DelayedProgress } from "@xrf/ui/layout/DelayedProgress";
 import { cn } from "@xrf/ui/theme/class-name";
 import { ReactElement } from "react";
 
 import { LEVEL_CAPTURE_NAMES } from "@/applications/level-viewer/lib/capture/level-capture";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/level-viewer-capture";
-import { DelayedProgress } from "@/core/ui/layout/DelayedProgress";
 
 /**
  * What stands in the viewport while a level map or cubemap is captured: the viewport draws the capture's tiles or

@@ -1,8 +1,7 @@
 import { DialogDescriptor, DialogElementDescriptor, DialogPhraseDescriptor } from "@xrf/ipc/types/xrf-dialog";
 import { Nullable } from "@xrf/types";
-
-import { layoutGraphNodes } from "@/core/ui/graph/graph-layout";
-import { TGraphEdge, TGraphNode } from "@/core/ui/graph/graph.types";
+import { layoutGraphNodes } from "@xrf/ui/graph/graph-layout";
+import { TGraphEdge, TGraphNode } from "@xrf/ui/graph/graph.types";
 
 /** Node kinds the dialog canvas draws. */
 export enum EDialogGraphNodeType {

@@ -1,8 +1,8 @@
 import { Button, Typography } from "@xrf/ui/material";
+import { EditorLayout } from "@xrf/ui/shell/editor/EditorLayout";
 import { ReactElement } from "react";
 import { NavigateFunction, useNavigate } from "react-router-dom";
 
-import { EditorLayout } from "@/core/shell/editor/EditorLayout";
 import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
 
 export function NavigationError(): ReactElement {

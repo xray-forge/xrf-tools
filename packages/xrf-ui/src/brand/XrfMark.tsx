@@ -1,0 +1,59 @@
+import { ReactElement } from "react";
+
+import { BaseComponentProps } from "#/element-types";
+import { cn } from "#/theme/class-name";
+
+/** The build a mark's core names: a release, a continuous-integration artifact, or a developer machine's own. */
+export type XrfMarkCore = "optimized" | "development" | "local";
+
+/** Core colour per build, matching the application icons in `bin/xrf-app/app/icons`. */
+const CORE_COLORS: Readonly<Record<XrfMarkCore, string>> = {
+  optimized: "#FFA200",
+  development: "#8B9AFF",
+  local: "#00C369",
+};
+
+interface IXrfMarkProps extends BaseComponentProps {
+  /** The build the core is coloured for; the ink and geometry never change. */
+  core: XrfMarkCore;
+  /** Rendered edge in pixels. The drawing is tuned for small sizes; see the note above. */
+  size?: number;
+  /** Names the mark for assistive technology. Omit where a label already sits beside it. */
+  title?: string;
+}
+
+export function XrfMark({
+  "data-testid": dataTestId = "xrf-mark",
+  id,
+  className,
+  core,
+  size = 16,
+  title,
+}: IXrfMarkProps): ReactElement {
+  return (
+    <svg
+      data-testid={dataTestId}
+      aria-label={title}
+      aria-hidden={title === undefined || undefined}
+      id={id}
+      className={cn("shrink-0", className)}
+      viewBox={"0 0 256 256"}
+      role={"img"}
+      style={{ width: size, height: size }}
+    >
+      <path
+        d={
+          "M 128 128 L 182.25 34.036 A 108.5 108.5 0 0 0 73.75 34.036 Z " +
+          "M 128 128 L 19.5 128 A 108.5 108.5 0 0 0 73.75 221.964 Z " +
+          "M 128 128 L 182.25 221.964 A 108.5 108.5 0 0 0 236.5 128 Z"
+        }
+        fill={"currentColor"}
+      />
+      <circle cx={128} cy={128} r={116} fill={"none"} stroke={"currentColor"} strokeWidth={18} />
+      <polygon
+        points={"161 128 144.5 99.421 111.5 99.421 95 128 111.5 156.579 144.5 156.579"}
+        fill={CORE_COLORS[core]}
+      />
+    </svg>
+  );
+}

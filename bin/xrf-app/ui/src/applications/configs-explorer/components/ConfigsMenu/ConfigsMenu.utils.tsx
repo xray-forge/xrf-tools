@@ -1,9 +1,8 @@
 import { LtxInventoryFile } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
 import { DescriptionIcon, FolderIcon, FolderOpenIcon } from "@xrf/ui/icons";
-
-import { ITreeNode } from "@/core/ui/tree/tree-node";
-import { ITreeIconDecoration, IVirtualizedTreeIcons } from "@/core/ui/tree/VirtualizedTree";
+import { ITreeNode } from "@xrf/ui/tree/tree-node";
+import { ITreeIconDecoration, IVirtualizedTreeIcons } from "@xrf/ui/tree/VirtualizedTree";
 
 /** Hoisted so the tree is handed the same icons every render rather than a fresh set. */
 export const CONFIG_TREE_ICONS: IVirtualizedTreeIcons = {

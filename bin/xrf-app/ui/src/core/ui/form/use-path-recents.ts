@@ -1,12 +1,7 @@
+import { IPathRecord } from "@xrf/ui/form/file-picker/path-field-recents";
 import { useCallback, useMemo, useRef, useState } from "react";
 
-import {
-  forgetRecentPath,
-  IPathRecord,
-  readRecentPaths,
-  recordRecentPath,
-  writeRecentPaths,
-} from "@/core/ui/form/path-recents";
+import { forgetRecentPath, readRecentPaths, recordRecentPath, writeRecentPaths } from "@/core/ui/form/path-recents";
 
 /** The paths one field was given before, and the two ways that list changes. */
 export interface IPathRecents {
