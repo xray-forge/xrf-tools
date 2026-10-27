@@ -1,4 +1,5 @@
 import { formatCount } from "@xrf/format";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
 
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
@@ -27,7 +28,7 @@ export function describeExtractOutcome(
     return describeJobFailure(`Could not extract ${from}`, destination, error);
   }
 
-  if (result?.outcome === "cancelled") {
+  if (result?.outcome === EJobOutcome.CANCELLED) {
     return {
       details: [
         `Stopped after ${formatCount(result.extractedCount)} file(s).`,

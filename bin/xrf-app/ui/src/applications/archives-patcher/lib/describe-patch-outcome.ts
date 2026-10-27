@@ -1,4 +1,5 @@
 import { formatCount } from "@xrf/format";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { ArchivePatchConfig, ArchivePatchResult } from "@xrf/ipc/types/xrf-pack";
 
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
@@ -26,7 +27,7 @@ export function describePatchOutcome(config: ArchivePatchConfig, outcome: IJobOu
 
   const carried: number = result.added.length + result.modified.length;
 
-  if (result.outcome === "cancelled") {
+  if (result.outcome === EJobOutcome.CANCELLED) {
     return {
       details: "Nothing was published; the destination was left as it was found.",
       severity: ENotificationSeverity.INFO,

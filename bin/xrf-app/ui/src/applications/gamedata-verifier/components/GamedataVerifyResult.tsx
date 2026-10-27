@@ -1,6 +1,7 @@
 import { GridColDef, GridRenderCellParams } from "@mui/x-data-grid";
 import { formatDuration } from "@xrf/format";
 import { GamedataCheckSummary, GamedataVerifySummary } from "@xrf/ipc/types/xrf-app-gamedata";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { EStatus, Status } from "@xrf/ipc/types/xrf-report";
 import { ReactElement, useMemo } from "react";
 
@@ -91,20 +92,22 @@ export function GamedataVerifyResult({
     [failed, result]
   );
 
+  const isCancelled: boolean = result.outcome === EJobOutcome.CANCELLED;
+
   return (
     <CommandResult
       data-testid={dataTestId}
       id={id}
       className={className}
       headline={
-        result.outcome === "cancelled"
+        isCancelled
           ? "Verification stopped — some checks are incomplete or were not run"
           : failed.length
             ? `Gamedata ${result.status}: ${failed.length} of ${result.checks.length} check(s)`
             : `Gamedata passed ${result.checks.length} check(s)`
       }
       // A stopped run is never a verdict, whatever the checks that did run said.
-      tone={result.outcome === "cancelled" ? "info" : STATUS_TONES[result.status]}
+      tone={isCancelled ? "info" : STATUS_TONES[result.status]}
       stats={stats}
     >
       <CommandResultFindings
