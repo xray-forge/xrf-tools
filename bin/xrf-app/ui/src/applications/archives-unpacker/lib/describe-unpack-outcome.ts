@@ -1,4 +1,5 @@
 import { formatCount } from "@xrf/format";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { ArchiveUnpackResult } from "@xrf/ipc/types/xrf-pack";
 
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
@@ -29,7 +30,7 @@ export function describeUnpackOutcome(
     return describeJobFailure("Could not unpack archives", source, error);
   }
 
-  if (result?.outcome === "cancelled") {
+  if (result?.outcome === EJobOutcome.CANCELLED) {
     return {
       details: [
         `Stopped after ${formatCount(result.filesUnpacked)} of ${formatCount(result.filesTotal)} entries.`,

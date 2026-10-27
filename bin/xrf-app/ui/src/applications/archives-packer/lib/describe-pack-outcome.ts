@@ -1,3 +1,4 @@
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { ArchivePackConfig, ArchivePackResult } from "@xrf/ipc/types/xrf-pack";
 
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
@@ -17,7 +18,7 @@ export function describePackOutcome(config: ArchivePackConfig, outcome: IJobOutc
     return describeJobFailure("Could not pack archives", config.source, error);
   }
 
-  if (result?.outcome === "cancelled") {
+  if (result?.outcome === EJobOutcome.CANCELLED) {
     // A stopped run takes back the volumes it made, so ordinarily there is nothing to clean up. A run that was allowed
     // to replace an existing set is the exception: there the same paths may have held a working archive, deleting them
     // would compound the loss, and these are the files somebody has to look at.

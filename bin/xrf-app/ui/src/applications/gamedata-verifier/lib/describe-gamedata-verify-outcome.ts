@@ -1,4 +1,5 @@
 import { GamedataCheckSummary, GamedataVerifySummary } from "@xrf/ipc/types/xrf-app-gamedata";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { EStatus } from "@xrf/ipc/types/xrf-report";
 
 import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
@@ -34,7 +35,7 @@ export function describeGamedataVerifyOutcome(root: string, outcome: IJobOutcome
     return describeJobFailure("Could not verify gamedata", root, error);
   }
 
-  if (result?.outcome === "cancelled") {
+  if (result?.outcome === EJobOutcome.CANCELLED) {
     return {
       details: [
         `Reported ${result.checks.length} check(s) before stopping.`,
