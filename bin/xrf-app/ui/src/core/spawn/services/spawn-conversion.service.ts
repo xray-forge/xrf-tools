@@ -1,7 +1,12 @@
 import { Injectable } from "@wirestate/core";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
 import { spawnCommands } from "@xrf/ipc/commands/spawn";
-import { SPAWN_JOB_PACK, SPAWN_JOB_UNPACK, SpawnConversionResult } from "@xrf/ipc/types/xrf-app-spawn";
+import {
+  ESpawnConversion,
+  SPAWN_JOB_PACK,
+  SPAWN_JOB_UNPACK,
+  SpawnConversionResult,
+} from "@xrf/ipc/types/xrf-app-spawn";
 import { Logger } from "@xrf/logging";
 
 import { JobOperation } from "@/core/jobs/lib/job-operation";
@@ -29,7 +34,7 @@ export class SpawnConversionService {
     yield* this.operation.run({
       kind: SPAWN_JOB_PACK,
       invoke: (id, progress) => spawnCommands.packFile({ source, destination }, id, progress),
-      describe: (outcome) => describeSpawnConversionOutcome("pack", source, destination, outcome),
+      describe: (outcome) => describeSpawnConversionOutcome(ESpawnConversion.PACK, source, destination, outcome),
     });
   }
 
@@ -46,7 +51,7 @@ export class SpawnConversionService {
     yield* this.operation.run({
       kind: SPAWN_JOB_UNPACK,
       invoke: (id, progress) => spawnCommands.unpackFile({ source, destination }, id, progress),
-      describe: (outcome) => describeSpawnConversionOutcome("unpack", source, destination, outcome),
+      describe: (outcome) => describeSpawnConversionOutcome(ESpawnConversion.UNPACK, source, destination, outcome),
     });
   }
 }

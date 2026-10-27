@@ -1,5 +1,6 @@
 import { default as ViewListIcon } from "@mui/icons-material/ViewList";
 import { useInjection } from "@wirestate/react";
+import { formatCount } from "@xrf/format";
 import { SpawnHeaderChunk } from "@xrf/ipc/types/xrf-spawn";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
@@ -53,7 +54,13 @@ export function SpawnEditor({
   useEditorBusy(spawnFileService.isBusy);
 
   useEditorStatus(
-    header ? [`version ${header.version}`, `${header.objectsCount} objects`, `${header.levelsCount} levels`] : []
+    header
+      ? [
+          `version ${header.version}`,
+          `${formatCount(header.objectsCount)} objects`,
+          `${formatCount(header.levelsCount)} levels`,
+        ]
+      : []
   );
 
   return (
