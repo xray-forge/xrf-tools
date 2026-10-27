@@ -6,6 +6,7 @@ import { ELeaveDecision } from "@xrf/ipc/types/xrf-app-system";
 
 import { EMIT_NOTIFICATION_EVENT } from "@/core/notifications/lib";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { deferred } from "@/fixtures/utils/promise";
 import { noop } from "@/lib/callbacks/noop";
 
 import { EditorLifecycleService } from "./editor-lifecycle.service";
@@ -52,11 +53,8 @@ describe("EditorLifecycleService", () => {
 
   it("refuses another save, navigation, dismissal, or discard while saving", async () => {
     const { service } = mockInjectedService(EditorLifecycleService);
-    let finish: (value: boolean) => void = noop;
-    const answer = new Promise<boolean>((resolve) => {
-      finish = resolve;
-    });
-    const save = jest.fn(() => answer);
+    const answer = deferred<boolean>();
+    const save = jest.fn(() => answer.promise);
     const leave = jest.fn();
     const other = jest.fn();
 
@@ -76,7 +74,7 @@ describe("EditorLifecycleService", () => {
     expect(leave).not.toHaveBeenCalled();
     expect(other).not.toHaveBeenCalled();
 
-    finish(true);
+    answer.resolve(true);
     await saving;
 
     expect(service.isBusy).toBe(false);
@@ -117,20 +115,17 @@ describe("EditorLifecycleService", () => {
 
   it("ignores a save result after its document was released", async () => {
     const { service } = mockInjectedService(EditorLifecycleService);
-    let finish: (value: boolean) => void = noop;
-    const answer = new Promise<boolean>((resolve) => {
-      finish = resolve;
-    });
+    const answer = deferred<boolean>();
     const leave = jest.fn();
 
-    service.setDraft("old", 1, () => answer);
+    service.setDraft("old", 1, () => answer.promise);
     service.requestLeave(leave);
 
     const saving = service.saveAndLeave();
 
     service.releaseDraft("old");
     service.setDraft("new", 3, null);
-    finish(true);
+    answer.resolve(true);
     await saving;
 
     expect(leave).not.toHaveBeenCalled();

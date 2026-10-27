@@ -15,17 +15,11 @@ import {
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred, flush } from "@/fixtures/utils/promise";
 
 import { ArchivesService } from "./archives.service";
 
 const RESTORE: string = EArchivesCommand.RESTORE_SUBJECT;
-
-async function flush(): Promise<void> {
-  for (let index: number = 0; index < 10; index += 1) {
-    await Promise.resolve();
-  }
-}
 
 function countReads(): number {
   return mockInvoke.mock.calls.filter(([name]) => name === RESTORE).length;
@@ -104,7 +98,7 @@ describe("ArchivesService session changes", () => {
 
   it("drops statistics read from the listing a commit replaced, and reads them again for the new one", async () => {
     const { container, service, sessionId } = await openWorld();
-    let finishOlder: (answer: SessionSnapshot<ArchiveStatistics>) => void = noop;
+    const older = deferred<SessionSnapshot<ArchiveStatistics>>();
 
     mockIpcCommands({
       [RESTORE]: () =>
@@ -113,10 +107,7 @@ describe("ArchivesService session changes", () => {
           sessionId,
           1
         ),
-      [EArchivesCommand.DESCRIBE_STATISTICS]: () =>
-        new Promise((resolve) => {
-          finishOlder = resolve;
-        }),
+      [EArchivesCommand.DESCRIBE_STATISTICS]: () => older.promise,
     });
 
     const loading = flowResult(service.loadStatistics());
@@ -126,7 +117,7 @@ describe("ArchivesService session changes", () => {
 
     expect(service.entries).toHaveLength(2);
 
-    finishOlder(mockSessionSnapshot(mockArchiveStatistics(), sessionId, 0));
+    older.resolve(mockSessionSnapshot(mockArchiveStatistics(), sessionId, 0));
     await loading;
 
     expect(service.statistics.value).toBeNull();

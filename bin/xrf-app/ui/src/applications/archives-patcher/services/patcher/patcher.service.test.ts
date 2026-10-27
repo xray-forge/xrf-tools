@@ -8,7 +8,7 @@ import { ArchivePatchConfig, ArchivePatchResult } from "@xrf/ipc/types/xrf-pack"
 
 import { EPatcherSection, PatcherService } from "@/applications/archives-patcher/services/patcher/index";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 
 /** A configuration shaped like the one the backend answers with. */
 const CONFIG: ArchivePatchConfig = {
@@ -207,12 +207,9 @@ describe("PatcherService destination check", () => {
   });
 
   it("ignores an older destination listing that finishes after its replacement", async () => {
-    let resolveOlder: (volumes: Array<string>) => void = noop;
-    const olderResponse = new Promise<Array<string>>((resolve) => {
-      resolveOlder = resolve;
-    });
+    const olderResponse = deferred<Array<string>>();
 
-    mockIpcCommands({ [EArchivesCommand.LIST_PATCH_VOLUMES]: () => olderResponse });
+    mockIpcCommands({ [EArchivesCommand.LIST_PATCH_VOLUMES]: () => olderResponse.promise });
 
     const service: PatcherService = mockPatcherService();
     const olderCheck = flowResult(service.checkDestination({ ...CONFIG, destination: "C:\\old" }));
@@ -224,8 +221,8 @@ describe("PatcherService destination check", () => {
 
     expect(service.publishedVolumes).toEqual(newerVolumes);
 
-    resolveOlder(["C:\\old\\patch.db0"]);
-    await olderResponse;
+    olderResponse.resolve(["C:\\old\\patch.db0"]);
+    await olderResponse.promise;
     await olderCheck;
 
     expect(service.publishedVolumes).toEqual(newerVolumes);

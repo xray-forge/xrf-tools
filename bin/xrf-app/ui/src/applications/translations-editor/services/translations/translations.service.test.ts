@@ -10,7 +10,7 @@ import { createRoots } from "@/core/assets/lib/roots";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 
 import { TranslationsService } from "./translations.service";
 
@@ -105,13 +105,10 @@ describe("TranslationsService", () => {
 
   it("saves all dirty files sequentially and excludes another batch", async () => {
     const { service } = mockInjectedService(TranslationsService);
-    let finish: (value: TranslationSaveOutcome) => void = noop;
-    const answer = new Promise<TranslationSaveOutcome>((resolve) => {
-      finish = resolve;
-    });
+    const answer = deferred<TranslationSaveOutcome>();
     const write = jest
       .fn<IpcCommandAnswer<ETranslationsCommand.SAVE_FILE>>()
-      .mockImplementationOnce(() => answer)
+      .mockImplementationOnce(() => answer.promise)
       .mockImplementation(() => ({ kind: ETranslationSaveOutcome.SAVED, project: mockSessionSnapshot(PROJECT) }));
 
     mockIpcCommands({
@@ -129,7 +126,7 @@ describe("TranslationsService", () => {
     expect(write).toHaveBeenCalledTimes(1);
     expect(service.savingFile).toBe(FILE);
 
-    finish({ kind: ETranslationSaveOutcome.SAVED, project: mockSessionSnapshot(PROJECT) });
+    answer.resolve({ kind: ETranslationSaveOutcome.SAVED, project: mockSessionSnapshot(PROJECT) });
 
     expect(await saving).toBe(true);
     expect(await overlapping).toBe(true);
@@ -300,14 +297,11 @@ describe("TranslationsService", () => {
 
   it("clears pending edits only after the backend confirms the close", async () => {
     const { service } = mockInjectedService(TranslationsService);
-    let finishClose: () => void = noop;
-    const answer = new Promise<void>((resolve) => {
-      finishClose = resolve;
-    });
+    const answer = deferred<void>();
 
     mockIpcCommands({
       [ETranslationsCommand.OPEN_PROJECT]: mockSessionResponse(PROJECT),
-      [ETranslationsCommand.CLOSE_PROJECT]: () => answer,
+      [ETranslationsCommand.CLOSE_PROJECT]: () => answer.promise,
     });
 
     await openWithEdit(service);
@@ -318,7 +312,7 @@ describe("TranslationsService", () => {
     expect(service.project.value).toEqual(PROJECT);
     expect(service.dirtyFiles).toEqual([FILE]);
 
-    finishClose();
+    answer.resolve();
     await closing;
 
     expect(service.project.isLoading).toBe(false);

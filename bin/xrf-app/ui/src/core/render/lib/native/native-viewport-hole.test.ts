@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 
 import { NativeViewportHole } from "@/core/render/lib/native/native-viewport-hole";
+import { flush } from "@/fixtures/utils/promise";
 
 /** A panel painted by the scheme shown, as the theme paints the shell, holding the viewport's element. */
 function mockSchemedPage(): { panel: HTMLElement; element: HTMLElement } {
@@ -19,10 +20,6 @@ function mockSchemedPage(): { panel: HTMLElement; element: HTMLElement } {
   document.documentElement.setAttribute("data-color-scheme", "dark");
 
   return { element, panel };
-}
-
-async function flush(): Promise<void> {
-  await Promise.resolve();
 }
 
 describe("NativeViewportHole", () => {

@@ -10,6 +10,7 @@ import { createRoots } from "@/core/assets/lib";
 import { mockTextureDescription } from "@/core/textures/fixtures/texture.mocks";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { deferred } from "@/fixtures/utils/promise";
 import { noop } from "@/lib/callbacks/noop";
 
 const TEXTURE: string = "C:\\mods\\mine\\gamedata\\textures\\wall.dds";
@@ -138,21 +139,18 @@ describe("TextureSelectionService", () => {
 
   it("discards a description received after clearing without starting its preview", async () => {
     const { service, description, describeTexture, readTexture } = mockService();
-    let finishDescribe: (description: TextureDescription) => void = noop;
-    const describing = new Promise<TextureDescription>((resolve) => {
-      finishDescribe = resolve;
-    });
+    const describing = deferred<TextureDescription>();
 
-    describeTexture.mockReturnValueOnce(describing);
+    describeTexture.mockReturnValueOnce(describing.promise);
 
     const loading = flowResult(service.openFile(TEXTURE));
 
     expect(describeTexture).toHaveBeenCalledTimes(1);
 
     service.clear();
-    finishDescribe(description);
+    describing.resolve(description);
 
-    await describing;
+    await describing.promise;
     await loading;
 
     expect(service.selected.value).toBeNull();
@@ -163,29 +161,23 @@ describe("TextureSelectionService", () => {
 
   it("discards preview bytes received after clearing the selected texture", async () => {
     const { service, preview, readTexture } = mockService();
-    let finishRead: (bytes: ArrayBuffer) => void = noop;
-    let onReading: () => void = noop;
-    const reading = new Promise<ArrayBuffer>((resolve) => {
-      finishRead = resolve;
-    });
-    const started = new Promise<void>((resolve) => {
-      onReading = resolve;
-    });
+    const reading = deferred<ArrayBuffer>();
+    const started = deferred<void>();
 
     readTexture.mockImplementationOnce(() => {
-      onReading();
+      started.resolve();
 
-      return reading;
+      return reading.promise;
     });
 
     const loading = flowResult(service.openFile(TEXTURE));
 
-    await started;
+    await started.promise;
 
     service.clear();
-    finishRead(preview);
+    reading.resolve(preview);
 
-    await reading;
+    await reading.promise;
     await loading;
 
     expect(service.selected.value).toBeNull();
@@ -195,19 +187,16 @@ describe("TextureSelectionService", () => {
 
   it("discards a description failure received after deactivation", async () => {
     const { service, describeTexture, readTexture } = mockService();
-    let failDescribe: (error: Error) => void = noop;
-    const describing = new Promise<TextureDescription>((_resolve, reject) => {
-      failDescribe = reject;
-    });
+    const describing = deferred<TextureDescription>();
 
-    describeTexture.mockReturnValueOnce(describing);
+    describeTexture.mockReturnValueOnce(describing.promise);
 
     const loading = flowResult(service.openFile(TEXTURE));
 
     service.onDeactivation();
-    failDescribe(new Error("Previous texture unavailable"));
+    describing.reject(new Error("Previous texture unavailable"));
 
-    await describing.catch(noop);
+    await describing.promise.catch(noop);
     await loading;
 
     expect(service.selected.value).toBeNull();
@@ -220,33 +209,27 @@ describe("TextureSelectionService", () => {
     const { service, describeTexture, readTexture } = mockService();
     const current = mockTextureDescription("textures\\replacement");
     const currentPreview = new ArrayBuffer(16);
-    let finishRead: (bytes: ArrayBuffer) => void = noop;
-    let onReading: () => void = noop;
-    const reading = new Promise<ArrayBuffer>((resolve) => {
-      finishRead = resolve;
-    });
-    const started = new Promise<void>((resolve) => {
-      onReading = resolve;
-    });
+    const reading = deferred<ArrayBuffer>();
+    const started = deferred<void>();
 
     readTexture.mockImplementationOnce(() => {
-      onReading();
+      started.resolve();
 
-      return reading;
+      return reading.promise;
     });
 
     const previous = flowResult(service.openFile(TEXTURE));
 
-    await started;
+    await started.promise;
 
     describeTexture.mockResolvedValueOnce(current);
     readTexture.mockResolvedValueOnce(currentPreview);
 
     await service.open({ kind: ETextureSource.ASSET, reference: current.reference }, current.roots);
 
-    finishRead(new ArrayBuffer(4));
+    reading.resolve(new ArrayBuffer(4));
 
-    await reading;
+    await reading.promise;
     await previous;
 
     expect(service.selected.value).toEqual(current);

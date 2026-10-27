@@ -33,16 +33,11 @@ import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualRenderService } from "@/core/visuals/services/visual-render.service";
 import { VisualViewService } from "@/core/visuals/services/visual-view.service";
 import { mockContainer } from "@/fixtures/utils/container";
+import { flush } from "@/fixtures/utils/promise";
 
 const VIEWPORT: number = 3;
 /** The scene the mocked renderer draws every model shown as. */
 const SCENE: number = 4;
-
-async function flush(): Promise<void> {
-  for (let index: number = 0; index < 10; index += 1) {
-    await Promise.resolve();
-  }
-}
 
 function emit(event: ViewportEvent): void {
   (getMockChannels()[0] as MockChannel<ViewportEvent>).onmessage(event);

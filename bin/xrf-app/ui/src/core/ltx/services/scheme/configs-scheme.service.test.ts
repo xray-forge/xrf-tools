@@ -9,16 +9,13 @@ import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsSchemeService } from "@/core/ltx/services/scheme";
 import { mockSessionRead } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 
 describe("ConfigsSchemeService", () => {
   it("keeps a cleared report idle when its read finishes", async () => {
-    let resolve: (report: Nullable<LtxSectionSchemeReport>) => void = noop;
-    const response = new Promise<Nullable<LtxSectionSchemeReport>>((settle) => {
-      resolve = settle;
-    });
+    const response = deferred<Nullable<LtxSectionSchemeReport>>();
 
-    mockIpcCommands({ [EConfigsCommand.READ_SECTION_SCHEME]: mockSessionRead(() => response) });
+    mockIpcCommands({ [EConfigsCommand.READ_SECTION_SCHEME]: mockSessionRead(() => response.promise) });
 
     const { service, container } = mockInjectedService(ConfigsSchemeService, [ConfigsProjectService]);
 
@@ -27,7 +24,7 @@ describe("ConfigsSchemeService", () => {
     const reading = service.read("system.ltx", "wpn_base");
 
     service.clear();
-    resolve(null);
+    response.resolve(null);
     await reading;
 
     expect(service.entry).toBeNull();

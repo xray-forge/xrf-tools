@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { act, renderHook, waitFor } from "@testing-library/react";
 
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 import { usePolledValue } from "@/lib/react/use-polled-value";
 
 describe("usePolledValue", () => {
@@ -55,11 +55,8 @@ describe("usePolledValue", () => {
     jest.useFakeTimers();
 
     try {
-      let resolve: (value: string) => void = noop;
-      const pending = new Promise<string>((settle) => {
-        resolve = settle;
-      });
-      const read = jest.fn<() => Promise<string>>().mockReturnValueOnce(pending).mockResolvedValue("next");
+      const pending = deferred<string>();
+      const read = jest.fn<() => Promise<string>>().mockReturnValueOnce(pending.promise).mockResolvedValue("next");
       const { result } = renderHook(() => usePolledValue(read, 1000));
 
       await act(async () => {
@@ -70,7 +67,7 @@ describe("usePolledValue", () => {
       expect(result.current).toBeNull();
 
       await act(async () => {
-        resolve("first");
+        pending.resolve("first");
       });
 
       expect(result.current).toBe("first");
@@ -90,11 +87,8 @@ describe("usePolledValue", () => {
     jest.useFakeTimers();
 
     try {
-      let resolve: (value: string) => void = noop;
-      const pending = new Promise<string>((settle) => {
-        resolve = settle;
-      });
-      const read = jest.fn<() => Promise<string>>().mockReturnValue(pending);
+      const pending = deferred<string>();
+      const read = jest.fn<() => Promise<string>>().mockReturnValue(pending.promise);
       const { result, unmount } = renderHook(() => usePolledValue(read, 1000));
 
       expect(read).toHaveBeenCalledTimes(1);
@@ -103,7 +97,7 @@ describe("usePolledValue", () => {
       unmount();
 
       await act(async () => {
-        resolve("late");
+        pending.resolve("late");
       });
 
       await act(async () => {
@@ -121,13 +115,10 @@ describe("usePolledValue", () => {
     jest.useFakeTimers();
 
     try {
-      let resolve: (value: string) => void = noop;
-      const pending = new Promise<string>((settle) => {
-        resolve = settle;
-      });
+      const pending = deferred<string>();
       const read = jest
         .fn<() => Promise<string>>()
-        .mockReturnValueOnce(pending)
+        .mockReturnValueOnce(pending.promise)
         .mockResolvedValueOnce("current")
         .mockResolvedValue("next");
       const { result, rerender } = renderHook((intervalMs: number) => usePolledValue(read, intervalMs), {
@@ -143,7 +134,7 @@ describe("usePolledValue", () => {
       expect(read).toHaveBeenCalledTimes(2);
 
       await act(async () => {
-        resolve("stale");
+        pending.resolve("stale");
       });
 
       expect(result.current).toBe("current");

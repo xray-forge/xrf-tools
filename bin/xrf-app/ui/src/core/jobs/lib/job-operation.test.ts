@@ -13,22 +13,12 @@ import { IJobDescriptor, IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jo
 import { JobsService } from "@/core/jobs/services/jobs";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { mockContainer } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 
 import { IJobOperationOptions, JobOperation } from "./job-operation";
 
 interface IResult {
   count: number;
-}
-
-function deferred<T>() {
-  let resolve: (value: T) => void = noop;
-
-  const promise = new Promise<T>((settle) => {
-    resolve = settle;
-  });
-
-  return { promise, resolve };
 }
 
 function setup(options: IJobOperationOptions<IResult> = { kinds: [CONFIGS_JOB_VERIFY] }) {

@@ -11,6 +11,7 @@ import { TextureSurfaceService } from "@/core/textures/services/surface";
 import { mockMaterialDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 import { muteConsole } from "@/fixtures/utils/console";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { deferred } from "@/fixtures/utils/promise";
 
 /** Texels as `textures/read_texels` answers them: the size, then four bytes a texel. */
 function mockTexels(width: number = 2, height: number = 2): ArrayBuffer {
@@ -113,19 +114,15 @@ describe("TextureSurfaceService", () => {
     const { service } = mockInjectedService(TextureSurfaceService);
 
     // The read is held open, so the run can be cancelled while its file is still being fetched.
-    let release!: (bytes: ArrayBuffer) => void;
+    const pending = deferred<ArrayBuffer>();
 
-    const pending: Promise<ArrayBuffer> = new Promise<ArrayBuffer>((resolve) => {
-      release = resolve;
-    });
-
-    mockIpcBulkRoutes({ [ETexturesBulkRoute.READ_TEXELS]: () => pending });
+    mockIpcBulkRoutes({ [ETexturesBulkRoute.READ_TEXELS]: () => pending.promise });
 
     const abandoned = service.load(mockBumpedDescription());
 
     service.clear();
 
-    release(mockTexels());
+    pending.resolve(mockTexels());
 
     await abandoned;
 

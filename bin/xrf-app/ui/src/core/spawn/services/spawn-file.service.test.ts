@@ -11,18 +11,7 @@ import { mockSpawnFile, mockSpawnSession } from "@/core/spawn/fixtures/spawn.moc
 import { SpawnFileService } from "@/core/spawn/services/spawn-file.service";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
-
-function deferred<T>() {
-  let resolve: (value: T) => void = noop;
-  let reject: (error: Error) => void = noop;
-  const promise = new Promise<T>((settle, fail) => {
-    resolve = settle;
-    reject = fail;
-  });
-
-  return { promise, resolve, reject };
-}
+import { deferred } from "@/fixtures/utils/promise";
 
 /** Answers `read_chunk` with the graphs a test hands it, tagged and under the opening that asked. */
 function answerGraphs(

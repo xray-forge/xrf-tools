@@ -8,16 +8,7 @@ import { ConfigsProjectService } from "@/core/ltx/services/project";
 import { ConfigsResolvedService } from "@/core/ltx/services/resolved";
 import { mockSessionRead } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
-
-function mockDeferredSections() {
-  let resolve: (sections: Array<LtxResolvedSection>) => void = noop;
-  const promise = new Promise<Array<LtxResolvedSection>>((settle) => {
-    resolve = settle;
-  });
-
-  return { promise, resolve };
-}
+import { deferred } from "@/fixtures/utils/promise";
 
 function getEntryOf(name: string, origin: string): LtxResolvedIndex["sections"][number] {
   return { fieldCount: 1, name, origin, parents: [] };
@@ -124,18 +115,15 @@ describe("ConfigsResolvedService", () => {
   });
 
   it("keeps a cleared index empty when its read finishes", async () => {
-    let resolve: (index: LtxResolvedIndex) => void = noop;
-    const response = new Promise<LtxResolvedIndex>((settle) => {
-      resolve = settle;
-    });
+    const response = deferred<LtxResolvedIndex>();
 
-    mockIpcCommands({ [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(() => response) });
+    mockIpcCommands({ [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(() => response.promise) });
 
     const service = await mockOpenedService();
     const opening = service.open("system.ltx");
 
     service.clear();
-    resolve(getIndexOf([getEntryOf("a", "one.ltx")]));
+    response.resolve(getIndexOf([getEntryOf("a", "one.ltx")]));
     await opening;
 
     expect(service.entry).toBeNull();
@@ -144,7 +132,7 @@ describe("ConfigsResolvedService", () => {
   });
 
   it("drops a page that lands after clear", async () => {
-    const response = mockDeferredSections();
+    const response = deferred<Array<LtxResolvedSection>>();
 
     mockIpcCommands({
       [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(getIndexOf([getEntryOf("a", "one.ltx")])),
@@ -169,7 +157,7 @@ describe("ConfigsResolvedService", () => {
   });
 
   it("drops a page from an earlier opening of the same entry", async () => {
-    const response = mockDeferredSections();
+    const response = deferred<Array<LtxResolvedSection>>();
 
     mockIpcCommands({
       [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(getIndexOf([getEntryOf("a", "one.ltx")])),
@@ -196,8 +184,8 @@ describe("ConfigsResolvedService", () => {
   });
 
   it("keeps newer pending sections reserved when an abandoned page finishes", async () => {
-    const older = mockDeferredSections();
-    const newer = mockDeferredSections();
+    const older = deferred<Array<LtxResolvedSection>>();
+    const newer = deferred<Array<LtxResolvedSection>>();
 
     mockIpcCommands({
       [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(getIndexOf([getEntryOf("a", "one.ltx")])),
@@ -230,8 +218,8 @@ describe("ConfigsResolvedService", () => {
   });
 
   it("accepts independent pages of the current resolution in either completion order", async () => {
-    const first = mockDeferredSections();
-    const second = mockDeferredSections();
+    const first = deferred<Array<LtxResolvedSection>>();
+    const second = deferred<Array<LtxResolvedSection>>();
 
     mockIpcCommands({
       [EConfigsCommand.LIST_RESOLVED_SECTIONS]: mockSessionRead(

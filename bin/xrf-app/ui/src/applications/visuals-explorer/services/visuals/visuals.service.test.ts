@@ -4,7 +4,6 @@ import { EVisualsCommand } from "@xrf/ipc/commands/visuals";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { AssetSource, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
-import { Nullable } from "@xrf/types";
 
 import { VisualsService } from "@/applications/visuals-explorer/services/visuals/index";
 import {
@@ -20,6 +19,7 @@ import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { VisualMotionService } from "@/core/visuals/services/visual-motion.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
+import { deferred } from "@/fixtures/utils/promise";
 
 /** A selected visual with one packed submesh. */
 function mockOpenableVisual(path: string = "C:\\gamedata\\wpn_ak74.ogf"): {
@@ -283,11 +283,7 @@ describe("VisualsService opening", () => {
     const second = mockOpenableVisual("C:\\gamedata\\second.ogf");
     const { service } = mockInjectedService(VisualsService, [VisualLoadService, VisualMotionService]);
 
-    let releaseFirst: Nullable<() => void> = null;
-
-    const pendingFirst: Promise<void> = new Promise((resolve) => {
-      releaseFirst = resolve;
-    });
+    const pendingFirst = deferred<void>();
 
     mockIpcCommands({
       [EVisualsCommand.OPEN_MODEL]: mockSessionResponse(async (parameters?: Record<string, unknown>) => {
@@ -297,7 +293,7 @@ describe("VisualsService opening", () => {
           return second.selected;
         }
 
-        await pendingFirst;
+        await pendingFirst.promise;
 
         return first.selected;
       }),
@@ -307,7 +303,7 @@ describe("VisualsService opening", () => {
 
     await service.openFile("C:\\gamedata\\second.ogf");
 
-    (releaseFirst as unknown as () => void)();
+    pendingFirst.resolve();
     await opening;
 
     expect(service.sourceLabel).toBe("C:\\gamedata\\second.ogf");

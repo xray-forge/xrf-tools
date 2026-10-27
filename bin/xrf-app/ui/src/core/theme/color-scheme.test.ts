@@ -2,10 +2,7 @@ import { afterEach, describe, expect, it, jest } from "@jest/globals";
 
 import { readColorScheme, toColorSchemeSelector, watchColorScheme } from "@/core/theme/color-scheme";
 import { ColorScheme } from "@/core/theme/tokens";
-
-async function flush(): Promise<void> {
-  await Promise.resolve();
-}
+import { flush } from "@/fixtures/utils/promise";
 
 describe("color-scheme", () => {
   afterEach(() => {

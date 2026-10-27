@@ -29,12 +29,7 @@ import { TextureRenderService } from "@/core/textures/services/render";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { TextureViewService } from "@/core/textures/services/view";
 import { mockContainer } from "@/fixtures/utils/container";
-
-async function flush(): Promise<void> {
-  for (let index: number = 0; index < 10; index += 1) {
-    await Promise.resolve();
-  }
-}
+import { flush } from "@/fixtures/utils/promise";
 
 function emit(event: ViewportEvent): void {
   (getMockChannels()[0] as MockChannel<ViewportEvent>).onmessage(event);

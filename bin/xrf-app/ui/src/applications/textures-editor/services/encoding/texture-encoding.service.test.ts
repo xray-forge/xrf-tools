@@ -15,18 +15,9 @@ import {
 } from "@/core/textures/fixtures/texture.mocks";
 import { TextureSelectionService } from "@/core/textures/services/selection";
 import { mockContainer } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 
 import { TextureEncodingService } from "./texture-encoding.service";
-
-function pendingPreview() {
-  let resolve: (bytes: ArrayBuffer) => void = noop;
-  const promise: Promise<ArrayBuffer> = new Promise((settle) => {
-    resolve = settle;
-  });
-
-  return { promise, resolve };
-}
 
 async function mockService(): Promise<{ service: TextureEncodingService; selection: TextureSelectionService }> {
   mockIpcCommands({
@@ -229,7 +220,7 @@ describe("TextureEncodingService", () => {
 
   it("does not publish a pending preview after clearing its comparison", async () => {
     const { service } = await mockService();
-    const pending = pendingPreview();
+    const pending = deferred<ArrayBuffer>();
 
     await service.run(null);
 
@@ -247,7 +238,7 @@ describe("TextureEncodingService", () => {
 
   it("does not publish an old preview into a new comparison", async () => {
     const { service } = await mockService();
-    const pending = pendingPreview();
+    const pending = deferred<ArrayBuffer>();
 
     await service.run(null);
 

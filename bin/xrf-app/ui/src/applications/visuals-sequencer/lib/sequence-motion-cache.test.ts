@@ -8,7 +8,7 @@ import { mockLoadedVisual, mockSelectedVisual, mockVisualMotionBake } from "@/co
 import { VisualLoadService } from "@/core/visuals/services/visual-load.service";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockInjectedService } from "@/fixtures/utils/container";
-import { noop } from "@/lib/callbacks/noop";
+import { deferred } from "@/fixtures/utils/promise";
 
 import { ESequenceMotionState, SequenceMotionCache } from "./sequence-motion-cache";
 
@@ -61,30 +61,24 @@ describe("SequenceMotionCache", () => {
 
   it("waits for one motion's read before reading the next motion", async () => {
     const { cache, open, bake } = mockCache();
-    let finishOpen: (snapshot: SessionSnapshot<VisualMotionBake>) => void = noop;
-    let onOpening: () => void = noop;
-    const opening = new Promise<SessionSnapshot<VisualMotionBake>>((resolve) => {
-      finishOpen = resolve;
-    });
-    const started = new Promise<void>((resolve) => {
-      onOpening = resolve;
-    });
+    const opening = deferred<SessionSnapshot<VisualMotionBake>>();
+    const started = deferred<void>();
 
     open.mockImplementationOnce(() => {
-      onOpening();
+      started.resolve();
 
-      return opening;
+      return opening.promise;
     });
 
     const first = cache.describe("first");
     const second = cache.describe("second");
 
-    await started;
+    await started.promise;
 
     expect(open).toHaveBeenCalledTimes(1);
     expect(cache.motions.get("second")?.state).toBe(ESequenceMotionState.DESCRIBING);
 
-    finishOpen(mockSessionSnapshot(bake));
+    opening.resolve(mockSessionSnapshot(bake));
 
     await Promise.all([first, second]);
 
@@ -137,30 +131,24 @@ describe("SequenceMotionCache", () => {
 
   it("discards a late failure without replacing a new request for the same motion", async () => {
     const { cache, open } = mockCache();
-    let failOpen: (error: Error) => void = noop;
-    let onOpening: () => void = noop;
-    const opening = new Promise<SessionSnapshot<VisualMotionBake>>((_resolve, reject) => {
-      failOpen = reject;
-    });
-    const started = new Promise<void>((resolve) => {
-      onOpening = resolve;
-    });
+    const opening = deferred<SessionSnapshot<VisualMotionBake>>();
+    const started = deferred<void>();
 
     open.mockImplementationOnce(() => {
-      onOpening();
+      started.resolve();
 
-      return opening;
+      return opening.promise;
     });
 
     const previous = cache.describe("first");
 
-    await started;
+    await started.promise;
 
     cache.clear();
 
     const current = cache.describe("first");
 
-    failOpen(new Error("Previous model closed"));
+    opening.reject(new Error("Previous model closed"));
 
     await previous;
 
