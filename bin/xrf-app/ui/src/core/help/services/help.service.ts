@@ -3,45 +3,45 @@ import { BoundAction, Observable, runInAction } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
 import { KeybindCommand } from "@/core/commands";
-import { OPEN_APPLICATION_HELP_KEYBIND_COMMAND } from "@/core/help/commands";
+import { OPEN_TOOL_HELP_KEYBIND_COMMAND } from "@/core/help/commands";
 
 /**
- * Owns whether help is on screen, and which application it belongs to.
+ * Owns whether help is on screen, and which tool it belongs to.
  */
 @Injectable()
 export class HelpService {
   @Observable()
   public isOpen: boolean = false;
 
-  /** Whether the open application authored help at all; without it there is no affordance and no shortcut. */
+  /** Whether the open tool authored help at all; without it there is no affordance and no shortcut. */
   @Observable()
   public hasHelp: boolean = false;
 
   @Observable()
-  private applicationId: Nullable<string> = null;
+  private toolId: Nullable<string> = null;
 
   @OnDeprovision()
   public onDeprovision(): void {
     runInAction(() => {
-      this.applicationId = null;
+      this.toolId = null;
       this.hasHelp = false;
       this.isOpen = false;
     });
   }
 
   /**
-   * Publishes the application help would describe.
+   * Publishes the tool help would describe.
    *
-   * @param applicationId - Application currently routed, or null outside one.
-   * @param hasHelp - Whether that application authored help.
+   * @param toolId - Tool currently routed, or null outside one.
+   * @param hasHelp - Whether that tool authored help.
    */
   @BoundAction()
-  public setApplication(applicationId: Nullable<string>, hasHelp: boolean): void {
-    if (this.applicationId !== applicationId) {
+  public setTool(toolId: Nullable<string>, hasHelp: boolean): void {
+    if (this.toolId !== toolId) {
       this.isOpen = false;
     }
 
-    this.applicationId = applicationId;
+    this.toolId = toolId;
     this.hasHelp = hasHelp;
   }
 
@@ -51,7 +51,7 @@ export class HelpService {
   }
 
   /** Shows help for whatever is open. */
-  @KeybindCommand(OPEN_APPLICATION_HELP_KEYBIND_COMMAND, { isEnabled: (service: HelpService) => service.hasHelp })
+  @KeybindCommand(OPEN_TOOL_HELP_KEYBIND_COMMAND, { isEnabled: (service: HelpService) => service.hasHelp })
   @BoundAction()
   public open(): void {
     this.isOpen = true;

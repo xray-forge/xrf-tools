@@ -11,7 +11,7 @@ export interface IKeybinding {
 }
 
 /**
- * The bindings reachable from where the application currently is.
+ * The bindings reachable from where the tool currently is.
  */
 export interface IKeymap {
   /** Fires wherever focus is. */
@@ -47,7 +47,7 @@ export function buildKeymap(
       const chord: IKeyChord = parseChord(authored);
       const canonical: string = toChordKey(chord);
       // Keyed by id, the identity the bus and the overlay already use, so a command reaching this twice - listed by
-      // its application and by a core set it composes - binds once however it was reached.
+      // its tool and by a core set it composes - binds once however it was reached.
       const claimed: Set<string> = claimedChords.get(command.id) ?? new Set();
 
       if (claimed.has(canonical)) {

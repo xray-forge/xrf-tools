@@ -18,7 +18,7 @@ const KIT_RESTRICTED_IMPORT_PATTERNS = [
 
 /**
  * Flat configuration for the desktop frontend: the workspace rules and the React and Tailwind layers it shares with
- * `@xrf/ui`, plus the boundaries only this application keeps: core and libraries apart from applications, MUI and
+ * `@xrf/ui`, plus the boundaries only this application keeps: core and libraries apart from tools, MUI and
  * Emotion behind the kit, and colour behind the theme.
  */
 export default createEslintConfig(
@@ -43,7 +43,7 @@ export default createEslintConfig(
   },
   {
     files: ["src/core/**/*.{ts,tsx}"],
-    // Integration tests may compose shared components with application services.
+    // Integration tests may compose shared components with tool services.
     ignores: ["**/*.test.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
@@ -53,8 +53,8 @@ export default createEslintConfig(
           patterns: [
             ...KIT_RESTRICTED_IMPORT_PATTERNS,
             {
-              group: ["@/applications", "@/applications/**"],
-              message: "Core must not depend on applications. Inject application behavior at the composition root.",
+              group: ["@/tools", "@/tools/**"],
+              message: "Core must not depend on tools. Inject tool behavior at the composition root.",
             },
           ],
         },
@@ -100,8 +100,8 @@ export default createEslintConfig(
           patterns: [
             ...KIT_RESTRICTED_IMPORT_PATTERNS,
             {
-              group: ["@/core", "@/core/**", "@/applications", "@/applications/**"],
-              message: "Library utilities must not depend on core or applications. Move domain behavior to its owner.",
+              group: ["@/core", "@/core/**", "@/tools", "@/tools/**"],
+              message: "Library utilities must not depend on core or tools. Move domain behavior to its owner.",
             },
           ],
         },

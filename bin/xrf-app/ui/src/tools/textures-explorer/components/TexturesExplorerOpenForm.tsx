@@ -1,0 +1,135 @@
+import { useInjection } from "@wirestate/react";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
+import { Nullable } from "@xrf/types";
+import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
+import { ReactElement, useCallback } from "react";
+
+import { AssetRootFormRow } from "@/core/assets/components/AssetRootFormRow";
+import { useAssetRootField } from "@/core/assets/lib";
+import { useRootProbe } from "@/core/assets/lib/use-root-probe";
+import { TEXTURE_FILE_FILTERS } from "@/core/path/file-filters";
+import { EToolId } from "@/core/routing/tool";
+import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { TextureSelectionService } from "@/core/textures/services/texture-selection";
+import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
+import {
+  ETextureOpenMode,
+  getTextureOpenMode,
+  ITextureOpenModeDescriptor,
+  TEXTURE_OPEN_MODE_IDS,
+  TEXTURE_OPEN_MODES,
+} from "@/tools/textures-explorer/lib/texture-open-mode";
+import { TextureCatalogService } from "@/tools/textures-explorer/services/texture-catalog.service";
+
+const OPEN_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ETextureOpenMode>> = TEXTURE_OPEN_MODES.map(
+  (mode: ITextureOpenModeDescriptor) => ({
+    "aria-label": `Open ${mode.label.toLowerCase()}`,
+    value: mode.id,
+    label: mode.label,
+  })
+);
+
+/**
+ * The way into the explorer: browse the game as the engine mounts it, a gamedata tree or a directory of loose
+ * textures, or inspect one texture.
+ */
+export function TexturesExplorerOpenForm(): ReactElement {
+  const log: Logger = useLogger(__MODULE_NAME__);
+
+  const catalogService: TextureCatalogService = useInjection(TextureCatalogService);
+  const selectionService: TextureSelectionService = useInjection(TextureSelectionService);
+
+  const isLoading: boolean = catalogService.catalog.isLoading || selectionService.selected.isLoading;
+
+  // Browsing is the primary workflow, so it is the fallback - but what someone last opened is a better guess, and
+  // someone authoring single textures should not re-pick the mode every session.
+  const [modeId, setModeId] = useRememberedValue<ETextureOpenMode>({
+    allowed: TEXTURE_OPEN_MODE_IDS,
+    tool: EToolId.TEXTURES_EXPLORER,
+    fallback: ETextureOpenMode.FOLDER,
+    id: "mode",
+  });
+
+  // One picker per mode rather than one that changes shape: each remembers its own path, and a directory picker and a
+  // file picker are different dialogs. Called unconditionally, since a hook cannot be chosen the way the rest is.
+  const fields: Record<ETextureOpenMode, IPathField> = {
+    [ETextureOpenMode.FOLDER]: usePathField({
+      tool: EToolId.TEXTURES_EXPLORER,
+      id: "root",
+      isDirectory: true,
+      isDisabled: isLoading,
+      title: "Select gamedata or textures directory",
+    }),
+    [ETextureOpenMode.GAME]: usePathField({
+      tool: EToolId.TEXTURES_EXPLORER,
+      id: "game",
+      isDirectory: true,
+      isDisabled: isLoading,
+      title: "Select game folder",
+    }),
+    [ETextureOpenMode.LOOSE_FOLDER]: usePathField({
+      tool: EToolId.TEXTURES_EXPLORER,
+      id: "loose-folder",
+      isDirectory: true,
+      isDisabled: isLoading,
+      title: "Select textures directory",
+    }),
+    [ETextureOpenMode.TEXTURE]: usePathField({
+      tool: EToolId.TEXTURES_EXPLORER,
+      filters: TEXTURE_FILE_FILTERS,
+      id: "texture",
+      isDisabled: isLoading,
+      title: "Select dds texture or thm descriptor",
+    }),
+  };
+
+  const assetRoot: IPathField = useAssetRootField(EToolId.TEXTURES_EXPLORER, isLoading);
+
+  const mode: ITextureOpenModeDescriptor = getTextureOpenMode(modeId);
+  const field: IPathField = fields[modeId];
+
+  const rootFact: Nullable<string> = useRootProbe(mode.isRootProbed && !field.error ? field.value : null);
+
+  const onOpen = useCallback(async () => {
+    if (!field.value) {
+      log.info("Cannot open textures without a path");
+
+      return;
+    }
+
+    await mode.open(field.value, { assetRoot: assetRoot.value, catalogService, selectionService });
+  }, [assetRoot.value, catalogService, field.value, log, mode, selectionService]);
+
+  return (
+    <PickerForm
+      isLoading={isLoading}
+      title={"Open game textures"}
+      description={mode.description}
+      error={catalogService.catalog.error?.message ?? selectionService.selected.error?.message}
+      submitLabel={mode.submitLabel}
+      isSubmitDisabled={!field.isValid}
+      onSubmit={onOpen}
+    >
+      <ChoiceFormRow
+        label={"Open"}
+        description={"The game as the engine mounts it, a gamedata tree, a directory of textures, or one texture"}
+        options={OPEN_MODE_OPTIONS}
+        value={modeId}
+        isRequired={false}
+        isDisabled={isLoading}
+        onChange={setModeId}
+      />
+
+      <PathFormRow
+        label={mode.field.label}
+        description={mode.field.description}
+        fact={rootFact}
+        isDisabled={isLoading}
+        field={field}
+      />
+
+      <AssetRootFormRow field={assetRoot} isDisabled={isLoading} />
+    </PickerForm>
+  );
+}

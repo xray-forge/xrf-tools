@@ -15,7 +15,7 @@ import { RenderSettingsService } from "@/core/render/services/render-settings.se
 
 /**
  * A service owning one native viewport: attached where a view hands it an element, told everything through reactions
- * while attached, and let go when the view or the application goes.
+ * while attached, and let go when the view or the tool goes.
  */
 export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   public abstract readonly log: Logger;

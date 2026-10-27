@@ -3,15 +3,15 @@ import { Container, EventBus } from "@wirestate/core";
 
 import { emitNotification, ENotificationSeverity, INotification } from "@/core/notifications/lib";
 import { NotificationsService } from "@/core/notifications/services/notifications/notifications.service";
-import { EApplicationId } from "@/core/routing/application";
+import { EToolId } from "@/core/routing/tool";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";
 
 describe("NotificationsService", () => {
   it("stamps a record and keeps the newest first", () => {
     const { service } = mockInjectedService(NotificationsService);
 
-    service.push({ severity: ENotificationSeverity.SUCCESS, source: EApplicationId.ARCHIVES_EXPLORER, title: "First" });
-    service.push({ severity: ENotificationSeverity.ERROR, source: EApplicationId.ARCHIVES_EXPLORER, title: "Second" });
+    service.push({ severity: ENotificationSeverity.SUCCESS, source: EToolId.ARCHIVES_EXPLORER, title: "First" });
+    service.push({ severity: ENotificationSeverity.ERROR, source: EToolId.ARCHIVES_EXPLORER, title: "Second" });
 
     expect(service.notifications.map((it: INotification) => it.title)).toEqual(["Second", "First"]);
     expect(service.notifications.every((it: INotification) => Boolean(it.id) && !it.isRead)).toBe(true);
@@ -24,7 +24,7 @@ describe("NotificationsService", () => {
     for (let it = 0; it <= NotificationsService.LIMIT; it += 1) {
       service.push({
         severity: ENotificationSeverity.INFO,
-        source: EApplicationId.ARCHIVES_EXPLORER,
+        source: EToolId.ARCHIVES_EXPLORER,
         title: `Record ${it}`,
       });
     }
@@ -37,10 +37,10 @@ describe("NotificationsService", () => {
   it("badges the most urgent unread severity, not the newest one", () => {
     const { service } = mockInjectedService(NotificationsService);
 
-    service.push({ severity: ENotificationSeverity.ERROR, source: EApplicationId.ARCHIVES_EXPLORER, title: "Failed" });
+    service.push({ severity: ENotificationSeverity.ERROR, source: EToolId.ARCHIVES_EXPLORER, title: "Failed" });
     service.push({
       severity: ENotificationSeverity.SUCCESS,
-      source: EApplicationId.ARCHIVES_EXPLORER,
+      source: EToolId.ARCHIVES_EXPLORER,
       title: "Worked",
     });
 
@@ -51,7 +51,7 @@ describe("NotificationsService", () => {
   it("has nothing to badge once everything is read", () => {
     const { service } = mockInjectedService(NotificationsService);
 
-    service.push({ severity: ENotificationSeverity.ERROR, source: EApplicationId.ARCHIVES_EXPLORER, title: "Failed" });
+    service.push({ severity: ENotificationSeverity.ERROR, source: EToolId.ARCHIVES_EXPLORER, title: "Failed" });
     service.markAllRead();
 
     expect(service.unreadCount).toBe(0);
@@ -65,7 +65,7 @@ describe("NotificationsService", () => {
 
     service.push({
       severity: ENotificationSeverity.INFO,
-      source: EApplicationId.ARCHIVES_EXPLORER,
+      source: EToolId.ARCHIVES_EXPLORER,
       title: "Something",
     });
     service.clear();
@@ -83,7 +83,7 @@ describe("NotificationsService", () => {
     emitNotification(container.get(EventBus), {
       details: "C:\\out",
       severity: ENotificationSeverity.SUCCESS,
-      source: EApplicationId.ARCHIVES_EXPLORER,
+      source: EToolId.ARCHIVES_EXPLORER,
       title: "Extracted textures",
     });
 

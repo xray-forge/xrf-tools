@@ -19,11 +19,11 @@ import { cn } from "@xrf/ui/theme";
 import { format } from "date-fns";
 import { ReactElement, ReactNode, useCallback, useState } from "react";
 
-import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
 import { ENotificationSeverity } from "@/core/notifications/lib";
-import { IApplicationDescriptor, IApplicationGroup } from "@/core/routing/application";
+import { IToolDescriptor, IToolGroup } from "@/core/routing/tool";
 import { INotificationEntry, isAttentionSeverity } from "@/core/shell/panel/notifications/notification-list";
 import { ICopiedText, useCopiedText } from "@/lib/react/use-copied-text";
+import { TOOL_CATALOG } from "@/ToolCatalog";
 
 /** Lines of `details` shown inline before the rest has to be asked for. */
 const DETAILS_LINE_LIMIT: number = 8;
@@ -60,10 +60,8 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
 
   const { notification, repeatCount } = entry;
 
-  const application: Nullable<IApplicationDescriptor> = APPLICATION_CATALOG.findApplicationById(notification.source);
-  const group: Nullable<IApplicationGroup> = application
-    ? null
-    : APPLICATION_CATALOG.findApplicationGroupById(notification.source);
+  const tool: Nullable<IToolDescriptor> = TOOL_CATALOG.findToolById(notification.source);
+  const group: Nullable<IToolGroup> = tool ? null : TOOL_CATALOG.findToolGroupById(notification.source);
 
   const createdAt: Date = new Date(notification.createdAt);
   const isDev: boolean = notification.severity === ENotificationSeverity.DEV;
@@ -112,7 +110,7 @@ export function NotificationRow({ entry, isExpanded, onToggleExpanded }: INotifi
             ) : null}
 
             <Typography className={"text-text-secondary"} variant={"caption"}>
-              {application?.label ?? group?.label ?? notification.source}
+              {tool?.label ?? group?.label ?? notification.source}
             </Typography>
 
             <Tooltip describeChild title={format(createdAt, "yyyy-MM-dd HH:mm:ss")} placement={"left"}>

@@ -107,7 +107,7 @@ export class SessionRootResource<T> implements IScopedSession {
    * @param options - What is held and how it is let go and found again.
    * @param scopeService - The scope of the tool holding the root.
    * @param eventBus - The bus the backend's changes and the notices are told on.
-   * @param reporter - Reports each verb; built from the container's bus and application by default.
+   * @param reporter - Reports each verb; built from the container's bus and tool by default.
    */
   public constructor(
     private readonly log: Logger,

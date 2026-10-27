@@ -7,7 +7,7 @@ import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
-import { APPLICATION_SOURCE } from "@/core/routing/application";
+import { APPLICATION_SOURCE } from "@/core/routing/tool";
 
 /** Writes all pending edits; false keeps the editor open. */
 export type EditorSaver = () => Promise<boolean>;

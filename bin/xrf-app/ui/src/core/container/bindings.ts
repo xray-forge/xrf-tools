@@ -21,8 +21,8 @@ import { EditorShellService } from "@/core/shell/services/editor-shell";
 import { ShellKeybindsService } from "@/core/shell/services/shell-keybinds";
 
 /**
- * The services the root container binds, which every application resolves through. The shell's own openings are held
- * in its scope; each application's container binds a scope of its own over it.
+ * The services the root container binds, which every tool resolves through. The shell's own openings are held
+ * in its scope; each tool's container binds a scope of its own over it.
  */
 export const ROOT_BINDINGS: ReadonlyArray<Binding> = [
   { token: SESSION_TOOL, value: SHELL_SESSION_TOOL },

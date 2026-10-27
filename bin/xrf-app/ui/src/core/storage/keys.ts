@@ -56,21 +56,21 @@ export const LEVEL_WEATHER_STORAGE_KEY: string = buildStorageKey(EStorageNamespa
 export const KEYBINDS_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "keybinds");
 
 /**
- * @param application - Application the field belongs to.
- * @param id - Field name within that application.
+ * @param tool - Tool the field belongs to.
+ * @param id - Field name within that tool.
  * @returns The storage key.
  */
-export function getFieldValueStorageKey(application: string, id: string): string {
-  return buildStorageKey(EStorageNamespace.FORM, application, id);
+export function getFieldValueStorageKey(tool: string, id: string): string {
+  return buildStorageKey(EStorageNamespace.FORM, tool, id);
 }
 
 /**
- * @param application - Application the field belongs to.
- * @param id - Field name within that application.
+ * @param tool - Tool the field belongs to.
+ * @param id - Field name within that tool.
  * @returns The storage key.
  */
-export function getFieldRecentsStorageKey(application: string, id: string): string {
-  return buildStorageKey(EStorageNamespace.FORM_RECENTS, application, id);
+export function getFieldRecentsStorageKey(tool: string, id: string): string {
+  return buildStorageKey(EStorageNamespace.FORM_RECENTS, tool, id);
 }
 
 /**

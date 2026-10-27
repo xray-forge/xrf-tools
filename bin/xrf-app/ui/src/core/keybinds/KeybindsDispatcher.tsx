@@ -6,8 +6,8 @@ import { ReactElement, useEffect } from "react";
 import { IKeybindCommand, KeybindCommandsService } from "@/core/commands";
 import { resolveKeybinding } from "@/core/keybinds/lib/keymap";
 import { KeymapService } from "@/core/keybinds/services/keymap.service";
-import { IApplicationDescriptor } from "@/core/routing/application";
-import { useCurrentApplication } from "@/core/routing/current-application.context";
+import { useCurrentTool } from "@/core/routing/current-tool.context";
+import { IToolDescriptor } from "@/core/routing/tool";
 import { SettingsService } from "@/core/settings/services/settings";
 import { isModalOpen } from "@/lib/dom/modal";
 import { isTextEntryTarget } from "@/lib/dom/text-entry";
@@ -19,9 +19,9 @@ export function KeybindsDispatcher(): Nullable<ReactElement> {
   const commandsService: KeybindCommandsService = useInjection(KeybindCommandsService);
   const keymapService: KeymapService = useInjection(KeymapService);
   const settingsService: SettingsService = useInjection(SettingsService);
-  const application: Nullable<IApplicationDescriptor> = useCurrentApplication();
+  const tool: Nullable<IToolDescriptor> = useCurrentTool();
 
-  useEffect(() => keymapService.setApplication(application), [application, keymapService]);
+  useEffect(() => keymapService.setTool(tool), [tool, keymapService]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
@@ -31,7 +31,7 @@ export function KeybindsDispatcher(): Nullable<ReactElement> {
       }
 
       // Read at the event rather than captured: the services are stable, so the listener attaches once and still
-      // sees the current application and bindings.
+      // sees the current tool and bindings.
       const command: Nullable<IKeybindCommand> = resolveKeybinding(
         keymapService.keymap,
         event,
@@ -42,7 +42,7 @@ export function KeybindsDispatcher(): Nullable<ReactElement> {
         return;
       }
 
-      // A modal or an open menu holds the keyboard, so the application behind it cannot be reached by pointer; a chord
+      // A modal or an open menu holds the keyboard, so the tool behind it cannot be reached by pointer; a chord
       // must not reach it either. Probed only once a chord matched, which is rare, rather than on every key typed.
       if (isModalOpen()) {
         return;

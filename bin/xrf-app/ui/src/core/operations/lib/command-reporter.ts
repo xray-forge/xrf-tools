@@ -37,7 +37,7 @@ export interface ICommandReport<T> {
 
 /**
  * Runs native commands inside a service's flow and reports each the same way: a start line, a done or failed line
- * with the time taken, the failure as an `Error`, and a notice from the application the container is scoped to.
+ * with the time taken, the failure as an `Error`, and a notice from the tool the container is scoped to.
  *
  * Reporting never throws: the completion says how the command ended. A flow cancelled while the command runs reports
  * nothing, as a superseded run publishes nothing.
@@ -46,7 +46,7 @@ export class CommandReporter {
   /**
    * @param log - The owning service's logger, so the lines name the service.
    * @param eventBus - The bus the notices are told on.
-   * @param source - The application the notices name: the container's tool, which is the application's id.
+   * @param source - The tool the notices name: the container's tool, which is the tool's id.
    */
   public constructor(
     private readonly log: Logger,
@@ -94,7 +94,7 @@ export class CommandReporter {
 
   /**
    * Tells the notification centre of something no command answered, such as a change the backend could not read past,
-   * from the same application as every command it reports.
+   * from the same tool as every command it reports.
    *
    * @param severity - How urgent it is.
    * @param notice - What to say.

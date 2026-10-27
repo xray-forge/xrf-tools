@@ -68,7 +68,7 @@ export class VisualMotionService {
 
   public constructor(private readonly loadService: VisualLoadService = inject(VisualLoadService)) {}
 
-  /** Stops the ticker when the application goes away, so a hidden viewer is not still animating. */
+  /** Stops the ticker when the tool goes away, so a hidden viewer is not still animating. */
   @OnDeactivation()
   public onDeactivation(): void {
     this.clear();

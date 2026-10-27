@@ -38,7 +38,7 @@ export interface ILevelViewContainerDescriptor {
 /**
  * Builds the services a level view's toolbar and panels read, as the level viewer binds them.
  *
- * @param bindings - Services of the application over the view's, such as the level viewer's own.
+ * @param bindings - Services of the tool over the view's, such as the level viewer's own.
  * @returns The container, and the services a test sets state on and reads back.
  */
 export function mockLevelViewContainer(bindings: Array<Binding> = []): ILevelViewContainerDescriptor {

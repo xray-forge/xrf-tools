@@ -1,6 +1,6 @@
 import { JobConclusion, JobDescription } from "@xrf/ipc/types/xrf-app-core";
 
-/** How a job's status is painted, in the palette the rest of the application uses for the same meanings. */
+/** How a job's status is painted, in the palette the rest of the tool uses for the same meanings. */
 export type TJobStatusColor = "success.main" | "error.main" | "text.secondary";
 
 /** A stopped run is neutral, as every notice reports one: nothing went wrong, and what it wrote stands. */

@@ -23,7 +23,7 @@ describe("ApplicationStatusBar", () => {
   });
 
   // Every tool shows what the process holds.
-  it("ends every application's status with what the backend and the webview hold, a letter each", async () => {
+  it("ends every tool's status with what the backend and the webview hold, a letter each", async () => {
     mockIpcCommands({
       [ESystemCommand.GET_MEMORY_USAGE]: {
         application: { committed: 30 * MB, workingSet: 24 * MB, privateWorkingSet: 20 * MB },

@@ -8,7 +8,7 @@ import { ApplicationStatusSegment } from "@/core/shell/footer/ApplicationStatusS
 const SOURCES: ReadonlyArray<TMemoryDetailSource> = [readPageScriptHeapDetail];
 
 /**
- * What the backend and the webview hold, at the end of every application's status strip: the page's heap under the
+ * What the backend and the webview hold, at the end of every tool's status strip: the page's heap under the
  * processes in its hover.
  */
 export function ApplicationMemoryStatus(): ReactElement {

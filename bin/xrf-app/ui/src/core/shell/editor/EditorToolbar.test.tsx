@@ -13,7 +13,7 @@ describe("EditorToolbar", () => {
     expect(getByText("Spawn editor")).toBeInTheDocument();
   });
 
-  it("names every application the way the roster does, including nested routes", () => {
+  it("names every tool the way the roster does, including nested routes", () => {
     const cases: Array<[string, string]> = [
       ["/archives-explorer", "Archives explorer"],
       ["/archives-unpacker", "Archives unpacker"],
@@ -39,7 +39,7 @@ describe("EditorToolbar", () => {
     expect(queryByRole("button")).not.toBeInTheDocument();
   });
 
-  it("leaves the application segment inert when nothing is open", () => {
+  it("leaves the tool segment inert when nothing is open", () => {
     const { getByText, queryByRole } = renderWithProviders(<EditorToolbar />, { route: "/spawn-editor" });
 
     // A segment you can follow means there is something to close. The one arrow that did both could
@@ -48,7 +48,7 @@ describe("EditorToolbar", () => {
     expect(queryByRole("button", { name: "Back to Spawn editor" })).not.toBeInTheDocument();
   });
 
-  it("closes through the application segment rather than through a button of its own", async () => {
+  it("closes through the tool segment rather than through a button of its own", async () => {
     const onBack = jest.fn();
 
     const { getByLabelText } = renderWithProviders(<EditorToolbar onBack={onBack} />, { route: "/spawn-editor" });
@@ -81,7 +81,7 @@ describe("EditorToolbar", () => {
     expect(acting.getByTestId("editor-toolbar-separator")).toBeInTheDocument();
   });
 
-  it("leaves help to the rail, so an application with no actions of its own draws no group at all", () => {
+  it("leaves help to the rail, so a tool with no actions of its own draws no group at all", () => {
     const { queryByLabelText, queryByTestId } = renderWithProviders(<EditorToolbar />, {
       route: "/archives-explorer",
     });
@@ -114,7 +114,7 @@ describe("EditorToolbar", () => {
     const path: number = Number.parseFloat(getComputedStyle(getByText("C:\\game\\all.spawn")).fontSize);
     const name: number = Number.parseFloat(getComputedStyle(getByText("Spawn editor")).fontSize);
 
-    // A path is context, not a heading. At the same size it competed with the application it belongs to.
+    // A path is context, not a heading. At the same size it competed with the tool it belongs to.
     expect(path).toBeLessThan(name);
   });
 

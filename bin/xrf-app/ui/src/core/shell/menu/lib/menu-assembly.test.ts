@@ -45,7 +45,7 @@ describe("defineMenuExtension", () => {
 });
 
 describe("assembleMenus", () => {
-  it("draws the sections an application adds at the menu's extension point, or after its last without one", () => {
+  it("draws the sections a tool adds at the menu's extension point, or after its last without one", () => {
     const open: IMenuExtension<"open" | "compile"> = defineMenuExtension(SLOTTED, {
       owner: "level-editor",
       sections: ["open", "compile"],

@@ -49,7 +49,7 @@ export function toTexturesShowRequest(
 /**
  * @param options - How the texture is being looked at.
  * @param lighting - The light the body is shaded by.
- * @param features - What the application sets every viewport's features to.
+ * @param features - What the tool sets every viewport's features to.
  * @param pixelRatio - Device pixels a css pixel, which the backdrop's squares are measured in.
  * @param output - What the body's frame is resolved at before the viewport.
  * @returns What a native viewport draws the body with: against the alpha checkerboard every picture is judged on.

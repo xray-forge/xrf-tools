@@ -9,5 +9,5 @@ export const CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND: IKeybindCommand = defineKeyb
   label: "Clear selection",
 });
 
-/** Commands the level domain owns, reachable from every application that shows a level. */
+/** Commands the level domain owns, reachable from every tool that shows a level. */
 export const LEVEL_KEYBIND_COMMANDS: ReadonlyArray<IKeybindCommand> = [CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND];

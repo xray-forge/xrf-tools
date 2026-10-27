@@ -7,7 +7,7 @@ import { useColorScheme } from "@xrf/ui/material/styles";
 import { RailButton } from "@xrf/ui/shell/rail-button";
 import { ReactElement, useCallback } from "react";
 
-import { ApplicationHelp } from "@/core/help/components/ApplicationHelp/ApplicationHelp";
+import { ToolHelp } from "@/core/help/components/ToolHelp/ToolHelp";
 import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
 import { IEditorPanel } from "@/core/shell/editor-shell";
 import { ApplicationPanelStripe } from "@/core/shell/panel/ApplicationPanelStripe";
@@ -19,7 +19,7 @@ interface IApplicationRailProps {
 }
 
 /**
- * The left edge: the active application's navigation panels, then the window's own controls.
+ * The left edge: the active tool's navigation panels, then the window's own controls.
  */
 export function ApplicationRail({ panels, activePanelId, onTogglePanel }: IApplicationRailProps): ReactElement {
   const { mode, setMode, systemMode } = useColorScheme();
@@ -47,7 +47,7 @@ export function ApplicationRail({ panels, activePanelId, onTogglePanel }: IAppli
             onClick={onToggleTheme}
           />
 
-          <ApplicationHelp />
+          <ToolHelp />
 
           <RailButton label={"Settings"} icon={<SettingsIcon />} onClick={settingsDialogService.open} />
         </>

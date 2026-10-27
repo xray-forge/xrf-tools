@@ -2,7 +2,7 @@
  * The shape every local storage key this application writes has.
  *
  * `xrf.<namespace>.<name>`: a dot separates levels, and a level that needs more than one word is spelled in kebab case,
- * as an application id already is (`configs-verifier`). Dots rather than dashes throughout, because a dash cannot also
+ * as a tool id already is (`configs-verifier`). Dots rather than dashes throughout, because a dash cannot also
  * be the separator without making `xrf-form-recents-configs-verifier-directory` one unparseable run.
  */
 

@@ -6,7 +6,7 @@ import { VisualInspectionService } from "@/core/visuals/services/visual-inspecti
 import { VisualLoadService } from "@/core/visuals/services/visual-load";
 
 /**
- * An inspection over the loader alone, for panel tests that need a visual open and no application around it.
+ * An inspection over the loader alone, for panel tests that need a visual open and no tool around it.
  */
 @Injectable()
 export class MockVisualInspectionService extends VisualInspectionService {

@@ -30,7 +30,7 @@ import {
 
 import { TSettled } from "@/core/render/lib/settings/render-settled";
 
-/** The features a viewport resolves from the application's settings, a view overriding some of them. */
+/** The features a viewport resolves from the tool's settings, a view overriding some of them. */
 export type TRenderViewFeatureKey =
   | "ambientOcclusion"
   | "antialiasing"

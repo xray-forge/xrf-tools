@@ -1,24 +1,21 @@
 import { Nullable } from "@xrf/types";
 
-import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
-import { EApplicationId, EApplicationStatus, IApplicationDescriptor } from "@/core/routing/application";
+import { EToolId, EToolStatus, IToolDescriptor } from "@/core/routing/tool";
+import { TOOL_CATALOG } from "@/ToolCatalog";
 
 /**
  * Resolves a help entry's related tools to their descriptors.
  *
- * Help content names applications by id so a rename cannot strand a link; the descriptor supplies the
- * label, icon, and route. Planned applications are dropped rather than linked to a signpost.
+ * Help content names tools by id so a rename cannot strand a link; the descriptor supplies the
+ * label, icon, and route. Planned tools are dropped rather than linked to a signpost.
  *
- * @param relatedTools - Application ids named by a help entry.
- * @returns Descriptors of the ready applications among them.
+ * @param relatedTools - Tool ids named by a help entry.
+ * @returns Descriptors of the ready tools among them.
  */
-export function selectRelatedApplications(
-  relatedTools: ReadonlyArray<EApplicationId> = []
-): Array<IApplicationDescriptor> {
+export function selectRelatedTools(relatedTools: ReadonlyArray<EToolId> = []): Array<IToolDescriptor> {
   return relatedTools
-    .map((id: EApplicationId) => APPLICATION_CATALOG.findApplicationById(id))
+    .map((id: EToolId) => TOOL_CATALOG.findToolById(id))
     .filter(
-      (application: Nullable<IApplicationDescriptor>): application is IApplicationDescriptor =>
-        application !== null && application.status === EApplicationStatus.READY
+      (tool: Nullable<IToolDescriptor>): tool is IToolDescriptor => tool !== null && tool.status === EToolStatus.READY
     );
 }

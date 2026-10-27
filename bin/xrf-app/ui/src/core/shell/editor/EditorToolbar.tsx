@@ -7,12 +7,12 @@ import { svgIconClasses } from "@xrf/ui/material/svg-icon";
 import { cn, CONTROL } from "@xrf/ui/theme";
 import { ReactElement, ReactNode, useCallback } from "react";
 
-import { IApplicationDescriptor } from "@/core/routing/application";
-import { useCurrentApplication } from "@/core/routing/current-application.context";
+import { useCurrentTool } from "@/core/routing/current-tool.context";
+import { IToolDescriptor } from "@/core/routing/tool";
 import { useIsEditorBusy, useRequestLeave } from "@/core/shell/editor-lifecycle";
 
 interface IEditorToolbarProps extends BaseComponentProps {
-  /** Overrides the application name resolved from the route. Rarely needed. */
+  /** Overrides the tool name resolved from the route. Rarely needed. */
   title?: string;
   /** The open document, as the last breadcrumb segment. Counts and state belong in the status bar. */
   subtitle?: ReactNode;
@@ -22,7 +22,7 @@ interface IEditorToolbarProps extends BaseComponentProps {
 }
 
 /**
- * The active application's row inside the window caption.
+ * The active tool's row inside the window caption.
  */
 export function EditorToolbar({
   "data-testid": dataTestId = "editor-toolbar",
@@ -33,12 +33,12 @@ export function EditorToolbar({
   actions,
   onBack,
 }: IEditorToolbarProps): ReactElement {
-  const application: Nullable<IApplicationDescriptor> = useCurrentApplication();
+  const tool: Nullable<IToolDescriptor> = useCurrentTool();
 
   const isBusy: boolean = useIsEditorBusy();
   const requestLeave: (leave: () => void) => void = useRequestLeave();
 
-  const label: Nullable<string> = title ?? application?.label ?? null;
+  const label: Nullable<string> = title ?? tool?.label ?? null;
 
   const hasActions: boolean = Boolean(actions);
 

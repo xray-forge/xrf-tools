@@ -5,16 +5,16 @@ import { Nullable } from "@xrf/types";
 import { Fragment, PropsWithChildren, ReactElement, ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
-import { APPLICATION_CATALOG } from "@/ApplicationCatalog";
 import { ApplicationProvider } from "@/ApplicationProvider";
 import { createContainerPlugins, ROOT_BINDINGS } from "@/core/container";
-import { IApplicationDescriptor } from "@/core/routing/application";
-import { CurrentApplicationProvider } from "@/core/routing/current-application.context";
+import { CurrentToolProvider } from "@/core/routing/current-tool.context";
+import { IToolDescriptor } from "@/core/routing/tool";
 import { EditorLeaveDialog } from "@/core/shell/editor-lifecycle";
 import { IEditorPanel, selectPanelsOnSide, useEditorPanelsRegistry } from "@/core/shell/editor-shell";
+import { TOOL_CATALOG } from "@/ToolCatalog";
 
 export interface IRenderOptions {
-  /** Initial route. Components resolve their application name from it, so it is rarely irrelevant. */
+  /** Initial route. Components resolve their tool name from it, so it is rarely irrelevant. */
   route?: string;
   /** Services to provide, for components reading them through `useInjection`. */
   bindings?: ContainerConfig["bindings"];
@@ -42,7 +42,7 @@ function LeftPanelsOutlet(): ReactElement {
 }
 
 /**
- * Renders content with the application's test providers.
+ * Renders content with the tool's test providers.
  *
  * @param ui - Content to render.
  * @param options - Initial route and container bindings.
@@ -66,11 +66,11 @@ export function renderWithProviders(
     return <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>;
   }
 
-  function TestCurrentApplication({ children }: PropsWithChildren): ReactElement {
+  function TestCurrentTool({ children }: PropsWithChildren): ReactElement {
     const { pathname } = useLocation();
-    const application: Nullable<IApplicationDescriptor> = APPLICATION_CATALOG.findApplicationByPath(pathname);
+    const tool: Nullable<IToolDescriptor> = TOOL_CATALOG.findToolByPath(pathname);
 
-    return <CurrentApplicationProvider application={application}>{children}</CurrentApplicationProvider>;
+    return <CurrentToolProvider tool={tool}>{children}</CurrentToolProvider>;
   }
 
   function TestContainer({ children }: PropsWithChildren): ReactElement {
@@ -84,7 +84,7 @@ export function renderWithProviders(
   function Wrapper({ children }: PropsWithChildren): ReactElement {
     return (
       <ApplicationProvider router={TestRouter}>
-        <TestCurrentApplication>
+        <TestCurrentTool>
           <TestContainer>
             {children}
 
@@ -92,7 +92,7 @@ export function renderWithProviders(
 
             {hasShell ? null : <EditorLeaveDialog />}
           </TestContainer>
-        </TestCurrentApplication>
+        </TestCurrentTool>
       </ApplicationProvider>
     );
   }

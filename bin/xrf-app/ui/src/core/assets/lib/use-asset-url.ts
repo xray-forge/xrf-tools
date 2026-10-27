@@ -10,7 +10,7 @@ import { AssetService } from "@/core/assets/services";
  * Blobbed from the view rather than its buffer, so a byte offset cannot silently widen the picture.
  *
  * The key is released when the picture goes away as well as when it is replaced: leaving an editor unmounts the preview
- * without deactivating the application it belongs to, and a url nobody revokes there keeps its bytes - and its entry in
+ * without deactivating the tool it belongs to, and a url nobody revokes there keeps its bytes - and its entry in
  * the webview's source list - for as long as the window lives.
  *
  * @param key - Slot the url is held in. One key per picture on screen: a second pane comparing two of them needs two,

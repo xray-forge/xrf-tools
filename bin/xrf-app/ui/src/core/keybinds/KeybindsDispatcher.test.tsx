@@ -3,13 +3,13 @@ import { act, fireEvent } from "@testing-library/react";
 import { Container, Injectable } from "@wirestate/core";
 import { Logger } from "@xrf/logging";
 
-import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/applications/sprite-equipment-editor/commands";
 import { KeybindCommand } from "@/core/commands";
 import { HelpService } from "@/core/help/services/help.service";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { SettingsService } from "@/core/settings/services/settings";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/tools/sprite-equipment-editor/commands";
 
 import { KeybindsDispatcher } from "./KeybindsDispatcher";
 
@@ -66,7 +66,7 @@ describe("KeybindsDispatcher", () => {
     const { container } = renderDispatcher();
     const helpService: HelpService = container.get(HelpService);
 
-    act(() => helpService.setApplication("archives-explorer", true));
+    act(() => helpService.setTool("archives-explorer", true));
 
     const event: KeyboardEvent = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "F1" });
 
@@ -80,8 +80,8 @@ describe("KeybindsDispatcher", () => {
     const { container } = renderDispatcher();
     const helpService: HelpService = container.get(HelpService);
 
-    // The application authored no help, so nothing should consume F1 on its behalf.
-    act(() => helpService.setApplication("characters-explorer", false));
+    // The tool authored no help, so nothing should consume F1 on its behalf.
+    act(() => helpService.setTool("characters-explorer", false));
 
     const event: KeyboardEvent = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "F1" });
 
@@ -155,7 +155,7 @@ describe("KeybindsDispatcher", () => {
       renderWithProviders(<KeybindsDispatcher />, { container, route: "/archives-explorer" });
 
       act(() => container.get(SettingsService).setDevModeEnabled(true));
-      act(() => container.get(HelpService).setApplication("archives-explorer", false));
+      act(() => container.get(HelpService).setTool("archives-explorer", false));
 
       fireEvent.keyDown(document.body, { key: "/" });
 
@@ -173,14 +173,14 @@ describe("KeybindsDispatcher", () => {
   it.each([
     ["/sprite-equipment-editor", 1],
     ["/archives-explorer", 0],
-  ])("reaches an application's own command at %s and nowhere else", (route: string, expected: number) => {
+  ])("reaches a tool's own command at %s and nowhere else", (route: string, expected: number) => {
     // Left unprovisioned: the container provider provisions it, which is also what binds the fixture's handler.
     const container: Container = mockContainer([ReloadFixtureService]);
 
     renderWithProviders(<KeybindsDispatcher />, { container, route });
     fireEvent.keyDown(document.body, { key: "F5" });
 
-    // The handler is bound either way; only the routed application's declarations put F5 in the keymap.
+    // The handler is bound either way; only the routed tool's declarations put F5 in the keymap.
     expect(container.get(ReloadFixtureService).calls).toBe(expected);
   });
 });

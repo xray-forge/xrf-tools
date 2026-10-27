@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 import { paperClasses } from "@xrf/ui/material/paper";
 import { ReactElement } from "react";
 
-import { EApplicationId } from "@/core/routing/application";
+import { EToolId } from "@/core/routing/tool";
 import { PickerForm } from "@/core/shell/editor/PickerForm";
 import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
@@ -144,9 +144,9 @@ describe("PickerForm", () => {
     const VALUE_KEY: string = "xrf.form.spawn-editor.file";
     const RECENTS_KEY: string = "xrf.form-recents.spawn-editor.file";
 
-    /** A form as an application composes one: the hook above the shell, the row inside it. */
+    /** A form as a tool composes one: the hook above the shell, the row inside it. */
     function SpawnPickerForm(): ReactElement {
-      const file: IPathField = usePathField({ application: EApplicationId.SPAWN_EDITOR, id: "file" });
+      const file: IPathField = usePathField({ tool: EToolId.SPAWN_EDITOR, id: "file" });
 
       return (
         <PickerForm title={"Open spawn"} submitLabel={"Open"} onSubmit={() => undefined}>

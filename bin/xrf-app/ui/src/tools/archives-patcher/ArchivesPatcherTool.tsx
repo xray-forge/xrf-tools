@@ -1,0 +1,322 @@
+import { DialogFilter, open, save } from "@tauri-apps/plugin-dialog";
+import { useInjection } from "@wirestate/react";
+import { formatCount } from "@xrf/format";
+import { ArchivesPatchRequest } from "@xrf/ipc/types/xrf-app-archives";
+import { ArchivePatchConfig } from "@xrf/ipc/types/xrf-pack";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
+import { Nullable } from "@xrf/types";
+import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
+import { EditorLayout } from "@xrf/ui/editor/layout";
+import { TuneIcon } from "@xrf/ui/icons/tune";
+import { Alert } from "@xrf/ui/material/alert";
+import { Divider } from "@xrf/ui/material/divider";
+import { Stack } from "@xrf/ui/material/stack";
+import { Typography } from "@xrf/ui/material/typography";
+import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
+
+import { ARCHIVE_CONFIG_EXTENSIONS, withArchiveConfigExtension } from "@/core/archive/lib";
+import { ARCHIVE_CONFIG_EXPORT_FILTERS } from "@/core/archive/lib/config-format";
+import { JobProgressView } from "@/core/jobs/components/JobProgressView";
+import { IJobState } from "@/core/jobs/lib";
+import { EToolId } from "@/core/routing/tool";
+import { resolveOutputPath } from "@/core/settings/lib/output-path";
+import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { useEditorLifecycle } from "@/core/shell/editor-lifecycle";
+import { useEditorPanels, useEditorStatus } from "@/core/shell/editor-shell";
+import { ToolLoader } from "@/core/shell/loading/ToolLoader";
+import { IPathField, usePathField } from "@/core/ui/form";
+import { ArchivesPatcherService, EPatcherSection } from "@/tools/archives-patcher/services/archives-patcher.service";
+
+import { ArchivesPatchResult } from "./components/ArchivesPatchResult";
+import { PATCHER_SECTIONS_PANEL_LABEL, PatcherSectionsMenu } from "./components/PatcherSectionsMenu";
+import { PatcherToolbarActions } from "./components/PatcherToolbarActions";
+import { PatcherConfirmSummary } from "./components/patching";
+import {
+  PatcherComparisonSection,
+  PatcherHeaderSection,
+  PatcherOptionsSection,
+  PatcherOutputSection,
+  PatcherSelectionSection,
+} from "./components/sections";
+
+/** Filter the open dialog offers: one entry listing every format, so browsing shows all configurations at once. */
+const IMPORT_CONFIG_FILTERS: Array<DialogFilter> = [
+  { name: "Patching configuration", extensions: [...ARCHIVE_CONFIG_EXTENSIONS] },
+];
+
+export function ArchivesPatcherTool(): ReactElement {
+  const log: Logger = useLogger(__MODULE_NAME__);
+
+  const patcherService: ArchivesPatcherService = useInjection(ArchivesPatcherService);
+
+  const config: Nullable<ArchivePatchConfig> = patcherService.config;
+  const job: Nullable<IJobState> = patcherService.operation.job;
+
+  const isRunning: boolean = patcherService.operation.isRunning;
+  const isBusy: boolean = isRunning || patcherService.isBusy;
+
+  const [isVerifyingPayload, setIsVerifyingPayload] = useState<boolean>(false);
+  /** Which run the confirmation is for, or null while it is closed. */
+  const [confirming, setConfirming] = useState<Nullable<"compare" | "patch">>(null);
+  const [isForced, setIsForced] = useState<boolean>(false);
+
+  const input: IPathField = usePathField({
+    tool: EToolId.ARCHIVES_PATCHER,
+    id: "input",
+    title: "Select the game installation",
+    isDirectory: true,
+    isDisabled: isBusy,
+  });
+
+  const target: IPathField = usePathField({
+    tool: EToolId.ARCHIVES_PATCHER,
+    id: "target",
+    title: "Select the tree the patch delivers",
+    isDirectory: true,
+    isDisabled: isBusy,
+  });
+
+  const destination: IPathField = usePathField({
+    tool: EToolId.ARCHIVES_PATCHER,
+    id: "destination",
+    title: "Select output directory",
+    isDirectory: true,
+    isSave: true,
+    isDisabled: isBusy,
+    seed: () => resolveOutputPath(EToolId.ARCHIVES_PATCHER),
+  });
+
+  /** Whether the patch is built from a folder of its own, which is what a non-null target means. */
+  const isDeliveringOwnTree: boolean = Boolean(config && config.target !== null);
+
+  const request: Nullable<ArchivesPatchRequest> = useMemo(() => {
+    if (!config || input.value === null || destination.value === null) {
+      return null;
+    }
+
+    if (isDeliveringOwnTree && !target.value) {
+      return null;
+    }
+
+    return {
+      config: {
+        ...config,
+        input: input.value,
+        target: isDeliveringOwnTree ? target.value : null,
+        destination: destination.value,
+        maxVolumeSize: patcherService.volumeSizeBytes,
+      },
+      isForced,
+      isVerifyingPayload,
+    };
+  }, [
+    config,
+    destination.value,
+    input.value,
+    isDeliveringOwnTree,
+    isForced,
+    isVerifyingPayload,
+    patcherService.volumeSizeBytes,
+    target.value,
+  ]);
+
+  const onImport = useCallback(async () => {
+    const selected: Nullable<string> = await open({
+      title: "Import patching configuration",
+      multiple: false,
+      filters: IMPORT_CONFIG_FILTERS,
+    });
+
+    if (typeof selected === "string") {
+      await patcherService.importConfig(selected);
+    }
+  }, [patcherService]);
+
+  const onExport = useCallback(async () => {
+    const selected: Nullable<string> = await save({
+      title: "Export patching configuration",
+      filters: ARCHIVE_CONFIG_EXPORT_FILTERS,
+    });
+
+    if (selected) {
+      await patcherService.exportConfig(withArchiveConfigExtension(selected));
+    }
+  }, [patcherService]);
+
+  /** Opens the confirmation, asking what the output already holds so the summary can say so. */
+  const onConfirm = useCallback(
+    (kind: "compare" | "patch") => {
+      if (!request) {
+        return;
+      }
+
+      setIsForced(false);
+      setConfirming(kind);
+
+      if (kind === "patch") {
+        void patcherService.checkDestination(request.config);
+      }
+    },
+    [patcherService, request]
+  );
+
+  const onRun = useCallback(async () => {
+    if (!request || !confirming) {
+      return;
+    }
+
+    log.info("Running patcher:", confirming);
+
+    setConfirming(null);
+
+    input.commit();
+    destination.commit();
+
+    if (isDeliveringOwnTree) {
+      target.commit();
+    }
+
+    await (confirming === "compare" ? patcherService.compare(request) : patcherService.patch(request));
+  }, [confirming, destination, input, isDeliveringOwnTree, log, patcherService, request, target]);
+
+  // Changing what is compared invalidates whatever the previous run reported.
+  useEffect(() => {
+    patcherService.resetResult();
+  }, [destination.value, input.value, patcherService, target.value]);
+
+  // Drawn by the shell beside every other tool's navigation rather than as a column of this tool's
+  // own. The menu reads the open section from the service, so this registers once.
+  useEditorPanels(
+    () => [
+      {
+        icon: <TuneIcon />,
+        id: "patcher-sections",
+        isOpenByDefault: true,
+        label: PATCHER_SECTIONS_PANEL_LABEL,
+        render: () => <PatcherSectionsMenu />,
+        side: "left",
+      },
+    ],
+    []
+  );
+
+  useEditorStatus([
+    patcherService.configName ?? "no configuration",
+    ...(patcherService.isDirty ? ["unsaved changes"] : []),
+    ...(patcherService.operation.result
+      ? [
+          `${formatCount(patcherService.operation.result.added.length + patcherService.operation.result.modified.length)} carried`,
+        ]
+      : []),
+  ]);
+
+  useEditorLifecycle({
+    isBusy,
+    dirtyCount: patcherService.isDirty ? 1 : 0,
+    save: null,
+  });
+
+  if (!config) {
+    return <ToolLoader />;
+  }
+
+  return (
+    <EditorLayout
+      toolbar={
+        <EditorToolbar
+          subtitle={patcherService.configName ?? "New configuration"}
+          actions={
+            <PatcherToolbarActions
+              isBusy={isBusy}
+              isRunDisabled={isBusy || !request || !config.name.trim() || Boolean(patcherService.volumeSizeError)}
+              onImport={() => void onImport()}
+              onExport={() => void onExport()}
+              onCompare={() => onConfirm("compare")}
+              onPatch={() => onConfirm("patch")}
+            />
+          }
+        />
+      }
+    >
+      <div className={"min-w-0 grow overflow-y-auto p-6"}>
+        <Stack className={"max-w-reading"} spacing={2}>
+          {patcherService.error ? <Alert severity={"error"}>{patcherService.error}</Alert> : null}
+
+          {job ? <JobProgressView job={job} onCancel={patcherService.operation.cancel} /> : null}
+
+          {patcherService.section === EPatcherSection.COMPARISON ? (
+            <PatcherComparisonSection
+              config={config}
+              input={input}
+              target={target}
+              isDisabled={isBusy}
+              onChange={patcherService.patchConfig}
+            />
+          ) : null}
+
+          {patcherService.section === EPatcherSection.OUTPUT ? (
+            <PatcherOutputSection
+              config={config}
+              destination={destination}
+              isDisabled={isBusy}
+              onChange={patcherService.patchConfig}
+            />
+          ) : null}
+
+          {patcherService.section === EPatcherSection.SELECTION ? (
+            <PatcherSelectionSection config={config} isDisabled={isBusy} onChange={patcherService.patchConfig} />
+          ) : null}
+
+          {patcherService.section === EPatcherSection.HEADER ? (
+            <PatcherHeaderSection config={config} isDisabled={isBusy} onChange={patcherService.patchConfig} />
+          ) : null}
+
+          {patcherService.section === EPatcherSection.OPTIONS ? (
+            <PatcherOptionsSection
+              config={config}
+              maxVolumeSizeMegabytes={patcherService.maxVolumeSizeMegabytes}
+              volumeSize={patcherService.volumeSize}
+              volumeSizeError={patcherService.volumeSizeError}
+              isVerifyingPayload={isVerifyingPayload}
+              isDisabled={isBusy}
+              onVolumeSizeChange={patcherService.setVolumeSize}
+              onVerifyingPayloadChange={setIsVerifyingPayload}
+              onChange={patcherService.patchConfig}
+            />
+          ) : null}
+
+          {patcherService.operation.result ? (
+            <>
+              <Divider />
+              <Typography variant={"subtitle2"}>Last run</Typography>
+              <ArchivesPatchResult result={patcherService.operation.result} outputPath={destination.value} />
+            </>
+          ) : null}
+        </Stack>
+      </div>
+
+      {request ? (
+        <ConfirmDialog
+          isOpen={confirming !== null}
+          isDestructive={confirming === "patch"}
+          isConfirmDisabled={confirming === "patch" && patcherService.publishedVolumes.length > 0 && !isForced}
+          maxWidth={"sm"}
+          title={confirming === "compare" ? "Compare archives?" : "Write patch?"}
+          description={
+            <PatcherConfirmSummary
+              config={request.config}
+              isPreviewOnly={confirming === "compare"}
+              publishedVolumes={patcherService.publishedVolumes}
+              isForced={isForced}
+              onForceChange={setIsForced}
+            />
+          }
+          confirmLabel={confirming === "compare" ? "Compare" : "Patch"}
+          onConfirm={() => void onRun()}
+          onClose={() => setConfirming(null)}
+        />
+      ) : null}
+    </EditorLayout>
+  );
+}

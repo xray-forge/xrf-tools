@@ -51,7 +51,7 @@ import {
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
 
 /**
- * The named sets of features: `Editing` responsiveness before looks for the editing tools, `Base` the application's
+ * The named sets of features: `Editing` responsiveness before looks for the editing tools, `Base` the tool's
  * look with every Enhanced mode at a cheap quality, `Enhanced` the same look at its best, short of ray reconstruction
  * and traced occlusion.
  */
@@ -61,7 +61,7 @@ export enum ERenderPreset {
   ENHANCED = "enhanced",
 }
 
-/** The application's look: the Enhanced modes over the engine's, each at a quality a modest GPU holds. */
+/** The tool's look: the Enhanced modes over the engine's, each at a quality a modest GPU holds. */
 const BASE_PRESET: IRenderFeatureSettings = {
   // VBAO over XeGTAO, which lets light through behind grass and fences.
   ambientOcclusion: {
@@ -152,7 +152,7 @@ const BASE_PRESET: IRenderFeatureSettings = {
 };
 
 /**
- * The application's look at its best, short of ray reconstruction and traced occlusion, no quality set past a cheaper
+ * The tool's look at its best, short of ray reconstruction and traced occlusion, no quality set past a cheaper
  * value measured to look the same across levels, times and weathers.
  */
 const ENHANCED_PRESET: IRenderFeatureSettings = {

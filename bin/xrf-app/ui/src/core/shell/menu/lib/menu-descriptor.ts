@@ -16,7 +16,7 @@ export interface IMenu<S extends string = string> {
   readonly sections: { readonly [K in S]: IMenuSection };
   /** The same sections in the order the menu draws them. */
   readonly sectionOrder: ReadonlyArray<IMenuSection>;
-  /** Where sections an application adds to this menu are drawn: before this one, or after the last when null. */
+  /** Where sections a tool adds to this menu are drawn: before this one, or after the last when null. */
   readonly extensionPoint: Nullable<IMenuSection>;
 }
 
@@ -27,7 +27,7 @@ export interface IMenuInit<S extends string> {
   label: string;
   /** Section names in drawing order, kebab case. */
   sections: ReadonlyArray<S>;
-  /** The section that sections added by an application go before; they go after the last when omitted. */
+  /** The section that sections added by a tool go before; they go after the last when omitted. */
   extensionsBefore?: S;
 }
 
@@ -62,7 +62,7 @@ export function defineMenu<S extends string>(init: IMenuInit<S>): IMenu<S> {
  *
  * @param menuId - Menu the sections belong to.
  * @param names - Section names in drawing order, kebab case.
- * @param owner - Slug prefixing each id, for sections an application adds to a menu it does not declare.
+ * @param owner - Slug prefixing each id, for sections a tool adds to a menu it does not declare.
  * @returns The frozen sections by name.
  */
 export function createMenuSections<S extends string>(

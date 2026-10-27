@@ -5,13 +5,8 @@ import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "
 import { ROOT_KEYBIND_COMMANDS } from "@/core/commands/root-commands";
 import { IKeybinding, IKeymap } from "@/core/keybinds/lib/keymap";
 import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
-import {
-  EApplicationGroupId,
-  EApplicationId,
-  EApplicationStatus,
-  IApplicationDescriptor,
-} from "@/core/routing/application";
-import { createApplicationDescriptor } from "@/core/routing/application-descriptor";
+import { EToolGroupId, EToolId, EToolStatus, IToolDescriptor } from "@/core/routing/tool";
+import { createToolDescriptor } from "@/core/routing/tool-descriptor";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { clearLocalStorage, getLocalStorageValue, KEYBINDS_STORAGE_KEY, setLocalStorageValue } from "@/core/storage";
 import { mockInjectedService } from "@/fixtures/utils/container";
@@ -32,17 +27,17 @@ const RELOAD: IKeybindCommand = defineKeybindCommand({
 
 const RELOAD_ID: string = RELOAD.id;
 
-/** An application whose one declaration is the fixture's reload, which is all these cases need of one. */
-const RELOADING_APPLICATION: IApplicationDescriptor = createApplicationDescriptor(
+/** A tool whose one declaration is the fixture's reload, which is all these cases need of one. */
+const RELOADING_TOOL: IToolDescriptor = createToolDescriptor(
   {
     description: "Reloads.",
-    group: EApplicationGroupId.SPRITES,
+    group: EToolGroupId.SPRITES,
     icon: createElement("span"),
-    id: EApplicationId.SPRITE_EQUIPMENT_EDITOR,
+    id: EToolId.SPRITE_EQUIPMENT_EDITOR,
     keybindCommands: [RELOAD],
     label: "Reloading",
     path: "/reloading",
-    status: EApplicationStatus.READY,
+    status: EToolStatus.READY,
   },
   { Component: () => null }
 );
@@ -143,24 +138,24 @@ describe("KeymapService", () => {
     expect(toIds(service.commands)).toEqual([...toIds(ROOT_KEYBIND_COMMANDS), ...toIds(LAUNCHER_KEYBIND_COMMANDS)]);
   });
 
-  it("leaves an application that declares none with the root set, not the home screen's", () => {
+  it("leaves a tool that declares none with the root set, not the home screen's", () => {
     const { service } = mockInjectedService(KeymapService);
 
-    service.setApplication({ ...RELOADING_APPLICATION, keybindCommands: undefined });
+    service.setTool({ ...RELOADING_TOOL, keybindCommands: undefined });
 
     expect(toIds(service.commands)).toEqual(toIds(ROOT_KEYBIND_COMMANDS));
     expect(toIds(service.commands)).not.toContain(FOCUS_SEARCH_KEYBIND_COMMAND.id);
   });
 
-  it("adds the routed application's declarations, and drops them when it closes", () => {
+  it("adds the routed tool's declarations, and drops them when it closes", () => {
     const { service } = mockInjectedService(KeymapService);
 
-    service.setApplication(RELOADING_APPLICATION);
+    service.setTool(RELOADING_TOOL);
 
-    // The home screen's own declarations go with it: a routed application replaces them rather than adding to them.
+    // The home screen's own declarations go with it: a routed tool replaces them rather than adding to them.
     expect(toIds(service.commands)).toEqual([...toIds(ROOT_KEYBIND_COMMANDS), RELOAD_ID]);
 
-    service.setApplication(null);
+    service.setTool(null);
 
     expect(toIds(service.commands)).not.toContain(RELOAD_ID);
   });
@@ -168,8 +163,8 @@ describe("KeymapService", () => {
   it("folds a command listed twice into one, because an id is one command", () => {
     const { service } = mockInjectedService(KeymapService);
 
-    service.setApplication({
-      ...RELOADING_APPLICATION,
+    service.setTool({
+      ...RELOADING_TOOL,
       keybindCommands: [...ROOT_KEYBIND_COMMANDS, RELOAD],
     });
 
@@ -179,7 +174,7 @@ describe("KeymapService", () => {
   it("builds a keymap through the overrides it holds, and rebuilds it when one changes", () => {
     const { service } = mockInjectedService(KeymapService);
 
-    service.setApplication(RELOADING_APPLICATION);
+    service.setTool(RELOADING_TOOL);
 
     const declared: IKeymap = service.keymap;
 

@@ -50,7 +50,7 @@ describe("useEditorBusy", () => {
     expect(getByRole("button", BACK)).toBeDisabled();
   });
 
-  it("releases the block when the editor unmounts, so a crash cannot strand the application", async () => {
+  it("releases the block when the editor unmounts, so a crash cannot strand the tool", async () => {
     const { getByRole, getByText } = renderToolbar(<Unmountable />);
 
     expect(getByRole("button", BACK)).toBeDisabled();

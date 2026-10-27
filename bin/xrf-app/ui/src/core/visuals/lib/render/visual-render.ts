@@ -38,7 +38,7 @@ export function toVisualCamera(fit: IVisualCameraFit, config: IVisualPreviewScen
  * @param options - The toolbar's toggles.
  * @param lighting - The toolbar's light.
  * @param config - The viewer's backdrop and checker.
- * @param features - What the application sets every viewport's features to.
+ * @param features - What the tool sets every viewport's features to.
  * @param output - What the model's frame is resolved at before the viewport.
  * @returns What a native viewport draws the model with.
  */

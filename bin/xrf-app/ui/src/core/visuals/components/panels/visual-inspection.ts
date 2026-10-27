@@ -26,9 +26,9 @@ export interface IVisualBoneControls {
 }
 
 /**
- * The visual a panel is inspecting, whichever application put it on screen.
+ * The visual a panel is inspecting, whichever tool put it on screen.
  *
- * Panels resolve this rather than an application's own service, so one header, materials, bones and motions panel
+ * Panels resolve this rather than a tool's own service, so one header, materials, bones and motions panel
  * serve the explorer, the sequencer and whatever comes next. Everything here is observable state on the implementing
  * service, so a panel re-renders on the fields it actually reads.
  */
@@ -46,10 +46,10 @@ export interface IVisualInspection {
 }
 
 /**
- * The visual the panels of this application inspect.
+ * The visual the panels of this tool inspect.
  *
- * A token rather than a service class, because every application already owns a service that knows what it has open:
- * binding names which one, at the composition root where an application declares everything else about itself.
+ * A token rather than a service class, because every tool already owns a service that knows what it has open:
+ * binding names which one, at the composition root where a tool declares everything else about itself.
  *
  * ```ts
  * container: { bindings: [VisualsService, { token: VISUAL_INSPECTION, factory: (it) => it.get(VisualsService) }] }

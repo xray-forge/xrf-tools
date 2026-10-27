@@ -18,7 +18,7 @@ export const BIND_POSE: IVisualPose = { frame: 0, motion: null };
 export const NO_HIDDEN_BONES: ReadonlySet<number> = new Set();
 
 /**
- * The model a viewport draws, whichever application put it there.
+ * The model a viewport draws, whichever tool put it there.
  */
 export interface IVisualRenderSource {
   /** The open model's session, which the renderer reads it through, or null when nothing is open. */
@@ -36,7 +36,7 @@ export interface IVisualRenderSource {
 }
 
 /**
- * The model this application's viewport draws.
+ * The model this tool's viewport draws.
  */
 export const VISUAL_RENDER_SOURCE: InjectionToken<IVisualRenderSource> = new InjectionToken<IVisualRenderSource>(
   "VISUAL_RENDER_SOURCE"

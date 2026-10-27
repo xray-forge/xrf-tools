@@ -7,7 +7,7 @@ export const EMIT_NOTIFICATION_EVENT: EventType = Symbol("@/notification/emit");
 
 /** Notification urgency, ordered by `NOTIFICATION_SEVERITY_RANK` rather than declaration order. */
 export enum ENotificationSeverity {
-  /** Diagnostic trace for application developers. */
+  /** Diagnostic trace for tool developers. */
   DEV = "dev",
   /** Successful outcome. */
   SUCCESS = "success",

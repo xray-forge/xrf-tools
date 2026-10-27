@@ -6,7 +6,7 @@ import { Nullable } from "@xrf/types";
 import { IPathRecord } from "@xrf/ui/form/file-picker";
 import { StrictMode } from "react";
 
-import { EApplicationId } from "@/core/routing/application";
+import { EToolId } from "@/core/routing/tool";
 import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";
 import { IPathField, usePathField } from "@/core/ui/form/use-path-field";
 import { deferred, IDeferred } from "@/fixtures/utils/promise";
@@ -22,7 +22,7 @@ describe("usePathField", () => {
   }
 
   function renderField(seed?: () => Promise<Nullable<string>>) {
-    return renderHook(() => usePathField({ application: EApplicationId.ARCHIVES_PACKER, id: "source", seed }), {
+    return renderHook(() => usePathField({ tool: EToolId.ARCHIVES_PACKER, id: "source", seed }), {
       wrapper: StrictMode,
     });
   }
@@ -234,10 +234,9 @@ describe("usePathField", () => {
 
   describe("where the dialog opens", () => {
     function renderSaveField() {
-      return renderHook(
-        () => usePathField({ application: EApplicationId.ARCHIVES_PACKER, id: "source", isSave: true }),
-        { wrapper: StrictMode }
-      );
+      return renderHook(() => usePathField({ tool: EToolId.ARCHIVES_PACKER, id: "source", isSave: true }), {
+        wrapper: StrictMode,
+      });
     }
 
     it("opens at the path the field is holding", async () => {

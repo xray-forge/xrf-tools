@@ -54,7 +54,7 @@ describe("ApplicationTitleBar", () => {
     expect(queryByText("XRF")).not.toBeInTheDocument();
   });
 
-  it("draws the one progress line for whatever the active application is running", () => {
+  it("draws the one progress line for whatever the active tool is running", () => {
     // Queried including hidden elements, or the delayed reveal below would make an unrendered bar and
     // a not-yet-revealed one look the same.
     const idle = renderWithProviders(<ApplicationTitleBar />);

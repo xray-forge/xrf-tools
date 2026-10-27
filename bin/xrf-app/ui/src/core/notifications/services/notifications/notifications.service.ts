@@ -12,7 +12,7 @@ import {
 } from "@/core/notifications/lib";
 
 /**
- * The application wide record of what commands did.
+ * The tool wide record of what commands did.
  */
 @Injectable()
 export class NotificationsService {
@@ -94,7 +94,7 @@ export class NotificationsService {
   }
 
   /**
-   * Record an outcome raised anywhere in the application.
+   * Record an outcome raised anywhere in the tool.
    *
    * Public as well as bus-driven so a test does not need a provisioned container to describe what the
    * store should do with a record.
@@ -148,7 +148,7 @@ export class NotificationsService {
   /**
    * Store a notification delivered after the root container is provisioned.
    *
-   * @param event - Notification event delivered by the application event bus.
+   * @param event - Notification event delivered by the tool event bus.
    */
   @OnEvent(EMIT_NOTIFICATION_EVENT)
   public onNotificationPush(event: WireEvent<INotificationPayload>): void {

@@ -10,7 +10,7 @@ import { IJobSettledPayload, JOB_SETTLED_EVENT } from "@/core/jobs/lib";
 import { JobsService } from "@/core/jobs/services/jobs.service";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity } from "@/core/notifications/lib";
 import { SpawnConversionService } from "@/core/spawn/services/spawn-conversion.service";
-import { mockApplicationScope, mockInjectedService } from "@/fixtures/utils/container";
+import { mockInjectedService, mockToolScope } from "@/fixtures/utils/container";
 import { deferred } from "@/fixtures/utils/promise";
 
 const RESULT: SpawnConversionResult = { operation: "pack", destination: "C:\\out\\all.spawn", outcome: "completed" };
@@ -72,7 +72,7 @@ describe("SpawnConversionService", () => {
 
     const { service, container } = mockInjectedService(SpawnConversionService);
     const nextTool: SpawnConversionService = new Container({
-      bindings: [...mockApplicationScope("spawn-packer"), SpawnConversionService],
+      bindings: [...mockToolScope("spawn-packer"), SpawnConversionService],
       parent: container,
     }).get(SpawnConversionService);
     const running = service.pack("source", "output");

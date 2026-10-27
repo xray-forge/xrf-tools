@@ -7,7 +7,7 @@ import { ApplicationMemoryStatus } from "@/core/shell/footer/ApplicationMemorySt
 import { ApplicationStatusSegment } from "@/core/shell/footer/ApplicationStatusSegment";
 
 /**
- * Bottom status strip: what the application publishes, then what the process holds in memory.
+ * Bottom status strip: what the open tool publishes, then what the process holds in memory.
  */
 export function ApplicationStatusBar({
   "data-testid": dataTestId = "application-status-bar",

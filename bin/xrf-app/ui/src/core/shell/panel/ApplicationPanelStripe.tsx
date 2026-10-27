@@ -9,18 +9,18 @@ interface IApplicationPanelStripeProps {
   side: TEditorPanelSide;
   panels: Array<IEditorPanel>;
   activePanelId: Nullable<string>;
-  /** Pinned to the bottom: what the shell owns, below what the application declared. */
+  /** Pinned to the bottom: what the shell owns, below what the tool declared. */
   footer?: ReactNode;
   onTogglePanel: (id: string) => void;
 }
 
 /**
- * One edge of the window frame: the application's panels at the top, the shell's own controls at the
+ * One edge of the window frame: the tool's panels at the top, the shell's own controls at the
  * bottom.
  *
  * Both sides render through here so they cannot drift apart. The stripe stays put even when an
- * application declares no panels, for the same reason every route has a toolbar - a frame that changes
- * shape as you move between applications is harder to read than one that does not.
+ * tool declares no panels, for the same reason every route has a toolbar - a frame that changes
+ * shape as you move between tools is harder to read than one that does not.
  */
 export function ApplicationPanelStripe({
   side,
