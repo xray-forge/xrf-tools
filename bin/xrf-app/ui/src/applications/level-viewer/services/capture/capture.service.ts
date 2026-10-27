@@ -1,11 +1,9 @@
 import { Channel } from "@tauri-apps/api/core";
-import { open as openDialog, save } from "@tauri-apps/plugin-dialog";
-import { inject, Injectable, OnDeactivation } from "@wirestate/core";
+import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable, runInAction } from "@wirestate/mobx";
-import { call, ExclusiveFlow, LatestFlow, TFlow } from "@xrf/flow";
+import { call, ExclusiveFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
-import { systemCommands } from "@xrf/ipc/commands/system";
-import { JobKind, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
+import { JobKind } from "@xrf/ipc/types/xrf-app-core";
 import {
   LevelMapDescription,
   LEVELS_JOB_CAPTURE_CUBE,
@@ -13,45 +11,29 @@ import {
   SelectedLevelDescription,
 } from "@xrf/ipc/types/xrf-app-levels";
 import { CaptureOutcome } from "@xrf/ipc/types/xrf-app-render";
-import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { JobProgress } from "@xrf/ipc/types/xrf-job";
 import { Logger } from "@xrf/logging";
-import { getPathName } from "@xrf/path";
 import { assertExhaustive, Nullable } from "@xrf/types";
 
 import {
   CAPTURE_LEVEL_CUBEMAP_KEYBIND_COMMAND,
   CAPTURE_LEVEL_MAP_KEYBIND_COMMAND,
 } from "@/applications/level-viewer/commands";
-import { ELevelCaptureMode } from "@/applications/level-viewer/lib/capture/level-capture";
+import { describeLevelCaptureOutcome } from "@/applications/level-viewer/lib/capture/describe-level-capture-outcome";
+import { ELevelCaptureMode, LEVEL_CAPTURE_NAMES } from "@/applications/level-viewer/lib/capture/level-capture";
+import { TLevelCapture } from "@/applications/level-viewer/lib/capture/level-captured";
 import {
   ILevelCubeParameters,
   isLevelCubeCapturable,
   toDefaultLevelCubeParameters,
-  toLevelCubeFaceSize,
   toLevelCubeSupersampling,
   toRenderCubeCapture,
 } from "@/applications/level-viewer/lib/cube/level-cube-capture";
 import {
-  DEFAULT_LEVEL_CUBE_EXPORT,
-  ILevelCubeExportSettings,
-  isLevelCubeExportSingle,
-  toCubeExportRequest,
-} from "@/applications/level-viewer/lib/cube/level-cube-export";
-import {
   toLevelViewerFileStem,
   toLevelViewerLevelName,
 } from "@/applications/level-viewer/lib/files/level-viewer-file-stem";
-import {
-  copyLevelViewerImage,
-  ILevelViewerImage,
-  readLevelViewerImage,
-} from "@/applications/level-viewer/lib/files/level-viewer-image";
-import {
-  DEFAULT_LEVEL_MAP_ANNOTATIONS,
-  ILevelMapAnnotations,
-  toMapAnnotationsWriteRequest,
-} from "@/applications/level-viewer/lib/map/level-map-annotations";
+import { ILevelViewerImage, readLevelViewerImage } from "@/applications/level-viewer/lib/files/level-viewer-image";
 import {
   ELevelMapArea,
   ELevelMapLook,
@@ -68,15 +50,9 @@ import {
   toLevelMapVolume,
   toRenderMapCapture,
 } from "@/applications/level-viewer/lib/map/level-map-capture";
-import {
-  DEFAULT_LEVEL_MAP_EXPORT,
-  ILevelMapExportSettings,
-  toLevelMapExportExtension,
-  toLevelMapExportSettings,
-  toMapExportRequest,
-} from "@/applications/level-viewer/lib/map/level-map-export";
+import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
 import { KeybindCommand } from "@/core/commands";
-import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
@@ -87,18 +63,10 @@ import { LevelRenderService } from "@/core/level/services/level-render.service";
 import { LevelViewService } from "@/core/level/services/level-view.service";
 import { LevelViewportService } from "@/core/level/services/level-viewport.service";
 import { LevelWeatherService } from "@/core/level/services/level-weather.service";
-import { ENotificationSeverity } from "@/core/notifications/lib";
 import { TCommandCompletion } from "@/core/operations/lib/command-reporter";
-import { noop } from "@/lib/callbacks/noop";
 
 /** The weather cycle `CDemoRecord` captures a level map under. */
 const MAP_WEATHER_CYCLE: string = "map";
-
-/** What each mode's capture is called, in its notices and failures. */
-export const CAPTURE_NAMES: Record<ELevelCaptureMode, string> = {
-  [ELevelCaptureMode.MAP]: "level map",
-  [ELevelCaptureMode.CUBEMAP]: "cubemap",
-};
 
 /** What each mode's file in the screenshots folder is named first. */
 const CAPTURE_PREFIXES: Record<ELevelCaptureMode, string> = {
@@ -117,11 +85,6 @@ type TLevelCaptureRequest =
   | { mode: ELevelCaptureMode.MAP; parameters: ILevelMapParameters }
   | { mode: ELevelCaptureMode.CUBEMAP; parameters: ILevelCubeParameters };
 
-/** A capture written: its picture as the dialog shows it and the mode it was taken in, a map with the ground it covers. */
-export type TLevelCapture =
-  | { mode: ELevelCaptureMode.MAP; image: ILevelViewerImage; area: ILevelMapRect }
-  | { mode: ELevelCaptureMode.CUBEMAP; image: ILevelViewerImage };
-
 /**
  * @param request - What was captured.
  * @param image - The picture it wrote.
@@ -139,8 +102,8 @@ function toLevelCapture(request: TLevelCaptureRequest, image: ILevelViewerImage)
 }
 
 /**
- * The level viewer's captures of a level map or a cubemap: the dialog's parameters, the capture run as a job under the
- * look asked for with the view put back after, and the exports of the picture it wrote.
+ * The level viewer's captures of a level map or a cubemap: the dialog's parameters, and the capture run as a job under
+ * the look asked for with the view put back after. What a capture wrote is `LevelViewerCaptureResultService`'s.
  */
 @Injectable()
 export class LevelViewerCaptureService {
@@ -165,32 +128,7 @@ export class LevelViewerCaptureService {
   @RefObservable()
   public cubeParameters: ILevelCubeParameters = toDefaultLevelCubeParameters();
 
-  /** What was last captured while the dialog is open, until it is deleted, left or the dialog closes. */
-  @RefObservable()
-  public captured: Nullable<TLevelCapture> = null;
-
-  /** What of a map's annotations is drawn over it, and the SVG drawn of them, as an object URL, until it changes. */
-  @RefObservable()
-  public mapAnnotations: ILevelMapAnnotations = DEFAULT_LEVEL_MAP_ANNOTATIONS;
-
-  @RefObservable()
-  public annotationsUrl: Nullable<string> = null;
-
-  /** How the next export of a map and of a cubemap is written. */
-  @RefObservable()
-  public mapExport: ILevelMapExportSettings = DEFAULT_LEVEL_MAP_EXPORT;
-
-  @RefObservable()
-  public cubeExport: ILevelCubeExportSettings = DEFAULT_LEVEL_CUBE_EXPORT;
-
-  /** Where the last export was written, its first file for six, until another capture is shown. */
-  @RefObservable()
-  public exported: Nullable<string> = null;
-
-  @RefObservable()
-  public isExporting: boolean = false;
-
-  /** Why the last thing done failed, until another is done. */
+  /** Why the last capture failed, until another is asked for or the dialog opens again. */
   @RefObservable()
   public failure: Nullable<string> = null;
 
@@ -198,35 +136,19 @@ export class LevelViewerCaptureService {
   @RefObservable()
   private isViewHeld: boolean = false;
 
-  /**
-   * The last of the annotations' writes beside the map, each sent once the one before it ended, so the file on disk is
-   * the last drawn, which an export reads.
-   */
-  private annotationsWritten: Promise<unknown> = Promise.resolve();
-
   public constructor(
     private readonly loadService: LevelLoadService = inject(LevelLoadService),
     private readonly renderService: LevelRenderService = inject(LevelRenderService),
     private readonly viewService: LevelViewService = inject(LevelViewService),
     private readonly viewportService: LevelViewportService = inject(LevelViewportService),
-    private readonly weatherService: LevelWeatherService = inject(LevelWeatherService)
+    private readonly weatherService: LevelWeatherService = inject(LevelWeatherService),
+    private readonly resultService: LevelViewerCaptureResultService = inject(LevelViewerCaptureResultService)
   ) {}
-
-  @OnDeactivation()
-  public onDeactivation(): void {
-    this.show(null);
-  }
 
   /** The level open, or null for none. */
   @Computed()
   public get level(): Nullable<SelectedLevelDescription> {
     return this.loadService.level.value?.selected.value ?? null;
-  }
-
-  /** The backend's opening of the level, which its annotations are drawn from, or null for none. */
-  @Computed()
-  public get sessionId(): Nullable<string> {
-    return this.loadService.level.value?.selected.sessionId ?? null;
   }
 
   /** Where the open level's `level.ltx` places its map, or null where it places none or it is not read yet. */
@@ -318,17 +240,9 @@ export class LevelViewerCaptureService {
   /** Closes the dialog, letting what it showed go; nothing while a capture or an export runs. */
   @BoundAction()
   public close(): void {
-    if (!this.isCapturing && !this.isExporting) {
+    if (!this.isCapturing && !this.resultService.isExporting) {
       this.isOpen = false;
-      this.show(null);
-    }
-  }
-
-  /** Goes back to the parameters from what was captured, which stays in its folder; nothing while it is exported. */
-  @BoundAction()
-  public back(): void {
-    if (!this.isExporting) {
-      this.show(null);
+      this.resultService.show(null);
     }
   }
 
@@ -426,59 +340,6 @@ export class LevelViewerCaptureService {
   }
 
   /**
-   * @param annotations - What of a map's annotations is drawn from now on, which draws them again.
-   */
-  @BoundAction()
-  public setMapAnnotations(annotations: ILevelMapAnnotations): void {
-    this.mapAnnotations = annotations;
-    void this.drawAnnotations();
-  }
-
-  /** Draws the annotations asked for over the map shown and writes them beside it, then shows them while it is. */
-  @LatestFlow()
-  public *drawAnnotations(): TFlow {
-    const captured: Nullable<TLevelCapture> = this.captured;
-    const sessionId: Nullable<string> = this.sessionId;
-
-    if (captured?.mode !== ELevelCaptureMode.MAP || !sessionId) {
-      return;
-    }
-
-    const request = toMapAnnotationsWriteRequest(this.mapAnnotations, captured.image.path, captured.area);
-    const writing: Promise<SessionSnapshot<string>> = this.annotationsWritten.then(() =>
-      levelsCommands.writeMapAnnotations(sessionId, request)
-    );
-
-    this.annotationsWritten = writing.catch(noop);
-
-    try {
-      const { value } = yield* call(writing);
-
-      if (this.captured === captured) {
-        this.showAnnotations(URL.createObjectURL(new Blob([value], { type: "image/svg+xml" })));
-      }
-    } catch (error: unknown) {
-      this.fail("draw the map's annotations", error);
-    }
-  }
-
-  /**
-   * @param patch - What of the map's export changes, kept to an export the backend writes.
-   */
-  @BoundAction()
-  public setMapExport(patch: Partial<ILevelMapExportSettings>): void {
-    this.mapExport = toLevelMapExportSettings(this.mapExport, patch);
-  }
-
-  /**
-   * @param patch - What of the cubemap's export changes.
-   */
-  @BoundAction()
-  public setCubeExport(patch: Partial<ILevelCubeExportSettings>): void {
-    this.cubeExport = { ...this.cubeExport, ...patch };
-  }
-
-  /**
    * Captures what the mode's parameters ask for into the screenshots folder, then reads it back for the dialog: the
    * weather held meanwhile, a map under the look it asks for, and the view put back after, however it ends.
    */
@@ -491,7 +352,7 @@ export class LevelViewerCaptureService {
     }
 
     const { mode } = request;
-    const name: string = CAPTURE_NAMES[mode];
+    const name: string = LEVEL_CAPTURE_NAMES[mode];
     const options: ILevelViewOptions = this.viewService.options;
     const weather: ILevelWeatherHold = this.weatherService.hold();
     const stem: string = toLevelViewerFileStem(toLevelViewerLevelName(this.level?.source), new Date());
@@ -519,15 +380,16 @@ export class LevelViewerCaptureService {
 
           return outcome;
         },
-        describe: (outcome: IJobOutcome<CaptureOutcome>): IJobNotice => this.describe(mode, path, outcome),
+        describe: (outcome: IJobOutcome<CaptureOutcome>): IJobNotice =>
+          describeLevelCaptureOutcome(mode, path, outcome),
       });
 
       if (completion?.error) {
         this.failure = `Failed to capture the ${name}: ${completion.error.message}`;
       } else if (completion?.result?.outcome === "completed") {
-        this.show(toLevelCapture(request, yield* call(readLevelViewerImage(path))));
+        this.resultService.show(toLevelCapture(request, yield* call(readLevelViewerImage(path))));
         this.log.info(`Captured a ${name}:`, path);
-        void this.drawAnnotations();
+        void this.resultService.drawAnnotations();
       }
     } catch (error: unknown) {
       this.fail(`capture the ${name}`, error);
@@ -543,96 +405,6 @@ export class LevelViewerCaptureService {
   }
 
   /**
-   * Writes what was captured again as its export settings ask, where a save dialog answers: a file, or the folder a
-   * cubemap's six faces are written into.
-   */
-  @ExclusiveFlow()
-  public *exportAs(): TFlow {
-    const captured: Nullable<TLevelCapture> = this.captured;
-
-    if (!captured) {
-      return;
-    }
-
-    const { mode, image } = captured;
-    const name: string = CAPTURE_NAMES[mode];
-    const level: Nullable<string> = toLevelViewerLevelName(this.level?.source);
-    const target: Nullable<string> = yield* call(this.askExportTarget(mode, level ? getPathName(level) : "level"));
-
-    if (!target || this.captured !== captured) {
-      return;
-    }
-
-    this.isExporting = true;
-    this.failure = null;
-
-    try {
-      let exported: string = target;
-
-      if (mode === ELevelCaptureMode.MAP) {
-        const request = toMapExportRequest(this.mapExport, image.path, target, Math.max(image.width, image.height));
-
-        // The annotations drawn last are on disk before the export reads them.
-        yield* call(this.annotationsWritten);
-        yield* call(levelsCommands.exportMap(request));
-      } else {
-        const request = toCubeExportRequest(this.cubeExport, image.path, target, toLevelCubeFaceSize(image.width));
-        const written: Array<string> = yield* call(levelsCommands.exportCube(request));
-
-        exported = written[0] ?? target;
-      }
-
-      if (this.captured === captured) {
-        this.exported = exported;
-      }
-
-      this.log.info(`Exported a ${name}:`, target);
-    } catch (error: unknown) {
-      this.fail(`export the ${name}`, error);
-    } finally {
-      this.isExporting = false;
-    }
-  }
-
-  /** Deletes what was captured for good, with its annotations once they are written; nothing while it is exported. */
-  public async remove(): Promise<void> {
-    if (this.isExporting) {
-      return;
-    }
-
-    await this.attempt("delete the capture", async ({ image }: TLevelCapture) => {
-      await this.annotationsWritten;
-      await levelsCommands.deleteScreenshot(image.path);
-      this.log.info("Deleted a capture:", image.path);
-      this.show(null);
-    });
-  }
-
-  /** Shows what was captured selected in its folder. */
-  public reveal(): Promise<void> {
-    return this.attempt("show the capture", ({ image }: TLevelCapture) => systemCommands.revealPath(image.path));
-  }
-
-  /** Shows the last export selected in its folder. */
-  public async revealExport(): Promise<void> {
-    if (this.exported) {
-      await systemCommands.revealPath(this.exported).catch((error: unknown) => this.fail("show the export", error));
-    }
-  }
-
-  /** Puts the capture's path on the clipboard. */
-  public copyPath(): Promise<void> {
-    return this.attempt("copy the capture's path", ({ image }: TLevelCapture) =>
-      navigator.clipboard.writeText(image.path)
-    );
-  }
-
-  /** Puts the capture's image on the clipboard. */
-  public copyImage(): Promise<void> {
-    return this.attempt("copy the capture", ({ image }: TLevelCapture) => copyLevelViewerImage(image));
-  }
-
-  /**
    * Opens the dialog on `mode` and every default.
    *
    * @param mode - What it captures first.
@@ -645,48 +417,13 @@ export class LevelViewerCaptureService {
     }
 
     runInAction(() => {
-      this.show(null);
+      this.resultService.reset();
       this.failure = null;
       this.mode = mode;
-      this.mapExport = DEFAULT_LEVEL_MAP_EXPORT;
-      this.cubeExport = DEFAULT_LEVEL_CUBE_EXPORT;
-      this.mapAnnotations = DEFAULT_LEVEL_MAP_ANNOTATIONS;
       this.mapParameters = volume ? toDefaultLevelMapParameters(this.levelMapRect, volume) : null;
       this.cubeParameters = toDefaultLevelCubeParameters();
       this.isOpen = true;
     });
-  }
-
-  /**
-   * @param mode - What was captured.
-   * @param level - The open level's name, which the file is named after.
-   * @returns Where its export goes, as the save or folder dialog answers, or null where it was dismissed.
-   */
-  private async askExportTarget(mode: ELevelCaptureMode, level: string): Promise<Nullable<string>> {
-    if (mode === ELevelCaptureMode.MAP) {
-      const extension: string = toLevelMapExportExtension(this.mapExport.kind);
-
-      return save({
-        defaultPath: `map_${level}.${extension}`,
-        filters: [{ extensions: [extension], name: `${extension.toUpperCase()} image` }],
-        title: "Export level map",
-      });
-    }
-
-    if (isLevelCubeExportSingle(this.cubeExport.kind)) {
-      return save({
-        defaultPath: `cube_${level}.${EXrayExtension.DDS}`,
-        filters: [{ extensions: [EXrayExtension.DDS], name: "DDS cube texture" }],
-        title: "Export cubemap",
-      });
-    }
-
-    const folder: Nullable<string | Array<string>> = await openDialog({
-      directory: true,
-      title: "Export the cubemap's faces into a folder",
-    });
-
-    return typeof folder === "string" ? folder : null;
   }
 
   /**
@@ -761,67 +498,9 @@ export class LevelViewerCaptureService {
     }
   }
 
-  /** What the notification centre says when a capture ends. */
-  private describe(mode: ELevelCaptureMode, path: string, outcome: IJobOutcome<CaptureOutcome>): IJobNotice {
-    const { result, error } = outcome;
-    const name: string = CAPTURE_NAMES[mode];
-
-    if (error) {
-      return describeJobFailure(`Could not capture the ${name}`, path, error);
-    }
-
-    if (result?.outcome === "cancelled") {
-      return {
-        details: `Nothing was written: the ${name} is written only once every ${
-          mode === ELevelCaptureMode.MAP ? "tile" : "face"
-        } is back.`,
-        severity: ENotificationSeverity.INFO,
-        title: `Capturing the ${name} was stopped`,
-      };
-    }
-
-    return {
-      details: path,
-      severity: ENotificationSeverity.SUCCESS,
-      title:
-        mode === ELevelCaptureMode.MAP
-          ? `Captured a ${result?.width ?? 0} × ${result?.height ?? 0} level map`
-          : `Captured a cubemap of ${toLevelCubeFaceSize(result?.width ?? 0)} pixel faces`,
-    };
-  }
-
-  /** Does `action` with what was captured, if anything; a failure is kept as `failure`, as `what` says. */
-  private async attempt(what: string, action: (captured: TLevelCapture) => Promise<unknown>): Promise<void> {
-    if (this.captured) {
-      await action(this.captured).catch((error: unknown) => this.fail(what, error));
-    }
-  }
-
   @BoundAction()
   private fail(what: string, error: unknown): void {
     this.log.error(`Failed to ${what}:`, error);
     this.failure = `Failed to ${what}: ${error instanceof Error ? error.message : String(error)}`;
-  }
-
-  /** Shows `captured`, or nothing, letting what it replaces go and the export written of it be forgotten. */
-  @BoundAction()
-  private show(captured: Nullable<TLevelCapture>): void {
-    if (this.captured) {
-      URL.revokeObjectURL(this.captured.image.url);
-    }
-
-    this.captured = captured;
-    this.exported = null;
-    this.showAnnotations(null);
-  }
-
-  /** Shows the annotations drawn at `url`, or none, letting the ones they replace go. */
-  @BoundAction()
-  private showAnnotations(url: Nullable<string>): void {
-    if (this.annotationsUrl) {
-      URL.revokeObjectURL(this.annotationsUrl);
-    }
-
-    this.annotationsUrl = url;
   }
 }

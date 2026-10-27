@@ -4,7 +4,7 @@ import { getPathName } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { ReactElement, useCallback } from "react";
 
-import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
 import { cn } from "@/core/theme/class-name";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
@@ -14,10 +14,10 @@ export function LevelViewerCaptureExported({
   id,
   className,
 }: BaseComponentProps): Nullable<ReactElement> {
-  const captureService: LevelViewerCaptureService = useInjection(LevelViewerCaptureService);
-  const exported: Nullable<string> = captureService.exported;
+  const resultService: LevelViewerCaptureResultService = useInjection(LevelViewerCaptureResultService);
+  const exported: Nullable<string> = resultService.exported;
 
-  const onReveal = useCallback(() => void captureService.revealExport(), [captureService]);
+  const onReveal = useCallback(() => void resultService.revealExport(), [resultService]);
 
   if (!exported) {
     return null;

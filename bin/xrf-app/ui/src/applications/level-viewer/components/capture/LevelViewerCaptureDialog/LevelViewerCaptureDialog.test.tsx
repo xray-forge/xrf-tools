@@ -7,6 +7,7 @@ import { mockIpcBulkRoutes, mockIpcCommands } from "@xrf/ipc/testing";
 
 import { LevelViewerCaptureActions } from "@/applications/level-viewer/components/capture/LevelViewerCaptureActions";
 import { LevelViewerCaptureService } from "@/applications/level-viewer/services/capture";
+import { LevelViewerCaptureResultService } from "@/applications/level-viewer/services/capture-result";
 import { LevelViewerSnapshotService } from "@/applications/level-viewer/services/snapshot";
 import { mockLevelViewContainer, renderLevelView, TLevelViewRenderResult } from "@/core/level/fixtures/level-container";
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
@@ -21,7 +22,7 @@ function renderDialog(): TLevelViewRenderResult & { service: LevelViewerCaptureS
 
   const rendered: TLevelViewRenderResult = renderLevelView(
     <LevelViewerCaptureActions />,
-    mockLevelViewContainer([LevelViewerCaptureService, LevelViewerSnapshotService])
+    mockLevelViewContainer([LevelViewerCaptureService, LevelViewerCaptureResultService, LevelViewerSnapshotService])
   );
 
   jest.spyOn(rendered.weather, "cutTo").mockResolvedValue();
