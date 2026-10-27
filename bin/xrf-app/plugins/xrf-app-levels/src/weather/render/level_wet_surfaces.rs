@@ -1,5 +1,5 @@
 use crate::parts::LevelTextureReference;
-use crate::weather::render::LevelWeatherSource;
+use crate::weather::LevelWeatherSource;
 
 /// What rain wets surfaces with, as `CBlender_rain` binds it: the splashes' volume and the streaks down walls.
 #[derive(Clone, Debug, PartialEq)]

@@ -272,6 +272,20 @@ impl LevelReport {
     );
   }
 
+  /// Which sections the level's spawned objects name that the configs lack, whose objects light and play nothing.
+  pub fn missing_sections_named(source: &LevelSource, missing: &[&str]) {
+    if missing.is_empty() {
+      return;
+    }
+
+    log::warn!(
+      "Level {} spawns objects of {} sections 'system.ltx' lacks, which light and play nothing: {}",
+      source.get_label(),
+      missing.len(),
+      Self::name_a_few(missing)
+    );
+  }
+
   /// That the configs could not be read, so zones light nothing and lamps keep their spawned flags.
   pub fn missing_sections(error: &impl Display) {
     log::warn!("No zone lights and no lamp sections: {error}");
@@ -480,6 +494,15 @@ impl LevelReport {
   /// That the game's console is read from an installation's own `user.ltx`.
   pub fn console_read(path: &Path) {
     log::info!("Reading the game's console from {}", path.display());
+  }
+
+  /// That an installation's console, or the fsgame file naming where it is, is there and will not read, so the game's
+  /// shipped defaults stand alone.
+  pub fn unreadable_console(path: &Path, error: &impl Display) {
+    log::warn!(
+      "The game's console is its shipped defaults alone, as {} does not read: {error}",
+      path.display()
+    );
   }
 
   /// That rain draws no splashes, its model not reading.

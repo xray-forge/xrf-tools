@@ -1,3 +1,4 @@
+use std::io::ErrorKind;
 use std::path::PathBuf;
 
 use serde::Serialize;
@@ -119,23 +120,30 @@ impl LevelConsoleDefaults {
   }
 
   /// The `user.ltx` of the first installation the roots sit in, found where its `fsgame.ltx` puts the user data folder;
-  /// none for a bare data folder or one never run.
+  /// none for a bare data folder or one never run, and none, said, for a file that is there and will not read.
   fn read_user_console(roots: &XrayRoots) -> Option<(PathBuf, String)> {
     // todo: Read an Enhanced Edition's `user.ltx`, which sits at its installation root while its fsgame file leaves
     // `$app_data_root$` for the engine to declare.
-    roots
-      .list_installations()
-      .into_iter()
-      .next()
-      .and_then(|installation| FsgameFile::read(installation).ok())
-      .and_then(|fsgame| fsgame.resolve(Self::APP_DATA_ROOT))
-      .map(|folder| folder.join(Self::USER_CONSOLE))
-      .and_then(|path| {
-        let bytes: Vec<u8> = std::fs::read(&path).ok()?;
-        let text: String = decode_bytes_to_string(&bytes, new_windows1251_encoder()).ok()?;
+    let installation: PathBuf = roots.list_installations().into_iter().next()?;
+    let path: PathBuf = FsgameFile::read(&installation)
+      .inspect_err(|error| LevelReport::unreadable_console(&installation, error))
+      .ok()?
+      .resolve(Self::APP_DATA_ROOT)?
+      .join(Self::USER_CONSOLE);
+    let bytes: Vec<u8> = match std::fs::read(&path) {
+      Ok(bytes) => bytes,
+      Err(error) if error.kind() == ErrorKind::NotFound => return None,
+      Err(error) => {
+        LevelReport::unreadable_console(&path, &error);
 
-        Some((path, text))
-      })
+        return None;
+      }
+    };
+
+    decode_bytes_to_string(&bytes, new_windows1251_encoder())
+      .inspect_err(|error| LevelReport::unreadable_console(&path, error))
+      .ok()
+      .map(|text| (path, text))
   }
 
   /// A console switch: `on` or `off`, `1` or `0`.

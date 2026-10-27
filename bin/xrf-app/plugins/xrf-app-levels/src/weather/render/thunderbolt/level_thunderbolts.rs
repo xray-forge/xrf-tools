@@ -4,9 +4,10 @@ use xrf_renderer::{
 };
 use xrf_visual::LightAnimatorDescription;
 
-use crate::weather::render::level_bolt_reader::LevelBoltReader;
+use crate::weather::LevelWeatherSource;
+use crate::weather::render::thunderbolt::level_bolt_reader::LevelBoltReader;
 use crate::weather::render::{
-  LevelThunderbolt, LevelThunderboltGradient, LevelThunderboltModel, LevelThunderboltSettings, LevelWeatherSource,
+  LevelThunderbolt, LevelThunderboltGradient, LevelThunderboltModel, LevelThunderboltSettings,
 };
 
 /// What the game's weather strikes with: every collection, the bolts they name as the engine loads them, the models and
