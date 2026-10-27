@@ -27,7 +27,7 @@ pub async fn configs_read_section_scheme(
 
   projects
     .read_on_pool(&execution, session_id, "Configs section scheme", move |opened| {
-      opened.with_reader(&entry, true, |reader, _| Ok(reader.read_section_scheme(&section)))
+      opened.with_reader(&entry, |reader, _| Ok(reader.read_section_scheme(&section)))
     })
     .await
 }

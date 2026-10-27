@@ -37,9 +37,9 @@ pub async fn configs_read_resolved_sections(
 
   projects
     .read_on_pool(&execution, session_id, "Configs resolved page", move |opened| {
-      let names: Vec<&str> = names.iter().map(String::as_str).collect::<Vec<&str>>();
+      let names: Vec<&str> = names.iter().map(String::as_str).collect();
 
-      opened.with_reader(&entry, true, |reader, resolved| {
+      opened.with_reader(&entry, |reader, resolved| {
         reader
           .read_sections(&names)
           .map_err(|error| format!("Cannot read sections of '{}': {error}", resolved.entry.as_str()))
