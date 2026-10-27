@@ -12,8 +12,8 @@ import { SessionRootResource } from "@/core/session/lib/session-root-resource";
  * @param snapshot - What the backend holds.
  * @returns The same snapshot, so it can be passed on.
  */
-export function mockHeldSessionRoot<T, R>(
-  resource: SessionRootResource<T, R>,
+export function mockHeldSessionRoot<T>(
+  resource: SessionRootResource<T>,
   snapshot: SessionSnapshot<T>
 ): SessionSnapshot<T> {
   resource["session"].adopt(snapshot);
@@ -31,7 +31,7 @@ export function mockHeldSessionRoot<T, R>(
  *
  * @param resource - Resource to hold nothing.
  */
-export function mockLetGoSessionRoot<T, R>(resource: SessionRootResource<T, R>): void {
+export function mockLetGoSessionRoot<T>(resource: SessionRootResource<T>): void {
   runInAction(() => {
     resource["root"] = AsyncState.idle();
   });

@@ -32,12 +32,6 @@ export type TextureBadges = {
   isUnreadable: boolean;
 };
 
-/** What a tree is listing: the roots and how it addresses them, restored after a frontend reload. */
-export type TextureBrowse = {
-  roots: XrayRoots;
-  mode: TextureCatalogMode;
-};
-
 /** One recipe field the descriptor asks for that this build does not carry out. */
 export type TextureBuildOmissionReport = {
   /** The descriptor field this sits beside, under the name the SDK gives it. */

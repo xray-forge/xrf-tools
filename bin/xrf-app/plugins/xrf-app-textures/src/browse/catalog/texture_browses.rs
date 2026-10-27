@@ -1,6 +1,6 @@
 use xrf_app_core::session::Sessions;
 
-use crate::browse::TextureBrowse;
+use crate::browse::TextureCatalog;
 
-/// The listings each tool's tree holds open.
-pub type TextureBrowses = Sessions<TextureBrowse>;
+/// The listing each tool's tree holds open, restored whole after a frontend reload.
+pub type TextureBrowses = Sessions<TextureCatalog>;

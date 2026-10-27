@@ -6,7 +6,6 @@ import { texturesCommands } from "@xrf/ipc/commands/textures";
 import { SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import {
   ETextureCatalogMode,
-  TextureBrowse,
   TextureCatalog,
   TextureMaterialSummary,
   TextureSource,
@@ -29,15 +28,10 @@ export class TextureCatalogService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
   /** Every texture of the browsed roots, or none when nothing is open. */
-  public readonly catalog: SessionRootResource<TextureCatalog, TextureBrowse> = new SessionRootResource(this.log, {
+  public readonly catalog: SessionRootResource<TextureCatalog> = new SessionRootResource(this.log, {
     subject: "texture catalog",
     close: texturesCommands.closeBrowse,
-    // A restore answers what was browsed, not its listing, so the roots are listed again.
-    reopen: {
-      restore: texturesCommands.restoreBrowse,
-      open: (browse: TextureBrowse) =>
-        TextureCatalogService.toOpening(browse.roots, toEnumMember(ETextureCatalogMode, browse.mode)),
-    },
+    restore: texturesCommands.restoreBrowse,
     adopted: (snapshot: SessionSnapshot<TextureCatalog>) => this.sweep(snapshot.value),
   });
 

@@ -5,5 +5,5 @@ mod catalog;
 pub(crate) mod commands;
 mod summary;
 
-pub use catalog::{TextureBrowse, TextureBrowses, TextureCatalog, TextureCatalogMode, TextureEntry, TextureRole};
+pub use catalog::{TextureBrowses, TextureCatalog, TextureCatalogMode, TextureEntry, TextureRole};
 pub use summary::{TextureBadges, TextureBumpPair, TextureMaterialSummary};

@@ -7,7 +7,6 @@ import { IIpcCommandSignature } from "#/signature";
 import { SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
 import {
   ETextureCatalogMode,
-  TextureBrowse,
   TextureBuildOutcome,
   TextureCatalog,
   TextureDescription,
@@ -72,7 +71,7 @@ export const texturesCommands = {
     __TAURI_INVOKE<SessionSnapshot<TextureCatalog>>(ETexturesCommand.OPEN_BROWSE, { sessionId, roots, mode }),
   /** The listing `tool` browses in the asking window, the newest it opened, or null when it holds none. */
   restoreBrowse: (tool: string) =>
-    __TAURI_INVOKE<SessionRestore<TextureBrowse>>(ETexturesCommand.RESTORE_BROWSE, { tool }),
+    __TAURI_INVOKE<SessionRestore<TextureCatalog>>(ETexturesCommand.RESTORE_BROWSE, { tool }),
   /**
    * Write one node's descriptor, and the base texture with it when a held candidate is chosen: written over the texture
    * that candidate's comparison was made of, whose descriptor the request has to name.

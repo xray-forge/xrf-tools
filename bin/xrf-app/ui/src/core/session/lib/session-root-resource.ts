@@ -30,17 +30,6 @@ export interface ISessionRootOpening<T> {
   command: (sessionId: SessionId) => Promise<SessionSnapshot<T>>;
 }
 
-/**
- * A restore whose answer names what the root was opened from rather than the root itself, which is opened again from
- * it: the restored opening is adopted, so the new one replaces it.
- */
-export interface ISessionRootReopen<T, R> {
-  /** Reads what the tool still holds: the domain's generated `restore` command. */
-  restore: (tool: string) => Promise<SessionRestore<R>>;
-  /** What opens the root again from what was restored. */
-  open: (restored: R) => ISessionRootOpening<T>;
-}
-
 /** How a root follows the commits the backend tells of the opening held. */
 export interface ISessionRootFollow<T> {
   /** Reads the held opening again once a change derives it anew: the domain's `restore` command. */
@@ -54,15 +43,13 @@ export interface ISessionRootFollow<T> {
 }
 
 /** What a tool holds open and how it is let go and found again. */
-export interface ISessionRootOptions<T, R> {
+export interface ISessionRootOptions<T> {
   /** What the root is, as log lines and notices name it: `exports project`. */
   subject: string;
   /** Releases openings: the domain's generated `close` command. */
   close: (sessionIds: Array<SessionId>) => Promise<unknown>;
   /** Reads what the tool still holds after a reload: the domain's generated `restore` command; none where nothing is. */
   restore?: (tool: string) => Promise<SessionRestore<T>>;
-  /** Restores a root whose restore answers what it was opened from, in place of `restore`. */
-  reopen?: ISessionRootReopen<T, R>;
   /** Follows the backend's commits to the held opening, for a root an edit can change. */
   follow?: ISessionRootFollow<T>;
   /**
@@ -88,7 +75,7 @@ export interface ISessionRootOptions<T, R> {
  * The root a tool holds open, as the page shows it: one opening at a time, its snapshot, and how it opens, refreshes,
  * closes and is restored. The sibling of `SessionPartResource`, which reads the root's parts.
  */
-export class SessionRootResource<T, R = T> implements IScopedSession {
+export class SessionRootResource<T> implements IScopedSession {
   /**
    * Whether the backend has been asked what the tool still holds, a restore cancelled or failed included, or a root
    * opened since, which a restore asked for meanwhile joins rather than runs. Set as a root is adopted, before the reads
@@ -124,7 +111,7 @@ export class SessionRootResource<T, R = T> implements IScopedSession {
    */
   public constructor(
     private readonly log: Logger,
-    private readonly options: ISessionRootOptions<T, R>,
+    private readonly options: ISessionRootOptions<T>,
     scopeService: SessionScopeService = inject(SessionScopeService),
     eventBus: EventBus = inject(EventBus),
     private readonly reporter: CommandReporter = new CommandReporter(log, eventBus)
@@ -180,28 +167,24 @@ export class SessionRootResource<T, R = T> implements IScopedSession {
    */
   @ExclusiveFlow("state")
   public *restore(): TFlow {
-    const { restore, reopen } = this.options;
+    const { restore } = this.options;
 
     try {
-      if (this.root.value) {
+      if (this.root.value || !restore) {
         return;
       }
 
-      if (reopen) {
-        yield* this.reopenRestored(reopen);
-      } else if (restore) {
-        this.heard = [];
+      this.heard = [];
 
-        const completion: TCommandCompletion<SessionRestore<T>> = yield* this.readRestore(restore);
+      const completion: TCommandCompletion<SessionRestore<T>> = yield* this.readRestore(restore);
 
-        // A tool that holds nothing leaves the root as it is: `isRestored` says the backend was asked.
-        if (completion.error) {
-          this.root = this.root.asFailed(completion.error);
-        } else if (completion.result) {
-          this.session.adopt(completion.result);
+      // A tool that holds nothing leaves the root as it is: `isRestored` says the backend was asked.
+      if (completion.error) {
+        this.root = this.root.asFailed(completion.error);
+      } else if (completion.result) {
+        this.session.adopt(completion.result);
 
-          yield* this.adoptRoot(completion.result);
-        }
+        yield* this.adoptRoot(completion.result);
       }
     } finally {
       this.heard = null;
@@ -421,30 +404,6 @@ export class SessionRootResource<T, R = T> implements IScopedSession {
       failure: `Could not restore the open ${this.options.subject}`,
       failureSeverity: ENotificationSeverity.WARNING,
     });
-  }
-
-  /** Opens the root again from what the tool held, which the new opening replaces. */
-  private *reopenRestored(reopen: ISessionRootReopen<T, R>): TFlow {
-    const completion: TCommandCompletion<SessionRestore<R>> = yield* this.readRestore(reopen.restore);
-
-    if (completion.error) {
-      this.root = this.root.asFailed(completion.error);
-
-      return;
-    }
-
-    if (completion.result) {
-      const opening: ISessionRootOpening<T> = reopen.open(completion.result.value);
-
-      this.session.adopt(completion.result);
-
-      yield* this.replace(
-        `Open ${this.options.subject}`,
-        `Could not open the ${this.options.subject}`,
-        opening.label,
-        () => this.session.open(opening.command)
-      );
-    }
   }
 
   /**
