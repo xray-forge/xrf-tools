@@ -71,6 +71,16 @@ export function VisualPreviewLayout({
   const hasBump: boolean = Boolean(model && source.hasBump);
   const hasAlpha: boolean = Boolean(model?.submeshes.some((submesh) => isAlphaRenderSurfaceDraw(submesh.surface)));
 
+  const status: Array<string> = useMemo(() => {
+    if (isLoading) {
+      return ["Loading visual"];
+    }
+
+    return model
+      ? [`${model.submeshes.length} submeshes`, `${model.vertexCount} vertices`, `${triangleCount} triangles`]
+      : ["No visual open"];
+  }, [isLoading, model, triangleCount]);
+
   useEditorPanels(() => {
     const stripe: Array<IEditorPanel> = panels ? [...panels] : [];
 
@@ -88,16 +98,6 @@ export function VisualPreviewLayout({
         ]
       : stripe;
   }, [tree, panels]);
-
-  const status: Array<string> = useMemo(() => {
-    if (isLoading) {
-      return ["Loading visual"];
-    }
-
-    return model
-      ? [`${model.submeshes.length} submeshes`, `${model.vertexCount} vertices`, `${triangleCount} triangles`]
-      : ["No visual open"];
-  }, [isLoading, model, triangleCount]);
 
   useEditorStatus(status);
 

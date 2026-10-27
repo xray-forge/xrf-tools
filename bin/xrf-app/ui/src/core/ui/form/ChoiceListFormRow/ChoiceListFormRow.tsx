@@ -11,6 +11,9 @@ import { IChoiceListFormRowSection, toChoiceListFormRowSections } from "./Choice
 import { ChoiceListFormRowItem } from "./ChoiceListFormRowItem";
 import { ChoiceListFormRowSection } from "./ChoiceListFormRowSection";
 
+/** What a filter is worth having for. Anomaly lists thirty five levels; a rifle's four submeshes do not need one. */
+const DEFAULT_FILTER_FROM: number = 8;
+
 export interface IChoiceListFormRowProps<T extends string> extends BaseComponentProps {
   label: string;
   description?: string;
@@ -22,9 +25,6 @@ export interface IChoiceListFormRowProps<T extends string> extends BaseComponent
   isDisabled?: boolean;
   onChange: (value: T) => void;
 }
-
-/** What a filter is worth having for. Anomaly lists thirty five levels; a rifle's four submeshes do not need one. */
-const DEFAULT_FILTER_FROM: number = 8;
 
 /**
  * A labelled choice among many, as a list that scrolls and filters, its options under their sections' headings and

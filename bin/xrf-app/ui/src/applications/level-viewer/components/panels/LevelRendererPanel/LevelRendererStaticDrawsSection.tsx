@@ -5,13 +5,13 @@ import { ReactElement } from "react";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ILevelRendererStaticDrawsSectionProps extends BaseComponentProps {
-  staticDraws: RenderStaticReport;
-}
-
 /** How full one static draw pool is: what it holds against what it has room for. */
 function formatPoolUse({ used, capacity }: RenderPoolUse): string {
   return `${formatCount(used)} of ${formatCount(capacity)}`;
+}
+
+interface ILevelRendererStaticDrawsSectionProps extends BaseComponentProps {
+  staticDraws: RenderStaticReport;
 }
 
 /**

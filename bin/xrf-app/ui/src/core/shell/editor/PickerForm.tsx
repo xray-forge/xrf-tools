@@ -64,6 +64,8 @@ export function PickerForm({
   const hasUserExpanded = useRef<boolean>(false);
   const hasResult: boolean = Boolean(result);
 
+  const requestLeave = useRequestLeave();
+
   const onToggleCollapsed = useCallback(() => {
     setCollapsed((it) => {
       if (it) {
@@ -87,8 +89,6 @@ export function PickerForm({
     },
     [log, onSubmit, isSubmitDisabled, isLoading, fields]
   );
-
-  const requestLeave = useRequestLeave();
 
   const onLeave = useCallback(() => {
     log.info("Requesting leave");

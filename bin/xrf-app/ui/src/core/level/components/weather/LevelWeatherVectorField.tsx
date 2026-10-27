@@ -15,6 +15,11 @@ import { ColorPicker } from "@/core/ui/color/ColorPicker";
 import { useOpenColorField } from "@/core/ui/color/use-open-color-field";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
+interface ILevelWeatherVectorDraft {
+  index: number;
+  text: string;
+}
+
 /** What each component of a colour is called, the cover or the strength last. */
 const COLOR_COMPONENTS: ReadonlyArray<string> = ["red", "green", "blue", "alpha"];
 
@@ -23,6 +28,12 @@ const INTENSITY_DRAFT: number = -1;
 
 /** What each component of any other vector is called. */
 const VECTOR_COMPONENTS: ReadonlyArray<string> = ["x", "y", "z", "w"];
+
+function toSwatch(value: ReadonlyArray<number>): string {
+  const [red = 0, green = 0, blue = 0] = value.map((it: number) => Math.round(saturate(it) * 255));
+
+  return `rgb(${red}, ${green}, ${blue})`;
+}
 
 interface ILevelWeatherVectorFieldProps extends BaseComponentProps {
   label: string;
@@ -35,11 +46,6 @@ interface ILevelWeatherVectorFieldProps extends BaseComponentProps {
    */
   isColor?: boolean;
   onChange: (value: Array<number>) => void;
-}
-
-interface ILevelWeatherVectorDraft {
-  index: number;
-  text: string;
 }
 
 /**
@@ -160,10 +166,4 @@ export function LevelWeatherVectorField({
       ) : null}
     </div>
   );
-}
-
-function toSwatch(value: ReadonlyArray<number>): string {
-  const [red = 0, green = 0, blue = 0] = value.map((it: number) => Math.round(saturate(it) * 255));
-
-  return `rgb(${red}, ${green}, ${blue})`;
 }

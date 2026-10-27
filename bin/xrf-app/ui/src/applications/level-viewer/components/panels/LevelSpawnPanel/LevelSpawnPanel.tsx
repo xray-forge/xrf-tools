@@ -103,6 +103,9 @@ export function LevelSpawnPanel({
     loadService.spawnRevision
   );
 
+  // The pick this panel made of the row it chose, which the tree already shows.
+  const made = useRef<Nullable<TLevelPick>>(null);
+
   // Framed by the sphere its model spans, as the renderer holds it: asked when gone to, since it stands only once drawn.
   const onGoTo = useCallback(
     async (object: LevelSpawnObject) => {
@@ -124,9 +127,6 @@ export function LevelSpawnPanel({
     },
     [loadService, renderService, viewportService, viewService]
   );
-
-  // The pick this panel made of the row it chose, which the tree already shows.
-  const made = useRef<Nullable<TLevelPick>>(null);
 
   // An object chosen here is picked as a click on it is, so the viewport marks it and the readout names it.
   const onSelect = useCallback(

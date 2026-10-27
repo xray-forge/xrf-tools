@@ -8,25 +8,6 @@ const DEFAULT_VOLUME: number = 1;
 
 const VOLUME_CODEC: IStoredValueCodec<number> = textCodec(readStoredVolume);
 
-export interface IMediaVolume {
-  /** Level in `[0, 1]`, as a media element's own `volume` expresses it. */
-  value: number;
-  set: (next: number) => void;
-}
-
-/**
- * Remembers how loud playback should be, across selections and across restarts.
- *
- * @returns The stored level and a setter that persists it.
- */
-export function useMediaVolume(): IMediaVolume {
-  const [value, setValue] = useStoredValue<number>(MEDIA_VOLUME_STORAGE_KEY, VOLUME_CODEC);
-
-  const set = useCallback((next: number): void => setValue(clampVolume(next)), [setValue]);
-
-  return { value, set };
-}
-
 /**
  * Reads the stored level, falling back to full volume.
  *
@@ -47,4 +28,23 @@ function readStoredVolume(stored: Nullable<string>): number {
  */
 function clampVolume(value: number): number {
   return Number.isFinite(value) ? saturate(value) : DEFAULT_VOLUME;
+}
+
+export interface IMediaVolume {
+  /** Level in `[0, 1]`, as a media element's own `volume` expresses it. */
+  value: number;
+  set: (next: number) => void;
+}
+
+/**
+ * Remembers how loud playback should be, across selections and across restarts.
+ *
+ * @returns The stored level and a setter that persists it.
+ */
+export function useMediaVolume(): IMediaVolume {
+  const [value, setValue] = useStoredValue<number>(MEDIA_VOLUME_STORAGE_KEY, VOLUME_CODEC);
+
+  const set = useCallback((next: number): void => setValue(clampVolume(next)), [setValue]);
+
+  return { value, set };
 }

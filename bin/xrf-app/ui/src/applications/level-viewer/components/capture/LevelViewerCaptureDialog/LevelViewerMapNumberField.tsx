@@ -3,6 +3,11 @@ import { ChangeEvent, ReactElement, useCallback, useEffect, useState } from "rea
 
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
+/** Metres to a tenth, dropping a trailing `.0`. */
+function formatMetres(value: number): string {
+  return String(Math.round(value * 10) / 10);
+}
+
 interface ILevelViewerMapNumberFieldProps extends BaseComponentProps {
   label: string;
   /** Metres, as the map's parameters hold them. */
@@ -60,9 +65,4 @@ export function LevelViewerMapNumberField({
       onChange={onChange}
     />
   );
-}
-
-/** Metres to a tenth, dropping a trailing `.0`. */
-function formatMetres(value: number): string {
-  return String(Math.round(value * 10) / 10);
 }

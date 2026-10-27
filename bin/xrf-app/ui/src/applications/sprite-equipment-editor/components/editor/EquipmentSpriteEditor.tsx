@@ -44,13 +44,12 @@ export function EquipmentSpriteEditor({
   const isLoading: boolean = spriteEquipmentService.spriteImage.isLoading;
   const repackedAt: Nullable<number> = spriteEquipmentService.repackedAt;
   const error: Nullable<Error> = spriteEquipmentService.spriteImage.error;
+  const outsideCount: number = gridService.layout?.outside.length ?? 0;
 
   const onReload = useCallback(() => void spriteEquipmentService.reopenEquipmentProject(), [spriteEquipmentService]);
 
   // Closing does not navigate: the application shows its own picker again once nothing is open.
   const onClose = useCallback(() => spriteEquipmentService.closeEquipmentProject(), [spriteEquipmentService]);
-
-  const outsideCount: number = gridService.layout?.outside.length ?? 0;
 
   useEditorPanels(() => SPRITE_EQUIPMENT_EDITOR_PANELS, []);
 

@@ -3,6 +3,11 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { useCallback, useRef, useState } from "react";
 
+/** One cell's identity as a single key. `\0` occurs in no logical path, language tag, or translation id. */
+function toCellKey(file: string, language: string, id: string): string {
+  return `${file}\0${language}\0${id}`;
+}
+
 /** Reports the first character a language cannot hold, or `null` when the value is writable. */
 export type TValidateText = (language: string, text: string) => Promise<Nullable<string>>;
 
@@ -20,11 +25,6 @@ export interface ITranslationValidation {
   getErrorOf: (id: string) => Nullable<string>;
   /** Validate a value just committed to a cell, superseding whatever that cell had in flight. */
   validate: (id: string, value: string) => void;
-}
-
-/** One cell's identity as a single key. `\0` occurs in no logical path, language tag, or translation id. */
-function toCellKey(file: string, language: string, id: string): string {
-  return `${file}\0${language}\0${id}`;
 }
 
 /**

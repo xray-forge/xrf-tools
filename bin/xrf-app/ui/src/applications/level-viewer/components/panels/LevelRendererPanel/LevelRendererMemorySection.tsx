@@ -5,11 +5,6 @@ import { ReactElement } from "react";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ILevelRendererMemorySectionProps extends BaseComponentProps {
-  /** What the renderer holds on the GPU. */
-  memory: RenderMemoryReport;
-}
-
 /**
  * @param section - A share of what the GPU allocator holds allocated.
  * @param allocated - All it holds allocated, or null where it reports none.
@@ -19,6 +14,11 @@ function formatSection(section: RenderMemorySection, allocated: number | null): 
   const share: string = allocated ? ` · ${formatPercent(section.bytes / allocated, 1)}` : "";
 
   return `${formatBytes(section.bytes)}${share} · ${formatCount(section.count)}`;
+}
+
+interface ILevelRendererMemorySectionProps extends BaseComponentProps {
+  /** What the renderer holds on the GPU. */
+  memory: RenderMemoryReport;
 }
 
 /**

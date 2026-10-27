@@ -10,11 +10,6 @@ import { useWindowWidth } from "@/lib/react/use-window-width";
 
 const PREFERRED_WIDTH_CODEC: IStoredValueCodec<number> = textCodec(readPreferredWidth);
 
-export interface IPanelWidth {
-  width: number;
-  onResize: (width: number) => void;
-}
-
 /**
  * Reads the stored preference, which is validated against the fixed bounds only - the window budget is a property of
  * the current window, not of what the user asked for.
@@ -23,6 +18,11 @@ function readPreferredWidth(stored: Nullable<string>): number {
   const parsed: number = stored === null ? NaN : Number(stored);
 
   return Number.isFinite(parsed) ? clamp(parsed, PANEL.minWidth, PANEL.maxWidth) : PANEL.defaultWidth;
+}
+
+export interface IPanelWidth {
+  width: number;
+  onResize: (width: number) => void;
 }
 
 /**

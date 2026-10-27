@@ -33,6 +33,15 @@ import { ViewportControls } from "@/core/ui/media/ViewportControls";
 import { PanZoomController } from "@/lib/media/pan-zoom-controller";
 import { IElementSize, useElementSize } from "@/lib/react/use-element-size";
 
+/** What an overlay needs to draw itself over the picture. */
+export interface IImageViewportView {
+  controller: PanZoomController;
+  /** Content size in its own pixels. */
+  content: IPanZoomSize;
+  /** Viewport size in viewport pixels; zero on both axes until the pane has been measured. */
+  viewport: IPanZoomSize;
+}
+
 /** Stands in for the viewport until it has been measured, when there is nowhere to place anything anyway. */
 const UNMEASURED: IPanZoomSize = { width: 0, height: 0 };
 
@@ -42,15 +51,6 @@ const ZOOM_OUT: number = 1;
 
 /** How far the pointer may travel between press and release and still be a click. */
 const CLICK_SLOP: number = 4;
-
-/** What an overlay needs to draw itself over the picture. */
-export interface IImageViewportView {
-  controller: PanZoomController;
-  /** Content size in its own pixels. */
-  content: IPanZoomSize;
-  /** Viewport size in viewport pixels; zero on both axes until the pane has been measured. */
-  viewport: IPanZoomSize;
-}
 
 interface IImageViewportProps {
   src: string;

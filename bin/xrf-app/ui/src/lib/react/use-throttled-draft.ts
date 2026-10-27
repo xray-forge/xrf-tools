@@ -3,11 +3,11 @@ import { SyntheticEvent, useCallback } from "react";
 
 import { DEFAULT_DRAFT_INTERVAL, IThrottledValue, useThrottledValue } from "@/lib/react/use-throttled-value";
 
-/** Commits a slider reports for one discrete step rather than for letting go: a key, or its hidden input changing. */
-const STEP_COMMIT_EVENTS: ReadonlySet<string> = new Set(["keydown", "change"]);
-
 /** What a slider reports its value as: one thumb, or several. */
 export type TSliderValue = number | ReadonlyArray<number>;
+
+/** Commits a slider reports for one discrete step rather than for letting go: a key, or its hidden input changing. */
+const STEP_COMMIT_EVENTS: ReadonlySet<string> = new Set(["keydown", "change"]);
 
 /** What a slider shows as it is dragged, and the handlers a MUI `Slider` takes to say so. */
 export interface IThrottledDraft {

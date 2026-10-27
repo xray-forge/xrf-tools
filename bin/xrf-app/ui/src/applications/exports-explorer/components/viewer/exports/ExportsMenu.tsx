@@ -44,14 +44,14 @@ export function ExportsMenu({
 
   const items: Array<IPathTreeItem<ExportDescriptor>> = useMemo(() => exportGroupsToTree(groups), [groups]);
 
+  const openItemId: Nullable<string> = selectedName ? toFileItemId(selectedName) : null;
+
   const onSelectDeclaration = useCallback(
     (declaration: ExportDescriptor) => {
       onSelect(declaration.name);
     },
     [onSelect]
   );
-
-  const openItemId: Nullable<string> = selectedName ? toFileItemId(selectedName) : null;
 
   const onSelectItem = useCallback((item: ITreeNode<ExportDescriptor>) => select(item.id), [select]);
 

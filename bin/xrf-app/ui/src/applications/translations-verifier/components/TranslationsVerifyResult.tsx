@@ -19,6 +19,23 @@ type TLanguageRow = TranslationVerifyLanguageSummary & { id: string; complete: n
  */
 type TProblemRow = TranslationFinding & { index: number };
 
+/**
+ * The run's verdict in one line, what the game would refuse or mangle before what it would show as an id.
+ *
+ * @param result - What the run found.
+ * @param incomplete - How many languages miss at least one translation.
+ * @returns The headline.
+ */
+function describeHeadline(result: TranslationVerifyResult, incomplete: number): string {
+  if (result.problems.length) {
+    return `${formatCount(result.problems.length)} problem(s) the game would refuse or show wrong`;
+  }
+
+  return result.missingTranslationsCount
+    ? `${formatCount(result.missingTranslationsCount)} translation(s) missing across ${formatCount(incomplete)} language(s)`
+    : `Every language is complete across ${formatCount(result.checkedTranslationsCount)} id(s)`;
+}
+
 export interface ITranslationsVerifyResultProps extends BaseComponentProps {
   result: TranslationVerifyResult;
 }
@@ -130,21 +147,4 @@ export function TranslationsVerifyResult({
       />
     </CommandResult>
   );
-}
-
-/**
- * The run's verdict in one line, what the game would refuse or mangle before what it would show as an id.
- *
- * @param result - What the run found.
- * @param incomplete - How many languages miss at least one translation.
- * @returns The headline.
- */
-function describeHeadline(result: TranslationVerifyResult, incomplete: number): string {
-  if (result.problems.length) {
-    return `${formatCount(result.problems.length)} problem(s) the game would refuse or show wrong`;
-  }
-
-  return result.missingTranslationsCount
-    ? `${formatCount(result.missingTranslationsCount)} translation(s) missing across ${formatCount(incomplete)} language(s)`
-    : `Every language is complete across ${formatCount(result.checkedTranslationsCount)} id(s)`;
 }

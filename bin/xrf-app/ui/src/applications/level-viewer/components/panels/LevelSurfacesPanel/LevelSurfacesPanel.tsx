@@ -89,29 +89,6 @@ export function LevelSurfacesPanel({
 
   const onSelect = useCallback((item: ITreeNode<TLevelSurfaceTreeRow>) => select(item.id), [select]);
 
-  // Another level's table is numbered afresh, so what was chosen names some other entry now.
-  useEffect(() => select(null), [named, select]);
-
-  useEffect(() => {
-    const summary: Maybe<ILevelSurfaceSummary> =
-      picked?.kind === ELevelPick.SURFACE ? byId.get(toLevelSurfaceEntryId(picked.shaderId)) : undefined;
-
-    if (summary) {
-      setFilter("");
-      expandAll([toLevelSurfaceShaderId(summary.shader)]);
-      select(toLevelSurfaceEntryId(summary.shaderId));
-    } else {
-      select(null);
-    }
-  }, [byId, expandAll, picked, select]);
-
-  // A filter that matched inside a shader opens it, because a closed shader answering a query looks like no answer.
-  useEffect(() => {
-    if (filter.trim()) {
-      expandAll(listLevelSurfaceGroupIds(items));
-    }
-  }, [expandAll, filter, items]);
-
   const renderLabel = useCallback((item: ITreeNode<TLevelSurfaceTreeRow>): ReactNode => {
     const row: Maybe<TLevelSurfaceTreeRow> = item.payload;
 
@@ -135,6 +112,29 @@ export function LevelSurfacesPanel({
       item.label
     );
   }, []);
+
+  // Another level's table is numbered afresh, so what was chosen names some other entry now.
+  useEffect(() => select(null), [named, select]);
+
+  useEffect(() => {
+    const summary: Maybe<ILevelSurfaceSummary> =
+      picked?.kind === ELevelPick.SURFACE ? byId.get(toLevelSurfaceEntryId(picked.shaderId)) : undefined;
+
+    if (summary) {
+      setFilter("");
+      expandAll([toLevelSurfaceShaderId(summary.shader)]);
+      select(toLevelSurfaceEntryId(summary.shaderId));
+    } else {
+      select(null);
+    }
+  }, [byId, expandAll, picked, select]);
+
+  // A filter that matched inside a shader opens it, because a closed shader answering a query looks like no answer.
+  useEffect(() => {
+    if (filter.trim()) {
+      expandAll(listLevelSurfaceGroupIds(items));
+    }
+  }, [expandAll, filter, items]);
 
   if (!loadService.level.value) {
     return (

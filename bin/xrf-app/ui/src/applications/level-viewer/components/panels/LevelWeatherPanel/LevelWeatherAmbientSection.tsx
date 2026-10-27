@@ -6,14 +6,6 @@ import { ReactElement } from "react";
 import { EditorPanelProperty, EditorPanelSection } from "@/core/shell/editor/EditorPanel";
 import { BaseComponentProps } from "@/lib/dom/element-types";
 
-interface ILevelWeatherAmbientSectionProps extends BaseComponentProps {
-  /** Where the ambient effects near the camera stand, null while no weather plays or the particles are unread. */
-  ambient: Nullable<WorldAmbientReport>;
-  /** Whether the view plays them at all. */
-  isPlayed: boolean;
-  onPlay: () => void;
-}
-
 /**
  * @param milliseconds - Real milliseconds.
  * @returns Them rounded up to whole seconds.
@@ -33,6 +25,14 @@ function toNext(wait: number, isPlaying: boolean): string {
   }
 
   return isPlaying ? "Once this one is gone" : "Now";
+}
+
+interface ILevelWeatherAmbientSectionProps extends BaseComponentProps {
+  /** Where the ambient effects near the camera stand, null while no weather plays or the particles are unread. */
+  ambient: Nullable<WorldAmbientReport>;
+  /** Whether the view plays them at all. */
+  isPlayed: boolean;
+  onPlay: () => void;
 }
 
 /**

@@ -15,6 +15,10 @@ interface ITextureBadgeFiltersProps extends BaseComponentProps {
  * Narrows the tree to the kinds of texture worth looking at.
  */
 export function TextureBadgeFilters({ counts, selected, onChange }: ITextureBadgeFiltersProps): ReactElement | null {
+  const shown: Array<ETextureBadge> = Object.values(ETextureBadge).filter(
+    (badge: ETextureBadge) => (counts.get(badge) ?? 0) > 0 || selected.has(badge)
+  );
+
   const onToggle = useCallback(
     (badge: ETextureBadge) => {
       const next: Set<ETextureBadge> = new Set(selected);
@@ -26,10 +30,6 @@ export function TextureBadgeFilters({ counts, selected, onChange }: ITextureBadg
       onChange(next);
     },
     [onChange, selected]
-  );
-
-  const shown: Array<ETextureBadge> = Object.values(ETextureBadge).filter(
-    (badge: ETextureBadge) => (counts.get(badge) ?? 0) > 0 || selected.has(badge)
   );
 
   if (!shown.length) {
