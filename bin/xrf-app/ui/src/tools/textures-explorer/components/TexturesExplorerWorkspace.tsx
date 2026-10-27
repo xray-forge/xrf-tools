@@ -7,7 +7,7 @@ import { Alert } from "@xrf/ui/material/alert";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { describeRoots } from "@/core/assets/lib";
-import { IEditorPanel } from "@/core/shell/editor-shell";
+import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import { TexturePreviewLayout } from "@/core/textures/components/workspace/TexturePreviewLayout";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { selectUnreadTexturesLtx } from "@/tools/textures-explorer/lib/texture-catalog";
@@ -37,7 +37,7 @@ export function TexturesExplorerWorkspace({
   const texturesLtx: Nullable<string> = selectUnreadTexturesLtx(catalog);
   const isLtxNoticeShown: boolean = Boolean(texturesLtx) && !isLtxNoticeDismissed;
 
-  const panels: Array<IEditorPanel> = useMemo(() => createTexturesExplorerPanels(isBrowsing), [isBrowsing]);
+  const panels: Array<IShellPanel> = useMemo(() => createTexturesExplorerPanels(isBrowsing), [isBrowsing]);
 
   // What the toolbar says while no one texture is chosen: the root set being browsed, which is the session itself.
   const sessionLocation: Nullable<IEditorLocation> = catalog ? { path: describeRoots(catalog.roots) } : null;

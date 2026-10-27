@@ -4,7 +4,7 @@ import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
 import { EXrayAssetContainer } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 
-import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
+import { IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
 import { IEquipmentLayout } from "@/core/sprite-equipment/lib";
 
 /** What kind of thing is wrong, which is also what can be done about it. */

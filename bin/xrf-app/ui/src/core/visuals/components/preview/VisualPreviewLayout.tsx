@@ -10,7 +10,7 @@ import { ReactElement, ReactNode, useMemo } from "react";
 
 import { isAlphaRenderSurfaceDraw } from "@/core/render/lib/surface/render-surface-draw";
 import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
-import { IEditorPanel } from "@/core/shell/editor-shell";
+import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import { VisualPreviewEmpty, VisualPreviewToolbar } from "@/core/visuals/components/preview";
 import { VisualPreviewViewport } from "@/core/visuals/components/preview/VisualPreviewViewport";
 import { IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
@@ -25,7 +25,7 @@ interface IVisualPreviewLayoutProps extends BaseComponentProps {
   /** Published as a left panel when given. Opening a single visual has nothing to browse. */
   tree?: ReactNode;
   /** Data panels the owning tool contributes to the right stripe. */
-  panels?: Array<IEditorPanel>;
+  panels?: Array<IShellPanel>;
   /** Drawn under the viewport, at whatever height it asks for. */
   footer?: ReactNode;
   /** Whether a model is on its way, reported over the viewport rather than by replacing the screen. */
@@ -83,7 +83,7 @@ export function VisualPreviewLayout({
   }, [isLoading, model, triangleCount]);
 
   useShellPanels(() => {
-    const stripe: Array<IEditorPanel> = panels ? [...panels] : [];
+    const stripe: Array<IShellPanel> = panels ? [...panels] : [];
 
     return tree
       ? [

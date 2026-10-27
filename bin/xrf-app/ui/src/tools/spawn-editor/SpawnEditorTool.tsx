@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ToolLoader } from "@/core/shell/loading/ToolLoader";
+import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
 import { SpawnFileService } from "@/tools/spawn-editor/services/spawn-file.service";
 
 import { SpawnEditor } from "./components/editor/SpawnEditor";

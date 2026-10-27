@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ToolLoader } from "@/core/shell/loading/ToolLoader";
+import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
 import { DialogsService } from "@/tools/dialogs-editor/services/dialogs";
 
 import { DialogsEditor } from "./components/DialogsEditor";

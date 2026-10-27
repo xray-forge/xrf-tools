@@ -10,8 +10,8 @@ import { createContainerPlugins, ROOT_BINDINGS } from "@/core/container";
 import { CurrentToolProvider } from "@/core/routing/current-tool.context";
 import { IToolDescriptor } from "@/core/routing/tool";
 import { IShellContributed, useShellContributions } from "@/core/shell/contributions";
-import { EditorLeaveDialog } from "@/core/shell/editor-lifecycle";
-import { IEditorPanel, selectPanelsOnSide } from "@/core/shell/editor-shell";
+import { ToolLeaveDialog } from "@/core/shell/lifecycle";
+import { IShellPanel, selectPanelsOnSide } from "@/core/shell/panels/shell-panel";
 import { TOOL_CATALOG } from "@/ToolCatalog";
 
 export interface IRenderOptions {
@@ -32,11 +32,11 @@ export interface IRenderOptions {
  * `ApplicationPanelSlot`.
  */
 function LeftPanelsOutlet(): ReactElement {
-  const { shell, tool }: IShellContributed<IEditorPanel> = useShellContributions("panels");
+  const { shell, tool }: IShellContributed<IShellPanel> = useShellContributions("panels");
 
   return (
     <>
-      {selectPanelsOnSide([...tool, ...shell], "left").map((panel: IEditorPanel) => (
+      {selectPanelsOnSide([...tool, ...shell], "left").map((panel: IShellPanel) => (
         <Fragment key={panel.id}>{panel.render()}</Fragment>
       ))}
     </>
@@ -92,7 +92,7 @@ export function renderWithProviders(
 
             {hasShell ? null : <LeftPanelsOutlet />}
 
-            {hasShell ? null : <EditorLeaveDialog />}
+            {hasShell ? null : <ToolLeaveDialog />}
           </TestContainer>
         </TestCurrentTool>
       </ApplicationProvider>

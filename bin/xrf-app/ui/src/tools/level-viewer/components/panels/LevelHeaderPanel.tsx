@@ -7,7 +7,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { LevelLoadService } from "@/core/level/services/level-load";
-import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 
 /**
  * What the open level is built out of, which is everything the open read without touching its geometry.

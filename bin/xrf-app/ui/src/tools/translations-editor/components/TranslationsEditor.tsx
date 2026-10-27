@@ -11,9 +11,9 @@ import { ReportProblemIcon } from "@xrf/ui/icons/report-problem";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { describeRoots } from "@/core/assets/lib";
+import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
-import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { EditorSaver, useEditorLifecycle } from "@/core/shell/editor-lifecycle";
+import { ToolSaver, useToolLifecycle } from "@/core/shell/lifecycle";
 import { TranslationsService } from "@/tools/translations-editor/services/translations.service";
 
 import { TranslationsEditorActions } from "./editor/TranslationsEditorActions";
@@ -37,7 +37,7 @@ export function TranslationsEditor(): ReactElement {
     await translationsService.closeProject();
   }, [log, translationsService]);
 
-  const onSave: EditorSaver = useCallback(() => flowResult(translationsService.saveAll()), [translationsService]);
+  const onSave: ToolSaver = useCallback(() => flowResult(translationsService.saveAll()), [translationsService]);
 
   useShellPanels(
     () => [
@@ -62,7 +62,7 @@ export function TranslationsEditor(): ReactElement {
     ...(findings.length ? [`${formatCount(findings.length)} problems`] : []),
   ]);
 
-  useEditorLifecycle({
+  useToolLifecycle({
     isBusy: translationsService.project.isLoading || translationsService.savingFile !== null,
     dirtyCount,
     save: project?.isEditable ? onSave : null,

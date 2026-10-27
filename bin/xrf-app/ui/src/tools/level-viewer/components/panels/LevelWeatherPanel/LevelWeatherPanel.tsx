@@ -11,7 +11,7 @@ import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
-import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { LevelWeatherAmbientSection } from "@/tools/level-viewer/components/panels/LevelWeatherPanel/LevelWeatherAmbientSection";
 import { LevelWeatherClockSection } from "@/tools/level-viewer/components/panels/LevelWeatherPanel/LevelWeatherClockSection";
 import { LevelWeatherFindingsSection } from "@/tools/level-viewer/components/panels/LevelWeatherPanel/LevelWeatherFindingsSection";

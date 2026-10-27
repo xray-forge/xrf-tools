@@ -1,1 +1,1 @@
-export * from "./ApplicationShell";
+export * from "./frame/ApplicationShell";

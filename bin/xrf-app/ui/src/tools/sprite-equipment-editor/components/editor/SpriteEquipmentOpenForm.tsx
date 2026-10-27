@@ -14,7 +14,7 @@ import { createRoots } from "@/core/assets/lib";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { DDS_FILE_FILTERS, LTX_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { PickerForm } from "@/core/shell/chrome/PickerForm";
 import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { SpriteEquipmentEditorService } from "@/tools/sprite-equipment-editor/services/sprite-equipment-editor";
 

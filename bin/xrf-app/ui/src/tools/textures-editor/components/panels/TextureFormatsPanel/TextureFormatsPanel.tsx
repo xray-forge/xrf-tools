@@ -12,7 +12,7 @@ import { Stack } from "@xrf/ui/material/stack";
 import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback } from "react";
 
-import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { TextureEncodingService } from "@/tools/textures-editor/services/texture-encoding";
 

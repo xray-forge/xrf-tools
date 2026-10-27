@@ -3,7 +3,7 @@ import { InfoIcon } from "@xrf/ui/icons/info";
 import { LayersIcon } from "@xrf/ui/icons/layers";
 import { TuneIcon } from "@xrf/ui/icons/tune";
 
-import { IEditorPanel } from "@/core/shell/editor-shell";
+import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import { TextureChannelsPanel } from "@/core/textures/components/panels/TextureChannelsPanel";
 import { TextureFilesPanel } from "@/core/textures/components/panels/TextureFilesPanel";
 import { TextureMaterialPanel } from "@/core/textures/components/panels/TextureMaterialPanel";
@@ -15,7 +15,7 @@ import { TexturesMenu } from "@/tools/textures-explorer/components/tree/Textures
  * @param isBrowsing - Whether a root set is open.
  * @returns The panels to register.
  */
-export function createTexturesExplorerPanels(isBrowsing: boolean): Array<IEditorPanel> {
+export function createTexturesExplorerPanels(isBrowsing: boolean): Array<IShellPanel> {
   return [
     ...(isBrowsing
       ? [

@@ -10,7 +10,7 @@ import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { LevelRendererAppliedSection } from "@/tools/level-viewer/components/panels/LevelRendererPanel/LevelRendererAppliedSection";
 import { LevelRendererFrameSection } from "@/tools/level-viewer/components/panels/LevelRendererPanel/LevelRendererFrameSection";
 import { LevelRendererGraphSection } from "@/tools/level-viewer/components/panels/LevelRendererPanel/LevelRendererGraphSection";

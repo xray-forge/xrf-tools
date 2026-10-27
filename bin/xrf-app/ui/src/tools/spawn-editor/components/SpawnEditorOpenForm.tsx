@@ -6,7 +6,7 @@ import { ReactElement, useCallback } from "react";
 
 import { SPAWN_FILE_FILTERS } from "@/core/path/file-filters";
 import { EToolId } from "@/core/routing/tool";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { PickerForm } from "@/core/shell/chrome/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { SpawnFileService } from "@/tools/spawn-editor/services/spawn-file.service";
 

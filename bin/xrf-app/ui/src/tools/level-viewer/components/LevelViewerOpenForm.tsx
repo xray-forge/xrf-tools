@@ -11,7 +11,7 @@ import { IEngineChoice, useEngineChoice } from "@/core/engine-target/lib/use-eng
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { EToolId } from "@/core/routing/tool";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { PickerForm } from "@/core/shell/chrome/PickerForm";
 import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
 import { LevelViewerListService } from "@/tools/level-viewer/services/level-viewer-list";
 

@@ -5,7 +5,7 @@ import { InfoIcon } from "@xrf/ui/icons/info";
 import { LayersIcon } from "@xrf/ui/icons/layers";
 import { TuneIcon } from "@xrf/ui/icons/tune";
 
-import { IEditorPanel } from "@/core/shell/editor-shell";
+import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import { TextureChannelsPanel } from "@/core/textures/components/panels/TextureChannelsPanel";
 import { TextureFilesPanel } from "@/core/textures/components/panels/TextureFilesPanel";
 import { TextureMaterialPanel } from "@/core/textures/components/panels/TextureMaterialPanel";
@@ -18,7 +18,7 @@ import { TextureFormatsPanel } from "@/tools/textures-editor/components/panels/T
  *
  * @returns The panels to register.
  */
-export const TEXTURES_EDITOR_PANELS: Array<IEditorPanel> = [
+export const TEXTURES_EDITOR_PANELS: Array<IShellPanel> = [
   {
     icon: <EditNoteIcon />,
     id: "descriptor",

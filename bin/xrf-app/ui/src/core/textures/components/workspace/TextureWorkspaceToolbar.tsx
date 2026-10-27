@@ -8,7 +8,7 @@ import { ReactElement, useCallback } from "react";
 
 import { RenderLightingAction } from "@/core/render/components/lighting/RenderLightingAction";
 import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
-import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { DEFAULT_TEXTURE_LIGHTING } from "@/core/textures/lib/texture-lighting";
 import { ETexturePreviewMode, ITexturePreviewOptions } from "@/core/textures/lib/texture-preview";
 

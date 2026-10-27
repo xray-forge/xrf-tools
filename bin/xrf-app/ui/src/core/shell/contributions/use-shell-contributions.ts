@@ -4,15 +4,15 @@ import { SHELL_SESSION_TOOL } from "@xrf/ipc/session";
 import { DependencyList, useEffect, useId, useMemo } from "react";
 
 import { useCurrentTool } from "@/core/routing/current-tool.context";
-import { IEditorPanel } from "@/core/shell/editor-shell/editor-panel";
-import { TEditorStatusSegment } from "@/core/shell/editor-shell/editor-status-segment";
 import { IMenuContribution } from "@/core/shell/menu/lib";
+import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import {
   IShellSlotValues,
   ShellContributionsService,
   TShellSlot,
   TShellSlots,
 } from "@/core/shell/services/shell-contributions";
+import { TShellStatusSegment } from "@/core/shell/status-bar/shell-status-segment";
 
 import { ShellContributions, TShellContributionTool } from "./shell-contributions";
 
@@ -83,12 +83,12 @@ export function useShellContribution<S extends TShellSlot>(
  * @param createPanels - Creates the current render closures.
  * @param dependencies - Values captured by the factory, checked at call sites by ESLint.
  */
-export function useShellPanels(createPanels: () => Array<IEditorPanel>, dependencies: DependencyList): void {
+export function useShellPanels(createPanels: () => Array<IShellPanel>, dependencies: DependencyList): void {
   const tool: TShellContributionTool = useShellContributionTool();
 
   // Call sites are checked as dependency-aware hooks by ESLint.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const panels: Array<IEditorPanel> = useMemo(createPanels, dependencies);
+  const panels: Array<IShellPanel> = useMemo(createPanels, dependencies);
 
   useShellContribution("panels", tool, panels);
 }
@@ -99,7 +99,7 @@ export function useShellPanels(createPanels: () => Array<IEditorPanel>, dependen
  *
  * @param segments - The current segments.
  */
-export function useShellStatus(segments: ReadonlyArray<TEditorStatusSegment>): void {
+export function useShellStatus(segments: ReadonlyArray<TShellStatusSegment>): void {
   const tool: TShellContributionTool = useShellContributionTool();
 
   useShellContribution("status", tool, segments);

@@ -9,7 +9,7 @@ import { PRODUCT_NAME } from "@/core/configs";
 import { IToolDescriptor, IToolGroup } from "@/core/routing/tool";
 import { useSearchFocusTarget } from "@/core/search/lib";
 import { SettingsService } from "@/core/settings/services/settings";
-import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
+import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 
 import { IToolLauncherCatalogSearch, ToolLauncherCatalog } from "./components/ToolLauncherCatalog";
 import { ToolLauncherHeader } from "./components/ToolLauncherHeader";

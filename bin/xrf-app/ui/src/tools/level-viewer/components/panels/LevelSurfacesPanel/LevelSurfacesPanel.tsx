@@ -24,7 +24,7 @@ import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { describeSurfaceOutcome } from "@/core/materials/lib";
-import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
+import { EditorSearchHeader } from "@/core/shell/chrome/EditorSearchHeader";
 import { noop } from "@/lib/callbacks/noop";
 import { describeLevelResidentWait } from "@/tools/level-viewer/lib/load/level-resident-wait";
 import {

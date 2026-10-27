@@ -6,7 +6,7 @@ import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PointerEvent, ReactElement, RefCallback, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { ETextureBumpPlane, toTextureBumpPlane } from "@/core/textures/lib/texture-bump-plane";
 import { ITextureBumpTexels, ITextureSurfaceFiles } from "@/core/textures/lib/texture-surface";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";

@@ -5,8 +5,8 @@ import { Route, Routes, useLocation } from "react-router-dom";
 import { ToolLauncher } from "@/core/launcher";
 import { CurrentToolProvider } from "@/core/routing/current-tool.context";
 import { IToolDescriptor } from "@/core/routing/tool";
-import { ApplicationShell } from "@/core/shell/ApplicationShell";
 import { NavigationError } from "@/core/shell/error/NavigationError";
+import { ApplicationShell } from "@/core/shell/frame/ApplicationShell";
 
 import { TOOL_CATALOG } from "./ToolCatalog";
 

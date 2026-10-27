@@ -7,7 +7,7 @@ import { ReactElement, useCallback } from "react";
 import { ConfigsDialectFormRow } from "@/core/ltx/components/ConfigsDialectFormRow";
 import { DIALECT_IDS, EConfigsDialect } from "@/core/ltx/lib/dialect";
 import { EToolId } from "@/core/routing/tool";
-import { PickerForm } from "@/core/shell/editor/PickerForm";
+import { PickerForm } from "@/core/shell/chrome/PickerForm";
 import { IPathField, PathFormRow, usePathField, useRememberedValue } from "@/core/ui/form";
 import { ConfigsProjectService } from "@/tools/configs-explorer/services/configs-project";
 

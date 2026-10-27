@@ -4,7 +4,7 @@ import { WorldSectorSkip } from "@xrf/ipc/types/xrf-world";
 
 import { ILevelSpawnReport } from "@/core/level/lib/spawn/level-spawn-report";
 import { ILevelTextureProblem } from "@/core/level/lib/texture/level-texture-report";
-import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
+import { IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
 
 import { listDrawableProblems } from "./level-drawable-problems";
 import { listSpawnProblems } from "./level-spawn-problems";

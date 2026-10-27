@@ -25,8 +25,8 @@ import {
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { isLooseContainer } from "@/core/assets/lib/container";
-import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
-import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
+import { EditorSearchMenu } from "@/core/shell/chrome/EditorSearchMenu";
+import { toPathSearchRow } from "@/core/shell/chrome/EditorSearchMenu/path-search-row";
 import { VisualsService } from "@/tools/visuals-explorer/services/visuals";
 import { VisualsBrowseService } from "@/tools/visuals-explorer/services/visuals-browse";
 

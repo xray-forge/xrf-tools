@@ -5,7 +5,7 @@ import { SectorSkip } from "@xrf/ipc/types/xrf-visual";
 import { WorldSectorSkip } from "@xrf/ipc/types/xrf-world";
 
 import { EMPTY_LEVEL_SPAWN_REPORT } from "@/core/level/lib/spawn/level-spawn-report";
-import { IEditorProblem } from "@/core/shell/editor/EditorProblemsPanel";
+import { IEditorProblem } from "@/core/shell/chrome/EditorProblemsPanel";
 import { mockSurfaceDescriptor } from "@/core/visuals/fixtures/visual.mocks";
 import { ELevelProblemRule } from "@/tools/level-viewer/lib/problems/level-problem-rule";
 import { ILevelProblemSources, listLevelProblems } from "@/tools/level-viewer/lib/problems/level-problems";

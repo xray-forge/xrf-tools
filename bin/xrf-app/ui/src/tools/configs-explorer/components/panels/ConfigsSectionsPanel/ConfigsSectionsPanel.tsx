@@ -6,7 +6,7 @@ import { EmptyListing } from "@xrf/ui/layout/empty-listing";
 import { ITreeNode, VirtualizedTree } from "@xrf/ui/tree";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
-import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
+import { EditorSearchHeader } from "@/core/shell/chrome/EditorSearchHeader";
 import { noop } from "@/lib/callbacks/noop";
 import { ConfigsDocumentService, EConfigsDocumentMode } from "@/tools/configs-explorer/services/configs-document";
 import { ConfigsResolvedService } from "@/tools/configs-explorer/services/configs-resolved";

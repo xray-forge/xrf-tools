@@ -18,8 +18,8 @@ import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { IArchiveEntry, IArchiveTreeItem, parseTree, toArchiveSelectionItemId } from "@/core/archive/lib";
 import { isLooseContainer } from "@/core/assets/lib";
-import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
-import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
+import { EditorSearchMenu } from "@/core/shell/chrome/EditorSearchMenu";
+import { toPathSearchRow } from "@/core/shell/chrome/EditorSearchMenu/path-search-row";
 import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";
 import { ArchivesService } from "@/tools/archives-explorer/services/archives";
 

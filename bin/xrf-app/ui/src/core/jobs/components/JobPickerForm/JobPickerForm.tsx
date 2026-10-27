@@ -4,7 +4,7 @@ import { ReactElement, ReactNode } from "react";
 import { JobProgressView } from "@/core/jobs/components/JobProgressView";
 import { IJobState } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
-import { IPickerFormProps, PickerForm } from "@/core/shell/editor/PickerForm";
+import { IPickerFormProps, PickerForm } from "@/core/shell/chrome/PickerForm";
 
 export interface IJobPickerFormProps<T> extends Omit<IPickerFormProps, "error" | "status" | "result"> {
   /** The run the form starts, whose progress, failure and answer it shows. */

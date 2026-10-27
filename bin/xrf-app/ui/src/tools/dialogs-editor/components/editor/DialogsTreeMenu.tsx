@@ -18,7 +18,7 @@ import {
 } from "@xrf/ui/tree";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
+import { EditorSearchMenu } from "@/core/shell/chrome/EditorSearchMenu";
 import { IDialogTreeEntry, IDialogTreeLeaf } from "@/tools/dialogs-editor/lib/dialog-tree";
 import { DialogViewService } from "@/tools/dialogs-editor/services/dialog-view";
 import { DialogsService } from "@/tools/dialogs-editor/services/dialogs";

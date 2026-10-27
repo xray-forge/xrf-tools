@@ -8,7 +8,7 @@ import { TitleIcon } from "@xrf/ui/icons/title";
 import { TuneIcon } from "@xrf/ui/icons/tune";
 import { ReactElement } from "react";
 
-import { EditorPanelHeader } from "@/core/shell/editor/EditorPanelHeader";
+import { EditorPanelHeader } from "@/core/shell/chrome/EditorPanelHeader";
 import { ArchivesPatcherService, EPatcherSection } from "@/tools/archives-patcher/services/archives-patcher.service";
 
 /** Named once, because the panel and its own heading must not drift apart. */

@@ -7,7 +7,7 @@ import { CircleIcon } from "@xrf/ui/icons/circle";
 import { EmptyListing } from "@xrf/ui/layout/empty-listing";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
+import { EditorSearchMenu } from "@/core/shell/chrome/EditorSearchMenu";
 
 /** One file, with enough on it to rank a search and label a row. */
 interface IFileEntry {

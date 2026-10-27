@@ -10,9 +10,9 @@ import { RefreshIcon } from "@xrf/ui/icons/refresh";
 import { Alert } from "@xrf/ui/material/alert";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
+import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
-import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { useEditorBusy } from "@/core/shell/editor-lifecycle";
+import { useToolBusy } from "@/core/shell/lifecycle";
 import { ExportsService } from "@/tools/exports-explorer/services/exports.service";
 
 import { groupExports, IExportGroup } from "./exports/exports-groups";
@@ -67,7 +67,7 @@ export function ExportsEditor(): ReactElement {
     [declarations, groups, onSelect, selectedName]
   );
 
-  useEditorBusy(isBusy);
+  useToolBusy(isBusy);
   useShellStatus([
     `${formatCount(declarations.length)} ${declarations.length === 1 ? "export" : "exports"}`,
     `${formatCount(groups.length)} ${groups.length === 1 ? "group" : "groups"}`,

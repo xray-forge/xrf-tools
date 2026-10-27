@@ -8,7 +8,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, ReactNode, useEffect } from "react";
 
 import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
-import { IEditorPanel } from "@/core/shell/editor-shell";
+import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import { TexturePreview } from "@/core/textures/components/preview/TexturePreview";
 import { describeTextureCaption, describeTextureName } from "@/core/textures/lib/texture-caption";
 import { ITexturePreviewComparison } from "@/core/textures/lib/texture-preview";
@@ -20,7 +20,7 @@ import { TextureWorkspaceToolbar } from "./TextureWorkspaceToolbar";
 
 interface ITexturePreviewLayoutProps extends BaseComponentProps {
   /** The panels this tool offers, already built. */
-  panels: Array<IEditorPanel>;
+  panels: Array<IShellPanel>;
   /** What the status bar says about the session, which only the tool knows. */
   status: Array<string>;
   /** Shown above the viewport, for a notice that belongs to the session rather than to the texture. */

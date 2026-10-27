@@ -2,7 +2,7 @@ import { TranslationFinding } from "@xrf/ipc/types/xrf-translation";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
-import { EditorProblemsPanel } from "@/core/shell/editor/EditorProblemsPanel";
+import { EditorProblemsPanel } from "@/core/shell/chrome/EditorProblemsPanel";
 
 export interface ITranslationsProblemsPanelProps extends BaseComponentProps {
   findings: ReadonlyArray<TranslationFinding>;

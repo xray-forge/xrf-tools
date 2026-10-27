@@ -17,8 +17,8 @@ import {
 } from "@xrf/ui/tree";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
-import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
+import { EditorSearchMenu } from "@/core/shell/chrome/EditorSearchMenu";
+import { toPathSearchRow } from "@/core/shell/chrome/EditorSearchMenu/path-search-row";
 
 import { CONFIG_TREE_ICONS, decorateConfigIcon } from "./ConfigsMenu.utils";
 

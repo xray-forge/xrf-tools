@@ -17,7 +17,7 @@ import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
-import { EditorSearchHeader } from "@/core/shell/editor/EditorSearchHeader";
+import { EditorSearchHeader } from "@/core/shell/chrome/EditorSearchHeader";
 import { LevelSpawnDetails } from "@/tools/level-viewer/components/panels/LevelSpawnPanel/LevelSpawnDetails";
 import { LevelSpawnVisibilityToggle } from "@/tools/level-viewer/components/panels/LevelSpawnPanel/LevelSpawnVisibilityToggle";
 import { describeLevelSpawnRelease } from "@/tools/level-viewer/lib/spawn/level-spawn-release";

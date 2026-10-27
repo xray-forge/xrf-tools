@@ -11,9 +11,9 @@ import { format } from "date-fns";
 import { ReactElement, useCallback } from "react";
 
 import { toAssetLocation } from "@/core/assets/lib";
+import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { useShellMenus, useShellPanels, useShellStatus } from "@/core/shell/contributions";
-import { EditorToolbar } from "@/core/shell/editor/EditorToolbar";
-import { useEditorBusy } from "@/core/shell/editor-lifecycle";
+import { useToolBusy } from "@/core/shell/lifecycle";
 import { IMenuContribution } from "@/core/shell/menu/lib";
 import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/tools/sprite-equipment-editor/commands";
 import { SPRITE_EQUIPMENT_EDITOR_PANELS } from "@/tools/sprite-equipment-editor/components/panels/sprite-equipment-editor-panels";
@@ -78,7 +78,7 @@ export function EquipmentSpriteEditor({
       : []
   );
 
-  useEditorBusy(isLoading);
+  useToolBusy(isLoading);
 
   return (
     <EditorLayout

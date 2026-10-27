@@ -20,8 +20,8 @@ import {
 } from "@xrf/ui/tree";
 import { ReactElement, ReactNode, useCallback, useMemo, useState } from "react";
 
-import { EditorSearchMenu } from "@/core/shell/editor/EditorSearchMenu";
-import { toPathSearchRow } from "@/core/shell/editor/EditorSearchMenu/path-search-row";
+import { EditorSearchMenu } from "@/core/shell/chrome/EditorSearchMenu";
+import { toPathSearchRow } from "@/core/shell/chrome/EditorSearchMenu/path-search-row";
 import { getTextureSourceKey } from "@/core/textures/lib/texture-identity";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { TextureBadgeFilters } from "@/tools/textures-explorer/components/tree/TextureBadgeFilters";

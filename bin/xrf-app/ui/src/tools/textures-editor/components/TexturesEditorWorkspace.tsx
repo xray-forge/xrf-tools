@@ -4,8 +4,8 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { EditorSaver, useEditorLifecycle } from "@/core/shell/editor-lifecycle";
-import { IEditorPanel } from "@/core/shell/editor-shell";
+import { ToolSaver, useToolLifecycle } from "@/core/shell/lifecycle";
+import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import { TexturePreviewLayout } from "@/core/textures/components/workspace/TexturePreviewLayout";
 import { ITexturePreviewComparison } from "@/core/textures/lib/texture-preview";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
@@ -36,7 +36,7 @@ export function TexturesEditorWorkspace({
   const isBusy: boolean =
     editorService.save.isRunning || encodingService.compare.isRunning || bumpService.generate.isRunning;
 
-  const panels: Array<IEditorPanel> = useMemo(() => TEXTURES_EDITOR_PANELS, []);
+  const panels: Array<IShellPanel> = useMemo(() => TEXTURES_EDITOR_PANELS, []);
 
   // Only while a candidate is held. Weighing alone puts numbers in a panel; choosing one is what says somebody wants
   // to look at what it would do to the picture.
@@ -44,7 +44,7 @@ export function TexturesEditorWorkspace({
     ? { label: encodingService.chosenReport.label, preview: encodingService.preview }
     : null;
 
-  const onSave: EditorSaver = useCallback(async () => {
+  const onSave: ToolSaver = useCallback(async () => {
     await editorService.commit();
 
     return !editorService.isDirty;
@@ -54,7 +54,7 @@ export function TexturesEditorWorkspace({
 
   useEffect(() => editorService.bind(description), [editorService, description]);
 
-  useEditorLifecycle({
+  useToolLifecycle({
     isBusy,
     dirtyCount: editorService.isDirty ? 1 : 0,
     save: editorService.canSave ? onSave : null,

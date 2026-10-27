@@ -9,7 +9,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback } from "react";
 
 import { getArchiveVolumeOf, IArchiveEntry } from "@/core/archive/lib";
-import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";
 import { ArchivesService } from "@/tools/archives-explorer/services/archives";
 

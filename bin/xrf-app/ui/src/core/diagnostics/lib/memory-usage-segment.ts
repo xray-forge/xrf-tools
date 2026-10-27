@@ -9,8 +9,8 @@ import {
 import { Nullable } from "@xrf/types";
 
 import { IMemoryFigures, sumWebviewMemory, toMemoryFigures } from "@/core/diagnostics/lib/memory-figures";
-import { IEditorStatusDetail } from "@/core/shell/editor-shell/editor-status-detail";
-import { IEditorStatusSegment } from "@/core/shell/editor-shell/editor-status-segment";
+import { IShellStatusDetail } from "@/core/shell/status-bar/shell-status-detail";
+import { IShellStatusSegment } from "@/core/shell/status-bar/shell-status-segment";
 
 /** Names the memory segment across readings, so its hover stays open while the figures change. */
 const MEMORY_USAGE_SEGMENT_ID: string = "memory-usage";
@@ -46,8 +46,8 @@ interface IWebviewProcessGroup {
  */
 export function describeMemoryUsage(
   usage: MemoryUsage,
-  details: ReadonlyArray<IEditorStatusDetail>
-): IEditorStatusSegment {
+  details: ReadonlyArray<IShellStatusDetail>
+): IShellStatusSegment {
   const backend: IMemoryFigures = toMemoryFigures(usage.application);
   const webview: Nullable<IMemoryFigures> = usage.webview.length ? sumWebviewMemory(usage.webview) : null;
   const videoMemory: Nullable<number> = usage.gpu?.used ?? null;
@@ -64,7 +64,7 @@ export function describeMemoryUsage(
     details: [
       { label: "Backend", value: formatBytes(backend.inUse) },
       { label: "Webview", value: webview ? formatBytes(webview.inUse) : ABSENT_VALUE },
-      ...groupWebviewProcesses(usage.webview).map((group: IWebviewProcessGroup): IEditorStatusDetail => ({
+      ...groupWebviewProcesses(usage.webview).map((group: IWebviewProcessGroup): IShellStatusDetail => ({
         label: describeWebviewProcessGroup(group),
         value: formatBytes(group.memory.inUse),
         isNested: true,
@@ -77,12 +77,12 @@ export function describeMemoryUsage(
 }
 
 /** What the process holds in video memory, then what the renderer allocated there and the budget, each where read. */
-function describeVideoMemory(gpu: Nullable<GpuMemoryUsage>): Array<IEditorStatusDetail> {
+function describeVideoMemory(gpu: Nullable<GpuMemoryUsage>): Array<IShellStatusDetail> {
   if (!gpu) {
     return [{ label: "Video memory", value: ABSENT_VALUE }];
   }
 
-  const rows: Array<IEditorStatusDetail> = [
+  const rows: Array<IShellStatusDetail> = [
     { label: "Video memory", value: gpu.used === null ? ABSENT_VALUE : formatBytes(gpu.used) },
   ];
 

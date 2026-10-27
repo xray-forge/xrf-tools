@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
-import { ToolLoader } from "@/core/shell/loading/ToolLoader";
+import { ToolLoader } from "@/core/shell/chrome/ToolLoader";
 import { ExportsService } from "@/tools/exports-explorer/services/exports.service";
 
 import { ExportsOpenForm } from "./components/ExportsOpenForm";

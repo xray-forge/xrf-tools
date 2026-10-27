@@ -13,7 +13,7 @@ import { Button } from "@xrf/ui/material/button";
 import { Stack } from "@xrf/ui/material/stack";
 import { ReactElement, useCallback } from "react";
 
-import { EditorPanel } from "@/core/shell/editor/EditorPanel";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
 import { hasTextureFlag, withTextureFlag } from "@/tools/textures-editor/lib/texture-descriptor-flags";
 import { withTextureType } from "@/tools/textures-editor/lib/texture-type-change";

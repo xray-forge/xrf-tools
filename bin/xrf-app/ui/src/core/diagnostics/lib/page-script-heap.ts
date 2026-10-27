@@ -1,7 +1,7 @@
 import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 
-import { IEditorStatusDetail } from "@/core/shell/editor-shell/editor-status-detail";
+import { IShellStatusDetail } from "@/core/shell/status-bar/shell-status-detail";
 
 /** What the page's JavaScript heap holds, as a Chromium-based webview reports it. */
 export interface IPageScriptHeap {
@@ -39,7 +39,7 @@ export function readPageScriptHeap(): Nullable<IPageScriptHeap> {
  *
  * @returns The row, or `null` on an engine that publishes no heap.
  */
-export function readPageScriptHeapDetail(): Nullable<IEditorStatusDetail> {
+export function readPageScriptHeapDetail(): Nullable<IShellStatusDetail> {
   const heap: Nullable<IPageScriptHeap> = readPageScriptHeap();
 
   return heap ? { label: "Script heap", value: `${formatBytes(heap.used)} / ${formatBytes(heap.limit)}` } : null;
