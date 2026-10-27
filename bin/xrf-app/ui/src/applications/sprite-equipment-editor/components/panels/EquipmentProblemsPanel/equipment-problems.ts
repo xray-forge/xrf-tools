@@ -1,3 +1,4 @@
+import { EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { EquipmentSpriteMetadata } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 import { EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
 import { EXrayAssetContainer } from "@xrf/ipc/types/xrf-vfs";
@@ -36,7 +37,7 @@ export function toEquipmentProblems(
   if (metadata.configError) {
     problems.push({
       rule: EEquipmentProblemRule.CONFIG,
-      subject: metadata.open.config?.kind === "file" ? metadata.open.config.path : null,
+      subject: metadata.open.config?.kind === EAssetSource.FILE ? metadata.open.config.path : null,
       message: metadata.configError,
     });
   }

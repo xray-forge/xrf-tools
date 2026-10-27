@@ -1,6 +1,7 @@
 import { TextField } from "@mui/material";
 import { useInjection } from "@wirestate/react";
-import { EquipmentSpriteOpen } from "@xrf/ipc/types/xrf-app-sprite-equipment";
+import { EAssetSource } from "@xrf/ipc/types/xrf-app-core";
+import { EEquipmentSheetSource, EquipmentSpriteOpen } from "@xrf/ipc/types/xrf-app-sprite-equipment";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
@@ -87,8 +88,8 @@ export function SpriteEquipmentOpenForm({
       return game.isValid && game.value && reference.trim()
         ? {
             roots: createRoots([game.value]),
-            sheet: { kind: "asset", reference: reference.trim() },
-            config: { kind: "asset", logicalPath: GAME_CONFIG_PATH },
+            sheet: { kind: EEquipmentSheetSource.ASSET, reference: reference.trim() },
+            config: { kind: EAssetSource.ASSET, logicalPath: GAME_CONFIG_PATH },
             isDltx,
           }
         : null;
@@ -99,8 +100,8 @@ export function SpriteEquipmentOpenForm({
           // A loose sheet is read by path and needs no game behind it; the configuration beside it resolves from its
           // own directory, which is what carries any `mod_*.ltx` sitting there.
           roots: createRoots([]),
-          sheet: { kind: "file", path: sprite.value },
-          config: { kind: "file", path: systemLtx.value },
+          sheet: { kind: EEquipmentSheetSource.FILE, path: sprite.value },
+          config: { kind: EAssetSource.FILE, path: systemLtx.value },
           isDltx,
         }
       : null;

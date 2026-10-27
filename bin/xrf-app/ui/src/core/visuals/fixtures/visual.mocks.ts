@@ -1,4 +1,4 @@
-import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
+import { AssetTextureDescriptor, EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import { SelectedVisualDescription } from "@xrf/ipc/types/xrf-app-visuals";
 import { XrayMaterialDescriptor, XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { Vector3d } from "@xrf/ipc/types/xrf-math";
@@ -203,7 +203,7 @@ export function mockVisualBone(overrides: Partial<VisualBone> = {}): VisualBone 
  */
 export function mockSelectedVisual(overrides: Partial<SelectedVisualDescription> = {}): SelectedVisualDescription {
   return {
-    source: { kind: "file", path: "C:\\gamedata\\meshes\\wpn_ak74.ogf" },
+    source: { kind: EAssetSource.FILE, path: "C:\\gamedata\\meshes\\wpn_ak74.ogf" },
     description: mockVisualDescription(),
     dependencies: { motions: [], textures: [] },
     roots: createRoots([]),

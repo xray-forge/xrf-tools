@@ -1,4 +1,6 @@
+import { EAssetSource } from "@xrf/ipc/types/xrf-app-core";
 import {
+  ETextureSource,
   TextureBadges,
   TextureCatalog,
   TextureDescription,
@@ -49,7 +51,7 @@ export function mockTextureEntry(reference: string, overrides: Partial<TextureEn
     descriptor: mockTextureAsset(`textures\\${reference}.thm`),
     reference,
     role: roleOf(reference),
-    source: { kind: "asset", reference },
+    source: { kind: ETextureSource.ASSET, reference },
     texture: mockTextureAsset(`textures\\${reference}.dds`),
     ...overrides,
   };
@@ -146,10 +148,10 @@ export function mockTextureDescription(
     material: mockFlatMaterial(),
     reference,
     roots: mockTextureRoots(),
-    source: { kind: "asset", reference },
+    source: { kind: ETextureSource.ASSET, reference },
     targets: null,
     texture: mockTextureAsset(`textures\\${reference}.dds`),
-    textureSource: { kind: "asset", logicalPath: `textures\\${reference}.dds` },
+    textureSource: { kind: EAssetSource.ASSET, logicalPath: `textures\\${reference}.dds` },
     ...overrides,
   };
 }
