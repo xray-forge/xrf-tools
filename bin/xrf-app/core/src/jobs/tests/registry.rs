@@ -255,51 +255,32 @@ fn a_cancel_that_arrives_before_its_job_still_lands() {
 }
 
 #[test]
-fn a_tombstone_is_spent_by_the_job_it_named() {
-  // Otherwise a stale cancel would keep killing later jobs that happened to reuse the identity, which is the stale-run
-  // hazard the fresh-id rule exists to avoid.
+fn an_identity_starts_one_job() {
+  // Tauri sends a command again when a page reload fails its request, so a job's start can come back after the job has
+  // finished; running it then would repeat the work for a page that is gone, and a stale cancel could reach it.
   let registry: Arc<JobRegistry> = new_registry();
   let id: Uuid = Uuid::new_v4();
 
   registry.cancel(id);
 
-  drop(
-    registry
-      .register(JobStart::new(id, kinds::ARCHIVES_PACK))
-      .expect("nothing is held"),
-  );
-
-  let (second, _running): (JobHandle, JobRegistration) = registry
+  let (first, running): (JobHandle, JobRegistration) = registry
     .register(JobStart::new(id, kinds::ARCHIVES_PACK))
     .expect("nothing is held");
 
+  assert!(first.is_cancelled(), "the waiting cancel was applied at registration");
   assert!(
-    !second.is_cancelled(),
-    "the cancel belonged to the run that consumed it"
+    registry.register(JobStart::new(id, kinds::ARCHIVES_PACK)).is_err(),
+    "refused while running"
   );
-}
 
-#[test]
-fn cancelling_a_finished_job_answers_no_and_leaves_nothing_waiting() {
-  let registry: Arc<JobRegistry> = new_registry();
-  let id: Uuid = Uuid::new_v4();
+  running.conclude(JobConclusion::Completed, None);
+  drop(running);
 
-  {
-    let (_job, running): (JobHandle, JobRegistration) = registry
-      .register(JobStart::new(id, kinds::ARCHIVES_PACK))
-      .expect("nothing is held");
-
-    running.conclude(JobConclusion::Completed, None);
-  }
-
-  assert!(!registry.cancel(id), "the job has already finished");
-
-  // Nothing was left waiting: registering that identity again is not born cancelled.
-  let (handle, _running): (JobHandle, JobRegistration) = registry
-    .register(JobStart::new(id, kinds::ARCHIVES_PACK))
-    .expect("nothing is held");
-
-  assert!(!handle.is_cancelled());
+  assert!(!registry.cancel(id), "the job has finished");
+  assert!(
+    registry.register(JobStart::new(id, kinds::ARCHIVES_PACK)).is_err(),
+    "refused once finished"
+  );
 }
 
 #[test]
