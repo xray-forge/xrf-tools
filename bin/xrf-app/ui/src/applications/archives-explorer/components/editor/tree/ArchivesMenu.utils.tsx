@@ -1,4 +1,6 @@
-import { DescriptionIcon, FolderIcon, FolderOpenIcon } from "@xrf/ui/icons";
+import { DescriptionIcon } from "@xrf/ui/icons/description";
+import { FolderIcon } from "@xrf/ui/icons/folder";
+import { FolderOpenIcon } from "@xrf/ui/icons/folder-open";
 import { IVirtualizedTreeIcons } from "@xrf/ui/tree";
 
 import { IArchiveEntry } from "@/core/archive/lib";

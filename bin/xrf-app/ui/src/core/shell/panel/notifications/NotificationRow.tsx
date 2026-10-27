@@ -2,17 +2,19 @@ import { formatCount } from "@xrf/format";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
-import {
-  CheckCircleOutlineOutlinedIcon as CheckCircleOutlineIcon,
-  ContentCopyIcon,
-  ErrorOutlineOutlinedIcon as ErrorOutlineIcon,
-  ExpandLessIcon,
-  ExpandMoreIcon,
-  InfoOutlinedIcon,
-  TerminalIcon,
-  WarningAmberIcon,
-} from "@xrf/ui/icons";
-import { Box, Button, IconButton, Tooltip, Typography } from "@xrf/ui/material";
+import { CheckCircleOutlineOutlinedIcon as CheckCircleOutlineIcon } from "@xrf/ui/icons/check-circle-outline-outlined";
+import { ContentCopyIcon } from "@xrf/ui/icons/content-copy";
+import { ErrorOutlineOutlinedIcon as ErrorOutlineIcon } from "@xrf/ui/icons/error-outline-outlined";
+import { ExpandLessIcon } from "@xrf/ui/icons/expand-less";
+import { ExpandMoreIcon } from "@xrf/ui/icons/expand-more";
+import { InfoOutlinedIcon } from "@xrf/ui/icons/info-outlined";
+import { TerminalIcon } from "@xrf/ui/icons/terminal";
+import { WarningAmberIcon } from "@xrf/ui/icons/warning-amber";
+import { Box } from "@xrf/ui/material/box";
+import { Button } from "@xrf/ui/material/button";
+import { IconButton } from "@xrf/ui/material/icon-button";
+import { Tooltip } from "@xrf/ui/material/tooltip";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { format } from "date-fns";
 import { ReactElement, ReactNode, useCallback, useState } from "react";

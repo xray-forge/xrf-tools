@@ -1,4 +1,4 @@
-import { AnimationIcon } from "@xrf/ui/icons";
+import { AnimationIcon } from "@xrf/ui/icons/animation";
 
 import { VisualMotionsPanel } from "@/applications/visuals-explorer/components/panels/VisualMotionsPanel";
 import { IEditorPanel } from "@/core/shell/editor-shell";

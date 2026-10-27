@@ -1,7 +1,7 @@
 import { ReactElement } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Tooltip } from "#/material";
+import { Tooltip } from "#/material/tooltip";
 import { cn } from "#/theme";
 
 /**

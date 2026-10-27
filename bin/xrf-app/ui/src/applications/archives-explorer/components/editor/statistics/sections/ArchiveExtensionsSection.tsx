@@ -1,6 +1,6 @@
 import { ArchiveExtensionUsage } from "@xrf/ipc/types/xrf-archive-stats";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip } from "@xrf/ui/material";
+import { Chip } from "@xrf/ui/material/chip";
 import { IStatBreakdownRow } from "@xrf/ui/stats";
 import { ReactElement, useMemo } from "react";
 

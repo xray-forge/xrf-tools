@@ -2,7 +2,8 @@ import { ReactElement } from "react";
 
 import { BaseComponentProps } from "#/element-types";
 import { CenteredColumn } from "#/layout/centered-column";
-import { CircularProgress, Typography } from "#/material";
+import { CircularProgress } from "#/material/progress";
+import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
 interface IDelayedProgressProps extends BaseComponentProps {

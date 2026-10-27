@@ -4,8 +4,10 @@ import { ArchiveSubject } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 import { DialogHeader } from "@xrf/ui/dialog/header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { UnarchiveIcon } from "@xrf/ui/icons";
-import { Button, Dialog, DialogActions, DialogContent, Typography } from "@xrf/ui/material";
+import { UnarchiveIcon } from "@xrf/ui/icons/unarchive";
+import { Button } from "@xrf/ui/material/button";
+import { Dialog, DialogActions, DialogContent } from "@xrf/ui/material/dialog";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback, useId } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";

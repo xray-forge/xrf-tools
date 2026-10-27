@@ -1,5 +1,5 @@
-import { iconButtonClasses, Theme } from "@mui/material";
-import { SystemStyleObject } from "@mui/system";
+import { iconButtonClasses } from "#/material/icon-button";
+import { SystemStyleObject, Theme } from "#/material/styles";
 
 /**
  * The paint a compact control takes in each of the three states it can be in.

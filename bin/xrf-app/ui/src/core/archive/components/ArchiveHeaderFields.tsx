@@ -2,7 +2,8 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FormRow } from "@xrf/ui/form/row";
 import { SwitchFormRow } from "@xrf/ui/form/switch-row";
-import { Stack, TextField } from "@xrf/ui/material";
+import { Stack } from "@xrf/ui/material/stack";
+import { TextField } from "@xrf/ui/material/text-field";
 import { ChangeEvent, ReactElement, useId } from "react";
 
 import { ArchiveHeaderEntries } from "@/core/archive/components/ArchiveHeaderEntries";

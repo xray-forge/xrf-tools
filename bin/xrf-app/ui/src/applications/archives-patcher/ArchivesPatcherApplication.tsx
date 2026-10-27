@@ -8,8 +8,11 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
 import { EditorLayout } from "@xrf/ui/editor/layout";
-import { TuneIcon } from "@xrf/ui/icons";
-import { Alert, Divider, Stack, Typography } from "@xrf/ui/material";
+import { TuneIcon } from "@xrf/ui/icons/tune";
+import { Alert } from "@xrf/ui/material/alert";
+import { Divider } from "@xrf/ui/material/divider";
+import { Stack } from "@xrf/ui/material/stack";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback, useEffect, useMemo, useState } from "react";
 
 import {

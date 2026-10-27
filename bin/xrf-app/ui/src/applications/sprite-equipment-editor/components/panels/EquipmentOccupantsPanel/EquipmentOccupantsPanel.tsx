@@ -1,7 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { List, Typography } from "@xrf/ui/material";
+import { List } from "@xrf/ui/material/list";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 

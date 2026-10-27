@@ -3,7 +3,7 @@ import { ERenderParallaxMode } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ChoiceListFormRow } from "@xrf/ui/form/choice-list-row";
-import { TextureIcon } from "@xrf/ui/icons";
+import { TextureIcon } from "@xrf/ui/icons/texture";
 import { ReactElement } from "react";
 
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";

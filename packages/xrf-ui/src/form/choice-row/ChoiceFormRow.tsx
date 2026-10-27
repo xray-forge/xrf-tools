@@ -3,7 +3,7 @@ import { ReactElement } from "react";
 
 import { BaseComponentProps } from "#/element-types";
 import { FormRow } from "#/form/row";
-import { ToggleButton, ToggleButtonGroup } from "#/material";
+import { ToggleButton, ToggleButtonGroup } from "#/material/toggle-button";
 
 import { IChoiceFormRowOption } from "./choice-form-row-option";
 

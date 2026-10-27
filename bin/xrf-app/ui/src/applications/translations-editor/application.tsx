@@ -1,4 +1,4 @@
-import { TranslateIcon } from "@xrf/ui/icons";
+import { TranslateIcon } from "@xrf/ui/icons/translate";
 
 import {
   EApplicationGroupId,

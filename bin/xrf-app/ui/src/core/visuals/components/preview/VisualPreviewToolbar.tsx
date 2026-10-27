@@ -2,16 +2,14 @@ import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorToolbarSeparator } from "@xrf/ui/editor/toolbar";
 import { EditorViewToggle } from "@xrf/ui/editor/view-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import {
-  AccountTreeIcon,
-  GrainIcon,
-  GridOnIcon,
-  HexagonIcon,
-  OpacityIcon,
-  PolylineIcon,
-  TextureIcon,
-  ThreeDRotationIcon,
-} from "@xrf/ui/icons";
+import { AccountTreeIcon } from "@xrf/ui/icons/account-tree";
+import { GrainIcon } from "@xrf/ui/icons/grain";
+import { GridOnIcon } from "@xrf/ui/icons/grid-on";
+import { HexagonIcon } from "@xrf/ui/icons/hexagon";
+import { OpacityIcon } from "@xrf/ui/icons/opacity";
+import { PolylineIcon } from "@xrf/ui/icons/polyline";
+import { TextureIcon } from "@xrf/ui/icons/texture";
+import { ThreeDRotationIcon } from "@xrf/ui/icons/three-d-rotation";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { RenderLightingAction } from "@/core/render/components/lighting/RenderLightingAction";

@@ -4,8 +4,8 @@ import { ERenderFogMode, RenderFogMode } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
-import { FoggyIcon } from "@xrf/ui/icons";
-import { Button } from "@xrf/ui/material";
+import { FoggyIcon } from "@xrf/ui/icons/foggy";
+import { Button } from "@xrf/ui/material/button";
 import { ReactElement } from "react";
 
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";

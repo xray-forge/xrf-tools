@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { formatCount } from "@xrf/format";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
-import { Typography } from "@xrf/ui/material";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback } from "react";
 

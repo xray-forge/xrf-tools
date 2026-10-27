@@ -1,4 +1,4 @@
-import { HelpOutlineOutlinedIcon as HelpOutlineIcon } from "@xrf/ui/icons";
+import { HelpOutlineOutlinedIcon as HelpOutlineIcon } from "@xrf/ui/icons/help-outline-outlined";
 import { RailButton } from "@xrf/ui/shell/rail-button";
 import { ReactElement } from "react";
 

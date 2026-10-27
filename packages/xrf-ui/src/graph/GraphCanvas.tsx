@@ -15,7 +15,7 @@ import {
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { useColorScheme } from "#/material";
+import { useColorScheme } from "#/material/styles";
 import { cn } from "#/theme";
 
 import { TGraphEdge, TGraphNode } from "./graph.types";

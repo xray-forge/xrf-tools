@@ -1,4 +1,4 @@
-import { PeopleIcon } from "@xrf/ui/icons";
+import { PeopleIcon } from "@xrf/ui/icons/people";
 
 import {
   EApplicationGroupId,

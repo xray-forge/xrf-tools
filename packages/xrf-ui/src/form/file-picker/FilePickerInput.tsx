@@ -2,8 +2,12 @@ import { Nullable } from "@xrf/types";
 import { ChangeEvent, ReactElement, useId, useState } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { ClearIcon, FolderOpenIcon, HistoryIcon } from "#/icons";
-import { IconButton, TextField, Tooltip } from "#/material";
+import { ClearIcon } from "#/icons/clear";
+import { FolderOpenIcon } from "#/icons/folder-open";
+import { HistoryIcon } from "#/icons/history";
+import { IconButton } from "#/material/icon-button";
+import { TextField } from "#/material/text-field";
+import { Tooltip } from "#/material/tooltip";
 
 import { FilePickerRecentsMenu } from "./FilePickerRecentsMenu";
 import { IPathFieldRecents } from "./path-field-recents";

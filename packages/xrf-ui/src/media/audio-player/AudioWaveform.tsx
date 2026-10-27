@@ -3,7 +3,8 @@ import { clamp, extractPeaks } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { KeyboardEvent, MouseEvent, ReactElement, useLayoutEffect, useMemo, useRef } from "react";
 
-import { useColorScheme, useForkRef, useTheme } from "#/material";
+import { useColorScheme, useTheme } from "#/material/styles";
+import { useForkRef } from "#/material/utils";
 import { useElementSize } from "#/react/element-size";
 import { cn } from "#/theme";
 

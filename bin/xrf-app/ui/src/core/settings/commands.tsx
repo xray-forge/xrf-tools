@@ -1,4 +1,4 @@
-import { SettingsIcon } from "@xrf/ui/icons";
+import { SettingsIcon } from "@xrf/ui/icons/settings";
 
 import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
 

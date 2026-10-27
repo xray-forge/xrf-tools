@@ -1,6 +1,7 @@
 import { ABSENT_VALUE } from "@xrf/format";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Checkbox, Typography } from "@xrf/ui/material";
+import { Checkbox } from "@xrf/ui/material/checkbox";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ChangeEvent, ReactElement, useCallback } from "react";
 

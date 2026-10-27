@@ -1,6 +1,6 @@
 import { DialogHeader } from "@xrf/ui/dialog/header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Dialog, DialogContent } from "@xrf/ui/material";
+import { Dialog, DialogContent } from "@xrf/ui/material/dialog";
 import { ReactElement, useId } from "react";
 
 import { ApplicationHelpContent } from "@/core/help/components/ApplicationHelpContent";

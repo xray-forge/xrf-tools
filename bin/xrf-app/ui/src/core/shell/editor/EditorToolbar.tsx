@@ -1,7 +1,9 @@
 import { Nullable } from "@xrf/types";
 import { EditorToolbarCrumb, EditorToolbarPathSeparator, EditorToolbarSeparator } from "@xrf/ui/editor/toolbar";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Box, iconButtonClasses, svgIconClasses } from "@xrf/ui/material";
+import { Box } from "@xrf/ui/material/box";
+import { iconButtonClasses } from "@xrf/ui/material/icon-button";
+import { svgIconClasses } from "@xrf/ui/material/svg-icon";
 import { cn, CONTROL } from "@xrf/ui/theme";
 import { ReactElement, ReactNode, useCallback } from "react";
 

@@ -2,7 +2,7 @@ import { ArchivePackConfig } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { SwitchFormRow } from "@xrf/ui/form/switch-row";
-import { Stack } from "@xrf/ui/material";
+import { Stack } from "@xrf/ui/material/stack";
 import { ReactElement } from "react";
 
 import { ArchiveVolumeOptionsFields } from "@/core/archive/components/ArchiveVolumeOptionsFields";

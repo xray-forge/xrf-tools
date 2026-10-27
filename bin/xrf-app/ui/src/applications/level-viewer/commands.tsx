@@ -1,8 +1,6 @@
-import {
-  MapOutlinedIcon as MapIcon,
-  PanoramaPhotosphereOutlinedIcon as PanoramaPhotosphereIcon,
-  PhotoCameraOutlinedIcon as PhotoCameraIcon,
-} from "@xrf/ui/icons";
+import { MapOutlinedIcon as MapIcon } from "@xrf/ui/icons/map-outlined";
+import { PanoramaPhotosphereOutlinedIcon as PanoramaPhotosphereIcon } from "@xrf/ui/icons/panorama-photosphere-outlined";
+import { PhotoCameraOutlinedIcon as PhotoCameraIcon } from "@xrf/ui/icons/photo-camera-outlined";
 
 import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
 import { LEVEL_KEYBIND_COMMANDS } from "@/core/level/commands";

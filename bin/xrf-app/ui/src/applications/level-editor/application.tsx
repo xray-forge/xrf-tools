@@ -1,4 +1,4 @@
-import { EditLocationAltIcon } from "@xrf/ui/icons";
+import { EditLocationAltIcon } from "@xrf/ui/icons/edit-location-alt";
 
 import {
   EApplicationGroupId,

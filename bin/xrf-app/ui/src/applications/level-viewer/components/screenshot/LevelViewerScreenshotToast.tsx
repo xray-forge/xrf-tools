@@ -2,8 +2,14 @@ import { useInjection } from "@wirestate/react";
 import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DeleteOutlinedIcon as DeleteIcon, FolderOpenOutlinedIcon as FolderOpenIcon, LinkIcon } from "@xrf/ui/icons";
-import { ButtonBase, IconButton, Paper, Tooltip, Typography } from "@xrf/ui/material";
+import { DeleteOutlinedIcon as DeleteIcon } from "@xrf/ui/icons/delete-outlined";
+import { FolderOpenOutlinedIcon as FolderOpenIcon } from "@xrf/ui/icons/folder-open-outlined";
+import { LinkIcon } from "@xrf/ui/icons/link";
+import { ButtonBase } from "@xrf/ui/material/button-base";
+import { IconButton } from "@xrf/ui/material/icon-button";
+import { Paper } from "@xrf/ui/material/paper";
+import { Tooltip } from "@xrf/ui/material/tooltip";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 

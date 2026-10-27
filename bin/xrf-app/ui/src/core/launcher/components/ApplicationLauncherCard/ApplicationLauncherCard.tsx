@@ -1,6 +1,7 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ArrowOutwardIcon } from "@xrf/ui/icons";
-import { Card, CardActionArea, Typography } from "@xrf/ui/material";
+import { ArrowOutwardIcon } from "@xrf/ui/icons/arrow-outward";
+import { Card, CardActionArea } from "@xrf/ui/material/card";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { CSSProperties, ReactElement } from "react";
 

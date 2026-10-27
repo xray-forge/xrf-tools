@@ -1,4 +1,4 @@
-import { FolderOpenIcon } from "@xrf/ui/icons";
+import { FolderOpenIcon } from "@xrf/ui/icons/folder-open";
 
 import {
   EApplicationGroupId,

@@ -2,7 +2,9 @@ import { ExportDescriptor } from "@xrf/ipc/types/xrf-export";
 import { Nullable } from "@xrf/types";
 import { IEditorSearchResultRow } from "@xrf/ui/editor/search-results";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { DataObjectIcon, FolderIcon, FolderOpenIcon } from "@xrf/ui/icons";
+import { DataObjectIcon } from "@xrf/ui/icons/data-object";
+import { FolderIcon } from "@xrf/ui/icons/folder";
+import { FolderOpenIcon } from "@xrf/ui/icons/folder-open";
 import { EmptyListing } from "@xrf/ui/layout/empty-listing";
 import {
   IPathTreeItem,

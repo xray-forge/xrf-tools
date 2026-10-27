@@ -3,7 +3,10 @@ import { formatBytes } from "@xrf/format";
 import { Nullable } from "@xrf/types";
 import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
-import { Button, Divider, Stack, Typography } from "@xrf/ui/material";
+import { Button } from "@xrf/ui/material/button";
+import { Divider } from "@xrf/ui/material/divider";
+import { Stack } from "@xrf/ui/material/stack";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback, useState } from "react";
 
 import { SettingsService } from "@/core/settings/services/settings";

@@ -1,8 +1,9 @@
 import { LevelWeatherTexture } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckIcon } from "@xrf/ui/icons";
-import { Autocomplete, TextField } from "@xrf/ui/material";
+import { CheckIcon } from "@xrf/ui/icons/check";
+import { Autocomplete } from "@xrf/ui/material/autocomplete";
+import { TextField } from "@xrf/ui/material/text-field";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, SyntheticEvent, useCallback } from "react";
 

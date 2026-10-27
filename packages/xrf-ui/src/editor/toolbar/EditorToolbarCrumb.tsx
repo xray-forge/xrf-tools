@@ -1,6 +1,7 @@
 import { ReactElement } from "react";
 
-import { Tooltip, Typography } from "#/material";
+import { Tooltip } from "#/material/tooltip";
+import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
 interface IEditorToolbarCrumbProps {

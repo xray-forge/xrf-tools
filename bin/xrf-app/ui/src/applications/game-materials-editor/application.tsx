@@ -1,4 +1,4 @@
-import { LayersIcon } from "@xrf/ui/icons";
+import { LayersIcon } from "@xrf/ui/icons/layers";
 
 import {
   EApplicationGroupId,

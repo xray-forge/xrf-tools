@@ -1,5 +1,6 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ListItem, ListItemButton, Typography } from "@xrf/ui/material";
+import { ListItem, ListItemButton } from "@xrf/ui/material/list";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn, TREE } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

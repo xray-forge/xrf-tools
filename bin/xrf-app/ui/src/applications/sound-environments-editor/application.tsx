@@ -1,4 +1,4 @@
-import { SurroundSoundIcon } from "@xrf/ui/icons";
+import { SurroundSoundIcon } from "@xrf/ui/icons/surround-sound";
 
 import {
   EApplicationGroupId,

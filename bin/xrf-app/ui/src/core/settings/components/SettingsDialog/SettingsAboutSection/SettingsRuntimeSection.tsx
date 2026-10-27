@@ -5,7 +5,7 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
-import { Typography } from "@xrf/ui/material";
+import { Typography } from "@xrf/ui/material/typography";
 import { StatFigure } from "@xrf/ui/stats";
 import { ReactElement } from "react";
 

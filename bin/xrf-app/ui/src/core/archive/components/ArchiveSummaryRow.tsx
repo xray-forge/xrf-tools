@@ -1,5 +1,6 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Stack, Typography } from "@xrf/ui/material";
+import { Stack } from "@xrf/ui/material/stack";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, ReactNode } from "react";
 

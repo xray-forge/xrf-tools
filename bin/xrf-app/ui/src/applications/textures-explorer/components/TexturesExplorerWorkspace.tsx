@@ -3,7 +3,7 @@ import { TextureCatalog } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
 import { IEditorLocation } from "@xrf/ui/editor/toolbar";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Alert } from "@xrf/ui/material";
+import { Alert } from "@xrf/ui/material/alert";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
 import { selectUnreadTexturesLtx } from "@/applications/textures-explorer/lib/texture-catalog";

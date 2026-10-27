@@ -1,8 +1,11 @@
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { CloseIcon } from "#/icons";
-import { DialogTitle, IconButton, Tooltip, Typography } from "#/material";
+import { CloseIcon } from "#/icons/close";
+import { DialogTitle } from "#/material/dialog";
+import { IconButton } from "#/material/icon-button";
+import { Tooltip } from "#/material/tooltip";
+import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
 export interface IDialogHeaderProps extends BaseComponentProps {

@@ -1,4 +1,4 @@
-import { AccountTreeIcon } from "@xrf/ui/icons";
+import { AccountTreeIcon } from "@xrf/ui/icons/account-tree";
 
 import {
   EApplicationGroupId,

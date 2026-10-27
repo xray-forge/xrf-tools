@@ -2,7 +2,7 @@ import { ReactElement, ReactNode } from "react";
 
 import { EditorPopoverAction } from "#/editor/popover-action";
 import { BaseComponentProps } from "#/element-types";
-import { Typography } from "#/material";
+import { Typography } from "#/material/typography";
 
 export interface IEditorPopoverGroupProps extends BaseComponentProps {
   /** Stable accessible name of the trigger and the popover. */

@@ -1,7 +1,9 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { GridViewIcon, TableRowsIcon } from "@xrf/ui/icons";
-import { ToggleButton, ToggleButtonGroup, Tooltip } from "@xrf/ui/material";
+import { GridViewIcon } from "@xrf/ui/icons/grid-view";
+import { TableRowsIcon } from "@xrf/ui/icons/table-rows";
+import { ToggleButton, ToggleButtonGroup } from "@xrf/ui/material/toggle-button";
+import { Tooltip } from "@xrf/ui/material/tooltip";
 import { ReactElement } from "react";
 
 import { TCatalogView } from "@/core/settings/lib/catalog-view";

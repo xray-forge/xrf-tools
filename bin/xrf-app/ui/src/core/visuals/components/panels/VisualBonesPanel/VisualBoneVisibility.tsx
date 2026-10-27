@@ -1,8 +1,13 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { EditorPanelSection } from "@xrf/ui/editor/panel";
-import { VisibilityIcon, VisibilityOffIcon } from "@xrf/ui/icons";
-import { Button, Chip, FormControlLabel, Switch, Typography } from "@xrf/ui/material";
+import { VisibilityIcon } from "@xrf/ui/icons/visibility";
+import { VisibilityOffIcon } from "@xrf/ui/icons/visibility-off";
+import { Button } from "@xrf/ui/material/button";
+import { Chip } from "@xrf/ui/material/chip";
+import { FormControlLabel } from "@xrf/ui/material/form-control-label";
+import { Switch } from "@xrf/ui/material/switch";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

@@ -11,7 +11,8 @@ import {
   useOpenColorField,
 } from "@xrf/ui/color";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ButtonBase, InputBase } from "@xrf/ui/material";
+import { ButtonBase } from "@xrf/ui/material/button-base";
+import { InputBase } from "@xrf/ui/material/input";
 import { FocusEvent, KeyboardEvent, ReactElement, useCallback, useId, useMemo, useState } from "react";
 
 interface ILevelWeatherVectorDraft {

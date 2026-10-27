@@ -1,4 +1,4 @@
-import { FilterIcon } from "@xrf/ui/icons";
+import { FilterIcon } from "@xrf/ui/icons/filter";
 
 import {
   EApplicationGroupId,

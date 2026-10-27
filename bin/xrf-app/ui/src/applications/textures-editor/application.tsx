@@ -1,4 +1,4 @@
-import { EditNoteIcon } from "@xrf/ui/icons";
+import { EditNoteIcon } from "@xrf/ui/icons/edit-note";
 
 import {
   EApplicationGroupId,

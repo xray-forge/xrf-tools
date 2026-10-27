@@ -1,4 +1,4 @@
-import { FactCheckIcon } from "@xrf/ui/icons";
+import { FactCheckIcon } from "@xrf/ui/icons/fact-check";
 
 import {
   EApplicationGroupId,

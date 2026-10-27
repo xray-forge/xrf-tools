@@ -1,4 +1,4 @@
-import { CompareArrowsIcon } from "@xrf/ui/icons";
+import { CompareArrowsIcon } from "@xrf/ui/icons/compare-arrows";
 
 import {
   EApplicationGroupId,

@@ -13,7 +13,7 @@ import {
 
 import { EditorIconAction } from "#/editor/icon-action";
 import { BaseComponentProps } from "#/element-types";
-import { Popover } from "#/material";
+import { Popover } from "#/material/popover";
 
 import { TEditorPopoverKind } from "./editor-popover-kind";
 

@@ -1,6 +1,8 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Button, TextField, Typography } from "@xrf/ui/material";
+import { Button } from "@xrf/ui/material/button";
+import { TextField } from "@xrf/ui/material/text-field";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ChangeEvent, FormEvent, ReactElement, useCallback, useState } from "react";
 

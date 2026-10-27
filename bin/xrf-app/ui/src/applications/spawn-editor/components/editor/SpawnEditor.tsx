@@ -5,7 +5,7 @@ import { Nullable } from "@xrf/types";
 import { EditorLayout } from "@xrf/ui/editor/layout";
 import { EditorToolbarLocation } from "@xrf/ui/editor/toolbar";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ViewListIcon } from "@xrf/ui/icons";
+import { ViewListIcon } from "@xrf/ui/icons/view-list";
 import { ReactElement, useCallback } from "react";
 import { Route, Routes } from "react-router-dom";
 

@@ -1,8 +1,8 @@
-import { sliderClasses, Theme } from "@mui/material";
-import { SystemStyleObject } from "@mui/system";
 import { saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
+import { sliderClasses } from "#/material/slider";
+import { SystemStyleObject, Theme } from "#/material/styles";
 import { SLIDER_REFERENCE } from "#/theme";
 
 /**

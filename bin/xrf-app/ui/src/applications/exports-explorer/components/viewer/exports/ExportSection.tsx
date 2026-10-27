@@ -1,5 +1,6 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Divider, Typography } from "@xrf/ui/material";
+import { Divider } from "@xrf/ui/material/divider";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, ReactNode } from "react";
 

@@ -4,7 +4,12 @@ import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Alert, Button, Checkbox, FormControlLabel, Stack, Typography } from "@xrf/ui/material";
+import { Alert } from "@xrf/ui/material/alert";
+import { Button } from "@xrf/ui/material/button";
+import { Checkbox } from "@xrf/ui/material/checkbox";
+import { FormControlLabel } from "@xrf/ui/material/form-control-label";
+import { Stack } from "@xrf/ui/material/stack";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback, useState } from "react";
 
 import { DEFAULT_GLOSS_POWER, toBumpGloss } from "@/applications/textures-editor/lib/texture-bump-gloss";

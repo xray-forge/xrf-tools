@@ -1,5 +1,6 @@
-import { SxProps, Theme } from "@mui/material/styles";
 import { Optional } from "@xrf/types";
+
+import { SxProps, Theme } from "#/material/styles";
 
 type SxArray = Extract<SxProps<Theme>, ReadonlyArray<unknown>>;
 

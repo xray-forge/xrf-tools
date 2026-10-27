@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { SaveIcon } from "#/icons";
+import { SaveIcon } from "#/icons/save";
 import { renderWithTheme } from "#/testing/render";
 
 import { EditorIconAction } from "./EditorIconAction";

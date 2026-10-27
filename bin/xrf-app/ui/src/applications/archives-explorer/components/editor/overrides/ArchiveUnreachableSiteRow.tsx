@@ -1,5 +1,6 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip, chipClasses, Typography } from "@xrf/ui/material";
+import { Chip, chipClasses } from "@xrf/ui/material/chip";
+import { Typography } from "@xrf/ui/material/typography";
 import { BADGE_FONT_SIZE, cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

@@ -2,8 +2,12 @@ import { useInjection } from "@wirestate/react";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { AddCircleIcon as AddIcon, GridOnIcon as GridIcon, RemoveCircleIcon as RemoveIcon } from "@xrf/ui/icons";
-import { FormControlLabel, Switch, Typography } from "@xrf/ui/material";
+import { AddCircleIcon as AddIcon } from "@xrf/ui/icons/add-circle";
+import { GridOnIcon as GridIcon } from "@xrf/ui/icons/grid-on";
+import { RemoveCircleIcon as RemoveIcon } from "@xrf/ui/icons/remove-circle";
+import { FormControlLabel } from "@xrf/ui/material/form-control-label";
+import { Switch } from "@xrf/ui/material/switch";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback } from "react";
 
 import { SpriteEquipmentEditorService } from "@/applications/sprite-equipment-editor/services/sprite-equipment-editor";

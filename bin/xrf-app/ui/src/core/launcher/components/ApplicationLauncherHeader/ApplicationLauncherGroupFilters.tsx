@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip } from "@xrf/ui/material";
+import { Chip } from "@xrf/ui/material/chip";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

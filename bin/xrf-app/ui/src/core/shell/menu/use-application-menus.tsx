@@ -4,7 +4,8 @@ import { useInjection } from "@wirestate/react";
 import { EMPTY_ARRAY } from "@xrf/collections";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
-import { GitHubIcon, InfoOutlinedIcon } from "@xrf/ui/icons";
+import { GitHubIcon } from "@xrf/ui/icons/git-hub";
+import { InfoOutlinedIcon } from "@xrf/ui/icons/info-outlined";
 import { IMenubarItem, IMenubarMenu } from "@xrf/ui/shell/menubar";
 import { useCallback, useState } from "react";
 

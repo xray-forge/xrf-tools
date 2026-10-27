@@ -1,7 +1,8 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ErrorOutlineOutlinedIcon as ErrorOutlineIcon } from "@xrf/ui/icons";
+import { ErrorOutlineOutlinedIcon as ErrorOutlineIcon } from "@xrf/ui/icons/error-outline-outlined";
 import { CenteredColumn } from "@xrf/ui/layout/centered-column";
-import { Button, Typography } from "@xrf/ui/material";
+import { Button } from "@xrf/ui/material/button";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

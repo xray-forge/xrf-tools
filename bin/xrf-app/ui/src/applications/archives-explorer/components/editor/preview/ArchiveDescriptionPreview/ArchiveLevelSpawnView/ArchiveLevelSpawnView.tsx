@@ -4,7 +4,7 @@ import { filterByName } from "@xrf/search";
 import { EditorFilterInput } from "@xrf/ui/editor/filter-input";
 import { EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Typography } from "@xrf/ui/material";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useMemo, useState } from "react";
 
 import { ArchiveDescriptionLayout } from "../ArchiveDescriptionLayout";

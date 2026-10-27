@@ -1,6 +1,8 @@
 import { EEquipmentSlotClaim, EquipmentSlotOccupant } from "@xrf/ipc/types/xrf-texture";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip, ListItemButton, Typography } from "@xrf/ui/material";
+import { Chip } from "@xrf/ui/material/chip";
+import { ListItemButton } from "@xrf/ui/material/list";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

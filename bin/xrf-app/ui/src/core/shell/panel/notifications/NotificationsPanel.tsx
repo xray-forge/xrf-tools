@@ -1,7 +1,9 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
-import { ClearAllIcon } from "@xrf/ui/icons";
-import { IconButton, Tooltip, Typography } from "@xrf/ui/material";
+import { ClearAllIcon } from "@xrf/ui/icons/clear-all";
+import { IconButton } from "@xrf/ui/material/icon-button";
+import { Tooltip } from "@xrf/ui/material/tooltip";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { INotification } from "@/core/notifications/lib";

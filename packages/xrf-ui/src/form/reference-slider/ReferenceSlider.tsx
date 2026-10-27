@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { ReactElement, useMemo } from "react";
 
-import { Slider, SliderProps } from "#/material";
+import { Slider, SliderProps } from "#/material/slider";
 import { getSliderReferenceSx } from "#/theme/sx";
 
 import { isSliderWasted } from "./slider-reference";

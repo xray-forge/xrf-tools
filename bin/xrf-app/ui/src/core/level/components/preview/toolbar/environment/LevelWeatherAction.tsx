@@ -5,8 +5,9 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { FilterDramaIcon } from "@xrf/ui/icons";
-import { Button, Typography } from "@xrf/ui/material";
+import { FilterDramaIcon } from "@xrf/ui/icons/filter-drama";
+import { Button } from "@xrf/ui/material/button";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";

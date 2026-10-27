@@ -1,7 +1,7 @@
 import { toPanZoomTransform } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Theme, useTheme } from "@xrf/ui/material";
+import { Theme, useTheme } from "@xrf/ui/material/styles";
 import { IImageViewportView } from "@xrf/ui/media/image-viewport";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback, useLayoutEffect, useMemo, useRef } from "react";

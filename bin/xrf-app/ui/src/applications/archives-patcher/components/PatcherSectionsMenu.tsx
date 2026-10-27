@@ -1,7 +1,11 @@
 import { useInjection } from "@wirestate/react";
 import { EditorSideMenu, IEditorSideMenuItem } from "@xrf/ui/editor/side-menu";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CompareArrowsIcon, FolderIcon, SettingsIcon, TitleIcon, TuneIcon } from "@xrf/ui/icons";
+import { CompareArrowsIcon } from "@xrf/ui/icons/compare-arrows";
+import { FolderIcon } from "@xrf/ui/icons/folder";
+import { SettingsIcon } from "@xrf/ui/icons/settings";
+import { TitleIcon } from "@xrf/ui/icons/title";
+import { TuneIcon } from "@xrf/ui/icons/tune";
 import { ReactElement } from "react";
 
 import {

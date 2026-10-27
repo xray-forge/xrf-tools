@@ -1,4 +1,4 @@
-import { WbSunnyIcon } from "@xrf/ui/icons";
+import { WbSunnyIcon } from "@xrf/ui/icons/wb-sunny";
 
 import {
   EApplicationGroupId,

@@ -2,8 +2,9 @@ import { useInjection } from "@wirestate/react";
 import { formatDegrees } from "@xrf/format";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { VideocamIcon } from "@xrf/ui/icons";
-import { Button, Typography } from "@xrf/ui/material";
+import { VideocamIcon } from "@xrf/ui/icons/videocam";
+import { Button } from "@xrf/ui/material/button";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 import {

@@ -6,7 +6,7 @@ import { EditorLayout } from "@xrf/ui/editor/layout";
 import { EditorToolbarLocation } from "@xrf/ui/editor/toolbar";
 import { EditorViewToggle } from "@xrf/ui/editor/view-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { AccountTreeIcon } from "@xrf/ui/icons";
+import { AccountTreeIcon } from "@xrf/ui/icons/account-tree";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
 import { ConfigsDocumentView } from "@/applications/configs-explorer/components/ConfigsDocumentView";

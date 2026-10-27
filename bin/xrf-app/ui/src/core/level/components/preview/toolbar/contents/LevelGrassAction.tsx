@@ -3,8 +3,8 @@ import { ERenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { GrassIcon } from "@xrf/ui/icons";
-import { Button } from "@xrf/ui/material";
+import { GrassIcon } from "@xrf/ui/icons/grass";
+import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback } from "react";
 
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";

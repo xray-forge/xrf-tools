@@ -2,7 +2,9 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useId } from "react";
 
 import { DialogHeader } from "#/dialog/header";
-import { Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText } from "#/material";
+import { Button } from "#/material/button";
+import { Dialog, DialogActions, DialogContent, DialogContentText } from "#/material/dialog";
+import { CircularProgress } from "#/material/progress";
 
 interface IUnsavedChangesDialogProps {
   isOpen: boolean;

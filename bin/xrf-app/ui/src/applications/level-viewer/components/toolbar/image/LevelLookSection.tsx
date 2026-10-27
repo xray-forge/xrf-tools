@@ -1,5 +1,5 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Typography } from "@xrf/ui/material";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, ReactNode } from "react";
 
 export interface ILevelLookSectionProps extends BaseComponentProps {

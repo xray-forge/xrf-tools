@@ -1,4 +1,4 @@
-import { DifferenceIcon } from "@xrf/ui/icons";
+import { DifferenceIcon } from "@xrf/ui/icons/difference";
 
 import {
   EApplicationGroupId,

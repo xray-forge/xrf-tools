@@ -1,4 +1,4 @@
-import { GradientIcon } from "@xrf/ui/icons";
+import { GradientIcon } from "@xrf/ui/icons/gradient";
 
 import {
   EApplicationGroupId,

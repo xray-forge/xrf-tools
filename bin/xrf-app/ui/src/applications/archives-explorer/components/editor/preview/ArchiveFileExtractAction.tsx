@@ -4,7 +4,7 @@ import { getFileExtension, splitLogicalPath } from "@xrf/path";
 import { Nullable } from "@xrf/types";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { SaveAltIcon } from "@xrf/ui/icons";
+import { SaveAltIcon } from "@xrf/ui/icons/save-alt";
 import { ReactElement, useCallback } from "react";
 
 import { ArchivesService } from "@/applications/archives-explorer/services/archives";

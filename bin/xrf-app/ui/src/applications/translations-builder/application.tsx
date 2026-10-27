@@ -1,4 +1,4 @@
-import { BuildIcon } from "@xrf/ui/icons";
+import { BuildIcon } from "@xrf/ui/icons/build";
 
 import {
   EApplicationGroupId,

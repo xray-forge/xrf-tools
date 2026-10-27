@@ -4,7 +4,7 @@ import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { ReactElement, SyntheticEvent, useCallback, useEffect, useRef, useState } from "react";
 
-import { Alert } from "#/material";
+import { Alert } from "#/material/alert";
 
 import { describeAudioError, describePlaybackError } from "./AudioPlayer.errors";
 import { AudioPlayerControls } from "./AudioPlayerControls";

@@ -1,7 +1,7 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
-import { ToggleButton, ToggleButtonGroup } from "@xrf/ui/material";
+import { ToggleButton, ToggleButtonGroup } from "@xrf/ui/material/toggle-button";
 import { ReactElement } from "react";
 
 export interface IRenderValueChoiceProps<T extends string> extends BaseComponentProps {

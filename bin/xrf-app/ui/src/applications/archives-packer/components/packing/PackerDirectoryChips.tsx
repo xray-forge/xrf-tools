@@ -1,6 +1,7 @@
 import { ArchivePackDirectory } from "@xrf/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip, Stack } from "@xrf/ui/material";
+import { Chip } from "@xrf/ui/material/chip";
+import { Stack } from "@xrf/ui/material/stack";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

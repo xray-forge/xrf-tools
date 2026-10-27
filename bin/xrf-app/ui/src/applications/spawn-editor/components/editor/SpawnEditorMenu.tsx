@@ -1,6 +1,10 @@
 import { EditorSideMenu, IEditorSideMenuItem } from "@xrf/ui/editor/side-menu";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { AccountTreeIcon, GroupsIcon, InfoIcon, RouteIcon, ScienceIcon } from "@xrf/ui/icons";
+import { AccountTreeIcon } from "@xrf/ui/icons/account-tree";
+import { GroupsIcon } from "@xrf/ui/icons/groups";
+import { InfoIcon } from "@xrf/ui/icons/info";
+import { RouteIcon } from "@xrf/ui/icons/route";
+import { ScienceIcon } from "@xrf/ui/icons/science";
 import { ReactElement, ReactNode, useMemo } from "react";
 import { NavigateFunction, useLocation, useNavigate } from "react-router-dom";
 

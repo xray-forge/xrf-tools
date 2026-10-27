@@ -4,9 +4,13 @@ import { formatBytes, formatCount } from "@xrf/format";
 import { ArchiveExtractDirectoryResult } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { FolderOpenIcon, SaveAltIcon, UnarchiveIcon } from "@xrf/ui/icons";
+import { FolderOpenIcon } from "@xrf/ui/icons/folder-open";
+import { SaveAltIcon } from "@xrf/ui/icons/save-alt";
+import { UnarchiveIcon } from "@xrf/ui/icons/unarchive";
 import { CenteredColumn } from "@xrf/ui/layout/centered-column";
-import { Alert, Button, Typography } from "@xrf/ui/material";
+import { Alert } from "@xrf/ui/material/alert";
+import { Button } from "@xrf/ui/material/button";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback, useMemo } from "react";
 

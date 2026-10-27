@@ -1,4 +1,4 @@
-import { TerrainIcon } from "@xrf/ui/icons";
+import { TerrainIcon } from "@xrf/ui/icons/terrain";
 
 import {
   EApplicationGroupId,

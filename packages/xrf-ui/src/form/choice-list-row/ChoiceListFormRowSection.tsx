@@ -1,7 +1,7 @@
 import { Optional } from "@xrf/types";
 import { ReactElement, ReactNode, useId } from "react";
 
-import { ListSubheader } from "#/material";
+import { ListSubheader } from "#/material/list";
 
 interface IChoiceListFormRowSectionProps {
   /** The heading over the options, which none leaves bare. */

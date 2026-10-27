@@ -1,7 +1,8 @@
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { SpeedIcon } from "@xrf/ui/icons";
-import { Slider, Typography } from "@xrf/ui/material";
+import { SpeedIcon } from "@xrf/ui/icons/speed";
+import { Slider } from "@xrf/ui/material/slider";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback } from "react";
 
 import { MOTION_MAX_FPS, MOTION_MIN_FPS, MOTION_SAMPLE_FPS } from "@/core/visuals/lib/visual-motion";

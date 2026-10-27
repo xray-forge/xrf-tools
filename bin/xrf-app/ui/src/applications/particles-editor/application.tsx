@@ -1,4 +1,4 @@
-import { AutoAwesomeIcon } from "@xrf/ui/icons";
+import { AutoAwesomeIcon } from "@xrf/ui/icons/auto-awesome";
 
 import {
   EApplicationGroupId,

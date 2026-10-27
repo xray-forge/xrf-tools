@@ -1,4 +1,5 @@
-import { FormatListBulletedIcon as ListIcon, WarningAmberIcon as WarningIcon } from "@xrf/ui/icons";
+import { FormatListBulletedIcon as ListIcon } from "@xrf/ui/icons/format-list-bulleted";
+import { WarningAmberIcon as WarningIcon } from "@xrf/ui/icons/warning-amber";
 
 import { EquipmentOccupantsPanel } from "@/applications/sprite-equipment-editor/components/panels/EquipmentOccupantsPanel";
 import { EquipmentProblemsPanel } from "@/applications/sprite-equipment-editor/components/panels/EquipmentProblemsPanel";

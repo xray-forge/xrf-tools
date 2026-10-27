@@ -15,8 +15,8 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ChoiceListFormRow } from "@xrf/ui/form/choice-list-row";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
-import { ExposureIcon } from "@xrf/ui/icons";
-import { Button } from "@xrf/ui/material";
+import { ExposureIcon } from "@xrf/ui/icons/exposure";
+import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback } from "react";
 
 import { LevelLookSection } from "@/applications/level-viewer/components/toolbar/image/LevelLookSection";

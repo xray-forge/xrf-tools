@@ -1,7 +1,7 @@
 import { ArchiveThmTextureType } from "@xrf/ipc/types/xrf-app-archives";
 import { EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Typography } from "@xrf/ui/material";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 import { ArchiveDescriptionRow } from "../ArchiveDescriptionRow";

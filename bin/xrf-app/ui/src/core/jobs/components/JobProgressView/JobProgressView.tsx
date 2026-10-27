@@ -1,7 +1,9 @@
 import { formatDuration } from "@xrf/format";
 import { ProgressLevel } from "@xrf/ipc/types/xrf-job";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Button, LinearProgress, Typography } from "@xrf/ui/material";
+import { Button } from "@xrf/ui/material/button";
+import { LinearProgress } from "@xrf/ui/material/progress";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

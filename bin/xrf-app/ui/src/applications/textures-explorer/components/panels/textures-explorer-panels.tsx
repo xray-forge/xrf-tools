@@ -1,4 +1,7 @@
-import { ImageIcon, InfoIcon, LayersIcon, TuneIcon } from "@xrf/ui/icons";
+import { ImageIcon } from "@xrf/ui/icons/image";
+import { InfoIcon } from "@xrf/ui/icons/info";
+import { LayersIcon } from "@xrf/ui/icons/layers";
+import { TuneIcon } from "@xrf/ui/icons/tune";
 
 import { TexturesMenu } from "@/applications/textures-explorer/components/tree/TexturesMenu";
 import { IEditorPanel } from "@/core/shell/editor-shell";

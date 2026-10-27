@@ -1,7 +1,7 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { RepeatIcon } from "#/icons";
+import { RepeatIcon } from "#/icons/repeat";
 import { renderWithTheme } from "#/testing/render";
 
 import { EditorViewToggle } from "./EditorViewToggle";

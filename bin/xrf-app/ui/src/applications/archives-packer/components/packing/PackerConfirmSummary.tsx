@@ -2,7 +2,11 @@ import { bytesToWholeMegabytes } from "@xrf/format";
 import { ArchivePackConfig, EArchivePackMode, EArchiveVolumeExtension } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Alert, Checkbox, FormControlLabel, Stack, Typography } from "@xrf/ui/material";
+import { Alert } from "@xrf/ui/material/alert";
+import { Checkbox } from "@xrf/ui/material/checkbox";
+import { FormControlLabel } from "@xrf/ui/material/form-control-label";
+import { Stack } from "@xrf/ui/material/stack";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 import { isWholeDirectory } from "@/applications/archives-packer/lib/pack-config";

@@ -2,7 +2,9 @@ import { formatBytes } from "@xrf/format";
 import { TextureEncodingReport } from "@xrf/ipc/types/xrf-app-textures";
 import { EditorPanelProperty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Chip, ListItemButton, Typography } from "@xrf/ui/material";
+import { Chip } from "@xrf/ui/material/chip";
+import { ListItemButton } from "@xrf/ui/material/list";
+import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

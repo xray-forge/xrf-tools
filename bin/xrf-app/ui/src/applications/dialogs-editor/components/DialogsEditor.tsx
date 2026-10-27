@@ -6,7 +6,9 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { EditorLayout } from "@xrf/ui/editor/layout";
 import { EditorToolbarLocation } from "@xrf/ui/editor/toolbar";
-import { AccountTreeIcon, InfoOutlinedIcon, ReportProblemIcon } from "@xrf/ui/icons";
+import { AccountTreeIcon } from "@xrf/ui/icons/account-tree";
+import { InfoOutlinedIcon } from "@xrf/ui/icons/info-outlined";
+import { ReportProblemIcon } from "@xrf/ui/icons/report-problem";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { DialogViewService } from "@/applications/dialogs-editor/services/dialog-view";

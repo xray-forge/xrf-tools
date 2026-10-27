@@ -5,8 +5,11 @@ import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorToolbarSeparator } from "@xrf/ui/editor/toolbar";
 import { EditorViewToggle } from "@xrf/ui/editor/view-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { PauseIcon, PlayArrowIcon, RepeatIcon } from "@xrf/ui/icons";
-import { Tooltip, Typography } from "@xrf/ui/material";
+import { PauseIcon } from "@xrf/ui/icons/pause";
+import { PlayArrowIcon } from "@xrf/ui/icons/play-arrow";
+import { RepeatIcon } from "@xrf/ui/icons/repeat";
+import { Tooltip } from "@xrf/ui/material/tooltip";
+import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback } from "react";
 
 import { MotionFrameSlider, MotionPlaybackRate } from "@/core/visuals/components/preview";

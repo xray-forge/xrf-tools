@@ -1,9 +1,9 @@
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { DescriptionOutlinedIcon } from "#/icons";
+import { DescriptionOutlinedIcon } from "#/icons/description-outlined";
 import { CenteredColumn } from "#/layout/centered-column";
-import { Typography } from "#/material";
+import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
 interface IEmptyStateProps extends BaseComponentProps {

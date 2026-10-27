@@ -2,8 +2,9 @@ import { ReactElement, ReactNode } from "react";
 
 import { EditorIconAction } from "#/editor/icon-action";
 import { BaseComponentProps } from "#/element-types";
-import { CloseIcon, DescriptionOutlinedIcon } from "#/icons";
-import { Typography } from "#/material";
+import { CloseIcon } from "#/icons/close";
+import { DescriptionOutlinedIcon } from "#/icons/description-outlined";
+import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
 interface IEditorFileHeaderProps extends BaseComponentProps {

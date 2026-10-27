@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { fireEvent } from "@testing-library/react";
 import { Nullable } from "@xrf/types";
-import { paperClasses } from "@xrf/ui/material";
+import { paperClasses } from "@xrf/ui/material/paper";
 import { ReactElement } from "react";
 
 import { EApplicationId } from "@/core/routing/application";

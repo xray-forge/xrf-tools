@@ -1,7 +1,8 @@
 import { ArchivePackConfig } from "@xrf/ipc/types/xrf-pack";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Alert, Stack } from "@xrf/ui/material";
+import { Alert } from "@xrf/ui/material/alert";
+import { Stack } from "@xrf/ui/material/stack";
 import { ReactElement } from "react";
 
 import { ArchiveHeaderFields } from "@/core/archive/components/ArchiveHeaderFields";

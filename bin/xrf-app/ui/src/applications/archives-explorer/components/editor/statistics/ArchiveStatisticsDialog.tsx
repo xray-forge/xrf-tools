@@ -3,8 +3,11 @@ import { ArchiveStatistics } from "@xrf/ipc/types/xrf-archive-stats";
 import { Nullable, Optional } from "@xrf/types";
 import { DialogHeader } from "@xrf/ui/dialog/header";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { QueryStatsIcon } from "@xrf/ui/icons";
-import { Alert, CircularProgress, Dialog, DialogContent, List, ListItemButton, ListItemText } from "@xrf/ui/material";
+import { QueryStatsIcon } from "@xrf/ui/icons/query-stats";
+import { Alert } from "@xrf/ui/material/alert";
+import { Dialog, DialogContent } from "@xrf/ui/material/dialog";
+import { List, ListItemButton, ListItemText } from "@xrf/ui/material/list";
+import { CircularProgress } from "@xrf/ui/material/progress";
 import { EStatMeasure } from "@xrf/ui/stats";
 import { ReactElement, useEffect, useId, useMemo, useState } from "react";
 

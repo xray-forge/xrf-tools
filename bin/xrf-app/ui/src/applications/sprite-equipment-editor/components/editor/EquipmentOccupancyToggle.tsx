@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { EditorViewToggle } from "@xrf/ui/editor/view-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { SelectAllIcon as HighlightIcon } from "@xrf/ui/icons";
+import { SelectAllIcon as HighlightIcon } from "@xrf/ui/icons/select-all";
 import { ReactElement, useCallback } from "react";
 
 import { EquipmentGridService } from "@/applications/sprite-equipment-editor/services/equipment-grid";

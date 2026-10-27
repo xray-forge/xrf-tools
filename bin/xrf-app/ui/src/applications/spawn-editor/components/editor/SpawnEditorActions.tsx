@@ -4,7 +4,8 @@ import { Nullable } from "@xrf/types";
 import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ImportExportIcon, SaveIcon } from "@xrf/ui/icons";
+import { ImportExportIcon } from "@xrf/ui/icons/import-export";
+import { SaveIcon } from "@xrf/ui/icons/save";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback, useState } from "react";
 

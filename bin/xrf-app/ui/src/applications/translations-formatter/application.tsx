@@ -1,4 +1,4 @@
-import { FormatAlignLeftIcon } from "@xrf/ui/icons";
+import { FormatAlignLeftIcon } from "@xrf/ui/icons/format-align-left";
 
 import {
   EApplicationGroupId,

@@ -2,7 +2,8 @@ import { flowResult } from "@wirestate/mobx";
 import { useInjection } from "@wirestate/react";
 import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
-import { SaveIcon, UndoIcon } from "@xrf/ui/icons";
+import { SaveIcon } from "@xrf/ui/icons/save";
+import { UndoIcon } from "@xrf/ui/icons/undo";
 import { ReactElement, useCallback, useState } from "react";
 
 import { TranslationsService } from "@/applications/translations-editor/services/translations.service";

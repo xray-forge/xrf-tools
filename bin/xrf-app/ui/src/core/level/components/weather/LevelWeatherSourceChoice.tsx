@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ToggleButton, ToggleButtonGroup } from "@xrf/ui/material";
+import { ToggleButton, ToggleButtonGroup } from "@xrf/ui/material/toggle-button";
 import { ReactElement } from "react";
 
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";

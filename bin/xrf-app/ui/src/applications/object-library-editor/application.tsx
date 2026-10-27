@@ -1,4 +1,4 @@
-import { CollectionsBookmarkIcon } from "@xrf/ui/icons";
+import { CollectionsBookmarkIcon } from "@xrf/ui/icons/collections-bookmark";
 
 import {
   EApplicationGroupId,

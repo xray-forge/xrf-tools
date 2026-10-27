@@ -3,7 +3,7 @@ import { LevelSpawnObject, LevelSpawnObjectDetails } from "@xrf/ipc/types/xrf-ap
 import { Nullable } from "@xrf/types";
 import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Button } from "@xrf/ui/material";
+import { Button } from "@xrf/ui/material/button";
 import { ReactElement } from "react";
 
 import { describeLevelSpawnRelease } from "@/applications/level-viewer/lib/spawn/level-spawn-release";

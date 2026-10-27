@@ -1,6 +1,8 @@
 import { LtxInventoryFile } from "@xrf/ipc/types/xrf-ltx-inspect";
 import { Nullable } from "@xrf/types";
-import { DescriptionIcon, FolderIcon, FolderOpenIcon } from "@xrf/ui/icons";
+import { DescriptionIcon } from "@xrf/ui/icons/description";
+import { FolderIcon } from "@xrf/ui/icons/folder";
+import { FolderOpenIcon } from "@xrf/ui/icons/folder-open";
 import { ITreeIconDecoration, ITreeNode, IVirtualizedTreeIcons } from "@xrf/ui/tree";
 
 /** Hoisted so the tree is handed the same icons every render rather than a fresh set. */

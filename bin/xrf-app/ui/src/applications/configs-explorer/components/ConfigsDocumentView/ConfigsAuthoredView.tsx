@@ -5,7 +5,7 @@ import { Nullable } from "@xrf/types";
 import { ECodeLineMark, ICodeLine, ICodeLineSource, VirtualizedLines } from "@xrf/ui/code/lines";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { EmptyState } from "@xrf/ui/layout/empty-state";
-import { Alert } from "@xrf/ui/material";
+import { Alert } from "@xrf/ui/material/alert";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { useRevealed } from "@/applications/configs-explorer/components/ConfigsDocumentView/use-revealed";

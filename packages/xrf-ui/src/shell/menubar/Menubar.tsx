@@ -3,7 +3,8 @@ import { KeyboardEvent, ReactElement, useCallback, useEffect, useLayoutEffect, u
 import { flushSync } from "react-dom";
 
 import { BaseComponentProps } from "#/element-types";
-import { ClickAwayListener, Typography } from "#/material";
+import { ClickAwayListener } from "#/material/click-away-listener";
+import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
 import { IMenubarItem, IMenubarMenu } from "./menubar-menu";

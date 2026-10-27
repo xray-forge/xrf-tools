@@ -2,7 +2,8 @@ import { ArchivePackConfig } from "@xrf/ipc/types/xrf-pack";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FormRow } from "@xrf/ui/form/row";
 import { StringListFormRow } from "@xrf/ui/form/string-list-row";
-import { Alert, Stack } from "@xrf/ui/material";
+import { Alert } from "@xrf/ui/material/alert";
+import { Stack } from "@xrf/ui/material/stack";
 import { ReactElement } from "react";
 
 import { PackerDirectoryList } from "@/applications/archives-packer/components/controls/PackerDirectoryList";

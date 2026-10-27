@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useMemo } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Typography } from "#/material";
+import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
 import { EStatMeasure } from "./stat-measure";

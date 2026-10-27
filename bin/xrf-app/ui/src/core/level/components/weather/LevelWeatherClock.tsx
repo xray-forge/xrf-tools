@@ -1,6 +1,10 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { PauseIcon, PlayArrowIcon } from "@xrf/ui/icons";
-import { IconButton, Slider, Tooltip, Typography } from "@xrf/ui/material";
+import { PauseIcon } from "@xrf/ui/icons/pause";
+import { PlayArrowIcon } from "@xrf/ui/icons/play-arrow";
+import { IconButton } from "@xrf/ui/material/icon-button";
+import { Slider } from "@xrf/ui/material/slider";
+import { Tooltip } from "@xrf/ui/material/tooltip";
+import { Typography } from "@xrf/ui/material/typography";
 import { IThrottledDraft, useThrottledDraft } from "@xrf/ui/react/throttled-draft";
 import { ReactElement, useMemo } from "react";
 

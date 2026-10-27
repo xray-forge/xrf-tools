@@ -1,9 +1,7 @@
-import {
-  DescriptionIcon,
-  FormatListBulletedIcon as ListIcon,
-  RuleIcon,
-  WarningAmberIcon as WarningIcon,
-} from "@xrf/ui/icons";
+import { DescriptionIcon } from "@xrf/ui/icons/description";
+import { FormatListBulletedIcon as ListIcon } from "@xrf/ui/icons/format-list-bulleted";
+import { RuleIcon } from "@xrf/ui/icons/rule";
+import { WarningAmberIcon as WarningIcon } from "@xrf/ui/icons/warning-amber";
 
 import { ConfigsMenuPanel } from "@/applications/configs-explorer/components/panels/ConfigsMenuPanel";
 import { ConfigsProblemsPanel } from "@/applications/configs-explorer/components/panels/ConfigsProblemsPanel";

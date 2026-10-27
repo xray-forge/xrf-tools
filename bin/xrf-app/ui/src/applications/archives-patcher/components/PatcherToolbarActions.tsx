@@ -1,8 +1,11 @@
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorTextAction } from "@xrf/ui/editor/text-action";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CompareArrowsIcon, DifferenceIcon, FileOpenIcon, SaveAltIcon } from "@xrf/ui/icons";
-import { Stack } from "@xrf/ui/material";
+import { CompareArrowsIcon } from "@xrf/ui/icons/compare-arrows";
+import { DifferenceIcon } from "@xrf/ui/icons/difference";
+import { FileOpenIcon } from "@xrf/ui/icons/file-open";
+import { SaveAltIcon } from "@xrf/ui/icons/save-alt";
+import { Stack } from "@xrf/ui/material/stack";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 

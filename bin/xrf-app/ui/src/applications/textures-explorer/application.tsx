@@ -1,4 +1,4 @@
-import { TextureIcon } from "@xrf/ui/icons";
+import { TextureIcon } from "@xrf/ui/icons/texture";
 
 import {
   EApplicationGroupId,

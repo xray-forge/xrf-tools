@@ -1,5 +1,4 @@
-import { Theme } from "@mui/material";
-
+import { Theme } from "#/material/styles";
 import { toColorSchemeSelector } from "#/theme";
 
 import { createApplicationTheme } from "./creation";

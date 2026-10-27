@@ -1,6 +1,7 @@
 import { TextureVocabularyEntry } from "@xrf/ipc/types/xrf-app-textures";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { MenuItem, TextField } from "@xrf/ui/material";
+import { MenuItem } from "@xrf/ui/material/menu";
+import { TextField } from "@xrf/ui/material/text-field";
 import { ChangeEvent, ReactElement, useCallback } from "react";
 
 import { toVocabularyOptions } from "@/applications/textures-editor/lib/texture-vocabulary";

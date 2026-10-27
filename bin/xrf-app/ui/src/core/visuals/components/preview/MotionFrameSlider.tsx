@@ -1,5 +1,5 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Slider, sliderClasses } from "@xrf/ui/material";
+import { Slider, sliderClasses } from "@xrf/ui/material/slider";
 import { ReactElement, useCallback } from "react";
 
 /**

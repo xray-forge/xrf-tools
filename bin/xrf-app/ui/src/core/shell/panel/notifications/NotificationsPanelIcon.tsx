@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
-import { NotificationsIcon } from "@xrf/ui/icons";
-import { Badge, badgeClasses } from "@xrf/ui/material";
+import { NotificationsIcon } from "@xrf/ui/icons/notifications";
+import { Badge, badgeClasses } from "@xrf/ui/material/badge";
 import { LAYOUT } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
