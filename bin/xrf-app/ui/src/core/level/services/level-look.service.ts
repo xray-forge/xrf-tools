@@ -1,5 +1,5 @@
 import { EventBus, inject, Injectable, OnDeprovision, OnProvision } from "@wirestate/core";
-import { BoundAction, Computed, RefObservable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed } from "@wirestate/mobx";
 import { AsyncState } from "@xrf/async";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { SessionPartResource } from "@xrf/ipc/session";
@@ -27,15 +27,12 @@ import { jsonCodec, LEVEL_LOOK_STORAGE_KEY, StoredValue } from "@/core/storage";
  */
 @Injectable()
 export class LevelLookService {
+  public readonly log: Logger = new Logger(__MODULE_NAME__);
+
   private readonly storedChoice: StoredValue<ILevelLookChoice>;
 
   /** The open level's console defaults, read again where a commit lets the shipped ones go. */
   private readonly console: SessionPartResource<LevelConsoleDefaults>;
-
-  private readonly log: Logger = new Logger(__MODULE_NAME__);
-  /** The engine the open level is read as, which a look the game leaves to its engine follows; null with none open. */
-  @RefObservable()
-  public engine: Nullable<XrayEngine> = null;
 
   /** The level whose game's defaults are held or being read. */
   private sessionId: Nullable<string> = null;
@@ -68,18 +65,13 @@ export class LevelLookService {
     return this.console.state;
   }
 
-  /** Reads each level's defaults as it opens, whether or not a viewport draws it. */
-  @OnProvision()
-  public onProvision(): void {
-    this.unfollow = this.loadService.followLevel((selected) => void this.open(selected));
-  }
-
-  @OnDeprovision()
-  public onDeprovision(): void {
-    this.unfollow?.();
-    this.unfollow = null;
-    this.sessionId = null;
-    this.console.detach();
+  /**
+   * The engine the open level is read as, which a look the game leaves to its engine follows, as the weather does;
+   * null with none open.
+   */
+  @Computed()
+  public get engine(): Nullable<XrayEngine> {
+    return this.loadService.level.value?.selected.value.engine.engine ?? null;
   }
 
   /**
@@ -99,37 +91,22 @@ export class LevelLookService {
     return resolveLevelLook(this.choice, this.game, this.exposure);
   }
 
-  /**
-   * Follows the console defaults of a level's game, read as the level opens and again as commits let them go.
-   *
-   * @param selected - The level open now, or null for none.
-   */
-  public async open(selected: Nullable<SessionSnapshot<SelectedLevelDescription>>): Promise<void> {
-    const sessionId: Nullable<string> = selected?.sessionId ?? null;
+  private get exposure(): TRenderExposureSettings {
+    return this.renderSettingsService.rendererFeatures.exposure;
+  }
 
-    if (sessionId === this.sessionId) {
-      return;
-    }
+  /** Reads each level's defaults as it opens, whether or not a viewport draws it. */
+  @OnProvision()
+  public onProvision(): void {
+    this.unfollow = this.loadService.followLevel((selected) => void this.open(selected));
+  }
 
-    this.sessionId = sessionId;
-    runInAction(() => {
-      this.engine = selected?.value.engine.engine ?? null;
-    });
-
-    if (!sessionId) {
-      this.console.detach();
-
-      return;
-    }
-
-    await this.console.attach(sessionId);
-
-    if (this.sessionId === sessionId && this.console.error) {
-      this.log.warn(
-        "The game's console defaults cannot be read, so its levels look as the settings say:",
-        this.console.error
-      );
-    }
+  @OnDeprovision()
+  public onDeprovision(): void {
+    this.unfollow?.();
+    this.unfollow = null;
+    this.sessionId = null;
+    this.console.detach();
   }
 
   /**
@@ -153,7 +130,33 @@ export class LevelLookService {
     this.storedChoice.set({ custom: look, source: ELevelLookSource.CUSTOM });
   }
 
-  private get exposure(): TRenderExposureSettings {
-    return this.renderSettingsService.rendererFeatures.exposure;
+  /**
+   * Follows the console defaults of a level's game, read as the level opens and again as commits let them go.
+   *
+   * @param selected - The level open now, or null for none.
+   */
+  private async open(selected: Nullable<SessionSnapshot<SelectedLevelDescription>>): Promise<void> {
+    const sessionId: Nullable<string> = selected?.sessionId ?? null;
+
+    if (sessionId === this.sessionId) {
+      return;
+    }
+
+    this.sessionId = sessionId;
+
+    if (!sessionId) {
+      this.console.detach();
+
+      return;
+    }
+
+    await this.console.attach(sessionId);
+
+    if (this.sessionId === sessionId && this.console.error) {
+      this.log.warn(
+        "The game's console defaults cannot be read, so its levels look as the settings say:",
+        this.console.error
+      );
+    }
   }
 }

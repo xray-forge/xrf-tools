@@ -3,8 +3,8 @@ import { waitFor } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
-import { LevelConsoleDefaults } from "@xrf/ipc/types/xrf-app-levels";
-import { EXrayEngine, EXrayEngineEvidence } from "@xrf/ipc/types/xrf-engine-target";
+import { LevelConsoleDefaults, SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { EXrayEngine, EXrayEngineChoice, EXrayEngineEvidence } from "@xrf/ipc/types/xrf-engine-target";
 
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { MONOLITH_LEVEL_BLOOM, OPENXRAY_LEVEL_BLOOM } from "@/core/level/lib/look/level-look";
@@ -36,6 +36,23 @@ const UNSET: LevelConsoleDefaults = {
   tonemapMiddleGray: null,
 };
 
+async function mockOpenLook(
+  defaults: LevelConsoleDefaults,
+  level: SelectedLevelDescription = mockSelectedLevelDescription()
+): Promise<{ container: Container; service: LevelLookService }> {
+  mockIpcCommands({
+    [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: mockSessionResponse(defaults),
+    [ELevelsCommand.RESTORE_LEVEL]: mockSessionResponse(level),
+  });
+
+  const container: Container = mockContainer([LevelLoadService, LevelLookService]).provision();
+  const service: LevelLookService = container.get(LevelLookService);
+
+  await waitFor(() => expect(service.defaults.isReady).toBe(true));
+
+  return { container, service };
+}
+
 describe("LevelLookService", () => {
   beforeEach(() => {
     clearLocalStorage();
@@ -43,21 +60,13 @@ describe("LevelLookService", () => {
   });
 
   it("looks as the open level's game ships, and as the settings say where it ships nothing", async () => {
-    mockIpcCommands({
-      [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: mockSessionResponse<LevelConsoleDefaults>({
-        ...UNSET,
-        imageGamma: 1.2,
-        isShipped: true,
-        sunScale: 2,
-        tonemapMiddleGray: 1.5,
-      }),
+    const { container, service } = await mockOpenLook({
+      ...UNSET,
+      imageGamma: 1.2,
+      isShipped: true,
+      sunScale: 2,
+      tonemapMiddleGray: 1.5,
     });
-
-    const { service } = mockInjectedService(LevelLookService, [LevelLoadService]);
-
-    expect(service.look.exposure).toEqual(DEFAULT_RENDER_EXPOSURE_SETTINGS);
-
-    await service.open({ sessionId: "level", revision: 0, value: mockSelectedLevelDescription() });
 
     expect(service.look.lightScales.sun).toBe(2);
     expect(service.look.exposure.middleGray).toBe(1.5);
@@ -67,42 +76,47 @@ describe("LevelLookService", () => {
 
     expect(service.look.lightScales.sun).toBe(1);
     expect(service.look.exposure).toEqual(DEFAULT_RENDER_EXPOSURE_SETTINGS);
+
+    container.deprovision();
+  });
+
+  it("looks as the settings say before a level opens", () => {
+    const { service } = mockInjectedService(LevelLookService, [LevelLoadService]);
+
+    expect(service.look.exposure).toEqual(DEFAULT_RENDER_EXPOSURE_SETTINGS);
   });
 
   // The look and the weather follow one engine, the level's: a look reading a setting of its own disagreed with the
   // weather the level was opened with.
   it("blooms as the engine the open level was read as", async () => {
-    mockIpcCommands({ [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: mockSessionResponse(UNSET) });
-
-    const { service } = mockInjectedService(LevelLookService, [LevelLoadService]);
-
-    await service.open({
-      sessionId: "extended",
-      revision: 0,
-      value: mockSelectedLevelDescription({
+    const { container, service } = await mockOpenLook(
+      UNSET,
+      mockSelectedLevelDescription({
         engine: { engine: EXrayEngine.EXTENDED, evidence: EXrayEngineEvidence.ANOMALY_EXECUTABLES, subject: null },
-      }),
-    });
+      })
+    );
 
     expect(service.engine).toBe(EXrayEngine.EXTENDED);
     expect(service.game?.bloom).toEqual(MONOLITH_LEVEL_BLOOM);
 
-    await service.open({ sessionId: "vanilla", revision: 0, value: mockSelectedLevelDescription() });
+    const level: SelectedLevelDescription = mockSelectedLevelDescription();
+
+    mockIpcCommands({
+      [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: mockSessionResponse(UNSET),
+      [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(level),
+    });
+    await container.get(LevelLoadService).load({
+      engine: EXrayEngineChoice.VANILLA,
+      isDltx: false,
+      roots: level.roots,
+      source: level.source,
+    });
+    await waitFor(() => expect(service.defaults.isReady).toBe(true));
 
     expect(service.engine).toBe(EXrayEngine.VANILLA);
     expect(service.game?.bloom).toEqual(OPENXRAY_LEVEL_BLOOM);
-  });
 
-  it("holds no engine with no level open", async () => {
-    mockIpcCommands({ [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: mockSessionResponse(UNSET) });
-
-    const { service } = mockInjectedService(LevelLookService, [LevelLoadService]);
-
-    await service.open({ sessionId: "level", revision: 0, value: mockSelectedLevelDescription() });
-    await service.open(null);
-
-    expect(service.engine).toBeNull();
-    expect(service.game).toBeNull();
+    container.deprovision();
   });
 
   it("keeps a look edited by hand over runs", () => {
@@ -149,6 +163,7 @@ describe("LevelLookService", () => {
 
     expect(service.defaults.isIdle).toBe(true);
     expect(service.engine).toBeNull();
+    expect(service.game).toBeNull();
 
     container.deprovision();
   });

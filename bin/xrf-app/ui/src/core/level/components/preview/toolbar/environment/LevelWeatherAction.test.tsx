@@ -1,45 +1,18 @@
 import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
-import { Container } from "@wirestate/core";
-import { ELevelsCommand } from "@xrf/ipc/commands/levels";
-import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
+import { resetMockInvoke } from "@xrf/ipc/testing";
 
 import { LevelWeatherAction } from "@/core/level/components/preview/toolbar/environment/LevelWeatherAction";
-import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
-import { mockLevelWeatherDescription } from "@/core/level/fixtures/weather.mocks";
+import {
+  mockLevelViewContainer,
+  renderOpenLevelView,
+  TLevelViewRenderResult,
+} from "@/core/level/fixtures/level-container";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
-import { LevelLoadService } from "@/core/level/services/level-load.service";
-import { LevelLookService } from "@/core/level/services/level-look.service";
-import { LevelRenderService } from "@/core/level/services/level-render.service";
-import { LevelViewService } from "@/core/level/services/level-view.service";
-import { LevelViewportService } from "@/core/level/services/level-viewport.service";
-import { LevelWeatherService } from "@/core/level/services/level-weather.service";
 import { clearLocalStorage } from "@/core/storage";
-import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
-import { mockContainer } from "@/fixtures/utils/container";
-import { renderWithProviders } from "@/fixtures/utils/render";
 
-async function renderAction(): Promise<{ weather: LevelWeatherService } & ReturnType<typeof renderWithProviders>> {
-  mockIpcCommands({
-    [ELevelsCommand.RESTORE_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
-    [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(mockLevelWeatherDescription()),
-  });
-
-  const container: Container = mockContainer([
-    LevelLoadService,
-    LevelLookService,
-    LevelViewService,
-    LevelViewportService,
-    LevelWeatherService,
-    LevelRenderService,
-  ]);
-  const load: LevelLoadService = container.get(LevelLoadService);
-  const weather: LevelWeatherService = container.get(LevelWeatherService);
-
-  await load.restore();
-  await weather.open(load.level.value?.selected ?? null);
-
-  return { ...renderWithProviders(<LevelWeatherAction />, { container }), weather };
+function renderAction(): Promise<TLevelViewRenderResult> {
+  return renderOpenLevelView(<LevelWeatherAction />, mockLevelViewContainer());
 }
 
 afterEach(() => {

@@ -41,7 +41,8 @@ export async function mockOpenLevelWeather(
     mockLetGoSessionRoot(loader.selection);
   }
 
-  await service.open(selected);
+  // What the weather's own follow of the loader calls once provisioned, which these tests leave unprovisioned.
+  await service["open"](selected);
 }
 
 /** The keyframe set by hand a play hands over, or null for a play of anything else. */

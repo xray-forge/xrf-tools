@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
 import { LevelOverlaysAction } from "@/core/level/components/preview/toolbar/view/LevelOverlaysAction";
@@ -7,6 +8,7 @@ import {
   mockLevelViewContainer,
   renderLevelView,
 } from "@/core/level/fixtures/level-container";
+import { SettingsRendererDisplay } from "@/core/settings/components/SettingsDialog/SettingsRenderSection/SettingsRendererDisplay";
 import { clearLocalStorage } from "@/core/storage";
 
 beforeEach(() => {
@@ -41,5 +43,40 @@ describe("LevelOverlaysAction", () => {
     await userEvent.click(getByRole("checkbox", { name: "Sun" }));
 
     expect(view.options.isSunMarked).toBe(true);
+  });
+
+  // One switch, offered where the readout is and where the settings are: either place sets it, and both show it.
+  it("times the passes from its readouts and from the settings alike", async () => {
+    const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
+    const { getByRole, findByRole, queryByRole } = renderLevelView(
+      <>
+        <LevelOverlaysAction />
+        <SettingsRendererDisplay />
+      </>,
+      descriptor
+    );
+    const { renderSettings } = descriptor;
+
+    expect(renderSettings.isGpuTimed).toBe(false);
+
+    await userEvent.click(getByRole("button", { name: "Overlays" }));
+    await userEvent.click(
+      within(await findByRole("dialog", { name: "Overlays" })).getByRole("checkbox", { name: "GPU time per pass" })
+    );
+
+    expect(renderSettings.isGpuTimed).toBe(true);
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(queryByRole("dialog", { name: "Overlays" })).not.toBeInTheDocument());
+
+    expect(getByRole("checkbox", { name: "GPU time per pass" })).toBeChecked();
+
+    await userEvent.click(getByRole("checkbox", { name: "GPU time per pass" }));
+    await userEvent.click(getByRole("button", { name: "Overlays" }));
+
+    expect(renderSettings.isGpuTimed).toBe(false);
+    expect(
+      within(await findByRole("dialog", { name: "Overlays" })).getByRole("checkbox", { name: "GPU time per pass" })
+    ).not.toBeChecked();
   });
 });

@@ -142,6 +142,79 @@ export class LevelWeatherService {
   }
 
   /**
+   * What the renderer plays: the keyframe set by hand while it lights the level, the cycle otherwise, and the keyframe
+   * again where no cycle plays; null while neither was handed over.
+   */
+  @Computed()
+  public get weather(): Nullable<WorldWeatherPlay> {
+    const manual: Nullable<WorldWeatherPlay> = this.isManualPlayed
+      ? {
+          keyframe: toLevelManualDescriptor(this.manual ?? DEFAULT_LEVEL_MANUAL_WEATHER, 0, this.base),
+          kind: EWorldWeatherPlay.KEYFRAME,
+        }
+      : null;
+
+    if (this.source === ELevelWeatherSource.MANUAL && manual) {
+      return manual;
+    }
+
+    return this.cycle.value ? { kind: EWorldWeatherPlay.CYCLE, name: this.cycle.value.name } : manual;
+  }
+
+  /**
+   * Why the level's weather, or the cycle last asked for, does not play; null while both do. A weather that failed to
+   * be read again plays on as it was read, so says nothing.
+   */
+  @Computed()
+  public get failure(): Nullable<string> {
+    const description: Nullable<Error> = this.description.value ? null : this.description.error;
+
+    return (description ?? this.cycle.error)?.message ?? null;
+  }
+
+  /** The cycle being read, or null while none is. */
+  @Computed()
+  public get reading(): Nullable<string> {
+    return this.cycle.isLoading ? this.requested : null;
+  }
+
+  /** The engine the weather is read for: the open level's, Vanilla with none open. */
+  @Computed()
+  public get engine(): XrayEngine {
+    return this.selected?.value.engine.engine ?? EXrayEngine.VANILLA;
+  }
+
+  /** The keyframe on screen as one set by hand: the one set, or the weather's mix, which a first edit seeds it from. */
+  @Computed()
+  public get shown(): ILevelManualWeather {
+    const current: Maybe<WeatherDescriptor> = this.isManual ? undefined : this.report?.current;
+
+    return current ? toLevelManualWeather(current) : (this.manual ?? DEFAULT_LEVEL_MANUAL_WEATHER);
+  }
+
+  /** Whether the keyframe set by hand lights the level, by choice or because no cycle plays. */
+  @Computed()
+  public get isManual(): boolean {
+    return this.source === ELevelWeatherSource.MANUAL || !this.cycle.value;
+  }
+
+  /**
+   * The level's `weathers` where it leads to no cycle its game has, as a key its game's scripts read their own way does:
+   * the viewer then plays the game's first cycle. Null while the level offers one, or before its weather is read.
+   */
+  @Computed()
+  public get unfollowed(): Nullable<string> {
+    const description: Nullable<LevelWeatherDescription> = this.description.value;
+
+    return description && description.offered.length === 0 ? description.weather.key : null;
+  }
+
+  /** The level open, as its loader holds it, which the engine is named by. */
+  private get selected(): Nullable<SessionSnapshot<SelectedLevelDescription>> {
+    return this.loadService.level.value?.selected ?? null;
+  }
+
+  /**
    * Opens each level's weather as the level opens, whether or not a viewport plays it, and reads the cycle played
    * again each time the weather it is played from is read again.
    */
@@ -170,154 +243,30 @@ export class LevelWeatherService {
   }
 
   /**
-   * What the renderer plays: the keyframe set by hand while it lights the level, the cycle otherwise, and the keyframe
-   * again where no cycle plays; null while neither was handed over.
+   * Remembers how the level's weather played, then forgets it all, for the next level to start from its own: every read
+   * of the level's is cancelled, so none lands on the next.
    */
-  public get weather(): Nullable<WorldWeatherPlay> {
-    const manual: Nullable<WorldWeatherPlay> = this.isManualPlayed
-      ? {
-          keyframe: toLevelManualDescriptor(this.manual ?? DEFAULT_LEVEL_MANUAL_WEATHER, 0, this.base),
-          kind: EWorldWeatherPlay.KEYFRAME,
-        }
-      : null;
-
-    if (this.source === ELevelWeatherSource.MANUAL && manual) {
-      return manual;
-    }
-
-    return this.cycle.value ? { kind: EWorldWeatherPlay.CYCLE, name: this.cycle.value.name } : manual;
-  }
-
-  /**
-   * Why the level's weather, or the cycle last asked for, does not play; null while both do. A weather that failed to
-   * be read again plays on as it was read, so says nothing.
-   */
-  public get failure(): Nullable<string> {
-    const description: Nullable<Error> = this.description.value ? null : this.description.error;
-
-    return (description ?? this.cycle.error)?.message ?? null;
-  }
-
-  /** The cycle being read, or null while none is. */
-  public get reading(): Nullable<string> {
-    return this.cycle.isLoading ? this.requested : null;
-  }
-
-  /** The engine the weather is read for: the open level's, Vanilla with none open. */
-  public get engine(): XrayEngine {
-    return this.selected?.value.engine.engine ?? EXrayEngine.VANILLA;
-  }
-
-  /** The level open, as its loader holds it, which the engine is named by. */
-  private get selected(): Nullable<SessionSnapshot<SelectedLevelDescription>> {
-    return this.loadService.level.value?.selected ?? null;
-  }
-
-  /** The keyframe on screen as one set by hand: the one set, or the weather's mix, which a first edit seeds it from. */
-  @Computed()
-  public get shown(): ILevelManualWeather {
-    const current: Maybe<WeatherDescriptor> = this.isManual ? undefined : this.report?.current;
-
-    return current ? toLevelManualWeather(current) : (this.manual ?? DEFAULT_LEVEL_MANUAL_WEATHER);
-  }
-
-  /** Whether the keyframe set by hand lights the level, by choice or because no cycle plays. */
-  public get isManual(): boolean {
-    return this.source === ELevelWeatherSource.MANUAL || !this.cycle.value;
-  }
-
-  /**
-   * Opens a level's weather, once per level: how it was last played, then the weather itself, read and played.
-   *
-   * @param selected - The level open now, or null for none.
-   */
-  public async open(selected: Nullable<SessionSnapshot<SelectedLevelDescription>>): Promise<void> {
-    const sessionId: Nullable<string> = selected?.sessionId ?? null;
-
-    if (sessionId === this.sessionId) {
-      return;
-    }
-
-    this.clear();
-
-    if (!selected) {
-      return;
-    }
-
-    const memoryKey: string = toLevelWeatherMemoryKey(selected.value);
-    const memory: Nullable<ILevelWeatherMemory> = readLevelWeatherMemory(memoryKey);
-
-    this.sessionId = selected.sessionId;
-    this.memoryKey = memoryKey;
-
-    if (memory) {
-      this.restore(memory);
-    }
-
-    await flowResult(this.read(selected, memory?.cycle ?? ""));
-  }
-
-  /**
-   * The level's `weathers` where it leads to no cycle its game has, as a key its game's scripts read their own way does:
-   * the viewer then plays the game's first cycle. Null while the level offers one, or before its weather is read.
-   */
-  public get unfollowed(): Nullable<string> {
-    const description: Nullable<LevelWeatherDescription> = this.description.value;
-
-    return description && description.offered.length === 0 ? description.weather.key : null;
-  }
-
-  /**
-   * Reads the level's weather and plays the cycle it was last played with, or the first it offers, or the game's first
-   * where it offers none; or the keyframe set by hand, where that is what it was lit by, or where no cycle plays.
-   *
-   * On the cycle lane, as every play is: a cycle picked meanwhile is the last word, and another level opened meanwhile
-   * cancels it with the rest of the level's work.
-   *
-   * @param selected - The level open.
-   * @param remembered - The cycle it was last played with, empty for none.
-   */
-  @LatestFlow("cycle")
-  private *read(selected: SessionSnapshot<SelectedLevelDescription>, remembered: string): TFlow {
-    yield* call(this.described.attach(selected.sessionId));
-
-    const description: Nullable<LevelWeatherDescription> = this.described.value;
-
-    // The keyframe set by hand is what lights a level whose weather does not read.
-    if (!description) {
-      this.log.warn("The level's weather is not played:", this.described.error?.message);
-      this.playManual(EWorldWeatherTransition.CUT);
-
-      return;
-    }
-
-    try {
-      // Lit by hand, the keyframe is handed over first, so the cycle is never shown before it.
-      if (this.source === ELevelWeatherSource.MANUAL) {
-        this.playManual(EWorldWeatherTransition.CUT);
-      }
-
-      // A level whose `weathers` its game's scripts read their own way offers nothing; the game's own cycles stand in.
-      const first: Maybe<string> =
-        description.offered[0]?.name ??
-        description.cycles.find((it: EnvironmentCycleEntry) => it.kind === EWeatherCycleKind.CYCLE)?.name;
-
-      // A remembered cycle the game no longer has gives way to the level's own.
-      if (remembered && (yield* this.playRemembered(selected.sessionId, remembered))) {
-        return;
-      }
-
-      if (first) {
-        yield* this.play(selected.sessionId, first);
-      } else if (this.source !== ELevelWeatherSource.MANUAL) {
-        this.playManual(EWorldWeatherTransition.CUT);
-      }
-    } catch (error: unknown) {
-      this.fail(error);
-
-      // The keyframe set by hand is what lights a level whose weather does not play.
-      this.playManual(EWorldWeatherTransition.CUT);
-    }
+  @OnDeactivation()
+  @BoundAction()
+  public clear(): void {
+    cancelFlows(this);
+    this.persist();
+    this.sessionId = null;
+    this.memoryKey = null;
+    this.remembered = "";
+    this.described.detach();
+    this.cycle = AsyncState.idle();
+    this.requested = null;
+    this.manual = null;
+    this.base = null;
+    this.seed = null;
+    this.isManualPlayed = false;
+    this.transition = EWorldWeatherTransition.CUT;
+    this.report = null;
+    this.source = ELevelWeatherSource.WEATHER;
+    this.control = DEFAULT_LEVEL_WEATHER_CONTROL;
+    this.sunShafts = DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS;
+    this.time = LEVEL_WEATHER_NOON;
   }
 
   /**
@@ -533,37 +482,94 @@ export class LevelWeatherService {
     }
   }
 
-  /**
-   * Remembers how the level's weather played, then forgets it all, for the next level to start from its own: every read
-   * of the level's is cancelled, so none lands on the next.
-   */
-  @OnDeactivation()
-  @BoundAction()
-  public clear(): void {
-    cancelFlows(this);
-    this.persist();
-    this.sessionId = null;
-    this.memoryKey = null;
-    this.remembered = "";
-    this.described.detach();
-    this.cycle = AsyncState.idle();
-    this.requested = null;
-    this.manual = null;
-    this.base = null;
-    this.seed = null;
-    this.isManualPlayed = false;
-    this.transition = EWorldWeatherTransition.CUT;
-    this.report = null;
-    this.source = ELevelWeatherSource.WEATHER;
-    this.control = DEFAULT_LEVEL_WEATHER_CONTROL;
-    this.sunShafts = DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS;
-    this.time = LEVEL_WEATHER_NOON;
-  }
-
   @BoundAction()
   public setSunShafts(sunShafts: ILevelSunShaftsOptions): void {
     this.sunShafts = sunShafts;
     this.persist();
+  }
+
+  /**
+   * Opens a level's weather, once per level: how it was last played, then the weather itself, read and played.
+   *
+   * @param selected - The level open now, or null for none.
+   */
+  private async open(selected: Nullable<SessionSnapshot<SelectedLevelDescription>>): Promise<void> {
+    const sessionId: Nullable<string> = selected?.sessionId ?? null;
+
+    if (sessionId === this.sessionId) {
+      return;
+    }
+
+    this.clear();
+
+    if (!selected) {
+      return;
+    }
+
+    const memoryKey: string = toLevelWeatherMemoryKey(selected.value);
+    const memory: Nullable<ILevelWeatherMemory> = readLevelWeatherMemory(memoryKey);
+
+    this.sessionId = selected.sessionId;
+    this.memoryKey = memoryKey;
+
+    if (memory) {
+      this.restore(memory);
+    }
+
+    await flowResult(this.read(selected, memory?.cycle ?? ""));
+  }
+
+  /**
+   * Reads the level's weather and plays the cycle it was last played with, or the first it offers, or the game's first
+   * where it offers none; or the keyframe set by hand, where that is what it was lit by, or where no cycle plays.
+   *
+   * On the cycle lane, as every play is: a cycle picked meanwhile is the last word, and another level opened meanwhile
+   * cancels it with the rest of the level's work.
+   *
+   * @param selected - The level open.
+   * @param remembered - The cycle it was last played with, empty for none.
+   */
+  @LatestFlow("cycle")
+  private *read(selected: SessionSnapshot<SelectedLevelDescription>, remembered: string): TFlow {
+    yield* call(this.described.attach(selected.sessionId));
+
+    const description: Nullable<LevelWeatherDescription> = this.described.value;
+
+    // The keyframe set by hand is what lights a level whose weather does not read.
+    if (!description) {
+      this.log.warn("The level's weather is not played:", this.described.error?.message);
+      this.playManual(EWorldWeatherTransition.CUT);
+
+      return;
+    }
+
+    try {
+      // Lit by hand, the keyframe is handed over first, so the cycle is never shown before it.
+      if (this.source === ELevelWeatherSource.MANUAL) {
+        this.playManual(EWorldWeatherTransition.CUT);
+      }
+
+      // A level whose `weathers` its game's scripts read their own way offers nothing; the game's own cycles stand in.
+      const first: Maybe<string> =
+        description.offered[0]?.name ??
+        description.cycles.find((it: EnvironmentCycleEntry) => it.kind === EWeatherCycleKind.CYCLE)?.name;
+
+      // A remembered cycle the game no longer has gives way to the level's own.
+      if (remembered && (yield* this.playRemembered(selected.sessionId, remembered))) {
+        return;
+      }
+
+      if (first) {
+        yield* this.play(selected.sessionId, first);
+      } else if (this.source !== ELevelWeatherSource.MANUAL) {
+        this.playManual(EWorldWeatherTransition.CUT);
+      }
+    } catch (error: unknown) {
+      this.fail(error);
+
+      // The keyframe set by hand is what lights a level whose weather does not play.
+      this.playManual(EWorldWeatherTransition.CUT);
+    }
   }
 
   /**

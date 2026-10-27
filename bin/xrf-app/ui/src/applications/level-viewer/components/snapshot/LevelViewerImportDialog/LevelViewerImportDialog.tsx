@@ -9,9 +9,9 @@ import { LevelViewerImportRow } from "@/applications/level-viewer/components/sna
 import {
   ELevelViewerSnapshotStatus,
   ILevelViewerSnapshot,
+  ILevelViewerSnapshotApplied,
   ILevelViewerSnapshotEntry,
 } from "@/applications/level-viewer/lib/snapshot/level-viewer-snapshot";
-import { ILevelViewerSnapshotApplied } from "@/applications/level-viewer/services/snapshot";
 import { DialogHeader } from "@/core/ui/dialog/DialogHeader";
 import { DetailSection } from "@/core/ui/layout/DetailSection";
 import { BaseComponentProps } from "@/lib/dom/element-types";
