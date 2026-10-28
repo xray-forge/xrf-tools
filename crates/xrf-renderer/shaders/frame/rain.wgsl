@@ -433,11 +433,51 @@ fn fs_splash(in: RainVarying) -> @location(0) vec4<f32> {
   return shade(textureSample(splash_texture, rain_sampler, in.uv));
 }
 
-// A drawn-size target's texel at a place on the screen, from nought to one, held within it.
-fn screen_texel(at: vec2<f32>) -> vec2<i32> {
-  let size: vec2<i32> = vec2<i32>(textureDimensions(depth_target));
+// The four drawn texels about a place on the screen, from nought to one, and the bilinear weight of each: the streaks
+// draw over the resolved image, while the depth and the light they read are the frame's as drawn, jittered; one texel
+// would flip at every edge as the jitter turns, the four's weights slide with it.
+struct ScreenTexels {
+  texels: array<vec2<i32>, 4>,
+  weights: vec4<f32>,
+};
 
-  return clamp(vec2<i32>(at * vec2<f32>(size)), vec2<i32>(0), size - 1);
+fn screen_texels(at: vec2<f32>) -> ScreenTexels {
+  let size: vec2<i32> = vec2<i32>(textureDimensions(depth_target));
+  let position: vec2<f32> = at * vec2<f32>(size) - 0.5;
+  let corner: vec2<i32> = vec2<i32>(floor(position));
+  let f: vec2<f32> = position - floor(position);
+  let last: vec2<i32> = size - 1;
+  var out: ScreenTexels;
+
+  out.texels = array<vec2<i32>, 4>(clamp(corner, vec2<i32>(0), last), clamp(corner + vec2<i32>(1, 0), vec2<i32>(0), last),
+    clamp(corner + vec2<i32>(0, 1), vec2<i32>(0), last), clamp(corner + vec2<i32>(1, 1), vec2<i32>(0), last));
+  out.weights = vec4<f32>((1.0 - f.x) * (1.0 - f.y), f.x * (1.0 - f.y), (1.0 - f.x) * f.y, f.x * f.y);
+
+  return out;
+}
+
+// How much of what the frame drew about a place stands behind a point at a reversed depth (the sky behind everything).
+fn share_behind(at: vec2<f32>, depth: f32) -> f32 {
+  let screen: ScreenTexels = screen_texels(at);
+  var share: f32 = 0.0;
+
+  for (var index: i32 = 0; index < 4; index++) {
+    share += select(0.0, screen.weights[index], textureLoad(depth_target, screen.texels[index], 0) < depth);
+  }
+
+  return share;
+}
+
+// The light the frame drew about a place, filtered between its texels.
+fn light_about(at: vec2<f32>) -> vec3<f32> {
+  let screen: ScreenTexels = screen_texels(at);
+  var light: vec3<f32> = vec3<f32>(0.0);
+
+  for (var index: i32 = 0; index < 4; index++) {
+    light += textureLoad(light_target, screen.texels[index], 0).rgb * screen.weights[index];
+  }
+
+  return light;
 }
 
 // How much of an enhanced drop shows: its map's alpha, faded out within `NEAR_FADE` of the eye.
@@ -474,16 +514,15 @@ fn fs_streak_enhanced(in: RainVarying) -> @location(0) vec4<f32> {
   let bright: f32 = saturate(dot(hemisphere, vec3<f32>(1.0)));
   let refraction: vec2<f32> = normalize(vec3<f32>(bend * DROP_BEND * rain.look.z, 1.0)).xy;
   let reflection: vec2<f32> = normalize(vec3<f32>(bend * (0.2 + bright * 0.5), 1.0)).xy;
-  // The depth is reversed, so what stands behind the drop holds less of it, and the sky none.
-  let behind: f32 = textureLoad(depth_target, screen_texel(saturate(at + refraction)), 0);
-  let bent: vec2<f32> = select(vec2<f32>(0.0), refraction, behind < in.clip.z);
+  // The depth is reversed, so what stands behind the drop holds less of it, and the sky none. The bend goes as far as
+  // what it lands on stands behind the drop, and the drop shows as far as nothing nearer stands in front of it.
+  let bent: vec2<f32> = refraction * share_behind(saturate(at + refraction), in.clip.z);
   let seen: vec3<f32> = scene_shown(textureSampleLevel(refracted, refracted_sampler, saturate(at + bent), 0.0).rgb);
-  let light: vec3<f32> = textureLoad(light_target, screen_texel(saturate(at + reflection)), 0).rgb;
+  let light: vec3<f32> = light_about(saturate(at + reflection));
   let glint: vec3<f32> = saturate(light * rain.look.w);
   let shown: vec3<f32> = mix(1.0 - (1.0 - seen) * (1.0 - glint), scattered(in.view_at), rain.look.y);
-  let is_seen: bool = textureLoad(depth_target, screen_texel(at), 0) < in.clip.z;
 
-  let cover: f32 = select(0.0, drop_cover(texel, in.view_at) * rain.look.x, is_seen);
+  let cover: f32 = drop_cover(texel, in.view_at) * rain.look.x * share_behind(at, in.clip.z);
 
   return vec4<f32>(scene_from_shown(saturate(shown)), cover);
 }
