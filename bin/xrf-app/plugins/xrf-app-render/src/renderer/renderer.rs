@@ -5,9 +5,10 @@ use std::time::Duration;
 
 use xrf_error::XrfResult;
 use xrf_renderer::{
-  CaptureEvent, RenderCapture, RenderCommand, RenderCubeCapture, RenderEventSink, RenderFrameReport, RenderLoadReport,
-  RenderMapCapture, RenderMemoryReport, RenderOverlay, RenderPick, RenderQueue, RenderSelection, RenderSettings,
-  RenderTextureReport, RenderViewOptions, RenderViewportId, RenderViewportLayout, RenderWait, RenderWindowHost,
+  BurstEvent, CaptureEvent, RenderBurst, RenderCapture, RenderCommand, RenderCubeCapture, RenderEventSink,
+  RenderFrameReport, RenderLoadReport, RenderMapCapture, RenderMemoryReport, RenderOverlay, RenderPick, RenderQueue,
+  RenderSelection, RenderSettings, RenderTextureReport, RenderViewOptions, RenderViewportId, RenderViewportLayout,
+  RenderWait, RenderWindowHost,
 };
 
 /// The renderer as the application calls it: each call a command on the render thread's queue, numbering the
@@ -136,6 +137,21 @@ impl Renderer {
     self.queue.send(RenderCommand::CaptureCube { id, capture, events });
 
     receiver
+  }
+
+  /// Draws a burst of frames in a viewport through its own view, answering each frame as it comes back; dropping the
+  /// answer stops it.
+  pub fn capture_burst(&self, id: RenderViewportId, burst: RenderBurst) -> Receiver<BurstEvent> {
+    let (events, receiver): (Sender<BurstEvent>, Receiver<BurstEvent>) = channel();
+
+    self.queue.send(RenderCommand::CaptureBurst { id, burst, events });
+
+    receiver
+  }
+
+  /// Draws every scene's frames `step` apart on its clock from the next on; none at the time each is drawn.
+  pub fn step_clock(&self, step: Option<Duration>) {
+    self.queue.send(RenderCommand::StepClock { step });
   }
 
   /// Sets how a viewport draws what it shows: its mode, its passes and what it overlays.

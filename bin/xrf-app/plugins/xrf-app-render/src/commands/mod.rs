@@ -26,3 +26,4 @@ pub(crate) mod set_view_options;
 pub(crate) mod set_viewport_layout;
 pub(crate) mod set_weather_control;
 pub(crate) mod set_world_toggles;
+pub(crate) mod step_clock;

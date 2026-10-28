@@ -34,6 +34,7 @@ macro_rules! for_each_render_domain {
         set_viewport_layout => crate::commands::set_viewport_layout::render_set_viewport_layout,
         set_weather_control => crate::commands::set_weather_control::render_set_weather_control,
         set_world_toggles => crate::commands::set_world_toggles::render_set_world_toggles,
+        step_clock => crate::commands::step_clock::render_step_clock,
       }
     }
   };

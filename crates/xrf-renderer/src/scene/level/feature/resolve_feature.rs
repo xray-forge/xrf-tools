@@ -90,6 +90,9 @@ pub struct ResolveFeature {
   /// The output and quality ray reconstruction last refused, which super resolution upscales in its place until they
   /// change.
   refused_rays: Option<RayKey>,
+  /// The sample of a reference this frame is drawn at, and the samples it takes: unresolved, at that place of the
+  /// jitter's sequence.
+  reference: Option<(u32, u32)>,
 }
 
 impl Default for ResolveFeature {
@@ -115,6 +118,7 @@ impl Default for ResolveFeature {
       frame_time: Duration::ZERO,
       refused: None,
       refused_rays: None,
+      reference: None,
     }
   }
 }
@@ -125,6 +129,18 @@ impl ResolveFeature {
   /// the finished frame or one of FSR's debug views, which FSR resolves whatever the antialiasing; still otherwise.
   pub fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32, has_dlss: bool) -> Vec2 {
     let view: RenderDebugView = options.mode.debug_view;
+
+    // A reference's sample is drawn unresolved at its own place, its textures read at the bias DLSS reads them at
+    // unscaled, as a resolve converging on it would.
+    if let Some((sample, samples)) = self.reference {
+      self.fsr_view = None;
+      self.temporal = None;
+      self.phases = samples;
+      self.texture_bias = Self::get_bias(Some(RenderAntialiasing::Dlss), 1.0);
+      self.offset = TemporalJitter::at(sample);
+
+      return self.offset;
+    }
 
     self.fsr_view = view.is_fsr().then_some(view);
     self.temporal = if self.fsr_view.is_some() {
@@ -179,7 +195,8 @@ impl ResolveFeature {
       .map_or(Duration::ZERO, |before| now.duration_since(before));
     self.prepared_at = Some(now);
 
-    if self.temporal.is_some() {
+    // A reference's samples turn the screen-space effects' noise as a resolve's frames do, so their mean averages it.
+    if self.temporal.is_some() || self.reference.is_some() {
       self.noise_frame = self.noise_frame.wrapping_add(1);
     }
 
@@ -498,6 +515,22 @@ impl ResolveFeature {
     if let Some(Resolve::Temporal(temporal)) = &mut self.resolve {
       temporal.previous = None;
     }
+  }
+
+  /// Starts again from nothing at the next frame: no history, made anew; the jitter's sequence from its first place;
+  /// no last frame's cameras; and the noise from its first turn. Its frames from then on follow from those alone.
+  pub fn restart(&mut self) {
+    self.resolve = None;
+    self.jitter = TemporalJitter::default();
+    self.motion_previous = None;
+    self.view_projection_previous = None;
+    self.prepared_at = None;
+    self.noise_frame = 0;
+  }
+
+  /// Draws the next frames as a reference's `sample` of `samples`, unresolved; none resolves them again.
+  pub fn set_reference(&mut self, reference: Option<(u32, u32)>) {
+    self.reference = reference;
   }
 
   /// This frame's unjittered view projection and the last one's, which the surfaces' motion is measured between; the

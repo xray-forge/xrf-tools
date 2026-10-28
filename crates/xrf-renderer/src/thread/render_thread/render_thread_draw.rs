@@ -32,7 +32,7 @@ use crate::window::render_window::RenderWindow;
 use crate::window::window_backdrop::WindowBackdrop;
 use crate::window::window_frame::WindowFrame;
 
-use super::{RenderThread, ShotCopy, ViewFrame};
+use super::{BurstCopy, CaptureCopy, RenderThread, ShotCopy, ViewFrame};
 
 impl RenderThread {
   /// Readies each window this frame draws: its swapchain configured for its size now, made where it is new or was
@@ -228,8 +228,8 @@ impl RenderThread {
   }
 
   /// The frame proper, over windows to draw into: the views readied, the periodic work committed, the composition's
-  /// pipelines readied, the captures taken, the graph recorded and executed, the frame submitted, each view's frame
-  /// ended and each window presented.
+  /// pipelines readied, the captures and bursts' frames taken, the graph recorded and executed, the frame submitted,
+  /// each view's frame ended and each window presented.
   fn draw_frame(
     &mut self,
     running: &mut RunningGpu,
@@ -266,6 +266,7 @@ impl RenderThread {
     let mut captures: Vec<(RenderViewportId, FrameCapture, CaptureReply)> =
       self.take_captures(&gpu.context.device, &windows);
     let shots: Vec<ShotCopy> = self.take_capture_shots(&gpu.context.device, &windows);
+    let bursts: Vec<BurstCopy> = self.take_burst_shots(&gpu.context.device, &windows, &frames);
 
     runtime.timer.set_enabled(self.settings.is_gpu_timed);
     runtime.timer.set_tag(self.periodic.get_frame());
@@ -276,7 +277,7 @@ impl RenderThread {
       (gpu, runtime),
       &mut windows,
       &frames,
-      (&mut captures, &shots),
+      (&mut captures, &shots, &bursts),
       &mut retried,
       started,
     );
@@ -300,7 +301,7 @@ impl RenderThread {
       &mut phases,
     );
 
-    self.end_view_frames(frames, captures, shots);
+    self.end_view_frames(frames, captures, (shots, bursts));
 
     let cpu: Duration = started.elapsed().saturating_sub(waited);
 
@@ -396,7 +397,7 @@ impl RenderThread {
     (gpu, runtime): (&GpuState, &mut GraphRuntime),
     windows: &mut [WindowFrame],
     frames: &[ViewFrame],
-    (captures, shots): (&mut Vec<(RenderViewportId, FrameCapture, CaptureReply)>, &[ShotCopy]),
+    (captures, shots, bursts): (&mut Vec<CaptureCopy>, &[ShotCopy], &[BurstCopy]),
     retried: &mut Vec<(RenderViewportId, CaptureReply)>,
     started: Instant,
   ) -> XrfResult<ExecutedGraph> {
@@ -513,6 +514,16 @@ impl RenderThread {
         gpu,
         &self.viewports,
         (*id, capture),
+        outputs.get(id),
+      );
+    }
+
+    for (id, shot) in bursts {
+      Self::declare_burst_shot(
+        (&mut graph, runtime),
+        gpu,
+        &self.viewports,
+        (*id, shot),
         outputs.get(id),
       );
     }

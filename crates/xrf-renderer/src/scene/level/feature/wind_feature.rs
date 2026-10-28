@@ -52,6 +52,11 @@ impl WindFeature {
     );
   }
 
+  /// Starts the foliage's drift and the trees' sway again from nothing, as at a view's first frame.
+  pub fn restart(&mut self) {
+    *self = Self::default();
+  }
+
   /// How the trees sway this frame, which every static draw reads.
   pub fn get_uniform(&self) -> &WindUniform {
     &self.uniform

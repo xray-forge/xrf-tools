@@ -112,7 +112,7 @@ impl ViewTargets {
   }
 
   pub fn new(device: &wgpu::Device, width: u32, height: u32) -> Self {
-    let create_sized = |label: &str, format: wgpu::TextureFormat, (width, height): (u32, u32)| -> wgpu::TextureView {
+    let create_with = |label: &str, format: wgpu::TextureFormat, usage: wgpu::TextureUsages| -> wgpu::TextureView {
       device
         .create_texture(&wgpu::TextureDescriptor {
           label: Some(label),
@@ -125,13 +125,14 @@ impl ViewTargets {
           sample_count: 1,
           dimension: wgpu::TextureDimension::D2,
           format,
-          usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+          usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING | usage,
           view_formats: &[],
         })
         .create_view(&Default::default())
     };
-    let create =
-      |label: &str, format: wgpu::TextureFormat| -> wgpu::TextureView { create_sized(label, format, (width, height)) };
+    let create = |label: &str, format: wgpu::TextureFormat| -> wgpu::TextureView {
+      create_with(label, format, wgpu::TextureUsages::empty())
+    };
     let depth: wgpu::TextureView = Self::create_depth(device, (width, height));
     let scene_texture: wgpu::Texture = device.create_texture(&wgpu::TextureDescriptor {
       label: Some("scene"),
@@ -156,7 +157,8 @@ impl ViewTargets {
       height,
       albedo: create("albedo", Self::ALBEDO),
       normal: create("normal", Self::NORMAL),
-      material: create("material", Self::MATERIAL),
+      // Copied out with a burst's frames, for the marks its alpha holds.
+      material: create_with("material", Self::MATERIAL, wgpu::TextureUsages::COPY_SRC),
       motion: create("motion", Self::MOTION),
       relief: create("relief", Self::RELIEF),
       depth,

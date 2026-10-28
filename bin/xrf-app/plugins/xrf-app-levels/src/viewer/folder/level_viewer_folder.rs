@@ -10,6 +10,7 @@ use xrf_utils::HostFileName;
 pub enum LevelViewerFolder {
   Views,
   Screenshots,
+  Bursts,
 }
 
 impl LevelViewerFolder {
@@ -29,6 +30,7 @@ impl LevelViewerFolder {
     match self {
       Self::Views => "views",
       Self::Screenshots => "screenshots",
+      Self::Bursts => "bursts",
     }
   }
 
@@ -114,6 +116,32 @@ impl LevelViewerFolder {
       })
       .find(|path: &PathBuf| !path.exists())
       .ok_or_else(|| format!("No free name for the screenshot '{name}'"))
+  }
+
+  /// The folder of the bursts folder (`folder`) a burst named `name` is written into, which must not be there yet, so
+  /// no burst's frames mix with another's.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `name` is not one file name Windows takes or starts with a dot, or a burst of that name is
+  /// there already.
+  pub fn find_new_burst(folder: &Path, name: &str) -> TauriResult<PathBuf> {
+    let name: HostFileName = HostFileName::new(name, "A burst's name").map_err(|error| error.to_string())?;
+
+    if name.as_str().contains(['*', '?', '"', '<', '>', '|']) || name.as_str().starts_with('.') {
+      return Err(format!("'{name}' is not a burst's name"));
+    }
+
+    let path: PathBuf = folder.join(name.as_str());
+
+    if path.exists() {
+      return Err(format!(
+        "A burst named '{name}' was written already, in '{}'",
+        path.display()
+      ));
+    }
+
+    Ok(path)
   }
 
   /// Where the report of the screenshot at `path` stands beside it.

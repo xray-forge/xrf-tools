@@ -1,6 +1,6 @@
 use std::collections::{BTreeSet, HashMap, VecDeque};
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use glam::{Vec3, Vec4};
 use xrf_error::XrfResult;
@@ -52,8 +52,10 @@ pub struct LevelScene {
   /// The cubes the scene's environment-mapped models mix toward, by environment slot from the second, as of the cache's
   /// generation of them.
   pub environments: (u64, Vec<String>),
-  /// When the level began opening, which the clouds drift and the trees sway from.
-  pub started: Instant,
+  /// When the level began opening on the frames' clock, which the clouds drift and the trees sway from, and the time
+  /// this frame is drawn at on it.
+  started: Instant,
+  now: Instant,
   pub lights: LevelLights,
   pub particles: LevelParticles,
   /// Milliseconds the last sector taken in took to put into the scene.
@@ -91,9 +93,10 @@ impl LevelScene {
     view_layout: &wgpu::BindGroupLayout,
     source: Arc<dyn RenderLevelSource>,
     workers: &RenderWorkers,
+    now: Instant,
   ) -> Self {
     // Taken before anything is made, so the load is timed from the moment the level began opening.
-    let started: Instant = Instant::now();
+    let opened: Instant = Instant::now();
     let statics: StaticScene = StaticScene::new(device, queue);
 
     Self {
@@ -103,9 +106,10 @@ impl LevelScene {
       statics,
       trace: None,
       environments: (0, Vec::new()),
-      started,
+      started: now,
+      now,
       sector_time: 0.0,
-      load: LevelLoad::new(started),
+      load: LevelLoad::new(opened),
       texture_slots: Vec::new(),
       driver: None,
       skeleton_segments: Arc::from([]),
@@ -202,6 +206,27 @@ impl LevelScene {
     if let Some(trace) = &mut self.trace {
       trace.update(device, queue, encoder, &self.statics);
     }
+  }
+
+  /// Moves it to the time this frame is drawn at on the frames' clock, which everything living in it moves by.
+  pub fn set_now(&mut self, now: Instant) {
+    self.now = now;
+  }
+
+  /// The time this frame is drawn at, on the frames' clock.
+  pub fn get_now(&self) -> Instant {
+    self.now
+  }
+
+  /// How long it has lived at this frame, on the frames' clock: what its clouds, sway, water, lights and effects move
+  /// by.
+  pub fn get_time(&self) -> Duration {
+    self.now.saturating_duration_since(self.started)
+  }
+
+  /// The time on the frames' clock that stands `time` after it began opening.
+  pub fn get_instant(&self, time: Duration) -> Instant {
+    self.started + time
   }
 
   /// What it tells the world of the frames since the last: the sectors and the spawned models it could not take in,
@@ -381,7 +406,11 @@ impl LevelScene {
           seed,
         } => self.particles.add_emitter(handle, transform, seed),
         RenderSceneUpdate::RemoveEmitter(handle) => self.particles.remove_emitter(handle),
-        RenderSceneUpdate::PlayEffect { handle, effect, name } => self.particles.play(handle, effect, &name),
+        RenderSceneUpdate::PlayEffect { handle, effect, name } => {
+          let time: Duration = self.get_time();
+
+          self.particles.play(handle, effect, &name, time);
+        }
         RenderSceneUpdate::StopEffect {
           handle,
           effect,

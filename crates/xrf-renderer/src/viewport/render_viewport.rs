@@ -5,6 +5,7 @@ use glam::Vec3;
 use xrf_error::XrfError;
 use xrf_renderer_core::{ExecutedGroup, GraphOwner, GraphPassTime, GraphReport, GraphTimer};
 
+use crate::capture::burst::burst_job::BurstJob;
 use crate::capture::capture_job::CaptureJob;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
@@ -72,6 +73,8 @@ pub struct RenderViewport {
   pub captures_in_flight: Vec<(FrameCapture, CaptureReply)>,
   /// The level map or cubemap it captures, drawn in place of its own frames until it ends.
   pub capture: Option<CaptureJob>,
+  /// The burst its own view draws, pacing the frames' clock until it ends.
+  pub burst: Option<BurstJob>,
   /// Picks asked for, drawn one a frame while a readback is free, and those drawn, answered once they are back.
   pub picks: Vec<PendingPick>,
   pub picks_in_flight: Vec<PickInFlight>,
@@ -145,6 +148,14 @@ impl RenderViewport {
     if self.capture.as_ref().is_some_and(CaptureJob::is_ended) {
       self.capture = None;
     }
+
+    if let Some(burst) = self.burst.as_mut() {
+      burst.poll();
+    }
+
+    if self.burst.as_ref().is_some_and(BurstJob::is_ended) {
+      self.burst = None;
+    }
   }
 
   /// The view it draws and its camera's binding: its capture's while it captures, else its own.
@@ -180,10 +191,23 @@ impl RenderViewport {
     }
   }
 
+  /// Whether its own view draws a burst, whose frames are drawn whatever its window shows.
+  pub fn is_bursting(&self) -> bool {
+    self.burst.as_ref().is_some_and(|burst| !burst.is_ended())
+  }
+
+  /// Stops the burst it draws, telling its caller why.
+  pub fn stop_burst(&mut self, reason: &str) {
+    if let Some(mut burst) = self.burst.take() {
+      burst.stop(XrfError::new_invalid_error(reason.to_string()));
+    }
+  }
+
   /// Answers every capture in flight as its GPU goes: what was read back, or a refusal where nothing came back, as on a
   /// lost device, whose readbacks may never finish.
   pub fn release_captures(&mut self) {
     self.stop_capture("The GPU went before the capture was read back");
+    self.stop_burst("The GPU went before the burst was read back");
 
     for (capture, reply) in std::mem::take(&mut self.captures_in_flight) {
       let _ = reply.send(capture.take().unwrap_or_else(|| {
@@ -198,6 +222,7 @@ impl RenderViewport {
   /// nothing, since what they were asked of is drawn no more, and what it captures stops.
   pub fn show(&mut self, shown: Option<(RenderSceneId, SceneView)>) {
     self.stop_capture("The viewport shows another scene than the capture was asked of");
+    self.stop_burst("The viewport shows another scene than the burst was asked of");
 
     for entry in std::mem::take(&mut self.picks_in_flight) {
       let _ = entry.pick.reply.send(Ok(RenderPick {
@@ -235,6 +260,7 @@ impl RenderViewport {
       screenshots: Vec::new(),
       captures_in_flight: Vec::new(),
       capture: None,
+      burst: None,
       picks: Vec::new(),
       picks_in_flight: Vec::new(),
       frame: 0,

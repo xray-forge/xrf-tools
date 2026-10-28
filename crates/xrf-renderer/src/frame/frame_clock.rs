@@ -1,17 +1,16 @@
 use std::time::{Duration, Instant};
 
-/// The time a view's frames are drawn at, which everything adapting or fading over its frames reads: the time each is
-/// drawn, or one a fixed step after the last, however long it took.
+/// The time frames are drawn at, which everything moving, adapting or fading over them reads: the time each is drawn,
+/// or one a fixed step after the last, however long it took.
 ///
-/// A stepped view settles alike however fast it is drawn, as a capture's must; every frame of a view reads its time
-/// here rather than off the wall clock, so the whole view steps together.
+/// A stepped clock moves alike however fast its frames are drawn, as a capture's must.
 #[derive(Clone, Copy, Debug, Default)]
-pub struct ViewClock {
+pub struct FrameClock {
   step: Option<Duration>,
   last: Option<Instant>,
 }
 
-impl ViewClock {
+impl FrameClock {
   /// Draws the frames `step` apart from the next on, or, none, at the time they are drawn.
   pub fn set_step(&mut self, step: Option<Duration>) {
     self.step = step;

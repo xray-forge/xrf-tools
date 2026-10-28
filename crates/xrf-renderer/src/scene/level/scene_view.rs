@@ -26,6 +26,7 @@ use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_trace_size::RenderTraceSize;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_settings::RenderWaterSettings;
+use crate::frame::frame_clock::FrameClock;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::static_scene_handles::StaticSceneHandles;
@@ -85,7 +86,6 @@ use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::level::shadows_recorded::ShadowsRecorded;
 use crate::scene::level::sky_views::SkyViews;
 use crate::scene::level::surroundings_cube::SurroundingsCube;
-use crate::scene::level::view_clock::ViewClock;
 use crate::scene::level::view_frame::ViewFrame;
 use crate::scene::level::view_prepare::ViewPrepare;
 use crate::scene::level::view_record::ViewRecord;
@@ -112,8 +112,8 @@ pub struct SceneView {
   targets: Option<ViewTargets>,
   /// Its feature units.
   features: SceneFeatures,
-  /// The time its frames are drawn at.
-  clock: ViewClock,
+  /// The time its frames are drawn at: its scene's, or a step a frame of its own.
+  clock: FrameClock,
 }
 
 impl SceneView {
@@ -168,6 +168,22 @@ impl SceneView {
     self.clock.set_step(step);
   }
 
+  /// Starts what it carries from frame to frame and moves by the time again from nothing at its next frame: the wind's
+  /// drift and sway, the water's scroll, and the temporal resolve's history and jitter. What it draws from then on
+  /// follows from its frames since alone, as two bursts from one time must.
+  pub fn restart_motion(&mut self) {
+    self.features.wind.restart();
+    self.features.grass.restart_wind();
+    self.features.water.restart();
+    self.features.resolve.restart();
+  }
+
+  /// Draws its next frames as a reference's `sample` of `samples`: unresolved, at that place of the jitter's
+  /// sequence; none resolves them again.
+  pub fn sample_reference(&mut self, reference: Option<(u32, u32)>) {
+    self.features.resolve.set_reference(reference);
+  }
+
   /// The size its frame is resolved at, none before its targets are made.
   pub fn get_output_size(&self) -> Option<(u32, u32)> {
     self.targets.as_ref().map(|_| self.features.resolve.get_resolved())
@@ -189,7 +205,7 @@ impl SceneView {
       shared: ViewFrame::default(),
       targets: None,
       features: SceneFeatures::new((device, queue), view_layout),
-      clock: ViewClock::default(),
+      clock: FrameClock::default(),
     }
   }
 
@@ -261,8 +277,8 @@ impl SceneView {
       self.features.statics.fit(frame.device, (width, height));
     }
 
-    let time: f32 = scene.started.elapsed().as_secs_f32();
-    let now: Instant = self.clock.tick(Instant::now());
+    let time: f32 = scene.get_time().as_secs_f32();
+    let now: Instant = self.clock.tick(scene.get_now());
 
     // What of the scene drawn by passes of its own the view may see: none of the water's or the surface passes' work
     // runs for what is out of sight.
@@ -457,6 +473,7 @@ impl SceneView {
         light_scale: lighting_frame.light_units.local
           * lighting_frame.light_units.light_gain
           * lighting_frame.pre_exposure.current,
+        time,
       },
     );
     self.shared.camera = *view;

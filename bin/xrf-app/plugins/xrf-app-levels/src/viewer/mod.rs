@@ -1,6 +1,7 @@
-//! The level viewer's own files in the application's data: the views it exports, and the screenshots and captures it
-//! takes of a viewport, a level map's and a cubemap's exported again.
+//! The level viewer's own files in the application's data: the views it exports, the screenshots and captures it
+//! takes of a viewport, a level map's and a cubemap's exported again, and the bursts of frames it measures.
 
+pub(crate) mod burst;
 mod capture;
 pub(crate) mod commands;
 pub(crate) mod cube;

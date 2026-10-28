@@ -19,10 +19,12 @@ impl TemporalJitter {
 
     self.phase = (self.phase + 1) % phases;
 
-    Vec2::new(
-      Self::halton(self.phase + 1, 2) - 0.5,
-      Self::halton(self.phase + 1, 3) - 0.5,
-    )
+    Self::at(self.phase)
+  }
+
+  /// The offset of a phase of the sequence, in pixels about each pixel's centre.
+  pub fn at(phase: u32) -> Vec2 {
+    Vec2::new(Self::halton(phase + 1, 2) - 0.5, Self::halton(phase + 1, 3) - 0.5)
   }
 
   /// How many places the samples cycle through for a viewport `ratio` times the drawing's side.

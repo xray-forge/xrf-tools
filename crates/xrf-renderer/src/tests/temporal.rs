@@ -2,6 +2,7 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_antialiasing::RenderAntialiasing;
+use crate::contract::render_view_options::RenderViewOptions;
 use crate::scene::level::feature::resolve_feature::ResolveFeature;
 use crate::scene::level::feature::temporal_jitter::TemporalJitter;
 
@@ -90,4 +91,42 @@ fn reads_textures_sharper_by_what_the_upscale_loses() {
   assert_eq!(ResolveFeature::get_bias(Some(RenderAntialiasing::Taa), 1.0), 0.0);
   assert_eq!(ResolveFeature::get_bias(Some(RenderAntialiasing::Fsr), 1.0), -1.0);
   assert_eq!(ResolveFeature::get_bias(None, 2.0), 0.0);
+}
+
+// A reference's samples stand at their own places of the sequence, unresolved, read as sharp as DLSS reads them.
+#[test]
+fn a_reference_sample_is_drawn_unresolved_at_its_place_of_the_jitter() {
+  let mut options: RenderViewOptions = RenderViewOptions::default();
+  let mut resolve: ResolveFeature = ResolveFeature::default();
+
+  options.features.antialiasing = RenderAntialiasing::Taa;
+  resolve.set_reference(Some((5, 64)));
+
+  assert_eq!(resolve.next_jitter(&options, 2.0, false), TemporalJitter::at(5));
+  assert_eq!(resolve.get_temporal(), None);
+  assert_eq!(resolve.get_texture_bias(), -1.0);
+
+  resolve.set_reference(None);
+
+  assert_eq!(resolve.get_temporal(), None);
+  assert_ne!(resolve.next_jitter(&options, 1.0, false), TemporalJitter::at(5));
+  assert_eq!(resolve.get_temporal(), Some(RenderAntialiasing::Taa));
+}
+
+// A restarted resolve's jitter starts its sequence again, so two runs from a restart sample alike.
+#[test]
+fn a_restarted_resolve_jitters_from_the_first_place_again() {
+  let mut options: RenderViewOptions = RenderViewOptions::default();
+  let mut resolve: ResolveFeature = ResolveFeature::default();
+
+  options.features.antialiasing = RenderAntialiasing::Taa;
+
+  let first: Vec<Vec2> = (0..3).map(|_| resolve.next_jitter(&options, 1.0, false)).collect();
+
+  resolve.restart();
+
+  let again: Vec<Vec2> = (0..3).map(|_| resolve.next_jitter(&options, 1.0, false)).collect();
+
+  assert_eq!(first, again);
+  assert_eq!(resolve.get_noise_frame(), 0);
 }

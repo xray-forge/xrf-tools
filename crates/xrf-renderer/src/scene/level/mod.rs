@@ -57,7 +57,6 @@ pub(crate) mod sky_views;
 pub(crate) mod sun_shadow_maps;
 pub(crate) mod surroundings_cube;
 pub(crate) mod surroundings_faces;
-pub(crate) mod view_clock;
 pub(crate) mod view_frame;
 pub(crate) mod view_lens;
 pub(crate) mod view_prepare;

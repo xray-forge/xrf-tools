@@ -1,9 +1,12 @@
 use std::sync::Arc;
 use std::sync::mpsc::Sender;
+use std::time::Duration;
 
 use xrf_error::XrfResult;
 
+use crate::capture::burst::burst_event::BurstEvent;
 use crate::capture::capture_event::CaptureEvent;
+use crate::contract::render_burst::RenderBurst;
 use crate::contract::render_capture::RenderCapture;
 use crate::contract::render_cube_capture::RenderCubeCapture;
 use crate::contract::render_frame_report::RenderFrameReport;
@@ -115,6 +118,19 @@ pub enum RenderCommand {
     id: RenderViewportId,
     capture: RenderCubeCapture,
     events: Sender<CaptureEvent>,
+  },
+  /// Draws a burst of frames in a viewport through its own view, telling `events` of each frame as it comes back; one
+  /// burst at a time over every viewport, as it paces the clock every scene moves by. Dropping the receiving end stops
+  /// it, at its next word.
+  CaptureBurst {
+    id: RenderViewportId,
+    burst: RenderBurst,
+    events: Sender<BurstEvent>,
+  },
+  /// Draws every scene's frames `step` apart on its clock from the next on, however long each takes; none at the time
+  /// each is drawn.
+  StepClock {
+    step: Option<Duration>,
   },
   /// Answers once every command sent before it is handled.
   Handled {
