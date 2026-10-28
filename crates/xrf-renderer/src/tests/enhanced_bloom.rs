@@ -102,7 +102,6 @@ fn tells_the_present_which_bloom_it_lays_over_the_frame() {
       RenderDebugView::Final,
       (false, false, None),
       false,
-      0.0,
       RenderRect::default(),
       &RenderImageCorrections::default(),
       (None, is_bloomed),

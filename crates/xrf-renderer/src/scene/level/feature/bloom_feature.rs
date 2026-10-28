@@ -24,8 +24,11 @@ use crate::scene::level::feature::view_feature::ViewFeature;
 /// the present; or the enhanced chain from the resolved image, its finish handed to the present.
 #[derive(Default)]
 pub struct BloomFeature {
-  /// What the engine's build and its two blurs read this frame, where the engine's bloom draws.
+  /// What the engine's build and its two blurs read this frame, where the engine's bloom is built: where it is shown,
+  /// or under the enhanced bloom where the frame's distortion blurs towards it.
   engine: Option<[BloomUniform; 3]>,
+  /// Whether the engine's bloom is shown this frame, which the present adds.
+  is_engine_shown: bool,
   /// What the enhanced bloom draws with, where it draws in the engine's place.
   enhanced: Option<RenderEnhancedBloomSettings>,
   /// The enhanced bloom's pipelines, one a stage, with the cache's generation they were asked for in; the last made
@@ -53,8 +56,9 @@ impl BloomFeature {
       self.enhanced = self.enhanced.filter(|_| self.pipelines.is_some());
     }
 
+    self.is_engine_shown = size.is_some() && bloom.is_enabled && self.enhanced.is_none();
     self.engine = size
-      .filter(|_| bloom.is_enabled && self.enhanced.is_none())
+      .filter(|_| self.is_engine_shown || self.enhanced.is_some())
       .map(|size| {
         let aspect: f32 = size.1 as f32 / size.0 as f32;
         let is_one_sided: bool = engine == XrayEngine::Extended;
@@ -65,6 +69,14 @@ impl BloomFeature {
           BloomUniform::filter(false, (bloom.radius, bloom.strength), aspect, is_one_sided),
         ]
       });
+  }
+
+  /// Builds the engine's bloom under the enhanced one only where the frame distorts (`is_distorting`), whose blur goes
+  /// towards the engine's bloom as `combine_2`'s does; once every unit knows what it draws.
+  pub fn keep_for_distortion(&mut self, is_distorting: bool) {
+    if !self.is_engine_shown && !is_distorting {
+      self.engine = None;
+    }
   }
 
   /// Asks the cache for the enhanced bloom's pipelines where it changed since they were last asked for; a refusal
@@ -88,8 +100,13 @@ impl BloomFeature {
     }
   }
 
-  /// Whether the engine's bloom draws this frame, which the present adds.
+  /// Whether the engine's bloom is shown this frame, which the present adds.
   pub fn is_engine_drawn(&self) -> bool {
+    self.is_engine_shown && self.engine.is_some()
+  }
+
+  /// Whether the engine's bloom is built this frame, shown or under the enhanced one for the distortion's blur.
+  pub fn is_engine_built(&self) -> bool {
     self.engine.is_some()
   }
 

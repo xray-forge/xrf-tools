@@ -7,7 +7,8 @@ use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
 
-/// Moves the frame where the distortion target says, at the drawn size before the resolve (`frame/distort.wgsl`).
+/// Moves the frame where the distortion target says and blurs it by its `z`, at the drawn size before the resolve
+/// (`frame/distort.wgsl`).
 pub struct DistortPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
@@ -44,7 +45,7 @@ impl DistortPass {
   }
 
   /// Draws the frame moved by the distortion target into the scene target.
-  pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &DistortParameters) {
+  pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &DistortParameters<'_>) {
     context.bind(parameters);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();

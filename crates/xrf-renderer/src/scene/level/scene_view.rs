@@ -902,6 +902,7 @@ impl SceneView {
       metering: features.exposure.get_metering(),
     };
 
+    self.features.bloom.keep_for_distortion(inputs.is_distorting);
     self
       .features
       .present
@@ -951,7 +952,7 @@ impl SceneView {
     let uses: ViewTargetUses = ViewTargetUses {
       is_occluded: self.features.ambient_occlusion.is_drawn(),
       is_hazed: self.features.sky.is_hazing(),
-      is_engine_bloomed: self.features.bloom.is_engine_drawn(),
+      is_engine_bloomed: self.features.bloom.is_engine_built(),
     };
     let handles: ViewTargetHandles =
       ViewTargetHandles::import(&mut *graph, &mut *bindings, (targets, uses, passes.vbao.get_dark()));

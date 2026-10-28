@@ -577,7 +577,6 @@ impl RenderThread {
   pub(super) fn to_present_parameters<'a>(gpu: &'a GpuState, output: &SceneOutput) -> PresentParameters<'a> {
     PresentParameters {
       scene: output.scene,
-      distortion: output.targets.distortion,
       depth_target: output.targets.depth,
       albedo_target: output.targets.albedo,
       normal_target: output.targets.normal,

@@ -310,7 +310,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   light_binning.add::<LightBinningParameters>()?;
   sky_behind.add::<SkyBehindParameters>()?;
   ray_guides.add::<RayGuidesParameters>()?;
-  distort.add::<DistortParameters>()?;
+  distort.add::<DistortParameters<'_>>()?;
   grass_occlusion.add::<GrassOcclusionParameters>()?;
   grass_planting
     .add::<GrassLevelParameters>()?

@@ -15,7 +15,7 @@
 // The viewport's finished scene put into its rectangle of the window; or, for a debug view, one of the targets the
 // scene was built from.
 
-// The scene, the distortion target, whose `z` blurs it towards the bloom, the targets a debug view shows, what
+// The scene, the targets a debug view shows, what
 // the frame shows, the frame upscaled or the scene again (filtered for the debanding's reads), the bloom, finished in
 // the engine's 256-square target or at half the frame's size for the enhanced bloom, the indirect light at half the
 // frame's size, and the reflections and how their rays ended, at the size they are traced at.
@@ -267,17 +267,30 @@ fn drawn_texel(pixel: vec2<f32>) -> vec2<i32> {
   return to_drawn_texel(pixel, camera.viewport.xy, present.size);
 }
 
-// `combine_2`'s bloom over a colour at a pixel: where the distortion (`strength`) blurs, the colour first goes towards
-// it by the distortion's `z`, `lerp(img, bloom * def_hdr, distort.z)`; then the bloom added, `combine_bloom`.
-fn engine_bloomed(color: vec3<f32>, pixel: vec2<f32>, texel: vec2<i32>, strength: f32) -> vec3<f32> {
+// `combine_2`'s bloom added over a colour at a pixel, `combine_bloom`; its blur by the distortion's `z` came before the
+// resolve (`frame/distort.wgsl`).
+fn engine_bloomed(color: vec3<f32>, pixel: vec2<f32>) -> vec3<f32> {
   let bloom: vec4<f32> = textureSampleLevel(bloom_target, bloom_sampler, (pixel + 0.5) / present.size, 0.0);
-  var bloomed: vec3<f32> = color;
 
-  if (strength > 0.0) {
-    bloomed = mix(bloomed, bloom.rgb * DEF_HDR, textureLoad(distortion, texel, 0).z);
-  }
+  return color + bloom.rgb * bloom.a;
+}
 
-  return bloomed + bloom.rgb * bloom.a;
+// One where nothing was drawn at a drawn texel, held to the frame's edges.
+fn sky_at(texel: vec2<i32>) -> f32 {
+  let last: vec2<i32> = vec2<i32>(camera.viewport.xy) - 1;
+
+  return select(0.0, 1.0, textureLoad(depth_target, clamp(texel, vec2<i32>(0), last), 0) <= 0.0);
+}
+
+// How much of the drawn frame about a pixel is the sky, the bilinear share of the four drawn texels around its
+// centre: the frame is drawn jittered, and one texel would flip a skyline's pixels in and out of the debanding.
+fn sky_share(pixel: vec2<f32>) -> f32 {
+  let position: vec2<f32> = (pixel + 0.5) / present.size * camera.viewport.xy - 0.5;
+  let corner: vec2<i32> = vec2<i32>(floor(position));
+  let f: vec2<f32> = position - floor(position);
+
+  return mix(mix(sky_at(corner), sky_at(corner + vec2<i32>(1, 0)), f.x),
+    mix(sky_at(corner + vec2<i32>(0, 1)), sky_at(corner + vec2<i32>(1, 1)), f.x), f.y);
 }
 
 @fragment
@@ -297,9 +310,7 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
     return vec4<f32>(saturate(shown_target(texel)), 1.0);
   }
 
-  // `combine_2`'s `USE_DISTORT` moved the scene before the resolve (`frame/distort.wgsl`); its blur towards the bloom
-  // by the distortion's `z` stays here.
-  let strength: f32 = present.distortion;
+  // `combine_2`'s `USE_DISTORT`, its move and its blur, came before the resolve (`frame/distort.wgsl`).
   var color: vec3<f32> = select(textureLoad(scene, texel, 0).rgb, textureLoad(upscaled, vec2<i32>(pixel), 0).rgb,
     present.is_upscaled != 0u);
 
@@ -309,29 +320,26 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let is_bloom_light: bool = present.is_bloomed == BLOOM_ENGINE && u32(display.x) >= DISPLAY_ENGINE_ENCODED;
 
   if (is_bloom_light) {
-    color = engine_bloomed(color, pixel, texel, strength);
+    color = engine_bloomed(color, pixel);
   }
 
   // A scene of linear light at its exposure is shown here, by the engine's curve or the physical light's display
   // transform and encoding, before everything the engine lays over its displayed frame.
   color = shown_for_display(color, display);
 
-  // The sky debanding, where nothing was drawn, over the shown steps it bands in: its neighbours read about the pixel.
-  if (present.deband.x > 0.0 && textureLoad(depth_target, texel, 0) <= 0.0) {
-    color = debanded(upscaled, bloom_sampler, color, (pixel + 0.5) / present.size, 1.0 / present.size,
-      u32(present.deband.x), present.deband.y, present.deband.z, display);
+  // The sky debanding, by how much of the drawn frame about the pixel is the sky, over the shown steps it bands in:
+  // its neighbours read about the pixel.
+  let sky: f32 = select(0.0, sky_share(pixel), present.deband.x > 0.0);
+
+  if (sky > 0.0) {
+    color = mix(color, debanded(upscaled, bloom_sampler, color, (pixel + 0.5) / present.size, 1.0 / present.size,
+      u32(present.deband.x), present.deband.y, present.deband.z, display), sky);
   }
 
-  // The enhanced bloom screened over the frame, `1 - (1 - img)(1 - bloom)`, before its corrections; where the
-  // distortion blurs, the corrected frame then goes towards the bloom by the distortion's `z`, as the engine's does.
+  // The enhanced bloom screened over the frame, `1 - (1 - img)(1 - bloom)`, before its corrections.
   if (present.is_bloomed == BLOOM_ENHANCED) {
     let bloom: vec3<f32> = textureSampleLevel(bloom_target, bloom_sampler, (pixel + 0.5) / present.size, 0.0).rgb;
-    var finished: vec3<f32> = corrected(1.0 - (1.0 - saturate(color)) * (1.0 - bloom));
-
-    if (strength > 0.0) {
-      finished = mix(finished, bloom * DEF_HDR, textureLoad(distortion, texel, 0).z);
-    }
-
+    let finished: vec3<f32> = corrected(1.0 - (1.0 - saturate(color)) * (1.0 - bloom));
     let shown: vec3<f32> = mix(finished, present.selection.rgb, selection_share(texel));
 
     return vec4<f32>(shown + output_dither(in.clip.xy), 1.0);
@@ -339,7 +347,7 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
 
   // The engine's bloom over its shown frame, as `combine_2` adds it.
   if (present.is_bloomed == BLOOM_ENGINE && !is_bloom_light) {
-    color = engine_bloomed(color, pixel, texel, strength);
+    color = engine_bloomed(color, pixel);
   }
 
   let shown: vec3<f32> = mix(corrected(color), present.selection.rgb, selection_share(texel));
