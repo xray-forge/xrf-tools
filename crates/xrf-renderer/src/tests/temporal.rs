@@ -3,6 +3,9 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::pass::fsr_uniform::FsrUniform;
+use crate::pass::pre_exposure::PreExposure;
+use crate::pass::temporal_uniform::TemporalUniform;
 use crate::scene::level::feature::resolve_feature::ResolveFeature;
 use crate::scene::level::feature::temporal_jitter::TemporalJitter;
 
@@ -166,4 +169,34 @@ fn a_jump_or_a_sharp_turn_is_a_cut() {
   resolve.restart();
 
   assert!(!resolve.is_cut(&at(Vec3::new(-100.0, 0.0, 0.0), 0.0)));
+}
+
+// A history kept at the last frame's pre-exposure is brought to this one's: twice the scale, twice the history; one
+// where the scale is unknown, and for the engine's light, which is written as it is.
+#[test]
+fn the_resolves_carry_their_history_to_this_frames_pre_exposure() {
+  let adapting: PreExposure = PreExposure {
+    current: 2.0,
+    previous: 1.0,
+  };
+  let unknown: PreExposure = PreExposure {
+    current: 1.0,
+    previous: 0.0,
+  };
+
+  assert_eq!(adapting.get_history_scale(), 2.0);
+  assert_eq!(unknown.get_history_scale(), 1.0);
+  assert_eq!(PreExposure::NONE.get_history_scale(), 1.0);
+  assert_eq!(
+    TemporalUniform::new((Mat4::IDENTITY, Mat4::IDENTITY, Mat4::IDENTITY), Vec2::ZERO, true, 2.0)
+      .exposure
+      .x,
+    2.0
+  );
+
+  let view: CameraView = CameraView::new(Vec3::ZERO, Mat4::IDENTITY, 60.0, 1.0, 0.1, 100.0);
+  let fsr: FsrUniform = FsrUniform::new(((64, 64), (64, 64)), (Vec2::ZERO, Vec2::ZERO), &view, (8, 1));
+
+  assert_eq!(fsr.delta_pre_exposure, 1.0);
+  assert_eq!(fsr.with_delta_pre_exposure(0.5).delta_pre_exposure, 0.5);
 }

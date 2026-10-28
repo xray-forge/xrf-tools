@@ -25,6 +25,9 @@ pub struct FsrUniform {
   pub velocity_factor: f32,
   /// One where the colour is linear light past the display's range: `FFX_FSR3UPSCALER_OPTION_HDR_COLOR_INPUT`.
   pub hdr: f32,
+  /// `fDeltaPreExposure`: this frame's pre-exposure over the last's, which the reprojected history is multiplied by.
+  pub delta_pre_exposure: f32,
+  pub _pad: [f32; 3],
 }
 
 impl FsrUniform {
@@ -62,6 +65,8 @@ impl FsrUniform {
       frame_index: frame_index as f32,
       velocity_factor: Self::VELOCITY_FACTOR,
       hdr: 0.0,
+      delta_pre_exposure: 1.0,
+      _pad: [0.0; 3],
     }
   }
 
@@ -69,6 +74,14 @@ impl FsrUniform {
   pub fn with_hdr(self, is_hdr: bool) -> Self {
     Self {
       hdr: f32::from(u8::from(is_hdr)),
+      ..self
+    }
+  }
+
+  /// The same over colour written at a pre-exposure `delta` times the last frame's.
+  pub fn with_delta_pre_exposure(self, delta: f32) -> Self {
+    Self {
+      delta_pre_exposure: delta,
       ..self
     }
   }

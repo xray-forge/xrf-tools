@@ -10,13 +10,20 @@ pub struct TemporalUniform {
   pub previous: Mat4,
   pub previous_view: Mat4,
   pub params: Vec4,
+  /// What the history is multiplied by to stand at this frame's pre-exposure, in `x`.
+  pub exposure: Vec4,
 }
 
 impl TemporalUniform {
   /// The least share of this frame a pixel takes: its history is roughly this many frames' average, inverted.
   pub const CURRENT_WEIGHT: f32 = 0.1;
 
-  pub fn new(current: Mat4, previous: Mat4, previous_view: Mat4, jitter: Vec2, is_history_valid: bool) -> Self {
+  pub fn new(
+    (current, previous, previous_view): (Mat4, Mat4, Mat4),
+    jitter: Vec2,
+    is_history_valid: bool,
+    history_scale: f32,
+  ) -> Self {
     Self {
       current,
       previous,
@@ -27,6 +34,7 @@ impl TemporalUniform {
         f32::from(u8::from(is_history_valid)),
         Self::CURRENT_WEIGHT,
       ),
+      exposure: Vec4::new(history_scale, 0.0, 0.0, 0.0),
     }
   }
 }

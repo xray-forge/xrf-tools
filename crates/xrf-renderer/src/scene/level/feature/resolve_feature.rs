@@ -21,6 +21,7 @@ use crate::frame::view_targets::ViewTargets;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::pre_exposure::PreExposure;
 use crate::pass::ray_guides_parameters::RayGuidesParameters;
 use crate::pass::ray_guides_pass::RayGuidesPass;
 use crate::pass::temporal_parameters::TemporalParameters;
@@ -93,6 +94,9 @@ pub struct ResolveFeature {
   reference: Option<(u32, u32)>,
   /// The last frame's camera, its place and the way it looked, which a cut is told from (`is_cut`).
   last_camera: Option<(Vec3, Vec3)>,
+  /// The scale this frame's light is written at and the last frame's, which each resolve is told so a history kept at
+  /// the last frame's scale matches this one's while the exposure adapts.
+  pre_exposure: PreExposure,
 }
 
 impl Default for ResolveFeature {
@@ -120,6 +124,7 @@ impl Default for ResolveFeature {
       refused_rays: None,
       reference: None,
       last_camera: None,
+      pre_exposure: PreExposure::NONE,
     }
   }
 }
@@ -192,15 +197,17 @@ impl ResolveFeature {
   /// Takes this frame's resolve for targets `render` texels across, none before they are made, resolved at `resolved`
   /// and shown in `output`: the temporal resolve's history made or kept and what it reads, and the frame at the
   /// viewport's size while it is drawn or resolved at another. DLSS reconstructs rays where asked, the GPU has it and
-  /// the scene holds linear light; else it upscales alone.
+  /// the scene holds linear light; else it upscales alone. The light is written at `pre_exposure`, which each resolve
+  /// carries its history by.
   pub fn prepare(
     &mut self,
     (device, dlss): (&wgpu::Device, Option<&Dlss>),
     (view, now): (&CameraView, Instant),
     (render, resolved, output): (Option<(u32, u32)>, (u32, u32), RenderRect),
-    (upscaling, is_linear): (RenderUpscalingSettings, bool),
+    (upscaling, is_linear, pre_exposure): (RenderUpscalingSettings, bool, PreExposure),
   ) {
     self.upscaling = upscaling;
+    self.pre_exposure = pre_exposure;
 
     self.frame_time = self
       .prepared_at
@@ -337,11 +344,10 @@ impl ResolveFeature {
     let (last, last_view): (Mat4, Mat4) = previous.unwrap_or((current, view.view));
 
     *uniform = TemporalUniform::new(
-      current,
-      last,
-      last_view,
+      (current, last, last_view),
       self.offset,
       history.is_valid() && previous.is_some(),
+      self.pre_exposure.get_history_scale(),
     );
     *previous = Some((current, view.view));
   }
@@ -374,7 +380,8 @@ impl ResolveFeature {
       view,
       (self.phases, targets.frames.get_frame()),
     )
-    .with_hdr(is_hdr);
+    .with_hdr(is_hdr)
+    .with_delta_pre_exposure(self.pre_exposure.get_history_scale());
   }
 
   /// DLSS's upscaler, kept while it still fits, upscaling targets `render` texels across into `display` pixels over
@@ -913,6 +920,7 @@ impl ResolveFeature {
     let jitter: [f32; 2] = (-self.offset).to_array();
     let is_reset: bool = resolve.is_reset;
     let frame_time: Duration = self.frame_time;
+    let pre_exposure: f32 = self.pre_exposure.current;
 
     graph
       .add_encoder_pass(Self::DLSS)
@@ -935,6 +943,7 @@ impl ResolveFeature {
           output: context.get_texture(output).view,
           is_reset,
           frame_time,
+          pre_exposure,
         };
 
         match resolve.upscaler.record(context.get_encoder(), &inputs) {
@@ -957,6 +966,7 @@ impl ResolveFeature {
     // FSR's sense of the jitter, which DLSS shares: a drawn texel `m` stands at `m + 0.5 - jitter`.
     let jitter: [f32; 2] = (-self.offset).to_array();
     let is_reset: bool = resolve.is_reset;
+    let pre_exposure: f32 = self.pre_exposure.current;
 
     let mut pass = graph
       .add_encoder_pass(Self::RAY_RECONSTRUCTION)
@@ -1006,6 +1016,7 @@ impl ResolveFeature {
         render,
         output: context.get_texture(output).view,
         is_reset,
+        pre_exposure,
       };
 
       match resolve.reconstructor.record(context.get_encoder(), &inputs) {

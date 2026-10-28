@@ -13,6 +13,14 @@ impl PreExposure {
     current: 1.0,
     previous: 1.0,
   };
+
+  /// What a history kept from the last frame is multiplied by to stand at this frame's scale, the shaders'
+  /// `history_scale`; one where either scale is unknown.
+  pub fn get_history_scale(&self) -> f32 {
+    let scale: f32 = self.current / self.previous;
+
+    if scale.is_finite() && scale > 0.0 { scale } else { 1.0 }
+  }
 }
 
 impl Default for PreExposure {

@@ -544,6 +544,7 @@ struct Temporal {
   previous: mat4x4<f32>,
   previous_view: mat4x4<f32>,
   params: vec4<f32>,
+  exposure: vec4<f32>,
 }
 
 struct Fsr {
@@ -558,6 +559,7 @@ struct Fsr {
   frame_index: f32,
   velocity_factor: f32,
   hdr: f32,
+  delta_pre_exposure: f32,
 }
 
 struct Cluster {
