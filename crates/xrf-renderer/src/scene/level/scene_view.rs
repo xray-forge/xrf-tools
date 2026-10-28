@@ -524,7 +524,11 @@ impl SceneView {
       ),
     );
     self.features.ambient_occlusion.prepare(options, view.projection, half);
-    self.features.bitmask.prepare(device, options, view.projection, half);
+    self.features.bitmask.prepare(
+      (device, options),
+      (view.projection, half),
+      self.features.resolve.get_reference_sample(),
+    );
     self.features.indirect_trace.prepare(
       frame.passes.indirect_trace.is_traced()
         && self.features.resolve.is_ray_reconstructed()
