@@ -11,18 +11,18 @@ const TAPS: usize = 7;
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "Bloom")]
 pub struct BloomUniform {
-  /// The build: half a texel of the frame, then the threshold. A filter: one texel of the target along its way, then
-  /// one where only the side behind is read.
+  /// The build: the threshold in `z`. A filter: one texel of the target along its way, then one where only the side
+  /// behind is read.
   pub params: Vec4,
   /// `CalcGauss_wave`'s weights: the taps one to four out, then five to seven out and the centre.
   pub weights: [Vec4; 2],
 }
 
 impl BloomUniform {
-  /// `bloom_build.ps` over a frame drawn `size` texels, losing `threshold` of the summed brightness.
-  pub fn build(size: (u32, u32), threshold: f32) -> Self {
+  /// `bloom_build.ps`, losing `threshold` of the summed brightness.
+  pub fn build(threshold: f32) -> Self {
     Self {
-      params: Vec4::new(0.5 / size.0 as f32, 0.5 / size.1 as f32, threshold, 0.0),
+      params: Vec4::new(0.0, 0.0, threshold, 0.0),
       weights: [Vec4::ZERO; 2],
     }
   }

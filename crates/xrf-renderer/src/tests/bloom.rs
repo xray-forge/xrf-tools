@@ -34,10 +34,7 @@ fn the_blur_down_takes_the_radius_by_the_frames_height_over_its_width() {
 }
 
 #[test]
-fn monolith_reads_one_side_and_the_build_offsets_half_a_texel_of_the_frame() {
+fn monolith_reads_one_side_and_the_build_takes_the_threshold() {
   assert_eq!(BloomUniform::filter(true, (1.0, 0.05), 1.0, true).params[2], 1.0);
-  assert_eq!(
-    BloomUniform::build((1000, 500), 0.25).params,
-    Vec4::new(0.0005, 0.001, 0.25, 0.0)
-  );
+  assert_eq!(BloomUniform::build(0.25).params, Vec4::new(0.0, 0.0, 0.25, 0.0));
 }

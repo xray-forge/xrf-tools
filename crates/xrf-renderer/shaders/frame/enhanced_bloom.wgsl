@@ -3,7 +3,7 @@
 #import "common/scene_light"
 #import "common/fullscreen"
 
-// The enhanced bloom, from the finished scene rather than the engine's high part: the scene blurred to half its size by
+// The enhanced bloom, from the resolved image rather than the engine's high part: the image blurred to half its size by
 // a Gaussian across and down; its bright parts raised to the threshold's power, the sky's scaled, self-lit surfaces
 // added whole; halved six times and doubled back, each doubling adding the halving of its size; then split into its
 // colours a few pixels apart, lifted, tonemapped and saturated. The present screens it over the frame. Alpha carries
@@ -62,22 +62,30 @@ fn fs_bloom_blur(in: FullscreenVarying) -> @location(0) vec4<f32> {
   return vec4<f32>(sum / total, 1.0);
 }
 
+// How much fog lies before a texel of the frame, held to its edges: all of it where nothing was drawn.
+fn fogged_at(texel: vec2<i32>) -> f32 {
+  let last: vec2<i32> = vec2<i32>(bloom.size.zw) - 1;
+  let at: vec2<i32> = clamp(texel, vec2<i32>(0), last);
+  let depth: f32 = textureLoad(depth_target, at, 0);
+
+  return select(fog_amount(lighting, camera_view_position(vec2<f32>(at) + 0.5, depth)), 1.0, depth <= 0.0);
+}
+
 // The build: the blurred scene, the sky's times its share, raised to the threshold's power; self-lit surfaces added by
 // how much of the four frame texels under the texel they cover, and that share kept in alpha. Fogged light counts as
 // the sky's by how much fog lies before it, so far ground fading into the sky blooms as the sky does, not brighter.
+// The bloom is built from the resolved image while the depth and the marks are the frame's as drawn, jittered: both are
+// read over the four frame texels under the texel, so the share does not flip with the jitter at an edge.
 @fragment
 fn fs_bloom_build(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let uv: vec2<f32> = in.clip.xy / bloom.size.xy;
-  let frame: vec2<f32> = bloom.size.zw;
-  let last: vec2<i32> = vec2<i32>(frame) - 1;
-  let at: vec2<i32> = clamp(vec2<i32>(uv * frame), vec2<i32>(0), last);
-  let depth: f32 = textureLoad(depth_target, at, 0);
-  let fogged: f32 = select(fog_amount(lighting, camera_view_position(vec2<f32>(at) + 0.5, depth)), 1.0, depth <= 0.0);
+  let corner: vec2<i32> = vec2<i32>(floor(uv * bloom.size.zw - 0.5));
+  let fogged: f32 = (fogged_at(corner) + fogged_at(corner + vec2<i32>(1, 0)) + fogged_at(corner + vec2<i32>(0, 1)) +
+    fogged_at(corner + vec2<i32>(1, 1))) / 4.0;
   var result: vec3<f32> = sample_at(source, uv).rgb * mix(1.0, bloom.strengths.z, fogged);
 
   result = pow(abs(result), vec3<f32>(bloom.strengths.x));
 
-  let corner: vec2<i32> = vec2<i32>(floor(uv * frame - 0.5));
   let covered: f32 = (self_lit(corner) + self_lit(corner + vec2<i32>(1, 0)) + self_lit(corner + vec2<i32>(0, 1)) +
     self_lit(corner + vec2<i32>(1, 1))) / 4.0;
   let added: f32 = covered * SELF_LIT;

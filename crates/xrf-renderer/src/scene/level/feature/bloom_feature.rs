@@ -21,7 +21,7 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
 
 /// The bloom, the engine's or the enhanced one in its place: the engine's build and blurs at its fixed size, read by
-/// the present; or the enhanced chain from the scene as it stands, its finish handed to the present.
+/// the present; or the enhanced chain from the resolved image, its finish handed to the present.
 #[derive(Default)]
 pub struct BloomFeature {
   /// What the engine's build and its two blurs read this frame, where the engine's bloom draws.
@@ -60,7 +60,7 @@ impl BloomFeature {
         let is_one_sided: bool = engine == XrayEngine::Extended;
 
         [
-          BloomUniform::build(size, bloom.threshold),
+          BloomUniform::build(bloom.threshold),
           BloomUniform::filter(true, (bloom.radius, bloom.strength), aspect, is_one_sided),
           BloomUniform::filter(false, (bloom.radius, bloom.strength), aspect, is_one_sided),
         ]
@@ -98,15 +98,22 @@ impl BloomFeature {
     self.enhanced.is_some()
   }
 
-  /// Adds the enhanced bloom from the scene as it stands, answering what the present screens over the frame: the
-  /// half-size blur across and down, the build, six halvings, five doublings back to half size, and the finish; none
-  /// where the enhanced bloom does not draw.
+  /// Adds the enhanced bloom from `image`, the resolved image the present shows, answering what the present screens
+  /// over it: the half-size blur across and down, the build, six halvings, five doublings back to half size, and the
+  /// finish; none where the enhanced bloom does not draw. Built after the resolve, as the major engines build theirs: from
+  /// the frame as drawn, a glint that comes and goes with the jitter bloomed into a halo nothing smoothed. Its sizes
+  /// and the depth and marks it reads are the frame's as drawn (`frame`).
   pub fn add_enhanced_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
-    (targets, frame, lighting): (ViewTargetHandles, (u32, u32), UniformBinding<LightingUniform>),
+    (targets, image, frame, lighting): (
+      ViewTargetHandles,
+      GraphTexture,
+      (u32, u32),
+      UniformBinding<LightingUniform>,
+    ),
   ) -> Option<GraphTexture> {
     let settings: &RenderEnhancedBloomSettings = self.enhanced.as_ref()?;
     let (_, pipelines) = self.pipelines.as_ref()?;
@@ -167,7 +174,7 @@ impl BloomFeature {
     add(
       EnhancedBloomPass::BLUR_PASSES[0],
       EnhancedBloomStage::Blur,
-      (targets.scene, empty),
+      (image, empty),
       across,
       stage(half_size).along(true).reading_scene(),
     );
@@ -226,7 +233,9 @@ impl BloomFeature {
   }
 
   /// Adds the engine's bloom: built from the high target into the first, blurred across into the second, then down
-  /// into the first; nothing where it does not draw.
+  /// into the first; nothing where it does not draw. The high part is the engine's own (the opaque surfaces, the sky
+  /// and the sun shafts), drawn before the resolve and never resolved, so the build averages the whole footprint of each
+  /// texel, the same light however the jitter falls.
   pub fn add_engine_passes<'a>(
     &self,
     (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),

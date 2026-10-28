@@ -1407,8 +1407,9 @@ impl SceneView {
 
   /// The post group: the composited surfaces and the particles, the reflections' source for the next frame, the light
   /// volumes and the sun shafts, the rain and the thunder, the frame after its transparent layers for ray
-  /// reconstruction, the flares, the fog, the blooms and the selection, the smoothing, the resolve and the exposure;
-  /// the finished frame, the image shown and the enhanced bloom written into `output`.
+  /// reconstruction, the flares, the fog, the engine's bloom, the distortion, the smoothing, the resolve, the enhanced
+  /// bloom from the resolved image and the selection, the streaks over it and the exposure; the finished frame, the
+  /// image shown and the enhanced bloom written into `output`.
   fn record_post<'a>(
     &'a self,
     scene: &'a LevelScene,
@@ -1527,18 +1528,6 @@ impl SceneView {
       .add_passes((&mut *graph, &mut *bindings), passes, view, (handles, lit));
 
     let size: (u32, u32) = handles.size;
-    let enhanced_bloom: Option<GraphTexture> = self.features.bloom.add_enhanced_passes(
-      (&mut *graph, &mut *bindings, runtime),
-      passes,
-      view,
-      (handles, size, lit.lighting),
-    );
-
-    // A selected composited surface, glass, marked where the present outlines the selection, once the enhanced
-    // bloom has read the marks.
-    if let (Some((draw, _)), Some(_)) = (&composited_draw, self.features.overlays.get_selection_color()) {
-      self.features.composited.add_selection_passes(&mut *graph, passes, draw);
-    }
 
     self
       .features
@@ -1572,6 +1561,19 @@ impl SceneView {
         ray_guides,
       ),
     );
+    // The enhanced bloom from the resolved image the present shows, before the streaks laid over it.
+    let enhanced_bloom: Option<GraphTexture> = self.features.bloom.add_enhanced_passes(
+      (&mut *graph, &mut *bindings, runtime),
+      passes,
+      view,
+      (handles, shown, size, lit.lighting),
+    );
+
+    // A selected composited surface, glass, marked where the present outlines the selection, once the enhanced
+    // bloom has read the marks.
+    if let (Some((draw, _)), Some(_)) = (&composited_draw, self.features.overlays.get_selection_color()) {
+      self.features.composited.add_selection_passes(&mut *graph, passes, draw);
+    }
 
     // The enhanced streaks over what the resolve shows, so no history carries them; the frame as drawn is that image
     // too where nothing rescaled it.
