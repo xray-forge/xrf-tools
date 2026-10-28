@@ -90,6 +90,8 @@ pub struct FsrPass {
 impl FsrPass {
   /// Drawn texels a side of one workgroup of the depth reconstruction.
   pub(crate) const RECONSTRUCT_WORKGROUP: u32 = 8;
+  /// The stage that resolves the frame into the history, after those preparing what it accumulates.
+  pub(crate) const ACCUMULATE: &str = "fsr accumulate";
 
   /// # Errors
   ///
@@ -341,7 +343,7 @@ impl FsrPass {
 
     Self::add_stage(
       graph,
-      ("fsr accumulate", &[textures.history], &pipelines.accumulate),
+      (Self::ACCUMULATE, &[textures.history], &pipelines.accumulate),
       accumulate,
     );
 

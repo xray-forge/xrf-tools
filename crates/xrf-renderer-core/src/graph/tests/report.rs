@@ -22,6 +22,15 @@ fn describes_the_passes_the_culled_and_the_transients() {
   assert_eq!(report.transients[0].bytes, 64 * 64 * 4);
   assert_eq!((report.transients[0].first, report.transients[0].last), (0, 1));
   assert_eq!(report.pooled_bytes, 64 * 64 * 4);
+  assert_eq!(report.textures, ["scene", "unused"]);
+  assert_eq!(
+    (&*report.passes[0].reads, &*report.passes[0].writes),
+    (&[][..], &[0][..])
+  );
+  assert_eq!(
+    (&*report.passes[1].reads, &*report.passes[1].writes),
+    (&[0][..], &[][..])
+  );
 
   let json: String = serde_json::to_string(&report).unwrap();
 
