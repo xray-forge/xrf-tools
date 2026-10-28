@@ -410,7 +410,10 @@ fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
     scene_from_shown(select(fragment.base.rgb, shown, lighting.params.y > 0.5)),
     saturate(water_depth * SHORE_FADE),
   );
-  shaded.out.distortion = write_distortion(fragment, water);
+  // No distortion: the water refracts what is behind it above, before the temporal resolve. The distortion target is
+  // read after the resolve, at the drawn size against its depth, which flips a blade's border pixels in and out of the
+  // move each frame: a dotted outline along every blade over the water, nothing resolving it.
+  shaded.out.distortion = vec4<f32>(0.0);
   shaded.out.motion = camera_motion(in.world, in.world);
   shaded.normal = waves.normal;
   shaded.reflected_share = saturate(fresnel * enhanced.reflectivity) * seen * border * seen * seen;
