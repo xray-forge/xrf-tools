@@ -1,6 +1,7 @@
 enable wgpu_binding_array;
 
 #import "common/camera"
+#import "common/cut_out"
 #import "common/scene_light"
 #import "common/hmodel"
 #import "common/local_lights"
@@ -178,7 +179,7 @@ fn is_scene_solid(index: u32, primitive: u32, barycentrics: vec2<f32>, width: f3
   let uv: vec2<f32> = base_uv(tiling, triangle, barycentric_weights(barycentrics));
   let alpha: f32 = textureSampleLevel(trace_textures[slot], trace_sampler, uv, lod).a;
 
-  return alpha * (1.0 + 0.25 * lod) > trace_surfaces[record.surface].alpha_reference;
+  return !is_alpha_cut_at(alpha, lod, trace_surfaces[record.surface].alpha_reference);
 }
 
 // Whether a grass card is solid at a point of its triangle `primitive`: its model's texture's alpha at the level of
@@ -196,7 +197,7 @@ fn is_grass_card_solid(primitive: u32, barycentrics: vec2<f32>, width: f32) -> b
   let lod: f32 = log2(max(width * density * max(size.x, size.y), 1.0));
   let alpha: f32 = textureSampleLevel(trace_textures[model.texture], trace_sampler, uv, lod).a;
 
-  return alpha * (1.0 + 0.25 * lod) > model.alpha_reference;
+  return !is_alpha_cut_at(alpha, lod, model.alpha_reference);
 }
 
 // A hit's surface: its corners read from its layout's arena, interpolated, its normal turned into renderer space and
