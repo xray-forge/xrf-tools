@@ -122,6 +122,11 @@ impl Default for ResolveFeature {
 }
 
 impl ResolveFeature {
+  /// The passes that resolve the frame: TAA, DLSS and DLSS's ray reconstruction.
+  pub(crate) const TEMPORAL: &str = "temporal";
+  pub(crate) const DLSS: &str = "dlss";
+  pub(crate) const RAY_RECONSTRUCTION: &str = "dlss ray reconstruction";
+
   /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down, for a viewport `ratio` times
   /// the drawn size on a GPU that has DLSS where `has_dlss`: jittered while it resolves frames temporally and shows
   /// the finished frame or one of FSR's debug views, which FSR resolves whatever the antialiasing; still otherwise.
@@ -802,7 +807,7 @@ impl ResolveFeature {
         };
 
         graph
-          .add_raster_pass("temporal")
+          .add_raster_pass(Self::TEMPORAL)
           .parameters(&parameters)
           .color(GraphColorAttachment::new(
             target,
@@ -876,7 +881,7 @@ impl ResolveFeature {
     let frame_time: Duration = self.frame_time;
 
     graph
-      .add_encoder_pass("dlss")
+      .add_encoder_pass(Self::DLSS)
       .texture(frame, GraphTextureAccess::Sampled)
       .texture(handles.depth, GraphTextureAccess::Sampled)
       .texture(handles.motion, GraphTextureAccess::Sampled)
@@ -920,7 +925,7 @@ impl ResolveFeature {
     let is_reset: bool = resolve.is_reset;
 
     let mut pass = graph
-      .add_encoder_pass("dlss ray reconstruction")
+      .add_encoder_pass(Self::RAY_RECONSTRUCTION)
       .texture(frame, GraphTextureAccess::Sampled)
       .texture(handles.depth, GraphTextureAccess::Sampled)
       .texture(handles.motion, GraphTextureAccess::Sampled)

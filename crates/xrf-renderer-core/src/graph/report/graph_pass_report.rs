@@ -14,4 +14,7 @@ pub struct GraphPassReport {
   pub owner: GraphOwner,
   /// The render pass it draws in, which raster passes beside it may share.
   pub render_pass: Option<usize>,
+  /// The textures it reads and those it writes, attachments among them, as places in the report's `textures`.
+  pub reads: Vec<usize>,
+  pub writes: Vec<usize>,
 }

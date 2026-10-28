@@ -31,6 +31,7 @@ mod height_field;
 mod history;
 mod indirect_light;
 mod instance_flags;
+mod jitter_guard;
 mod lens_flares;
 mod level_shadows;
 mod level_wetness;

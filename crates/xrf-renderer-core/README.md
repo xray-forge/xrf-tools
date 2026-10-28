@@ -76,8 +76,8 @@ assert_eq!(compiled.get_render_pass_count(), 1);
   it so what is left to convert stays visible.
 - **Diagnostics.** `GraphCompileOptions` turns culling, pooling, merging and grouping off one at a time, or all at once
   (`serial()`), to bisect a difference in a capture. `CompiledGraph::describe` answers a `GraphReport` of the passes,
-  the render passes and groups they fall in, the culled, and the transients with their slots and sizes; it serializes
-  to JSON.
+  the render passes and groups they fall in and the textures each reads and writes, the culled, every texture's label,
+  and the transients with their slots and sizes; it serializes to JSON.
 
 ## Executing a frame
 

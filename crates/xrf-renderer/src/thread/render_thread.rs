@@ -13,6 +13,7 @@ use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_clock::FrameClock;
 use crate::frame::frame_pacer::FramePacer;
 use crate::frame::gpu_memory::GpuMemory;
+use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::periodic::periodic_budget::PeriodicBudget;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_bundle::RenderBundle;
@@ -98,6 +99,8 @@ pub struct RenderThread {
   running: Option<RunningGpu>,
   /// What the last described frame's graph came to, and when it was described: as often as the viewports report.
   graph_report: Option<(Instant, GraphReport)>,
+  /// What reads the jittered frame after a resolve in the graphs described, warned of once.
+  jitter_guard: JitterGuard,
   /// What the GPU allocator held when it was last asked: a report lists every allocation, so it is asked at most every
   /// `ALLOCATOR_REPORT_EVERY`.
   allocator_report: Option<(Instant, Option<GpuMemory>)>,
@@ -159,6 +162,7 @@ impl RenderThread {
       shaders: ShaderLibrary::default(),
       running: None,
       graph_report: None,
+      jitter_guard: JitterGuard::default(),
       allocator_report: None,
       periodic: PeriodicScheduler::new(),
       periodic_budget: PeriodicBudget::default(),
