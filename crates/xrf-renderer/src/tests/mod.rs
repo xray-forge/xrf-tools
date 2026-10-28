@@ -6,7 +6,6 @@ mod camera_view;
 mod compute_grid;
 mod contact_shadows;
 mod cube_capture;
-mod cut_out_coverage;
 mod daylight;
 mod debanding;
 mod decoded_texture;
