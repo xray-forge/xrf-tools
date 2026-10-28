@@ -1,6 +1,5 @@
 #import "common/lighting"
 #import "common/sky_box"
-#import "common/display_transform"
 
 // The sky as the engine shows it along a world direction, with the clouds `RenderClouds` lays over it (`clouds.vs`,
 // `clouds.ps`), and the same as light: what a reflection of the sky adds to a surface, in the units the surface's own
@@ -91,14 +90,15 @@ fn sky_clouds_over(state: Lighting, direction: vec3<f32>, below: vec3<f32>, clou
 
 // The sky's light along a renderer-space direction in the engine's units, which a reader of the cube it is kept in
 // gives the light's scale: the sky as the frame shows it, clouds and all, taken back through the tonemap, so a
-// reflection of it adds to a surface what the frame's own sky would. The picture enters as `display` shows it as the
-// engine's curve does (`picture_for_display`): the frame's display where it is seen, reflected as the sky above it is
-// drawn; the ungraded one where it lights the scene, whose light no view transform may change.
+// reflection of it adds to a surface what the frame's own sky would. It is the engine's own light under every display,
+// as the light of the surface it joins is: through the inverse of AgX's or PBR Neutral's view, which brings the seen
+// sky in (`picture_for_display`), it would be the engine curve's light at the frame's lift, which a cube keeps past
+// that frame, and PBR Neutral's shoulder inverts a sunrise's near-white glow without bound.
 fn sky_light(direction: vec3<f32>, state: Lighting, cube_0: texture_cube<f32>, cube_1: texture_cube<f32>,
-  cube_sampler: sampler, clouds_0: texture_2d<f32>, clouds_1: texture_2d<f32>, repeat: sampler, scale: f32,
-  display: vec4<f32>) -> vec3<f32> {
+  cube_sampler: sampler, clouds_0: texture_2d<f32>, clouds_1: texture_2d<f32>, repeat: sampler,
+  scale: f32) -> vec3<f32> {
   let below: vec3<f32> = sky_box_shown(direction, state, cube_0, cube_1, cube_sampler, scale);
   let shown: vec3<f32> = sky_clouds_over(state, direction, below, clouds_0, clouds_1, repeat, scale);
 
-  return sky_as_light(picture_for_display(shown, display), scale, state.reflections.w, is_lighting_physical(state));
+  return sky_as_light(shown, scale, state.reflections.w, is_lighting_physical(state));
 }

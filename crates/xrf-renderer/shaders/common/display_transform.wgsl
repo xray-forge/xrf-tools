@@ -232,3 +232,18 @@ fn picture_for_display(shown: vec3<f32>, display: vec4<f32>) -> vec3<f32> {
 
   return srgb_encoded(tonemap(held, 1.0));
 }
+
+// `picture_for_display` undone: the picture a `display` brought in as `entered`, for a reader of the seen sky that
+// takes it as light, which no view transform enters (`sky_light`).
+fn picture_from_display(entered: vec3<f32>, display: vec4<f32>) -> vec3<f32> {
+  let mode: u32 = u32(display.x);
+
+  if (mode != DISPLAY_AGX && mode != DISPLAY_PBR_NEUTRAL) {
+    return entered;
+  }
+
+  let held: vec3<f32> = untonemapped(srgb_decoded(entered), 1.0);
+  let light: vec3<f32> = srgb_decoded(untonemapped(shown_for_display(held, display), 1.0));
+
+  return srgb_encoded(tonemap(light, 1.0));
+}
