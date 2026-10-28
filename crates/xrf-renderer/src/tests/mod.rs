@@ -4,6 +4,7 @@ mod bloom;
 mod burst_job;
 mod camera_view;
 mod compute_grid;
+mod cut_out_coverage;
 mod contact_shadows;
 mod cube_capture;
 mod daylight;
