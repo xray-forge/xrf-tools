@@ -15,6 +15,8 @@ use crate::pass::contact_shadow_parameters::ContactShadowParameters;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
 use crate::pass::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
+use crate::pass::distort_parameters::DistortParameters;
+use crate::pass::distort_uniform::DistortUniform;
 use crate::pass::enhanced_bloom_parameters::EnhancedBloomParameters;
 use crate::pass::enhanced_bloom_uniform::EnhancedBloomUniform;
 use crate::pass::enhanced_water_parameters::EnhancedWaterParameters;
@@ -171,6 +173,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut light_binning: ShaderBindings = ShaderBindings::new();
   let mut sky_behind: ShaderBindings = ShaderBindings::new();
   let mut ray_guides: ShaderBindings = ShaderBindings::new();
+  let mut distort: ShaderBindings = ShaderBindings::new();
   let mut grass_occlusion: ShaderBindings = ShaderBindings::new();
   let mut grass_planting: ShaderBindings = ShaderBindings::new();
   let mut grass_sort: ShaderBindings = ShaderBindings::new();
@@ -243,6 +246,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<EnhancedWaterUniform>()
     .declare::<WaterBlurUniform>()
     .declare::<PresentUniform>()
+    .declare::<DistortUniform>()
     .declare::<UpscaleUniform>()
     .declare::<BloomUniform>()
     .declare::<EnhancedBloomUniform>()
@@ -306,6 +310,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   light_binning.add::<LightBinningParameters>()?;
   sky_behind.add::<SkyBehindParameters>()?;
   ray_guides.add::<RayGuidesParameters>()?;
+  distort.add::<DistortParameters>()?;
   grass_occlusion.add::<GrassOcclusionParameters>()?;
   grass_planting
     .add::<GrassLevelParameters>()?
@@ -458,6 +463,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/ray_guides",
       format!("{STRUCTS_IMPORT}{}", ray_guides.to_wgsl()),
+    ),
+    (
+      "generated/frame/distort",
+      format!("{STRUCTS_IMPORT}{}", distort.to_wgsl()),
     ),
     (
       "generated/frame/light_binning",

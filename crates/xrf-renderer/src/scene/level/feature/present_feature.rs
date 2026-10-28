@@ -1,7 +1,16 @@
+use xrf_renderer_core::{FrameGraph, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor};
+
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::frame::texture_copy::add_texture_copy;
+use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::view_targets::ViewTargets;
 use crate::pass::display_mode::DisplayMode;
+use crate::pass::distort_parameters::DistortParameters;
+use crate::pass::distort_uniform::DistortUniform;
+use crate::pass::level_passes::LevelPasses;
 use crate::pass::present_uniform::PresentUniform;
+use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::present_inputs::PresentInputs;
 use crate::scene::level::feature::view_feature::ViewFeature;
 
@@ -56,6 +65,49 @@ impl PresentFeature {
   /// What the window pass reads this frame.
   pub fn get_uniform(&self) -> &PresentUniform {
     &self.uniform
+  }
+
+  /// Moves the frame (`handles.scene`, at the drawn size) where the water, the particles, the rain and the distorting
+  /// surfaces wrote the distortion target, before the resolve, so the resolve smooths the moved frame as it smooths the
+  /// rest: a copy of the frame read where the target says, drawn back into it. Nothing where nothing distorts.
+  pub fn add_distortion_pass<'a>(
+    &self,
+    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    passes: LevelPasses<'a>,
+    view: &'a ViewBinding,
+    handles: ViewTargetHandles,
+  ) {
+    let strength: f32 = self.uniform.distortion;
+
+    if strength <= 0.0 {
+      return;
+    }
+
+    let (width, height) = handles.size;
+    let before: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
+      "scene before distortion",
+      width,
+      height,
+      ViewTargets::SCENE,
+    ));
+
+    add_texture_copy(&mut *graph, "scene before distortion", handles.scene, before);
+
+    let parameters: DistortParameters = DistortParameters {
+      frame: before,
+      distortion: handles.distortion,
+      depth_target: handles.depth,
+      distort: runtime.push_uniform(&DistortUniform { strength }),
+    };
+
+    graph
+      .add_raster_pass("distortion")
+      .parameters(&parameters)
+      .color(GraphColorAttachment::new(
+        handles.scene,
+        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+      ))
+      .record(move |context| passes.distort.record(context, view, &parameters));
   }
 
   /// How many times the sky is averaged this frame.

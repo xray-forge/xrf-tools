@@ -12,10 +12,10 @@
 #import "common/srgb"
 #import "common/display_transform"
 
-// The viewport's finished scene put into its rectangle of the window, moved where the water and the particles distort
-// it; or, for a debug view, one of the targets the scene was built from.
+// The viewport's finished scene put into its rectangle of the window; or, for a debug view, one of the targets the
+// scene was built from.
 
-// The scene, what the water and the particles move what is seen through them by, the targets a debug view shows, what
+// The scene, the distortion target, whose `z` blurs it towards the bloom, the targets a debug view shows, what
 // the frame shows, the frame upscaled or the scene again (filtered for the debanding's reads), the bloom, finished in
 // the engine's 256-square target or at half the frame's size for the enhanced bloom, the indirect light at half the
 // frame's size, and the reflections and how their rays ended, at the size they are traced at.
@@ -77,26 +77,12 @@ const GRASS_STRIPE_WIDTH: i32 = 2;
 // One step of the eight-bit window the frame is written to.
 const OUTPUT_STEP: f32 = 1.0 / 255.0;
 
-// What the distortion target holds where nothing distorts it.
-const NEUTRAL_DISTORTION: f32 = 127.0 / 255.0;
-
-// Metres, and the share of its own depth, what a move reads may stand nearer than what the pixel shows behind it.
-const NEARER_MARGIN: f32 = 0.25;
-const NEARER_SHARE: f32 = 0.02;
-
 // Half a step either way by interleaved gradient noise (Jimenez, 2014), so a flat gradient falls between two steps as
 // a fine grain rather than as bands.
 fn output_dither(pixel: vec2<f32>) -> vec3<f32> {
   let noise: f32 = gradient_noise(pixel);
 
   return vec3<f32>((noise - 0.5) * OUTPUT_STEP);
-}
-
-// How far along the view a texel of the viewport's targets lies, farther than anything where nothing was drawn.
-fn view_distance(texel: vec2<i32>) -> f32 {
-  let stored: f32 = textureLoad(depth_target, texel, 0);
-
-  return select(-camera_view_position(vec2<f32>(texel) + 0.5, stored).z, 1e6, stored <= 0.0);
 }
 
 // One target of the frame at a texel, as a colour.
@@ -281,11 +267,10 @@ fn drawn_texel(pixel: vec2<f32>) -> vec2<i32> {
   return to_drawn_texel(pixel, camera.viewport.xy, present.size);
 }
 
-// `combine_2`'s bloom over a colour: the bloom read where the scene is; where the distortion (`strength`) blurs, the
-// colour first goes towards it by the distortion's `z`, `lerp(img, bloom * def_hdr, distort.z)`; then the bloom added,
-// `combine_bloom`.
-fn engine_bloomed(color: vec3<f32>, read: vec2<f32>, texel: vec2<i32>, strength: f32) -> vec3<f32> {
-  let bloom: vec4<f32> = textureSampleLevel(bloom_target, bloom_sampler, (read + 0.5) / present.size, 0.0);
+// `combine_2`'s bloom over a colour at a pixel: where the distortion (`strength`) blurs, the colour first goes towards
+// it by the distortion's `z`, `lerp(img, bloom * def_hdr, distort.z)`; then the bloom added, `combine_bloom`.
+fn engine_bloomed(color: vec3<f32>, pixel: vec2<f32>, texel: vec2<i32>, strength: f32) -> vec3<f32> {
+  let bloom: vec4<f32> = textureSampleLevel(bloom_target, bloom_sampler, (pixel + 0.5) / present.size, 0.0);
   var bloomed: vec3<f32> = color;
 
   if (strength > 0.0) {
@@ -312,29 +297,11 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
     return vec4<f32>(saturate(shown_target(texel)), 1.0);
   }
 
-  var read: vec2<f32> = pixel;
+  // `combine_2`'s `USE_DISTORT` moved the scene before the resolve (`frame/distort.wgsl`); its blur towards the bloom
+  // by the distortion's `z` stays here.
   let strength: f32 = present.distortion;
-
-  // `combine_2`'s `USE_DISTORT`: the scene read where the distortion target moves each pixel, `(distort.xy - .5) *
-  // def_distort`. A move that would read something standing nearer than what the pixel shows reads the pixel itself:
-  // a departure from the engine, whose water copies a railing standing in it into the water beside it.
-  if (strength > 0.0) {
-    let offset: vec2<f32> = (textureLoad(distortion, texel, 0).xy - NEUTRAL_DISTORTION) * strength;
-
-    // A pixel nothing moves reads itself, with no depths to compare.
-    if (any(offset != vec2<f32>(0.0))) {
-      let moved: vec2<f32> = clamp(pixel + offset * present.size, vec2<f32>(0.0), present.size - 1.0);
-      let here: f32 = view_distance(texel);
-      let there: f32 = view_distance(drawn_texel(moved));
-
-      if (there >= here - max(NEARER_MARGIN, here * NEARER_SHARE)) {
-        read = moved;
-      }
-    }
-  }
-
-  var color: vec3<f32> = select(textureLoad(scene, drawn_texel(read), 0).rgb,
-    textureLoad(upscaled, vec2<i32>(read), 0).rgb, present.is_upscaled != 0u);
+  var color: vec3<f32> = select(textureLoad(scene, texel, 0).rgb, textureLoad(upscaled, vec2<i32>(pixel), 0).rgb,
+    present.is_upscaled != 0u);
 
   let display: vec4<f32> = present.display;
   // The physical light's engine bloom is light, built from its linear scene, so it joins the scene as light before the
@@ -342,15 +309,14 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let is_bloom_light: bool = present.is_bloomed == BLOOM_ENGINE && u32(display.x) >= DISPLAY_ENGINE_ENCODED;
 
   if (is_bloom_light) {
-    color = engine_bloomed(color, read, texel, strength);
+    color = engine_bloomed(color, pixel, texel, strength);
   }
 
   // A scene of linear light at its exposure is shown here, by the engine's curve or the physical light's display
   // transform and encoding, before everything the engine lays over its displayed frame.
   color = shown_for_display(color, display);
 
-  // The sky debanding, where nothing was drawn, over the shown steps it bands in: its neighbours read about the pixel
-  // itself, not where the distortion moved its read.
+  // The sky debanding, where nothing was drawn, over the shown steps it bands in: its neighbours read about the pixel.
   if (present.deband.x > 0.0 && textureLoad(depth_target, texel, 0) <= 0.0) {
     color = debanded(upscaled, bloom_sampler, color, (pixel + 0.5) / present.size, 1.0 / present.size,
       u32(present.deband.x), present.deband.y, present.deband.z, display);
@@ -359,7 +325,7 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   // The enhanced bloom screened over the frame, `1 - (1 - img)(1 - bloom)`, before its corrections; where the
   // distortion blurs, the corrected frame then goes towards the bloom by the distortion's `z`, as the engine's does.
   if (present.is_bloomed == BLOOM_ENHANCED) {
-    let bloom: vec3<f32> = textureSampleLevel(bloom_target, bloom_sampler, (read + 0.5) / present.size, 0.0).rgb;
+    let bloom: vec3<f32> = textureSampleLevel(bloom_target, bloom_sampler, (pixel + 0.5) / present.size, 0.0).rgb;
     var finished: vec3<f32> = corrected(1.0 - (1.0 - saturate(color)) * (1.0 - bloom));
 
     if (strength > 0.0) {
@@ -373,7 +339,7 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
 
   // The engine's bloom over its shown frame, as `combine_2` adds it.
   if (present.is_bloomed == BLOOM_ENGINE && !is_bloom_light) {
-    color = engine_bloomed(color, read, texel, strength);
+    color = engine_bloomed(color, pixel, texel, strength);
   }
 
   let shown: vec3<f32> = mix(corrected(color), present.selection.rgb, selection_share(texel));

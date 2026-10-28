@@ -15,6 +15,7 @@ use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::contact_shadow_pass::ContactShadowPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
+use crate::pass::distort_pass::DistortPass;
 use crate::pass::enhanced_bloom_pass::EnhancedBloomPass;
 use crate::pass::exposure_pass::ExposurePass;
 use crate::pass::flare_pass::FlarePass;
@@ -130,6 +131,7 @@ pub struct GpuState {
   pub combine: CombinePass,
   pub sky_behind: SkyBehindPass,
   pub ray_guides: RayGuidesPass,
+  pub distort: DistortPass,
   pub exposure: ExposurePass,
   pub meter: MeterPass,
   pub calibration: CalibrationPass,
@@ -225,6 +227,7 @@ impl GpuState {
       let combine = threads.spawn(move || CombinePass::new(source, view, sky_layout));
       let sky_behind = threads.spawn(move || SkyBehindPass::new(source, view, sky_layout));
       let ray_guides = threads.spawn(move || RayGuidesPass::new(source, view));
+      let distort = threads.spawn(move || DistortPass::new(source, view));
       let sky_haze = threads.spawn(move || SkyHazePass::new(source, sky_layout));
       let sky_motion = threads.spawn(move || SkyMotionPass::new(source, view));
       let sky_irradiance = threads.spawn(move || SkyIrradiancePass::new(source));
@@ -277,6 +280,7 @@ impl GpuState {
         combine: Self::join(combine)?,
         sky_behind: Self::join(sky_behind)?,
         ray_guides: Self::join(ray_guides)?,
+        distort: Self::join(distort)?,
         sky_haze: Self::join(sky_haze)?,
         sky_motion: Self::join(sky_motion)?,
         sky_irradiance: Self::join(sky_irradiance)?,
@@ -382,6 +386,7 @@ impl GpuState {
       combine: &self.combine,
       sky_behind: &self.sky_behind,
       ray_guides: &self.ray_guides,
+      distort: &self.distort,
       sky_haze: &self.sky_haze,
       sky_motion: &self.sky_motion,
       sky_irradiance: &self.sky_irradiance,
@@ -456,6 +461,7 @@ impl GpuState {
     self.combine.refresh(source);
     self.sky_behind.refresh(source);
     self.ray_guides.refresh(source);
+    self.distort.refresh(source);
     self.sky_haze.refresh(source);
     self.sky_motion.refresh(source);
     self.water.refresh(source);

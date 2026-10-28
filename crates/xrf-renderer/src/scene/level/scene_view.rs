@@ -1547,6 +1547,11 @@ impl SceneView {
 
     graph.begin_group("resolve");
 
+    self
+      .features
+      .present
+      .add_distortion_pass((&mut *graph, runtime), passes, view, handles);
+
     let smoothed: GraphTexture =
       self
         .features

@@ -458,19 +458,6 @@ fn scattered(view_at: vec3<f32>) -> vec3<f32> {
   return shown_from_light(mix(light, vec3<f32>(luminance(light)), SCATTER_GREY), frame_scale(lighting, exposure));
 }
 
-// The enhanced streak in the scene: nothing drawn, only the distortion under it taken towards none by its cover, since
-// the window pass bends the shown image by the water's distortion and a drop over water would zigzag with the waves.
-@fragment
-fn fs_streak_distortion(in: RainVarying) -> RainLook {
-  let cover: f32 = drop_cover(textureSample(drop_map, map_sampler, in.uv), in.view_at);
-  var out: RainLook;
-
-  out.color = vec4<f32>(0.0);
-  out.distortion = vec4<f32>(NEUTRAL_DISTORTION, NEUTRAL_DISTORTION, 0.0, cover);
-
-  return out;
-}
-
 // `effects_rain.ps` at its high quality, drawn over the shown image `rain.aim.zw` texels across and lit as modern
 // engines light rain: the blurred image behind the drop, bent by its map's offset where what the bend lands on stands
 // behind the drop or is sky, and screened with the light about it, read far off by a wider bend, as a fake reflection;

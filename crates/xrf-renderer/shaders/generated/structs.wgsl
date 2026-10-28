@@ -230,6 +230,10 @@ struct Present {
   inspect: vec4<f32>,
 }
 
+struct Distort {
+  strength: f32,
+}
+
 struct Upscale {
   output_size: vec2<f32>,
   sharpness: f32,

@@ -19,7 +19,7 @@ use crate::scene::level::rain_rings::RainRings;
 /// Draws the rain over a viewport's finished scene as `RenderLast` does after the forward surfaces: the streaks, then
 /// the splashes, blended by their alpha and tested against the G-buffer's depth without writing it. The enhanced
 /// streaks draw after the temporal resolve instead, over a copy of the image it shows, which they bend blurred at an
-/// eighth of its size; in the scene they only take the water's distortion under them away. Where they land they draw
+/// eighth of its size, after the frame's distortion, so the water's waves do not bend them. Where they land they draw
 /// rings into the rain's rings, which the water and the puddles ripple by.
 pub struct RainPass {
   layout: wgpu::BindGroupLayout,
@@ -30,9 +30,9 @@ pub struct RainPass {
   sampler: wgpu::Sampler,
   /// The enhanced maps' sampler: anisotropic, so a drop keeps its length's detail however thin it is drawn.
   map_sampler: wgpu::Sampler,
-  /// The engine's streaks and splashes; the enhanced streaks' distortion and the enhanced splashes, in the scene; and
-  /// the enhanced streaks over the shown image; and the enhanced drops' rings.
-  pipelines: [wgpu::RenderPipeline; 6],
+  /// The engine's streaks and splashes and the enhanced splashes, in the scene; the enhanced streaks over the shown
+  /// image; and the enhanced drops' rings.
+  pipelines: [wgpu::RenderPipeline; 5],
   /// The rings' first level reduced into the rest.
   reduce: wgpu::ComputePipeline,
   /// The image's blocks at an eighth of its size, then their blur, then the image copied whole.
@@ -195,7 +195,7 @@ impl RainPass {
         let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
         pass.set_bind_group(0, &view.bind_group, &[]);
-        pass.set_pipeline(&self.pipelines[5]);
+        pass.set_pipeline(&self.pipelines[4]);
         pass.draw(0..streaks * 24, 0..1);
       });
 
@@ -250,8 +250,8 @@ impl RainPass {
     target
   }
 
-  /// Draws in the scene the streaks falling and the splashes where the model has indices: the engine's, or with `look`
-  /// the enhanced streaks' distortion and the enhanced splashes.
+  /// Draws in the scene the splashes where the model has indices, and the engine's streaks falling: the engine's, or
+  /// with `look` the enhanced splashes, whose streaks draw over the shown image instead.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
@@ -261,22 +261,25 @@ impl RainPass {
   ) {
     context.bind(parameters);
 
-    let pipelines: &[wgpu::RenderPipeline] = match look {
+    let (streak, splash): (Option<&wgpu::RenderPipeline>, &wgpu::RenderPipeline) = match look {
       Some(look) => {
         context.bind(look);
 
-        &self.pipelines[2..4]
+        (None, &self.pipelines[2])
       }
-      None => &self.pipelines[..2],
+      None => (Some(&self.pipelines[0]), &self.pipelines[1]),
     };
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_pipeline(&pipelines[0]);
-    pass.draw(0..streaks * 6, 0..1);
+
+    if let Some(streak) = streak {
+      pass.set_pipeline(streak);
+      pass.draw(0..streaks * 6, 0..1);
+    }
 
     if splash_indices > 0 {
-      pass.set_pipeline(&pipelines[1]);
+      pass.set_pipeline(splash);
       pass.draw(0..near * splash_indices, 0..1);
     }
   }
@@ -295,7 +298,7 @@ impl RainPass {
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_pipeline(&self.pipelines[4]);
+    pass.set_pipeline(&self.pipelines[3]);
     pass.draw(0..streaks * 6, 0..1);
   }
 
@@ -303,7 +306,7 @@ impl RainPass {
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     (layout, look_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
-  ) -> XrfResult<[wgpu::RenderPipeline; 6]> {
+  ) -> XrfResult<[wgpu::RenderPipeline; 5]> {
     // `blend(true, srcalpha, invsrcalpha)`, the alpha kept under it.
     let blended = |format: wgpu::TextureFormat| wgpu::ColorTargetState {
       format,
@@ -339,16 +342,7 @@ impl RainPass {
       write_mask: wgpu::ColorWrites::ALL,
     };
     let engine_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(blended(ViewTargets::SCENE))];
-    let splash_targets: [Option<wgpu::ColorTargetState>; 2] =
-      [Some(blended(ViewTargets::SCENE)), Some(distorting.clone())];
-    // The streaks' distortion leaves the scene as it is.
-    let distortion_targets: [Option<wgpu::ColorTargetState>; 2] = [
-      Some(wgpu::ColorTargetState {
-        write_mask: wgpu::ColorWrites::empty(),
-        ..blended(ViewTargets::SCENE)
-      }),
-      Some(distorting),
-    ];
+    let splash_targets: [Option<wgpu::ColorTargetState>; 2] = [Some(blended(ViewTargets::SCENE)), Some(distorting)];
     let over_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(blended(Self::LAYER))];
     // Each ring added over the others.
     let ring_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(wgpu::ColorTargetState {
@@ -391,11 +385,6 @@ impl RainPass {
     Ok([
       create(("vs_streak", "fs_streak"), (&engine, &engine_targets), true)?,
       create(("vs_splash", "fs_splash"), (&engine, &engine_targets), true)?,
-      create(
-        ("vs_streak", "fs_streak_distortion"),
-        (&enhanced, &distortion_targets),
-        true,
-      )?,
       create(("vs_splash", "fs_splash_enhanced"), (&enhanced, &splash_targets), true)?,
       create(
         ("vs_streak_over", "fs_streak_enhanced"),

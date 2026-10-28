@@ -2,8 +2,9 @@ use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
 use crate::pass::present_uniform::PresentUniform;
 
-/// What the present pass reads of a viewport's frame: its finished scene and the targets a debug view shows, what the
-/// water and the particles distort it by, the frame upscaled or the scene again, which the sky debanding samples, its
+/// What the present pass reads of a viewport's frame: its finished scene and the targets a debug view shows, the
+/// distortion target, whose `z` blurs it towards the bloom, the frame upscaled or the scene again, which the sky
+/// debanding samples, its
 /// bloom, the engine's or the enhanced one, what it shows, and the indirect light, the reflections and how their rays
 /// ended, which the debug views show.
 #[derive(PassParameters)]
