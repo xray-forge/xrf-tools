@@ -25,6 +25,7 @@ use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_trace_size::RenderTraceSize;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::render_water_mode::RenderWaterMode;
 use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::frame_clock::FrameClock;
 use crate::frame::frame_encoder::FrameEncoder;
@@ -879,7 +880,9 @@ impl SceneView {
     }
 
     let water: &RenderWaterSettings = &options.features.water;
-    let is_water_distorting: bool = water.is_enabled && water.is_distorted && options.mode.is_lit;
+    // The enhanced water refracts what is behind it itself and writes no distortion.
+    let is_water_distorting: bool =
+      water.is_enabled && water.is_distorted && water.mode != RenderWaterMode::Enhanced && options.mode.is_lit;
     let features: &SceneFeatures = &self.features;
     let inputs: PresentInputs = PresentInputs {
       is_occluded: features.ambient_occlusion.is_drawn(),
