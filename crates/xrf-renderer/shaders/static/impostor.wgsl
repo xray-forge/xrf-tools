@@ -1,6 +1,7 @@
 enable wgpu_binding_array;
 
 #import "common/camera"
+#import "common/cut_out"
 #import "common/octahedral"
 #import "common/gloss"
 #import "static/records"
@@ -89,8 +90,14 @@ fn sample_blended(slot: u32, in: ImpostorVarying) -> vec4<f32> {
   return mix(next, best, in.blend);
 }
 
-fn is_cut(color: vec4<f32>, in: ImpostorVarying) -> bool {
-  return color.a * in.fade < ALPHA_REFERENCE;
+// Whether an impostor's texel is cut: its faded alpha raised where minification thins it out, as every other cut-out's
+// is (`is_alpha_cut_at`), the mip the base `slot` is read at taken from the best facet's coordinates.
+fn is_cut(color: vec4<f32>, slot: u32, in: ImpostorVarying) -> bool {
+  let scale: f32 = texture_footprint_scale();
+  let mip: f32 = footprint_mip(vec2<f32>(textureDimensions(textures[slot])), dpdx(in.best_uv) * scale,
+    dpdy(in.best_uv) * scale);
+
+  return is_alpha_cut_at(color.a * in.fade, mip, ALPHA_REFERENCE);
 }
 
 @fragment
@@ -99,7 +106,7 @@ fn fs_impostor(in: ImpostorVarying) -> GBufferOutput {
   let color: vec4<f32> = sample_blended(surface.textures[SLOT_BASE], in);
   let companion: vec4<f32> = sample_blended(surface.textures[SLOT_HEMI], in);
 
-  if (is_cut(color, in)) {
+  if (is_cut(color, surface.textures[SLOT_BASE], in)) {
     discard;
   }
 
@@ -119,7 +126,9 @@ fn fs_impostor(in: ImpostorVarying) -> GBufferOutput {
 // A pick's texel: an impostor, by its index, and its depth's bits.
 @fragment
 fn fs_pick_impostor(in: ImpostorVarying) -> @location(0) vec4<u32> {
-  if (is_cut(sample_blended(surfaces[in.surface].textures[SLOT_BASE], in), in)) {
+  let slot: u32 = surfaces[in.surface].textures[SLOT_BASE];
+
+  if (is_cut(sample_blended(slot, in), slot, in)) {
     discard;
   }
 
