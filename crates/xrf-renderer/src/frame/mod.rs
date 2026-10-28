@@ -11,6 +11,7 @@ pub(crate) mod frame_texture;
 pub(crate) mod gpu_memory;
 pub(crate) mod gpu_readback;
 pub(crate) mod history;
+#[cfg(debug_assertions)]
 pub(crate) mod jitter_guard;
 pub(crate) mod periodic;
 pub(crate) mod pick_target;
