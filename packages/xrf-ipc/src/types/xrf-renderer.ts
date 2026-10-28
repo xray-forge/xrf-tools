@@ -345,6 +345,29 @@ export type RenderBloomSettings = {
   strength: number | null;
 };
 
+/**
+ * A run of consecutive frames asked of a viewport, drawn on a clock of its own a fixed step apart from a set time, so
+ * two bursts from the same time draw the same scene however long their frames take; each read back whole as a
+ * screenshot is, with its G-buffer's marks.
+ *
+ * Its first frame restarts what the view carries from frame to frame (the wind's drift, the temporal resolve's
+ * history and jitter), so what it draws depends on its own frames alone. A reference burst draws each frame's time
+ * `samples` times over, its clock held, at as many places of the resolve's jitter, unresolved and at the viewport's
+ * own size: what a perfect temporal resolve converges to at that time, once averaged.
+ */
+export type RenderBurst = {
+  /** The scene's seconds, since its level began opening, its first frame is drawn at. */
+  at: number | null;
+  /** Seconds between its frames. */
+  step: number | null;
+  /** Frames drawn before the first read back, for what builds over frames to settle from its restart. */
+  leadIn: number;
+  /** Frames read back, one after another. */
+  frames: number;
+  /** Samples each frame read back is drawn at for a reference; none for the frames as the view resolves them. */
+  samples: number | null;
+};
+
 /** An opaque colour as CSS states it, eight bits a channel in sRGB. */
 export type RenderColor = {
   r: number;

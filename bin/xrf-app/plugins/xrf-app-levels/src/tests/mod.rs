@@ -1,5 +1,6 @@
 mod ambients;
 mod annotations;
+mod burst_writer;
 mod console_defaults;
 mod cube_export;
 mod fixtures;

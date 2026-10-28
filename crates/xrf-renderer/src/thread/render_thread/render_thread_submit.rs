@@ -5,6 +5,7 @@ use xrf_renderer_core::{ExecutedGraph, ExecutedGroup, GraphRuntime};
 
 use wgpu::util::StagingBelt;
 
+use crate::capture::burst::burst_shot::BurstShot;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_encoder::FrameEncoder;
@@ -15,12 +16,13 @@ use crate::thread::gpu_state::GpuState;
 use crate::viewport::pick_in_flight::PickInFlight;
 use crate::window::window_frame::WindowFrame;
 
-use super::{RenderThread, ShotCopy, ViewFrame};
+use super::{BurstCopy, RenderThread, ShotCopy, ViewFrame};
 
 impl RenderThread {
   /// Gives up a frame its graph could not draw: what the frame's own encoder holds is not of the frame (the uploads and
   /// the acceleration structures the scenes built, which they count as done) and still goes up; what the graph copied
-  /// out for reading back is dropped, its picks wait for the next frame, and its captures are refused.
+  /// out for reading back is dropped, its picks wait for the next frame, and its captures and bursts are refused, a
+  /// burst's frames no longer following one another.
   pub(super) fn abandon_frame(
     &mut self,
     (gpu, kept): (&GpuState, &mut Option<StagingBelt>),
@@ -41,6 +43,8 @@ impl RenderThread {
       log::error!("The frame's uploads cannot be submitted: {error}");
     }
 
+    let message: String = error.to_string();
+
     for (id, _, pick) in frames {
       let Some(viewport) = self.viewports.get_mut(&id) else {
         continue;
@@ -53,6 +57,8 @@ impl RenderThread {
       if let Some((pick, _)) = pick {
         viewport.picks.insert(0, pick);
       }
+
+      viewport.stop_burst(&message);
     }
 
     for (scene_id, _) in firsts {
@@ -60,8 +66,6 @@ impl RenderThread {
         scene.lights.abandon_shadows();
       }
     }
-
-    let message: String = error.to_string();
 
     for (_, _, reply) in captures {
       let _ = reply.send(Err(XrfError::new_invalid_error(message.clone())));
@@ -117,18 +121,27 @@ impl RenderThread {
     executed.groups
   }
 
-  /// Ends each view's submitted frame: its history kept, its stats and its pick asked for back; and each capture asked
-  /// for back.
+  /// Ends each view's submitted frame: its history kept, its stats and its pick asked for back, its burst moved on with
+  /// the frame copied out of it; and each capture asked for back.
   pub(super) fn end_view_frames(
     &mut self,
     frames: Vec<ViewFrame>,
     captures: Vec<(RenderViewportId, FrameCapture, CaptureReply)>,
-    mut shots: Vec<ShotCopy>,
+    (mut shots, mut bursts): (Vec<ShotCopy>, Vec<BurstCopy>),
   ) {
     for (id, frame, pick) in frames {
       let Some(viewport) = self.viewports.get_mut(&id) else {
         continue;
       };
+
+      if let Some(burst) = viewport.burst.as_mut().filter(|burst| burst.is_drawing()) {
+        let kept: Option<BurstShot> = bursts
+          .iter()
+          .position(|(shot, _)| *shot == id)
+          .map(|index| bursts.swap_remove(index).1);
+
+        burst.advance(kept);
+      }
 
       // A capture's frame moves it on, with the shot copied out of it, if any.
       if let Some(capture) = viewport.capture.as_mut().filter(|capture| !capture.is_ended()) {

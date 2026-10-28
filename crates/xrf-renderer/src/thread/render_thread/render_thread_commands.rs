@@ -4,10 +4,13 @@ use std::time::Instant;
 
 use xrf_error::{XrfError, XrfResult};
 
+use crate::capture::burst::burst_event::BurstEvent;
+use crate::capture::burst::burst_job::BurstJob;
 use crate::capture::capture_event::CaptureEvent;
 use crate::capture::capture_job::CaptureJob;
 use crate::capture::capture_plan::CapturePlan;
 use crate::contract::render_backend::RenderBackend;
+use crate::contract::render_burst::RenderBurst;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_memory_report::RenderMemoryReport;
@@ -203,6 +206,38 @@ impl RenderThread {
           CapturePlan::new_cube(capture, &viewport.world.camera, Self::get_far_limit(viewport), most)
         });
       }
+      RenderCommand::CaptureBurst { id, burst, events } => self.begin_burst(id, burst, events),
+      RenderCommand::StepClock { step } => self.clock.set_step(step),
+    }
+  }
+
+  /// Starts a viewport's burst; refused, through `events`, where the viewport is gone, shows no level or captures, a
+  /// burst already paces the clock, or the burst cannot be drawn.
+  fn begin_burst(&mut self, id: RenderViewportId, burst: RenderBurst, events: Sender<BurstEvent>) {
+    let refusal: Option<String> = match self.viewports.get(&id) {
+      None => Some(format!("Viewport {} is no longer drawn", id.0)),
+      Some(viewport) if viewport.shown.is_none() => Some(format!("Viewport {} shows no level to burst", id.0)),
+      Some(viewport) if viewport.is_capturing() => Some(format!("Viewport {} captures already", id.0)),
+      Some(_) if self.viewports.values().any(RenderViewport::is_bursting) => {
+        Some(String::from("Another burst paces the frames' clock"))
+      }
+      Some(_) => None,
+    };
+
+    if let Some(refusal) = refusal {
+      let _ = events.send(BurstEvent::Stopped {
+        error: XrfError::new_invalid_error(refusal),
+      });
+
+      return;
+    }
+
+    match (BurstJob::new(burst, events.clone()), self.viewports.get_mut(&id)) {
+      (Ok(job), Some(viewport)) => viewport.burst = Some(job),
+      (Err(error), _) => {
+        let _ = events.send(BurstEvent::Stopped { error });
+      }
+      (Ok(_), None) => {}
     }
   }
 
@@ -233,7 +268,7 @@ impl RenderThread {
         "Viewport {} shows no level to capture",
         id.0
       ))),
-      Some(viewport) if viewport.is_capturing() => Err(XrfError::new_invalid_error(format!(
+      Some(viewport) if viewport.is_capturing() || viewport.is_bursting() => Err(XrfError::new_invalid_error(format!(
         "Viewport {} captures already",
         id.0
       ))),

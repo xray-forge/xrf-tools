@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 use glam::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
+use crate::capture::burst::burst_job::BurstJob;
 use crate::capture::capture_job::CaptureJob;
 use crate::capture::capture_shot::CaptureShot;
 use crate::contract::render_debug_view::RenderDebugView;
@@ -92,9 +93,11 @@ impl RenderThread {
       if !simulated.contains(&scene_id)
         && let Some(scene) = self.scenes.get_mut(&scene_id)
       {
+        let time: Duration = scene.get_time();
+
         scene
           .particles
-          .start_simulation(&Self::get_camera_view(viewport, rect), &viewport.options);
+          .start_simulation(&Self::get_camera_view(viewport, rect), &viewport.options, time);
         Self::advance_wetness(scene, &self.viewports);
         simulated.push(scene_id);
       }
@@ -256,6 +259,15 @@ impl RenderThread {
       );
     }
 
+    let burst: Option<&BurstJob> = viewport.burst.as_ref().filter(|burst| !burst.is_ended());
+
+    // A burst waiting for its frames back draws nothing, its time held.
+    if burst.is_some_and(|burst| !burst.is_drawing()) {
+      return None;
+    }
+
+    let reference: Option<(u32, u32)> = burst.and_then(BurstJob::get_reference);
+    let is_restarted: bool = burst.is_some_and(BurstJob::is_starting);
     let id: RenderViewportId = viewport.id;
     let device: &wgpu::Device = &gpu.context.device;
     let scale: f32 = viewport.get_scale();
@@ -264,7 +276,13 @@ impl RenderThread {
       .binding
       .get_or_insert_with(|| ViewBinding::new(device, &gpu.view_layout));
 
-    let options: RenderViewOptions = ViewLens::fit(&viewport.options, &view).into_owned();
+    let mut options: RenderViewOptions = ViewLens::fit(&viewport.options, &view).into_owned();
+
+    // A reference is drawn at the size its frame is resolved at, as a resolve converges to.
+    if reference.is_some() {
+      options.output.upscaling.scale = RenderScale::Native;
+    }
+
     let switches: Vec4 = CameraUniform::get_switches(&options);
     let (resolved, drawn_rect): ((u32, u32), RenderRect) = Self::get_view_sizes(
       &options,
@@ -299,6 +317,12 @@ impl RenderThread {
     };
     let (lighting, weather): (Cow<'_, RenderLighting>, Option<&Arc<RenderLevelWeather>>) =
       Self::get_view_lighting(&options, world);
+
+    if is_restarted {
+      view_state.restart_motion();
+    }
+
+    view_state.sample_reference(reference);
 
     Self::prepare_scene_view(
       (gpu, shaders),
@@ -510,7 +534,7 @@ impl RenderThread {
     }
   }
 
-  /// Moves a scene's wetness on, once a frame, by its driving viewport's rain on the real clock; every view of the
+  /// Moves a scene's wetness on, once a frame, by its driving viewport's rain on the scene's clock; every view of the
   /// scene wets its surfaces by it.
   fn advance_wetness(scene: &mut LevelScene, viewports: &BTreeMap<RenderViewportId, RenderViewport>) {
     let Some(driver) = scene.driver.and_then(|driver| viewports.get(&driver)) else {
@@ -519,10 +543,8 @@ impl RenderThread {
     let (lighting, _): (Cow<'_, RenderLighting>, Option<&Arc<RenderLevelWeather>>) =
       Self::get_view_lighting(&driver.options, &driver.world);
 
-    scene.wetness.advance(
-      &lighting,
-      &driver.options.features.rain,
-      scene.started.elapsed().as_secs_f32(),
-    );
+    scene
+      .wetness
+      .advance(&lighting, &driver.options.features.rain, scene.get_time().as_secs_f32());
   }
 }

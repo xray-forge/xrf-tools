@@ -89,6 +89,11 @@ impl GrassView {
     }
   }
 
+  /// Starts the engine's sway again from nothing, as at a view's first frame.
+  pub fn restart_wind(&mut self) {
+    self.wind = GrassWind::default();
+  }
+
   /// Fits the planting to the settings and the camera, building the ring and lists again where the settings outgrow
   /// them, and the cards where the grass casts shadows, traced where the view traces its light and drawn into the sun's
   /// cascades where they shadow the frame.

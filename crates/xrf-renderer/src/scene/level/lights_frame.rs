@@ -33,4 +33,6 @@ pub struct LightsFrame<'a> {
   /// The scale a local light in the engine's units is written at: its unit (`LightUnits::local`) by the lights' gain
   /// (`LightUnits::light_gain`) at the pre-exposure.
   pub light_scale: f32,
+  /// The scene's seconds, which the lights' animations and shafts' noise move by.
+  pub time: f32,
 }

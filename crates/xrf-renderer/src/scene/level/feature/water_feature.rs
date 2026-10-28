@@ -77,6 +77,13 @@ impl WaterFeature {
     Some(passes.water.add_passes(graph, bindings, runtime, draw))
   }
 
+  /// Starts its maps' scroll, its traced pixels' turn and its reflection's histories again from nothing.
+  pub fn restart(&mut self) {
+    self.flow = WaterFlow::default();
+    self.frame = 0;
+    self.reflection = None;
+  }
+
   /// Takes this frame's settings: makes or drops the reflection's histories, and works out the uniforms.
   pub fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions, frame: WaterFrame<'_>) {
     let settings: RenderWaterSettings = options.features.water;

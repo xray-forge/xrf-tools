@@ -62,6 +62,7 @@ export enum ERenderCommand {
   SET_VIEWPORT_LAYOUT = "plugin:render|set_viewport_layout",
   SET_WEATHER_CONTROL = "plugin:render|set_weather_control",
   SET_WORLD_TOGGLES = "plugin:render|set_world_toggles",
+  STEP_CLOCK = "plugin:render|step_clock",
 }
 
 /** Commands */
@@ -169,6 +170,11 @@ export const renderCommands = {
    */
   setWorldToggles: (viewport: RenderViewportId, toggles: WorldToggles) =>
     __TAURI_INVOKE<void>(ERenderCommand.SET_WORLD_TOGGLES, { viewport, toggles }),
+  /**
+   * Draw every scene's frames `seconds` apart on its clock from the next on, however long each takes, so what moves
+   * moves alike at any frame rate; none draws them at the time each is drawn again.
+   */
+  stepClock: (seconds: number | null) => __TAURI_INVOKE<null>(ERenderCommand.STEP_CLOCK, { seconds }),
 };
 
 /** What each command of the `render` plugin takes and resolves to, keyed by its wire name. */
@@ -225,4 +231,5 @@ export interface IRenderCommandSignatures {
     typeof renderCommands.setWorldToggles,
     ["viewport", "toggles"]
   >;
+  [ERenderCommand.STEP_CLOCK]: IIpcCommandSignature<typeof renderCommands.stepClock, ["seconds"]>;
 }

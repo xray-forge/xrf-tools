@@ -11,7 +11,7 @@ import {
 } from "#/types/xrf-environment";
 import { LevelEnvModifier } from "#/types/xrf-level";
 import { Vector3d } from "#/types/xrf-math";
-import { RenderCubeCapture, RenderMapCapture, RenderViewportId } from "#/types/xrf-renderer";
+import { RenderBurst, RenderCubeCapture, RenderMapCapture, RenderViewportId } from "#/types/xrf-renderer";
 import { ClsId } from "#/types/xrf-spawn";
 import { TextureEncodingFormat, TextureEncodingQuality } from "#/types/xrf-texture";
 import { XrayRoots } from "#/types/xrf-vfs";
@@ -76,6 +76,26 @@ export const LEVEL_TEXTURES_PART = "textures" as const;
 
 /** What a change event calls what a level's weather plays with beyond its environment when it goes stale. */
 export const LEVEL_WEATHER_PART = "weather" as const;
+
+/** A burst asked of a viewport, and the name of the folder of the level viewer's bursts it is written into. */
+export type BurstCaptureRequest = {
+  viewport: RenderViewportId;
+  burst: RenderBurst;
+  name: string;
+};
+
+/**
+ * A burst written: its folder, the scene's seconds each frame was drawn at in the order written, and the sizes of
+ * its frames and of their marks.
+ */
+export type BurstOutcome = {
+  folder: string;
+  times: Array<number | null>;
+  width: number;
+  height: number;
+  marksWidth: number;
+  marksHeight: number;
+};
 
 /** A cubemap asked of a viewport, and the cross PNG it is written to. */
 export type CubeCaptureRequest = {

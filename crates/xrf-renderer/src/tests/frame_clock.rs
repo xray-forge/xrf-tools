@@ -1,12 +1,12 @@
 use std::time::{Duration, Instant};
 
-use crate::scene::level::view_clock::ViewClock;
+use crate::frame::frame_clock::FrameClock;
 
 #[test]
-fn a_view_draws_at_the_wall_clock_until_stepped_then_a_step_a_frame() {
+fn frames_draw_at_the_wall_clock_until_stepped_then_a_step_a_frame() {
   let start: Instant = Instant::now();
   let step: Duration = Duration::from_millis(16);
-  let mut clock: ViewClock = ViewClock::default();
+  let mut clock: FrameClock = FrameClock::default();
 
   assert_eq!(clock.tick(start), start);
   assert_eq!(

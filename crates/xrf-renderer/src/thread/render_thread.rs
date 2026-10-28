@@ -6,9 +6,11 @@ use std::time::{Duration, Instant};
 use glam::{Mat4, Vec2};
 use xrf_renderer_core::GraphReport;
 
+use crate::capture::burst::burst_shot::BurstShot;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_viewport_id::RenderViewportId;
-use crate::frame::frame_capture::FrameCapture;
+use crate::frame::frame_capture::{CaptureReply, FrameCapture};
+use crate::frame::frame_clock::FrameClock;
 use crate::frame::frame_pacer::FramePacer;
 use crate::frame::gpu_memory::GpuMemory;
 use crate::frame::periodic::periodic_budget::PeriodicBudget;
@@ -60,8 +62,14 @@ const ALLOCATOR_REPORT_EVERY: Duration = Duration::from_millis(500);
 /// A viewport's readied frame, with the pick it draws and what unprojects that pick's depth.
 type ViewFrame = (RenderViewportId, LevelFrame, Option<(PendingPick, (Mat4, Vec2))>);
 
+/// A capture or screenshot copied out of a viewport's frame, on its way back, and where its answer goes.
+type CaptureCopy = (RenderViewportId, FrameCapture, CaptureReply);
+
 /// A capture's shot copied out of a viewport's frame, on its way back.
 type ShotCopy = (RenderViewportId, FrameCapture);
+
+/// A burst's frame copied out of a viewport's frame, on its way back.
+type BurstCopy = (RenderViewportId, BurstShot);
 
 /// What the application hands the render thread beside its commands: the files it ships with, the world it draws, and
 /// where it keeps the driver's compiled pipelines between runs.
@@ -112,6 +120,10 @@ pub struct RenderThread {
   /// When the last viewport detached, while none is attached.
   idle_since: Option<Instant>,
   last_frame: Instant,
+  /// The time every scene's frames are drawn at, which a tool may step; a burst paces its own while it draws. When the
+  /// last frame was drawn on whichever paced it.
+  clock: FrameClock,
+  drawn_at: Instant,
   /// When a limited rate's frames start and present: each presented at its due, the next started a lead ahead of it.
   pacer: FramePacer,
   /// When each window last called present, which is what a frame's interval is measured from.
@@ -158,6 +170,8 @@ impl RenderThread {
       reopening: ReopeningScenes::default(),
       idle_since: Some(now),
       last_frame: now,
+      clock: FrameClock::default(),
+      drawn_at: now,
       pacer: FramePacer::default(),
       last_present: HashMap::new(),
       shader_watcher: ShaderWatcher::new(&ShaderLibrary::get_source_root()),

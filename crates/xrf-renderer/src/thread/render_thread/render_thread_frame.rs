@@ -24,9 +24,9 @@ use crate::viewport::viewport_device::ViewportDevice;
 use super::{ALLOCATOR_REPORT_EVERY, RenderThread, TEXTURE_SWEEP};
 
 impl RenderThread {
-  /// One frame: the world advanced, the shaders reloaded where they changed, the scenes fed what the world posted
-  /// (whether or not any window can be drawn, so no post is lost), each viewport shown the scene it asks for, the
-  /// scenes no one needs let go, the textures kept, every window drawn, then the reports.
+  /// One frame: the world advanced to the frames' clock, the shaders reloaded where they changed, the scenes fed what
+  /// the world posted (whether or not any window can be drawn, so no post is lost), each viewport shown the scene it
+  /// asks for, the scenes no one needs let go, the textures kept, every window drawn, then the reports.
   pub(super) fn frame(&mut self) {
     profiling::scope!("frame");
 
@@ -36,7 +36,8 @@ impl RenderThread {
     self.last_frame = now;
     self.pacer.begin(now, self.settings.frame_rate.get_interval());
 
-    let scene_frames: HashMap<RenderSceneId, RenderSceneFrame> = self.advance_world(now, delta);
+    let (clock, clock_delta): (Instant, Duration) = self.tick_clock(now);
+    let scene_frames: HashMap<RenderSceneId, RenderSceneFrame> = self.advance_world(clock, clock_delta);
 
     if self.shader_watcher.take_changed() {
       let changed: Vec<&'static str> = self.shaders.reload();
@@ -51,7 +52,7 @@ impl RenderThread {
     let Some((mut encoder, span)) = self.begin_frame_work(delta) else {
       return;
     };
-    let live: HashSet<RenderSceneId> = self.ingest_scenes(scene_frames, &mut encoder);
+    let live: HashSet<RenderSceneId> = self.ingest_scenes(scene_frames, &mut encoder, clock);
 
     self.show_asked_scenes();
     self.retain_scenes(&live);
@@ -59,6 +60,28 @@ impl RenderThread {
     self.draw_windows((now.elapsed(), span), encoder);
     self.report_viewports(now);
     self.save_level_pipelines();
+  }
+
+  /// The time the frame begun at `wall` is drawn at, and how far that is from the last frame's: the time a burst draws
+  /// its scene at while one draws, else the frames' own clock's. Every scene moves to it.
+  fn tick_clock(&mut self, wall: Instant) -> (Instant, Duration) {
+    let own: Instant = self.clock.tick(wall);
+    let paced: Option<Instant> = self.viewports.values().find_map(|viewport| {
+      let time: Duration = viewport.burst.as_ref().filter(|burst| !burst.is_ended())?.get_time()?;
+      let scene: &LevelScene = self.scenes.get(&viewport.shown.as_ref()?.0)?;
+
+      Some(scene.get_instant(time))
+    });
+    let now: Instant = paced.unwrap_or(own);
+    let delta: Duration = now.saturating_duration_since(self.drawn_at);
+
+    self.drawn_at = now;
+
+    for scene in self.scenes.values_mut() {
+      scene.set_now(now);
+    }
+
+    (now, delta)
   }
 
   /// Keeps the driver's pipelines once a level first stands drawn on this GPU, by when its passes made most of theirs.
@@ -139,13 +162,14 @@ impl RenderThread {
     Some((encoder, span))
   }
 
-  /// Feeds each scene what the world posted for it, making it where it is new; a scene keeps its acceleration
-  /// structures only while a viewport traces rays in it (`RenderViewOptions::is_scene_traced`). Answers the scenes the
-  /// world still holds.
+  /// Feeds each scene what the world posted for it, making it where it is new, opening at `now` on the frames' clock; a
+  /// scene keeps its acceleration structures only while a viewport traces rays in it
+  /// (`RenderViewOptions::is_scene_traced`). Answers the scenes the world still holds.
   fn ingest_scenes(
     &mut self,
     mut scene_frames: HashMap<RenderSceneId, RenderSceneFrame>,
     encoder: &mut FrameEncoder,
+    now: Instant,
   ) -> HashSet<RenderSceneId> {
     let live: HashSet<RenderSceneId> = scene_frames.keys().copied().collect();
     let traced: HashSet<RenderSceneId> = self
@@ -166,6 +190,7 @@ impl RenderThread {
           &gpu.view_layout,
           Arc::clone(&frame.source),
           &self.workers,
+          now,
         )
       });
 

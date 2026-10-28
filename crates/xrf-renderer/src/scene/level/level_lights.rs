@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Instant;
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
@@ -88,7 +87,6 @@ pub struct LevelLights {
   /// Where the level's campfires burn, by their idle lights' `x` and `z`.
   fires: Vec<Vec2>,
   shadows: LevelLightShadows,
-  started: Instant,
 }
 
 impl LevelLights {
@@ -101,7 +99,6 @@ impl LevelLights {
       volume_textures: (TextureCache::MISSING_SLOT, TextureCache::MISSING_SLOT),
       fires: Vec::new(),
       shadows: LevelLightShadows::new(device, view_layout),
-      started: Instant::now(),
     }
   }
 
@@ -170,6 +167,7 @@ impl LevelLights {
       is_physical,
       is_specular_linear,
       light_scale,
+      time,
     } = frame;
 
     into.begin(
@@ -177,7 +175,7 @@ impl LevelLights {
       // `timers.z * 0.1`: the engine's global seconds over a hundred.
       LightVolumesUniform {
         noise: self.volume_textures.0,
-        scroll: self.started.elapsed().as_secs_f32() / 100.0,
+        scroll: time / 100.0,
       },
     );
 
@@ -189,7 +187,6 @@ impl LevelLights {
 
     if settings.is_enabled {
       let lights: &ProxyStore<LightDescription> = &self.lights;
-      let seconds: f32 = self.started.elapsed().as_secs_f32();
       let eye: Vec3 = camera.position;
       let forward: Vec3 = -camera.view.inverse().z_axis.truncate();
       let mut in_view: Vec<InView> = self.collect_in_view(camera, settings, (lod, campfire_shares), is_shadowing);
@@ -244,7 +241,7 @@ impl LevelLights {
         // as the weather's lights keep theirs. Its specular weight follows the light at the physical levels, else the
         // engine's over the authored colour, which the authored levels add to the diffuse in display values as the
         // engine does (`hmodel_terms`).
-        let authored: Vec3 = Self::to_color(&self.animators, light, seconds) * it.fades.whole * it.share;
+        let authored: Vec3 = Self::to_color(&self.animators, light, time) * it.fades.whole * it.share;
         let color: Vec3 = authored_light(authored, is_physical);
         let specular: f32 = if is_specular_linear {
           to_light_specular(color, true)

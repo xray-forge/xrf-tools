@@ -27,6 +27,7 @@ macro_rules! for_each_levels_domain {
         read_level_cycle => crate::commands::read_level_cycle::levels_read_level_cycle,
         read_view => crate::viewer::commands::read_view::levels_read_view,
         restore_level => crate::commands::restore_level::levels_restore_level,
+        save_burst => crate::viewer::commands::save_burst::levels_save_burst,
         save_screenshot => crate::viewer::commands::save_screenshot::levels_save_screenshot,
         save_view => crate::viewer::commands::save_view::levels_save_view,
         show_level => crate::commands::show_level::levels_show_level,

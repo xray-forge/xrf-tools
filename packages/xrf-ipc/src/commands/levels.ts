@@ -6,6 +6,8 @@ import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
 import { SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
 import {
+  BurstCaptureRequest,
+  BurstOutcome,
   CubeCaptureRequest,
   CubeExportRequest,
   LevelConsoleDefaults,
@@ -54,6 +56,7 @@ export enum ELevelsCommand {
   READ_LEVEL_CYCLE = "plugin:levels|read_level_cycle",
   READ_VIEW = "plugin:levels|read_view",
   RESTORE_LEVEL = "plugin:levels|restore_level",
+  SAVE_BURST = "plugin:levels|save_burst",
   SAVE_SCREENSHOT = "plugin:levels|save_screenshot",
   SAVE_VIEW = "plugin:levels|save_view",
   SHOW_LEVEL = "plugin:levels|show_level",
@@ -158,6 +161,11 @@ export const levelsCommands = {
   restoreLevel: (tool: string) =>
     __TAURI_INVOKE<SessionRestore<SelectedLevelDescription>>(ELevelsCommand.RESTORE_LEVEL, { tool }),
   /**
+   * Draw a burst of consecutive frames in a viewport and write each, with its G-buffer's marks, into a new folder of
+   * the level viewer's bursts named as asked; answers once the last is written.
+   */
+  saveBurst: (request: BurstCaptureRequest) => __TAURI_INVOKE<BurstOutcome>(ELevelsCommand.SAVE_BURST, { request }),
+  /**
    * Write a viewport's next finished frame to a PNG file of the level viewer's screenshots folder: the whole viewport at
    * its drawn size, without its overlays or its selection's outline.
    */
@@ -219,6 +227,7 @@ export interface ILevelsCommandSignatures {
   [ELevelsCommand.READ_LEVEL_CYCLE]: IIpcCommandSignature<typeof levelsCommands.readLevelCycle, ["sessionId", "cycle"]>;
   [ELevelsCommand.READ_VIEW]: IIpcCommandSignature<typeof levelsCommands.readView, ["path"]>;
   [ELevelsCommand.RESTORE_LEVEL]: IIpcCommandSignature<typeof levelsCommands.restoreLevel, ["tool"]>;
+  [ELevelsCommand.SAVE_BURST]: IIpcCommandSignature<typeof levelsCommands.saveBurst, ["request"]>;
   [ELevelsCommand.SAVE_SCREENSHOT]: IIpcCommandSignature<typeof levelsCommands.saveScreenshot, ["viewport", "path"]>;
   [ELevelsCommand.SAVE_VIEW]: IIpcCommandSignature<typeof levelsCommands.saveView, ["path", "text"]>;
   [ELevelsCommand.SHOW_LEVEL]: IIpcCommandSignature<typeof levelsCommands.showLevel, ["viewport", "sessionId"]>;

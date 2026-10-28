@@ -1,3 +1,4 @@
+pub(crate) mod burst;
 pub(crate) mod capture_event;
 pub(crate) mod capture_job;
 pub(crate) mod capture_plan;

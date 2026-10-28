@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec3};
 use rayon::prelude::*;
@@ -47,7 +47,6 @@ pub struct LevelParticles {
   /// The effects that stopped playing this frame, told back to the world.
   finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>,
   workers: RenderWorkers,
-  started: Instant,
   /// Each surface's record, which every view's particle pass reads.
   surface_buffer: wgpu::Buffer,
   report: ParticlesTally,
@@ -98,7 +97,6 @@ impl LevelParticles {
       step: None,
       finished: Vec::new(),
       workers: workers.clone(),
-      started: Instant::now(),
       surface_buffer: device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("particle surfaces"),
         size: size_of::<ParticleSurfaceRecord>() as u64,
@@ -207,11 +205,12 @@ impl LevelParticles {
     self.emitters.remove(handle);
   }
 
-  /// Plays an effect at an emitter unless it already plays there; nothing before the definitions are in.
-  pub fn play(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, effect: PlacedEffect, name: &str) {
+  /// Plays an effect at an emitter unless it already plays there, from `time`, the scene's; nothing before the
+  /// definitions are in.
+  pub fn play(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, effect: PlacedEffect, name: &str, time: Duration) {
     self.settle();
 
-    let now: u64 = self.started.elapsed().as_millis() as u64;
+    let now: u64 = time.as_millis() as u64;
     let (Some(systems), Some(emitter)) = (&self.systems, self.emitters.get_mut(handle)) else {
       return;
     };
@@ -261,9 +260,9 @@ impl LevelParticles {
     std::mem::take(&mut self.finished)
   }
 
-  /// Starts stepping every effect playing as the engine schedules them on the workers, as `view` sees them (the scene's
-  /// first view, which stands for the actor); nothing while particles are not drawn.
-  pub fn start_simulation(&mut self, view: &CameraView, options: &RenderViewOptions) {
+  /// Starts stepping every effect playing to `time`, the scene's, as the engine schedules them on the workers, as `view`
+  /// sees them (the scene's first view, which stands for the actor); nothing while particles are not drawn.
+  pub fn start_simulation(&mut self, view: &CameraView, options: &RenderViewOptions, time: Duration) {
     self.settle();
 
     let Some(level) = self.systems.as_ref() else {
@@ -276,7 +275,7 @@ impl LevelParticles {
       return;
     }
 
-    let now: u64 = self.started.elapsed().as_millis() as u64;
+    let now: u64 = time.as_millis() as u64;
     let eye: Vec3 = EngineSpace::mirror(view.position);
     let frustum: CameraFrustum = view.get_frustum();
     let (library, rules, collider) = (Arc::clone(&level.library), level.rules, level.collider.clone());
