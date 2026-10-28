@@ -213,7 +213,8 @@ fn accumulate(position: vec2<f32>) -> Accumulated {
   if (!is_new) {
     let previous: vec4<f32> = lanczos2_history(reprojected, fsr.display_size);
 
-    previous_color = to_ycocg(previous.rgb);
+    // Kept at the last frame's pre-exposure, brought to this one's (`DeltaPreExposure`).
+    previous_color = to_ycocg(previous.rgb * fsr.delta_pre_exposure);
     lock = previous.w;
   }
 

@@ -164,8 +164,9 @@ fn fs_temporal(in: FullscreenVarying) -> TemporalTargets {
   let expected: f32 = -(temporal.previous_view * vec4<f32>(moving, 1.0)).z;
   let is_same_surface: bool = select(history_distance <= 0.0,
     abs(history_distance - expected) <= expected * DISTANCE_TOLERANCE, is_drawn);
-  // A history that is not a number would keep its pixel for ever, so it stands only where it is one.
-  let history_color: vec3<f32> = catmull_rom(before, output_size);
+  // A history that is not a number would keep its pixel for ever, so it stands only where it is one. Kept at the last
+  // frame's pre-exposure, it is brought to this one's, so an adapting exposure does not lag behind the light.
+  let history_color: vec3<f32> = catmull_rom(before, output_size) * temporal.exposure.x;
   let is_valid: bool = temporal.params.z > 0.5 && is_inside && is_same_surface && all(history_color == history_color);
 
   // This frame's colour where the pixel's centre is, and the spread of colours around it.

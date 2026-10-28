@@ -20,6 +20,9 @@ pub struct DlssInputs<'a> {
   pub is_reset: bool,
   /// Time since the frame before, which DLSS weighs its history by.
   pub frame_time: Duration,
+  /// The scale the frame's colour was written at, which DLSS divides out so a history kept at the last frame's scale
+  /// still matches it; one for colour written as it is.
+  pub pre_exposure: f32,
 }
 
 impl DlssInputs<'_> {

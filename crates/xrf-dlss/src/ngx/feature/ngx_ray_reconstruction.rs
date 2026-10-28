@@ -176,6 +176,7 @@ impl NgxRayReconstruction {
     parameters.InMVScaleX = inputs.motion_scale[0];
     parameters.InMVScaleY = inputs.motion_scale[1];
     parameters.InToneMapperType = NVSDK_NGX_ToneMapperType_NVSDK_NGX_TONEMAPPER_STRING;
+    parameters.InPreExposure = inputs.pre_exposure;
     parameters.pInRoughness = ptr::null_mut();
 
     unsafe { NGX_VULKAN_EVALUATE_DLSSD_EXT(list, handle, sdk.parameters, &mut parameters) }
@@ -227,6 +228,7 @@ impl NgxRayReconstruction {
       parameters.InMVScaleX = inputs.motion_scale[0];
       parameters.InMVScaleY = inputs.motion_scale[1];
       parameters.InToneMapperType = NVSDK_NGX_ToneMapperType_NVSDK_NGX_TONEMAPPER_STRING;
+      parameters.InPreExposure = inputs.pre_exposure;
 
       NGX_D3D12_EVALUATE_DLSSD_EXT(list, handle, sdk.parameters, &mut parameters)
     }

@@ -38,6 +38,9 @@ pub struct DlssRayInputs<'a> {
   pub output: &'a wgpu::TextureView,
   /// Whether the frames before are forgotten: the first frame, or one after a cut.
   pub is_reset: bool,
+  /// The scale the frame's colour was written at, which DLSS divides out so a history kept at the last frame's scale
+  /// still matches it; one for colour written as it is.
+  pub pre_exposure: f32,
 }
 
 impl DlssRayInputs<'_> {

@@ -513,7 +513,11 @@ impl SceneView {
         frame.resolved,
         frame.output,
       ),
-      (options.output.upscaling, options.is_scene_linear()),
+      (
+        options.output.upscaling,
+        options.is_scene_linear(),
+        self.features.exposure.get_pre_exposure(),
+      ),
     );
     self.features.smoothing.prepare(
       frame.passes,

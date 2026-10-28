@@ -137,6 +137,7 @@ impl NgxSuperResolution {
       InOutputSubrectBase: origin,
       InToneMapperType: NVSDK_NGX_ToneMapperType_NVSDK_NGX_TONEMAPPER_STRING,
       InFrameTimeDeltaInMsec: inputs.frame_time.as_secs_f32() * 1000.0,
+      InPreExposure: inputs.pre_exposure,
       // The optional inputs left out: null resources and zero scalars.
       ..unsafe { std::mem::zeroed() }
     };
@@ -178,6 +179,7 @@ impl NgxSuperResolution {
         InOutputSubrectBase: origin,
         InToneMapperType: NVSDK_NGX_ToneMapperType_NVSDK_NGX_TONEMAPPER_STRING,
         InFrameTimeDeltaInMsec: inputs.frame_time.as_secs_f32() * 1000.0,
+        InPreExposure: inputs.pre_exposure,
         // The optional inputs left out: null resources and zero scalars.
         ..std::mem::zeroed()
       };
