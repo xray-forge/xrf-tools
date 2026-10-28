@@ -39,7 +39,9 @@ fn measures_what_the_cut_out_lift_keeps_of_each_mips_coverage() {
       .map(|image| {
         image
           .as_raw()
-          .chunks_exact(4)
+          .as_chunks::<4>()
+          .0
+          .iter()
           .map(|texel| f32::from(texel[3]) / 255.0)
           .collect()
       })
