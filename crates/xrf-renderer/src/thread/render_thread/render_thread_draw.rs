@@ -15,6 +15,7 @@ use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::frame_phases::FramePhases;
 use crate::frame::frame_statistics::FrameStatistics;
+#[cfg(debug_assertions)]
 use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::periodic::periodic_owner::PeriodicOwner;
 use crate::host::render_scene_id::RenderSceneId;
@@ -530,6 +531,7 @@ impl RenderThread {
     }
 
     let graph_report: &mut Option<(Instant, GraphReport)> = &mut self.graph_report;
+    #[cfg(debug_assertions)]
     let jitter_guard: &mut JitterGuard = &mut self.jitter_guard;
 
     graph.compile(&self.settings.graph.to_options()).and_then(|compiled| {
@@ -539,6 +541,7 @@ impl RenderThread {
       {
         let report: GraphReport = compiled.describe();
 
+        #[cfg(debug_assertions)]
         jitter_guard.watch(&report);
         *graph_report = Some((started, report));
       }
