@@ -18,9 +18,20 @@ struct FoliageSetup {
   anim: vec4<f32>,
 };
 
-// A unit gradient for a cell.
+// A unit gradient for a cell, its angle from an integer hash of the cell (xxHash32's avalanche). A vertex's place is
+// worked out twice a frame, where it stands and where it stood, and the two must agree to the bit wherever the fields
+// have not moved: the usual `fract(sin(x) × 43758.5)` hash does not, since a last-place difference between the two
+// compiled reads of a large `sin` turns a cell's gradient anywhere, which wrote steady false motion over whole bushes
+// and grained the plants under every temporal resolve (`plans/20261028043855-foliage-temporal-stability.md`).
 fn foliage_gradient(cell: vec2<f32>) -> vec2<f32> {
-  let angle: f32 = fract(sin(dot(cell, vec2<f32>(127.1, 311.7))) * 43758.5453) * TAU;
+  let key: vec2<u32> = bitcast<vec2<u32>>(vec2<i32>(cell));
+  var hash: u32 = key.x * 1664525u + key.y * 1013904223u + 374761393u;
+
+  hash = (hash ^ (hash >> 16u)) * 2246822519u;
+  hash = (hash ^ (hash >> 13u)) * 3266489917u;
+  hash = hash ^ (hash >> 16u);
+
+  let angle: f32 = f32(hash >> 8u) / 16777216.0 * TAU;
 
   return vec2<f32>(cos(angle), sin(angle));
 }
