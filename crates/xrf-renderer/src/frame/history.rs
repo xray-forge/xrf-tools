@@ -6,7 +6,7 @@ pub struct History<T> {
   index: usize,
   /// Whether the side this frame reads holds a frame.
   is_valid: bool,
-  /// Frames swapped since it was made.
+  /// Frames swapped since it was made or restarted.
   frame: u32,
 }
 
@@ -54,7 +54,7 @@ impl<T> History<T> {
     self.is_valid
   }
 
-  /// Frames swapped since it was made.
+  /// Frames swapped since it was made or restarted.
   pub fn get_frame(&self) -> u32 {
     self.frame
   }
@@ -69,5 +69,11 @@ impl<T> History<T> {
   /// Leaves the next frame nothing to read.
   pub fn invalidate(&mut self) {
     self.is_valid = false;
+  }
+
+  /// Leaves the next frame nothing to read and counts its frames from none again, as if just made.
+  pub fn restart(&mut self) {
+    self.is_valid = false;
+    self.frame = 0;
   }
 }

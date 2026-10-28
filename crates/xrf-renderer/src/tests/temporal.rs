@@ -140,3 +140,30 @@ fn a_restarted_resolve_jitters_from_the_first_place_again() {
   assert_eq!(first, again);
   assert_eq!(resolve.get_noise_frame(), 0);
 }
+
+// A camera that walks or turns a little a frame keeps its history; one that jumps further than a frame's travel or
+// turns past a third of a turn cut away, and the next frame's camera is measured from where it landed.
+#[test]
+fn a_jump_or_a_sharp_turn_is_a_cut() {
+  let mut resolve: ResolveFeature = ResolveFeature::default();
+  let at = |position: Vec3, yaw: f32| {
+    CameraView::new(
+      position,
+      Mat4::from_rotation_y(-yaw) * Mat4::from_translation(-position),
+      60.0,
+      1.0,
+      0.1,
+      100.0,
+    )
+  };
+
+  assert!(!resolve.is_cut(&at(Vec3::ZERO, 0.0)));
+  assert!(!resolve.is_cut(&at(Vec3::new(0.5, 0.0, 0.0), 0.2)));
+  assert!(resolve.is_cut(&at(Vec3::new(40.0, 0.0, 0.0), 0.2)));
+  assert!(!resolve.is_cut(&at(Vec3::new(40.5, 0.0, 0.0), 0.3)));
+  assert!(resolve.is_cut(&at(Vec3::new(40.5, 0.0, 0.0), 2.0)));
+
+  resolve.restart();
+
+  assert!(!resolve.is_cut(&at(Vec3::new(-100.0, 0.0, 0.0), 0.0)));
+}
