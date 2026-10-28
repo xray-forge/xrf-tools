@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use glam::{Mat4, Vec2};
+use glam::{Mat4, Vec2, Vec3};
 use xrf_dlss::{Dlss, DlssInputs, DlssPreset, DlssQuality, DlssRayInputs, DlssRayPreset};
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureAccess,
@@ -91,6 +91,8 @@ pub struct ResolveFeature {
   /// The sample of a reference this frame is drawn at, and the samples it takes: unresolved, at that place of the
   /// jitter's sequence.
   reference: Option<(u32, u32)>,
+  /// The last frame's camera, its place and the way it looked, which a cut is told from (`is_cut`).
+  last_camera: Option<(Vec3, Vec3)>,
 }
 
 impl Default for ResolveFeature {
@@ -117,6 +119,7 @@ impl Default for ResolveFeature {
       refused: None,
       refused_rays: None,
       reference: None,
+      last_camera: None,
     }
   }
 }
@@ -126,6 +129,10 @@ impl ResolveFeature {
   pub(crate) const TEMPORAL: &str = "temporal";
   pub(crate) const DLSS: &str = "dlss";
   pub(crate) const RAY_RECONSTRUCTION: &str = "dlss ray reconstruction";
+  /// Metres moved, and the cosine of the angle turned, in one frame past which the camera cut away rather than moved:
+  /// past a sprint or a fast fly at a low frame rate, and past a third of a turn.
+  const CUT_DISTANCE: f32 = 10.0;
+  const CUT_TURN_COSINE: f32 = 0.5;
 
   /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down, for a viewport `ratio` times
   /// the drawn size on a GPU that has DLSS where `has_dlss`: jittered while it resolves frames temporally and shows
@@ -209,6 +216,12 @@ impl ResolveFeature {
     let viewport: (u32, u32) = (output.width.max(1), output.height.max(1));
 
     self.resolved = display;
+
+    if self.is_cut(view)
+      && let Some(resolve) = &mut self.resolve
+    {
+      resolve.reset();
+    }
 
     match (render, self.temporal) {
       (Some(render), Some(RenderAntialiasing::Fsr)) => {
@@ -511,15 +524,28 @@ impl ResolveFeature {
     (view.view, view.projection)
   }
 
-  /// Forgets the cameras a frame that was never submitted kept as the next frame's previous: the motion, the jittered
-  /// camera and the temporal resolve's, so the next frame reprojects nothing rather than a frame never drawn.
+  /// Forgets the cameras a frame that was never submitted kept as the next frame's previous, the motion's and the
+  /// jittered camera's, and resets the resolve, so the next frame reprojects nothing and resolves itself alone rather
+  /// than over a history its motion no longer leads back to.
   pub fn abandon_frame(&mut self) {
     self.motion_previous = None;
     self.view_projection_previous = None;
 
-    if let Some(Resolve::Temporal(temporal)) = &mut self.resolve {
-      temporal.previous = None;
+    if let Some(resolve) = &mut self.resolve {
+      resolve.reset();
     }
+  }
+
+  /// Whether the camera cut away since the last frame: moved or turned further in one frame than any camera travels,
+  /// a teleport or a jump, after which no history leads anywhere true. Keeps this frame's camera for the next.
+  pub(crate) fn is_cut(&mut self, view: &CameraView) -> bool {
+    let forward: Vec3 = -view.view.row(2).truncate();
+    let is_cut: bool = self.last_camera.is_some_and(|(position, last_forward)| {
+      position.distance(view.position) > Self::CUT_DISTANCE || forward.dot(last_forward) < Self::CUT_TURN_COSINE
+    });
+
+    self.last_camera = Some((view.position, forward));
+    is_cut
   }
 
   /// Starts again from nothing at the next frame: no history, made anew; the jitter's sequence from its first place;
@@ -531,6 +557,7 @@ impl ResolveFeature {
     self.view_projection_previous = None;
     self.prepared_at = None;
     self.noise_frame = 0;
+    self.last_camera = None;
   }
 
   /// Draws the next frames as a reference's `sample` of `samples`, unresolved; none resolves them again.
