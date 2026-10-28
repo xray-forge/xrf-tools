@@ -2,13 +2,13 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { useEffect, useId } from "react";
 
-import { ToolLifecycleService, ToolSaver } from "@/core/shell/services/tool-lifecycle";
+import { ToolLifecycleService, TToolSaver } from "@/core/shell/services/tool-lifecycle";
 
 export interface IToolLifecycle {
   isBusy: boolean;
   dirtyCount: number;
   /** Saves all pending edits; false keeps the tool open. Null offers discard and stay only. */
-  save: Nullable<ToolSaver>;
+  save: Nullable<TToolSaver>;
 }
 
 /** Publishes the active document's lifecycle from its owner, independently of visible panels. */
@@ -30,7 +30,7 @@ export function useToolBusy(isBusy: boolean): void {
 }
 
 /** Publishes the active document's edits and saver; panels must not own this registration. */
-export function useToolDirty(dirtyCount: number, save: Nullable<ToolSaver> = null): void {
+export function useToolDirty(dirtyCount: number, save: Nullable<TToolSaver> = null): void {
   const lifecycle: ToolLifecycleService = useInjection(ToolLifecycleService);
   const owner: string = useId();
 

@@ -16,9 +16,9 @@ interface IApplicationPanelSlotProps {
  */
 export function ApplicationPanelSlot({
   frameSide: { side, activePanel, width, onResize },
-}: IApplicationPanelSlotProps): ReactElement | null {
+}: IApplicationPanelSlotProps): ReactElement {
   if (!activePanel) {
-    return null;
+    return <></>;
   }
 
   return (

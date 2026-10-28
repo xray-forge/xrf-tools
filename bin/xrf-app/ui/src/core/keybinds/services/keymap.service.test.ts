@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { Container } from "@wirestate/core";
+import { Nullable } from "@xrf/types";
 import { createElement } from "react";
 
 import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
@@ -8,6 +10,7 @@ import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
 import { EToolGroupId, EToolId, EToolStatus, IToolDescriptor } from "@/core/routing/tool";
 import { createToolDescriptor } from "@/core/routing/tool-descriptor";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
+import { ShellToolService } from "@/core/shell/services/shell-tool";
 import { clearLocalStorage, getLocalStorageValue, KEYBINDS_STORAGE_KEY, setLocalStorageValue } from "@/core/storage";
 import { mockInjectedService } from "@/fixtures/utils/container";
 
@@ -15,6 +18,10 @@ import { KeymapService } from "./keymap.service";
 
 function toIds(commands: ReadonlyArray<IKeybindCommand>): Array<string> {
   return commands.map((command: IKeybindCommand) => command.id);
+}
+
+function route(container: Container, tool: Nullable<IToolDescriptor>): void {
+  container.get(ShellToolService).follow(tool, tool === null, () => undefined);
 }
 
 const RELOAD: IKeybindCommand = defineKeybindCommand({
@@ -139,31 +146,31 @@ describe("KeymapService", () => {
   });
 
   it("leaves a tool that declares none with the root set, not the home screen's", () => {
-    const { service } = mockInjectedService(KeymapService);
+    const { container, service } = mockInjectedService(KeymapService);
 
-    service.setTool({ ...RELOADING_TOOL, keybindCommands: undefined });
+    route(container, { ...RELOADING_TOOL, keybindCommands: undefined });
 
     expect(toIds(service.commands)).toEqual(toIds(ROOT_KEYBIND_COMMANDS));
     expect(toIds(service.commands)).not.toContain(FOCUS_SEARCH_KEYBIND_COMMAND.id);
   });
 
   it("adds the routed tool's declarations, and drops them when it closes", () => {
-    const { service } = mockInjectedService(KeymapService);
+    const { container, service } = mockInjectedService(KeymapService);
 
-    service.setTool(RELOADING_TOOL);
+    route(container, RELOADING_TOOL);
 
     // The home screen's own declarations go with it: a routed tool replaces them rather than adding to them.
     expect(toIds(service.commands)).toEqual([...toIds(ROOT_KEYBIND_COMMANDS), RELOAD_ID]);
 
-    service.setTool(null);
+    route(container, null);
 
     expect(toIds(service.commands)).not.toContain(RELOAD_ID);
   });
 
   it("folds a command listed twice into one, because an id is one command", () => {
-    const { service } = mockInjectedService(KeymapService);
+    const { container, service } = mockInjectedService(KeymapService);
 
-    service.setTool({
+    route(container, {
       ...RELOADING_TOOL,
       keybindCommands: [...ROOT_KEYBIND_COMMANDS, RELOAD],
     });
@@ -172,9 +179,9 @@ describe("KeymapService", () => {
   });
 
   it("builds a keymap through the overrides it holds, and rebuilds it when one changes", () => {
-    const { service } = mockInjectedService(KeymapService);
+    const { container, service } = mockInjectedService(KeymapService);
 
-    service.setTool(RELOADING_TOOL);
+    route(container, RELOADING_TOOL);
 
     const declared: IKeymap = service.keymap;
 

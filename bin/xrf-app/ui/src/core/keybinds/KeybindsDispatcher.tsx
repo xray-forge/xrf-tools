@@ -6,8 +6,6 @@ import { ReactElement, useEffect } from "react";
 import { IKeybindCommand, KeybindCommandsService } from "@/core/commands";
 import { resolveKeybinding } from "@/core/keybinds/lib/keymap";
 import { KeymapService } from "@/core/keybinds/services/keymap.service";
-import { useCurrentTool } from "@/core/routing/current-tool.context";
-import { IToolDescriptor } from "@/core/routing/tool";
 import { SettingsService } from "@/core/settings/services/settings";
 import { isModalOpen } from "@/lib/dom/modal";
 import { isTextEntryTarget } from "@/lib/dom/text-entry";
@@ -15,13 +13,10 @@ import { isTextEntryTarget } from "@/lib/dom/text-entry";
 /**
  * Turns key events into commands, for the whole window.
  */
-export function KeybindsDispatcher(): Nullable<ReactElement> {
+export function KeybindsDispatcher(): ReactElement {
   const commandsService: KeybindCommandsService = useInjection(KeybindCommandsService);
   const keymapService: KeymapService = useInjection(KeymapService);
   const settingsService: SettingsService = useInjection(SettingsService);
-  const tool: Nullable<IToolDescriptor> = useCurrentTool();
-
-  useEffect(() => keymapService.setTool(tool), [tool, keymapService]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
@@ -64,5 +59,5 @@ export function KeybindsDispatcher(): Nullable<ReactElement> {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [commandsService, keymapService, settingsService]);
 
-  return null;
+  return <></>;
 }

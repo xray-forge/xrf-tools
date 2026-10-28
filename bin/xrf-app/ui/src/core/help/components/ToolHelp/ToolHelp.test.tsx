@@ -2,16 +2,24 @@ import { describe, expect, it } from "@jest/globals";
 import { act, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Container } from "@wirestate/core";
+import { ReactElement } from "react";
 
 import { HelpService } from "@/core/help/services/help.service";
+import { useShellToolRoute } from "@/core/shell/frame/use-shell-tool-route";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 import { ToolHelp } from "./ToolHelp";
 
+function RoutedToolHelp(): ReactElement {
+  useShellToolRoute();
+
+  return <ToolHelp />;
+}
+
 describe("ToolHelp", () => {
   it("offers the home screen's own help outside a tool", async () => {
-    const { getByLabelText, getByRole } = renderWithProviders(<ToolHelp />, { route: "/" });
+    const { getByLabelText, getByRole } = renderWithProviders(<RoutedToolHelp />, { route: "/" });
 
     await userEvent.click(getByLabelText("Help"));
 
@@ -19,20 +27,20 @@ describe("ToolHelp", () => {
   });
 
   it("offers a disabled affordance on a route that is neither", () => {
-    const { getByLabelText } = renderWithProviders(<ToolHelp />, { route: "/not-a-tool" });
+    const { getByLabelText } = renderWithProviders(<RoutedToolHelp />, { route: "/not-a-tool" });
 
     expect(getByLabelText("Help")).toBeDisabled();
   });
 
   it("offers a disabled affordance where no help is authored yet, saying so", () => {
-    const { getByLabelText, getByTitle } = renderWithProviders(<ToolHelp />, { route: "/characters-explorer" });
+    const { getByLabelText, getByTitle } = renderWithProviders(<RoutedToolHelp />, { route: "/characters-explorer" });
 
     expect(getByLabelText("Help")).toBeDisabled();
     expect(getByTitle("No help written for this screen yet")).toBeInTheDocument();
   });
 
   it("opens the current tool's help from the rail control", async () => {
-    const { getByLabelText, getByText, getByRole } = renderWithProviders(<ToolHelp />, {
+    const { getByLabelText, getByText, getByRole } = renderWithProviders(<RoutedToolHelp />, {
       route: "/archives-explorer",
     });
 
@@ -45,7 +53,7 @@ describe("ToolHelp", () => {
 
   it("opens when the help command runs", async () => {
     const container: Container = mockContainer();
-    const { getByText } = renderWithProviders(<ToolHelp />, { container, route: "/archives-explorer" });
+    const { getByText } = renderWithProviders(<RoutedToolHelp />, { container, route: "/archives-explorer" });
 
     // `F1` reaching this is the dispatcher's, and is tested there against the command rather than the dialog.
     act(() => container.get(HelpService).open());
@@ -54,7 +62,7 @@ describe("ToolHelp", () => {
   });
 
   it("closes and returns to the tool", async () => {
-    const { getByLabelText, getByText, queryByText } = renderWithProviders(<ToolHelp />, {
+    const { getByLabelText, getByText, queryByText } = renderWithProviders(<RoutedToolHelp />, {
       route: "/archives-explorer",
     });
 
@@ -70,7 +78,7 @@ describe("ToolHelp", () => {
   });
 
   it("closes on Escape and restores focus to Help", async () => {
-    const { getByLabelText, queryByRole } = renderWithProviders(<ToolHelp />, { route: "/archives-explorer" });
+    const { getByLabelText, queryByRole } = renderWithProviders(<RoutedToolHelp />, { route: "/archives-explorer" });
     const trigger = getByLabelText("Help");
 
     await userEvent.click(trigger);

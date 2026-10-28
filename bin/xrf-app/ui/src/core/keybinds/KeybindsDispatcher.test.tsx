@@ -5,15 +5,20 @@ import { Logger } from "@xrf/logging";
 
 import { KeybindCommand } from "@/core/commands";
 import { HelpService } from "@/core/help/services/help.service";
+import { IToolDescriptor } from "@/core/routing/tool";
 import { FOCUS_SEARCH_KEYBIND_COMMAND } from "@/core/search/commands";
 import { SettingsService } from "@/core/settings/services/settings";
+import { ShellToolService } from "@/core/shell/services/shell-tool";
 import { mockContainer } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { ARCHIVES_EXPLORER_TOOL } from "@/tools/archives-explorer";
+import { SPRITE_EQUIPMENT_EDITOR_TOOL } from "@/tools/sprite-equipment-editor";
 import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/tools/sprite-equipment-editor/commands";
 
 import { KeybindsDispatcher } from "./KeybindsDispatcher";
 
-/** Stands in for the service a screen binds to answer the search chord. */
+const UNHELPED_TOOL: IToolDescriptor = { ...ARCHIVES_EXPLORER_TOOL, help: undefined };
+
 @Injectable()
 class SearchFixtureService {
   public calls: number = 0;
@@ -41,7 +46,11 @@ interface IDispatcherHarness {
   search: SearchFixtureService;
 }
 
-function renderDispatcher(route: string = "/archives-explorer"): IDispatcherHarness {
+function route(container: Container, tool: IToolDescriptor): void {
+  act(() => container.get(ShellToolService).follow(tool, false, () => undefined));
+}
+
+function renderDispatcher(tool: IToolDescriptor = ARCHIVES_EXPLORER_TOOL): IDispatcherHarness {
   const container: Container = mockContainer([SearchFixtureService]);
 
   const { getByLabelText } = renderWithProviders(
@@ -50,8 +59,10 @@ function renderDispatcher(route: string = "/archives-explorer"): IDispatcherHarn
       <div aria-label={"guarded"} onKeyDown={(event) => event.stopPropagation()} />
       <KeybindsDispatcher />
     </>,
-    { container, route }
+    { container, route: tool.path }
   );
+
+  route(container, tool);
 
   return {
     container,
@@ -66,8 +77,6 @@ describe("KeybindsDispatcher", () => {
     const { container } = renderDispatcher();
     const helpService: HelpService = container.get(HelpService);
 
-    act(() => helpService.setTool("archives-explorer", true));
-
     const event: KeyboardEvent = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "F1" });
 
     fireEvent(window, event);
@@ -77,11 +86,9 @@ describe("KeybindsDispatcher", () => {
   });
 
   it("leaves the key alone when the command's own guard refuses it", () => {
-    const { container } = renderDispatcher();
-    const helpService: HelpService = container.get(HelpService);
-
     // The tool authored no help, so nothing should consume F1 on its behalf.
-    act(() => helpService.setTool("characters-explorer", false));
+    const { container } = renderDispatcher(UNHELPED_TOOL);
+    const helpService: HelpService = container.get(HelpService);
 
     const event: KeyboardEvent = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "F1" });
 
@@ -152,10 +159,10 @@ describe("KeybindsDispatcher", () => {
       // No fixture service, so the archives explorer's search chord resolves to a command with no handler at all.
       const container: Container = mockContainer();
 
-      renderWithProviders(<KeybindsDispatcher />, { container, route: "/archives-explorer" });
+      renderWithProviders(<KeybindsDispatcher />, { container, route: UNHELPED_TOOL.path });
 
+      route(container, UNHELPED_TOOL);
       act(() => container.get(SettingsService).setDevModeEnabled(true));
-      act(() => container.get(HelpService).setTool("archives-explorer", false));
 
       fireEvent.keyDown(document.body, { key: "/" });
 
@@ -171,13 +178,14 @@ describe("KeybindsDispatcher", () => {
   });
 
   it.each([
-    ["/sprite-equipment-editor", 1],
-    ["/archives-explorer", 0],
-  ])("reaches a tool's own command at %s and nowhere else", (route: string, expected: number) => {
+    [SPRITE_EQUIPMENT_EDITOR_TOOL, 1],
+    [ARCHIVES_EXPLORER_TOOL, 0],
+  ])("reaches a tool's own command in $path and nowhere else", (tool: IToolDescriptor, expected: number) => {
     // Left unprovisioned: the container provider provisions it, which is also what binds the fixture's handler.
     const container: Container = mockContainer([ReloadFixtureService]);
 
-    renderWithProviders(<KeybindsDispatcher />, { container, route });
+    renderWithProviders(<KeybindsDispatcher />, { container, route: tool.path });
+    route(container, tool);
     fireEvent.keyDown(document.body, { key: "F5" });
 
     // The handler is bound either way; only the routed tool's declarations put F5 in the keymap.

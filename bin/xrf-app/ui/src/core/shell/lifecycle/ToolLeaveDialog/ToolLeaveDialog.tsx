@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { formatCount } from "@xrf/format";
 import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
 import { UnsavedChangesDialog } from "@xrf/ui/dialog/unsaved-changes";
 import { ReactElement } from "react";
@@ -9,7 +10,7 @@ import { ToolLifecycleService } from "@/core/shell/services/tool-lifecycle";
 export function ToolLeaveDialog(): ReactElement {
   const lifecycle: ToolLifecycleService = useInjection(ToolLifecycleService);
   const count: number = lifecycle.dirtyCount;
-  const unsaved: string = `${count} ${count === 1 ? "file has" : "files have"} edits that are not written to disk.`;
+  const unsaved: string = `${formatCount(count)} ${count === 1 ? "file has" : "files have"} edits that are not written to disk.`;
 
   return (
     <>

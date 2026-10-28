@@ -3,7 +3,7 @@ import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { CloseIcon } from "@xrf/ui/icons/close";
-import { ReactElement, useEffect, useRef, useState } from "react";
+import { ReactElement, useCallback, useEffect, useRef, useState } from "react";
 
 import { IPanelSideCommand, PANEL_CLOSE_COMMAND } from "@/core/shell/panels/panel-messages";
 import { TShellPanelSide } from "@/core/shell/panels/shell-panel";
@@ -21,6 +21,12 @@ export function PanelCloseAction(): ReactElement {
 
   const [side, setSide] = useState<Nullable<TShellPanelSide>>(null);
 
+  const onClose = useCallback(() => {
+    if (side) {
+      commandBus.execute<void, IPanelSideCommand>(PANEL_CLOSE_COMMAND, { side }, { optional: true });
+    }
+  }, [commandBus, side]);
+
   useEffect(() => {
     const hosted: Nullable<string> = ref.current?.closest("[data-panel-side]")?.getAttribute("data-panel-side") ?? null;
 
@@ -35,7 +41,7 @@ export function PanelCloseAction(): ReactElement {
           label={"Close panel"}
           description={"Close this panel"}
           icon={<CloseIcon />}
-          onClick={() => commandBus.execute<void, IPanelSideCommand>(PANEL_CLOSE_COMMAND, { side }, { optional: true })}
+          onClick={onClose}
         />
       )}
     </span>

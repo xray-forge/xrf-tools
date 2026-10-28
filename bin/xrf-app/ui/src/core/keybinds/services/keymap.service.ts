@@ -1,5 +1,5 @@
-import { Injectable, OnDeprovision } from "@wirestate/core";
-import { BoundAction, Computed, Observable } from "@wirestate/mobx";
+import { inject, Injectable } from "@wirestate/core";
+import { BoundAction, Computed } from "@wirestate/mobx";
 import { EMPTY_ARRAY } from "@xrf/collections";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
@@ -10,6 +10,7 @@ import { parseChord } from "@/core/keybinds/lib/chord";
 import { buildKeymap, IKeymap } from "@/core/keybinds/lib/keymap";
 import { LAUNCHER_KEYBIND_COMMANDS } from "@/core/launcher/commands";
 import { IToolDescriptor } from "@/core/routing/tool";
+import { ShellToolService } from "@/core/shell/services/shell-tool";
 import { jsonCodec, KEYBINDS_STORAGE_KEY, StoredValue } from "@/core/storage";
 
 /** Stored shape of the overlay: command id to the chords bound in its place. */
@@ -27,8 +28,7 @@ export class KeymapService {
     jsonCodec(KeymapService.readOverrides, KeymapService.writeOverrides)
   );
 
-  @Observable()
-  private tool: Nullable<IToolDescriptor> = null;
+  public constructor(private readonly shellToolService: ShellToolService = inject(ShellToolService)) {}
 
   /**
    * Reads the overlay, discarding entries it cannot use rather than the whole map.
@@ -81,8 +81,9 @@ export class KeymapService {
   @Computed()
   public get commands(): ReadonlyArray<IKeybindCommand> {
     const byId: Map<string, IKeybindCommand> = new Map();
-    const screen: ReadonlyArray<IKeybindCommand> = this.tool
-      ? (this.tool.keybindCommands ?? EMPTY_ARRAY)
+    const tool: Nullable<IToolDescriptor> = this.shellToolService.tool;
+    const screen: ReadonlyArray<IKeybindCommand> = tool
+      ? (tool.keybindCommands ?? EMPTY_ARRAY)
       : LAUNCHER_KEYBIND_COMMANDS;
 
     for (const command of [...ROOT_KEYBIND_COMMANDS, ...screen]) {
@@ -96,21 +97,6 @@ export class KeymapService {
   @Computed()
   public get keymap(): IKeymap {
     return buildKeymap(this.commands, (command: IKeybindCommand) => this.getChords(command));
-  }
-
-  @OnDeprovision()
-  public onDeprovision(): void {
-    this.setTool(null);
-  }
-
-  /**
-   * Publishes the routed tool, whose declarations decide what is reachable beside the root commands.
-   *
-   * @param tool - Tool currently routed, or null outside one.
-   */
-  @BoundAction()
-  public setTool(tool: Nullable<IToolDescriptor>): void {
-    this.tool = tool;
   }
 
   /**
