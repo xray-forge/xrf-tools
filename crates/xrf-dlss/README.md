@@ -55,10 +55,12 @@ before anything recorded later.
 The inputs (`DlssInputs`, `DlssRayInputs`) are texture views at the render size: the colour, a reversed depth (one at
 the near plane), each pixel's motion back to where it stood the frame before (with `motion_scale` turning it into
 render pixels), the sample jitter in render pixels, the render size, and the output, a storage texture at the output
-size. `is_reset` forgets the history, on the first frame or after a cut. An optional `bias_current_color` mask weighs
-pixels toward this frame where something drawn over the surfaces changes them. Ray reconstruction also takes the
-diffuse and specular albedo, normals with roughness in the fourth channel, the hit distances of reflection and indirect
-rays in metres, the unjittered view and projection, and optionally the frame before and after its transparent layers.
+size. `is_reset` forgets the history, on the first frame or after a cut. The upscaler takes no mask of pixels to lean
+toward this frame: NGX's `pInBiasCurrentColorMask` serves preset F alone, and the transformer presets it runs ignore it
+(DLSS Programming Guide, "Biasing the Current Frame"). Ray reconstruction also takes the diffuse and specular albedo,
+normals with roughness in the fourth channel, the hit distances of reflection and indirect rays in metres, the
+unjittered view and projection, an optional `bias_current_color` mask weighing pixels toward this frame, and optionally
+the frame before and after its transparent layers.
 
 ```rust,ignore
 let instance = DlssInstance::new(descriptor, true, Some(runtime_directory));

@@ -1,4 +1,3 @@
-use std::ptr;
 use std::sync::{Arc, Mutex};
 
 use xrf_error::XrfResult;
@@ -112,9 +111,6 @@ impl NgxSuperResolution {
         NgxVulkanResource::of(inputs.output, adapter),
       )
     };
-    let mut bias = inputs
-      .bias_current_color
-      .map(|view| unsafe { NgxVulkanResource::of(view, adapter) });
     let origin = NVSDK_NGX_Coordinates { X: 0, Y: 0 };
     // SAFETY: the parameters are plain C data, whose null pointers and zeros NGX reads as the inputs left out.
     let mut parameters = NVSDK_NGX_VK_DLSS_Eval_Params {
@@ -138,10 +134,8 @@ impl NgxSuperResolution {
       InDepthSubrectBase: origin,
       InMVSubrectBase: origin,
       InTranslucencySubrectBase: origin,
-      InBiasCurrentColorSubrectBase: origin,
       InOutputSubrectBase: origin,
       InToneMapperType: NVSDK_NGX_ToneMapperType_NVSDK_NGX_TONEMAPPER_STRING,
-      pInBiasCurrentColorMask: bias.as_mut().map_or(ptr::null_mut(), ptr::from_mut),
       InFrameTimeDeltaInMsec: inputs.frame_time.as_secs_f32() * 1000.0,
       // The optional inputs left out: null resources and zero scalars.
       ..unsafe { std::mem::zeroed() }
@@ -181,12 +175,8 @@ impl NgxSuperResolution {
         InDepthSubrectBase: origin,
         InMVSubrectBase: origin,
         InTranslucencySubrectBase: origin,
-        InBiasCurrentColorSubrectBase: origin,
         InOutputSubrectBase: origin,
         InToneMapperType: NVSDK_NGX_ToneMapperType_NVSDK_NGX_TONEMAPPER_STRING,
-        pInBiasCurrentColorMask: inputs
-          .bias_current_color
-          .map_or(ptr::null_mut(), |view| NgxD3d12Resource::of(view)),
         InFrameTimeDeltaInMsec: inputs.frame_time.as_secs_f32() * 1000.0,
         // The optional inputs left out: null resources and zero scalars.
         ..std::mem::zeroed()

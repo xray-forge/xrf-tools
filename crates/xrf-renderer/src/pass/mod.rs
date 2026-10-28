@@ -29,8 +29,6 @@ pub(crate) mod cover_pyramid_level_parameters;
 pub(crate) mod depth_pyramid_pass;
 pub(crate) mod display_curves;
 pub(crate) mod display_mode;
-pub(crate) mod dlss_reactive_parameters;
-pub(crate) mod dlss_reactive_pass;
 pub(crate) mod enhanced_bloom_parameters;
 pub(crate) mod enhanced_bloom_pass;
 pub(crate) mod enhanced_bloom_stage;

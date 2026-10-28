@@ -5,7 +5,6 @@ use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::contact_shadow_pass::ContactShadowPass;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
-use crate::pass::dlss_reactive_pass::DlssReactivePass;
 use crate::pass::enhanced_bloom_pass::EnhancedBloomPass;
 use crate::pass::exposure_pass::ExposurePass;
 use crate::pass::flare_pass::FlarePass;
@@ -76,7 +75,6 @@ pub struct LevelPasses<'a> {
   pub combine: &'a CombinePass,
   pub sky_behind: &'a SkyBehindPass,
   pub ray_guides: &'a RayGuidesPass,
-  pub dlss_reactive: &'a DlssReactivePass,
   pub sky_haze: &'a SkyHazePass,
   pub sky_motion: &'a SkyMotionPass,
   pub sky_irradiance: &'a SkyIrradiancePass,
