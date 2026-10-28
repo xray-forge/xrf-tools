@@ -38,6 +38,8 @@ struct WaterVarying {
   @location(5) baked: vec4<f32>,
   @location(6) hemi: f32,
   @location(7) @interpolate(flat) surface: u32,
+  // Where the wave held the same point the last frame, which its motion is measured from.
+  @location(8) previous: vec3<f32>,
 };
 
 struct WaterOutput {
@@ -64,15 +66,15 @@ fn water_vertex(vertex_index: u32, instance_index: u32, water: Water) -> WaterVa
     words[at + VERTEX_POSITION + 2u]);
   // `D3DCOLOR`: blue, green, red and the sun's share.
   let color: vec4<f32> = unpack4x8unorm(words[at + VERTEX_EXTRA]);
-  var world: vec3<f32> = (matrix * vec4<f32>(position, 1.0)).xyz;
-  let phase: f32 = water.time + dot(world, WAVE_DIRECTION * water.wave_speed);
-
-  world.y += sin(phase) * water.wave_height;
+  let flat_world: vec3<f32> = (matrix * vec4<f32>(position, 1.0)).xyz;
+  let along: f32 = dot(flat_world, WAVE_DIRECTION * water.wave_speed);
+  let world: vec3<f32> = flat_world + vec3<f32>(0.0, sin(water.time + along) * water.wave_height, 0.0);
 
   var out: WaterVarying;
 
   out.clip = camera.view_projection * vec4<f32>(world, 1.0);
   out.world = world;
+  out.previous = flat_world + vec3<f32>(0.0, sin(water.previous_time + along) * water.wave_height, 0.0);
   out.normal = normalize(linear * (unpack_direction(normal) / scale));
   out.tangent = linear * unpack_direction(tangent);
   out.binormal = linear * unpack_direction(binormal);

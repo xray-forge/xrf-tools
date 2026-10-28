@@ -22,13 +22,16 @@ pub struct WaterUniform {
   pub soft: f32,
   /// One while the water writes the distortion it causes.
   pub distorted: f32,
+  /// Seconds the water had moved at the last frame, where its wave stood then, which its motion is measured from.
+  pub previous_time: f32,
 }
 
 impl WaterUniform {
-  /// The settings at `time`, under the weather's `water_intensity`.
-  pub fn new(settings: &RenderWaterSettings, intensity: f32, time: f32) -> Self {
+  /// The settings at `time`, the last frame's at `previous_time`, under the weather's `water_intensity`.
+  pub fn new(settings: &RenderWaterSettings, intensity: f32, (time, previous_time): (f32, f32)) -> Self {
     Self {
       time,
+      previous_time,
       wave_height: settings.wave_height,
       wave_speed: settings.wave_speed,
       ripple: settings.ripple,

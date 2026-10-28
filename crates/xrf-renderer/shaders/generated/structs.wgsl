@@ -136,6 +136,7 @@ struct GrassWind {
   foliage_anim: vec4<f32>,
   foliage_previous_anim: vec4<f32>,
   foliage_flora: vec4<f32>,
+  foliage_previous_wind: vec4<f32>,
   alignment: vec4<f32>,
 }
 
@@ -173,6 +174,7 @@ struct Water {
   intensity: f32,
   soft: f32,
   distorted: f32,
+  previous_time: f32,
 }
 
 struct EnhancedWater {
@@ -659,6 +661,7 @@ struct Wind {
   foliage_anim: vec4<f32>,
   foliage_previous_anim: vec4<f32>,
   foliage_flora: vec4<f32>,
+  foliage_previous_wind: vec4<f32>,
 }
 
 struct TraceInstance {

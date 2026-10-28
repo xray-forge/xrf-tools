@@ -13,8 +13,9 @@ pub struct FoliageWind {
   /// Drifted across the engine's ground in `xy`, the trunks' clock in `z`, seconds in `w`.
   anim: Vec4,
   previous: Vec4,
-  /// The clock the last frame was drawn at.
+  /// The clock the last frame was drawn at, and the wind it was drawn in.
   clock: Option<f32>,
+  wind: Option<Vec4>,
 }
 
 impl FoliageWind {
@@ -61,8 +62,11 @@ impl FoliageWind {
       0.0
     };
 
+    let blowing: Vec4 = Vec4::new(cosine, sine, speed, (speed * 1.66).sqrt().clamp(0.0, 1.0));
+
     FoliageWindValues {
-      wind: Vec4::new(cosine, sine, speed, (speed * 1.66).sqrt().clamp(0.0, 1.0)),
+      wind: blowing,
+      previous_wind: self.wind.replace(blowing).unwrap_or(blowing),
       grass: Vec4::new(
         settings.grass_speed,
         settings.grass_turbulence,
