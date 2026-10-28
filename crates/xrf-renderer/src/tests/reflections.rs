@@ -174,7 +174,6 @@ fn blends_reflections_in_only_where_traced() {
       RenderDebugView::Reflections,
       (false, false, ratio),
       false,
-      0.0,
       RenderRect::default(),
       &RenderImageCorrections::default(),
       (None, false),

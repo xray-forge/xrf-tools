@@ -20,8 +20,7 @@ pub struct PresentUniform {
   pub is_occluded: u32,
   /// One where the frame shown is the upscaled one.
   pub is_upscaled: u32,
-  /// How far the distortion target moves the scene, a share of the screen; zero where nothing wrote it this frame.
-  pub distortion: f32,
+  pub _pad: u32,
   /// The viewport's top left corner in the window, and its size, in pixels.
   pub origin: Vec2,
   pub size: Vec2,
@@ -60,7 +59,6 @@ impl PresentUniform {
     view: RenderDebugView,
     (is_occluded, is_indirect, reflection_ratio): (bool, bool, Option<u32>),
     is_upscaled: bool,
-    distortion: f32,
     output: RenderRect,
     corrections: &RenderImageCorrections,
     (selection, is_bloomed): (Option<[f32; 3]>, bool),
@@ -73,7 +71,7 @@ impl PresentUniform {
       view: view.get_index(),
       is_occluded: u32::from(is_occluded),
       is_upscaled: u32::from(is_upscaled),
-      distortion,
+      _pad: 0,
       origin: Vec2::new(output.x as f32, output.y as f32),
       size: Vec2::new(output.width as f32, output.height as f32),
       selection: selection.map_or(Vec4::ZERO, |[r, g, b]| Vec4::new(r, g, b, 1.0)),

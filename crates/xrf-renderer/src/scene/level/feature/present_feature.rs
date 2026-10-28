@@ -22,6 +22,9 @@ pub struct PresentFeature {
   uniform: PresentUniform,
   /// How many times the sky is averaged this frame, none where it is drawn as it is.
   debanding: Option<u32>,
+  /// How far the distortion target moves the frame before the resolve and whether it blurs it; none where nothing
+  /// wrote the target this frame.
+  distortion: Option<DistortUniform>,
 }
 
 impl PresentFeature {
@@ -37,12 +40,16 @@ impl PresentFeature {
     let water = &options.features.water;
 
     self.debanding = PresentUniform::get_debanding(options);
+    // `combine_2` blurs towards the engine's bloom, which is built under the enhanced one for it.
+    self.distortion = (inputs.is_distorting && water.distortion > 0.0).then(|| DistortUniform {
+      strength: water.distortion,
+      is_blurred: u32::from(inputs.is_engine_bloomed || inputs.is_enhanced_bloomed),
+    });
 
     let present: PresentUniform = PresentUniform::new(
       options.mode.debug_view,
       (inputs.is_occluded, inputs.is_indirect, inputs.reflection_ratio),
       is_upscaled,
-      if inputs.is_distorting { water.distortion } else { 0.0 },
       output,
       &options.features.corrections,
       (inputs.selection_color, inputs.is_engine_bloomed),
@@ -68,8 +75,9 @@ impl PresentFeature {
   }
 
   /// Moves the frame (`handles.scene`, at the drawn size) where the water, the particles, the rain and the distorting
-  /// surfaces wrote the distortion target, before the resolve, so the resolve smooths the moved frame as it smooths the
-  /// rest: a copy of the frame read where the target says, drawn back into it. Nothing where nothing distorts.
+  /// surfaces wrote the distortion target, and blurs it towards the engine's bloom by its `z` where a bloom draws,
+  /// before the resolve, so the resolve smooths it as it smooths the rest: a copy of the frame read where the target
+  /// says, drawn back into it. Nothing where nothing distorts.
   pub fn add_distortion_pass<'a>(
     &self,
     (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
@@ -77,11 +85,9 @@ impl PresentFeature {
     view: &'a ViewBinding,
     handles: ViewTargetHandles,
   ) {
-    let strength: f32 = self.uniform.distortion;
-
-    if strength <= 0.0 {
+    let Some(distortion) = self.distortion else {
       return;
-    }
+    };
 
     let (width, height) = handles.size;
     let before: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
@@ -93,11 +99,13 @@ impl PresentFeature {
 
     add_texture_copy(&mut *graph, "scene before distortion", handles.scene, before);
 
-    let parameters: DistortParameters = DistortParameters {
+    let parameters: DistortParameters<'a> = DistortParameters {
       frame: before,
       distortion: handles.distortion,
       depth_target: handles.depth,
-      distort: runtime.push_uniform(&DistortUniform { strength }),
+      bloom_target: handles.bloom[0],
+      bloom_sampler: passes.bloom.get_sampler(),
+      distort: runtime.push_uniform(&distortion),
     };
 
     graph

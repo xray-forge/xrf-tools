@@ -32,7 +32,6 @@ fn present() -> PresentUniform {
     RenderDebugView::Final,
     (false, false, None),
     false,
-    0.0,
     RenderRect::default(),
     &RenderImageCorrections::default(),
     (None, false),

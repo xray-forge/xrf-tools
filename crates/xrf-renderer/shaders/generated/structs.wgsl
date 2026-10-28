@@ -215,7 +215,6 @@ struct Present {
   view: u32,
   is_occluded: u32,
   is_upscaled: u32,
-  distortion: f32,
   origin: vec2<f32>,
   size: vec2<f32>,
   corrections: vec4<f32>,
@@ -232,6 +231,7 @@ struct Present {
 
 struct Distort {
   strength: f32,
+  is_blurred: u32,
 }
 
 struct Upscale {
