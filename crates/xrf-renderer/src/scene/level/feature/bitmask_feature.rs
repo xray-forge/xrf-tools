@@ -44,8 +44,15 @@ pub struct BitmaskFeature {
 
 impl BitmaskFeature {
   /// Takes this frame's search over `size`, half the frame's: its accumulations made while it accumulates, the light's
-  /// while it gathers light too, dropped otherwise, and what its passes read.
-  pub fn prepare(&mut self, device: &wgpu::Device, options: &RenderViewOptions, projection: Mat4, size: (u32, u32)) {
+  /// while it gathers light too, dropped otherwise, and what its passes read. A reference's sample turns the noise by
+  /// `reference_sample`, so each instant's samples cycle the same turns through the accumulation and their mean is its
+  /// settled value; the accumulation's own frames turn it otherwise.
+  pub fn prepare(
+    &mut self,
+    (device, options): (&wgpu::Device, &RenderViewOptions),
+    (projection, size): (Mat4, (u32, u32)),
+    reference_sample: Option<u32>,
+  ) {
     let settings: RenderAmbientOcclusionSettings = options.features.ambient_occlusion;
 
     self.search = BitmaskSearch::new(options, can_trace(device));
@@ -106,7 +113,7 @@ impl BitmaskFeature {
       },
       projection,
       size,
-      history.map_or(0, History::get_frame),
+      reference_sample.unwrap_or_else(|| history.map_or(0, History::get_frame)),
       (history.is_some_and(History::is_valid), has_light_history),
     );
   }

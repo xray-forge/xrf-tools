@@ -134,13 +134,15 @@ impl ResolveFeature {
     let view: RenderDebugView = options.mode.debug_view;
 
     // A reference's sample is drawn unresolved at its own place, its textures read at the bias DLSS reads them at
-    // unscaled, as a resolve converging on it would.
+    // unscaled, as a resolve converging on it would; the screen-space effects' noise turned by the sample, so every
+    // instant's mean averages the same turns and a still scene's reference holds still.
     if let Some((sample, samples)) = self.reference {
       self.fsr_view = None;
       self.temporal = None;
       self.phases = samples;
       self.texture_bias = Self::get_bias(Some(RenderAntialiasing::Dlss), 1.0);
       self.offset = TemporalJitter::at(sample);
+      self.noise_frame = sample;
 
       return self.offset;
     }
@@ -198,8 +200,8 @@ impl ResolveFeature {
       .map_or(Duration::ZERO, |before| now.duration_since(before));
     self.prepared_at = Some(now);
 
-    // A reference's samples turn the screen-space effects' noise as a resolve's frames do, so their mean averages it.
-    if self.temporal.is_some() || self.reference.is_some() {
+    // A resolve's frames turn the screen-space effects' noise on; a reference's sample set it (`next_jitter`).
+    if self.temporal.is_some() && self.reference.is_none() {
       self.noise_frame = self.noise_frame.wrapping_add(1);
     }
 
@@ -547,9 +549,14 @@ impl ResolveFeature {
     self.view_projection_previous.replace(current).unwrap_or(current)
   }
 
-  /// Frames a temporal resolve gathered, which the screen-space effects turn their noise by.
+  /// Frames a temporal resolve gathered, or a reference's sample, which the screen-space effects turn their noise by.
   pub fn get_noise_frame(&self) -> u32 {
     self.noise_frame
+  }
+
+  /// The reference's sample this frame is drawn as, which its noise turns by; none outside a reference.
+  pub fn get_reference_sample(&self) -> Option<u32> {
+    self.reference.map(|(sample, _)| sample)
   }
 
   /// The antialiasing asked for where it resolves temporally.

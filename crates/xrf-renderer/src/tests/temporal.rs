@@ -93,7 +93,8 @@ fn reads_textures_sharper_by_what_the_upscale_loses() {
   assert_eq!(ResolveFeature::get_bias(None, 2.0), 0.0);
 }
 
-// A reference's samples stand at their own places of the sequence, unresolved, read as sharp as DLSS reads them.
+// A reference's samples stand at their own places of the sequence, unresolved, read as sharp as DLSS reads them, the
+// screen-space effects' noise turned by the sample, so every instant averages the same turns.
 #[test]
 fn a_reference_sample_is_drawn_unresolved_at_its_place_of_the_jitter() {
   let mut options: RenderViewOptions = RenderViewOptions::default();
@@ -105,8 +106,17 @@ fn a_reference_sample_is_drawn_unresolved_at_its_place_of_the_jitter() {
   assert_eq!(resolve.next_jitter(&options, 2.0, false), TemporalJitter::at(5));
   assert_eq!(resolve.get_temporal(), None);
   assert_eq!(resolve.get_texture_bias(), -1.0);
+  assert_eq!(resolve.get_reference_sample(), Some(5));
+  assert_eq!(resolve.get_noise_frame(), 5);
+
+  resolve.set_reference(Some((2, 64)));
+  resolve.next_jitter(&options, 2.0, false);
+
+  assert_eq!(resolve.get_noise_frame(), 2);
 
   resolve.set_reference(None);
+
+  assert_eq!(resolve.get_reference_sample(), None);
 
   assert_eq!(resolve.get_temporal(), None);
   assert_ne!(resolve.next_jitter(&options, 1.0, false), TemporalJitter::at(5));
