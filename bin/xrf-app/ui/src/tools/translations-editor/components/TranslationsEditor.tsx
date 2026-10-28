@@ -13,7 +13,7 @@ import { ReactElement, useCallback, useMemo } from "react";
 import { describeRoots } from "@/core/assets/lib";
 import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { useShellPanels, useShellStatus } from "@/core/shell/contributions";
-import { ToolSaver, useToolLifecycle } from "@/core/shell/lifecycle";
+import { TToolSaver, useToolLifecycle } from "@/core/shell/lifecycle";
 import { TranslationsService } from "@/tools/translations-editor/services/translations.service";
 
 import { TranslationsEditorActions } from "./editor/TranslationsEditorActions";
@@ -37,7 +37,7 @@ export function TranslationsEditor(): ReactElement {
     await translationsService.closeProject();
   }, [log, translationsService]);
 
-  const onSave: ToolSaver = useCallback(() => flowResult(translationsService.saveAll()), [translationsService]);
+  const onSave: TToolSaver = useCallback(() => flowResult(translationsService.saveAll()), [translationsService]);
 
   useShellPanels(
     () => [

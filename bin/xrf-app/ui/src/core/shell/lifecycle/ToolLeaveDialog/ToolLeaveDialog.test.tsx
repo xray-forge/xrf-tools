@@ -4,7 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
-import { ToolSaver, useRequestLeave, useToolDirty } from "@/core/shell/lifecycle";
+import { TToolSaver, useRequestLeave, useToolDirty } from "@/core/shell/lifecycle";
 import { renderWithProviders } from "@/fixtures/utils/render";
 
 function Leaver({
@@ -14,7 +14,7 @@ function Leaver({
 }: {
   dirtyCount: number;
   onLeave: () => void;
-  save?: Nullable<ToolSaver>;
+  save?: Nullable<TToolSaver>;
 }): ReactElement {
   const requestLeave: (leave: () => void) => void = useRequestLeave();
 

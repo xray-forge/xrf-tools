@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useCallback, useEffect, useMemo } from "react";
 
-import { ToolSaver, useToolLifecycle } from "@/core/shell/lifecycle";
+import { TToolSaver, useToolLifecycle } from "@/core/shell/lifecycle";
 import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import { TexturePreviewLayout } from "@/core/textures/components/workspace/TexturePreviewLayout";
 import { ITexturePreviewComparison } from "@/core/textures/lib/texture-preview";
@@ -44,7 +44,7 @@ export function TexturesEditorWorkspace({
     ? { label: encodingService.chosenReport.label, preview: encodingService.preview }
     : null;
 
-  const onSave: ToolSaver = useCallback(async () => {
+  const onSave: TToolSaver = useCallback(async () => {
     await editorService.commit();
 
     return !editorService.isDirty;

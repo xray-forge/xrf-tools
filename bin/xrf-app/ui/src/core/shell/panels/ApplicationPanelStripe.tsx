@@ -1,4 +1,3 @@
-import { RailButton } from "@xrf/ui/shell/rail-button";
 import { ReactElement, ReactNode } from "react";
 
 import { IShellPanel } from "@/core/shell/panels/shell-panel";
@@ -38,15 +37,14 @@ export function ApplicationPanelStripe({
 
       <div className={"grow"} />
 
-      {/* Drawn as the shell's controls are, in the rail's gradient, so what the shell owns reads apart. */}
       {shellPanels.map((panel: IShellPanel) => (
-        <RailButton
+        <PanelStripeButton
           key={panel.id}
-          label={panel.label}
-          icon={panel.icon}
-          tooltipPlacement={side === "left" ? "right" : "left"}
-          isSelected={panel.id === activePanelId}
-          onClick={() => onTogglePanel(panel.id)}
+          panel={panel}
+          side={side}
+          isActive={panel.id === activePanelId}
+          isShellOwned={true}
+          onTogglePanel={onTogglePanel}
         />
       ))}
 

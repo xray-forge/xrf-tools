@@ -40,17 +40,7 @@ function useSideSelection(
  * @returns The side as the frame draws it.
  */
 function toFrameSide(side: TShellPanelSide, selection: ISideSelection, sizing: IPanelWidth): IFrameSide {
-  return {
-    side,
-    toolPanels: selection.toolPanels,
-    shellPanels: selection.shellPanels,
-    activePanel: selection.activePanel,
-    activePanelId: selection.activePanelId,
-    width: sizing.width,
-    onOpenPanel: selection.onOpenPanel,
-    onTogglePanel: selection.onTogglePanel,
-    onResize: sizing.onResize,
-  };
+  return { side, ...selection, ...sizing };
 }
 
 /** What one side of the frame draws: its stripe's panels, the one open in its slot, and the slot's width. */

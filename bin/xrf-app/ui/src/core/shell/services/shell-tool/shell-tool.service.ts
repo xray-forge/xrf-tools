@@ -1,21 +1,27 @@
 import { Injectable, OnDeprovision } from "@wirestate/core";
-import { BoundAction, Computed, RefObservable, runInAction } from "@wirestate/mobx";
+import { BoundAction, Computed, Observable, RefObservable, runInAction } from "@wirestate/mobx";
 import { Nullable } from "@xrf/types";
 
-import { EToolId } from "@/core/routing/tool";
+import { IToolDescriptor } from "@/core/routing/tool";
 
 /** Leaves the open tool for the launcher at once. */
 export type TShellToolLeave = () => void;
 
 /**
- * Which tool the window shows, as the route names it, and leaving it for the launcher, which the route does. The frame
- * keeps both current while it is mounted.
+ * What the window shows, as the route names it: the open tool, the launcher, or neither (a route nothing answers), and
+ * leaving the tool for the launcher, which the route does. The one place outside React that knows what is open, so the
+ * keymap, help and the shell's commands read it rather than each being told. The frame keeps it current while it is
+ * mounted.
  */
 @Injectable()
 export class ShellToolService {
-  /** The open tool, or null on the launcher. */
+  /** The open tool, or null on the launcher or a route nothing answers. */
   @RefObservable()
-  public tool: Nullable<EToolId> = null;
+  public tool: Nullable<IToolDescriptor> = null;
+
+  /** Whether the launcher is on screen, rather than a tool or a route nothing answers. */
+  @Observable()
+  public isLauncher: boolean = false;
 
   private leave: Nullable<TShellToolLeave> = null;
 
@@ -29,6 +35,7 @@ export class ShellToolService {
   public onDeprovision(): void {
     runInAction(() => {
       this.tool = null;
+      this.isLauncher = false;
       this.leave = null;
     });
   }
@@ -36,12 +43,14 @@ export class ShellToolService {
   /**
    * Follows the route the frame shows.
    *
-   * @param tool - The tool it opens, or null for the launcher.
+   * @param tool - The tool it opens, or null where it opens none.
+   * @param isLauncher - Whether it is the launcher's.
    * @param leave - Leaves it for the launcher.
    */
   @BoundAction()
-  public follow(tool: Nullable<EToolId>, leave: TShellToolLeave): void {
+  public follow(tool: Nullable<IToolDescriptor>, isLauncher: boolean, leave: TShellToolLeave): void {
     this.tool = tool;
+    this.isLauncher = isLauncher;
     this.leave = leave;
   }
 
@@ -54,6 +63,7 @@ export class ShellToolService {
   public release(leave: TShellToolLeave): void {
     if (this.leave === leave) {
       this.tool = null;
+      this.isLauncher = false;
       this.leave = null;
     }
   }

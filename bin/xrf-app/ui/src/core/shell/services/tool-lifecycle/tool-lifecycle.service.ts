@@ -8,9 +8,10 @@ import { Nullable } from "@xrf/types";
 
 import { emitNotification, ENotificationSeverity } from "@/core/notifications/lib";
 import { APPLICATION_SOURCE } from "@/core/routing/tool";
+import { ShellToolService } from "@/core/shell/services/shell-tool";
 
 /** Writes all pending edits; false keeps the tool open. */
-export type ToolSaver = () => Promise<boolean>;
+export type TToolSaver = () => Promise<boolean>;
 
 /** Owns navigation blocking and the active document's save/discard/stay sequence. */
 @Injectable()
@@ -27,7 +28,7 @@ export class ToolLifecycleService {
   private busyOwners: ReadonlySet<string> = new Set();
 
   @Observable()
-  private save: Nullable<ToolSaver> = null;
+  private save: Nullable<TToolSaver> = null;
 
   @Observable()
   private pendingLeave: Nullable<() => void> = null;
@@ -62,7 +63,10 @@ export class ToolLifecycleService {
     return this.save !== null;
   }
 
-  public constructor(private readonly eventBus: EventBus = inject(EventBus)) {}
+  public constructor(
+    private readonly eventBus: EventBus = inject(EventBus),
+    private readonly shellToolService: ShellToolService = inject(ShellToolService)
+  ) {}
 
   @OnProvision()
   public async onProvision(provisionId: ProvisionId): Promise<void> {
@@ -105,7 +109,7 @@ export class ToolLifecycleService {
 
   /** Publishes the active document; replacing its owner invalidates an older leave request. */
   @BoundAction()
-  public setDraft(owner: string, dirtyCount: number, save: Nullable<ToolSaver>): void {
+  public setDraft(owner: string, dirtyCount: number, save: Nullable<TToolSaver>): void {
     if (this.draftOwner !== owner) {
       this.pendingLeave = null;
     }
@@ -124,20 +128,6 @@ export class ToolLifecycleService {
       this.save = null;
       this.pendingLeave = null;
     }
-  }
-
-  /**
-   * Says what was decided about leaving, in the console and in the backend's log, beside what the window's close did.
-   *
-   * @param decision - What was decided.
-   * @param details - More for the console alone.
-   */
-  private report(decision: ELeaveDecision, ...details: Array<unknown>): void {
-    this.log.info("Leave decision:", decision, this.draftOwner, this.dirtyCount, ...details);
-
-    systemCommands
-      .reportLeaveDecision(decision, this.dirtyCount)
-      .catch((error: unknown) => this.log.warn("Cannot log leave decision:", decision, error));
   }
 
   /** Leaves immediately when clean, asks when dirty, and refuses while busy or already asking. */
@@ -284,7 +274,8 @@ export class ToolLifecycleService {
         emitNotification(this.eventBus, {
           details: transformError(error).message,
           severity: ENotificationSeverity.ERROR,
-          source: APPLICATION_SOURCE,
+          // The save is the open tool's, so the notice names it, as every tool's own notices do.
+          source: this.shellToolService.tool?.id ?? APPLICATION_SOURCE,
           title: "Could not save before leaving",
         });
       }
@@ -296,5 +287,19 @@ export class ToolLifecycleService {
         }
       });
     }
+  }
+
+  /**
+   * Says what was decided about leaving, in the console and in the backend's log, beside what the window's close did.
+   *
+   * @param decision - What was decided.
+   * @param details - More for the console alone.
+   */
+  private report(decision: ELeaveDecision, ...details: Array<unknown>): void {
+    this.log.info("Leave decision:", decision, this.draftOwner, this.dirtyCount, ...details);
+
+    systemCommands
+      .reportLeaveDecision(decision, this.dirtyCount)
+      .catch((error: unknown) => this.log.warn("Cannot log leave decision:", decision, error));
   }
 }
