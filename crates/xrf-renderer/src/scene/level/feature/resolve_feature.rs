@@ -731,7 +731,7 @@ impl ResolveFeature {
   /// Adds the resolve of `frame`, the finished frame at the drawn size, against the frame as it stood before the
   /// blended surfaces (`opaque`, the scene where none was kept), DLSS's ray reconstruction reading `guides`. At the
   /// drawn size, the temporal resolve; then, at the viewport's, the upscale where nothing upscaled it and the
-  /// sharpening. Answers the frame at the drawn size, which the present distorts, and the image the viewport shows.
+  /// sharpening. Answers the frame at the drawn size and the image the viewport shows.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
