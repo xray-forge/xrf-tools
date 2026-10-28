@@ -34,6 +34,8 @@ pub struct WaterFeature {
   flow: WaterFlow,
   /// Frames prepared, which turns which of its pixels trace.
   frame: u32,
+  /// The water's time the last frame was prepared at, where its wave stood then; none before a first frame.
+  last_time: Option<f32>,
 }
 
 impl WaterFeature {
@@ -77,10 +79,12 @@ impl WaterFeature {
     Some(passes.water.add_passes(graph, bindings, runtime, draw))
   }
 
-  /// Starts its maps' scroll, its traced pixels' turn and its reflection's histories again from nothing.
+  /// Starts its maps' scroll, its traced pixels' turn, its wave's last place and its reflection's histories again from
+  /// nothing.
   pub fn restart(&mut self) {
     self.flow = WaterFlow::default();
     self.frame = 0;
+    self.last_time = None;
     self.reflection = None;
   }
 
@@ -90,7 +94,10 @@ impl WaterFeature {
 
     self.settings = settings;
     self.is_drawn = settings.is_enabled && frame.is_in_view && !options.mode.is_wireframe;
-    self.uniform = WaterUniform::new(&settings, frame.intensity, frame.time);
+    // The wave's motion runs from where it stood the last frame; still on a first frame.
+    let previous_time: f32 = self.last_time.replace(frame.time).unwrap_or(frame.time);
+
+    self.uniform = WaterUniform::new(&settings, frame.intensity, (frame.time, previous_time));
     // Advanced while the engine's water draws too, so switching back does not lurch the maps by the time between.
     self.flow.advance(frame.time, &settings.enhanced, frame.wind);
 

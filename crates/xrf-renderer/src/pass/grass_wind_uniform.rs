@@ -19,14 +19,15 @@ pub struct GrassWindUniform {
   pub previous_wind_2: Vec4,
   pub previous_wave_1: Vec4,
   pub previous_wave_2: Vec4,
-  /// The enhanced foliage motion's wind, grass and trees strengths, and its flow fields' drift this frame and the last
-  /// (`FoliageWindValues`).
+  /// The enhanced foliage motion's wind, grass and trees strengths, its flow fields' drift this frame and the last, and
+  /// the last frame's wind (`FoliageWindValues`).
   pub foliage_wind: Vec4,
   pub foliage_grass: Vec4,
   pub foliage_trees: Vec4,
   pub foliage_anim: Vec4,
   pub foliage_previous_anim: Vec4,
   pub foliage_flora: Vec4,
+  pub foliage_previous_wind: Vec4,
   /// One in `x` where a tuft stands along its ground's normal rather than straight up.
   pub alignment: Vec4,
 }
@@ -51,6 +52,7 @@ impl GrassWindUniform {
     self.foliage_anim = foliage.anim;
     self.foliage_previous_anim = foliage.previous_anim;
     self.foliage_flora = foliage.flora;
+    self.foliage_previous_wind = foliage.previous_wind;
     self
   }
 

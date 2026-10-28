@@ -86,7 +86,7 @@ fn fs_water(in: WaterVarying) -> WaterOutput {
 
   out.color = vec4<f32>(scene_from_shown(select(base.rgb, finished, lighting.params.y > 0.5)), alpha);
   out.distortion = write_distortion(fragment, water);
-  out.motion = camera_motion(in.world, in.world);
+  out.motion = camera_motion(in.world, in.previous);
 
   return out;
 }

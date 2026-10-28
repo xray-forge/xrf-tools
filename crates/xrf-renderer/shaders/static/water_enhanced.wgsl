@@ -414,7 +414,7 @@ fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
   // read after the resolve, at the drawn size against its depth, which flips a blade's border pixels in and out of the
   // move each frame: a dotted outline along every blade over the water, nothing resolving it.
   shaded.out.distortion = vec4<f32>(0.0);
-  shaded.out.motion = camera_motion(in.world, in.world);
+  shaded.out.motion = camera_motion(in.world, in.previous);
   shaded.normal = waves.normal;
   shaded.reflected_share = saturate(fresnel * enhanced.reflectivity) * seen * border * seen * seen;
   shaded.roughness = mix(GUIDE_ROUGHNESS_CALM, GUIDE_ROUGHNESS_RAIN, waves.rain_rough);

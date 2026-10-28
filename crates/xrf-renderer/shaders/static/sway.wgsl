@@ -21,7 +21,7 @@ fn tree_foliage_kind(is_still: bool, is_branch: bool) -> f32 {
 // by its trunk's swing or its branch's toss, `foliage` its kind and its texture's `v`.
 fn tree_swayed(wind: Wind, world: vec3<f32>, foot: f32, rigidity: f32, foliage: vec2<f32>) -> vec3<f32> {
   if (is_foliage_enhanced(wind, foliage)) {
-    return foliage_swayed(wind, world, foot, foliage, wind.foliage_anim);
+    return foliage_swayed(wind, world, foot, foliage, wind.foliage_wind, wind.foliage_anim);
   }
 
   return swayed_by(world, foot, rigidity, wind.wind, wind.wave);
@@ -30,7 +30,7 @@ fn tree_swayed(wind: Wind, world: vec3<f32>, foot: f32, rigidity: f32, foliage: 
 // The same vertex as the frame before's wind swayed it.
 fn tree_swayed_before(wind: Wind, world: vec3<f32>, foot: f32, rigidity: f32, foliage: vec2<f32>) -> vec3<f32> {
   if (is_foliage_enhanced(wind, foliage)) {
-    return foliage_swayed(wind, world, foot, foliage, wind.foliage_previous_anim);
+    return foliage_swayed(wind, world, foot, foliage, wind.foliage_previous_wind, wind.foliage_previous_anim);
   }
 
   return swayed_by(world, foot, rigidity, wind.previous_wind, wind.previous_wave);
@@ -41,9 +41,11 @@ fn is_foliage_enhanced(wind: Wind, foliage: vec2<f32>) -> bool {
   return wind.foliage_trees.w > 0.5 && foliage.x > 0.5;
 }
 
-// A tree's vertex moved by the enhanced motion at the fields' drift, read in the engine's space and carried back.
-fn foliage_swayed(wind: Wind, world: vec3<f32>, foot: f32, foliage: vec2<f32>, anim: vec4<f32>) -> vec3<f32> {
-  let setup: FoliageSetup = FoliageSetup(wind.foliage_wind, wind.foliage_grass, wind.foliage_trees, anim);
+// A tree's vertex moved by the enhanced motion in a frame's wind (`blowing`) at its fields' drift, read in the
+// engine's space and carried back.
+fn foliage_swayed(wind: Wind, world: vec3<f32>, foot: f32, foliage: vec2<f32>, blowing: vec4<f32>,
+  anim: vec4<f32>) -> vec3<f32> {
+  let setup: FoliageSetup = FoliageSetup(blowing, wind.foliage_grass, wind.foliage_trees, anim);
   let height: f32 = world.y - foot;
   var moved: vec3<f32>;
 
