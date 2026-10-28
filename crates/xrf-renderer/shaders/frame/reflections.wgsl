@@ -1,6 +1,7 @@
 #import "common/depth_plane"
 #import "common/camera"
 #import "common/scene_light"
+#import "common/display_transform"
 #import "common/octahedral"
 #import "common/fullscreen"
 #import "common/lighting"
@@ -358,8 +359,10 @@ fn remembered_radiance(texel: vec2<i32>, hit: vec3<f32>) -> vec4<f32> {
 }
 
 // What the last frame showed of the sky in a world direction, as light, and in `w` one where it did: the direction
-// through that frame's camera, read where that frame's depth shows sky or ground lost in its fog, the tonemap undone
-// at the scale that frame used. None off that screen, where it showed something nearer, or where no frame is kept.
+// through that frame's camera, read where that frame's depth shows sky or ground lost in its fog, the picture taken
+// back out of the display it entered by, as the cube's sky is light under every display (`sky_light`), and the
+// tonemap undone at the scale that frame used. None off that screen, where it showed something nearer, or where no
+// frame is kept.
 fn remembered_sky(direction: vec3<f32>) -> vec4<f32> {
   if (reflection.has_source < 0.5) {
     return vec4<f32>(0.0);
@@ -386,9 +389,10 @@ fn remembered_sky(direction: vec3<f32>) -> vec4<f32> {
   }
 
   let scale: f32 = previous_scale(lighting, exposure);
+  let entered: vec3<f32> = scene_shown(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb);
 
-  return vec4<f32>(sky_as_light(scene_shown(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb), scale,
-    lighting.reflections.w, is_light_physical()), 1.0);
+  return vec4<f32>(sky_as_light(picture_from_display(entered, lighting.display), scale, lighting.reflections.w,
+    is_light_physical()), 1.0);
 }
 
 // What a ray met looks like as light from the surface it was reflected off: what the last frame showed there, or where

@@ -424,3 +424,32 @@ fn a_picture_shows_under_every_display_as_the_engines_curve_shows_it() {
     }
   }
 }
+
+/// `picture_from_display` takes a picture back out of the display it entered by, so a reader of the seen sky as light
+/// gets the light the engine's curve shows, as the cube's sky is, under every display, grading and lift.
+#[test]
+fn a_picture_comes_back_out_of_the_display_it_entered_by() {
+  let mut cases: Vec<(Vec3, Vec4)> = Vec::new();
+
+  for mode in [DisplayMode::EngineEncoded, DisplayMode::Agx, DisplayMode::PbrNeutral] {
+    for (contrast, saturation, lift) in [(1.0, 1.0, 0.0), (1.2, 1.1, 2.5), (0.8, 0.9, -1.5)] {
+      for colour in shown_colours() {
+        cases.push((colour, Vec4::new(mode.get_index() as f32, contrast, saturation, lift)));
+      }
+    }
+  }
+
+  let Some(back) = run_probe(
+    "picture_from_display(picture_for_display(probe.colour.rgb, probe.display), probe.display)",
+    &cases,
+  ) else {
+    return;
+  };
+
+  for ((colour, display), back) in cases.iter().zip(back) {
+    assert!(
+      (back - *colour).abs().max_element() < 2e-3,
+      "{display}: {back} against {colour}"
+    );
+  }
+}

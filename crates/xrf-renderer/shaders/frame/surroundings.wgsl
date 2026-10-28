@@ -29,7 +29,7 @@ fn lit_texel(texel: vec2<i32>, direction: vec3<f32>, scale: f32) -> vec4<f32> {
   if (depth <= 0.0) {
     // At the pictures' share, as the frame shows its sky.
     return vec4<f32>(sky_light(direction, lighting, sky_cube_0, sky_cube_1, sky_clamp, sky_clouds_0, sky_clouds_1,
-      sky_repeat, scale, lighting.display) * picture_share(lighting), 0.0);
+      sky_repeat, scale) * picture_share(lighting), 0.0);
   }
 
   let stored: vec4<f32> = textureLoad(albedo_target, texel, 0);
