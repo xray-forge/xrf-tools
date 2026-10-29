@@ -8,8 +8,9 @@
 // engine's units) projected over the whole sphere into order-2 spherical harmonics, then convolved by the cosine, so a
 // normal's nine products give the irradiance over π that lights a surface facing it (Ramamoorthi and Hanrahan, "An
 // Efficient Representation for Irradiance Environment Maps", SIGGRAPH 2001). One workgroup samples a spherical
-// Fibonacci set and sums it, and beside it the first coefficient of the hemisphere the game authors
-// (`hemisphere_environment`), the level the authored light levels bring the sky's to.
+// Fibonacci set and sums it, and beside it the hemisphere the game authors (`hemisphere_environment`): its first
+// coefficient, the level a sky too dark to have a shape lights evenly at, and what it gives a level surface facing up,
+// the level the authored light levels bring the sky's zenith to.
 
 // Both keyframes' sky cubes, irradiance cubes and clouds and their samplers, the lighting, the exposure whose scale the
 // sky is drawn on, and the harmonics written.
@@ -71,9 +72,13 @@ fn cs_irradiance(@builtin(local_invocation_index) index: u32) {
     authored_total += authored_sums[invocation];
   }
 
-  // The authored hemisphere's first coefficient, in the second to fourth's `w`.
+  // The authored hemisphere's first coefficient, in the second to fourth's `w`; in the fifth to seventh's what it gives
+  // a level surface facing up, its lookup there, the weather's cubes already holding irradiance as `hmodel` reads them.
   let level: vec3<f32> = authored_total * solid_angle * BAND_0;
-  var spare: array<f32, 9> = array<f32, 9>(0.0, level.x, level.y, level.z, 0.0, 0.0, 0.0, 0.0, 0.0);
+  let zenith: vec3<f32> = hemisphere_environment(lighting, sky_environment_0, sky_environment_1, sky_clamp,
+    vec3<f32>(0.0, 1.0, 0.0)) / light_scale(lighting);
+  var spare: array<f32, 9> =
+    array<f32, 9>(0.0, level.x, level.y, level.z, zenith.x, zenith.y, zenith.z, 0.0, 0.0);
 
   for (var term: u32 = 0u; term < 9u; term++) {
     var total: vec3<f32> = vec3<f32>(0.0);

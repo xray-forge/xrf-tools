@@ -383,23 +383,38 @@ fn the_authored_levels_expose_as_the_engines_meter_does() {
   }
 }
 
-// At the authored levels the sky's irradiance keeps its shape but takes the authored hemisphere's level and colour, each
-// channel its own: an orange sunset sky lights the shade in the game's blue. A channel the sky all but lacks is held to
-// a share of its luminance; the physical levels keep the sky's own.
+// The irradiance over π harmonics give a level surface facing up, per channel.
+fn zenith_of(coefficients: &[Vec4; 9]) -> Vec3 {
+  coefficients[0].truncate() * 0.282_095 + coefficients[1].truncate() * 0.488_603
+    - coefficients[6].truncate() * 0.315_392
+    - coefficients[8].truncate() * 0.546_274
+}
+
+// At the authored levels the sky's irradiance keeps its shape but gives a level surface facing up what the authored
+// hemisphere gives it, in its colour, each channel its own: an orange sunset sky lights the shade in the game's blue,
+// and a top-heavy sky lights level ground no brighter than the game's. A channel the sky all but lacks is held to a share
+// of its luminance; the physical levels keep the sky's own.
 #[test]
 fn the_authored_levels_light_the_shade_in_the_authored_hemispheres_colour() {
-  let authored: Vec3 = Vec3::new(0.3, 0.35, 0.45);
+  let authored_zenith: Vec3 = Vec3::new(0.3, 0.35, 0.45);
   let mut harmonics: SkyHarmonics = SkyHarmonics::default();
 
   harmonics.coefficients[0] = Vec4::new(1.0, 0.5, 0.2, 1.0);
-  harmonics.coefficients[1] = Vec4::new(0.4, 0.2, 0.1, authored.x);
-  harmonics.coefficients[2].w = authored.y;
-  harmonics.coefficients[3].w = authored.z;
+  harmonics.coefficients[1] = Vec4::new(0.4, 0.2, 0.1, 0.5);
+  harmonics.coefficients[2].w = 0.5;
+  harmonics.coefficients[3].w = 0.5;
+  harmonics.coefficients[4].w = authored_zenith.x;
+  harmonics.coefficients[5].w = authored_zenith.y;
+  harmonics.coefficients[6].w = authored_zenith.z;
 
   let levelled: [Vec4; 9] = harmonics.at_level(RenderLightLevel::Authored, 1.0);
 
-  assert!((levelled[0].truncate() - authored).length() < 1e-5, "{}", levelled[0]);
-  assert!((levelled[1].truncate() - Vec3::new(0.4, 0.2, 0.1) * authored / Vec3::new(1.0, 0.5, 0.2)).length() < 1e-5);
+  assert!(
+    (zenith_of(&levelled) - authored_zenith).length() < 1e-5,
+    "{}",
+    zenith_of(&levelled)
+  );
+  assert!((levelled[1].truncate() / levelled[0].truncate() - Vec3::new(0.4, 0.4, 0.5)).length() < 1e-5);
   assert_eq!(
     harmonics.at_level(RenderLightLevel::Physical, 1.0)[0],
     harmonics.coefficients[0]
@@ -412,7 +427,8 @@ fn the_authored_levels_light_the_shade_in_the_authored_hemispheres_colour() {
 
 // The physical light lights the hemisphere by the sky's irradiance as the sky feature read it back, keeping whether the
 // sky was projected: at the physical levels the sky's own times the look's hemisphere scale; at the authored levels the
-// sky's shape at the authored hemisphere's level (the scale already in it); a sky too dark to have a shape evenly.
+// sky's shape at the authored hemisphere's level facing up (the scale already in it); a sky too dark to have a shape
+// evenly, at the authored hemisphere's first coefficient.
 #[test]
 fn the_sky_irradiance_stands_at_its_levels() {
   let mut options: RenderViewOptions = physical();
@@ -425,6 +441,9 @@ fn the_sky_irradiance_stands_at_its_levels() {
   harmonics.coefficients[1] = Vec4::new(0.1, 0.2, 0.3, 0.6);
   harmonics.coefficients[2].w = 0.6;
   harmonics.coefficients[3].w = 0.6;
+  harmonics.coefficients[4].w = 0.4;
+  harmonics.coefficients[5].w = 0.4;
+  harmonics.coefficients[6].w = 0.4;
 
   let lit = |options: &RenderViewOptions, harmonics: SkyHarmonics| -> [Vec4; 9] {
     let frame: LightingFrame = LightingFrame {
@@ -451,9 +470,9 @@ fn the_sky_irradiance_stands_at_its_levels() {
   let authored: [Vec4; 9] = lit(&options, harmonics);
 
   assert!(
-    (luminance(authored[0].truncate()) - 0.6).abs() < 1e-5,
+    (zenith_of(&authored) - Vec3::splat(0.4)).length() < 1e-5,
     "{}",
-    authored[0]
+    zenith_of(&authored)
   );
   assert!((authored[1].truncate() / authored[0].truncate() - Vec3::new(0.2, 0.8, 2.4)).length() < 1e-4);
   assert_eq!(authored[0].w, 1.0);
