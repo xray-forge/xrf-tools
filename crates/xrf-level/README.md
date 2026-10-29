@@ -11,8 +11,8 @@ this crate reads the visuals run through [xrf-ogf](../xrf-ogf/README.md)'s chunk
 
 ## Files and entry points
 
-| File                        | Type                 | Reads                                                | Writer |
-| --------------------------- | -------------------- | ---------------------------------------------------- | ------ |
+| File                        | Type                 | Reads                                                 | Writer |
+| --------------------------- | -------------------- | ----------------------------------------------------- | ------ |
 | `level`                     | `LevelFile`          | Header, shader table, sectors, portals, lights, glows | No     |
 | `level`                     | `LevelVisualsChunk`  | The visuals run, through `LevelFile::read_visuals_*`  | No     |
 | `level.geom`, `level.geomx` | `LevelGeomFile`      | Buffer declarations and counts, slide windows         | No     |
@@ -96,6 +96,14 @@ a range, refusing one that reaches past what its buffer declares. Every vertex d
   a spawn set carries. `LevelCformFile::read_with_materials_from_chunk` walks the faces for the `gamemtl.xr` ids they
   name (`LevelCformMaterials`), keeping nothing else, which is what checking a level against the material library
   wants.
+- `LevelCformTracer` holds the whole form in a bounding volume hierarchy for the engine's static ray tests, each
+  triangle's game material beside it: `get_nearest_hit` names the material of the front face it picks, and
+  `get_nearest_material` the material of the nearest face a ray crosses from either side.
+- `LevelSurfaceMaterials::survey` tells what each shader table entry's surfaces are made of, which the compiled level
+  records nowhere: every drawable visual's triangles (placed, impostors left out) are looked up by a ray five
+  centimetres either side of each centre along its normal, and their area tallied per entry against the material
+  beneath, or as lying on no collision face. A render face and the collision face built from it coincide, so the ray
+  finds the one face under it. Zaton's 917 entries take two seconds.
 - `LevelAiFile::read_with_nodes_*` takes the map's nodes as `LevelAiNodes`, kept packed as the file stores them and
   decoded one at a time (`LevelAiNode`) in any layout the engine loads, versions 8 to 13. Keeping the bytes is what
   makes the writer give back the file it read; `LevelAiHeader::get_node_position` turns a node into the world position

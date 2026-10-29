@@ -14,6 +14,7 @@ impl LevelGroup {
       commands: vec![
         level::albedo::AlbedoCommand::new_box(),
         level::info::InfoCommand::new_box(),
+        level::materials::MaterialsCommand::new_box(),
         level::verify::VerifyCommand::new_box(),
       ],
     }
