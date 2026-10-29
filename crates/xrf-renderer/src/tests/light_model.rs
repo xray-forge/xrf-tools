@@ -16,7 +16,7 @@ use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
 use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::lighting::srgb::{authored_colour, authored_light, srgb_decoded, srgb_encoded};
+use crate::lighting::srgb::{anchored_light, authored_colour, authored_light, srgb_decoded, srgb_encoded};
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
@@ -94,8 +94,8 @@ fn physical_light_holds_a_linear_scene_while_lit_and_solid() {
   assert!(!wireframe.is_light_physical());
 }
 
-// The camera tells the shaders the light's level: nought under the engine's light, one at the authored levels, two at
-// the physical, whose lamps alone fall off by the inverse square (`are_levels_physical`).
+// The camera tells the shaders the light's level: nought under the engine's light, one at the authored and anchored
+// levels, two at the physical, whose lamps alone fall off by the inverse square (`are_levels_physical`).
 #[test]
 fn the_camera_tells_the_shaders_the_lights_level() {
   let view: CameraView = CameraView::new(Vec3::ZERO, Mat4::IDENTITY, 60.0, 1.0, 0.5, 100.0);
@@ -108,6 +108,7 @@ fn the_camera_tells_the_shaders_the_lights_level() {
 
   assert_eq!(level(None), 0.0);
   assert_eq!(level(Some(RenderLightLevel::Authored)), 1.0);
+  assert_eq!(level(Some(RenderLightLevel::Anchored)), 1.0);
   assert_eq!(level(Some(RenderLightLevel::Physical)), 2.0);
 }
 
@@ -407,7 +408,7 @@ fn the_authored_levels_light_the_shade_in_the_authored_hemispheres_colour() {
   harmonics.coefficients[5].w = authored_zenith.y;
   harmonics.coefficients[6].w = authored_zenith.z;
 
-  let levelled: [Vec4; 9] = harmonics.at_level(RenderLightLevel::Authored, 1.0);
+  let levelled: [Vec4; 9] = harmonics.at_level(RenderLightLevel::Authored, (1.0, Vec3::ZERO));
 
   assert!(
     (zenith_of(&levelled) - authored_zenith).length() < 1e-5,
@@ -416,13 +417,50 @@ fn the_authored_levels_light_the_shade_in_the_authored_hemispheres_colour() {
   );
   assert!((levelled[1].truncate() / levelled[0].truncate() - Vec3::new(0.4, 0.4, 0.5)).length() < 1e-5);
   assert_eq!(
-    harmonics.at_level(RenderLightLevel::Physical, 1.0)[0],
+    harmonics.at_level(RenderLightLevel::Physical, (1.0, Vec3::ZERO))[0],
     harmonics.coefficients[0]
   );
 
   harmonics.coefficients[0] = Vec4::new(1.0, 0.5, 0.0, 1.0);
 
-  assert!(harmonics.at_level(RenderLightLevel::Authored, 1.0)[1].z.is_finite());
+  assert!(
+    harmonics.at_level(RenderLightLevel::Authored, (1.0, Vec3::ZERO))[1]
+      .z
+      .is_finite()
+  );
+}
+
+// At the anchored levels each light is decoded over the lights under it: open shade shows the decoded hemisphere and
+// ambient, full sun the decoded sum of all three, as the engine's display shows them, and the lights add linearly
+// between, so half the sky's visibility gives half the hemisphere's anchored light where the summed decode gives less.
+#[test]
+fn the_anchored_levels_add_the_lights_the_engines_display_shows_at_their_anchors() {
+  let (sun, hemisphere, ambient): (Vec3, Vec3, Vec3) =
+    (Vec3::new(1.0, 0.93, 0.85), Vec3::splat(0.4), Vec3::splat(0.07));
+  let decoded = |light: Vec3| light.powf(2.2);
+  let fill: Vec3 = anchored_light(ambient, Vec3::ZERO);
+  let sky: Vec3 = anchored_light(hemisphere, ambient);
+  let sunlit: Vec3 = anchored_light(sun, hemisphere + ambient);
+
+  assert!((fill + sky - decoded(hemisphere + ambient)).length() < 1e-5);
+  assert!((fill + sky + sunlit - decoded(sun + hemisphere + ambient)).length() < 1e-5);
+  assert!(fill.x + sky.x * 0.5 > decoded(hemisphere * 0.5 + ambient).x * 1.5);
+  assert_eq!(anchored_light(Vec3::ZERO, ambient), Vec3::ZERO);
+
+  // The harmonics bring a level surface facing up to the hemisphere's anchored light.
+  let mut harmonics: SkyHarmonics = SkyHarmonics::default();
+
+  harmonics.coefficients[0] = Vec4::new(1.0, 0.8, 0.6, 1.0);
+  harmonics.coefficients[1] = Vec4::new(0.4, 0.3, 0.2, 0.5);
+  harmonics.coefficients[2].w = 0.5;
+  harmonics.coefficients[3].w = 0.5;
+  harmonics.coefficients[4].w = hemisphere.x;
+  harmonics.coefficients[5].w = hemisphere.y;
+  harmonics.coefficients[6].w = hemisphere.z;
+
+  let levelled: [Vec4; 9] = harmonics.at_level(RenderLightLevel::Anchored, (1.0, ambient));
+
+  assert!((zenith_of(&levelled) - sky).length() < 1e-5, "{}", zenith_of(&levelled));
 }
 
 // The physical light lights the hemisphere by the sky's irradiance as the sky feature read it back, keeping whether the

@@ -8,7 +8,7 @@ use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::lighting::srgb::authored_light;
+use crate::lighting::srgb::{anchored_light, authored_light};
 use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::lighting_frame::LightingFrame;
@@ -26,6 +26,7 @@ pub struct LightingUniform {
   pub sun: Vec4,
   /// The ambient light, at the pre-exposure.
   pub ambient: Vec4,
+  /// `env_color` by the lights' gain, then one where the hemisphere is the engine's own square, at the anchored levels.
   pub environment: Vec4,
   /// The irradiance's stand-in, then one once both cubes are up.
   pub sky_irradiance: Vec4,
@@ -118,36 +119,52 @@ impl LightingUniform {
     let light_scale: f32 = frame.light_units.weather * frame.pre_exposure.current;
     let gain: f32 = frame.light_units.light_gain;
     let light = |colour: Vec3| authored_light(colour, is_physical) * gain * light_scale;
-    let is_authored_physical: bool = is_physical && options.features.light_level == RenderLightLevel::Authored;
+    let level: Option<RenderLightLevel> = options.get_physical_light_level();
+    let is_authored_physical: bool = level == Some(RenderLightLevel::Authored);
+    let is_anchored: bool = level == Some(RenderLightLevel::Anchored);
+    let scales = &options.features.light_scales;
+    let ambient: Vec3 = lighting.get_ambient(scales);
+    let environment: Vec3 = lighting.get_environment(scales);
 
     // The sun as the world lights it at the physical levels, a white surface facing it showing its illuminance over π;
-    // else the weather's, its specular weighed as the engine weighs it, which the authored levels' `hmodel` adds to the
-    // diffuse in display values as the engine's does (`hmodel_terms`).
+    // at the anchored levels anchored over the hemisphere a level surface facing up takes and the ambient, its specular
+    // following it; else the weather's, its specular weighed as the engine weighs it, which the authored levels'
+    // `hmodel` adds to the diffuse in display values as the engine's does (`hmodel_terms`).
     let sun: Vec4 = match frame.daylight {
       Some(daylight) => {
         let sun: Vec3 = daylight.sun / std::f32::consts::PI;
 
         (sun * frame.pre_exposure.current).extend(to_light_specular(sun, true) * frame.pre_exposure.current)
       }
-      None => light(lighting.get_sun_color(&options.features.light_scales))
-        .extend(lighting.get_sun_specular(&options.features.light_scales) * gain * light_scale),
+      None if is_anchored => {
+        // The hemisphere's zenith as the irradiance pass last looked it up, the weather's stand-in cube's before.
+        let zenith: Vec3 = frame
+          .sky_harmonics
+          .get_authored_zenith()
+          .unwrap_or_else(|| (environment * lighting.sky_irradiance).powf(2.0));
+        let sun: Vec3 = anchored_light(lighting.get_sun_color(scales), zenith + ambient);
+
+        (sun * light_scale).extend(to_light_specular(sun, true) * light_scale)
+      }
+      None => light(lighting.get_sun_color(scales)).extend(lighting.get_sun_specular(scales) * gain * light_scale),
     };
 
     Self {
       to_sun: to_sun.extend(0.0),
       sun,
       // The flat ambient the game lifts its nights by, kept but at the physical levels, which have the world's dark.
-      ambient: if is_physical && options.features.light_level == RenderLightLevel::Physical {
-        Vec4::ZERO
-      } else {
-        light(lighting.get_ambient(&options.features.light_scales)).extend(0.0)
+      ambient: match level {
+        Some(RenderLightLevel::Physical) => Vec4::ZERO,
+        Some(RenderLightLevel::Anchored) => (anchored_light(ambient, Vec3::ZERO) * light_scale).extend(0.0),
+        Some(RenderLightLevel::Authored) | None => light(ambient).extend(0.0),
       },
-      // The hemisphere's colour by the weather's lights' gain, which `srgb_light` keeps as it scales.
-      environment: (lighting.get_environment(&options.features.light_scales) * gain).extend(0.0),
+      // The hemisphere's colour by the weather's lights' gain, which `srgb_light` keeps as it scales; then one where
+      // the hemisphere is the engine's own square, which the anchored levels' harmonics anchor.
+      environment: (environment * gain).extend(flag(is_anchored)),
       sky_irradiance: lighting.sky_irradiance.extend(flag(frame.is_irradiance_up)),
       sky_harmonics: frame
         .sky_harmonics
-        .at_level(options.features.light_level, options.features.light_scales.hemi),
+        .at_level(options.features.light_level, (scales.hemi, ambient)),
       fog_color: fog.map_or(Vec3::ZERO, |fog| fog.color).extend(flag(fog.is_some())),
       fog: Vec4::new(
         offset,

@@ -208,21 +208,21 @@ describe("RenderSettingsService", () => {
     expect(mockInjectedService(RenderSettingsService).service.rendererChoice.preset).toBe(ERenderPreset.BASE);
   });
 
-  // The physical light levels are parked: outside dev mode a kept choice of them is drawn at the authored levels, and
-  // kept for when dev mode returns.
-  it("draws the parked physical light levels as the authored ones outside dev mode", () => {
+  // The light levels past the authored are parked: outside dev mode a kept choice of them is drawn at the authored
+  // levels, and kept for when dev mode returns.
+  it("draws the parked dev light levels as the authored ones outside dev mode", () => {
     const { container, service } = mockInjectedService(RenderSettingsService);
     const settingsService: SettingsService = container.get(SettingsService);
 
     settingsService.setDevModeEnabled(true);
     service.setRendererOverrides({ lightLevel: ERenderLightLevel.PHYSICAL });
 
-    expect(service.isPhysicalLightLevelAvailable).toBe(true);
+    expect(service.isDevLightLevelAvailable).toBe(true);
     expect(service.rendererFeatures.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
 
     settingsService.setDevModeEnabled(false);
 
-    expect(service.isPhysicalLightLevelAvailable).toBe(false);
+    expect(service.isDevLightLevelAvailable).toBe(false);
     expect(service.rendererFeatures.lightLevel).toBe(ERenderLightLevel.AUTHORED);
 
     settingsService.setDevModeEnabled(true);

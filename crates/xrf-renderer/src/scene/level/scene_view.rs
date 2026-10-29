@@ -15,6 +15,7 @@ use crate::contract::render_bloom_mode::RenderBloomMode;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_grass_report::RenderGrassReport;
 use crate::contract::render_level_hit::RenderLevelHit;
+use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_meter_reading::RenderMeterReading;
 use crate::contract::render_overlay::RenderOverlay;
@@ -475,6 +476,8 @@ impl SceneView {
         is_scene_first: frame.is_scene_first,
         is_physical: options.is_light_physical(),
         is_specular_linear: options.is_specular_linear(),
+        anchor: (options.get_physical_light_level() == Some(RenderLightLevel::Anchored))
+          .then(|| lighting.get_ambient(&options.features.light_scales)),
         light_scale: lighting_frame.light_units.local
           * lighting_frame.light_units.light_gain
           * lighting_frame.pre_exposure.current,

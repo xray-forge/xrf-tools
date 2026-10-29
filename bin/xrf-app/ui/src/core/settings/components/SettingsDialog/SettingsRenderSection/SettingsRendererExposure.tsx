@@ -70,7 +70,7 @@ export function SettingsRendererExposure(): ReactElement {
         <ChoiceFormRow
           label={"Light levels"}
           description={explainRenderLightLevel(renderSettingsService.rendererFeatures.lightLevel)}
-          options={getRenderLightLevelOptions(renderSettingsService.isPhysicalLightLevelAvailable)}
+          options={getRenderLightLevelOptions(renderSettingsService.isDevLightLevelAvailable)}
           value={renderSettingsService.rendererFeatures.lightLevel}
           isDisabled={!isPhysical}
           onChange={(lightLevel: RenderLightLevel) => renderSettingsService.setRendererOverrides({ lightLevel })}

@@ -199,7 +199,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
             ? null
             : toDrawnRenderLightLevel(
                 this.viewService.features.lightLevel,
-                this.renderSettingsService.isPhysicalLightLevelAvailable
+                this.renderSettingsService.isDevLightLevelAvailable
               ),
       },
     });

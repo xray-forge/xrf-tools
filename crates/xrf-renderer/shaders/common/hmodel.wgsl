@@ -34,8 +34,12 @@ fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: te
   let irradiance: vec3<f32> = mix(state.sky_irradiance.rgb, cubes, state.sky_irradiance.w);
   let environment: vec3<f32> = state.environment.rgb * irradiance;
 
-  // The engine's square stands in for decoding the product; the physical light decodes it (`physical_hemisphere`).
-  if (is_lighting_physical(state)) {
+  // The engine's square stands in for decoding the product; the physical light decodes it (`physical_hemisphere`). The
+  // anchored levels (`environment.w`) keep the engine's own square, which their irradiance pass reads to anchor the
+  // sky's harmonics by (`SkyHarmonics::at_level`).
+  // todo: Anchor the square where it lights a surface itself (the stand-in before the sky is first projected, the
+  // engine's reflections' environment) as the harmonics anchor it, rather than leaving it the engine's.
+  if (is_lighting_physical(state) && state.environment.w < 0.5) {
     return physical_hemisphere(state.environment.rgb, irradiance, state.summed_light.x) * light_scale(state);
   }
 

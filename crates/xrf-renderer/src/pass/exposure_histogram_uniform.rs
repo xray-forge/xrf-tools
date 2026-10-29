@@ -31,7 +31,7 @@ pub struct ExposureHistogramUniform {
   pub most_scale_log: f32,
   /// One where the scale goes straight to its target, as on the first frame metered.
   pub snap: f32,
-  /// One where the scale is the engine's own (the authored levels): the frame read as the engine's meter reads its high
+  /// One where the scale is the engine's own (the authored and anchored levels): the frame read as the engine's meter reads its high
   /// part, the sky with the land, as the authored levels show the game as the engine model does; an open frame's
   /// bright sky darkening its ground as the engine's does, which the land's histogram alone left half a stop bright.
   pub is_engine_metered: f32,
@@ -110,16 +110,16 @@ impl ExposureHistogramUniform {
   }
 
   /// The scale the light's `level` holds where its exposure does not adapt, raised by `compensation`: at the authored
-  /// levels the engine's, one; at the physical levels a daylit exterior's.
+  /// and anchored levels the engine's, one; at the physical levels a daylit exterior's.
   pub fn get_held_scale(level: RenderLightLevel, compensation: f32) -> f32 {
     match level {
-      RenderLightLevel::Authored => Self::get_engine_scale(1.0, compensation),
+      RenderLightLevel::Authored | RenderLightLevel::Anchored => Self::get_engine_scale(1.0, compensation),
       RenderLightLevel::Physical => Self::get_daylight_scale(compensation),
     }
   }
 
   /// The metering for a frame `delta` seconds after the last at the light's `level`, straight to its target where
-  /// `is_snapped`; at the authored levels the engine's adaptation, moving `engine_blend` of the way.
+  /// `is_snapped`; at the authored and anchored levels the engine's adaptation, moving `engine_blend` of the way.
   pub fn new(
     settings: &RenderExposureSettings,
     level: RenderLightLevel,
@@ -136,7 +136,7 @@ impl ExposureHistogramUniform {
       reference_log: Self::DAYLIT_LOG,
       kept_share: Self::KEPT_SHARE,
       darkest_log: match level {
-        RenderLightLevel::Authored => Self::LEAST_LOG,
+        RenderLightLevel::Authored | RenderLightLevel::Anchored => Self::LEAST_LOG,
         RenderLightLevel::Physical => aim - Self::PHYSICAL_DARKEST_STOPS,
       },
       delta,
@@ -147,7 +147,7 @@ impl ExposureHistogramUniform {
       least_scale_log: Self::LEAST_SCALE_LOG,
       most_scale_log: Self::MOST_SCALE_LOG,
       snap: f32::from(u8::from(is_snapped)),
-      is_engine_metered: f32::from(u8::from(level == RenderLightLevel::Authored)),
+      is_engine_metered: f32::from(u8::from(level != RenderLightLevel::Physical)),
       engine_target: engine.target_gray,
       engine_weight: engine.weight,
       engine_floor: engine.floor_luminance,

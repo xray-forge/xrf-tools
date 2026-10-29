@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use glam::Vec3;
 use xrf_engine_target::XrayEngine;
 
 use crate::camera::camera_view::CameraView;
@@ -30,6 +31,9 @@ pub struct LightsFrame<'a> {
   pub is_physical: bool,
   /// Whether the lights' specular weight follows their light (`RenderViewOptions::is_specular_linear`).
   pub is_specular_linear: bool,
+  /// The weather's ambient in the engine's units, which each light is anchored over at the anchored levels
+  /// (`anchored_light`); none elsewhere.
+  pub anchor: Option<Vec3>,
   /// The scale a local light in the engine's units is written at: its unit (`LightUnits::local`) by the lights' gain
   /// (`LightUnits::light_gain`) at the pre-exposure.
   pub light_scale: f32,
