@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_asset_preview::RenderAssetPreview;
 use crate::contract::render_debug_view::RenderDebugView;
+use crate::contract::render_light_falloff::RenderLightFalloff;
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_light_model::RenderLightModel;
 use crate::contract::render_show_flags::RenderShowFlags;
@@ -48,6 +49,18 @@ impl RenderViewOptions {
       self.get_physical_light_level(),
       Some(RenderLightLevel::Anchored | RenderLightLevel::Physical)
     )
+  }
+
+  /// Whether the view's lamps fall off by the windowed inverse square (`light_share` in `common/local_lights`), whose
+  /// intensity follows the square of a light's range: at the physical levels always, at the anchored as their falloff
+  /// setting asks (`RenderLightFalloff`); the authored levels keep the engine's falloff, whose pool about a bulb their
+  /// summed decode makes.
+  pub fn is_falloff_inverse_square(&self) -> bool {
+    match self.get_physical_light_level() {
+      Some(RenderLightLevel::Physical) => true,
+      Some(RenderLightLevel::Anchored) => self.features.lights.falloff == RenderLightFalloff::Physical,
+      Some(RenderLightLevel::Authored) | None => false,
+    }
   }
 
   /// The level the view's light stands at where it is physical (`is_light_physical`); none under the engine's light.

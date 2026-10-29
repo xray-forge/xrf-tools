@@ -167,6 +167,7 @@ impl LevelLights {
       is_physical,
       is_specular_linear,
       anchor,
+      is_falloff_inverse_square,
       light_scale,
       time,
     } = frame;
@@ -252,12 +253,21 @@ impl LevelLights {
         } else {
           to_light_specular(authored, false)
         };
-        let range: f32 = Self::to_frame_range(light, || into.next_random()) * it.share * FALLOFF_RANGE;
+        let jittered: f32 = Self::to_frame_range(light, || into.next_random());
+        let range: f32 = jittered * it.share * FALLOFF_RANGE;
+        // Under the inverse square a light's intensity follows its range squared: its strength is held to its own
+        // range, so an idle light's jitter strays only the window's edge, as under the engine's falloff, rather than
+        // flash the whole pool each frame by the square of its stray.
+        let held: f32 = if is_falloff_inverse_square {
+          Self::to_jitter_hold(light.range, jittered)
+        } else {
+          1.0
+        };
         let mut record: LightRecord = Self::to_record(
           &self.projectors,
           light,
           (&it.basis, it.bound),
-          (color, specular),
+          (color * held, specular * held),
           range,
           camera.view,
         );
@@ -525,6 +535,16 @@ impl LevelLights {
     match light.animator.and_then(|animator| animators.get(animator as usize)) {
       Some(animator) => to_animated_color(animator, seconds) * light.animator_scale,
       None => Vec3::from(light.color),
+    }
+  }
+
+  /// What a light's colour is multiplied by under the inverse square to give at its `jittered` range what it gives at
+  /// its own `range`: their squares' ratio, one for a light that does not stray.
+  pub(crate) fn to_jitter_hold(range: f32, jittered: f32) -> f32 {
+    if jittered > 0.0 && range > 0.0 {
+      (range / jittered).powi(2)
+    } else {
+      1.0
     }
   }
 

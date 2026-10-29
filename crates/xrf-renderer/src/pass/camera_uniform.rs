@@ -3,7 +3,6 @@ use xrf_renderer_core::ShaderStruct;
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_debug_view::RenderDebugView;
-use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_parallax_settings::RenderParallaxSettings;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_surface_color::RenderSurfaceColor;
@@ -205,14 +204,16 @@ impl CameraUniform {
     self
   }
 
-  /// The same camera lighting in linear light at a level, its authored colours decoded, or as the engine does (none):
-  /// the anchored and physical levels' lamps fall off by the windowed inverse square, the authored levels' by the
-  /// engine's falloff, whose pool about a bulb their summed decode makes and additive light flattens.
-  pub fn with_physical_light(mut self, level: Option<RenderLightLevel>) -> Self {
-    self.output.w = match level {
-      None => 0.0,
-      Some(RenderLightLevel::Authored) => 1.0,
-      Some(RenderLightLevel::Anchored | RenderLightLevel::Physical) => 2.0,
+  /// The same camera lighting as the view's options ask: as the engine does (nought), or in linear light, its authored
+  /// colours decoded, its lamps falling off by the engine's falloff (one) or the windowed inverse square
+  /// (`RenderViewOptions::is_falloff_inverse_square`, two).
+  pub fn with_physical_light(mut self, options: &RenderViewOptions) -> Self {
+    self.output.w = if !options.is_light_physical() {
+      0.0
+    } else if options.is_falloff_inverse_square() {
+      2.0
+    } else {
+      1.0
     };
     self
   }

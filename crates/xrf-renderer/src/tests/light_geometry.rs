@@ -8,6 +8,28 @@ use xrf_visual::{LightAnimatorDescription, LightAnimatorKey, LightDescription, L
 use crate::lighting::light_animation::{to_animated_color, to_interpolated_color};
 use crate::lighting::light_basis::LightBasis;
 use crate::lighting::light_shadow_size::to_light_shadow_tile_size;
+use crate::scene::level::level_lights::LevelLights;
+
+// Under the inverse square a light gives a point `r²/d²` of its colour, so an idle light whose range strays each frame
+// would flash its whole pool; held by the ratio of its own range's square to the stray's, it gives every point inside
+// what its own range gives, at every stray, and a light that does not stray is left alone.
+#[test]
+fn an_idle_lights_jitter_leaves_its_inverse_square_strength_alone() {
+  let range: f32 = 4.0;
+  let distance: f32 = 1.5;
+  let given =
+    |jittered: f32| LevelLights::to_jitter_hold(range, jittered) * jittered * jittered / (distance * distance);
+
+  for jittered in [3.0_f32, 4.0, 5.0] {
+    assert!(
+      (given(jittered) - range * range / (distance * distance)).abs() < 1e-5,
+      "{jittered}"
+    );
+  }
+
+  assert_eq!(LevelLights::to_jitter_hold(range, range), 1.0);
+  assert_eq!(LevelLights::to_jitter_hold(range, 0.0), 1.0);
+}
 
 fn point() -> LightDescription {
   LightDescription {

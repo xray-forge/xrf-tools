@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
+import { ERenderLightFalloff, ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelLightsAction } from "@/core/level/components/preview/toolbar/lighting/LevelLightsAction";
 import {
@@ -47,6 +48,21 @@ describe("LevelLightsAction", () => {
     expect(await findByRole("dialog", { name: "Lamps" })).toHaveTextContent(
       "Lamps are off in Settings, under Rendering"
     );
+  });
+
+  it("lets the lamps fall off by the game's curve on asking, physically by default", async () => {
+    const { getByRole, findByRole, view } = renderLevelView(<LevelLightsAction />, mockLevelViewContainer());
+
+    await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Lamps" }) });
+    await findByRole("dialog", { name: "Lamps" });
+
+    const falloff: HTMLElement = getByRole("group", { name: "Falloff" });
+
+    expect(within(falloff).getByRole("button", { name: "Physical" })).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(within(falloff).getByRole("button", { name: "Engine" }));
+
+    expect(view.features.lights).toEqual({ falloff: ERenderLightFalloff.ENGINE });
   });
 
   it("sets the view's volumetric light beside the lamps' shafts it replaces", async () => {

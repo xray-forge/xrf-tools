@@ -1,4 +1,4 @@
-import { RenderLightShadowFilter } from "@xrf/ipc/types/xrf-renderer";
+import { RenderLightFalloff, RenderLightShadowFilter } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
@@ -11,6 +11,10 @@ import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-lev
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
+import {
+  explainRenderLightFalloff,
+  RENDER_LIGHT_FALLOFF_OPTIONS,
+} from "@/core/render/lib/features/render-light-falloff-choices";
 import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features/render-shadow-choices";
 import { TRenderLightsSettings } from "@/core/render/lib/settings/render-feature-settings";
 
@@ -62,6 +66,15 @@ export function LevelLightsAction({
         value={lights.shadowFilter}
         onChange={(shadowFilter: RenderLightShadowFilter) => set({ shadowFilter })}
       />
+
+      <RenderValueChoice
+        label={"Falloff"}
+        options={RENDER_LIGHT_FALLOFF_OPTIONS}
+        value={lights.falloff}
+        onChange={(falloff: RenderLightFalloff) => set({ falloff })}
+      />
+
+      <p className={"text-xs text-text-secondary"}>{explainRenderLightFalloff(lights.falloff)}</p>
 
       <CheckboxFormRow
         label={"Lamp shafts"}

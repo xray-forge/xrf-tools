@@ -43,15 +43,26 @@ use crate::scene::static_scene::static_surface_builder::StaticSurfaceBuilder;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
 use crate::shader::shader_library::ShaderLibrary;
 
-/// The physical levels' lamps' intensity gives what the engine's falloff gave a third of the way to their reach, where
-/// their window has already taken `(1 - (1/3)⁴)²`.
+/// The inverse square's lamps give as much light within their reach as the engine's falloff does: the two integrated
+/// over the ball of the reach, `x` its share, `(1 - x²)` against `share · (1 - x⁴)² / x²`, each by the shell's `x²`.
 #[test]
-fn the_physical_lamps_meet_the_engine_a_third_of_the_way_out() {
+fn the_inverse_square_lamps_give_the_engines_light_within_their_reach() {
   let library: ShaderLibrary = ShaderLibrary::default();
-  let window: f32 = (1.0 - (1.0_f32 / 9.0).powi(2)).powi(2);
-  let share: f32 = get_float_constant(&library, "common/local_lights", "LIGHT_THIRD_SHARE");
+  let share: f32 = get_float_constant(&library, "common/local_lights", "LIGHT_ENERGY_SHARE");
+  let steps: u32 = 4096;
+  let (mut engine, mut inverse_square): (f32, f32) = (0.0, 0.0);
 
-  assert!((share * 9.0 * window - 8.0 / 9.0).abs() < 1e-5);
+  for step in 0..steps {
+    let x: f32 = (step as f32 + 0.5) / steps as f32;
+
+    engine += (1.0 - x * x) * x * x;
+    inverse_square += share * (1.0 - x.powi(4)).powi(2);
+  }
+
+  assert!(
+    (inverse_square / engine - 1.0).abs() < 1e-3,
+    "{inverse_square} against {engine}"
+  );
 }
 
 /// The cull tells a batch's class and layout by its index as Rust lays batches out, a layout's classes in `StaticClass`

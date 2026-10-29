@@ -468,7 +468,7 @@ impl RenderThread {
         .with_wireframe(options.mode.is_wireframe)
         .with_surface_color(options.mode.surface_color)
         .with_linear_scene(options.is_scene_linear())
-        .with_physical_light(options.get_physical_light_level())
+        .with_physical_light(options)
         .with_light_view(options.mode.debug_view)
         .with_texture_bias(view_state.get_texture_bias())
         .with_motion(motion)

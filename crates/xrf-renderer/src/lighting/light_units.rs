@@ -33,8 +33,8 @@ impl LightUnits {
     local: 1.0,
     light_gain: 1.0,
   };
-  /// The local lights' share of the unit at the physical levels: an engine lamp's 70 000 to 270 000 cd, from its range
-  /// (`LIGHT_THIRD_SHARE`), brought to a real lamp's 70 to 270.
+  /// The local lights' share of the unit at the physical levels: an engine lamp's 130 000 to 500 000 cd, from its range
+  /// (`LIGHT_ENERGY_SHARE`), brought to a real lamp's 130 to 500.
   pub const PHYSICAL_LOCAL: f32 = 1e-3;
   /// The least gain the weather's key light gives: the sRGB encoding's slope at black, under which a darkening key
   /// would take the night's fill with it.
