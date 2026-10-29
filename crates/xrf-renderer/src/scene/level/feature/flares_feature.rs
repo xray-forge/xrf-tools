@@ -194,6 +194,7 @@ impl FlaresFeature {
       flares,
       state: StorageValue::new(state),
       flare_sampler: pass.get_sampler(),
+      lighting: lit.lighting,
     };
     let draws: Vec<(u32, FlareTextureParameters)> = self
       .textures

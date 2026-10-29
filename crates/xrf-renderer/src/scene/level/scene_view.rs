@@ -1514,10 +1514,12 @@ impl SceneView {
         ),
       ),
     );
-    self
-      .features
-      .thunder
-      .add_passes((&mut *graph, &mut *bindings, runtime), passes, view, handles);
+    self.features.thunder.add_passes(
+      (&mut *graph, &mut *bindings, runtime),
+      passes,
+      view,
+      (handles, lit.lighting),
+    );
 
     ResolveFeature::add_transparency_guide(&mut *graph, handles, (&mut ray_guides, before_water));
 

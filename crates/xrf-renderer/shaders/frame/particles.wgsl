@@ -3,6 +3,7 @@ enable wgpu_binding_array;
 #import "common/camera"
 #import "common/scene_light"
 #import "common/lighting"
+#import "common/display_transform"
 #import "common/quad"
 
 // The particle sprites `CParticleEffect::Render` draws forward over the finished scene: each quad's corners as the
@@ -83,12 +84,13 @@ fn fogged(alpha: f32, view_position: vec3<f32>) -> f32 {
   return alpha;
 }
 
-// A sprite's colour over the scene, taken into the light the scene holds.
+// A sprite's colour over the scene, taken into the light the scene holds: a picture painted for the engine's display,
+// so it enters as the frame's display shows it as the engine's curve does (`picture_for_display`), as the sky does.
 @fragment
 fn fs_particle(in: ParticleVarying) -> @location(0) vec4<f32> {
   let drawn: vec4<f32> = particle_texel(in);
 
-  return vec4<f32>(scene_from_shown(drawn.rgb), drawn.a);
+  return vec4<f32>(scene_from_shown(picture_for_display(drawn.rgb, lighting.display)), drawn.a);
 }
 
 // A multiplied sprite's texel, a factor the scene is multiplied by rather than a colour, so left as it is.

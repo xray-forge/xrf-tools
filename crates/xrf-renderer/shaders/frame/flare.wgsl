@@ -1,5 +1,6 @@
 #import "common/camera"
 #import "common/scene_light"
+#import "common/display_transform"
 #import "common/flares"
 #import "common/quad"
 
@@ -93,9 +94,11 @@ fn vs_flare(@builtin(vertex_index) vertex_index: u32, @builtin(instance_index) i
   return quad(vertex_index, center + axis * flare.x, along * extent, side * extent, vec4<f32>(light * lit, lit));
 }
 
+// A flare's texel over the scene: a picture painted for the engine's display, so it enters as the frame's display shows
+// it as the engine's curve does (`picture_for_display`), as the sky does.
 @fragment
 fn fs_flare(in: FlareVarying) -> @location(0) vec4<f32> {
   let drawn: vec4<f32> = textureSample(flare_texture, flare_sampler, in.uv) * in.color;
 
-  return vec4<f32>(scene_from_shown(drawn.rgb), drawn.a);
+  return vec4<f32>(scene_from_shown(picture_for_display(drawn.rgb, lighting.display)), drawn.a);
 }
