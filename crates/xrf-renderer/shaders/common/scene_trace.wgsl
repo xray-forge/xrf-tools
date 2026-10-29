@@ -291,8 +291,19 @@ fn scene_detail(surface: Surface, triangle: SceneTriangle, uv: vec2<f32>, width:
   return vec3<f32>(1.0);
 }
 
+// A light's terms at a traced point, as the frame's own surfaces take them: the material table's (`light_terms`), but
+// at the anchored levels Lambert's cosine for the diffuse, as the sun and lights passes light the frame there
+// (`fs_sun_split`, `fs_lights_split`), so a bank the water mirrors is lit by the curve the bank itself is. A hit has no
+// gloss, so the specular is the table's and weighs nothing.
+fn hit_light_terms(state: Lighting, lut: texture_3d<f32>, lut_sampler: sampler, to_light: vec3<f32>, normal: vec3<f32>,
+  view_ray: vec3<f32>, slice: f32) -> vec4<f32> {
+  let terms: vec4<f32> = light_terms(lut, lut_sampler, to_light, normal, view_ray, slice);
+
+  return select(terms, vec4<f32>(saturate(dot(normal, to_light)), terms.yzw), is_light_anchored(state));
+}
+
 // A traced hit lit as combine lights the G-buffer, unfogged: `hmodel` over its base and its baked hemisphere, the sun
-// as `plight_infinity` lights it where a ray to the sun is not blocked, and the view's lamps. `toward` is the ray's
+// by `hit_light_terms` where a ray to the sun is not blocked, and the view's lamps. `toward` is the ray's
 // direction in renderer space and `cone` its cone; `state` the frame's lighting, `lut` the material table and the
 // cubes the hemisphere's environment. The ray to the sun reads the holes it passes as coarsely as the hit was read.
 fn shade_scene_hit(
@@ -315,7 +326,7 @@ fn shade_scene_hit(
   let facing: vec3<f32> = select(select(met.normal, -met.normal, dot(met.normal, toward) > 0.0), met.crown, is_crown);
   let lifted: vec3<f32> = met.position + facing * SCENE_SUN_BIAS;
   let to_sun: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(state.to_sun.xyz, 0.0)).xyz);
-  let lit: vec4<f32> = light_terms(lut, lut_sampler, to_sun, facing, toward, met.slice);
+  let lit: vec4<f32> = hit_light_terms(state, lut, lut_sampler, to_sun, facing, toward, met.slice);
   // A tree's own leaves do not shade it: its sun ray starts among them, and the frame lights foliage through its
   // leaves.
   let own: u32 = select(SCENE_NO_PLACE, hit.place, (trace_records[hit.record].flags & TRACE_RECORD_TREE) != 0u);
@@ -328,7 +339,7 @@ fn shade_scene_hit(
       scene_sun_lit(met.position, facing, to_sun, SceneCone(width, 0.0), own);
   }
 
-  let lamps: vec4<f32> = scene_lamps(lifted, facing, toward, met.slice, lut, lut_sampler);
+  let lamps: vec4<f32> = scene_lamps(state, lifted, facing, toward, met.slice, lut, lut_sampler);
   let occlusion: f32 = mix(1.0, select(met.hemi, clamp(met.hemi, 0.3, 1.0), is_crown), camera.switches.z);
   let visible: f32 = scene_occlusion(lifted, facing, width, own);
 
@@ -397,7 +408,7 @@ fn shade_scene_grass(
   let facing: vec3<f32> = normalize(across + up);
   let point: vec3<f32> = origin + toward * grass.entry;
   let to_sun: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(state.to_sun.xyz, 0.0)).xyz);
-  let lit: vec4<f32> = light_terms(lut, lut_sampler, to_sun, facing, toward, GRASS_MATERIAL_SLICE);
+  let lit: vec4<f32> = hit_light_terms(state, lut, lut_sampler, to_sun, facing, toward, GRASS_MATERIAL_SLICE);
   let through: vec3<f32> = select(vec3<f32>(0.0), flora_through(state, -toward, to_sun, facing), state.flora.x > 0.5);
   var sun: vec4<f32> = vec4<f32>(0.0);
 
@@ -414,9 +425,11 @@ fn shade_scene_grass(
 
 // What the view's local lights give a point a ray met, its `normal` facing the ray, as the lights pass gives a pixel
 // (`frame/lights.wgsl`): each light's falloff, a spot's cone and projector, a shadowed light's map; diffuse in colour,
-// specular in alpha, the material table `lut` read for its surface's `slice`. The point stands off the view's
-// clusters, so every light of the view's list is tried by its reach; a light culled from the view lights no hit.
+// specular in alpha, the material table `lut` read for its surface's `slice` (`hit_light_terms` under the lighting
+// `state`). The point stands off the view's clusters, so every light of the view's list is tried by its reach; a light
+// culled from the view lights no hit.
 fn scene_lamps(
+  state: Lighting,
   position: vec3<f32>,
   normal: vec3<f32>,
   toward: vec3<f32>,
@@ -451,7 +464,7 @@ fn scene_lamps(
     }
 
     let to_light: vec3<f32> = normalize(-to_point);
-    let material: vec4<f32> = light_terms(lut, lut_sampler, to_light, view_normal, -to_eye, slice);
+    let material: vec4<f32> = hit_light_terms(state, lut, lut_sampler, to_light, view_normal, -to_eye, slice);
     var light: vec4<f32> = vec4<f32>(material.xxx, material.y) *
       light_share(record, to_point, is_falloff_inverse_square(), 0.0);
 

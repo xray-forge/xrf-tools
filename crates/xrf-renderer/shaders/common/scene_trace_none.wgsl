@@ -55,6 +55,7 @@ fn shade_scene_hit(
 }
 
 fn scene_lamps(
+  state: Lighting,
   position: vec3<f32>,
   normal: vec3<f32>,
   toward: vec3<f32>,
