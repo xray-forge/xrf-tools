@@ -76,13 +76,13 @@ fn light_falloff(record: LightRecord, to_point: vec3<f32>) -> f32 {
   return saturate(1.0 - dot(to_point, to_point) * record.position.w);
 }
 
-// The physical levels' intensity, as a share of a light's colour at the square of its reach: what makes its falloff
+// The inverse square's intensity, as a share of a light's colour at the square of its reach: what makes its falloff
 // give the engine's a third of the way out, `(8 / 9) / (9 * (1 - 1 / 81)²)`.
 const LIGHT_THIRD_SHARE: f32 = 0.10125;
 
 // The share of a light's colour that reaches a point within its reach. The engine's falloff, `1 - d²/r²`, which the
-// game's lamps are placed and tuned by; at the physical levels (`is_inverse_square`) the inverse square from the
-// light's bulb (`shadow.w`, its radius squared), windowed to zero at the reach (Karis, "Real Shading in
+// game's lamps are placed and tuned by; at the anchored and physical levels (`is_inverse_square`) the inverse square
+// from the light's bulb (`shadow.w`, its radius squared), windowed to zero at the reach (Karis, "Real Shading in
 // Unreal Engine 4", SIGGRAPH 2013, the bulb in place of his one), at the intensity that gives what the engine's falloff
 // gave a third of the way out. A light taken at one point for a volume `spread` metres about it (a froxel's cell) stops
 // growing within that too, as within its bulb, rather than give the whole cell what its centre would take.

@@ -206,12 +206,13 @@ impl CameraUniform {
   }
 
   /// The same camera lighting in linear light at a level, its authored colours decoded, or as the engine does (none):
-  /// the anchored levels' lamps fall off as the authored levels' do.
+  /// the anchored and physical levels' lamps fall off by the windowed inverse square, the authored levels' by the
+  /// engine's falloff, whose pool about a bulb their summed decode makes and additive light flattens.
   pub fn with_physical_light(mut self, level: Option<RenderLightLevel>) -> Self {
     self.output.w = match level {
       None => 0.0,
-      Some(RenderLightLevel::Authored | RenderLightLevel::Anchored) => 1.0,
-      Some(RenderLightLevel::Physical) => 2.0,
+      Some(RenderLightLevel::Authored) => 1.0,
+      Some(RenderLightLevel::Anchored | RenderLightLevel::Physical) => 2.0,
     };
     self
   }
