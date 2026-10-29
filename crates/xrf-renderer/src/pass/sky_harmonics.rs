@@ -8,7 +8,7 @@ use crate::lighting::srgb::anchored_light;
 /// The sky's irradiance as order-2 spherical harmonics, as `shaders/frame/sky_irradiance.wgsl` writes it: nine
 /// coefficients, each in a vector's colour, of the irradiance over π in the engine's light units, already convolved by
 /// the cosine; the first's `w` one once the sky was projected, nothing before; the second to fourth's `w` the authored
-/// hemisphere's first coefficient (`hemisphere_environment`: the engine's own square of the hemisphere colour and the
+/// hemisphere's first coefficient (`authored_hemisphere`: the engine's own square of the hemisphere colour and the
 /// cubes, its hue decoded per channel, the look's hemisphere scale in it), its level; the fifth to seventh's `w` what
 /// that hemisphere gives a level surface facing up, its lookup there.
 #[repr(C)]
@@ -37,7 +37,7 @@ impl SkyHarmonics {
   }
 
   /// What the authored hemisphere gives a level surface facing up, in the engine's units, as the irradiance pass looked
-  /// it up (`hemisphere_environment`); none before the sky was projected.
+  /// it up (`authored_hemisphere`); none before the sky was projected.
   pub fn get_authored_zenith(&self) -> Option<Vec3> {
     self.is_projected().then(|| self.get_authored_terms().1)
   }

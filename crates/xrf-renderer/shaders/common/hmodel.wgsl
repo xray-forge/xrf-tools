@@ -21,9 +21,10 @@ fn physical_hemisphere(colour: vec3<f32>, irradiance: vec3<f32>, gain: f32) -> v
   return select(srgb_light(colour) * srgb_decoded(irradiance), srgb_light(engine * engine) * gain, gain > 0.0);
 }
 
-// `env_color * lerp(env_s0, env_s1, w)` along a world direction, squared as `hmodel` squares it: the lighting's
-// stand-in until both cubes are up. The cubes take the engine's coordinate, whose `z` is the renderer's negated.
-fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: texture_cube<f32>, cube_sampler: sampler,
+// `env_color * lerp(env_s0, env_s1, w)` along a world direction, squared as `hmodel` squares it: the authored
+// hemisphere the sky's harmonics are levelled to (`SkyHarmonics::at_level`). The cubes take the engine's coordinate,
+// whose `z` is the renderer's negated.
+fn authored_hemisphere(state: Lighting, cube_0: texture_cube<f32>, cube_1: texture_cube<f32>, cube_sampler: sampler,
   direction: vec3<f32>) -> vec3<f32> {
   let lookup: vec3<f32> = cube_lookup(direction);
   let cubes: vec3<f32> = mix(
@@ -36,14 +37,30 @@ fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: te
 
   // The engine's square stands in for decoding the product; the physical light decodes it (`physical_hemisphere`). The
   // anchored levels (`environment.w`) keep the engine's own square, which their irradiance pass reads to anchor the
-  // sky's harmonics by (`SkyHarmonics::at_level`).
-  // todo: Anchor the square where it lights a surface itself (the stand-in before the sky is first projected, the
-  // engine's reflections' environment) as the harmonics anchor it, rather than leaving it the engine's.
+  // sky's harmonics by.
   if (is_lighting_physical(state) && !is_light_anchored(state)) {
     return physical_hemisphere(state.environment.rgb, irradiance, state.summed_light.x) * light_scale(state);
   }
 
   return environment * environment * light_scale(state);
+}
+
+// The hemisphere a surface is lit by or reflects from the weather's cubes, the lighting's stand-in until the sky is
+// first projected and the engine's reflections' environment: the authored hemisphere, at the anchored levels anchored
+// over the ambient as the harmonics, the sun and the lamps are (`anchored_light`); left the engine's square, it lit and
+// reflected at the engine's display values as linear light.
+fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: texture_cube<f32>, cube_sampler: sampler,
+  direction: vec3<f32>) -> vec3<f32> {
+  let authored: vec3<f32> = authored_hemisphere(state, cube_0, cube_1, cube_sampler, direction);
+
+  if (!is_light_anchored(state)) {
+    return authored;
+  }
+
+  // The ambient is held anchored over nothing, its display value its encode.
+  let scale: f32 = max(light_scale(state), 1e-12);
+
+  return anchored_light(authored / scale, srgb_encoded(state.ambient.rgb / scale)) * scale;
 }
 
 // The material's terms for a light towards `to_light` at a normal, seen along `view_ray`, all three in one space, as
