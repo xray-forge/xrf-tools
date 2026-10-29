@@ -15,7 +15,7 @@
 
 // The G-buffer and its light, the material table, the lighting and exposure, the ambient occlusion (visibility, then
 // distance along the view, at half the frame's size), the sky behind the fog (at half the frame's size), the indirect
-// light (colour, then distance along the view, at half the frame's size) and the
+// light (colour, then distance along the view, gathered at half the frame's size or traced at its size) and the
 // reflections (what each surface reflects, then one, at the size they are traced at).
 #import "generated/frame/combine"
 

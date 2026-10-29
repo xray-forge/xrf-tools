@@ -13,8 +13,8 @@ use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::lighting_handles::LightingHandles;
 
 /// The indirect light traced in the screen-space bounce's place, where DLSS ray reconstruction denoises the frame and
-/// the bitmask search gathers light: one ray a point at half the frame's size, lit where it meets something as the
-/// reflections light a hit, written as the bounce's filter writes its light.
+/// the bitmask search gathers light: one ray a pixel at the frame's size, as ray reconstruction takes its noise, lit
+/// where it meets something as the reflections light a hit, written as the bounce's filter writes its light.
 #[derive(Default)]
 pub struct IndirectTraceFeature {
   /// Whether it traces this frame, the scene's trace allowing.
@@ -46,7 +46,7 @@ impl IndirectTraceFeature {
     traced: Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>,
   ) -> Option<(GraphTexture, GraphTexture)> {
     let (trace, textures) = traced.filter(|_| self.is_asked)?;
-    let (width, height) = (targets.size.0.div_ceil(2), targets.size.1.div_ceil(2));
+    let (width, height) = targets.size;
     let light: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
       "indirect traced",
       width,

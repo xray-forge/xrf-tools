@@ -22,7 +22,8 @@ pub struct RayGuidesParameters {
   /// What each traced pixel met, at the size the reflections are traced at; a texel of nothing where none is.
   #[texture(d2, unfilterable)]
   pub traced: GraphTexture,
-  /// How far each traced indirect light ray went at half size, none where it met nothing or none was traced.
+  /// How far each traced indirect light ray went, at the size it was traced at, none where it met nothing or none was
+  /// traced.
   #[texture(d2, unfilterable)]
   pub diffuse_hits: GraphTexture,
 }

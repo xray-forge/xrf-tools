@@ -9,14 +9,15 @@
 #import "common/math"
 #import "common/luminance"
 
-// The indirect light traced at half the frame's size, in the screen-space bounce's place where DLSS ray reconstruction
-// denoises the frame: from each point under a pixel one ray, cosine-weighted about its bumped normal and turned each
-// frame, traced against the level's static geometry, its swayed trees and its cut-outs (taken whole, as its wide cone
-// is), the grass passed through; what it meets lit as the reflections light a hit (the sun, the lamps, its baked
-// hemisphere, which stands for the bounces past it), the light it carries back. A ray meeting nothing carries none: the
-// sky is the hemisphere's. Written as the bounce's filter writes it, the light by the intensity and the distance along
-// the view, for combine and the debug view to bring up to the frame alike; and how far the ray went, none where it met
-// nothing, which ray reconstruction's guides take as its diffuse hit distance.
+// The indirect light traced at the frame's size, in the screen-space bounce's place where DLSS ray reconstruction
+// denoises the frame: from each pixel's point one ray, cosine-weighted about its bumped normal and turned each frame,
+// traced against the level's static geometry, its swayed trees and its cut-outs (taken whole, as its wide cone is), the
+// grass passed through; what it meets lit as the reflections light a hit (the sun, the lamps, its baked hemisphere,
+// which stands for the bounces past it), the light it carries back. A ray meeting nothing carries none: the sky is the
+// hemisphere's. Every pixel its own ray, as ray reconstruction takes its noise: traced at half size and brought up, one
+// bright ray spread over a block of pixels, which it kept as a dot. Written as the bounce's filter writes it, the light
+// by the intensity and the distance along the view, for combine and the debug view to read alike; and how far the ray
+// went, none where it met nothing, which ray reconstruction's guides take as its diffuse hit distance.
 
 // Metres a ray starts off its surface, and how much more each metre away, so it leaves the surface it starts on.
 const LIFT: f32 = 0.05;
@@ -34,8 +35,7 @@ struct IndirectTargets {
 @fragment
 fn fs_indirect_trace(in: FullscreenVarying) -> IndirectTargets {
   let pixel: vec2<f32> = floor(in.clip.xy);
-  // The frame's texel under the pixel.
-  let texel: vec2<i32> = min(vec2<i32>(pixel) * 2, vec2<i32>(textureDimensions(depth_target)) - 1);
+  let texel: vec2<i32> = vec2<i32>(pixel);
   let depth: f32 = textureLoad(depth_target, texel, 0);
 
   if (depth <= 0.0) {
