@@ -18,8 +18,9 @@ fn is_light_physical() -> bool {
   return camera.output.w > 0.5;
 }
 
-// Whether the physical light stands at the real world's levels (`RenderLightLevel::Physical`) rather than the game's.
-fn are_levels_physical() -> bool {
+// Whether the lamps fall off by the windowed inverse square (`light_share`): at the anchored and physical levels, where
+// light adds as it does in the world, rather than the authored levels' engine falloff.
+fn is_falloff_inverse_square() -> bool {
   return camera.output.w > 1.5;
 }
 

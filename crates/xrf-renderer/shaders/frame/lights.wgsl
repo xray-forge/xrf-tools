@@ -106,7 +106,7 @@ fn light_lights(in: FullscreenVarying, is_split: bool) -> LightsSplitTargets {
       select(normalize(pixel.normal + to_light), to_light, is_unshadowed_omni), is_flora);
     let flora_gloss: f32 = select(1.0, select(0.5, 0.3, is_unshadowed_omni), is_flora);
     // What of the light reaches the pixel: its falloff, a spot's projector and its shadow.
-    let share: f32 = light_share(record, light.to_point, are_levels_physical(), 0.0);
+    let share: f32 = light_share(record, light.to_point, is_falloff_inverse_square(), 0.0);
     var projected: vec4<f32> = vec4<f32>(1.0);
     var visible: f32 = 1.0;
 
@@ -127,8 +127,10 @@ fn light_lights(in: FullscreenVarying, is_split: bool) -> LightsSplitTargets {
     }
 
     if (is_split) {
+      let sphere: SphereLight = sphere_light(-light.to_point, sqrt(record.shadow.w), reflect(-to_eye, lit_normal),
+        surface.roughness);
       let direct: DirectLight =
-        direct_light(lit_normal, to_eye, to_light, surface.roughness, surface.head_on, surface.white);
+        direct_light(lit_normal, to_eye, to_light, sphere, surface.roughness, surface.head_on, surface.white);
       let reach: vec3<f32> = record.color.rgb * share * projected.rgb * visible;
 
       total += vec4<f32>(reach * direct.diffuse, 0.0);

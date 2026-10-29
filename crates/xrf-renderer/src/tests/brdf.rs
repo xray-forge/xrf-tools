@@ -13,7 +13,8 @@ use crate::tests::gpu_probe::run_gpu_probe;
 /// reflectance head on `first.z` and white albedo `first.w`.
 const DIRECT: &str = "let to_eye: vec3<f32> = vec3<f32>(sqrt(1.0 - first.x * first.x), 0.0, first.x);
   let light: DirectLight =
-    direct_light(vec3<f32>(0.0, 0.0, 1.0), to_eye, second.xyz, first.y, vec3<f32>(first.z), first.w);";
+    direct_light(vec3<f32>(0.0, 0.0, 1.0), to_eye, second.xyz, SphereLight(second.xyz, 1.0), first.y,
+      vec3<f32>(first.z), first.w);";
 
 /// GGX's distribution, Smith's height-correlated visibility and Schlick's Fresnel for a grey reflectance head on, with
 /// the multiple scattering's gift over the lobe's white albedo, as Walter et al., Heitz and Fdez-Agüera write them.
@@ -140,6 +141,84 @@ fn a_white_surface_reflects_a_uniform_sky_whole() {
       .all(|answer| (answer.x - 1.0).abs() < 0.03 && (answer.y - 1.0).abs() < 1e-3),
     "a white metal's lobe, then Lambert's, against one:\n{}",
     reflected.join("\n")
+  );
+}
+
+// A sphere light taken from its nearest point gives about what its disc gives as the many point lights it is, each
+// direction of its cone a share of its colour: the glint widened and held to the energy the sphere sends, at the
+// reflection's peak and off it. Karis's approximation keeps a rough lobe within a quarter under the disc, and gives a
+// smooth lobe whose reflection falls just past the rim up to two thirds over, the nearest point's lobe at its peak.
+#[test]
+fn a_sphere_light_glints_as_its_disc_does() {
+  let mut cases: Vec<(Vec4, Vec4)> = Vec::new();
+
+  for roughness in [0.2_f32, 0.35, 0.55] {
+    for angular_radius in [0.05_f32, 0.15] {
+      for offset in [0.0_f32, 0.1] {
+        cases.push((
+          Vec4::new(0.6, roughness, 0.04, white(0.6, roughness)),
+          Vec4::new(angular_radius, offset, 0.0, 0.0),
+        ));
+      }
+    }
+  }
+
+  // The view about +z at the cosine `first.x`; the sphere a metre away about its reflection, turned `second.y` from it,
+  // its cone `second.x` wide, sampled in cells even in solid angle.
+  let body: &str = "let to_eye: vec3<f32> = vec3<f32>(sqrt(1.0 - first.x * first.x), 0.0, first.x);
+  let normal: vec3<f32> = vec3<f32>(0.0, 0.0, 1.0);
+  let reflected: vec3<f32> = reflect(-to_eye, normal);
+  let turned: f32 = acos(first.x) + second.y;
+  let centre: vec3<f32> = vec3<f32>(-sin(turned), 0.0, cos(turned));
+  let across: vec3<f32> = vec3<f32>(0.0, 1.0, 0.0);
+  let along: vec3<f32> = cross(across, centre);
+  let edge: f32 = cos(second.x);
+  let steps: vec2<u32> = vec2<u32>(256u, 256u);
+  var disc: f32 = 0.0;
+
+  for (var i: u32 = 0u; i < steps.x; i++) {
+    let cosine: f32 = mix(edge, 1.0, (f32(i) + 0.5) / f32(steps.x));
+    let sine: f32 = sqrt(1.0 - cosine * cosine);
+
+    for (var j: u32 = 0u; j < steps.y; j++) {
+      let azimuth: f32 = 2.0 * PI * (f32(j) + 0.5) / f32(steps.y);
+      let to_light: vec3<f32> = centre * cosine + (along * cos(azimuth) + across * sin(azimuth)) * sine;
+
+      disc += direct_light(normal, to_eye, to_light, SphereLight(to_light, 1.0), first.y, vec3<f32>(first.z),
+        first.w).specular.x;
+    }
+  }
+
+  let sphere: SphereLight = sphere_light(centre, sin(second.x), reflected, first.y);
+  let taken: f32 =
+    direct_light(normal, to_eye, centre, sphere, first.y, vec3<f32>(first.z), first.w).specular.x;
+
+  answer = vec3<f32>(disc / f32(steps.x * steps.y), taken, 0.0);";
+  let Some(answers) = run_gpu_probe("common/brdf", body, &cases) else {
+    return;
+  };
+  let compared: Vec<String> = answers
+    .iter()
+    .zip(&cases)
+    .map(|(answer, (first, second))| {
+      format!(
+        "roughness {} radius {} offset {}: disc {:.4} sphere {:.4} ({:.2})",
+        first.y,
+        second.x,
+        second.y,
+        answer.x,
+        answer.y,
+        answer.y / answer.x
+      )
+    })
+    .collect();
+
+  assert!(
+    answers
+      .iter()
+      .all(|answer| (0.75..1.7).contains(&(answer.y / answer.x))),
+    "the sphere's nearest point against its disc:\n{}",
+    compared.join("\n")
   );
 }
 

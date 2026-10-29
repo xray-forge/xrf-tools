@@ -94,8 +94,8 @@ fn physical_light_holds_a_linear_scene_while_lit_and_solid() {
   assert!(!wireframe.is_light_physical());
 }
 
-// The camera tells the shaders the light's level: nought under the engine's light, one at the authored and anchored
-// levels, two at the physical, whose lamps alone fall off by the inverse square (`are_levels_physical`).
+// The camera tells the shaders the light's level: nought under the engine's light, one at the authored levels, two at
+// the anchored and physical, whose lamps fall off by the windowed inverse square (`is_falloff_inverse_square`).
 #[test]
 fn the_camera_tells_the_shaders_the_lights_level() {
   let view: CameraView = CameraView::new(Vec3::ZERO, Mat4::IDENTITY, 60.0, 1.0, 0.5, 100.0);
@@ -108,7 +108,7 @@ fn the_camera_tells_the_shaders_the_lights_level() {
 
   assert_eq!(level(None), 0.0);
   assert_eq!(level(Some(RenderLightLevel::Authored)), 1.0);
-  assert_eq!(level(Some(RenderLightLevel::Anchored)), 1.0);
+  assert_eq!(level(Some(RenderLightLevel::Anchored)), 2.0);
   assert_eq!(level(Some(RenderLightLevel::Physical)), 2.0);
 }
 
