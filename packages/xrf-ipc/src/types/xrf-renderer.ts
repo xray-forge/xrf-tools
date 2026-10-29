@@ -684,6 +684,26 @@ export type RenderExposureSettings = {
 };
 
 /**
+ * What colour the fog takes at the anchored light levels: the weather's own, the sky's as drawn along each view (as
+ * HDRP's fog in Sky Color mode and Godot's aerial perspective take theirs under an authored sky), or half of each.
+ * The authored levels and the engine's light keep the weather's.
+ */
+export enum ERenderFogColour {
+  /** The weather's fog colour, as the game draws it. */
+  WEATHER = "weather",
+  /**
+   * Half the weather's colour and half the sky's along the view: the weather's tint kept, the distance taking the
+   * sky's direction.
+   */
+  BLEND = "blend",
+  /** The sky's colour along the view: the land fades into the sky with no seam, the weather's fog colour left out. */
+  SKY = "sky",
+}
+
+/** Every `ERenderFogColour` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderFogColour = `${ERenderFogColour}`;
+
+/**
  * What fog closes the level in: the weather's distance fog alone, or that fog thickened low down and scattering the
  * frame's light.
  */
@@ -716,6 +736,8 @@ export type RenderFogSettings = {
    * by the fog's square from the first, as the engine does, which shows the sky through the middle distance.
    */
   skyFade: number | null;
+  /** What colour the fog takes at the anchored light levels. */
+  colour: RenderFogColour;
 };
 
 /** How trees and grass move in the wind. */

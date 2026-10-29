@@ -1,16 +1,18 @@
 import { useInjection } from "@wirestate/react";
-import { ERenderFogMode, RenderFogMode } from "@xrf/ipc/types/xrf-renderer";
+import { ERenderFogMode, RenderFogColour, RenderFogMode } from "@xrf/ipc/types/xrf-renderer";
 import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { SliderFormRow } from "@xrf/ui/form/slider-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
 import {
+  explainRenderFogColour,
   explainRenderFogMode,
   formatFogDensity,
   formatFogHeight,
   formatFogShare,
   formatFogSkyFade,
+  RENDER_FOG_COLOUR_OPTIONS,
   RENDER_FOG_LIMITS,
   RENDER_FOG_MODE_OPTIONS,
 } from "@/core/render/lib/features/render-fog-choices";
@@ -89,6 +91,14 @@ export function SettingsRendererFog(): ReactElement {
           isDisabled={isEngine}
           format={formatFogSkyFade}
           onChange={(skyFade: number) => onSet({ skyFade })}
+        />
+
+        <ChoiceFormRow
+          label={"Colour"}
+          description={explainRenderFogColour(fog.colour)}
+          options={RENDER_FOG_COLOUR_OPTIONS}
+          value={fog.colour}
+          onChange={(colour: RenderFogColour) => onSet({ colour })}
         />
       </div>
     </DetailSection>

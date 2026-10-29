@@ -126,6 +126,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     "common/sky_clouds",
     include_str!("../../shaders/common/sky_clouds.wgsl"),
   ),
+  (
+    "common/fog_colour",
+    include_str!("../../shaders/common/fog_colour.wgsl"),
+  ),
   ("common/wet", include_str!("../../shaders/common/wet.wgsl")),
   (
     "common/visibility_bitmask",

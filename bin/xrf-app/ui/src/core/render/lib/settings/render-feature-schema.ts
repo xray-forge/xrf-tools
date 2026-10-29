@@ -6,6 +6,7 @@ import {
   ERenderDebandingMode,
   ERenderDisplayTransform,
   ERenderDlssPreset,
+  ERenderFogColour,
   ERenderFogMode,
   ERenderFoliageMode,
   ERenderGlassMode,
@@ -118,6 +119,8 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   },
   // The enhanced fog's own menu bounds.
   fog: {
+    // The renderer's own: the fog's colour at the anchored light levels, the weather's, the sky's or half of each.
+    colour: toChoice(ERenderFogColour),
     density: toNumber(0, 5),
     height: toNumber(1, 20),
     mode: toChoice(ERenderFogMode),

@@ -224,21 +224,6 @@ fn sun_shown(state: Lighting) -> vec3<f32> {
   return sun;
 }
 
-// The fog's colour as light at the light's scale: the weather's display value, decoded where the light is physical.
-fn fog_colour_light(state: Lighting) -> vec3<f32> {
-  if (is_lighting_physical(state)) {
-    return srgb_decoded(state.fog_color.rgb) * light_scale(state);
-  }
-
-  return state.fog_color.rgb * light_scale(state);
-}
-
-// The fog's colour as the frame shows it: a picture, at the pictures' share of the exposure. The passes mixing it into
-// a shown colour take `fog_color` as it stands.
-fn fog_light(state: Lighting) -> vec3<f32> {
-  return fog_colour_light(state) * picture_share(state);
-}
-
 // Light fogged towards the fog's light by `amount`: blended as the engine blends it, in display values, so its tuned
 // amounts veil as they did; under the physical light both are encoded for the blend, the light's scale taken off first
 // and given back after, and the result decoded back.
@@ -250,17 +235,4 @@ fn fog_mixed(state: Lighting, light: vec3<f32>, fog: vec3<f32>, amount: f32) -> 
   let scale: f32 = light_scale(state);
 
   return srgb_decoded(mix(srgb_encoded(light / scale), srgb_encoded(fog / scale), amount)) * scale;
-}
-
-// The colour the fog takes towards a view space point at a world height: the weather's, taking the sun's colour where
-// the enhanced fog's height fog lies and the view faces the sun. Mixed as the engine mixes it, in display values: under
-// the physical light both are encoded for the mix and the result decoded back, as `fog_mixed` blends, else a sun lit at
-// its full linear strength would outweigh the fog's colour several times over and veil the frame in it.
-fn fog_color_at(state: Lighting, position: vec3<f32>, height: f32) -> vec3<f32> {
-  let facing: f32 = saturate(dot(state.to_sun.xyz, normalize(position)));
-  let share: f32 = facing * height_fog_share(state, height) * state.height_fog.z;
-  let fog: vec3<f32> = fog_colour_light(state);
-
-  // The turn is the fog's picture too, shown at the pictures' share as the rest of it.
-  return fog_mixed(state, fog, state.sun.rgb, share) * picture_share(state);
 }

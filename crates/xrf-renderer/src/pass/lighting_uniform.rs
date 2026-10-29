@@ -36,10 +36,11 @@ pub struct LightingUniform {
   /// What the sky's light the reflections read is multiplied by, per channel: at the anchored levels the scale its
   /// harmonics take to the anchored hemisphere (`SkyHarmonics::get_level_scale`), so a rough reflection of the sky and
   /// the diffuse light the sky gives agree where both join as linear light; one elsewhere, and while the sky is too
-  /// dark to have a shape.
+  /// dark to have a shape. Then the share of the fog's colour the sky along the view gives (`RenderFogColour`) at the
+  /// anchored levels while the harmonics hold the sky's shape; nought elsewhere, the fog the weather's colour.
   pub sky_reflected: Vec4,
-  /// The fog's colour as the weather authors it (a display value: the light passes take it as `fog_light`), then one
-  /// where it fogs.
+  /// The fog's colour as the weather authors it (a display value: the passes take it along their view through
+  /// `common/fog_colour`), then one where it fogs.
   pub fog_color: Vec4,
   /// `fog_params.x` and `.w`, then one where far geometry fades into the sky's haze above the fold, then one where the
   /// sky is drawn.
@@ -171,13 +172,15 @@ impl LightingUniform {
         .sky_harmonics
         .at_level(options.features.light_level, (scales.hemi, ambient)),
       sky_reflected: match level {
-        Some(RenderLightLevel::Anchored) => frame
+        Some(RenderLightLevel::Anchored) => match frame
           .sky_harmonics
           .get_level_scale(RenderLightLevel::Anchored, (scales.hemi, ambient))
-          .unwrap_or(Vec3::ONE),
-        Some(RenderLightLevel::Authored | RenderLightLevel::Physical) | None => Vec3::ONE,
-      }
-      .extend(0.0),
+        {
+          Some(scale) => scale.extend(options.features.fog.colour.get_sky_share()),
+          None => Vec4::new(1.0, 1.0, 1.0, 0.0),
+        },
+        Some(RenderLightLevel::Authored | RenderLightLevel::Physical) | None => Vec4::new(1.0, 1.0, 1.0, 0.0),
+      },
       fog_color: fog.map_or(Vec3::ZERO, |fog| fog.color).extend(flag(fog.is_some())),
       fog: Vec4::new(
         offset,

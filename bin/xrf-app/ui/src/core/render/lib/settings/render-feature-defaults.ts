@@ -4,6 +4,7 @@ import {
   ERenderContactShadowMode,
   ERenderDebandingMode,
   ERenderDlssPreset,
+  ERenderFogColour,
   ERenderFogMode,
   ERenderFoliageMode,
   ERenderGlassMode,
@@ -92,8 +93,12 @@ export const DEFAULT_RENDER_EXPOSURE_SETTINGS: TRenderExposureSettings = {
   middleGray: 1,
 };
 
-/** The engine's own fog, with the enhanced fog's strengths but no scattering for when it is drawn. */
+/**
+ * The engine's own fog, with the enhanced fog's strengths but no scattering for when it is drawn, and at the anchored
+ * light levels half the weather's colour and half the sky's.
+ */
 export const DEFAULT_RENDER_FOG_SETTINGS: TRenderFogSettings = {
+  colour: ERenderFogColour.BLEND,
   density: 0.4,
   height: 8,
   skyFade: 0.75,

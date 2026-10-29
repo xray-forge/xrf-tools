@@ -5,6 +5,7 @@
 #import "common/octahedral"
 #import "common/fullscreen"
 #import "common/lighting"
+#import "common/fog_colour"
 #import "common/hmodel"
 #import "common/occlusion"
 #import "common/reflection_trace"
@@ -355,7 +356,7 @@ fn remembered_radiance(texel: vec2<i32>, hit: vec3<f32>) -> vec4<f32> {
 
   let scale: f32 = previous_scale(lighting, exposure);
   let shown: vec3<f32> = scene_light(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb, scale);
-  return vec4<f32>(source_unfogged(shown, fog, fog_color_at(lighting, hit, world.y)), 1.0);
+  return vec4<f32>(source_unfogged(shown, fog, fog_color_at(lighting, hit, world_direction(hit), world.y)), 1.0);
 }
 
 // What the last frame showed of the sky in a world direction, as light, and in `w` one where it did: the direction
@@ -409,7 +410,8 @@ fn met_radiance(texel: vec2<i32>, hit: vec3<f32>, origin: vec3<f32>) -> vec4<f32
     lit = relit_radiance(texel);
   }
 
-  let fogged: vec3<f32> = fog_mixed(lighting, lit, fog_light(lighting), path_fog(lighting, length(hit - origin)));
+  let fogged: vec3<f32> = fog_mixed(lighting, lit, fog_light(lighting, world_direction(hit - origin)),
+    path_fog(lighting, length(hit - origin)));
 
   return vec4<f32>(fogged * min(1.0, RADIANCE_LIMIT / traced_luminance(fogged)), remembered.w);
 }

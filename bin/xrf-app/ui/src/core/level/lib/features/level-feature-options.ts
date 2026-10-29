@@ -215,7 +215,7 @@ const LEVEL_GROUP_KEYS: {
   },
   debanding: { mode: true, passes: true, radius: true },
   enhancedBloom: { blur: true, exposure: true, mode: true, sky: true, threshold: true, vibrance: true },
-  fog: { density: true, height: true, mode: true, scattering: true, skyFade: true, sunColor: true },
+  fog: { colour: true, density: true, height: true, mode: true, scattering: true, skyFade: true, sunColor: true },
   glass: { mode: true, refraction: true },
   grading: { contrast: true, saturation: true },
   indirectLight: { intensity: true, mode: true, radius: true, steps: true },

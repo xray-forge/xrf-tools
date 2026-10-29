@@ -1,6 +1,7 @@
 #import "common/camera"
 #import "common/compute_grid"
 #import "common/lighting"
+#import "common/fog_colour"
 #import "common/octahedral"
 #import "common/reflection_end"
 #import "common/reflection_trace"
@@ -66,7 +67,8 @@ fn remembered_light(point: vec3<f32>) -> vec4<f32> {
 
   let scale: f32 = previous_scale(lighting, exposure);
   let shown: vec3<f32> = scene_light(textureLoad(screen_scene, vec2<i32>(place.xy), 0).rgb, scale);
-  return vec4<f32>(source_unfogged(shown, fog, fog_color_at(lighting, position, point.y)), 1.0);
+  return vec4<f32>(source_unfogged(shown, fog,
+    fog_color_at(lighting, position, normalize(point - camera.position.xyz), point.y)), 1.0);
 }
 
 // The wait the list's pixels stretch their turns by the next frame: as many times as the rays they asked this frame,
@@ -118,7 +120,7 @@ fn cs_scene(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_workgroup
   }
   let fog: f32 = path_fog(lighting, hit.distance);
   let met: vec3<f32> =
-    fog_mixed(lighting, shown * min(1.0, RADIANCE_LIMIT / traced_luminance(shown)), fog_light(lighting), fog);
+    fog_mixed(lighting, shown * min(1.0, RADIANCE_LIMIT / traced_luminance(shown)), fog_light(lighting, toward), fog);
 
   let answer: vec4<f32> = vec4<f32>(screen.rgb + met * (1.0 - screen.w),
     select(hit.distance, request.screen_length, screen.w > 0.5));
@@ -179,7 +181,8 @@ fn answer_water(request: TraceRequest, toward: vec3<f32>, cone: SceneCone, hit: 
       let shown: vec3<f32> = shade_scene_hit(hit, toward, cone, lighting, material_lut, lut_sampler, sky_environment_0,
         sky_environment_1, sky_clamp);
 
-      behind = shown_from_light(fog_mixed(lighting, shown, fog_light(lighting), path_fog(lighting, hit.distance)), scale);
+      behind = shown_from_light(
+        fog_mixed(lighting, shown, fog_light(lighting, toward), path_fog(lighting, hit.distance)), scale);
     }
   }
 
@@ -189,8 +192,8 @@ fn answer_water(request: TraceRequest, toward: vec3<f32>, cone: SceneCone, hit: 
     let lit: vec3<f32> = shade_scene_grass(grass, request.origin.xyz, toward, lighting, material_lut, lut_sampler,
       sky_environment_0, sky_environment_1, sky_clamp);
 
-    behind = mix(behind, shown_from_light(fog_mixed(lighting, lit, fog_light(lighting), path_fog(lighting, grass.entry)),
-      scale),
+    behind = mix(behind,
+      shown_from_light(fog_mixed(lighting, lit, fog_light(lighting, toward), path_fog(lighting, grass.entry)), scale),
       grass.opacity);
     met_length = select(met_length, grass.entry, !is_met || grass.opacity > 0.5);
   }

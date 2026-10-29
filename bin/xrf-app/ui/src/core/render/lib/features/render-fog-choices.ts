@@ -1,5 +1,5 @@
 import { formatNumber, formatPercent } from "@xrf/format";
-import { ERenderFogMode, RenderFogMode } from "@xrf/ipc/types/xrf-renderer";
+import { ERenderFogColour, ERenderFogMode, RenderFogColour, RenderFogMode } from "@xrf/ipc/types/xrf-renderer";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
@@ -32,6 +32,29 @@ export function explainRenderFogMode(mode: RenderFogMode): string {
 export const RENDER_FOG_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderFogMode>> = [
   { label: "Engine", value: ERenderFogMode.ENGINE },
   { label: "Enhanced", value: ERenderFogMode.ENHANCED },
+];
+
+const RENDER_FOG_COLOUR_DESCRIPTIONS: Readonly<Record<RenderFogColour, string>> = {
+  [ERenderFogColour.WEATHER]: "At the anchored light level the fog takes the weather's colour, as the game draws it.",
+  [ERenderFogColour.BLEND]:
+    "At the anchored light level the fog takes half the weather's colour and half the sky's along each view.",
+  [ERenderFogColour.SKY]:
+    "At the anchored light level the fog takes the sky's colour along each view, so the land fades into the sky.",
+};
+
+/**
+ * @param colour - A fog colour.
+ * @returns What it does, in a sentence.
+ */
+export function explainRenderFogColour(colour: RenderFogColour): string {
+  return RENDER_FOG_COLOUR_DESCRIPTIONS[colour];
+}
+
+/** The fog colours, in the order they are offered. */
+export const RENDER_FOG_COLOUR_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderFogColour>> = [
+  { label: "Weather", value: ERenderFogColour.WEATHER },
+  { label: "Blend", value: ERenderFogColour.BLEND },
+  { label: "Sky", value: ERenderFogColour.SKY },
 ];
 
 /** @returns How far either side of the world's zero the height fog rises over. */

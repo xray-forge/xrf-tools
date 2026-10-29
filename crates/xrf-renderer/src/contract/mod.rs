@@ -34,6 +34,7 @@ pub(crate) mod render_dlss_preset;
 pub(crate) mod render_enhanced_bloom_settings;
 pub(crate) mod render_enhanced_water_settings;
 pub(crate) mod render_exposure_settings;
+pub(crate) mod render_fog_colour;
 pub(crate) mod render_fog_mode;
 pub(crate) mod render_fog_settings;
 pub(crate) mod render_foliage_mode;

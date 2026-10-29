@@ -5,6 +5,7 @@ use crate::lighting::luminance::luminance;
 
 use crate::contract::render_display_transform::RenderDisplayTransform;
 use crate::contract::render_exposure_settings::RenderExposureSettings;
+use crate::contract::render_fog_colour::RenderFogColour;
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_light_model::RenderLightModel;
 use crate::contract::render_light_scales::RenderLightScales;
@@ -521,6 +522,60 @@ fn the_sky_irradiance_stands_at_its_levels() {
 
   assert_eq!(dark[0], Vec4::new(0.6, 0.6, 0.6, 1.0));
   assert_eq!(dark[1].truncate(), Vec3::ZERO);
+}
+
+// The fog's colour setting reaches the shaders as the sky's share of it at the anchored levels alone, and only while the
+// harmonics hold the sky's shape: a sky too dark to have one leaves them the authored hemisphere, which is no sky to
+// colour the fog by.
+#[test]
+fn the_fog_takes_the_skys_colour_only_at_the_anchored_levels() {
+  let mut options: RenderViewOptions = physical();
+  let mut harmonics: SkyHarmonics = SkyHarmonics::default();
+
+  harmonics.coefficients[0] = Vec4::new(0.5, 0.25, 0.125, 1.0);
+  harmonics.coefficients[1] = Vec4::new(0.1, 0.2, 0.3, 0.6);
+  harmonics.coefficients[2].w = 0.6;
+  harmonics.coefficients[3].w = 0.6;
+  harmonics.coefficients[4].w = 0.4;
+  harmonics.coefficients[5].w = 0.4;
+  harmonics.coefficients[6].w = 0.4;
+
+  let share = |options: &RenderViewOptions, harmonics: SkyHarmonics| -> f32 {
+    let frame: LightingFrame = LightingFrame {
+      is_adapting: false,
+      pre_exposure: PreExposure::NONE,
+      metering: ExposureMetering::default(),
+      light_units: LightUnits::NONE,
+      daylight: None,
+      sky_blend: 0.0,
+      is_irradiance_up: false,
+      clouds_time: 0.0,
+      sun_sprite: Vec4::ZERO,
+      sky_harmonics: harmonics,
+    };
+
+    LightingUniform::new(&RenderLighting::default(), Mat4::IDENTITY, options, &frame)
+      .sky_reflected
+      .w
+  };
+
+  options.features.light_level = RenderLightLevel::Anchored;
+
+  for (colour, expected) in [
+    (RenderFogColour::Weather, 0.0),
+    (RenderFogColour::Blend, 0.5),
+    (RenderFogColour::Sky, 1.0),
+  ] {
+    options.features.fog.colour = colour;
+    assert_eq!(share(&options, harmonics), expected, "{colour:?}");
+  }
+
+  options.features.light_level = RenderLightLevel::Authored;
+  assert_eq!(share(&options, harmonics), 0.0);
+
+  options.features.light_level = RenderLightLevel::Anchored;
+  harmonics.coefficients[0] = Vec4::new(0.0, 0.0, 0.0, 1.0);
+  assert_eq!(share(&options, harmonics), 0.0);
 }
 
 // At the physical levels the sky's unit brings the projected sky to the world's sky on a level surface, the sun stands
