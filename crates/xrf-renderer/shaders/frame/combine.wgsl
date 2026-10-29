@@ -240,10 +240,10 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
 
     // The sun on a wet surface's water film, which the engine's specular leaves out with the gloss the wetness added:
     // its disc in the film's lobe, as far as a puddle's coat or the wet reach covers the surface, shadowed as the sun's
-    // pass found it.
+    // pass found it. The anchored levels' sun reflects off the wet gloss itself (below).
     let film: f32 = saturate(wet.r + reach.x);
 
-    if (film > 0.0) {
+    if (film > 0.0 && !is_light_anchored(lighting)) {
       let seen: f32 = textureLoad(sun_seen, texel, 0).x;
 
       shaded += lighting.sun.rgb * sun_glint(normal, -camera_view_ray(position), lighting.to_sun.xyz, roughness, head_on) *
@@ -251,6 +251,12 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     }
   } else {
     shaded += terms.environment * terms.weight;
+  }
+
+  // At the anchored levels the sun and the lamps reflect by the one BRDF, the wet gloss in it, their coloured specular
+  // split into a target of its own beside the diffuse light.
+  if (is_light_anchored(lighting)) {
+    shaded += textureLoad(specular_target, texel, 0).rgb;
   }
 
   // The engine fogs towards `fog_color` before the tonemap, then fades into the sky itself by the fog squared, both

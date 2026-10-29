@@ -3,6 +3,7 @@
 #import "common/reflection_end"
 #import "generated/structs"
 #import "common/math"
+#import "common/brdf"
 
 // Screen-space reflection rays: a reflected direction drawn from a surface's GGX lobe, walked across the screen up and
 // down a pyramid of the frame's nearest depth, skipping whole cells it passes over and stepping down where it meets a
@@ -289,12 +290,6 @@ fn traced_roughness(gloss: f32, variance: f32) -> f32 {
   return sqrt(sqrt(alpha * alpha + max(variance, 0.0)));
 }
 
-// The GGX lobe's alpha for a roughness: its square, as the Disney and Unreal convention has it, so a roughness of
-// 0.02 is a lobe a fiftieth of a degree wide and not a degree, which read as the whole puddle jittering.
-fn lobe_alpha(roughness: f32) -> f32 {
-  return roughness * roughness;
-}
-
 // The share of metal in a texture's material, read back from the material table's slice the G-buffer's `material.z`
 // holds (`(material + 0.5) / 4` kept in 5 bits, as `material_slice` packs it): rising over Phong to Metal, falling over
 // Metal to Oren-Nayar, none in any other.
@@ -315,15 +310,20 @@ fn reflectance_head_on(albedo: vec3<f32>, gloss: f32, coat: f32, slice: f32) -> 
   return mix(mix(vec3<f32>(DIELECTRIC_F0), albedo, metal), vec3<f32>(COAT_F0), saturate(coat));
 }
 
-// What share of the light arriving along a surface's reflection it sends to the eye, at a cosine of the view to its
-// normal: the split-sum environment BRDF, Karis's fit of the DFG term over its reflectance head on and its roughness,
-// which holds the Fresnel's rise at grazing angles and its fall with roughness both.
-fn environment_brdf(head_on: vec3<f32>, roughness: f32, facing: f32) -> vec3<f32> {
-  let r: vec4<f32> = roughness * vec4<f32>(-1.0, -0.0275, -0.572, 0.022) + vec4<f32>(1.0, 0.0425, 1.04, -0.04);
-  let a004: f32 = min(r.x * r.x, exp2(-9.28 * saturate(facing))) * r.x + r.y;
-  let ab: vec2<f32> = vec2<f32>(-1.04, 1.04) * a004 + r.zw;
+// A surface as the one BRDF (`common/brdf`) shades it: its roughness and reflectance head on, decided from its decoded
+// albedo, its gloss and its material (`slice`) as the reflections decide them, and its lobe's directional albedo for
+// white at the cosine of the view to its normal (`facing`), from the split-sum table.
+struct BrdfSurface {
+  roughness: f32,
+  head_on: vec3<f32>,
+  white: f32,
+};
 
-  return head_on * ab.x + ab.y;
+fn brdf_surface(table: texture_2d<f32>, albedo: vec3<f32>, gloss: f32, slice: f32, facing: f32) -> BrdfSurface {
+  let roughness: f32 = reflection_roughness(gloss);
+  let split: vec2<f32> = brdf_table_split(table, roughness, saturate(facing));
+
+  return BrdfSurface(roughness, reflectance_head_on(albedo, gloss, 0.0, slice), split.x + split.y);
 }
 
 // The sun's angular radius, which its glint's lobe is widened by, so a mirror shows the disc rather than a point; and
@@ -345,13 +345,9 @@ fn sun_glint(normal: vec3<f32>, to_eye: vec3<f32>, to_sun: vec3<f32>, roughness:
 
   let half_way: vec3<f32> = normalize(to_sun + to_eye);
   let alpha: f32 = min(lobe_alpha(roughness) + SUN_ANGULAR_RADIUS, 1.0);
-  let alpha_squared: f32 = alpha * alpha;
-  let along: f32 = saturate(dot(normal, half_way));
-  let spread: f32 = along * along * (alpha_squared - 1.0) + 1.0;
-  let lobe: f32 = alpha_squared / (PI * spread * spread);
-  let visibility: f32 = 0.5 / (lit * sqrt(facing * facing * (1.0 - alpha_squared) + alpha_squared) +
-    facing * sqrt(lit * lit * (1.0 - alpha_squared) + alpha_squared));
-  let fresnel: vec3<f32> = head_on + (1.0 - head_on) * pow(1.0 - saturate(dot(to_eye, half_way)), 5.0);
+  let lobe: f32 = ggx_distribution(saturate(dot(normal, half_way)), alpha);
+  let visibility: f32 = smith_visibility(lit, facing, alpha);
+  let fresnel: vec3<f32> = schlick_fresnel(head_on, dot(to_eye, half_way));
 
   return min(vec3<f32>(lobe * visibility * lit), vec3<f32>(SUN_GLINT_MOST)) * fresnel;
 }

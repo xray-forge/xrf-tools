@@ -39,7 +39,7 @@ fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: te
   // sky's harmonics by (`SkyHarmonics::at_level`).
   // todo: Anchor the square where it lights a surface itself (the stand-in before the sky is first projected, the
   // engine's reflections' environment) as the harmonics anchor it, rather than leaving it the engine's.
-  if (is_lighting_physical(state) && state.environment.w < 0.5) {
+  if (is_lighting_physical(state) && !is_light_anchored(state)) {
     return physical_hemisphere(state.environment.rgb, irradiance, state.summed_light.x) * light_scale(state);
   }
 

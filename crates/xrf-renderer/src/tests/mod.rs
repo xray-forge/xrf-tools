@@ -1,6 +1,7 @@
 mod authored_light;
 mod backdrop;
 mod bloom;
+mod brdf;
 mod burst_job;
 mod camera_view;
 mod compute_grid;
@@ -21,6 +22,7 @@ mod frame_task;
 mod fsr;
 mod generated_shaders;
 mod gpu_memory;
+mod gpu_probe;
 mod gpu_selection;
 mod grass;
 mod grass_cards;

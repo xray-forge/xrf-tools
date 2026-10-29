@@ -10,6 +10,7 @@ use crate::host::render_cache_store::RenderCacheStore;
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::backdrop_pass::BackdropPass;
 use crate::pass::bloom_pass::BloomPass;
+use crate::pass::brdf_table::BrdfTable;
 use crate::pass::calibration_pass::CalibrationPass;
 use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
@@ -140,6 +141,7 @@ pub struct GpuState {
   pub backdrop: BackdropPass,
   pub overlay: OverlayPass,
   pub table: MaterialTable,
+  pub brdf_table: BrdfTable,
   /// The grid pass for each target format drawn into.
   grids: HashMap<wgpu::TextureFormat, GridPass>,
   /// The name the driver's pipelines are kept under for this adapter and driver, none where its backend keeps none.
@@ -293,6 +295,7 @@ impl GpuState {
         backdrop: BackdropPass::new(source),
         overlay: OverlayPass::new(source, view),
         table: MaterialTable::new(device, queue),
+        brdf_table: BrdfTable::new(device, queue),
         weather_textures: WeatherTextureCache::new(device, queue, workers),
         windows: HashMap::new(),
         grids: HashMap::new(),
@@ -417,6 +420,7 @@ impl GpuState {
       meter: &self.meter,
       calibration: &self.calibration,
       table: &self.table,
+      brdf_table: &self.brdf_table,
     }
   }
 

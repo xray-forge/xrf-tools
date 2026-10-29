@@ -48,7 +48,9 @@ struct LightsPipelines {
   contact: wgpu::ComputePipeline,
   visibility: [wgpu::ComputePipeline; 2],
   traced: Option<wgpu::ComputePipeline>,
-  draws: [wgpu::RenderPipeline; 2],
+  /// The draw by the engine's light, then split into the anchored levels' diffuse and coloured specular, each without
+  /// contact shadows and with them.
+  draws: [[wgpu::RenderPipeline; 2]; 2],
 }
 
 impl LightsPass {
@@ -275,20 +277,20 @@ impl LightsPass {
   }
 
   /// Adds every light to the light target, with the contact shadows' marched shares where they were marched
-  /// (`is_contact`).
+  /// (`is_contact`); its specular split into the specular target the pass draws into second where `is_split`.
   pub fn record_draw(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
     (parameters, visibility): (&LightsParameters<'_>, &LightVisibilityParameters),
-    (textures, is_contact): (&wgpu::BindGroup, bool),
+    (textures, is_contact, is_split): (&wgpu::BindGroup, bool, bool),
   ) {
     context.bind(parameters);
     context.bind(visibility);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
-    pass.set_pipeline(&self.pipelines.draws[usize::from(is_contact)]);
+    pass.set_pipeline(&self.pipelines.draws[usize::from(is_split)][usize::from(is_contact)]);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(2, textures, &[]);
     pass.draw(0..3, 0..1);
@@ -342,10 +344,19 @@ impl LightsPass {
       dst_factor: wgpu::BlendFactor::One,
       operation: wgpu::BlendOperation::Add,
     };
-    let create_draw = |is_contact: bool| -> XrfResult<wgpu::RenderPipeline> {
+    let added: wgpu::ColorTargetState = wgpu::ColorTargetState {
+      format: ViewTargets::LIGHT,
+      blend: Some(wgpu::BlendState {
+        color: additive,
+        alpha: additive,
+      }),
+      write_mask: wgpu::ColorWrites::ALL,
+    };
+    // The light, then the specular split from it where it is, added as the light is.
+    let create_draw = |is_split: bool, is_contact: bool| -> XrfResult<wgpu::RenderPipeline> {
       source.get_render_pipeline(
         &RenderPipelineDescription::new("lights", ContactMarchPermutation::LIGHTS_MODULE, "vs_fullscreen")
-          .with_fragment("fs_lights")
+          .with_fragment(if is_split { "fs_lights_split" } else { "fs_lights" })
           .with_permutation(&permutation(is_contact))
           .with_bind_group_layouts(&[
             Some(view_layout),
@@ -353,14 +364,7 @@ impl LightsPass {
             Some(texture_layout),
             Some(visibility_layout),
           ])
-          .with_target(wgpu::ColorTargetState {
-            format: ViewTargets::LIGHT,
-            blend: Some(wgpu::BlendState {
-              color: additive,
-              alpha: additive,
-            }),
-            write_mask: wgpu::ColorWrites::ALL,
-          }),
+          .with_targets(vec![Some(added.clone()); 1 + usize::from(is_split)]),
       )
     };
 
@@ -369,7 +373,10 @@ impl LightsPass {
       contact,
       visibility: [create_visibility(false)?, create_visibility(true)?],
       traced,
-      draws: [create_draw(false)?, create_draw(true)?],
+      draws: [
+        [create_draw(false, false)?, create_draw(false, true)?],
+        [create_draw(true, false)?, create_draw(true, true)?],
+      ],
     })
   }
 }

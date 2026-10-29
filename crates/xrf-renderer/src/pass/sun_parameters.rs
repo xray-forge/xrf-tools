@@ -3,12 +3,14 @@ use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::shadow_uniform::ShadowUniform;
 
-/// What the sun's pass reads: the G-buffer's normals, material and depth, the material table, the frame's lighting, the
-/// sun's shadow cascades and what they were drawn with, the contact shadows under them, and what the sun's traced
-/// shadow saw, a lit texel where it is not traced.
+/// What the sun's pass reads: the G-buffer's albedo, normals, material and depth, the material table and the BRDF's
+/// split-sum table, the frame's lighting, the sun's shadow cascades and what they were drawn with, the contact shadows
+/// under them, and what the sun's traced shadow saw, a lit texel where it is not traced.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct SunParameters<'a> {
+  #[texture(d2, unfilterable)]
+  pub albedo_target: GraphTexture,
   #[texture(d2, unfilterable)]
   pub normal_target: GraphTexture,
   #[texture(d2, unfilterable)]
@@ -17,6 +19,8 @@ pub struct SunParameters<'a> {
   pub depth_target: GraphTexture,
   #[texture(d3, float)]
   pub material_lut: GraphTexture,
+  #[texture(d2, unfilterable)]
+  pub brdf_table: GraphTexture,
   #[sampler(filtering)]
   pub lut_sampler: &'a wgpu::Sampler,
   #[uniform]

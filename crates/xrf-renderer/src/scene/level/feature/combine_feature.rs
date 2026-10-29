@@ -78,6 +78,7 @@ impl CombineFeature {
       material_target: handles.material,
       depth_target: handles.depth,
       light_target: handles.light,
+      specular_target: handles.specular.unwrap_or(handles.nothing),
       material_lut: lit.material_lut,
       lut_sampler: lit.lut_sampler,
       lighting: lit.lighting,

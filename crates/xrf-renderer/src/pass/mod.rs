@@ -10,6 +10,7 @@ pub(crate) mod bloom_parameters;
 pub(crate) mod bloom_pass;
 pub(crate) mod bloom_stage;
 pub(crate) mod bloom_uniform;
+pub(crate) mod brdf_table;
 pub(crate) mod calibration_parameters;
 pub(crate) mod calibration_pass;
 pub(crate) mod calibration_uniform;

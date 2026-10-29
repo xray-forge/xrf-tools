@@ -968,6 +968,7 @@ impl SceneView {
       is_occluded: self.features.ambient_occlusion.is_drawn(),
       is_hazed: self.features.sky.is_hazing(),
       is_engine_bloomed: self.features.bloom.is_engine_built(),
+      is_specular_split: self.shared.lighting.is_light_anchored(),
     };
     let handles: ViewTargetHandles =
       ViewTargetHandles::import(&mut *graph, &mut *bindings, (targets, uses, passes.vbao.get_dark()));
@@ -1080,6 +1081,7 @@ impl SceneView {
       lighting: runtime.push_uniform(&self.shared.lighting),
       exposure: bindings.import_buffer(&mut *graph, "exposure", &self.features.exposure.state),
       material_lut: bindings.import_view(&mut *graph, "material table", &passes.table.view),
+      brdf_table: bindings.import_view(&mut *graph, "brdf table", &passes.brdf_table.view),
       lut_sampler: &passes.table.sampler,
       shadow_maps: bindings.import_view(
         &mut *graph,

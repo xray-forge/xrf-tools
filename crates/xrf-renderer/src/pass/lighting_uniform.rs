@@ -33,6 +33,11 @@ pub struct LightingUniform {
   /// The sky's irradiance over π as harmonics, which the physical light lights the hemisphere by (`SkyHarmonics`), times
   /// the hemisphere's light scale: the first's `w` one once the sky was projected.
   pub sky_harmonics: [Vec4; 9],
+  /// What the sky's light the reflections read is multiplied by, per channel: at the anchored levels the scale its
+  /// harmonics take to the anchored hemisphere (`SkyHarmonics::get_level_scale`), so a rough reflection of the sky and
+  /// the diffuse light the sky gives agree where both join as linear light; one elsewhere, and while the sky is too
+  /// dark to have a shape.
+  pub sky_reflected: Vec4,
   /// The fog's colour as the weather authors it (a display value: the light passes take it as `fog_light`), then one
   /// where it fogs.
   pub fog_color: Vec4,
@@ -90,9 +95,10 @@ pub struct LightingUniform {
   /// (`PictureShares`), then one where it is of the pre-exposure.
   pub pictures: Vec4,
   /// The gain the lights took (`LightUnits::light_gain`) where their diffuse sum is decoded once, as the engine's display
-  /// shows it (`authored_diffuse` in `common/hmodel`), then the sun's colour as the weather authors it, a display value
-  /// by the look's sun scale, which the sun's shafts add to the frame's display values (`fs_sun_shafts_over`): at the
-  /// authored levels; nought elsewhere.
+  /// shows it (`authored_diffuse` in `common/hmodel`), at the authored levels, nought elsewhere; then the sun's colour as
+  /// the weather authors it, a display value by the look's sun scale, which the sun's shafts add to the frame's display
+  /// values (`fs_sun_shafts_over`) at the authored levels and the forward passes take as the engine binds it
+  /// (`sun_shown`) at the anchored, where the sun itself is anchored; nought elsewhere.
   pub summed_light: Vec4,
   /// How the present shows the frame (`DisplayMode::get_display`), which the game's pictures enter the scene through
   /// the inverse of (`picture_for_display` in `common/display_transform`).
@@ -120,7 +126,6 @@ impl LightingUniform {
     let gain: f32 = frame.light_units.light_gain;
     let light = |colour: Vec3| authored_light(colour, is_physical) * gain * light_scale;
     let level: Option<RenderLightLevel> = options.get_physical_light_level();
-    let is_authored_physical: bool = level == Some(RenderLightLevel::Authored);
     let is_anchored: bool = level == Some(RenderLightLevel::Anchored);
     let scales = &options.features.light_scales;
     let ambient: Vec3 = lighting.get_ambient(scales);
@@ -165,6 +170,14 @@ impl LightingUniform {
       sky_harmonics: frame
         .sky_harmonics
         .at_level(options.features.light_level, (scales.hemi, ambient)),
+      sky_reflected: match level {
+        Some(RenderLightLevel::Anchored) => frame
+          .sky_harmonics
+          .get_level_scale(RenderLightLevel::Anchored, (scales.hemi, ambient))
+          .unwrap_or(Vec3::ONE),
+        Some(RenderLightLevel::Authored | RenderLightLevel::Physical) | None => Vec3::ONE,
+      }
+      .extend(0.0),
       fog_color: fog.map_or(Vec3::ZERO, |fog| fog.color).extend(flag(fog.is_some())),
       fog: Vec4::new(
         offset,
@@ -257,12 +270,14 @@ impl LightingUniform {
         Vec4::new(limit * (2.0 / 3.0), limit, 0.0, 0.0)
       },
       pictures: PictureShares::of(options, lighting, frame).to_vec4(),
-      summed_light: if is_authored_physical {
-        let sun: Vec3 = lighting.get_sun_color(&options.features.light_scales);
+      summed_light: {
+        let sun: Vec3 = lighting.get_sun_color(scales);
 
-        Vec4::new(frame.light_units.light_gain, sun.x, sun.y, sun.z)
-      } else {
-        Vec4::ZERO
+        match level {
+          Some(RenderLightLevel::Authored) => Vec4::new(gain, sun.x, sun.y, sun.z),
+          Some(RenderLightLevel::Anchored) => Vec4::new(0.0, sun.x, sun.y, sun.z),
+          Some(RenderLightLevel::Physical) | None => Vec4::ZERO,
+        }
       },
       display: DisplayMode::of(options).get_display(&options.features.grading, &frame.metering),
     }
@@ -272,6 +287,12 @@ impl LightingUniform {
   /// `common/lighting` reads it.
   pub fn get_light_scale(&self) -> f32 {
     self.pre_exposure.z * self.pre_exposure.x
+  }
+
+  /// Whether the light stands at the anchored levels, as `is_light_anchored` in `common/lighting` reads it: the sun and
+  /// the lamps shaded by the one BRDF, their specular coloured in a target of its own.
+  pub fn is_light_anchored(&self) -> bool {
+    self.environment.w > 0.5
   }
 
   /// Whether the light is the authored levels' summed light, as `is_light_summed` in `common/lighting` reads it.

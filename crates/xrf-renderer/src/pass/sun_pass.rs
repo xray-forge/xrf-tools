@@ -21,9 +21,10 @@ pub struct SunPass {
   /// A lit texel, which the frame binds where the sun's shadow is not traced.
   untraced: wgpu::TextureView,
   view_layout: wgpu::BindGroupLayout,
-  /// Shadowed by the cascades, then by the traced shadow, for each width the cascades' filter reaches (`MAX_REACH`
-  /// apart), so its loops compile to their count.
-  pipelines: [[wgpu::RenderPipeline; 2]; Self::REACHES],
+  /// Shadowed by the cascades, then by the traced shadow, each by the engine's light and then split into the anchored
+  /// levels' diffuse and coloured specular, for each width the cascades' filter reaches (`MAX_REACH` apart), so its
+  /// loops compile to their count.
+  pipelines: [[wgpu::RenderPipeline; 4]; Self::REACHES],
   generation: u64,
 }
 
@@ -114,19 +115,21 @@ impl SunPass {
   }
 
   /// Lights the G-buffer by the sun into the light target the pass draws into, shadowed by its traced shadow where
-  /// `is_traced`, its cascades filtered `filter_reach` texels each way.
+  /// `is_traced`, its cascades filtered `filter_reach` texels each way; its specular split into the specular target the
+  /// pass draws into third where `is_split`.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
     parameters: &SunParameters<'_>,
-    (is_traced, filter_reach): (bool, u32),
+    (is_traced, is_split, filter_reach): (bool, bool, u32),
   ) {
     context.bind(parameters);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+    let variant: usize = usize::from(is_traced) + 2 * usize::from(is_split);
 
-    pass.set_pipeline(&self.pipelines[(filter_reach as usize).min(Self::REACHES - 1)][usize::from(is_traced)]);
+    pass.set_pipeline(&self.pipelines[(filter_reach as usize).min(Self::REACHES - 1)][variant]);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.draw(0..3, 0..1);
   }
@@ -135,8 +138,14 @@ impl SunPass {
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<[[wgpu::RenderPipeline; 2]; Self::REACHES]> {
-    let create = |entry: &'static str, reach: usize| {
+  ) -> XrfResult<[[wgpu::RenderPipeline; 4]; Self::REACHES]> {
+    // The light and how much of the sun is seen, then the specular where it is split.
+    let targets: [Option<wgpu::ColorTargetState>; 3] = [
+      Some(ViewTargets::LIGHT.into()),
+      Some(Self::SEEN_FORMAT.into()),
+      Some(ViewTargets::LIGHT.into()),
+    ];
+    let create = |entry: &'static str, is_split: bool, reach: usize| {
       let permutation: SunFilterPermutation = SunFilterPermutation {
         sun_filter_reach: reach as i32,
       };
@@ -145,13 +154,18 @@ impl SunPass {
         source,
         (SunFilterPermutation::MODULE, entry, &permutation),
         &[Some(view_layout), Some(layout)],
-        &[Some(ViewTargets::LIGHT.into()), Some(Self::SEEN_FORMAT.into())],
+        &targets[..if is_split { 3 } else { 2 }],
       )
     };
-    let pair = |reach: usize| -> XrfResult<[wgpu::RenderPipeline; 2]> {
-      Ok([create("fs_sun", reach)?, create("fs_sun_traced", reach)?])
+    let variants = |reach: usize| -> XrfResult<[wgpu::RenderPipeline; 4]> {
+      Ok([
+        create("fs_sun", false, reach)?,
+        create("fs_sun_traced", false, reach)?,
+        create("fs_sun_split", true, reach)?,
+        create("fs_sun_split_traced", true, reach)?,
+      ])
     };
 
-    Ok([pair(0)?, pair(1)?, pair(2)?, pair(3)?])
+    Ok([variants(0)?, variants(1)?, variants(2)?, variants(3)?])
   }
 }

@@ -42,6 +42,43 @@ impl SkyHarmonics {
     self.is_projected().then(|| self.get_authored_terms().1)
   }
 
+  /// What the sky's own light is multiplied by, per channel, for its harmonics to stand at the light's `level` as
+  /// `at_level` takes them, the look's hemisphere scale (`hemi`) in it; none where the sky is too dark to have a shape
+  /// and lights evenly at the authored hemisphere's level instead.
+  pub fn get_level_scale(&self, level: RenderLightLevel, (hemi, ambient): (f32, Vec3)) -> Option<Vec3> {
+    let (sky, zenith): (Vec3, Vec3) = (
+      self.coefficients[0].truncate() * hemi,
+      Self::get_zenith(&self.coefficients) * hemi,
+    );
+    let (authored, authored_zenith): (Vec3, Vec3) = self.get_level_terms(level, ambient);
+
+    match level {
+      RenderLightLevel::Physical => Some(Vec3::splat(hemi)),
+      RenderLightLevel::Authored | RenderLightLevel::Anchored
+        if luminance(sky) > luminance(authored) * Self::DARK_SKY_SHARE
+          && luminance(zenith) > luminance(authored_zenith) * Self::DARK_SKY_SHARE =>
+      {
+        Some(hemi * authored_zenith / zenith.max(Vec3::splat(luminance(zenith) * Self::LEAST_CHANNEL_SHARE)))
+      }
+      RenderLightLevel::Authored | RenderLightLevel::Anchored => None,
+    }
+  }
+
+  /// The authored hemisphere's first coefficient and what it gives a level surface facing up at the light's `level`:
+  /// as the irradiance pass looked them up, and at the anchored levels anchored over the weather's `ambient`, each
+  /// channel keeping its zenith's share of its anchored light.
+  fn get_level_terms(&self, level: RenderLightLevel, ambient: Vec3) -> (Vec3, Vec3) {
+    let (authored, authored_zenith): (Vec3, Vec3) = self.get_authored_terms();
+    let kept: Vec3 = match level {
+      RenderLightLevel::Anchored => {
+        anchored_light(authored_zenith, ambient) / authored_zenith.max(Vec3::splat(f32::MIN_POSITIVE))
+      }
+      RenderLightLevel::Authored | RenderLightLevel::Physical => Vec3::ONE,
+    };
+
+    (authored * kept, authored_zenith * kept)
+  }
+
   /// The authored hemisphere's first coefficient and what it gives a level surface facing up, from the `w`s the
   /// irradiance pass wrote them into.
   fn get_authored_terms(&self) -> (Vec3, Vec3) {
@@ -74,34 +111,14 @@ impl SkyHarmonics {
   /// evenly at the authored hemisphere's level. At the anchored levels as at the authored, the hemisphere anchored over
   /// the weather's `ambient` (`anchored_light`), both in the engine's units.
   pub fn at_level(&self, level: RenderLightLevel, (hemi, ambient): (f32, Vec3)) -> [Vec4; 9] {
-    let (sky, zenith): (Vec3, Vec3) = (
-      self.coefficients[0].truncate() * hemi,
-      Self::get_zenith(&self.coefficients) * hemi,
-    );
-    let (authored, authored_zenith): (Vec3, Vec3) = self.get_authored_terms();
-    // Each channel's share of the hemisphere's light it keeps anchored, its zenith's.
-    let kept: Vec3 = match level {
-      RenderLightLevel::Anchored => {
-        anchored_light(authored_zenith, ambient) / authored_zenith.max(Vec3::splat(f32::MIN_POSITIVE))
-      }
-      RenderLightLevel::Authored | RenderLightLevel::Physical => Vec3::ONE,
-    };
-    let (authored, authored_zenith): (Vec3, Vec3) = (authored * kept, authored_zenith * kept);
-    let scale: Vec3 = match level {
-      RenderLightLevel::Physical => Vec3::splat(hemi),
-      RenderLightLevel::Authored | RenderLightLevel::Anchored
-        if luminance(sky) > luminance(authored) * Self::DARK_SKY_SHARE
-          && luminance(zenith) > luminance(authored_zenith) * Self::DARK_SKY_SHARE =>
-      {
-        hemi * authored_zenith / zenith.max(Vec3::splat(luminance(zenith) * Self::LEAST_CHANNEL_SHARE))
-      }
-      RenderLightLevel::Authored | RenderLightLevel::Anchored => {
-        return std::array::from_fn(|term| {
-          let colour: Vec3 = if term == 0 { authored } else { Vec3::ZERO };
+    let Some(scale) = self.get_level_scale(level, (hemi, ambient)) else {
+      let (authored, _) = self.get_level_terms(level, ambient);
 
-          colour.extend(self.coefficients[term].w)
-        });
-      }
+      return std::array::from_fn(|term| {
+        let colour: Vec3 = if term == 0 { authored } else { Vec3::ZERO };
+
+        colour.extend(self.coefficients[term].w)
+      });
     };
 
     self
