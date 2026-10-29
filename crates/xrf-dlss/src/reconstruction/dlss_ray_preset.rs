@@ -4,11 +4,11 @@ pub enum DlssRayPreset {
   /// NVIDIA's pick, which a driver update may change.
   #[default]
   Default,
-  /// The transformer model.
+  /// DLSS 4's transformer model.
   D,
-  /// The latest transformer model.
+  /// A further model of DLSS 4's, which NVIDIA's guides do not describe.
   E,
-  /// NVIDIA's default model, RR2.
+  /// DLSS 4.5's second-generation transformer model.
   F,
 }
 

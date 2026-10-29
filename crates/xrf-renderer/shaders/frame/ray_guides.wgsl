@@ -9,8 +9,8 @@
 // The guides DLSS ray reconstruction reads beside the frame, at the frame's size: each surface's specular albedo, the
 // environment BRDF over its reflectance as combine weighs its reflection; its world normal, its roughness in the fourth
 // channel; how far its reflection ray went before it met what it reflects, and its indirect light ray where that is
-// traced; and how far it is reconstructed from this frame rather than its history, `RAY_GUIDE_BIAS_WATER` over a
-// puddle's water.
+// traced; how far it is reconstructed from this frame rather than its history, `RAY_GUIDE_BIAS_WATER` over a puddle's
+// water; and its diffuse albedo as combine lights with it, linear as the guides must be, none over the sky.
 
 // The G-buffer, the wet surface, the lighting, and the reflections' trace: what each traced pixel met, the ray's length
 // in alpha, at the size they are traced at, below none where untraced.
@@ -22,6 +22,7 @@ struct RayGuides {
   @location(2) hit_distance: f32,
   @location(3) bias: f32,
   @location(4) diffuse_hit_distance: f32,
+  @location(5) diffuse_albedo: vec4<f32>,
 };
 
 // The texel of a target traced at a size of its own over the frame's point `clip`.
@@ -35,7 +36,8 @@ fn fs_ray_guides(in: FullscreenVarying) -> RayGuides {
   let depth: f32 = textureLoad(depth_target, texel, 0);
 
   if (depth <= 0.0) {
-    return RayGuides(vec4<f32>(0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0), RAY_GUIDE_FAR_HIT, 0.0, RAY_GUIDE_FAR_HIT);
+    return RayGuides(vec4<f32>(0.0), vec4<f32>(0.0, 0.0, 0.0, 1.0), RAY_GUIDE_FAR_HIT, 0.0, RAY_GUIDE_FAR_HIT,
+      vec4<f32>(0.0));
   }
 
   let stored: vec4<f32> = textureLoad(albedo_target, texel, 0);
@@ -56,5 +58,5 @@ fn fs_ray_guides(in: FullscreenVarying) -> RayGuides {
   let bounced: f32 = textureLoad(diffuse_hits, texel_over(in.clip.xy, textureDimensions(diffuse_hits)), 0).r;
 
   return RayGuides(vec4<f32>(specular, 1.0), vec4<f32>(world_normal, roughness), select(RAY_GUIDE_FAR_HIT, met, met >= 0.0),
-    RAY_GUIDE_BIAS_WATER * saturate(wet.g), select(RAY_GUIDE_FAR_HIT, bounced, bounced > 0.0));
+    RAY_GUIDE_BIAS_WATER * saturate(wet.g), select(RAY_GUIDE_FAR_HIT, bounced, bounced > 0.0), vec4<f32>(albedo.rgb, 1.0));
 }
