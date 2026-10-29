@@ -42,19 +42,20 @@ impl WaterFeature {
   /// Draws the water of a frame's `record` where it draws, over the sky's `views` and the frame copied before it
   /// (`before_water`, which the enhanced water refracts and reflects), from the cull's argument buffers `args`; its
   /// rays the screen left traced where the scene's trace is built (`traced`, with the sky's group), the enhanced water
-  /// rippled by the enhanced drops' `rings`, writing ray reconstruction's `guides` where it reads them. Answers the
-  /// G-buffer's depth with the nearest water's over it where the water draws.
+  /// rippled by the enhanced drops' `rings` and shone on by the sun where it reaches the bottom (`sun_seen`), writing
+  /// ray reconstruction's `guides` where it reads them. Answers the G-buffer's depth with the nearest water's over it
+  /// where the water draws.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     record: ViewRecord<'a>,
-    (views, before_water, args, rings, guides): (
+    (views, before_water, args, guides): (
       Option<&'a SkyViews>,
       Option<GraphTexture>,
       Vec<GraphBuffer>,
-      GraphTexture,
       Option<RayGuides>,
     ),
+    [rings, sun_seen]: [GraphTexture; 2],
     traced: Option<(SkyParameters<'a>, TraceParameters<'a>, &'a wgpu::BindGroup)>,
   ) -> Option<GraphTexture> {
     let views: &SkyViews = views.filter(|_| self.is_drawn())?;
@@ -73,6 +74,7 @@ impl WaterFeature {
       scene_trace: passes.scene_trace,
       traced,
       rings,
+      sun_seen,
       guides,
     };
 

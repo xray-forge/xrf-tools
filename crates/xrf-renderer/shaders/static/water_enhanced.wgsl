@@ -391,8 +391,10 @@ fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
   let reflected: vec3<f32> = reflect(fragment.to_point, waves.normal);
   let fresnel: f32 = pow(saturate(dot(reflected, fragment.to_point)), 3.0);
   let reflection: vec3<f32> = enhanced_reflection(waves, reflected, in.world, (pixel + 0.5) / size);
-  // Where the lights reached the bottom the sun shines on it.
-  let sunlit: f32 = saturate(textureLoad(light_target, vec2<i32>(refracted), 0).r * 2000.0);
+  // Where the sun reaches the bottom it shines on it, as its pass found its shadow there. Read off the lights' sum, as
+  // the pack it is ported from reads it, every lamp lighting the bottom drew the sun's highlight and caustics in the
+  // sun's colour and direction, underground at noon's strength.
+  let sunlit: f32 = textureLoad(sun_seen, vec2<i32>(refracted), 0).x;
   let sun: f32 = dot(sun_shown(lighting), vec3<f32>(0.5));
   // The gathered light fades as the water clouds.
   let gathering: f32 = 1.0 - smoothstep(0.0, ENHANCED_FOG_DEPTH + 0.5, water_fog);

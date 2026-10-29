@@ -1411,9 +1411,9 @@ impl SceneView {
         water_views,
         before_water,
         self.features.statics.list_draw_args(&statics),
-        rings,
         ray_guides,
       ),
+      [rings, sun_seen],
       sky.zip(traced).map(|(sky, (trace, textures))| (sky, trace, textures)),
     );
 
