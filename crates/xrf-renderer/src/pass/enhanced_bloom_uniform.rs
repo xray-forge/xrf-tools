@@ -12,7 +12,7 @@ pub struct EnhancedBloomUniform {
   /// The target the stage draws into, then the frame, in texels.
   pub size: Vec4,
   /// A blur's way, one target's texel along it; then how many target texels apart a halving's or a doubling's reads
-  /// spread; and one where the stage reads the scene as it is held, which it takes as the colour it is shown.
+  /// spread; and one where the stage reads the scene as it is held, which it takes as the display shows it.
   pub spread: Vec4,
   /// The threshold, the exposure, the sky's share and the vibrance.
   pub strengths: Vec4,
