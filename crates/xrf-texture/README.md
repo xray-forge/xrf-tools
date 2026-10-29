@@ -17,6 +17,7 @@ below the CLI's `dds` and `sprite` commands and the desktop app's texture and sp
 - `EquipmentGridVerifier::find_overlaps` checks occupied inventory rectangles in resolved LTX data.
 - `TextureAlbedo::read` measures how a diffuse texture's colours sit as albedo, and `AlbedoVerdict` judges its median
   against the range unlit materials span.
+- `BumpAlignment::read` measures whether a bump belongs to its diffuse, and `BumpAlignmentVerdict` judges it.
 
 `TextureEncodingFormat` and `TextureEncodingQuality` are the five formats and three efforts a texture or a capture is
 offered to be written in, as the desktop app's editors ask; `to_candidate` and `to_quality` turn them into
@@ -115,6 +116,18 @@ under 0.03 and over 0.9 (`AlbedoVerdict::FLOOR` and `CEILING`, charcoal and fres
 stops between the brighter and darker tenth of an 8 by 8 grid of cells, which painted large-scale light and shade
 widen, and an atlas of unlike materials too. The verdict judges the median, so a few highlights or a black border do
 not decide it. `None` answers a texture whose alpha test keeps nothing.
+
+## Bump alignment
+
+`BumpAlignment::read` decodes a diffuse and its bump each at its largest level within 512 texels a side, brings both
+to the coarser of the two along each side (they are sampled over the same texture coordinates whatever their
+proportions), and correlates their edges texel for texel: the diffuse's colour gradient against the gradient of the
+bump's normal, its gloss left out. A set authored together has its cracks, seams and atlas outlines at the same texels
+in both. The same correlation with the bump shifted along the tile, the highest of eight shifts placed by Roberts' R2
+sequence, is what any two textures share by chance; the verdict judges the lift over it: `Aligned` at 0.1 or more,
+`Mismatched` under 0.03, `Doubtful` between, and `Featureless` where either carries nothing to compare. Edges are
+compared rather than the bump's slopes because an atlas's bump lies flat along the outlines where its diffuse changes
+most, and at 256 texels a bump's fine relief averages away; both misread stock Anomaly's aligned atlases.
 
 ## Cropping
 

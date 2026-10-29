@@ -46,7 +46,9 @@ provide different validation guarantees: a successful metadata read does not val
   narrowest of the three.
 
 `DdsMetadata` reports the format as `DdsFormat::D3d`, `Dxgi` or `Unknown`; `get_format_label` keeps an unrecognised
-format's FourCC visible rather than treating it as a supported encoding.
+format's FourCC visible rather than treating it as a supported encoding. `get_level_within(side)` names the largest
+level whose longer side holds `side` texels at most, the smallest the file carries where none does, for a measure that
+reads a coarser level instead of decoding the base.
 
 ## Encode pixels and mipmaps
 

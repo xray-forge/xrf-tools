@@ -1,5 +1,5 @@
 use serde::Serialize;
-use xrf_dds::{DdsFile, DdsMetadata, RgbaImage};
+use xrf_dds::{DdsFile, RgbaImage};
 use xrf_error::XrfResult;
 use xrf_math::{luminance, srgb_decoded};
 
@@ -47,10 +47,7 @@ impl TextureAlbedo {
   ///
   /// Returns an error when the level does not decode.
   pub fn read(file: &DdsFile, alpha_reference: Option<u8>) -> XrfResult<Option<Self>> {
-    let metadata: DdsMetadata = file.metadata();
-    let largest: u32 = metadata.width.max(metadata.height).max(1);
-    let within: u32 = largest.div_ceil(Self::MEASURED_SIDE).next_power_of_two().ilog2();
-    let level: u32 = within.min(metadata.mipmap_levels.max(1) - 1);
+    let level: u32 = file.metadata().get_level_within(Self::MEASURED_SIDE);
 
     Ok(Self::measure(&file.decode_rgba(level)?, alpha_reference))
   }
