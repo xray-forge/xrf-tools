@@ -1,6 +1,6 @@
 #import "common/camera"
+#import "common/display_transform"
 #import "common/lighting"
-#import "common/scene_light"
 #import "common/fullscreen"
 
 // The enhanced bloom, from the resolved image rather than the engine's high part: the image blurred to half its size by
@@ -24,14 +24,16 @@ const BLUE_SHIFT: vec2<f32> = vec2<f32>(-3.2, -4.1);
 // The luminance the vibrance pulls towards, `LUMINANCE_VECTOR`.
 const LUMINANCE: vec3<f32> = vec3<f32>(0.3, 0.38, 0.22);
 
-// The source's texel under a point, unfiltered.
+// The source's texel under a point, unfiltered. The scene's is taken as the display shows it, so the bloom grows from
+// the picture on the screen under every display, not from the scene's own round trip (`scene_shown`), which encodes
+// after the tonemap where the authored levels' display encodes before it.
 fn read_nearest(at: vec2<f32>) -> vec3<f32> {
   let size: vec2<i32> = vec2<i32>(textureDimensions(source));
   let texel: vec2<i32> = clamp(vec2<i32>(floor(at * vec2<f32>(size))), vec2<i32>(0), size - 1);
 
   let held: vec3<f32> = textureLoad(source, texel, 0).rgb;
 
-  return select(held, scene_shown(held), bloom.spread.w > 0.5);
+  return select(held, shown_for_display(held, lighting.display), bloom.spread.w > 0.5);
 }
 
 fn sample_at(image: texture_2d<f32>, at: vec2<f32>) -> vec4<f32> {
