@@ -276,7 +276,7 @@ impl WaterPass {
       reflection_blurred: blurred,
       reflection_clear: clear,
       perlin_map: maps[0],
-      light_target: draw.targets.light,
+      sun_seen: draw.sun_seen,
       wave_map: maps[1],
       wind_map: maps[2],
       caustics_map: maps[3],

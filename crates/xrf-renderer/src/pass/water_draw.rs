@@ -33,6 +33,9 @@ pub struct WaterDraw<'a> {
   pub traced: Option<(SkyParameters<'a>, TraceParameters<'a>, &'a wgpu::BindGroup)>,
   /// The enhanced drops' rings, which the enhanced water ripples by; a texel of nothing without them.
   pub rings: GraphTexture,
+  /// How much of the sun reaches each pixel, as the sun pass found it, where the enhanced water's sun shines on its
+  /// bottom.
+  pub sun_seen: GraphTexture,
   /// The guides ray reconstruction reads, which the enhanced water writes where it draws; none where it does not
   /// reconstruct.
   pub guides: Option<RayGuides>,
