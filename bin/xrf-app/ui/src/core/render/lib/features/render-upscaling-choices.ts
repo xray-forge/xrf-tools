@@ -114,10 +114,11 @@ export const RENDER_DLSS_PRESET_SHORT_OPTIONS: ReadonlyArray<IChoiceFormRowOptio
 }));
 
 const RENDER_RAY_RECONSTRUCTION_PRESET_DETAILS: Readonly<Record<RenderRayReconstructionPreset, string>> = {
-  [ERenderRayReconstructionPreset.DEFAULT]: "NVIDIA's pick, which a driver update may change.",
-  [ERenderRayReconstructionPreset.D]: "The transformer model.",
-  [ERenderRayReconstructionPreset.E]: "The latest transformer model.",
-  [ERenderRayReconstructionPreset.F]: "NVIDIA's default model, RR2.",
+  [ERenderRayReconstructionPreset.DEFAULT]:
+    "NVIDIA's pick, which a driver update may change; D under the physical light, where F blotches dark foliage.",
+  [ERenderRayReconstructionPreset.D]: "DLSS 4's transformer model, the one games ship.",
+  [ERenderRayReconstructionPreset.E]: "A further model of DLSS 4's, which NVIDIA's guides do not describe.",
+  [ERenderRayReconstructionPreset.F]: "DLSS 4.5's second-generation transformer model, NVIDIA's pick now.",
 };
 
 /**

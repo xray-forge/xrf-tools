@@ -1,8 +1,11 @@
 use xrf_renderer_core::GraphTexture;
 
-/// The guides DLSS ray reconstruction reads beside the frame and the G-buffer's albedo, at the frame's size.
+/// The guides DLSS ray reconstruction reads beside the frame, at the frame's size.
 #[derive(Clone, Copy)]
 pub struct RayGuides {
+  /// The surface's colour as the frame lights with it: decoded under the physical light model, where the G-buffer
+  /// holds it encoded, as NVIDIA asks the albedo guides linear (Streamline's ray reconstruction guide, §4.1.1).
+  pub diffuse_albedo: GraphTexture,
   pub specular_albedo: GraphTexture,
   /// The world normal, the linear roughness in the fourth channel.
   pub normals: GraphTexture,

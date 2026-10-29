@@ -1587,13 +1587,16 @@ export type RenderRainSettings = {
 
 /** Which of DLSS ray reconstruction's models denoises and upscales: NVIDIA's pick, or one for every quality. */
 export enum ERenderRayReconstructionPreset {
-  /** NVIDIA's pick, which a driver update may change. */
+  /**
+   * NVIDIA's pick, which a driver update may change; D under the physical light, whose dark foliage against a bright
+   * sky F breaks into red, green and blue blotches.
+   */
   DEFAULT = "default",
-  /** The transformer model. */
+  /** DLSS 4's transformer model, the one games ship. */
   D = "d",
-  /** The latest transformer model. */
+  /** A further model of DLSS 4's, which NVIDIA's guides do not describe. */
   E = "e",
-  /** NVIDIA's default model, RR2. */
+  /** DLSS 4.5's second-generation transformer model, NVIDIA's pick now. */
   F = "f",
 }
 

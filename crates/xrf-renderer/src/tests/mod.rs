@@ -49,6 +49,7 @@ mod periodic_budget;
 mod periodic_scheduler;
 mod puddle_fill;
 mod rain_wetness;
+mod ray_reconstruction_preset;
 mod reflections;
 mod render_backend;
 mod render_queue;

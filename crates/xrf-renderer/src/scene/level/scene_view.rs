@@ -515,7 +515,7 @@ impl SceneView {
       ),
       (
         options.output.upscaling,
-        options.is_scene_linear(),
+        (options.is_scene_linear(), options.is_light_physical()),
         self.features.exposure.get_pre_exposure(),
       ),
     );

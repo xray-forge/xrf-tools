@@ -64,6 +64,8 @@ pub struct ResolveFeature {
   texture_bias: f32,
   resolve: Option<Resolve>,
   upscaling: RenderUpscalingSettings,
+  /// Whether the view lights in physical light, which picks ray reconstruction's model where NVIDIA's is asked.
+  is_light_physical: bool,
   /// The size the frame is resolved at, which a temporal resolve resolves into.
   resolved: (u32, u32),
   /// The frame at the viewport's size while it is drawn or resolved at another: rescaled into the first, sharpened
@@ -110,6 +112,7 @@ impl Default for ResolveFeature {
       texture_bias: 0.0,
       resolve: None,
       upscaling: RenderUpscalingSettings::default(),
+      is_light_physical: false,
       resolved: (1, 1),
       upscaled: None,
       rescale: None,
@@ -197,16 +200,17 @@ impl ResolveFeature {
   /// Takes this frame's resolve for targets `render` texels across, none before they are made, resolved at `resolved`
   /// and shown in `output`: the temporal resolve's history made or kept and what it reads, and the frame at the
   /// viewport's size while it is drawn or resolved at another. DLSS reconstructs rays where asked, the GPU has it and
-  /// the scene holds linear light; else it upscales alone. The light is written at `pre_exposure`, which each resolve
-  /// carries its history by.
+  /// the scene holds linear light (`is_linear`), with the model the light asks (`is_light_physical`); else it upscales
+  /// alone. The light is written at `pre_exposure`, which each resolve carries its history by.
   pub fn prepare(
     &mut self,
     (device, dlss): (&wgpu::Device, Option<&Dlss>),
     (view, now): (&CameraView, Instant),
     (render, resolved, output): (Option<(u32, u32)>, (u32, u32), RenderRect),
-    (upscaling, is_linear, pre_exposure): (RenderUpscalingSettings, bool, PreExposure),
+    (upscaling, (is_linear, is_light_physical), pre_exposure): (RenderUpscalingSettings, (bool, bool), PreExposure),
   ) {
     self.upscaling = upscaling;
+    self.is_light_physical = is_light_physical;
     self.pre_exposure = pre_exposure;
 
     self.frame_time = self
@@ -461,7 +465,7 @@ impl ResolveFeature {
     (render, display): ((u32, u32), (u32, u32)),
   ) -> bool {
     let quality: DlssQuality = self.upscaling.scale.get_dlss_quality();
-    let preset: DlssRayPreset = self.upscaling.ray_reconstruction_preset.to_dlss();
+    let preset: DlssRayPreset = self.upscaling.ray_reconstruction_preset.to_dlss(self.is_light_physical);
     let key: RayKey = (display, quality, preset);
 
     if self.refused_rays == Some(key) {
@@ -736,6 +740,7 @@ impl ResolveFeature {
       graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
     };
     let guides: RayGuides = RayGuides {
+      diffuse_albedo: create("ray guides diffuse albedo", RayGuidesPass::DIFFUSE_ALBEDO),
       specular_albedo: create("ray guides specular albedo", RayGuidesPass::SPECULAR_ALBEDO),
       normals: create("ray guides normals", RayGuidesPass::NORMALS),
       hit_distance: create("ray guides hit distance", RayGuidesPass::HIT_DISTANCE),
@@ -766,6 +771,7 @@ impl ResolveFeature {
       .color(clear(guides.hit_distance))
       .color(clear(guides.bias))
       .color(clear(diffuse_hit_distance))
+      .color(clear(guides.diffuse_albedo))
       .record(move |context| passes.ray_guides.record(context, view, &parameters));
 
     Some(RayGuides {
@@ -973,7 +979,7 @@ impl ResolveFeature {
       .texture(frame, GraphTextureAccess::Sampled)
       .texture(handles.depth, GraphTextureAccess::Sampled)
       .texture(handles.motion, GraphTextureAccess::Sampled)
-      .texture(handles.albedo, GraphTextureAccess::Sampled)
+      .texture(guides.diffuse_albedo, GraphTextureAccess::Sampled)
       .texture(guides.specular_albedo, GraphTextureAccess::Sampled)
       .texture(guides.normals, GraphTextureAccess::Sampled)
       .texture(guides.hit_distance, GraphTextureAccess::Sampled)
@@ -999,7 +1005,7 @@ impl ResolveFeature {
         motion: context.get_texture(handles.motion).view,
         // As super resolution reads it: render pixels back to where a point stood.
         motion_scale: [-(render.0 as f32), -(render.1 as f32)],
-        diffuse_albedo: context.get_texture(handles.albedo).view,
+        diffuse_albedo: context.get_texture(guides.diffuse_albedo).view,
         specular_albedo: context.get_texture(guides.specular_albedo).view,
         normals: context.get_texture(guides.normals).view,
         specular_hit_distance: context.get_texture(guides.hit_distance).view,

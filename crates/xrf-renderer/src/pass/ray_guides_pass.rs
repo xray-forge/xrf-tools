@@ -6,8 +6,8 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::ray_guides_parameters::RayGuidesParameters;
 use crate::pass::view_binding::ViewBinding;
 
-/// Works out the guides DLSS ray reconstruction reads beside the frame, at the frame's size: each surface's specular
-/// albedo, its world normal with its roughness, and how far its reflection ray and its indirect light ray went.
+/// Works out the guides DLSS ray reconstruction reads beside the frame, at the frame's size: each surface's diffuse and
+/// specular albedo, its world normal with its roughness, and how far its reflection ray and its indirect light ray went.
 pub struct RayGuidesPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
@@ -24,6 +24,9 @@ impl RayGuidesPass {
   pub const HIT_DISTANCE: wgpu::TextureFormat = wgpu::TextureFormat::R16Float;
   /// How far a pixel is reconstructed from this frame alone.
   pub const BIAS: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
+  /// The surface's colour as the frame lights with it: half floats, as a dark leaf's linear channels fall below what
+  /// eight bits tell apart.
+  pub const DIFFUSE_ALBEDO: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
   /// # Errors
   ///
@@ -55,7 +58,7 @@ impl RayGuidesPass {
   }
 
   /// Writes the guides DLSS ray reconstruction reads: the specular albedo, the normal with the reflections' roughness,
-  /// the specular and the diffuse hit distances, and the bias mask.
+  /// the specular and the diffuse hit distances, the bias mask, and the diffuse albedo.
   pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &RayGuidesParameters) {
     context.bind(parameters);
 
@@ -82,6 +85,7 @@ impl RayGuidesPass {
         Some(Self::HIT_DISTANCE.into()),
         Some(Self::BIAS.into()),
         Some(Self::HIT_DISTANCE.into()),
+        Some(Self::DIFFUSE_ALBEDO.into()),
       ],
     )
   }
