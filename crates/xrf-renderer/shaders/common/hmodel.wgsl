@@ -73,11 +73,24 @@ fn light_terms(table: texture_3d<f32>, table_sampler: sampler, to_light: vec3<f3
   return material_lookup(table, table_sampler, dot(to_light, normal), dot(half_way, normal), slice);
 }
 
+// A light's terms at a surface the frame's own passes do not light (a traced hit, a composited surface), as they would
+// light it under the lighting `state`: the material table's (`light_terms`), but at the anchored levels Lambert's
+// cosine for the diffuse, as the sun and lights passes light the frame there (`fs_sun_split`, `fs_lights_split`), so a
+// bank the water mirrors is lit by the curve the bank itself is. The specular stays the table's: a traced hit takes no
+// gloss to weigh it by, and a composited surface's gloss joins it through `hmodel` as at every level.
+fn surface_light_terms(state: Lighting, table: texture_3d<f32>, table_sampler: sampler, to_light: vec3<f32>,
+  normal: vec3<f32>, view_ray: vec3<f32>, slice: f32) -> vec4<f32> {
+  let terms: vec4<f32> = light_terms(table, table_sampler, to_light, normal, view_ray, slice);
+
+  return select(terms, vec4<f32>(saturate(dot(normal, to_light)), terms.yzw), is_light_anchored(state));
+}
+
 // `plight_infinity` for the sun: its colour by the diffuse term, its specular weight by the specular, at a view space
-// normal and point.
+// normal and point (`surface_light_terms`).
 fn sun_light(state: Lighting, table: texture_3d<f32>, table_sampler: sampler, normal: vec3<f32>, position: vec3<f32>,
   slice: f32) -> vec4<f32> {
-  let terms: vec4<f32> = light_terms(table, table_sampler, state.to_sun.xyz, normal, normalize(position), slice);
+  let terms: vec4<f32> =
+    surface_light_terms(state, table, table_sampler, state.to_sun.xyz, normal, normalize(position), slice);
 
   return vec4<f32>(state.sun.rgb * terms.x, state.sun.w * terms.y);
 }
