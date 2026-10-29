@@ -15,6 +15,8 @@ below the CLI's `dds` and `sprite` commands and the desktop app's texture and sp
   sprite sheets an XML description lays out; both take `PackDescriptionOptions`.
 - `EquipmentSpritePacker::pack_sprites` and `EquipmentSpriteUnpacker::unpack_sprites` handle the inventory icon sheet.
 - `EquipmentGridVerifier::find_overlaps` checks occupied inventory rectangles in resolved LTX data.
+- `TextureAlbedo::read` measures how a diffuse texture's colours sit as albedo, and `AlbedoVerdict` judges its median
+  against the range unlit materials span.
 
 `TextureEncodingFormat` and `TextureEncodingQuality` are the five formats and three efforts a texture or a capture is
 offered to be written in, as the desktop app's editors ask; `to_candidate` and `to_quality` turn them into
@@ -63,13 +65,13 @@ source's alpha means anything; nothing is taken from the file being replaced. DX
 BC2, BC3 and uncompressed RGBA. Other formats are refused rather than substituted, DXT1 Alpha included because the
 available BC1 encoder does not preserve its one-bit cutout, and so is a descriptor without texture parameters.
 
-| Descriptor                    | Built as                                                                         |
-| ----------------------------- | -------------------------------------------------------------------------------- |
-| Image, normal map, terrain    | One texture (`BuildTextureLayout::Planar`)                                       |
-| Cube map                      | A cube from six square faces side by side, `+x -x +y -y +z -z` (`CubeStrip`)     |
+| Descriptor                    | Built as                                                                          |
+| ----------------------------- | --------------------------------------------------------------------------------- |
+| Image, normal map, terrain    | One texture (`BuildTextureLayout::Planar`)                                        |
+| Cube map                      | A cube from six square faces side by side, `+x -x +y -y +z -z` (`CubeStrip`)      |
 | Bump map                      | The `<name>.dds` and `<name>#.dds` pair, as `DXTCompressBump` builds (`BumpPair`) |
-| `Advanced` mip filter         | The SDK's own chain (`BuildTextureAdvancedChain`), fade included                 |
-| Any other filter, mip maps on | A chain the filter reduces from the base (`BuildTextureMipmaps::Filtered`)       |
+| `Advanced` mip filter         | The SDK's own chain (`BuildTextureAdvancedChain`), fade included                  |
+| Any other filter, mip maps on | A chain the filter reduces from the base (`BuildTextureMipmaps::Filtered`)        |
 
 A bump descriptor builds its pair from one source holding the height in its colour and the gloss in its alpha, at the
 descriptor's virtual height, DXT5 with a box chain whatever the descriptor's own format and mip settings say, since
@@ -103,6 +105,16 @@ the red channel, rescaled and floored with `EPS_S`. The gloss is the height's ow
 (`GenerateBumpGloss::HeightAlpha`), or a constant or a mask of its own for a source without one. The SDK always reduces
 both halves with a box; here the filter is an option, box by default in the CLI and the app. Where a rescaled height or
 an error passes 255 the SDK keeps its low eight bits; these are clamped.
+
+## Albedo
+
+`TextureAlbedo::read` decodes a texture at its largest level within 512 texels a side, each channel by `xrf_math::srgb_decoded`
+as the renderer decodes colour textures, and measures the texels a surface draws: all of them, or a cut-out's that
+its alpha test keeps. It reports the mean colour, the luminance's 5th, 50th and 95th percentiles, the shares of texels
+under 0.03 and over 0.9 (`AlbedoVerdict::FLOOR` and `CEILING`, charcoal and fresh snow), and the coarse spread: the
+stops between the brighter and darker tenth of an 8 by 8 grid of cells, which painted large-scale light and shade
+widen, and an atlas of unlike materials too. The verdict judges the median, so a few highlights or a black border do
+not decide it. `None` answers a texture whose alpha test keeps nothing.
 
 ## Cropping
 

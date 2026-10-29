@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+mod albedo;
 mod build;
 mod bump;
 mod crop;
@@ -10,6 +11,7 @@ mod image_file;
 
 pub mod job_phases;
 
+pub use crate::albedo::{AlbedoVerdict, TextureAlbedo};
 pub use crate::build::{
   BuildTextureAdvancedChain, BuildTextureBumpPair, BuildTextureLayout, BuildTextureMipmaps, BuildTextureNormalMap,
   BuildTextureOmission, BuildTextureOptions, BuildTextureProcessor, BuildTextureRecipe, BuildTextureResult,
