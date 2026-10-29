@@ -11,8 +11,8 @@ fn leaves_nvidias_pick_to_nvidia_outside_the_physical_light() {
 }
 
 #[test]
-fn picks_d_for_nvidias_pick_under_the_physical_light() {
-  assert_eq!(RenderRayReconstructionPreset::Default.to_dlss(true), DlssRayPreset::D);
+fn picks_e_for_nvidias_pick_under_the_physical_light() {
+  assert_eq!(RenderRayReconstructionPreset::Default.to_dlss(true), DlssRayPreset::E);
 }
 
 #[test]

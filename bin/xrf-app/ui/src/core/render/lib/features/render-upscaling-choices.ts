@@ -115,7 +115,8 @@ export const RENDER_DLSS_PRESET_SHORT_OPTIONS: ReadonlyArray<IChoiceFormRowOptio
 
 const RENDER_RAY_RECONSTRUCTION_PRESET_DETAILS: Readonly<Record<RenderRayReconstructionPreset, string>> = {
   [ERenderRayReconstructionPreset.DEFAULT]:
-    "NVIDIA's pick, which a driver update may change; D under the physical light, where F blotches dark foliage.",
+    "NVIDIA's pick, which a driver update may change; E under the physical light, where F blotches dark foliage and D " +
+    "holds a moving sun's glint on water.",
   [ERenderRayReconstructionPreset.D]: "DLSS 4's transformer model, the one games ship.",
   [ERenderRayReconstructionPreset.E]: "A further model of DLSS 4's, which NVIDIA's guides do not describe.",
   [ERenderRayReconstructionPreset.F]: "DLSS 4.5's second-generation transformer model, NVIDIA's pick now.",

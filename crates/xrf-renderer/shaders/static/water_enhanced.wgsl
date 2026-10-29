@@ -292,12 +292,8 @@ fn enhanced_caustics(bottom: vec3<f32>) -> vec3<f32> {
   return min(first, second);
 }
 
-// The enhanced water's surface: what lies under it, read where its waves move it unless something
-// nearer than the water stands there, clouded into the water's colour by the water's depth, its reflection over it by
-// the fresnel cubed, the light it gathers on its bottom and the sun's highlight where the sun reaches it, fogged, and
-// faded into what lies under it along its shallow edge.
 // The enhanced water's pixel and what ray reconstruction's guides read of it: its waves' normal, the share of its
-// reflection it shows, how rough its reflection reads, and how far its reflected ray went.
+// light it reflects, the sun's highlight included, how rough its reflection reads, and how far its reflected ray went.
 struct EnhancedShaded {
   out: WaterOutput,
   normal: vec3<f32>,
@@ -353,6 +349,10 @@ fn reflected_ray_length(position: vec3<f32>, kept: f32) -> f32 {
   return clamp((kept / max(-position.z, 1e-4) - 1.0) * length(position), 0.0, RAY_GUIDE_FAR_HIT);
 }
 
+// The enhanced water's surface: what lies under it, read where its waves move it unless something
+// nearer than the water stands there, clouded into the water's colour by the water's depth, its reflection over it by
+// the fresnel cubed, the light it gathers on its bottom and the sun's highlight where the sun reaches it, fogged, and
+// faded into what lies under it along its shallow edge.
 fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
   let size: vec2<f32> = camera.viewport.xy;
   let pixel: vec2<f32> = floor(in.clip.xy);
@@ -416,7 +416,11 @@ fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
   shaded.out.distortion = vec4<f32>(0.0);
   shaded.out.motion = camera_motion(in.world, in.previous);
   shaded.normal = waves.normal;
-  shaded.reflected_share = saturate(fresnel * enhanced.reflectivity) * seen * border * seen * seen;
+  // The sun's highlight is reflected light the fresnel does not weigh, so where it lights the water the share reaches
+  // as far as its part of the light: weighed by the fresnel alone, ray reconstruction's model D takes a glint for light
+  // many times what the water reflects and holds it on the water long after the sun has moved.
+  let glinted: f32 = dot(highlight, LUMINANCE) / max(dot(lit, LUMINANCE), 1e-4);
+  shaded.reflected_share = mix(saturate(fresnel * enhanced.reflectivity), 1.0, glinted) * seen * border * seen * seen;
   shaded.roughness = mix(GUIDE_ROUGHNESS_CALM, GUIDE_ROUGHNESS_RAIN, waves.rain_rough);
   shaded.hit_distance = reflected_ray_length(fragment.position,
     textureSampleLevel(reflection_clear, sky_clamp, saturate((pixel + 0.5) / size + waves.screen), 0.0).a);
