@@ -1,7 +1,7 @@
 use glam::{Vec3, Vec4};
 
 use crate::lighting::light_specular::to_light_specular;
-use crate::lighting::srgb::{authored_light, srgb_decoded};
+use crate::lighting::srgb::{anchored_light, authored_light, srgb_decoded};
 use crate::tests::gpu_probe::run_gpu_probe;
 
 /// What the GPU answers each case of `common/hmodel`'s functions with under `body`: a case is two vectors, `first`
@@ -47,6 +47,29 @@ fn the_authored_hemisphere_is_the_engines_square_decoded_per_channel() {
     "authored hue",
   );
   assert_close(shown[1], authored_light(colour, true) * decoded(irradiance), "physical");
+}
+
+// The shaders anchor a light over the lights under it as the CPU does (`anchored_light`), as the anchored levels'
+// hemisphere stand-in takes it over the ambient: nothing over nothing, and the decode of the sum less the decode of
+// what lies under.
+#[test]
+fn the_shaders_anchor_a_light_as_the_cpu_does() {
+  let pairs: [(Vec3, Vec3); 3] = [
+    (Vec3::new(0.3, 0.35, 0.4), Vec3::new(0.05, 0.06, 0.08)),
+    (Vec3::new(0.9, 0.8, 0.6), Vec3::ZERO),
+    (Vec3::ZERO, Vec3::splat(0.2)),
+  ];
+  let cases: Vec<(Vec4, Vec4)> = pairs
+    .iter()
+    .map(|(light, under)| (light.extend(0.0), under.extend(0.0)))
+    .collect();
+  let Some(anchored) = run("answer = anchored_light(first.rgb, second.rgb);", &cases) else {
+    return;
+  };
+
+  for (shown, (light, under)) in anchored.iter().zip(pairs) {
+    assert_close(*shown, anchored_light(light, under), &format!("{light} over {under}"));
+  }
 }
 
 // A light's authored display value comes back from the light `srgb_light` made of it, whatever its strength, as the

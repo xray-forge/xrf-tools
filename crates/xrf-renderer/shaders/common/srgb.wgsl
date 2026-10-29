@@ -48,3 +48,11 @@ fn srgb_light_authored(light: vec3<f32>) -> vec3<f32> {
 fn srgb_encoded(color: vec3<f32>) -> vec3<f32> {
   return pow(max(color, vec3<f32>(0.0)), vec3<f32>(1.0 / SRGB_DISPLAY_POWER));
 }
+
+// A light authored as a display value as additive linear light over the lights `under` it, both display values: what
+// the display's decode of their sum adds to its decode of `under` alone, per channel, as `anchored_light` on the CPU.
+fn anchored_light(light: vec3<f32>, under: vec3<f32>) -> vec3<f32> {
+  let below: vec3<f32> = max(under, vec3<f32>(0.0));
+
+  return max(srgb_decoded(max(light, vec3<f32>(0.0)) + below) - srgb_decoded(below), vec3<f32>(0.0));
+}

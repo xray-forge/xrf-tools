@@ -47,7 +47,7 @@ fn cs_irradiance(@builtin(local_invocation_index) index: u32) {
       sky_repeat, scale);
     let basis: array<f32, 9> = sky_harmonics_basis(direction);
 
-    authored += hemisphere_environment(lighting, sky_environment_0, sky_environment_1, sky_clamp, direction) /
+    authored += authored_hemisphere(lighting, sky_environment_0, sky_environment_1, sky_clamp, direction) /
       light_scale(lighting) * basis[0];
 
     for (var term: u32 = 0u; term < 9u; term++) {
@@ -75,7 +75,7 @@ fn cs_irradiance(@builtin(local_invocation_index) index: u32) {
   // The authored hemisphere's first coefficient, in the second to fourth's `w`; in the fifth to seventh's what it gives
   // a level surface facing up, its lookup there, the weather's cubes already holding irradiance as `hmodel` reads them.
   let level: vec3<f32> = authored_total * solid_angle * BAND_0;
-  let zenith: vec3<f32> = hemisphere_environment(lighting, sky_environment_0, sky_environment_1, sky_clamp,
+  let zenith: vec3<f32> = authored_hemisphere(lighting, sky_environment_0, sky_environment_1, sky_clamp,
     vec3<f32>(0.0, 1.0, 0.0)) / light_scale(lighting);
   var spare: array<f32, 9> =
     array<f32, 9>(0.0, level.x, level.y, level.z, zenith.x, zenith.y, zenith.z, 0.0, 0.0);
