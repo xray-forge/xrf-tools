@@ -241,6 +241,38 @@ fn picks_no_back_face_and_nothing_past_the_range() -> XrfResult {
 }
 
 #[test]
+fn names_the_material_of_the_face_a_ray_meets_from_either_side() -> XrfResult {
+  let mut faces: Vec<LevelCformFace> = vec![face([0, 2, 1]), face([0, 3, 2])];
+
+  faces.iter_mut().for_each(|face| face.material = 9);
+
+  let tracer: LevelCformTracer =
+    LevelCformTracer::new(&LevelCformGeometry::new(floor(0.0)?.get_vertices().to_vec(), faces)?);
+
+  assert_eq!(
+    tracer.get_nearest_material(&Vector3d::new(1.0, 0.1, 1.0), &down(), 0.2),
+    Some(9)
+  );
+  assert_eq!(
+    tracer.get_nearest_material(&Vector3d::new(1.0, -0.1, 1.0), &up(), 0.2),
+    Some(9),
+    "the floor's underside too"
+  );
+  assert_eq!(
+    tracer.get_nearest_material(&Vector3d::new(1.0, 0.3, 1.0), &down(), 0.2),
+    None
+  );
+  assert_eq!(
+    tracer
+      .get_nearest_hit(&Vector3d::new(1.0, 2.0, 1.0), &down(), 5.0)
+      .map(|hit| hit.material),
+    Some(9)
+  );
+
+  Ok(())
+}
+
+#[test]
 fn picks_the_nearer_of_two_floors() -> XrfResult {
   let lower: LevelCformGeometry = floor(0.0)?;
   let upper: LevelCformGeometry = floor(1.0)?;

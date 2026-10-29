@@ -17,6 +17,7 @@ pub(crate) mod ps_static;
 pub(crate) mod snd_env;
 pub(crate) mod snd_static;
 pub(crate) mod som;
+pub(crate) mod surface;
 pub(crate) mod verify;
 pub(crate) mod wallmarks;
 
@@ -111,6 +112,8 @@ pub use crate::snd_static::level_snd_static_sound::*;
 pub use crate::snd_static::level_snd_static_window::*;
 pub use crate::som::level_som_file::*;
 pub use crate::som::level_som_polygon::*;
+pub use crate::surface::level_surface_material::LevelSurfaceMaterial;
+pub use crate::surface::level_surface_materials::LevelSurfaceMaterials;
 pub use crate::verify::level_file_source::*;
 pub use crate::verify::level_geometry_census::*;
 pub use crate::verify::level_geometry_layout_kind::*;
