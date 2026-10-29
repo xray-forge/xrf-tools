@@ -38,6 +38,10 @@ const AGX_MAX_EV: f32 = 4.026069;
 // PBR Neutral's shoulder start (0.8 less its toe's 0.04) and how far the compressed part desaturates.
 const NEUTRAL_START: f32 = 0.76;
 const NEUTRAL_DESATURATION: f32 = 0.15;
+// The most of white PBR Neutral's inverse takes a shown colour for: half an eight-bit step under it, the brightest a
+// display tells from white. The shoulder reaches white only at endless light, so what shows white comes back as the
+// light the shoulder shows that close to it, about 30, rather than as near endless light.
+const NEUTRAL_INVERSE_TOP: f32 = 1.0 - 0.5 / 255.0;
 // The matrices above inverted exactly (WGSL has no inverse), for the transforms' inverses.
 const SRGB_TO_REC2020_INVERSE: mat3x3<f32> = mat3x3<f32>(
   vec3<f32>(1.66051228, -0.124563464, -0.0181675039), vec3<f32>(-0.587704679, 1.13294912, -0.100559587),
@@ -55,8 +59,11 @@ const AGX_OUTSET_INVERSE: mat3x3<f32> = mat3x3<f32>(
   vec3<f32>(0.899796956, 0.111420989, 0.111420989), vec3<f32>(0.0871996192, 0.875575586, 0.0871996192),
   vec3<f32>(0.0130034249, 0.0130034249, 0.801379392),
 );
-// Halvings the inverse of AgX's sigmoid takes over its unit range, to a millionth.
-const AGX_SIGMOID_HALVINGS: u32 = 20u;
+// The inverse of AgX's sigmoid: halvings that bracket the answer within a sixteenth of the unit range, then Newton's
+// steps inside the bracket, which the sigmoid's slope, never under 0.1 there, takes within 2e-5 of the answer: half the
+// sigmoid's evaluations of halving all the way, which a pass inverting every particle's texel affords.
+const AGX_SIGMOID_HALVINGS: u32 = 4u;
+const AGX_SIGMOID_NEWTON_STEPS: u32 = 3u;
 
 // AgX's sigmoid, as a polynomial fit over the log-encoded unit range.
 fn agx_contrast(x: vec3<f32>) -> vec3<f32> {
@@ -64,6 +71,14 @@ fn agx_contrast(x: vec3<f32>) -> vec3<f32> {
   let x4: vec3<f32> = x2 * x2;
 
   return 15.5 * x4 * x2 - 40.14 * x4 * x + 31.96 * x4 - 6.868 * x2 * x + 0.4298 * x2 + 0.1191 * x - 0.00232;
+}
+
+// The slope of AgX's sigmoid (`agx_contrast`), its polynomial's derivative.
+fn agx_contrast_slope(x: vec3<f32>) -> vec3<f32> {
+  let x2: vec3<f32> = x * x;
+  let x4: vec3<f32> = x2 * x2;
+
+  return 93.0 * x4 * x - 200.7 * x4 + 127.84 * x2 * x - 20.604 * x2 + 0.8596 * x + 0.1191;
 }
 
 // AgX's base look: scene light to the display's linear colours.
@@ -94,8 +109,8 @@ fn pbr_neutral(light: vec3<f32>) -> vec3<f32> {
   return saturate(mix(scaled, vec3<f32>(compressed), grey));
 }
 
-// AgX's sigmoid inverted over its unit range: the log-encoded value each channel's `curved` came from, by halving, the
-// sigmoid rising throughout it.
+// AgX's sigmoid inverted over its unit range: the log-encoded value each channel's `curved` came from, bracketed by
+// halving, the sigmoid rising throughout it, then found by Newton's steps held within the bracket.
 fn agx_contrast_inverse(curved: vec3<f32>) -> vec3<f32> {
   var low: vec3<f32> = vec3<f32>(0.0);
   var high: vec3<f32> = vec3<f32>(1.0);
@@ -108,7 +123,13 @@ fn agx_contrast_inverse(curved: vec3<f32>) -> vec3<f32> {
     high = select(middle, high, is_under);
   }
 
-  return (low + high) * 0.5;
+  var found: vec3<f32> = (low + high) * 0.5;
+
+  for (var step: u32 = 0u; step < AGX_SIGMOID_NEWTON_STEPS; step++) {
+    found = clamp(found - (agx_contrast(found) - curved) / agx_contrast_slope(found), low, high);
+  }
+
+  return found;
 }
 
 // AgX's base look inverted: the scene light it shows as the display's linear colours `shown`.
@@ -120,19 +141,21 @@ fn agx_inverse(shown: vec3<f32>) -> vec3<f32> {
   return max(SRGB_TO_REC2020_INVERSE * (AGX_INSET_INVERSE * inset), vec3<f32>(0.0));
 }
 
-// PBR Neutral's shoulder inverted: the scene light it shows as `shown`. Past the shoulder the shown colour's top
-// channel is the compressed peak, which gives the peak back, then the share of white it was mixed with.
+// PBR Neutral's shoulder inverted: the scene light it shows as `shown`, each channel held to `NEUTRAL_INVERSE_TOP`.
+// Past the shoulder the shown colour's top channel is the compressed peak, which gives the peak back, then the share of
+// white it was mixed with.
 fn pbr_neutral_inverse(shown: vec3<f32>) -> vec3<f32> {
-  let compressed: f32 = max(shown.r, max(shown.g, shown.b));
+  let within: vec3<f32> = min(shown, vec3<f32>(NEUTRAL_INVERSE_TOP));
+  let compressed: f32 = max(within.r, max(within.g, within.b));
 
   if (compressed < NEUTRAL_START) {
-    return shown;
+    return within;
   }
 
   let reach: f32 = 1.0 - NEUTRAL_START;
-  let peak: f32 = reach * reach / max(1.0 - compressed, 1e-6) - reach + NEUTRAL_START;
+  let peak: f32 = reach * reach / (1.0 - compressed) - reach + NEUTRAL_START;
   let grey: f32 = 1.0 - 1.0 / (NEUTRAL_DESATURATION * (peak - compressed) + 1.0);
-  let scaled: vec3<f32> = (shown - grey * compressed) / max(1.0 - grey, 1e-6);
+  let scaled: vec3<f32> = (within - grey * compressed) / max(1.0 - grey, 1e-6);
 
   return max(scaled * (peak / compressed), vec3<f32>(0.0));
 }

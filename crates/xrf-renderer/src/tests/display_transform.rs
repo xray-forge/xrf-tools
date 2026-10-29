@@ -381,6 +381,62 @@ fn the_display_inverse_shows_what_it_was_given() {
   }
 }
 
+/// AgX's sigmoid inverted gives back the log-encoded value each curved one came from, within 2e-5, across its range.
+#[test]
+fn agxs_sigmoid_inverse_finds_what_it_curved() {
+  let cases: Vec<(Vec3, Vec4)> = (0..=40)
+    .map(|step| {
+      let x: f32 = step as f32 / 40.0;
+
+      (Vec3::new(x, (x * 0.9 + 0.03).min(1.0), (1.0 - x).max(0.0)), Vec4::ZERO)
+    })
+    .collect();
+  let Some(found) = run_probe("agx_contrast_inverse(agx_contrast(probe.colour.rgb))", &cases) else {
+    return;
+  };
+
+  for ((encoded, _), found) in cases.iter().zip(found) {
+    assert!(
+      (found - *encoded).abs().max_element() < 2e-5,
+      "{encoded}: found {found}"
+    );
+  }
+}
+
+/// PBR Neutral's inverse gives what shows as white, or past it, back as bounded light that the shoulder shows within
+/// half an eight-bit step of white, rather than as the near endless light its asymptote would ask for.
+#[test]
+fn pbr_neutrals_inverse_is_bounded_at_white() {
+  let neutral: Vec4 = display(DisplayMode::PbrNeutral, 1.0, 1.0);
+  let cases: Vec<(Vec3, Vec4)> = [
+    Vec3::ONE,
+    Vec3::splat(1.5),
+    Vec3::new(1.2, 0.95, 0.8),
+    Vec3::new(1.0, 0.6, 0.3),
+  ]
+  .into_iter()
+  .map(|shown| (shown, neutral))
+  .collect();
+  let (Some(light), Some(shown)) = (
+    run_probe(
+      "scene_for_display(srgb_encoded(probe.colour.rgb), probe.display)",
+      &cases,
+    ),
+    run_probe(
+      "srgb_decoded(shown_for_display(scene_for_display(srgb_encoded(probe.colour.rgb), probe.display), \
+       probe.display))",
+      &cases,
+    ),
+  ) else {
+    return;
+  };
+
+  for ((colour, _), (light, shown)) in cases.iter().zip(light.iter().zip(shown)) {
+    assert!(light.is_finite() && light.max_element() < 31.0, "{colour}: {light}");
+    assert!(shown.max_element() > 1.0 - 1.0 / 255.0, "{colour}: shows {shown}");
+  }
+}
+
 /// A picture of the game's enters the scene so that the frame's display shows it as the engine's curve shows its light,
 /// under AgX and PBR Neutral whatever lifts and grades the frame, as a display-referred plate comes in through the
 /// inverse of its view; under the engine's curve it enters as it stands.

@@ -9,6 +9,7 @@ use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::thunder_parameters::ThunderParameters;
 use crate::pass::thunder_uniform::ThunderUniform;
 use crate::pass::view_binding::ViewBinding;
@@ -98,14 +99,14 @@ impl ThunderFeature {
     ));
   }
 
-  /// Adds the bolt's model with its texture, then each glow's quad with its own, over the scene; nothing while no bolt
-  /// strikes.
+  /// Adds the bolt's model with its texture, then each glow's quad with its own, over the scene, through the frame's
+  /// `lighting`; nothing while no bolt strikes.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
-    handles: ViewTargetHandles,
+    (handles, lighting): (ViewTargetHandles, UniformBinding<LightingUniform>),
   ) {
     let (Some(draws), Some((textures, model)), Some((_, models, no_model))) = (self.draw, &self.views, &self.models)
     else {
@@ -120,6 +121,7 @@ impl ThunderFeature {
         thunder_sampler: passes.thunder.get_sampler(),
         model_vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "thunder vertices", &buffers.vertices)),
         model_indices: StorageArray::new(bindings.import_buffer(&mut *graph, "thunder indices", &buffers.indices)),
+        lighting,
       });
 
     entries

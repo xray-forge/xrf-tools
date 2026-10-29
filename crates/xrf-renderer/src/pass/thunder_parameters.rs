@@ -1,9 +1,11 @@
 use glam::Vec4;
 use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, UniformBinding};
 
+use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::thunder_uniform::ThunderUniform;
 
-/// What one of a strike's draws reads: the strike, its texture, and the bolt's model, empty for a glow.
+/// What one of a strike's draws reads: the strike, its texture, the bolt's model, empty for a glow, and the frame's
+/// lighting, whose display the bolt's pictures enter the scene through.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct ThunderParameters<'a> {
@@ -17,4 +19,6 @@ pub struct ThunderParameters<'a> {
   pub model_vertices: StorageArray<Vec4>,
   #[storage]
   pub model_indices: StorageArray<u32>,
+  #[uniform]
+  pub lighting: UniformBinding<LightingUniform>,
 }

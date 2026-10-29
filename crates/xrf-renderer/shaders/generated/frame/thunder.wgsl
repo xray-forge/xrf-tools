@@ -7,3 +7,4 @@
 @group(1) @binding(2) var thunder_sampler: sampler;
 @group(1) @binding(3) var<storage, read> model_vertices: array<vec4<f32>>;
 @group(1) @binding(4) var<storage, read> model_indices: array<u32>;
+@group(1) @binding(5) var<uniform> lighting: Lighting;
