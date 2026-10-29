@@ -1,5 +1,6 @@
 #import "static/gbuffer"
 #import "common/scene_light"
+#import "common/display_transform"
 #import "common/hmodel"
 #import "common/sky_box"
 #import "common/sun_shadow"
@@ -135,9 +136,16 @@ fn fs_glass(in: GBufferVarying) -> @location(0) vec4<f32> {
     saturate(dot(facing, lighting.to_sun.xyz));
   let highlight: vec3<f32> = shown_from_light(lighting.sun.rgb * lobe * fresnel * sun, frame_scale(lighting, exposure));
 
+  // The pane mixes as the engine's display shows it: its dirt, the sky it reflects and the fog are pictures painted for
+  // that display, and what stands behind it and the sun's highlight, light, are taken to the pictures the frame's
+  // display shows them as (`picture_from_display`); the whole enters the scene through the frame's display.
+  let display: vec4<f32> = lighting.display;
   let through: f32 = (1.0 - fresnel) * (1.0 - dirt);
-  let laid: vec3<f32> = reflection * fresnel * (1.0 - dirt) + dirt_lit * dirt + highlight * (1.0 - dirt);
+  let laid: vec3<f32> = reflection * fresnel * (1.0 - dirt) + dirt_lit * dirt +
+    picture_from_display(highlight, display) * (1.0 - dirt);
   let covered: f32 = 1.0 - through;
+  let pane: vec3<f32> = picture_from_display(transmitted, display) * through +
+    mix(laid, lighting.fog_color.rgb * covered, fog);
 
-  return vec4<f32>(scene_from_shown(transmitted * through + mix(laid, lighting.fog_color.rgb * covered, fog)), 1.0);
+  return vec4<f32>(scene_from_shown(picture_for_display(pane, display)), 1.0);
 }

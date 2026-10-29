@@ -109,6 +109,9 @@ pub struct RainUniform {
   /// Where the enhanced drops' square stands from the eye, in `x` and `z`, then the texels across and down of the
   /// image the enhanced streaks draw over.
   pub aim: Vec4,
+  /// How the frame is shown (`DisplayMode::get_display`), which the streaks and the engine's splashes, pictures painted
+  /// for the engine's display, enter the scene through; the engine's pipelines bind no lighting to read it from.
+  pub display: Vec4,
   /// Drops drawn.
   pub count: u32,
   /// The rain's clock: seconds it has fallen, run at its pace.

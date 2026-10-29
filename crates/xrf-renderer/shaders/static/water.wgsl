@@ -1,5 +1,6 @@
 #import "common/sky_box"
 #import "common/scene_light"
+#import "common/display_transform"
 #import "common/water_surface"
 #import "generated/static/water"
 
@@ -84,7 +85,11 @@ fn fs_water(in: WaterVarying) -> WaterOutput {
   let finished: vec3<f32> = mix(color, lighting.fog_color.rgb, fragment.fog);
   var out: WaterOutput;
 
-  out.color = vec4<f32>(scene_from_shown(select(base.rgb, finished, lighting.params.y > 0.5)), alpha);
+  // A picture painted for the engine's display, lit the forward way, entering the scene through the frame's display.
+  out.color = vec4<f32>(
+    scene_from_shown(picture_for_display(select(base.rgb, finished, lighting.params.y > 0.5), lighting.display)),
+    alpha,
+  );
   out.distortion = write_distortion(fragment, water);
   out.motion = camera_motion(in.world, in.previous);
 

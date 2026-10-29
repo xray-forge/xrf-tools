@@ -164,6 +164,12 @@ impl FallingRainFeature {
     self.uniform.cover_shape = Vec4::new(texels, reach, 0.0, 0.0);
   }
 
+  /// Follows how the frame is shown (`DisplayMode::get_display`), which the streaks and the engine's splashes enter the
+  /// scene through.
+  pub fn follow_display(&mut self, display: Vec4) {
+    self.uniform.display = display;
+  }
+
   /// Follows the level water's and the level surface's maps (`water`, `surface`, both of `shape`), which the enhanced
   /// drops land on where `is_drawn`.
   pub fn follow_surfaces(&mut self, (water, surface, shape): (Vec4, Vec4, Vec4), is_drawn: bool) {

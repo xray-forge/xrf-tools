@@ -1,5 +1,6 @@
 #import "common/water_surface"
 #import "common/scene_light"
+#import "common/display_transform"
 #import "common/water_enhanced"
 #import "common/rain_rings"
 #import "common/ray_guides"
@@ -368,7 +369,11 @@ fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
   let moved_behind: f32 = select(-camera_view_position(moved, moved_stored).z, FAR_BEHIND, moved_stored <= 0.0);
   // A read nearer than the water would copy what stands over it into it, and the sky is refused as well.
   let refracted: vec2<f32> = select(pixel, moved, moved_stored > 0.0 && moved_behind > -fragment.position.z);
-  let screen: vec3<f32> = scene_shown(textureLoad(water_scene, vec2<i32>(refracted), 0).rgb);
+  // The water mixes as the engine's display shows it: its colour, caustics, highlight and fog are pictures painted for
+  // that display, and the scene behind and the reflection, light, are taken to the pictures the frame's display shows
+  // them as (`picture_from_display`); the whole enters the scene through the frame's display.
+  let screen: vec3<f32> =
+    picture_from_display(scene_shown(textureLoad(water_scene, vec2<i32>(refracted), 0).rgb), lighting.display);
   // How deep the water stands over its bottom, straight down.
   let water_depth: f32 = in.world.y - bottom.y;
   // How much water the eye looks through to the bottom, never less than straight down: shallow water seen at a slant
@@ -407,7 +412,7 @@ fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
   var shaded: EnhancedShaded;
 
   shaded.out.color = vec4<f32>(
-    scene_from_shown(select(fragment.base.rgb, shown, lighting.params.y > 0.5)),
+    scene_from_shown(picture_for_display(select(fragment.base.rgb, shown, lighting.params.y > 0.5), lighting.display)),
     saturate(water_depth * SHORE_FADE),
   );
   // No distortion: the water refracts what is behind it above, before the temporal resolve. The distortion target is
@@ -442,8 +447,9 @@ fn enhanced_colour(in: WaterVarying, tilt: vec2<f32>) -> vec3<f32> {
   return mix(first, second, saturate(noise) * enhanced.variation);
 }
 
-// What the enhanced water reflects: its reflection drawn this frame, blurred and clear mixed by a perlin noise over the
-// level and greyed a little, read where its waves move it; the sky alone while it draws none.
+// What the enhanced water reflects, as the picture the frame's display shows it as: its reflection drawn this frame,
+// light, blurred and clear mixed by a perlin noise over the level and greyed a little, read where its waves move it;
+// the sky's picture alone while it draws none.
 fn enhanced_reflection(waves: EnhancedWaves, reflected: vec3<f32>, world: vec3<f32>, uv: vec2<f32>) -> vec3<f32> {
   if (enhanced.reflected < 0.5) {
     return enhanced_sky(reflected, lighting, sky_cube_0, sky_cube_1, sky_clamp) * water.reflection;
@@ -457,5 +463,5 @@ fn enhanced_reflection(waves: EnhancedWaves, reflected: vec3<f32>, world: vec3<f
   // The rain's roughness takes the clear reflection away for the blurred one.
   let mixed: vec3<f32> = mix(blurred, clear, saturate(noise * enhanced.blur_noise) * (1.0 - waves.rain_rough));
 
-  return mix(vec3<f32>(dot(mixed, LUMINANCE)), mixed, enhanced.vibrance);
+  return picture_from_display(mix(vec3<f32>(dot(mixed, LUMINANCE)), mixed, enhanced.vibrance), lighting.display);
 }

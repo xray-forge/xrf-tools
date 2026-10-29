@@ -40,6 +40,7 @@ use crate::host::render_level_weather::RenderLevelWeather;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
+use crate::pass::display_mode::DisplayMode;
 use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_trace_uniform::LightTraceUniform;
@@ -361,6 +362,9 @@ impl SceneView {
       frame.weather_textures,
     );
 
+    self.features.rain.follow_display(
+      DisplayMode::of(options).get_display(&options.features.grading, &self.features.exposure.get_metering()),
+    );
     self.features.wet.prepare(
       weather,
       (options, !frame.view.is_orthographic()),
