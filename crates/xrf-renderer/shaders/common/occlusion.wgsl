@@ -2,7 +2,8 @@
 #import "common/octahedral"
 
 // The screen's occlusion, searched at half resolution as visibility then distance along the view, and the indirect
-// light gathered beside it as colour then distance; and the reflections traced at a size of their own.
+// light gathered beside it as colour then distance, or traced as such at the frame's size; and the reflections traced
+// at a size of their own.
 
 // The occlusion brought up to the frame's pixel: the four searched pixels around it by how near each lies, and each by
 // how near its distance lies to the pixel's, so an edge never takes the other side's.
@@ -29,8 +30,13 @@ fn upsampled_occlusion(searched: texture_2d<f32>, pixel: vec2<f32>, distance: f3
 }
 
 // The indirect light brought up to the frame's pixel as the occlusion is: the searched pixels' colour by how near each
-// lies and how near its distance, in alpha, lies to the pixel's.
+// lies and how near its distance, in alpha, lies to the pixel's. The light traced at the frame's size is the pixel's
+// own, read as it is.
 fn upsampled_light(gathered: texture_2d<f32>, pixel: vec2<f32>, distance: f32) -> vec3<f32> {
+  if (all(vec2<f32>(textureDimensions(gathered)) >= camera.viewport.xy)) {
+    return textureLoad(gathered, vec2<i32>(pixel), 0).rgb;
+  }
+
   let last: vec2<f32> = vec2<f32>(textureDimensions(gathered)) - 1.0;
   let base: vec2<f32> = floor(pixel / 2.0);
   let fraction: vec2<f32> = (pixel - base * 2.0) * 0.5;

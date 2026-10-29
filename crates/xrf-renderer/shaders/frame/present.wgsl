@@ -17,8 +17,9 @@
 
 // The scene, the targets a debug view shows, what
 // the frame shows, the frame upscaled or the scene again (filtered for the debanding's reads), the bloom, finished in
-// the engine's 256-square target or at half the frame's size for the enhanced bloom, the indirect light at half the
-// frame's size, and the reflections and how their rays ended, at the size they are traced at.
+// the engine's 256-square target or at half the frame's size for the enhanced bloom, the indirect light gathered at
+// half the frame's size or traced at its size, and the reflections and how their rays ended, at the size they are
+// traced at.
 #import "generated/frame/present"
 
 const VIEW_ALBEDO: u32 = 1u;

@@ -24,6 +24,11 @@ struct RayGuides {
   @location(4) diffuse_hit_distance: f32,
 };
 
+// The texel of a target traced at a size of its own over the frame's point `clip`.
+fn texel_over(clip: vec2<f32>, size: vec2<u32>) -> vec2<i32> {
+  return min(vec2<i32>(clip * vec2<f32>(size) / camera.viewport.xy), vec2<i32>(size) - 1);
+}
+
 @fragment
 fn fs_ray_guides(in: FullscreenVarying) -> RayGuides {
   let texel: vec2<i32> = vec2<i32>(in.clip.xy);
@@ -45,12 +50,10 @@ fn fs_ray_guides(in: FullscreenVarying) -> RayGuides {
   let intensity: f32 = select(1.0, lighting.reflections.z, lighting.reflections.x > 0.5);
   let specular: vec3<f32> = environment_brdf(head_on, roughness, facing) * intensity;
   let world_normal: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(normal, 0.0)).xyz);
-  // The trace's texel over the pixel, at the size it was traced at.
-  let size: vec2<i32> = vec2<i32>(textureDimensions(traced));
-  let at: vec2<i32> = min(vec2<i32>(in.clip.xy * vec2<f32>(size) / camera.viewport.xy), size - 1);
-  let met: f32 = textureLoad(traced, at, 0).a;
-  // The indirect light's texel over the pixel, traced at half size: none where its ray met nothing.
-  let bounced: f32 = textureLoad(diffuse_hits, min(texel / 2, vec2<i32>(textureDimensions(diffuse_hits)) - 1), 0).r;
+  // How far the reflection's ray and the indirect light's went, each at the size it was traced at: none where the
+  // indirect light's met nothing.
+  let met: f32 = textureLoad(traced, texel_over(in.clip.xy, textureDimensions(traced)), 0).a;
+  let bounced: f32 = textureLoad(diffuse_hits, texel_over(in.clip.xy, textureDimensions(diffuse_hits)), 0).r;
 
   return RayGuides(vec4<f32>(specular, 1.0), vec4<f32>(world_normal, roughness), select(RAY_GUIDE_FAR_HIT, met, met >= 0.0),
     RAY_GUIDE_BIAS_WATER * saturate(wet.g), select(RAY_GUIDE_FAR_HIT, bounced, bounced > 0.0));
