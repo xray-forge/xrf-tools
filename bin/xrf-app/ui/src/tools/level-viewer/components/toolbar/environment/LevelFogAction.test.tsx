@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { ERenderFogMode } from "@xrf/ipc/types/xrf-renderer";
+import { ERenderFogColour, ERenderFogMode } from "@xrf/ipc/types/xrf-renderer";
 
 import {
   ILevelViewContainerDescriptor,
@@ -69,6 +69,20 @@ describe("LevelFogAction", () => {
     await userEvent.click(getByRole("button", { name: "Sky haze" }));
 
     expect(view.options.isSkyHazed).toBe(true);
+  });
+
+  it("takes the fog's colour from the weather, the sky or both on asking, half of each by default", async () => {
+    const { getByRole, view } = await renderOpenAction();
+
+    expect(getByRole("button", { name: "Blend" })).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(getByRole("button", { name: "Sky" }));
+
+    expect(view.features.fog).toEqual({ colour: ERenderFogColour.SKY });
+
+    await userEvent.click(getByRole("button", { name: "Weather" }));
+
+    expect(view.features.fog).toEqual({ colour: ERenderFogColour.WEATHER });
   });
 
   it("draws the fog enhanced on asking, its strengths settable only then, and back to the settings", async () => {

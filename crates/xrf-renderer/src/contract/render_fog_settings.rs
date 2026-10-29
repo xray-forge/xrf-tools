@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::contract::render_fog_colour::RenderFogColour;
 use crate::contract::render_fog_mode::RenderFogMode;
 
 /// How the fog is drawn beyond the weather's own keys, and the enhanced fog's strengths.
@@ -19,6 +20,8 @@ pub struct RenderFogSettings {
   /// The fog's share past which fogged surfaces fade into the sky behind them, whole where the fog is: none fades them
   /// by the fog's square from the first, as the engine does, which shows the sky through the middle distance.
   pub sky_fade: f32,
+  /// What colour the fog takes at the anchored light levels.
+  pub colour: RenderFogColour,
 }
 
 impl Default for RenderFogSettings {
@@ -31,6 +34,7 @@ impl Default for RenderFogSettings {
       sun_color: 0.1,
       scattering: 0.0,
       sky_fade: 0.75,
+      colour: RenderFogColour::default(),
     }
   }
 }

@@ -2,6 +2,7 @@
 #import "common/scene_light"
 #import "common/octahedral"
 #import "common/lighting"
+#import "common/fog_colour"
 #import "common/hmodel"
 #import "common/sky_box"
 #import "common/sky_clouds"
@@ -48,8 +49,8 @@ fn lit_texel(texel: vec2<i32>, direction: vec3<f32>, scale: f32) -> vec4<f32> {
   let fog: f32 = select(0.0, fog_amount_at(lighting, position, height), lighting.fog_color.w > 0.5);
 
   // Kept as light in the engine's units, as the sky's is, since the cube outlasts the frame it was lit in.
-  return vec4<f32>(fog_mixed(lighting, lit, fog_color_at(lighting, position, height), fog) / light_scale(lighting),
-    length(position));
+  return vec4<f32>(fog_mixed(lighting, lit, fog_color_at(lighting, position, to_point_world, height), fog) /
+    light_scale(lighting), length(position));
 }
 
 @compute @workgroup_size(8, 8, 1)

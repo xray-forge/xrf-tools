@@ -69,6 +69,7 @@ pub use crate::contract::render_dlss_preset::RenderDlssPreset;
 pub use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
 pub use crate::contract::render_enhanced_water_settings::RenderEnhancedWaterSettings;
 pub use crate::contract::render_exposure_settings::RenderExposureSettings;
+pub use crate::contract::render_fog_colour::RenderFogColour;
 pub use crate::contract::render_fog_mode::RenderFogMode;
 pub use crate::contract::render_fog_settings::RenderFogSettings;
 pub use crate::contract::render_foliage_mode::RenderFoliageMode;

@@ -2,6 +2,7 @@
 #import "common/scene_light"
 #import "common/display_transform"
 #import "common/hmodel"
+#import "common/fog_colour"
 #import "common/sky_box"
 #import "common/sun_shadow"
 
@@ -145,7 +146,7 @@ fn fs_glass(in: GBufferVarying) -> @location(0) vec4<f32> {
     picture_from_display(highlight, display) * (1.0 - dirt);
   let covered: f32 = 1.0 - through;
   let pane: vec3<f32> = picture_from_display(transmitted, display) * through +
-    mix(laid, lighting.fog_color.rgb * covered, fog);
+    mix(laid, fog_shown_toward(lighting, normalize(rotation * position)) * covered, fog);
 
   return vec4<f32>(scene_from_shown(picture_for_display(pane, display)), 1.0);
 }

@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { formatNumber, formatPercent } from "@xrf/format";
-import { ERenderFogMode, RenderFogMode } from "@xrf/ipc/types/xrf-renderer";
+import { ERenderFogMode, RenderFogColour, RenderFogMode } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
@@ -22,11 +22,13 @@ import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
+  explainRenderFogColour,
   explainRenderFogMode,
   formatFogDensity,
   formatFogHeight,
   formatFogShare,
   formatFogSkyFade,
+  RENDER_FOG_COLOUR_OPTIONS,
   RENDER_FOG_LIMITS,
   RENDER_FOG_MODE_OPTIONS,
 } from "@/core/render/lib/features/render-fog-choices";
@@ -107,6 +109,15 @@ export function LevelFogAction({
       />
 
       <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_FOG_KEYS} onReset={weatherService.resetManual} />
+
+      <RenderValueChoice
+        label={"Colour"}
+        options={RENDER_FOG_COLOUR_OPTIONS}
+        value={value.colour}
+        onChange={(colour: RenderFogColour) => set({ colour })}
+      />
+
+      <p className={"text-xs text-text-secondary"}>{explainRenderFogColour(value.colour)}</p>
 
       <RenderValueChoice
         label={"Mode"}

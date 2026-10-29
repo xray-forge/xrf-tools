@@ -2,6 +2,7 @@
 #import "common/scene_light"
 #import "common/octahedral"
 #import "common/lighting"
+#import "common/fog_colour"
 #import "common/hmodel"
 #import "common/sky"
 #import "common/fullscreen"
@@ -136,7 +137,9 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     }
 
     if (is_fogged) {
-      return combined(scene_from_light(fog_light(lighting), scale), tonemap_high(fog_light(lighting), scale));
+      let fog_seen: vec3<f32> = fog_light(lighting, direction);
+
+      return combined(scene_from_light(fog_seen, scale), tonemap_high(fog_seen, scale));
     }
 
     return combined(scene_from_shown(backdrop_at(in.clip.xy)), vec3<f32>(0.0));
@@ -267,7 +270,8 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   // the middle distance is veiled rather than shown through to the sky.
   let height: f32 = camera.position.y + (transpose(camera.view) * vec4<f32>(position, 0.0)).y;
   let thickened: f32 = select(0.0, fog_amount_at(lighting, position, height), is_fogged);
-  let fogged: vec3<f32> = fog_mixed(lighting, shaded, fog_color_at(lighting, position, height), thickened);
+  let fogged: vec3<f32> = fog_mixed(lighting, shaded, fog_color_at(lighting, position, direction, height),
+    thickened);
 
   let finished: vec3<f32> = scene_from_light(fogged, scale);
   let high: vec3<f32> = tonemap_high(fogged, scale);

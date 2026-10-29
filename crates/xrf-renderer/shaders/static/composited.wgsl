@@ -4,6 +4,7 @@ enable dual_source_blending;
 #import "common/scene_light"
 #import "common/display_transform"
 #import "common/hmodel"
+#import "common/fog_colour"
 #import "common/sky_box"
 #import "common/sun_shadow"
 
@@ -44,7 +45,8 @@ fn lit_color(shaded: GBufferOutput, position: vec3<f32>, fog: f32) -> vec3<f32> 
     albedo, light, normalize(rotation * normal), normalize(rotation * camera_view_ray(position)), slice, occlusion,
     vec3<f32>(1.0));
 
-  return shown_from_light(fog_mixed(lighting, color, fog_light(lighting), fog), frame_scale(lighting, exposure));
+  return shown_from_light(fog_mixed(lighting, color, fog_light(lighting, normalize(rotation * position)), fog),
+    frame_scale(lighting, exposure));
 }
 
 // A spawned model's vertex lit as the engine's forward model passes light theirs, per vertex: by its object's sky share
@@ -149,7 +151,13 @@ fn level_composited(in: GBufferVarying, surface: Surface, base: vec4<f32>) -> Co
   }
 
   return composite(surface.flags, texel, base.a * (1.0 - fog) * (1.0 - fog),
-    picture_for_display(saturate(mix(color, lighting.fog_color.rgb, fog)), lighting.display), 0.0, lighting.display);
+    picture_for_display(saturate(mix(color, fog_shown_from_eye(in.world), fog)), lighting.display), 0.0,
+    lighting.display);
+}
+
+// The fog's colour as shown along the view to a world point.
+fn fog_shown_from_eye(world: vec3<f32>) -> vec3<f32> {
+  return fog_shown_toward(lighting, normalize(world - camera.position.xyz));
 }
 
 // A blended model as the engine draws it forward, into the frame already tonemapped: its light times its base, doubled.
@@ -172,7 +180,8 @@ fn model_composited(in: GBufferVarying, surface: Surface, base: vec4<f32>) -> Co
     // The enhanced fog fogs `model_def_lq` too, its alpha fading by the fog's square as `model_env_lq`'s does.
     if (lighting.height_fog.w > 0.5) {
       return composite(surface.flags, texel, base.a * (1.0 - fog) * (1.0 - fog),
-        picture_for_display(saturate(mix(lit, lighting.fog_color.rgb, fog)), lighting.display), 0.0, lighting.display);
+        picture_for_display(saturate(mix(lit, fog_shown_from_eye(in.world), fog)), lighting.display), 0.0,
+        lighting.display);
     }
 
     return composite(surface.flags, texel, base.a, picture_for_display(lit, lighting.display), 0.0, lighting.display);
@@ -194,7 +203,8 @@ fn model_composited(in: GBufferVarying, surface: Surface, base: vec4<f32>) -> Co
   let color: vec3<f32> = in.light * mix(reflection, texel, base.a) * 2.0;
 
   return composite(surface.flags, texel, base.a * (1.0 - fog) * (1.0 - fog),
-    picture_for_display(saturate(mix(color, lighting.fog_color.rgb, fog)), lighting.display), 0.0, lighting.display);
+    picture_for_display(saturate(mix(color, fog_shown_from_eye(in.world), fog)), lighting.display), 0.0,
+    lighting.display);
 }
 
 // A surface composited by its flags: multiplied into what is behind it, added to it, or laid over it by its alpha,

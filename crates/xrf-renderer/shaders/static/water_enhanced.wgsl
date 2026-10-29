@@ -1,4 +1,5 @@
 #import "common/water_surface"
+#import "common/fog_colour"
 #import "common/scene_light"
 #import "common/display_transform"
 #import "common/water_enhanced"
@@ -406,7 +407,7 @@ fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
     (sharpness + 8.0) / (HIGHLIGHT_NEAR + 8.0) * saturate(sun) * enhanced.specular * sunlit;
   let seen: f32 = 1.0 - fragment.fog;
   let lit: vec3<f32> = mix(turbid, reflection, saturate(fresnel * enhanced.reflectivity)) + caustics + highlight;
-  let fogged: vec3<f32> = mix(lighting.fog_color.rgb, lit, seen);
+  let fogged: vec3<f32> = mix(fog_shown_toward(lighting, normalize(in.world - camera.position.xyz)), lit, seen);
   let border: f32 = smoothstep(0.0, max(enhanced.soft_border, 1e-4), path + fresnel);
   let shown: vec3<f32> = mix(screen, fogged, border * seen * seen);
   var shaded: EnhancedShaded;
