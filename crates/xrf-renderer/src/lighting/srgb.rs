@@ -1,21 +1,9 @@
 use glam::Vec3;
+// The display's transfer, as `common/srgb.wgsl`'s `srgb_decoded` and its inverse apply it, shared with the tools that
+// measure textures as the frame lights them.
+pub use xrf_math::{SRGB_DISPLAY_POWER, srgb_decoded, srgb_encoded};
 
 use crate::lighting::luminance::luminance;
-
-/// The power of the sRGB display's transfer: the standard's reference display, which `common/srgb.wgsl` explains.
-pub const SRGB_DISPLAY_POWER: f32 = 2.2;
-
-/// Linear light encoded by the sRGB display's transfer, as a colour texture holds it; `common/srgb.wgsl` decodes it
-/// back.
-pub fn srgb_encoded(linear: f32) -> f32 {
-  linear.max(0.0).powf(1.0 / SRGB_DISPLAY_POWER)
-}
-
-/// A value encoded by the sRGB display's transfer back to linear light, as `common/srgb.wgsl`'s `srgb_decoded`; past
-/// one, as an engine light brighter than white is, the power continues.
-pub fn srgb_decoded(encoded: f32) -> f32 {
-  encoded.max(0.0).powf(SRGB_DISPLAY_POWER)
-}
 
 /// A colour authored as a display value (a picture's, a lamp's) as the frame lights with it, as
 /// `common/scene_light.wgsl`'s `authored_colour`: decoded where the light is physical, as it stands where it is the
