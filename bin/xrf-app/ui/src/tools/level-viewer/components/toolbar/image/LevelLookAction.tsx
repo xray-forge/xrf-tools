@@ -131,8 +131,8 @@ export function LevelLookAction({
   const lightModel: RenderLightModel = drawn.lightModel;
   const isPhysical: boolean = lightModel === ERenderLightModel.PHYSICAL;
   const displayTransform: RenderDisplayTransform = drawn.displayTransform;
-  const isPhysicalLevelAvailable: boolean = renderSettingsService.isPhysicalLightLevelAvailable;
-  const lightLevel: RenderLightLevel = toDrawnRenderLightLevel(drawn.lightLevel, isPhysicalLevelAvailable);
+  const isDevLevelAvailable: boolean = renderSettingsService.isDevLightLevelAvailable;
+  const lightLevel: RenderLightLevel = toDrawnRenderLightLevel(drawn.lightLevel, isDevLevelAvailable);
   const isPhysicalLevels: boolean = isPhysical && lightLevel === ERenderLightLevel.PHYSICAL;
 
   const { choice, look, defaults } = lookService;
@@ -241,7 +241,7 @@ export function LevelLookAction({
 
           <RenderValueChoice
             label={"Levels"}
-            options={getRenderLightLevelOptions(isPhysicalLevelAvailable)}
+            options={getRenderLightLevelOptions(isDevLevelAvailable)}
             value={lightLevel}
             isDisabled={!isPhysical}
             onChange={onLightLevel}

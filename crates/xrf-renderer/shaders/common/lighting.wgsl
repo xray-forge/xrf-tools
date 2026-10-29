@@ -203,6 +203,8 @@ fn is_lighting_physical(state: Lighting) -> bool {
 
 // The sun's colour as the engine binds it, for a pass mixing it into a shown colour: as it stands, or, where the light
 // is physical, its units and pre-exposure taken off and encoded back.
+// todo: Give the anchored levels the weather's sun here, where their sun is anchored over the hemisphere and the
+// ambient and encodes back dimmer than the engine binds it.
 fn sun_shown(state: Lighting) -> vec3<f32> {
   let sun: vec3<f32> = state.sun.rgb / light_scale(state);
 

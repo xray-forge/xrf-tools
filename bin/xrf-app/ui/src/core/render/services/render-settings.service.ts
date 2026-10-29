@@ -173,20 +173,20 @@ export class RenderSettingsService {
     return this.storedRendererChoice.value;
   }
 
-  /** Whether the physical light levels may be chosen and drawn: in dev mode only. */
+  /** Whether the light levels past the authored (the anchored and the physical) may be chosen and drawn: in dev mode. */
   @Computed()
-  public get isPhysicalLightLevelAvailable(): boolean {
+  public get isDevLightLevelAvailable(): boolean {
     return this.settingsService.isDevModeEnabled;
   }
 
-  /** Every renderer feature as the choice sets it, a physical light level drawn as the authored one outside dev mode. */
+  /** Every renderer feature as the choice sets it, a dev light level drawn as the authored one outside dev mode. */
   @Computed()
   public get rendererFeatures(): IRenderFeatureSettings {
     const features: IRenderFeatureSettings = resolveRenderFeatures(this.rendererChoice);
 
     return {
       ...features,
-      lightLevel: toDrawnRenderLightLevel(features.lightLevel, this.isPhysicalLightLevelAvailable),
+      lightLevel: toDrawnRenderLightLevel(features.lightLevel, this.isDevLightLevelAvailable),
     };
   }
 

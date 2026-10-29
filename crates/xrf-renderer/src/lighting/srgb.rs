@@ -43,3 +43,12 @@ pub fn authored_light(colour: Vec3, is_physical: bool) -> Vec3 {
 
   hue * (luminance(colour) / luminance(hue).max(1e-12))
 }
+
+/// A light authored as a display value as additive linear light over the lights `under` it, in the engine's units: what
+/// the display's decode of their sum adds to its decode of `under` alone, per channel. Lights anchored over each other
+/// in turn sum, where all of them shine, to the decode of the engine's sum, and add linearly where only some do.
+pub fn anchored_light(light: Vec3, under: Vec3) -> Vec3 {
+  let under: Vec3 = under.max(Vec3::ZERO);
+
+  (authored_colour(light.max(Vec3::ZERO) + under, true) - authored_colour(under, true)).max(Vec3::ZERO)
+}

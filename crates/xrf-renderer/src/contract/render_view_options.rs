@@ -41,9 +41,13 @@ impl RenderViewOptions {
   }
 
   /// Whether the lights' specular weight follows their light as their diffuse does (`to_light_specular`): at the
-  /// physical levels. Under the engine's light and at the authored levels it is the engine's, over the authored colour.
+  /// anchored and the physical levels. Under the engine's light and at the authored levels it is the engine's, over the
+  /// authored colour.
   pub fn is_specular_linear(&self) -> bool {
-    self.get_physical_light_level() == Some(RenderLightLevel::Physical)
+    matches!(
+      self.get_physical_light_level(),
+      Some(RenderLightLevel::Anchored | RenderLightLevel::Physical)
+    )
   }
 
   /// The level the view's light stands at where it is physical (`is_light_physical`); none under the engine's light.

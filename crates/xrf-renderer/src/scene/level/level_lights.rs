@@ -19,7 +19,7 @@ use crate::lighting::light_basis::LightBasis;
 use crate::lighting::light_bulb::get_bulb_radius;
 use crate::lighting::light_shadow_size::{LIGHT_SHADOW_POINT_FACES, to_light_shadow_scale};
 use crate::lighting::light_specular::to_light_specular;
-use crate::lighting::srgb::authored_light;
+use crate::lighting::srgb::{anchored_light, authored_light};
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_record::LightRecord;
 use crate::pass::light_volume_record::LightVolumeRecord;
@@ -166,6 +166,7 @@ impl LevelLights {
       is_scene_first,
       is_physical,
       is_specular_linear,
+      anchor,
       light_scale,
       time,
     } = frame;
@@ -238,11 +239,14 @@ impl LevelLights {
           None
         };
         // The authored colour faded, a fade a share of the light, linear in either model; as light, its strength kept
-        // as the weather's lights keep theirs. Its specular weight follows the light at the physical levels, else the
-        // engine's over the authored colour, which the authored levels add to the diffuse in display values as the
-        // engine does (`hmodel_terms`).
+        // as the weather's lights keep theirs, or at the anchored levels anchored over the ambient. Its specular weight
+        // follows the light at the anchored and physical levels, else the engine's over the authored colour, which the
+        // authored levels add to the diffuse in display values as the engine does (`hmodel_terms`).
         let authored: Vec3 = Self::to_color(&self.animators, light, time) * it.fades.whole * it.share;
-        let color: Vec3 = authored_light(authored, is_physical);
+        let color: Vec3 = match anchor {
+          Some(under) => anchored_light(authored, under),
+          None => authored_light(authored, is_physical),
+        };
         let specular: f32 = if is_specular_linear {
           to_light_specular(color, true)
         } else {

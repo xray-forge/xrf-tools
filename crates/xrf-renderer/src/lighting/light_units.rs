@@ -11,7 +11,8 @@ use crate::pass::sky_harmonics::SkyHarmonics;
 
 /// The cd/m² a light of one in the engine's units stands for, the weather's and the local lights' apart, and the gain
 /// the lights take: one each under the engine's light; at the authored levels the physical light's unit for both, every
-/// light by the key light's gain; at the physical levels the weather's set so its sky lights a level surface as the
+/// light by the key light's gain; at the anchored levels the unit with no gain, each light decoded where it is anchored
+/// (`anchored_light`); at the physical levels the weather's set so its sky lights a level surface as the
 /// world's does (`Daylight`), and the local lights' brought to real lamps'.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LightUnits {
@@ -66,6 +67,11 @@ impl LightUnits {
           light_gain: 1.0,
         }
       }
+      (RenderLightLevel::Anchored, _) => Self {
+        weather: PHYSICAL_LIGHT_UNIT,
+        local: PHYSICAL_LIGHT_UNIT,
+        light_gain: 1.0,
+      },
       _ => Self {
         weather: PHYSICAL_LIGHT_UNIT,
         local: PHYSICAL_LIGHT_UNIT,
