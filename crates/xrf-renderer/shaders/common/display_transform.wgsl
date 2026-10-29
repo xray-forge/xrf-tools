@@ -250,10 +250,16 @@ fn picture_for_display(shown: vec3<f32>, display: vec4<f32>) -> vec3<f32> {
     return shown;
   }
 
-  let light: vec3<f32> = untonemapped(srgb_decoded(shown), 1.0);
+  // A mix brighter than the picture's white (the water's sun glint over its reflection) enters only up to white, held by
+  // its own peak so it keeps its hue, and what passes white joins as the light the engine's curve gives it: a bright
+  // saturated colour is none PBR Neutral's or AgX's shoulder shows, whose inverse came back as pure red, or held channel
+  // by channel yellow-green, many times the light the water reflects.
+  let bounded: vec3<f32> = shown / max(max(shown.r, max(shown.g, shown.b)), 1.0);
+  let light: vec3<f32> = untonemapped(srgb_decoded(bounded), 1.0);
   let held: vec3<f32> = scene_for_display(tonemap(srgb_encoded(light), 1.0), display);
+  let past: vec3<f32> = untonemapped(srgb_decoded(shown), 1.0) - light;
 
-  return srgb_encoded(tonemap(held, 1.0));
+  return srgb_encoded(tonemap(held + past, 1.0));
 }
 
 // `picture_for_display` undone: the picture a `display` brought in as `entered`, for a reader of the seen sky that
