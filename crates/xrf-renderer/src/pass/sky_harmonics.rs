@@ -8,7 +8,8 @@ use crate::lighting::luminance::luminance;
 /// coefficients, each in a vector's colour, of the irradiance over π in the engine's light units, already convolved by
 /// the cosine; the first's `w` one once the sky was projected, nothing before; the second to fourth's `w` the authored
 /// hemisphere's first coefficient (`hemisphere_environment`: the engine's own square of the hemisphere colour and the
-/// cubes, its hue decoded per channel, the look's hemisphere scale in it), its level.
+/// cubes, its hue decoded per channel, the look's hemisphere scale in it), its level; the fifth to seventh's `w` what
+/// that hemisphere gives a level surface facing up, its lookup there.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
 #[shader(name = "SkyHarmonics")]
@@ -49,20 +50,27 @@ impl SkyHarmonics {
   }
 
   /// The coefficients the lighting carries at the light's `level`, the look's hemisphere scale (`hemi`) in them. At
-  /// the physical levels the sky's own; at the authored levels the sky's shape at the authored hemisphere's level and
-  /// colour, each channel's own, as the game lights its hemisphere: by day the two levels stand within a few percent,
-  /// but a night sky's picture lights a fraction of the hemisphere the game authors and leaves the side away from the
-  /// moon black, and a sky's picture tints the shade it lights its own colour, a day's blue grey where the game's
-  /// hemisphere is warmer. A sky too dark to have a shape lights evenly at that level.
+  /// the physical levels the sky's own; at the authored levels the sky's shape, each channel's own, scaled so a level
+  /// surface facing up takes what the authored hemisphere gives it, as the game lights its hemisphere: a night sky's
+  /// picture lights a fraction of the hemisphere the game authors and leaves the side away from the moon black, and a
+  /// sky's picture tints the shade it lights its own colour, a day's blue grey where the game's hemisphere is warmer.
+  /// Matched at the zenith, as HDRP levels a sky by its upper hemisphere's illuminance, not on the sphere's mean, at
+  /// which a top-heavy cloudy sky lights level ground a quarter over the game's. A sky too dark to have a shape lights
+  /// evenly at the authored hemisphere's level.
   pub fn at_level(&self, level: RenderLightLevel, hemi: f32) -> [Vec4; 9] {
-    let [sky, authored]: [Vec3; 2] = [
+    let [sky, zenith, authored, authored_zenith]: [Vec3; 4] = [
       self.coefficients[0].truncate() * hemi,
+      Self::get_zenith(&self.coefficients) * hemi,
       Vec3::new(self.coefficients[1].w, self.coefficients[2].w, self.coefficients[3].w),
+      Vec3::new(self.coefficients[4].w, self.coefficients[5].w, self.coefficients[6].w),
     ];
     let scale: Vec3 = match level {
       RenderLightLevel::Physical => Vec3::splat(hemi),
-      RenderLightLevel::Authored if luminance(sky) > luminance(authored) * Self::DARK_SKY_SHARE => {
-        hemi * authored / sky.max(Vec3::splat(luminance(sky) * Self::LEAST_CHANNEL_SHARE))
+      RenderLightLevel::Authored
+        if luminance(sky) > luminance(authored) * Self::DARK_SKY_SHARE
+          && luminance(zenith) > luminance(authored_zenith) * Self::DARK_SKY_SHARE =>
+      {
+        hemi * authored_zenith / zenith.max(Vec3::splat(luminance(zenith) * Self::LEAST_CHANNEL_SHARE))
       }
       RenderLightLevel::Authored => {
         return std::array::from_fn(|term| {
