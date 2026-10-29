@@ -133,6 +133,7 @@ export default defineConfig({
           groups: [
             {
               name: getInitialVendorChunk,
+              debugName: "initial-vendor",
               test: /node_modules[\\/]/,
               tags: ["$initial" as const],
               minSize: 50_000,
