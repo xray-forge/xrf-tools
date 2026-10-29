@@ -17,6 +17,10 @@ pub struct ViewTargetHandles {
   pub relief: GraphTexture,
   pub depth: GraphTexture,
   pub light: GraphTexture,
+  /// The coloured specular the sun and the lamps reflect, beside their diffuse in `light`, at the anchored levels.
+  pub specular: Option<GraphTexture>,
+  /// A texel of nothing, for a pass binding a target the frame does not make.
+  pub nothing: GraphTexture,
   pub scene: GraphTexture,
   /// How far the water and the distorting particles move what is seen through them, cleared at the frame's start.
   pub distortion: GraphTexture,
@@ -47,8 +51,8 @@ impl ViewTargetHandles {
     let depth: GraphTexture = import("depth", &targets.depth);
     let light: GraphTexture = import("light", &targets.light);
     let scene: GraphTexture = import("scene", &targets.scene);
-    let [no_occlusion, no_haze, no_bloom] =
-      ["ambient occlusion none", "sky haze none", "bloom none"].map(|label| import(label, none));
+    let [no_occlusion, no_haze, no_bloom, nothing] =
+      ["ambient occlusion none", "sky haze none", "bloom none", "nothing"].map(|label| import(label, none));
     let mut create = |label: &'static str, (width, height): (u32, u32), format: wgpu::TextureFormat| {
       graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
     };
@@ -62,6 +66,10 @@ impl ViewTargetHandles {
       relief,
       depth,
       light,
+      specular: uses
+        .is_specular_split
+        .then(|| create("specular light", (width, height), ViewTargets::LIGHT)),
+      nothing,
       scene,
       distortion: create("distortion", (width, height), ViewTargets::DISTORTION),
       occlusion: if uses.is_occluded {

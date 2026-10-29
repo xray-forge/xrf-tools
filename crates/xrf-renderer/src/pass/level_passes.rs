@@ -1,5 +1,6 @@
 use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::bloom_pass::BloomPass;
+use crate::pass::brdf_table::BrdfTable;
 use crate::pass::calibration_pass::CalibrationPass;
 use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
@@ -108,4 +109,5 @@ pub struct LevelPasses<'a> {
   pub meter: &'a MeterPass,
   pub calibration: &'a CalibrationPass,
   pub table: &'a MaterialTable,
+  pub brdf_table: &'a BrdfTable,
 }

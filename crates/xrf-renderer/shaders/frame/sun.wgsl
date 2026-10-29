@@ -5,11 +5,16 @@
 #import "common/fullscreen"
 #import "common/sun_shadow"
 #import "common/occlusion"
+#import "common/scene_light"
+#import "common/brdf"
+#import "common/reflection_trace"
 
 // `accum_sun`: the sun at every drawn pixel, `Ldynamic_color * plight_infinity(m, P, N, L)`, times how much of it
 // reaches the pixel through the cascades' maps, or, traced, what the sun's traced shadow saw there, and past what its
 // contact shadows found. Diffuse in colour, specular in alpha, into the light the frame accumulates; and beside it how
-// much of the sun reaches the pixel, which combine's glint on a wet surface's water film is shadowed by.
+// much of the sun reaches the pixel, which combine's glint on a wet surface's water film is shadowed by. At the
+// anchored levels (`fs_sun_split`) by the one BRDF instead: Lambert's cosine into the light, and GGX's coloured
+// specular, widened by the sun's disc (`sun_glint`), into a specular target of its own.
 
 #import "generated/frame/sun"
 
@@ -22,18 +27,40 @@ struct SunTargets {
   @location(1) seen: vec4<f32>,
 };
 
+// The same, and the coloured specular split from the light.
+struct SunSplitTargets {
+  @location(0) light: vec4<f32>,
+  @location(1) seen: vec4<f32>,
+  @location(2) specular: vec4<f32>,
+};
+
 @fragment
 fn fs_sun(in: FullscreenVarying) -> SunTargets {
-  return light_sun(in, false);
+  let lit: SunSplitTargets = light_sun(in, false, false);
+
+  return SunTargets(lit.light, lit.seen);
 }
 
 @fragment
 fn fs_sun_traced(in: FullscreenVarying) -> SunTargets {
-  return light_sun(in, true);
+  let lit: SunSplitTargets = light_sun(in, true, false);
+
+  return SunTargets(lit.light, lit.seen);
 }
 
-// The sun's light at a pixel, its shadow the cascades' or, `is_traced`, the traced shadow's.
-fn light_sun(in: FullscreenVarying, is_traced: bool) -> SunTargets {
+@fragment
+fn fs_sun_split(in: FullscreenVarying) -> SunSplitTargets {
+  return light_sun(in, false, true);
+}
+
+@fragment
+fn fs_sun_split_traced(in: FullscreenVarying) -> SunSplitTargets {
+  return light_sun(in, true, true);
+}
+
+// The sun's light at a pixel, its shadow the cascades' or, `is_traced`, the traced shadow's; the engine's, or, where
+// `is_split`, the one BRDF's diffuse and coloured specular.
+fn light_sun(in: FullscreenVarying, is_traced: bool, is_split: bool) -> SunSplitTargets {
   let texel: vec2<i32> = vec2<i32>(in.clip.xy);
   let depth: f32 = textureLoad(depth_target, texel, 0);
 
@@ -41,7 +68,7 @@ fn light_sun(in: FullscreenVarying, is_traced: bool) -> SunTargets {
 
   // The lamps' and the overdraw's views keep the sun out of what they count.
   if (depth <= 0.0 || view == LIGHT_VIEW_LAMPS || view == LIGHT_VIEW_OVERDRAW) {
-    return SunTargets(vec4<f32>(0.0), vec4<f32>(0.0));
+    return SunSplitTargets(vec4<f32>(0.0), vec4<f32>(0.0), vec4<f32>(0.0));
   }
 
   let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
@@ -57,17 +84,15 @@ fn light_sun(in: FullscreenVarying, is_traced: bool) -> SunTargets {
     let order: f32 = select(0.0, f32(cascade) + 1.0, cascade < shadows.count);
     let seen: f32 = sun_shadow(shadow_maps, shadows, world, world_normal, dot(normal, lighting.to_sun.xyz));
 
-    return SunTargets(vec4<f32>(order, seen, 0.0, 0.0), vec4<f32>(0.0));
+    return SunSplitTargets(vec4<f32>(order, seen, 0.0, 0.0), vec4<f32>(0.0), vec4<f32>(0.0));
   }
 
   // `accum_emissive`: a self-lit surface's light is filled with sixteen, which the local lights then add to.
   if (has_mark(material.a, MARK_EMISSIVE)) {
-    return SunTargets(vec4<f32>(EMISSIVE_LIGHT * local_light_scale(lighting)), vec4<f32>(0.0));
+    return SunSplitTargets(vec4<f32>(EMISSIVE_LIGHT * local_light_scale(lighting)), vec4<f32>(0.0), vec4<f32>(0.0));
   }
 
   let to_light: vec3<f32> = lighting.to_sun.xyz;
-  // `plight_infinity`'s terms.
-  let lit: vec4<f32> = light_terms(material_lut, lut_sampler, to_light, normal, camera_view_ray(position), material.z);
   let world: vec3<f32> = (transpose(camera.view) * vec4<f32>(position, 0.0)).xyz + camera.position.xyz;
   let world_normal: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(normal, 0.0)).xyz);
   // Marched at the frame's size and read where it is, or at half and brought up by depth; a single lit texel stands in
@@ -101,5 +126,27 @@ fn light_sun(in: FullscreenVarying, is_traced: bool) -> SunTargets {
     through = flora_through(lighting, -camera_view_ray(position), to_light, normal);
   }
 
-  return SunTargets(vec4<f32>(lighting.sun.rgb * lit.x + through, lighting.sun.w * lit.y) * shadow, vec4<f32>(shadow));
+  if (!is_split) {
+    // `plight_infinity`'s terms.
+    let lit: vec4<f32> = light_terms(material_lut, lut_sampler, to_light, normal, camera_view_ray(position), material.z);
+
+    return SunSplitTargets(vec4<f32>(lighting.sun.rgb * lit.x + through, lighting.sun.w * lit.y) * shadow,
+      vec4<f32>(shadow), vec4<f32>(0.0));
+  }
+
+  // The one BRDF over the surface as the reflections decide it, the wet film's gloss in it.
+  let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
+  let to_eye: vec3<f32> = -camera_view_ray(position);
+  let surface: BrdfSurface =
+    brdf_surface(brdf_table, authored_colour(albedo.rgb), albedo.a, material.z, dot(normal, to_eye));
+  // Leaves reflect nothing of the sun: their normals, turned towards the sky and the view, gave a rough lobe a sheen
+  // near half their diffuse at every grazing blade, where the engine, by their gloss of nought, gives none.
+  // todo: Give foliage a thin surface's specular and transmission in place of none.
+  let is_leafy: bool = has_mark(material.a, MARK_FLORA) || has_mark(material.a, MARK_PLANT);
+  let specular: vec3<f32> = lighting.sun.rgb * PI *
+    sun_glint(normal, to_eye, to_light, surface.roughness, surface.head_on) *
+    multiple_scattering(surface.head_on, surface.white) * f32(!is_leafy);
+
+  return SunSplitTargets(vec4<f32>(lighting.sun.rgb * saturate(dot(normal, to_light)) + through, 0.0) * shadow,
+    vec4<f32>(shadow), vec4<f32>(specular * shadow, 0.0));
 }

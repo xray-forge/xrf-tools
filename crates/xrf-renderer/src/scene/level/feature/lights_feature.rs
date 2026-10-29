@@ -286,10 +286,12 @@ impl LightsFeature {
     let contact_lights: u32 = if traced.is_some() { 0 } else { contact_lights };
 
     let parameters: LightsParameters = LightsParameters {
+      albedo_target: targets.albedo,
       normal_target: targets.normal,
       material_target: targets.material,
       depth_target: targets.depth,
       material_lut: lit.material_lut,
+      brdf_table: lit.brdf_table,
       lut_sampler: lit.lut_sampler,
       records: StorageArray::new(buffers.records),
       counts: StorageArray::new(buffers.counts),
@@ -390,16 +392,25 @@ impl LightsFeature {
       light_threshold,
     };
 
-    graph
+    let is_split: bool = targets.specular.is_some();
+    let mut pass = graph
       .add_raster_pass("lights")
       .parameters(&parameters)
       .parameters(&visibility)
-      .color(GraphColorAttachment::new(targets.light, wgpu::LoadOp::Load))
-      .record(move |context| {
-        passes
-          .lights
-          .record_draw(context, view, (&parameters, &visibility), (textures, is_contact))
-      });
+      .color(GraphColorAttachment::new(targets.light, wgpu::LoadOp::Load));
+
+    if let Some(specular) = targets.specular {
+      pass = pass.color(GraphColorAttachment::new(specular, wgpu::LoadOp::Load));
+    }
+
+    pass.record(move |context| {
+      passes.lights.record_draw(
+        context,
+        view,
+        (&parameters, &visibility),
+        (textures, is_contact, is_split),
+      )
+    });
   }
 
   /// Whether a light in view this frame casts a shadow.

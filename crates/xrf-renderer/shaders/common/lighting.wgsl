@@ -195,6 +195,12 @@ fn authored_local_scale(state: Lighting) -> f32 {
   return local_light_scale(state) * state.summed_light.x;
 }
 
+// Whether the light stands at the anchored levels (`LightingUniform::environment.w`): every light additive, shaded by
+// the one BRDF (`common/brdf`), its specular coloured in a target of its own.
+fn is_light_anchored(state: Lighting) -> bool {
+  return state.environment.w > 0.5;
+}
+
 // Whether the light is physical (`RenderLightModel::Physical`): `engine.w`, written from the view's one rule as the
 // camera's `output.w` is, for the shared functions that take the lighting rather than read the camera.
 fn is_lighting_physical(state: Lighting) -> bool {
@@ -202,10 +208,13 @@ fn is_lighting_physical(state: Lighting) -> bool {
 }
 
 // The sun's colour as the engine binds it, for a pass mixing it into a shown colour: as it stands, or, where the light
-// is physical, its units and pre-exposure taken off and encoded back.
-// todo: Give the anchored levels the weather's sun here, where their sun is anchored over the hemisphere and the
-// ambient and encodes back dimmer than the engine binds it.
+// is physical, its units and pre-exposure taken off and encoded back; at the anchored levels, whose sun is anchored over
+// the hemisphere and the ambient, the weather's own (`summed_light.yzw`).
 fn sun_shown(state: Lighting) -> vec3<f32> {
+  if (is_light_anchored(state)) {
+    return state.summed_light.yzw;
+  }
+
   let sun: vec3<f32> = state.sun.rgb / light_scale(state);
 
   if (is_lighting_physical(state)) {

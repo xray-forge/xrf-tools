@@ -3,9 +3,9 @@ use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, UniformBindi
 use crate::pass::exposure_head::ExposureHead;
 use crate::pass::lighting_uniform::LightingUniform;
 
-/// What the combine reads: the G-buffer and the light gathered over it, the material table, the frame's lighting and
-/// exposure, the ambient occlusion, the sky behind the fog, the indirect light, the reflections traced and how much of
-/// the sun reaches each pixel.
+/// What the combine reads: the G-buffer and the light gathered over it, its specular split at the anchored levels, the
+/// material table, the frame's lighting and exposure, the ambient occlusion, the sky behind the fog, the indirect light,
+/// the reflections traced and how much of the sun reaches each pixel.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
 pub struct CombineParameters<'a> {
@@ -19,6 +19,9 @@ pub struct CombineParameters<'a> {
   pub depth_target: GraphTexture,
   #[texture(d2, unfilterable)]
   pub light_target: GraphTexture,
+  /// The coloured specular the sun and the lamps reflect at the anchored levels; a texel of nothing elsewhere.
+  #[texture(d2, unfilterable)]
+  pub specular_target: GraphTexture,
   #[texture(d3, float)]
   pub material_lut: GraphTexture,
   #[sampler(filtering)]

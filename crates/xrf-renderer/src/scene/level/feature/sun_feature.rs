@@ -9,7 +9,8 @@ use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::lighting_handles::LightingHandles;
 
 /// The sun drawn into the light target over the G-buffer: shadowed by its cascades, or by its trace where that sees it,
-/// and by the contact shadows; and how much of it each pixel sees, which combine's glint reads.
+/// and by the contact shadows; how much of it each pixel sees, which combine's glint reads; and at the anchored levels
+/// its coloured specular into the specular target.
 #[derive(Default)]
 pub struct SunFeature;
 
@@ -26,10 +27,12 @@ impl SunFeature {
   ) -> GraphTexture {
     let is_traced: bool = sun_traced.is_some();
     let sun: SunParameters = SunParameters {
+      albedo_target: targets.albedo,
       normal_target: targets.normal,
       material_target: targets.material,
       depth_target: targets.depth,
       material_lut: lit.material_lut,
+      brdf_table: lit.brdf_table,
       lut_sampler: lit.lut_sampler,
       lighting: lit.lighting,
       shadow_maps: lit.shadow_maps,
@@ -46,7 +49,8 @@ impl SunFeature {
       SunPass::SEEN_FORMAT,
     ));
 
-    graph
+    let is_split: bool = targets.specular.is_some();
+    let mut pass = graph
       .add_raster_pass("sun")
       .parameters(&sun)
       .color(GraphColorAttachment::new(
@@ -56,8 +60,20 @@ impl SunFeature {
       .color(GraphColorAttachment::new(
         seen,
         wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-      ))
-      .record(move |context| passes.sun.record(context, view, &sun, (is_traced, filter_reach)));
+      ));
+
+    if let Some(specular) = targets.specular {
+      pass = pass.color(GraphColorAttachment::new(
+        specular,
+        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+      ));
+    }
+
+    pass.record(move |context| {
+      passes
+        .sun
+        .record(context, view, &sun, (is_traced, is_split, filter_reach))
+    });
 
     seen
   }
