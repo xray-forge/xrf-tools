@@ -312,29 +312,33 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   }
 
   // `combine_2`'s `USE_DISTORT`, its move and its blur, came before the resolve (`frame/distort.wgsl`).
-  var color: vec3<f32> = select(textureLoad(scene, texel, 0).rgb, textureLoad(upscaled, vec2<i32>(pixel), 0).rgb,
+  let drawn: vec3<f32> = select(textureLoad(scene, texel, 0).rgb, textureLoad(upscaled, vec2<i32>(pixel), 0).rgb,
     present.is_upscaled != 0u);
 
   let display: vec4<f32> = present.display;
   // The physical light's engine bloom is light, built from its linear scene, so it joins the scene as light before the
   // display transform; the engine's joins its shown frame after, as `combine_2` adds it.
   let is_bloom_light: bool = present.is_bloomed == BLOOM_ENGINE && u32(display.x) >= DISPLAY_ENGINE_ENCODED;
-
-  if (is_bloom_light) {
-    color = engine_bloomed(color, pixel);
-  }
-
   // A scene of linear light at its exposure is shown here, by the engine's curve or the physical light's display
   // transform and encoding, before everything the engine lays over its displayed frame.
-  color = shown_for_display(color, display);
+  let unbloomed: vec3<f32> = shown_for_display(drawn, display);
+  var color: vec3<f32> = unbloomed;
+
+  if (is_bloom_light) {
+    color = shown_for_display(engine_bloomed(drawn, pixel), display);
+  }
 
   // The sky debanding, by how much of the drawn frame about the pixel is the sky, over the shown steps it bands in:
-  // its neighbours read about the pixel.
+  // its neighbours read about the pixel. They are read without the bloom, so where the bloom joined as light the
+  // frame is debanded as it shows without it and the bloom's share kept, as the engine debands before its bloom: a
+  // bloomed pixel against its unbloomed neighbours would blend the bloom's faint edge away and leave a ring.
   let sky: f32 = select(0.0, sky_share(pixel), present.deband.x > 0.0);
 
   if (sky > 0.0) {
-    color = mix(color, debanded(upscaled, bloom_sampler, color, (pixel + 0.5) / present.size, 1.0 / present.size,
-      u32(present.deband.x), present.deband.y, present.deband.z, display), sky);
+    let blended: vec3<f32> = debanded(upscaled, bloom_sampler, unbloomed, (pixel + 0.5) / present.size,
+      1.0 / present.size, u32(present.deband.x), present.deband.y, present.deband.z, display);
+
+    color = select(mix(color, blended, sky), color + (blended - unbloomed) * sky, is_bloom_light);
   }
 
   // The enhanced bloom screened over the frame, `1 - (1 - img)(1 - bloom)`, before its corrections.
