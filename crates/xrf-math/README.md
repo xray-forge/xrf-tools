@@ -66,6 +66,14 @@ later read misaligned.
 redefine one locally: give it a local name that says what it means there (`const GROWTH: f32 = EPS_L`). A value the
 engine writes as a literal stays a literal. The UI has the same constants in `@xrf/math`.
 
+## Display colour
+
+`srgb_decoded` and `srgb_encoded` turn a colour stored for the display into linear light and back, by the 2.2 power of
+the sRGB reference display (`SRGB_DISPLAY_POWER`), and `luminance` weighs linear light by Rec. 709 (`LUMINANCE_WEIGHTS`).
+The renderer lights with them (its `lighting/srgb.rs` and `lighting/luminance.rs` mirror `common/srgb.wgsl` and
+`common/luminance.wgsl` through them), and `xrf-texture`'s albedo measure reads textures by them, so a measure always
+agrees with what the renderer draws.
+
 ## Features and checks
 
 `typescript-bindings` derives Specta types for `Vector3d`. `fixtures` exports `Vector3d::new_mock()`, the vector this
