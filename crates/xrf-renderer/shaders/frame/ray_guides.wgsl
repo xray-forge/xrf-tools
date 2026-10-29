@@ -47,10 +47,13 @@ fn fs_ray_guides(in: FullscreenVarying) -> RayGuides {
   let position: vec3<f32> = camera_view_position(in.clip.xy, depth);
   let wet: vec4<f32> = load_frame_target(wet_surface, texel);
   let facing: f32 = saturate(dot(normal, -normalize(position)));
-  let roughness: f32 = traced_roughness(albedo.a, wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
-  let head_on: vec3<f32> = reflectance_head_on(albedo.rgb, albedo.a, wet.r, material.z);
+  let surface: SurfaceMaterial = surface_material(albedo, material.z,
+    water_film(wet, load_frame_target(wet_reach, texel)),
+    wet.a + surface_variance(normal_target, depth_target, texel, wet.g), is_light_anchored(lighting));
+  let roughness: f32 = surface.roughness;
+  let head_on: vec3<f32> = surface.head_on;
   let intensity: f32 = select(1.0, lighting.reflections.z, lighting.reflections.x > 0.5);
-  let specular: vec3<f32> = environment_brdf(head_on, roughness, facing) * intensity;
+  let specular: vec3<f32> = environment_brdf(head_on, roughness, facing) * surface.shadowing * intensity;
   let world_normal: vec3<f32> = normalize((transpose(camera.view) * vec4<f32>(normal, 0.0)).xyz);
   // How far the reflection's ray and the indirect light's went, each at the size it was traced at: none where the
   // indirect light's met nothing.

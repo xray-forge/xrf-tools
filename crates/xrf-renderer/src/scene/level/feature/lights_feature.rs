@@ -264,13 +264,19 @@ impl LightsFeature {
   /// Adds every light in view drawn into the light target over the sun: first the contact shadows marched by `contact`
   /// towards each texel's `contact_lights` strongest at half the frame's size, where they are; then how much of each
   /// shadowed light every pixel sees, through the scene's shadow `atlas` and those contact shadows, unless no light in
-  /// view is shadowed; then the lights. Nothing while none stands in view.
+  /// view is shadowed; then the lights, at the anchored levels over the surface the wet surface and the wet reach
+  /// (`wet_surface`, `wet_reach`) give a water film. Nothing while none stands in view.
   pub fn add_draw_passes<'a>(
     &self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
     (view, textures, atlas): (&'a ViewBinding, &'a wgpu::BindGroup, LightShadowAtlas<'a>),
-    (targets, lit, buffers): (ViewTargetHandles, LightingHandles<'a>, LightBuffers),
+    (targets, lit, buffers, (wet_surface, wet_reach)): (
+      ViewTargetHandles,
+      LightingHandles<'a>,
+      LightBuffers,
+      (GraphTexture, GraphTexture),
+    ),
     (contact, contact_lights): (UniformBinding<ContactShadowUniform>, u32),
     traced: Option<(
       TraceParameters<'a>,
@@ -298,6 +304,8 @@ impl LightsFeature {
       items: StorageArray::new(buffers.items),
       lights: buffers.uniform,
       contact,
+      wet_surface,
+      wet_reach,
     };
     let is_contact: bool = contact_lights > 0;
     let is_shadowed: bool = is_contact || self.is_any_shadowed();

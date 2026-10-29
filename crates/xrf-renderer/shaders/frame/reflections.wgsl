@@ -541,9 +541,9 @@ fn trace_start(pixel: vec2<f32>) -> TraceStart {
     return untraced_start(END_UNTRACED);
   }
 
-  let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
   let wet: vec4<f32> = load_frame_target(wet_surface, texel);
-  let roughness: f32 = traced_roughness(albedo.a, wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
+  let surface: SurfaceMaterial = material_at(texel);
+  let roughness: f32 = surface.roughness;
 
   // Past the limit the surface reflects the prefiltered sky alone, which combine reads for it.
   if (roughness > lighting.reflection_cut.y) {
@@ -563,8 +563,7 @@ fn trace_start(pixel: vec2<f32>) -> TraceStart {
   let position: vec3<f32> = camera_view_position(vec2<f32>(texel) + 0.5, depth) + normal * wet.b;
   let toward: vec3<f32> = normalize(position);
   let facing: f32 = dot(normal, -toward);
-  let brdf: vec3<f32> = environment_brdf(reflectance_head_on(albedo.rgb, albedo.a, wet.r, material.z), roughness, facing) *
-    reflection.intensity;
+  let brdf: vec3<f32> = environment_brdf(surface.head_on, roughness, facing) * surface.shadowing * reflection.intensity;
 
   let shown: f32 = max(max(brdf.r, brdf.g), brdf.b);
 
@@ -884,12 +883,20 @@ struct TracedSurface {
 // The surface at the frame's texel a traced pixel stands for, its roughness with it, which the guide keeps.
 fn traced_surface_at(texel: vec2<i32>) -> TracedSurface {
   var surface: TracedSurface = traced_geometry(texel);
-  let wet: vec4<f32> = load_frame_target(wet_surface, texel);
 
-  surface.roughness = traced_roughness(textureLoad(albedo_target, texel, 0).a,
-    wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
+  surface.roughness = material_at(texel).roughness;
 
   return surface;
+}
+
+// The surface's material at a texel of the frame, as every path shading it takes it (`surface_material`).
+fn material_at(texel: vec2<i32>) -> SurfaceMaterial {
+  let stored: vec4<f32> = textureLoad(albedo_target, texel, 0);
+  let wet: vec4<f32> = load_frame_target(wet_surface, texel);
+
+  return surface_material(vec4<f32>(authored_colour(stored.rgb), stored.a), textureLoad(material_target, texel, 0).z,
+    water_film(wet, load_frame_target(wet_reach, texel)),
+    wet.a + surface_variance(normal_target, depth_target, texel, wet.g), is_light_anchored(lighting));
 }
 
 // The surface at the frame's texel a traced pixel stands for, its roughness left at none: its normal, distance and
@@ -1376,11 +1383,7 @@ fn fs_upscale(in: FullscreenVarying) -> @location(0) vec4<f32> {
   } else if (!is_any_traced(pixel)) {
     return UNTRACED;
   } else {
-    let wet: vec4<f32> = load_frame_target(wet_surface, texel);
-    let roughness: f32 = traced_roughness(textureLoad(albedo_target, texel, 0).a,
-      wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
-
-    current = guided_upsample(pixel, traced_geometry(texel).normal, distance, roughness);
+    current = guided_upsample(pixel, traced_geometry(texel).normal, distance, material_at(texel).roughness);
   }
 
   if (current.a < 0.0) {

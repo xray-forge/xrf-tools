@@ -134,18 +134,19 @@ fn light_sun(in: FullscreenVarying, is_traced: bool, is_split: bool) -> SunSplit
       vec4<f32>(shadow), vec4<f32>(0.0));
   }
 
-  // The one BRDF over the surface as the reflections decide it, the wet film's gloss in it.
-  let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
+  // The one BRDF over the surface as every path takes it, its water film from the wet surface and the wet reach.
+  // todo: Give foliage a thin surface's specular and transmission in place of the lobe its turned normals take.
+  let stored: vec4<f32> = textureLoad(albedo_target, texel, 0);
+  let wet: vec4<f32> = load_frame_target(wet_surface, texel);
   let to_eye: vec3<f32> = -camera_view_ray(position);
-  let surface: BrdfSurface =
-    brdf_surface(brdf_table, authored_colour(albedo.rgb), albedo.a, material.z, dot(normal, to_eye));
-  // Leaves reflect nothing of the sun: their normals, turned towards the sky and the view, gave a rough lobe a sheen
-  // near half their diffuse at every grazing blade, where the engine, by their gloss of nought, gives none.
-  // todo: Give foliage a thin surface's specular and transmission in place of none.
-  let is_leafy: bool = has_mark(material.a, MARK_FLORA) || has_mark(material.a, MARK_PLANT);
-  let specular: vec3<f32> = lighting.sun.rgb * PI *
+  let surface: BrdfSurface = brdf_surface(brdf_table,
+    surface_material(vec4<f32>(authored_colour(stored.rgb), stored.a), material.z,
+      water_film(wet, load_frame_target(wet_reach, texel)),
+      wet.a + surface_variance(normal_target, depth_target, texel, wet.g), true),
+    dot(normal, to_eye));
+  let specular: vec3<f32> = lighting.sun.rgb * PI * surface.shadowing *
     sun_glint(normal, to_eye, to_light, surface.roughness, surface.head_on) *
-    multiple_scattering(surface.head_on, surface.white) * f32(!is_leafy);
+    multiple_scattering(surface.head_on, surface.white);
 
   return SunSplitTargets(vec4<f32>(lighting.sun.rgb * saturate(dot(normal, to_light)) + through, 0.0) * shadow,
     vec4<f32>(shadow), vec4<f32>(specular * shadow, 0.0));

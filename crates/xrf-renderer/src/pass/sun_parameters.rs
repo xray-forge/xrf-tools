@@ -33,4 +33,9 @@ pub struct SunParameters<'a> {
   pub contact_shadows: GraphTexture,
   #[texture(d2, unfilterable)]
   pub sun_traced: GraphTexture,
+  /// The wet surface and the gloss the wet reach added, which the anchored levels' surface takes its water film from.
+  #[texture(d2, unfilterable)]
+  pub wet_surface: GraphTexture,
+  #[texture(d2, unfilterable)]
+  pub wet_reach: GraphTexture,
 }

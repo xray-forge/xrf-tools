@@ -34,4 +34,9 @@ pub struct LightsParameters<'a> {
   pub lights: UniformBinding<LightsUniform>,
   #[uniform]
   pub contact: UniformBinding<ContactShadowUniform>,
+  /// The wet surface and the gloss the wet reach added, which the anchored levels' surface takes its water film from.
+  #[texture(d2, unfilterable)]
+  pub wet_surface: GraphTexture,
+  #[texture(d2, unfilterable)]
+  pub wet_reach: GraphTexture,
 }

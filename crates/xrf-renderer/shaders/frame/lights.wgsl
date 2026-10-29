@@ -69,18 +69,23 @@ fn light_lights(in: FullscreenVarying, is_split: bool) -> LightsSplitTargets {
   let slice: f32 = material_texel.z;
   // Foliage is lit from each light's side, as the light passes through its leaves.
   let is_flora: bool = has_mark(material_texel.a, MARK_FLORA);
-  let is_leafy: bool = is_flora || has_mark(material_texel.a, MARK_PLANT);
   let to_eye: vec3<f32> = -camera_view_ray(pixel.position);
   var slot: u32 = 0u;
   var total: vec4<f32> = vec4<f32>(0.0);
   var specular: vec3<f32> = vec3<f32>(0.0);
-  // The one BRDF's surface where the specular is split, as the reflections decide it.
-  var surface: BrdfSurface = BrdfSurface(1.0, vec3<f32>(0.0), 1.0);
+  // The one BRDF's surface where the specular is split, as every path takes it, its water film from the wet surface
+  // and the wet reach.
+  var surface: BrdfSurface = BrdfSurface(1.0, vec3<f32>(0.0), 1.0, 1.0);
 
   if (is_split) {
-    let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
+    let stored: vec4<f32> = textureLoad(albedo_target, texel, 0);
+    let wet: vec4<f32> = load_frame_target(wet_surface, texel);
 
-    surface = brdf_surface(brdf_table, authored_colour(albedo.rgb), albedo.a, slice, dot(pixel.normal, to_eye));
+    surface = brdf_surface(brdf_table,
+      surface_material(vec4<f32>(authored_colour(stored.rgb), stored.a), slice,
+        water_film(wet, load_frame_target(wet_reach, texel)),
+        wet.a + surface_variance(normal_target, depth_target, texel, wet.g), true),
+      dot(pixel.normal, to_eye));
   }
 
   for (var index: u32 = 0u; index < counts[pixel.cluster]; index++) {
@@ -126,9 +131,8 @@ fn light_lights(in: FullscreenVarying, is_split: bool) -> LightsSplitTargets {
         direct_light(lit_normal, to_eye, to_light, surface.roughness, surface.head_on, surface.white);
       let reach: vec3<f32> = record.color.rgb * share * projected.rgb * visible;
 
-      // Leaves reflect nothing of the lamps, as of the sun (`frame/sun`).
       total += vec4<f32>(reach * direct.diffuse, 0.0);
-      specular += reach * direct.specular * f32(!is_leafy);
+      specular += reach * direct.specular * surface.shadowing * flora_gloss;
     } else {
       let material: vec4<f32> = light_terms(material_lut, lut_sampler, to_light, lit_normal, -to_eye, slice);
 
