@@ -235,7 +235,8 @@ fn reach_gloss(gain: f32, engine_wetness: f32, brightness: f32, gloss: f32) -> f
   return max(gain - engine_gain, 0.0);
 }
 
-// What the engine's patch writes: the patch into the light target, and beside it the gloss the wet reach adds.
+// What the engine's patch writes: the patch into the light target, and beside it the gloss the wet reach adds and the
+// gloss the wetting adds in all.
 struct EngineWetTargets {
   @location(0) patched: vec4<f32>,
   @location(1) reach: vec4<f32>,
@@ -297,7 +298,7 @@ fn fs_wet_patch(in: FullscreenVarying) -> EngineWetTargets {
 
   return EngineWetTargets(
     vec4<f32>(octahedral_encode(normalize(normal + wetting.bent)), gain, soaked),
-    vec4<f32>(reach_gloss(gain, wetting.wetness, brightness, albedo.a), 0.0, 0.0, 0.0),
+    vec4<f32>(reach_gloss(gain, wetting.wetness, brightness, albedo.a), 0.0, gain, 0.0),
   );
 }
 
@@ -869,6 +870,7 @@ fn fs_wet_patch_enhanced(in: FullscreenVarying) -> WetPatchTargets {
   return WetPatchTargets(
     vec4<f32>(octahedral_encode(normalize(normal + water)), glossed, wetness),
     vec4<f32>(puddle * floating * wet.puddles.z / WATER_REFLECTIVITY, puddle, lift, variance),
-    vec4<f32>(reach_gloss(wet_gain, wetting.wetness, brightness, gloss) * (1.0 - puddle), water_share, 0.0, 0.0),
+    vec4<f32>(reach_gloss(wet_gain, wetting.wetness, brightness, gloss) * (1.0 - puddle), water_share,
+      max(glossed, 0.0), 0.0),
   );
 }

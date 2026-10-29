@@ -332,48 +332,52 @@ fn engine_lobe_roughness(slice: f32) -> f32 {
   return mix(lower, upper, material - floor(material));
 }
 
+// The water over a surface, from its texels of the wet surface (`wet`) and the wet reach (`reach`): the share a puddle's
+// clear coat covers, the gloss the wetting added in all (the engine's, the wet reach's and a puddle's water's), and the
+// share a film of water covers, the coat and that added gloss.
+struct WaterFilm {
+  coat: f32,
+  gained: f32,
+  film: f32,
+};
+
+fn water_film(wet: vec4<f32>, reach: vec4<f32>) -> WaterFilm {
+  return WaterFilm(wet.r, reach.b, saturate(wet.r + reach.b));
+}
+
 // A surface's material as every path shading it takes it (the reflections and their guides, combine, the sun and the
 // lamps): its roughness and reflectance head on from its G-buffer albedo and gloss (`albedo`), its material (`slice`),
-// the share a puddle's clear coat covers (`wetting.x`), the share any water film covers (`wetting.y`; both
-// `water_film`) and the variance its lobe widens by. By the reflections' reading of the gloss as the lobe's width, as the
-// authored levels keep it; or, at the anchored levels, as the industry converts a legacy gloss: the width the engine's
-// own lobe has (`engine_lobe_roughness`), the gloss as the specular's intensity (`GLOSS_REFLECTANCE`), and the water's
-// smoothness and reflectance where a film covers it. As the width, the terrain's dry gloss of 0.37 was a roughness of 0.15 and the
-// sun made polished stone and wet sand of it. Its specular, direct and reflected, is weighed by `shadowing`: one, but
-// at the anchored levels where the reflectance falls under 2%, the least a real material reflects, which stands for
-// the specular's shadowing instead (Unreal's `saturate(50 · F0)` over the Fresnel's rise; Karis, "Physically Based
-// Shading on Mobile", 2014), so a surface the engine glosses at nought reflects nothing at any angle rather than the
-// sky at every grazing blade.
+// the water over it (`water`) and the variance its lobe widens by. By the reflections' reading of the gloss as the
+// lobe's width, as the authored levels keep it; or, at the anchored levels, as the industry converts a legacy gloss:
+// the width the engine's own lobe has (`engine_lobe_roughness`), the dry gloss under the wetting's as the specular's
+// intensity (`GLOSS_REFLECTANCE`), and water's smoothness and reflectance as far as its film covers it. As the width,
+// the terrain's dry gloss of 0.37 was a roughness of 0.15 and the sun made polished stone and wet sand of it; the
+// wetting's gloss read as an intensity reflected up to four times what water does, and a soaked bank grazed the sky
+// white. Its specular, direct and reflected, is weighed by `shadowing`: one, but at the anchored levels where the
+// reflectance falls under 2%, the least a real material reflects, which stands for the specular's shadowing instead
+// (Unreal's `saturate(50 · F0)` over the Fresnel's rise; Karis, "Physically Based Shading on Mobile", 2014), so a
+// surface the engine glosses at nought reflects nothing at any angle rather than the sky at every grazing blade.
 struct SurfaceMaterial {
   roughness: f32,
   head_on: vec3<f32>,
   shadowing: f32,
 };
 
-fn surface_material(albedo: vec4<f32>, slice: f32, wetting: vec2<f32>, variance: f32,
+fn surface_material(albedo: vec4<f32>, slice: f32, water: WaterFilm, variance: f32,
   is_anchored: bool) -> SurfaceMaterial {
   let gloss: f32 = albedo.a;
   let wet_roughness: f32 = traced_roughness(gloss, variance);
 
   if (!is_anchored) {
-    return SurfaceMaterial(wet_roughness, reflectance_head_on(albedo.rgb, gloss, wetting.x, slice), 1.0);
+    return SurfaceMaterial(wet_roughness, reflectance_head_on(albedo.rgb, gloss, water.coat, slice), 1.0);
   }
 
-  // A film is water, not the gloss its wetting raised: read as the specular's intensity, a soaked gloss reflected four
-  // times what water does.
-  let dielectric: vec3<f32> = vec3<f32>(GLOSS_REFLECTANCE * saturate(gloss));
-  let head_on: vec3<f32> =
-    mix(mix(dielectric, albedo.rgb, metal_share(gloss, slice)), vec3<f32>(COAT_F0), saturate(wetting.y));
+  let dry: f32 = saturate(gloss - water.gained);
+  let dielectric: vec3<f32> = vec3<f32>(GLOSS_REFLECTANCE * dry);
+  let head_on: vec3<f32> = mix(mix(dielectric, albedo.rgb, metal_share(dry, slice)), vec3<f32>(COAT_F0), water.film);
 
-  return SurfaceMaterial(mix(engine_lobe_roughness(slice), wet_roughness, saturate(wetting.y)), head_on,
+  return SurfaceMaterial(mix(engine_lobe_roughness(slice), wet_roughness, water.film), head_on,
     saturate(50.0 * max(head_on.r, max(head_on.g, head_on.b))));
-}
-
-// The water over a surface as `surface_material` takes it, from its texels of the wet surface (`wet`) and the wet reach
-// (`reach`): the share a puddle's clear coat covers, and the share any water film covers, the coat with the gloss the
-// wet reach added.
-fn water_film(wet: vec4<f32>, reach: vec4<f32>) -> vec2<f32> {
-  return vec2<f32>(wet.r, saturate(wet.r + reach.r));
 }
 
 // A surface as the one BRDF (`common/brdf`) shades it: its material (`surface_material`) and its lobe's directional
