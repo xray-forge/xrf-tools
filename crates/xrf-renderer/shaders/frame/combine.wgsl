@@ -119,8 +119,8 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let is_empty: bool = depth <= 0.0 || fog >= 1.0;
 
   if (is_empty) {
-    // `sky2.ps`: the sky's high part is the sky as drawn, within `def_hdr`; where the enhanced fog fades only past a
-    // share, the sky the far ground fades into, so where the fog ends it meets the faded ground.
+    // `sky2.ps`: the sky's high part is the sky as drawn, within `def_hdr` (`sky_high`); where the enhanced fog fades
+    // only past a share, the sky the far ground fades into, so where the fog ends it meets the faded ground.
     if (is_sky_drawn) {
       var sky: vec3<f32> = sky_drawn(lighting, direction, toward, exposed);
 
@@ -129,8 +129,10 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
       }
 
       // The scene takes the picture as the frame's display shows it as the engine's curve does; the high part is the
-      // engine's own, the picture as drawn.
-      return combined(scene_from_shown(picture_for_display(sky, lighting.display)), sky / DEF_HDR);
+      // engine's own, the picture as drawn, or under the physical light the light the scene holds, as the land's is.
+      let scene_sky: vec3<f32> = scene_from_shown(picture_for_display(sky, lighting.display));
+
+      return combined(scene_sky, sky_high(sky, scene_sky));
     }
 
     if (is_fogged) {
@@ -277,5 +279,16 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
 
   let behind_scene: vec3<f32> = scene_from_shown(picture_for_display(sky, lighting.display));
 
-  return combined(mix(finished, behind_scene, behind_share), mix(high, sky / DEF_HDR, behind_share));
+  return combined(mix(finished, behind_scene, behind_share), mix(high, sky_high(sky, behind_scene), behind_share));
+}
+
+// The sky's high part, which the engine's bloom grows from: the engine's own, its picture as drawn within `def_hdr`;
+// under the physical light the light the scene holds of it (`held`), as the land's high part is its light, so the
+// bloom weighs the sky as it weighs the land rather than by its display values over the land's light.
+fn sky_high(sky: vec3<f32>, held: vec3<f32>) -> vec3<f32> {
+  if (is_light_physical()) {
+    return held / DEF_HDR;
+  }
+
+  return sky / DEF_HDR;
 }
