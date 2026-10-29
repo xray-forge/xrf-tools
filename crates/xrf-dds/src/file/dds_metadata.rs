@@ -56,6 +56,15 @@ impl DdsMetadata {
     }
   }
 
+  /// The largest mip level whose longer side holds `side` texels at most, or the smallest the file carries where none
+  /// does: what a measure decodes when a coarser level reads the same statistics at a fraction of the cost.
+  pub fn get_level_within(&self, side: u32) -> u32 {
+    let largest: u32 = self.width.max(self.height).max(1);
+    let within: u32 = largest.div_ceil(side.max(1)).next_power_of_two().ilog2();
+
+    within.min(self.mipmap_levels.max(1) - 1)
+  }
+
   pub(crate) fn from_dds(dds: &Dds, file_size: u64, metadata_size: u64) -> Self {
     let data_format = dds.get_format();
     let format: DdsFormat = if let Some(format) = dds.get_d3d_format() {

@@ -11,7 +11,10 @@ impl ThmGroup {
       slug: "thm",
       label: "THM",
       about: "THM texture metadata tools",
-      commands: vec![thm::patch_bump::PatchBumpCommand::new_box()],
+      commands: vec![
+        thm::bump_alignment::BumpAlignmentCommand::new_box(),
+        thm::patch_bump::PatchBumpCommand::new_box(),
+      ],
     }
   }
 }
