@@ -34,6 +34,7 @@ xrf-gamedata = { workspace = true }
 xrf-gamemtl = { workspace = true }
 xrf-level = { workspace = true }
 xrf-ltx = { workspace = true }
+xrf-material = { workspace = true }
 xrf-ltx-inspect = { workspace = true }
 xrf-output = { workspace = true }
 xrf-report = { workspace = true }
