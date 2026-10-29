@@ -2,6 +2,7 @@ enable dual_source_blending;
 
 #import "static/gbuffer"
 #import "common/scene_light"
+#import "common/display_transform"
 #import "common/hmodel"
 #import "common/sky_box"
 #import "common/sun_shadow"
@@ -148,7 +149,7 @@ fn level_composited(in: GBufferVarying, surface: Surface, base: vec4<f32>) -> Co
   }
 
   return composite(surface.flags, texel, base.a * (1.0 - fog) * (1.0 - fog),
-    saturate(mix(color, lighting.fog_color.rgb, fog)), 0.0);
+    picture_for_display(saturate(mix(color, lighting.fog_color.rgb, fog)), lighting.display), 0.0, lighting.display);
 }
 
 // A blended model as the engine draws it forward, into the frame already tonemapped: its light times its base, doubled.
@@ -171,10 +172,10 @@ fn model_composited(in: GBufferVarying, surface: Surface, base: vec4<f32>) -> Co
     // The enhanced fog fogs `model_def_lq` too, its alpha fading by the fog's square as `model_env_lq`'s does.
     if (lighting.height_fog.w > 0.5) {
       return composite(surface.flags, texel, base.a * (1.0 - fog) * (1.0 - fog),
-        saturate(mix(lit, lighting.fog_color.rgb, fog)), 0.0);
+        picture_for_display(saturate(mix(lit, lighting.fog_color.rgb, fog)), lighting.display), 0.0, lighting.display);
     }
 
-    return composite(surface.flags, texel, base.a, lit, 0.0);
+    return composite(surface.flags, texel, base.a, picture_for_display(lit, lighting.display), 0.0, lighting.display);
   }
 
   if (fog_amount(lighting, position) >= 1.0) {
@@ -193,12 +194,16 @@ fn model_composited(in: GBufferVarying, surface: Surface, base: vec4<f32>) -> Co
   let color: vec3<f32> = in.light * mix(reflection, texel, base.a) * 2.0;
 
   return composite(surface.flags, texel, base.a * (1.0 - fog) * (1.0 - fog),
-    saturate(mix(color, lighting.fog_color.rgb, fog)), 0.0);
+    picture_for_display(saturate(mix(color, lighting.fog_color.rgb, fog)), lighting.display), 0.0, lighting.display);
 }
 
 // A surface composited by its flags: multiplied into what is behind it, added to it, or laid over it by its alpha,
-// `laid` being what a blended one lays. Fog fades each into leaving what is behind it alone, and its alpha is kept.
-fn composite(flags: u32, texel: vec3<f32>, alpha: f32, laid: vec3<f32>, fog: f32) -> CompositedOutput {
+// `laid` being what a blended one lays, as the colour `scene_from_shown` takes into the scene: the forward passes'
+// pictures come in through the frame's display (`picture_for_display`) before they reach it, and so does an added
+// texel here, under `display`. Fog fades each into leaving what is behind it alone, and its alpha is kept; a multiplied
+// one stays the factor it is.
+fn composite(flags: u32, texel: vec3<f32>, alpha: f32, laid: vec3<f32>, fog: f32, display: vec4<f32>)
+  -> CompositedOutput {
   var out: CompositedOutput;
 
   if ((flags & SURFACE_IS_MULTIPLIED) != 0u) {
@@ -209,7 +214,7 @@ fn composite(flags: u32, texel: vec3<f32>, alpha: f32, laid: vec3<f32>, fog: f32
   } else if ((flags & SURFACE_IS_ADDED) != 0u) {
     let weight: f32 = select(1.0, alpha, (flags & SURFACE_IS_WEIGHTED) != 0u);
 
-    out.color = vec4<f32>(scene_from_shown(texel * weight * (1.0 - fog)), 0.0);
+    out.color = vec4<f32>(scene_from_shown(picture_for_display(texel * weight * (1.0 - fog), display)), 0.0);
     out.behind = vec4<f32>(1.0);
   } else {
     out.color = vec4<f32>(scene_from_shown(laid) * alpha, 0.0);
@@ -255,7 +260,7 @@ fn fs_composited(in: GBufferVarying) -> CompositedOutput {
   let texel: vec3<f32> = mix(untextured_color(surface.color), base.rgb, camera.switches.x);
   let laid: vec3<f32> = select(shaded.albedo.rgb, lit_color(shaded, position, fog), is_lit);
 
-  return composite(surface.flags, texel, base.a, laid, fog);
+  return composite(surface.flags, texel, base.a, laid, fog, lighting.display);
 }
 
 // A distorting surface's special pass as `model_distort4glass` and `particle_distort` draw it into the distortion
@@ -298,7 +303,7 @@ fn fs_composited_selected(in: GBufferVarying) -> @location(0) vec4<f32> {
 }
 
 // A wall mark laid into the G-buffer's albedo as `wmark` lays it: its base alone, at its top level and clamped, unlit
-// and unfogged, the gloss left alone. Nothing cuts it, as `simple.ps` reads no reference.
+// and unfogged, the gloss left alone, never through a display. Nothing cuts it, as `simple.ps` reads no reference.
 @fragment
 fn fs_wallmark(in: GBufferVarying) -> CompositedOutput {
   let surface: Surface = surfaces[in.surface];
@@ -310,5 +315,5 @@ fn fs_wallmark(in: GBufferVarying) -> CompositedOutput {
 
   let texel: vec3<f32> = mix(untextured_color(surface.color), base.rgb, camera.switches.x);
 
-  return composite(surface.flags, texel, base.a, texel, 0.0);
+  return composite(surface.flags, texel, base.a, texel, 0.0, DISPLAY_UNGRADED);
 }

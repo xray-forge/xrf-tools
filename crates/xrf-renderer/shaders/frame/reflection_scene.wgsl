@@ -5,6 +5,7 @@
 #import "common/reflection_end"
 #import "common/reflection_trace"
 #import "common/scene_light"
+#import "common/display_transform"
 #import "common/scene_trace"
 #import "common/sky_box"
 #import "generated/frame/reflection_scene"
@@ -163,8 +164,11 @@ fn answer_water(request: TraceRequest, toward: vec3<f32>, cone: SceneCone, hit: 
   }
 
   let scale: f32 = frame_scale(lighting, exposure);
-  var behind: vec3<f32> = enhanced_sky(toward, lighting, sky_cube_0, sky_cube_1, sky_clamp) *
-    trace_request_sky_share(request.hit_end);
+  // The sky's picture as the frame's display brings it in, as the water's own pass writes it.
+  var behind: vec3<f32> = picture_for_display(
+    enhanced_sky(toward, lighting, sky_cube_0, sky_cube_1, sky_clamp) * trace_request_sky_share(request.hit_end),
+    lighting.display,
+  );
 
   if (is_met) {
     let seen: vec4<f32> = screen_shown_at(request.origin.xyz + toward * hit.distance);

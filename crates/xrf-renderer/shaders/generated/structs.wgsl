@@ -501,6 +501,7 @@ struct Rain {
   look: vec4<f32>,
   splash_look: vec4<f32>,
   aim: vec4<f32>,
+  display: vec4<f32>,
   count: u32,
   time: f32,
   splash_indices: u32,

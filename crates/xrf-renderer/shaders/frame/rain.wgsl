@@ -1,5 +1,6 @@
 #import "common/camera"
 #import "common/scene_light"
+#import "common/display_transform"
 #import "common/rain_cover"
 
 // The rain `dxRainRender` draws, over the finished scene and tested against its depth: every streak a quad and every
@@ -418,9 +419,12 @@ fn fs_ring(in: RingVarying) -> @location(0) vec4<f32> {
   return vec4<f32>(tilt, dot(tilt, tilt), 0.0);
 }
 
-// `effects\rain` over `stub_default`: the texture times the rain's colour, by its alpha, unlit and past the tonemap.
+// `effects\rain` over `stub_default`: the texture times the rain's colour, by its alpha, unlit and past the tonemap, a
+// picture painted for the engine's display entering the scene through the frame's.
 fn shade(texel: vec4<f32>) -> vec4<f32> {
-  return vec4<f32>(scene_from_shown(texel.rgb * rain.color.rgb), texel.a * rain.color.a);
+  let shown: vec3<f32> = picture_for_display(texel.rgb * rain.color.rgb, rain.display);
+
+  return vec4<f32>(scene_from_shown(shown), texel.a * rain.color.a);
 }
 
 @fragment
@@ -504,7 +508,8 @@ fn scattered(view_at: vec3<f32>) -> vec3<f32> {
 // then towards the light the drop scatters (`scattered`) by `look.y`, in place of SSS's hemisphere added; covered by
 // the map's alpha times the drops' cover where nothing nearer stands in front of it, tested against the drawn depth
 // here, with no depth attachment of the shown image's size. Its arithmetic is on the colour shown, as the engine's
-// forward passes draw, the light read as it is, as `s_accumulator` is read.
+// forward passes draw, the light read as it is, as `s_accumulator` is read: the image behind and the light scattered
+// taken to the pictures the frame's display shows them as (`picture_from_display`), the drop entering through it.
 @fragment
 fn fs_streak_enhanced(in: RainVarying) -> @location(0) vec4<f32> {
   let texel: vec4<f32> = textureSample(drop_map, map_sampler, in.uv);
@@ -517,14 +522,19 @@ fn fs_streak_enhanced(in: RainVarying) -> @location(0) vec4<f32> {
   // The depth is reversed, so what stands behind the drop holds less of it, and the sky none. The bend goes as far as
   // what it lands on stands behind the drop, and the drop shows as far as nothing nearer stands in front of it.
   let bent: vec2<f32> = refraction * share_behind(saturate(at + refraction), in.clip.z);
-  let seen: vec3<f32> = scene_shown(textureSampleLevel(refracted, refracted_sampler, saturate(at + bent), 0.0).rgb);
+  let display: vec4<f32> = rain.display;
+  let seen: vec3<f32> = picture_from_display(
+    scene_shown(textureSampleLevel(refracted, refracted_sampler, saturate(at + bent), 0.0).rgb),
+    display,
+  );
   let light: vec3<f32> = light_about(saturate(at + reflection));
   let glint: vec3<f32> = saturate(light * rain.look.w);
-  let shown: vec3<f32> = mix(1.0 - (1.0 - seen) * (1.0 - glint), scattered(in.view_at), rain.look.y);
+  let shown: vec3<f32> =
+    mix(1.0 - (1.0 - seen) * (1.0 - glint), picture_from_display(scattered(in.view_at), display), rain.look.y);
 
   let cover: f32 = drop_cover(texel, in.view_at) * rain.look.x * share_behind(at, in.clip.z);
 
-  return vec4<f32>(scene_from_shown(saturate(shown)), cover);
+  return vec4<f32>(scene_from_shown(picture_for_display(saturate(shown), display)), cover);
 }
 
 // `effects_rain_splash.ps` as a slight addition: the light the splash scatters, covered by its map's alpha times
