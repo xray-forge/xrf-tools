@@ -11,6 +11,7 @@ import {
   ERenderFoliageMode,
   ERenderGlassMode,
   ERenderIndirectLightMode,
+  ERenderLightFalloff,
   ERenderLightLevel,
   ERenderLightModel,
   ERenderLightShadowFilter,
@@ -228,6 +229,8 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   sunTint: toNumber(0, 1),
   lightModel: toChoice(ERenderLightModel),
   lights: {
+    // The renderer's own: how the lamps fall off at the anchored light level.
+    falloff: toChoice(ERenderLightFalloff),
     isEnabled: FLAG,
     isLevelLights: FLAG,
     isShadowed: FLAG,

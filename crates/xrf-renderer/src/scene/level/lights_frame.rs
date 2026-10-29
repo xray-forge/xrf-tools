@@ -34,6 +34,9 @@ pub struct LightsFrame<'a> {
   /// The weather's ambient in the engine's units, which each light is anchored over at the anchored levels
   /// (`anchored_light`); none elsewhere.
   pub anchor: Option<Vec3>,
+  /// Whether the lamps fall off by the windowed inverse square (`RenderViewOptions::is_falloff_inverse_square`), whose
+  /// intensity follows the square of a light's range.
+  pub is_falloff_inverse_square: bool,
   /// The scale a local light in the engine's units is written at: its unit (`LightUnits::local`) by the lights' gain
   /// (`LightUnits::light_gain`) at the pre-exposure.
   pub light_scale: f32,

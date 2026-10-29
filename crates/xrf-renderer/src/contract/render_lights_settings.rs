@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::contract::render_light_falloff::RenderLightFalloff;
 use crate::contract::render_light_shadow_filter::RenderLightShadowFilter;
 
 /// The level's local lights: binned into clusters of the view, and accumulated after the sun in one pass.
@@ -15,6 +16,8 @@ pub struct RenderLightsSettings {
   pub shadow_filter: RenderLightShadowFilter,
   /// Whether shadowed lights draw their shafts (`r2_volumetric_lights`), as the view's engine gives them out.
   pub is_volumetric: bool,
+  /// How the lamps fall off at the anchored light level (`RenderViewOptions::is_falloff_inverse_square`).
+  pub falloff: RenderLightFalloff,
 }
 
 impl Default for RenderLightsSettings {
@@ -26,6 +29,7 @@ impl Default for RenderLightsSettings {
       is_shadowed: true,
       shadow_filter: RenderLightShadowFilter::Engine,
       is_volumetric: true,
+      falloff: RenderLightFalloff::default(),
     }
   }
 }

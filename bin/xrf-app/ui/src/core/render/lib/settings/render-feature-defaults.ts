@@ -9,6 +9,7 @@ import {
   ERenderFoliageMode,
   ERenderGlassMode,
   ERenderIndirectLightMode,
+  ERenderLightFalloff,
   ERenderLightShadowFilter,
   ERenderParallaxMode,
   ERenderRainDropsMode,
@@ -216,8 +217,12 @@ export const DEFAULT_RENDER_REFLECTION_SETTINGS: TRenderReflectionSettings = {
   traceInterval: 2,
 };
 
-/** The engine's own: every spawned light, and none of the level file's; no shafts until they cost less. */
+/**
+ * The engine's own: every spawned light, and none of the level file's; no shafts until they cost less; at the
+ * anchored light level falling off as light does in the world.
+ */
 export const DEFAULT_RENDER_LIGHTS_SETTINGS: TRenderLightsSettings = {
+  falloff: ERenderLightFalloff.PHYSICAL,
   isEnabled: true,
   isLevelLights: false,
   isShadowed: true,

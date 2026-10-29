@@ -478,6 +478,7 @@ impl SceneView {
         is_specular_linear: options.is_specular_linear(),
         anchor: (options.get_physical_light_level() == Some(RenderLightLevel::Anchored))
           .then(|| lighting.get_ambient(&options.features.light_scales)),
+        is_falloff_inverse_square: options.is_falloff_inverse_square(),
         light_scale: lighting_frame.light_units.local
           * lighting_frame.light_units.light_gain
           * lighting_frame.pre_exposure.current,

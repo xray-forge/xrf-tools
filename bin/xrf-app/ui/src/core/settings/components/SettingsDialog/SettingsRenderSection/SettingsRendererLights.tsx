@@ -1,10 +1,14 @@
 import { useInjection } from "@wirestate/react";
-import { RenderLightShadowFilter } from "@xrf/ipc/types/xrf-renderer";
+import { RenderLightFalloff, RenderLightShadowFilter } from "@xrf/ipc/types/xrf-renderer";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
+import {
+  explainRenderLightFalloff,
+  RENDER_LIGHT_FALLOFF_OPTIONS,
+} from "@/core/render/lib/features/render-light-falloff-choices";
 import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features/render-shadow-choices";
 import { TRenderLightsSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
@@ -44,6 +48,14 @@ export function SettingsRendererLights(): ReactElement {
           options={RENDER_LIGHT_SHADOW_FILTER_OPTIONS}
           value={lights.shadowFilter}
           onChange={(shadowFilter: RenderLightShadowFilter) => onSet({ shadowFilter })}
+        />
+
+        <ChoiceFormRow
+          label={"Falloff"}
+          description={explainRenderLightFalloff(lights.falloff)}
+          options={RENDER_LIGHT_FALLOFF_OPTIONS}
+          value={lights.falloff}
+          onChange={(falloff: RenderLightFalloff) => onSet({ falloff })}
         />
 
         <CheckboxFormRow

@@ -1144,6 +1144,24 @@ export type RenderLibraries = {
 };
 
 /**
+ * How the lamps fall off at the anchored light level: by the windowed inverse square, as light falls off in the world,
+ * or by the engine's own curve, as Unreal keeps an exponent falloff for lights not authored physically. The authored
+ * levels keep the engine's, which their summed decode makes a pool of; the physical levels the inverse square.
+ */
+export enum ERenderLightFalloff {
+  /**
+   * The windowed inverse square from the lamp's bulb, at the intensity that gives as much light within its reach as
+   * the engine's falloff: a pool about the bulb, dimmer towards the reach.
+   */
+  PHYSICAL = "physical",
+  /** The engine's `1 - d²/r²`: the game's flat lamp-lit rooms. */
+  ENGINE = "engine",
+}
+
+/** Every `ERenderLightFalloff` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderLightFalloff = `${ERenderLightFalloff}`;
+
+/**
  * How bright the physical light's sources stand against each other and the day: as the weathers and the lamps are
  * authored, or brought to the real world's.
  */
@@ -1236,6 +1254,8 @@ export type RenderLightsSettings = {
   shadowFilter: RenderLightShadowFilter;
   /** Whether shadowed lights draw their shafts (`r2_volumetric_lights`), as the view's engine gives them out. */
   isVolumetric: boolean;
+  /** How the lamps fall off at the anchored light level (`RenderViewOptions::is_falloff_inverse_square`). */
+  falloff: RenderLightFalloff;
 };
 
 /**

@@ -6,6 +6,7 @@ use crate::lighting::luminance::luminance;
 use crate::contract::render_display_transform::RenderDisplayTransform;
 use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_fog_colour::RenderFogColour;
+use crate::contract::render_light_falloff::RenderLightFalloff;
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_light_model::RenderLightModel;
 use crate::contract::render_light_scales::RenderLightScales;
@@ -95,22 +96,40 @@ fn physical_light_holds_a_linear_scene_while_lit_and_solid() {
   assert!(!wireframe.is_light_physical());
 }
 
-// The camera tells the shaders the light's level: nought under the engine's light, one at the authored levels, two at
-// the anchored and physical, whose lamps fall off by the windowed inverse square (`is_falloff_inverse_square`).
+// The camera tells the shaders the light's level: nought under the engine's light, one where the lamps fall off by the
+// engine's falloff, two by the windowed inverse square (`is_falloff_inverse_square`): the physical levels always, the
+// anchored as their falloff setting asks, the authored never.
 #[test]
 fn the_camera_tells_the_shaders_the_lights_level() {
   let view: CameraView = CameraView::new(Vec3::ZERO, Mat4::IDENTITY, 60.0, 1.0, 0.5, 100.0);
-  let level = |level: Option<RenderLightLevel>| {
+  let output = |options: &RenderViewOptions| {
     CameraUniform::new(&view, RenderRect::default(), Vec4::ZERO)
-      .with_physical_light(level)
+      .with_physical_light(options)
       .output
       .w
   };
+  let at = |level: RenderLightLevel, falloff: RenderLightFalloff| {
+    let mut options: RenderViewOptions = lit(physical());
 
-  assert_eq!(level(None), 0.0);
-  assert_eq!(level(Some(RenderLightLevel::Authored)), 1.0);
-  assert_eq!(level(Some(RenderLightLevel::Anchored)), 2.0);
-  assert_eq!(level(Some(RenderLightLevel::Physical)), 2.0);
+    options.features.light_level = level;
+    options.features.lights.falloff = falloff;
+
+    output(&options)
+  };
+
+  assert_eq!(output(&lit(RenderViewOptions::default())), 0.0);
+  assert_eq!(at(RenderLightLevel::Authored, RenderLightFalloff::Physical), 1.0);
+  assert_eq!(at(RenderLightLevel::Anchored, RenderLightFalloff::Physical), 2.0);
+  assert_eq!(at(RenderLightLevel::Anchored, RenderLightFalloff::Engine), 1.0);
+  assert_eq!(at(RenderLightLevel::Physical, RenderLightFalloff::Engine), 2.0);
+}
+
+/// The options drawn lit and solid, as a level's view draws them.
+fn lit(mut options: RenderViewOptions) -> RenderViewOptions {
+  options.mode.is_lit = true;
+  options.mode.is_wireframe = false;
+
+  options
 }
 
 // The authored levels sum their diffuse light at the lights' gain and, unmetered, show the sky and the fog's colour alike;
