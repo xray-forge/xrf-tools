@@ -803,6 +803,7 @@ impl SceneView {
       LightingHandles<'a>,
       Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>,
     ),
+    wetting: (GraphTexture, GraphTexture),
   ) -> (Option<GraphTexture>, GraphTexture) {
     let lights: &'a LightsFeature = &self.features.lights;
     let buffers: LightBuffers = lights.add_binning_passes((&mut *graph, &mut *bindings, &mut *runtime), passes);
@@ -822,7 +823,7 @@ impl SceneView {
       (&mut *graph, &mut *bindings),
       passes,
       view,
-      (targets, lit),
+      (targets, lit, wetting),
       (
         contact_shadows,
         sun_traced,
@@ -847,7 +848,7 @@ impl SceneView {
       (&mut *graph, &mut *bindings),
       passes,
       (view, textures, scene.lights.get_shadow_atlas()),
-      (targets, lit, buffers),
+      (targets, lit, buffers, wetting),
       (contact, self.features.contact_shadows.get_light_count()),
       traced_lights,
     );
@@ -1306,6 +1307,7 @@ impl SceneView {
       passes,
       (view, textures, scene),
       (handles, lit, traced),
+      (wet_surface, wet_reach),
     );
 
     self
@@ -1352,7 +1354,7 @@ impl SceneView {
         (&mut *graph, &mut *bindings, runtime),
         passes,
         view,
-        (handles, lit, wet_surface),
+        (handles, lit, (wet_surface, wet_reach)),
         source,
         (&sky, traced),
       ) {
@@ -1378,7 +1380,12 @@ impl SceneView {
         &mut *graph,
         passes,
         view,
-        (handles, lit.lighting, wet_surface, traced_rays.unwrap_or(untraced)),
+        (
+          handles,
+          lit.lighting,
+          (wet_surface, wet_reach),
+          traced_rays.unwrap_or(untraced),
+        ),
         (indirect_hits, unlit),
       );
     }

@@ -22,7 +22,7 @@ impl SunFeature {
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
-    (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
+    (targets, lit, (wet_surface, wet_reach)): (ViewTargetHandles, LightingHandles<'a>, (GraphTexture, GraphTexture)),
     (contact_shadows, sun_traced, filter_reach): (GraphTexture, Option<GraphTexture>, u32),
   ) -> GraphTexture {
     let is_traced: bool = sun_traced.is_some();
@@ -40,6 +40,8 @@ impl SunFeature {
       contact_shadows,
       sun_traced: sun_traced
         .unwrap_or_else(|| bindings.import_view(&mut *graph, "sun untraced", passes.sun.get_untraced())),
+      wet_surface,
+      wet_reach,
     };
     let (width, height) = targets.size;
     let seen: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(

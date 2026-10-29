@@ -166,7 +166,7 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   // Fresnel, by the coat's share of the puddle). The reflection gives the water its sky and the sun's glint; all of the
   // mirror gloss would spread the engine's lobe over the puddle, brighter than the sky it reflects, and none of it would
   // lose a lamp's glint, which water shows towards grazing.
-  let reach: vec2<f32> = load_frame_target(wet_reach, texel).rg;
+  let reach: vec4<f32> = load_frame_target(wet_reach, texel);
   let wet: vec4<f32> = load_frame_target(wet_surface, texel);
   let facing: f32 = saturate(dot(normal, -camera_view_ray(position)));
   let water_seen: f32 = environment_brdf(vec3<f32>(COAT_F0), 0.0, facing).x * saturate(wet.r / max(wet.g, 1e-3));
@@ -205,9 +205,11 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   // intensity, over the traced reflection where there is one and the prefiltered sky, seen as the hemisphere lets it,
   // where there is none.
   if (lighting.reflections.x > 0.5) {
-    let roughness: f32 = traced_roughness(albedo.a, wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
-    let head_on: vec3<f32> = reflectance_head_on(albedo.rgb, albedo.a, wet.r, material.z);
-    let brdf: vec3<f32> = environment_brdf(head_on, roughness, facing) * lighting.reflections.z;
+    let surface: SurfaceMaterial = surface_material(albedo, material.z, water_film(wet, reach),
+      wet.a + surface_variance(normal_target, depth_target, texel, wet.g), is_light_anchored(lighting));
+    let roughness: f32 = surface.roughness;
+    let head_on: vec3<f32> = surface.head_on;
+    let brdf: vec3<f32> = environment_brdf(head_on, roughness, facing) * surface.shadowing * lighting.reflections.z;
     // The full-size history the reflections were resolved into; a texel of nothing where none is traced.
     let traced: vec4<f32> = load_frame_target(reflections, texel);
     // The traced reflection where there is one, faded into the prefiltered sky towards the trace's roughness cut.

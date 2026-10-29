@@ -716,17 +716,17 @@ impl ResolveFeature {
   }
 
   /// Adds the guides DLSS ray reconstruction reads, where it resolves this frame, at the drawn size: worked out from
-  /// the G-buffer, the wet surface and the reflections' trace (`traced`, a texel of nothing where none is) after
-  /// combine.
+  /// the G-buffer, the wet surface and reach and the reflections' trace (`traced`, a texel of nothing where none is)
+  /// after combine.
   pub fn add_guide_passes<'a>(
     &self,
     graph: &mut FrameGraph<'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
-    (handles, lighting, wet_surface, traced): (
+    (handles, lighting, (wet_surface, wet_reach), traced): (
       ViewTargetHandles,
       UniformBinding<LightingUniform>,
-      GraphTexture,
+      (GraphTexture, GraphTexture),
       GraphTexture,
     ),
     (diffuse_hits, none): (Option<GraphTexture>, GraphTexture),
@@ -756,6 +756,7 @@ impl ResolveFeature {
       material_target: handles.material,
       depth_target: handles.depth,
       wet_surface,
+      wet_reach,
       lighting,
       traced,
       diffuse_hits: diffuse_hits.unwrap_or(none),

@@ -26,6 +26,8 @@ pub struct ReflectionParameters<'a> {
   pub occlusion_target: GraphTexture,
   #[texture(d2, unfilterable)]
   pub wet_surface: GraphTexture,
+  #[texture(d2, unfilterable)]
+  pub wet_reach: GraphTexture,
   #[texture(d3, float)]
   pub material_lut: GraphTexture,
   #[sampler(filtering)]

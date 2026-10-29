@@ -14,3 +14,5 @@
 @group(1) @binding(9) var<storage, read> items: array<u32>;
 @group(1) @binding(10) var<uniform> lights: Lights;
 @group(1) @binding(11) var<uniform> contact: ContactShadows;
+@group(1) @binding(12) var wet_surface: texture_2d<f32>;
+@group(1) @binding(13) var wet_reach: texture_2d<f32>;

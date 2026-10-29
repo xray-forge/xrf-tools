@@ -2,7 +2,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
 use crate::pass::lighting_uniform::LightingUniform;
 
-/// What DLSS ray reconstruction's guides are worked out from: the G-buffer, the wet surface, the lighting, the
+/// What DLSS ray reconstruction's guides are worked out from: the G-buffer, the wet surface and reach, the lighting, the
 /// reflections' trace, whose alpha holds how far each traced ray went, and how far the indirect light's rays went.
 #[derive(Clone, Copy, PassParameters)]
 #[parameters(group = 1)]
@@ -17,6 +17,8 @@ pub struct RayGuidesParameters {
   pub depth_target: GraphTexture,
   #[texture(d2, unfilterable)]
   pub wet_surface: GraphTexture,
+  #[texture(d2, unfilterable)]
+  pub wet_reach: GraphTexture,
   #[uniform]
   pub lighting: UniformBinding<LightingUniform>,
   /// What each traced pixel met, at the size the reflections are traced at; a texel of nothing where none is.

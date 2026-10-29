@@ -180,7 +180,7 @@ impl ReflectionFeature {
     (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
-    (targets, lit, wet_surface): (ViewTargetHandles, LightingHandles<'a>, GraphTexture),
+    (targets, lit, (wet_surface, wet_reach)): (ViewTargetHandles, LightingHandles<'a>, (GraphTexture, GraphTexture)),
     source: Option<(GraphTexture, GraphTexture)>,
     (sky, scene_trace): (&SkyParameters<'a>, Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>),
   ) -> Option<(GraphTexture, GraphTexture, GraphTexture)> {
@@ -213,6 +213,7 @@ impl ReflectionFeature {
       light_target: targets.light,
       occlusion_target: targets.occlusion[0],
       wet_surface,
+      wet_reach,
       material_lut: lit.material_lut,
       lut_sampler: lit.lut_sampler,
       lighting: lit.lighting,
