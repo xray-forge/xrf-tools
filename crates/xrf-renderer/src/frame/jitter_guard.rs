@@ -45,9 +45,10 @@ impl JitterGuard {
     (&["rain"], &["depth", "light"]),
     // The meter averages the whole frame into one exposure.
     (&["exposure"], &["depth", "high", "scene"]),
-    // The present, the window's or a capture's: the debug views show the drawn targets as they are; the sky's
-    // debanding reads the depth over four drawn texels; the drawn scene is bound beside the upscaled image the frame
-    // shows, read only by the luminance view. A capture's copy takes the depth or the marks for a tool.
+    // The present, the window's or a capture's: the debug views show the drawn targets as they are, the indirect light
+    // and the reflections traced raw for ray reconstruction among them; the sky's debanding reads the depth over four
+    // drawn texels; the drawn scene is bound beside the upscaled image the frame shows, read only by the luminance view.
+    // A capture's copy takes the depth or the marks for a tool.
     (
       &["window", "screenshot", "capture shot", "burst frame"],
       &[
@@ -55,12 +56,14 @@ impl JitterGuard {
         "ambient occlusion",
         "depth",
         "indirect light",
+        "indirect traced",
         "light",
         "material",
         "motion",
         "normal",
         "reflection history full",
         "reflections ends",
+        "reflections traced",
         "scene",
       ],
     ),

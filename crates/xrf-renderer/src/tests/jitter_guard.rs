@@ -62,6 +62,23 @@ fn finds_the_reads_of_the_jittered_frame_after_a_resolve() {
   );
 }
 
+/// Under ray reconstruction the present binds the indirect light and the reflections traced raw for its debug views,
+/// which show them as drawn: allowed as the gathered ones are, while the frame drawn before the resolve is still found.
+#[test]
+fn allows_the_present_the_raw_traced_targets_of_ray_reconstruction() {
+  let view: GraphOwner = GraphOwner::Part(1);
+  let report: GraphReport = report(
+    &["frame", "indirect traced", "reflections traced", "resolved"],
+    vec![
+      pass("opaque", view, (&[], &[0, 1, 2])),
+      pass(JitterGuard::RESOLVES[2], view, (&[0, 1, 2], &[3])),
+      pass("window", GraphOwner::Frame, (&[0, 1, 2, 3], &[])),
+    ],
+  );
+
+  assert_eq!(JitterGuard::list_jittered_reads(&report), [read("window", "frame")]);
+}
+
 /// A view with no resolve, drawn and shown as it is, has no reads to find.
 #[test]
 fn finds_nothing_in_a_frame_never_resolved() {
