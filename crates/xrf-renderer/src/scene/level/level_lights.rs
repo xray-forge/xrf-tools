@@ -53,6 +53,9 @@ const VOLUME_PROJECTOR: &str = "lights\\lights_spot01";
 /// `VOLUMETRIC_SLICES`: the slices the engines' buffer holds, of which a light's shafts draw some.
 const VOLUME_SLICES: u32 = 100;
 
+/// `fDensity`: what one slice of a light's shafts adds of its light, as `light_volumes.wgsl` holds it too.
+const VOLUME_DENSITY: f32 = 1.0 / 40.0;
+
 /// OpenXRay's fewest slices a light's shafts draw (`_max(10, iNumSlices)`).
 const VOLUME_FEWEST_SLICES: u32 = 10;
 
@@ -276,13 +279,17 @@ impl LevelLights {
         // the light itself (`to_light_specular`), so it is taken before the scale.
         record.color *= light_scale;
 
+        let shafts: Option<LightShafts> = set
+          .filter(|_| settings.is_volumetric)
+          .and_then(|_| Self::to_shafts(light, &it.basis, eye, engine));
+
         if let Some(set) = set {
           let atlas: f32 = LevelLightShadows::ATLAS_SIZE as f32;
 
           record.shadow = Vec4::new(set.near, set.far, set.faces.len() as f32, record.shadow.w);
-          // Only the shadowed lights the level gives shafts scatter, as the engine draws only their shafts: a campfire
-          // or a wall lamp lighting the whole air about it would glow through the dark as a ball of fog.
-          record.scatter.x = if Self::has_shafts(light, engine) { 1.0 } else { 0.0 };
+          // Only the shadowed lights the level gives shafts scatter, as thickly as their shafts: a campfire or a wall
+          // lamp lighting the whole air about it would glow through the dark as a ball of fog.
+          record.scatter.x = shafts.as_ref().map_or(0.0, LightShafts::get_density);
 
           for (face, state) in set.faces.iter().enumerate() {
             record.faces[face] = Vec4::new(
@@ -298,14 +305,13 @@ impl LevelLights {
           break;
         };
 
-        if set.is_some()
-          && settings.is_volumetric
+        if let Some(shafts) = &shafts
           && let Some((volume, slices)) = Self::to_volume(
-            light,
+            shafts,
             &it.basis,
             &record,
             index,
-            (eye, camera.view),
+            camera.view,
             engine,
             self.volume_textures.1,
           )
@@ -559,17 +565,14 @@ impl LevelLights {
     light.range + light.range_jitter * (unit * 2.0 - 1.0)
   }
 
-  /// A shadowed light's shafts this frame, and the slices they draw, as the view's engine gives them out
-  /// (`r3_rendertarget_accum_spot.cpp`, `accum_volumetric`).
-  fn to_volume(
+  /// The shafts the level gives a shadowed light this frame, seen from `eye`, as the view's engine gives them out
+  /// (`r3_rendertarget_accum_spot.cpp`, `accum_volumetric`): none where it gives none or Monolith's have faded.
+  pub(crate) fn to_shafts(
     light: &LightDescription,
     basis: &LightBasis,
-    record: &LightRecord,
-    index: u32,
-    (eye, view): (Vec3, Mat4),
+    eye: Vec3,
     engine: XrayEngine,
-    projector: u32,
-  ) -> Option<(LightVolumeRecord, u32)> {
+  ) -> Option<LightShafts> {
     let volumetric = light.volumetric.as_ref().filter(|_| Self::has_shafts(light, engine))?;
     let is_spot: bool = matches!(light.kind, LightKind::Spot);
     // The slices drawn, the share of the buffer the volume's depth is stretched over, the colour's scale and the
@@ -606,17 +609,44 @@ impl LevelLights {
         )
       }
     };
-    let slices: u32 = if is_spot {
-      slices
-    } else {
-      (slices as f32 * std::f32::consts::SQRT_2).round() as u32
-    };
+
+    Some(LightShafts {
+      is_spot,
+      slices: if is_spot {
+        slices
+      } else {
+        (slices as f32 * std::f32::consts::SQRT_2).round() as u32
+      },
+      quality,
+      intensity,
+      distance,
+      sphere: if is_spot {
+        basis.get_spatial_sphere(light)
+      } else {
+        basis.position.extend(light.range)
+      },
+    })
+  }
+
+  /// A shadowed light's `shafts` as volume `index` draws them, and its slices, in the `view`'s space.
+  fn to_volume(
+    shafts: &LightShafts,
+    basis: &LightBasis,
+    record: &LightRecord,
+    index: u32,
+    view: Mat4,
+    engine: XrayEngine,
+    projector: u32,
+  ) -> Option<(LightVolumeRecord, u32)> {
+    let LightShafts {
+      is_spot,
+      slices,
+      quality,
+      intensity,
+      distance,
+      sphere,
+    } = *shafts;
     // The light's sphere pulled towards it by its distance, in view space: the box the slices fill.
-    let sphere: Vec4 = if is_spot {
-      basis.get_spatial_sphere(light)
-    } else {
-      basis.position.extend(light.range)
-    };
     let centre: Vec3 = view.transform_point3(basis.position + (sphere.truncate() - basis.position) * distance);
     let radius: f32 = sphere.w * distance;
     let near: f32 = centre.z + radius;
@@ -650,6 +680,32 @@ impl LevelLights {
       },
       slices,
     ))
+  }
+}
+
+/// A shadowed light's shafts as the view's engine gives them out this frame.
+#[derive(Clone, Copy)]
+pub(crate) struct LightShafts {
+  is_spot: bool,
+  /// The slices drawn, a point's widened by √2 for its faces.
+  slices: u32,
+  /// The share of the buffer the volume's depth is stretched over.
+  quality: f32,
+  /// The colour's scale.
+  intensity: f32,
+  /// How far towards the light its sphere is pulled.
+  distance: f32,
+  /// The sphere the slices fill, in the world.
+  sphere: Vec4,
+}
+
+impl LightShafts {
+  /// What a metre of the shafts adds of the light where all of it reaches: the slices standing within the sphere over
+  /// its depth, spaced by the buffer's steps over the depth the quality stretches (`vs_light_volume`), each adding
+  /// `VOLUME_DENSITY` at the colour's scale; the distance shrinks the sphere and scales the colour alike, so it falls
+  /// out.
+  pub(crate) fn get_density(&self) -> f32 {
+    (VOLUME_SLICES - 1) as f32 * self.quality * VOLUME_DENSITY * self.intensity / (2.0 * self.sphere.w).max(EPS_L)
   }
 }
 

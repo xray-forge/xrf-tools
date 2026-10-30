@@ -1,9 +1,10 @@
 use std::f32::consts::{PI, SQRT_2};
 
 use glam::{Vec3, Vec4};
+use xrf_engine_target::XrayEngine;
 use xrf_light_anim::{LightAnimItem, LightAnimKey};
 use xrf_math::Vector3d;
-use xrf_visual::{LightAnimatorDescription, LightAnimatorKey, LightDescription, LightKind};
+use xrf_visual::{LightAnimatorDescription, LightAnimatorKey, LightDescription, LightKind, LightVolumetric};
 
 use crate::lighting::light_animation::{to_animated_color, to_interpolated_color};
 use crate::lighting::light_basis::LightBasis;
@@ -111,6 +112,45 @@ fn light_takes_the_engines_spatial_sphere() {
   assert!(near(wide.w, 10.0 * (PI / 3.0).tan()));
   assert!(near(wide.z, -10.0));
   assert_eq!(LightBasis::of(&point()).get_spatial_sphere(&point()).w, 4.0);
+}
+
+// A light's shafts add a metre of air what the engine's slices within its sphere add: 99 steps of the buffer over the
+// depth its quality stretches, each a fortieth at the colour's scale. Under vanilla only a light that asks has them,
+// the quality cancelling as the engine scales its colour up by it; under the extended engine every light has them, a
+// point's at Monolith's part, gone where they have faded out far from the eye.
+#[test]
+fn light_shafts_scatter_what_the_engines_slices_add_a_metre() {
+  let asking: LightDescription = LightDescription {
+    volumetric: Some(LightVolumetric {
+      is_asked: true,
+      quality: 0.5,
+      intensity: 0.4,
+      distance: 1.0,
+    }),
+    ..point()
+  };
+  let silent: LightDescription = LightDescription {
+    volumetric: Some(LightVolumetric {
+      is_asked: false,
+      ..asking.volumetric.clone().unwrap()
+    }),
+    ..point()
+  };
+  let density = |light: &LightDescription, eye: Vec3, engine: XrayEngine| {
+    LevelLights::to_shafts(light, &LightBasis::of(light), eye, engine).map(|shafts| shafts.get_density())
+  };
+
+  assert!(near(
+    density(&asking, Vec3::ZERO, XrayEngine::Vanilla).unwrap(),
+    99.0 / 40.0 * 0.4 / 8.0
+  ));
+  assert_eq!(density(&silent, Vec3::ZERO, XrayEngine::Vanilla), None);
+  assert_eq!(density(&point(), Vec3::ZERO, XrayEngine::Extended), None);
+  assert!(near(
+    density(&silent, Vec3::ZERO, XrayEngine::Extended).unwrap(),
+    99.0 * 0.6 / 40.0 * 0.2 / 3.0 / 8.0
+  ));
+  assert_eq!(density(&silent, Vec3::new(0.0, 0.0, 200.0), XrayEngine::Extended), None);
 }
 
 #[test]
