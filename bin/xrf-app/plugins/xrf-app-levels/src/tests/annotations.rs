@@ -129,8 +129,11 @@ fn outlines_a_box_from_above_at_its_place() {
     0.0,
     AlifeObjectInherited::CseAlifeSpaceRestrictor(Box::new(new_restrictor(vec![new_box()], 3))),
   )]);
-  let annotations: LevelAnnotations =
-    LevelAnnotations::of(&LevelObjectsDescription::describe(&spawn), &new_graph(), "zaton");
+  let annotations: LevelAnnotations = LevelAnnotations::of(
+    &LevelObjectsDescription::describe(&spawn, Some(&new_graph())),
+    &new_graph(),
+    "zaton",
+  );
   let [volume] = annotations.volumes.as_slice() else {
     panic!("one volume expected, not {}", annotations.volumes.len());
   };
@@ -159,8 +162,12 @@ fn turns_a_sphere_with_its_object_and_keeps_its_radius() {
     std::f32::consts::FRAC_PI_2,
     AlifeObjectInherited::CseAlifeSpaceRestrictor(Box::new(new_restrictor(vec![sphere], 4))),
   )]);
-  let volume: &AnnotationVolume =
-    &LevelAnnotations::of(&LevelObjectsDescription::describe(&spawn), &new_graph(), "zaton").volumes[0];
+  let volume: &AnnotationVolume = &LevelAnnotations::of(
+    &LevelObjectsDescription::describe(&spawn, Some(&new_graph())),
+    &new_graph(),
+    "zaton",
+  )
+  .volumes[0];
   let AnnotationOutline::Circle { center, radius } = volume.outlines[0] else {
     panic!("a sphere is a circle from above");
   };
@@ -194,8 +201,11 @@ fn points_a_level_changer_toward_its_destination_across_the_world() {
     0.0,
     AlifeObjectInherited::SeLevelChanger(Box::new(changer)),
   )]);
-  let annotations: LevelAnnotations =
-    LevelAnnotations::of(&LevelObjectsDescription::describe(&spawn), &new_graph(), "zaton");
+  let annotations: LevelAnnotations = LevelAnnotations::of(
+    &LevelObjectsDescription::describe(&spawn, Some(&new_graph())),
+    &new_graph(),
+    "zaton",
+  );
 
   assert_eq!(
     annotations.volumes[0].destination,
@@ -306,7 +316,7 @@ fn writes_the_annotations_over_a_map_at_the_size_it_was_captured() -> TauriResul
   })?;
   let svg: String = canvas.write(
     &LevelAnnotations::of(
-      &LevelObjectsDescription::describe(&new_spawn(Vec::new())),
+      &LevelObjectsDescription::describe(&new_spawn(Vec::new()), Some(&new_graph())),
       &new_graph(),
       "zaton",
     ),

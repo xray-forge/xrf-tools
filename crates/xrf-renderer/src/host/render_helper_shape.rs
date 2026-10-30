@@ -10,4 +10,13 @@ pub enum RenderHelperShape {
     axes: [[f32; 3]; 3],
     center: [f32; 3],
   },
+  /// Wires as they stand, each by its two ends: a path's links.
+  Segments {
+    ends: Vec<[[f32; 3]; 2]>,
+  },
+  /// A point drawn as three crossed axes `size` metres long: what has a place and no shape.
+  Marker {
+    center: [f32; 3],
+    size: f32,
+  },
 }

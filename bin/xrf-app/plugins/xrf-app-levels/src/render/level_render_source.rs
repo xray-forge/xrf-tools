@@ -23,10 +23,10 @@ use xrf_world::WorldLevelReload;
 use crate::level::SelectedLevel;
 use crate::objects::LevelObjectsDescription;
 use crate::parts::{
-  LevelCollisionPart, LevelDetailsPart, LevelEnvironment, LevelEnvironmentPart, LevelGeometryPart, LevelHemiPart,
-  LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelSpawnVisual,
-  LevelSpawnVisualsPart, LevelSurfacesPart, LevelTextureReference, LevelTexturesPart, LevelWeatherPart,
-  PackedLevelDetails, PackedLevelLights, PackedLevelParticles, SpawnVisualReader,
+  LevelCollisionPart, LevelDetailsPart, LevelEnvironment, LevelEnvironmentPart, LevelGeometryPart, LevelGraphPart,
+  LevelHemiPart, LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart,
+  LevelSpawnVisual, LevelSpawnVisualsPart, LevelSurfacesPart, LevelTextureReference, LevelTexturesPart,
+  LevelWeatherPart, PackedLevelDetails, PackedLevelLights, PackedLevelParticles, SpawnVisualReader,
 };
 use crate::render::LevelParticleCollider;
 use crate::report::LevelReport;
@@ -313,9 +313,15 @@ impl RenderLevelSource for LevelRenderSource {
   }
 
   fn read_helpers(&self) -> XrfResult<RenderLevelHelpers> {
-    let spawn = LevelSpawnPart::get(&self.level, &self.search()?).map_err(XrfError::new_asset_error)?;
+    let search: XraySearch = self.search()?;
+    let spawn = LevelSpawnPart::get(&self.level, &search).map_err(XrfError::new_asset_error)?;
+    // The spawn's helpers stand without the graph's: a graph that cannot be read leaves out its paths and points.
+    let graph = LevelGraphPart::get(&self.level, &search).ok();
 
-    Ok(RenderLevelHelpers::from(&LevelObjectsDescription::describe(&spawn)))
+    Ok(RenderLevelHelpers::from(&LevelObjectsDescription::describe(
+      &spawn,
+      graph.as_deref(),
+    )))
   }
 
   fn read_particles(&self) -> XrfResult<Option<RenderLevelParticles>> {

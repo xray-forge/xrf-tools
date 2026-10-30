@@ -1,14 +1,15 @@
 import { useInjection } from "@wirestate/react";
-import { ELevelObjectId } from "@xrf/ipc/types/xrf-app-levels";
 import { XrayRevision } from "@xrf/ipc/types/xrf-vfs";
 import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement, useEffect } from "react";
 
+import { getLevelSpawnIndex } from "@/core/level/lib/objects/level-object-kinds";
 import { ELevelPick, TLevelObjectPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
+import { listLevelPatrolLeads } from "@/tools/level-viewer/lib/outliner/level-object-describe";
 import { LevelViewerObjectsService } from "@/tools/level-viewer/services/level-viewer-objects";
 
 import { LevelObjectDetails } from "./LevelObjectDetails";
@@ -28,8 +29,7 @@ export function LevelInspectorPanel({
 
   const picked: Nullable<TLevelPick> = viewportService.picked;
   const active: Nullable<TLevelObjectPick> = picked?.kind === ELevelPick.OBJECT ? picked : null;
-  const spawnIndex: Nullable<number> =
-    active?.object.id.source === ELevelObjectId.SPAWN ? active.object.id.index : null;
+  const spawnIndex: Nullable<number> = active ? getLevelSpawnIndex(active.object.id) : null;
   const sessionId: Nullable<string> = loadService.level.value?.selected.sessionId ?? null;
   const revision: Nullable<XrayRevision> = loadService.objectsRevision;
 
@@ -56,6 +56,7 @@ export function LevelInspectorPanel({
         visual={active.visual}
         details={objectsService.details.state}
         others={Math.max(viewportService.selected.length - 1, 0)}
+        leads={listLevelPatrolLeads(active.object, loadService.objects?.objects ?? [])}
         onGoTo={() => objectsService.frameSelection()}
       />
     </div>

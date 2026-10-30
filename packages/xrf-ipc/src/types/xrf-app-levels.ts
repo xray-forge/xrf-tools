@@ -52,8 +52,8 @@ export const LEVEL_MAP_PART = "levelMap" as const;
 
 /**
  * Every kind of level object, in the order `LevelObjectKind` declares them: smart terrains orange, restrictors blue,
- * anomalies red and level changers green as the map has drawn them, the spawned visuals teal, characters magenta and
- * smart covers cyan.
+ * anomalies red, level changers green, patrols yellow and graph points pale grey as the map has drawn them, the
+ * spawned visuals teal, characters magenta and smart covers cyan.
  */
 export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
   {
@@ -190,6 +190,24 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     isHelpedByDefault: false,
     kind: "smartCovers",
     label: "Smart covers",
+  },
+  {
+    color: "#ffeb3b",
+    drawDistance: 250.0,
+    group: "paths",
+    isDrawn: false,
+    isHelpedByDefault: true,
+    kind: "patrols",
+    label: "Patrols",
+  },
+  {
+    color: "#e0e0e0",
+    drawDistance: 150.0,
+    group: "navigation",
+    isDrawn: false,
+    isHelpedByDefault: false,
+    kind: "graphPoints",
+    label: "Graph points",
   },
 ];
 
@@ -358,17 +376,26 @@ export type LevelMapDescription = {
   texture: string | null;
 };
 
-/** One discrete thing placed in a level: what it is, where it stands, and what its source records of it. */
+/**
+ * One discrete thing placed in a level: what it is, where it stands, what it belongs to, and what its source records
+ * of it.
+ */
 export type LevelObject = {
   id: LevelObjectId;
   kind: LevelObjectKind;
   name: string;
   /** Where it stands, its `XFORM` in renderer space; its shapes stand in the space it gives. */
   transform: VisualTransform;
+  /** The object it is a part of, as a patrol point is of its path, listed before it. */
+  parent: LevelObjectId | null;
   /** What the spawn records of it, for an object the spawn places. */
   spawn: LevelObjectSpawn | null;
   /** What it covers, for a logic volume. */
   volume: LevelObjectVolume | null;
+  /** Its points and their links, for a patrol path. */
+  patrol: LevelObjectPatrol | null;
+  /** What the spawn records of it, for a patrol point. */
+  patrolPoint: LevelObjectPatrolPoint | null;
 };
 
 /** The family a level object's kind belongs to, which the Outliner and the Show popover nest kinds under. */
@@ -381,6 +408,10 @@ export enum ELevelObjectGroup {
   VOLUMES = "volumes",
   /** The smart covers. */
   COVERS = "covers",
+  /** The patrol paths and their points. */
+  PATHS = "paths",
+  /** The game graph's points. */
+  NAVIGATION = "navigation",
 }
 
 /** Every `ELevelObjectGroup` as the spelling it crosses IPC as, for a value no member has narrowed. */
@@ -390,6 +421,12 @@ export type LevelObjectGroup = `${ELevelObjectGroup}`;
 export enum ELevelObjectId {
   /** An object of the level's spawn, by its index among them. */
   SPAWN = "spawn",
+  /** A patrol path starting on the level, by its index among them in the spawn's order. */
+  PATROL = "patrol",
+  /** One point of a patrol path, by its index along the path. */
+  PATROL_POINT = "patrolPoint",
+  /** A game graph vertex on the level, by its id. */
+  GRAPH_POINT = "graphPoint",
 }
 
 /**
@@ -398,7 +435,13 @@ export enum ELevelObjectId {
  */
 export type LevelObjectId =
   /** An object of the level's spawn, by its index among them. */
-  { source: "spawn"; index: number };
+  | { source: "spawn"; index: number }
+  /** A patrol path starting on the level, by its index among them in the spawn's order. */
+  | { source: "patrol"; path: number }
+  /** One point of a patrol path, by its index along the path. */
+  | { source: "patrolPoint"; path: number; point: number }
+  /** A game graph vertex on the level, by its id. */
+  | { source: "graphPoint"; vertex: number };
 
 /** What a level object is, which the viewer lists, shows and draws helpers by. */
 export enum ELevelObjectKind {
@@ -421,6 +464,10 @@ export enum ELevelObjectKind {
   /** Ladders. */
   CLIMBABLES = "climbables",
   SMART_COVERS = "smartCovers",
+  /** Patrol paths, and the points along them. */
+  PATROLS = "patrols",
+  /** The game graph's vertices on the level. */
+  GRAPH_POINTS = "graphPoints",
 }
 
 /** Every `ELevelObjectKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
@@ -442,6 +489,24 @@ export type LevelObjectKindEntry = {
   isDrawn: boolean;
   /** Whether its helpers are drawn until the viewer is told otherwise. */
   isHelpedByDefault: boolean;
+};
+
+/** What a patrol path is drawn and described by: its points where they stand and the links between them. */
+export type LevelObjectPatrol = {
+  /** Every point where it stands, renderer space, by index along the path. */
+  points: Array<Vector3d>;
+  /** The links between them, those reaching past its points left out. */
+  links: Array<LevelPatrolLink>;
+};
+
+/**
+ * What the spawn records of one patrol point beyond its name and place: its flags, which a logic scheme reads, and
+ * the level and game graph vertices it stands at.
+ */
+export type LevelObjectPatrolPoint = {
+  flags: number;
+  levelVertex: number;
+  gameVertex: number;
 };
 
 /** Every `kind` the `LevelObjectShape` union is told apart by, so a switch or a comparison names one. */
@@ -499,6 +564,16 @@ export type LevelOpenRequest = {
   isDltx: boolean;
   /** Which engine the game's configs, its weather among them, are read as; detected on `auto`. */
   engine: XrayEngineChoice;
+};
+
+/**
+ * One way a patrol goes on from a point: the point it leads to, by index along the path, and how likely it is taken
+ * among the point's others.
+ */
+export type LevelPatrolLink = {
+  from: number;
+  to: number;
+  weight: number | null;
 };
 
 /**

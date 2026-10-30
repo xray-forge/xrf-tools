@@ -7,6 +7,7 @@ mod level_object_id;
 mod level_object_spawn;
 mod level_objects_description;
 mod level_objects_description_helpers;
+mod path;
 mod volume;
 
 pub use kind::{LEVEL_OBJECT_KINDS, LevelObjectGroup, LevelObjectKind, LevelObjectKindEntry};
@@ -14,4 +15,5 @@ pub use level_object::LevelObject;
 pub use level_object_id::LevelObjectId;
 pub use level_object_spawn::LevelObjectSpawn;
 pub use level_objects_description::LevelObjectsDescription;
+pub use path::{LevelObjectPatrol, LevelObjectPatrolPoint, LevelPatrolLink};
 pub use volume::{LevelObjectShape, LevelObjectVolume, LevelRestriction};

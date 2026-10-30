@@ -76,8 +76,8 @@ impl LevelObjectKindEntry {
 }
 
 /// Every kind of level object, in the order `LevelObjectKind` declares them: smart terrains orange, restrictors blue,
-/// anomalies red and level changers green as the map has drawn them, the spawned visuals teal, characters magenta and
-/// smart covers cyan.
+/// anomalies red, level changers green, patrols yellow and graph points pale grey as the map has drawn them, the
+/// spawned visuals teal, characters magenta and smart covers cyan.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
 pub const LEVEL_OBJECT_KINDS: &[LevelObjectKindEntry] = &[
   LevelObjectKindEntry::spawned(LevelObjectKind::Props, "Props", "#26a69a"),
@@ -99,6 +99,24 @@ pub const LEVEL_OBJECT_KINDS: &[LevelObjectKindEntry] = &[
     group: LevelObjectGroup::Covers,
     label: "Smart covers",
     color: "#00bcd4",
+    draw_distance: 150.0,
+    is_drawn: false,
+    is_helped_by_default: false,
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::Patrols,
+    group: LevelObjectGroup::Paths,
+    label: "Patrols",
+    color: "#ffeb3b",
+    draw_distance: 250.0,
+    is_drawn: false,
+    is_helped_by_default: true,
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::GraphPoints,
+    group: LevelObjectGroup::Navigation,
+    label: "Graph points",
+    color: "#e0e0e0",
     draw_distance: 150.0,
     is_drawn: false,
     is_helped_by_default: false,

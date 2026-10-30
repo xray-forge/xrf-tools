@@ -1,9 +1,10 @@
-import { ELevelObjectId, LevelObject, LevelObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelObject, LevelObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { ERenderLevelHit, RenderLevelHit } from "@xrf/ipc/types/xrf-renderer";
 import { IPoint3, toXraySpace } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 
+import { getLevelSpawnIndex, toLevelObjectKey } from "@/core/level/lib/objects/level-object-kinds";
 import { toLevelObjectPosition } from "@/core/level/lib/objects/level-object-sphere";
 import { findLevelSurface } from "@/core/level/lib/surface/level-surface-summary";
 
@@ -71,9 +72,7 @@ export function toLevelObjectPick(
  * @returns The object the spawn places at that index, or null for none listed.
  */
 export function findLevelSpawnObject(objects: Nullable<LevelObjectsDescription>, index: number): Nullable<LevelObject> {
-  return (
-    objects?.objects.find((it: LevelObject) => it.id.source === ELevelObjectId.SPAWN && it.id.index === index) ?? null
-  );
+  return objects?.objects.find((it: LevelObject) => getLevelSpawnIndex(it.id) === index) ?? null;
 }
 
 /**
@@ -85,9 +84,12 @@ export function toLevelPick(hit: RenderLevelHit, objects: Nullable<LevelObjectsD
   const [x, y, z] = hit.point;
   const point: IPoint3 = toXraySpace({ x: x ?? 0, y: y ?? 0, z: z ?? 0 });
 
-  // A helper carries its object's spawn index, as a drawn model does.
   if (hit.kind === ERenderLevelHit.SPAWN || hit.kind === ERenderLevelHit.HELPER) {
-    const object: Nullable<LevelObject> = findLevelSpawnObject(objects, hit.object);
+    // A drawn model carries its spawn index, a helper its object's place in the listing.
+    const object: Nullable<LevelObject> =
+      hit.kind === ERenderLevelHit.SPAWN
+        ? findLevelSpawnObject(objects, hit.object)
+        : (objects?.objects[hit.object] ?? null);
 
     return object ? toLevelObjectPick(object, objects, point) : null;
   }
@@ -112,27 +114,53 @@ export interface ILevelPickParts {
 
 /**
  * @param object - A level object as it was listed.
- * @param objects - The level's objects as listed now.
- * @returns It as listed now, found by its kind and name, the first that matches; null where it is gone.
+ * @param before - The level's objects as listed then, which name its parent.
+ * @param after - The level's objects as listed now.
+ * @returns It as listed now, found by its kind and name, the first that matches; a part, a patrol point among them,
+ *   under its parent found the same way, since its name repeats across parents. Null where it is gone.
  */
 export function relocateLevelObject(
   object: LevelObject,
-  objects: Nullable<LevelObjectsDescription>
+  before: Nullable<LevelObjectsDescription>,
+  after: Nullable<LevelObjectsDescription>
 ): Nullable<LevelObject> {
-  return objects?.objects.find((it: LevelObject) => it.kind === object.kind && it.name === object.name) ?? null;
+  function isNamed(it: LevelObject): boolean {
+    return it.kind === object.kind && it.name === object.name;
+  }
+
+  if (!object.parent) {
+    return after?.objects.find((it: LevelObject) => !it.parent && isNamed(it)) ?? null;
+  }
+
+  const parentKey: string = toLevelObjectKey(object.parent);
+  const parent: Maybe<LevelObject> = before?.objects.find((it: LevelObject) => toLevelObjectKey(it.id) === parentKey);
+  const moved: Nullable<LevelObject> = parent ? relocateLevelObject(parent, before, after) : null;
+
+  if (!moved) {
+    return null;
+  }
+
+  const movedKey: string = toLevelObjectKey(moved.id);
+
+  return (
+    after?.objects.find((it: LevelObject) => it.parent && toLevelObjectKey(it.parent) === movedKey && isNamed(it)) ??
+    null
+  );
 }
 
 /**
  * @param objects - Level objects as they were listed.
- * @param listed - The level's objects as listed now.
+ * @param before - The level's objects as listed then.
+ * @param after - The level's objects as listed now.
  * @returns Each as listed now, in the same order, those gone left out.
  */
 export function relocateLevelObjects(
   objects: ReadonlyArray<LevelObject>,
-  listed: Nullable<LevelObjectsDescription>
+  before: Nullable<LevelObjectsDescription>,
+  after: Nullable<LevelObjectsDescription>
 ): Array<LevelObject> {
   return objects
-    .map((object: LevelObject) => relocateLevelObject(object, listed))
+    .map((object: LevelObject) => relocateLevelObject(object, before, after))
     .filter((object: Nullable<LevelObject>): object is LevelObject => object !== null);
 }
 
@@ -156,7 +184,7 @@ export function relocateLevelPick(
       return pick;
     }
 
-    const object: Nullable<LevelObject> = relocateLevelObject(pick.object, after.objects);
+    const object: Nullable<LevelObject> = relocateLevelObject(pick.object, before.objects, after.objects);
 
     return object ? toLevelObjectPick(object, after.objects) : null;
   }

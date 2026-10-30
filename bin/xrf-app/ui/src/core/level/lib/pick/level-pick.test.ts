@@ -4,8 +4,14 @@ import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { ERenderLevelHit, RenderLevelHit } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 
-import { mockLevelObject, mockLevelVolumeObject } from "@/core/level/fixtures/level.mocks";
-import { ELevelPick, relocateLevelPick, TLevelPick, toLevelPick } from "@/core/level/lib/pick/level-pick";
+import { mockLevelObject, mockLevelPatrol, mockLevelVolumeObject } from "@/core/level/fixtures/level.mocks";
+import {
+  ELevelPick,
+  relocateLevelObject,
+  relocateLevelPick,
+  TLevelPick,
+  toLevelPick,
+} from "@/core/level/lib/pick/level-pick";
 import { mockSurfaceDescriptor, mockVisualTransform } from "@/core/visuals/fixtures/visual.mocks";
 
 function mockSpawned(
@@ -31,6 +37,42 @@ describe("toLevelPick", () => {
     });
     expect(toLevelPick({ ...hit, object: 9 }, objects)).toBeNull();
     expect(toLevelPick(hit, null)).toBeNull();
+  });
+
+  // A helper is named by its object's place in the listing, whatever source the object comes from.
+  it("names a picked helper by its object's place in the listing", () => {
+    const objects: LevelObjectsDescription = {
+      objects: [mockLevelObject(), ...mockLevelPatrol(0, "walk", 2)],
+      visuals: [],
+    };
+    const hit: RenderLevelHit = { depth: 3, kind: ERenderLevelHit.HELPER, object: 3, point: [0, 0, 0] };
+
+    expect(toLevelPick(hit, objects)).toMatchObject({ kind: ELevelPick.OBJECT, object: { name: "wp01" } });
+    expect(toLevelPick({ ...hit, object: 9 }, objects)).toBeNull();
+  });
+});
+
+describe("relocateLevelObject", () => {
+  // Every path has its `wp00`: a point is found under its path, found again by name.
+  it("finds a patrol point again under its path, though its name repeats across paths", () => {
+    const before: LevelObjectsDescription = {
+      objects: [...mockLevelPatrol(0, "walk", 2), ...mockLevelPatrol(1, "guard", 2)],
+      visuals: [],
+    };
+    const after: LevelObjectsDescription = {
+      objects: [...mockLevelPatrol(0, "guard", 3), ...mockLevelPatrol(1, "walk", 2)],
+      visuals: [],
+    };
+    const point = before.objects[4] as LevelObject;
+
+    expect(point.name).toBe("wp00");
+    expect(relocateLevelObject(point, before, after)?.id).toEqual({ path: 0, point: 0, source: "patrolPoint" });
+    expect(relocateLevelObject(before.objects[1] as LevelObject, before, after)?.id).toEqual({
+      path: 1,
+      point: 0,
+      source: "patrolPoint",
+    });
+    expect(relocateLevelObject(point, before, { objects: [], visuals: [] })).toBeNull();
   });
 });
 

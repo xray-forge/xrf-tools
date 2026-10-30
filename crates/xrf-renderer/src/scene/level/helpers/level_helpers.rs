@@ -82,7 +82,8 @@ impl LevelHelpers {
       .map(|index| &self.objects[index])
   }
 
-  /// A shape's wires where `transform` stands it: a sphere's three great circles, a box's twelve edges.
+  /// A shape's wires where `transform` stands it: a sphere's three great circles, a box's twelve edges, segments as
+  /// they are, and a marker's three axes.
   fn add_shape(segments: &mut Vec<[Vec3; 2]>, transform: Mat4, shape: &RenderHelperShape) {
     match shape {
       RenderHelperShape::Sphere { center, radius } => {
@@ -111,6 +112,25 @@ impl LevelHelpers {
         };
 
         segments.extend(Self::BOX_EDGES.iter().map(|(from, to)| [corner(*from), corner(*to)]));
+      }
+      RenderHelperShape::Segments { ends } => {
+        segments.extend(
+          ends
+            .iter()
+            .map(|ends| ends.map(|end| transform.transform_point3(Vec3::from_array(end)))),
+        );
+      }
+      RenderHelperShape::Marker { center, size } => {
+        let center: Vec3 = Vec3::from_array(*center);
+
+        segments.extend([Vec3::X, Vec3::Y, Vec3::Z].map(|axis| {
+          let reach: Vec3 = axis * *size * 0.5;
+
+          [
+            transform.transform_point3(center - reach),
+            transform.transform_point3(center + reach),
+          ]
+        }));
       }
     }
   }

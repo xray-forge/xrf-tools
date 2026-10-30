@@ -80,6 +80,39 @@ fn wires_a_sphere_as_three_great_circles_and_a_box_by_its_edges_where_each_stand
 }
 
 #[test]
+fn wires_segments_as_they_stand_and_a_marker_as_three_crossed_axes() {
+  let helpers: LevelHelpers = LevelHelpers::new(
+    RenderLevelHelpers {
+      objects: vec![new_object(
+        1,
+        0,
+        Vec3::new(0.0, 5.0, 0.0),
+        vec![
+          RenderHelperShape::Segments {
+            ends: vec![[[0.0; 3], [1.0, 0.0, 0.0]]],
+          },
+          RenderHelperShape::Marker {
+            center: [0.0; 3],
+            size: 2.0,
+          },
+        ],
+      )],
+    },
+    1,
+  );
+
+  assert_eq!(
+    helpers.segments,
+    vec![
+      [Vec3::new(0.0, 5.0, 0.0), Vec3::new(1.0, 5.0, 0.0)],
+      [Vec3::new(-1.0, 5.0, 0.0), Vec3::new(1.0, 5.0, 0.0)],
+      [Vec3::new(0.0, 4.0, 0.0), Vec3::new(0.0, 6.0, 0.0)],
+      [Vec3::new(0.0, 5.0, -1.0), Vec3::new(0.0, 5.0, 1.0)],
+    ]
+  );
+}
+
+#[test]
 fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() {
   let helpers: LevelHelpers = new_helpers();
   let ids = |vertices: Vec<HelperVertex>| -> Vec<u32> {
