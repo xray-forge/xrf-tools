@@ -1,10 +1,15 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-/** How much of one kind the application keeps. */
+/** How much of one kind the application keeps, and when it last wrote or used any of it. */
 export type AppStorageArea = {
   kind: AppStorageKind;
   bytes: number;
   files: number;
+  /**
+   * Milliseconds since the Unix epoch at the newest of its files' modification times, which a cache moves on as it is
+   * read (`AppCacheStore::read`); none where it holds nothing.
+   */
+  lastUsed: number | null;
 };
 
 /** What a file the application keeps of its own is for, by where it lies in its data directory. */
@@ -17,6 +22,11 @@ export enum EAppStorageKind {
   LOGS = "logs",
   /** The backend's preferences. */
   PREFERENCES = "preferences",
+  /**
+   * What a tool keeps for its user in a folder of its own (the level viewer's screenshots, bursts and views), which
+   * the application never removes.
+   */
+  SAVED_FILES = "savedFiles",
   /** Anything else kept there. */
   OTHER = "other",
 }

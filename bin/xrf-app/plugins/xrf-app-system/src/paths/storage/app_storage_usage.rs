@@ -1,11 +1,12 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 
 use crate::paths::storage::app_storage_kind::AppStorageKind;
 
-/// How much of one kind the application keeps.
+/// How much of one kind the application keeps, and when it last wrote or used any of it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -13,6 +14,9 @@ pub struct AppStorageArea {
   pub kind: AppStorageKind,
   pub bytes: u64,
   pub files: u64,
+  /// Milliseconds since the Unix epoch at the newest of its files' modification times, which a cache moves on as it is
+  /// read (`AppCacheStore::read`); none where it holds nothing.
+  pub last_used: Option<u64>,
 }
 
 /// What the application keeps in its own data directory, measured file by file: where that is, and how much of each
@@ -34,9 +38,10 @@ impl AppStorageUsage {
         kind,
         bytes: 0,
         files: 0,
+        last_used: None,
       })
       .to_vec();
-    let mut pending: Vec<std::path::PathBuf> = vec![root.to_path_buf()];
+    let mut pending: Vec<PathBuf> = vec![root.to_path_buf()];
 
     while let Some(directory) = pending.pop() {
       let Ok(entries) = fs::read_dir(&directory) else {
@@ -54,12 +59,16 @@ impl AppStorageUsage {
           continue;
         }
 
-        let path = entry.path();
-        let kind: AppStorageKind = AppStorageKind::of(path.strip_prefix(root).unwrap_or(&path));
+        let path: PathBuf = entry.path();
+        let Some(kind) = AppStorageKind::of(path.strip_prefix(root).unwrap_or(&path)) else {
+          continue;
+        };
+        let modified: Option<u64> = metadata.modified().ok().and_then(Self::to_milliseconds);
 
         if let Some(area) = areas.iter_mut().find(|area| area.kind == kind) {
           area.bytes += metadata.len();
           area.files += 1;
+          area.last_used = area.last_used.max(modified);
         }
       }
     }
@@ -69,5 +78,12 @@ impl AppStorageUsage {
       bytes: areas.iter().map(|area| area.bytes).sum(),
       areas,
     }
+  }
+
+  fn to_milliseconds(time: SystemTime) -> Option<u64> {
+    time
+      .duration_since(UNIX_EPOCH)
+      .ok()
+      .and_then(|since| u64::try_from(since.as_millis()).ok())
   }
 }

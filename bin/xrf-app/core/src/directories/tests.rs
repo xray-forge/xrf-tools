@@ -77,10 +77,7 @@ fn keeps_preferences_and_caches_where_it_keeps_its_logs() {
     .expect("an own data directory");
 
   assert_eq!(directories.get_preferences_file(), Some(own.join("preferences.json")));
-  assert_eq!(
-    directories.get_cache_directory("renderer"),
-    Some(own.join("cache").join("renderer"))
-  );
+  assert_eq!(directories.get_cache_root(), Some(own.join("cache")));
 }
 
 #[test]

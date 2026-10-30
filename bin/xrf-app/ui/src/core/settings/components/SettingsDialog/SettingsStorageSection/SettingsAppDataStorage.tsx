@@ -1,16 +1,22 @@
 import { formatBytes, formatCount } from "@xrf/format";
 import { systemCommands } from "@xrf/ipc/commands/system";
+import { AppCachePolicy, AppCacheTidy } from "@xrf/ipc/types/xrf-app-core";
 import { AppStorageArea, AppStorageUsage, EAppStorageKind } from "@xrf/ipc/types/xrf-app-system";
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { ConfirmDialog } from "@xrf/ui/dialog/confirm";
+import { SliderFormRow } from "@xrf/ui/form/slider-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { Button } from "@xrf/ui/material/button";
 import { Divider } from "@xrf/ui/material/divider";
 import { Stack } from "@xrf/ui/material/stack";
 import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback, useEffect, useState } from "react";
+
+import { APP_CACHE_POLICY_CODEC, APP_CACHE_POLICY_LIMITS, tidyAppCache } from "@/core/settings/lib/app-cache";
+import { describeLastUse } from "@/core/settings/lib/app-storage";
+import { APP_CACHE_POLICY_STORAGE_KEY, useStoredValue } from "@/core/storage";
 
 /** What each kind the application keeps on disk is, as the section says it. */
 const APP_STORAGE_KINDS: Record<EAppStorageKind, { label: string; description: string }> = {
@@ -30,6 +36,10 @@ const APP_STORAGE_KINDS: Record<EAppStorageKind, { label: string; description: s
     description: "The backend's own preferences.",
     label: "Preferences",
   },
+  [EAppStorageKind.SAVED_FILES]: {
+    description: "Screenshots, captures and saved views the tools keep for you. The application never removes them.",
+    label: "Saved files",
+  },
   [EAppStorageKind.OTHER]: {
     description: "Anything else kept in the application's folder.",
     label: "Other",
@@ -48,6 +58,20 @@ function describeFileCount(files: number): string {
 }
 
 /**
+ * @param tidy - What a tidy did.
+ * @returns It in a sentence.
+ */
+function describeTidy(tidy: AppCacheTidy): string {
+  if (!tidy.isDone) {
+    return "Another instance of the application is tidying the caches.";
+  }
+
+  return tidy.removedEntries
+    ? `Removed ${formatCount(tidy.removedEntries)} unused, ${formatBytes(tidy.removedBytes)}; kept ${formatBytes(tidy.keptBytes)}.`
+    : `Nothing to remove; the caches hold ${formatBytes(tidy.keptBytes)}.`;
+}
+
+/**
  * What the application keeps in its own folder on disk, by kind, measured when the section opens, and clearing what is
  * rebuilt on its own.
  */
@@ -58,8 +82,13 @@ export function SettingsAppDataStorage(): ReactElement {
   const [failure, setFailure] = useState<Nullable<string>>(null);
   /** The area a person asked to clear, held until they confirm it. */
   const [pending, setPending] = useState<Nullable<AppStorageArea>>(null);
-  /** Bumped by a clear, so the folder is measured again. */
+  /** Bumped by a clear or a tidy, so the folder is measured again. */
   const [revision, setRevision] = useState<number>(0);
+  const [policy, setPolicy] = useStoredValue<AppCachePolicy>(APP_CACHE_POLICY_STORAGE_KEY, APP_CACHE_POLICY_CODEC);
+  /** What the last tidy asked here did, said under the limits until the section closes. */
+  const [tidied, setTidied] = useState<Nullable<AppCacheTidy>>(null);
+  const [isTidying, setIsTidying] = useState<boolean>(false);
+  const now: number = Date.now();
 
   useEffect(() => {
     let isCurrent: boolean = true;
@@ -104,6 +133,21 @@ export function SettingsAppDataStorage(): ReactElement {
     setRevision((it: number) => it + 1);
   }, [log, pending]);
 
+  const onTidy = useCallback(async (): Promise<void> => {
+    setIsTidying(true);
+
+    try {
+      setTidied(await tidyAppCache(true));
+    } catch (error: unknown) {
+      log.error("Failed to tidy the application's caches:", error);
+      setFailure(String(error));
+    } finally {
+      setIsTidying(false);
+    }
+
+    setRevision((it: number) => it + 1);
+  }, [log]);
+
   return (
     <DetailSection
       title={"Application data"}
@@ -131,9 +175,17 @@ export function SettingsAppDataStorage(): ReactElement {
               </Typography>
             </div>
 
-            <Typography className={"shrink-0 text-text-secondary"} variant={"caption"}>
-              {describeFileCount(area.files)}
-            </Typography>
+            <div className={"shrink-0 text-right"}>
+              <Typography className={"block text-text-secondary"} variant={"caption"}>
+                {describeFileCount(area.files)}
+              </Typography>
+
+              {area.lastUsed === null ? null : (
+                <Typography className={"block text-text-secondary"} variant={"caption"}>
+                  {describeLastUse(area.lastUsed, now)}
+                </Typography>
+              )}
+            </div>
 
             <Typography className={"w-18 shrink-0 text-right"} variant={"body2"}>
               {formatBytes(area.bytes)}
@@ -145,10 +197,50 @@ export function SettingsAppDataStorage(): ReactElement {
                   Clear
                 </Button>
               ) : null}
+
+              {area.kind === EAppStorageKind.SAVED_FILES && area.files && usage ? (
+                <Button color={"inherit"} size={"small"} onClick={() => void systemCommands.revealPath(usage.root)}>
+                  Show
+                </Button>
+              ) : null}
             </div>
           </div>
         ))}
       </Stack>
+
+      <div className={"mt-4 flex flex-col gap-4"}>
+        <Typography variant={"subtitle2"}>Caches</Typography>
+
+        <SliderFormRow
+          label={"Remove unused after"}
+          description={"A cache entry nothing has read for this long is removed as the application starts."}
+          value={policy.unusedDays}
+          {...APP_CACHE_POLICY_LIMITS.unusedDays}
+          format={(days: number) => (days === 1 ? "1 day" : `${days} days`)}
+          onChange={(unusedDays: number) => setPolicy({ ...policy, unusedDays })}
+        />
+
+        <SliderFormRow
+          label={"Size limit"}
+          description={"Past it, the least recently used cache entries are removed first."}
+          value={policy.sizeLimit}
+          {...APP_CACHE_POLICY_LIMITS.sizeLimit}
+          format={formatBytes}
+          onChange={(sizeLimit: number) => setPolicy({ ...policy, sizeLimit })}
+        />
+
+        <div className={"flex items-center gap-4"}>
+          <Button size={"small"} disabled={isTidying} onClick={() => void onTidy()}>
+            Tidy now
+          </Button>
+
+          {tidied ? (
+            <Typography className={"text-text-secondary"} variant={"caption"}>
+              {describeTidy(tidied)}
+            </Typography>
+          ) : null}
+        </div>
+      </div>
 
       <ConfirmDialog
         isOpen={Boolean(pending)}
