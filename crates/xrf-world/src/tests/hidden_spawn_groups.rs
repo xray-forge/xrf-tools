@@ -25,6 +25,20 @@ fn hides_only_the_released_objects_by_default() {
 }
 
 #[test]
+fn leaves_out_an_object_hidden_one_by_one_whatever_its_group_shows() {
+  let toggles: WorldToggles = WorldToggles {
+    hidden_spawn_objects: vec![3, 9],
+    ..WorldToggles::default()
+  };
+  let filter = toggles.get_spawn_filter();
+  let props: u32 = RenderSpawnCategory::Props.get_group();
+
+  assert!(!filter.is_shown(props, 9));
+  assert!(filter.is_shown(props, 4));
+  assert!(!filter.is_shown(RenderSpawnCategory::Props.get_released_group(), 4));
+}
+
+#[test]
 fn hides_a_category_switched_off_with_its_released_objects() {
   let toggles: WorldToggles = WorldToggles {
     is_spawned_weapons: false,

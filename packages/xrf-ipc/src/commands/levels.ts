@@ -13,9 +13,9 @@ import {
   LevelConsoleDefaults,
   LevelEntry,
   LevelMapDescription,
+  LevelObjectsDescription,
   LevelOpenRequest,
   LevelSpawnObjectDetails,
-  LevelSpawnObjectsDescription,
   LevelStart,
   LevelTextureReference,
   LevelWeatherCycle,
@@ -41,8 +41,8 @@ export enum ELevelsCommand {
   DELETE_SCREENSHOT = "plugin:levels|delete_screenshot",
   DESCRIBE_CONSOLE_DEFAULTS = "plugin:levels|describe_console_defaults",
   DESCRIBE_LEVEL_MAP = "plugin:levels|describe_level_map",
+  DESCRIBE_OBJECTS = "plugin:levels|describe_objects",
   DESCRIBE_SPAWN_OBJECT = "plugin:levels|describe_spawn_object",
-  DESCRIBE_SPAWN_OBJECTS = "plugin:levels|describe_spawn_objects",
   DESCRIBE_START = "plugin:levels|describe_start",
   DESCRIBE_SURFACES = "plugin:levels|describe_surfaces",
   DESCRIBE_TEXTURES = "plugin:levels|describe_textures",
@@ -97,18 +97,18 @@ export const levelsCommands = {
    */
   describeLevelMap: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelMapDescription | null>>(ELevelsCommand.DESCRIBE_LEVEL_MAP, { sessionId }),
-  /** Describe one of the open level's spawned objects, by its place among them, as describe_spawn_objects numbered it. */
+  /**
+   * Describe the open level's objects and the visuals they are drawn as, reading no visual; an error where the spawn
+   * cannot be read.
+   */
+  describeObjects: (sessionId: SessionId) =>
+    __TAURI_INVOKE<SessionSnapshot<LevelObjectsDescription>>(ELevelsCommand.DESCRIBE_OBJECTS, { sessionId }),
+  /** Describe one of the open level's spawned objects, by its index among them, as a level object's spawn id names it. */
   describeSpawnObject: (sessionId: SessionId, index: number) =>
     __TAURI_INVOKE<SessionSnapshot<LevelSpawnObjectDetails>>(ELevelsCommand.DESCRIBE_SPAWN_OBJECT, {
       sessionId,
       index,
     }),
-  /**
-   * Describe the open level's spawned objects the viewer draws, and the visuals they stand as, reading no visual; an
-   * error where the spawn cannot be read.
-   */
-  describeSpawnObjects: (sessionId: SessionId) =>
-    __TAURI_INVOKE<SessionSnapshot<LevelSpawnObjectsDescription>>(ELevelsCommand.DESCRIBE_SPAWN_OBJECTS, { sessionId }),
   /** Describe where the open level opens, or none for a viewer to decide; decided again where a commit let it go. */
   describeStart: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelStart | null>>(ELevelsCommand.DESCRIBE_START, { sessionId }),
@@ -206,13 +206,10 @@ export interface ILevelsCommandSignatures {
     ["sessionId"]
   >;
   [ELevelsCommand.DESCRIBE_LEVEL_MAP]: IIpcCommandSignature<typeof levelsCommands.describeLevelMap, ["sessionId"]>;
+  [ELevelsCommand.DESCRIBE_OBJECTS]: IIpcCommandSignature<typeof levelsCommands.describeObjects, ["sessionId"]>;
   [ELevelsCommand.DESCRIBE_SPAWN_OBJECT]: IIpcCommandSignature<
     typeof levelsCommands.describeSpawnObject,
     ["sessionId", "index"]
-  >;
-  [ELevelsCommand.DESCRIBE_SPAWN_OBJECTS]: IIpcCommandSignature<
-    typeof levelsCommands.describeSpawnObjects,
-    ["sessionId"]
   >;
   [ELevelsCommand.DESCRIBE_START]: IIpcCommandSignature<typeof levelsCommands.describeStart, ["sessionId"]>;
   [ELevelsCommand.DESCRIBE_SURFACES]: IIpcCommandSignature<typeof levelsCommands.describeSurfaces, ["sessionId"]>;

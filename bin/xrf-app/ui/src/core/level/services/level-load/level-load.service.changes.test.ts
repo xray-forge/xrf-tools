@@ -7,18 +7,19 @@ import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import { IpcCommandAnswer, mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { SessionChange, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import {
+  ELevelObjectId,
   LEVEL_ENVIRONMENT_PART,
   LEVEL_GEOMETRY_PART,
   LEVEL_MAP_PART,
   LEVEL_SPAWN_PART,
-  LevelSpawnObjectsDescription,
+  LevelObjectsDescription,
 } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 
 import { createRoots } from "@/core/assets/lib";
 import {
+  mockLevelObject,
   mockLevelPartResponses,
-  mockLevelSpawnObject,
   mockSelectedLevelDescription,
 } from "@/core/level/fixtures/level.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
@@ -27,11 +28,13 @@ import { flush } from "@/fixtures/utils/promise";
 
 import { LevelLoadService } from "./level-load.service";
 
-const LIST_SPAWN: string = ELevelsCommand.DESCRIBE_SPAWN_OBJECTS;
+const LIST_SPAWN: string = ELevelsCommand.DESCRIBE_OBJECTS;
 
-function listing(objects: number): LevelSpawnObjectsDescription {
+function listing(objects: number): LevelObjectsDescription {
   return {
-    objects: Array.from({ length: objects }, (_, index: number) => mockLevelSpawnObject({ index, visual: 0 })),
+    objects: Array.from({ length: objects }, (_, index: number) =>
+      mockLevelObject({ id: { index, source: ELevelObjectId.SPAWN } })
+    ),
     visuals: ["dynamics\\box"],
   };
 }
@@ -46,7 +49,7 @@ function countReads(): number {
 }
 
 /** A spawn listing at `revision`, for the level the call names. */
-function listedAt(objects: number, revision: number): IpcCommandAnswer<ELevelsCommand.DESCRIBE_SPAWN_OBJECTS> {
+function listedAt(objects: number, revision: number): IpcCommandAnswer<ELevelsCommand.DESCRIBE_OBJECTS> {
   return (args) => mockSessionSnapshot(listing(objects), args.sessionId, revision);
 }
 
@@ -181,8 +184,8 @@ describe("LevelLoadService changes", () => {
     await flush();
 
     expect(countListings() - before).toBe(1);
-    expect(service.spawn?.objects).toHaveLength(3);
-    expect(service.spawnRevision).toBe(1);
+    expect(service.objects?.objects).toHaveLength(3);
+    expect(service.objectsRevision).toBe(1);
     expect(service.isStale).toBe(false);
   });
 
@@ -207,12 +210,12 @@ describe("LevelLoadService changes", () => {
     await flush();
 
     expect(countListings()).toBe(before);
-    expect(service.spawn?.objects).toHaveLength(1);
+    expect(service.objects?.objects).toHaveLength(1);
   });
 
   it("drops a listing read at an older revision than the one shown", async () => {
     const { container, service, sessionId } = await openLevel();
-    const answers: Array<(snapshot: SessionSnapshot<LevelSpawnObjectsDescription>) => void> = [];
+    const answers: Array<(snapshot: SessionSnapshot<LevelObjectsDescription>) => void> = [];
 
     mockIpcCommands({ [LIST_SPAWN]: () => new Promise((resolve) => answers.push(resolve)) });
 
@@ -237,8 +240,8 @@ describe("LevelLoadService changes", () => {
     answers[0](mockSessionSnapshot(listing(5), sessionId, 1));
     await flush();
 
-    expect(service.spawn?.objects).toHaveLength(2);
-    expect(service.spawnRevision).toBe(2);
+    expect(service.objects?.objects).toHaveLength(2);
+    expect(service.objectsRevision).toBe(2);
   });
 
   it("reads a level its session derived anew once, and lists its spawn again", async () => {
@@ -270,7 +273,7 @@ describe("LevelLoadService changes", () => {
     expect(service.level.value?.selected.value.visuals).toBe(7);
     expect(service.isStale).toBe(false);
     expect(countListings() - listings).toBe(1);
-    expect(service.spawn?.objects).toHaveLength(2);
+    expect(service.objects?.objects).toHaveLength(2);
   });
 
   it("reads a part named stale alone, the level itself kept, and moves the scene for what its sectors are drawn from", async () => {
@@ -399,7 +402,7 @@ describe("LevelLoadService changes", () => {
     const { service, sessionId } = await openLevel();
     let answer!: () => void;
 
-    expect(service.spawn?.objects).toHaveLength(1);
+    expect(service.objects?.objects).toHaveLength(1);
 
     mockIpcCommands({
       ...mockLevelPartResponses(),
@@ -418,12 +421,12 @@ describe("LevelLoadService changes", () => {
     );
 
     await waitFor(() => expect(service.level.value?.selected.sessionId).not.toBe(sessionId));
-    expect(service.spawn).toBeNull();
+    expect(service.objects).toBeNull();
 
     answer();
     await loading;
 
-    expect(service.spawn?.objects).toHaveLength(4);
+    expect(service.objects?.objects).toHaveLength(4);
   });
 
   it("closes the level it held once another opens in its place", async () => {
@@ -472,6 +475,6 @@ describe("LevelLoadService changes", () => {
 
     expect(service.isStale).toBe(true);
     expect(countListings()).toBe(before);
-    expect(service.spawn?.objects).toHaveLength(1);
+    expect(service.objects?.objects).toHaveLength(1);
   });
 });

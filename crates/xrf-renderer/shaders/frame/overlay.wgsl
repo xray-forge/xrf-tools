@@ -2,9 +2,9 @@
 #import "common/lighting"
 #import "common/present"
 
-// Helpers drawn over a viewport's finished frame in the window's pass, unlit, as the raw colours they name: line
-// segments, hidden where the scene stands in front of them if they ask to be, and the sun as a disc where the light
-// comes from. They are placed without the temporal jitter (`motion_current`), so they hold still under a temporal
+// Overlays drawn over a viewport's finished frame in the window's pass, unlit, as the raw colours they name: line
+// segments, hidden where the scene stands in front of them if they ask to be, the sun as a disc where the light comes
+// from, and the level objects' helpers' wires, faint where the scene hides them. They are placed without the temporal jitter (`motion_current`), so they hold still under a temporal
 // resolve; the jitter moves no depth, so the depth test still compares like with like.
 
 #import "generated/frame/overlay"
@@ -91,6 +91,57 @@ fn fs_point(in: PointVarying) -> @location(0) vec4<f32> {
   }
 
   return vec4<f32>(in.color, 1.0);
+}
+
+// How much of the draw distance a helper's wire stays whole over, fading out across the rest.
+const HELPER_FADE_START: f32 = 0.75;
+
+// How far toward white a selected helper's wire is lifted, so it reads apart from its kind's others.
+const HELPER_SELECTED_LIFT: f32 = 0.5;
+
+struct HelperVarying {
+  @builtin(position) clip: vec4<f32>,
+  @location(0) world: vec3<f32>,
+  // sRGB, then one where its object is selected.
+  @location(1) @interpolate(flat) color: vec4<f32>,
+  // The distance it has faded out by, zero for never, then how strongly it shows behind what is drawn.
+  @location(2) @interpolate(flat) fade: vec2<f32>,
+};
+
+// A wire's end; the id it carries is the pick's, which this pass has no use for.
+@vertex
+fn vs_helper(@location(0) position: vec3<f32>, @location(1) color: vec4<f32>, @location(2) fade: vec2<f32>)
+  -> HelperVarying {
+  var out: HelperVarying;
+
+  out.clip = camera.motion_current * vec4<f32>(position, 1.0);
+  out.world = position;
+  out.color = color;
+  out.fade = fade;
+
+  return out;
+}
+
+// A helper's wire: whole where nothing drawn stands in front of it, at its occluded strength where something does, and
+// fading out toward its draw distance unless its object is selected.
+@fragment
+fn fs_helper(in: HelperVarying) -> @location(0) vec4<f32> {
+  let texel: vec2<i32> = to_drawn_texel(floor(in.clip.xy - present.origin), camera.viewport.xy, present.size);
+  // Depth is reversed: the scene stands in front where it holds the larger value.
+  let is_hidden: bool = textureLoad(depth_target, texel, 0) > in.clip.z;
+  let is_selected: bool = in.color.a > 0.5;
+  let reach: f32 = in.fade.x;
+  let distance: f32 = length(in.world - camera.position.xyz);
+  let faded: f32 = select(1.0 - smoothstep(reach * HELPER_FADE_START, reach, distance), 1.0, reach <= 0.0);
+  let shown: f32 = select(1.0, select(in.fade.y, 1.0, is_selected), is_hidden) * faded;
+
+  if (shown <= 0.0) {
+    discard;
+  }
+
+  let color: vec3<f32> = select(in.color.rgb, mix(in.color.rgb, vec3<f32>(1.0), HELPER_SELECTED_LIFT), is_selected);
+
+  return vec4<f32>(color, shown);
 }
 
 struct SunVarying {

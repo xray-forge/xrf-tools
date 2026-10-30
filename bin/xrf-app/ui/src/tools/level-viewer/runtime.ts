@@ -8,9 +8,9 @@ import { ContainerDefinition } from "@/lib/container/container-definition";
 import { LevelViewerCaptureService } from "@/tools/level-viewer/services/level-viewer-capture";
 import { LevelViewerCaptureResultService } from "@/tools/level-viewer/services/level-viewer-capture-result";
 import { LevelViewerListService } from "@/tools/level-viewer/services/level-viewer-list";
+import { LevelViewerObjectsService } from "@/tools/level-viewer/services/level-viewer-objects";
 import { LevelViewerScreenshotService } from "@/tools/level-viewer/services/level-viewer-screenshot";
 import { LevelViewerSnapshotService } from "@/tools/level-viewer/services/level-viewer-snapshot";
-import { LevelViewerSpawnService } from "@/tools/level-viewer/services/level-viewer-spawn";
 
 export { LevelViewerTool as Component } from "./LevelViewerTool";
 
@@ -23,9 +23,9 @@ export const container: ContainerDefinition = {
     LevelViewService,
     LevelViewerCaptureService,
     LevelViewerCaptureResultService,
+    LevelViewerObjectsService,
     LevelViewerScreenshotService,
     LevelViewerSnapshotService,
-    LevelViewerSpawnService,
     LevelViewportService,
     LevelWeatherService,
   ],

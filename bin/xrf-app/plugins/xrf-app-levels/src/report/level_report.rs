@@ -13,8 +13,8 @@ use xrf_visual::{LightsDescription, SectorDescription, SectorInstanceGroup, Sect
 use xrf_world::WorldLevelReload;
 
 use crate::level::{LevelEntry, LevelSource, SelectedLevel};
+use crate::objects::LevelObjectsDescription;
 use crate::parts::{LevelStart, LevelTextureReference};
-use crate::spawn::LevelSpawnObjectsDescription;
 
 /// What the level plugin says to the log, in one place rather than beside each command that says it; the viewer's
 /// lines are `LevelViewerReport`'s.
@@ -313,9 +313,9 @@ impl LevelReport {
     );
   }
 
-  /// That the spawn could not be read, so the level stands no spawned object.
-  pub fn missing_spawn_objects(source: &LevelSource, error: &impl Display) {
-    log::warn!("No spawned objects for {}: {error}", source.get_label());
+  /// That the spawn could not be read, so the level lists no object.
+  pub fn missing_level_objects(source: &LevelSource, error: &impl Display) {
+    log::warn!("No level objects for {}: {error}", source.get_label());
   }
 
   /// That a spawned visual could not be read, so it is not drawn.
@@ -333,10 +333,10 @@ impl LevelReport {
     log::debug!("Spawned visual '{name}' stands in its bind pose: {error}");
   }
 
-  /// What a level's spawned objects came to: how many are drawn, and how many visuals they stand as.
-  pub fn spawn_objects(source: &LevelSource, objects: &LevelSpawnObjectsDescription, started: Instant) {
+  /// What a level's objects came to: how many there are, and how many visuals they are drawn as.
+  pub fn level_objects(source: &LevelSource, objects: &LevelObjectsDescription, started: Instant) {
     log::info!(
-      "Described the spawned objects of {} in {}: {} objects, {} visuals",
+      "Described the objects of {} in {}: {} objects, {} visuals",
       source.get_label(),
       xrf_utils::format_duration(started.elapsed()),
       objects.objects.len(),

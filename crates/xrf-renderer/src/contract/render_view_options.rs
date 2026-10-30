@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_asset_preview::RenderAssetPreview;
 use crate::contract::render_debug_view::RenderDebugView;
+use crate::contract::render_helper_options::RenderHelperOptions;
 use crate::contract::render_light_falloff::RenderLightFalloff;
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_light_model::RenderLightModel;
@@ -24,6 +25,7 @@ pub struct RenderViewOptions {
   pub features: RenderViewFeatures,
   pub output: RenderViewOutput,
   pub asset: RenderAssetPreview,
+  pub helpers: RenderHelperOptions,
 }
 
 impl RenderViewOptions {

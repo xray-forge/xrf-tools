@@ -3,6 +3,7 @@ use xrf_renderer_core::ProxyHandle;
 use xrf_visual::{LightsDescription, SectorPackage};
 
 use crate::host::render_level_details::RenderLevelDetails;
+use crate::host::render_level_helpers::RenderLevelHelpers;
 use crate::host::render_particle_definitions::RenderParticleDefinitions;
 use crate::scene::level::particle_emitter_proxy::ParticleEmitterProxy;
 use crate::scene::level::placed_effect::PlacedEffect;
@@ -36,6 +37,8 @@ pub enum RenderSceneUpdate {
   AddLights(LightsDescription),
   /// The level's grass, once read, in place of any read before; none for a level without a detail library.
   AddGrass(Option<RenderLevelDetails>),
+  /// The level objects the viewer draws helpers for, once read, in place of any read before.
+  SetHelpers(RenderLevelHelpers),
   /// What the level's particles are made from, once read, in place of any read before.
   AddParticles(RenderParticleDefinitions),
   /// A particle emitter, where it stands and the seed its effects' runs start from, nothing playing at it yet.

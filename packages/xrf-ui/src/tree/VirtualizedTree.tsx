@@ -21,6 +21,14 @@ export interface ITreeIconDecoration {
   title: string;
 }
 
+/** How a row was chosen by pointer: what a tree selecting more than one row tells a toggle and a range by. */
+export interface ITreeSelectGesture {
+  /** Ctrl (Cmd on macOS) was held: the row joins the selection, or leaves it. */
+  isToggling: boolean;
+  /** Shift was held: the rows from the last chosen to this one are the selection. */
+  isExtending: boolean;
+}
+
 /** Icons the tree draws beside the chevron, chosen per row by what the row is. */
 export interface IVirtualizedTreeIcons {
   /** A node with children that is closed. */
@@ -38,6 +46,8 @@ interface IVirtualizedTreeProps<T> extends BaseComponentProps {
   selectedId: Nullable<string>;
   /** The row whose subject the editor has open, marked apart from the cursor. */
   activeId?: Nullable<string>;
+  /** Rows selected beside the cursor, for a tree selecting more than one; drawn as selected, the cursor ringed. */
+  markedIds?: ReadonlySet<string>;
   ariaLabel: string;
   /** Omitted by a tree whose rows are all one kind of thing, which then draws the chevron alone. */
   icons?: IVirtualizedTreeIcons;
@@ -48,8 +58,8 @@ interface IVirtualizedTreeProps<T> extends BaseComponentProps {
   /** Controls drawn at a row's end, such as a visibility toggle; their clicks neither select nor open the row. */
   renderActions?: (item: ITreeNode<T>) => ReactNode;
   onToggleExpanded: (id: string) => void;
-  /** A row was chosen for inspection, by click or by arrow key. */
-  onSelect: (item: ITreeNode<T>) => void;
+  /** A row was chosen for inspection, by click, with how it was clicked, or by arrow key, with no gesture. */
+  onSelect: (item: ITreeNode<T>, gesture?: ITreeSelectGesture) => void;
   /** A row was activated, by double click or by `Enter`. */
   onActivate: (item: ITreeNode<T>) => void;
 }
@@ -70,6 +80,7 @@ export function VirtualizedTree<T>({
   expandedIds,
   selectedId,
   activeId = null,
+  markedIds,
   ariaLabel,
   icons,
   renderLabel,
@@ -105,7 +116,10 @@ export function VirtualizedTree<T>({
     [rows, selectedId]
   );
 
-  const select = useCallback((row: IFlatTreeRow<T>) => onSelect(row.item), [onSelect]);
+  const select = useCallback(
+    (row: IFlatTreeRow<T>, gesture?: ITreeSelectGesture) => onSelect(row.item, gesture),
+    [onSelect]
+  );
 
   const labelOf = useMemo(() => {
     if (!renderLabel) {
@@ -161,6 +175,7 @@ export function VirtualizedTree<T>({
           icon={icon}
           iconDecoration={decorateIcon?.(row.item) ?? null}
           isSelected={row.item.id === selectedId}
+          isMarked={markedIds?.has(row.item.id) ?? false}
           isActive={row.item.id === activeId}
           label={labelOf?.(row.item)}
           actions={renderActions?.(row.item)}
@@ -318,10 +333,11 @@ export function VirtualizedTree<T>({
       ref={handleScrollerRef}
       aria-activedescendant={selectedIndex === -1 ? undefined : rowIdOf(selectedIndex)}
       aria-label={ariaLabel}
+      aria-multiselectable={markedIds ? true : undefined}
       data-testid={dataTestId}
       id={id}
       className={cn(
-        "h-full overflow-auto p-1 outline-none [&:focus_[aria-selected=true]]:outline-1 [&:focus_[aria-selected=true]]:-outline-offset-1 [&:focus_[aria-selected=true]]:outline-primary",
+        "h-full overflow-auto p-1 outline-none [&:focus_[data-selected=true]]:outline-1 [&:focus_[data-selected=true]]:-outline-offset-1 [&:focus_[data-selected=true]]:outline-primary",
         className
       )}
       role={"tree"}

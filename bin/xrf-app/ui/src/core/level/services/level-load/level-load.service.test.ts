@@ -4,16 +4,12 @@ import { isObservableProp } from "@wirestate/mobx";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { ESessionsCommand } from "@xrf/ipc/commands/sessions";
 import { mockInvoke, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
-import { LevelSource, LevelSpawnObjectsDescription, SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { LevelObjectsDescription, LevelSource, SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
 import { XrayRoots } from "@xrf/ipc/types/xrf-vfs";
 
 import { createRoots } from "@/core/assets/lib";
-import {
-  mockLevelSpawnObject,
-  mockSectorOutline,
-  mockSelectedLevelDescription,
-} from "@/core/level/fixtures/level.mocks";
+import { mockLevelObject, mockSectorOutline, mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { EMPTY_LEVEL_SPAWN_REPORT, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
@@ -26,8 +22,8 @@ const ROOTS: XrayRoots = createRoots(["C:\\game\\db"]);
 const SOURCE: LevelSource = { kind: "asset", logicalPath: "levels\\zaton" };
 const OTHER_SOURCE: LevelSource = { kind: "asset", logicalPath: "levels\\jupiter" };
 
-const SPAWN: LevelSpawnObjectsDescription = {
-  objects: [mockLevelSpawnObject({ index: 0, visual: 0 }), mockLevelSpawnObject({ index: 1, visual: 0 })],
+const SPAWN: LevelObjectsDescription = {
+  objects: [mockLevelObject(), mockLevelObject({ id: { index: 1, source: "spawn" } })],
   visuals: ["dynamics\\box"],
 };
 
@@ -39,7 +35,7 @@ function countCalls(command: string): number {
 function armLevel(level: SelectedLevelDescription = mockSelectedLevelDescription({ sectors: [mockSectorOutline()] })) {
   mockIpcCommands({
     [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(level),
-    [ELevelsCommand.DESCRIBE_SPAWN_OBJECTS]: mockSessionResponse(SPAWN),
+    [ELevelsCommand.DESCRIBE_OBJECTS]: mockSessionResponse(SPAWN),
   });
 }
 
@@ -57,7 +53,7 @@ describe("LevelLoadService", () => {
       [ELevelsCommand.RESTORE_LEVEL]: mockSessionResponse(
         mockSelectedLevelDescription({ sectors: [mockSectorOutline()] })
       ),
-      [ELevelsCommand.DESCRIBE_SPAWN_OBJECTS]: mockSessionResponse(SPAWN),
+      [ELevelsCommand.DESCRIBE_OBJECTS]: mockSessionResponse(SPAWN),
     });
 
     await service.restore();
@@ -82,7 +78,7 @@ describe("LevelLoadService", () => {
 
     expect(isObservableProp(service, "level")).toBe(true);
     expect(isObservableProp(service, "opening")).toBe(true);
-    expect(isObservableProp(service, "spawn")).toBe(true);
+    expect(isObservableProp(service, "objects")).toBe(true);
     expect(isObservableProp(service, "spawnReport")).toBe(true);
   });
 
@@ -116,7 +112,7 @@ describe("LevelLoadService", () => {
     await flush();
 
     expect(service.level.value?.selected.value.sectors).toHaveLength(1);
-    expect(service.spawn).toEqual(SPAWN);
+    expect(service.objects).toEqual(SPAWN);
     expect(service.spawnReport).toEqual({ failure: null, isListed: true, objects: 2, visuals: 1 });
     expect(isLevelSpawnReading(service.spawnReport)).toBe(false);
     // The level itself, then each part the page shows read on its own, side by side.
@@ -127,7 +123,7 @@ describe("LevelLoadService", () => {
       ELevelsCommand.DESCRIBE_LEVEL_MAP,
       ELevelsCommand.DESCRIBE_SURFACES,
       ELevelsCommand.DESCRIBE_TEXTURES,
-      ELevelsCommand.DESCRIBE_SPAWN_OBJECTS,
+      ELevelsCommand.DESCRIBE_OBJECTS,
     ]);
   });
 
@@ -136,7 +132,7 @@ describe("LevelLoadService", () => {
 
     mockIpcCommands({
       [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
-      [ELevelsCommand.DESCRIBE_SPAWN_OBJECTS]: mockSessionResponse(() => {
+      [ELevelsCommand.DESCRIBE_OBJECTS]: mockSessionResponse(() => {
         throw new Error("all.spawn names no level graph");
       }),
     });
@@ -144,7 +140,7 @@ describe("LevelLoadService", () => {
     await service.load({ engine: EXrayEngineChoice.VANILLA, isDltx: false, roots: ROOTS, source: SOURCE });
     await flush();
 
-    expect(service.spawn).toBeNull();
+    expect(service.objects).toBeNull();
     expect(service.spawnReport).toEqual({
       ...EMPTY_LEVEL_SPAWN_REPORT,
       failure: "all.spawn names no level graph",
@@ -162,7 +158,7 @@ describe("LevelLoadService", () => {
     await service.close();
 
     expect(service.level.value).toBeNull();
-    expect(service.spawn).toBeNull();
+    expect(service.objects).toBeNull();
     expect(service.spawnReport).toEqual(EMPTY_LEVEL_SPAWN_REPORT);
   });
 
@@ -235,7 +231,7 @@ describe("LevelLoadService", () => {
 
     expect(service.level.value).toBeNull();
     expect(service.level.error?.message).toBe("level carries no visuals chunk, so it draws nothing");
-    expect(service.spawn).toBeNull();
+    expect(service.objects).toBeNull();
     expect(countCalls(ELevelsCommand.CLOSE_LEVEL)).toBe(1);
   });
 

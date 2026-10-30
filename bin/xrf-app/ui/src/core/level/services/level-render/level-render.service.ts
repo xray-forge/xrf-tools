@@ -43,7 +43,14 @@ import {
   toLevelOutput,
   toLevelRendererAntialiasing,
 } from "@/core/level/lib/features/level-feature-options";
-import { ILevelPickParts, relocateLevelPick, TLevelPick, toLevelPick } from "@/core/level/lib/pick/level-pick";
+import { toLevelHelperRenderOptions, toLevelSpawnIndices } from "@/core/level/lib/objects/level-helper-render";
+import {
+  ILevelPickParts,
+  relocateLevelObjects,
+  relocateLevelPick,
+  TLevelPick,
+  toLevelPick,
+} from "@/core/level/lib/pick/level-pick";
 import { toLevelPickSelection } from "@/core/level/lib/pick/level-pick-selection";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { toLevelFrameOverlays } from "@/core/level/lib/render/level-render-frame";
@@ -54,7 +61,7 @@ import { ELevelShading, toShownLevelShading } from "@/core/level/lib/view/level-
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelLookService } from "@/core/level/services/level-look";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { LevelViewportService } from "@/core/level/services/level-viewport";
+import { ELevelSelectionMode, LevelViewportService } from "@/core/level/services/level-viewport";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { toDrawnAntialiasing } from "@/core/render/lib/features/render-antialiasing-choices";
@@ -185,7 +192,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       this.renderSettingsService.renderOutputScale
     );
 
-    return toLevelViewOptions({
+    const options: RenderViewOptions = toLevelViewOptions({
       features: this.renderSettingsService.rendererFeatures,
       hemiStrength: this.viewService.hemiStrength,
       lod: this.viewService.lod,
@@ -205,12 +212,15 @@ export class LevelRenderService extends NativeRenderSurfaceService {
               ),
       },
     });
+    const { hidden, selected } = this.viewportService;
+
+    return { ...options, helpers: toLevelHelperRenderOptions(this.viewService.helpers, selected, hidden) };
   }
 
-  /** What of the level's world the toolbar lets play. */
+  /** What of the level's world the toolbar lets play, less the spawned objects hidden one by one. */
   @Computed()
   public get worldToggles(): WorldToggles {
-    return toNativeWorldToggles(this.viewService.options);
+    return toNativeWorldToggles(this.viewService.options, toLevelSpawnIndices(this.viewportService.hidden));
   }
 
   /**
@@ -229,9 +239,14 @@ export class LevelRenderService extends NativeRenderSurfaceService {
    *
    * @param point - Where, in css pixels from the viewport's top left corner.
    * @param isThrough - Whether glass is passed by, picking what stands behind it.
+   * @param mode - How what it picks changes the selection.
    */
   @LatestFlow()
-  public *pick(point: IRenderViewPoint, isThrough: boolean): TFlow {
+  public *pick(
+    point: IRenderViewPoint,
+    isThrough: boolean,
+    mode: ELevelSelectionMode = ELevelSelectionMode.REPLACE
+  ): TFlow {
     const viewport: Nullable<NativeViewport> = this.viewport;
 
     if (!viewport || !this.level) {
@@ -240,7 +255,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
 
     const hit: Nullable<RenderLevelHit> = yield* call(viewport.pick({ x: point.x, y: point.y, isThrough }));
 
-    this.viewportService.notePicked(hit ? toLevelPick(hit, this.loadService.spawn) : null);
+    this.viewportService.notePicked(hit ? toLevelPick(hit, this.loadService.objects) : null, mode);
   }
 
   /**
@@ -382,7 +397,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
         { equals: comparer.structural, fireImmediately: true }
       ),
       reaction(
-        (): ILevelPickParts => ({ spawn: this.loadService.spawn, surfaces: this.loadService.surfaces.value }),
+        (): ILevelPickParts => ({ objects: this.loadService.objects, surfaces: this.loadService.surfaces.value }),
         this.relocatePick,
         { equals: comparer.shallow }
       ),
@@ -455,11 +470,11 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     };
   }
 
-  protected onClick(point: IRenderViewPoint, isThrough: boolean): void {
+  protected onClick(point: IRenderViewPoint, isThrough: boolean, isToggling: boolean): void {
     if (this.viewportService.isFocusPicking) {
       void this.focusAt(point, isThrough);
     } else {
-      void this.pick(point, isThrough);
+      void this.pick(point, isThrough, isToggling ? ELevelSelectionMode.TOGGLE : ELevelSelectionMode.REPLACE);
     }
   }
 
@@ -533,6 +548,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     this.stand(toLevelStartViewpoint(level?.bounds ?? null, this.loadService.start.value));
     // Another level's surfaces and objects are numbered afresh, and its load starts from nothing read.
     this.viewportService.notePicked(null);
+    this.viewportService.revealAll();
     this.viewportService.noteLoad(null);
 
     this.show(
@@ -543,19 +559,30 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   /**
-   * Keeps what is picked across the open level's parts read anew, found by what it is, or drops it with what it named.
+   * Keeps what is picked, selected and hidden across the open level's parts read anew, each found by what it is, or
+   * drops it with what it named.
    *
    * @param after - The parts as read now.
    * @param before - The parts it was picked among.
    */
   @BoundAction()
   private relocatePick(after: ILevelPickParts, before: ILevelPickParts): void {
-    const picked: Nullable<TLevelPick> = this.viewportService.picked;
+    const { hidden, picked, selected } = this.viewportService;
     const relocated: Nullable<TLevelPick> = picked ? relocateLevelPick(picked, before, after) : null;
 
-    if (relocated !== picked) {
-      this.viewportService.notePickRelocated(relocated);
+    if (after.objects === before.objects) {
+      if (relocated !== picked) {
+        this.viewportService.notePickRelocated(relocated);
+      }
+
+      return;
     }
+
+    this.viewportService.notePickRelocated(
+      relocated,
+      relocateLevelObjects(selected, after.objects),
+      relocateLevelObjects(hidden, after.objects)
+    );
   }
 
   /** The toolbar's speeds and lens, from the same place: the camera keeps where it has flown. */

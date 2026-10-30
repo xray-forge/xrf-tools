@@ -49,6 +49,8 @@ export const RENDER_OUTPUT_SCALE_STORAGE_KEY: string = buildStorageKey(
 export const LEVEL_CAMERA_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "level-camera");
 /** What the level viewer sets over the renderer's features for itself, as JSON. */
 export const LEVEL_FEATURES_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "level-features");
+/** Which helpers the level viewer draws over its level objects, as JSON. */
+export const LEVEL_HELPERS_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "level-helpers");
 /** How the level viewer's look is chosen, as JSON. */
 export const LEVEL_LOOK_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "level-look");
 /** How each level's weather was last played, by level, as JSON. */

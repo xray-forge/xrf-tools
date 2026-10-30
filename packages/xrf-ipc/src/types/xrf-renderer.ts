@@ -1102,6 +1102,25 @@ export type RenderGroupCost = {
 };
 
 /**
+ * Which of a level's helpers a view draws and how: the kinds switched on, the objects hidden and selected, and how an
+ * occluded wire shows.
+ */
+export type RenderHelperOptions = {
+  /** Whether helpers draw at all. */
+  isShown: boolean;
+  /** The kinds drawn, a bit a kind as the helpers number them. */
+  kinds: number;
+  /** The objects drawn nothing of, by the ids the helpers carry, ascending. */
+  hidden: Array<number>;
+  /** The objects drawn as selected, never faded, by the ids the helpers carry, ascending. */
+  selected: Array<number>;
+  /** How strongly a wire behind what is drawn shows, from 0 to 1. */
+  occludedStrength: number | null;
+  /** What every kind's draw distance is scaled by. */
+  distanceScale: number | null;
+};
+
+/**
  * Anomaly's `img_corrections`, which `combine_2` applies to the finished frame: `r__exposure`, `r__gamma`,
  * `r__saturation` and `r__color_grading`.
  */
@@ -1147,6 +1166,8 @@ export enum ERenderLevelHit {
   SURFACE = "surface",
   /** An object the level's spawn places. */
   SPAWN = "spawn",
+  /** A level object's helper, met within a few pixels of its wire, wherever it stands. */
+  HELPER = "helper",
 }
 
 /**
@@ -1173,6 +1194,14 @@ export type RenderLevelHit =
   | {
       kind: "spawn";
       /** Its index among the level's spawned objects. */
+      object: number;
+      point: [number | null, number | null, number | null];
+      depth: number | null;
+    }
+  /** A level object's helper, met within a few pixels of its wire, wherever it stands. */
+  | {
+      kind: "helper";
+      /** The id its helper carries. */
       object: number;
       point: [number | null, number | null, number | null];
       depth: number | null;
@@ -2262,6 +2291,7 @@ export type RenderViewOptions = {
   features: RenderViewFeatures;
   output: RenderViewOutput;
   asset: RenderAssetPreview;
+  helpers: RenderHelperOptions;
 };
 
 /** What a view's frame is resolved at before it is put into its rectangle, and how it is upscaled to it. */

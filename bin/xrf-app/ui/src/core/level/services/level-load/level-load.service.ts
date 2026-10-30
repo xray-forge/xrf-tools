@@ -12,9 +12,9 @@ import {
   LEVEL_SURFACES_PART,
   LEVEL_TEXTURES_PART,
   LevelMapDescription,
+  LevelObjectsDescription,
   LevelOpenRequest,
   LevelSource,
-  LevelSpawnObjectsDescription,
   LevelStart,
   LevelTextureReference,
   SelectedLevelDescription,
@@ -36,7 +36,7 @@ export interface IOpenLevel {
 
 /**
  * Opens a compiled level, the level itself, and keeps each part of it the page shows - where it starts, its map, its
- * surfaces and their textures, its spawned objects - as a resource read apart from it and again apart from it: the
+ * surfaces and their textures, its level objects - as a resource read apart from it and again apart from it: the
  * renderer reads and draws everything else the level holds itself.
  */
 @Injectable()
@@ -55,8 +55,8 @@ export class LevelLoadService {
   /** What every texture the open level's surfaces bind resolved to. */
   public readonly textures: SessionPartResource<Array<LevelTextureReference>>;
 
-  /** The objects the open level's spawn places, which the panels list and a pick names. */
-  public readonly spawnObjects: SessionPartResource<LevelSpawnObjectsDescription>;
+  /** Every object placed in the open level, which the Outliner lists and a pick names. */
+  public readonly levelObjects: SessionPartResource<LevelObjectsDescription>;
 
   /**
    * The open level, read again once its session derives it anew. A level that fails to open, or to close, is let go
@@ -94,7 +94,7 @@ export class LevelLoadService {
     this.levelMap = new SessionPartResource(eventBus, [LEVEL_MAP_PART], levelsCommands.describeLevelMap);
     this.surfaces = new SessionPartResource(eventBus, [LEVEL_SURFACES_PART], levelsCommands.describeSurfaces);
     this.textures = new SessionPartResource(eventBus, [LEVEL_TEXTURES_PART], levelsCommands.describeTextures);
-    this.spawnObjects = new SessionPartResource(eventBus, [LEVEL_SPAWN_PART], levelsCommands.describeSpawnObjects);
+    this.levelObjects = new SessionPartResource(eventBus, [LEVEL_SPAWN_PART], levelsCommands.describeObjects);
   }
 
   /** The open level, its lifecycle and failure kept. */
@@ -115,16 +115,16 @@ export class LevelLoadService {
     return this.selection.isStale;
   }
 
-  /** The objects the open level's spawn places, once listed; null before, and for a spawn that could not be read. */
+  /** Every object placed in the open level, once listed; null before, and for a spawn that could not be read. */
   @Computed()
-  public get spawn(): Nullable<LevelSpawnObjectsDescription> {
-    return this.spawnObjects.error ? null : this.spawnObjects.value;
+  public get objects(): Nullable<LevelObjectsDescription> {
+    return this.levelObjects.error ? null : this.levelObjects.value;
   }
 
-  /** How the spawn's listing went. */
+  /** How listing the level's objects out of its spawn went. */
   @Computed()
   public get spawnReport(): ILevelSpawnReport {
-    const { error, value } = this.spawnObjects;
+    const { error, value } = this.levelObjects;
 
     if (error) {
       return { ...EMPTY_LEVEL_SPAWN_REPORT, failure: error.message, isListed: true };
@@ -135,10 +135,10 @@ export class LevelLoadService {
       : EMPTY_LEVEL_SPAWN_REPORT;
   }
 
-  /** The revision the spawn's listing was read at; null before one is. */
+  /** The revision the level's objects were listed at; null before they are. */
   @Computed()
-  public get spawnRevision(): Nullable<XrayRevision> {
-    return this.spawnObjects.snapshot?.revision ?? null;
+  public get objectsRevision(): Nullable<XrayRevision> {
+    return this.levelObjects.snapshot?.revision ?? null;
   }
 
   /**
@@ -259,7 +259,7 @@ export class LevelLoadService {
     this.levelMap.detach();
     this.surfaces.detach();
     this.textures.detach();
-    this.spawnObjects.detach();
+    this.levelObjects.detach();
   }
 
   /** Moves the scene on for a change past the one it streams as that streams it afresh, as the backend says. */
@@ -280,7 +280,7 @@ export class LevelLoadService {
         this.levelMap.attach(sessionId),
         this.surfaces.attach(sessionId),
         this.textures.attach(sessionId),
-        this.spawnObjects.attach(sessionId),
+        this.levelObjects.attach(sessionId),
       ])
     );
   }
@@ -291,6 +291,6 @@ export class LevelLoadService {
     this.levelMap.detach();
     this.surfaces.detach();
     this.textures.detach();
-    this.spawnObjects.detach();
+    this.levelObjects.detach();
   }
 }

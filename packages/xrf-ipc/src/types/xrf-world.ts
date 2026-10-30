@@ -223,6 +223,11 @@ export type WorldToggles = {
   isSpawnedLamps: boolean;
   /** Whether the spawned objects a new game releases are drawn too, each with its group. */
   isSpawnedReleased: boolean;
+  /**
+   * The spawned objects left out whatever their group, by their index among the level's spawned objects, ascending:
+   * those the viewer hides one by one.
+   */
+  hiddenSpawnObjects: Array<number>;
 };
 
 /** Every `kind` the `WorldViewportEvent` union is told apart by, so a switch or a comparison names one. */

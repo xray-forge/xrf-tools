@@ -1,10 +1,14 @@
 import { Injectable, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable } from "@wirestate/mobx";
+import { LevelObjectKind } from "@xrf/ipc/types/xrf-app-levels";
 import { Logger } from "@xrf/logging";
 
+import { KeybindCommand } from "@/core/commands";
+import { TOGGLE_LEVEL_HELPERS_KEYBIND_COMMAND } from "@/core/level/commands";
 import { ILevelCameraOptions, toLevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelFeatureOptions, toLevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { DEFAULT_LEVEL_LOD_OPTIONS, ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
+import { ILevelHelperOptions, toLevelHelperOptions } from "@/core/level/lib/objects/level-helper-options";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import {
   DEFAULT_LEVEL_HEMI_STRENGTH,
@@ -12,7 +16,13 @@ import {
   ILevelViewOptions,
 } from "@/core/level/lib/view/level-view-options";
 import { listUnkeptRenderSettings } from "@/core/render/lib/settings/render-feature-choice";
-import { jsonCodec, LEVEL_CAMERA_STORAGE_KEY, LEVEL_FEATURES_STORAGE_KEY, StoredValue } from "@/core/storage";
+import {
+  jsonCodec,
+  LEVEL_CAMERA_STORAGE_KEY,
+  LEVEL_FEATURES_STORAGE_KEY,
+  LEVEL_HELPERS_STORAGE_KEY,
+  StoredValue,
+} from "@/core/storage";
 
 /**
  * How a level is drawn: what the viewer has switched on, rather than what the level is.
@@ -47,10 +57,48 @@ export class LevelViewService {
     jsonCodec(LevelViewService.readFeatures)
   );
 
+  private readonly storedHelpers: StoredValue<ILevelHelperOptions> = new StoredValue(
+    LEVEL_HELPERS_STORAGE_KEY,
+    jsonCodec(toLevelHelperOptions)
+  );
+
   /** What the camera sees and how it answers input: a preference, kept over runs. */
   @Computed()
   public get cameraOptions(): ILevelCameraOptions {
     return this.storedCameraOptions.value;
+  }
+
+  /** Which helpers are drawn over the level objects: a preference, kept over runs. */
+  @Computed()
+  public get helpers(): ILevelHelperOptions {
+    return this.storedHelpers.value;
+  }
+
+  /** Draws the helpers or leaves them all out, as `G` does, each kind keeping its choice. */
+  @KeybindCommand(TOGGLE_LEVEL_HELPERS_KEYBIND_COMMAND)
+  @BoundAction()
+  public toggleHelpers(): void {
+    this.storedHelpers.set({ ...this.helpers, isShown: !this.helpers.isShown });
+  }
+
+  /**
+   * @param helpers - How the helpers are drawn from now on, the switches aside.
+   */
+  @BoundAction()
+  public setHelperLook(helpers: Pick<ILevelHelperOptions, "distanceScale" | "occludedStrength">): void {
+    this.storedHelpers.set({ ...this.helpers, ...helpers });
+  }
+
+  /**
+   * @param kinds - Kinds of level object.
+   * @param isOn - Whether their helpers are drawn from now on, while helpers are.
+   */
+  @BoundAction()
+  public setHelperKinds(kinds: ReadonlyArray<LevelObjectKind>, isOn: boolean): void {
+    this.storedHelpers.set({
+      ...this.helpers,
+      kinds: { ...this.helpers.kinds, ...Object.fromEntries(kinds.map((kind: LevelObjectKind) => [kind, isOn])) },
+    });
   }
 
   /**

@@ -1,7 +1,7 @@
 use xrf_math::Vector3d;
-use xrf_spawn::Shape;
 use xrf_visual::VisualTransform;
 
+use crate::objects::LevelObjectShape;
 use crate::viewer::map::annotations::AnnotationPoint;
 
 /// What a volume's shape covers seen from above.
@@ -16,14 +16,17 @@ pub enum AnnotationOutline {
 }
 
 impl AnnotationOutline {
-  /// `shape` from above, through its object's transform `to_world`.
-  pub fn of(shape: &Shape, to_world: &VisualTransform) -> Self {
+  /// `shape` from above, through its object's transform `to_world`, both in renderer space.
+  pub fn of(shape: &LevelObjectShape, to_world: &VisualTransform) -> Self {
     match shape {
-      Shape::Sphere((center, radius)) => Self::Circle {
-        center: Self::to_point(&to_world.apply_to_point(center)),
+      LevelObjectShape::Sphere { center, radius } => Self::Circle {
+        center: Self::from_renderer_point(&to_world.apply_to_point(center)),
         radius: *radius,
       },
-      Shape::Box((i, j, k, c)) => {
+      LevelObjectShape::Box {
+        axes: [i, j, k],
+        center: c,
+      } => {
         // The unit cube about the origin through the box's axes and offset, as `CCF_Shape` and the bounding sphere
         // take it.
         let corners: Vec<AnnotationPoint> = [-0.5f32, 0.5]
@@ -40,7 +43,7 @@ impl AnnotationOutline {
               c.z + i.z * x + j.z * y + k.z * z,
             )
           })
-          .map(|local| Self::to_point(&to_world.apply_to_point(&local)))
+          .map(|local| Self::from_renderer_point(&to_world.apply_to_point(&local)))
           .collect();
 
         Self::Polygon(Self::to_convex_hull(corners))
@@ -48,9 +51,14 @@ impl AnnotationOutline {
     }
   }
 
-  /// A point from above.
+  /// A point of engine space from above.
   pub fn to_point(point: &Vector3d) -> AnnotationPoint {
     [point.x, point.z]
+  }
+
+  /// A point of renderer space from above, in engine space: mirrored back through `z`.
+  pub fn from_renderer_point(point: &Vector3d) -> AnnotationPoint {
+    [point.x, -point.z]
   }
 
   /// The convex hull of `points`, counterclockwise from the leftmost, by Andrew's monotone chain.

@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use xrf_renderer::RenderSpawnCategory;
 
 use crate::level::streaming::hidden_spawn_groups::HiddenSpawnGroups;
+use crate::level::streaming::spawn_filter::SpawnFilter;
 
 /// What of the level's world plays, rather than what is drawn of it: the weather's rain, bolts and wind, the campfires,
 /// the ambient effects, and which groups of the spawned objects stream in.
@@ -26,6 +27,9 @@ pub struct WorldToggles {
   pub is_spawned_lamps: bool,
   /// Whether the spawned objects a new game releases are drawn too, each with its group.
   pub is_spawned_released: bool,
+  /// The spawned objects left out whatever their group, by their index among the level's spawned objects, ascending:
+  /// those the viewer hides one by one.
+  pub hidden_spawn_objects: Vec<u32>,
 }
 
 impl Default for WorldToggles {
@@ -41,6 +45,7 @@ impl Default for WorldToggles {
       is_spawned_weapons: true,
       is_spawned_lamps: true,
       is_spawned_released: false,
+      hidden_spawn_objects: Vec::new(),
     }
   }
 }
@@ -53,6 +58,14 @@ impl WorldToggles {
       RenderSpawnCategory::Items => self.is_spawned_items,
       RenderSpawnCategory::Weapons => self.is_spawned_weapons,
       RenderSpawnCategory::Lamps => self.is_spawned_lamps,
+    }
+  }
+
+  /// What of the spawn is left out of the scene: the groups, and the objects hidden one by one.
+  pub(crate) fn get_spawn_filter(&self) -> SpawnFilter<'_> {
+    SpawnFilter {
+      groups: self.get_hidden_spawn_groups(),
+      objects: &self.hidden_spawn_objects,
     }
   }
 

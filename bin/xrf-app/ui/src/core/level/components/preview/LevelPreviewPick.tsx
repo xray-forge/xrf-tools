@@ -5,6 +5,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { formatLevelPoint } from "@/core/level/lib/camera/level-camera";
+import { getLevelObjectKind } from "@/core/level/lib/objects/level-object-kinds";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { describeLevelSurface, toLevelSurfaceSummary } from "@/core/level/lib/surface/level-surface-summary";
 import { LevelLoadService } from "@/core/level/services/level-load";
@@ -28,7 +29,7 @@ function toSurfaceNaming(surfaces: ReadonlyArray<XraySurfaceDescriptor>, shaderI
 
 /**
  * What the last click in the viewport picked, over the scene: the sector and shader table entry drawing a surface, or
- * the spawned object and the visual it stands as, and where the click met it.
+ * the level object, its section and the visual it is drawn as, and where the click met it.
  */
 export function LevelPreviewPick({
   "data-testid": dataTestId = "level-preview-pick",
@@ -47,10 +48,10 @@ export function LevelPreviewPick({
 
   return (
     <RenderViewportOverlay data-testid={dataTestId} id={id} className={className} corner={"bottom-left"}>
-      {picked.kind === ELevelPick.SPAWN ? (
+      {picked.kind === ELevelPick.OBJECT ? (
         <>
-          <div>{`${picked.object.name} · ${picked.object.section}`}</div>
-          <div>{picked.visual}</div>
+          <div>{`${picked.object.name} · ${picked.object.spawn?.section ?? getLevelObjectKind(picked.object.kind).label}`}</div>
+          {picked.visual ? <div>{picked.visual}</div> : null}
         </>
       ) : (
         <>

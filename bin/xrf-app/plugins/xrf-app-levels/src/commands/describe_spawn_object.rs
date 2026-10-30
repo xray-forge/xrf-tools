@@ -8,7 +8,7 @@ use crate::level::{SelectedLevel, SelectedLevels};
 use crate::parts::LevelSpawnPart;
 use crate::spawn::LevelSpawnObjectDetails;
 
-/// Describe one of the open level's spawned objects, by its place among them, as describe_spawn_objects numbered it.
+/// Describe one of the open level's spawned objects, by its index among them, as a level object's spawn id names it.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_spawn_object")]
 pub async fn levels_describe_spawn_object(

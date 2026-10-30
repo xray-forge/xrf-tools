@@ -105,7 +105,7 @@ impl WindowFrame {
         }
 
         if let Some((parameters, overlays)) = &view.overlays {
-          overlay.draw(context, format, (binding, parameters), overlays);
+          overlay.draw(context, format, (binding, parameters), (overlays, view.helpers));
         }
       }
     });

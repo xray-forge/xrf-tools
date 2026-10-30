@@ -56,6 +56,7 @@ pub(crate) mod render_graph_transient;
 pub(crate) mod render_grass_report;
 pub(crate) mod render_grass_settings;
 pub(crate) mod render_group_cost;
+pub(crate) mod render_helper_options;
 pub(crate) mod render_image_corrections;
 pub(crate) mod render_indirect_light_mode;
 pub(crate) mod render_indirect_light_settings;

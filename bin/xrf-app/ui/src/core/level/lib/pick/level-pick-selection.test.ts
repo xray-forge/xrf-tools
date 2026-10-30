@@ -1,17 +1,18 @@
 import { describe, expect, it } from "@jest/globals";
+import { ELevelObjectId } from "@xrf/ipc/types/xrf-app-levels";
 import { ERenderSelectionTarget } from "@xrf/ipc/types/xrf-renderer";
 
-import { mockLevelSpawnObject } from "@/core/level/fixtures/level.mocks";
+import { mockLevelObject, mockLevelVolumeObject } from "@/core/level/fixtures/level.mocks";
 import { ELevelPick } from "@/core/level/lib/pick/level-pick";
 import { toLevelPickSelection } from "@/core/level/lib/pick/level-pick-selection";
 
 const POINT = { x: 0, y: 0, z: 0 };
 
 describe("toLevelPickSelection", () => {
-  it("selects a picked spawned object, a picked surface, and nothing for none", () => {
+  it("selects a picked spawned model, a picked surface, and nothing for none", () => {
     const spawn = toLevelPickSelection({
-      kind: ELevelPick.SPAWN,
-      object: mockLevelSpawnObject({ index: 4 }),
+      kind: ELevelPick.OBJECT,
+      object: mockLevelObject({ id: { index: 4, source: ELevelObjectId.SPAWN } }),
       point: POINT,
       visual: "crate",
     });
@@ -34,6 +35,13 @@ describe("toLevelPickSelection", () => {
       shaderId: 17,
     });
     expect(toLevelPickSelection(null)).toBeNull();
+  });
+
+  // A volume draws no model, so there is nothing of it in the frame to outline.
+  it("selects nothing of an object drawn as nothing", () => {
+    expect(
+      toLevelPickSelection({ kind: ELevelPick.OBJECT, object: mockLevelVolumeObject(2), point: POINT, visual: "" })
+    ).toBeNull();
   });
 
   // An impostor stands in for a clump of trees: it is no surface of the sector's to outline.
