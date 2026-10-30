@@ -8,6 +8,8 @@ use crate::pass::bloom_parameters::BloomParameters;
 use crate::pass::bloom_uniform::BloomUniform;
 use crate::pass::calibration_parameters::CalibrationParameters;
 use crate::pass::calibration_uniform::CalibrationUniform;
+use crate::pass::camera_effects_parameters::CameraEffectsParameters;
+use crate::pass::camera_effects_uniform::CameraEffectsUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::combine_parameters::CombineParameters;
 use crate::pass::composited_parameters::CompositedParameters;
@@ -212,6 +214,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut rain: ShaderBindings = ShaderBindings::new();
   let mut rain_blur: ShaderBindings = ShaderBindings::new();
   let mut rain_rings: ShaderBindings = ShaderBindings::new();
+  let mut camera_effects: ShaderBindings = ShaderBindings::new();
   let mut wet_patch: ShaderBindings = ShaderBindings::new();
   let mut wet_apply: ShaderBindings = ShaderBindings::new();
   let mut thunder: ShaderBindings = ShaderBindings::new();
@@ -281,7 +284,8 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<WetUniform>()
     .declare::<ThunderUniform>()
     .declare::<TemporalUniform>()
-    .declare::<FsrUniform>();
+    .declare::<FsrUniform>()
+    .declare::<CameraEffectsUniform>();
   StaticCullParameters::declare(&mut structs);
   StaticDrawParameters::declare(&mut structs);
   StaticImpostorParameters::declare(&mut structs);
@@ -353,6 +357,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   rain.add::<RainParameters<'_>>()?.add::<RainLookParameters<'_>>()?;
   rain_blur.add::<RainBlurParameters<'_>>()?;
   rain_rings.add::<RainRingsReduceParameters>()?;
+  camera_effects.add::<CameraEffectsParameters<'_>>()?;
   wet_patch.add::<WetPatchParameters<'_>>()?;
   wet_apply.add::<WetApplyParameters>()?;
   thunder.add::<ThunderParameters<'_>>()?;
@@ -584,6 +589,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/frame/rain_rings",
       format!("{STRUCTS_IMPORT}{}", rain_rings.to_wgsl()),
+    ),
+    (
+      "generated/frame/camera_effects",
+      format!("{STRUCTS_IMPORT}{}", camera_effects.to_wgsl()),
     ),
     (
       "generated/frame/wet_patch",

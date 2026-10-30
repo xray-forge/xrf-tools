@@ -12,6 +12,7 @@ use crate::pass::backdrop_pass::BackdropPass;
 use crate::pass::bloom_pass::BloomPass;
 use crate::pass::brdf_table::BrdfTable;
 use crate::pass::calibration_pass::CalibrationPass;
+use crate::pass::camera_effects_pass::CameraEffectsPass;
 use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::contact_shadow_pass::ContactShadowPass;
@@ -104,6 +105,7 @@ pub struct GpuState {
   pub froxels: FroxelPass,
   pub bloom: BloomPass,
   pub enhanced_bloom: EnhancedBloomPass,
+  pub camera_effects: CameraEffectsPass,
   /// The pipelines the feature units ask for, made once and forgotten when a shader reloads.
   pub pipelines: Arc<PipelineCache>,
   pub fog_scattering: FogScatteringPass,
@@ -255,6 +257,7 @@ impl GpuState {
         froxels: Self::join(froxels)?,
         bloom: Self::join(bloom)?,
         enhanced_bloom: EnhancedBloomPass::new(device, view),
+        camera_effects: CameraEffectsPass::new(device),
         fog_scattering: Self::join(fog_scattering)?,
         temporal: Self::join(temporal)?,
         fsr: Self::join(fsr)?,
@@ -410,6 +413,7 @@ impl GpuState {
       froxels: &self.froxels,
       bloom: &self.bloom,
       enhanced_bloom: &self.enhanced_bloom,
+      camera_effects: &self.camera_effects,
       fog_scattering: &self.fog_scattering,
       temporal: &self.temporal,
       fsr: &self.fsr,

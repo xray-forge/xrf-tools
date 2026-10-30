@@ -34,7 +34,10 @@ impl JitterGuard {
 
   /// The passes after the resolve allowed to read what was drawn before it, by the start of their names, with the
   /// textures they read; each says why none of its reads shows the jitter.
-  const ALLOWED: [(&[&str], &[&str]); 5] = [
+  const ALLOWED: [(&[&str], &[&str]); 6] = [
+    // The camera's inputs stage reads the depth, the water's where it draws, and the motion over the drawn texels about
+    // each shown pixel, the nearest and the longest among them; its other stages share its layout and read neither.
+    (&["camera "], &["depth", "depth with water", "motion"]),
     // The build reads the fog's depth and the self-lit marks over the four drawn texels under each of its half-size
     // texels; the other stages share its layout and read neither.
     (&["enhanced bloom "], &["depth", "material"]),

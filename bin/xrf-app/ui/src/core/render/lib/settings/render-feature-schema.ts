@@ -93,6 +93,25 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     },
   },
   antialiasing: toChoice(ERenderAntialiasing),
+  // The renderer's own: a shutter from closed to open the whole frame, a blur up to a fifth of the frame's height; a
+  // lens from f/1 to f/22 focused from 10 cm to 2 km on a sensor from a phone's to medium format; the lens's falloff
+  // and colour split from none to all; grains from a pixel to four across.
+  camera: {
+    aberrationStrength: toNumber(0, 1),
+    fStop: toNumber(1, 22),
+    focusDistance: toNumber(0.1, 2000),
+    grainSize: toNumber(1, 4),
+    grainStrength: toNumber(0, 1),
+    isAberrated: FLAG,
+    isDefocused: FLAG,
+    isGrained: FLAG,
+    isMotionBlurred: FLAG,
+    isVignetted: FLAG,
+    motionLimit: toNumber(0.005, 0.2),
+    sensorHeight: toNumber(4, 56),
+    shutter: toNumber(0, 1),
+    vignetteStrength: toNumber(0, 1),
+  },
   // The renderer's own: from a few pixels to well past the shipped 48, where neighbours stop sharing a band.
   debanding: {
     mode: toChoice(ERenderDebandingMode),

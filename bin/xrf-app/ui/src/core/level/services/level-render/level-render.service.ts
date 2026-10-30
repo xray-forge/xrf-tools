@@ -37,7 +37,9 @@ import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-readi
 import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
 import {
+  ILevelFeatureOptions,
   TLevelOutputOptions,
+  toLevelFocusDistance,
   toLevelOutput,
   toLevelRendererAntialiasing,
 } from "@/core/level/lib/features/level-feature-options";
@@ -242,6 +244,36 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   /**
+   * Focuses the view's lens on what is drawn under a point of the viewport, its depth of field turned on, and stops
+   * picking the focus; a click meeting nothing of the level leaves the focus as it was.
+   *
+   * @param point - Where, in css pixels from the viewport's top left corner.
+   * @param isThrough - Whether glass is passed by, focusing on what stands behind it.
+   */
+  @LatestFlow()
+  public *focusAt(point: IRenderViewPoint, isThrough: boolean): TFlow {
+    const viewport: Nullable<NativeViewport> = this.viewport;
+
+    this.viewportService.setFocusPicking(false);
+
+    if (!viewport || !this.level) {
+      return;
+    }
+
+    const hit: Nullable<RenderLevelHit> = yield* call(viewport.pick({ x: point.x, y: point.y, isThrough }));
+    const depth: Nullable<number> = hit?.depth ?? null;
+
+    if (depth !== null && depth > 0) {
+      const features: ILevelFeatureOptions = this.viewService.features;
+
+      this.viewService.setFeatures({
+        ...features,
+        camera: { ...features.camera, focusDistance: toLevelFocusDistance(depth), isDefocused: true },
+      });
+    }
+  }
+
+  /**
    * @param object - A spawned object, by its index among the level's.
    * @returns Its bounding sphere in renderer space, centre then radius; null until its model is drawn or with no
    *   viewport attached.
@@ -424,7 +456,11 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   protected onClick(point: IRenderViewPoint, isThrough: boolean): void {
-    void this.pick(point, isThrough);
+    if (this.viewportService.isFocusPicking) {
+      void this.focusAt(point, isThrough);
+    } else {
+      void this.pick(point, isThrough);
+    }
   }
 
   protected onDetached(): void {
@@ -478,6 +514,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   private leaveScene(): void {
     cancelFlow(this, "resident");
     cancelFlow(this, "pick");
+    cancelFlow(this, "focusAt");
     this.resident.reset();
   }
 

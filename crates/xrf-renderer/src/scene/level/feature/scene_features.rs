@@ -2,6 +2,7 @@ use crate::scene::level::feature::ambient_occlusion_feature::AmbientOcclusionFea
 use crate::scene::level::feature::bitmask_feature::BitmaskFeature;
 use crate::scene::level::feature::bloom_feature::BloomFeature;
 use crate::scene::level::feature::calibration_feature::CalibrationFeature;
+use crate::scene::level::feature::camera_feature::CameraFeature;
 use crate::scene::level::feature::combine_feature::CombineFeature;
 use crate::scene::level::feature::composited_feature::CompositedFeature;
 use crate::scene::level::feature::contact_shadow_feature::ContactShadowFeature;
@@ -65,6 +66,8 @@ pub struct SceneFeatures {
   pub bloom: BloomFeature,
   pub smoothing: SmoothingFeature,
   pub exposure: ExposureFeature,
+  /// The camera the resolved frame is shown through.
+  pub camera: CameraFeature,
   pub meter: MeterFeature,
   pub calibration: CalibrationFeature,
   pub flares: FlaresFeature,
@@ -108,6 +111,7 @@ impl SceneFeatures {
       bloom: BloomFeature::default(),
       smoothing: SmoothingFeature::default(),
       exposure: ExposureFeature::new(device, queue),
+      camera: CameraFeature::default(),
       meter: MeterFeature::default(),
       calibration: CalibrationFeature::default(),
       flares: FlaresFeature::new(),
@@ -175,6 +179,7 @@ scene_units!(
   bloom,
   smoothing,
   exposure,
+  camera,
   meter,
   calibration,
   flares,

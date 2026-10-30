@@ -208,9 +208,7 @@ impl RenderThread {
     );
 
     match (readied, pick) {
-      (Some(frame), Some((pick, ndc, _))) if frame.pick_slot.is_some() => {
-        Some((id, frame, Some((pick, (view.get_view_projection().inverse(), ndc)))))
-      }
+      (Some(frame), Some((pick, ndc, _))) if frame.pick_slot.is_some() => Some((id, frame, Some((pick, (*view, ndc))))),
       (readied, pick) => {
         if let Some((pick, ..)) = pick {
           picks.insert(0, pick);

@@ -63,6 +63,7 @@ import { DEFAULT_LEVEL_WEATHER_CONTROL } from "@/core/level/lib/weather/level-we
 import { toLevelWeatherMemoryKey, writeLevelWeatherMemory } from "@/core/level/lib/weather/level-weather-memory";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService } from "@/core/level/services/level-load";
+import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
@@ -399,6 +400,7 @@ describe("LevelRenderService", () => {
   it("names what a pick hit in the level's own coordinates", async () => {
     const { container, service } = await mockAttachedLevelRender();
     const hit: RenderLevelHit = {
+      depth: 3,
       isImpostor: false,
       kind: ERenderLevelHit.SURFACE,
       mesh: 2,
@@ -426,6 +428,21 @@ describe("LevelRenderService", () => {
     });
   });
 
+  it("focuses the view's lens where a click lands while the focus is picked, selecting nothing", async () => {
+    const { container, service } = await mockAttachedLevelRender();
+    const viewport: LevelViewportService = container.get(LevelViewportService);
+
+    mockIpcCommands({
+      [ERenderCommand.PICK]: { depth: 12.345, kind: ERenderLevelHit.SPAWN, object: 1, point: [0, 0, 0] },
+    });
+    viewport.setFocusPicking(true);
+    await service.focusAt({ x: 10, y: 20 }, false);
+
+    expect(viewport.isFocusPicking).toBe(false);
+    expect(viewport.picked).toBeNull();
+    expect(container.get(LevelViewService).features.camera).toEqual({ focusDistance: 12.35, isDefocused: true });
+  });
+
   it("keeps a spawned object picked across its spawn read anew, found by its name, and lets it go once gone", async () => {
     const { container, service } = await mockAttachedLevelRender();
     const viewport: LevelViewportService = container.get(LevelViewportService);
@@ -441,7 +458,7 @@ describe("LevelRenderService", () => {
     async function relist(revision: number, objects: Array<LevelSpawnObject>): Promise<void> {
       mockIpcCommands({
         [ELevelsCommand.DESCRIBE_SPAWN_OBJECTS]: mockLevelPartAnswer({ objects, visuals: ["lamp"] }, revision),
-        [ERenderCommand.PICK]: { kind: ERenderLevelHit.SPAWN, object: 1, point: [0, 0, 0] },
+        [ERenderCommand.PICK]: { depth: 0, kind: ERenderLevelHit.SPAWN, object: 1, point: [0, 0, 0] },
       });
       container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
         revision,
@@ -485,6 +502,7 @@ describe("LevelRenderService", () => {
       mockIpcCommands({
         [ELevelsCommand.DESCRIBE_SURFACES]: mockLevelPartAnswer(surfaces, revision),
         [ERenderCommand.PICK]: {
+          depth: 0,
           isImpostor: false,
           kind: ERenderLevelHit.SURFACE,
           mesh: null,
@@ -669,6 +687,7 @@ describe("LevelRenderService", () => {
 
     measured.resolve([{ drawables: 3, narrowest: SPAN, shaderId: 7, span: SPAN, triangles: 40 }]);
     picked.resolve({
+      depth: 0,
       isImpostor: false,
       kind: ERenderLevelHit.SURFACE,
       mesh: null,

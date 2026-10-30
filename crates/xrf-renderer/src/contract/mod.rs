@@ -20,6 +20,7 @@ pub(crate) mod render_backend_availability;
 pub(crate) mod render_bloom_mode;
 pub(crate) mod render_bloom_settings;
 pub(crate) mod render_burst;
+pub(crate) mod render_camera_settings;
 pub(crate) mod render_capture;
 pub(crate) mod render_color;
 pub(crate) mod render_contact_shadow_mode;

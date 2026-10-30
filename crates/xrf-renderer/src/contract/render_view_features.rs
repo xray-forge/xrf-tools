@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_bloom_settings::RenderBloomSettings;
+use crate::contract::render_camera_settings::RenderCameraSettings;
 use crate::contract::render_debanding_settings::RenderDebandingSettings;
 use crate::contract::render_display_transform::RenderDisplayTransform;
 use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
@@ -80,6 +81,8 @@ pub struct RenderViewFeatures {
   pub parallax: RenderParallaxSettings,
   /// How the terrain's detail textures repeat across the ground.
   pub terrain: RenderTerrainSettings,
+  /// The camera the resolved frame is shown through: its motion blur, depth of field, vignette, grain and aberration.
+  pub camera: RenderCameraSettings,
   /// What the finished frame is corrected by.
   pub corrections: RenderImageCorrections,
   /// How the game's console scales the sun, the hemisphere and the ambient.
@@ -121,6 +124,7 @@ impl Default for RenderViewFeatures {
       antialiasing: RenderAntialiasing::None,
       parallax: RenderParallaxSettings::default(),
       terrain: RenderTerrainSettings::default(),
+      camera: RenderCameraSettings::default(),
       corrections: RenderImageCorrections::default(),
       light_scales: RenderLightScales::default(),
       hemi_strength: 1.0,

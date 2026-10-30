@@ -3,9 +3,10 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant};
 
-use glam::{Mat4, Vec2};
+use glam::Vec2;
 use xrf_renderer_core::GraphReport;
 
+use crate::camera::camera_view::CameraView;
 use crate::capture::burst::burst_shot::BurstShot;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_viewport_id::RenderViewportId;
@@ -62,7 +63,7 @@ const TEXTURE_SWEEP: Duration = Duration::from_secs(2);
 const ALLOCATOR_REPORT_EVERY: Duration = Duration::from_millis(500);
 
 /// A viewport's readied frame, with the pick it draws and what unprojects that pick's depth.
-type ViewFrame = (RenderViewportId, LevelFrame, Option<(PendingPick, (Mat4, Vec2))>);
+type ViewFrame = (RenderViewportId, LevelFrame, Option<(PendingPick, (CameraView, Vec2))>);
 
 /// A capture or screenshot copied out of a viewport's frame, on its way back, and where its answer goes.
 type CaptureCopy = (RenderViewportId, FrameCapture, CaptureReply);

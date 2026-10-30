@@ -24,6 +24,7 @@ import {
   TLevelFeatureKey,
   toLevelFeatureOptions,
   toLevelFeatureState,
+  toLevelFocusDistance,
   toLevelModeFeature,
   toLevelRendererAntialiasing,
   toLevelRendererFeature,
@@ -263,6 +264,38 @@ describe("level feature options", () => {
     });
     expect(toLevelModeFeature("volumetric", SETTINGS, mockLevelFeatureOptions())).toEqual(SETTINGS.volumetric);
     expect(toLevelFeatureOptions({ volumetric: { mode: "froxel" } }).volumetric).toEqual({});
+  });
+
+  it("keeps the camera's own effects, held to their bounds, every one off in every preset", () => {
+    const view: ILevelFeatureOptions = toLevelFeatureOptions({
+      camera: { fStop: 0.5, focusDistance: 12, isDefocused: true, lensFlare: true },
+    });
+
+    expect(view.camera).toEqual({ fStop: 1, focusDistance: 12, isDefocused: true });
+    expect(toLevelModeFeature("camera", SETTINGS, view)).toEqual({
+      ...SETTINGS.camera,
+      fStop: 1,
+      focusDistance: 12,
+      isDefocused: true,
+    });
+
+    for (const preset of Object.values(ERenderPreset)) {
+      const { isAberrated, isDefocused, isGrained, isMotionBlurred, isVignetted } = RENDER_PRESETS[preset].camera;
+
+      expect([isAberrated, isDefocused, isGrained, isMotionBlurred, isVignetted]).toEqual([
+        false,
+        false,
+        false,
+        false,
+        false,
+      ]);
+    }
+  });
+
+  it("focuses where a pick met the level, to a centimetre, within the distances the renderer takes", () => {
+    expect(toLevelFocusDistance(12.345)).toBe(12.35);
+    expect(toLevelFocusDistance(0.01)).toBe(0.1);
+    expect(toLevelFocusDistance(5000)).toBe(2000);
   });
 
   it("keeps a view's own output resolution and scale, dropping either that the settings do not offer", () => {

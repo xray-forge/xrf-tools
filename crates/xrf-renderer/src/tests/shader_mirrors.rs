@@ -8,6 +8,7 @@ use crate::frame::view_targets::ViewTargets;
 use crate::lighting::material_slice::material_slice;
 use crate::pass::backdrop_uniform::BackdropUniform;
 use crate::pass::calibration_uniform::CalibrationUniform;
+use crate::pass::camera_effects_uniform::CameraEffectsUniform;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
 use crate::pass::display_mode::DisplayMode;
@@ -204,6 +205,27 @@ fn the_present_numbers_debug_views_as_rust_does() {
 }
 
 /// The present tells the engine's bloom from the enhanced one by the values Rust writes.
+/// The camera effects' stages reduce over the blocks and tiles Rust sizes their targets by: a motion block's shown
+/// pixels, and a depth of field tile's half-size texels and the shown pixels they span.
+#[test]
+fn the_camera_effects_reduce_over_the_tiles_rust_sizes() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+  let module: &str = "frame/camera_effects";
+
+  assert_eq!(
+    get_signed_constant(&library, module, "MOTION_BLOCK"),
+    CameraEffectsUniform::MOTION_BLOCK as i32
+  );
+  assert_eq!(
+    get_signed_constant(&library, module, "FOCUS_TILE_TEXELS") * 2,
+    CameraEffectsUniform::FOCUS_TILE as i32
+  );
+  assert_eq!(
+    get_float_constant(&library, module, "FOCUS_TILE_PIXELS"),
+    CameraEffectsUniform::FOCUS_TILE as f32
+  );
+}
+
 #[test]
 fn the_present_tells_the_blooms_apart_as_rust_does() {
   let library: ShaderLibrary = ShaderLibrary::default();
@@ -588,6 +610,16 @@ fn the_compute_entries_run_the_workgroups_rust_dispatches() {
 
       assert_eq!(declared, size, "'{name}' {entry}");
     }
+  }
+}
+
+/// An `i32` constant's value in a module.
+fn get_signed_constant(library: &ShaderLibrary, name: &str, constant: &str) -> i32 {
+  let module: naga::Module = parse(library, name);
+
+  match module.global_expressions[get_declared(&module, name, constant).init] {
+    naga::Expression::Literal(naga::Literal::I32(value)) => value,
+    ref other => panic!("'{name}' declares {constant} as {other:?}"),
   }
 }
 

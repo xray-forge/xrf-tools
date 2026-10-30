@@ -28,6 +28,10 @@ export class LevelViewportService {
   @RefObservable()
   public isPickRelocated: boolean = false;
 
+  /** Whether the next click in the viewport focuses the lens where it lands, rather than selecting what it meets. */
+  @RefObservable()
+  public isFocusPicking: boolean = false;
+
   /** Whether the scene has the keyboard, so keys meant for it act on what it shows rather than on a panel's. */
   @RefObservable()
   public isSceneFocused: boolean = false;
@@ -63,6 +67,14 @@ export class LevelViewportService {
   }
 
   /**
+   * @param isPicking - Whether the next click focuses the lens rather than selecting.
+   */
+  @BoundAction()
+  public setFocusPicking(isPicking: boolean): void {
+    this.isFocusPicking = isPicking;
+  }
+
+  /**
    * @param isFocused - Whether the scene has the keyboard now.
    */
   @BoundAction()
@@ -93,6 +105,7 @@ export class LevelViewportService {
     this.load = null;
     this.camera = null;
     this.notePicked(null);
+    this.isFocusPicking = false;
     this.isSceneFocused = false;
   }
 

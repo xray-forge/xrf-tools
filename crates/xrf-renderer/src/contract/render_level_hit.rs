@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-/// What of a level is drawn under a point of a viewport, and where the ray from the eye met it, in renderer space.
+/// What of a level is drawn under a point of a viewport, where the ray from the eye met it, in renderer space, and how
+/// far ahead of the camera along its view: metres a lens focuses by.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
@@ -17,11 +18,13 @@ pub enum RenderLevelHit {
     /// Whether it is a clump of trees drawn as its impostor.
     is_impostor: bool,
     point: [f32; 3],
+    depth: f32,
   },
   /// An object the level's spawn places.
   Spawn {
     /// Its index among the level's spawned objects.
     object: u32,
     point: [f32; 3],
+    depth: f32,
   },
 }

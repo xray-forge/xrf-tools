@@ -3,6 +3,7 @@ pub(crate) mod bitmask_feature;
 pub(crate) mod bitmask_tracing;
 pub(crate) mod bloom_feature;
 pub(crate) mod calibration_feature;
+pub(crate) mod camera_feature;
 pub(crate) mod combine_feature;
 pub(crate) mod composited_draw;
 pub(crate) mod composited_feature;
