@@ -100,6 +100,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/common/hex_tiling.wgsl"),
   ),
   (
+    "common/impostor_frames",
+    include_str!("../../shaders/common/impostor_frames.wgsl"),
+  ),
+  (
     "common/rain_cover",
     include_str!("../../shaders/common/rain_cover.wgsl"),
   ),
@@ -617,6 +621,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/generated/static/impostor.wgsl"),
   ),
   (
+    "generated/static/impostor_bake",
+    include_str!("../../shaders/generated/static/impostor_bake.wgsl"),
+  ),
+  (
     "generated/static/water",
     include_str!("../../shaders/generated/static/water.wgsl"),
   ),
@@ -662,6 +670,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("static/cull", include_str!("../../shaders/static/cull.wgsl")),
   ("static/gbuffer", include_str!("../../shaders/static/gbuffer.wgsl")),
   ("static/impostor", include_str!("../../shaders/static/impostor.wgsl")),
+  (
+    "static/impostor_bake",
+    include_str!("../../shaders/static/impostor_bake.wgsl"),
+  ),
   ("static/pulling", include_str!("../../shaders/static/pulling.wgsl")),
   ("static/records", include_str!("../../shaders/static/records.wgsl")),
   ("static/sway", include_str!("../../shaders/static/sway.wgsl")),

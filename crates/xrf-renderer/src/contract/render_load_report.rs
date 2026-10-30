@@ -20,8 +20,12 @@ pub struct RenderLoadReport {
   pub textures: u32,
   /// Textures the level samples: its scene's, its lights' projectors and its particles'.
   pub textures_total: u32,
+  /// Tree types whose baked impostors are ready, read from the cache or baked, under baked impostors.
+  pub impostors: u32,
+  /// Tree types the level's sectors give, under baked impostors; nought under the engine's.
+  pub impostors_total: u32,
   /// Whether everything is resident, so the level draws as it will: every sector, the spawn, grass, lights and
-  /// particles read, and every texture settled.
+  /// particles read, every texture settled, and every impostor ready.
   pub is_ready: bool,
   /// How long each part took to finish, timed from when the level began opening.
   pub durations: RenderLoadDurations,

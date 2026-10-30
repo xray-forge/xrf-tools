@@ -21,6 +21,7 @@ use crate::pack::tests::sector::level_fixtures::{
   new_progressive_tree_without_table, new_shaders, new_slide_windows, new_tree, new_tree_declaration, new_tree_vertex,
   new_vertex_lit_declaration, new_vertex_lit_vertex, new_visuals,
 };
+use crate::pack::tree::tree_types::TreeTypes;
 
 /// Four lightmapped vertices in one buffer, and six indices that draw two triangles out of them.
 fn new_geometry() -> Vec<u8> {
@@ -700,6 +701,43 @@ fn test_packs_an_impostor_and_names_it_from_every_tree_of_its_clump() {
 
   assert_eq!(group.drawables, vec![2, 3, 4]);
   assert_eq!(names, vec![0, 0, -1]);
+  assert_eq!(
+    new_read_bytes(&package, impostors.types),
+    TreeTypes::NO_TYPE.to_le_bytes(),
+    "a packer told no tree types names none"
+  );
+}
+
+// A packer told the level's tree types names each impostor's by the trees it composes.
+#[test]
+fn test_names_an_impostors_tree_type() {
+  let run: LevelVisualsChunk = new_visuals(&[
+    new_hierarchy(&[1, 3, 4]),
+    new_lod(3, &[2]),
+    new_tree(1, 0, 2, 3, 100.0),
+    new_tree(2, 0, 2, 3, -100.0),
+    new_tree(2, 0, 2, 3, 50.0),
+  ]);
+  let table: LevelShadersChunk =
+    new_shaders(&["", "trees\\trees/pine", "trees\\trees/birch", "details\\lod/level_lods"]);
+  let source = new_open_geometry(new_tree_geometry());
+  let trees: TreeTypes = TreeTypes::of(&run);
+
+  let package: SectorPackage = SectorPacker::new(&run, Some(&table), &source)
+    .with_trees(&trees)
+    .pack::<XRayByteOrder>(0, &new_composition(&run), SectorAttributes::all());
+  let impostors = package
+    .description
+    .impostors
+    .as_ref()
+    .expect("a sector composing an impostor");
+
+  // The birches, stood twice, are the first type; the pine the impostor stands for is the second.
+  assert_eq!(
+    (trees.get_type(3), trees.get_type(2), trees.get_type(1)),
+    (Some(0), Some(1), None)
+  );
+  assert_eq!(new_read_bytes(&package, impostors.types), 1u32.to_le_bytes());
 }
 
 /// Nine indices over four vertices, as a two window mesh lays them out: the one-triangle window first in the buffer,

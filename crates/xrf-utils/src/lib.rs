@@ -7,7 +7,7 @@ mod text;
 mod units;
 
 pub use crate::binary::{
-  FormatWidth, assert, assert_count_fits, assert_equal, assert_length, assert_not_equal, new_bounded_vec,
+  ContentHash, FormatWidth, assert, assert_count_fits, assert_equal, assert_length, assert_not_equal, new_bounded_vec,
   new_declared_vec, read_exact_at, to_format_size,
 };
 pub use crate::host_path::{

@@ -54,6 +54,10 @@ use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::grass_sort_parameters::GrassSortParameters;
 use crate::pass::grass_uniform::GrassUniform;
 use crate::pass::grass_wind_uniform::GrassWindUniform;
+use crate::pass::impostor_bake_parameters::ImpostorBakeParameters;
+use crate::pass::impostor_encode_parameters::ImpostorEncodeParameters;
+use crate::pass::impostor_encode_uniform::ImpostorEncodeUniform;
+use crate::pass::impostor_reduce_parameters::ImpostorReduceParameters;
 use crate::pass::indirect_trace_parameters::IndirectTraceParameters;
 use crate::pass::indirect_trace_uniform::IndirectTraceUniform;
 use crate::pass::light_binning_parameters::LightBinningParameters;
@@ -227,6 +231,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   let mut static_draw: ShaderBindings = ShaderBindings::new();
   let mut trace_sway: ShaderBindings = ShaderBindings::new();
   let mut static_impostor: ShaderBindings = ShaderBindings::new();
+  let mut impostor_bake: ShaderBindings = ShaderBindings::new();
 
   structs
     .declare::<CameraUniform>()
@@ -256,6 +261,7 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     .declare::<SkyHarmonics>()
     .declare::<OverheadShiftUniform>()
     .declare::<SurroundingsUniform>()
+    .declare::<ImpostorEncodeUniform>()
     .declare::<ParticleVertex>()
     .declare::<ParticleSurfaceRecord>()
     .declare::<ShadowUniform>()
@@ -375,6 +381,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
   static_draw.add::<StaticDrawParameters>()?;
   trace_sway.add::<TraceSwayParameters>()?;
   static_impostor.add::<StaticImpostorParameters>()?;
+  impostor_bake
+    .add::<ImpostorBakeParameters>()?
+    .add::<ImpostorReduceParameters>()?
+    .add::<ImpostorEncodeParameters>()?;
 
   Ok(vec![
     ("generated/structs", structs.to_wgsl()),
@@ -644,6 +654,10 @@ pub fn list_generated_shaders() -> XrfResult<Vec<(&'static str, String)>> {
     (
       "generated/static/impostor",
       format!("{STRUCTS_IMPORT}{}", static_impostor.to_wgsl()),
+    ),
+    (
+      "generated/static/impostor_bake",
+      format!("{STRUCTS_IMPORT}{}", impostor_bake.to_wgsl()),
     ),
     (
       "generated/frame/water_blur",

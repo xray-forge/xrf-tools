@@ -3,8 +3,8 @@ use serde::Serialize;
 use crate::data::sector::impostor::sector_impostor_group::SectorImpostorGroup;
 use crate::data::visual::geometry::visual_section::VisualSection;
 
-/// The impostors of a sector's `MT_LOD` visuals: what the engine draws in place of a clump of trees seen from far
-/// enough away, each eight facets looking at it from eight sides, in renderer space.
+/// The impostors of a sector's `MT_LOD` visuals: what the engine draws in place of a tree seen from far enough away,
+/// each eight facets looking at it from eight sides, in renderer space.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,6 +20,8 @@ pub struct SectorImpostors {
   pub corners: VisualSection,
   /// Four floats for each of an impostor's eight facets: its normal, then nothing.
   pub normals: VisualSection,
+  /// One integer an impostor: its tree's type, by its index in the level's `TreeTypes`, or `TreeTypes::NO_TYPE`.
+  pub types: VisualSection,
 }
 
 impl SectorImpostors {

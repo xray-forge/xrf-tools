@@ -16,6 +16,7 @@ use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::host::render_asset_source::RenderAssetSource;
+use crate::host::render_cache_store::RenderCacheStore;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_model_failure::RenderModelFailure;
 use crate::host::render_scene_feedback::RenderSceneFeedback;
@@ -25,6 +26,7 @@ use crate::host::render_scene_update::RenderSceneUpdate;
 use crate::host::render_sector_failure::RenderSectorFailure;
 use crate::lighting::ambient_gust::AmbientGust;
 use crate::scene::level::level_grass::LevelGrass;
+use crate::scene::level::level_impostors::LevelImpostors;
 use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_load::LevelLoad;
 use crate::scene::level::level_particles::LevelParticles;
@@ -58,6 +60,8 @@ pub struct LevelScene {
   now: Instant,
   pub lights: LevelLights,
   pub particles: LevelParticles,
+  /// Its tree types' baked impostors, under baked impostors.
+  pub impostors: LevelImpostors,
   /// Milliseconds the last sector taken in took to put into the scene.
   pub sector_time: f32,
   /// What its load reports, from how far the world streamed it.
@@ -92,7 +96,7 @@ impl LevelScene {
     queue: &wgpu::Queue,
     view_layout: &wgpu::BindGroupLayout,
     source: Arc<dyn RenderLevelSource>,
-    workers: &RenderWorkers,
+    (workers, store): (&RenderWorkers, Option<Arc<dyn RenderCacheStore>>),
     now: Instant,
   ) -> Self {
     // Taken before anything is made, so the load is timed from the moment the level began opening.
@@ -103,6 +107,7 @@ impl LevelScene {
       grass: LevelGrass::default(),
       lights: LevelLights::new(device, view_layout),
       particles: LevelParticles::new(device, workers),
+      impostors: LevelImpostors::new(device, view_layout, (store, workers)),
       statics,
       trace: None,
       environments: (0, Vec::new()),
@@ -187,7 +192,19 @@ impl LevelScene {
     slots.sort_unstable();
     slots.dedup();
     self.texture_slots = slots;
-    self.load.advance(streaming, &self.texture_slots, textures);
+    // The impostors' types come with the sectors, so none is counted while a sector still waits to be taken in.
+    let impostors: Option<(u32, u32)> = self
+      .pending
+      .is_empty()
+      .then(|| self.impostors.count_ready(&self.statics))
+      .flatten();
+
+    self.load.advance((streaming, impostors), &self.texture_slots, textures);
+    self.impostors.advance(
+      (device, queue),
+      (&self.statics, &self.source),
+      self.load.is_resident(&self.texture_slots, textures),
+    );
     self.driver = driver;
     self.skeleton_segments = skeleton_segments;
     self.gust = gust;

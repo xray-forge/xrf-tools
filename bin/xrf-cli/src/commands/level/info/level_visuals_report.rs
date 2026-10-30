@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde::Serialize;
 use xrf_level::{LevelVisual, LevelVisualsChunk};
 use xrf_ogf::OgfModelType;
+use xrf_visual::TreeTypes;
 
 /// The visuals run, counted by what the visuals are and what they draw.
 #[derive(Debug, Serialize)]
@@ -23,6 +24,52 @@ pub struct LevelVisualsReport {
   unique_ranges: usize,
   /// How many visuals of each engine model type, by `MT_*` identifier.
   model_types: BTreeMap<String, usize>,
+  trees: LevelTreesReport,
+}
+
+/// The level's trees: each tree visual a part standing at its tree's transform, the trees standing the same parts one
+/// type.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelTreesReport {
+  /// Tree visuals, a part of a tree each: a mesh and its shader.
+  parts: usize,
+  /// Trees: the distinct transforms the parts stand at.
+  trees: usize,
+  /// Kinds of tree: the distinct sets of parts standing together.
+  types: usize,
+  /// The kinds, the most stood first: how many trees of each, its parts and the triangles one of them draws.
+  kinds: Vec<LevelTreeKindReport>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LevelTreeKindReport {
+  trees: u32,
+  /// Each part's first visual, by its index in the run.
+  visuals: Vec<u32>,
+  triangles: u32,
+}
+
+impl LevelTreesReport {
+  pub fn of(visuals: &LevelVisualsChunk) -> Self {
+    let trees: TreeTypes = TreeTypes::of(visuals);
+
+    Self {
+      parts: trees.parts,
+      trees: trees.placements,
+      types: trees.types.len(),
+      kinds: trees
+        .types
+        .iter()
+        .map(|kind| LevelTreeKindReport {
+          trees: kind.instances,
+          visuals: kind.parts.iter().map(|part| part.visual).collect(),
+          triangles: kind.get_triangles(),
+        })
+        .collect(),
+    }
+  }
 }
 
 impl LevelVisualsReport {
@@ -94,6 +141,7 @@ impl LevelVisualsReport {
       model_types,
       textured: visuals.visuals.iter().filter(|it| it.texture.is_some()).count(),
       total: visuals.visuals.len(),
+      trees: LevelTreesReport::of(visuals),
       unique_ranges: ranges.len(),
       vertices,
     }

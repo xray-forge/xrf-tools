@@ -8,6 +8,7 @@ import {
   ERenderFogMode,
   ERenderFoliageMode,
   ERenderGlassMode,
+  ERenderImpostorMode,
   ERenderIndirectLightMode,
   ERenderLightFalloff,
   ERenderLightShadowFilter,
@@ -232,9 +233,15 @@ export const DEFAULT_RENDER_LIGHTS_SETTINGS: TRenderLightsSettings = {
   isVolumetric: true,
 };
 
-/** The engine's own values (`xrRender_console.cpp`). */
+/**
+ * The engine's own values (`xrRender_console.cpp`), its own impostors; and for baked ones, a 1024 atlas for the types
+ * standing nine in ten of a level's trees, half of it for the rest.
+ */
 export const DEFAULT_RENDER_LOD_SETTINGS: TRenderLodSettings = {
   geometryLod: 0.75,
+  impostorMode: ERenderImpostorMode.ENGINE,
+  impostorShare: 0.9,
+  impostorSize: 1024,
   isImpostors: true,
   ssaA: 64,
   ssaB: 48,

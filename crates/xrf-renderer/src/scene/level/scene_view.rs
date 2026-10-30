@@ -485,6 +485,15 @@ impl SceneView {
         time,
       },
     );
+
+    // The scene's tree types bake by its first view, a type a frame, all again where their quality changed.
+    if frame.is_scene_first {
+      scene.impostors.follow(&options.features.lod);
+      scene
+        .impostors
+        .prepare((device, &mut *encoder, frame.passes.pipelines), &scene.statics);
+    }
+
     self.shared.camera = *view;
     self.shared.sun_direction = lighting.get_sun_direction();
     // A view off the viewport draws the static scene textured, bumped as the view is, by the hemisphere's strength, and
@@ -1268,6 +1277,12 @@ impl SceneView {
         &statics,
         (cull, textures),
         grass_casters,
+      );
+      scene.impostors.add_passes(
+        (&mut *graph, &mut *bindings, &mut *runtime),
+        passes.gbuffer,
+        &statics,
+        textures,
       );
     }
 

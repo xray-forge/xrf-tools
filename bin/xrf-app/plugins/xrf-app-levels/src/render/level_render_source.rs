@@ -14,7 +14,7 @@ use xrf_material::{XrayReducedTextures, XraySurfaceDescriptor};
 use xrf_particles::{ParticleCollider, ParticleEngineRules};
 use xrf_renderer::{
   RenderAssetSource, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather,
-  RenderLoadFailure, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
+  RenderLoadFailure, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels, RenderTreeType,
 };
 use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, SectorAttributes, SectorPackage, SectorPacker, VisualPoser};
@@ -237,6 +237,7 @@ impl RenderLevelSource for LevelRenderSource {
       LevelGeometryPart::get(&self.level, &self.search()?).map_err(XrfError::new_read_error)?;
     let started: Instant = Instant::now();
     let package: SectorPackage = SectorPacker::new(&self.level.visuals, self.level.level.shaders.as_ref(), &geometry)
+      .with_trees(&self.level.trees)
       .pack::<XRayByteOrder>(sector, &composition, Self::DRAWN_ATTRIBUTES);
 
     LevelReport::packed_sector(&package, started);
@@ -246,6 +247,29 @@ impl RenderLevelSource for LevelRenderSource {
 
   fn get_surfaces(&self) -> &[XraySurfaceDescriptor] {
     &self.surfaces
+  }
+
+  fn read_tree_types(&self) -> XrfResult<Vec<RenderTreeType>> {
+    let level: &SessionSnapshot<SelectedLevel> = &self.level;
+    let geometry: Arc<LevelGeomSource<InMemoryChunkDataSource>> =
+      LevelGeometryPart::get(level, &self.search()?).map_err(XrfError::new_read_error)?;
+    let keys: Vec<u64> =
+      level
+        .trees
+        .read_keys::<XRayByteOrder, _>(&level.visuals, level.level.shaders.as_ref(), &geometry)?;
+
+    Ok(
+      level
+        .trees
+        .types
+        .iter()
+        .zip(keys)
+        .map(|(kind, key)| RenderTreeType {
+          trees: kind.instances,
+          key,
+        })
+        .collect(),
+    )
   }
 
   fn read_lights(&self) -> XrfResult<LightsDescription> {

@@ -11,6 +11,7 @@ use crate::host::render_level_spawn::RenderLevelSpawn;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::host::render_motion::RenderMotion;
 use crate::host::render_spawn_models::RenderSpawnModels;
+use crate::host::render_tree_type::RenderTreeType;
 
 /// An open level as the renderer draws it: the application packs its sectors on demand, on the renderer's loader
 /// threads, and reads the files they name.
@@ -33,6 +34,18 @@ pub trait RenderLevelSource: RenderAssetSource {
 
   /// How each entry of the level's shader table is drawn, in its order: what a sector's surface names by id.
   fn get_surfaces(&self) -> &[XraySurfaceDescriptor];
+
+  /// The level's tree types, by the index a sector impostor's type names, the most stood first: their trees and
+  /// content keys, read from a loader thread the first time a view asks for baked impostors, since keying them reads
+  /// the level's geometry. None for a level whose types are unknown: its baked impostors are then all at the full size
+  /// and none is cached.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the geometry the keys hash cannot be read.
+  fn read_tree_types(&self) -> XrfResult<Vec<RenderTreeType>> {
+    Ok(Vec::new())
+  }
 
   /// The level's lights, its own and its spawned lamps', called from a loader thread as the level opens and again for a
   /// next source that reloads them; their projectors are read
