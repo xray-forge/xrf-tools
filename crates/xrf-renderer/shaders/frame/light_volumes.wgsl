@@ -21,7 +21,7 @@ enable wgpu_binding_array;
 // `VOLUMETRIC_SLICES`: the slices the engine's buffer holds, the first of them drawn, spanning nought to one.
 const VOLUME_SLICES: f32 = 100.0;
 
-// `fDensity`: what one slice adds of the light.
+// `fDensity`: what one slice adds of the light; `LevelLights` holds the same to give the froxels the shafts' density.
 const VOLUME_DENSITY: f32 = 1.0 / 40.0;
 
 // The corner of a slice each of its six vertices takes, its `x` in the high bit and `y` in the low.

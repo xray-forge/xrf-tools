@@ -17,8 +17,10 @@
 // engine's march adds over a whole ray; and how much the enhanced fog's height fog thickens it at its densest.
 const FROXEL_SUN: f32 = 1.0 / 40.0;
 const FROXEL_FOG: f32 = 4.0;
-// Scattering a metre holds for the local lights: a faint glow about a fire or a lamp, its shaft where it is shadowed.
-const FROXEL_LAMP: f32 = 0.003;
+// The share of a local light's shafts its air scatters (`LightRecord::scatter`): well under the engine's slices, as
+// the froxels take no noise or projector to thin them and the phase leans them towards the eye, so a campfire's reads
+// as a soft glow through the haze rather than a ball of fog (by eye at Zaton's campfire by Skadovsk against the game).
+const FROXEL_LAMP: f32 = 0.1;
 // How thick a metre of the air is, beside what scatters the sun.
 const FROXEL_HAZE: f32 = 0.004;
 // How much of the history a froxel keeps.
@@ -64,12 +66,12 @@ fn cs_froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
     scattered += sun * sunlit * froxel_phase(g, dot(-lighting.to_sun.xyz, to_eye));
   }
 
-  // Every local light binned where the froxel stands that the level gives shafts (`LightRecord::scatter`), through its
-  // shadow, as the engine draws only those lights' shafts: an unshadowed lamp would scatter through the walls between
-  // it and the air it lights, and a campfire or a wall lamp would hang a ball of glowing fog about itself.
+  // Every local light binned where the froxel stands that the level gives shafts, through its shadow, at a share of its
+  // shafts' density (`LightRecord::scatter`), as the engine draws only those lights' shafts: an unshadowed lamp would
+  // scatter through the walls between it and the air it lights, and a campfire or a wall lamp would hang a ball of
+  // glowing fog about itself.
   if (lights.count > 0u) {
     let cluster: u32 = light_cluster(lights, screen, depth);
-    let lamp_density: f32 = FROXEL_LAMP * fog * intensity;
 
     for (var index: u32 = 0u; index < counts[cluster]; index++) {
       let record: LightRecord = records[items[cluster * LIGHT_CLUSTER_CAPACITY + index]];
@@ -80,6 +82,7 @@ fn cs_froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
         continue;
       }
 
+      let lamp_density: f32 = record.scatter.x * FROXEL_LAMP * fog * intensity;
       let lit: f32 = light_share(record, to_point, is_falloff_inverse_square(), spread) *
         light_shadow(shadow_atlas, shadow_sampler, record, to_point, vec3<f32>(0.0), record.axis.w > -1.0, false);
 
