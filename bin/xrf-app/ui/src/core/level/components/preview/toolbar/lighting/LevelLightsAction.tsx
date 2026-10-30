@@ -1,4 +1,4 @@
-import { RenderLightFalloff, RenderLightShadowFilter } from "@xrf/ipc/types/xrf-renderer";
+import { RenderLightFalloff, RenderLightShadowFilter, RenderLightShafts } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
@@ -11,16 +11,23 @@ import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-lev
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
+import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import {
   explainRenderLightFalloff,
   RENDER_LIGHT_FALLOFF_OPTIONS,
 } from "@/core/render/lib/features/render-light-falloff-choices";
+import {
+  explainRenderLightShafts,
+  formatShaftStrength,
+  RENDER_LIGHT_SHAFTS_OPTIONS,
+  RENDER_SHAFT_STRENGTH_LIMITS,
+} from "@/core/render/lib/features/render-light-shafts-choices";
 import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features/render-shadow-choices";
 import { TRenderLightsSettings } from "@/core/render/lib/settings/render-feature-settings";
 
 /**
- * Whether this view lights the level with its lamps, and with the level file's own lights too; and how the light the
- * air scatters is drawn.
+ * Whether this view lights the level with its lamps, and with the level file's own lights too; which lamps draw shafts
+ * how strongly; and how the light the air scatters is drawn.
  */
 export function LevelLightsAction({
   "data-testid": dataTestId = "level-lights-action",
@@ -81,6 +88,25 @@ export function LevelLightsAction({
         description={"Shafts of light from the shadowed lamps. Game setting: r2_volumetric_lights."}
         isChecked={lights.isVolumetric}
         onChange={(isVolumetric: boolean) => set({ isVolumetric })}
+      />
+
+      <RenderValueChoice
+        label={"Shafts from"}
+        options={RENDER_LIGHT_SHAFTS_OPTIONS}
+        value={lights.shafts}
+        isDisabled={!lights.isVolumetric}
+        onChange={(shafts: RenderLightShafts) => set({ shafts })}
+      />
+
+      <p className={"text-xs text-text-secondary"}>{explainRenderLightShafts(lights.shafts)}</p>
+
+      <RenderValueSlider
+        label={"Shaft strength"}
+        value={lights.shaftStrength}
+        {...RENDER_SHAFT_STRENGTH_LIMITS}
+        isDisabled={!lights.isVolumetric}
+        format={formatShaftStrength}
+        onChange={(shaftStrength: number) => set({ shaftStrength })}
       />
 
       <CheckboxFormRow

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { ERenderLightFalloff, ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
+import { ERenderLightFalloff, ERenderLightShafts, ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelLightsAction } from "@/core/level/components/preview/toolbar/lighting/LevelLightsAction";
 import {
@@ -63,6 +63,21 @@ describe("LevelLightsAction", () => {
     await userEvent.click(within(falloff).getByRole("button", { name: "Engine" }));
 
     expect(view.features.lights).toEqual({ falloff: ERenderLightFalloff.ENGINE });
+  });
+
+  it("gives every shadowed lamp shafts on asking, the engine's own by default", async () => {
+    const { getByRole, findByRole, view } = renderLevelView(<LevelLightsAction />, mockLevelViewContainer());
+
+    await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Lamps" }) });
+    await findByRole("dialog", { name: "Lamps" });
+
+    const shafts: HTMLElement = getByRole("group", { name: "Shafts from" });
+
+    expect(within(shafts).getByRole("button", { name: "Engine" })).toHaveAttribute("aria-pressed", "true");
+
+    await userEvent.click(within(shafts).getByRole("button", { name: "Every lamp" }));
+
+    expect(view.features.lights).toEqual({ shafts: ERenderLightShafts.SHADOWED });
   });
 
   it("sets the view's volumetric light beside the lamps' shafts it replaces", async () => {

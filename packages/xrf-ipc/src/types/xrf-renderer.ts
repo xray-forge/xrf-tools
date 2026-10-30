@@ -1271,6 +1271,23 @@ export enum ERenderLightShadowFilter {
 /** Every `ERenderLightShadowFilter` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderLightShadowFilter = `${ERenderLightShadowFilter}`;
 
+/**
+ * Which shadowed lamps draw shafts: those the view's engine gives them, as the game does, or every one, as Monolith
+ * forces them on, so a level whose data asks for none can be seen with them.
+ */
+export enum ERenderLightShafts {
+  /**
+   * The engine's choice: under vanilla the lamps whose spawn or zone asks, under the extended engine every described
+   * one.
+   */
+  ENGINE = "engine",
+  /** Every shadowed lamp: one that asks at its own shaft values, any other at the engine's defaults. */
+  SHADOWED = "shadowed",
+}
+
+/** Every `ERenderLightShafts` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderLightShafts = `${ERenderLightShafts}`;
+
 /** What a level's local lights came to on the last frame counted. */
 export type RenderLightsReport = {
   /** Lights standing in view and lit. */
@@ -1298,6 +1315,10 @@ export type RenderLightsSettings = {
   shadowFilter: RenderLightShadowFilter;
   /** Whether shadowed lights draw their shafts (`r2_volumetric_lights`), as the view's engine gives them out. */
   isVolumetric: boolean;
+  /** Which shadowed lights draw shafts. */
+  shafts: RenderLightShafts;
+  /** What every lamp's shafts are scaled by, the engine's slices and the enhanced volumetric light's scattering alike. */
+  shaftStrength: number | null;
   /** How the lamps fall off at the anchored light level (`RenderViewOptions::is_falloff_inverse_square`). */
   falloff: RenderLightFalloff;
 };

@@ -11,6 +11,7 @@ import {
   ERenderIndirectLightMode,
   ERenderLightFalloff,
   ERenderLightShadowFilter,
+  ERenderLightShafts,
   ERenderParallaxMode,
   ERenderRainDropsMode,
   ERenderRainMode,
@@ -221,8 +222,8 @@ export const DEFAULT_RENDER_REFLECTION_SETTINGS: TRenderReflectionSettings = {
 };
 
 /**
- * The engine's own: every spawned light, and none of the level file's; no shafts until they cost less; at the
- * anchored light level falling off as light does in the world.
+ * The engine's own: every spawned light, and none of the level file's; the shafts the game gives them, at its
+ * strength; at the anchored light level falling off as light does in the world.
  */
 export const DEFAULT_RENDER_LIGHTS_SETTINGS: TRenderLightsSettings = {
   falloff: ERenderLightFalloff.PHYSICAL,
@@ -231,6 +232,8 @@ export const DEFAULT_RENDER_LIGHTS_SETTINGS: TRenderLightsSettings = {
   isShadowed: true,
   shadowFilter: ERenderLightShadowFilter.ENGINE,
   isVolumetric: true,
+  shafts: ERenderLightShafts.ENGINE,
+  shaftStrength: 1,
 };
 
 /** The engine's own values (`xrRender_console.cpp`). */

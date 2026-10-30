@@ -66,6 +66,7 @@ pub(crate) mod render_light_level;
 pub(crate) mod render_light_model;
 pub(crate) mod render_light_scales;
 pub(crate) mod render_light_shadow_filter;
+pub(crate) mod render_light_shafts;
 pub(crate) mod render_lights_report;
 pub(crate) mod render_lights_settings;
 pub(crate) mod render_load_durations;
