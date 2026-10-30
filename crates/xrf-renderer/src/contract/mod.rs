@@ -56,6 +56,7 @@ pub(crate) mod render_grass_report;
 pub(crate) mod render_grass_settings;
 pub(crate) mod render_group_cost;
 pub(crate) mod render_image_corrections;
+pub(crate) mod render_impostor_mode;
 pub(crate) mod render_indirect_light_mode;
 pub(crate) mod render_indirect_light_settings;
 pub(crate) mod render_level_hit;

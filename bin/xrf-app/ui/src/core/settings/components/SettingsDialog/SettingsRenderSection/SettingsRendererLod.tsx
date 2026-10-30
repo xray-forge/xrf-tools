@@ -1,17 +1,29 @@
 import { useInjection } from "@wirestate/react";
 import { formatNumber } from "@xrf/format";
+import { ERenderImpostorMode, RenderImpostorMode } from "@xrf/ipc/types/xrf-renderer";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
+import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { SliderFormRow } from "@xrf/ui/form/slider-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
+import {
+  explainRenderImpostorMode,
+  explainRenderImpostorQuality,
+  formatImpostorShare,
+  RENDER_IMPOSTOR_MODE_OPTIONS,
+  RENDER_IMPOSTOR_QUALITY_OPTIONS,
+  RENDER_IMPOSTOR_SHARE_LIMITS,
+  toRenderImpostorQuality,
+  TRenderImpostorQuality,
+} from "@/core/render/lib/features/render-impostor-choices";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
 import { TRenderLodSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 /** One threshold, and the console variable it is. */
 interface ILodThreshold {
-  key: Exclude<keyof TRenderLodSettings, "isImpostors">;
+  key: "geometryLod" | "ssaA" | "ssaB" | "ssaDiscard" | "ssaGlodStart" | "ssaGlodEnd";
   label: string;
   description: string;
   step: number;
@@ -64,11 +76,16 @@ const LOD_THRESHOLDS: ReadonlyArray<ILodThreshold> = [
   },
 ];
 
-/** When a clump of trees draws as its impostor, and a progressive tree at less than its whole detail. */
+/**
+ * When a tree draws as its impostor and whose impostors they are, the engine's or baked from each tree type with their
+ * quality and how many trees get it; and a progressive tree at less than its whole detail.
+ */
 export function SettingsRendererLod(): ReactElement {
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
   const lod: TRenderLodSettings = renderSettingsService.rendererFeatures.lod;
+  const isBaked: boolean = lod.impostorMode === ERenderImpostorMode.BAKED;
+  const quality: TRenderImpostorQuality = toRenderImpostorQuality(lod.impostorSize);
 
   return (
     <DetailSection
@@ -78,9 +95,44 @@ export function SettingsRendererLod(): ReactElement {
       <div className={"mt-4 flex flex-col gap-6"}>
         <CheckboxFormRow
           label={"Impostors"}
-          description={"Draws distant tree clusters as impostors. Off, every tree renders at full detail."}
+          description={"Draws distant trees as impostors. Off, every tree renders at full detail."}
           isChecked={lod.isImpostors}
           onChange={(isImpostors: boolean) => renderSettingsService.setRendererOverrides({ lod: { isImpostors } })}
+        />
+
+        <ChoiceFormRow
+          label={"Impostor kind"}
+          description={explainRenderImpostorMode(lod.impostorMode)}
+          options={RENDER_IMPOSTOR_MODE_OPTIONS}
+          value={lod.impostorMode}
+          isDisabled={!lod.isImpostors}
+          onChange={(impostorMode: RenderImpostorMode) =>
+            renderSettingsService.setRendererOverrides({ lod: { impostorMode } })
+          }
+        />
+
+        <ChoiceFormRow
+          label={"Baked quality"}
+          description={explainRenderImpostorQuality(quality)}
+          options={RENDER_IMPOSTOR_QUALITY_OPTIONS}
+          value={quality}
+          isDisabled={!isBaked}
+          onChange={(value: TRenderImpostorQuality) =>
+            renderSettingsService.setRendererOverrides({ lod: { impostorSize: Number(value) } })
+          }
+        />
+
+        <SliderFormRow
+          label={"Full quality for"}
+          description={
+            "The most common tree types bake at the full quality until they cover this share of the level's " +
+            "trees; the rest bake at half."
+          }
+          value={lod.impostorShare}
+          {...RENDER_IMPOSTOR_SHARE_LIMITS}
+          isDisabled={!isBaked}
+          format={formatImpostorShare}
+          onChange={(impostorShare: number) => renderSettingsService.setRendererOverrides({ lod: { impostorShare } })}
         />
 
         {LOD_THRESHOLDS.map((threshold: ILodThreshold) => (

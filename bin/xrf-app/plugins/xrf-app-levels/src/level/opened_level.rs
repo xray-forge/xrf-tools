@@ -9,7 +9,7 @@ use xrf_level::LevelGeomSource;
 use xrf_ltx::{Ltx, LtxDialect};
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_vfs::{XrayInputRecord, XrayRoots, XraySearch};
-use xrf_visual::SectorOutline;
+use xrf_visual::{SectorOutline, TreeTypes};
 
 use crate::level::{LevelBundle, LevelConfigs, LevelSource, SelectedLevel};
 use crate::parts::{
@@ -42,6 +42,7 @@ impl OpenedLevel {
     let (bundle, outlines, parts): (LevelBundle, Vec<SectorOutline>, SessionParts) =
       Self::open(&source, &search, &configs)?;
     let engine: XrayEngineResolution = engine(&search, &roots);
+    let trees: TreeTypes = TreeTypes::of(&bundle.visuals);
 
     Ok(SessionDerived {
       value: SelectedLevel {
@@ -51,6 +52,7 @@ impl OpenedLevel {
         outlines,
         roots,
         source,
+        trees,
         visuals: bundle.visuals,
       },
       inputs,

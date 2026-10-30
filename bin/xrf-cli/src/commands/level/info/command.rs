@@ -3,6 +3,7 @@ use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_level::{LevelFile, LevelGeomFile, LevelVisualsChunk};
 use xrf_output::OutputOptions;
 use xrf_spawn::XRayByteOrder;
+use xrf_visual::TreeTypes;
 
 use super::level_visuals_report::LevelVisualsReport;
 use super::report::LevelInfoReport;
@@ -80,6 +81,16 @@ impl GenericCommand for InfoCommand {
           visuals.visuals.len(),
           visuals.count_drawable(),
           visuals.count_fastpath()
+        );
+
+        let trees: TreeTypes = TreeTypes::of(visuals);
+
+        xrf_output::info!(
+          output,
+          "Trees: {} of {} types, from {} parts",
+          trees.placements,
+          trees.types.len(),
+          trees.parts
         );
 
         for (index, visual) in visuals.visuals.iter().enumerate() {

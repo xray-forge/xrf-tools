@@ -16,6 +16,7 @@ pub(crate) struct SectorImpostorArrays {
   factors: Vec<f32>,
   corners: Vec<f32>,
   normals: Vec<f32>,
+  types: Vec<u32>,
 }
 
 impl SectorImpostorArrays {
@@ -30,16 +31,18 @@ impl SectorImpostorArrays {
     self.factors.len() as u32
   }
 
-  /// Appends one `MT_LOD` visual's impostor, its surface joining the run of the one before where it is the same.
+  /// Appends one `MT_LOD` visual's impostor of a tree of type `kind`, its surface joining the run of the one before
+  /// where it is the same.
   pub(crate) fn push(
     &mut self,
-    visual: &LevelVisual,
-    definition: &OgfLodDefinitionChunk,
+    (visual, definition): (&LevelVisual, &OgfLodDefinitionChunk),
+    kind: u32,
     surfaces: &SectorSurfaceTable,
   ) {
     let radius: f32 = visual.header.bounding_sphere.radius;
     let center: Vector3d = convert_vector(&visual.header.bounding_sphere.position);
 
+    self.types.push(kind);
     self.spheres.extend_from_slice(&[center.x, center.y, center.z, radius]);
     self.factors.push(OgfLodDefinitionChunk::get_lod_factor(
       &visual.header.bounding_box,
@@ -78,6 +81,7 @@ impl SectorImpostorArrays {
       groups: self.groups,
       normals: builder.push_f32_section(&self.normals),
       spheres: builder.push_f32_section(&self.spheres),
+      types: builder.push_u32_section(&self.types),
     })
   }
 

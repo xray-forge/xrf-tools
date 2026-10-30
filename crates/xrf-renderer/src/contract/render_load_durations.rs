@@ -28,7 +28,11 @@ pub struct RenderLoadDurations {
   #[serde(with = "xrf_utils::optional_duration_ms")]
   #[cfg_attr(feature = "typescript-bindings", specta(type = Option<u64>))]
   pub particles: Option<Duration>,
-  /// Everything resident, every texture settled last: the whole load.
+  /// Every tree type's baked impostor read or baked, or none to bake.
+  #[serde(with = "xrf_utils::optional_duration_ms")]
+  #[cfg_attr(feature = "typescript-bindings", specta(type = Option<u64>))]
+  pub impostors: Option<Duration>,
+  /// Everything resident, every texture settled and every impostor ready: the whole load.
   #[serde(with = "xrf_utils::optional_duration_ms")]
   #[cfg_attr(feature = "typescript-bindings", specta(type = Option<u64>))]
   pub ready: Option<Duration>,

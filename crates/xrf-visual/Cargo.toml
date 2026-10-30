@@ -25,6 +25,7 @@ xrf-spawn = { workspace = true }
 xrf-light-anim = { workspace = true }
 xrf-ltx = { workspace = true }
 xrf-particles = { workspace = true }
+xrf-utils = { workspace = true }
 
 [features]
 # Emits TypeScript mirrors of the serialized types. Nothing in a normal build turns this on.

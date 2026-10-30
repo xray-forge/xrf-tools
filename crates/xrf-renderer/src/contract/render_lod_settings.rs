@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
 
+use crate::contract::render_impostor_mode::RenderImpostorMode;
+
 /// What decides how much of a level's static geometry draws at a distance: the engine's screen area thresholds, each in
-/// pixels of a 90 degree lens before `r__geometry_lod` scales them.
+/// pixels of a 90 degree lens before `r__geometry_lod` scales them, and the impostors standing in for distant trees.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,6 +20,17 @@ pub struct RenderLodSettings {
   /// `r_ssaGLOD_start` and `r_ssaGLOD_end`: a progressive mesh is whole above the first, coarsest below the second.
   pub ssa_glod_start: f32,
   pub ssa_glod_end: f32,
+  /// Whose impostors stand in: the level's own, or baked from its tree types.
+  pub impostor_mode: RenderImpostorMode,
+  /// Texels a side of a baked tree type's atlas, for the types standing `impostor_share` of the level's trees, the
+  /// most stood first; the rest are baked at half the size each way.
+  pub impostor_size: u32,
+  pub impostor_share: f32,
+}
+
+impl RenderLodSettings {
+  /// The baked atlases' sizes on offer: Epic's far foliage's at the top, the default at the middle.
+  pub const IMPOSTOR_SIZES: [u32; 3] = [512, 1024, 2048];
 }
 
 impl Default for RenderLodSettings {
@@ -31,6 +44,9 @@ impl Default for RenderLodSettings {
       ssa_discard: 3.5,
       ssa_glod_start: 256.0,
       ssa_glod_end: 64.0,
+      impostor_mode: RenderImpostorMode::Engine,
+      impostor_size: 1024,
+      impostor_share: 0.9,
     }
   }
 }

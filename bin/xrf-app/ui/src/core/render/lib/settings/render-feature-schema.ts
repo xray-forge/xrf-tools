@@ -10,6 +10,7 @@ import {
   ERenderFogMode,
   ERenderFoliageMode,
   ERenderGlassMode,
+  ERenderImpostorMode,
   ERenderIndirectLightMode,
   ERenderLightFalloff,
   ERenderLightLevel,
@@ -240,6 +241,9 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
   },
   lod: {
     geometryLod: toNumber(0.1, 2),
+    impostorMode: toChoice(ERenderImpostorMode),
+    impostorShare: toNumber(0.5, 1),
+    impostorSize: toNumber(512, 2048, { isInteger: true }),
     isImpostors: FLAG,
     ssaA: toNumber(16, 96),
     ssaB: toNumber(16, 64),

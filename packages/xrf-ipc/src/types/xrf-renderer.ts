@@ -1077,6 +1077,20 @@ export type RenderImageCorrections = {
   grading: [number | null, number | null, number | null];
 };
 
+/** Which impostors stand in for a level's distant trees. */
+export enum ERenderImpostorMode {
+  /** The engines' own: each tree's impostor the level compiler baked, eight views around it. */
+  ENGINE = "engine",
+  /**
+   * Baked from each tree type's own meshes at the level's opening: a hemi-octahedral impostor, seen from any side and
+   * from above (Brucks's octahedral impostors, Epic's Impostor Baker).
+   */
+  BAKED = "baked",
+}
+
+/** Every `ERenderImpostorMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderImpostorMode = `${ERenderImpostorMode}`;
+
 /** Whether the light surfaces bounce onto each other is gathered from what the frame shows. */
 export enum ERenderIndirectLightMode {
   /** The engine's own: the hemisphere and the ambient alone stand for every bounce. */
@@ -1273,7 +1287,9 @@ export type RenderLoadDurations = {
   lights: number | null;
   /** The particle systems read. */
   particles: number | null;
-  /** Everything resident, every texture settled last: the whole load. */
+  /** Every tree type's baked impostor read or baked, or none to bake. */
+  impostors: number | null;
+  /** Everything resident, every texture settled and every impostor ready: the whole load. */
   ready: number | null;
 };
 
@@ -1303,9 +1319,13 @@ export type RenderLoadReport = {
   textures: number;
   /** Textures the level samples: its scene's, its lights' projectors and its particles'. */
   texturesTotal: number;
+  /** Tree types whose baked impostors are ready, read from the cache or baked, under baked impostors. */
+  impostors: number;
+  /** Tree types the level's sectors give, under baked impostors; nought under the engine's. */
+  impostorsTotal: number;
   /**
    * Whether everything is resident, so the level draws as it will: every sector, the spawn, grass, lights and
-   * particles read, and every texture settled.
+   * particles read, every texture settled, and every impostor ready.
    */
   isReady: boolean;
   /** How long each part took to finish, timed from when the level began opening. */
@@ -1314,7 +1334,7 @@ export type RenderLoadReport = {
 
 /**
  * What decides how much of a level's static geometry draws at a distance: the engine's screen area thresholds, each in
- * pixels of a 90 degree lens before `r__geometry_lod` scales them.
+ * pixels of a 90 degree lens before `r__geometry_lod` scales them, and the impostors standing in for distant trees.
  */
 export type RenderLodSettings = {
   /** Whether distant trees are drawn as their impostors. */
@@ -1329,6 +1349,14 @@ export type RenderLodSettings = {
   /** `r_ssaGLOD_start` and `r_ssaGLOD_end`: a progressive mesh is whole above the first, coarsest below the second. */
   ssaGlodStart: number | null;
   ssaGlodEnd: number | null;
+  /** Whose impostors stand in: the level's own, or baked from its tree types. */
+  impostorMode: RenderImpostorMode;
+  /**
+   * Texels a side of a baked tree type's atlas, for the types standing `impostor_share` of the level's trees, the
+   * most stood first; the rest are baked at half the size each way.
+   */
+  impostorSize: number;
+  impostorShare: number | null;
 };
 
 /** A level map asked of a viewport: an area in engine space seen straight down, `width` by `height` pixels. */
