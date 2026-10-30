@@ -8441,7 +8441,6 @@ version = "0.1.0"
 dependencies = [
  "ash",
  "bytemuck",
- "crc32fast",
  "ddsfile",
  "glam",
  "image",
@@ -8721,7 +8720,6 @@ dependencies = [
  "xrf-skeleton",
  "xrf-spawn",
  "xrf-test-utils",
- "xrf-utils",
  "xrf-vfs",
 ]
 

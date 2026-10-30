@@ -64,7 +64,6 @@ impl RenderThread {
     for (scene_id, _) in firsts {
       if let Some(scene) = self.scenes.get_mut(scene_id) {
         scene.lights.abandon_shadows();
-        scene.impostors.abandon_frame();
       }
     }
 

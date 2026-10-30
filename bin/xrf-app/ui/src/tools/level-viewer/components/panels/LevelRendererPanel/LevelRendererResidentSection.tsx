@@ -59,9 +59,8 @@ interface ILevelRendererResidentSectionProps extends BaseComponentProps {
 }
 
 /**
- * What the level holds now, its sectors, textures and, under baked impostors, its trees' impostors, and what the GPU
- * holds: the allocator's for everything the renderer made and its peak, and the GPU's own memory as its driver tells
- * it, all of it and what this process uses.
+ * What the level holds now, its sectors and textures, and what the GPU holds: the allocator's for everything the
+ * renderer made and its peak, and the GPU's own memory as its driver tells it, all of it and what this process uses.
  */
 export function LevelRendererResidentSection({
   "data-testid": dataTestId = "level-renderer-resident-section",
@@ -80,12 +79,6 @@ export function LevelRendererResidentSection({
         label={"Textures"}
         value={`${formatCount(load?.textures ?? 0)} of ${formatCount(load?.texturesTotal ?? 0)}`}
       />
-      {load?.impostorsTotal ? (
-        <EditorPanelProperty
-          label={"Tree impostors"}
-          value={`${formatCount(load.impostors)} of ${formatCount(load.impostorsTotal)}`}
-        />
-      ) : null}
       <EditorPanelProperty label={"GPU memory"} value={formatAllocated(memory)} />
       <EditorPanelProperty label={"GPU memory peak"} value={formatPeak(memory)} />
       <EditorPanelProperty label={"Video memory"} value={formatVideoMemory(memory)} />

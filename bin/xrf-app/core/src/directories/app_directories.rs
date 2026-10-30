@@ -20,7 +20,7 @@ impl AppDirectories {
   /// Directory within the application's own data that caches rebuilt from nothing are kept in.
   pub const CACHE_DIRECTORY: &'static str = "cache";
 
-  /// The cache the renderer keeps what it rebuilds in: its driver's compiled pipelines and its baked impostors.
+  /// The cache the renderer keeps what it rebuilds in: its driver's compiled pipelines.
   pub const RENDERER_CACHE: &'static str = "renderer";
 
   /// Directory within the application's own data the logs are kept in.

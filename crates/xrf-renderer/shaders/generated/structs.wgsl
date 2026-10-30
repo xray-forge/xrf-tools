@@ -287,11 +287,6 @@ struct Surroundings {
   face: vec4<f32>,
 }
 
-struct ImpostorEncode {
-  size: vec4<u32>,
-  starts: vec4<u32>,
-}
-
 struct ParticleVertex {
   position: vec3<f32>,
   color: u32,
@@ -639,7 +634,6 @@ struct Impostor {
   normals: array<vec4<f32>, 8>,
   factor: f32,
   surface: u32,
-  kind: u32,
 }
 
 struct TerrainSlots {

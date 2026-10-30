@@ -1,5 +1,4 @@
 import { useInjection } from "@wirestate/react";
-import { ERenderImpostorMode, RenderImpostorMode } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { LayersIcon } from "@xrf/ui/icons/layers";
@@ -15,18 +14,7 @@ import {
 } from "@/core/level/lib/lod/level-lod-options";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import {
-  explainRenderImpostorMode,
-  formatImpostorShare,
-  RENDER_IMPOSTOR_MODE_OPTIONS,
-  RENDER_IMPOSTOR_QUALITY_OPTIONS,
-  RENDER_IMPOSTOR_SHARE_LIMITS,
-  toRenderImpostorQuality,
-  TRenderImpostorQuality,
-} from "@/core/render/lib/features/render-impostor-choices";
-import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 /**
  * What is spared drawing: static draws the depth hides, opaque pixels shaded more than once, and distant trees drawn as
@@ -38,7 +26,6 @@ export function LevelCullingAction({
   className,
 }: BaseComponentProps): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);
-  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
   const { settings } = useLevelRenderFeatures();
 
   const options: ILevelViewOptions = viewService.options;
@@ -51,7 +38,6 @@ export function LevelCullingAction({
   const isOccluding: boolean = options.isOcclusionCulled && isOcclusionAvailable;
   const isPrepassed: boolean = options.isDepthPrepassed && isPrepassAvailable;
   const isImpostors: boolean = options.isImpostors && isImpostorsAvailable;
-  const isBaked: boolean = isImpostorsAvailable && settings.lod.impostorMode === ERenderImpostorMode.BAKED;
 
   return (
     <EditorPopoverGroup
@@ -109,38 +95,6 @@ export function LevelCullingAction({
         <Button size={"small"} onClick={() => viewService.setLod(DEFAULT_LEVEL_LOD_OPTIONS)}>
           Reset to the game&apos;s
         </Button>
-
-        {/* Whose impostors, at what quality: the level's for every view, as in Settings. */}
-        <RenderValueChoice
-          label={"Kind"}
-          options={RENDER_IMPOSTOR_MODE_OPTIONS}
-          value={settings.lod.impostorMode}
-          isDisabled={!isImpostorsAvailable}
-          onChange={(impostorMode: RenderImpostorMode) =>
-            renderSettingsService.setRendererOverrides({ lod: { impostorMode } })
-          }
-        />
-
-        <p className={"text-xs text-text-secondary"}>{explainRenderImpostorMode(settings.lod.impostorMode)}</p>
-
-        <RenderValueChoice
-          label={"Quality"}
-          options={RENDER_IMPOSTOR_QUALITY_OPTIONS}
-          value={toRenderImpostorQuality(settings.lod.impostorSize)}
-          isDisabled={!isBaked}
-          onChange={(quality: TRenderImpostorQuality) =>
-            renderSettingsService.setRendererOverrides({ lod: { impostorSize: Number(quality) } })
-          }
-        />
-
-        <RenderValueSlider
-          label={"Full quality for"}
-          value={settings.lod.impostorShare}
-          {...RENDER_IMPOSTOR_SHARE_LIMITS}
-          isDisabled={!isBaked}
-          format={formatImpostorShare}
-          onChange={(impostorShare: number) => renderSettingsService.setRendererOverrides({ lod: { impostorShare } })}
-        />
       </EditorPopoverGroupSection>
     </EditorPopoverGroup>
   );

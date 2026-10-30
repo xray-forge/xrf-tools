@@ -8,7 +8,7 @@ use xrf_app_core::directories::AppDirectories;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum AppStorageKind {
-  /// What the renderer rebuilds when it is gone: the driver's compiled pipelines, the baked impostors.
+  /// What the renderer rebuilds when it is gone: the driver's compiled pipelines.
   RendererCache,
   /// Every other cache rebuilt from nothing.
   OtherCaches,
@@ -50,7 +50,7 @@ impl AppStorageKind {
   }
 
   /// The folder within the application's data directory a kind may be cleared by removing, where it may be: only the
-  /// renderer's cache, which it rebuilds as it starts and as levels open.
+  /// renderer's cache, which it rebuilds as it starts.
   pub fn get_clearable_folder(self) -> Option<PathBuf> {
     match self {
       Self::RendererCache => Some(

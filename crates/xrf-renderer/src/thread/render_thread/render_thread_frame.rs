@@ -189,7 +189,7 @@ impl RenderThread {
           &gpu.context.queue,
           &gpu.view_layout,
           Arc::clone(&frame.source),
-          (&self.workers, self.store.clone()),
+          &self.workers,
           now,
         )
       });

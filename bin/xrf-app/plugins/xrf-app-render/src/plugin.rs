@@ -11,8 +11,8 @@ use xrf_renderer::{RenderQueue, RenderWorkers};
 use crate::bundle::{DiskCacheStore, PackagedBundle};
 use crate::{RenderViewports, Renderer, TextureReloads, ViewportShows, WorldState};
 
-/// The `render` plugin: the native renderer (`Renderer`, its loaders on the application's pool, its bundle, and the
-/// driver's pipeline cache and the baked impostors on disk) and the units its commands and every domain's show take what they touch from: the
+/// The `render` plugin: the native renderer (`Renderer`, its loaders on the application's pool, its bundle and the
+/// driver's pipeline cache on disk) and the units its commands and every domain's show take what they touch from: the
 /// world it draws (`WorldState`), the shows asked of each viewport (`ViewportShows`), the viewports in each window
 /// (`RenderViewports`) and the drawn textures kept current with their files (`TextureReloads`). It knows no domain:
 /// each shows its own documents through these units. Its hooks detach a window's viewports as a page starts loading
@@ -27,7 +27,7 @@ impl RenderPlugin {
         // The renderer's loaders run on the application's one pool, beside every other job.
         let workers: RenderWorkers = RenderWorkers::new(application.state::<ExecutionState>().get_pool());
         let bundle: PackagedBundle = PackagedBundle::locate(application.path().resource_dir().ok().as_deref());
-        // The driver's compiled pipelines, kept between runs where the backend keeps them, and the baked impostors.
+        // The driver's compiled pipelines, kept between runs where the backend keeps them.
         let store: Option<DiskCacheStore> = application
           .state::<AppDirectories>()
           .get_cache_directory(AppDirectories::RENDERER_CACHE)

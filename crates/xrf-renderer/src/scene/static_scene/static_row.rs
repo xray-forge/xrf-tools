@@ -33,9 +33,4 @@ impl StaticRow {
 
     (band & 0xF) | ((bands & 0xF) << 4) | (windows << 8)
   }
-
-  /// Its progressive band, nought the whole detail.
-  pub const fn get_band(&self) -> u32 {
-    self.band & 0xF
-  }
 }
