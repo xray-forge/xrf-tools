@@ -12,7 +12,7 @@ pub struct LogFile {
 
 impl LogFile {
   /// The directory the logs keep within the application's own data.
-  pub const DIRECTORY: &'static str = "logs";
+  pub const DIRECTORY: &'static str = AppDirectories::LOGS_DIRECTORY;
 
   /// The log file's name, and the name the last run's is kept under.
   pub const NAME: &'static str = "xrf-app.log";

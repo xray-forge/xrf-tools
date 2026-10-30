@@ -20,6 +20,12 @@ impl AppDirectories {
   /// Directory within the application's own data that caches rebuilt from nothing are kept in.
   pub const CACHE_DIRECTORY: &'static str = "cache";
 
+  /// The cache the renderer keeps what it rebuilds in: its driver's compiled pipelines and its baked impostors.
+  pub const RENDERER_CACHE: &'static str = "renderer";
+
+  /// Directory within the application's own data the logs are kept in.
+  pub const LOGS_DIRECTORY: &'static str = "logs";
+
   /// File within the application's own data the backend keeps its preferences in.
   pub const PREFERENCES_FILE: &'static str = "preferences.json";
 

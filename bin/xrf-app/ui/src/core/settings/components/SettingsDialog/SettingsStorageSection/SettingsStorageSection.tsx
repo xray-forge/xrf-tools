@@ -12,6 +12,7 @@ import { ReactElement, useCallback, useState } from "react";
 import { SettingsService } from "@/core/settings/services/settings";
 import { useLocalStorageRevision } from "@/core/storage";
 
+import { SettingsAppDataStorage } from "./SettingsAppDataStorage";
 import { SettingsStorageKeys } from "./SettingsStorageKeys";
 import {
   clearStorageGroup,
@@ -31,7 +32,7 @@ function everyEntry(usage: IStorageUsage): Array<IStorageEntry> {
 }
 
 /**
- * What the application has remembered, and what may be forgotten.
+ * What the application keeps on disk and has remembered in the webview, and what may be forgotten.
  */
 export function SettingsStorageSection(): ReactElement {
   const settingsService: SettingsService = useInjection(SettingsService);
@@ -53,6 +54,8 @@ export function SettingsStorageSection(): ReactElement {
 
   return (
     <div className={"flex flex-col gap-6"}>
+      <SettingsAppDataStorage />
+
       <DetailSection
         title={"Local storage"}
         description={

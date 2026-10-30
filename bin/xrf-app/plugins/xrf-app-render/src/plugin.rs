@@ -11,8 +11,8 @@ use xrf_renderer::{RenderQueue, RenderWorkers};
 use crate::bundle::{DiskCacheStore, PackagedBundle};
 use crate::{RenderViewports, Renderer, TextureReloads, ViewportShows, WorldState};
 
-/// The `render` plugin: the native renderer (`Renderer`, its loaders on the application's pool, its bundle and the
-/// driver's pipeline cache on disk) and the units its commands and every domain's show take what they touch from: the
+/// The `render` plugin: the native renderer (`Renderer`, its loaders on the application's pool, its bundle, and the
+/// driver's pipeline cache and the baked impostors on disk) and the units its commands and every domain's show take what they touch from: the
 /// world it draws (`WorldState`), the shows asked of each viewport (`ViewportShows`), the viewports in each window
 /// (`RenderViewports`) and the drawn textures kept current with their files (`TextureReloads`). It knows no domain:
 /// each shows its own documents through these units. Its hooks detach a window's viewports as a page starts loading
@@ -20,9 +20,6 @@ use crate::{RenderViewports, Renderer, TextureReloads, ViewportShows, WorldState
 pub struct RenderPlugin;
 
 impl RenderPlugin {
-  /// The cache, among the application's own, the driver's compiled pipelines are kept in between runs.
-  const PIPELINE_CACHE: &'static str = "renderer";
-
   /// The plugin, its state managed as it sets up.
   pub fn init<R: Runtime>() -> TauriPlugin<R> {
     crate::ipc::render::builder()
@@ -30,10 +27,10 @@ impl RenderPlugin {
         // The renderer's loaders run on the application's one pool, beside every other job.
         let workers: RenderWorkers = RenderWorkers::new(application.state::<ExecutionState>().get_pool());
         let bundle: PackagedBundle = PackagedBundle::locate(application.path().resource_dir().ok().as_deref());
-        // The driver's compiled pipelines, kept between runs where the backend keeps them.
+        // The driver's compiled pipelines, kept between runs where the backend keeps them, and the baked impostors.
         let store: Option<DiskCacheStore> = application
           .state::<AppDirectories>()
-          .get_cache_directory(Self::PIPELINE_CACHE)
+          .get_cache_directory(AppDirectories::RENDERER_CACHE)
           .map(DiskCacheStore::new);
 
         let world: WorldState = WorldState::new(workers.clone());

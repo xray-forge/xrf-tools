@@ -3,8 +3,8 @@ use std::path::PathBuf;
 
 use xrf_test_utils::GeneratedResources;
 
-use crate::paths::PathDescription;
 use crate::paths::description::PathKind;
+use crate::paths::{AppStorageKind, AppStorageUsage, PathDescription};
 
 /// A directory of this test's own among the generated test resources, emptied first so a re-run counts what this run
 /// created.
@@ -18,6 +18,52 @@ fn root(name: &str) -> PathBuf {
   fs::create_dir_all(&path).expect("a test root");
 
   path
+}
+
+/// Every file of the application's data directory is measured into its kind, by where it lies; only the renderer's
+/// cache may be cleared.
+#[test]
+fn the_application_storage_is_measured_by_kind() {
+  let root: PathBuf = root("storage");
+
+  for (path, bytes) in [
+    ("cache/renderer/impostors/0123-1008-v1.bin", 100),
+    ("cache/renderer/impostors/4567-504-v1.bin", 50),
+    ("cache/renderer/vulkan_pipelines", 20),
+    ("cache/thumbnails/a.png", 7),
+    ("logs/xrf-app.log", 3),
+    ("preferences.json", 2),
+    ("notes.txt", 1),
+  ] {
+    let file: PathBuf = root.join(path);
+
+    fs::create_dir_all(file.parent().unwrap()).expect("a folder");
+    fs::write(&file, vec![0u8; bytes]).expect("a file");
+  }
+
+  let usage: AppStorageUsage = AppStorageUsage::measure(&root);
+  let measured: Vec<(AppStorageKind, u64, u64)> = usage
+    .areas
+    .iter()
+    .map(|area| (area.kind, area.bytes, area.files))
+    .collect();
+
+  assert_eq!(
+    measured,
+    [
+      (AppStorageKind::RendererCache, 170, 3),
+      (AppStorageKind::OtherCaches, 7, 1),
+      (AppStorageKind::Logs, 3, 1),
+      (AppStorageKind::Preferences, 2, 1),
+      (AppStorageKind::Other, 1, 1),
+    ]
+  );
+  assert_eq!(usage.bytes, 183);
+  assert!(
+    AppStorageKind::ALL
+      .iter()
+      .all(|kind| kind.get_clearable_folder().is_some() == (*kind == AppStorageKind::RendererCache))
+  );
 }
 
 #[test]
