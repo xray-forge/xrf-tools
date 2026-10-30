@@ -1,28 +1,108 @@
+use glam::Vec3;
 use xrf_renderer::{RenderHelperObject, RenderHelperShape, RenderLevelHelpers};
 
-use crate::objects::{LevelObject, LevelObjectId, LevelObjectKindEntry, LevelObjectShape, LevelObjectsDescription};
+use crate::objects::{LevelObject, LevelObjectKind, LevelObjectKindEntry, LevelObjectShape, LevelObjectsDescription};
+
+/// How the level objects with no shape of their own are drawn as helpers.
+struct HelperLook;
+
+impl HelperLook {
+  /// Metres a patrol point's and a graph point's marker spans.
+  const PATROL_POINT_SIZE: f32 = 0.35;
+  const GRAPH_POINT_SIZE: f32 = 0.5;
+
+  /// An arrowhead's barbs: metres at most, a share of the link at most, and their angle off the link.
+  const ARROW_LENGTH: f32 = 0.6;
+  const ARROW_SHARE: f32 = 0.25;
+  const ARROW_ANGLE: f32 = 0.45;
+
+  /// A link from `from` to `to` as its line and an arrowhead's two barbs at `to`, turned about the vertical; none for
+  /// a link of no length.
+  fn to_link(from: Vec3, to: Vec3) -> Vec<[[f32; 3]; 2]> {
+    let span: Vec3 = to - from;
+    let length: f32 = span.length();
+
+    if length <= f32::EPSILON {
+      return Vec::new();
+    }
+
+    let back: Vec3 = -span / length * (length * Self::ARROW_SHARE).min(Self::ARROW_LENGTH);
+    let barb = |angle: f32| -> [[f32; 3]; 2] {
+      let (sin, cos): (f32, f32) = angle.sin_cos();
+
+      [
+        to.to_array(),
+        (to + Vec3::new(back.x * cos - back.z * sin, back.y, back.x * sin + back.z * cos)).to_array(),
+      ]
+    };
+
+    vec![
+      [from.to_array(), to.to_array()],
+      barb(Self::ARROW_ANGLE),
+      barb(-Self::ARROW_ANGLE),
+    ]
+  }
+
+  /// What `object` is drawn as, in its own space; none for an object drawing no helper.
+  fn to_shapes(object: &LevelObject) -> Vec<RenderHelperShape> {
+    if let Some(volume) = &object.volume {
+      return volume.shapes.iter().map(RenderHelperShape::from).collect();
+    }
+
+    if let Some(patrol) = &object.patrol {
+      let origin: Vec3 = Vec3::new(object.transform.c.x, object.transform.c.y, object.transform.c.z);
+      let point = |index: u32| -> Option<Vec3> {
+        patrol
+          .points
+          .get(index as usize)
+          .map(|it| Vec3::new(it.x, it.y, it.z) - origin)
+      };
+      let ends: Vec<[[f32; 3]; 2]> = patrol
+        .links
+        .iter()
+        .filter_map(|link| Some(Self::to_link(point(link.from)?, point(link.to)?)))
+        .flatten()
+        .collect();
+
+      return vec![RenderHelperShape::Segments { ends }];
+    }
+
+    match object.kind {
+      LevelObjectKind::Patrols => vec![RenderHelperShape::Marker {
+        center: [0.0; 3],
+        size: Self::PATROL_POINT_SIZE,
+      }],
+      LevelObjectKind::GraphPoints => vec![RenderHelperShape::Marker {
+        center: [0.0; 3],
+        size: Self::GRAPH_POINT_SIZE,
+      }],
+      _ => Vec::new(),
+    }
+  }
+}
 
 impl From<&LevelObjectsDescription> for RenderLevelHelpers {
-  /// The volumes among the level's objects as the renderer draws their helpers: each by its spawn index, switched by
-  /// its kind's place in the kind table, in its kind's colour.
-  // todo: Hand over the point kinds as icons once the renderer draws them.
+  /// The level objects the renderer draws helpers for, each by its place among the listing's objects, switched by its
+  /// kind's place in the kind table, in its kind's colour: the volumes by their shapes, a patrol path by its links and
+  /// each of its points, and the graph points, by markers.
+  // todo: Hand over the characters, the smart covers and the placements as icons once the renderer draws them.
   fn from(description: &LevelObjectsDescription) -> Self {
     Self {
       objects: description
         .objects
         .iter()
-        .filter_map(|object: &LevelObject| {
-          let volume = object.volume.as_ref()?;
-          let LevelObjectId::Spawn { index } = object.id;
+        .enumerate()
+        .filter_map(|(index, object): (usize, &LevelObject)| {
+          let shapes: Vec<RenderHelperShape> = HelperLook::to_shapes(object);
           let entry: &LevelObjectKindEntry = object.kind.get_entry();
 
-          Some(RenderHelperObject {
-            id: index,
+          (!shapes.is_empty()).then(|| RenderHelperObject {
+            id: index as u32,
             kind: object.kind as u32,
             color: entry.get_rgb(),
             draw_distance: entry.draw_distance,
             transform: object.transform.to_matrix(),
-            shapes: volume.shapes.iter().map(RenderHelperShape::from).collect(),
+            shapes,
           })
         })
         .collect(),

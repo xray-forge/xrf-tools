@@ -1,11 +1,13 @@
 import {
   ELevelObjectGroup,
+  ELevelObjectId,
   LEVEL_OBJECT_KINDS,
   LevelObjectGroup,
   LevelObjectId,
   LevelObjectKind,
   LevelObjectKindEntry,
 } from "@xrf/ipc/types/xrf-app-levels";
+import { assertExhaustive, Nullable } from "@xrf/types";
 
 /** One family of kinds as the Outliner and the Show popover head it. */
 export interface ILevelObjectGroupEntry {
@@ -19,6 +21,8 @@ export const LEVEL_OBJECT_GROUPS: ReadonlyArray<ILevelObjectGroupEntry> = [
   { group: ELevelObjectGroup.CHARACTERS, label: "Characters" },
   { group: ELevelObjectGroup.VOLUMES, label: "Logic volumes" },
   { group: ELevelObjectGroup.COVERS, label: "Smart covers" },
+  { group: ELevelObjectGroup.PATHS, label: "Paths" },
+  { group: ELevelObjectGroup.NAVIGATION, label: "Navigation" },
 ];
 
 const KINDS: ReadonlyMap<LevelObjectKind, LevelObjectKindEntry> = new Map(
@@ -46,5 +50,25 @@ export function listLevelObjectGroupKinds(group: LevelObjectGroup): Array<LevelO
  * @returns It as one string, which keys the object in sets, maps and tree rows.
  */
 export function toLevelObjectKey(id: LevelObjectId): string {
-  return `${id.source}:${id.index}`;
+  switch (id.source) {
+    case ELevelObjectId.SPAWN:
+      return `spawn:${id.index}`;
+    case ELevelObjectId.PATROL:
+      return `patrol:${id.path}`;
+    case ELevelObjectId.PATROL_POINT:
+      return `patrolPoint:${id.path}:${id.point}`;
+    case ELevelObjectId.GRAPH_POINT:
+      return `graphPoint:${id.vertex}`;
+    default:
+      return assertExhaustive(id);
+  }
+}
+
+/**
+ * @param id - What names a level object.
+ * @returns Its index among the level's spawned objects, as the renderer and the world name drawn objects; null for an
+ *   object the spawn does not place.
+ */
+export function getLevelSpawnIndex(id: LevelObjectId): Nullable<number> {
+  return id.source === ELevelObjectId.SPAWN ? id.index : null;
 }

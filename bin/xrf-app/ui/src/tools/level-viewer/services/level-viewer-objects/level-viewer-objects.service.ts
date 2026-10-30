@@ -8,7 +8,7 @@ import { Nullable } from "@xrf/types";
 import { KeybindCommand } from "@/core/commands";
 import { FRAME_LEVEL_SELECTION_KEYBIND_COMMAND, ISOLATE_LEVEL_SELECTION_KEYBIND_COMMAND } from "@/core/level/commands";
 import { toLevelFramedGoTo } from "@/core/level/lib/camera/level-camera-frame";
-import { getLevelObjectKind } from "@/core/level/lib/objects/level-object-kinds";
+import { getLevelObjectKind, getLevelSpawnIndex } from "@/core/level/lib/objects/level-object-kinds";
 import {
   ILevelObjectSphere,
   toLevelObjectSphere,
@@ -68,7 +68,7 @@ export class LevelViewerObjectsService {
 
   /**
    * Stands the camera framing objects: a drawn one by the sphere its model spans, as the renderer holds it once drawn,
-   * a volume by its shapes, anything else by a metre about its place.
+   * a volume by its shapes, a patrol path by its points, anything else by a metre about its place.
    *
    * @param objects - The objects.
    */
@@ -78,9 +78,11 @@ export class LevelViewerObjectsService {
     const spheres: Array<ILevelObjectSphere> = [];
 
     for (const object of objects) {
-      const drawn: Nullable<[number, number, number, number]> = getLevelObjectKind(object.kind).isDrawn
-        ? yield* call(this.renderService.locateSpawnObject(object.id.index))
-        : null;
+      const index: Nullable<number> = getLevelSpawnIndex(object.id);
+      const drawn: Nullable<[number, number, number, number]> =
+        index !== null && getLevelObjectKind(object.kind).isDrawn
+          ? yield* call(this.renderService.locateSpawnObject(index))
+          : null;
 
       spheres.push(toLevelObjectSphere(object, drawn));
     }

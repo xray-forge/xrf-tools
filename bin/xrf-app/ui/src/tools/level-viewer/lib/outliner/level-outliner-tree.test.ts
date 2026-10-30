@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { ELevelObjectId, ELevelObjectKind, LevelObject, LevelObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { ITreeNode } from "@xrf/ui/tree";
 
-import { mockLevelObject, mockLevelVolumeObject } from "@/core/level/fixtures/level.mocks";
+import { mockLevelObject, mockLevelPatrol, mockLevelVolumeObject } from "@/core/level/fixtures/level.mocks";
 import {
   ILevelOutlinerFilter,
   listLevelOutlinerGroupIds,
@@ -89,6 +89,32 @@ describe("toLevelOutlinerTree", () => {
       "crate_10",
       "medkit",
       "restrictor_5",
+    ]);
+  });
+
+  // A path counts once, its points beneath it in their order; a filter matching a point keeps its path.
+  it("nests a patrol path's points beneath it, and keeps the path of a point a filter matches", () => {
+    const description: LevelObjectsDescription = { objects: mockLevelPatrol(0, "walk", 3), visuals: [] };
+    const [paths] = toLevelOutlinerTree(description, filter());
+    const path: ITreeNode<TLevelOutlinerRow> = paths?.children?.[0]?.children?.[0] as ITreeNode<TLevelOutlinerRow>;
+
+    expect(paths?.label).toBe("Paths");
+    expect(paths?.payload).toMatchObject({ count: 1 });
+    expect(path.label).toBe("walk");
+    expect(toLabels(path.children)).toEqual(["wp00", "wp01", "wp02"]);
+
+    const [kept] = toLevelOutlinerTree(description, filter("wp01"));
+
+    expect(toLabels(kept?.children?.[0]?.children?.[0]?.children)).toEqual(["wp01"]);
+    expect(listLevelOutlinerGroupIds(toLevelOutlinerTree(description, filter("wp01")))).toEqual([
+      "group:paths",
+      "kind:patrols",
+      "object:patrol:0",
+    ]);
+    expect(listLevelOutlinerParentIds(description.objects[2] as LevelObject)).toEqual([
+      "group:paths",
+      "kind:patrols",
+      "object:patrol:0",
     ]);
   });
 

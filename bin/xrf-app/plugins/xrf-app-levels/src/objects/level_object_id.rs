@@ -8,4 +8,10 @@ use serde::{Deserialize, Serialize};
 pub enum LevelObjectId {
   /// An object of the level's spawn, by its index among them.
   Spawn { index: u32 },
+  /// A patrol path starting on the level, by its index among them in the spawn's order.
+  Patrol { path: u32 },
+  /// One point of a patrol path, by its index along the path.
+  PatrolPoint { path: u32, point: u32 },
+  /// A game graph vertex on the level, by its id.
+  GraphPoint { vertex: u16 },
 }

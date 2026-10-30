@@ -45,16 +45,17 @@ impl LevelAnnotationKind {
     }
   }
 
-  /// Its one colour: a volume's its kind's, patrols yellow and graph points pale grey.
-  // todo: Take the patrols' and graph points' colours from the kind table once the model lists them.
+  /// Its one colour, its kind's in the kind table.
   pub fn get_colour(self) -> &'static str {
     match self {
-      Self::SmartTerrains => LevelObjectKind::SmartTerrains.get_entry().color,
-      Self::Restrictors => LevelObjectKind::Restrictors.get_entry().color,
-      Self::Anomalies => LevelObjectKind::Anomalies.get_entry().color,
-      Self::LevelChangers => LevelObjectKind::LevelChangers.get_entry().color,
-      Self::GraphPoints => "#e0e0e0",
-      Self::Patrols => "#ffeb3b",
+      Self::SmartTerrains => LevelObjectKind::SmartTerrains,
+      Self::Restrictors => LevelObjectKind::Restrictors,
+      Self::Anomalies => LevelObjectKind::Anomalies,
+      Self::LevelChangers => LevelObjectKind::LevelChangers,
+      Self::GraphPoints => LevelObjectKind::GraphPoints,
+      Self::Patrols => LevelObjectKind::Patrols,
     }
+    .get_entry()
+    .color
   }
 }

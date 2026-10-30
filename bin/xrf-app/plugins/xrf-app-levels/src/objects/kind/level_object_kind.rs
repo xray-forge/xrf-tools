@@ -28,6 +28,10 @@ pub enum LevelObjectKind {
   /// Ladders.
   Climbables,
   SmartCovers,
+  /// Patrol paths, and the points along them.
+  Patrols,
+  /// The game graph's vertices on the level.
+  GraphPoints,
 }
 
 impl LevelObjectKind {
@@ -56,7 +60,7 @@ impl LevelObjectKind {
       AlifeObjectInherited::SeLevelChanger(_) => Some(Self::LevelChangers),
       AlifeObjectInherited::CseAlifeObjectClimable(_) => Some(Self::Climbables),
       AlifeObjectInherited::SeSmartCover(_) => Some(Self::SmartCovers),
-      // todo: List graph points among the navigation kinds, read from the game graph rather than the spawn.
+      // The game graph lists the vertices a graph point was compiled into, which the level holds instead.
       AlifeObjectInherited::CseAlifeGraphPoint(_) => None,
       // The drawn classes reach here only where their category leaves them out: a lamp spawned on R1 alone.
       AlifeObjectInherited::CseAlifeObjectBreakable(_)

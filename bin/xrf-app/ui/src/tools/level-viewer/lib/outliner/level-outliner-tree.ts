@@ -75,31 +75,50 @@ export function listLevelOutlinerParentIds(object: LevelObject): Array<string> {
     ) ?? null;
   const ids: Array<string> = group ? [`group:${group.group}`, toLevelOutlinerKindId(object.kind)] : [];
 
+  if (object.parent) {
+    return [...ids, `object:${toLevelObjectKey(object.parent)}`];
+  }
+
   return object.spawn && group?.group === ELevelObjectGroup.SPAWNED
     ? [...ids, toLevelOutlinerSectionId(object.kind, object.spawn.section)]
     : ids;
 }
 
 /**
- * The level's objects as a tree, `Group -> kind -> object`, a spawned kind's objects by section between, each group
- * counting what it holds, only the objects a filter keeps, and a group left out where it holds none.
+ * The level's objects as a tree, `Group -> kind -> object`, a spawned kind's objects by section between and an
+ * object's parts, a patrol path's points, beneath it; each group counting the objects it holds, only the objects a
+ * filter keeps with the parent of a part it keeps, and a group left out where it holds none.
  *
  * @param description - The objects, and the visuals they are drawn as.
  * @param filter - What to keep.
- * @returns The groups and kinds in the kind table's order, sections and objects by name.
+ * @returns The groups and kinds in the kind table's order, sections and objects by name, parts in their parent's order.
  */
 export function toLevelOutlinerTree(
   description: LevelObjectsDescription,
   filter: ILevelOutlinerFilter
 ): Array<ITreeNode<TLevelOutlinerRow>> {
   const needle: string = filter.text.trim().toLowerCase();
-  const matched: Array<LevelObject> = description.objects.filter(
-    (object: LevelObject) =>
+
+  function isKept(object: LevelObject): boolean {
+    return (
       (!filter.kinds.size || filter.kinds.has(object.kind)) &&
       (!needle ||
         [object.name, object.spawn?.section ?? "", toVisual(description, object)].some((text: string) =>
           text.toLowerCase().includes(needle)
         ))
+    );
+  }
+
+  const keys: Set<string> = new Set(
+    description.objects
+      .filter(isKept)
+      .flatMap((object: LevelObject) => [
+        toLevelObjectKey(object.id),
+        ...(object.parent ? [toLevelObjectKey(object.parent)] : []),
+      ])
+  );
+  const matched: Array<LevelObject> = description.objects.filter((object: LevelObject) =>
+    keys.has(toLevelObjectKey(object.id))
   );
 
   return LEVEL_OBJECT_GROUPS.flatMap((group: ILevelObjectGroupEntry): Array<ITreeNode<TLevelOutlinerRow>> => {
@@ -142,22 +161,24 @@ export function toLevelOutlinerTree(
 
 /**
  * @param nodes - An Outliner tree.
- * @returns Every group's, kind's and section's id, which a filter opens so what it matched shows.
+ * @returns Every row holding others' id - a group's, kind's, section's and an object's with parts - which a filter opens
+ *   so what it matched shows.
  */
 export function listLevelOutlinerGroupIds(nodes: ReadonlyArray<ITreeNode<TLevelOutlinerRow>>): Array<string> {
   return nodes.flatMap((node: ITreeNode<TLevelOutlinerRow>): Array<string> =>
-    node.payload?.kind === "object" ? [] : [node.id, ...listLevelOutlinerGroupIds(node.children ?? [])]
+    node.children?.length ? [node.id, ...listLevelOutlinerGroupIds(node.children)] : []
   );
 }
 
 /**
  * @param nodes - An Outliner tree.
- * @returns Its objects in the order the tree lists them, which a range of rows is chosen by.
+ * @returns Its objects in the order the tree lists them, parts after their parent, which a range of rows is chosen by.
  */
 export function listLevelOutlinerObjects(nodes: ReadonlyArray<ITreeNode<TLevelOutlinerRow>>): Array<LevelObject> {
-  return nodes.flatMap((node: ITreeNode<TLevelOutlinerRow>): Array<LevelObject> =>
-    node.payload?.kind === "object" ? [node.payload.object] : listLevelOutlinerObjects(node.children ?? [])
-  );
+  return nodes.flatMap((node: ITreeNode<TLevelOutlinerRow>): Array<LevelObject> => [
+    ...(node.payload?.kind === "object" ? [node.payload.object] : []),
+    ...listLevelOutlinerObjects(node.children ?? []),
+  ]);
 }
 
 /** The visual an object is drawn as, empty for one drawn as nothing. */
@@ -167,16 +188,33 @@ function toVisual(description: LevelObjectsDescription, object: LevelObject): st
   return visual === null ? "" : (description.visuals[visual] ?? "");
 }
 
-/** Objects as rows, by name. */
+/** Objects as rows, by name, each with its parts beneath it in their own order. */
 function toObjectNodes(objects: ReadonlyArray<LevelObject>): Array<ITreeNode<TLevelOutlinerRow>> {
-  return objects
-    .slice()
-    .sort((first: LevelObject, second: LevelObject) => NAME_ORDER.compare(first.name, second.name))
-    .map((object: LevelObject) => ({
+  const parts: Map<string, Array<LevelObject>> = new Map();
+
+  for (const object of objects) {
+    if (object.parent) {
+      const key: string = toLevelObjectKey(object.parent);
+
+      parts.set(key, [...(parts.get(key) ?? []), object]);
+    }
+  }
+
+  function toNode(object: LevelObject): ITreeNode<TLevelOutlinerRow> {
+    const children: Array<ITreeNode<TLevelOutlinerRow>> = (parts.get(toLevelObjectKey(object.id)) ?? []).map(toNode);
+
+    return {
+      ...(children.length ? { children } : {}),
       id: toLevelOutlinerObjectId(object),
       label: object.name,
       payload: { kind: "object" as const, object },
-    }));
+    };
+  }
+
+  return objects
+    .filter((object: LevelObject) => !object.parent)
+    .sort((first: LevelObject, second: LevelObject) => NAME_ORDER.compare(first.name, second.name))
+    .map(toNode);
 }
 
 /** One spawned kind's objects by section, each section's objects by name. */
@@ -204,10 +242,12 @@ function toSectionNodes(
     }));
 }
 
-/** How many objects there are, and how many of them a new game releases. */
+/** How many objects there are, their parts aside, and how many of them a new game releases. */
 function countObjects(objects: ReadonlyArray<LevelObject>): ILevelOutlinerCount {
+  const whole: Array<LevelObject> = objects.filter((object: LevelObject) => !object.parent);
+
   return {
-    count: objects.length,
-    released: objects.filter((object: LevelObject) => Boolean(object.spawn?.release)).length,
+    count: whole.length,
+    released: whole.filter((object: LevelObject) => Boolean(object.spawn?.release)).length,
   };
 }

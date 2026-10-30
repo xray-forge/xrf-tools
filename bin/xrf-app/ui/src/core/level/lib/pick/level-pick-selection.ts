@@ -3,7 +3,7 @@ import { parseHexColor, toRawColor } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { VIEWPORT_INK } from "@xrf/ui/theme";
 
-import { getLevelObjectKind } from "@/core/level/lib/objects/level-object-kinds";
+import { getLevelObjectKind, getLevelSpawnIndex } from "@/core/level/lib/objects/level-object-kinds";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 
 /** The selection's colour: the accent carried on the viewport's backdrop, which is dark whatever the scheme. */
@@ -21,8 +21,10 @@ export function toLevelPickSelection(pick: Nullable<TLevelPick>): Nullable<Rende
   }
 
   if (pick.kind === ELevelPick.OBJECT) {
-    return getLevelObjectKind(pick.object.kind).isDrawn
-      ? { color: SELECTION_COLOR, target: { kind: ERenderSelectionTarget.SPAWN, object: pick.object.id.index } }
+    const index: Nullable<number> = getLevelSpawnIndex(pick.object.id);
+
+    return index !== null && getLevelObjectKind(pick.object.kind).isDrawn
+      ? { color: SELECTION_COLOR, target: { kind: ERenderSelectionTarget.SPAWN, object: index } }
       : null;
   }
 

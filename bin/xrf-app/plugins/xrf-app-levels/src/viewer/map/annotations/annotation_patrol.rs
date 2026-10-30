@@ -1,5 +1,4 @@
-use xrf_spawn::Patrol;
-
+use crate::objects::{LevelObject, LevelObjectPatrol};
 use crate::viewer::map::annotations::{AnnotationOutline, AnnotationPoint};
 
 /// A patrol path from above: its points, and the links between them by index.
@@ -11,26 +10,22 @@ pub struct AnnotationPatrol {
 }
 
 impl AnnotationPatrol {
-  /// `patrol` from above, its links by the points' places, those reaching past its points left out.
-  pub fn of(patrol: &Patrol) -> Self {
-    Self {
-      name: patrol.name.clone(),
+  /// `object`'s path from above, or `None` for an object that is no patrol path.
+  pub fn of(object: &LevelObject) -> Option<Self> {
+    let patrol: &LevelObjectPatrol = object.patrol.as_ref()?;
+
+    Some(Self {
+      name: object.name.clone(),
       points: patrol
         .points
         .iter()
-        .map(|point| AnnotationOutline::to_point(&point.position))
+        .map(AnnotationOutline::from_renderer_point)
         .collect(),
       links: patrol
         .links
         .iter()
-        .flat_map(|link| {
-          link
-            .links
-            .iter()
-            .map(move |(to, _)| (link.index as usize, *to as usize))
-        })
-        .filter(|(from, to)| *from < patrol.points.len() && *to < patrol.points.len())
+        .map(|link| (link.from as usize, link.to as usize))
         .collect(),
-    }
+    })
   }
 }

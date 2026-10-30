@@ -318,6 +318,11 @@ impl LevelReport {
     log::warn!("No level objects for {}: {error}", source.get_label());
   }
 
+  /// That the spawn's graph could not be read, so the level lists no patrol path or graph point.
+  pub fn missing_level_graph(source: &LevelSource, error: &impl Display) {
+    log::warn!("No patrol paths or graph points for {}: {error}", source.get_label());
+  }
+
   /// That a spawned visual could not be read, so it is not drawn.
   pub fn undrawn_visual(name: &str, error: &impl Display) {
     log::warn!("Spawned visual '{name}' is not drawn: {error}");

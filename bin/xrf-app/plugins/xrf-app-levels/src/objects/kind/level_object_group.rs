@@ -13,4 +13,8 @@ pub enum LevelObjectGroup {
   Volumes,
   /// The smart covers.
   Covers,
+  /// The patrol paths and their points.
+  Paths,
+  /// The game graph's points.
+  Navigation,
 }

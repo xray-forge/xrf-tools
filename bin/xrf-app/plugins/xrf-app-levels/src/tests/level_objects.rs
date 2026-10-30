@@ -1,15 +1,16 @@
 use std::collections::HashMap;
 
 use xrf_math::Vector3d;
+use xrf_renderer::{RenderHelperShape, RenderLevelHelpers};
 use xrf_spawn::{
   AlifeGraphPoint, AlifeObject, AlifeObjectAbstract, AlifeObjectDynamicVisual, AlifeObjectHangingLamp,
   AlifeObjectInherited, AlifeObjectItem, AlifeObjectPhysic, AlifeObjectSkeleton, AlifeObjectSpaceRestrictor, ClsId,
-  Shape,
+  Patrol, PatrolLink, PatrolPoint, Shape, SpawnLevelGraph,
 };
 
 use crate::objects::{
   LEVEL_OBJECT_KINDS, LevelObject, LevelObjectId, LevelObjectKind, LevelObjectKindEntry, LevelObjectShape,
-  LevelObjectsDescription, LevelRestriction,
+  LevelObjectsDescription, LevelPatrolLink, LevelRestriction,
 };
 use crate::parts::LevelSpawn;
 use crate::spawn::LevelSpawnRelease;
@@ -98,12 +99,16 @@ fn new_restrictor(shape: Vec<Shape>, restrictor_type: u8) -> AlifeObjectInherite
   }))
 }
 
-fn describe(objects: Vec<AlifeObject>) -> LevelObjectsDescription {
-  LevelObjectsDescription::describe(&LevelSpawn {
+fn new_spawn(objects: Vec<AlifeObject>) -> LevelSpawn {
+  LevelSpawn {
     arrivals: Vec::new(),
     objects,
     releases: HashMap::new(),
-  })
+  }
+}
+
+fn describe(objects: Vec<AlifeObject>) -> LevelObjectsDescription {
+  LevelObjectsDescription::describe(&new_spawn(objects), None)
 }
 
 /// An object as the listing tests read it: its spawn index, name, kind, visual and story id.
@@ -112,6 +117,31 @@ type ListedObject<'a> = (u32, &'a str, LevelObjectKind, Option<u32>, Option<u32>
 fn get_index(object: &LevelObject) -> u32 {
   match object.id {
     LevelObjectId::Spawn { index } => index,
+    id => panic!("{id:?} is no spawned object"),
+  }
+}
+
+/// A patrol of three points, the first leading to both others and once past its points, and two graph points.
+fn new_graph() -> SpawnLevelGraph {
+  SpawnLevelGraph {
+    levels: Vec::new(),
+    points: vec![(12, Vector3d::new(1.0, 2.0, 3.0)), (13, Vector3d::new(4.0, 5.0, 6.0))],
+    patrols: vec![Patrol {
+      name: String::from("zat_walk"),
+      points: (0..3)
+        .map(|index| PatrolPoint {
+          name: format!("wp{index:02}"),
+          position: Vector3d::new(index as f32, 0.0, 10.0),
+          flags: index,
+          level_vertex_id: 100 + index,
+          game_vertex_id: 7,
+        })
+        .collect(),
+      links: vec![PatrolLink {
+        index: 0,
+        links: vec![(1, 0.5), (2, 0.5), (9, 1.0)],
+      }],
+    }],
   }
 }
 
@@ -205,18 +235,21 @@ fn passes_over_what_the_level_holds_nothing_of() {
 // A new game's releases stay in the description, so a panel can say what the level loses and a view can draw them.
 #[test]
 fn marks_what_a_new_game_releases_and_why() {
-  let described: LevelObjectsDescription = LevelObjectsDescription::describe(&LevelSpawn {
-    arrivals: Vec::new(),
-    objects: vec![
-      new_object("kept", "medkit", ClsId::SFood, new_item("dynamics\\medkit")),
-      new_object("removed", "medkit", ClsId::SFood, new_item("dynamics\\medkit")),
-      new_object("replaced", "medkit", ClsId::SFood, new_item("dynamics\\medkit")),
-    ],
-    releases: HashMap::from([
-      (1, LevelSpawnRelease::RemoveObjects),
-      (2, LevelSpawnRelease::ReplaceItems),
-    ]),
-  });
+  let described: LevelObjectsDescription = LevelObjectsDescription::describe(
+    &LevelSpawn {
+      arrivals: Vec::new(),
+      objects: vec![
+        new_object("kept", "medkit", ClsId::SFood, new_item("dynamics\\medkit")),
+        new_object("removed", "medkit", ClsId::SFood, new_item("dynamics\\medkit")),
+        new_object("replaced", "medkit", ClsId::SFood, new_item("dynamics\\medkit")),
+      ],
+      releases: HashMap::from([
+        (1, LevelSpawnRelease::RemoveObjects),
+        (2, LevelSpawnRelease::ReplaceItems),
+      ]),
+    },
+    None,
+  );
   let releases: Vec<(u32, Option<LevelSpawnRelease>)> = described
     .objects
     .iter()
@@ -231,6 +264,115 @@ fn marks_what_a_new_game_releases_and_why() {
       (2, Some(LevelSpawnRelease::ReplaceItems)),
     ]
   );
+}
+
+// A path's points follow it as its parts, each standing where it does in renderer space; the graph's points come last.
+#[test]
+fn lists_each_patrol_path_followed_by_its_points_then_the_graph_points() {
+  let described: LevelObjectsDescription =
+    LevelObjectsDescription::describe(&new_spawn(Vec::new()), Some(&new_graph()));
+  let listed: Vec<(LevelObjectId, LevelObjectKind, &str, Option<LevelObjectId>)> = described
+    .objects
+    .iter()
+    .map(|it: &LevelObject| (it.id, it.kind, it.name.as_str(), it.parent))
+    .collect();
+  let path: LevelObjectId = LevelObjectId::Patrol { path: 0 };
+
+  assert_eq!(
+    listed,
+    vec![
+      (path, LevelObjectKind::Patrols, "zat_walk", None),
+      (
+        LevelObjectId::PatrolPoint { path: 0, point: 0 },
+        LevelObjectKind::Patrols,
+        "wp00",
+        Some(path)
+      ),
+      (
+        LevelObjectId::PatrolPoint { path: 0, point: 1 },
+        LevelObjectKind::Patrols,
+        "wp01",
+        Some(path)
+      ),
+      (
+        LevelObjectId::PatrolPoint { path: 0, point: 2 },
+        LevelObjectKind::Patrols,
+        "wp02",
+        Some(path)
+      ),
+      (
+        LevelObjectId::GraphPoint { vertex: 12 },
+        LevelObjectKind::GraphPoints,
+        "vertex 12",
+        None
+      ),
+      (
+        LevelObjectId::GraphPoint { vertex: 13 },
+        LevelObjectKind::GraphPoints,
+        "vertex 13",
+        None
+      ),
+    ]
+  );
+
+  let patrol = described.objects[0]
+    .patrol
+    .as_ref()
+    .expect("the path's points and links");
+
+  assert_eq!(patrol.points[2], Vector3d::new(2.0, 0.0, -10.0));
+  assert_eq!(
+    patrol.links,
+    vec![
+      LevelPatrolLink {
+        from: 0,
+        to: 1,
+        weight: 0.5
+      },
+      LevelPatrolLink {
+        from: 0,
+        to: 2,
+        weight: 0.5
+      },
+    ]
+  );
+  assert_eq!(
+    described.objects[3].patrol_point.map(|it| (it.flags, it.level_vertex)),
+    Some((2, 102))
+  );
+  assert_eq!(described.objects[4].transform.c, Vector3d::new(1.0, 2.0, -3.0));
+}
+
+// Each helper is named by its object's place in the listing; a path draws its links with an arrowhead at each end
+// reached, a point its marker.
+#[test]
+fn hands_the_renderer_each_object_with_a_helper_by_its_place_in_the_listing() {
+  let described: LevelObjectsDescription = LevelObjectsDescription::describe(
+    &new_spawn(vec![
+      new_object("crate", "physic_object", ClsId::OPhysS, new_physic("physics\\box", 7)),
+      new_object(
+        "fence",
+        "space_restrictor",
+        ClsId::SpcRsS,
+        new_restrictor(Vec::new(), 3),
+      ),
+    ]),
+    Some(&new_graph()),
+  );
+  let helpers: RenderLevelHelpers = RenderLevelHelpers::from(&described);
+  let ids: Vec<u32> = helpers.objects.iter().map(|it| it.id).collect();
+
+  // The crate draws its model and the fence names no shape: neither has a helper.
+  assert_eq!(ids, vec![2, 3, 4, 5, 6, 7]);
+  assert!(matches!(
+    &helpers.objects[0].shapes[..],
+    [RenderHelperShape::Segments { ends }] if ends.len() == 6
+  ));
+  assert!(matches!(
+    helpers.objects[1].shapes[..],
+    [RenderHelperShape::Marker { .. }]
+  ));
+  assert_eq!(helpers.objects[0].kind, LevelObjectKind::Patrols as u32);
 }
 
 // The shapes stand in the object's own space, mirrored through `z` into renderer space as its transform is.

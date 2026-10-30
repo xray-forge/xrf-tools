@@ -214,7 +214,15 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     });
     const { hidden, selected } = this.viewportService;
 
-    return { ...options, helpers: toLevelHelperRenderOptions(this.viewService.helpers, selected, hidden) };
+    return {
+      ...options,
+      helpers: toLevelHelperRenderOptions(
+        this.viewService.helpers,
+        selected,
+        hidden,
+        this.loadService.objects?.objects ?? []
+      ),
+    };
   }
 
   /** What of the level's world the toolbar lets play, less the spawned objects hidden one by one. */
@@ -580,8 +588,8 @@ export class LevelRenderService extends NativeRenderSurfaceService {
 
     this.viewportService.notePickRelocated(
       relocated,
-      relocateLevelObjects(selected, after.objects),
-      relocateLevelObjects(hidden, after.objects)
+      relocateLevelObjects(selected, before.objects, after.objects),
+      relocateLevelObjects(hidden, before.objects, after.objects)
     );
   }
 

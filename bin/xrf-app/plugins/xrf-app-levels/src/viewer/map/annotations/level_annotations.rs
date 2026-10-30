@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
 use xrf_app_core::TauriResult;
 use xrf_app_core::session::SessionSnapshot;
 use xrf_spawn::SpawnLevelGraph;
 use xrf_vfs::XraySearch;
 
 use crate::level::SelectedLevel;
-use crate::objects::LevelObjectsDescription;
+use crate::objects::{LevelObject, LevelObjectId, LevelObjectsDescription};
 use crate::parts::{LevelGraphPart, LevelSpawnPart};
 use crate::viewer::map::annotations::{AnnotationOutline, AnnotationPatrol, AnnotationPoint, AnnotationVolume};
 
@@ -18,20 +20,23 @@ pub struct LevelAnnotations {
 }
 
 impl LevelAnnotations {
-  /// What the open level's objects and graph part hold of it, read through `search` where they are not yet.
+  /// What the open level's objects hold of it, its graph placing the levels a changer leads to, read through `search`
+  /// where they are not yet.
   ///
   /// # Errors
   ///
   /// Returns why the level has no name to find its share by, or why its spawn or graph cannot be read.
   pub fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Self> {
+    let graph: Arc<SpawnLevelGraph> = LevelGraphPart::get(current, search)?;
+
     Ok(Self::of(
-      &LevelObjectsDescription::describe(&*LevelSpawnPart::get(current, search)?),
-      &*LevelGraphPart::get(current, search)?,
+      &LevelObjectsDescription::describe(&*LevelSpawnPart::get(current, search)?, Some(&graph)),
+      &graph,
       &current.source.require_name()?,
     ))
   }
 
-  /// What `objects` and `graph` hold of the level named `level`.
+  /// What `objects` hold of the level named `level`, `graph` placing the levels a changer leads to.
   pub fn of(objects: &LevelObjectsDescription, graph: &SpawnLevelGraph, level: &str) -> Self {
     Self {
       volumes: objects
@@ -39,11 +44,16 @@ impl LevelAnnotations {
         .iter()
         .filter_map(|object| AnnotationVolume::of(object, graph, level))
         .collect(),
-      patrols: graph.patrols.iter().map(AnnotationPatrol::of).collect(),
-      graph_points: graph
-        .points
+      patrols: objects.objects.iter().filter_map(AnnotationPatrol::of).collect(),
+      graph_points: objects
+        .objects
         .iter()
-        .map(|(id, point)| (*id, AnnotationOutline::to_point(point)))
+        .filter_map(|object: &LevelObject| match object.id {
+          LevelObjectId::GraphPoint { vertex } => {
+            Some((vertex, AnnotationOutline::from_renderer_point(&object.transform.c)))
+          }
+          _ => None,
+        })
         .collect(),
     }
   }

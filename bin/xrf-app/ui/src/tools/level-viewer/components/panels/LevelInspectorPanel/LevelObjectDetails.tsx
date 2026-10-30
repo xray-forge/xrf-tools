@@ -20,12 +20,14 @@ interface ILevelObjectDetailsProps extends BaseComponentProps {
   details: AsyncState<LevelSpawnObjectDetails>;
   /** How many other objects are selected with it. */
   others: number;
+  /** Where a patrol point leads, as its path's links name the points they reach; empty for anything else. */
+  leads: ReadonlyArray<string>;
   onGoTo: () => void;
 }
 
 /**
- * What one level object is: its kind and place, what the spawn records of it, what a volume covers, and what a spawned
- * one carries.
+ * What one level object is: its kind and place, what the spawn records of it, what a volume covers, a patrol path's
+ * points and links and a point's flags and ways on, and what a spawned one carries.
  */
 export function LevelObjectDetails({
   "data-testid": dataTestId = "level-object-details",
@@ -35,10 +37,11 @@ export function LevelObjectDetails({
   visual,
   details,
   others,
+  leads,
   onGoTo,
 }: ILevelObjectDetailsProps): ReactElement {
   const read: Nullable<LevelSpawnObjectDetails> = details.value;
-  const { spawn, volume } = object;
+  const { patrol, patrolPoint, spawn, volume } = object;
 
   return (
     <EditorPanelSection
@@ -80,6 +83,22 @@ export function LevelObjectDetails({
             }
             isMonospace
           />
+        </>
+      ) : null}
+
+      {patrol ? (
+        <>
+          <EditorPanelProperty label={"Points"} value={patrol.points.length} />
+          <EditorPanelProperty label={"Links"} value={patrol.links.length} />
+        </>
+      ) : null}
+
+      {patrolPoint ? (
+        <>
+          <EditorPanelProperty label={"Flags"} value={patrolPoint.flags} />
+          <EditorPanelProperty label={"Level vertex"} value={patrolPoint.levelVertex} />
+          <EditorPanelProperty label={"Game vertex"} value={patrolPoint.gameVertex} />
+          <EditorPanelProperty label={"Leads to"} value={leads.length ? leads.join("\n") : "Nowhere"} isMonospace />
         </>
       ) : null}
 

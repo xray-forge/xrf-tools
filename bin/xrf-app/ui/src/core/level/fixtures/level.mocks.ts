@@ -8,6 +8,7 @@ import {
   ELevelRestriction,
   LevelMapDescription,
   LevelObject,
+  LevelObjectId,
   LevelObjectSpawn,
   LevelStart,
   LevelTextureReference,
@@ -72,6 +73,9 @@ export function mockLevelObject(
     id: { index: 0, source: ELevelObjectId.SPAWN },
     kind: ELevelObjectKind.PROPS,
     name: "crate",
+    parent: null,
+    patrol: null,
+    patrolPoint: null,
     spawn: {
       clsid: EClsId.O_PHYS_S,
       release: null,
@@ -84,6 +88,42 @@ export function mockLevelObject(
     volume: null,
     ...overrides,
   };
+}
+
+/**
+ * A patrol path named `name`, its points a metre apart along `x`, each leading to the next, followed by its points.
+ *
+ * @param path - Its index among the level's patrols.
+ * @param name - Its name.
+ * @param points - How many points it has, named `wp00` on.
+ * @returns The path, then its points, as the listing holds them.
+ */
+export function mockLevelPatrol(path: number, name: string, points: number): Array<LevelObject> {
+  const id: LevelObjectId = { path, source: ELevelObjectId.PATROL };
+
+  return [
+    mockLevelObject({
+      id,
+      kind: ELevelObjectKind.PATROLS,
+      name,
+      patrol: {
+        links: Array.from({ length: points - 1 }, (_, from: number) => ({ from, to: from + 1, weight: 1 })),
+        points: Array.from({ length: points }, (_, index: number) => ({ x: index, y: 0, z: 0 })),
+      },
+      spawn: null,
+    }),
+    ...Array.from({ length: points }, (_, point: number) =>
+      mockLevelObject({
+        id: { path, point, source: ELevelObjectId.PATROL_POINT },
+        kind: ELevelObjectKind.PATROLS,
+        name: `wp${String(point).padStart(2, "0")}`,
+        parent: id,
+        patrolPoint: { flags: point, gameVertex: 1, levelVertex: 100 + point },
+        spawn: null,
+        transform: mockVisualTransform({ x: point, y: 0, z: 0 }),
+      })
+    ),
+  ];
 }
 
 /**
