@@ -43,24 +43,34 @@ export function toLevelListingPlaces(
   );
 }
 
+/** The level objects a viewport singles out for its helpers. */
+export interface ILevelHelperTargets {
+  /** Selected, which draw lifted and never fade, their models boxed. */
+  selected: ReadonlyArray<LevelObject>;
+  /** Hidden, which draw nothing. */
+  hidden: ReadonlyArray<LevelObject>;
+  /** Under the pointer, which draws lifted half as far and never fades, its model boxed. */
+  hovered: Nullable<LevelObject>;
+}
+
 /**
  * @param helpers - Which helpers the viewer draws.
- * @param selected - The level objects selected, which draw marked and never fade.
- * @param hidden - The level objects hidden, which draw nothing.
+ * @param targets - The level objects the viewport singles out.
  * @param listed - The level's objects as listed, by whose places the backend names their helpers.
  * @returns What the renderer draws of the level's helpers: each kind by its place in the kind table, as the backend
  *   numbers them.
  */
 export function toLevelHelperRenderOptions(
   helpers: ILevelHelperOptions,
-  selected: ReadonlyArray<LevelObject>,
-  hidden: ReadonlyArray<LevelObject>,
+  targets: ILevelHelperTargets,
   listed: ReadonlyArray<LevelObject>
 ): RenderHelperOptions {
   return {
     ...NO_NATIVE_HELPERS,
     distanceScale: helpers.distanceScale,
-    hidden: toLevelListingPlaces(hidden, listed),
+    hidden: toLevelListingPlaces(targets.hidden, listed),
+    hovered: (targets.hovered ? toLevelListingPlaces([targets.hovered], listed)[0] : null) ?? null,
+    isRestFaded: helpers.isRestFaded,
     isShown: helpers.isShown,
     kinds: LEVEL_OBJECT_KINDS.reduce(
       (bits: number, entry: LevelObjectKindEntry, index: number) =>
@@ -68,6 +78,6 @@ export function toLevelHelperRenderOptions(
       0
     ),
     occludedStrength: helpers.occludedStrength,
-    selected: toLevelListingPlaces(selected, listed),
+    selected: toLevelListingPlaces(targets.selected, listed),
   };
 }

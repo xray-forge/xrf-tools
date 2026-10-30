@@ -15,6 +15,8 @@ export interface ILevelHelperOptions {
   occludedStrength: number;
   /** What every kind's draw distance is scaled by. */
   distanceScale: number;
+  /** Dims and greys what no marked model or selection covers, so the helped objects stand out ("Fade the rest"). */
+  isRestFaded: boolean;
 }
 
 /** How strongly an occluded wire shows: from none to whole. */
@@ -23,9 +25,10 @@ export const LEVEL_HELPER_OCCLUDED_LIMITS: IRenderLimits = { max: 1, min: 0, ste
 /** How far every kind's draw distance is scaled: from a quarter to four times. */
 export const LEVEL_HELPER_DISTANCE_LIMITS: IRenderLimits = { max: 4, min: 0.25, step: 0.25 };
 
-/** The photo mode, every kind left to the kind table, an occluded wire at a quarter. */
+/** The photo mode, every kind left to the kind table, an occluded wire at a quarter, nothing faded. */
 export const DEFAULT_LEVEL_HELPER_OPTIONS: ILevelHelperOptions = {
   distanceScale: 1,
+  isRestFaded: false,
   isShown: false,
   kinds: {},
   occludedStrength: 0.25,
@@ -62,6 +65,8 @@ export function toLevelHelperOptions(stored: unknown): ILevelHelperOptions {
       LEVEL_HELPER_DISTANCE_LIMITS,
       DEFAULT_LEVEL_HELPER_OPTIONS.distanceScale
     ),
+    isRestFaded:
+      typeof stored.isRestFaded === "boolean" ? stored.isRestFaded : DEFAULT_LEVEL_HELPER_OPTIONS.isRestFaded,
     isShown: typeof stored.isShown === "boolean" ? stored.isShown : DEFAULT_LEVEL_HELPER_OPTIONS.isShown,
     kinds: Object.fromEntries(
       LEVEL_OBJECT_KINDS.filter((entry: LevelObjectKindEntry) => typeof kinds[entry.kind] === "boolean").map(

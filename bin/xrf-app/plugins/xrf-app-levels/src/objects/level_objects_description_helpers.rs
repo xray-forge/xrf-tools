@@ -1,7 +1,9 @@
 use glam::Vec3;
 use xrf_renderer::{RenderHelperObject, RenderHelperShape, RenderLevelHelpers};
 
-use crate::objects::{LevelObject, LevelObjectKind, LevelObjectKindEntry, LevelObjectShape, LevelObjectsDescription};
+use crate::objects::{
+  LevelObject, LevelObjectId, LevelObjectKind, LevelObjectKindEntry, LevelObjectShape, LevelObjectsDescription,
+};
 
 /// How the level objects with no shape of their own are drawn as helpers.
 struct HelperLook;
@@ -45,6 +47,13 @@ impl HelperLook {
 
   /// What `object` is drawn as, in its own space; none for an object drawing no helper.
   fn to_shapes(object: &LevelObject) -> Vec<RenderHelperShape> {
+    if let (LevelObjectId::Spawn { index }, Some(spawn)) = (object.id, &object.spawn)
+      && object.kind.get_entry().is_drawn
+      && spawn.visual.is_some()
+    {
+      return vec![RenderHelperShape::Model { object: index }];
+    }
+
     if let Some(volume) = &object.volume {
       return volume.shapes.iter().map(RenderHelperShape::from).collect();
     }
@@ -83,8 +92,8 @@ impl HelperLook {
 
 impl From<&LevelObjectsDescription> for RenderLevelHelpers {
   /// The level objects the renderer draws helpers for, each by its place among the listing's objects, switched by its
-  /// kind's place in the kind table, in its kind's colour: the volumes by their shapes, a patrol path by its links and
-  /// each of its points, and the graph points, by markers.
+  /// kind's place in the kind table, in its kind's colour: a drawn spawned object by its model, the volumes by their
+  /// shapes, a patrol path by its links and each of its points, and the graph points, by markers.
   // todo: Hand over the characters, the smart covers and the placements as icons once the renderer draws them.
   fn from(description: &LevelObjectsDescription) -> Self {
     Self {

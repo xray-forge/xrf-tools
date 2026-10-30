@@ -85,7 +85,9 @@ export class LevelViewService {
    * @param helpers - How the helpers are drawn from now on, the switches aside.
    */
   @BoundAction()
-  public setHelperLook(helpers: Pick<ILevelHelperOptions, "distanceScale" | "occludedStrength">): void {
+  public setHelperLook(
+    helpers: Partial<Pick<ILevelHelperOptions, "distanceScale" | "isRestFaded" | "occludedStrength">>
+  ): void {
     this.storedHelpers.set({ ...this.helpers, ...helpers });
   }
 

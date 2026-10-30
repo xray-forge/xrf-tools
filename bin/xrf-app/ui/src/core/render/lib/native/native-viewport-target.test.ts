@@ -157,6 +157,34 @@ describe("NativeViewportTarget", () => {
     target.dispose();
   });
 
+  it("hands on where the pointer rests once a frame, and nothing once it leaves or presses", () => {
+    const { element } = mockTree();
+    const { inputs, viewport } = mockViewport();
+    const onHover = jest.fn();
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport, null, onHover);
+
+    element.dispatchEvent(pointer("pointermove", { buttons: 0, clientX: 20, clientY: 30 }));
+    element.dispatchEvent(pointer("pointermove", { buttons: 0, clientX: 22, clientY: 31 }));
+    jest.advanceTimersByTime(100);
+
+    // The latest point of the frame alone, in css pixels from the element's own corner, as the world hears it.
+    expect(onHover).toHaveBeenCalledTimes(1);
+    expect(onHover).toHaveBeenLastCalledWith({ x: 12, y: 11 });
+    expect(inputs).toEqual([{ kind: EWorldInputEvent.HOVER, x: 12, y: 11 }]);
+
+    element.dispatchEvent(pointer("pointerleave", {}));
+
+    expect(onHover).toHaveBeenLastCalledWith(null);
+
+    element.dispatchEvent(pointer("pointermove", { buttons: 0, clientX: 22, clientY: 31 }));
+    element.dispatchEvent(pointer("pointerdown", { button: 0, buttons: 1, clientX: 22, clientY: 31 }));
+    jest.advanceTimersByTime(100);
+
+    expect(onHover).toHaveBeenLastCalledWith(null);
+
+    target.dispose();
+  });
+
   it("forwards keys once while held", () => {
     const { element } = mockTree();
     const { inputs, viewport } = mockViewport();

@@ -41,6 +41,9 @@ impl ViewTargets {
   pub const OCCLUSION: wgpu::TextureFormat = wgpu::TextureFormat::Rg32Float;
   pub const HAZE: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
   pub const DISTORTION: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+  /// The colour a helper marks a spawned model's pixels in, sRGB, with one in alpha where it marks them; made for a
+  /// frame only while a model is marked.
+  pub const MARKS: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
   /// Eight bits a channel, as the engine's `A8R8G8B8` targets, so each stage of the bloom clamps to one as there.
   pub const HIGH: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
   pub const BLOOM: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;

@@ -279,6 +279,56 @@ fn selection_share(texel: vec2<i32>) -> f32 {
   return 0.0;
 }
 
+// Drawn texels around a marked model its outline reaches, how much of its colour tints it, and how a faded texel shows:
+// greyed by this share and dimmed to this much of its light.
+const MARK_REACH: i32 = 1;
+const MARK_TINT: f32 = 0.15;
+const REST_GREY: f32 = 0.85;
+const REST_DIM: f32 = 0.35;
+
+// The colour the helpers marked a drawn texel in, with one in alpha where they marked it, held to the targets' edges.
+fn mark_at(texel: vec2<i32>) -> vec4<f32> {
+  let last: vec2<i32> = vec2<i32>(camera.viewport.xy) - 1;
+
+  return textureLoad(mark_target, clamp(texel, vec2<i32>(0), last), 0);
+}
+
+// A shown colour with what the helpers and the selection lay over it: a marked model tinted in its helper's colour and
+// outlined a texel round in it, what neither a mark nor the selection with its outline covers greyed and dimmed where
+// the rest fades, then the selection's outline and tint over all.
+fn laid_over(color: vec3<f32>, texel: vec2<i32>) -> vec3<f32> {
+  let selected: f32 = selection_share(texel);
+  var shown: vec3<f32> = color;
+  var is_covered: bool = selected > 0.0;
+
+  if (present.marks.x != 0.0) {
+    let own: vec4<f32> = mark_at(texel);
+
+    if (own.a > 0.5) {
+      shown = mix(shown, own.rgb, MARK_TINT);
+      is_covered = true;
+    } else {
+      for (var y: i32 = -MARK_REACH; y <= MARK_REACH && !is_covered; y += 1) {
+        for (var x: i32 = -MARK_REACH; x <= MARK_REACH; x += 1) {
+          let near: vec4<f32> = mark_at(texel + vec2<i32>(x, y));
+
+          if (near.a > 0.5) {
+            shown = near.rgb;
+            is_covered = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (present.marks.y != 0.0 && !is_covered) {
+    shown = mix(shown, vec3<f32>(luminance(shown)), REST_GREY) * REST_DIM;
+  }
+
+  return mix(shown, present.selection.rgb, selected);
+}
+
 // The drawn texel under a point of the viewport, in its pixels.
 fn drawn_texel(pixel: vec2<f32>) -> vec2<i32> {
   return to_drawn_texel(pixel, camera.viewport.xy, present.size);
@@ -361,9 +411,7 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   if (present.is_bloomed == BLOOM_ENHANCED) {
     let bloom: vec3<f32> = textureSampleLevel(bloom_target, bloom_sampler, (pixel + 0.5) / present.size, 0.0).rgb;
     let finished: vec3<f32> = on_film(corrected(1.0 - (1.0 - saturate(color)) * (1.0 - bloom)), pixel);
-    let shown: vec3<f32> = mix(finished, present.selection.rgb, selection_share(texel));
-
-    return vec4<f32>(shown + output_dither(in.clip.xy), 1.0);
+    return vec4<f32>(laid_over(finished, texel) + output_dither(in.clip.xy), 1.0);
   }
 
   // The engine's bloom over its shown frame, as `combine_2` adds it.
@@ -371,7 +419,5 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
     color = engine_bloomed(color, pixel);
   }
 
-  let shown: vec3<f32> = mix(on_film(corrected(color), pixel), present.selection.rgb, selection_share(texel));
-
-  return vec4<f32>(shown + output_dither(in.clip.xy), 1.0);
+  return vec4<f32>(laid_over(on_film(corrected(color), pixel), texel) + output_dither(in.clip.xy), 1.0);
 }

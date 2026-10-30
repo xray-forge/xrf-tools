@@ -224,6 +224,7 @@ struct Present {
   corrections: vec4<f32>,
   grading: vec4<f32>,
   selection: vec4<f32>,
+  marks: vec4<f32>,
   is_bloomed: u32,
   is_indirect: u32,
   is_reflected: u32,

@@ -60,6 +60,7 @@ impl PresentFeature {
       present
     }
     .with_display(DisplayMode::of(options), &options.features.grading, &inputs.metering)
+    .with_marks(inputs.is_marked, inputs.is_rest_faded)
     .with_grass_reach(inputs.grass_reach)
     .with_reflection_light(inputs.light_scale, inputs.is_light_summed)
     .with_grain(&options.features.camera, inputs.grain_frame);

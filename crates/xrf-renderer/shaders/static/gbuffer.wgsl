@@ -1148,6 +1148,35 @@ fn fs_pick_composited(in: GBufferVarying) -> @location(0) vec4<u32> {
   return pick_texel(in);
 }
 
+// The spawned models a view's helpers mark (`HelpersFeature::to_marks`): each one's place and the colour it is marked
+// in, packed as `unpack4x8unorm` reads it, by place ascending. Bound only by the helper marks pass.
+@group(3) @binding(0) var<storage, read> helper_marks: array<vec2<u32>>;
+
+// A spawned model's fragment where the frame kept it, in the colour its helper marks it in; nothing for a model no
+// helper marks. The marks are searched by halves for its place.
+@fragment
+fn fs_helper_mark(in: GBufferVarying) -> @location(0) vec4<f32> {
+  let place: u32 = in.entry.y;
+  var low: u32 = 0u;
+  var high: u32 = arrayLength(&helper_marks);
+
+  while (low < high) {
+    let middle: u32 = (low + high) / 2u;
+
+    if (helper_marks[middle].x < place) {
+      low = middle + 1u;
+    } else {
+      high = middle;
+    }
+  }
+
+  if (low >= arrayLength(&helper_marks) || helper_marks[low].x != place) {
+    discard;
+  }
+
+  return unpack4x8unorm(helper_marks[low].y);
+}
+
 // A cut-out caster in a shadow's map: depth alone, cut as the G-buffer cuts it, so light falls between its leaves. Its
 // base is read at the mip its footprint's longer side picks, without the anisotropic taps, which a depth's cut does not
 // need; the cut raises the alpha by that same mip, the texture's size read once.

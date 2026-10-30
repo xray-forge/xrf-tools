@@ -18,8 +18,7 @@ describe("toLevelHelperRenderOptions", () => {
         isShown: true,
         kinds: { [ELevelObjectKind.RESTRICTORS]: false, [ELevelObjectKind.PROPS]: true },
       },
-      [],
-      [],
+      { hidden: [], hovered: null, selected: [] },
       []
     );
 
@@ -31,18 +30,30 @@ describe("toLevelHelperRenderOptions", () => {
   });
 
   // The backend names each helper by its object's place in the listing, whatever source the object comes from.
-  it("names the selected and hidden objects by their places in the listing, ascending", () => {
+  it("names the selected, hidden and hovered objects by their places in the listing, ascending", () => {
     const [path, first, second] = mockLevelPatrol(0, "walk", 2) as [LevelObject, LevelObject, LevelObject];
     const listed: Array<LevelObject> = [mockLevelObject(), mockLevelVolumeObject(9), path, first, second];
     const options = toLevelHelperRenderOptions(
-      { ...DEFAULT_LEVEL_HELPER_OPTIONS, isShown: true },
-      [second, mockLevelVolumeObject(9)],
-      [mockLevelObject(), mockLevelVolumeObject(7)],
+      { ...DEFAULT_LEVEL_HELPER_OPTIONS, isRestFaded: true, isShown: true },
+      {
+        hidden: [mockLevelObject(), mockLevelVolumeObject(7)],
+        hovered: path,
+        selected: [second, mockLevelVolumeObject(9)],
+      },
       listed
     );
 
     expect(options.selected).toEqual([1, 4]);
     expect(options.hidden).toEqual([0]);
+    expect(options.hovered).toBe(2);
+    expect(options.isRestFaded).toBe(true);
+    expect(
+      toLevelHelperRenderOptions(
+        DEFAULT_LEVEL_HELPER_OPTIONS,
+        { hidden: [], hovered: mockLevelVolumeObject(7), selected: [] },
+        listed
+      ).hovered
+    ).toBeNull();
   });
 });
 

@@ -1102,8 +1102,8 @@ export type RenderGroupCost = {
 };
 
 /**
- * Which of a level's helpers a view draws and how: the kinds switched on, the objects hidden and selected, and how an
- * occluded wire shows.
+ * Which of a level's helpers a view draws and how: the kinds switched on, the objects hidden, selected and hovered, how
+ * an occluded wire shows, and whether what no helper covers fades.
  */
 export type RenderHelperOptions = {
   /** Whether helpers draw at all. */
@@ -1114,10 +1114,14 @@ export type RenderHelperOptions = {
   hidden: Array<number>;
   /** The objects drawn as selected, never faded, by the ids the helpers carry, ascending. */
   selected: Array<number>;
+  /** The object under the pointer, drawn lifted and never faded, by the id its helper carries. */
+  hovered: number | null;
   /** How strongly a wire behind what is drawn shows, from 0 to 1. */
   occludedStrength: number | null;
   /** What every kind's draw distance is scaled by. */
   distanceScale: number | null;
+  /** Whether the frame is dimmed and greyed wherever no marked model or selection covers it ("Fade the rest"). */
+  isRestFaded: boolean;
 };
 
 /**
