@@ -1,5 +1,39 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
+/** How much of one kind the application keeps. */
+export type AppStorageArea = {
+  kind: AppStorageKind;
+  bytes: number;
+  files: number;
+};
+
+/** What a file the application keeps of its own is for, by where it lies in its data directory. */
+export enum EAppStorageKind {
+  /** What the renderer rebuilds when it is gone: the driver's compiled pipelines, the baked impostors. */
+  RENDERER_CACHE = "rendererCache",
+  /** Every other cache rebuilt from nothing. */
+  OTHER_CACHES = "otherCaches",
+  /** This run's log and the last run's. */
+  LOGS = "logs",
+  /** The backend's preferences. */
+  PREFERENCES = "preferences",
+  /** Anything else kept there. */
+  OTHER = "other",
+}
+
+/** Every `EAppStorageKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type AppStorageKind = `${EAppStorageKind}`;
+
+/**
+ * What the application keeps in its own data directory, measured file by file: where that is, and how much of each
+ * kind, every kind listed whether it holds anything or not.
+ */
+export type AppStorageUsage = {
+  root: string;
+  bytes: number;
+  areas: Array<AppStorageArea>;
+};
+
 /** What everything below one process costs, folded in a single walk of the table. */
 export type DescendantUsage = {
   /** Resident set of every process descended from the root, at any depth. */
