@@ -23,6 +23,7 @@ use crate::contract::render_rain_settings::RenderRainSettings;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::contract::render_sun_shafts::RenderSunShafts;
+use crate::contract::render_terrain_settings::RenderTerrainSettings;
 use crate::contract::render_tonemap_mode::RenderTonemapMode;
 use crate::contract::render_volumetric_settings::RenderVolumetricSettings;
 use crate::contract::render_water_settings::RenderWaterSettings;
@@ -77,6 +78,8 @@ pub struct RenderViewFeatures {
   pub antialiasing: RenderAntialiasing,
   /// How the level's surfaces are displaced by their height.
   pub parallax: RenderParallaxSettings,
+  /// How the terrain's detail textures repeat across the ground.
+  pub terrain: RenderTerrainSettings,
   /// What the finished frame is corrected by.
   pub corrections: RenderImageCorrections,
   /// How the game's console scales the sun, the hemisphere and the ambient.
@@ -117,6 +120,7 @@ impl Default for RenderViewFeatures {
       lod: RenderLodSettings::default(),
       antialiasing: RenderAntialiasing::None,
       parallax: RenderParallaxSettings::default(),
+      terrain: RenderTerrainSettings::default(),
       corrections: RenderImageCorrections::default(),
       light_scales: RenderLightScales::default(),
       hemi_strength: 1.0,

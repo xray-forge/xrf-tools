@@ -1957,6 +1957,43 @@ export enum ERenderSurfaceColor {
 /** Every `ERenderSurfaceColor` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderSurfaceColor = `${ERenderSurfaceColor}`;
 
+/** How a level's terrain lays its detail textures over its ground. */
+export type RenderTerrainSettings = {
+  /** Whether the details repeat as the engines lay them or are varied by hex tiling, whose hexagons the rest shape. */
+  tiling: RenderTerrainTiling;
+  /**
+   * How small the varied tiling's hexagons are, its grid's rate: at two its corners stand about a seventh of a
+   * detail's repeat apart, small enough that the copies' shifts scatter a fine repeated feature rather than move whole
+   * rows of it.
+   */
+  scale: number | null;
+  /**
+   * How far each copy turns, from not at all to up to a half turn either way. The details carry light and shade
+   * painted in, which a turned copy turns with it: even a fifth mottled Zaton's crater with hexagons lit from
+   * different sides (2026-10-30), so none by default.
+   */
+  rotation: number | null;
+  /**
+   * How sharply the copies meet, the corners' nearness raised to it: lower blends them over wider seams, softer and
+   * blurrier; higher keeps each copy whole to a crisp seam. Seven is the hex tiling demo's.
+   */
+  sharpness: number | null;
+};
+
+/** How a terrain's four detail textures repeat across the ground. */
+export enum ERenderTerrainTiling {
+  /** The engines' own: each detail repeating as a grid, every few metres the same. */
+  ENGINE = "engine",
+  /**
+   * Hex tiling (Mikkelsen, "Practical Real-Time Hex-Tiling", JCGT 2022): each detail read in three randomly offset and
+   * turned copies blended over a grid of hexagons, so no repeat lines up with the next.
+   */
+  VARIED = "varied",
+}
+
+/** Every `ERenderTerrainTiling` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderTerrainTiling = `${ERenderTerrainTiling}`;
+
 /**
  * How a level's surfaces sample their textures: trilinear, or anisotropic at up to a number of samples along the
  * direction a texture is seen squashed, which keeps ground and walls seen at grazing angles sharp.
@@ -2114,6 +2151,8 @@ export type RenderViewFeatures = {
   antialiasing: RenderAntialiasing;
   /** How the level's surfaces are displaced by their height. */
   parallax: RenderParallaxSettings;
+  /** How the terrain's detail textures repeat across the ground. */
+  terrain: RenderTerrainSettings;
   /** What the finished frame is corrected by. */
   corrections: RenderImageCorrections;
   /** How the game's console scales the sun, the hemisphere and the ambient. */

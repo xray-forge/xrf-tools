@@ -138,6 +138,8 @@ pub use crate::contract::render_show_flags::RenderShowFlags;
 pub use crate::contract::render_static_report::RenderStaticReport;
 pub use crate::contract::render_sun_shafts::RenderSunShafts;
 pub use crate::contract::render_surface_color::RenderSurfaceColor;
+pub use crate::contract::render_terrain_settings::RenderTerrainSettings;
+pub use crate::contract::render_terrain_tiling::RenderTerrainTiling;
 pub use crate::contract::render_texture_filtering::RenderTextureFiltering;
 pub use crate::contract::render_texture_group::RenderTextureGroup;
 pub use crate::contract::render_texture_report::RenderTextureReport;

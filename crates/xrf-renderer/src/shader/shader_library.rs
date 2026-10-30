@@ -96,6 +96,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   ),
   ("common/relief", include_str!("../../shaders/common/relief.wgsl")),
   (
+    "common/hex_tiling",
+    include_str!("../../shaders/common/hex_tiling.wgsl"),
+  ),
+  (
     "common/rain_cover",
     include_str!("../../shaders/common/rain_cover.wgsl"),
   ),

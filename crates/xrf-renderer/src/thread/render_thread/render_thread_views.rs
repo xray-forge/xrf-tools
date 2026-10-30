@@ -464,6 +464,7 @@ impl RenderThread {
       encoder,
       &CameraUniform::new(&drawn, drawn_rect, switches)
         .with_parallax(&options.features.parallax, to_sun)
+        .with_terrain(&options.features.terrain)
         .with_selection(selected.as_ref())
         .with_wireframe(options.mode.is_wireframe)
         .with_surface_color(options.mode.surface_color)

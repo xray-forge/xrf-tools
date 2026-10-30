@@ -25,6 +25,7 @@ import {
   TRenderRainSettings,
   TRenderReflectionSettings,
   TRenderShadowSettings,
+  TRenderTerrainSettings,
   TRenderUpscalingSettings,
   TRenderVolumetricSettings,
   TRenderWaterSettings,
@@ -73,6 +74,9 @@ export type TLevelVolumetricOptions = TRenderVolumetricSettings;
 
 /** The parallax settings a level view may set for itself: all of them; turning it off is the shading's toggle. */
 export type TLevelParallaxOptions = TRenderParallaxSettings;
+
+/** The terrain settings a level view may set for itself: all of them. */
+export type TLevelTerrainOptions = TRenderTerrainSettings;
 
 /** The bloom's mode and the enhanced bloom's settings a level view may set for itself: all of them. */
 export type TLevelEnhancedBloomOptions = TRenderEnhancedBloomSettings;
@@ -128,6 +132,8 @@ export interface ILevelFeatureOptions {
   volumetric: Partial<TLevelVolumetricOptions>;
   /** How the surfaces are displaced by their height, which the shading's toggle turns off whole. */
   parallax: Partial<TLevelParallaxOptions>;
+  /** How the terrain's details repeat, which no toolbar toggle turns off: its own tiling does. */
+  terrain: Partial<TLevelTerrainOptions>;
   /** Which bloom draws and the enhanced bloom's strengths, which no toolbar toggle turns off: its own mode does. */
   enhancedBloom: Partial<TLevelEnhancedBloomOptions>;
   /** The mode edges are smoothed with while the settings smooth them at all, or null for the settings' own. */
@@ -173,6 +179,7 @@ export type TLevelModeFeatureKey =
   | "parallax"
   | "rain"
   | "reflections"
+  | "terrain"
   | "volumetric";
 
 /** Each group's settings a view may set, which is all a stored view keeps. */
@@ -264,6 +271,7 @@ const LEVEL_GROUP_KEYS: {
     traceSize: true,
     waterSteps: true,
   },
+  terrain: { rotation: true, scale: true, sharpness: true, tiling: true },
   volumetric: { mode: true, intensity: true, anisotropy: true, distance: true },
 };
 
@@ -314,6 +322,7 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
     rain: pick("rain"),
     reflections: pick("reflections"),
     shadows: pick("shadows"),
+    terrain: pick("terrain"),
     upscaling: Object.fromEntries(
       (Object.keys(LEVEL_UPSCALING_KEYS) as Array<keyof TRenderUpscalingSettings>)
         .filter((key) => overrides.upscaling?.[key] !== undefined && overrides.upscaling?.[key] !== null)
@@ -429,6 +438,7 @@ export function toLevelRendererFeatures(
     rain: toLevelModeFeature("rain", settings, view),
     reflections: toLevelModeFeature("reflections", settings, view),
     shadows: toLevelRendererFeature("shadows", settings, view, toggles.isShadowed),
+    terrain: toLevelModeFeature("terrain", settings, view),
     upscaling: { ...settings.upscaling, ...view.upscaling },
     volumetric: toLevelModeFeature("volumetric", settings, view),
     water: toLevelRendererFeature("water", settings, view, toggles.isWaterVisible),
