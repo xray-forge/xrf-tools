@@ -116,7 +116,7 @@ export type TLevelWaterOptions = Omit<TRenderWaterSettings, "isEnabled">;
 /** The lights settings a level view may set for itself. */
 export type TLevelLightsOptions = Pick<
   TRenderLightsSettings,
-  "falloff" | "isLevelLights" | "isShadowed" | "isVolumetric" | "shadowFilter"
+  "falloff" | "isLevelLights" | "isShadowed" | "isVolumetric" | "shadowFilter" | "shafts" | "shaftStrength"
 >;
 
 /** What a view resolves its frame at where it sets its own, over the settings' resolution and scale. */
@@ -216,7 +216,15 @@ const LEVEL_GROUP_KEYS: {
     shadowRadius: true,
     slopeLimit: true,
   },
-  lights: { falloff: true, isLevelLights: true, isShadowed: true, isVolumetric: true, shadowFilter: true },
+  lights: {
+    falloff: true,
+    isLevelLights: true,
+    isShadowed: true,
+    isVolumetric: true,
+    shadowFilter: true,
+    shafts: true,
+    shaftStrength: true,
+  },
   shadows: {
     bias: true,
     blend: true,

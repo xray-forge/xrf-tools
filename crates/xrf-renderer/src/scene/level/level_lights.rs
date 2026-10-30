@@ -5,10 +5,11 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_math::{EPS_L, Vector3d};
 use xrf_renderer_core::{FrameGraph, GraphBindings, ProxyHandle, ProxyStore};
-use xrf_visual::{LightAnimatorDescription, LightDescription, LightKind, LightsDescription};
+use xrf_visual::{LightAnimatorDescription, LightDescription, LightKind, LightVolumetric, LightsDescription};
 
 use crate::camera::camera_frustum::CameraFrustum;
 use crate::camera::camera_view::CameraView;
+use crate::contract::render_light_shafts::RenderLightShafts;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
@@ -55,6 +56,14 @@ const VOLUME_SLICES: u32 = 100;
 
 /// `fDensity`: what one slice of a light's shafts adds of its light, as `light_volumes.wgsl` holds it too.
 const VOLUME_DENSITY: f32 = 1.0 / 40.0;
+
+/// The engine's own shaft quality, intensity and distance for a light whose owner sets none (`light::light`).
+const VOLUME_DEFAULTS: LightVolumetric = LightVolumetric {
+  is_asked: false,
+  quality: 1.0,
+  intensity: 1.0,
+  distance: 1.0,
+};
 
 /// OpenXRay's fewest slices a light's shafts draw (`_max(10, iNumSlices)`).
 const VOLUME_FEWEST_SLICES: u32 = 10;
@@ -279,9 +288,7 @@ impl LevelLights {
         // the light itself (`to_light_specular`), so it is taken before the scale.
         record.color *= light_scale;
 
-        let shafts: Option<LightShafts> = set
-          .filter(|_| settings.is_volumetric)
-          .and_then(|_| Self::to_shafts(light, &it.basis, eye, engine));
+        let shafts: Option<LightShafts> = set.and_then(|_| Self::to_shafts(light, &it.basis, eye, engine, settings));
 
         if let Some(set) = set {
           let atlas: f32 = LevelLightShadows::ATLAS_SIZE as f32;
@@ -527,13 +534,16 @@ impl LevelLights {
     }
   }
 
-  /// Whether the level gives a light shafts as the view's engine reads its description: the ones that ask under
-  /// vanilla, every one described under the extended engine, whose Monolith forces them on.
-  fn has_shafts(light: &LightDescription, engine: XrayEngine) -> bool {
-    light
-      .volumetric
-      .as_ref()
-      .is_some_and(|volumetric| engine == XrayEngine::Extended || volumetric.is_asked)
+  /// The shaft values a light draws by, where it draws any: as the view's engine reads its description, the ones that
+  /// ask under vanilla and every described one under the extended engine, whose Monolith forces them on; or, where the
+  /// view asks for every shadowed light's (`RenderLightShafts::Shadowed`), the engine's defaults for any that does not
+  /// ask.
+  fn to_volumetric(light: &LightDescription, engine: XrayEngine, shafts: RenderLightShafts) -> Option<LightVolumetric> {
+    match &light.volumetric {
+      Some(volumetric) if volumetric.is_asked || engine == XrayEngine::Extended => Some(volumetric.clone()),
+      _ if shafts == RenderLightShafts::Shadowed => Some(VOLUME_DEFAULTS),
+      _ => None,
+    }
   }
 
   /// Its colour this frame: animated where it names an animation.
@@ -565,15 +575,21 @@ impl LevelLights {
     light.range + light.range_jitter * (unit * 2.0 - 1.0)
   }
 
-  /// The shafts the level gives a shadowed light this frame, seen from `eye`, as the view's engine gives them out
-  /// (`r3_rendertarget_accum_spot.cpp`, `accum_volumetric`): none where it gives none or Monolith's have faded.
+  /// The shafts a shadowed light draws this frame, seen from `eye`, as the view's engine gives them out
+  /// (`r3_rendertarget_accum_spot.cpp`, `accum_volumetric`) to the lights the `settings` pick, at their strength: none
+  /// where the settings turn shafts off or it is given none, or where Monolith's have faded.
   pub(crate) fn to_shafts(
     light: &LightDescription,
     basis: &LightBasis,
     eye: Vec3,
     engine: XrayEngine,
+    settings: &RenderLightsSettings,
   ) -> Option<LightShafts> {
-    let volumetric = light.volumetric.as_ref().filter(|_| Self::has_shafts(light, engine))?;
+    if !settings.is_volumetric || settings.shaft_strength <= 0.0 {
+      return None;
+    }
+
+    let volumetric: LightVolumetric = Self::to_volumetric(light, engine, settings.shafts)?;
     let is_spot: bool = matches!(light.kind, LightKind::Spot);
     // The slices drawn, the share of the buffer the volume's depth is stretched over, the colour's scale and the
     // distance.
@@ -618,7 +634,7 @@ impl LevelLights {
         (slices as f32 * std::f32::consts::SQRT_2).round() as u32
       },
       quality,
-      intensity,
+      intensity: intensity * settings.shaft_strength,
       distance,
       sphere: if is_spot {
         basis.get_spatial_sphere(light)

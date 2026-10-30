@@ -15,6 +15,7 @@ import {
   ERenderLightLevel,
   ERenderLightModel,
   ERenderLightShadowFilter,
+  ERenderLightShafts,
   ERenderParallaxMode,
   ERenderRainDropsMode,
   ERenderRainMode,
@@ -256,6 +257,9 @@ export const RENDER_FEATURE_SCHEMA: TRenderSettingSchema<IRenderFeatureSettings>
     isShadowed: FLAG,
     shadowFilter: toChoice(ERenderLightShadowFilter),
     isVolumetric: FLAG,
+    // The renderer's own: which lamps draw shafts, and their strength from none to four times the game's.
+    shafts: toChoice(ERenderLightShafts),
+    shaftStrength: toNumber(0, 4),
   },
   lod: {
     geometryLod: toNumber(0.1, 2),

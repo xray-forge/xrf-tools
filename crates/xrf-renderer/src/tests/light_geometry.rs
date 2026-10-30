@@ -6,6 +6,8 @@ use xrf_light_anim::{LightAnimItem, LightAnimKey};
 use xrf_math::Vector3d;
 use xrf_visual::{LightAnimatorDescription, LightAnimatorKey, LightDescription, LightKind, LightVolumetric};
 
+use crate::contract::render_light_shafts::RenderLightShafts;
+use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::lighting::light_animation::{to_animated_color, to_interpolated_color};
 use crate::lighting::light_basis::LightBasis;
 use crate::lighting::light_shadow_size::to_light_shadow_tile_size;
@@ -137,7 +139,14 @@ fn light_shafts_scatter_what_the_engines_slices_add_a_metre() {
     ..point()
   };
   let density = |light: &LightDescription, eye: Vec3, engine: XrayEngine| {
-    LevelLights::to_shafts(light, &LightBasis::of(light), eye, engine).map(|shafts| shafts.get_density())
+    LevelLights::to_shafts(
+      light,
+      &LightBasis::of(light),
+      eye,
+      engine,
+      &RenderLightsSettings::default(),
+    )
+    .map(|shafts| shafts.get_density())
   };
 
   assert!(near(
@@ -151,6 +160,70 @@ fn light_shafts_scatter_what_the_engines_slices_add_a_metre() {
     99.0 * 0.6 / 40.0 * 0.2 / 3.0 / 8.0
   ));
   assert_eq!(density(&silent, Vec3::new(0.0, 0.0, 200.0), XrayEngine::Extended), None);
+}
+
+// Asked for every shadowed light's shafts, a light that asks keeps its own values and one that does not, or has none,
+// takes the engine's defaults; the strength scales them all, and with shafts off or at no strength none draw.
+#[test]
+fn light_shafts_follow_the_views_choice_and_strength() {
+  let asking: LightDescription = LightDescription {
+    volumetric: Some(LightVolumetric {
+      is_asked: true,
+      quality: 1.0,
+      intensity: 0.4,
+      distance: 1.0,
+    }),
+    ..point()
+  };
+  let density = |light: &LightDescription, settings: RenderLightsSettings| {
+    LevelLights::to_shafts(
+      light,
+      &LightBasis::of(light),
+      Vec3::ZERO,
+      XrayEngine::Vanilla,
+      &settings,
+    )
+    .map(|shafts| shafts.get_density())
+  };
+  let every: RenderLightsSettings = RenderLightsSettings {
+    shafts: RenderLightShafts::Shadowed,
+    ..RenderLightsSettings::default()
+  };
+
+  assert_eq!(density(&point(), RenderLightsSettings::default()), None);
+  assert!(near(density(&point(), every).unwrap(), 99.0 / 40.0 / 8.0));
+  assert!(near(density(&asking, every).unwrap(), 99.0 / 40.0 * 0.4 / 8.0));
+  assert!(near(
+    density(
+      &asking,
+      RenderLightsSettings {
+        shaft_strength: 2.5,
+        ..every
+      }
+    )
+    .unwrap(),
+    99.0 / 40.0 / 8.0
+  ));
+  assert_eq!(
+    density(
+      &asking,
+      RenderLightsSettings {
+        is_volumetric: false,
+        ..every
+      }
+    ),
+    None
+  );
+  assert_eq!(
+    density(
+      &asking,
+      RenderLightsSettings {
+        shaft_strength: 0.0,
+        ..every
+      }
+    ),
+    None
+  );
 }
 
 #[test]

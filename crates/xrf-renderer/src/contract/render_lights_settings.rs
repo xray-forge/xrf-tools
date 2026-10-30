@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::contract::render_light_falloff::RenderLightFalloff;
 use crate::contract::render_light_shadow_filter::RenderLightShadowFilter;
+use crate::contract::render_light_shafts::RenderLightShafts;
 
 /// The level's local lights: binned into clusters of the view, and accumulated after the sun in one pass.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -16,12 +17,16 @@ pub struct RenderLightsSettings {
   pub shadow_filter: RenderLightShadowFilter,
   /// Whether shadowed lights draw their shafts (`r2_volumetric_lights`), as the view's engine gives them out.
   pub is_volumetric: bool,
+  /// Which shadowed lights draw shafts.
+  pub shafts: RenderLightShafts,
+  /// What every lamp's shafts are scaled by, the engine's slices and the enhanced volumetric light's scattering alike.
+  pub shaft_strength: f32,
   /// How the lamps fall off at the anchored light level (`RenderViewOptions::is_falloff_inverse_square`).
   pub falloff: RenderLightFalloff,
 }
 
 impl Default for RenderLightsSettings {
-  /// The engine's own: every spawned light with its shafts, and none of the level file's.
+  /// The engine's own: every spawned light with its shafts as the engine gives them, and none of the level file's.
   fn default() -> Self {
     Self {
       is_enabled: true,
@@ -29,6 +34,8 @@ impl Default for RenderLightsSettings {
       is_shadowed: true,
       shadow_filter: RenderLightShadowFilter::Engine,
       is_volumetric: true,
+      shafts: RenderLightShafts::Engine,
+      shaft_strength: 1.0,
       falloff: RenderLightFalloff::default(),
     }
   }
