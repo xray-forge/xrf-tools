@@ -19,6 +19,7 @@ macro_rules! for_each_system_domain {
         report_leave_decision => crate::window::commands::report_leave_decision::system_report_leave_decision,
         reveal_path => crate::paths::commands::reveal_path::system_reveal_path,
         reveal_window => crate::window::commands::reveal_window::system_reveal_window,
+        tidy_app_cache => crate::paths::commands::tidy_app_cache::system_tidy_app_cache,
       }
     }
   };

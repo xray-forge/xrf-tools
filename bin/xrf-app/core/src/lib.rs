@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 pub mod assets;
+pub mod cache;
 pub mod directories;
 pub mod execution;
 pub mod ipc;

@@ -3,6 +3,24 @@
 import { JobProgress } from "#/types/xrf-job";
 import { XrayRevision } from "#/types/xrf-vfs";
 
+/** How long the application's caches keep what goes unused, and how much they keep at most. */
+export type AppCachePolicy = {
+  /** Days an entry may go unread before it is removed. */
+  unusedDays: number;
+  /** Bytes every cache together may hold, past which the least recently used entries are removed first. */
+  sizeLimit: number;
+};
+
+/** What a tidy of the application's caches did: whether it ran, what it removed and what it kept. */
+export type AppCacheTidy = {
+  /** Whether it ran: not when another instance holds the caches, nor when one ran within the day and none was forced. */
+  isDone: boolean;
+  removedEntries: number;
+  removedBytes: number;
+  keptEntries: number;
+  keptBytes: number;
+};
+
 /**
  * What one commit changed, or a derivation landing after it, as every page subscribed to changes is told: the project
  * revision it left, and what it did to each open session that moved or could not.

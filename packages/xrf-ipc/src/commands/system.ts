@@ -2,6 +2,7 @@
 
 import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
+import { AppCachePolicy, AppCacheTidy } from "#/types/xrf-app-core";
 import {
   AppStorageUsage,
   EAppStorageKind,
@@ -30,6 +31,7 @@ export enum ESystemCommand {
   REPORT_LEAVE_DECISION = "plugin:system|report_leave_decision",
   REVEAL_PATH = "plugin:system|reveal_path",
   REVEAL_WINDOW = "plugin:system|reveal_window",
+  TIDY_APP_CACHE = "plugin:system|tidy_app_cache",
 }
 
 /** Commands */
@@ -75,6 +77,12 @@ export const systemCommands = {
    * and showing the window from inside it never returns on Windows.
    */
   revealWindow: () => __TAURI_INVOKE<null>(ESystemCommand.REVEAL_WINDOW),
+  /**
+   * Tidies the application's caches by `policy`, the settings' limits: what went unused past its age goes, then the
+   * least recently used past its size; once a day as the page starts, or now where `is_forced`.
+   */
+  tidyAppCache: (policy: AppCachePolicy, isForced: boolean) =>
+    __TAURI_INVOKE<AppCacheTidy>(ESystemCommand.TIDY_APP_CACHE, { policy, isForced }),
 };
 
 /** What each command of the `system` plugin takes and resolves to, keyed by its wire name. */
@@ -96,4 +104,5 @@ export interface ISystemCommandSignatures {
   >;
   [ESystemCommand.REVEAL_PATH]: IIpcCommandSignature<typeof systemCommands.revealPath, ["path"]>;
   [ESystemCommand.REVEAL_WINDOW]: IIpcCommandSignature<typeof systemCommands.revealWindow, []>;
+  [ESystemCommand.TIDY_APP_CACHE]: IIpcCommandSignature<typeof systemCommands.tidyAppCache, ["policy", "isForced"]>;
 }

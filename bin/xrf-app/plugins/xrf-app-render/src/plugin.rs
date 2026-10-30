@@ -3,6 +3,7 @@ use std::sync::Arc;
 use tauri::plugin::TauriPlugin;
 use tauri::webview::{PageLoadEvent, PageLoadPayload, WebviewWindow};
 use tauri::{AppHandle, Manager, RunEvent, Runtime, Webview, WindowEvent};
+use xrf_app_core::cache::AppCache;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::window::{WindowCloseApprovals, WindowHandles};
@@ -29,9 +30,8 @@ impl RenderPlugin {
         let bundle: PackagedBundle = PackagedBundle::locate(application.path().resource_dir().ok().as_deref());
         // The driver's compiled pipelines, kept between runs where the backend keeps them.
         let store: Option<DiskCacheStore> = application
-          .state::<AppDirectories>()
-          .get_cache_directory(AppDirectories::RENDERER_CACHE)
-          .map(DiskCacheStore::new);
+          .try_state::<AppCache>()
+          .map(|cache| DiskCacheStore::new(cache.get_store(AppDirectories::RENDERER_CACHE)));
 
         let world: WorldState = WorldState::new(workers.clone());
         let queue: RenderQueue = RenderQueue::new(workers, Arc::new(bundle), world.as_render_world());

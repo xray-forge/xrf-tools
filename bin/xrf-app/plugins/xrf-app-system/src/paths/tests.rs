@@ -31,8 +31,12 @@ fn the_application_storage_is_measured_by_kind() {
     ("cache/renderer/shaders/a.bin", 50),
     ("cache/renderer/shaders/b.bin", 20),
     ("cache/thumbnails/a.png", 7),
+    ("cache/.tidied", 0),
+    ("cache/.lock", 0),
     ("logs/xrf-app.log", 3),
     ("preferences.json", 2),
+    ("level-viewer/screenshots/a.png", 40),
+    ("level-viewer/bursts/one/frame.png", 60),
     ("notes.txt", 1),
   ] {
     let file: PathBuf = root.join(path);
@@ -55,10 +59,12 @@ fn the_application_storage_is_measured_by_kind() {
       (AppStorageKind::OtherCaches, 7, 1),
       (AppStorageKind::Logs, 3, 1),
       (AppStorageKind::Preferences, 2, 1),
+      (AppStorageKind::SavedFiles, 100, 2),
       (AppStorageKind::Other, 1, 1),
     ]
   );
-  assert_eq!(usage.bytes, 183);
+  assert_eq!(usage.bytes, 283);
+  assert!(usage.areas.iter().all(|area| area.last_used.is_some()));
   assert!(
     AppStorageKind::ALL
       .iter()

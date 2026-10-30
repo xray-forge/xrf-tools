@@ -1,31 +1,27 @@
-use std::path::PathBuf;
-
+use xrf_app_core::cache::AppCacheStore;
 use xrf_renderer::RenderCacheStore;
 
-/// The renderer's cache kept in a folder of the application's cache, a file a name, each written whole or not at all.
+/// The renderer's cache as one client of the application's caches, which mark what it reads used and tidy what it
+/// stops reading.
 pub struct DiskCacheStore {
-  directory: PathBuf,
+  store: AppCacheStore,
 }
 
 impl DiskCacheStore {
-  /// A store in `directory`, made when the first entry is written.
-  pub fn new(directory: PathBuf) -> Self {
-    Self { directory }
+  /// The renderer's cache over the application's `store` for it.
+  pub fn new(store: AppCacheStore) -> Self {
+    Self { store }
   }
 }
 
 impl RenderCacheStore for DiskCacheStore {
   fn read_cached(&self, name: &str) -> Option<Vec<u8>> {
-    std::fs::read(self.directory.join(name)).ok()
+    self.store.read(name)
   }
 
   fn write_cached(&self, name: &str, bytes: &[u8]) {
-    let path: PathBuf = self.directory.join(name);
-
-    let written = std::fs::create_dir_all(&self.directory).and_then(|()| xrf_utils::StagedFile::write(&path, bytes));
-
-    if let Err(error) = written {
-      log::warn!("The renderer's cache '{}' cannot be kept: {error}", path.display());
+    if let Err(error) = self.store.write(name, bytes) {
+      log::warn!("The renderer's cache '{name}' cannot be kept: {error}");
     }
   }
 }

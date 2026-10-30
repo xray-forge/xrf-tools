@@ -16,6 +16,8 @@ export const THEME_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFE
 export const DEV_MODE_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "dev-mode");
 /** How the root catalog draws its tools. */
 export const CATALOG_VIEW_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "catalog-view");
+/** How long the application's caches keep what goes unused, and how much they keep at most, as JSON. */
+export const APP_CACHE_POLICY_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "app-cache-policy");
 /** Whether IPC payloads are weighed. */
 export const IPC_PROFILING_STORAGE_KEY: string = buildStorageKey(EStorageNamespace.PREFERENCE, "ipc-profiling");
 /** How loud playback is. */

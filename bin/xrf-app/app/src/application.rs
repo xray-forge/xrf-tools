@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use tauri::{App, Builder, Manager, RunEvent, Runtime, Window, WindowEvent, Wry};
 use xrf_app_core::assets::AssetMountState;
+use xrf_app_core::cache::AppCache;
 use xrf_app_core::directories::AppDirectories;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::jobs::JobRegistry;
@@ -82,8 +83,8 @@ pub fn run() -> ExitCode {
 
 /// The domain plugins over the state every one's setup builds on, managed before any of them: which build is running,
 /// the pool, the asset state every setup hands the sessions a commit moves along, the scopes every session's handles
-/// are released by, where the application writes, the windows viewports, close approvals and reveals address, and the
-/// jobs. A window that goes releases every scope its pages held.
+/// are released by, where the application writes and its caches, the windows viewports, close approvals and reveals
+/// address, and the jobs. A window that goes releases every scope its pages held.
 fn assemble<R: Runtime>(
   builder: Builder<R>,
   build: BuildInfo,
@@ -92,6 +93,11 @@ fn assemble<R: Runtime>(
 ) -> Builder<R> {
   // Closed documents are dropped on the pool, so neither a command nor the event loop waits for a level to go.
   let scopes: SessionScopes = SessionScopes::new(execution.get_pool());
+  // Every client's cache in one, where the application has a data directory to keep it in.
+  let builder: Builder<R> = match AppCache::of(&directories) {
+    Some(cache) => builder.manage(cache),
+    None => builder,
+  };
   let builder: Builder<R> = builder
     .manage(build)
     .manage(execution)

@@ -20,7 +20,7 @@ impl AppDirectories {
   /// Directory within the application's own data that caches rebuilt from nothing are kept in.
   pub const CACHE_DIRECTORY: &'static str = "cache";
 
-  /// The cache the renderer keeps what it rebuilds in: its driver's compiled pipelines.
+  /// The renderer's cache (`AppCache::get_store`), what it rebuilds: its driver's compiled pipelines.
   pub const RENDERER_CACHE: &'static str = "renderer";
 
   /// Directory within the application's own data the logs are kept in.
@@ -71,13 +71,13 @@ impl AppDirectories {
       .map(|directory| directory.join(Self::PREFERENCES_FILE))
   }
 
-  /// The directory the cache `name` is kept in, in the best of the application's own data directories.
-  pub fn get_cache_directory(&self, name: &str) -> Option<PathBuf> {
+  /// The directory the caches are kept in (`AppCache`), in the best of the application's own data directories.
+  pub fn get_cache_root(&self) -> Option<PathBuf> {
     self
       .get_app_data_directories()
       .into_iter()
       .next()
-      .map(|directory| directory.join(Self::CACHE_DIRECTORY).join(name))
+      .map(|directory| directory.join(Self::CACHE_DIRECTORY))
   }
 
   /// The first of `directories` the page can address without changing it: one with a Unicode path.
