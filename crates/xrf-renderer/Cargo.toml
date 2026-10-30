@@ -11,7 +11,6 @@ path = "src/lib.rs"
 [dependencies]
 ash = { workspace = true }
 bytemuck = { workspace = true }
-crc32fast = { workspace = true }
 glam = { workspace = true }
 image = { workspace = true, features = ["png"] }
 log = { workspace = true }

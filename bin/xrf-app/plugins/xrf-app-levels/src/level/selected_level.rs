@@ -8,7 +8,7 @@ use xrf_engine_target::XrayEngineResolution;
 use xrf_level::{LevelFile, LevelSector, LevelVisualsChunk};
 use xrf_ltx::LtxDialect;
 use xrf_vfs::{XrayRoots, XraySearch};
-use xrf_visual::{SectorOutline, TreeTypes};
+use xrf_visual::SectorOutline;
 
 use crate::level::{LevelSource, LevelSunDescription, SelectedLevelDescription, SelectedLevels};
 
@@ -31,8 +31,6 @@ pub struct SelectedLevel {
   /// What each sector is and where, taken at open from what the visuals declare, so a viewer can decide what to
   /// stream before reading any geometry.
   pub outlines: Vec<SectorOutline>,
-  /// The level's trees by type, taken at open from the visuals, which names each sector impostor's type as it packs.
-  pub trees: TreeTypes,
 }
 
 impl SelectedLevel {

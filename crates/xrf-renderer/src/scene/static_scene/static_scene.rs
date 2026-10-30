@@ -1,10 +1,10 @@
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::VecDeque;
 
 use glam::{Mat4, UVec4, Vec3, Vec4};
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer_core::{ProxyHandle, ProxyStore, Span};
-use xrf_visual::{SectorGeometry, SectorImpostors, SectorInstanceGroup, SectorPackage, SectorSurface, TreeTypes};
+use xrf_visual::{SectorGeometry, SectorImpostors, SectorInstanceGroup, SectorPackage, SectorSurface};
 
 use crate::camera::camera_frustum::CameraFrustum;
 use crate::contract::render_pool_use::RenderPoolUse;
@@ -42,8 +42,6 @@ use crate::scene::static_scene::static_surface_use::StaticSurfaceUse;
 use crate::scene::static_scene::static_surfaces::StaticSurfaces;
 use crate::scene::static_scene::static_trace_geometry::StaticTraceGeometry;
 use crate::scene::static_scene::static_trace_group::StaticTraceGroup;
-use crate::scene::static_scene::static_tree_type::{StaticTreePart, StaticTreeType};
-use crate::scene::static_scene::static_tree_types::StaticTreeTypes;
 use crate::scene::static_scene::static_vertex_words::StaticVertexWords;
 
 /// Clusters a spawned model's row holds at most: the row cull walks a row's clusters on one thread.
@@ -56,9 +54,6 @@ pub struct StaticScene {
   pub geometry: StaticGeometry,
   pub surfaces: StaticSurfaces,
   pub cull: StaticCullScratch,
-  /// The level's tree types its standing sectors give, with the parts of one tree of each, which their impostors bake
-  /// from.
-  trees: StaticTreeTypes,
   sectors: ProxyStore<StaticSectorProxy>,
   models: ProxyStore<StaticModelProxy>,
   objects: StaticObjects,
@@ -86,7 +81,6 @@ impl StaticScene {
       geometry: StaticGeometry::new(device, queue),
       surfaces: StaticSurfaces::new(device, queue),
       cull: StaticCullScratch::new(device),
-      trees: StaticTreeTypes::default(),
       sectors: ProxyStore::new(),
       models: ProxyStore::new(),
       objects: StaticObjects::default(),
@@ -294,7 +288,6 @@ impl StaticScene {
 
     writer.relocate(&spans);
     self.geometry.write(&spans, &writer);
-    self.note_tree_types(handle, &spans, &writer);
 
     let rows: Vec<ProxyHandle<StaticRow>> = writer.rows.iter().map(|row| self.geometry.add_row(*row)).collect();
 
@@ -381,74 +374,6 @@ impl StaticScene {
       .map(|(_, object)| (object.model, object.place.get_offset(), &object.transform))
   }
 
-  /// Keeps for the bake each tree type a sector stands that no standing sector gave yet: of one of its trees, the
-  /// whole-detail slot of every part its impostor decides, their clusters, and the sphere the tree fills in its own
-  /// space.
-  fn note_tree_types(
-    &mut self,
-    sector: ProxyHandle<StaticSectorProxy>,
-    spans: &StaticSpans,
-    writer: &StaticSceneWriter,
-  ) {
-    let first_impostor: u32 = StaticSpans::get_offset(&spans.impostors);
-    let first_slot: u32 = StaticSpans::get_offset(&spans.slots);
-    let first_place: u32 = StaticSpans::get_offset(&spans.places);
-    let mut trees: BTreeMap<u32, Vec<&StaticRow>> = BTreeMap::new();
-
-    for row in writer
-      .rows
-      .iter()
-      .filter(|row| row.lod != StaticRow::NO_LOD && row.get_band() == 0)
-    {
-      trees.entry(row.lod).or_default().push(row);
-    }
-
-    for (local, impostor) in writer.impostors.iter().enumerate() {
-      if impostor.kind == TreeTypes::NO_TYPE || self.trees.has(impostor.kind) {
-        continue;
-      }
-
-      let Some(rows) = trees.get(&(first_impostor + local as u32)) else {
-        continue;
-      };
-      // Each part's sphere taken back through its place into the tree's own space.
-      let spheres: Vec<Vec4> = rows
-        .iter()
-        .map(|row| {
-          let place: &StaticPlace = &writer.places[(row.place - first_place) as usize];
-          let center: Vec3 = place.transform.inverse().transform_point3(row.sphere.truncate());
-
-          center.extend(row.sphere.w / place.info.w.max(f32::EPSILON))
-        })
-        .collect();
-
-      self.trees.note(
-        impostor.kind,
-        StaticTreeType {
-          parts: rows
-            .iter()
-            .map(|row| {
-              let slot: &StaticSlot = &writer.slots[(row.slot - first_slot) as usize];
-
-              StaticTreePart {
-                batch: slot.batch,
-                first_cluster: slot.first_cluster,
-                cluster_count: slot.cluster_count,
-              }
-            })
-            .collect(),
-          sphere: Self::bound_spheres(&spheres),
-          sector,
-        },
-      );
-    }
-  }
-
-  /// The level's tree types its standing sectors give, which their impostors bake from.
-  pub fn get_tree_types(&self) -> &StaticTreeTypes {
-    &self.trees
-  }
-
   /// Takes a sector out of the scene, its ranges cleared and freed; false for one already gone.
   pub fn remove_sector(&mut self, handle: ProxyHandle<StaticSectorProxy>) -> bool {
     let Some(sector) = self.sectors.remove(handle) else {
@@ -458,8 +383,6 @@ impl StaticScene {
     for row in sector.rows {
       self.geometry.remove_row(row);
     }
-
-    self.trees.forget(handle);
 
     self.cull.remove_capacities(&sector.capacities);
     self.geometry.release(sector.spans);
@@ -1153,7 +1076,6 @@ impl StaticScene {
     let factors: Vec<f32> = read_pods(buffer, &impostors.factors);
     let corners: Vec<[f32; SectorImpostors::FLOATS_PER_CORNER]> = read_pods(buffer, &impostors.corners);
     let normals: Vec<Vec4> = read_pods(buffer, &impostors.normals);
-    let kinds: Vec<u32> = read_pods(buffer, &impostors.types);
     let count: usize = spheres
       .len()
       .min(factors.len())
@@ -1188,8 +1110,7 @@ impl StaticScene {
         normals: facets,
         factor: factors[index],
         surface: dressing.map_or(0, |it| it.0),
-        kind: kinds.get(index).copied().unwrap_or(TreeTypes::NO_TYPE),
-        _pad: 0,
+        _pad: [0; 2],
       });
 
       for corner in &corners[index * StaticImpostor::CORNERS..][..StaticImpostor::CORNERS] {

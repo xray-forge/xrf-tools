@@ -305,13 +305,6 @@ impl RenderThread {
 
     self.end_view_frames(frames, captures, (shots, bursts));
 
-    // The bakes the scenes' first views recorded go back to be kept.
-    for (scene_id, _) in &firsts {
-      if let Some(scene) = self.scenes.get(scene_id) {
-        scene.impostors.request_saves();
-      }
-    }
-
     let cpu: Duration = started.elapsed().saturating_sub(waited);
 
     self.present_windows(&gpu.context.queue, windows, phases, (cpu, span), &groups);

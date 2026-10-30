@@ -27,9 +27,9 @@ fn the_application_storage_is_measured_by_kind() {
   let root: PathBuf = root("storage");
 
   for (path, bytes) in [
-    ("cache/renderer/impostors/0123-1008-v1.bin", 100),
-    ("cache/renderer/impostors/4567-504-v1.bin", 50),
-    ("cache/renderer/vulkan_pipelines", 20),
+    ("cache/renderer/vulkan_pipelines", 100),
+    ("cache/renderer/shaders/a.bin", 50),
+    ("cache/renderer/shaders/b.bin", 20),
     ("cache/thumbnails/a.png", 7),
     ("logs/xrf-app.log", 3),
     ("preferences.json", 2),

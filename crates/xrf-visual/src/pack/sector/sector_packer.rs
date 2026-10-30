@@ -38,7 +38,6 @@ use crate::pack::sector::sector_impostor_arrays::SectorImpostorArrays;
 use crate::pack::sector::sector_package::SectorPackage;
 use crate::pack::sector::sector_surface_table::SectorSurfaceTable;
 use crate::pack::sector::sector_vertex_arrays::SectorVertexArrays;
-use crate::pack::tree::tree_types::TreeTypes;
 use crate::pack::visual_conversion::convert_placement;
 
 /// Packs one sector's drawables into the single buffer a renderer draws it from.
@@ -46,8 +45,6 @@ pub struct SectorPacker<'a, D: ChunkDataSource> {
   visuals: &'a LevelVisualsChunk,
   surfaces: SectorSurfaceTable<'a>,
   source: &'a LevelGeomSource<D>,
-  /// The level's trees by type, which names each impostor's; none leaves every impostor's type unnamed.
-  trees: Option<&'a TreeTypes>,
 }
 
 impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
@@ -65,15 +62,8 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
     Self {
       source,
       surfaces: SectorSurfaceTable::of(shaders),
-      trees: None,
       visuals,
     }
-  }
-
-  /// The same packer naming each impostor's tree type from the level's `trees`.
-  pub fn with_trees(mut self, trees: &'a TreeTypes) -> Self {
-    self.trees = Some(trees);
-    self
   }
 
   /// Packs everything one sector reaches into one buffer of attribute arrays and one index array.
@@ -203,13 +193,7 @@ impl<'a, D: ChunkDataSource> SectorPacker<'a, D> {
         parents.insert(*child, arrays.len());
       }
 
-      // An impostor composes the parts of one tree, so any part names its type.
-      let kind: u32 = self
-        .trees
-        .and_then(|trees| visual.children.iter().find_map(|child| trees.get_type(*child)))
-        .unwrap_or(TreeTypes::NO_TYPE);
-
-      arrays.push((visual, definition), kind, &self.surfaces);
+      arrays.push(visual, definition, &self.surfaces);
     }
 
     (arrays, parents)

@@ -9,7 +9,7 @@ export type AppStorageArea = {
 
 /** What a file the application keeps of its own is for, by where it lies in its data directory. */
 export enum EAppStorageKind {
-  /** What the renderer rebuilds when it is gone: the driver's compiled pipelines, the baked impostors. */
+  /** What the renderer rebuilds when it is gone: the driver's compiled pipelines. */
   RENDERER_CACHE = "rendererCache",
   /** Every other cache rebuilt from nothing. */
   OTHER_CACHES = "otherCaches",

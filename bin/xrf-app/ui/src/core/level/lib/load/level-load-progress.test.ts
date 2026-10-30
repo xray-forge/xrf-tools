@@ -19,12 +19,6 @@ describe("describeLevelLoad", () => {
     expect(describeLevelLoad(mockLoad({ textures: 599, texturesTotal: 636 }))).toBe("Uploading textures, 599 of 636");
   });
 
-  it("counts tree impostors read or baked once the sectors and their textures are in", () => {
-    expect(describeLevelLoad(mockLoad({ impostors: 40, impostorsTotal: 115 }))).toBe(
-      "Preparing tree impostors, 40 of 115"
-    );
-  });
-
   // Grass, lights and particles are read beside the sectors, and on a debug build the grass comes last by seconds.
   it("says what is still read beside the sectors once they and their textures are all in", () => {
     expect(describeLevelLoad(mockLoad({}))).toBe("Reading spawned objects, grass, lights and particles");

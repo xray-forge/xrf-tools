@@ -15,8 +15,7 @@ import { ReactElement, useCallback, useEffect, useState } from "react";
 /** What each kind the application keeps on disk is, as the section says it. */
 const APP_STORAGE_KINDS: Record<EAppStorageKind, { label: string; description: string }> = {
   [EAppStorageKind.RENDERER_CACHE]: {
-    description:
-      "What the renderer prepares once and reuses, so it starts and opens levels faster. Rebuilt when needed.",
+    description: "What the renderer prepares once and reuses, so it starts faster. Rebuilt when needed.",
     label: "Renderer cache",
   },
   [EAppStorageKind.OTHER_CACHES]: {

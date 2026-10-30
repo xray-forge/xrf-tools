@@ -12,9 +12,7 @@ export function mockRenderFeatures(overrides: Partial<IRenderFeatureSettings> = 
 export function mockRenderLoadReport(overrides: Partial<RenderLoadReport> = {}): RenderLoadReport {
   return {
     bytes: 0,
-    durations: { grass: null, impostors: null, lights: null, particles: null, ready: null, sectors: null, spawn: null },
-    impostors: 0,
-    impostorsTotal: 0,
+    durations: { grass: null, lights: null, particles: null, ready: null, sectors: null, spawn: null },
     isReady: false,
     scene: 0,
     sectors: 0,
