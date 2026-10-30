@@ -10,12 +10,22 @@ const FRAME_MARGIN: number = 1.25;
 /** The nearest a framed sphere is stood off, in metres, so a bottle is seen rather than filled. */
 const FRAME_NEAREST: number = 2;
 
-/** Where a camera faces before it has reported: level, a little downward, along `+z`. */
-const DEFAULT_FACING: Readonly<Pick<ILevelCamera, "heading" | "pitch">> = { heading: 0, pitch: toRadians(-20) };
+/**
+ * The least a framing camera looks down, so it stands above what it frames: a path or a point lying on the ground,
+ * framed level, would stand the camera at the ground's height and inside the terrain rising behind it.
+ */
+const FRAME_LEAST_DOWNWARD: number = toRadians(-20);
+
+/** Where a camera faces before it has reported: along `+z`, looking down as little as framing does. */
+const DEFAULT_FACING: Readonly<Pick<ILevelCamera, "heading" | "pitch">> = {
+  heading: 0,
+  pitch: FRAME_LEAST_DOWNWARD,
+};
 
 /**
- * Unreal's `F`: keeps the camera's rotation and stands it back along its view until a sphere fills the view, with
- * room round it, and no nearer than a couple of metres.
+ * Unreal's `F`: keeps the camera's heading and stands it back along its view until a sphere fills the view, with
+ * room round it, and no nearer than a couple of metres; it keeps its pitch where that looks down steeply enough and
+ * looks down that much where it does not, so the camera stands above what it frames.
  *
  * @param camera - Where the camera stands and faces, or null before it has reported.
  * @param sphere - What to frame, in renderer space.
@@ -29,7 +39,9 @@ export function toLevelFramedGoTo(
   sphere: { center: IPoint3; radius: number },
   fieldOfView: number
 ): ILevelGoTo {
-  const { heading, pitch } = camera ?? DEFAULT_FACING;
+  const facing: Pick<ILevelCamera, "heading" | "pitch"> = camera ?? DEFAULT_FACING;
+  const heading: number = facing.heading;
+  const pitch: number = Math.min(facing.pitch, FRAME_LEAST_DOWNWARD);
   const [x, y, z] = toDirection({ heading, pitch });
   const centre: IPoint3 = toXraySpace(sphere.center);
   const distance: number = Math.max(
