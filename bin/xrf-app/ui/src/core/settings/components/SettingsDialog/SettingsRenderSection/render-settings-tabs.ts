@@ -7,6 +7,7 @@ import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
 import { SettingsRendererAmbientOcclusion } from "./SettingsRendererAmbientOcclusion";
 import { SettingsRendererAntialiasing } from "./SettingsRendererAntialiasing";
 import { SettingsRendererBloom } from "./SettingsRendererBloom";
+import { SettingsRendererCamera } from "./SettingsRendererCamera";
 import { SettingsRendererCulling } from "./SettingsRendererCulling";
 import { SettingsRendererDebanding } from "./SettingsRendererDebanding";
 import { SettingsRendererDisplay } from "./SettingsRendererDisplay";
@@ -71,6 +72,7 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
       "tonemap",
       "enhancedBloom",
       "debanding",
+      "camera",
     ],
     id: ERenderSettingsTab.IMAGE,
     label: "Image",
@@ -79,6 +81,7 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
       SettingsRendererExposure,
       SettingsRendererBloom,
       SettingsRendererDebanding,
+      SettingsRendererCamera,
     ],
   },
   {

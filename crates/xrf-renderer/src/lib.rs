@@ -55,6 +55,7 @@ pub use crate::contract::render_backend_availability::RenderBackendAvailability;
 pub use crate::contract::render_bloom_mode::RenderBloomMode;
 pub use crate::contract::render_bloom_settings::RenderBloomSettings;
 pub use crate::contract::render_burst::RenderBurst;
+pub use crate::contract::render_camera_settings::RenderCameraSettings;
 pub use crate::contract::render_capture::RenderCapture;
 pub use crate::contract::render_color::RenderColor;
 pub use crate::contract::render_contact_shadow_mode::RenderContactShadowMode;

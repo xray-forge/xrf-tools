@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use glam::Vec3;
+use glam::{Mat4, Vec3};
 use xrf_error::XrfError;
 use xrf_renderer_core::{ExecutedGroup, GraphOwner, GraphPassTime, GraphReport, GraphTimer};
 
@@ -113,9 +113,12 @@ impl RenderViewport {
 
       match level.take_pick(entry.slot) {
         Some(Ok(texel)) => {
-          let (inverse, ndc) = entry.unprojection;
-          let hit: Option<RenderLevelHit> = level.resolve_pick(scene, texel, |depth: f32| -> Vec3 {
-            inverse.project_point3(ndc.extend(depth))
+          let (view, ndc) = entry.unprojection;
+          let inverse: Mat4 = view.get_view_projection().inverse();
+          let hit: Option<RenderLevelHit> = level.resolve_pick(scene, texel, |stored: f32| -> (Vec3, f32) {
+            let point: Vec3 = inverse.project_point3(ndc.extend(stored));
+
+            (point, -view.view.transform_point3(point).z)
           });
 
           let _ = entry.pick.reply.send(Ok(RenderPick {

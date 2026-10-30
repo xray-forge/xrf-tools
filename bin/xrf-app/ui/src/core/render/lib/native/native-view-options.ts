@@ -99,6 +99,7 @@ export function toNativeViewOptions(
       ambientOcclusion: features.ambientOcclusion,
       antialiasing: features.antialiasing,
       bloom: look.bloom,
+      camera: features.camera,
       corrections: { ...corrections, grading: [...corrections.grading] },
       debanding: features.debanding,
       displayTransform: features.displayTransform,

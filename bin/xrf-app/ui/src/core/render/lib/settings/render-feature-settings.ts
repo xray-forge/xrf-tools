@@ -3,6 +3,7 @@ import {
   RenderAmbientOcclusionRtaoSettings,
   RenderAmbientOcclusionSettings,
   RenderAmbientOcclusionVbaoSettings,
+  RenderCameraSettings,
   RenderContactShadowSettings,
   RenderDebandingSettings,
   RenderEnhancedBloomSettings,
@@ -35,6 +36,7 @@ import { TSettled } from "@/core/render/lib/settings/render-settled";
 export type TRenderViewFeatureKey =
   | "ambientOcclusion"
   | "antialiasing"
+  | "camera"
   | "debanding"
   | "displayTransform"
   | "enhancedBloom"
@@ -77,6 +79,8 @@ export type TRenderAmbientOcclusionGtaoSettings = TSettled<RenderAmbientOcclusio
 export type TRenderAmbientOcclusionRtaoSettings = TSettled<RenderAmbientOcclusionRtaoSettings>;
 
 export type TRenderAmbientOcclusionSettings = TSettled<RenderAmbientOcclusionSettings>;
+
+export type TRenderCameraSettings = TSettled<RenderCameraSettings>;
 
 export type TRenderContactShadowSettings = TSettled<RenderContactShadowSettings>;
 

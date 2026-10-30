@@ -368,6 +368,45 @@ export type RenderBurst = {
   samples: number | null;
 };
 
+/**
+ * The physical camera the frame is shown through after its resolve: a shutter that blurs what moves, a lens that
+ * blurs what stands out of focus, dims its corners and splits colour towards them, and film grain. Every effect is
+ * off until turned on; the rest shape each one.
+ */
+export type RenderCameraSettings = {
+  /** Whether what moves across the frame blurs along its motion while the shutter is open. */
+  isMotionBlurred: boolean;
+  /** The share of a frame the shutter stays open: a half is film's 180° shutter. */
+  shutter: number | null;
+  /** The longest blur, as a share of the frame's height, so a fast turn smears no further. */
+  motionLimit: number | null;
+  /** Whether what stands nearer or farther than the focus blurs by the lens's depth of field. */
+  isDefocused: boolean;
+  /** The lens's aperture as an f-number: lower opens it wider and keeps less in focus. */
+  fStop: number | null;
+  /** Metres from the camera the lens is focused at, which a pick in the viewer sets. */
+  focusDistance: number | null;
+  /**
+   * The sensor's height in millimetres, which with the view's field of view gives the lens's focal length: 24 is
+   * full-frame film's.
+   */
+  sensorHeight: number | null;
+  /** Whether the lens dims the frame's corners, as light reaching the film at an angle falls off. */
+  isVignetted: boolean;
+  /** How much of the lens's falloff the corners show, from none to all of it. */
+  vignetteStrength: number | null;
+  /** Whether the frame is shown with film grain, varying every frame. */
+  isGrained: boolean;
+  /** How strongly the grain shows, by the frame's brightness. */
+  grainStrength: number | null;
+  /** How many pixels across a grain is. */
+  grainSize: number | null;
+  /** Whether the lens splits colour towards the frame's edges, its glass bending red and blue apart. */
+  isAberrated: boolean;
+  /** How far apart the colours split at the corners. */
+  aberrationStrength: number | null;
+};
+
 /** An opaque colour as CSS states it, eight bits a channel in sRGB. */
 export type RenderColor = {
   r: number;
@@ -1110,7 +1149,10 @@ export enum ERenderLevelHit {
   SPAWN = "spawn",
 }
 
-/** What of a level is drawn under a point of a viewport, and where the ray from the eye met it, in renderer space. */
+/**
+ * What of a level is drawn under a point of a viewport, where the ray from the eye met it, in renderer space, and how
+ * far ahead of the camera along its view: metres a lens focuses by.
+ */
 export type RenderLevelHit =
   /** A surface the level compiled. */
   | {
@@ -1125,6 +1167,7 @@ export type RenderLevelHit =
       /** Whether it is a clump of trees drawn as its impostor. */
       isImpostor: boolean;
       point: [number | null, number | null, number | null];
+      depth: number | null;
     }
   /** An object the level's spawn places. */
   | {
@@ -1132,6 +1175,7 @@ export type RenderLevelHit =
       /** Its index among the level's spawned objects. */
       object: number;
       point: [number | null, number | null, number | null];
+      depth: number | null;
     };
 
 /** Graphics libraries shipped beside the application; currently only the DLSS runtime. */
@@ -2153,6 +2197,8 @@ export type RenderViewFeatures = {
   parallax: RenderParallaxSettings;
   /** How the terrain's detail textures repeat across the ground. */
   terrain: RenderTerrainSettings;
+  /** The camera the resolved frame is shown through: its motion blur, depth of field, vignette, grain and aberration. */
+  camera: RenderCameraSettings;
   /** What the finished frame is corrected by. */
   corrections: RenderImageCorrections;
   /** How the game's console scales the sun, the hemisphere and the ambient. */

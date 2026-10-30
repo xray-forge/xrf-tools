@@ -20,6 +20,7 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/common/depth_plane.wgsl"),
   ),
   ("common/noise", include_str!("../../shaders/common/noise.wgsl")),
+  ("common/lens", include_str!("../../shaders/common/lens.wgsl")),
   ("common/froxel", include_str!("../../shaders/common/froxel.wgsl")),
   (
     "common/compute_grid",
@@ -296,6 +297,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   ("frame/particles", include_str!("../../shaders/frame/particles.wgsl")),
   ("frame/rain", include_str!("../../shaders/frame/rain.wgsl")),
   ("frame/rain_blur", include_str!("../../shaders/frame/rain_blur.wgsl")),
+  (
+    "frame/camera_effects",
+    include_str!("../../shaders/frame/camera_effects.wgsl"),
+  ),
   ("frame/rain_rings", include_str!("../../shaders/frame/rain_rings.wgsl")),
   ("frame/sky_haze", include_str!("../../shaders/frame/sky_haze.wgsl")),
   ("frame/smaa", include_str!("../../shaders/frame/smaa.wgsl")),
@@ -515,6 +520,10 @@ const EMBEDDED: &[(&str, &str)] = &[
   (
     "generated/frame/rain_rings",
     include_str!("../../shaders/generated/frame/rain_rings.wgsl"),
+  ),
+  (
+    "generated/frame/camera_effects",
+    include_str!("../../shaders/generated/frame/camera_effects.wgsl"),
   ),
   (
     "generated/frame/wet_patch",

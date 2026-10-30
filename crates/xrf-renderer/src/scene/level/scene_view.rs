@@ -568,6 +568,7 @@ impl SceneView {
       .prepare((scene, device, &mut *encoder), view, options, sight);
     self.features.meter.prepare(device, options);
     self.features.calibration.prepare(options, view);
+    self.features.camera.prepare(frame.passes, options, view);
   }
 
   /// The lighting the passes read, the enhanced fog's height fog faded out indoors; the units reading it (the combine,
@@ -604,7 +605,7 @@ impl SceneView {
     scene.particles.fill(view, options, &mut self.features.particles);
 
     self.features.particles.upload((device, &mut *encoder));
-    self.prepare_present(options, frame.output, time);
+    self.prepare_present(options, frame.output, (time, noise_frame));
     self.features.volumetric.prepare(device, options);
   }
 
@@ -890,8 +891,8 @@ impl SceneView {
 
   /// Notes what the window pass reads, once every other unit knows what it draws: whether the water, a particle, the
   /// enhanced rain's splashes or a distorting surface of the scene moves what is seen through it, which bloom it lays
-  /// over the frame, and the sky debanding, its noise turning with `time`.
-  fn prepare_present(&mut self, options: &RenderViewOptions, output: RenderRect, time: f32) {
+  /// over the frame, the sky debanding, its noise turning with `time`, and the film's grain, drawn for `noise_frame`.
+  fn prepare_present(&mut self, options: &RenderViewOptions, output: RenderRect, (time, noise_frame): (f32, u32)) {
     if self.targets.is_none() {
       return;
     }
@@ -917,6 +918,7 @@ impl SceneView {
       light_scale: self.shared.lighting.get_light_scale(),
       is_light_summed: self.shared.lighting.is_light_summed(),
       metering: features.exposure.get_metering(),
+      grain_frame: noise_frame,
     };
 
     self.features.bloom.keep_for_distortion(inputs.is_distorting);
@@ -1574,21 +1576,33 @@ impl SceneView {
         .features
         .smoothing
         .add_passes((&mut *graph, &mut *bindings, runtime), passes, (handles.scene, size));
+    // The water's pixels carried by its surface rather than by what lies under it.
+    let surfaced: ViewTargetHandles = ViewTargetHandles {
+      depth: depth_with_water.unwrap_or(handles.depth),
+      ..handles
+    };
     let (mut resolved, mut shown): (GraphTexture, GraphTexture) = self.features.resolve.add_passes(
       (&mut *graph, &mut *bindings, runtime),
       passes,
       view,
-      (
-        // The water's pixels carried by its surface rather than by what lies under it.
-        ViewTargetHandles {
-          depth: depth_with_water.unwrap_or(handles.depth),
-          ..handles
-        },
-        smoothed,
-        opaque,
-        ray_guides,
-      ),
+      (surfaced, smoothed, opaque, ray_guides),
     );
+
+    // The camera over the resolved image, so no history carries its blurs; the frame as drawn is that image too where
+    // nothing rescaled it.
+    if let Some(image) = self.features.camera.add_passes(
+      (&mut *graph, runtime),
+      passes,
+      surfaced,
+      (shown, self.features.resolve.get_shown_size(handles.size)),
+    ) {
+      if !self.features.resolve.is_rescaled() {
+        resolved = image;
+      }
+
+      shown = image;
+    }
+
     // The enhanced bloom from the resolved image the present shows, before the streaks laid over it.
     let enhanced_bloom: Option<GraphTexture> = self.features.bloom.add_enhanced_passes(
       (&mut *graph, &mut *bindings, runtime),
@@ -1651,14 +1665,16 @@ impl SceneView {
     self.features.pick.take(slot)
   }
 
-  /// Names what a pick's texel met.
+  /// Names what a pick's texel met, `unproject` turning its stored depth into where the ray met it and how many metres
+  /// ahead of the camera, along its view, that point stands.
   pub fn resolve_pick(
     &self,
     scene: &LevelScene,
-    [kind, cluster, place, depth]: [u32; 4],
-    unproject: impl Fn(f32) -> Vec3,
+    [kind, cluster, place, stored]: [u32; 4],
+    unproject: impl Fn(f32) -> (Vec3, f32),
   ) -> Option<RenderLevelHit> {
-    let point: [f32; 3] = unproject(f32::from_bits(depth)).to_array();
+    let (point, depth): (Vec3, f32) = unproject(f32::from_bits(stored));
+    let point: [f32; 3] = point.to_array();
 
     match kind {
       PICKED_CLUSTER => {}
@@ -1673,6 +1689,7 @@ impl SceneView {
             place: None,
             is_impostor: true,
             point,
+            depth,
           });
       }
       _ => return None,
@@ -1684,7 +1701,7 @@ impl SceneView {
       return scene
         .statics
         .resolve_spawn_pick(place)
-        .map(|object| RenderLevelHit::Spawn { object, point });
+        .map(|object| RenderLevelHit::Spawn { object, point, depth });
     }
 
     Some(RenderLevelHit::Surface {
@@ -1694,6 +1711,7 @@ impl SceneView {
       place: instance,
       is_impostor: false,
       point,
+      depth,
     })
   }
 

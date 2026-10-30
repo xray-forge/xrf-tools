@@ -231,6 +231,7 @@ struct Present {
   deband: vec4<f32>,
   display: vec4<f32>,
   inspect: vec4<f32>,
+  grain: vec4<f32>,
 }
 
 struct Distort {
@@ -563,6 +564,16 @@ struct Fsr {
   velocity_factor: f32,
   hdr: f32,
   delta_pre_exposure: f32,
+}
+
+struct CameraEffects {
+  shown: vec4<f32>,
+  drawn: vec4<f32>,
+  depth: vec4<f32>,
+  lens: vec4<f32>,
+  focus: vec4<f32>,
+  motion: vec4<f32>,
+  optics: vec4<f32>,
 }
 
 struct Cluster {

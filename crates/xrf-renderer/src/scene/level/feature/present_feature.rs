@@ -61,7 +61,8 @@ impl PresentFeature {
     }
     .with_display(DisplayMode::of(options), &options.features.grading, &inputs.metering)
     .with_grass_reach(inputs.grass_reach)
-    .with_reflection_light(inputs.light_scale, inputs.is_light_summed);
+    .with_reflection_light(inputs.light_scale, inputs.is_light_summed)
+    .with_grain(&options.features.camera, inputs.grain_frame);
 
     self.uniform = match self.debanding {
       Some(passes) => present.with_debanding(passes, options.features.debanding.radius, time),

@@ -3,6 +3,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
 import { LevelCameraAction } from "@/core/level/components/preview/toolbar/camera/LevelCameraAction";
+import { LevelCameraEffectsAction } from "@/core/level/components/preview/toolbar/camera/LevelCameraEffectsAction";
 import { LevelGoToAction } from "@/core/level/components/preview/toolbar/camera/LevelGoToAction";
 import { LevelCullingAction } from "@/core/level/components/preview/toolbar/contents/LevelCullingAction";
 import { LevelGrassAction } from "@/core/level/components/preview/toolbar/contents/LevelGrassAction";
@@ -86,6 +87,7 @@ export function LevelViewerToolbar({
           <EditorToolbarSeparator />
 
           <LevelCameraAction />
+          <LevelCameraEffectsAction />
           <LevelGoToAction />
           <LevelViewerCaptureAction />
         </RenderSliderReference>

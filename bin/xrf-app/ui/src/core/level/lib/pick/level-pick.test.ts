@@ -11,7 +11,7 @@ describe("toLevelPick", () => {
   it("names a picked spawned object as the held spawn has it, and nothing for one not held", () => {
     const crate = mockLevelSpawnObject({ index: 5, name: "crate_5", visual: 1 });
     const spawn = { objects: [mockLevelSpawnObject(), crate], visuals: ["lamp", "crate"] };
-    const hit: RenderLevelHit = { kind: ERenderLevelHit.SPAWN, object: 5, point: [1, 2, 3] };
+    const hit: RenderLevelHit = { depth: 3, kind: ERenderLevelHit.SPAWN, object: 5, point: [1, 2, 3] };
 
     expect(toLevelPick(hit, spawn)).toEqual({
       kind: ELevelPick.SPAWN,

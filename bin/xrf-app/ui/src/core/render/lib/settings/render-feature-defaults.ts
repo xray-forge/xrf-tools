@@ -29,6 +29,7 @@ import {
   TRenderAmbientOcclusionRtaoSettings,
   TRenderAmbientOcclusionSettings,
   TRenderAmbientOcclusionVbaoSettings,
+  TRenderCameraSettings,
   TRenderContactShadowSettings,
   TRenderDebandingSettings,
   TRenderEnhancedBloomSettings,
@@ -271,6 +272,27 @@ export const DEFAULT_RENDER_TERRAIN_SETTINGS: TRenderTerrainSettings = {
   scale: 2,
   sharpness: 7,
   tiling: ERenderTerrainTiling.ENGINE,
+};
+
+/**
+ * Every camera effect off, and for when each is on: film's 180° shutter blurring at most 4% of the frame's height, a
+ * full-frame sensor at f/2.8 focused at 10 m, half the lens's falloff and colour split, and a light, fine grain.
+ */
+export const DEFAULT_RENDER_CAMERA_SETTINGS: TRenderCameraSettings = {
+  aberrationStrength: 0.5,
+  fStop: 2.8,
+  focusDistance: 10,
+  grainSize: 1.6,
+  grainStrength: 0.3,
+  isAberrated: false,
+  isDefocused: false,
+  isGrained: false,
+  isMotionBlurred: false,
+  isVignetted: false,
+  motionLimit: 0.04,
+  sensorHeight: 24,
+  shutter: 0.5,
+  vignetteStrength: 0.5,
 };
 
 /** The engine's own: no contact shadows, and their strengths for when they are drawn, towards four lights a pixel. */

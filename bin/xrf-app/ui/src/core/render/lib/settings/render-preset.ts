@@ -29,6 +29,7 @@ import {
 
 import {
   DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
+  DEFAULT_RENDER_CAMERA_SETTINGS,
   DEFAULT_RENDER_CONTACT_SHADOW_SETTINGS,
   DEFAULT_RENDER_DEBANDING_SETTINGS,
   DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS,
@@ -75,6 +76,8 @@ const BASE_PRESET: IRenderFeatureSettings = {
   },
   // The resolve the cut-outs' hashed alpha and the jitter are for.
   antialiasing: ERenderAntialiasing.TAA,
+  // No camera effect: each is a look a person chooses (P7).
+  camera: DEFAULT_RENDER_CAMERA_SETTINGS,
   // The sky's bands smoothed, which reads the sky's own pixels alone and leaves the rest of the frame as drawn.
   debanding: {
     ...DEFAULT_RENDER_DEBANDING_SETTINGS,
@@ -201,6 +204,7 @@ const ENHANCED_PRESET: IRenderFeatureSettings = {
 const EDITING_PRESET: IRenderFeatureSettings = {
   ambientOcclusion: { ...DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS, isEnabled: false },
   antialiasing: ERenderAntialiasing.NONE,
+  camera: DEFAULT_RENDER_CAMERA_SETTINGS,
   debanding: DEFAULT_RENDER_DEBANDING_SETTINGS,
   displayTransform: ERenderDisplayTransform.ENGINE,
   enhancedBloom: DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS,

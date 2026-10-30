@@ -10,9 +10,11 @@ import { isRecord, Nullable } from "@xrf/types";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { toRenderFeatureChoice } from "@/core/render/lib/settings/render-feature-choice";
 import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";
+import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
 import {
   IRenderFeatureSettings,
   TRenderAmbientOcclusionSettings,
+  TRenderCameraSettings,
   TRenderDebandingSettings,
   TRenderEnhancedBloomSettings,
   TRenderFogSettings,
@@ -78,6 +80,19 @@ export type TLevelParallaxOptions = TRenderParallaxSettings;
 /** The terrain settings a level view may set for itself: all of them. */
 export type TLevelTerrainOptions = TRenderTerrainSettings;
 
+/** The camera effects a level view may set for itself: all of them, its focus among them, which a pick sets. */
+export type TLevelCameraOptions = TRenderCameraSettings;
+
+/**
+ * @param depth - Metres ahead of the camera a pick met the level at.
+ * @returns The lens's focus there, to a centimetre, held to the distances the renderer takes.
+ */
+export function toLevelFocusDistance(depth: number): number {
+  const { max, min } = RENDER_FEATURE_SCHEMA.camera.focusDistance;
+
+  return Math.min(max, Math.max(min, Math.round(depth * 100) / 100));
+}
+
 /** The bloom's mode and the enhanced bloom's settings a level view may set for itself: all of them. */
 export type TLevelEnhancedBloomOptions = TRenderEnhancedBloomSettings;
 
@@ -136,6 +151,8 @@ export interface ILevelFeatureOptions {
   terrain: Partial<TLevelTerrainOptions>;
   /** Which bloom draws and the enhanced bloom's strengths, which no toolbar toggle turns off: its own mode does. */
   enhancedBloom: Partial<TLevelEnhancedBloomOptions>;
+  /** The camera the frame is shown through, each effect turned on and off by its own switch. */
+  camera: Partial<TLevelCameraOptions>;
   /** The mode edges are smoothed with while the settings smooth them at all, or null for the settings' own. */
   antialiasing: Nullable<RenderAntialiasing>;
   /** What the view lights in, where it sets its own: the engine's display values or linear light; null for the settings'. */
@@ -170,6 +187,7 @@ export type TLevelFeatureKey = "ambientOcclusion" | "grass" | "lights" | "shadow
 
 /** The groups no toolbar toggle turns off, whose own mode does, of which a view may set every setting. */
 export type TLevelModeFeatureKey =
+  | "camera"
   | "debanding"
   | "enhancedBloom"
   | "fog"
@@ -219,6 +237,22 @@ const LEVEL_GROUP_KEYS: {
     ripple: true,
     waveHeight: true,
     waveSpeed: true,
+  },
+  camera: {
+    aberrationStrength: true,
+    fStop: true,
+    focusDistance: true,
+    grainSize: true,
+    grainStrength: true,
+    isAberrated: true,
+    isDefocused: true,
+    isGrained: true,
+    isMotionBlurred: true,
+    isVignetted: true,
+    motionLimit: true,
+    sensorHeight: true,
+    shutter: true,
+    vignetteStrength: true,
   },
   debanding: { mode: true, passes: true, radius: true },
   enhancedBloom: { blur: true, exposure: true, mode: true, sky: true, threshold: true, vibrance: true },
@@ -306,6 +340,7 @@ export function toLevelFeatureOptions(stored: unknown): ILevelFeatureOptions {
   return {
     ambientOcclusion: pick("ambientOcclusion"),
     antialiasing: antialiasing && LEVEL_ANTIALIASING_MODES.includes(antialiasing) ? antialiasing : null,
+    camera: pick("camera"),
     debanding: pick("debanding"),
     displayTransform: overrides.displayTransform ?? null,
     enhancedBloom: pick("enhancedBloom"),
@@ -420,6 +455,7 @@ export function toLevelRendererFeatures(
     ...settings,
     ambientOcclusion: toLevelRendererFeature("ambientOcclusion", settings, view, toggles.isOccluded),
     antialiasing: toLevelRendererAntialiasing(settings.antialiasing, view, toggles.isAntialiased),
+    camera: toLevelModeFeature("camera", settings, view),
     debanding: toLevelModeFeature("debanding", settings, view),
     displayTransform: view.displayTransform ?? settings.displayTransform,
     enhancedBloom: toLevelModeFeature("enhancedBloom", settings, view),

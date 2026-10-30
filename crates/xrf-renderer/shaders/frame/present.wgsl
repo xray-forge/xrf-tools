@@ -11,6 +11,7 @@
 #import "common/luminance"
 #import "common/srgb"
 #import "common/display_transform"
+#import "common/lens"
 
 // The viewport's finished scene put into its rectangle of the window; or, for a debug view, one of the targets the
 // scene was built from.
@@ -84,6 +85,21 @@ fn output_dither(pixel: vec2<f32>) -> vec3<f32> {
   let noise: f32 = gradient_noise(pixel);
 
   return vec3<f32>((noise - 0.5) * OUTPUT_STEP);
+}
+
+// How far the grain at its strongest moves a displayed value either way.
+const GRAIN_REACH: f32 = 0.15;
+
+// A displayed colour on the camera's film (`Present::grain`): its grain at the pixel, by its brightness, after the
+// display transform as film's grain is seen, and before the dither the window rounds by.
+fn on_film(color: vec3<f32>, pixel: vec2<f32>) -> vec3<f32> {
+  if (present.grain.x <= 0.0) {
+    return color;
+  }
+
+  let grain: f32 = lens_grain(pixel, present.grain.y, u32(present.grain.z));
+
+  return color + grain * present.grain.x * GRAIN_REACH * lens_grain_response(luminance(color));
 }
 
 // One target of the frame at a texel, as a colour.
@@ -344,7 +360,7 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   // The enhanced bloom screened over the frame, `1 - (1 - img)(1 - bloom)`, before its corrections.
   if (present.is_bloomed == BLOOM_ENHANCED) {
     let bloom: vec3<f32> = textureSampleLevel(bloom_target, bloom_sampler, (pixel + 0.5) / present.size, 0.0).rgb;
-    let finished: vec3<f32> = corrected(1.0 - (1.0 - saturate(color)) * (1.0 - bloom));
+    let finished: vec3<f32> = on_film(corrected(1.0 - (1.0 - saturate(color)) * (1.0 - bloom)), pixel);
     let shown: vec3<f32> = mix(finished, present.selection.rgb, selection_share(texel));
 
     return vec4<f32>(shown + output_dither(in.clip.xy), 1.0);
@@ -355,7 +371,7 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
     color = engine_bloomed(color, pixel);
   }
 
-  let shown: vec3<f32> = mix(corrected(color), present.selection.rgb, selection_share(texel));
+  let shown: vec3<f32> = mix(on_film(corrected(color), pixel), present.selection.rgb, selection_share(texel));
 
   return vec4<f32>(shown + output_dither(in.clip.xy), 1.0);
 }

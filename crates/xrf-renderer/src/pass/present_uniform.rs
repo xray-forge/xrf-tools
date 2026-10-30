@@ -1,6 +1,7 @@
 use glam::{Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
+use crate::contract::render_camera_settings::RenderCameraSettings;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_grading_settings::RenderGradingSettings;
 use crate::contract::render_image_corrections::RenderImageCorrections;
@@ -48,12 +49,17 @@ pub struct PresentUniform {
   /// cast none, which the cascades' view marks; then the light's scale and one where it is summed, by which the
   /// reflections' view shows what the rays met as the display value combine adds it.
   pub inspect: Vec4,
+  /// The camera's film grain (`RenderCameraSettings`): its strength, nought for none, its size in pixels, and the frame
+  /// its grains are drawn for.
+  pub grain: Vec4,
 }
 
 impl PresentUniform {
   /// `is_bloomed` for the engine's bloom and for the enhanced one.
   pub const BLOOM_ENGINE: u32 = 1;
   pub const BLOOM_ENHANCED: u32 = 2;
+  /// The frames the grain is drawn anew for before it repeats, few enough that a float holds each whole.
+  const GRAIN_FRAMES: u32 = 1 << 16;
 
   pub fn new(
     view: RenderDebugView,
@@ -82,6 +88,7 @@ impl PresentUniform {
       deband: Vec4::ZERO,
       display: Vec4::ZERO,
       inspect: Vec4::ZERO,
+      grain: Vec4::ZERO,
     }
   }
 
@@ -133,6 +140,23 @@ impl PresentUniform {
   pub fn with_debanding(self, passes: u32, radius: f32, time: f32) -> Self {
     Self {
       deband: Vec4::new(passes as f32, radius, time, 0.0),
+      ..self
+    }
+  }
+
+  /// The same shown on the camera's film as `camera` sets it, its grains drawn for `frame`; none where it is off.
+  pub fn with_grain(self, camera: &RenderCameraSettings, frame: u32) -> Self {
+    if !camera.is_grained {
+      return self;
+    }
+
+    Self {
+      grain: Vec4::new(
+        camera.grain_strength.max(0.0),
+        camera.grain_size.max(0.5),
+        (frame % Self::GRAIN_FRAMES) as f32,
+        0.0,
+      ),
       ..self
     }
   }

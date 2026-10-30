@@ -2,6 +2,7 @@ use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
 use crate::pass::bloom_pass::BloomPass;
 use crate::pass::brdf_table::BrdfTable;
 use crate::pass::calibration_pass::CalibrationPass;
+use crate::pass::camera_effects_pass::CameraEffectsPass;
 use crate::pass::combine_pass::CombinePass;
 use crate::pass::composited_pass::CompositedPass;
 use crate::pass::contact_shadow_pass::ContactShadowPass;
@@ -98,6 +99,7 @@ pub struct LevelPasses<'a> {
   pub froxels: &'a FroxelPass,
   pub bloom: &'a BloomPass,
   pub enhanced_bloom: &'a EnhancedBloomPass,
+  pub camera_effects: &'a CameraEffectsPass,
   pub fog_scattering: &'a FogScatteringPass,
   pub temporal: &'a TemporalPass,
   pub fsr: &'a FsrPass,

@@ -24,3 +24,19 @@ fn hash22(point: vec2<f32>) -> vec2<f32> {
 
   return fract((p.xx + p.yz) * p.zy);
 }
+
+// Three well-mixed words from three (Jarzynski and Olano, "Hash Functions for GPU Rendering", 2020): a cell's own
+// values at a frame, none of them repeating along any axis.
+fn pcg3d(seed: vec3<u32>) -> vec3<u32> {
+  var v: vec3<u32> = seed * 1664525u + 1013904223u;
+
+  v.x += v.y * v.z;
+  v.y += v.z * v.x;
+  v.z += v.x * v.y;
+  v ^= v >> vec3<u32>(16u);
+  v.x += v.y * v.z;
+  v.y += v.z * v.x;
+  v.z += v.x * v.y;
+
+  return v;
+}
