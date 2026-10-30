@@ -7,6 +7,7 @@ enable wgpu_binding_array;
 #import "common/gloss"
 #import "common/debug_colours"
 #import "common/luminance"
+#import "common/hex_tiling"
 #import "static/pulling"
 
 // Static draws into the G-buffer, pulled as `static/pulling` reads them.
@@ -610,6 +611,65 @@ const TERRAIN_BLEND_BAND: f32 = 0.25;
 // foot where it is drawn, rather than all of it sunk under the top and the wall seen standing over it.
 const TERRAIN_PLANE: f32 = 0.5;
 
+// One terrain layer's detail and bump as read: its colour, and its bump's tangent normal about its middle with its
+// gloss.
+struct TerrainSample {
+  detail: vec3<f32>,
+  bump: vec4<f32>,
+};
+
+// A layer's detail and bump read where it stands, `uv` in the copy the march ran in: as the engines read it, or across
+// the hex tiles' three copies, each copy's normal turned back to the surface's and the copies blended by their nearness
+// and brightness. `base` is the layer's coordinate as the surface has it, the march's step brought back from its copy.
+fn terrain_sample(
+  detail_slot: u32,
+  bump_slot: u32,
+  tiles: HexTiles,
+  is_varied: bool,
+  uv: vec2<f32>,
+  base: vec2<f32>,
+  dx: vec2<f32>,
+  dy: vec2<f32>,
+) -> TerrainSample {
+  if (!is_varied) {
+    // `.wzyx`: the normal in the last three channels, the gloss in the first.
+    let bump: vec4<f32> = sample_slot(bump_slot, uv, dx, dy).wzyx;
+
+    return TerrainSample(sample_slot(detail_slot, uv, dx, dy).rgb, vec4<f32>(bump.xyz - 0.5, bump.w));
+  }
+
+  let first: TerrainSample = terrain_copy(detail_slot, bump_slot, tiles.first, base, dx, dy);
+  let second: TerrainSample = terrain_copy(detail_slot, bump_slot, tiles.second, base, dx, dy);
+  let third: TerrainSample = terrain_copy(detail_slot, bump_slot, tiles.third, base, dx, dy);
+  let weights: vec3<f32> = hex_weights(tiles,
+    vec3<f32>(luminance(first.detail), luminance(second.detail), luminance(third.detail)), camera.terrain.z);
+
+  return TerrainSample(
+    first.detail * weights.x + second.detail * weights.y + third.detail * weights.z,
+    first.bump * weights.x + second.bump * weights.y + third.bump * weights.z,
+  );
+}
+
+// One hex copy of a layer's detail and bump, its texture read along the copy's turn and its normal turned back.
+fn terrain_copy(
+  detail_slot: u32,
+  bump_slot: u32,
+  copy: HexCopy,
+  base: vec2<f32>,
+  dx: vec2<f32>,
+  dy: vec2<f32>,
+) -> TerrainSample {
+  let uv: vec2<f32> = hex_at(copy, base);
+  let along_x: vec2<f32> = hex_along(copy, dx);
+  let along_y: vec2<f32> = hex_along(copy, dy);
+  let bump: vec4<f32> = sample_slot(bump_slot, uv, along_x, along_y).wzyx;
+
+  return TerrainSample(
+    sample_slot(detail_slot, uv, along_x, along_y).rgb,
+    vec4<f32>(hex_back(copy, bump.xy - 0.5), bump.z - 0.5, bump.w),
+  );
+}
+
 // How deep a relief lies under a coordinate, from nought at its top: its height's depth, the height in `channel` of
 // its texture, by its weight, so a terrain's layer weighing little lies nearly flat.
 fn relief_depth(slot: u32, uv: vec2<f32>, lod: f32, weight: f32, channel: u32) -> f32 {
@@ -755,13 +815,30 @@ fn terrain_texel(
     to_sun = light.xy / (light.z + RELIEF_GRAZING) * depth;
   }
 
-  // Each layer's coordinate where its march met it and its height there; the plane where none marches. The dominant
-  // layer's coordinate, depth and lod are kept apart as the march finds them, so nothing reads the array by a layer
-  // known only per pixel.
-  var coords: array<vec2<f32>, 4> = array<vec2<f32>, 4>(uv, uv, uv, uv);
+  // Where the details are hex tiled, by the camera's scale, rotation and sharpness (`camera.terrain`), the march runs
+  // in the copy nearest the coordinate, which shows alone across most of its hexagon, so the relief lies under the
+  // picture; elsewhere in the one copy that leaves everything where it is.
+  let is_varied: bool = has_surfaces_bit(SURFACES_TERRAIN_VARIED);
+  var tiles: HexTiles;
+  var nearest: HexCopy = hex_unmoved();
+
+  if (is_varied) {
+    tiles = hex_tiles(uv, camera.terrain.x, camera.terrain.y);
+    nearest = hex_copy(tiles, hex_nearest(tiles));
+  }
+
+  let start: vec2<f32> = hex_at(nearest, uv);
+
+  reach = hex_along(nearest, reach);
+  to_sun = hex_along(nearest, to_sun);
+
+  // Each layer's coordinate in that copy where its march met it and its height there; the plane where none marches.
+  // The dominant layer's coordinate, depth and lod are kept apart as the march finds them, so nothing reads the array
+  // by a layer known only per pixel.
+  var coords: array<vec2<f32>, 4> = array<vec2<f32>, 4>(start, start, start, start);
   var heights: vec4<f32> = vec4<f32>(0.5);
   var dominant: u32 = 0u;
-  var dominant_coord: vec2<f32> = uv;
+  var dominant_coord: vec2<f32> = start;
   var dominant_depth: f32 = 0.0;
   var dominant_lod: f32 = 0.0;
 
@@ -779,7 +856,7 @@ fn terrain_texel(
     if (is_marched) {
       let slot: u32 = surface.terrain.heights[layer];
       let lod: f32 = relief_lod(slot, dx, dy);
-      let hit: vec3<f32> = relief_march(slot, uv, lod, weight, reach, steps, 0u, TERRAIN_PLANE * weight);
+      let hit: vec3<f32> = relief_march(slot, start, lod, weight, reach, steps, 0u, TERRAIN_PLANE * weight);
 
       coords[layer] = hit.xy;
       heights[layer] = textureSampleLevel(textures[slot], texture_sampler, hit.xy, lod).r;
@@ -812,15 +889,17 @@ fn terrain_texel(
       continue;
     }
 
-    // `.wzyx`: the normal in the last three channels, the gloss in the first.
-    let bump: vec4<f32> = sample_slot(surface.terrain.bumps[layer], coords[layer], dx, dy).wzyx;
+    // How far the march moved the layer, as the surface has it.
+    let moved: vec2<f32> = hex_back(nearest, coords[layer] - start);
+    let read: TerrainSample = terrain_sample(surface.terrain.details[layer], surface.terrain.bumps[layer], tiles,
+      is_varied, coords[layer], uv + moved, dx, dy);
 
-    out.detail += sample_slot(surface.terrain.details[layer], coords[layer], dx, dy).rgb * weight;
-    out.bump += (bump.xyz - 0.5) * weight;
-    out.gloss += bump.w * weight;
+    out.detail += read.detail * weight;
+    out.bump += read.bump.xyz * weight;
+    out.gloss += read.bump.w * weight;
     out.cavity += (1.0 - heights[layer] * heights[layer]) * weight;
     out.sink += (1.0 - heights[layer]) * weight;
-    terrain_moved += (coords[layer] - uv) * weight;
+    terrain_moved += moved * weight;
   }
 
   if (is_marched) {

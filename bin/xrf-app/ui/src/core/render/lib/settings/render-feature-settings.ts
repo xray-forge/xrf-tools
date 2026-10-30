@@ -21,6 +21,7 @@ import {
   RenderReflectionSettings,
   RenderSettings,
   RenderShadowSettings,
+  RenderTerrainSettings,
   RenderUpscalingSettings,
   RenderViewFeatures,
   RenderViewOutput,
@@ -54,6 +55,7 @@ export type TRenderViewFeatureKey =
   | "reflections"
   | "shadows"
   | "sunTint"
+  | "terrain"
   | "tonemap"
   | "volumetric"
   | "water";
@@ -109,6 +111,8 @@ export type TRenderRainSettings = TSettled<RenderRainSettings>;
 export type TRenderReflectionSettings = TSettled<RenderReflectionSettings>;
 
 export type TRenderShadowSettings = TSettled<RenderShadowSettings>;
+
+export type TRenderTerrainSettings = TSettled<RenderTerrainSettings>;
 
 export type TRenderUpscalingSettings = TSettled<RenderUpscalingSettings>;
 

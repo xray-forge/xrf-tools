@@ -9,25 +9,7 @@ use crate::lighting::srgb::srgb_encoded;
 use crate::pass::display_curves::{agx, engine_display, get_least_shown, pbr_neutral};
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
-use crate::shader::shader_library::ShaderLibrary;
-use crate::tests::test_context::create_test_context;
-
-/// A probe of `common/display_transform`: each case's colour and display in, `ANSWER` over them out.
-const PROBE: &str = r"
-struct DisplayCase {
-  colour: vec4<f32>,
-  display: vec4<f32>,
-};
-
-@group(0) @binding(0) var<storage, read_write> cases: array<DisplayCase>;
-
-@compute @workgroup_size(1)
-fn cs_display(@builtin(global_invocation_id) id: vec3<u32>) {
-  let probe: DisplayCase = cases[id.x];
-
-  cases[id.x].colour = vec4<f32>(ANSWER, 1.0);
-}
-";
+use crate::tests::wgsl_probe::run_wgsl_probe;
 
 /// The grading before a physical transform: luminance to `contrast` in stops about middle grey, colour mixed from it by
 /// `saturation`.
@@ -49,79 +31,19 @@ type Reference = fn(Vec3) -> Vec3;
 
 /// What the GPU shows each colour as under each display.
 fn show(cases: &[(Vec3, Vec4)]) -> Option<Vec<Vec3>> {
-  run_probe("shown_for_display(probe.colour.rgb, probe.display)", cases)
+  run_probe("shown_for_display(probe.first.rgb, probe.second)", cases)
 }
 
-/// What the GPU answers each case with under `answer`, an expression over the case's `probe.colour.rgb` and
-/// `probe.display`.
+/// What the GPU answers each case with under `answer`, an expression over the case's colour, `probe.first.rgb`, and
+/// display, `probe.second`.
 fn run_probe(answer: &str, cases: &[(Vec3, Vec4)]) -> Option<Vec<Vec3>> {
-  let context = create_test_context("to run the display transforms")?;
-  let (device, queue) = (&context.device, &context.queue);
-  let scope: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::Validation);
-  let library: ShaderLibrary = ShaderLibrary::default();
-  let source: String = library.compose("common/display_transform").unwrap() + &PROBE.replace("ANSWER", answer);
-  let module: wgpu::ShaderModule = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-    label: Some("display probe"),
-    source: wgpu::ShaderSource::Wgsl(source.into()),
-  });
-  let pipeline: wgpu::ComputePipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-    label: Some("display probe"),
-    layout: None,
-    module: &module,
-    entry_point: Some("cs_display"),
-    compilation_options: Default::default(),
-    cache: None,
-  });
-  let data: Vec<Vec4> = cases
+  let cases: Vec<(Vec4, Vec4)> = cases
     .iter()
-    .flat_map(|(colour, display)| [colour.extend(1.0), *display])
+    .map(|(colour, display)| (colour.extend(1.0), *display))
     .collect();
-  let bytes: u64 = size_of_val(data.as_slice()) as u64;
-  let buffer: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
-    label: Some("display probe cases"),
-    size: bytes,
-    usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::COPY_SRC,
-    mapped_at_creation: false,
-  });
-  let readback: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
-    label: Some("display probe readback"),
-    size: bytes,
-    usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-    mapped_at_creation: false,
-  });
+  let answered: Vec<Vec4> = run_wgsl_probe("common/display_transform", &format!("vec4<f32>({answer}, 1.0)"), &cases)?;
 
-  queue.write_buffer(&buffer, 0, bytemuck::cast_slice(&data));
-
-  let group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
-    label: Some("display probe"),
-    layout: &pipeline.get_bind_group_layout(0),
-    entries: &[wgpu::BindGroupEntry {
-      binding: 0,
-      resource: buffer.as_entire_binding(),
-    }],
-  });
-  let mut encoder: wgpu::CommandEncoder = device.create_command_encoder(&Default::default());
-
-  {
-    let mut pass: wgpu::ComputePass<'_> = encoder.begin_compute_pass(&Default::default());
-
-    pass.set_pipeline(&pipeline);
-    pass.set_bind_group(0, &group, &[]);
-    pass.dispatch_workgroups(cases.len() as u32, 1, 1);
-  }
-
-  encoder.copy_buffer_to_buffer(&buffer, 0, &readback, 0, bytes);
-  queue.submit([encoder.finish()]);
-  readback.slice(..).map_async(wgpu::MapMode::Read, |_| ());
-  device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
-
-  let shown: Vec<Vec4> = bytemuck::cast_slice(&readback.slice(..).get_mapped_range().unwrap()).to_vec();
-
-  if let Some(error) = pollster::block_on(scope.pop()) {
-    panic!("The display probe does not validate: {error}");
-  }
-
-  Some(shown.chunks(2).map(|case| case[0].truncate()).collect())
+  Some(answered.into_iter().map(Vec4::truncate).collect())
 }
 
 fn display(mode: DisplayMode, contrast: f32, saturation: f32) -> Vec4 {
@@ -367,7 +289,7 @@ fn the_display_inverse_shows_what_it_was_given() {
   }
 
   let Some(shown) = run_probe(
-    "shown_for_display(scene_for_display(probe.colour.rgb, probe.display), probe.display)",
+    "shown_for_display(scene_for_display(probe.first.rgb, probe.second), probe.second)",
     &cases,
   ) else {
     return;
@@ -391,7 +313,7 @@ fn agxs_sigmoid_inverse_finds_what_it_curved() {
       (Vec3::new(x, (x * 0.9 + 0.03).min(1.0), (1.0 - x).max(0.0)), Vec4::ZERO)
     })
     .collect();
-  let Some(found) = run_probe("agx_contrast_inverse(agx_contrast(probe.colour.rgb))", &cases) else {
+  let Some(found) = run_probe("agx_contrast_inverse(agx_contrast(probe.first.rgb))", &cases) else {
     return;
   };
 
@@ -418,13 +340,10 @@ fn pbr_neutrals_inverse_is_bounded_at_white() {
   .map(|shown| (shown, neutral))
   .collect();
   let (Some(light), Some(shown)) = (
+    run_probe("scene_for_display(srgb_encoded(probe.first.rgb), probe.second)", &cases),
     run_probe(
-      "scene_for_display(srgb_encoded(probe.colour.rgb), probe.display)",
-      &cases,
-    ),
-    run_probe(
-      "srgb_decoded(shown_for_display(scene_for_display(srgb_encoded(probe.colour.rgb), probe.display), \
-       probe.display))",
+      "srgb_decoded(shown_for_display(scene_for_display(srgb_encoded(probe.first.rgb), probe.second), \
+       probe.second))",
       &cases,
     ),
   ) else {
@@ -452,10 +371,10 @@ fn a_picture_shows_under_every_display_as_the_engines_curve_shows_it() {
     }
   }
 
-  let shown_entered: &str = "shown_for_display(untonemapped(srgb_decoded(picture_for_display(probe.colour.rgb, \
-                             probe.display)), 1.0), probe.display)";
-  let engine_showing: &str = "tonemap(srgb_encoded(untonemapped(srgb_decoded(probe.colour.rgb), 1.0)), 1.0)";
-  let unchanged: &str = "picture_for_display(probe.colour.rgb, probe.display)";
+  let shown_entered: &str = "shown_for_display(untonemapped(srgb_decoded(picture_for_display(probe.first.rgb, \
+                             probe.second)), 1.0), probe.second)";
+  let engine_showing: &str = "tonemap(srgb_encoded(untonemapped(srgb_decoded(probe.first.rgb), 1.0)), 1.0)";
+  let unchanged: &str = "picture_for_display(probe.first.rgb, probe.second)";
   let (Some(shown), Some(engine), Some(entered)) = (
     run_probe(shown_entered, &cases),
     run_probe(engine_showing, &cases),
@@ -496,7 +415,7 @@ fn a_picture_comes_back_out_of_the_display_it_entered_by() {
   }
 
   let Some(back) = run_probe(
-    "picture_from_display(picture_for_display(probe.colour.rgb, probe.display), probe.display)",
+    "picture_from_display(picture_for_display(probe.first.rgb, probe.second), probe.second)",
     &cases,
   ) else {
     return;

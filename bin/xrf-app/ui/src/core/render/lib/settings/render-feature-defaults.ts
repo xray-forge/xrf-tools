@@ -18,6 +18,7 @@ import {
   ERenderReflectionMode,
   ERenderReflectionProbe,
   ERenderScale,
+  ERenderTerrainTiling,
   ERenderTraceSize,
   ERenderVolumetricMode,
   ERenderWaterMode,
@@ -45,6 +46,7 @@ import {
   TRenderRainSettings,
   TRenderReflectionSettings,
   TRenderShadowSettings,
+  TRenderTerrainSettings,
   TRenderUpscalingSettings,
   TRenderVolumetricSettings,
   TRenderWaterSettings,
@@ -258,6 +260,17 @@ export const DEFAULT_RENDER_PARALLAX_SETTINGS: TRenderParallaxSettings = {
   steps: 8,
   surfaceHeight: 0.02,
   surfaceRange: 60,
+};
+
+/**
+ * The engines' own: the terrain's details repeating as a grid; and for when they are varied, hexagons about a seventh
+ * of a detail's repeat across, upright, meeting as the hex tiling demo blends them.
+ */
+export const DEFAULT_RENDER_TERRAIN_SETTINGS: TRenderTerrainSettings = {
+  rotation: 0,
+  scale: 2,
+  sharpness: 7,
+  tiling: ERenderTerrainTiling.ENGINE,
 };
 
 /** The engine's own: no contact shadows, and their strengths for when they are drawn, towards four lights a pixel. */

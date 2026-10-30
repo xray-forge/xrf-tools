@@ -1,13 +1,15 @@
 import { useInjection } from "@wirestate/react";
-import { ERenderParallaxMode } from "@xrf/ipc/types/xrf-renderer";
+import { ERenderParallaxMode, ERenderTerrainTiling } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ChoiceListFormRow } from "@xrf/ui/form/choice-list-row";
 import { TextureIcon } from "@xrf/ui/icons/texture";
 import { ReactElement } from "react";
 
+import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { LevelParallaxSettings } from "@/core/level/components/preview/toolbar/view/LevelParallaxSettings";
+import { LevelTerrainSettings } from "@/core/level/components/preview/toolbar/view/LevelTerrainSettings";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import {
   ELevelShading,
@@ -18,12 +20,13 @@ import {
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { explainRenderTerrainTiling } from "@/core/render/lib/features/render-terrain-choices";
+import { TRenderParallaxSettings, TRenderTerrainSettings } from "@/core/render/lib/settings/render-feature-settings";
 
 /**
  * How the level is shaded: the frame as dressed, as clay or by shader, or one of the targets it is built from, listed
  * by what they show, FSR's only while FSR draws the frame; and the surfaces as wireframe, with their bumps and parallax,
- * under their wall marks, whichever of those is shown.
+ * the terrain's details varied or repeating as a grid, under their wall marks, whichever of those is shown.
  */
 export function LevelShadingAction({
   "data-testid": dataTestId = "level-shading-action",
@@ -33,6 +36,7 @@ export function LevelShadingAction({
   const viewService: LevelViewService = useInjection(LevelViewService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
   const { settings, features } = useLevelRenderFeatures();
+  const { set: setTerrain } = useLevelFeatureOverride("terrain");
 
   const options: ILevelViewOptions = viewService.options;
   const shading: ELevelShading = renderService.shading;
@@ -41,6 +45,8 @@ export function LevelShadingAction({
   const { isWireframe, isBumped, isWallmarked } = options;
   const isParallaxAvailable: boolean = parallax.isSteep || parallax.mode === ERenderParallaxMode.ENHANCED;
   const isParallaxed: boolean = options.isParallaxed && isParallaxAvailable;
+  const terrain: TRenderTerrainSettings = toLevelModeFeature("terrain", settings, features);
+  const isTerrainVaried: boolean = terrain.tiling === ERenderTerrainTiling.VARIED;
 
   return (
     <EditorPopoverGroup
@@ -102,6 +108,18 @@ export function LevelShadingAction({
         onToggle={() => viewService.toggleOption("isParallaxed")}
       >
         <LevelParallaxSettings />
+      </EditorPopoverGroupSection>
+
+      <EditorPopoverGroupSection
+        data-testid={"level-terrain-tiling"}
+        label={"Varied terrain"}
+        description={explainRenderTerrainTiling(terrain.tiling)}
+        isOn={isTerrainVaried}
+        onToggle={() =>
+          setTerrain({ tiling: isTerrainVaried ? ERenderTerrainTiling.ENGINE : ERenderTerrainTiling.VARIED })
+        }
+      >
+        <LevelTerrainSettings />
       </EditorPopoverGroupSection>
 
       <EditorPopoverGroupSection

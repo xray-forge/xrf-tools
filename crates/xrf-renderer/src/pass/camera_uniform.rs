@@ -6,6 +6,7 @@ use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_parallax_settings::RenderParallaxSettings;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_surface_color::RenderSurfaceColor;
+use crate::contract::render_terrain_settings::RenderTerrainSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::pass::light_view::LightView;
 use crate::scene::static_scene::static_selection::StaticSelection;
@@ -57,6 +58,9 @@ pub struct CameraUniform {
   pub parallax: Vec4,
   pub parallax_light: Vec4,
   pub parallax_mix: Vec4,
+  /// The terrain's varied tiling (`RenderTerrainSettings`): its hexagons' scale, how far a copy turns, and how sharply
+  /// the copies meet; read where `switches.w` varies the terrain.
+  pub terrain: Vec4,
   /// One where the scene holds linear light at its exposure, which the window pass tonemaps; zero where every pass
   /// writes tonemapped colour, as the engine's do. Then the mip bias the surfaces' textures are read at, negative
   /// sharper; none for any camera but a viewport's own. Then what the sun and the lamps draw in place of their light
@@ -72,7 +76,7 @@ const SELECTION_ROWS: usize = 32;
 impl CameraUniform {
   /// What a viewport's own camera draws the static scene with by its `options`: textured, bumped, the hemisphere's
   /// strength, then the surfaces' bits (steep, the parallax, bumps and heights debug views, enhanced, the sampled mip's
-  /// debug view).
+  /// debug view, the terrain's details hex tiled).
   pub fn get_switches(options: &RenderViewOptions) -> Vec4 {
     Vec4::new(
       f32::from(u8::from(options.mode.surface_color == RenderSurfaceColor::Textured)),
@@ -84,7 +88,8 @@ impl CameraUniform {
           | u8::from(options.mode.debug_view == RenderDebugView::Bumps) << 2
           | u8::from(options.mode.debug_view == RenderDebugView::Heights) << 3
           | u8::from(options.features.parallax.is_enhanced()) << 4
-          | u8::from(options.mode.debug_view == RenderDebugView::SampledMip) << 5,
+          | u8::from(options.mode.debug_view == RenderDebugView::SampledMip) << 5
+          | u8::from(options.features.terrain.is_varied()) << 6,
       ),
     )
   }
@@ -114,8 +119,15 @@ impl CameraUniform {
       parallax: Vec4::ZERO,
       parallax_light: Vec4::ZERO,
       parallax_mix: Vec4::ZERO,
+      terrain: Vec4::ZERO,
       output: Vec4::ZERO,
     }
+  }
+
+  /// The same camera varying the terrain's tiling by `settings`, its scale kept above nought, which the grid divides by.
+  pub fn with_terrain(mut self, settings: &RenderTerrainSettings) -> Self {
+    self.terrain = Vec4::new(settings.scale.max(0.25), settings.rotation, settings.sharpness, 0.0);
+    self
   }
 
   /// The same camera marching the enhanced parallax by `settings`, shadowing towards the sun along `to_sun`, a view

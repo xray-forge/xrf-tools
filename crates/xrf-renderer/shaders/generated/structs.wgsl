@@ -22,6 +22,7 @@ struct Camera {
   parallax: vec4<f32>,
   parallax_light: vec4<f32>,
   parallax_mix: vec4<f32>,
+  terrain: vec4<f32>,
   output: vec4<f32>,
 }
 

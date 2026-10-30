@@ -103,6 +103,8 @@ pub(crate) mod render_show_flags;
 pub(crate) mod render_static_report;
 pub(crate) mod render_sun_shafts;
 pub(crate) mod render_surface_color;
+pub(crate) mod render_terrain_settings;
+pub(crate) mod render_terrain_tiling;
 pub(crate) mod render_texture_filtering;
 pub(crate) mod render_texture_group;
 pub(crate) mod render_texture_report;

@@ -17,6 +17,7 @@ import {
   ERenderRainMode,
   ERenderReflectionMode,
   ERenderReflectionProbe,
+  ERenderTerrainTiling,
   ERenderTextureFiltering,
   ERenderTonemapMode,
   ERenderTraceSize,
@@ -44,6 +45,7 @@ import {
   DEFAULT_RENDER_RAIN_SETTINGS,
   DEFAULT_RENDER_REFLECTION_SETTINGS,
   DEFAULT_RENDER_SHADOW_SETTINGS,
+  DEFAULT_RENDER_TERRAIN_SETTINGS,
   DEFAULT_RENDER_UPSCALING_SETTINGS,
   DEFAULT_RENDER_VOLUMETRIC_SETTINGS,
   DEFAULT_RENDER_WATER_SETTINGS,
@@ -138,6 +140,8 @@ const BASE_PRESET: IRenderFeatureSettings = {
     swayCascades: 2,
     swayRate: 30,
   },
+  // The terrain's details hex tiled, so no repeat of the ground lines up with the next.
+  terrain: { ...DEFAULT_RENDER_TERRAIN_SETTINGS, tiling: ERenderTerrainTiling.VARIED },
   textureFiltering: ERenderTextureFiltering.ANISOTROPIC16,
   // The engine's full quality, `texture_lod 0`, as Anomaly's extreme preset sets it.
   textureLod: 0,
@@ -218,6 +222,7 @@ const EDITING_PRESET: IRenderFeatureSettings = {
   rain: DEFAULT_RENDER_RAIN_SETTINGS,
   reflections: DEFAULT_RENDER_REFLECTION_SETTINGS,
   shadows: { ...DEFAULT_RENDER_SHADOW_SETTINGS, isEnabled: false },
+  terrain: DEFAULT_RENDER_TERRAIN_SETTINGS,
   textureFiltering: ERenderTextureFiltering.ANISOTROPIC16,
   // The engine's full quality, `texture_lod 0`, as Anomaly's extreme preset sets it.
   textureLod: 0,

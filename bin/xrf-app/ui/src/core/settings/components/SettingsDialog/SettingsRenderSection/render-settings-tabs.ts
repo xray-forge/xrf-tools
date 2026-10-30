@@ -23,6 +23,7 @@ import { SettingsRendererRainDrops } from "./SettingsRendererRainDrops";
 import { SettingsRendererRayTracedReflections } from "./SettingsRendererRayTracedReflections";
 import { SettingsRendererReflections } from "./SettingsRendererReflections";
 import { SettingsRendererShadows } from "./SettingsRendererShadows";
+import { SettingsRendererTerrain } from "./SettingsRendererTerrain";
 import { SettingsRendererVolumetric } from "./SettingsRendererVolumetric";
 import { SettingsRendererWater } from "./SettingsRendererWater";
 import { SettingsRendererWaterReflection } from "./SettingsRendererWaterReflection";
@@ -103,7 +104,7 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
     sections: [SettingsRendererShadows],
   },
   {
-    features: ["water", "glass", "grass", "fog", "parallax"],
+    features: ["water", "glass", "grass", "fog", "parallax", "terrain"],
     id: ERenderSettingsTab.WORLD,
     label: "World",
     sections: [
@@ -112,6 +113,7 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
       SettingsRendererGrass,
       SettingsRendererFog,
       SettingsRendererParallax,
+      SettingsRendererTerrain,
     ],
   },
   {

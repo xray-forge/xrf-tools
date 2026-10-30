@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { ERenderAntialiasing, ERenderDlssAvailability, RenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
+import {
+  ERenderAntialiasing,
+  ERenderDlssAvailability,
+  ERenderTerrainTiling,
+  RenderAntialiasing,
+} from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelShadingAction } from "@/core/level/components/preview/toolbar/view/LevelShadingAction";
 import {
@@ -13,13 +18,17 @@ import {
 } from "@/core/level/fixtures/level-container";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
-import { DEFAULT_RENDER_PARALLAX_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import {
+  DEFAULT_RENDER_PARALLAX_SETTINGS,
+  DEFAULT_RENDER_TERRAIN_SETTINGS,
+} from "@/core/render/lib/settings/render-feature-defaults";
 import { clearLocalStorage } from "@/core/storage";
 
 /**
  * @param setup - What the case sets on the services before it draws.
  * @param antialiasing - What the settings smooth the frame with.
- * @returns The shading's action and the services behind it, the parallax drawn as the engine does.
+ * @returns The shading's action and the services behind it, the parallax and the terrain's tiling as the engine draws
+ *   them.
  */
 function renderAction(
   setup: (descriptor: ILevelViewContainerDescriptor) => void = () => {},
@@ -27,7 +36,11 @@ function renderAction(
 ): TLevelViewRenderResult {
   const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
 
-  descriptor.renderSettings.setRendererOverrides({ antialiasing, parallax: DEFAULT_RENDER_PARALLAX_SETTINGS });
+  descriptor.renderSettings.setRendererOverrides({
+    antialiasing,
+    parallax: DEFAULT_RENDER_PARALLAX_SETTINGS,
+    terrain: DEFAULT_RENDER_TERRAIN_SETTINGS,
+  });
   setup(descriptor);
 
   return renderLevelView(<LevelShadingAction />, descriptor);
@@ -55,6 +68,24 @@ describe("LevelShadingAction", () => {
       isWallmarked: !DEFAULT_LEVEL_VIEW_OPTIONS.isWallmarked,
       isWireframe: !DEFAULT_LEVEL_VIEW_OPTIONS.isWireframe,
     });
+  });
+
+  it("varies the terrain's tiling for the view and turns it back to the engine's grid", async () => {
+    const { getByRole, findByRole, view } = renderAction();
+
+    await userEvent.click(getByRole("button", { name: "Shading" }));
+    await findByRole("dialog", { name: "Shading" });
+
+    expect(getByRole("checkbox", { name: "Varied terrain" })).not.toBeChecked();
+
+    await userEvent.click(getByRole("checkbox", { name: "Varied terrain" }));
+
+    expect(view.features.terrain).toEqual({ tiling: ERenderTerrainTiling.VARIED });
+    expect(getByRole("checkbox", { name: "Varied terrain" })).toBeChecked();
+
+    await userEvent.click(getByRole("checkbox", { name: "Varied terrain" }));
+
+    expect(view.features.terrain).toEqual({ tiling: ERenderTerrainTiling.ENGINE });
   });
 
   // Clay and the shader colours replace the textures checkbox: what the surfaces show is one choice with the targets.
