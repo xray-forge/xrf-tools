@@ -88,8 +88,10 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
     });
 
     this.viewport = viewport;
-    this.target = new NativeViewportTarget(container, viewport, (point: IRenderViewPoint, isThrough: boolean) =>
-      this.onClick(point, isThrough)
+    this.target = new NativeViewportTarget(
+      container,
+      viewport,
+      (point: IRenderViewPoint, isThrough: boolean, isToggling: boolean) => this.onClick(point, isThrough, isToggling)
     );
     this.onAttached(container);
     this.reactions.push(...this.start(viewport));
@@ -160,8 +162,9 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
    *
    * @param _point - Where, in css pixels from the viewport's top left corner.
    * @param _isThrough - Whether Alt was held, which picks through glass.
+   * @param _isToggling - Whether Ctrl (Cmd on macOS) was held, which adds to the selection or takes from it.
    */
-  protected onClick(_point: IRenderViewPoint, _isThrough: boolean): void {}
+  protected onClick(_point: IRenderViewPoint, _isThrough: boolean, _isToggling: boolean): void {}
 
   /** Called before the viewport goes. */
   protected onDetached(): void {}

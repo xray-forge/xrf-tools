@@ -13,6 +13,7 @@ pub struct PickTarget {
 
 impl PickTarget {
   pub const FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba32Uint;
+  pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
   /// Picks on their way back at once.
   pub const READBACKS: usize = 3;
 
@@ -37,10 +38,7 @@ impl PickTarget {
       Self::FORMAT,
       wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC,
     );
-    let depth: wgpu::Texture = create(
-      wgpu::TextureFormat::Depth32Float,
-      wgpu::TextureUsages::RENDER_ATTACHMENT,
-    );
+    let depth: wgpu::Texture = create(Self::DEPTH_FORMAT, wgpu::TextureUsages::RENDER_ATTACHMENT);
 
     Self {
       color: texture.create_view(&Default::default()),

@@ -3,7 +3,7 @@ import { act, RenderResult } from "@testing-library/react";
 import { Container } from "@wirestate/core";
 
 import { LevelPreviewPick } from "@/core/level/components/preview/LevelPreviewPick";
-import { mockLevelSpawnObject } from "@/core/level/fixtures/level.mocks";
+import { mockLevelObject, mockLevelVolumeObject } from "@/core/level/fixtures/level.mocks";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
@@ -46,8 +46,8 @@ describe("LevelPreviewPick", () => {
     const { container, view } = renderPicked();
 
     pick(container, {
-      kind: ELevelPick.SPAWN,
-      object: mockLevelSpawnObject({ name: "crate_2", section: "physic_object" }),
+      kind: ELevelPick.OBJECT,
+      object: mockLevelObject({ name: "crate_2" }, { section: "physic_object" }),
       point: { x: 0, y: 0, z: 0 },
       visual: "physics\\box",
     });
@@ -58,5 +58,18 @@ describe("LevelPreviewPick", () => {
     act(() => container.get(LevelViewportService).notePicked(null));
 
     expect(view.queryByTestId("level-preview-pick")).not.toBeInTheDocument();
+  });
+
+  it("names a picked volume by its kind, with no visual", () => {
+    const { container, view } = renderPicked();
+
+    pick(container, {
+      kind: ELevelPick.OBJECT,
+      object: { ...mockLevelVolumeObject(3), spawn: null },
+      point: { x: 0, y: 0, z: 0 },
+      visual: "",
+    });
+
+    expect(view.getByTestId("level-preview-pick")).toHaveTextContent("restrictor_3 · Restrictors");
   });
 });

@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::objects::LevelObjectKind;
+
 /// What a level map's annotations draw, each kind on its own switch and in its own colour.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
@@ -43,14 +45,14 @@ impl LevelAnnotationKind {
     }
   }
 
-  /// Its one colour: smart terrains orange, restrictors blue, anomalies red, level changers green, patrols yellow and
-  /// graph points pale grey.
+  /// Its one colour: a volume's its kind's, patrols yellow and graph points pale grey.
+  // todo: Take the patrols' and graph points' colours from the kind table once the model lists them.
   pub fn get_colour(self) -> &'static str {
     match self {
-      Self::SmartTerrains => "#ff9800",
-      Self::Restrictors => "#2196f3",
-      Self::Anomalies => "#f44336",
-      Self::LevelChangers => "#4caf50",
+      Self::SmartTerrains => LevelObjectKind::SmartTerrains.get_entry().color,
+      Self::Restrictors => LevelObjectKind::Restrictors.get_entry().color,
+      Self::Anomalies => LevelObjectKind::Anomalies.get_entry().color,
+      Self::LevelChangers => LevelObjectKind::LevelChangers.get_entry().color,
       Self::GraphPoints => "#e0e0e0",
       Self::Patrols => "#ffeb3b",
     }

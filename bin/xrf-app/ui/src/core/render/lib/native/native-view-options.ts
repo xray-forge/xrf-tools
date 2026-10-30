@@ -3,6 +3,7 @@ import {
   ERenderDebugView,
   ERenderParallaxMode,
   ERenderSurfaceColor,
+  RenderHelperOptions,
   RenderShowFlags,
   RenderViewFeatures,
   RenderViewMode,
@@ -67,6 +68,16 @@ const NO_NATIVE_VIEW_SWITCHES: INativeViewSwitches = {
   sunShafts: { minimum: 0, steps: 30 },
 };
 
+/** No helper drawn: what a viewer drawing no level objects asks, and a level viewer's start before its own. */
+export const NO_NATIVE_HELPERS: RenderHelperOptions = {
+  distanceScale: 1,
+  hidden: [],
+  isShown: false,
+  kinds: 0,
+  occludedStrength: 0.25,
+  selected: [],
+};
+
 /** Nothing scaled, bloomed or corrected, as an asset viewer shows what it draws. */
 const NEUTRAL_NATIVE_LOOK: Omit<TNativeLook, "exposure"> = {
   bloom: { isEnabled: false, radius: 3, strength: 0.7, threshold: 0.00001 },
@@ -95,6 +106,7 @@ export function toNativeViewOptions(
 
   return {
     asset: { backdrop: null, backdropSquares: null, checker: 0, lighting: null, plainColor: null },
+    helpers: NO_NATIVE_HELPERS,
     features: {
       ambientOcclusion: features.ambientOcclusion,
       antialiasing: features.antialiasing,
@@ -158,11 +170,16 @@ export function toNativeViewOptions(
 
 /**
  * @param switches - What the view switches of its scene, the world's part among them.
+ * @param hiddenSpawnObjects - The spawned objects hidden one by one, by index among the level's, ascending.
  * @returns What of the level's world plays in the view: the weather's rain, bolts and wind, the campfires, the ambient
- *   effects and the spawned objects' groups.
+ *   effects and the spawned objects' groups, less those hidden one by one.
  */
-export function toNativeWorldToggles(switches: WorldToggles): WorldToggles {
+export function toNativeWorldToggles(
+  switches: Omit<WorldToggles, "hiddenSpawnObjects">,
+  hiddenSpawnObjects: Array<number> = []
+): WorldToggles {
   return {
+    hiddenSpawnObjects,
     isAmbientPlayed: switches.isAmbientPlayed,
     isCampfireLit: switches.isCampfireLit,
     isRainy: switches.isRainy,

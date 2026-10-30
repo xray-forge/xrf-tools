@@ -1,6 +1,6 @@
-use xrf_spawn::{AlifeObject, AlifeObjectInherited, SpawnLevelGraph};
-use xrf_visual::VisualTransform;
+use xrf_spawn::SpawnLevelGraph;
 
+use crate::objects::{LevelObject, LevelObjectKind, LevelObjectVolume, LevelRestriction};
 use crate::viewer::map::annotations::{AnnotationOutline, AnnotationPoint, LevelAnnotationKind};
 
 /// One logic volume of the level seen from above: a smart terrain, restrictor, anomaly or level changer.
@@ -17,71 +17,30 @@ pub struct AnnotationVolume {
 }
 
 impl AnnotationVolume {
-  /// `RestrictionSpace::eDefaultRestrictorTypeIn` and `eRestrictorTypeIn`: a restrictor keeping the actor inside it.
-  const RESTRICTOR_TYPES_IN: [u8; 2] = [2, 4];
-
-  /// `object`'s logic volume from above on the level named `level`, or `None` for an object that is none.
-  pub fn of(object: &AlifeObject, graph: &SpawnLevelGraph, level: &str) -> Option<Self> {
-    let (kind, shapes, restrictor_type, destination) = match &object.inherited {
-      AlifeObjectInherited::SeSmartTerrain(terrain) => {
-        let restrictor = &terrain.base.base;
-
-        (
-          LevelAnnotationKind::SmartTerrains,
-          &restrictor.shape,
-          restrictor.restrictor_type,
-          None,
-        )
-      }
-      AlifeObjectInherited::CseAlifeSpaceRestrictor(restrictor) => (
-        LevelAnnotationKind::Restrictors,
-        &restrictor.shape,
-        restrictor.restrictor_type,
-        None,
-      ),
-      AlifeObjectInherited::CseAlifeAnomalousZone(zone) => {
-        let restrictor = &zone.base.base.base;
-
-        (
-          LevelAnnotationKind::Anomalies,
-          &restrictor.shape,
-          restrictor.restrictor_type,
-          None,
-        )
-      }
-      AlifeObjectInherited::CseAlifeTorridZone(zone) => {
-        let restrictor = &zone.base.base;
-
-        (
-          LevelAnnotationKind::Anomalies,
-          &restrictor.shape,
-          restrictor.restrictor_type,
-          None,
-        )
-      }
-      AlifeObjectInherited::SeLevelChanger(changer) => (
-        LevelAnnotationKind::LevelChangers,
-        &changer.base.shape,
-        changer.base.restrictor_type,
-        Some((
-          changer.dest_level_name.clone(),
-          Self::get_toward(graph, level, &changer.dest_level_name),
-        )),
-      ),
+  /// `object`'s logic volume from above on the level named `level`, or `None` for an object the map draws none of.
+  pub fn of(object: &LevelObject, graph: &SpawnLevelGraph, level: &str) -> Option<Self> {
+    let kind: LevelAnnotationKind = match object.kind {
+      LevelObjectKind::SmartTerrains => LevelAnnotationKind::SmartTerrains,
+      LevelObjectKind::Restrictors => LevelAnnotationKind::Restrictors,
+      LevelObjectKind::Anomalies => LevelAnnotationKind::Anomalies,
+      LevelObjectKind::LevelChangers => LevelAnnotationKind::LevelChangers,
       _ => return None,
     };
-    // `CSpaceRestrictor::net_Spawn`: the shapes stand in the object's own space, its `XFORM` at its place and angle.
-    let to_world: VisualTransform = VisualTransform::of_spawn(&object.position, &object.direction).mirrored();
+    let volume: &LevelObjectVolume = object.volume.as_ref()?;
 
     Some(Self {
       kind,
       name: object.name.clone(),
-      outlines: shapes
+      outlines: volume
+        .shapes
         .iter()
-        .map(|shape| AnnotationOutline::of(shape, &to_world))
+        .map(|shape| AnnotationOutline::of(shape, &object.transform))
         .collect(),
-      is_in: Self::RESTRICTOR_TYPES_IN.contains(&restrictor_type),
-      destination,
+      is_in: volume.restriction == LevelRestriction::In,
+      destination: volume
+        .destination
+        .as_ref()
+        .map(|destination| (destination.clone(), Self::get_toward(graph, level, destination))),
     })
   }
 

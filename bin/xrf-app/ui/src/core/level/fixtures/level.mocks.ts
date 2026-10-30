@@ -2,9 +2,13 @@ import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { IpcCommandMocks } from "@xrf/ipc/testing";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import {
-  ELevelSpawnCategory,
+  ELevelObjectId,
+  ELevelObjectKind,
+  ELevelObjectShape,
+  ELevelRestriction,
   LevelMapDescription,
-  LevelSpawnObject,
+  LevelObject,
+  LevelObjectSpawn,
   LevelStart,
   LevelTextureReference,
   SelectedLevelDescription,
@@ -53,24 +57,56 @@ export function mockLevelTextureReference(name: string, isPresent: boolean = tru
 }
 
 /**
- * One spawned object the viewer draws: a crate at the origin, standing as the first visual.
+ * One level object the spawn places and the viewer draws: a crate at the origin, the spawn's first object, standing as
+ * the first visual.
  *
  * @param overrides - Fields to replace on the object.
+ * @param spawn - Fields to replace on what the spawn records of it.
  * @returns An object fixture.
  */
-export function mockLevelSpawnObject(overrides: Partial<LevelSpawnObject> = {}): LevelSpawnObject {
+export function mockLevelObject(
+  overrides: Partial<LevelObject> = {},
+  spawn: Partial<LevelObjectSpawn> = {}
+): LevelObject {
   return {
-    category: ELevelSpawnCategory.PROPS,
-    clsid: EClsId.O_PHYS_S,
-    index: 0,
+    id: { index: 0, source: ELevelObjectId.SPAWN },
+    kind: ELevelObjectKind.PROPS,
     name: "crate",
-    release: null,
-    section: "physic_object",
-    storyId: null,
+    spawn: {
+      clsid: EClsId.O_PHYS_S,
+      release: null,
+      section: "physic_object",
+      storyId: null,
+      visual: 0,
+      ...spawn,
+    },
     transform: mockVisualTransform({ x: 0, y: 0, z: 0 }),
-    visual: 0,
+    volume: null,
     ...overrides,
   };
+}
+
+/**
+ * A space restrictor keeping no one: a sphere of `radius` metres about its place.
+ *
+ * @param index - Its index among the spawn's objects.
+ * @param radius - Its sphere's radius.
+ * @returns An object fixture drawn as nothing.
+ */
+export function mockLevelVolumeObject(index: number, radius: number = 2): LevelObject {
+  return mockLevelObject(
+    {
+      id: { index, source: ELevelObjectId.SPAWN },
+      kind: ELevelObjectKind.RESTRICTORS,
+      name: `restrictor_${index}`,
+      volume: {
+        destination: null,
+        restriction: ELevelRestriction.NONE,
+        shapes: [{ center: { x: 0, y: 0, z: 0 }, kind: ELevelObjectShape.SPHERE, radius }],
+      },
+    },
+    { clsid: EClsId.SPC_RS_S, section: "space_restrictor", visual: null }
+  );
 }
 
 /**

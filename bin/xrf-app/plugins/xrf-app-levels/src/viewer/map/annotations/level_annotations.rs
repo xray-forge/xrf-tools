@@ -4,7 +4,8 @@ use xrf_spawn::SpawnLevelGraph;
 use xrf_vfs::XraySearch;
 
 use crate::level::SelectedLevel;
-use crate::parts::{LevelGraphPart, LevelSpawn, LevelSpawnPart};
+use crate::objects::LevelObjectsDescription;
+use crate::parts::{LevelGraphPart, LevelSpawnPart};
 use crate::viewer::map::annotations::{AnnotationOutline, AnnotationPatrol, AnnotationPoint, AnnotationVolume};
 
 /// Everything a level map's annotations can draw of a level, engine space seen from above.
@@ -17,23 +18,23 @@ pub struct LevelAnnotations {
 }
 
 impl LevelAnnotations {
-  /// What the open level's spawn and graph parts hold of it, read through `search` where they are not yet.
+  /// What the open level's objects and graph part hold of it, read through `search` where they are not yet.
   ///
   /// # Errors
   ///
   /// Returns why the level has no name to find its share by, or why its spawn or graph cannot be read.
   pub fn read(current: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> TauriResult<Self> {
     Ok(Self::of(
-      &*LevelSpawnPart::get(current, search)?,
+      &LevelObjectsDescription::describe(&*LevelSpawnPart::get(current, search)?),
       &*LevelGraphPart::get(current, search)?,
       &current.source.require_name()?,
     ))
   }
 
-  /// What `spawn` and `graph` hold of the level named `level`.
-  pub fn of(spawn: &LevelSpawn, graph: &SpawnLevelGraph, level: &str) -> Self {
+  /// What `objects` and `graph` hold of the level named `level`.
+  pub fn of(objects: &LevelObjectsDescription, graph: &SpawnLevelGraph, level: &str) -> Self {
     Self {
-      volumes: spawn
+      volumes: objects
         .objects
         .iter()
         .filter_map(|object| AnnotationVolume::of(object, graph, level))

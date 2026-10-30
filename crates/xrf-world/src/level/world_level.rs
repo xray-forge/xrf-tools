@@ -97,7 +97,7 @@ impl WorldLevel {
 
     self
       .streaming
-      .stream(&mut updates, &mut self.animation, toggles.get_hidden_spawn_groups());
+      .stream(&mut updates, &mut self.animation, toggles.get_spawn_filter());
     self.animation.pose(&mut updates, self.streaming.get_source());
 
     let effects: EffectsFrame = self.effects.advance(

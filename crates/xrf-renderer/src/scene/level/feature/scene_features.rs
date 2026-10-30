@@ -10,6 +10,7 @@ use crate::scene::level::feature::exposure_feature::ExposureFeature;
 use crate::scene::level::feature::falling_rain_feature::FallingRainFeature;
 use crate::scene::level::feature::flares_feature::FlaresFeature;
 use crate::scene::level::feature::fog_feature::FogFeature;
+use crate::scene::level::feature::helpers_feature::HelpersFeature;
 use crate::scene::level::feature::indirect_trace_feature::IndirectTraceFeature;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::meter_feature::MeterFeature;
@@ -56,6 +57,8 @@ pub struct SceneFeatures {
   pub lights: LightsFeature,
   /// What it draws over its frame and marks in it: the page's overlays and the selection.
   pub overlays: OverlaysFeature,
+  /// The level objects' helpers it draws over its frame and picks.
+  pub helpers: HelpersFeature,
   pub pick: PickFeature,
   pub wind: WindFeature,
   /// The level's grass as the view plants and draws it.
@@ -104,6 +107,7 @@ impl SceneFeatures {
       surroundings: SurroundingsCube::new(device, view_layout),
       lights: LightsFeature::new(device),
       overlays: OverlaysFeature::default(),
+      helpers: HelpersFeature::default(),
       wind: WindFeature::default(),
       grass: GrassView::new(device),
       particles: ParticlesView::new(device),
@@ -172,6 +176,7 @@ macro_rules! scene_units {
 scene_units!(
   lights,
   overlays,
+  helpers,
   wind,
   grass,
   particles,

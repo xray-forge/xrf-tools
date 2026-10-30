@@ -17,6 +17,7 @@ pub(crate) mod froxel_volume;
 pub(crate) mod fsr_frame;
 pub(crate) mod fsr_graph_textures;
 pub(crate) mod fsr_targets;
+pub(crate) mod helpers_feature;
 pub(crate) mod indirect_trace_feature;
 pub(crate) mod light_buffers;
 pub(crate) mod lights_feature;

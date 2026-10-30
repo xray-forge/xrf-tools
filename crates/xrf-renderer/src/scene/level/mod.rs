@@ -10,6 +10,7 @@ pub(crate) mod grass_planting;
 pub(crate) mod grass_shadow_casters;
 pub(crate) mod grass_view;
 pub(crate) mod grass_view_frame;
+pub(crate) mod helpers;
 pub(crate) mod lens_flare_fade;
 pub(crate) mod level_frame;
 pub(crate) mod level_grass;

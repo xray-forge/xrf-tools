@@ -4,9 +4,9 @@ import { Nullable } from "@xrf/types";
 export interface ILevelSpawnReport {
   /** Whether the spawn's objects are known: nothing is reported before. */
   isListed: boolean;
-  /** Objects the viewer draws once their visual's model is read. */
+  /** Level objects the spawn places. */
   objects: number;
-  /** Visuals they stand as, each read once. */
+  /** Visuals the drawn ones stand as, each read once. */
   visuals: number;
   /** Why the spawn could not be listed, which leaves no spawned object drawn; null where nothing stopped it. */
   failure: Nullable<string>;

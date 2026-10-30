@@ -8,7 +8,7 @@ import { TREE } from "#/theme";
 import { IFlatTreeRow } from "./flatten";
 import { stopPropagation } from "./propagation";
 import { ITreeNode } from "./tree-node";
-import { ITreeIconDecoration } from "./VirtualizedTree";
+import { ITreeIconDecoration, ITreeSelectGesture } from "./VirtualizedTree";
 
 /** A theme colour path as the variable the theme emits for it, since a plain element has no `sx` to resolve it. */
 function toPaletteColor(path: string): string {
@@ -21,6 +21,8 @@ interface IVirtualizedTreeRowProps<T> {
   rowId: string;
   /** Whether the keyboard stands here, which is where a selection moves and what a focus ring surrounds. */
   isSelected: boolean;
+  /** Whether it is selected beside the cursor, in a tree selecting more than one row. */
+  isMarked: boolean;
   /** Whether the editor has this row's subject open, which outlasts wherever the keyboard wandered since. */
   isActive: boolean;
   /** Drawn beside the chevron: open, closed, or leaf, chosen by the tree. Null for a tree that types nothing. */
@@ -31,7 +33,7 @@ interface IVirtualizedTreeRowProps<T> {
   label?: ReactNode;
   /** Controls at the row's end, whose clicks stay theirs. */
   actions?: ReactNode;
-  onSelect: (row: IFlatTreeRow<T>) => void;
+  onSelect: (row: IFlatTreeRow<T>, gesture: ITreeSelectGesture) => void;
   onActivate: (row: IFlatTreeRow<T>) => void;
   onToggleExpanded: (id: string) => void;
 }
@@ -48,6 +50,7 @@ export function VirtualizedTreeRow<T>({
   row,
   rowId,
   isSelected,
+  isMarked,
   isActive,
   icon,
   iconDecoration,
@@ -65,18 +68,21 @@ export function VirtualizedTreeRow<T>({
       aria-expanded={row.hasChildren ? row.isExpanded : undefined}
       aria-level={row.depth + 1}
       aria-posinset={row.posInSet}
-      aria-selected={isSelected}
+      aria-selected={isSelected || isMarked}
       aria-setsize={row.setSize}
       data-active={isActive}
+      data-marked={isMarked}
       data-selected={isSelected}
       data-testid={"virtualized-tree-row"}
       id={rowId}
       role={"treeitem"}
       className={
-        "box-border flex h-tree-row cursor-pointer items-center gap-tree-gap rounded-surface pr-1 pl-[var(--row-indent)] select-none hover:bg-action-hover data-[active=true]:data-[selected=false]:bg-action-current data-[active=true]:data-[selected=false]:hover:bg-action-current data-[selected=true]:bg-action-selected data-[selected=true]:hover:bg-action-selected"
+        "box-border flex h-tree-row cursor-pointer items-center gap-tree-gap rounded-surface pr-1 pl-[var(--row-indent)] select-none hover:bg-action-hover data-[marked=true]:bg-action-selected data-[marked=true]:hover:bg-action-selected data-[active=true]:data-[selected=false]:bg-action-current data-[active=true]:data-[selected=false]:hover:bg-action-current data-[selected=true]:bg-action-selected data-[selected=true]:hover:bg-action-selected"
       }
       style={{ "--row-indent": `${row.depth * TREE.indent + 4}px` } as CSSProperties}
-      onClick={() => onSelect(row)}
+      onClick={(event: MouseEvent<HTMLElement>) =>
+        onSelect(row, { isExtending: event.shiftKey, isToggling: event.ctrlKey || event.metaKey })
+      }
       onDoubleClick={() => onActivate(row)}
     >
       <div

@@ -250,6 +250,10 @@ const EMBEDDED: &[(&str, &str)] = &[
     include_str!("../../shaders/frame/light_visibility.wgsl"),
   ),
   ("frame/overlay", include_str!("../../shaders/frame/overlay.wgsl")),
+  (
+    "frame/helper_pick",
+    include_str!("../../shaders/frame/helper_pick.wgsl"),
+  ),
   ("frame/backdrop", include_str!("../../shaders/frame/backdrop.wgsl")),
   ("frame/bloom", include_str!("../../shaders/frame/bloom.wgsl")),
   (

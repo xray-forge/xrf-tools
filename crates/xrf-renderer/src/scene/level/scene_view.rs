@@ -101,9 +101,11 @@ use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
-/// What a pick's texel says it met: a cluster, by its index and place, or an impostor, by its index.
+/// What a pick's texel says it met: a cluster, by its index and place, an impostor, by its index, or a helper's wire,
+/// by the id its helper carries (`PICKED_HELPER` in `frame/helper_pick`).
 const PICKED_CLUSTER: u32 = 1;
 const PICKED_IMPOSTOR: u32 = 2;
+const PICKED_HELPER: u32 = 3;
 
 /// A scene as one viewport draws it: the values its units share this frame (`ViewFrame`), its targets, and its units
 /// (`SceneFeatures`), which each keep what they keep between frames. The scene (`LevelScene`) is shared by every view
@@ -1065,8 +1067,8 @@ impl SceneView {
     if let Some(slot) = frame.pick_slot {
       self.features.pick.add_passes(
         (&mut *graph, &mut *bindings),
-        passes.gbuffer,
-        (record.textures, &statics),
+        (passes.gbuffer, passes.pipelines),
+        (record.textures, &statics, self.features.helpers.get_wires()),
         (slot, frame.is_pick_through),
       );
     }
@@ -1678,6 +1680,13 @@ impl SceneView {
 
     match kind {
       PICKED_CLUSTER => {}
+      PICKED_HELPER => {
+        return scene.helpers.find(cluster).map(|object| RenderLevelHit::Helper {
+          object: object.id,
+          point,
+          depth,
+        });
+      }
       PICKED_IMPOSTOR => {
         return scene
           .statics
@@ -1889,6 +1898,16 @@ impl SceneView {
   /// What it draws over its frame, once made.
   pub fn get_overlays(&self) -> Option<&LevelOverlays> {
     self.features.overlays.get_overlays()
+  }
+
+  /// Builds its helpers' wires again where the scene's helpers or `options` moved since.
+  pub fn set_helpers(&mut self, scene: &LevelScene, device: &wgpu::Device, options: &RenderViewOptions) {
+    self.features.helpers.set(device, &scene.helpers, &options.helpers);
+  }
+
+  /// The helpers' wires it draws over its frame, and how many vertices; none where it draws none.
+  pub fn get_helper_wires(&self) -> Option<(&wgpu::Buffer, u32)> {
+    self.features.helpers.get_wires()
   }
 
   /// The sway the shadows see this frame: the wind, the trees' reach, and where they stand.

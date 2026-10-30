@@ -6,15 +6,17 @@ use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription
 use crate::pass::overlay_parameters::OverlayParameters;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::helpers::helper_vertex::HelperVertex;
 use crate::scene::level::level_overlays::LevelOverlays;
 
 /// Draws a viewport's overlays into the window's pass after its frame: line segments and points, depth tested against
-/// the scene by the shader since the window's pass holds no depth, and the sun's disc.
+/// the scene by the shader since the window's pass holds no depth, the sun's disc, and the helpers' wires, blended by
+/// how they show behind the scene and how far off they stand.
 pub struct OverlayPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
-  /// The lines', the sun's and the points', one set a window format, built on first use.
-  pipelines: HashMap<wgpu::TextureFormat, [wgpu::RenderPipeline; 3]>,
+  /// The lines', the sun's, the points' and the helpers', one set a window format, built on first use.
+  pipelines: HashMap<wgpu::TextureFormat, [wgpu::RenderPipeline; 4]>,
   generation: u64,
 }
 
@@ -41,7 +43,7 @@ impl OverlayPass {
 
     self.generation = source.get_generation();
 
-    let rebuilt: XrfResult<HashMap<wgpu::TextureFormat, [wgpu::RenderPipeline; 3]>> = self
+    let rebuilt: XrfResult<HashMap<wgpu::TextureFormat, [wgpu::RenderPipeline; 4]>> = self
       .pipelines
       .keys()
       .map(|format| Ok((*format, self.create_pipeline(source, *format)?)))
@@ -60,7 +62,7 @@ impl OverlayPass {
   /// Returns an error when the shader does not compose or compile.
   pub fn prepare(&mut self, source: PipelineSource<'_>, format: wgpu::TextureFormat) -> XrfResult {
     if !self.pipelines.contains_key(&format) {
-      let pipelines: [wgpu::RenderPipeline; 3] = self.create_pipeline(source, format)?;
+      let pipelines: [wgpu::RenderPipeline; 4] = self.create_pipeline(source, format)?;
 
       self.pipelines.insert(format, pipelines);
     }
@@ -68,15 +70,16 @@ impl OverlayPass {
     Ok(())
   }
 
-  /// The lines', the sun's and the points' pipelines drawing into a window format.
+  /// The lines', the sun's, the points' and the helpers' pipelines drawing into a window format.
   fn create_pipeline(
     &self,
     source: PipelineSource<'_>,
     format: wgpu::TextureFormat,
-  ) -> XrfResult<[wgpu::RenderPipeline; 3]> {
+  ) -> XrfResult<[wgpu::RenderPipeline; 4]> {
     let create = |(vertex, fragment): (&'static str, &'static str),
                   topology: wgpu::PrimitiveTopology,
-                  buffer: VertexLayout|
+                  buffer: VertexLayout,
+                  blend: Option<wgpu::BlendState>|
      -> XrfResult<wgpu::RenderPipeline> {
       source.get_render_pipeline(
         &RenderPipelineDescription::new(vertex, "frame/overlay", vertex)
@@ -87,7 +90,11 @@ impl OverlayPass {
             topology,
             ..Default::default()
           })
-          .with_target(format.into()),
+          .with_target(wgpu::ColorTargetState {
+            format,
+            blend,
+            write_mask: wgpu::ColorWrites::ALL,
+          }),
       )
     };
     let lines: wgpu::RenderPipeline = create(
@@ -98,6 +105,7 @@ impl OverlayPass {
         wgpu::VertexStepMode::Vertex,
         &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4],
       ),
+      None,
     )?;
     let sun: wgpu::RenderPipeline = create(
       ("vs_sun", "fs_sun"),
@@ -107,8 +115,8 @@ impl OverlayPass {
         wgpu::VertexStepMode::Instance,
         &wgpu::vertex_attr_array![0 => Float32x4],
       ),
+      None,
     )?;
-
     let points: wgpu::RenderPipeline = create(
       ("vs_point", "fs_point"),
       wgpu::PrimitiveTopology::TriangleList,
@@ -117,20 +125,32 @@ impl OverlayPass {
         wgpu::VertexStepMode::Instance,
         &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4],
       ),
+      None,
+    )?;
+    let helpers: wgpu::RenderPipeline = create(
+      ("vs_helper", "fs_helper"),
+      wgpu::PrimitiveTopology::LineList,
+      VertexLayout::new(
+        HelperVertex::SIZE,
+        wgpu::VertexStepMode::Vertex,
+        &HelperVertex::ATTRIBUTES,
+      ),
+      Some(wgpu::BlendState::ALPHA_BLENDING),
     )?;
 
-    Ok([lines, sun, points])
+    Ok([lines, sun, points, helpers])
   }
 
-  /// Draws into the window's pass, whose viewport and scissor are the viewport's rectangle already.
+  /// Draws into the window's pass, whose viewport and scissor are the viewport's rectangle already: the overlays, then
+  /// the helpers' wires, two vertices a wire, over them.
   pub fn draw(
     &self,
     context: &mut RasterContext<'_>,
     format: wgpu::TextureFormat,
     (view, parameters): (&ViewBinding, &OverlayParameters),
-    overlays: &LevelOverlays,
+    (overlays, helpers): (&LevelOverlays, Option<(&wgpu::Buffer, u32)>),
   ) {
-    let Some([lines, sun, points]) = self.pipelines.get(&format) else {
+    let Some([lines, sun, points, wires]) = self.pipelines.get(&format) else {
       return;
     };
 
@@ -156,6 +176,12 @@ impl OverlayPass {
       pass.set_pipeline(sun);
       pass.set_vertex_buffer(0, buffer.slice(..));
       pass.draw(0..6, 0..1);
+    }
+
+    if let Some((buffer, count)) = helpers {
+      pass.set_pipeline(wires);
+      pass.set_vertex_buffer(0, buffer.slice(..));
+      pass.draw(0..count, 0..1);
     }
   }
 }

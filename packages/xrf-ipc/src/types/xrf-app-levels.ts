@@ -50,6 +50,149 @@ export const LEVEL_LIGHTS_PART = "lights" as const;
 /** What a change event calls where a level's map lies when it goes stale. */
 export const LEVEL_MAP_PART = "levelMap" as const;
 
+/**
+ * Every kind of level object, in the order `LevelObjectKind` declares them: smart terrains orange, restrictors blue,
+ * anomalies red and level changers green as the map has drawn them, the spawned visuals teal, characters magenta and
+ * smart covers cyan.
+ */
+export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
+  {
+    color: "#26a69a",
+    drawDistance: 200.0,
+    group: "spawned",
+    isDrawn: true,
+    isHelpedByDefault: false,
+    kind: "props",
+    label: "Props",
+  },
+  {
+    color: "#4db6ac",
+    drawDistance: 200.0,
+    group: "spawned",
+    isDrawn: true,
+    isHelpedByDefault: false,
+    kind: "items",
+    label: "Items",
+  },
+  {
+    color: "#00897b",
+    drawDistance: 200.0,
+    group: "spawned",
+    isDrawn: true,
+    isHelpedByDefault: false,
+    kind: "weapons",
+    label: "Weapons",
+  },
+  {
+    color: "#80cbc4",
+    drawDistance: 200.0,
+    group: "spawned",
+    isDrawn: true,
+    isHelpedByDefault: false,
+    kind: "lamps",
+    label: "Lamps",
+  },
+  {
+    color: "#f06292",
+    drawDistance: 300.0,
+    group: "characters",
+    isDrawn: false,
+    isHelpedByDefault: false,
+    kind: "actor",
+    label: "Actor start",
+  },
+  {
+    color: "#e040fb",
+    drawDistance: 300.0,
+    group: "characters",
+    isDrawn: false,
+    isHelpedByDefault: false,
+    kind: "stalkers",
+    label: "Stalkers",
+  },
+  {
+    color: "#ab47bc",
+    drawDistance: 300.0,
+    group: "characters",
+    isDrawn: false,
+    isHelpedByDefault: false,
+    kind: "creatures",
+    label: "Creatures",
+  },
+  {
+    color: "#ce93d8",
+    drawDistance: 300.0,
+    group: "characters",
+    isDrawn: false,
+    isHelpedByDefault: false,
+    kind: "traders",
+    label: "Traders",
+  },
+  {
+    color: "#ba68c8",
+    drawDistance: 300.0,
+    group: "characters",
+    isDrawn: false,
+    isHelpedByDefault: false,
+    kind: "squads",
+    label: "Squads",
+  },
+  {
+    color: "#ff9800",
+    drawDistance: 600.0,
+    group: "volumes",
+    isDrawn: false,
+    isHelpedByDefault: true,
+    kind: "smartTerrains",
+    label: "Smart terrains",
+  },
+  {
+    color: "#2196f3",
+    drawDistance: 250.0,
+    group: "volumes",
+    isDrawn: false,
+    isHelpedByDefault: true,
+    kind: "restrictors",
+    label: "Restrictors",
+  },
+  {
+    color: "#f44336",
+    drawDistance: 250.0,
+    group: "volumes",
+    isDrawn: false,
+    isHelpedByDefault: true,
+    kind: "anomalies",
+    label: "Anomalies",
+  },
+  {
+    color: "#4caf50",
+    drawDistance: 600.0,
+    group: "volumes",
+    isDrawn: false,
+    isHelpedByDefault: true,
+    kind: "levelChangers",
+    label: "Level changers",
+  },
+  {
+    color: "#a1887f",
+    drawDistance: 150.0,
+    group: "volumes",
+    isDrawn: false,
+    isHelpedByDefault: true,
+    kind: "climbables",
+    label: "Ladders",
+  },
+  {
+    color: "#00bcd4",
+    drawDistance: 150.0,
+    group: "covers",
+    isDrawn: false,
+    isHelpedByDefault: false,
+    kind: "smartCovers",
+    label: "Smart covers",
+  },
+];
+
 /** What a change event calls what a level's object motions were read from when it goes stale. */
 export const LEVEL_OBJECT_MOTIONS_PART = "objectMotions" as const;
 
@@ -215,6 +358,138 @@ export type LevelMapDescription = {
   texture: string | null;
 };
 
+/** One discrete thing placed in a level: what it is, where it stands, and what its source records of it. */
+export type LevelObject = {
+  id: LevelObjectId;
+  kind: LevelObjectKind;
+  name: string;
+  /** Where it stands, its `XFORM` in renderer space; its shapes stand in the space it gives. */
+  transform: VisualTransform;
+  /** What the spawn records of it, for an object the spawn places. */
+  spawn: LevelObjectSpawn | null;
+  /** What it covers, for a logic volume. */
+  volume: LevelObjectVolume | null;
+};
+
+/** The family a level object's kind belongs to, which the Outliner and the Show popover nest kinds under. */
+export enum ELevelObjectGroup {
+  /** The spawn's objects drawn as a model. */
+  SPAWNED = "spawned",
+  /** Who the spawn places, drawn as nothing: the actor's start, stalkers, creatures, traders and squads. */
+  CHARACTERS = "characters",
+  /** The logic volumes: smart terrains, restrictors, anomalies, level changers and ladders. */
+  VOLUMES = "volumes",
+  /** The smart covers. */
+  COVERS = "covers",
+}
+
+/** Every `ELevelObjectGroup` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type LevelObjectGroup = `${ELevelObjectGroup}`;
+
+/** Every `source` the `LevelObjectId` union is told apart by, so a switch or a comparison names one. */
+export enum ELevelObjectId {
+  /** An object of the level's spawn, by its index among them. */
+  SPAWN = "spawn",
+}
+
+/**
+ * What names one level object for as long as its level is open, by where it is read from: the selection, a pick, the
+ * Outliner's rows and the renderer's helpers all address objects by it.
+ */
+export type LevelObjectId =
+  /** An object of the level's spawn, by its index among them. */
+  { source: "spawn"; index: number };
+
+/** What a level object is, which the viewer lists, shows and draws helpers by. */
+export enum ELevelObjectKind {
+  PROPS = "props",
+  ITEMS = "items",
+  WEAPONS = "weapons",
+  LAMPS = "lamps",
+  /** Where the actor starts. */
+  ACTOR = "actor",
+  STALKERS = "stalkers",
+  /** Monsters, crows and phantoms. */
+  CREATURES = "creatures",
+  TRADERS = "traders",
+  SQUADS = "squads",
+  SMART_TERRAINS = "smartTerrains",
+  RESTRICTORS = "restrictors",
+  /** Anomalous and torrid zones. */
+  ANOMALIES = "anomalies",
+  LEVEL_CHANGERS = "levelChangers",
+  /** Ladders. */
+  CLIMBABLES = "climbables",
+  SMART_COVERS = "smartCovers",
+}
+
+/** Every `ELevelObjectKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type LevelObjectKind = `${ELevelObjectKind}`;
+
+/**
+ * One kind's row of the kind table: what the Outliner, the Show popover, the helpers and the map all name, colour and
+ * switch it by.
+ */
+export type LevelObjectKindEntry = {
+  kind: LevelObjectKind;
+  group: LevelObjectGroup;
+  label: string;
+  /** Its helpers' colour, `#rrggbb` in sRGB. */
+  color: string;
+  /** Metres from the camera past which its helpers fade out. */
+  drawDistance: number | null;
+  /** Whether its objects have a picture of their own, which the Visible switch shows or hides. */
+  isDrawn: boolean;
+  /** Whether its helpers are drawn until the viewer is told otherwise. */
+  isHelpedByDefault: boolean;
+};
+
+/** Every `kind` the `LevelObjectShape` union is told apart by, so a switch or a comparison names one. */
+export enum ELevelObjectShape {
+  SPHERE = "sphere",
+  /** The unit cube about the origin taken through `axes` and moved to `center`. */
+  BOX = "box",
+}
+
+/** One shape of a logic volume in its object's own space, renderer space: what `CCF_Shape` tests against. */
+export type LevelObjectShape =
+  | { kind: "sphere"; center: Vector3d; radius: number | null }
+  /** The unit cube about the origin taken through `axes` and moved to `center`. */
+  | { kind: "box"; axes: [Vector3d, Vector3d, Vector3d]; center: Vector3d };
+
+/**
+ * What the spawn records of a level object it places: its section, class and story id, why a new game releases it,
+ * and the visual it is drawn as.
+ */
+export type LevelObjectSpawn = {
+  section: string;
+  clsid: ClsId;
+  /** Absent for an object without one (`INVALID_STORY_ID`). */
+  storyId: number | null;
+  /** Why a new game releases it, absent for an object it keeps; a released one is drawn only when asked. */
+  release: LevelSpawnRelease | null;
+  /** The visual it is drawn as, by its index among the description's visuals; none for one drawn as nothing. */
+  visual: number | null;
+};
+
+/** What a logic volume covers and does: its shapes, whom it restricts, and the level a changer leads to. */
+export type LevelObjectVolume = {
+  /** In the object's own space, renderer space; none for a volume the spawn gives no shape. */
+  shapes: Array<LevelObjectShape>;
+  restriction: LevelRestriction;
+  /** The level a level changer leads to, by name. */
+  destination: string | null;
+};
+
+/**
+ * Every level object of a level, in the order its sources keep them, and the visuals they are drawn as, each named
+ * once.
+ */
+export type LevelObjectsDescription = {
+  visuals: Array<string>;
+  objects: Array<LevelObject>;
+};
+
 /** What opening a level was asked to read, and how the game's configs beside it are read. */
 export type LevelOpenRequest = {
   source: LevelSource;
@@ -225,6 +500,22 @@ export type LevelOpenRequest = {
   /** Which engine the game's configs, its weather among them, are read as; detected on `auto`. */
   engine: XrayEngineChoice;
 };
+
+/**
+ * Whom a logic volume keeps where, `RestrictionSpace::ERestrictorTypes` with the default and the scripted kinds
+ * folded together.
+ */
+export enum ELevelRestriction {
+  /** Restricts no one by itself. */
+  NONE = "none",
+  /** Keeps those it restricts outside it. */
+  OUT = "out",
+  /** Keeps those it restricts inside it. */
+  IN = "in",
+}
+
+/** Every `ELevelRestriction` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type LevelRestriction = `${ELevelRestriction}`;
 
 /** Every `kind` the `LevelSource` union is told apart by, so a switch or a comparison names one. */
 export enum ELevelSource {
@@ -241,39 +532,6 @@ export type LevelSource =
   /** A level of the mounted roots, named by its engine identity. */
   | { kind: "asset"; logicalPath: string };
 
-/** What a spawned object is, by the engine class its spawn stores: what the viewer groups and toggles it by. */
-export enum ELevelSpawnCategory {
-  /** Physics objects, breakables, inventory boxes, vehicles, and zones drawn as a model. */
-  PROPS = "props",
-  /** Every inventory item but a weapon. */
-  ITEMS = "items",
-  /** Firearms and grenades. */
-  WEAPONS = "weapons",
-  /** Hanging lamps the engine spawns on R2. */
-  LAMPS = "lamps",
-}
-
-/** Every `ELevelSpawnCategory` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type LevelSpawnCategory = `${ELevelSpawnCategory}`;
-
-/** One spawned object the viewer draws: what it is, where it stands, and which visual it stands as. */
-export type LevelSpawnObject = {
-  /** Its place among the level's spawned objects, which names it to the backend. */
-  index: number;
-  name: string;
-  section: string;
-  clsid: ClsId;
-  /** Absent for an object without one (`INVALID_STORY_ID`). */
-  storyId: number | null;
-  category: LevelSpawnCategory;
-  /** Why a new game releases it, absent for an object it keeps; a released one is drawn only when asked. */
-  release: LevelSpawnRelease | null;
-  /** The visual, by its index among the description's visuals. */
-  visual: number;
-  /** The object's `XFORM`, in renderer space. */
-  transform: VisualTransform;
-};
-
 /** What the viewer shows of one spawned object beyond where it stands: what the game knows it by and what it carries. */
 export type LevelSpawnObjectDetails = {
   /** Its ALife id in the spawn. */
@@ -287,12 +545,6 @@ export type LevelSpawnObjectDetails = {
   levelVertexId: number | null;
   /** Its `custom_data`, the logic and settings a script reads, empty where it has none. */
   customData: string;
-};
-
-/** The spawned objects the viewer draws, and the visuals they stand as, each named once. */
-export type LevelSpawnObjectsDescription = {
-  visuals: Array<string>;
-  objects: Array<LevelSpawnObject>;
 };
 
 /**

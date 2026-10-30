@@ -27,4 +27,11 @@ pub enum RenderLevelHit {
     point: [f32; 3],
     depth: f32,
   },
+  /// A level object's helper, met within a few pixels of its wire, wherever it stands.
+  Helper {
+    /// The id its helper carries.
+    object: u32,
+    point: [f32; 3],
+    depth: f32,
+  },
 }

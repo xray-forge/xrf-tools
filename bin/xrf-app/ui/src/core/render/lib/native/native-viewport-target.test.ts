@@ -121,7 +121,7 @@ describe("NativeViewportTarget", () => {
 
     // In css pixels from the element's own corner.
     expect(onClick).toHaveBeenCalledTimes(1);
-    expect(onClick).toHaveBeenCalledWith({ x: 12, y: 11 }, false);
+    expect(onClick).toHaveBeenCalledWith({ x: 12, y: 11 }, false, false);
     expect(inputs).toEqual([]);
 
     target.dispose();

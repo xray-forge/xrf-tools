@@ -68,10 +68,10 @@ interface IClick {
 }
 
 /**
- * Told where a click on the viewport landed, in css pixels from its top left corner, and whether Alt was held, which
- * picks through glass.
+ * Told where a click on the viewport landed, in css pixels from its top left corner, whether Alt was held, which picks
+ * through glass, and whether Ctrl (Cmd on macOS) was, which adds to the selection or takes from it.
  */
-export type TNativeViewportClick = (point: IRenderViewPoint, isThrough: boolean) => void;
+export type TNativeViewportClick = (point: IRenderViewPoint, isThrough: boolean, isToggling: boolean) => void;
 
 /**
  * The page's side of a native viewport: an element the renderer draws under.
@@ -315,7 +315,7 @@ export class NativeViewportTarget {
     this.clicked = isSecond ? null : { time: pointer.timeStamp, x: point.x, y: point.y };
 
     if (!isSecond) {
-      this.onClick?.(point, pointer.altKey);
+      this.onClick?.(point, pointer.altKey, pointer.ctrlKey || pointer.metaKey);
     }
   }
 

@@ -24,6 +24,7 @@ use crate::host::render_scene_id::RenderSceneId;
 use crate::host::render_scene_update::RenderSceneUpdate;
 use crate::host::render_sector_failure::RenderSectorFailure;
 use crate::lighting::ambient_gust::AmbientGust;
+use crate::scene::level::helpers::level_helpers::LevelHelpers;
 use crate::scene::level::level_grass::LevelGrass;
 use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_load::LevelLoad;
@@ -68,6 +69,8 @@ pub struct LevelScene {
   pub driver: Option<RenderViewportId>,
   /// Every skinned object's bones as segments, which the skeleton overlay draws.
   pub skeleton_segments: Arc<[(Vec3, Vec3)]>,
+  /// The level objects' helpers as wires, which every view draws as its options ask.
+  pub helpers: LevelHelpers,
   /// The wind the ambient effects blow, and how much of each campfire's idle light shows.
   pub gust: AmbientGust,
   pub campfire_shares: HashMap<u16, f32>,
@@ -113,6 +116,7 @@ impl LevelScene {
       texture_slots: Vec::new(),
       driver: None,
       skeleton_segments: Arc::from([]),
+      helpers: LevelHelpers::default(),
       gust: AmbientGust::default(),
       campfire_shares: HashMap::new(),
       camera_hemi: None,
@@ -395,6 +399,9 @@ impl LevelScene {
         }
         RenderSceneUpdate::AddLights(lights) => self.lights.add_lights(lights, textures, assets),
         RenderSceneUpdate::AddGrass(details) => self.grass.replace(device, details, (&mut *textures, assets)),
+        RenderSceneUpdate::SetHelpers(helpers) => {
+          self.helpers = LevelHelpers::new(helpers, self.helpers.version + 1);
+        }
         RenderSceneUpdate::AddParticles(definitions) => {
           self
             .particles

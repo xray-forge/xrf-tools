@@ -13,14 +13,15 @@ use xrf_ltx::Ltx;
 use xrf_material::{XrayReducedTextures, XraySurfaceDescriptor};
 use xrf_particles::{ParticleCollider, ParticleEngineRules};
 use xrf_renderer::{
-  RenderAssetSource, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather,
-  RenderLoadFailure, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
+  RenderAssetSource, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
+  RenderLevelWeather, RenderLoadFailure, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
 };
 use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, SectorAttributes, SectorPackage, SectorPacker, VisualPoser};
 use xrf_world::WorldLevelReload;
 
 use crate::level::SelectedLevel;
+use crate::objects::LevelObjectsDescription;
 use crate::parts::{
   LevelCollisionPart, LevelDetailsPart, LevelEnvironment, LevelEnvironmentPart, LevelGeometryPart, LevelHemiPart,
   LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelSpawnVisual,
@@ -29,7 +30,6 @@ use crate::parts::{
 };
 use crate::render::LevelParticleCollider;
 use crate::report::LevelReport;
-use crate::spawn::LevelSpawnObjectsDescription;
 use crate::weather::render::LevelRenderWeather;
 
 /// The open level as the native renderer draws it: sectors packed when its loader asks, textures read from the roots
@@ -309,7 +309,13 @@ impl RenderLevelSource for LevelRenderSource {
   fn read_spawn(&self) -> XrfResult<RenderLevelSpawn> {
     let spawn = LevelSpawnPart::get(&self.level, &self.search()?).map_err(XrfError::new_asset_error)?;
 
-    Ok(LevelSpawnObjectsDescription::to_render_spawn(&spawn))
+    Ok(RenderLevelSpawn::from(&*spawn))
+  }
+
+  fn read_helpers(&self) -> XrfResult<RenderLevelHelpers> {
+    let spawn = LevelSpawnPart::get(&self.level, &self.search()?).map_err(XrfError::new_asset_error)?;
+
+    Ok(RenderLevelHelpers::from(&LevelObjectsDescription::describe(&spawn)))
   }
 
   fn read_particles(&self) -> XrfResult<Option<RenderLevelParticles>> {

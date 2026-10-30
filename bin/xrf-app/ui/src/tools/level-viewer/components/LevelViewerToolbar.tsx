@@ -8,11 +8,12 @@ import { LevelGoToAction } from "@/core/level/components/preview/toolbar/camera/
 import { LevelCullingAction } from "@/core/level/components/preview/toolbar/contents/LevelCullingAction";
 import { LevelGrassAction } from "@/core/level/components/preview/toolbar/contents/LevelGrassAction";
 import { LevelParticlesAction } from "@/core/level/components/preview/toolbar/contents/LevelParticlesAction";
-import { LevelSpawnAction } from "@/core/level/components/preview/toolbar/contents/LevelSpawnAction";
+import { LevelShowAction } from "@/core/level/components/preview/toolbar/contents/LevelShowAction";
 import { LevelWaterAction } from "@/core/level/components/preview/toolbar/contents/LevelWaterAction";
 import { LevelWeatherAction } from "@/core/level/components/preview/toolbar/environment/LevelWeatherAction";
 import { LevelLightsAction } from "@/core/level/components/preview/toolbar/lighting/LevelLightsAction";
 import { LevelSunAction } from "@/core/level/components/preview/toolbar/lighting/LevelSunAction";
+import { LevelHelpersAction } from "@/core/level/components/preview/toolbar/view/LevelHelpersAction";
 import { LevelOverlaysAction } from "@/core/level/components/preview/toolbar/view/LevelOverlaysAction";
 import { LevelShadingAction } from "@/core/level/components/preview/toolbar/view/LevelShadingAction";
 import { RenderSliderReference } from "@/core/render/components/controls/RenderSliderReference";
@@ -54,6 +55,7 @@ export function LevelViewerToolbar({
         <RenderSliderReference source={ERenderSliderReferenceSource.SETTINGS}>
           <LevelShadingAction />
           <LevelOverlaysAction />
+          <LevelHelpersAction />
 
           <EditorToolbarSeparator />
 
@@ -78,7 +80,7 @@ export function LevelViewerToolbar({
 
           <EditorToolbarSeparator />
 
-          <LevelSpawnAction />
+          <LevelShowAction />
           <LevelParticlesAction />
           <LevelGrassAction />
           <LevelWaterAction />

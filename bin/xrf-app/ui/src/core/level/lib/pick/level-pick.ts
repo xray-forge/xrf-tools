@@ -1,18 +1,18 @@
-import { LevelSpawnObject, LevelSpawnObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelObjectId, LevelObject, LevelObjectsDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import { ERenderLevelHit, RenderLevelHit } from "@xrf/ipc/types/xrf-renderer";
 import { IPoint3, toXraySpace } from "@xrf/math";
 import { Maybe, Nullable } from "@xrf/types";
 
-import { toLevelSpawnPosition } from "@/core/level/lib/spawn/level-spawn-sphere";
+import { toLevelObjectPosition } from "@/core/level/lib/objects/level-object-sphere";
 import { findLevelSurface } from "@/core/level/lib/surface/level-surface-summary";
 
 /** What a click in the viewport picked. */
 export enum ELevelPick {
   /** A surface the level compiled, which a sector draws by a shader table entry. */
   SURFACE = "surface",
-  /** An object the level's spawn places. */
-  SPAWN = "spawn",
+  /** An object placed in the level. */
+  OBJECT = "object",
 }
 
 /**
@@ -34,26 +34,62 @@ export type TLevelPick =
       point: IPoint3;
     }
   | {
-      kind: ELevelPick.SPAWN;
-      object: LevelSpawnObject;
-      /** The visual it stands as, as its spawn names it. */
+      kind: ELevelPick.OBJECT;
+      object: LevelObject;
+      /** The visual it is drawn as, as its spawn names it; empty for one drawn as nothing. */
       visual: string;
       point: IPoint3;
     };
 
+/** A pick of a level object. */
+export type TLevelObjectPick = Extract<TLevelPick, { kind: ELevelPick.OBJECT }>;
+
+/**
+ * @param object - A level object.
+ * @param objects - The level's objects it is one of, which name its visual.
+ * @param point - Where it was picked, in the level's own coordinates; where it stands by default.
+ * @returns It as picked.
+ */
+export function toLevelObjectPick(
+  object: LevelObject,
+  objects: Nullable<LevelObjectsDescription>,
+  point: IPoint3 = toLevelObjectPosition(object.transform)
+): TLevelObjectPick {
+  const visual: Nullable<number> = object.spawn?.visual ?? null;
+
+  return {
+    kind: ELevelPick.OBJECT,
+    object,
+    point,
+    visual: visual === null ? "" : (objects?.visuals[visual] ?? ""),
+  };
+}
+
+/**
+ * @param objects - The level's objects.
+ * @param index - An object, by its index among the spawn's.
+ * @returns The object the spawn places at that index, or null for none listed.
+ */
+export function findLevelSpawnObject(objects: Nullable<LevelObjectsDescription>, index: number): Nullable<LevelObject> {
+  return (
+    objects?.objects.find((it: LevelObject) => it.id.source === ELevelObjectId.SPAWN && it.id.index === index) ?? null
+  );
+}
+
 /**
  * @param hit - What a native viewport named under a point.
- * @param spawn - The level's spawned objects as held, which a picked object is found among.
+ * @param objects - The level's objects as held, which a picked object is found among.
  * @returns It as the level names what is picked, in the level's own coordinates; null for an object not held.
  */
-export function toLevelPick(hit: RenderLevelHit, spawn: Nullable<LevelSpawnObjectsDescription>): Nullable<TLevelPick> {
+export function toLevelPick(hit: RenderLevelHit, objects: Nullable<LevelObjectsDescription>): Nullable<TLevelPick> {
   const [x, y, z] = hit.point;
   const point: IPoint3 = toXraySpace({ x: x ?? 0, y: y ?? 0, z: z ?? 0 });
 
-  if (hit.kind === ERenderLevelHit.SPAWN) {
-    const object: Maybe<LevelSpawnObject> = spawn?.objects.find((it: LevelSpawnObject) => it.index === hit.object);
+  // A helper carries its object's spawn index, as a drawn model does.
+  if (hit.kind === ERenderLevelHit.SPAWN || hit.kind === ERenderLevelHit.HELPER) {
+    const object: Nullable<LevelObject> = findLevelSpawnObject(objects, hit.object);
 
-    return object ? { kind: ELevelPick.SPAWN, object, point, visual: spawn?.visuals[object.visual] ?? "" } : null;
+    return object ? toLevelObjectPick(object, objects, point) : null;
   }
 
   return {
@@ -69,15 +105,41 @@ export function toLevelPick(hit: RenderLevelHit, spawn: Nullable<LevelSpawnObjec
 
 /** The parts of an open level a pick is named among, as held. */
 export interface ILevelPickParts {
-  spawn: Nullable<LevelSpawnObjectsDescription>;
+  objects: Nullable<LevelObjectsDescription>;
   /** The shader table, indexed by the shader id a surface carries. */
   surfaces: Nullable<ReadonlyArray<XraySurfaceDescriptor>>;
 }
 
 /**
- * Finds what was picked again once the level's parts are read anew, which may number it afresh: a spawned object by its
- * name, a surface by the shader and textures of the entry drawing it, the first that matches either way. A surface
- * keeps the place it was picked at.
+ * @param object - A level object as it was listed.
+ * @param objects - The level's objects as listed now.
+ * @returns It as listed now, found by its kind and name, the first that matches; null where it is gone.
+ */
+export function relocateLevelObject(
+  object: LevelObject,
+  objects: Nullable<LevelObjectsDescription>
+): Nullable<LevelObject> {
+  return objects?.objects.find((it: LevelObject) => it.kind === object.kind && it.name === object.name) ?? null;
+}
+
+/**
+ * @param objects - Level objects as they were listed.
+ * @param listed - The level's objects as listed now.
+ * @returns Each as listed now, in the same order, those gone left out.
+ */
+export function relocateLevelObjects(
+  objects: ReadonlyArray<LevelObject>,
+  listed: Nullable<LevelObjectsDescription>
+): Array<LevelObject> {
+  return objects
+    .map((object: LevelObject) => relocateLevelObject(object, listed))
+    .filter((object: Nullable<LevelObject>): object is LevelObject => object !== null);
+}
+
+/**
+ * Finds what was picked again once the level's parts are read anew, which may number it afresh: a level object by its
+ * kind and name, a surface by the shader and textures of the entry drawing it, the first that matches either way. A
+ * surface keeps the place it was picked at.
  *
  * @param pick - What was picked.
  * @param before - The parts it was picked among.
@@ -89,23 +151,14 @@ export function relocateLevelPick(
   before: ILevelPickParts,
   after: ILevelPickParts
 ): Nullable<TLevelPick> {
-  if (pick.kind === ELevelPick.SPAWN) {
-    if (after.spawn === before.spawn) {
+  if (pick.kind === ELevelPick.OBJECT) {
+    if (after.objects === before.objects) {
       return pick;
     }
 
-    const object: Maybe<LevelSpawnObject> = after.spawn?.objects.find(
-      (it: LevelSpawnObject) => it.name === pick.object.name
-    );
+    const object: Nullable<LevelObject> = relocateLevelObject(pick.object, after.objects);
 
-    return object
-      ? {
-          kind: ELevelPick.SPAWN,
-          object,
-          point: toLevelSpawnPosition(object.transform),
-          visual: after.spawn?.visuals[object.visual] ?? "",
-        }
-      : null;
+    return object ? toLevelObjectPick(object, after.objects) : null;
   }
 
   // A table first read now is the one the surface was picked from.

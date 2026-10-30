@@ -3,6 +3,7 @@ import { parseHexColor, toRawColor } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 import { VIEWPORT_INK } from "@xrf/ui/theme";
 
+import { getLevelObjectKind } from "@/core/level/lib/objects/level-object-kinds";
 import { ELevelPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 
 /** The selection's colour: the accent carried on the viewport's backdrop, which is dark whatever the scheme. */
@@ -10,16 +11,19 @@ const SELECTION_COLOR: [number, number, number] = toRawColor(parseHexColor(VIEWP
 
 /**
  * @param pick - What a click or a panel picked, or null for nothing.
- * @returns What the viewport marks as selected: a spawned object, or the surface the pick names; null for nothing,
- *   and for a clump of trees drawn as its impostor, which names no surface of its own.
+ * @returns What the viewport outlines as selected: a level object drawn as a model, or the surface the pick names;
+ *   null for nothing, for an object drawn as nothing, which its helper marks instead, and for a clump of trees drawn as
+ *   its impostor, which names no surface of its own.
  */
 export function toLevelPickSelection(pick: Nullable<TLevelPick>): Nullable<RenderSelection> {
   if (!pick) {
     return null;
   }
 
-  if (pick.kind === ELevelPick.SPAWN) {
-    return { color: SELECTION_COLOR, target: { kind: ERenderSelectionTarget.SPAWN, object: pick.object.index } };
+  if (pick.kind === ELevelPick.OBJECT) {
+    return getLevelObjectKind(pick.object.kind).isDrawn
+      ? { color: SELECTION_COLOR, target: { kind: ERenderSelectionTarget.SPAWN, object: pick.object.id.index } }
+      : null;
   }
 
   return pick.isImpostor

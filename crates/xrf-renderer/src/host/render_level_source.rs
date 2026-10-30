@@ -6,6 +6,7 @@ use xrf_visual::{LightsDescription, SectorPackage};
 
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_details::RenderLevelDetails;
+use crate::host::render_level_helpers::RenderLevelHelpers;
 use crate::host::render_level_particles::RenderLevelParticles;
 use crate::host::render_level_spawn::RenderLevelSpawn;
 use crate::host::render_level_weather::RenderLevelWeather;
@@ -66,6 +67,16 @@ pub trait RenderLevelSource: RenderAssetSource {
   ///
   /// Returns an error when the level's spawn cannot be read.
   fn read_spawn(&self) -> XrfResult<RenderLevelSpawn>;
+
+  /// The level objects the viewer draws helpers for, called from a loader thread as the level opens and again with
+  /// the spawn for a next source that reloads it; none for a source with no level objects.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the level's objects cannot be read.
+  fn read_helpers(&self) -> XrfResult<RenderLevelHelpers> {
+    Ok(RenderLevelHelpers::default())
+  }
 
   /// A batch of the visuals [`RenderLevelSource::read_spawn`] named, posed, and how the level lights the objects
   /// standing as them, called from loader threads; a visual that cannot be read is left out, and reported by the

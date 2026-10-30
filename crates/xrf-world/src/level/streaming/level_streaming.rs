@@ -3,9 +3,9 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_renderer::{
-  LoaderReceiver, RenderLevelDetails, RenderLevelSource, RenderLoadFailure, RenderModelFailure, RenderModelSkeleton,
-  RenderSceneUpdate, RenderSectorFailure, RenderStreamingProgress, RenderWorkers, StaticModelProxy, StaticObjectProxy,
-  StaticSectorProxy, take_answer,
+  LoaderReceiver, RenderLevelDetails, RenderLevelHelpers, RenderLevelSource, RenderLoadFailure, RenderModelFailure,
+  RenderModelSkeleton, RenderSceneUpdate, RenderSectorFailure, RenderStreamingProgress, RenderWorkers,
+  StaticModelPlace, StaticModelProxy, StaticObjectProxy, StaticSectorProxy, take_answer,
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::LightsDescription;
@@ -18,6 +18,7 @@ use crate::level::animation::level_animation::LevelAnimation;
 use crate::level::loading::level_loader::LevelLoader;
 use crate::level::loading::sector_load::SectorLoad;
 use crate::level::streaming::hidden_spawn_groups::HiddenSpawnGroups;
+use crate::level::streaming::spawn_filter::SpawnFilter;
 use crate::level::streaming::spawn_load::SpawnLoad;
 use crate::level::streaming::spawn_loader::SpawnLoader;
 use crate::level::streaming::streamed_model::StreamedModel;
@@ -38,6 +39,7 @@ pub struct LevelStreaming {
   spawn: SpawnLoader,
   lights: Option<LoaderReceiver<Result<LightsDescription, String>>>,
   grass: Option<LoaderReceiver<Result<Option<RenderLevelDetails>, String>>>,
+  helpers: Option<LoaderReceiver<Result<RenderLevelHelpers, String>>>,
   /// The campfires and the object motions the lights follow, by the campfires' ids and the motions' names.
   light_campfires: Vec<u16>,
   light_motions: Vec<String>,
@@ -50,6 +52,8 @@ pub struct LevelStreaming {
   models: Vec<StreamedModel>,
   /// The spawn groups left out of the scene.
   hidden_groups: HiddenSpawnGroups,
+  /// The spawned objects left out of it one by one, by index, ascending.
+  hidden_objects: Vec<u32>,
   /// The sectors that could not be read or taken in, and the drawables the packer left out of those that were.
   failed_sectors: Vec<RenderLoadFailure>,
   /// The spawned models the scene could not take in, which no object stands as.
@@ -67,6 +71,7 @@ impl LevelStreaming {
       spawn: SpawnLoader::start(Arc::clone(&source), workers),
       lights: Some(Self::read_lights(&source, workers)),
       grass: Some(Self::read_grass(&source, workers)),
+      helpers: Some(Self::read_helpers(&source, workers)),
       light_campfires: Vec::new(),
       light_motions: Vec::new(),
       sector_handles: ProxyAllocator::new(),
@@ -75,6 +80,7 @@ impl LevelStreaming {
       posted: HashMap::new(),
       models: Vec::new(),
       hidden_groups: HiddenSpawnGroups::default(),
+      hidden_objects: Vec::new(),
       failed_sectors: Vec::new(),
       failed_models: Vec::new(),
       skipped: Vec::new(),
@@ -126,6 +132,27 @@ impl LevelStreaming {
     receiver
   }
 
+  /// Reads the level objects the viewer draws helpers for on the workers.
+  fn read_helpers(
+    source: &Arc<dyn RenderLevelSource>,
+    workers: &RenderWorkers,
+  ) -> LoaderReceiver<Result<RenderLevelHelpers, String>> {
+    let (sender, receiver) = LoaderReceiver::channel();
+    let source: Arc<dyn RenderLevelSource> = Arc::clone(source);
+
+    workers.spawn(move || {
+      let helpers: Result<RenderLevelHelpers, String> = source.read_helpers().map_err(|error| error.to_string());
+
+      if let Err(error) = &helpers {
+        log::warn!("The level's helpers cannot be drawn: {error}");
+      }
+
+      let _ = sender.send(helpers);
+    });
+
+    receiver
+  }
+
   pub fn get_source(&self) -> &Arc<dyn RenderLevelSource> {
     &self.source
   }
@@ -152,6 +179,7 @@ impl LevelStreaming {
 
       self.failed_models.clear();
       self.spawn = SpawnLoader::start(Arc::clone(&self.source), workers);
+      self.helpers = Some(Self::read_helpers(&self.source, workers));
     }
 
     if reload.is_lights {
@@ -182,18 +210,22 @@ impl LevelStreaming {
     }
   }
 
-  /// Posts this frame's changes: the spawn groups `hidden` names left out and those it no longer names stood again, the
-  /// lights and the grass once read, and a few of the sectors and spawned models the workers finished.
+  /// Posts this frame's changes: the spawned objects `hidden` leaves out taken out and those it no longer does stood
+  /// again, the lights and the grass once read, and a few of the sectors and spawned models the workers finished.
   pub fn stream(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
     animation: &mut LevelAnimation,
-    hidden: HiddenSpawnGroups,
+    hidden: SpawnFilter<'_>,
   ) {
     self.filter_spawn(updates, animation, hidden);
 
     if let Some(Ok(grass)) = take_answer(&mut self.grass, "grass") {
       updates.push(RenderSceneUpdate::AddGrass(grass));
+    }
+
+    if let Some(Ok(helpers)) = take_answer(&mut self.helpers, "helpers") {
+      updates.push(RenderSceneUpdate::SetHelpers(helpers));
     }
 
     if let Some(Ok(lights)) = take_answer(&mut self.lights, "lights") {
@@ -248,7 +280,9 @@ impl LevelStreaming {
       };
 
       for index in 0..streamed.places.len() {
-        if self.hidden_groups.is_shown(streamed.places[index].0.group) {
+        let StaticModelPlace { group, object, .. } = streamed.places[index].0;
+
+        if self.get_filter().is_shown(group, object) {
           self.stand(updates, animation, &mut streamed, index);
         }
       }
@@ -315,28 +349,41 @@ impl LevelStreaming {
     }
   }
 
-  /// Leaves the spawn groups `hidden` names out of the scene: the objects of a group newly hidden leave it, and those
-  /// of one newly shown stand in it again.
+  /// What the scene leaves out of the spawn now.
+  fn get_filter(&self) -> SpawnFilter<'_> {
+    SpawnFilter {
+      groups: self.hidden_groups,
+      objects: &self.hidden_objects,
+    }
+  }
+
+  /// Leaves what `hidden` names out of the scene: the objects newly hidden, by group or one by one, leave it, and those
+  /// newly shown stand in it again. Compared with what was hidden before a frame, a slice compared and copied only once
+  /// it changed.
   fn filter_spawn(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
     animation: &mut LevelAnimation,
-    hidden: HiddenSpawnGroups,
+    hidden: SpawnFilter<'_>,
   ) {
-    let before: HiddenSpawnGroups = std::mem::replace(&mut self.hidden_groups, hidden);
-
-    if before == hidden {
+    if self.hidden_groups == hidden.groups && self.hidden_objects == hidden.objects {
       return;
     }
 
+    let before_groups: HiddenSpawnGroups = std::mem::replace(&mut self.hidden_groups, hidden.groups);
+    let before_objects: Vec<u32> = std::mem::replace(&mut self.hidden_objects, hidden.objects.to_vec());
+    let before: SpawnFilter<'_> = SpawnFilter {
+      groups: before_groups,
+      objects: &before_objects,
+    };
     let mut models: Vec<StreamedModel> = std::mem::take(&mut self.models);
 
     for model in &mut models {
       for index in 0..model.places.len() {
-        let group: u32 = model.places[index].0.group;
-        let is_shown: bool = hidden.is_shown(group);
+        let StaticModelPlace { group, object, .. } = model.places[index].0;
+        let is_shown: bool = hidden.is_shown(group, object);
 
-        if is_shown == before.is_shown(group) {
+        if is_shown == before.is_shown(group, object) {
           continue;
         }
 

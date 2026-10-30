@@ -4,6 +4,7 @@ mod commands;
 mod console;
 pub mod ipc;
 mod level;
+mod objects;
 mod parts;
 pub mod plugin;
 mod render;

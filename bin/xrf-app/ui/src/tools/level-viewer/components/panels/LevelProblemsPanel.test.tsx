@@ -8,8 +8,8 @@ import { ERenderTextureGroup, RenderLoadFailure } from "@xrf/ipc/types/xrf-rende
 
 import { mockLevelViewContainer } from "@/core/level/fixtures/level-container";
 import {
+  mockLevelObject,
   mockLevelPartResponses,
-  mockLevelSpawnObject,
   mockLevelTextureReference,
   mockSectorOutline,
   mockSelectedLevelDescription,
@@ -38,8 +38,8 @@ async function renderProblems({ isPresent, unreadable, resident }: IRenderProble
     [ELevelsCommand.OPEN_LEVEL]: mockSessionResponse(level),
     ...mockLevelPartResponses({ textures: [mockLevelTextureReference("stone", isPresent)] }),
     // A spawn placing one object, or nothing drawn, which a clean level may well have.
-    [ELevelsCommand.DESCRIBE_SPAWN_OBJECTS]: mockSessionResponse(
-      unreadable ? { objects: [mockLevelSpawnObject()], visuals: [unreadable.name] } : { objects: [], visuals: [] }
+    [ELevelsCommand.DESCRIBE_OBJECTS]: mockSessionResponse(
+      unreadable ? { objects: [mockLevelObject()], visuals: [unreadable.name] } : { objects: [], visuals: [] }
     ),
   });
 

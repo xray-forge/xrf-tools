@@ -3,10 +3,11 @@ import { Nullable } from "@xrf/types";
 import { EditorFileHeader } from "@xrf/ui/editor/file-header";
 import { EditorLayout } from "@xrf/ui/editor/layout";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { AccountTreeIcon } from "@xrf/ui/icons/account-tree";
 import { InfoOutlinedIcon } from "@xrf/ui/icons/info-outlined";
-import { Inventory2Icon } from "@xrf/ui/icons/inventory2";
 import { LayersIcon } from "@xrf/ui/icons/layers";
 import { SpeedIcon } from "@xrf/ui/icons/speed";
+import { TuneIcon } from "@xrf/ui/icons/tune";
 import { WarningAmberIcon as WarningIcon } from "@xrf/ui/icons/warning-amber";
 import { WbCloudyIcon } from "@xrf/ui/icons/wb-cloudy";
 import { cn } from "@xrf/ui/theme";
@@ -25,9 +26,10 @@ import { LevelViewerCaptureActions } from "@/tools/level-viewer/components/captu
 import { LevelViewerCaptureCover } from "@/tools/level-viewer/components/capture/LevelViewerCaptureCover";
 import { LevelViewerToolbar } from "@/tools/level-viewer/components/LevelViewerToolbar";
 import { LevelHeaderPanel } from "@/tools/level-viewer/components/panels/LevelHeaderPanel";
+import { LevelInspectorPanel } from "@/tools/level-viewer/components/panels/LevelInspectorPanel";
+import { LevelOutlinerPanel } from "@/tools/level-viewer/components/panels/LevelOutlinerPanel";
 import { LevelProblemsPanel } from "@/tools/level-viewer/components/panels/LevelProblemsPanel";
 import { LevelRendererPanel } from "@/tools/level-viewer/components/panels/LevelRendererPanel";
-import { LevelSpawnPanel } from "@/tools/level-viewer/components/panels/LevelSpawnPanel";
 import { LevelSurfacesPanel } from "@/tools/level-viewer/components/panels/LevelSurfacesPanel";
 import { LevelWeatherPanel } from "@/tools/level-viewer/components/panels/LevelWeatherPanel";
 import { LevelPreviewCoordinates } from "@/tools/level-viewer/components/preview/LevelPreviewCoordinates";
@@ -93,11 +95,17 @@ export function LevelViewerLayout({
         side: "left",
       },
       {
-        icon: <Inventory2Icon />,
-        id: ELevelViewerPanelId.SPAWN,
-        label: "Spawn",
-        render: () => <LevelSpawnPanel />,
+        icon: <AccountTreeIcon />,
+        id: ELevelViewerPanelId.OUTLINER,
+        label: "Outliner",
+        render: () => <LevelOutlinerPanel />,
         side: "left",
+      },
+      {
+        icon: <TuneIcon />,
+        id: ELevelViewerPanelId.INSPECTOR,
+        label: "Inspector",
+        render: () => <LevelInspectorPanel />,
       },
       {
         icon: <InfoOutlinedIcon />,
