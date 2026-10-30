@@ -23,4 +23,6 @@ pub struct SceneOutput {
   pub reflection_ends: GraphTexture,
   /// The bloom the present lays over the frame: the enhanced bloom's where it draws, the engine's target otherwise.
   pub bloom: GraphTexture,
+  /// The models the view's helpers mark, in their colours, a texel of none where none is marked.
+  pub marks: GraphTexture,
 }

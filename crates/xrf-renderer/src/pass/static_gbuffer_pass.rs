@@ -13,18 +13,24 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
+use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// Draws the static scene into a viewport's G-buffer: the cut-out batches' depth alone first, and the opaque ones' too
 /// where the frame asks for a depth pass, then one indirect draw a batch, its visible clusters as instances, a batch
 /// whose depth was drawn shaded only where its depth is the one drawn, then one for the impostors standing in for
 /// distant trees. A frame inspecting its surfaces (a wireframe, the asset checker, alpha
 /// hidden, a surface debug view) draws with pipelines keeping their code; any other with pipelines without it. For the
-/// overdraw's debug view it draws every batch again, counting each surface drawn over a pixel.
+/// overdraw's debug view it draws every batch again, counting each surface drawn over a pixel; for the helpers, the
+/// spawned models' batches again where they were drawn, marking the models a view's helpers mark.
 pub struct StaticGBufferPass {
   layout: wgpu::BindGroupLayout,
   impostor_layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
+  /// The marked models' places and colours, which a view's helpers bind (`HelpersFeature::get_marks`).
+  marks_layout: wgpu::BindGroupLayout,
+  /// The texel the present reads where no model is marked: nothing, in alpha too.
+  unmarked: wgpu::TextureView,
   pipelines: GBufferPipelines,
   /// The impostors' draw, then their pick.
   impostor_pipelines: [wgpu::RenderPipeline; 2],
@@ -41,8 +47,23 @@ impl StaticGBufferPass {
 
     let layout: wgpu::BindGroupLayout = StaticDrawParameters::create_layout(device);
     let impostor_layout: wgpu::BindGroupLayout = StaticImpostorParameters::create_layout(device);
-    let pipelines: GBufferPipelines = Self::create_pipelines(source, view_layout, &layout, texture_layout)?;
+    let marks_layout: wgpu::BindGroupLayout = Self::create_marks_layout(device);
+    let pipelines: GBufferPipelines =
+      Self::create_pipelines(source, view_layout, (&layout, &marks_layout), texture_layout)?;
     let impostor_pipelines = Self::create_impostor_pipelines(source, view_layout, &impostor_layout, texture_layout)?;
+    // A texture's texels start at nothing.
+    let unmarked: wgpu::TextureView = device
+      .create_texture(&wgpu::TextureDescriptor {
+        label: Some("helper marks none"),
+        size: wgpu::Extent3d::default(),
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: ViewTargets::MARKS,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING,
+        view_formats: &[],
+      })
+      .create_view(&wgpu::TextureViewDescriptor::default());
 
     Ok(Self {
       pipelines,
@@ -50,9 +71,38 @@ impl StaticGBufferPass {
       impostor_layout,
       view_layout: view_layout.clone(),
       texture_layout: texture_layout.clone(),
+      marks_layout,
+      unmarked,
       generation: source.get_generation(),
       layout,
     })
+  }
+
+  /// What the helper marks pass binds as its fourth group: the marked models' places and colours, by place ascending.
+  fn create_marks_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
+    device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+      label: Some("helper marks"),
+      entries: &[wgpu::BindGroupLayoutEntry {
+        binding: 0,
+        visibility: wgpu::ShaderStages::FRAGMENT,
+        ty: wgpu::BindingType::Buffer {
+          ty: wgpu::BufferBindingType::Storage { read_only: true },
+          has_dynamic_offset: false,
+          min_binding_size: None,
+        },
+        count: None,
+      }],
+    })
+  }
+
+  /// The layout a view's helpers bind their marked models by.
+  pub fn get_marks_layout(&self) -> &wgpu::BindGroupLayout {
+    &self.marks_layout
+  }
+
+  /// The texel the present reads where no model is marked.
+  pub fn get_unmarked(&self) -> &wgpu::TextureView {
+    &self.unmarked
   }
 
   /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
@@ -61,7 +111,13 @@ impl StaticGBufferPass {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(source, &self.view_layout, &self.layout, &self.texture_layout).and_then(
+      match Self::create_pipelines(
+        source,
+        &self.view_layout,
+        (&self.layout, &self.marks_layout),
+        &self.texture_layout,
+      )
+      .and_then(
         |pipelines| {
           let impostors =
             Self::create_impostor_pipelines(source, &self.view_layout, &self.impostor_layout, &self.texture_layout)?;
@@ -180,6 +236,34 @@ impl StaticGBufferPass {
     }
   }
 
+  /// Draws the spawned models' batches of the clusters the argument buffers list again into the marks target the graph
+  /// opened, over the view's depth, each fragment where its model drew the depth kept: the colour its helper marks it
+  /// in (`marks`), nothing for an unmarked one.
+  pub fn mark(
+    &self,
+    context: &mut RasterContext<'_>,
+    (view, draws, textures, marks): (&ViewBinding, &StaticDraws, &wgpu::BindGroup, &wgpu::BindGroup),
+    args: &[&wgpu::Buffer],
+  ) {
+    context.get_pass().set_bind_group(0, &view.bind_group, &[]);
+    context.get_pass().set_bind_group(1, textures, &[]);
+    context.get_pass().set_bind_group(3, marks, &[]);
+
+    for (batch, pipeline) in Self::list_marked().zip(&self.pipelines.marks) {
+      context.bind(&draws.layouts[batch.layout.get_index()]);
+      context.get_pass().set_pipeline(pipeline);
+
+      for args in args {
+        context.get_pass().draw_indirect(args, batch.get_args_offset());
+      }
+    }
+  }
+
+  /// The batches a helper marks models in: the spawned models' deferred ones, composited models left unmarked.
+  fn list_marked() -> impl Iterator<Item = StaticBatch> {
+    StaticBatch::list_deferred().filter(|batch| batch.layout == StaticLayout::Model)
+  }
+
   /// The batches a pick meets composited surfaces in: either composited class, of every layout.
   fn list_composited_picks() -> impl Iterator<Item = StaticBatch> {
     StaticBatch::list().filter(|batch| batch.class.is_composited())
@@ -221,7 +305,7 @@ impl StaticGBufferPass {
   fn create_pipelines(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
-    layout: &wgpu::BindGroupLayout,
+    (layout, marks_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<GBufferPipelines> {
     let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_gbuffer_targets(true);
@@ -395,11 +479,49 @@ impl StaticGBufferPass {
       })
       .collect::<XrfResult<_>>()?;
 
+    // A model is marked only where its fragment is the one the frame kept.
+    let marks: Vec<wgpu::RenderPipeline> = Self::list_marked()
+      .map(|batch| {
+        source.get_render_pipeline(
+          &RenderPipelineDescription::new(
+            "static helper marks",
+            StaticDrawPermutation::MODULE,
+            batch.layout.get_vertex_entry(),
+          )
+          .with_fragment("fs_helper_mark")
+          .with_permutation(&StaticDrawPermutation {
+            is_shadow_draw: false,
+            is_inspected: false,
+          })
+          .with_bind_group_layouts(&[
+            Some(view_layout),
+            Some(texture_layout),
+            Some(layout),
+            Some(marks_layout),
+          ])
+          .with_primitive(wgpu::PrimitiveState {
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: Some(wgpu::Face::Back),
+            ..Default::default()
+          })
+          .with_depth_stencil(wgpu::DepthStencilState {
+            format: ViewTargets::DEPTH,
+            depth_write_enabled: Some(false),
+            depth_compare: Some(wgpu::CompareFunction::Equal),
+            stencil: Default::default(),
+            bias: Default::default(),
+          })
+          .with_target(ViewTargets::MARKS.into()),
+        )
+      })
+      .collect::<XrfResult<_>>()?;
+
     Ok(GBufferPipelines {
       frames: [frame(false)?, frame(true)?],
       picks: create(deferred.clone(), (true, true, false))?,
       composited_picks: create(Self::list_composited_picks().collect(), (true, true, false))?,
       overdraws,
+      marks,
     })
   }
 }
@@ -413,6 +535,8 @@ struct GBufferPipelines {
   composited_picks: Vec<wgpu::RenderPipeline>,
   /// One a batch of every class, in `StaticBatch::list` order, counting what it draws for the overdraw's debug view.
   overdraws: Vec<wgpu::RenderPipeline>,
+  /// One a batch in `StaticGBufferPass::list_marked` order, marking the models a view's helpers mark.
+  marks: Vec<wgpu::RenderPipeline>,
 }
 
 /// A frame's draws of the G-buffer by batch: one a batch, by its index; the same with the opaque ones shaded where the

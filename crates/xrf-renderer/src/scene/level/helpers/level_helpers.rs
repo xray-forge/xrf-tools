@@ -1,6 +1,6 @@
 use std::f32::consts::TAU;
 
-use glam::{Mat4, Vec3};
+use glam::{BVec3, Mat4, Vec3};
 
 use crate::host::render_helper_object::RenderHelperObject;
 use crate::host::render_helper_shape::RenderHelperShape;
@@ -60,6 +60,10 @@ impl LevelHelpers {
           draw_distance: object.draw_distance,
           place: transform.transform_point3(Vec3::ZERO),
           segments: start..segments.len(),
+          model: object.shapes.iter().find_map(|shape| match shape {
+            RenderHelperShape::Model { object } => Some(*object),
+            _ => None,
+          }),
         }
       })
       .collect();
@@ -82,8 +86,23 @@ impl LevelHelpers {
       .map(|index| &self.objects[index])
   }
 
+  /// The twelve edges of the box between `min` and `max` where `transform` stands it.
+  pub fn to_box_edges(transform: Mat4, [min, max]: [Vec3; 2]) -> impl Iterator<Item = [Vec3; 2]> {
+    let corner = move |index: usize| -> Vec3 {
+      transform.transform_point3(Vec3::select(
+        BVec3::new(index & 1 != 0, index & 2 != 0, index & 4 != 0),
+        max,
+        min,
+      ))
+    };
+
+    Self::BOX_EDGES
+      .iter()
+      .map(move |(from, to)| [corner(*from), corner(*to)])
+  }
+
   /// A shape's wires where `transform` stands it: a sphere's three great circles, a box's twelve edges, segments as
-  /// they are, and a marker's three axes.
+  /// they are, a marker's three axes, and none for a model.
   fn add_shape(segments: &mut Vec<[Vec3; 2]>, transform: Mat4, shape: &RenderHelperShape) {
     match shape {
       RenderHelperShape::Sphere { center, radius } => {
@@ -113,6 +132,8 @@ impl LevelHelpers {
 
         segments.extend(Self::BOX_EDGES.iter().map(|(from, to)| [corner(*from), corner(*to)]));
       }
+      // A model's own wires are its box, which only its hovering or selection draws, where the scene stands it.
+      RenderHelperShape::Model { .. } => {}
       RenderHelperShape::Segments { ends } => {
         segments.extend(
           ends

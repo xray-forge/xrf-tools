@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ViewInArIcon } from "@xrf/ui/icons/view-in-ar";
 import { ReactElement } from "react";
 
@@ -13,8 +14,9 @@ import { LevelViewService } from "@/core/level/services/level-view";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 
 /**
- * The helpers' master switch, `G`: the inspector's wires over the level objects, or the photo mode with none, each
- * kind keeping its choice; and how the wires show behind the level and how far off they fade.
+ * The helpers' master switch, `G`: the inspector's wires and marks over the level objects, or the photo mode with none,
+ * each kind keeping its choice; whether what they leave unmarked fades; and how the wires show behind the level and how
+ * far off they fade.
  */
 export function LevelHelpersAction({
   "data-testid": dataTestId = "level-helpers-action",
@@ -36,6 +38,12 @@ export function LevelHelpersAction({
       toggleLabel={"Helpers"}
       onToggle={viewService.toggleHelpers}
     >
+      <CheckboxFormRow
+        label={"Fade the rest"}
+        description={"Dims and greys what no helper marks, so the helped objects stand out"}
+        isChecked={helpers.isRestFaded}
+        onChange={(isRestFaded: boolean) => viewService.setHelperLook({ isRestFaded })}
+      />
       <RenderValueSlider
         label={"Behind the level"}
         value={helpers.occludedStrength}

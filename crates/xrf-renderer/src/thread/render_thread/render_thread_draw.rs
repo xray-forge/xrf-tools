@@ -600,6 +600,7 @@ impl RenderThread {
       indirect_light: output.indirect_light,
       reflections: output.reflections,
       reflection_ends: output.reflection_ends,
+      mark_target: output.marks,
     }
   }
 }

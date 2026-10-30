@@ -96,13 +96,14 @@ fn fs_point(in: PointVarying) -> @location(0) vec4<f32> {
 // How much of the draw distance a helper's wire stays whole over, fading out across the rest.
 const HELPER_FADE_START: f32 = 0.75;
 
-// How far toward white a selected helper's wire is lifted, so it reads apart from its kind's others.
+// How far toward white a selected helper's wire is lifted, so it reads apart from its kind's others; a hovered one is
+// lifted half as far.
 const HELPER_SELECTED_LIFT: f32 = 0.5;
 
 struct HelperVarying {
   @builtin(position) clip: vec4<f32>,
   @location(0) world: vec3<f32>,
-  // sRGB, then one where its object is selected.
+  // sRGB, then one where its object is selected, a half where it is hovered (`HelperVertex`).
   @location(1) @interpolate(flat) color: vec4<f32>,
   // The distance it has faded out by, zero for never, then how strongly it shows behind what is drawn.
   @location(2) @interpolate(flat) fade: vec2<f32>,
@@ -123,25 +124,23 @@ fn vs_helper(@location(0) position: vec3<f32>, @location(1) color: vec4<f32>, @l
 }
 
 // A helper's wire: whole where nothing drawn stands in front of it, at its occluded strength where something does, and
-// fading out toward its draw distance unless its object is selected.
+// fading out toward its draw distance, unless its object is selected or hovered.
 @fragment
 fn fs_helper(in: HelperVarying) -> @location(0) vec4<f32> {
   let texel: vec2<i32> = to_drawn_texel(floor(in.clip.xy - present.origin), camera.viewport.xy, present.size);
   // Depth is reversed: the scene stands in front where it holds the larger value.
   let is_hidden: bool = textureLoad(depth_target, texel, 0) > in.clip.z;
-  let is_selected: bool = in.color.a > 0.5;
+  let is_singled: bool = in.color.a > 0.0;
   let reach: f32 = in.fade.x;
   let distance: f32 = length(in.world - camera.position.xyz);
   let faded: f32 = select(1.0 - smoothstep(reach * HELPER_FADE_START, reach, distance), 1.0, reach <= 0.0);
-  let shown: f32 = select(1.0, select(in.fade.y, 1.0, is_selected), is_hidden) * faded;
+  let shown: f32 = select(1.0, select(in.fade.y, 1.0, is_singled), is_hidden) * faded;
 
   if (shown <= 0.0) {
     discard;
   }
 
-  let color: vec3<f32> = select(in.color.rgb, mix(in.color.rgb, vec3<f32>(1.0), HELPER_SELECTED_LIFT), is_selected);
-
-  return vec4<f32>(color, shown);
+  return vec4<f32>(mix(in.color.rgb, vec3<f32>(1.0), HELPER_SELECTED_LIFT * in.color.a), shown);
 }
 
 struct SunVarying {

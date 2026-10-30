@@ -343,8 +343,8 @@ fn lists_each_patrol_path_followed_by_its_points_then_the_graph_points() {
   assert_eq!(described.objects[4].transform.c, Vector3d::new(1.0, 2.0, -3.0));
 }
 
-// Each helper is named by its object's place in the listing; a path draws its links with an arrowhead at each end
-// reached, a point its marker.
+// Each helper is named by its object's place in the listing; a drawn spawned object marks its model by its spawn index,
+// a path draws its links with an arrowhead at each end reached, a point its marker.
 #[test]
 fn hands_the_renderer_each_object_with_a_helper_by_its_place_in_the_listing() {
   let described: LevelObjectsDescription = LevelObjectsDescription::describe(
@@ -362,17 +362,19 @@ fn hands_the_renderer_each_object_with_a_helper_by_its_place_in_the_listing() {
   let helpers: RenderLevelHelpers = RenderLevelHelpers::from(&described);
   let ids: Vec<u32> = helpers.objects.iter().map(|it| it.id).collect();
 
-  // The crate draws its model and the fence names no shape: neither has a helper.
-  assert_eq!(ids, vec![2, 3, 4, 5, 6, 7]);
+  // The fence names no shape, so has no helper.
+  assert_eq!(ids, vec![0, 2, 3, 4, 5, 6, 7]);
+  assert_eq!(helpers.objects[0].shapes, vec![RenderHelperShape::Model { object: 0 }]);
+  assert_eq!(helpers.objects[0].kind, LevelObjectKind::Props as u32);
   assert!(matches!(
-    &helpers.objects[0].shapes[..],
+    &helpers.objects[1].shapes[..],
     [RenderHelperShape::Segments { ends }] if ends.len() == 6
   ));
   assert!(matches!(
-    helpers.objects[1].shapes[..],
+    helpers.objects[2].shapes[..],
     [RenderHelperShape::Marker { .. }]
   ));
-  assert_eq!(helpers.objects[0].kind, LevelObjectKind::Patrols as u32);
+  assert_eq!(helpers.objects[1].kind, LevelObjectKind::Patrols as u32);
 }
 
 // The shapes stand in the object's own space, mirrored through `z` into renderer space as its transform is.

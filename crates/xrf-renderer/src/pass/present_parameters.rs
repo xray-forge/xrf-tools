@@ -4,7 +4,8 @@ use crate::pass::present_uniform::PresentUniform;
 
 /// What the present pass reads of a viewport's frame: its finished scene and the targets a debug view shows, the frame
 /// upscaled or the scene again, which the sky debanding samples, its bloom, the engine's or the enhanced one, what it
-/// shows, and the indirect light, the reflections and how their rays ended, which the debug views show.
+/// shows, the indirect light, the reflections and how their rays ended, which the debug views show, and the models its
+/// helpers mark.
 #[derive(PassParameters)]
 #[parameters(group = 1)]
 pub struct PresentParameters<'a> {
@@ -38,4 +39,7 @@ pub struct PresentParameters<'a> {
   pub reflections: GraphTexture,
   #[texture(d2, unfilterable)]
   pub reflection_ends: GraphTexture,
+  /// At the drawn size, or a texel of none where no model is marked (`ViewTargets::MARKS`).
+  #[texture(d2, unfilterable)]
+  pub mark_target: GraphTexture,
 }

@@ -31,15 +31,18 @@ describe("toLevelHelperOptions", () => {
     expect(
       toLevelHelperOptions({
         distanceScale: 99,
+        isRestFaded: 1,
         isShown: "yes",
         kinds: { anomalies: false, gone: true, props: 1, restrictors: true },
         occludedStrength: "half",
       })
     ).toEqual({
       distanceScale: 4,
+      isRestFaded: false,
       isShown: false,
       kinds: { anomalies: false, restrictors: true },
       occludedStrength: DEFAULT_LEVEL_HELPER_OPTIONS.occludedStrength,
     });
+    expect(toLevelHelperOptions({ isRestFaded: true }).isRestFaded).toBe(true);
   });
 });

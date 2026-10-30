@@ -159,6 +159,11 @@ impl StaticScene {
     self.objects.find(object).map(|object| object.sphere)
   }
 
+  /// The place a spawned object stands at, which its drawn clusters carry, while it stands in the scene.
+  pub fn get_object_place(&self, object: u32) -> Option<u32> {
+    self.objects.find(object).map(|object| object.place.get_offset())
+  }
+
   /// A spawned object's box as it stands: its model's box in its own space, and where it stands it.
   pub fn get_object_box(&self, object: u32) -> Option<(Mat4, [Vec3; 2])> {
     let object: &StaticObjectProxy = self.objects.find(object)?;

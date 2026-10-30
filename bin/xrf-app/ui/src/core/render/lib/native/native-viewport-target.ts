@@ -74,13 +74,19 @@ interface IClick {
 export type TNativeViewportClick = (point: IRenderViewPoint, isThrough: boolean, isToggling: boolean) => void;
 
 /**
+ * Told where the pointer rests over the viewport with no button held, in css pixels from its top left corner, at most
+ * once a frame; null once it leaves or a press takes it.
+ */
+export type TNativeViewportHover = (point: Nullable<IRenderViewPoint>) => void;
+
+/**
  * The page's side of a native viewport: an element the renderer draws under.
  *
  * It opens a hole down to the window through the page (`NativeViewportHole`) once the renderer draws the window, reports
  * where the element is and what the page shows around it whenever that changes, and tells the world what the person
  * does over it. It alone tells a click from a drag: a main-button press let go within the slop is a click, handed to
  * `onClick`; a press travelling past it is a drag, sent as gestures with the pointer locked. Drag motion and hovering
- * merge into one event a frame.
+ * merge into one event a frame, the hovering handed to `onHover` too.
  */
 export class NativeViewportTarget {
   private readonly hole: NativeViewportHole;
@@ -101,7 +107,8 @@ export class NativeViewportTarget {
   public constructor(
     private readonly element: HTMLElement,
     private readonly viewport: NativeViewport,
-    private readonly onClick: Nullable<TNativeViewportClick> = null
+    private readonly onClick: Nullable<TNativeViewportClick> = null,
+    private readonly onHover: Nullable<TNativeViewportHover> = null
   ) {
     this.hadTabIndex = element.hasAttribute("tabindex");
 
@@ -178,6 +185,7 @@ export class NativeViewportTarget {
 
     if (this.hovered) {
       this.viewport.sendInput({ kind: EWorldInputEvent.HOVER, x: this.hovered.x, y: this.hovered.y });
+      this.onHover?.(this.hovered);
       this.hovered = null;
     }
   }
@@ -389,6 +397,8 @@ export class NativeViewportTarget {
       }
 
       this.element.setPointerCapture?.(pointer.pointerId);
+      this.hovered = null;
+      this.onHover?.(null);
       this.press = {
         button: pointer.button,
         lastX: pointer.clientX,
@@ -410,6 +420,12 @@ export class NativeViewportTarget {
     pointerenter: (event: Event): void => {
       if (!this.press && canFocusViewportOnHover(event as PointerEvent)) {
         this.element.focus({ preventScroll: true });
+      }
+    },
+    pointerleave: (): void => {
+      if (!this.press) {
+        this.hovered = null;
+        this.onHover?.(null);
       }
     },
     pointermove: (event: Event): void => {

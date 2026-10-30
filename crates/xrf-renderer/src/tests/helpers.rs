@@ -48,6 +48,11 @@ fn new_helpers() -> LevelHelpers {
   )
 }
 
+/// A scene standing no spawned object.
+fn no_boxes(_: u32) -> Option<(Mat4, [Vec3; 2])> {
+  None
+}
+
 fn options(kinds: u32) -> RenderHelperOptions {
   RenderHelperOptions {
     is_shown: true,
@@ -123,17 +128,18 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
   };
 
   assert_eq!(
-    ids(HelpersFeature::to_vertices(&helpers, &options(1 << 10 | 1 << 11))),
+    ids(HelpersFeature::to_vertices(&helpers, &options(1 << 10 | 1 << 11), no_boxes)),
     vec![3, 7]
   );
-  assert_eq!(ids(HelpersFeature::to_vertices(&helpers, &options(1 << 11))), vec![3]);
+  assert_eq!(ids(HelpersFeature::to_vertices(&helpers, &options(1 << 11), no_boxes)), vec![3]);
   assert!(
     HelpersFeature::to_vertices(
       &helpers,
       &RenderHelperOptions {
         is_shown: false,
         ..options(u32::MAX)
-      }
+      },
+      no_boxes
     )
     .is_empty()
   );
@@ -143,7 +149,8 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
       &RenderHelperOptions {
         hidden: vec![3],
         ..options(u32::MAX)
-      }
+      },
+      no_boxes
     )),
     vec![7]
   );
@@ -155,6 +162,7 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
       distance_scale: 2.0,
       ..options(u32::MAX)
     },
+    no_boxes,
   );
 
   assert!(
@@ -169,4 +177,57 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
       .filter(|it| it.object == 3)
       .all(|it| it.color[3] == 0.0 && it.fade[0] == 200.0)
   );
+}
+
+// A model marks its place in its colour while it stands in the scene, by place, and draws its box only while hovered or
+// selected, its hovering lifting it half as far as a selection.
+#[test]
+fn marks_each_standing_model_by_its_place_and_boxes_the_hovered_and_selected() {
+  let helpers: LevelHelpers = LevelHelpers::new(
+    RenderLevelHelpers {
+      objects: vec![
+        new_object(4, 2, Vec3::ZERO, vec![RenderHelperShape::Model { object: 40 }]),
+        new_object(5, 2, Vec3::ZERO, vec![RenderHelperShape::Model { object: 50 }]),
+        new_object(6, 2, Vec3::ZERO, vec![RenderHelperShape::Model { object: 60 }]),
+      ],
+    },
+    1,
+  );
+  // The second model stands at a lower place than the first, and the third stands nowhere yet.
+  let places = |object: u32| -> Option<u32> {
+    match object {
+      40 => Some(900),
+      50 => Some(300),
+      _ => None,
+    }
+  };
+  let boxes = |_: u32| -> Option<(Mat4, [Vec3; 2])> { Some((Mat4::IDENTITY, [Vec3::ZERO, Vec3::ONE])) };
+  let orange: u32 = 255 | 128 << 8 | 255 << 24;
+
+  assert_eq!(helpers.segments.len(), 0);
+  assert_eq!(
+    HelpersFeature::to_marks(&helpers, &options(1 << 2), places),
+    vec![[300, orange], [900, orange]]
+  );
+  assert!(HelpersFeature::to_marks(&helpers, &options(1 << 3), places).is_empty());
+  assert!(HelpersFeature::to_vertices(&helpers, &options(1 << 2), boxes).is_empty());
+
+  let singled: Vec<HelperVertex> = HelpersFeature::to_vertices(
+    &helpers,
+    &RenderHelperOptions {
+      selected: vec![4],
+      hovered: Some(5),
+      ..options(1 << 2)
+    },
+    boxes,
+  );
+
+  // Two ends of twelve edges for each of the two.
+  assert_eq!(singled.len(), 48);
+  assert!(
+    singled
+      .iter()
+      .all(|it| it.color[3] == if it.object == 4 { HelperVertex::SELECTED } else { HelperVertex::HOVERED })
+  );
+  assert!(singled.iter().all(|it| Vec3::from_array(it.position).cmple(Vec3::ONE).all()));
 }

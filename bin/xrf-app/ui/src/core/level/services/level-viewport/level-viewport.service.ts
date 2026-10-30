@@ -46,6 +46,10 @@ export class LevelViewportService {
   @RefObservable()
   public hidden: ReadonlyArray<LevelObject> = [];
 
+  /** The level object under the pointer while helpers are drawn, whose helper is lifted and its model boxed. */
+  @RefObservable()
+  public hovered: Nullable<LevelObject> = null;
+
   /**
    * Whether what is picked was found again in the open level's parts read anew, or let go with what it named, rather
    * than picked: what shows it follows it without showing it afresh.
@@ -83,6 +87,16 @@ export class LevelViewportService {
   @BoundAction()
   public noteLoad(report: Nullable<RenderLoadReport>): void {
     this.load = report;
+  }
+
+  /**
+   * @param object - The level object under the pointer, or null for none.
+   */
+  @BoundAction()
+  public noteHovered(object: Nullable<LevelObject>): void {
+    if (this.hovered === null || object === null || toLevelObjectKey(this.hovered.id) !== toLevelObjectKey(object.id)) {
+      this.hovered = object;
+    }
   }
 
   /**
@@ -226,13 +240,14 @@ export class LevelViewportService {
     this.camera = camera;
   }
 
-  /** Forgets the open level's telemetry, selection and hidden objects, so a closed viewer reports nothing. */
+  /** Forgets the open level's telemetry, selection, hidden and hovered objects, so a closed viewer reports nothing. */
   @BoundAction()
   public clear(): void {
     this.load = null;
     this.camera = null;
     this.notePicked(null);
     this.hidden = [];
+    this.hovered = null;
     this.isFocusPicking = false;
     this.isSceneFocused = false;
   }

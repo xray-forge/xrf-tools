@@ -19,4 +19,9 @@ pub enum RenderHelperShape {
     center: [f32; 3],
     size: f32,
   },
+  /// A spawned object's drawn model, by its index among the level's spawned objects: where it shows, tinted and
+  /// outlined in its helper's colour, and its box while it is hovered or selected.
+  Model {
+    object: u32,
+  },
 }

@@ -45,6 +45,7 @@ import {
 } from "@/core/level/lib/features/level-feature-options";
 import { toLevelHelperRenderOptions, toLevelSpawnIndices } from "@/core/level/lib/objects/level-helper-render";
 import {
+  ELevelPick,
   ILevelPickParts,
   relocateLevelObjects,
   relocateLevelPick,
@@ -72,6 +73,9 @@ import { toNativeWorldToggles } from "@/core/render/lib/native/native-view-optio
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
 import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
+
+/** Milliseconds the pointer rests over the viewport before what is under it is picked as hovered. */
+const LEVEL_HOVER_REST: number = 60;
 
 /**
  * Owns the native viewport the open level is drawn in: everything said to it, the scene it shows the level as, and what
@@ -212,14 +216,13 @@ export class LevelRenderService extends NativeRenderSurfaceService {
               ),
       },
     });
-    const { hidden, selected } = this.viewportService;
+    const { hidden, hovered, selected } = this.viewportService;
 
     return {
       ...options,
       helpers: toLevelHelperRenderOptions(
         this.viewService.helpers,
-        selected,
-        hidden,
+        { hidden, hovered, selected },
         this.loadService.objects?.objects ?? []
       ),
     };
@@ -264,6 +267,30 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     const hit: Nullable<RenderLevelHit> = yield* call(viewport.pick({ x: point.x, y: point.y, isThrough }));
 
     this.viewportService.notePicked(hit ? toLevelPick(hit, this.loadService.objects) : null, mode);
+  }
+
+  /**
+   * Notes the level object under a point of the viewport as hovered, once the pointer has rested there a moment, so a
+   * sweep across the view picks nothing on its way; each new point cancels the last.
+   *
+   * @param point - Where, in css pixels from the viewport's top left corner; null for nothing hovered.
+   */
+  @LatestFlow()
+  public *hover(point: Nullable<IRenderViewPoint>): TFlow {
+    const viewport: Nullable<NativeViewport> = this.viewport;
+
+    if (!point || !viewport || !this.level) {
+      this.viewportService.noteHovered(null);
+
+      return;
+    }
+
+    yield* call(new Promise<void>((resolve: () => void) => setTimeout(resolve, LEVEL_HOVER_REST)));
+
+    const hit: Nullable<RenderLevelHit> = yield* call(viewport.pick({ x: point.x, y: point.y, isThrough: false }));
+    const pick: Nullable<TLevelPick> = hit ? toLevelPick(hit, this.loadService.objects) : null;
+
+    this.viewportService.noteHovered(pick?.kind === ELevelPick.OBJECT ? pick.object : null);
   }
 
   /**
@@ -484,6 +511,10 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     } else {
       void this.pick(point, isThrough, isToggling ? ELevelSelectionMode.TOGGLE : ELevelSelectionMode.REPLACE);
     }
+  }
+
+  protected onHover(point: Nullable<IRenderViewPoint>): void {
+    void this.hover(this.viewService.helpers.isShown ? point : null);
   }
 
   protected onDetached(): void {

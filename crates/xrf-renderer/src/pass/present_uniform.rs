@@ -30,6 +30,9 @@ pub struct PresentUniform {
   pub grading: Vec4,
   /// The colour a selection is outlined in, `w` one while something is selected.
   pub selection: Vec4,
+  /// One where the helpers marked models this frame, which the present tints and outlines in their colours, then one
+  /// where what neither a mark nor the selection covers fades.
+  pub marks: Vec4,
   /// `PresentUniform::BLOOM_ENGINE` where the frame blooms by the engine's bloom, which the present adds where it reads
   /// the scene; `PresentUniform::BLOOM_ENHANCED` by the enhanced bloom, which it screens over the frame; zero for none.
   pub is_bloomed: u32,
@@ -81,6 +84,7 @@ impl PresentUniform {
       origin: Vec2::new(output.x as f32, output.y as f32),
       size: Vec2::new(output.width as f32, output.height as f32),
       selection: selection.map_or(Vec4::ZERO, |[r, g, b]| Vec4::new(r, g, b, 1.0)),
+      marks: Vec4::ZERO,
       is_bloomed: if is_bloomed { Self::BLOOM_ENGINE } else { 0 },
       is_indirect: u32::from(is_indirect),
       is_reflected: u32::from(reflection_ratio.is_some()),
@@ -128,6 +132,15 @@ impl PresentUniform {
     }
   }
 
+  /// The same, the models the helpers marked tinted and outlined where `is_marked`, and what neither they nor the
+  /// selection cover faded where `is_rest_faded`.
+  pub fn with_marks(self, is_marked: bool, is_rest_faded: bool) -> Self {
+    Self {
+      marks: Vec4::new(f32::from(u8::from(is_marked)), f32::from(u8::from(is_rest_faded)), 0.0, 0.0),
+      ..self
+    }
+  }
+
   /// The same, the enhanced bloom screened over the frame in place of the engine's.
   pub fn with_enhanced_bloom(self) -> Self {
     Self {
@@ -161,12 +174,14 @@ impl PresentUniform {
     }
   }
 
-  /// The same drawn into a screenshot `size` pixels across, apart from the window and without the selection's outline.
+  /// The same drawn into a screenshot `size` pixels across, apart from the window and without the selection's outline
+  /// or the helpers' marks and fading.
   pub fn for_screenshot(self, (width, height): (u32, u32)) -> Self {
     Self {
       origin: Vec2::ZERO,
       size: Vec2::new(width as f32, height as f32),
       selection: Vec4::ZERO,
+      marks: Vec4::ZERO,
       ..self
     }
   }

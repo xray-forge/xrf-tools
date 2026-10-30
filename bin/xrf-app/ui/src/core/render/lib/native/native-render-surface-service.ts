@@ -91,7 +91,8 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
     this.target = new NativeViewportTarget(
       container,
       viewport,
-      (point: IRenderViewPoint, isThrough: boolean, isToggling: boolean) => this.onClick(point, isThrough, isToggling)
+      (point: IRenderViewPoint, isThrough: boolean, isToggling: boolean) => this.onClick(point, isThrough, isToggling),
+      (point: Nullable<IRenderViewPoint>) => this.onHover(point)
     );
     this.onAttached(container);
     this.reactions.push(...this.start(viewport));
@@ -165,6 +166,13 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
    * @param _isToggling - Whether Ctrl (Cmd on macOS) was held, which adds to the selection or takes from it.
    */
   protected onClick(_point: IRenderViewPoint, _isThrough: boolean, _isToggling: boolean): void {}
+
+  /**
+   * Called with where the pointer rests over the viewport, at most once a frame.
+   *
+   * @param _point - Where, in css pixels from the viewport's top left corner; null once it leaves or a press takes it.
+   */
+  protected onHover(_point: Nullable<IRenderViewPoint>): void {}
 
   /** Called before the viewport goes. */
   protected onDetached(): void {}

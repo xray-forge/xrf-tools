@@ -72,6 +72,8 @@ const NO_NATIVE_VIEW_SWITCHES: INativeViewSwitches = {
 export const NO_NATIVE_HELPERS: RenderHelperOptions = {
   distanceScale: 1,
   hidden: [],
+  hovered: null,
+  isRestFaded: false,
   isShown: false,
   kinds: 0,
   occludedStrength: 0.25,

@@ -484,7 +484,7 @@ impl RenderThread {
         view_state.set_overlays(scene, device, overlays, version, selection);
       }
 
-      view_state.set_helpers(scene, device, options);
+      view_state.set_helpers(scene, (device, gpu.static_gbuffer.get_marks_layout()), options);
 
       view_state.request_textures(scene, &mut gpu.weather_textures, (lighting, weather), options);
       Self::ask_heights(&mut gpu.textures, options);

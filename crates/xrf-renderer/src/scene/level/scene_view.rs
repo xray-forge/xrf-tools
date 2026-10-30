@@ -914,6 +914,8 @@ impl SceneView {
           || features.rain.is_distorting()
           || features.composited.is_distorting()),
       selection_color: features.overlays.get_selection_color(),
+      is_marked: features.helpers.get_marks().is_some(),
+      is_rest_faded: features.helpers.is_rest_faded(),
       is_engine_bloomed: features.bloom.is_engine_drawn(),
       is_enhanced_bloomed: features.bloom.is_enhanced_drawn(),
       grass_reach: features.grass.get_cascade_reach(),
@@ -1045,6 +1047,7 @@ impl SceneView {
       reflections: record.untraced,
       reflection_ends: record.no_ends,
       bloom: handles.bloom[0],
+      marks: bindings.import_view(&mut *graph, "helper marks none", passes.gbuffer.get_unmarked()),
     };
 
     let lit: LightingRecorded<'a> = self.record_lighting(
@@ -1063,6 +1066,15 @@ impl SceneView {
       (lit, shadowed),
       &mut output,
     );
+
+    if let Some(marks) = self.features.helpers.add_marks_pass(
+      &mut *graph,
+      passes.gbuffer,
+      (view, record.textures),
+      (&statics, handles),
+    ) {
+      output.marks = marks;
+    }
 
     if let Some(slot) = frame.pick_slot {
       self.features.pick.add_passes(
@@ -1900,9 +1912,18 @@ impl SceneView {
     self.features.overlays.get_overlays()
   }
 
-  /// Builds its helpers' wires again where the scene's helpers or `options` moved since.
-  pub fn set_helpers(&mut self, scene: &LevelScene, device: &wgpu::Device, options: &RenderViewOptions) {
-    self.features.helpers.set(device, &scene.helpers, &options.helpers);
+  /// Builds its helpers' wires and marks again where the scene's helpers, its spawned objects or `options` moved since,
+  /// the marks bound by `marks_layout` (`StaticGBufferPass::get_marks_layout`).
+  pub fn set_helpers(
+    &mut self,
+    scene: &LevelScene,
+    (device, marks_layout): (&wgpu::Device, &wgpu::BindGroupLayout),
+    options: &RenderViewOptions,
+  ) {
+    self
+      .features
+      .helpers
+      .set(device, (&scene.helpers, &scene.statics), &options.helpers, marks_layout);
   }
 
   /// The helpers' wires it draws over its frame, and how many vertices; none where it draws none.

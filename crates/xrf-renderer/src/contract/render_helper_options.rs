@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-/// Which of a level's helpers a view draws and how: the kinds switched on, the objects hidden and selected, and how an
-/// occluded wire shows.
+/// Which of a level's helpers a view draws and how: the kinds switched on, the objects hidden, selected and hovered, how
+/// an occluded wire shows, and whether what no helper covers fades.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -14,10 +14,14 @@ pub struct RenderHelperOptions {
   pub hidden: Vec<u32>,
   /// The objects drawn as selected, never faded, by the ids the helpers carry, ascending.
   pub selected: Vec<u32>,
+  /// The object under the pointer, drawn lifted and never faded, by the id its helper carries.
+  pub hovered: Option<u32>,
   /// How strongly a wire behind what is drawn shows, from 0 to 1.
   pub occluded_strength: f32,
   /// What every kind's draw distance is scaled by.
   pub distance_scale: f32,
+  /// Whether the frame is dimmed and greyed wherever no marked model or selection covers it ("Fade the rest").
+  pub is_rest_faded: bool,
 }
 
 impl Default for RenderHelperOptions {
@@ -27,8 +31,10 @@ impl Default for RenderHelperOptions {
       kinds: 0,
       hidden: Vec::new(),
       selected: Vec::new(),
+      hovered: None,
       occluded_strength: 0.25,
       distance_scale: 1.0,
+      is_rest_faded: false,
     }
   }
 }
