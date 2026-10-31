@@ -361,15 +361,18 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   }
 
   /**
-   * @param path - The PNG file to write the viewport's next finished frame to, without its overlays.
+   * @param path - The PNG file to write the viewport's next finished frame to, without its overlays, its helpers over
+   *   it where they are drawn and asked into screenshots.
    * @returns Whether it was written, which it is not with no viewport attached; rejects for a screenshot that failed.
    */
   public async saveScreenshot(path: string): Promise<boolean> {
+    const { isShown, isScreenshotHelped } = this.viewService.helpers;
+
     return this.viewport
       ? this.viewport.ask(
           "saveScreenshot",
           async (id: RenderViewportId) => {
-            await levelsCommands.saveScreenshot(id, path);
+            await levelsCommands.saveScreenshot(id, path, isShown && isScreenshotHelped);
 
             return true;
           },

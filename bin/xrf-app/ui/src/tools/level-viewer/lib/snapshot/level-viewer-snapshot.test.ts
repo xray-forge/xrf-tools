@@ -14,6 +14,7 @@ import {
 const CURRENT: ILevelViewerSnapshot = {
   camera: { fieldOfView: 80, heading: 0, pitch: 0, x: 1, y: 0, z: 0 },
   format: LEVEL_VIEWER_SNAPSHOT_FORMAT,
+  helpers: { distanceScale: 1, isShown: false, kinds: { lights: false } },
   level: "levels/zaton",
   options: { isGrassy: true },
   output: { scale: 1 },
@@ -85,6 +86,29 @@ describe("level view snapshot", () => {
 
     expect(entries["settings.reflections.quality"].reason).toBe("not a setting the view sets for itself");
     expect(entries["settings.textureFiltering"].status).toBe(ELevelViewerSnapshotStatus.SAME);
+  });
+
+  it("takes the helpers as the view keeps them: bounded, and only kinds the table has", () => {
+    const entries: Record<string, ILevelViewerSnapshotEntry> = compare({
+      helpers: {
+        distanceScale: 99,
+        isScreenshotHelped: "yes",
+        isShown: true,
+        kinds: { gone: true, lights: false, stalkers: true },
+      },
+    });
+
+    expect(entries["helpers.isShown"]).toMatchObject({ applied: true, status: ELevelViewerSnapshotStatus.CHANGE });
+    expect(entries["helpers.distanceScale"]).toMatchObject({ applied: 4, status: ELevelViewerSnapshotStatus.CHANGE });
+    expect(entries["helpers.kinds.stalkers"]).toMatchObject({
+      applied: true,
+      status: ELevelViewerSnapshotStatus.CHANGE,
+    });
+    expect(entries["helpers.kinds.lights"].status).toBe(ELevelViewerSnapshotStatus.SAME);
+
+    for (const key of ["helpers.isScreenshotHelped", "helpers.kinds.gone"]) {
+      expect(entries[key]).toMatchObject({ applied: undefined, status: ELevelViewerSnapshotStatus.SKIP });
+    }
   });
 
   it("places the camera only on the level it was taken on, its lens anywhere", () => {

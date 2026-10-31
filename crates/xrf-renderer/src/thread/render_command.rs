@@ -101,9 +101,11 @@ pub enum RenderCommand {
     reply: Sender<XrfResult<RenderCapture>>,
   },
   /// Reads a viewport's next finished frame back whole, as presented but without its overlays or its selection's
-  /// outline, whatever of it the window shows; the answer never comes for a viewport the renderer does not draw.
+  /// outline, whatever of it the window shows, its level objects' helpers drawn over it where `is_helped`; the answer
+  /// never comes for a viewport the renderer does not draw.
   Screenshot {
     id: RenderViewportId,
+    is_helped: bool,
     reply: Sender<XrfResult<RenderCapture>>,
   },
   /// Captures a level map in a viewport, in place of its own frames until it ends, telling `events` of each tile as it

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { EventBus, WireEvent } from "@wirestate/core";
 import { runInAction } from "@wirestate/mobx";
+import { ELevelObjectKind } from "@xrf/ipc/types/xrf-app-levels";
 import { ERenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
 
 import { ILevelViewContainerDescriptor, mockLevelViewContainer } from "@/core/level/fixtures/level-container";
@@ -145,5 +146,31 @@ describe("LevelViewerSnapshotService", () => {
     expect(statuses["camera.x"]).toBe(ELevelViewerSnapshotStatus.SKIP);
     expect(statuses["settings.antialiasing"]).toBe(ELevelViewerSnapshotStatus.SKIP);
     expect(statuses["settings.reflections.quality"]).toBe(ELevelViewerSnapshotStatus.SKIP);
+  });
+
+  it("carries the helpers out and back in, over the kinds the view has switched", async () => {
+    const { container, view }: ILevelViewContainerDescriptor = mockLevelViewContainer([LevelViewerSnapshotService]);
+    const snapshot: LevelViewerSnapshotService = container.get(LevelViewerSnapshotService);
+
+    view.toggleHelpers();
+    view.setHelperKinds([ELevelObjectKind.LIGHTS], true);
+    view.setHelperLook({ isRestFaded: true });
+
+    const file: ILevelViewerSnapshot = snapshot.describe(null);
+
+    view.toggleHelpers();
+    view.setHelperKinds([ELevelObjectKind.LIGHTS], false);
+    view.setHelperKinds([ELevelObjectKind.STALKERS], true);
+    view.setHelperLook({ isRestFaded: false });
+
+    const result: ILevelViewerSnapshotApplied = await snapshot.importSnapshot(file);
+
+    expect(file.helpers).toMatchObject({ isRestFaded: true, isShown: true, kinds: { lights: true } });
+    expect(view.helpers).toMatchObject({
+      isRestFaded: true,
+      isShown: true,
+      kinds: { lights: true, stalkers: true },
+    });
+    expect(result.applied.sort()).toEqual(["helpers.isRestFaded", "helpers.isShown", "helpers.kinds.lights"]);
   });
 });

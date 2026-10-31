@@ -267,7 +267,37 @@ impl OverlayPass {
       pass.draw(0..6, 0..1);
     }
 
-    // Every kept object's wires and icons, then the singled out ones' over them.
+    self.draw_helper_parts(pass, (wires, icons), helpers);
+  }
+
+  /// Draws the helpers alone into a pass whose viewport is the view's whole picture, as a screenshot including them is.
+  pub fn draw_helpers(
+    &self,
+    context: &mut RasterContext<'_>,
+    format: wgpu::TextureFormat,
+    (view, parameters): (&ViewBinding, &OverlayParameters),
+    helpers: HelperDraws<'_>,
+  ) {
+    let Some([.., wires, icons]) = self.pipelines.get(&format) else {
+      return;
+    };
+
+    context.bind(parameters);
+
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
+    pass.set_bind_group(0, &view.bind_group, &[]);
+    self.draw_helper_parts(pass, (wires, icons), helpers);
+  }
+
+  /// Every kept object's wires and icons, then the singled out ones' over them, two vertices a wire and six corners an
+  /// icon.
+  fn draw_helper_parts(
+    &self,
+    pass: &mut wgpu::RenderPass<'static>,
+    (wires, icons): (&wgpu::RenderPipeline, &wgpu::RenderPipeline),
+    helpers: HelperDraws<'_>,
+  ) {
     for (part_wires, part_icons) in helpers.wires.into_iter().zip(helpers.icons) {
       if let Some((buffer, count)) = part_wires {
         pass.set_pipeline(wires);

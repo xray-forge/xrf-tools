@@ -32,6 +32,7 @@ describe("toLevelHelperOptions", () => {
       toLevelHelperOptions({
         distanceScale: 99,
         isRestFaded: 1,
+        isScreenshotHelped: "no",
         isShown: "yes",
         kinds: { anomalies: false, gone: true, props: 1, restrictors: true },
         occludedStrength: "half",
@@ -39,10 +40,12 @@ describe("toLevelHelperOptions", () => {
     ).toEqual({
       distanceScale: 4,
       isRestFaded: false,
+      isScreenshotHelped: false,
       isShown: false,
       kinds: { anomalies: false, restrictors: true },
       occludedStrength: DEFAULT_LEVEL_HELPER_OPTIONS.occludedStrength,
     });
     expect(toLevelHelperOptions({ isRestFaded: true }).isRestFaded).toBe(true);
+    expect(toLevelHelperOptions({ isScreenshotHelped: true }).isScreenshotHelped).toBe(true);
   });
 });

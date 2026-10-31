@@ -5,6 +5,11 @@ import { isRecord, Nullable } from "@xrf/types";
 import { toLevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { toLevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { ELevelLookSource, toLevelLookChoice } from "@/core/level/lib/look/level-look-choice";
+import {
+  DEFAULT_LEVEL_HELPER_OPTIONS,
+  ILevelHelperOptions,
+  toLevelHelperOptions,
+} from "@/core/level/lib/objects/level-helper-options";
 import { toWeatherTimeOfDay } from "@/core/level/lib/weather/weather-day";
 import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
 import { flattenDottedRecord } from "@/lib/object/dotted-record";
@@ -35,6 +40,8 @@ export interface ILevelViewerSnapshot {
   look?: TLevelViewerSnapshotPart;
   output?: TLevelViewerSnapshotPart;
   options?: TLevelViewerSnapshotPart;
+  /** Which helpers the view draws over its level objects, and how. */
+  helpers?: TLevelViewerSnapshotPart;
   settings?: TLevelViewerSnapshotPart;
 }
 
@@ -91,6 +98,11 @@ const CAMERA_PLACE: Readonly<TLevelViewerSnapshotPart> = { heading: 0, pitch: 0,
 
 /** What the weather takes, by example. */
 const WEATHER: Readonly<TLevelViewerSnapshotPart> = { cycle: "", isPlaying: false, time: 0 };
+
+/** What the helpers take beside their kinds, by example. */
+const HELPERS: Readonly<TLevelViewerSnapshotPart> = Object.fromEntries(
+  Object.entries(DEFAULT_LEVEL_HELPER_OPTIONS).filter(([key]: [string, unknown]) => key !== "kinds")
+);
 
 /**
  * @param text - The file's text.
@@ -161,7 +173,7 @@ export function compareLevelViewerSnapshot(
 /**
  * The file as the view would hold it, through the readers the view keeps its own state with: the renderer settings it
  * can set for itself and its output as stored features are read, the lens as stored camera options, the look as a
- * stored look, and the rest by the kind of value each takes. The camera's place only on the level it was taken on.
+ * stored look, the helpers as stored helpers, and the rest by the kind of value each takes. The camera's place only on the level it was taken on.
  */
 function takeLevelViewerSnapshot(
   file: ILevelViewerSnapshot,
@@ -187,12 +199,27 @@ function takeLevelViewerSnapshot(
         : {}),
     },
     options: pickLike(file.options, current.options ?? {}),
+    helpers: takeHelpers(file.helpers),
     output,
     settings: { ...settings, ...(antialiasing ? { antialiasing } : {}) },
     weather: {
       ...weather,
       ...(typeof weather.time === "number" ? { time: toWeatherTimeOfDay(weather.time) } : {}),
     },
+  };
+}
+
+/**
+ * The helpers a file holds as the view keeps its stored helpers: each value of the kind it takes, bounded as this build
+ * bounds it, and each kind's switch of a kind the table has.
+ */
+function takeHelpers(part: unknown): TLevelViewerSnapshotPart {
+  const read: ILevelHelperOptions = toLevelHelperOptions(part);
+  const kept: TLevelViewerSnapshotPart = pickLike(part, HELPERS);
+
+  return {
+    ...Object.fromEntries(Object.keys(kept).map((key: string) => [key, read[key as keyof ILevelHelperOptions]])),
+    ...(Object.keys(read.kinds).length ? { kinds: read.kinds } : {}),
   };
 }
 

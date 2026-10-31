@@ -11,7 +11,8 @@ pub type CaptureReply = Sender<XrfResult<RenderCapture>>;
 
 /// A viewport's rectangle of a presented frame on its way back, for a capture asked of the renderer rather than of the
 /// screen, which another window may cover: copied out with the frame, read once a later frame's poll finds it mapped.
-/// A screenshot's is the viewport's finished frame whole, drawn apart from the window without its overlays.
+/// A screenshot's is the viewport's finished frame whole, drawn apart from the window without its overlays, its level
+/// object helpers over it where asked.
 pub struct FrameCapture {
   readback: GpuReadback,
   rect: RenderRect,
@@ -20,6 +21,8 @@ pub struct FrameCapture {
   row: u32,
   frame: u64,
   is_screenshot: bool,
+  /// Whether a screenshot draws its view's level object helpers over it, as its window does.
+  is_helped: bool,
   /// A level map's tile's depth on its way back beside it, and the bytes a row of its copy takes: its coverage, opaque
   /// where anything was drawn, clear where the depth stayed at the far plane's zero.
   coverage: Option<(GpuReadback, u32)>,
@@ -50,6 +53,7 @@ impl FrameCapture {
       row,
       frame,
       is_screenshot: false,
+      is_helped: false,
       coverage: None,
     })
   }
@@ -104,9 +108,19 @@ impl FrameCapture {
     })
   }
 
+  /// The same, its view's level object helpers drawn over it where `is_helped`.
+  pub fn with_helpers(self, is_helped: bool) -> Self {
+    Self { is_helped, ..self }
+  }
+
   /// Whether it is a screenshot, which its viewport's own pass copies out rather than the window's.
   pub fn is_screenshot(&self) -> bool {
     self.is_screenshot
+  }
+
+  /// Whether its view's level object helpers are drawn over it.
+  pub fn is_helped(&self) -> bool {
+    self.is_helped
   }
 
   /// The pixels it copies across and down.

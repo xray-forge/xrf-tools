@@ -179,14 +179,14 @@ impl PresentUniform {
     }
   }
 
-  /// The same drawn into a screenshot `size` pixels across, apart from the window and without the selection's outline
-  /// or the helpers' marks and fading.
-  pub fn for_screenshot(self, (width, height): (u32, u32)) -> Self {
+  /// The same drawn into a screenshot `size` pixels across, apart from the window and without the selection's outline,
+  /// and without the helpers' marks and fading unless it `is_helped`.
+  pub fn for_screenshot(self, (width, height): (u32, u32), is_helped: bool) -> Self {
     Self {
       origin: Vec2::ZERO,
       size: Vec2::new(width as f32, height as f32),
       selection: Vec4::ZERO,
-      marks: Vec4::ZERO,
+      marks: if is_helped { self.marks } else { Vec4::ZERO },
       ..self
     }
   }
