@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use xrf_archive::{ArchiveHeaderItem, ArchiveMetadata};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackHeader};
@@ -70,16 +71,23 @@ impl ArchivePackHeaderEntry {
     entries
   }
 
-  /// Split the stored header text back into the pairs it was built from.
+  /// Split the stored header text back into the pairs the engine reads from it: a comment is no part of a value, a
+  /// commented-out line is no pair, and nothing outside `[header]` is one.
   pub fn split(header: &str) -> Vec<Self> {
-    header
-      .lines()
-      .filter_map(|line| line.split_once('='))
-      .map(|(key, value)| Self {
-        key: key.trim().to_string(),
-        value: value.trim().to_string(),
-      })
+    ArchiveMetadata::read_header(header)
+      .unwrap_or_default()
+      .into_iter()
+      .map(Self::from)
       .collect()
+  }
+}
+
+impl From<ArchiveHeaderItem> for ArchivePackHeaderEntry {
+  fn from(item: ArchiveHeaderItem) -> Self {
+    Self {
+      key: item.key,
+      value: item.value,
+    }
   }
 }
 

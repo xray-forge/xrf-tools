@@ -4,6 +4,7 @@ mod archive_constants;
 mod archive_descriptor;
 mod archive_file_descriptor;
 mod archive_header;
+mod archive_header_item;
 mod archive_metadata;
 mod archive_reader;
 
@@ -13,4 +14,6 @@ pub use archive_constants::{
 };
 pub use archive_descriptor::ArchiveDescriptor;
 pub use archive_file_descriptor::ArchiveFileDescriptor;
+pub use archive_header_item::ArchiveHeaderItem;
+pub use archive_metadata::ArchiveMetadata;
 pub(crate) use archive_reader::ArchiveReader;
