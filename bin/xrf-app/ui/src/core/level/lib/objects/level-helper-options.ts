@@ -21,6 +21,12 @@ export interface ILevelHelperOptions {
   isScreenshotHelped: boolean;
 }
 
+/** Kinds of level object whose helpers are switched together, and whether they are drawn from now on. */
+export interface ILevelHelperKindsChange {
+  kinds: ReadonlyArray<LevelObjectKind>;
+  isOn: boolean;
+}
+
 /** How strongly an occluded wire shows: from none to whole. */
 export const LEVEL_HELPER_OCCLUDED_LIMITS: IRenderLimits = { max: 1, min: 0, step: 0.05 };
 

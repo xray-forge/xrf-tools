@@ -11,16 +11,18 @@ use crate::capture::burst::burst_shot::BurstShot;
 use crate::capture::capture_job::CaptureJob;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
+use crate::pass::overlay_draw::OverlayDraw;
 use crate::pass::overlay_parameters::OverlayParameters;
 use crate::pass::overlay_pass::OverlayPass;
 use crate::pass::present_parameters::PresentParameters;
 use crate::pass::present_pass::PresentPass;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::feature::helpers_feature::HelperDraws;
+use crate::scene::level::helpers::view::helper_draws::HelperDraws;
 use crate::scene::level::scene_output::SceneOutput;
 use crate::scene::level::scene_view::SceneView;
 use crate::thread::gpu_state::GpuState;
+use crate::viewport::pending_screenshot::PendingScreenshot;
 use crate::viewport::render_viewport::RenderViewport;
 use crate::window::window_frame::WindowFrame;
 
@@ -56,10 +58,10 @@ impl RenderThread {
         }
 
         if !viewport.screenshots.is_empty() {
-          let (reply, is_helped): (CaptureReply, bool) = viewport.screenshots.remove(0);
+          let PendingScreenshot { screenshot, reply } = viewport.screenshots.remove(0);
 
           match FrameCapture::new_screenshot(device, window.format, (rect.width, rect.height), viewport.frame) {
-            Ok(capture) => captures.push((*id, capture.with_helpers(is_helped), reply)),
+            Ok(capture) => captures.push((*id, capture.with_screenshot(screenshot), reply)),
             Err(error) => {
               let _ = reply.send(Err(error));
             }
@@ -185,11 +187,17 @@ impl RenderThread {
       return;
     };
     let texture: GraphTexture = Self::declare_finished_frame(
-      (graph, runtime),
-      gpu,
-      (view, binding, output),
-      ("screenshot", capture),
-      capture.is_helped().then(|| view.get_helper_draws()),
+      graph,
+      runtime,
+      FinishedFrame {
+        gpu,
+        view,
+        binding,
+        output,
+        label: "screenshot",
+        capture,
+        helpers: capture.is_helped().then(|| view.get_helper_draws()),
+      },
     );
 
     graph
@@ -218,11 +226,17 @@ impl RenderThread {
       return;
     };
     let texture: GraphTexture = Self::declare_finished_frame(
-      (graph, runtime),
-      gpu,
-      (view, binding, output),
-      ("capture shot", capture),
-      None,
+      graph,
+      runtime,
+      FinishedFrame {
+        gpu,
+        view,
+        binding,
+        output,
+        label: "capture shot",
+        capture,
+        helpers: None,
+      },
     );
     let depth: GraphTexture = output.targets.depth;
 
@@ -258,11 +272,17 @@ impl RenderThread {
       return;
     };
     let texture: GraphTexture = Self::declare_finished_frame(
-      (graph, runtime),
-      gpu,
-      (view, binding, output),
-      ("burst frame", shot.get_picture()),
-      None,
+      graph,
+      runtime,
+      FinishedFrame {
+        gpu,
+        view,
+        binding,
+        output,
+        label: "burst frame",
+        capture: shot.get_picture(),
+        helpers: None,
+      },
     );
     let material: GraphTexture = output.targets.material;
 
@@ -281,43 +301,46 @@ impl RenderThread {
       });
   }
 
-  /// Declares a view's finished frame (`output`) presented into a texture of its own, named `label`, at `capture`'s
-  /// size and in its format, without overlays or the selection's outline, and with its helpers' marks and fading and
-  /// their wires and icons over it where `helpers` are given; answers the texture, for its copy.
+  /// Declares `frame`'s view's finished frame presented into a texture of its own, at its capture's size and in its
+  /// format, without overlays or the selection's outline, and with its helpers' marks and fading and their wires and
+  /// icons over it where it gives them; answers the texture, for its copy.
   fn declare_finished_frame<'a>(
-    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
-    gpu: &'a GpuState,
-    (view, binding, output): (&SceneView, &'a ViewBinding, &SceneOutput),
-    (label, capture): (&'static str, &FrameCapture),
-    helpers: Option<HelperDraws<'a>>,
+    graph: &mut FrameGraph<'a>,
+    runtime: &mut GraphRuntime,
+    frame: FinishedFrame<'a, '_>,
   ) -> GraphTexture {
-    let (width, height): (u32, u32) = capture.get_size();
+    let FinishedFrame {
+      gpu,
+      view,
+      binding,
+      output,
+      label,
+      capture,
+      helpers,
+    } = frame;
+    let size: (u32, u32) = capture.get_size();
     let format: wgpu::TextureFormat = capture.get_format();
-    let uniform: UniformBinding<PresentUniform> = runtime.push_uniform(
-      &view
-        .get_present_uniform()
-        .for_screenshot((width, height), helpers.is_some()),
-    );
+    let shown: PresentUniform = match helpers {
+      Some(_) => view.get_present_uniform().for_helped_screenshot(size),
+      None => view.get_present_uniform().for_screenshot(size),
+    };
+    let uniform: UniformBinding<PresentUniform> = runtime.push_uniform(&shown);
     let parameters: PresentParameters<'a> = PresentParameters {
       present: uniform,
       ..Self::to_present_parameters(gpu, output)
     };
-    // The helpers are read against the frame's depth, placed by the screenshot's own size, as the window's are.
-    let overlaid: Option<(OverlayParameters, HelperDraws<'a>)> = helpers.map(|draws| {
-      (
-        OverlayParameters {
-          depth_target: output.targets.depth,
-          present: uniform,
-          lighting: output.lighting,
-        },
-        draws,
-      )
+    // The helpers are read against the frame's depth, placed by the capture's own size, as the window's are.
+    let overlay_parameters: Option<OverlayParameters> = helpers.map(|_| OverlayParameters {
+      depth_target: output.targets.depth,
+      present: uniform,
+      lighting: output.lighting,
     });
+    let (width, height) = size;
     let texture: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format));
     let (present, overlay): (&'a PresentPass, &'a OverlayPass) = (&gpu.present, &gpu.overlay);
     let builder = graph.add_raster_pass(label).parameters(&parameters);
-    let builder = match &overlaid {
-      Some((overlay_parameters, _)) => builder.parameters(overlay_parameters),
+    let builder = match &overlay_parameters {
+      Some(overlay_parameters) => builder.parameters(overlay_parameters),
       None => builder,
     };
 
@@ -329,11 +352,32 @@ impl RenderThread {
       .record(move |context| {
         present.draw(context, format, binding, &parameters);
 
-        if let Some((overlay_parameters, draws)) = &overlaid {
-          overlay.draw_helpers(context, format, (binding, overlay_parameters), *draws);
+        if let (Some(parameters), Some(helpers)) = (&overlay_parameters, helpers) {
+          overlay.draw(
+            context,
+            format,
+            OverlayDraw {
+              view: binding,
+              parameters,
+              overlays: None,
+              helpers,
+            },
+          );
         }
       });
 
     texture
   }
+}
+
+/// A view's finished frame a capture copies out: the GPU's passes, the view, its camera and the frame it left, the
+/// pass's name, the capture whose size and format it is drawn at, and its helpers' draws where they are drawn over it.
+struct FinishedFrame<'a, 'v> {
+  gpu: &'a GpuState,
+  view: &'v SceneView,
+  binding: &'a ViewBinding,
+  output: &'v SceneOutput,
+  label: &'static str,
+  capture: &'v FrameCapture,
+  helpers: Option<HelperDraws<'a>>,
 }

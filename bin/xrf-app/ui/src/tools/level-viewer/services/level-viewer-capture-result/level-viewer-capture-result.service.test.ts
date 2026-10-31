@@ -198,12 +198,14 @@ describe("LevelViewerCaptureResultService", () => {
     const view: LevelViewService = container.get(LevelViewService);
 
     view.toggleHelpers();
-    view.setHelperKinds([ELevelObjectKind.LIGHTS], true);
+    view.setHelperKinds({ isOn: true, kinds: [ELevelObjectKind.LIGHTS] });
 
     const helpers: ILevelHelperOptions = view.helpers;
 
     service.reset();
-    service.setMapAnnotations(toLevelMapAnnotationsWith(service.mapAnnotations, [ELevelObjectKind.GRAPH_POINTS], true));
+    service.setMapAnnotations(
+      toLevelMapAnnotationsWith(service.mapAnnotations, { isShown: true, kinds: [ELevelObjectKind.GRAPH_POINTS] })
+    );
 
     expect(service.mapAnnotations.kinds).toEqual([
       ELevelObjectKind.SMART_TERRAINS,

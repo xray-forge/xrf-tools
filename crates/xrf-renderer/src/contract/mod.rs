@@ -99,6 +99,7 @@ pub(crate) mod render_reflection_mode;
 pub(crate) mod render_reflection_probe;
 pub(crate) mod render_reflection_settings;
 pub(crate) mod render_scale;
+pub(crate) mod render_screenshot;
 pub(crate) mod render_selection;
 pub(crate) mod render_selection_target;
 pub(crate) mod render_settings;

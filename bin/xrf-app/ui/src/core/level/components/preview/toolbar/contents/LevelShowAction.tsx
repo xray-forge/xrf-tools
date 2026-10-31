@@ -64,7 +64,7 @@ export function LevelShowAction({
               description={helpers.isShown ? `Outlines the ${entry.label.toLowerCase()} by kind` : HELPERS_OFF}
               isChecked={isHelped}
               isDisabled={!helpers.isShown}
-              onChange={() => viewService.setHelperKinds([entry.kind], !isHelped)}
+              onChange={() => viewService.setHelperKinds({ isOn: !isHelped, kinds: [entry.kind] })}
             />
           </EditorPopoverGroupSection>
         ) : (
@@ -74,7 +74,7 @@ export function LevelShowAction({
             description={helpers.isShown ? undefined : HELPERS_OFF}
             isOn={isHelped}
             isDisabled={!helpers.isShown}
-            onToggle={() => viewService.setHelperKinds([entry.kind], !isHelped)}
+            onToggle={() => viewService.setHelperKinds({ isOn: !isHelped, kinds: [entry.kind] })}
           />
         );
       })}

@@ -75,8 +75,19 @@ import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
 import { toNativeWorldToggles } from "@/core/render/lib/native/native-view-options";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
+import { INativeViewportClick } from "@/core/render/lib/native/native-viewport-target";
 import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
+
+/** A pick asked of the viewport: where, whether glass is passed by, and how what it picks changes the selection. */
+export interface ILevelPickRequest {
+  /** In css pixels from the viewport's top left corner. */
+  point: IRenderViewPoint;
+  /** Whether glass is passed by, picking what stands behind it. */
+  isThrough: boolean;
+  /** Replacing the selection where not given. */
+  mode?: ELevelSelectionMode;
+}
 
 /**
  * Owns the native viewport the open level is drawn in: everything said to it, the scene it shows the level as, and what
@@ -253,17 +264,12 @@ export class LevelRenderService extends NativeRenderSurfaceService {
    * Says what of the open level is drawn under a point of the viewport, which is then what is selected. The scene shown
    * let go meanwhile cancels it, as what it hit names something else now.
    *
-   * @param point - Where, in css pixels from the viewport's top left corner.
-   * @param isThrough - Whether glass is passed by, picking what stands behind it.
-   * @param mode - How what it picks changes the selection.
+   * @param request - Where, whether glass is passed by, and how what it picks changes the selection.
    */
   @LatestFlow()
-  public *pick(
-    point: IRenderViewPoint,
-    isThrough: boolean,
-    mode: ELevelSelectionMode = ELevelSelectionMode.REPLACE
-  ): TFlow {
+  public *pick(request: ILevelPickRequest): TFlow {
     const viewport: Nullable<NativeViewport> = this.viewport;
+    const { point, isThrough, mode = ELevelSelectionMode.REPLACE } = request;
 
     if (!viewport || !this.level) {
       return;
@@ -372,7 +378,11 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       ? this.viewport.ask(
           "saveScreenshot",
           async (id: RenderViewportId) => {
-            await levelsCommands.saveScreenshot(id, path, isShown && isScreenshotHelped);
+            await levelsCommands.saveScreenshot({
+              path,
+              screenshot: { isHelped: isShown && isScreenshotHelped },
+              viewport: id,
+            });
 
             return true;
           },
@@ -545,11 +555,15 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     };
   }
 
-  protected onClick(point: IRenderViewPoint, isThrough: boolean, isToggling: boolean): void {
+  protected onClick({ point, isThrough, isToggling }: INativeViewportClick): void {
     if (this.viewportService.isFocusPicking) {
       void this.focusAt(point, isThrough);
     } else {
-      void this.pick(point, isThrough, isToggling ? ELevelSelectionMode.TOGGLE : ELevelSelectionMode.REPLACE);
+      void this.pick({
+        isThrough,
+        mode: isToggling ? ELevelSelectionMode.TOGGLE : ELevelSelectionMode.REPLACE,
+        point,
+      });
     }
   }
 

@@ -9,6 +9,7 @@ use crate::contract::render_rect::RenderRect;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_metering::ExposureMetering;
+use crate::pass::present_marks::PresentMarks;
 
 /// What the present pass shows and the overlays drawn over it read, as WGSL's `Present`.
 #[repr(C)]
@@ -132,13 +133,13 @@ impl PresentUniform {
     }
   }
 
-  /// The same, the models the helpers marked tinted and outlined where `is_marked`, and what neither they nor the
-  /// selection cover faded where `is_rest_faded`.
-  pub fn with_marks(self, is_marked: bool, is_rest_faded: bool) -> Self {
+  /// The same, the models the helpers marked tinted and outlined, and what neither they nor the selection cover faded,
+  /// as `marks` asks.
+  pub fn with_marks(self, marks: PresentMarks) -> Self {
     Self {
       marks: Vec4::new(
-        f32::from(u8::from(is_marked)),
-        f32::from(u8::from(is_rest_faded)),
+        f32::from(u8::from(marks.is_marked)),
+        f32::from(u8::from(marks.is_rest_faded)),
         0.0,
         0.0,
       ),
@@ -179,14 +180,22 @@ impl PresentUniform {
     }
   }
 
-  /// The same drawn into a screenshot `size` pixels across, apart from the window and without the selection's outline,
-  /// and without the helpers' marks and fading unless it `is_helped`.
-  pub fn for_screenshot(self, (width, height): (u32, u32), is_helped: bool) -> Self {
+  /// The same drawn into a screenshot `size` pixels across, apart from the window and without the selection's outline
+  /// or the helpers' marks and fading.
+  pub fn for_screenshot(self, size: (u32, u32)) -> Self {
+    Self {
+      marks: Vec4::ZERO,
+      ..self.for_helped_screenshot(size)
+    }
+  }
+
+  /// The same drawn into a screenshot `size` pixels across that keeps the helpers: apart from the window and without
+  /// the selection's outline, the helpers' marks and fading as the window draws them.
+  pub fn for_helped_screenshot(self, (width, height): (u32, u32)) -> Self {
     Self {
       origin: Vec2::ZERO,
       size: Vec2::new(width as f32, height as f32),
       selection: Vec4::ZERO,
-      marks: if is_helped { self.marks } else { Vec4::ZERO },
       ..self
     }
   }

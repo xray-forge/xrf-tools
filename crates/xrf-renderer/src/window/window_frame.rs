@@ -7,6 +7,7 @@ use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::pass::backdrop_pass::BackdropPass;
 use crate::pass::grid_pass::GridPass;
+use crate::pass::overlay_draw::OverlayDraw;
 use crate::pass::overlay_pass::OverlayPass;
 use crate::pass::present_pass::PresentPass;
 use crate::pass::view_binding::ViewBinding;
@@ -105,7 +106,16 @@ impl WindowFrame {
         }
 
         if let Some((parameters, overlays)) = &view.overlays {
-          overlay.draw(context, format, (binding, parameters), (overlays, view.helpers));
+          overlay.draw(
+            context,
+            format,
+            OverlayDraw {
+              view: binding,
+              parameters,
+              overlays: Some(overlays),
+              helpers: view.helpers,
+            },
+          );
         }
       }
     });

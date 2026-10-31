@@ -10,6 +10,6 @@ pub(crate) mod map;
 mod report;
 pub(crate) mod routes;
 
-pub use capture::{ViewerAssembly, ViewerCaptureJob, ViewerDdsExport, ViewerImage};
+pub use capture::{ScreenshotSaveRequest, ViewerAssembly, ViewerCaptureJob, ViewerDdsExport, ViewerImage};
 pub use folder::LevelViewerFolder;
 pub use report::LevelViewerReport;

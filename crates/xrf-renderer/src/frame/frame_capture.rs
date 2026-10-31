@@ -4,6 +4,7 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::contract::render_capture::RenderCapture;
 use crate::contract::render_rect::RenderRect;
+use crate::contract::render_screenshot::RenderScreenshot;
 use crate::frame::gpu_readback::GpuReadback;
 
 /// Where a capture's reply goes.
@@ -21,8 +22,8 @@ pub struct FrameCapture {
   row: u32,
   frame: u64,
   is_screenshot: bool,
-  /// Whether a screenshot draws its view's level object helpers over it, as its window does.
-  is_helped: bool,
+  /// How a screenshot is drawn, the defaults for any other capture.
+  screenshot: RenderScreenshot,
   /// A level map's tile's depth on its way back beside it, and the bytes a row of its copy takes: its coverage, opaque
   /// where anything was drawn, clear where the depth stayed at the far plane's zero.
   coverage: Option<(GpuReadback, u32)>,
@@ -53,7 +54,7 @@ impl FrameCapture {
       row,
       frame,
       is_screenshot: false,
-      is_helped: false,
+      screenshot: RenderScreenshot::default(),
       coverage: None,
     })
   }
@@ -108,9 +109,9 @@ impl FrameCapture {
     })
   }
 
-  /// The same, its view's level object helpers drawn over it where `is_helped`.
-  pub fn with_helpers(self, is_helped: bool) -> Self {
-    Self { is_helped, ..self }
+  /// The same, drawn as `screenshot` asks.
+  pub fn with_screenshot(self, screenshot: RenderScreenshot) -> Self {
+    Self { screenshot, ..self }
   }
 
   /// Whether it is a screenshot, which its viewport's own pass copies out rather than the window's.
@@ -120,7 +121,7 @@ impl FrameCapture {
 
   /// Whether its view's level object helpers are drawn over it.
   pub fn is_helped(&self) -> bool {
-    self.is_helped
+    self.screenshot.is_helped
   }
 
   /// The pixels it copies across and down.

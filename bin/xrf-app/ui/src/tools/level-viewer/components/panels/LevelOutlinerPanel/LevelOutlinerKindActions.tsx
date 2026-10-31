@@ -8,7 +8,12 @@ import { VisibilityOffIcon } from "@xrf/ui/icons/visibility-off";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
-import { getLevelVisibleOption, TLevelVisibleOption } from "@/core/level/lib/objects/level-object-visibility";
+import { ILevelHelperKindsChange } from "@/core/level/lib/objects/level-helper-options";
+import {
+  getLevelVisibleOption,
+  ILevelVisibleOptionsChange,
+  TLevelVisibleOption,
+} from "@/core/level/lib/objects/level-object-visibility";
 
 interface ILevelOutlinerKindActionsProps extends BaseComponentProps {
   /** What the row stands for, by name, as the tooltips say it. */
@@ -21,8 +26,8 @@ interface ILevelOutlinerKindActionsProps extends BaseComponentProps {
   isHelped: (kind: LevelObjectKind) => boolean;
   /** Whether helpers are drawn at all, which the helper switches wait on. */
   isHelpersShown: boolean;
-  onVisibleChange: (options: ReadonlyArray<TLevelVisibleOption>, isOn: boolean) => void;
-  onHelperChange: (kinds: ReadonlyArray<LevelObjectKind>, isOn: boolean) => void;
+  onVisibleChange: (change: ILevelVisibleOptionsChange) => void;
+  onHelperChange: (change: ILevelHelperKindsChange) => void;
 }
 
 /** How many of a row's kinds a switch has on: all, some, or none. */
@@ -69,10 +74,10 @@ export function LevelOutlinerKindActions({
         isDisabled={!isHelpersShown}
         unavailableTitle={"Helpers are off: turn them on with G"}
         onToggle={() =>
-          onHelperChange(
-            kinds.map((entry: LevelObjectKindEntry) => entry.kind),
-            helped !== "all"
-          )
+          onHelperChange({
+            isOn: helped !== "all",
+            kinds: kinds.map((entry: LevelObjectKindEntry) => entry.kind),
+          })
         }
       />
 
@@ -84,38 +89,9 @@ export function LevelOutlinerKindActions({
           description={visible === "none" ? `${label} hidden` : `${label} ${visible === "some" ? "partly " : ""}drawn`}
           icon={visible === "none" ? <VisibilityOffIcon /> : <VisibilityIcon />}
           isOn={visible !== "none"}
-          onToggle={() => onVisibleChange(options, visible !== "all")}
+          onToggle={() => onVisibleChange({ isOn: visible !== "all", options })}
         />
       ) : null}
     </div>
-  );
-}
-
-interface ILevelOutlinerObjectActionsProps extends BaseComponentProps {
-  name: string;
-  isHidden: boolean;
-  onToggle: () => void;
-}
-
-/** The eye on one object's row, which hides it until revealed, as `H` hides the selection. */
-export function LevelOutlinerObjectActions({
-  "data-testid": dataTestId = "level-outliner-object-actions",
-  id,
-  className,
-  name,
-  isHidden,
-  onToggle,
-}: ILevelOutlinerObjectActionsProps): ReactElement {
-  return (
-    <EditorViewToggle
-      data-testid={dataTestId}
-      id={id}
-      className={className}
-      label={`Hide ${name}`}
-      description={isHidden ? `${name} hidden` : `${name} shown`}
-      icon={isHidden ? <VisibilityOffIcon /> : <VisibilityIcon />}
-      isOn={!isHidden}
-      onToggle={onToggle}
-    />
   );
 }

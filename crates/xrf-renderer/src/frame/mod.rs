@@ -14,6 +14,7 @@ pub(crate) mod history;
 #[cfg(debug_assertions)]
 pub(crate) mod jitter_guard;
 pub(crate) mod periodic;
+pub(crate) mod pick_pass;
 pub(crate) mod pick_target;
 pub(crate) mod static_scene_handles;
 pub(crate) mod stats_readback;

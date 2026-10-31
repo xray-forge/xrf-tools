@@ -1,7 +1,8 @@
-//! A level's helpers: the editor-only wires of the level objects that draw nothing of their own.
+//! A level's helpers: the editor-only wires and icons of the level objects, as the scene keeps them, as a view builds
+//! and hands them on, and as the GPU reads them.
 
-pub(crate) mod helper_icon_atlas;
-pub(crate) mod helper_icon_instance;
-pub(crate) mod helper_vertex;
+pub(crate) mod gpu;
+pub(crate) mod level_helper_icon;
 pub(crate) mod level_helper_object;
 pub(crate) mod level_helpers;
+pub(crate) mod view;

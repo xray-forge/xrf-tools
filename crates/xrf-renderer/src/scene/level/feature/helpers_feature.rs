@@ -1,24 +1,28 @@
-use glam::{Mat4, Vec3};
+use glam::Vec3;
 use wgpu::util::DeviceExt;
 use xrf_renderer_core::{
   FrameGraph, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphTexture,
   GraphTextureDescriptor,
 };
 
-use crate::contract::render_helper_icon::RenderHelperIcon;
 use crate::contract::render_helper_options::RenderHelperOptions;
-use crate::frame::static_scene_handles::StaticSceneHandles;
-use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
+use crate::pass::present_marks::PresentMarks;
 use crate::pass::static_draws::StaticDraws;
-use crate::pass::static_gbuffer_pass::StaticGBufferPass;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::static_mark_draw::StaticMarkDraw;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::helpers::helper_icon_instance::HelperIconInstance;
-use crate::scene::level::helpers::helper_vertex::HelperVertex;
+use crate::scene::level::helpers::gpu::helper_buffer::HelperBuffer;
+use crate::scene::level::helpers::gpu::helper_icon_instance::HelperIconInstance;
+use crate::scene::level::helpers::gpu::helper_vertex::HelperVertex;
+use crate::scene::level::helpers::level_helper_icon::LevelHelperIcon;
 use crate::scene::level::helpers::level_helper_object::LevelHelperObject;
 use crate::scene::level::helpers::level_helpers::LevelHelpers;
-use crate::scene::static_scene::static_scene::StaticScene;
+use crate::scene::level::helpers::view::helper_draws::HelperDraws;
+use crate::scene::level::helpers::view::helper_marks_pass::HelperMarksPass;
+use crate::scene::level::helpers::view::helper_part::HelperPart;
+use crate::scene::level::helpers::view::helper_part_draws::HelperPartDraws;
+use crate::scene::level::helpers::view::helper_sources::HelperSources;
+use crate::scene::static_scene::static_object_box::StaticObjectBox;
 
 /// What a view draws of its scene's helpers: the wires and icons its options keep, which the window pass draws and a
 /// pick draws again, and the spawned models they mark, which the helper marks pass draws in their colours for the
@@ -27,154 +31,94 @@ use crate::scene::static_scene::static_scene::StaticScene;
 /// over them, so the pointer moving over the scene rebuilds a handful of wires rather than every helper.
 #[derive(Default)]
 pub struct HelpersFeature {
-  /// The set, the scene's contents and the options, singled out objects aside, every kept object's were built for.
-  built: Option<(u64, usize, RenderHelperOptions)>,
-  /// The set, the scene's contents and the options the singled out objects' were built for.
-  singled_built: Option<(u64, usize, RenderHelperOptions)>,
-  /// Every kept object's wires, two vertices a segment, and icons, an instance each, each with how many.
-  wires: Option<(wgpu::Buffer, u32)>,
-  icons: Option<(wgpu::Buffer, u32)>,
+  /// Every kept object's wires and icons, none singled out.
+  every: Option<HelperBuild>,
   /// The selected and hovered objects' wires, their models' boxes among them, and icons, lifted and never faded.
-  singled_wires: Option<(wgpu::Buffer, u32)>,
-  singled_icons: Option<(wgpu::Buffer, u32)>,
+  singled: Option<HelperBuild>,
   /// The marked models' places and colours, bound as the helper marks pass reads them.
-  marks: Option<(wgpu::Buffer, wgpu::BindGroup)>,
+  marks: Option<HelperMarks>,
   /// Whether the present fades what no helper covers.
   is_rest_faded: bool,
-}
-
-/// Which of the kept objects a build of a view's helpers takes.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum HelperPart {
-  /// Every kept object, none singled out.
-  Every,
-  /// The selected and hovered objects alone, singled out, drawn over every kept object's.
-  Singled,
 }
 
 impl HelpersFeature {
   /// Builds the wires, icons and marks again where the scene's helpers, the objects standing in its scene or the view's
   /// options moved since: the objects of the kinds switched on and not hidden, none while helpers are off, every kept
-  /// object's apart from the singled out ones'; the marks bound by `marks_layout`.
-  pub fn set(
-    &mut self,
-    device: &wgpu::Device,
-    (helpers, statics): (&LevelHelpers, &StaticScene),
-    options: &RenderHelperOptions,
-    marks_layout: &wgpu::BindGroupLayout,
-  ) {
-    let contents: usize = statics.get_contents();
+  /// object's apart from the singled out ones'.
+  pub fn set(&mut self, device: &wgpu::Device, sources: HelperSources<'_>) {
+    let HelperSources {
+      helpers,
+      statics,
+      options,
+      marks_layout,
+    } = sources;
     let unsingled: RenderHelperOptions = RenderHelperOptions {
       selected: Vec::new(),
       hovered: None,
       ..options.clone()
     };
-    let is_built = |built: &Option<(u64, usize, RenderHelperOptions)>, options: &RenderHelperOptions| {
-      built.as_ref().is_some_and(|(version, built_contents, built)| {
-        *version == helpers.version && *built_contents == contents && built == options
-      })
-    };
     let boxes = |object: u32| statics.get_object_box(object);
 
-    if !is_built(&self.singled_built, options) {
-      self.singled_built = Some((helpers.version, contents, options.clone()));
-      self.singled_wires = Self::create_buffer(
+    if !HelperBuild::is_current(&self.singled, &HelperBuildKey::of(sources, options)) {
+      self.singled = Some(HelperBuild::new(
         device,
-        "singled helper wires",
-        &Self::to_vertices(helpers, options, HelperPart::Singled, boxes),
-      );
-      self.singled_icons = Self::create_buffer(
-        device,
-        "singled helper icons",
-        &Self::to_icons(helpers, options, HelperPart::Singled),
-      );
+        HelperBuildKey::of(sources, options),
+        HelperBuild::build(helpers, options, HelperPart::Singled, boxes),
+      ));
     }
 
-    if is_built(&self.built, &unsingled) {
+    if HelperBuild::is_current(&self.every, &HelperBuildKey::of(sources, &unsingled)) {
       return;
     }
 
-    self.is_rest_faded = options.is_shown && options.is_rest_faded;
-    self.wires = Self::create_buffer(
-      device,
-      "helper wires",
-      &Self::to_vertices(helpers, &unsingled, HelperPart::Every, boxes),
-    );
-    self.icons = Self::create_buffer(
-      device,
-      "helper icons",
-      &Self::to_icons(helpers, &unsingled, HelperPart::Every),
-    );
-
     let marks: Vec<[u32; 2]> = Self::to_marks(helpers, &unsingled, |object| statics.get_object_place(object));
 
-    self.built = Some((helpers.version, contents, unsingled));
-    self.marks = (!marks.is_empty()).then(|| {
-      let buffer: wgpu::Buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-        label: Some("helper marks"),
-        contents: bytemuck::cast_slice(&marks),
-        usage: wgpu::BufferUsages::STORAGE,
-      });
-      let group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: Some("helper marks"),
-        layout: marks_layout,
-        entries: &[wgpu::BindGroupEntry {
-          binding: 0,
-          resource: buffer.as_entire_binding(),
-        }],
-      });
-
-      (buffer, group)
-    });
-  }
-
-  /// A vertex buffer of `items` and how many, none for none.
-  fn create_buffer<T: bytemuck::Pod>(device: &wgpu::Device, label: &str, items: &[T]) -> Option<(wgpu::Buffer, u32)> {
-    (!items.is_empty()).then(|| {
-      (
-        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-          label: Some(label),
-          contents: bytemuck::cast_slice(items),
-          usage: wgpu::BufferUsages::VERTEX,
-        }),
-        items.len() as u32,
-      )
-    })
+    self.is_rest_faded = options.is_shown && options.is_rest_faded;
+    self.every = Some(HelperBuild::new(
+      device,
+      HelperBuildKey::of(sources, &unsingled),
+      HelperBuild::build(helpers, &unsingled, HelperPart::Every, boxes),
+    ));
+    self.marks = (!marks.is_empty()).then(|| HelperMarks::new(device, &marks, marks_layout));
   }
 
   /// The wires and icons to draw: every kept object's, then the singled out ones' over them.
   pub fn get_draws(&self) -> HelperDraws<'_> {
     HelperDraws {
-      wires: [Self::to_draw(&self.wires), Self::to_draw(&self.singled_wires)],
-      icons: [Self::to_draw(&self.icons), Self::to_draw(&self.singled_icons)],
+      every: HelperBuild::get_draws(&self.every),
+      singled: HelperBuild::get_draws(&self.singled),
     }
-  }
-
-  fn to_draw(built: &Option<(wgpu::Buffer, u32)>) -> Option<(&wgpu::Buffer, u32)> {
-    built.as_ref().map(|(buffer, count)| (buffer, *count))
   }
 
   /// The marked models' places and colours as the helper marks pass binds them; none where no model is marked.
   pub fn get_marks(&self) -> Option<&wgpu::BindGroup> {
-    self.marks.as_ref().map(|(_, group)| group)
+    self.marks.as_ref().map(|marks| &marks.group)
   }
 
-  /// Whether the present fades what no helper covers.
-  pub fn is_rest_faded(&self) -> bool {
-    self.is_rest_faded
+  /// What the present lays over the frame of the marks: whether any model is marked, and whether the rest fades.
+  pub fn get_present_marks(&self) -> PresentMarks {
+    PresentMarks {
+      is_marked: self.marks.is_some(),
+      is_rest_faded: self.is_rest_faded,
+    }
   }
 
   /// Adds the helper marks pass where the view marks models: the spawned models' visible clusters drawn again over the
-  /// view's depth (`handles`) into a marks target of the drawn size, each in its helper's colour where its fragment is
-  /// the one kept; answers the target, none where no model is marked.
+  /// view's depth into a marks target of the drawn size, each in its helper's colour where its fragment is the one kept;
+  /// answers the target, none where no model is marked.
   pub fn add_marks_pass<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
-    gbuffer: &'a StaticGBufferPass,
-    (view, textures): (&'a ViewBinding, &'a wgpu::BindGroup),
-    (scene, handles): (&StaticSceneHandles, ViewTargetHandles),
+    pass: HelperMarksPass<'a, '_>,
   ) -> Option<GraphTexture> {
     let marks: &'a wgpu::BindGroup = self.get_marks()?;
+    let HelperMarksPass {
+      gbuffer,
+      view,
+      textures,
+      scene,
+      handles,
+    } = pass;
     let (width, height) = handles.size;
     let target: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
       "helper marks",
@@ -200,7 +144,16 @@ impl HelpersFeature {
     .record(move |context| {
       let args: [&wgpu::Buffer; 2] = args.map(|args| context.get_buffer(args));
 
-      gbuffer.mark(context, (view, &draws, textures, marks), &args);
+      gbuffer.mark(
+        context,
+        StaticMarkDraw {
+          view,
+          draws: &draws,
+          textures,
+          marks,
+          args: &args,
+        },
+      );
     });
 
     Some(target)
@@ -233,51 +186,28 @@ impl HelpersFeature {
     }
   }
 
-  /// How `object` draws under `options`, built for `part`: its colour with how it is singled out, nought for every
-  /// kept object's, then the distance it fades out by, none for a singled out one, and how strongly it shows hidden.
-  fn to_look(object: &LevelHelperObject, options: &RenderHelperOptions, part: HelperPart) -> ([f32; 4], [f32; 2]) {
-    let singled: f32 = match part {
-      HelperPart::Every => 0.0,
-      HelperPart::Singled => Self::get_singled(object, options),
-    };
-    let reach: f32 = if singled > 0.0 {
-      0.0
-    } else {
-      object.draw_distance * options.distance_scale
-    };
-
-    (
-      [object.color[0], object.color[1], object.color[2], singled],
-      [reach, options.occluded_strength],
-    )
-  }
-
   /// The ends of every wire `options` keeps of `helpers` for `part`, a singled out model's box among them where
   /// `boxes` stands it (`StaticScene::get_object_box`).
   pub fn to_vertices(
     helpers: &LevelHelpers,
     options: &RenderHelperOptions,
     part: HelperPart,
-    boxes: impl Fn(u32) -> Option<(Mat4, [Vec3; 2])>,
+    boxes: impl Fn(u32) -> Option<StaticObjectBox>,
   ) -> Vec<HelperVertex> {
     Self::list_kept(helpers, options, part)
       .flat_map(|object: &LevelHelperObject| {
-        let (color, fade): ([f32; 4], [f32; 2]) = Self::to_look(object, options, part);
-        let boxed: Option<(Mat4, [Vec3; 2])> = object.model.filter(|_| color[3] > 0.0).and_then(&boxes);
+        let look: HelperLook = HelperLook::of(object, options, part);
+        let boxed: Option<StaticObjectBox> = object.model.filter(|_| look.is_singled()).and_then(&boxes);
 
         helpers.segments[object.segments.clone()]
           .iter()
           .copied()
-          .chain(
-            boxed
-              .into_iter()
-              .flat_map(|(transform, bounds)| LevelHelpers::to_box_edges(transform, bounds)),
-          )
+          .chain(boxed.into_iter().flat_map(StaticObjectBox::to_edges))
           .flatten()
           .map(move |end: Vec3| HelperVertex {
             position: end.to_array(),
-            color,
-            fade,
+            color: look.color,
+            fade: look.fade,
             object: object.id,
           })
       })
@@ -288,15 +218,15 @@ impl HelpersFeature {
   pub fn to_icons(helpers: &LevelHelpers, options: &RenderHelperOptions, part: HelperPart) -> Vec<HelperIconInstance> {
     Self::list_kept(helpers, options, part)
       .flat_map(|object: &LevelHelperObject| {
-        let (color, fade): ([f32; 4], [f32; 2]) = Self::to_look(object, options, part);
+        let look: HelperLook = HelperLook::of(object, options, part);
 
         helpers.icons[object.icons.clone()]
           .iter()
-          .map(move |(position, icon): &(Vec3, RenderHelperIcon)| HelperIconInstance {
-            position: position.to_array(),
-            icon: icon.get_index(),
-            color,
-            fade,
+          .map(move |icon: &LevelHelperIcon| HelperIconInstance {
+            position: icon.center.to_array(),
+            icon: icon.icon.get_index(),
+            color: look.color,
+            fade: look.fade,
             object: object.id,
             _pad: 0,
           })
@@ -327,33 +257,158 @@ impl HelpersFeature {
   }
 }
 
-/// What a view draws of its helpers over its frame: the wires, two vertices a segment, and the icons, an instance each,
-/// each with how many, every kept object's then the singled out ones' over them; none where it draws none.
-#[derive(Clone, Copy, Default)]
-pub struct HelperDraws<'a> {
-  pub wires: [Option<(&'a wgpu::Buffer, u32)>; 2],
-  pub icons: [Option<(&'a wgpu::Buffer, u32)>; 2],
-}
-
 impl ViewFeature for HelpersFeature {
   /// The wires' vertices, the icons and the marks.
   fn get_memory(&self) -> u64 {
-    [&self.wires, &self.icons, &self.singled_wires, &self.singled_icons]
+    [&self.every, &self.singled]
       .into_iter()
       .flatten()
-      .map(|(buffer, _)| buffer.size())
+      .map(HelperBuild::get_memory)
       .sum::<u64>()
-      + self.marks.as_ref().map_or(0, |(buffer, _)| buffer.size())
+      + self.marks.as_ref().map_or(0, |marks| marks.buffer.size())
   }
 
   fn release(&mut self) {
-    self.built = None;
-    self.singled_built = None;
-    self.wires = None;
-    self.icons = None;
-    self.singled_wires = None;
-    self.singled_icons = None;
-    self.marks = None;
-    self.is_rest_faded = false;
+    *self = Self::default();
+  }
+}
+
+/// What a part of a view's helpers was built from: the scene's set by its version, the scene's spawned objects by how
+/// many were added and removed so far, and the options it was built under.
+#[derive(Clone, Debug, PartialEq)]
+struct HelperBuildKey {
+  version: u64,
+  contents: usize,
+  options: RenderHelperOptions,
+}
+
+impl HelperBuildKey {
+  /// What `sources` hold, under `options`.
+  fn of(sources: HelperSources<'_>, options: &RenderHelperOptions) -> Self {
+    Self {
+      version: sources.helpers.version,
+      contents: sources.statics.get_contents(),
+      options: options.clone(),
+    }
+  }
+}
+
+/// One part of a view's helpers as built: what it was built from, and its wires' and icons' buffers.
+struct HelperBuild {
+  key: HelperBuildKey,
+  wires: Option<HelperBuffer>,
+  icons: Option<HelperBuffer>,
+}
+
+impl HelperBuild {
+  /// The part's buffers of `geometry`, built from `key`.
+  fn new(device: &wgpu::Device, key: HelperBuildKey, geometry: HelperGeometry) -> Self {
+    Self {
+      key,
+      wires: HelperBuffer::new(device, "helper wires", &geometry.wires),
+      icons: HelperBuffer::new(device, "helper icons", &geometry.icons),
+    }
+  }
+
+  /// `part`'s wires' ends and icons of `helpers` under `options`, its models' boxes where `boxes` stands them.
+  fn build(
+    helpers: &LevelHelpers,
+    options: &RenderHelperOptions,
+    part: HelperPart,
+    boxes: impl Fn(u32) -> Option<StaticObjectBox>,
+  ) -> HelperGeometry {
+    HelperGeometry {
+      wires: HelpersFeature::to_vertices(helpers, options, part, boxes),
+      icons: HelpersFeature::to_icons(helpers, options, part),
+    }
+  }
+
+  /// Whether `built` was built from `key`.
+  fn is_current(built: &Option<Self>, key: &HelperBuildKey) -> bool {
+    built.as_ref().is_some_and(|built| built.key == *key)
+  }
+
+  /// What `built` draws, nothing where it was never built.
+  fn get_draws(built: &Option<Self>) -> HelperPartDraws<'_> {
+    built
+      .as_ref()
+      .map_or_else(HelperPartDraws::default, |built| HelperPartDraws {
+        wires: built.wires.as_ref(),
+        icons: built.icons.as_ref(),
+      })
+  }
+
+  fn get_memory(&self) -> u64 {
+    [&self.wires, &self.icons]
+      .into_iter()
+      .flatten()
+      .map(|buffer| buffer.buffer.size())
+      .sum()
+  }
+}
+
+/// One part's helpers before they are uploaded: its wires' ends, two a segment, and its icons, an instance each.
+struct HelperGeometry {
+  wires: Vec<HelperVertex>,
+  icons: Vec<HelperIconInstance>,
+}
+
+/// The marked models' places and colours, and their bind group as the helper marks pass reads them.
+struct HelperMarks {
+  buffer: wgpu::Buffer,
+  group: wgpu::BindGroup,
+}
+
+impl HelperMarks {
+  /// `marks` uploaded and bound by `layout`.
+  fn new(device: &wgpu::Device, marks: &[[u32; 2]], layout: &wgpu::BindGroupLayout) -> Self {
+    let buffer: wgpu::Buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+      label: Some("helper marks"),
+      contents: bytemuck::cast_slice(marks),
+      usage: wgpu::BufferUsages::STORAGE,
+    });
+    let group: wgpu::BindGroup = device.create_bind_group(&wgpu::BindGroupDescriptor {
+      label: Some("helper marks"),
+      layout,
+      entries: &[wgpu::BindGroupEntry {
+        binding: 0,
+        resource: buffer.as_entire_binding(),
+      }],
+    });
+
+    Self { buffer, group }
+  }
+}
+
+/// How one object's helpers draw in a part: its colour with how it is singled out in alpha, nought for every kept
+/// object's, then the distance it fades out by, none for a singled out one, and how strongly it shows hidden.
+#[derive(Clone, Copy)]
+struct HelperLook {
+  color: [f32; 4],
+  fade: [f32; 2],
+}
+
+impl HelperLook {
+  /// How `object` draws under `options`, built for `part`.
+  fn of(object: &LevelHelperObject, options: &RenderHelperOptions, part: HelperPart) -> Self {
+    let singled: f32 = match part {
+      HelperPart::Every => 0.0,
+      HelperPart::Singled => HelpersFeature::get_singled(object, options),
+    };
+    let reach: f32 = if singled > 0.0 {
+      0.0
+    } else {
+      object.draw_distance * options.distance_scale
+    };
+
+    Self {
+      color: [object.color[0], object.color[1], object.color[2], singled],
+      fade: [reach, options.occluded_strength],
+    }
+  }
+
+  /// Whether it is singled out, which draws a model's box.
+  fn is_singled(self) -> bool {
+    self.color[3] > 0.0
   }
 }

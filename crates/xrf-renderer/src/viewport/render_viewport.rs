@@ -44,6 +44,7 @@ use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::scene_view::SceneView;
 use crate::viewport::pending_pick::PendingPick;
+use crate::viewport::pending_screenshot::PendingScreenshot;
 use crate::viewport::pick_in_flight::PickInFlight;
 use crate::viewport::viewport_device::ViewportDevice;
 
@@ -68,9 +69,8 @@ pub struct RenderViewport {
   /// Captures asked for, copied out of the next frames presented, one a frame in the order asked, and those copied,
   /// answered once they are back.
   pub captures: Vec<CaptureReply>,
-  /// Screenshots asked for, drawn from the next frames, one a frame in the order asked, each with whether its helpers
-  /// are drawn over it; in flight with the captures.
-  pub screenshots: Vec<(CaptureReply, bool)>,
+  /// Screenshots asked for, drawn from the next frames, one a frame in the order asked; in flight with the captures.
+  pub screenshots: Vec<PendingScreenshot>,
   pub captures_in_flight: Vec<(FrameCapture, CaptureReply)>,
   /// The level map or cubemap it captures, drawn in place of its own frames until it ends.
   pub capture: Option<CaptureJob>,

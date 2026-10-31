@@ -1,12 +1,13 @@
 use std::f32::consts::TAU;
 
-use glam::{BVec3, Mat4, Vec3};
+use glam::{Mat4, Vec3};
 
-use crate::contract::render_helper_icon::RenderHelperIcon;
 use crate::host::render_helper_object::RenderHelperObject;
 use crate::host::render_helper_shape::RenderHelperShape;
 use crate::host::render_level_helpers::RenderLevelHelpers;
+use crate::scene::level::helpers::level_helper_icon::LevelHelperIcon;
 use crate::scene::level::helpers::level_helper_object::LevelHelperObject;
+use crate::scene::static_scene::static_object_box::StaticObjectBox;
 
 /// A level's helpers as wires and icons: each helped object, its segments and the icons it stands in renderer space,
 /// built once a set is read, which every view of the scene draws from.
@@ -19,33 +20,17 @@ pub struct LevelHelpers {
   /// Every wire's two ends.
   pub segments: Vec<[Vec3; 2]>,
   /// Every icon's point and picture.
-  pub icons: Vec<(Vec3, RenderHelperIcon)>,
+  pub icons: Vec<LevelHelperIcon>,
 }
 
 impl LevelHelpers {
   /// Segments a sphere's great circle is drawn with: round enough at the size a restrictor fills a view.
   const CIRCLE_SEGMENTS: usize = 32;
 
-  /// The unit cube's twelve edges, by corners numbered `x + 2y + 4z`.
-  const BOX_EDGES: [(usize, usize); 12] = [
-    (0, 1),
-    (2, 3),
-    (4, 5),
-    (6, 7),
-    (0, 2),
-    (1, 3),
-    (4, 6),
-    (5, 7),
-    (0, 4),
-    (1, 5),
-    (2, 6),
-    (3, 7),
-  ];
-
   /// The wires and icons of `helpers`, numbered `version`.
   pub fn new(helpers: RenderLevelHelpers, version: u64) -> Self {
     let mut segments: Vec<[Vec3; 2]> = Vec::new();
-    let mut icons: Vec<(Vec3, RenderHelperIcon)> = Vec::new();
+    let mut icons: Vec<LevelHelperIcon> = Vec::new();
     let mut objects: Vec<LevelHelperObject> = helpers
       .objects
       .into_iter()
@@ -56,9 +41,10 @@ impl LevelHelpers {
 
         for shape in &object.shapes {
           match shape {
-            RenderHelperShape::Icon { center, icon } => {
-              icons.push((transform.transform_point3(Vec3::from_array(*center)), *icon));
-            }
+            RenderHelperShape::Icon { center, icon } => icons.push(LevelHelperIcon {
+              center: transform.transform_point3(Vec3::from_array(*center)),
+              icon: *icon,
+            }),
             shape => Self::add_shape(&mut segments, transform, shape),
           }
         }
@@ -98,21 +84,6 @@ impl LevelHelpers {
       .map(|index| &self.objects[index])
   }
 
-  /// The twelve edges of the box between `min` and `max` where `transform` stands it.
-  pub fn to_box_edges(transform: Mat4, [min, max]: [Vec3; 2]) -> impl Iterator<Item = [Vec3; 2]> {
-    let corner = move |index: usize| -> Vec3 {
-      transform.transform_point3(Vec3::select(
-        BVec3::new(index & 1 != 0, index & 2 != 0, index & 4 != 0),
-        max,
-        min,
-      ))
-    };
-
-    Self::BOX_EDGES
-      .iter()
-      .map(move |(from, to)| [corner(*from), corner(*to)])
-  }
-
   /// A shape's wires where `transform` stands it: a sphere's three great circles, a box's twelve edges, segments as
   /// they are, and none for a model or an icon.
   fn add_shape(segments: &mut Vec<[Vec3; 2]>, transform: Mat4, shape: &RenderHelperShape) {
@@ -142,7 +113,11 @@ impl LevelHelpers {
           transform.transform_point3(center + i * x + j * y + k * z)
         };
 
-        segments.extend(Self::BOX_EDGES.iter().map(|(from, to)| [corner(*from), corner(*to)]));
+        segments.extend(
+          StaticObjectBox::EDGES
+            .iter()
+            .map(|(from, to)| [corner(*from), corner(*to)]),
+        );
       }
       // A model's own wires are its box, which only its hovering or selection draws, where the scene stands it; an
       // icon is drawn as itself.

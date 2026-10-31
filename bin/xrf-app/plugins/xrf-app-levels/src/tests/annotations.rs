@@ -109,22 +109,24 @@ fn every_kind() -> Vec<LevelObjectKind> {
   LEVEL_OBJECT_KINDS.iter().map(|entry| entry.kind).collect()
 }
 
-fn new_marker(kind: LevelObjectKind, name: &str, point: [f32; 2], tag: Option<&str>) -> AnnotationMarker {
+/// Graph point 321 from above at `point`, tagged with its vertex.
+fn vertex_marker(point: [f32; 2]) -> AnnotationMarker {
   AnnotationMarker {
-    kind,
-    name: String::from(name),
+    kind: LevelObjectKind::GraphPoints,
+    name: String::from("vertex 321"),
     point,
-    tag: tag.map(String::from),
+    tag: Some(String::from("321")),
   }
 }
 
-fn zaton_canvas(kinds: Vec<LevelObjectKind>, is_labelled: bool) -> AnnotationCanvas {
+/// Zaton's map at 1200 pixels a side drawing `kinds`, none of their objects named beyond what is always named.
+fn zaton_canvas(kinds: Vec<LevelObjectKind>) -> AnnotationCanvas {
   AnnotationCanvas {
     area: zaton_area(),
     width: 1200,
     height: 1200,
     kinds,
-    is_labelled,
+    is_labelled: false,
   }
 }
 
@@ -238,15 +240,7 @@ fn points_a_level_changer_toward_its_destination_across_the_world() {
   );
   // A link to a point the patrol does not hold is left out, and its points are drawn with it rather than as dots.
   assert_eq!(annotations.patrols[0].links, vec![(0, 1)]);
-  assert_eq!(
-    annotations.markers,
-    vec![new_marker(
-      LevelObjectKind::GraphPoints,
-      "vertex 321",
-      [5.0, 6.0],
-      Some("321")
-    )]
-  );
+  assert_eq!(annotations.markers, vec![vertex_marker([5.0, 6.0])]);
 }
 
 #[test]
@@ -310,12 +304,12 @@ fn outlines_a_placement_covering_a_space_and_dots_what_stands_at_a_point() {
   );
   assert_eq!(
     annotations.markers,
-    vec![new_marker(
-      LevelObjectKind::StaticParticles,
-      "ambient\\fire",
-      [-5.0, 7.0],
-      None
-    )]
+    vec![AnnotationMarker {
+      kind: LevelObjectKind::StaticParticles,
+      name: String::from("ambient\\fire"),
+      point: [-5.0, 7.0],
+      tag: None,
+    }]
   );
 }
 
@@ -336,7 +330,7 @@ fn refuses_an_area_spanning_no_ground() {
 
 #[test]
 fn lays_the_area_over_the_map_north_up() {
-  let canvas: AnnotationCanvas = zaton_canvas(every_kind(), false);
+  let canvas: AnnotationCanvas = zaton_canvas(every_kind());
 
   assert_eq!(canvas.to_pixel([-600.0, 585.0]), (0.0, 0.0));
   assert_eq!(canvas.to_pixel([600.0, -615.0]), (1200.0, 1200.0));
@@ -369,19 +363,24 @@ fn draws_a_group_a_kind_asked_and_names_only_what_it_names() {
       },
     ],
     patrols: Vec::new(),
-    markers: vec![new_marker(LevelObjectKind::Stalkers, "zat_guard", [10.0, 0.0], None)],
+    markers: vec![AnnotationMarker {
+      kind: LevelObjectKind::Stalkers,
+      name: String::from("zat_guard"),
+      point: [10.0, 0.0],
+      tag: None,
+    }],
   };
-  let quiet: String = zaton_canvas(
-    vec![
-      LevelObjectKind::SmartTerrains,
-      LevelObjectKind::Restrictors,
-      LevelObjectKind::Stalkers,
-    ],
-    false,
-  )
+  let quiet: String = zaton_canvas(vec![
+    LevelObjectKind::SmartTerrains,
+    LevelObjectKind::Restrictors,
+    LevelObjectKind::Stalkers,
+  ])
   .draw(&annotations);
-  let named: String =
-    zaton_canvas(vec![LevelObjectKind::Restrictors, LevelObjectKind::Stalkers], true).draw(&annotations);
+  let named: String = AnnotationCanvas {
+    is_labelled: true,
+    ..zaton_canvas(vec![LevelObjectKind::Restrictors, LevelObjectKind::Stalkers])
+  }
+  .draw(&annotations);
   let group = |svg: &str, id: &str| svg.find(&format!(r#"<g id="{id}""#));
 
   assert!(quiet.starts_with(r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200""#));
@@ -459,14 +458,9 @@ fn names_each_graph_point_by_its_game_vertex() {
   let annotations: LevelAnnotations = LevelAnnotations {
     volumes: Vec::new(),
     patrols: Vec::new(),
-    markers: vec![new_marker(
-      LevelObjectKind::GraphPoints,
-      "vertex 321",
-      [0.0, -15.0],
-      Some("321"),
-    )],
+    markers: vec![vertex_marker([0.0, -15.0])],
   };
-  let svg: String = zaton_canvas(vec![LevelObjectKind::GraphPoints], false).draw(&annotations);
+  let svg: String = zaton_canvas(vec![LevelObjectKind::GraphPoints]).draw(&annotations);
 
   assert!(svg.contains(r#"<g id="graph-points""#));
   assert!(svg.contains(r#"<circle cx="600.0" cy="600.0""#));

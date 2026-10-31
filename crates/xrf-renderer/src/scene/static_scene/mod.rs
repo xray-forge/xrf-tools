@@ -14,6 +14,7 @@ pub(crate) mod static_model_part;
 pub(crate) mod static_model_place;
 pub(crate) mod static_model_proxy;
 pub(crate) mod static_model_skin;
+pub(crate) mod static_object_box;
 pub(crate) mod static_object_proxy;
 pub(crate) mod static_objects;
 pub(crate) mod static_place;

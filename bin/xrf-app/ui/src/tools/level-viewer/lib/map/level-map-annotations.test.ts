@@ -33,13 +33,18 @@ describe("level map annotations", () => {
   });
 
   it("switches kinds on or off, keeping the kind table's order", () => {
-    const withGraph = toLevelMapAnnotationsWith(DEFAULT_LEVEL_MAP_ANNOTATIONS, [ELevelObjectKind.GRAPH_POINTS], true);
-    const withMore = toLevelMapAnnotationsWith(
-      withGraph,
-      [ELevelObjectKind.SMART_TERRAINS, ELevelObjectKind.STALKERS],
-      true
-    );
-    const withoutGraph = toLevelMapAnnotationsWith(withMore, [ELevelObjectKind.GRAPH_POINTS], false);
+    const withGraph = toLevelMapAnnotationsWith(DEFAULT_LEVEL_MAP_ANNOTATIONS, {
+      isShown: true,
+      kinds: [ELevelObjectKind.GRAPH_POINTS],
+    });
+    const withMore = toLevelMapAnnotationsWith(withGraph, {
+      isShown: true,
+      kinds: [ELevelObjectKind.SMART_TERRAINS, ELevelObjectKind.STALKERS],
+    });
+    const withoutGraph = toLevelMapAnnotationsWith(withMore, {
+      isShown: false,
+      kinds: [ELevelObjectKind.GRAPH_POINTS],
+    });
 
     expect(withMore.kinds).toEqual([
       ELevelObjectKind.STALKERS,

@@ -11,6 +11,12 @@ export interface ILevelVisibleKindEntry {
   option: TLevelVisibleOption;
 }
 
+/** Visible switches turned together, and whether their kinds are drawn from now on. */
+export interface ILevelVisibleOptionsChange {
+  options: ReadonlyArray<TLevelVisibleOption>;
+  isOn: boolean;
+}
+
 /** Every kind drawn as a model, in the kind table's order. */
 export const LEVEL_VISIBLE_KINDS: ReadonlyArray<ILevelVisibleKindEntry> = [
   { kind: ELevelObjectKind.PROPS, option: "isSpawnedProps" },

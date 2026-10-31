@@ -16,6 +16,7 @@ import {
   RenderCubeCapture,
   RenderHelperIcon,
   RenderMapCapture,
+  RenderScreenshot,
   RenderViewportId,
 } from "#/types/xrf-renderer";
 import { ClsId } from "#/types/xrf-spawn";
@@ -981,6 +982,16 @@ export type MapExportRequest = {
   backdrop: [number, number, number] | null;
   /** Whether and how its annotations go in, or none for the map alone. */
   annotations: MapExportAnnotations | null;
+};
+
+/**
+ * A screenshot asked of a viewport, drawn as `screenshot` asks, and the PNG of the level viewer's screenshots folder
+ * it is written to.
+ */
+export type ScreenshotSaveRequest = {
+  viewport: RenderViewportId;
+  path: string;
+  screenshot: RenderScreenshot;
 };
 
 /**

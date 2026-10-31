@@ -194,11 +194,11 @@ describe("LevelRenderService", () => {
     view.toggleHelpers();
     await service.saveScreenshot("shot-3.png");
 
-    expect(listMockInvokeCalls(ELevelsCommand.SAVE_SCREENSHOT)).toEqual([
-      { isHelped: false, path: "shot-1.png", viewport: LEVEL_VIEWPORT },
-      { isHelped: false, path: "shot-2.png", viewport: LEVEL_VIEWPORT },
-      { isHelped: true, path: "shot-3.png", viewport: LEVEL_VIEWPORT },
-    ]);
+    expect(listMockInvokeCalls(ELevelsCommand.SAVE_SCREENSHOT)).toEqual(
+      [false, false, true].map((isHelped: boolean, index: number) => ({
+        request: { path: `shot-${index + 1}.png`, screenshot: { isHelped }, viewport: LEVEL_VIEWPORT },
+      }))
+    );
   });
 
   it("shows the open level in its viewport and reveals it once the renderer has it resident", async () => {
@@ -432,7 +432,7 @@ describe("LevelRenderService", () => {
     };
 
     mockIpcCommands({ [ERenderCommand.PICK]: hit });
-    await service.pick({ x: 10, y: 20 }, true);
+    await service.pick({ isThrough: true, point: { x: 10, y: 20 } });
 
     expect(listMockInvokeCalls(ERenderCommand.PICK).at(-1)).toEqual({
       viewport: LEVEL_VIEWPORT,
@@ -523,7 +523,7 @@ describe("LevelRenderService", () => {
     }
 
     await relist(1, [lamp, crate, fence]);
-    await service.pick({ x: 10, y: 20 }, false);
+    await service.pick({ isThrough: false, point: { x: 10, y: 20 } });
     expect(viewport.picked).toMatchObject({ kind: ELevelPick.OBJECT, object: crate });
     viewport.toggleHidden(fence);
 
@@ -566,14 +566,14 @@ describe("LevelRenderService", () => {
     await waitFor(() => expect(container.get(LevelLoadService).objectsRevision).toBe(1));
 
     mockIpcCommands({ [ERenderCommand.PICK]: { depth: 0, kind: ERenderLevelHit.SPAWN, object: 0, point: [0, 0, 0] } });
-    await service.pick({ x: 1, y: 1 }, false);
+    await service.pick({ isThrough: false, point: { x: 1, y: 1 } });
     mockIpcCommands({ [ERenderCommand.PICK]: { depth: 0, kind: ERenderLevelHit.SPAWN, object: 1, point: [0, 0, 0] } });
-    await service.pick({ x: 2, y: 2 }, false, ELevelSelectionMode.TOGGLE);
+    await service.pick({ isThrough: false, mode: ELevelSelectionMode.TOGGLE, point: { x: 2, y: 2 } });
 
     expect(viewport.selected.map((object: LevelObject) => object.name)).toEqual(["lamp", "crate"]);
     expect(viewport.picked).toMatchObject({ object: { name: "crate" } });
 
-    await service.pick({ x: 2, y: 2 }, false, ELevelSelectionMode.TOGGLE);
+    await service.pick({ isThrough: false, mode: ELevelSelectionMode.TOGGLE, point: { x: 2, y: 2 } });
 
     expect(viewport.selected.map((object: LevelObject) => object.name)).toEqual(["lamp"]);
     expect(viewport.picked).toBeNull();
@@ -613,7 +613,7 @@ describe("LevelRenderService", () => {
     }
 
     await reread(1, [wall, floor]);
-    await service.pick({ x: 10, y: 20 }, false);
+    await service.pick({ isThrough: false, point: { x: 10, y: 20 } });
     await reread(2, [floor, wall]);
 
     expect(viewport.picked).toMatchObject({ kind: ELevelPick.SURFACE, sector: 4, shaderId: 1 });
@@ -762,7 +762,7 @@ describe("LevelRenderService", () => {
       kind: ERenderViewportEvent.LOAD,
       report: mockRenderLoadReport({ isReady: true, scene: LEVEL_SCENE }),
     });
-    void service.pick({ x: 10, y: 20 }, false);
+    void service.pick({ isThrough: false, point: { x: 10, y: 20 } });
     expect(service.resident.isLoading).toBe(true);
 
     container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {

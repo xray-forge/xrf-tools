@@ -134,6 +134,7 @@ pub use crate::contract::render_reflection_mode::RenderReflectionMode;
 pub use crate::contract::render_reflection_probe::RenderReflectionProbe;
 pub use crate::contract::render_reflection_settings::RenderReflectionSettings;
 pub use crate::contract::render_scale::RenderScale;
+pub use crate::contract::render_screenshot::RenderScreenshot;
 pub use crate::contract::render_selection::RenderSelection;
 pub use crate::contract::render_selection_target::RenderSelectionTarget;
 pub use crate::contract::render_settings::RenderSettings;

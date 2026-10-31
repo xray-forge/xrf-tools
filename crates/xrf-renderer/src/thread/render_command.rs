@@ -15,6 +15,7 @@ use crate::contract::render_map_capture::RenderMapCapture;
 use crate::contract::render_memory_report::RenderMemoryReport;
 use crate::contract::render_overlay::RenderOverlay;
 use crate::contract::render_pick::RenderPick;
+use crate::contract::render_screenshot::RenderScreenshot;
 use crate::contract::render_selection::RenderSelection;
 use crate::contract::render_settings::RenderSettings;
 use crate::contract::render_texture_report::RenderTextureReport;
@@ -100,12 +101,11 @@ pub enum RenderCommand {
     id: RenderViewportId,
     reply: Sender<XrfResult<RenderCapture>>,
   },
-  /// Reads a viewport's next finished frame back whole, as presented but without its overlays or its selection's
-  /// outline, whatever of it the window shows, its level objects' helpers drawn over it where `is_helped`; the answer
-  /// never comes for a viewport the renderer does not draw.
+  /// Reads a viewport's next finished frame back whole, drawn as `screenshot` asks, whatever of it the window shows;
+  /// the answer never comes for a viewport the renderer does not draw.
   Screenshot {
     id: RenderViewportId,
-    is_helped: bool,
+    screenshot: RenderScreenshot,
     reply: Sender<XrfResult<RenderCapture>>,
   },
   /// Captures a level map in a viewport, in place of its own frames until it ends, telling `events` of each tile as it
