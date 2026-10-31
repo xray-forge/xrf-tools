@@ -1,8 +1,7 @@
 //! Whether a `[header]` the engine is handed can be loaded at all.
 
+use xrf_archive::ArchiveMetadata;
 use xrf_error::{XrfError, XrfResult};
-
-use crate::pack::config::ArchivePackHeaderEntry;
 
 /// The `[header]` text chunk 666 carries: the one every volume gets by default, and what makes any of them loadable.
 pub(crate) struct ArchivePackHeader;
@@ -33,21 +32,17 @@ impl ArchivePackHeader {
   /// Returns an invalid error for a missing `[header]` section, a missing `auto_load` or `entry_point`, and an
   /// `entry_point` that is neither the bare `gamedata` literal nor an alias reference beginning with `$`.
   pub(crate) fn require_loadable(header: &str) -> XrfResult {
-    if !header
-      .lines()
-      .any(|line| line.trim().eq_ignore_ascii_case(Self::SECTION))
-    {
+    // Read as the engine reads it, so a comment neither hides the section nor joins a value it is checked by.
+    let Some(items) = ArchiveMetadata::read_header(header) else {
       return Err(XrfError::new_invalid_error(format!(
         "The archive header names no '{}' section, and every reader of it asks for that section by name before \
          reading a key.",
         Self::SECTION
       )));
-    }
-
-    let entries: Vec<ArchivePackHeaderEntry> = ArchivePackHeaderEntry::split(header);
+    };
 
     for key in Self::REQUIRED_KEYS {
-      if !entries.iter().any(|entry| entry.key.eq_ignore_ascii_case(key)) {
+      if !items.iter().any(|item| item.key.eq_ignore_ascii_case(key)) {
         return Err(XrfError::new_invalid_error(format!(
           "The archive header names no '{key}'. 'CLocatorAPI' reads it without checking whether it is there, so a \
            volume without it stops the engine on load rather than mounting oddly. Add it, or drop the header \
@@ -56,10 +51,7 @@ impl ArchivePackHeader {
       }
     }
 
-    let Some(entry_point) = entries
-      .iter()
-      .find(|entry| entry.key.eq_ignore_ascii_case("entry_point"))
-    else {
+    let Some(entry_point) = items.iter().find(|item| item.key.eq_ignore_ascii_case("entry_point")) else {
       return Ok(());
     };
 

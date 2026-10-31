@@ -128,16 +128,12 @@ impl ArchiveReader {
         let chunk: Vec<u8> = self.read_chunk(chunk_size, is_compressed)?;
         let metadata: String = decode_bytes_to_string_without_bom_handling(&chunk, Self::header_encoding())?;
 
-        root_path = Some(
-          ArchiveMetadata::find_root_path(&metadata)
-            .ok_or_else(|| {
-              XrfError::new_read_error(format!(
-                "archive {} has a metadata chunk without an [header] entry_point",
-                format_path(&self.path)
-              ))
-            })?
-            .to_owned(),
-        );
+        root_path = Some(ArchiveMetadata::find_root_path(&metadata).ok_or_else(|| {
+          XrfError::new_read_error(format!(
+            "archive {} has a metadata chunk without an [header] entry_point",
+            format_path(&self.path)
+          ))
+        })?);
       } else {
         // A volume may carry chunks this reader has no use for; skipping keeps an unknown one from ending the walk.
         self.file.seek(SeekFrom::Current(i64::from(chunk_size)))?;

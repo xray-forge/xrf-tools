@@ -100,6 +100,44 @@ fn the_bare_gamedata_literal_and_an_alias_are_both_accepted() {
 }
 
 #[test]
+fn a_commented_header_is_judged_as_the_engine_reads_it() {
+  ArchivePackConfig {
+    header: Some(String::from(
+      "[header] ; archive metadata\r\nauto_load = true\r\nentry_point = $fs_root$\\gamedata\\ ; installed content\r\n",
+    )),
+    ..ArchivePackConfig::new("C:\\source", "C:\\out", "patch")
+  }
+  .validate_for_packing()
+  .expect("comments the engine strips leave a loadable header");
+
+  // A commented-out line names nothing, so the key it held is missing.
+  let message: String = refusal(Some(
+    "[header]\r\nauto_load = true\r\n; entry_point = $fs_root$\\gamedata\\\r\n",
+  ));
+
+  assert!(message.contains("names no 'entry_point'"), "'{message}'");
+}
+
+#[test]
+fn stored_header_text_splits_into_the_pairs_the_engine_reads() {
+  // What a configuration export carries, so a comment must not reach a value nor a commented-out line become a key.
+  assert_eq!(
+    ArchivePackHeaderEntry::split(
+      "[header] ; metadata\r\nauto_load = true\r\n; entry_point = $fs_root$\\levels\\\r\nentry_point = \
+       $fs_root$\\gamedata\\ ; installed content\r\n"
+    ),
+    [
+      entry("auto_load", "true"),
+      entry("entry_point", "$fs_root$\\gamedata\\")
+    ]
+  );
+  assert!(
+    ArchivePackHeaderEntry::split("auto_load = true\r\n").is_empty(),
+    "no section, no pairs"
+  );
+}
+
+#[test]
 fn a_run_asking_for_no_header_at_all_is_still_allowed() {
   // The documented escape hatch, and the one case where nothing is written for the engine to fail to read.
   ArchivePackConfig {

@@ -180,3 +180,21 @@ fn carries_the_header_the_engine_mounts_by() {
   // The reader takes the mount root out of that header, so reading it back proves the chunk landed.
   assert_eq!(project.archives[0].output_root_path, Path::new("gamedata\\"));
 }
+
+#[test]
+fn a_commented_header_mounts_where_the_uncommented_one_does() {
+  let (_, destination) = pack(
+    "a_commented_header_mounts_where_the_uncommented_one_does",
+    &[("configs\\system.ltx", CONFIG)],
+    |config| {
+      config.header = Some(String::from(
+        "[header] ; archive metadata\r\nauto_load = true\r\nentry_point = $fs_root$\\gamedata\\ ; installed content\r\n",
+      ));
+    },
+  );
+  let project: ArchiveProject = open(&destination);
+
+  assert_eq!(project.archives[0].output_root_path, Path::new("gamedata\\"));
+  assert_eq!(project.archives[0].mount_root, "gamedata");
+  assert_eq!(read(&project, "configs\\system.ltx"), CONFIG);
+}

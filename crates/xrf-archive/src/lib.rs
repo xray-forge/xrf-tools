@@ -12,7 +12,7 @@ pub use archive_read_policy::{ARCHIVE_READ_POLICY, ArchiveReadPolicy};
 pub use archive_read_result::ArchiveReadResult;
 pub use payload::{ArchiveOpenVolumes, ArchiveSharedPayload};
 pub use volume::{
-  ArchiveDescriptor, ArchiveFileDescriptor, CHUNK_ID_DATA, CHUNK_ID_FILE_DESCRIPTORS, CHUNK_ID_METADATA,
-  DESCRIPTOR_ROW_FIELDS_SIZE, DESCRIPTOR_ROW_SIZE_FIELD_SIZE,
+  ArchiveDescriptor, ArchiveFileDescriptor, ArchiveHeaderItem, ArchiveMetadata, CHUNK_ID_DATA,
+  CHUNK_ID_FILE_DESCRIPTORS, CHUNK_ID_METADATA, DESCRIPTOR_ROW_FIELDS_SIZE, DESCRIPTOR_ROW_SIZE_FIELD_SIZE,
 };
 pub use xrf_chunk::{CHUNK_HEADER_SIZE, CHUNK_ID_COMPRESSED_MASK, CHUNK_SIZE_FIELD_SIZE};
