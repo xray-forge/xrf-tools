@@ -3,7 +3,6 @@ use xrf_engine_target::XrayEngine;
 
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
-use crate::contract::render_rect::RenderRect;
 use crate::contract::render_reflection_mode::RenderReflectionMode;
 use crate::contract::render_reflection_probe::RenderReflectionProbe;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
@@ -15,8 +14,10 @@ use crate::pass::exposure_metering::ExposureMetering;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::pre_exposure::PreExposure;
+use crate::pass::present_frame::PresentFrame;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::reflection_trace::ReflectionTrace;
+use crate::pass::reflection_trace_frame::ReflectionTraceFrame;
 use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::sky_harmonics::SkyHarmonics;
 use crate::scene::level::feature::reflection_history::ReflectionHistory;
@@ -171,12 +172,12 @@ fn blends_reflections_in_only_where_traced() {
 
   let present = |ratio: Option<u32>| {
     PresentUniform::new(
-      RenderDebugView::Reflections,
-      (false, false, ratio),
-      false,
-      RenderRect::default(),
+      PresentFrame {
+        view: RenderDebugView::Reflections,
+        reflection_ratio: ratio,
+        ..PresentFrame::default()
+      },
       &RenderImageCorrections::default(),
-      (None, false),
     )
   };
 
@@ -218,7 +219,16 @@ fn holds_the_parameters_to_their_ranges() {
 fn leaves_dry_surfaces_untraced_unless_asked() {
   let settings: RenderReflectionSettings = enhanced();
   let floor = |settings: RenderReflectionSettings, is_wet: bool| {
-    ReflectionUniform::new(&settings, trace_of(settings), 0, (false, false), (true, is_wet)).trace_floor
+    ReflectionUniform::new(
+      &settings,
+      trace_of(settings),
+      ReflectionTraceFrame {
+        can_trace: true,
+        is_wet,
+        ..ReflectionTraceFrame::default()
+      },
+    )
+    .trace_floor
   };
 
   assert_eq!(floor(settings, false), ReflectionUniform::DRY_TRACE_FLOOR);
@@ -237,8 +247,17 @@ fn leaves_dry_surfaces_untraced_unless_asked() {
 
 #[test]
 fn writes_the_settings_the_trace_reads() {
-  let high: ReflectionUniform =
-    ReflectionUniform::new(&enhanced(), trace_of(enhanced()), 7, (true, true), (true, false));
+  let high: ReflectionUniform = ReflectionUniform::new(
+    &enhanced(),
+    trace_of(enhanced()),
+    ReflectionTraceFrame {
+      frame: 7,
+      has_history: true,
+      has_source: true,
+      can_trace: true,
+      is_wet: false,
+    },
+  );
 
   assert_eq!(high.crossings, RenderReflectionSettings::STEPS);
   assert_eq!(high.frame, 7);
@@ -260,9 +279,10 @@ fn writes_the_settings_the_trace_reads() {
   let ultra: ReflectionUniform = ReflectionUniform::new(
     &ultra_settings,
     trace_of(ultra_settings),
-    0,
-    (false, false),
-    (true, false),
+    ReflectionTraceFrame {
+      can_trace: true,
+      ..ReflectionTraceFrame::default()
+    },
   );
 
   assert_eq!(ultra.intensity, 3.0);
@@ -277,7 +297,7 @@ fn writes_the_settings_the_trace_reads() {
   };
 
   assert_eq!(
-    ReflectionUniform::new(&asked, trace_of(asked), 0, (false, false), (false, false)).is_traced,
+    ReflectionUniform::new(&asked, trace_of(asked), ReflectionTraceFrame::default()).is_traced,
     0.0,
     "a device without ray queries traces nothing, asked or not"
   );
@@ -293,7 +313,16 @@ fn traces_every_pixel_every_frame_taken_raw() {
     ..enhanced()
   };
   let raw: ReflectionTrace = trace_of(settings).with_raw(true);
-  let uniform: ReflectionUniform = ReflectionUniform::new(&settings, raw, 3, (false, true), (true, false));
+  let uniform: ReflectionUniform = ReflectionUniform::new(
+    &settings,
+    raw,
+    ReflectionTraceFrame {
+      frame: 3,
+      has_source: true,
+      can_trace: true,
+      ..ReflectionTraceFrame::default()
+    },
+  );
 
   assert_eq!(trace_of(settings).get_ratio(), 2);
   assert_eq!(raw.get_ratio(), 1);

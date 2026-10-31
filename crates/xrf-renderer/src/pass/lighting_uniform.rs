@@ -2,6 +2,7 @@ use glam::{Mat4, Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_renderer_core::ShaderStruct;
 
+use crate::context::gpu_tracing::GpuTracing;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_fog_settings::RenderFogSettings;
 use crate::contract::render_light_level::RenderLightLevel;
@@ -11,6 +12,7 @@ use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::{anchored_light, authored_light};
 use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::display_mode::DisplayMode;
+use crate::pass::light_encoding::LightEncoding;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::picture_shares::PictureShares;
 use crate::pass::reflection_trace::ReflectionTrace;
@@ -170,15 +172,17 @@ impl LightingUniform {
       sky_irradiance: lighting.sky_irradiance.extend(flag(frame.is_irradiance_up)),
       sky_harmonics: frame
         .sky_harmonics
-        .at_level(options.features.light_level, (scales.hemi, ambient)),
+        .at_level(options.features.light_level, scales.hemi, ambient),
       sky_reflected: match level {
-        Some(RenderLightLevel::Anchored) => match frame
-          .sky_harmonics
-          .get_level_scale(RenderLightLevel::Anchored, (scales.hemi, ambient))
-        {
-          Some(scale) => scale.extend(options.features.fog.colour.get_sky_share()),
-          None => Vec4::new(1.0, 1.0, 1.0, 0.0),
-        },
+        Some(RenderLightLevel::Anchored) => {
+          match frame
+            .sky_harmonics
+            .get_level_scale(RenderLightLevel::Anchored, scales.hemi, ambient)
+          {
+            Some(scale) => scale.extend(options.features.fog.colour.get_sky_share()),
+            None => Vec4::new(1.0, 1.0, 1.0, 0.0),
+          }
+        }
         Some(RenderLightLevel::Authored | RenderLightLevel::Physical) | None => Vec4::new(1.0, 1.0, 1.0, 0.0),
       },
       fog_color: fog.map_or(Vec3::ZERO, |fog| fog.color).extend(flag(fog.is_some())),
@@ -244,7 +248,7 @@ impl LightingUniform {
       ),
       indirect: Vec4::new(
         // Whether the search gathers light does not hang on whether its occlusion is traced.
-        flag(BitmaskSearch::new(options, false).is_some_and(|search| search.is_lit)),
+        flag(BitmaskSearch::new(options, GpuTracing::Unavailable).is_some_and(|search| search.is_lit)),
         0.0,
         0.0,
         0.0,
@@ -286,20 +290,18 @@ impl LightingUniform {
     }
   }
 
-  /// The scale a light in the engine's units is written at, its luminance at the pre-exposure, as `light_scale` in
-  /// `common/lighting` reads it.
-  pub fn get_light_scale(&self) -> f32 {
-    self.pre_exposure.z * self.pre_exposure.x
+  /// How the light is written, as `common/lighting` reads it: a light in the engine's units scaled to its luminance at
+  /// the pre-exposure (`light_scale`), and whether it is the authored levels' summed light (`is_light_summed`).
+  pub fn get_light_encoding(&self) -> LightEncoding {
+    LightEncoding {
+      scale: self.pre_exposure.z * self.pre_exposure.x,
+      is_summed: self.summed_light.x > 0.0,
+    }
   }
 
   /// Whether the light stands at the anchored levels, as `is_light_anchored` in `common/lighting` reads it: the sun and
   /// the lamps shaded by the one BRDF, their specular coloured in a target of its own.
   pub fn is_light_anchored(&self) -> bool {
     self.environment.w > 0.5
-  }
-
-  /// Whether the light is the authored levels' summed light, as `is_light_summed` in `common/lighting` reads it.
-  pub fn is_light_summed(&self) -> bool {
-    self.summed_light.x > 0.0
   }
 }

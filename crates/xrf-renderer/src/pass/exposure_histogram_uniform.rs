@@ -4,6 +4,7 @@ use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
 use crate::lighting::srgb::SRGB_DISPLAY_POWER;
+use crate::pass::exposure_step::ExposureStep;
 use crate::pass::exposure_uniform::ExposureUniform;
 
 /// How the physical light's exposure meters and adapts, as `shaders/frame/exposure_histogram.wgsl` reads it: the log2
@@ -118,16 +119,11 @@ impl ExposureHistogramUniform {
     }
   }
 
-  /// The metering for a frame `delta` seconds after the last at the light's `level`, straight to its target where
-  /// `is_snapped`; at the authored and anchored levels the engine's adaptation, moving `engine_blend` of the way.
-  pub fn new(
-    settings: &RenderExposureSettings,
-    level: RenderLightLevel,
-    (delta, engine_blend): (f32, f32),
-    is_snapped: bool,
-  ) -> Self {
+  /// The metering for a frame at the light's `level`, moved one `step` on: straight to its target where it snaps; at
+  /// the authored and anchored levels the engine's adaptation, moving its blend of the way.
+  pub fn new(settings: &RenderExposureSettings, level: RenderLightLevel, step: ExposureStep) -> Self {
     let aim: f32 = Self::MIDDLE_GREY.log2() + settings.compensation;
-    let engine: ExposureUniform = ExposureUniform::new(settings, engine_blend);
+    let engine: ExposureUniform = ExposureUniform::new(settings, step.engine_blend);
 
     Self {
       least_log: Self::LEAST_LOG,
@@ -139,14 +135,14 @@ impl ExposureHistogramUniform {
         RenderLightLevel::Authored | RenderLightLevel::Anchored => Self::LEAST_LOG,
         RenderLightLevel::Physical => aim - Self::PHYSICAL_DARKEST_STOPS,
       },
-      delta,
+      delta: step.delta,
       brightening: Self::BRIGHTENING,
       darkening: Self::DARKENING,
       low_share: Self::LOW_SHARE,
       high_share: Self::HIGH_SHARE,
       least_scale_log: Self::LEAST_SCALE_LOG,
       most_scale_log: Self::MOST_SCALE_LOG,
-      snap: f32::from(u8::from(is_snapped)),
+      snap: f32::from(u8::from(step.is_snapped)),
       is_engine_metered: f32::from(u8::from(level != RenderLightLevel::Physical)),
       engine_target: engine.target_gray,
       engine_weight: engine.weight,

@@ -11,8 +11,7 @@ use crate::pass::glass_copy_permutation::GlassCopyPermutation;
 use crate::pass::glass_parameters::GlassParameters;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::sky_parameters::SkyParameters;
-use crate::pass::static_draw_parameters::StaticDrawParameters;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::static_layout_bindings::StaticLayoutBindings;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
@@ -130,12 +129,13 @@ impl GlassPass {
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
-    (view, layouts, textures): (
-      &ViewBinding,
-      &[StaticDrawParameters; StaticLayout::COUNT],
-      &wgpu::BindGroup,
-    ),
-    (glass, sky): (&GlassParameters<'_>, &SkyParameters<'_>),
+    StaticLayoutBindings {
+      view,
+      layouts,
+      textures,
+    }: StaticLayoutBindings<'_>,
+    glass: &GlassParameters<'_>,
+    sky: &SkyParameters<'_>,
     args: &[&wgpu::Buffer],
   ) {
     context.bind(glass);

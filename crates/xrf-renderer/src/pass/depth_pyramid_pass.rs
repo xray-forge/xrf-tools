@@ -7,6 +7,7 @@ use crate::pass::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
+use crate::pass::pyramid_reduction::PyramidReduction;
 use crate::scene::level::cover_pyramid::CoverPyramid;
 
 /// Reduces a viewport's depth into a pyramid, a dispatch a level: to the farthest under each texel, or the nearest; and
@@ -54,15 +55,18 @@ impl DepthPyramidPass {
     }
   }
 
-  /// Reduces the depth into the first level, then each level into the next, a dispatch each: to the nearest where
-  /// `is_nearest`, the farthest otherwise.
+  /// Reduces the depth into the first level, then each level into the next, a dispatch each, keeping the depth
+  /// `reduction` names.
   pub fn record(
     &self,
     context: &mut ComputeContext<'_>,
     pyramid: &DepthPyramid,
-    (first, levels): (&PyramidDepthParameters, &[PyramidLevelParameters]),
-    is_nearest: bool,
+    first: &PyramidDepthParameters,
+    levels: &[PyramidLevelParameters],
+    reduction: PyramidReduction,
   ) {
+    let is_nearest: bool = reduction == PyramidReduction::Nearest;
+
     for level in 0..pyramid.levels as usize {
       let (width, height): (u32, u32) = pyramid.get_level_size(level as u32);
 
@@ -83,7 +87,8 @@ impl DepthPyramidPass {
     &self,
     context: &mut ComputeContext<'_>,
     pyramid: &CoverPyramid,
-    (first, levels): (&CoverPyramidDepthParameters, &[CoverPyramidLevelParameters]),
+    first: &CoverPyramidDepthParameters,
+    levels: &[CoverPyramidLevelParameters],
   ) {
     for level in 0..pyramid.levels as usize {
       let size: u32 = pyramid.get_level_size(level as u32);

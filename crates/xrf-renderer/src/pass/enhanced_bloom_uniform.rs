@@ -50,16 +50,18 @@ impl EnhancedBloomUniform {
     self
   }
 
-  /// The same, blurring along `x` or `y` by a target's texel.
-  pub fn along(self, is_across: bool) -> Self {
-    let (width, height) = (self.size.x, self.size.y);
-
+  /// The same, blurring along `x` by a target's texel.
+  pub fn across(self) -> Self {
     Self {
-      spread: if is_across {
-        Vec4::new(1.0 / width, 0.0, self.spread.z, 0.0)
-      } else {
-        Vec4::new(0.0, 1.0 / height, self.spread.z, 0.0)
-      },
+      spread: Vec4::new(1.0 / self.size.x, 0.0, self.spread.z, 0.0),
+      ..self
+    }
+  }
+
+  /// The same, blurring along `y` by a target's texel.
+  pub fn down(self) -> Self {
+    Self {
+      spread: Vec4::new(0.0, 1.0 / self.size.y, self.spread.z, 0.0),
       ..self
     }
   }

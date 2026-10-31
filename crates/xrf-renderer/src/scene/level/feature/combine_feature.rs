@@ -64,7 +64,7 @@ impl CombineFeature {
           target,
           wgpu::LoadOp::Clear(wgpu::Color::BLACK),
         ))
-        .record(move |context| passes.sky_behind.record(context, view, (&parameters, &sky)));
+        .record(move |context| passes.sky_behind.record(context, view, &parameters, &sky));
 
       target
     } else {

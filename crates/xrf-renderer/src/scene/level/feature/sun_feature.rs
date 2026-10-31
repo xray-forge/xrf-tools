@@ -2,6 +2,7 @@ use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, Gr
 
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::sun_draw::SunDraw;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_pass::SunPass;
 use crate::pass::view_binding::ViewBinding;
@@ -71,11 +72,13 @@ impl SunFeature {
       ));
     }
 
-    pass.record(move |context| {
-      passes
-        .sun
-        .record(context, view, &sun, (is_traced, is_split, filter_reach))
-    });
+    let draw: SunDraw = SunDraw {
+      is_traced,
+      is_split,
+      filter_reach,
+    };
+
+    pass.record(move |context| passes.sun.record(context, view, &sun, draw));
 
     seen
   }

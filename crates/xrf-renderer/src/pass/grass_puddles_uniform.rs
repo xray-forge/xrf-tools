@@ -14,12 +14,21 @@ pub struct GrassPuddlesUniform {
 }
 
 impl GrassPuddlesUniform {
-  /// The level surface's `window` as `LevelSurface::get_window` gives it, with puddles drawn or not.
-  pub fn new((surface, shape): (Vec4, Vec4), is_drawn: bool) -> Self {
+  /// The level surface's window as `LevelSurface::get_window` gives it, its `surface` and its `shape`, with no puddles
+  /// drawn.
+  pub fn new(surface: Vec4, shape: Vec4) -> Self {
     Self {
       surface,
       shape,
-      state: Vec4::new(f32::from(u8::from(is_drawn)), 0.0, 0.0, 0.0),
+      state: Vec4::ZERO,
+    }
+  }
+
+  /// The same with the wet surfaces' puddles drawn, which the grass plants around.
+  pub fn with_puddles(self) -> Self {
+    Self {
+      state: Vec4::new(1.0, 0.0, 0.0, 0.0),
+      ..self
     }
   }
 }

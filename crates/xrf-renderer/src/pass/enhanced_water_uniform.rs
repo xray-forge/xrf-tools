@@ -1,8 +1,7 @@
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_enhanced_water_settings::RenderEnhancedWaterSettings;
-use crate::lighting::render_wind::RenderWind;
-use crate::scene::level::water_flow::WaterFlow;
+use crate::pass::enhanced_water_frame::EnhancedWaterFrame;
 
 /// What the enhanced water's programs read as their `EnhancedWater`: its strengths, the weather's wind and rain, how
 /// far its maps have scrolled, whether its reflection drew, and how far its reflection's misses are traced.
@@ -59,16 +58,17 @@ pub struct EnhancedWaterUniform {
 }
 
 impl EnhancedWaterUniform {
-  /// `reflection` says whether its reflection draws this frame, and whether its history holds a frame; `trace` how far
-  /// its misses are traced, none for not, how many frames a pixel waits between its rays, the frame's count, how
-  /// many times its turns a still, dim reflection waits, and the steps the reflection marches.
-  pub fn new(
-    settings: &RenderEnhancedWaterSettings,
-    (wind, rain): (RenderWind, f32),
-    flow: WaterFlow,
-    (reflected, history): (bool, bool),
-    (trace_distance, trace_turns, trace_frame, dim_turns, march_steps): (f32, u32, u32, u32, u32),
-  ) -> Self {
+  /// The settings over one `frame` of the weather, the water's flow and its reflection.
+  pub fn new(settings: &RenderEnhancedWaterSettings, frame: EnhancedWaterFrame) -> Self {
+    let EnhancedWaterFrame {
+      wind,
+      rain,
+      flow,
+      is_reflected,
+      has_history,
+      trace,
+    } = frame;
+
     Self {
       refraction: settings.refraction,
       turbidity: settings.turbidity,
@@ -76,8 +76,8 @@ impl EnhancedWaterUniform {
       reflectivity: settings.reflectivity,
       reflection_blur: settings.reflection_blur,
       blur_noise: settings.blur_noise,
-      reflected: reflected as u32 as f32,
-      history: history as u32 as f32,
+      reflected: is_reflected as u32 as f32,
+      history: has_history as u32 as f32,
       wind_velocity: wind.velocity,
       specular: settings.specular,
       caustics: settings.caustics,
@@ -90,11 +90,11 @@ impl EnhancedWaterUniform {
       gusts_x: flow.gusts[0],
       gusts_y: flow.gusts[1],
       variation: settings.variation,
-      trace_distance,
-      trace_turns,
-      trace_frame,
-      dim_turns: dim_turns.max(1),
-      march_steps: march_steps.max(1),
+      trace_distance: trace.distance,
+      trace_turns: trace.turns,
+      trace_frame: trace.frame,
+      dim_turns: trace.dim_turns.max(1),
+      march_steps: trace.march_steps.max(1),
       vibrance: settings.vibrance,
       ..Default::default()
     }

@@ -22,6 +22,7 @@ use crate::lighting::light_shadow_size::{
   to_light_shadow_size, to_light_shadow_tile_size,
 };
 use crate::pass::camera_uniform::CameraUniform;
+use crate::pass::indirect_args::IndirectArgs;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::shadow_casters::ShadowCasters;
 use crate::pass::shadow_cull::ShadowCull;
@@ -30,6 +31,7 @@ use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
+use crate::pass::static_layout_bindings::StaticLayoutBindings;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
 use crate::scene::level::light_shadow_ask::LightShadowAsk;
@@ -650,9 +652,13 @@ impl LevelLightShadows {
           for (slot, tile, layouts) in &statics {
             passes.shadow.record_tile(
               context,
-              (tile.get_region(), None),
-              (&self.views[*slot], layouts, textures),
-              (args, *slot as u64 * self.args_stride),
+              tile.get_region(),
+              None,
+              StaticLayoutBindings::new(&self.views[*slot], layouts, textures),
+              IndirectArgs {
+                buffer: args,
+                offset: *slot as u64 * self.args_stride,
+              },
               ShadowCasters::Fixed,
             );
           }
@@ -690,9 +696,13 @@ impl LevelLightShadows {
 
         passes.shadow.record_tile(
           context,
-          (tile.get_region(), restored),
-          (&self.views[*slot], layouts, textures),
-          (args, *slot as u64 * self.args_stride),
+          tile.get_region(),
+          restored,
+          StaticLayoutBindings::new(&self.views[*slot], layouts, textures),
+          IndirectArgs {
+            buffer: args,
+            offset: *slot as u64 * self.args_stride,
+          },
           casters,
         );
 

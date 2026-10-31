@@ -71,7 +71,7 @@ impl SunTraceFeature {
       .parameters(&parameters)
       .parameters(&trace)
       .color(GraphColorAttachment::new(seen, wgpu::LoadOp::Clear(wgpu::Color::WHITE)))
-      .record(move |context| passes.sun_trace.record(context, view, (&parameters, &trace, textures)));
+      .record(move |context| passes.sun_trace.record(context, view, &parameters, &trace, textures));
 
     Some(seen)
   }

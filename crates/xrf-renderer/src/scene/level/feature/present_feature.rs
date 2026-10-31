@@ -9,6 +9,7 @@ use crate::pass::display_mode::DisplayMode;
 use crate::pass::distort_parameters::DistortParameters;
 use crate::pass::distort_uniform::DistortUniform;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::present_frame::PresentFrame;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::present_inputs::PresentInputs;
@@ -47,12 +48,17 @@ impl PresentFeature {
     });
 
     let present: PresentUniform = PresentUniform::new(
-      options.mode.debug_view,
-      (inputs.is_occluded, inputs.is_indirect, inputs.reflection_ratio),
-      is_upscaled,
-      output,
+      PresentFrame {
+        view: options.mode.debug_view,
+        output,
+        is_upscaled,
+        is_occluded: inputs.is_occluded,
+        is_indirect: inputs.is_indirect,
+        reflection_ratio: inputs.reflection_ratio,
+        selection: inputs.selection_color,
+        is_bloomed: inputs.is_engine_bloomed,
+      },
       &options.features.corrections,
-      (inputs.selection_color, inputs.is_engine_bloomed),
     );
     let present: PresentUniform = if inputs.is_enhanced_bloomed {
       present.with_enhanced_bloom()
@@ -62,7 +68,7 @@ impl PresentFeature {
     .with_display(DisplayMode::of(options), &options.features.grading, &inputs.metering)
     .with_marks(inputs.marks)
     .with_grass_reach(inputs.grass_reach)
-    .with_reflection_light(inputs.light_scale, inputs.is_light_summed)
+    .with_reflection_light(inputs.light)
     .with_grain(&options.features.camera, inputs.grain_frame);
 
     self.uniform = match self.debanding {

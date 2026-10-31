@@ -10,6 +10,7 @@ use crate::pass::enhanced_rain_maps::EnhancedRainMaps;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::rain_blur_parameters::RainBlurParameters;
+use crate::pass::rain_counts::RainCounts;
 use crate::pass::rain_look_parameters::RainLookParameters;
 use crate::pass::rain_parameters::RainParameters;
 use crate::pass::rain_rings_reduce_parameters::RainRingsReduceParameters;
@@ -83,7 +84,7 @@ impl RainPass {
       .create_view(&Default::default());
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, view_layout, (&layout, &look_layout))?,
+      pipelines: Self::create_pipelines(source, view_layout, &layout, &look_layout)?,
       blur: Self::create_blur(source, &blur_layout)?,
       reduce: Self::create_reduce(source, &reduce_layout)?,
       maps: EnhancedRainMaps::new(device, queue, bundle, &nothing),
@@ -121,7 +122,7 @@ impl RainPass {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(source, &self.view_layout, (&self.layout, &self.look_layout)).and_then(|pipelines| {
+      match Self::create_pipelines(source, &self.view_layout, &self.layout, &self.look_layout).and_then(|pipelines| {
         Ok((
           pipelines,
           Self::create_blur(source, &self.blur_layout)?,
@@ -162,15 +163,14 @@ impl RainPass {
   /// their blur, which it answers.
   pub fn add_blur<'a>(&'a self, graph: &mut FrameGraph<'a>, image: GraphTexture, size: (u32, u32)) -> GraphTexture {
     let small: (u32, u32) = (size.0.div_ceil(Self::BLUR_SCALE), size.1.div_ceil(Self::BLUR_SCALE));
-    let blocks: GraphTexture =
-      self.add_fullscreen(&mut *graph, ("rain refraction blocks", &self.blur[0]), image, small);
+    let blocks: GraphTexture = self.add_fullscreen(&mut *graph, "rain refraction blocks", &self.blur[0], image, small);
 
-    self.add_fullscreen(&mut *graph, ("rain refraction", &self.blur[1]), blocks, small)
+    self.add_fullscreen(&mut *graph, "rain refraction", &self.blur[1], blocks, small)
   }
 
   /// Declares `image`, of `size`, copied whole into a layer of the enhanced streaks' own, which it answers.
   pub fn add_layer<'a>(&'a self, graph: &mut FrameGraph<'a>, image: GraphTexture, size: (u32, u32)) -> GraphTexture {
-    self.add_fullscreen(&mut *graph, ("rain layer", &self.blur[2]), image, size)
+    self.add_fullscreen(&mut *graph, "rain layer", &self.blur[2], image, size)
   }
 
   /// Declares the enhanced drops' rings drawn into the rain's rings' first level, `levels` each of them alone, then
@@ -180,7 +180,9 @@ impl RainPass {
     graph: &mut FrameGraph<'a>,
     view: &'a ViewBinding,
     parameters: RainParameters<'a>,
-    (levels, size, streaks): ([GraphTexture; RainRings::LEVELS as usize], u32, u32),
+    levels: [GraphTexture; RainRings::LEVELS as usize],
+    size: u32,
+    streaks: u32,
   ) {
     graph
       .add_raster_pass("rain rings")
@@ -224,7 +226,8 @@ impl RainPass {
   fn add_fullscreen<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
-    (name, pipeline): (&'static str, &'a wgpu::RenderPipeline),
+    name: &'static str,
+    pipeline: &'a wgpu::RenderPipeline,
     source: GraphTexture,
     (width, height): (u32, u32),
   ) -> GraphTexture {
@@ -256,9 +259,15 @@ impl RainPass {
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    (parameters, look): (&RainParameters<'_>, Option<&RainLookParameters<'_>>),
-    (streaks, near, splash_indices): (u32, u32, u32),
+    parameters: &RainParameters<'_>,
+    look: Option<&RainLookParameters<'_>>,
+    counts: RainCounts,
   ) {
+    let RainCounts {
+      streaks,
+      near,
+      splash_indices,
+    } = counts;
     context.bind(parameters);
 
     let (streak, splash): (Option<&wgpu::RenderPipeline>, &wgpu::RenderPipeline) = match look {
@@ -289,7 +298,8 @@ impl RainPass {
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    (parameters, look): (&RainParameters<'_>, &RainLookParameters<'_>),
+    parameters: &RainParameters<'_>,
+    look: &RainLookParameters<'_>,
     streaks: u32,
   ) {
     context.bind(parameters);
@@ -305,7 +315,8 @@ impl RainPass {
   fn create_pipelines(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
-    (layout, look_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
+    layout: &wgpu::BindGroupLayout,
+    look_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<[wgpu::RenderPipeline; 5]> {
     // `blend(true, srcalpha, invsrcalpha)`, the alpha kept under it.
     let blended = |format: wgpu::TextureFormat| wgpu::ColorTargetState {

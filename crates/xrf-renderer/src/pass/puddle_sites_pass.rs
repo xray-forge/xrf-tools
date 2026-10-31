@@ -52,8 +52,10 @@ impl PuddleSitesPass {
   pub fn record(
     &self,
     context: &mut ComputeContext<'_>,
-    (size, cells): (u32, u32),
-    (lowest, sites): (&LowestHeightsParameters, &PuddleSitesParameters),
+    size: u32,
+    cells: u32,
+    lowest: &LowestHeightsParameters,
+    sites: &PuddleSitesParameters,
   ) {
     context.bind(lowest);
     context.get_pass().set_pipeline(&self.pipelines[0]);

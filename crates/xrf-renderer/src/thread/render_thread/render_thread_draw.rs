@@ -157,14 +157,16 @@ impl RenderThread {
         && gpu
           .backdrop
           .prepare(
-            (&gpu.context.device, &mut *encoder),
+            &gpu.context.device,
+            &mut *encoder,
             PipelineSource {
               cache: &gpu.pipelines,
               device: &gpu.context.device,
               shaders: &self.shaders,
             },
             format,
-            (window.get_backdrop_slot(), &backdrop),
+            window.get_backdrop_slot(),
+            &backdrop,
           )
           .inspect_err(|error| {
             self

@@ -15,10 +15,14 @@ use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
+use crate::pass::pyramid_reduction::PyramidReduction;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_uniform::StaticCullUniform;
+use crate::pass::static_draw_bindings::StaticDrawBindings;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
+use crate::pass::static_gbuffer_draw::StaticGbufferDraw;
+use crate::pass::static_layout_bindings::StaticLayoutBindings;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::wind_uniform::WindUniform;
@@ -243,10 +247,12 @@ impl StaticsFeature {
       |builder, args| builder.buffer(*args, GraphBufferAccess::Indirect),
     );
 
-    draws.declare(builder, false).record(move |context| {
+    draws.declare(builder).record(move |context| {
       let args: Vec<&wgpu::Buffer> = draw_args.iter().map(|args| context.get_buffer(*args)).collect();
 
-      passes.gbuffer.record_overdraw(context, (view, &draws, textures), &args);
+      passes
+        .gbuffer
+        .record_overdraw(context, StaticDrawBindings::new(view, &draws, textures), &args);
     });
   }
 
@@ -289,14 +295,25 @@ impl StaticsFeature {
         .depth(GraphDepthAttachment::new(depth, depth_load))
         .buffer(draw_args, GraphBufferAccess::Indirect);
 
-      draws.declare(builder, is_first).record(move |context| {
+      // The first pass draws the impostors too.
+      let builder = if is_first {
+        draws.declare_impostored(builder)
+      } else {
+        draws.declare(builder)
+      };
+
+      builder.record(move |context| {
         let draw_args: &wgpu::Buffer = context.get_buffer(draw_args);
 
         passes.gbuffer.record(
           context,
-          (view, &draws, textures),
+          StaticDrawBindings::new(view, &draws, textures),
           draw_args,
-          (is_first, is_inspected, is_prepassed),
+          StaticGbufferDraw {
+            is_first,
+            is_inspected,
+            is_prepassed,
+          },
         );
       });
     };
@@ -336,7 +353,11 @@ impl StaticsFeature {
         graph.add_compute_pass("depth pyramid").parameters(&first),
         |builder, level| builder.parameters(level),
       )
-      .record(move |context| passes.pyramid.record(context, pyramid, (&first, &levels), false));
+      .record(move |context| {
+        passes
+          .pyramid
+          .record(context, pyramid, &first, &levels, PyramidReduction::Farthest)
+      });
     graph
       .add_encoder_pass("late cull dispatch")
       .buffer(late, GraphBufferAccess::CopySource)
@@ -405,7 +426,7 @@ impl StaticsFeature {
 
       passes
         .composited
-        .record_wallmarks(context, (view, &layouts, textures), &args);
+        .record_wallmarks(context, StaticLayoutBindings::new(view, &layouts, textures), &args);
     });
   }
 

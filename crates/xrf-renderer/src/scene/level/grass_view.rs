@@ -320,9 +320,12 @@ impl GrassView {
       .record(move |context| {
         pass.record_cards(
           context,
-          (&planting.level, &planting.build, &parameters),
+          &planting.level,
+          &planting.build,
+          &parameters,
           // Only the structure built over them reads the unused triangles, marked as none; the cascades draw the count.
-          (if self.is_card_traced { cards.capacity } else { 0 }, tufts),
+          if self.is_card_traced { cards.capacity } else { 0 },
+          tufts,
         );
       });
 
@@ -499,7 +502,7 @@ impl GrassView {
       .parameters(&planting.level)
       .parameters(&planting.build)
       .record(move |context| {
-        pass.record_plant(context, (&planting.level, &planting.build), dispatch);
+        pass.record_plant(context, &planting.level, &planting.build, dispatch);
       });
 
     Some(planting)
@@ -528,7 +531,9 @@ impl GrassView {
       .record(move |context| {
         pass.record_cull(
           context,
-          (&planting.level, &planting.build, &planting.sort),
+          &planting.level,
+          &planting.build,
+          &planting.sort,
           &occlusion,
           dispatch,
         );
@@ -583,7 +588,8 @@ impl GrassView {
         pass.record_draw(
           context,
           view,
-          (&planting.draw, textures),
+          &planting.draw,
+          textures,
           &GrassDraws {
             positions: &level.positions,
             uvs: &level.uvs,

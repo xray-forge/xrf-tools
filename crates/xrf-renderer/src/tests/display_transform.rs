@@ -241,21 +241,21 @@ fn the_grading_pivots_on_middle_grey_and_keeps_luminance() {
 fn the_lift_never_shows_the_bright_end_brighter_than_the_engines_curve() {
   let (night, moonlit): (f32, f32) = (2e-5, 2e-3);
   let held: f32 = DisplayMode::Agx.get_anchor_stops(night, 1.0);
-  let lift: f32 = DisplayMode::Agx.get_lift((night, Some(moonlit)), 1.0);
+  let lift: f32 = DisplayMode::Agx.get_lift(night, Some(moonlit), 1.0);
   let hue: Vec3 = DisplayMode::ANCHOR_HUE;
   let bright: Vec3 = hue * (moonlit / luminance(hue));
   let shown = |colour: Vec3| srgb_encoded(luminance(colour));
 
   assert!(lift < held, "{lift} against the held {held}");
   assert!((shown(agx(bright * lift.exp2())) - shown(engine_display(bright))).abs() < 0.002);
-  assert_eq!(DisplayMode::Agx.get_lift((night, None), 1.0), held);
-  assert_eq!(DisplayMode::EngineEncoded.get_lift((night, Some(moonlit)), 1.0), 0.0);
+  assert_eq!(DisplayMode::Agx.get_lift(night, None, 1.0), held);
+  assert_eq!(DisplayMode::EngineEncoded.get_lift(night, Some(moonlit), 1.0), 0.0);
 
   // Over the transform's range the key rules, whatever its bright end.
   let dusk: f32 = 5e-3;
 
   assert_eq!(
-    DisplayMode::Agx.get_lift((dusk, Some(dusk * 256.0)), 1.0),
+    DisplayMode::Agx.get_lift(dusk, Some(dusk * 256.0), 1.0),
     DisplayMode::Agx.get_anchor_stops(dusk, 1.0)
   );
 }

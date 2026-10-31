@@ -14,14 +14,17 @@ use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_binning_parameters::LightBinningParameters;
+use crate::pass::light_contact::LightContact;
 use crate::pass::light_contact_parameters::LightContactParameters;
 use crate::pass::light_record::LightRecord;
 use crate::pass::light_shadowing_parameters::LightShadowingParameters;
+use crate::pass::light_trace_bindings::LightTraceBindings;
 use crate::pass::light_trace_uniform::LightTraceUniform;
 use crate::pass::light_tracing_parameters::LightTracingParameters;
 use crate::pass::light_visibility_parameters::LightVisibilityParameters;
 use crate::pass::light_volume_record::LightVolumeRecord;
 use crate::pass::light_volumes_uniform::LightVolumesUniform;
+use crate::pass::lights_draw::LightsDraw;
 use crate::pass::lights_parameters::LightsParameters;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::lights_uniform::LightsUniform;
@@ -338,7 +341,7 @@ impl LightsFeature {
         .record(move |context| {
           passes
             .lights
-            .record_contact(context, view, (&parameters, &marching), size)
+            .record_contact(context, view, &parameters, &marching, size)
         });
 
       (Some(marched), threshold)
@@ -364,9 +367,17 @@ impl LightsFeature {
         .parameters(&tracing)
         .parameters(&trace)
         .record(move |context| {
-          passes
-            .lights
-            .record_tracing(context, view, (&parameters, &tracing), (&trace, textures), targets.size)
+          passes.lights.record_tracing(
+            context,
+            view,
+            &parameters,
+            LightTraceBindings {
+              tracing: &tracing,
+              trace: &trace,
+              textures,
+            },
+            targets.size,
+          )
         });
 
       visibility
@@ -390,9 +401,14 @@ impl LightsFeature {
         .parameters(&parameters)
         .parameters(&shadowing)
         .record(move |context| {
-          passes
-            .lights
-            .record_visibility(context, view, (&parameters, &shadowing), (targets.size, is_contact))
+          passes.lights.record_visibility(
+            context,
+            view,
+            &parameters,
+            &shadowing,
+            targets.size,
+            LightContact::of(is_contact),
+          )
         });
 
       visibility
@@ -419,8 +435,13 @@ impl LightsFeature {
       passes.lights.record_draw(
         context,
         view,
-        (&parameters, &visibility),
-        (textures, is_contact, is_split),
+        &parameters,
+        &visibility,
+        textures,
+        LightsDraw {
+          contact: LightContact::of(is_contact),
+          is_split,
+        },
       )
     });
   }

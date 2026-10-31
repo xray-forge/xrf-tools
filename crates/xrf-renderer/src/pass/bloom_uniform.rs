@@ -2,6 +2,7 @@ use glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::frame::view_targets::ViewTargets;
+use crate::pass::bloom_filter::BloomFilter;
 
 /// Taps each way of `bloom_filter.ps`, beside its centre.
 const TAPS: usize = 7;
@@ -29,17 +30,17 @@ impl BloomUniform {
 
   /// `bloom_filter.ps` across the target, its radius `kernel_g` texels: the same radius down, by the frame's height
   /// over its width, as the engine blurs it.
-  pub fn filter(is_across: bool, (radius, strength): (f32, f32), aspect: f32, is_one_sided: bool) -> Self {
+  pub fn filter(filter: BloomFilter) -> Self {
     let (width, height) = ViewTargets::BLOOM_SIZE;
-    let (along, radius): ([f32; 2], f32) = if is_across {
-      ([1.0 / width as f32, 0.0], radius)
+    let (along, radius): ([f32; 2], f32) = if filter.is_across {
+      ([1.0 / width as f32, 0.0], filter.radius)
     } else {
-      ([0.0, 1.0 / height as f32], radius * aspect)
+      ([0.0, 1.0 / height as f32], filter.radius * filter.aspect)
     };
 
     Self {
-      params: Vec4::new(along[0], along[1], f32::from(u8::from(is_one_sided)), 0.0),
-      weights: Self::get_wave(radius, strength),
+      params: Vec4::new(along[0], along[1], f32::from(u8::from(filter.is_one_sided)), 0.0),
+      weights: Self::get_wave(radius, filter.strength),
     }
   }
 

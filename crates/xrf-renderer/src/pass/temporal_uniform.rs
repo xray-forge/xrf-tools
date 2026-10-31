@@ -1,5 +1,7 @@
-use glam::{Mat4, Vec2, Vec4};
+use glam::{Mat4, Vec4};
 use xrf_renderer_core::ShaderStruct;
+
+use crate::pass::temporal_frame::TemporalFrame;
 
 /// What the temporal resolve reads besides the frame's targets, as WGSL's `Temporal`.
 #[repr(C)]
@@ -18,23 +20,18 @@ impl TemporalUniform {
   /// The least share of this frame a pixel takes: its history is roughly this many frames' average, inverted.
   pub const CURRENT_WEIGHT: f32 = 0.1;
 
-  pub fn new(
-    (current, previous, previous_view): (Mat4, Mat4, Mat4),
-    jitter: Vec2,
-    is_history_valid: bool,
-    history_scale: f32,
-  ) -> Self {
+  pub fn new(frame: TemporalFrame) -> Self {
     Self {
-      current,
-      previous,
-      previous_view,
+      current: frame.current,
+      previous: frame.previous,
+      previous_view: frame.previous_view,
       params: Vec4::new(
-        jitter.x,
-        jitter.y,
-        f32::from(u8::from(is_history_valid)),
+        frame.jitter.x,
+        frame.jitter.y,
+        f32::from(u8::from(frame.is_history_valid)),
         Self::CURRENT_WEIGHT,
       ),
-      exposure: Vec4::new(history_scale, 0.0, 0.0, 0.0),
+      exposure: Vec4::new(frame.history_scale, 0.0, 0.0, 0.0),
     }
   }
 }

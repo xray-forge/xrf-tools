@@ -10,16 +10,21 @@ use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::frame_texture::FrameTexture;
 use crate::frame::stats_readback::StatsReadback;
 use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::pass::budgeted_trace_outputs::BudgetedTraceOutputs;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
+use crate::pass::pyramid_reduction::PyramidReduction;
 use crate::pass::reflection_parameters::ReflectionParameters;
 use crate::pass::reflection_pass::ReflectionPass;
 use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
 use crate::pass::reflection_stage::ReflectionStage;
 use crate::pass::reflection_trace::ReflectionTrace;
+use crate::pass::reflection_trace_frame::ReflectionTraceFrame;
 use crate::pass::reflection_trace_out_parameters::ReflectionTraceOutParameters;
 use crate::pass::reflection_uniform::ReflectionUniform;
+use crate::pass::scene_trace_bindings::SceneTraceBindings;
+use crate::pass::scene_trace_request::SceneTraceRequest;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::trace_request_handles::TraceRequestHandles;
@@ -102,9 +107,13 @@ impl ReflectionFeature {
     self.uniform = ReflectionUniform::new(
       &self.settings,
       trace,
-      frame,
-      (has_history, has_source),
-      (can_trace, is_wet),
+      ReflectionTraceFrame {
+        frame,
+        has_history,
+        has_source,
+        can_trace,
+        is_wet,
+      },
     );
   }
 
@@ -153,7 +162,11 @@ impl ReflectionFeature {
         graph.add_compute_pass(ReflectionTrace::PYRAMID_PASS).parameters(&first),
         |builder, level| builder.parameters(level),
       )
-      .record(move |context| passes.pyramid.record(context, pyramid, (&first, &levels), true));
+      .record(move |context| {
+        passes
+          .pyramid
+          .record(context, pyramid, &first, &levels, PyramidReduction::Nearest)
+      });
   }
 
   /// The last frame's scene and depth they keep, read by this frame's hits: the scene copied again after the particles
@@ -283,7 +296,7 @@ impl ReflectionFeature {
     let listed: TraceRequestHandles =
       passes
         .scene_trace
-        .add_reset(graph, bindings, ("reflection trace requests clear", &history.requests));
+        .add_reset(graph, bindings, "reflection trace requests clear", &history.requests);
     let requests: TraceRequestParameters = listed.to_listed();
 
     if self.settings.is_ray_budgeted {
@@ -300,9 +313,17 @@ impl ReflectionFeature {
         .parameters(&requests)
         .parameters(&out)
         .record(move |context| {
-          passes
-            .reflections
-            .record_trace_budgeted(context, view, (&parameters, &sky), (&requests, &out), size)
+          passes.reflections.record_trace_budgeted(
+            context,
+            view,
+            &parameters,
+            &sky,
+            BudgetedTraceOutputs {
+              requests: &requests,
+              out: &out,
+            },
+            size,
+          )
         });
     } else {
       graph
@@ -315,21 +336,25 @@ impl ReflectionFeature {
         .record(move |context| {
           passes
             .reflections
-            .record_trace(context, view, (&parameters, &sky), &requests)
+            .record_trace(context, view, &parameters, &sky, &requests)
         });
     }
 
     // The rays the trace left, traced against the level's geometry.
-    if let Some(scene_trace) = scene_trace {
+    if let Some((trace, textures)) = scene_trace {
       let (trace_requests, trace_request_head) = listed.to_read();
       let head = listed.head;
 
       passes.scene_trace.add_trace(
         graph,
-        (("reflection scene dispatch", ReflectionTrace::SCENE_PASS), listed),
-        view,
-        (
-          ReflectionSceneParameters {
+        SceneTraceRequest {
+          dispatch_label: "reflection scene dispatch",
+          trace_label: ReflectionTrace::SCENE_PASS,
+          handles: listed,
+        },
+        SceneTraceBindings {
+          view,
+          parameters: ReflectionSceneParameters {
             lighting: lit.lighting,
             material_lut: lit.material_lut,
             lut_sampler: lit.lut_sampler,
@@ -342,8 +367,9 @@ impl ReflectionFeature {
             screen_depth: parameters.source_depth,
           },
           sky,
-        ),
-        scene_trace,
+          trace,
+          textures,
+        },
       );
 
       // Raw, how many rays the trace asked for, read back for its list's room: an effect the graph cannot see.

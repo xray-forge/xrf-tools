@@ -31,7 +31,7 @@ impl<'a> GrassShadowCasters<'a> {
 
     self
       .pass
-      .record_card_shadow(context, view, (&self.parameters, self.textures), draw);
+      .record_card_shadow(context, view, &self.parameters, self.textures, draw);
   }
 
   /// Declares the cards' draw named `name` into layer `layer` of the cascades' `maps`, over what they hold, seen by a

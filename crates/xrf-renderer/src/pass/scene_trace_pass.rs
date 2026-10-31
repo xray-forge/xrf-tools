@@ -7,12 +7,12 @@ use xrf_renderer_core::{
 use crate::context::gpu_requirements::can_trace;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
-use crate::pass::sky_parameters::SkyParameters;
+use crate::pass::scene_trace_bindings::SceneTraceBindings;
+use crate::pass::scene_trace_request::SceneTraceRequest;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::trace_request::TraceRequest;
 use crate::pass::trace_request_handles::TraceRequestHandles;
 use crate::pass::trace_request_list::TraceRequestList;
-use crate::pass::view_binding::ViewBinding;
 
 /// The reflections' scene pass, the surfaces' and the water's alike: a pass listing the rays it leaves unanswered
 /// (`TraceRequestList`) has its list emptied before it, then the scene pass traces exactly the rays listed against the
@@ -55,7 +55,7 @@ impl SceneTracePass {
     });
 
     Ok(Self {
-      pipeline: Self::create_pipeline(source, (view_layout, sky_layout), layouts.as_ref())?,
+      pipeline: Self::create_pipeline(source, view_layout, sky_layout, layouts.as_ref())?,
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
       layouts,
@@ -90,7 +90,7 @@ impl SceneTracePass {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipeline(source, (&self.view_layout, &self.sky_layout), self.layouts.as_ref()) {
+      match Self::create_pipeline(source, &self.view_layout, &self.sky_layout, self.layouts.as_ref()) {
         Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("Scene trace rejected, tracing with the last one: {error}"),
       }
@@ -112,7 +112,8 @@ impl SceneTracePass {
     &'a self,
     graph: &mut FrameGraph<'a>,
     bindings: &mut GraphBindings<'a>,
-    (label, list): (&'static str, &'a TraceRequestList),
+    label: &'static str,
+    list: &'a TraceRequestList,
   ) -> TraceRequestHandles {
     let handles: TraceRequestHandles = TraceRequestHandles {
       requests: bindings.import_buffer(graph, label, &list.requests),
@@ -155,20 +156,18 @@ impl SceneTracePass {
     handles
   }
 
-  /// Traces the rays a list holds once the pass filling it has run: its dispatch copied out of its head, then the
-  /// scene pass over `parameters`, which name the list and the targets its hits write.
+  /// Traces the rays a `request`'s list holds once the pass filling it has run: its dispatch copied out of its head,
+  /// then the scene pass over the `bindings`, whose parameters name the list and the targets its hits write.
   pub fn add_trace<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
-    (names, handles): ((&'static str, &'static str), TraceRequestHandles),
-    view: &'a ViewBinding,
-    (parameters, sky): (ReflectionSceneParameters<'a>, SkyParameters<'a>),
-    (trace, textures): (TraceParameters<'a>, &'a wgpu::BindGroup),
+    request: SceneTraceRequest,
+    bindings: SceneTraceBindings<'a>,
   ) {
-    let (head, dispatch) = (handles.head, handles.dispatch);
+    let (head, dispatch) = (request.handles.head, request.handles.dispatch);
 
     graph
-      .add_encoder_pass(names.0)
+      .add_encoder_pass(request.dispatch_label)
       .buffer(head, GraphBufferAccess::CopySource)
       .buffer(dispatch, GraphBufferAccess::CopyDestination)
       .record(move |context| {
@@ -183,45 +182,39 @@ impl SceneTracePass {
         );
       });
     graph
-      .add_compute_pass(names.1)
-      .parameters(&parameters)
-      .parameters(&sky)
-      .parameters(&trace)
+      .add_compute_pass(request.trace_label)
+      .parameters(&bindings.parameters)
+      .parameters(&bindings.sky)
+      .parameters(&bindings.trace)
       .buffer(dispatch, GraphBufferAccess::Indirect)
       .record(move |context| {
         let copied: &wgpu::Buffer = context.get_buffer(dispatch);
 
-        self.record(context, view, (&parameters, &sky), (&trace, textures), copied);
+        self.record(context, &bindings, copied);
       });
   }
 
-  fn record(
-    &self,
-    context: &mut ComputeContext<'_>,
-    view: &ViewBinding,
-    (parameters, sky): (&ReflectionSceneParameters<'_>, &SkyParameters<'_>),
-    (trace, textures): (&TraceParameters<'_>, &wgpu::BindGroup),
-    dispatch: &wgpu::Buffer,
-  ) {
+  fn record(&self, context: &mut ComputeContext<'_>, bindings: &SceneTraceBindings<'_>, dispatch: &wgpu::Buffer) {
     let Some(pipeline) = &self.pipeline else {
       return;
     };
 
-    context.bind(parameters);
-    context.bind(sky);
-    context.bind(trace);
+    context.bind(&bindings.parameters);
+    context.bind(&bindings.sky);
+    context.bind(&bindings.trace);
 
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
     pass.set_pipeline(pipeline);
-    pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(Self::TEXTURE_GROUP, textures, &[]);
+    pass.set_bind_group(0, &bindings.view.bind_group, &[]);
+    pass.set_bind_group(Self::TEXTURE_GROUP, bindings.textures, &[]);
     pass.dispatch_workgroups_indirect(dispatch, 0);
   }
 
   fn create_pipeline(
     source: PipelineSource<'_>,
-    (view_layout, sky_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
+    view_layout: &wgpu::BindGroupLayout,
+    sky_layout: &wgpu::BindGroupLayout,
     layouts: Option<&[wgpu::BindGroupLayout; 3]>,
   ) -> XrfResult<Option<wgpu::ComputePipeline>> {
     let Some([scene_layout, trace_layout, texture_layout]) = layouts else {

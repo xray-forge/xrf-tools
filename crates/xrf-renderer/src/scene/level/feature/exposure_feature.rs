@@ -15,6 +15,7 @@ use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::exposure_metering::ExposureMetering;
 use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::exposure_state::ExposureState;
+use crate::pass::exposure_step::ExposureStep;
 use crate::pass::exposure_uniform::ExposureUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::pre_exposure::PreExposure;
@@ -248,8 +249,11 @@ impl ExposureFeature {
     self.histogram = ExposureHistogramUniform::new(
       settings,
       level,
-      (delta.as_secs_f32(), engine_blend),
-      self.last.is_none(),
+      ExposureStep {
+        delta: delta.as_secs_f32(),
+        engine_blend,
+        is_snapped: self.last.is_none(),
+      },
     );
     self.is_measuring = true;
     self.last = Some(now);

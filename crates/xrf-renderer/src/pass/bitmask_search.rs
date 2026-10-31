@@ -1,3 +1,4 @@
+use crate::context::gpu_tracing::GpuTracing;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::pass::bitmask_pass_names::BitmaskPassNames;
 
@@ -19,9 +20,9 @@ impl BitmaskSearch {
   /// The pass tracing the occlusion's rays.
   pub const TRACE_PASS: &'static str = "rtao";
 
-  /// What the view searches for on a GPU that traces rays where `can_trace`, or none where it searches nothing: unlit,
+  /// What the view searches for on a GPU with the `tracing` given, or none where it searches nothing: unlit,
   /// wireframe, or neither VBAO, RTAO nor the indirect light asked for.
-  pub fn new(options: &RenderViewOptions, can_trace: bool) -> Option<Self> {
+  pub fn new(options: &RenderViewOptions, tracing: GpuTracing) -> Option<Self> {
     if !options.mode.is_lit || options.mode.is_wireframe {
       return None;
     }
@@ -31,7 +32,7 @@ impl BitmaskSearch {
     let search: Self = Self {
       is_occluding,
       is_lit: options.features.indirect_light.is_drawn(),
-      is_traced: is_occluding && occlusion.is_traced() && can_trace,
+      is_traced: is_occluding && occlusion.is_traced() && tracing.is_available(),
     };
 
     (search.is_occluding || search.is_lit).then_some(search)

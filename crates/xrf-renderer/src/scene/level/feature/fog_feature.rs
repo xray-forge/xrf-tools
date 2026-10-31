@@ -49,7 +49,7 @@ impl FogFeature {
     let fog: &RenderFogSettings = &options.features.fog;
     let is_fogged: bool = options.mode.is_lit && options.show.is_fogged && lighting.fog.is_some();
 
-    self.stages = size.and_then(|size| FogScatteringUniform::for_view(options, lighting.fog.is_some(), size, time));
+    self.stages = size.and_then(|size| FogScatteringUniform::for_view(options, lighting.fog.as_ref(), size, time));
     self.height = (is_fogged && fog.is_enhanced()).then(|| RenderAppliedHeightFog {
       height: fog.height,
       density: fog.density,
@@ -117,7 +117,7 @@ impl FogFeature {
           written,
           wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
         ))
-        .record(move |context| passes.fog_scattering.record(context, view, &parameters, stage == 2));
+        .record(move |context| passes.fog_scattering.record(context, view, &parameters, stage));
     }
 
     add_texture_copy(&mut *graph, FogScatteringPass::STAGES[3], scattered, targets.scene);

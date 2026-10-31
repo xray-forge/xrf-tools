@@ -4,13 +4,14 @@ use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription
 use crate::frame::pick_target::PickTarget;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::composited_pass::CompositedPass;
+use crate::pass::pick_glass::PickGlass;
 use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::static_draw_bindings::StaticDrawBindings;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draw_permutation::StaticDrawPermutation;
-use crate::pass::static_draws::StaticDraws;
+use crate::pass::static_gbuffer_draw::StaticGbufferDraw;
 use crate::pass::static_impostor_parameters::StaticImpostorParameters;
 use crate::pass::static_mark_draw::StaticMarkDraw;
-use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
@@ -143,16 +144,21 @@ impl StaticGBufferPass {
     }
   }
 
-  /// Draws the visible clusters an argument buffer lists into the G-buffer the pass draws into, the opaque surfaces'
-  /// depth ahead of their shading where `is_prepassed`, and with the frame's first draw the impostors too: no occlusion
-  /// sets one aside.
+  /// Draws the visible clusters an argument buffer lists into the G-buffer the pass draws into, as `draw` says: the
+  /// opaque surfaces' depth ahead of their shading where it prepasses, and with the frame's first draw the impostors
+  /// too.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
-    (view, draws, textures): (&ViewBinding, &StaticDraws, &wgpu::BindGroup),
+    StaticDrawBindings { view, draws, textures }: StaticDrawBindings<'_>,
     args: &wgpu::Buffer,
-    (is_first, is_inspected, is_prepassed): (bool, bool, bool),
+    draw: StaticGbufferDraw,
   ) {
+    let StaticGbufferDraw {
+      is_first,
+      is_inspected,
+      is_prepassed,
+    } = draw;
     let drawing: &FrameDrawPipelines = &self.pipelines.frames[usize::from(is_inspected)];
     let shading: &[wgpu::RenderPipeline] = if is_prepassed {
       &drawing.prepassed_draws
@@ -188,21 +194,20 @@ impl StaticGBufferPass {
 
   /// Draws the frame's visible clusters again into a pick's one texel, through a camera narrowed to it, in the render
   /// pass the graph opened on the pick's target: the composited ones too, glass the nearest a click meets, unless the
-  /// pick passes them by (`is_through`).
+  /// pick passes them by.
   pub fn pick(
     &self,
     context: &mut RasterContext<'_>,
-    (view, draws, textures): (&ViewBinding, &StaticDraws, &wgpu::BindGroup),
+    StaticDrawBindings { view, draws, textures }: StaticDrawBindings<'_>,
     args: &[&wgpu::Buffer],
-    is_through: bool,
+    glass: PickGlass,
   ) {
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
     context.get_pass().set_bind_group(1, textures, &[]);
 
-    let composited: &[wgpu::RenderPipeline] = if is_through {
-      &[]
-    } else {
-      &self.pipelines.composited_picks
+    let composited: &[wgpu::RenderPipeline] = match glass {
+      PickGlass::PassesBy => &[],
+      PickGlass::Meets => &self.pipelines.composited_picks,
     };
     let deferred = StaticBatch::list_deferred().zip(&self.pipelines.picks);
 
@@ -229,7 +234,7 @@ impl StaticGBufferPass {
   pub fn record_overdraw(
     &self,
     context: &mut RasterContext<'_>,
-    (view, draws, textures): (&ViewBinding, &StaticDraws, &wgpu::BindGroup),
+    StaticDrawBindings { view, draws, textures }: StaticDrawBindings<'_>,
     args: &[&wgpu::Buffer],
   ) {
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);

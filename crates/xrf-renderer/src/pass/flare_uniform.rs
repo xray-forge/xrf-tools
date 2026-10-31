@@ -1,7 +1,8 @@
-use glam::{Vec3, Vec4};
+use glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::host::render_lens_flare::RenderLensFlare;
+use crate::pass::flare_frame::FlareFrame;
 
 /// What `shaders/common/flares.wgsl` reads as its `Flares`: where the sun stands, its colour and the lens flare's.
 #[repr(C)]
@@ -19,9 +20,8 @@ impl FlareUniform {
   /// Flares `shaders/common/flares.wgsl` holds room for; a section with more draws its first ones.
   pub const SLOTS: usize = 16;
 
-  /// One frame's lens flare: towards the sun in view space and in the world, the sun's colour, how far the flare has
-  /// faded in, and the seconds since the last frame its visibility eases over.
-  pub fn new(flare: &RenderLensFlare, (to_sun, toward_sun): (Vec3, Vec3), color: Vec3, faded: f32, delta: f32) -> Self {
+  /// The lens `flare` drawn in one `frame`.
+  pub fn new(flare: &RenderLensFlare, frame: FlareFrame) -> Self {
     let mut flares: [Vec4; Self::SLOTS] = [Vec4::ZERO; Self::SLOTS];
 
     for (slot, it) in flares.iter_mut().zip(&flare.flares) {
@@ -29,9 +29,9 @@ impl FlareUniform {
     }
 
     Self {
-      to_sun: to_sun.extend(delta),
-      sun: toward_sun.extend(faded),
-      color: color.extend(0.0),
+      to_sun: frame.to_sun.extend(frame.delta),
+      sun: frame.toward_sun.extend(frame.faded),
+      color: frame.color.extend(0.0),
       gradient: flare
         .gradient
         .as_ref()

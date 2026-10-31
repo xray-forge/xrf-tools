@@ -167,7 +167,8 @@ impl GrassPass {
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    (parameters, textures): (&GrassCardShadowParameters, &wgpu::BindGroup),
+    parameters: &GrassCardShadowParameters,
+    textures: &wgpu::BindGroup,
     draw: &wgpu::Buffer,
   ) {
     context.bind(parameters);
@@ -185,8 +186,11 @@ impl GrassPass {
   pub fn record_cards(
     &self,
     context: &mut ComputeContext<'_>,
-    (level, build, cards): (&GrassLevelParameters, &GrassBuildParameters, &GrassCardsParameters),
-    (triangles, tufts): (u32, u32),
+    level: &GrassLevelParameters,
+    build: &GrassBuildParameters,
+    cards: &GrassCardsParameters,
+    triangles: u32,
+    tufts: u32,
   ) {
     let groups = |count: u32| count.max(1).div_ceil(Self::WORKGROUP);
 
@@ -206,7 +210,8 @@ impl GrassPass {
   pub fn record_plant(
     &self,
     context: &mut ComputeContext<'_>,
-    (level, build): (&GrassLevelParameters, &GrassBuildParameters),
+    level: &GrassLevelParameters,
+    build: &GrassBuildParameters,
     dispatch: GrassDispatch,
   ) {
     let groups = |count: u32| count.max(1).div_ceil(Self::WORKGROUP);
@@ -233,7 +238,9 @@ impl GrassPass {
   pub fn record_cull(
     &self,
     context: &mut ComputeContext<'_>,
-    (level, build, sort): (&GrassLevelParameters, &GrassBuildParameters, &GrassSortParameters),
+    level: &GrassLevelParameters,
+    build: &GrassBuildParameters,
+    sort: &GrassSortParameters,
     occlusion: &GrassOcclusionParameters,
     dispatch: GrassDispatch,
   ) {
@@ -273,7 +280,8 @@ impl GrassPass {
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    (parameters, textures): (&GrassDrawParameters, &wgpu::BindGroup),
+    parameters: &GrassDrawParameters,
+    textures: &wgpu::BindGroup,
     draws: &GrassDraws<'_>,
   ) {
     context.bind(parameters);

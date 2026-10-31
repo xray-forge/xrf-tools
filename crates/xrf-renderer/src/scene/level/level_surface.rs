@@ -133,9 +133,12 @@ impl LevelSurface {
     dry: &'a wgpu::TextureView,
     has_puddles: bool,
   ) -> (&'a wgpu::TextureView, GrassPuddlesUniform) {
+    let (window, shape): (Vec4, Vec4) = surface.map_or(Self::get_unmade().0, Self::get_window);
+    let uniform: GrassPuddlesUniform = GrassPuddlesUniform::new(window, shape);
+
     (
       surface.map_or(dry, |surface| &surface.puddles),
-      GrassPuddlesUniform::new(surface.map_or(Self::get_unmade().0, Self::get_window), has_puddles),
+      if has_puddles { uniform.with_puddles() } else { uniform },
     )
   }
 
@@ -311,13 +314,17 @@ impl LevelSurface {
       sites,
     };
     let shape: OverheadShape = self.map.get_shape();
-    let size: (u32, u32) = (shape.resolution, Self::get_cells(shape));
+    let cells: u32 = Self::get_cells(shape);
 
     graph
       .add_compute_pass("puddle sites")
       .parameters(&heights)
       .parameters(&placing)
-      .record(move |context| passes.puddle_sites.record(context, size, (&heights, &placing)));
+      .record(move |context| {
+        passes
+          .puddle_sites
+          .record(context, shape.resolution, cells, &heights, &placing)
+      });
   }
 
   /// The fires nearest a centre, as many as the sites' uniform holds, two a vector, far off where there are fewer.

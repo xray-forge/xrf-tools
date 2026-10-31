@@ -3,13 +3,12 @@
 use glam::Vec4;
 
 use crate::contract::render_bloom_mode::RenderBloomMode;
-use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
 use crate::contract::render_image_corrections::RenderImageCorrections;
-use crate::contract::render_rect::RenderRect;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::pass::enhanced_bloom_pass::EnhancedBloomPass;
 use crate::pass::enhanced_bloom_uniform::EnhancedBloomUniform;
+use crate::pass::present_frame::PresentFrame;
 use crate::pass::present_uniform::PresentUniform;
 
 fn enhanced() -> RenderEnhancedBloomSettings {
@@ -90,8 +89,8 @@ fn writes_each_stages_sizes_way_and_strengths() {
   assert_eq!(stage.size, Vec4::new(500.0, 250.0, 1000.0, 500.0));
   assert_eq!(stage.spread, Vec4::new(0.0, 0.0, 3.0, 0.0));
   assert_eq!(stage.strengths, Vec4::new(5.0, 3.0, 0.6, 1.0));
-  assert_eq!(stage.along(true).spread, Vec4::new(1.0 / 500.0, 0.0, 3.0, 0.0));
-  assert_eq!(stage.along(false).spread, Vec4::new(0.0, 1.0 / 250.0, 3.0, 0.0));
+  assert_eq!(stage.across().spread, Vec4::new(1.0 / 500.0, 0.0, 3.0, 0.0));
+  assert_eq!(stage.down().spread, Vec4::new(0.0, 1.0 / 250.0, 3.0, 0.0));
 }
 
 // The present screens the enhanced bloom in the engine's place.
@@ -99,12 +98,11 @@ fn writes_each_stages_sizes_way_and_strengths() {
 fn tells_the_present_which_bloom_it_lays_over_the_frame() {
   let present = |is_bloomed: bool| {
     PresentUniform::new(
-      RenderDebugView::Final,
-      (false, false, None),
-      false,
-      RenderRect::default(),
+      PresentFrame {
+        is_bloomed,
+        ..PresentFrame::default()
+      },
       &RenderImageCorrections::default(),
-      (None, is_bloomed),
     )
   };
 

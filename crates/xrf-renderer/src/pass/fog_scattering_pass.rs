@@ -33,6 +33,8 @@ impl FogScatteringPass {
     "fog scattering",
     "fog scattering copy",
   ];
+  /// The scattering's index in [`Self::STAGES`], past the blurs.
+  pub const SCATTERING: usize = 2;
 
   /// # Errors
   ///
@@ -41,7 +43,7 @@ impl FogScatteringPass {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = FogScatteringParameters::create_layout(device);
-    let (blur, scatter) = Self::create_pipelines(source, (view_layout, &layout))?;
+    let (blur, scatter) = Self::create_pipelines(source, view_layout, &layout)?;
     let empty: wgpu::TextureView = device
       .create_texture_with_data(
         queue,
@@ -86,7 +88,7 @@ impl FogScatteringPass {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipelines(source, (&self.view_layout, &self.layout)) {
+      match Self::create_pipelines(source, &self.view_layout, &self.layout) {
         Ok((blur, scatter)) => (self.blur, self.scatter) = (blur, scatter),
         Err(error) => log::error!("Fog scattering rejected, scattering with the last one: {error}"),
       }
@@ -103,26 +105,31 @@ impl FogScatteringPass {
     &self.empty
   }
 
-  /// Draws a blur, or the scattering where `is_scattering`, into the target the pass draws into.
+  /// Draws the `stage` of [`Self::STAGES`] into the target the pass draws into: a blur, or the scattering.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
     parameters: &FogScatteringParameters<'_>,
-    is_scattering: bool,
+    stage: usize,
   ) {
     context.bind(parameters);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
-    pass.set_pipeline(if is_scattering { &self.scatter } else { &self.blur });
+    pass.set_pipeline(if stage == Self::SCATTERING {
+      &self.scatter
+    } else {
+      &self.blur
+    });
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.draw(0..3, 0..1);
   }
 
   fn create_pipelines(
     source: PipelineSource<'_>,
-    (view_layout, layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
+    view_layout: &wgpu::BindGroupLayout,
+    layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<(wgpu::RenderPipeline, wgpu::RenderPipeline)> {
     let layouts: [Option<&wgpu::BindGroupLayout>; 2] = [Some(view_layout), Some(layout)];
     let create = |fragment: &'static str, format: wgpu::TextureFormat| {

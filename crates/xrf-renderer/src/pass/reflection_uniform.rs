@@ -2,6 +2,7 @@ use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::pass::reflection_trace::ReflectionTrace;
+use crate::pass::reflection_trace_frame::ReflectionTraceFrame;
 
 /// What the reflections' trace and filters read, as `shaders/frame/reflections.wgsl` takes it.
 #[repr(C)]
@@ -37,27 +38,21 @@ impl ReflectionUniform {
   pub const TRACE_FLOOR: f32 = 0.02;
   pub const DRY_TRACE_FLOOR: f32 = 0.08;
 
-  /// The settings and how they are traced, at a frame's count, with or without the last frame's reflections to carry
-  /// and its scene to read, on a device that traces rays or not, over a level wet or dry. Raw, each pixel traces each
-  /// frame.
-  pub fn new(
-    settings: &RenderReflectionSettings,
-    trace: ReflectionTrace,
-    frame: u32,
-    (has_history, has_source): (bool, bool),
-    (can_trace, is_wet): (bool, bool),
-  ) -> Self {
+  /// The settings and how they are traced, over a `frame`: its count, with or without the last frame's reflections to
+  /// carry and its scene to read, on a device that traces rays or not, over a level wet or dry. Raw, each pixel traces
+  /// each frame.
+  pub fn new(settings: &RenderReflectionSettings, trace: ReflectionTrace, frame: ReflectionTraceFrame) -> Self {
     Self {
       crossings: settings.get_steps(),
-      frame,
+      frame: frame.frame,
       intensity: settings.intensity.max(0.0),
       distance: settings.distance.max(0.0),
-      has_history: f32::from(u8::from(has_history)),
+      has_history: f32::from(u8::from(frame.has_history)),
       ratio: trace.get_ratio() as f32,
-      has_source: f32::from(u8::from(has_source)),
-      is_traced: f32::from(u8::from(settings.is_traced && can_trace)),
+      has_source: f32::from(u8::from(frame.has_source)),
+      is_traced: f32::from(u8::from(settings.is_traced && frame.can_trace)),
       trace_turns: if trace.is_raw { 1 } else { settings.get_trace_interval() },
-      trace_floor: if settings.is_dry_traced || is_wet {
+      trace_floor: if settings.is_dry_traced || frame.is_wet {
         Self::TRACE_FLOOR
       } else {
         Self::DRY_TRACE_FLOOR

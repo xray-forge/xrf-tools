@@ -5,6 +5,7 @@ use crate::contract::render_bloom_settings::RenderBloomSettings;
 use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::pass::bloom_filter::BloomFilter;
 use crate::pass::bloom_parameters::BloomParameters;
 use crate::pass::bloom_stage::BloomStage;
 use crate::pass::bloom_uniform::BloomUniform;
@@ -58,13 +59,21 @@ impl BloomFeature {
     self.engine = size
       .filter(|_| self.is_engine_shown || self.enhanced.is_some())
       .map(|size| {
-        let aspect: f32 = size.1 as f32 / size.0 as f32;
-        let is_one_sided: bool = engine == XrayEngine::Extended;
+        let across: BloomFilter = BloomFilter {
+          is_across: true,
+          radius: bloom.radius,
+          strength: bloom.strength,
+          aspect: size.1 as f32 / size.0 as f32,
+          is_one_sided: engine == XrayEngine::Extended,
+        };
 
         [
           BloomUniform::build(bloom.threshold),
-          BloomUniform::filter(true, (bloom.radius, bloom.strength), aspect, is_one_sided),
-          BloomUniform::filter(false, (bloom.radius, bloom.strength), aspect, is_one_sided),
+          BloomUniform::filter(across),
+          BloomUniform::filter(BloomFilter {
+            is_across: false,
+            ..across
+          }),
         ]
       });
   }
@@ -195,14 +204,14 @@ impl BloomFeature {
       EnhancedBloomStage::Blur,
       (image, empty),
       across,
-      stage(half_size).along(true).reading_scene(),
+      stage(half_size).across().reading_scene(),
     );
     add(
       EnhancedBloomPass::BLUR_PASSES[1],
       EnhancedBloomStage::Blur,
       (across, empty),
       blurred,
-      stage(half_size).along(false),
+      stage(half_size).down(),
     );
     add(
       EnhancedBloomPass::BUILD_PASS,

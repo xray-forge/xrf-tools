@@ -15,6 +15,8 @@ use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::pre_exposure::PreExposure;
 use crate::pass::sky_harmonics::SkyHarmonics;
+use crate::pass::vbao_frame::VbaoFrame;
+use crate::pass::vbao_light::VbaoLight;
 use crate::pass::vbao_uniform::VbaoUniform;
 
 fn vbao(accumulation: u32) -> RenderAmbientOcclusionSettings {
@@ -95,11 +97,14 @@ fn turns_its_noise_only_while_it_accumulates() {
   let uniform = |settings: &RenderAmbientOcclusionSettings, frame: u32| {
     VbaoUniform::new(
       settings,
-      (0.0, 0.0, 0),
-      Mat4::IDENTITY,
-      (800, 600),
-      frame,
-      (true, false),
+      VbaoLight::default(),
+      VbaoFrame {
+        projection: Mat4::IDENTITY,
+        size: (800, 600),
+        frame,
+        has_history: true,
+        has_light_history: false,
+      },
     )
   };
   let gathering: RenderAmbientOcclusionSettings = vbao(8);

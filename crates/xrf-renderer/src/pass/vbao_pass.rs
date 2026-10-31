@@ -6,6 +6,7 @@ use crate::frame::view_targets::ViewTargets;
 use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::vbao_gathering::VbaoGathering;
 use crate::pass::vbao_parameters::VbaoParameters;
 use crate::pass::view_binding::ViewBinding;
 
@@ -122,35 +123,33 @@ impl VbaoPass {
     Self::draw(context, &self.pipelines.light_source, view, parameters);
   }
 
-  /// Searches the frame's pixels into the targets the pass draws into, gathering the light while lit.
+  /// Searches the frame's pixels into the targets the pass draws into, gathering the light too where asked.
   pub fn record_search(
     &self,
     context: &mut RasterContext<'_>,
-    is_lit: bool,
+    gathering: VbaoGathering,
     view: &ViewBinding,
     parameters: &VbaoParameters,
   ) {
-    let pipeline: &wgpu::RenderPipeline = if is_lit {
-      &self.pipelines.lit_search
-    } else {
-      &self.pipelines.search
+    let pipeline: &wgpu::RenderPipeline = match gathering {
+      VbaoGathering::Light => &self.pipelines.lit_search,
+      VbaoGathering::Occlusion => &self.pipelines.search,
     };
 
     Self::draw(context, pipeline, view, parameters);
   }
 
-  /// Blends the search with the last frame's accumulation into this frame's, the light's too while lit.
+  /// Blends the search with the last frame's accumulation into this frame's, the light's too where asked.
   pub fn record_accumulate(
     &self,
     context: &mut RasterContext<'_>,
-    is_lit: bool,
+    gathering: VbaoGathering,
     view: &ViewBinding,
     parameters: &VbaoParameters,
   ) {
-    let pipeline: &wgpu::RenderPipeline = if is_lit {
-      &self.pipelines.lit_accumulate
-    } else {
-      &self.pipelines.accumulate
+    let pipeline: &wgpu::RenderPipeline = match gathering {
+      VbaoGathering::Light => &self.pipelines.lit_accumulate,
+      VbaoGathering::Occlusion => &self.pipelines.accumulate,
     };
 
     Self::draw(context, pipeline, view, parameters);

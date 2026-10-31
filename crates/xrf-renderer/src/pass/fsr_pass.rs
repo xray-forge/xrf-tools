@@ -139,19 +139,20 @@ impl FsrPass {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     targets: ViewTargetHandles,
-    (fsr, uniform): (&'a FsrTargets, &FsrUniform),
+    fsr: &'a FsrTargets,
+    uniform: &FsrUniform,
     debug: Option<(RenderDebugView, GraphTexture)>,
   ) {
     let uniform: UniformBinding<FsrUniform> = runtime.push_uniform(uniform);
     let textures: FsrGraphTextures = FsrGraphTextures::import(graph, bindings, fsr);
 
-    self.add_reconstruction(graph, (targets, textures, uniform), fsr.render);
+    self.add_reconstruction(graph, targets, textures, uniform, fsr.render);
     self.add_shading_change(graph, textures, uniform);
 
-    let accumulate: FsrAccumulateParameters = self.add_accumulation(graph, (targets, textures, uniform));
+    let accumulate: FsrAccumulateParameters = self.add_accumulation(graph, targets, textures, uniform);
 
     if let Some((view, shown)) = debug {
-      self.add_debug_view(graph, (view, shown), (textures, uniform), accumulate);
+      self.add_debug_view(graph, view, shown, textures, uniform, accumulate);
     }
   }
 
@@ -160,7 +161,9 @@ impl FsrPass {
   fn add_reconstruction<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
-    (targets, textures, uniform): (ViewTargetHandles, FsrGraphTextures, UniformBinding<FsrUniform>),
+    targets: ViewTargetHandles,
+    textures: FsrGraphTextures,
+    uniform: UniformBinding<FsrUniform>,
     render: (u32, u32),
   ) {
     let pipelines: &'a FsrPipelines = &self.pipelines;
@@ -200,16 +203,14 @@ impl FsrPass {
 
     Self::add_stage(
       graph,
-      (
-        "fsr prepare inputs",
-        &[
-          textures.dilated_depth,
-          textures.dilated_motion,
-          textures.farthest_depth,
-          textures.luma,
-        ],
-        &pipelines.prepare_inputs,
-      ),
+      "fsr prepare inputs",
+      &[
+        textures.dilated_depth,
+        textures.dilated_motion,
+        textures.farthest_depth,
+        textures.luma,
+      ],
+      &pipelines.prepare_inputs,
       FsrPrepareInputsParameters {
         fsr: uniform,
         depth_target: targets.depth,
@@ -219,11 +220,9 @@ impl FsrPass {
     );
     Self::add_stage(
       graph,
-      (
-        "fsr farthest depth",
-        &[textures.half_farthest_depth],
-        &pipelines.downsample_depth,
-      ),
+      "fsr farthest depth",
+      &[textures.half_farthest_depth],
+      &pipelines.downsample_depth,
       FsrDownsampleParameters {
         fsr: uniform,
         source: textures.farthest_depth,
@@ -243,7 +242,9 @@ impl FsrPass {
 
     Self::add_stage(
       graph,
-      ("fsr shading pyramid", &[level0], &pipelines.shading_pyramid),
+      "fsr shading pyramid",
+      &[level0],
+      &pipelines.shading_pyramid,
       FsrShadingPyramidParameters {
         fsr: uniform,
         dilated_motion: textures.dilated_motion,
@@ -255,18 +256,18 @@ impl FsrPass {
     for (source, level) in [(level0, level1), (level1, level2)] {
       Self::add_stage(
         graph,
-        ("fsr shading pyramid", &[level], &pipelines.downsample_pyramid),
+        "fsr shading pyramid",
+        &[level],
+        &pipelines.downsample_pyramid,
         FsrDownsampleParameters { fsr: uniform, source },
       );
     }
 
     Self::add_stage(
       graph,
-      (
-        "fsr shading change",
-        &[textures.shading_change],
-        &pipelines.shading_change,
-      ),
+      "fsr shading change",
+      &[textures.shading_change],
+      &pipelines.shading_change,
       FsrShadingChangeParameters {
         fsr: uniform,
         level0,
@@ -282,14 +283,18 @@ impl FsrPass {
   fn add_accumulation<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
-    (targets, textures, uniform): (ViewTargetHandles, FsrGraphTextures, UniformBinding<FsrUniform>),
+    targets: ViewTargetHandles,
+    textures: FsrGraphTextures,
+    uniform: UniformBinding<FsrUniform>,
   ) -> FsrAccumulateParameters<'a> {
     let pipelines: &'a FsrPipelines = &self.pipelines;
     let sampler: &'a wgpu::Sampler = &self.sampler;
 
     Self::add_stage(
       graph,
-      ("fsr reactive", &[textures.reactive], &pipelines.reactive),
+      "fsr reactive",
+      &[textures.reactive],
+      &pipelines.reactive,
       FsrReactiveParameters {
         fsr: uniform,
         opaque: textures.opaque,
@@ -298,11 +303,9 @@ impl FsrPass {
     );
     Self::add_stage(
       graph,
-      (
-        "fsr prepare reactivity",
-        &[textures.masks, textures.accumulation, textures.new_locks],
-        &pipelines.prepare_reactivity,
-      ),
+      "fsr prepare reactivity",
+      &[textures.masks, textures.accumulation, textures.new_locks],
+      &pipelines.prepare_reactivity,
       FsrPrepareReactivityParameters {
         fsr: uniform,
         dilated_depth: textures.dilated_depth,
@@ -318,11 +321,9 @@ impl FsrPass {
     );
     Self::add_stage(
       graph,
-      (
-        "fsr luma instability",
-        &[textures.luma_history, textures.luma_instability],
-        &pipelines.luma_instability,
-      ),
+      "fsr luma instability",
+      &[textures.luma_history, textures.luma_instability],
+      &pipelines.luma_instability,
       FsrLumaInstabilityParameters {
         fsr: uniform,
         dilated_motion: textures.dilated_motion,
@@ -347,7 +348,9 @@ impl FsrPass {
 
     Self::add_stage(
       graph,
-      (Self::ACCUMULATE, &[textures.history], &pipelines.accumulate),
+      Self::ACCUMULATE,
+      &[textures.history],
+      &pipelines.accumulate,
       accumulate,
     );
 
@@ -358,8 +361,10 @@ impl FsrPass {
   fn add_debug_view<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
-    (view, shown): (RenderDebugView, GraphTexture),
-    (textures, uniform): (FsrGraphTextures, UniformBinding<FsrUniform>),
+    view: RenderDebugView,
+    shown: GraphTexture,
+    textures: FsrGraphTextures,
+    uniform: UniformBinding<FsrUniform>,
     accumulate: FsrAccumulateParameters<'a>,
   ) {
     let debug_views: &'a FsrDebugPipelines = &self.pipelines.debug_views;
@@ -377,24 +382,22 @@ impl FsrPass {
       RenderDebugView::FsrLumaInstability => &debug_views.luma_instability,
       // The frame share reads what the accumulation read.
       RenderDebugView::FsrFrameShare => {
-        Self::add_stage(
-          graph,
-          ("fsr debug view", &[shown], &debug_views.frame_share),
-          accumulate,
-        );
+        Self::add_stage(graph, "fsr debug view", &[shown], &debug_views.frame_share, accumulate);
 
         return;
       }
       _ => return,
     };
 
-    Self::add_stage(graph, ("fsr debug view", &[shown], pipeline), parameters);
+    Self::add_stage(graph, "fsr debug view", &[shown], pipeline, parameters);
   }
 
   /// A full-screen stage drawing into its targets, cleared first, with its parameters.
   fn add_stage<'a, P: PassParameters + Send + Sync + 'a>(
     graph: &mut FrameGraph<'a>,
-    (name, targets, pipeline): (&'static str, &[GraphTexture], &'a wgpu::RenderPipeline),
+    name: &'static str,
+    targets: &[GraphTexture],
+    pipeline: &'a wgpu::RenderPipeline,
     parameters: P,
   ) {
     targets

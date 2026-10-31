@@ -2,6 +2,7 @@
 
 use glam::Vec4;
 
+use crate::pass::bloom_filter::BloomFilter;
 use crate::pass::bloom_uniform::BloomUniform;
 
 /// All fifteen taps a filter reads: the centre once, every other weight on either side.
@@ -9,6 +10,17 @@ fn get_total(weights: &[Vec4; 2]) -> f32 {
   let [near, far] = weights;
 
   far.w + 2.0 * (near.element_sum() + far.truncate().element_sum())
+}
+
+/// OpenXRay's blur across, `kernel_g 3` and `kernel_scale 0.7`, over a frame half as tall as it is wide.
+fn blur_across() -> BloomFilter {
+  BloomFilter {
+    is_across: true,
+    radius: 3.0,
+    strength: 0.7,
+    aspect: 0.5,
+    is_one_sided: false,
+  }
 }
 
 #[test]
@@ -24,8 +36,11 @@ fn a_blur_weighs_twice_its_strength_over_both_kernels() {
 
 #[test]
 fn the_blur_down_takes_the_radius_by_the_frames_height_over_its_width() {
-  let across: BloomUniform = BloomUniform::filter(true, (3.0, 0.7), 0.5, false);
-  let down: BloomUniform = BloomUniform::filter(false, (3.0, 0.7), 0.5, false);
+  let across: BloomUniform = BloomUniform::filter(blur_across());
+  let down: BloomUniform = BloomUniform::filter(BloomFilter {
+    is_across: false,
+    ..blur_across()
+  });
 
   assert_eq!(across.params, Vec4::new(1.0 / 256.0, 0.0, 0.0, 0.0));
   assert_eq!(down.params, Vec4::new(0.0, 1.0 / 256.0, 0.0, 0.0));
@@ -35,6 +50,14 @@ fn the_blur_down_takes_the_radius_by_the_frames_height_over_its_width() {
 
 #[test]
 fn monolith_reads_one_side_and_the_build_takes_the_threshold() {
-  assert_eq!(BloomUniform::filter(true, (1.0, 0.05), 1.0, true).params[2], 1.0);
+  let one_sided: BloomFilter = BloomFilter {
+    radius: 1.0,
+    strength: 0.05,
+    aspect: 1.0,
+    is_one_sided: true,
+    ..blur_across()
+  };
+
+  assert_eq!(BloomUniform::filter(one_sided).params[2], 1.0);
   assert_eq!(BloomUniform::build(0.25).params, Vec4::new(0.0, 0.0, 0.25, 0.0));
 }

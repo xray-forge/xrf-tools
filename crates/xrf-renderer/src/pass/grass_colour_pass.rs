@@ -24,7 +24,7 @@ impl GrassColourPass {
     let layout: wgpu::BindGroupLayout = GrassColourParameters::create_layout(device);
 
     Ok(Self {
-      pipeline: Self::create_pipeline(source, (&layout, texture_layout))?,
+      pipeline: Self::create_pipeline(source, &layout, texture_layout)?,
       layout,
       texture_layout: texture_layout.clone(),
       generation: source.get_generation(),
@@ -37,7 +37,7 @@ impl GrassColourPass {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipeline(source, (&self.layout, &self.texture_layout)) {
+      match Self::create_pipeline(source, &self.layout, &self.texture_layout) {
         Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("Grass colours rejected, averaging with the last: {error}"),
       }
@@ -63,7 +63,8 @@ impl GrassColourPass {
 
   fn create_pipeline(
     source: PipelineSource<'_>,
-    (layout, texture_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
+    layout: &wgpu::BindGroupLayout,
+    texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<wgpu::ComputePipeline> {
     source.get_compute_pipeline(
       &ComputePipelineDescription::new("grass colours", "grass/colours", "cs_grass_colours")

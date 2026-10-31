@@ -6,8 +6,8 @@ use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::wet_apply_parameters::WetApplyParameters;
+use crate::pass::wet_draw::WetDraw;
 use crate::pass::wet_patch_parameters::WetPatchParameters;
-use crate::pass::wet_stage::WetStage;
 use crate::scene::level::level_surface::LevelSurface;
 use crate::scene::level::sun_shadow_maps::SunShadowMaps;
 
@@ -117,7 +117,7 @@ impl WetPass {
   pub fn record<P: PassParameters>(
     &self,
     context: &mut RasterContext<'_>,
-    (stage, is_enhanced): (WetStage, bool),
+    draw: WetDraw,
     view: &ViewBinding,
     parameters: &P,
   ) {
@@ -125,7 +125,7 @@ impl WetPass {
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
-    pass.set_pipeline(&self.pipelines[usize::from(is_enhanced)][stage.get_index()]);
+    pass.set_pipeline(&self.pipelines[usize::from(draw.is_enhanced)][draw.stage.get_index()]);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.draw(0..3, 0..1);
   }

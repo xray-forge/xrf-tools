@@ -1,17 +1,16 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
 
+use crate::pass::indirect_args::IndirectArgs;
 use crate::pass::overhead_shift_parameters::OverheadShiftParameters;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::shadow_casters::ShadowCasters;
 use crate::pass::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
-use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draw_permutation::StaticDrawPermutation;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::static_layout_bindings::StaticLayoutBindings;
 use crate::scene::level::sun_shadow_maps::SunShadowMaps;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
-use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// The variant every shadow draw is built with: it leaves out the surfaces casting none.
 const SHADOW_DRAW: StaticDrawPermutation = StaticDrawPermutation {
@@ -53,7 +52,7 @@ impl StaticShadowPass {
       OverheadShiftParameters::create_layout(device),
     ];
     let (pipelines, clear, writers) =
-      Self::create_pipelines(source, (view_layout, layout, texture_layout), &writer_layouts)?;
+      Self::create_pipelines(source, view_layout, layout, texture_layout, &writer_layouts)?;
 
     Ok(Self {
       pipelines,
@@ -75,7 +74,9 @@ impl StaticShadowPass {
 
       match Self::create_pipelines(
         source,
-        (&self.view_layout, &self.layout, &self.texture_layout),
+        &self.view_layout,
+        &self.layout,
+        &self.texture_layout,
         &self.writer_layouts,
       ) {
         Ok((pipelines, clear, writers)) => {
@@ -92,30 +93,23 @@ impl StaticShadowPass {
   pub fn record_some(
     &self,
     context: &mut RasterContext<'_>,
-    draw: (
-      &ViewBinding,
-      &[StaticDrawParameters; StaticLayout::COUNT],
-      &wgpu::BindGroup,
-    ),
+    draw: StaticLayoutBindings<'_>,
     args: &wgpu::Buffer,
     casters: ShadowCasters,
   ) {
-    self.record_casters(context, draw, (args, 0), casters);
+    self.record_casters(context, draw, IndirectArgs::of(args), casters);
   }
 
   /// Clears one region of the map the pass draws into (a light face's tile, a band of a cascade), or restores it from
   /// the static atlas where `restore` is given, and draws the `casters` its list holds into it, the rest of the map
-  /// kept: its arguments start at `args_offset`.
+  /// kept: its arguments start at their offset.
   pub fn record_tile(
     &self,
     context: &mut RasterContext<'_>,
-    (region, restore): ([u32; 4], Option<&ShadowTileRestoreParameters>),
-    draw: (
-      &ViewBinding,
-      &[StaticDrawParameters; StaticLayout::COUNT],
-      &wgpu::BindGroup,
-    ),
-    args: (&wgpu::Buffer, u64),
+    region: [u32; 4],
+    restore: Option<&ShadowTileRestoreParameters>,
+    draw: StaticLayoutBindings<'_>,
+    args: IndirectArgs<'_>,
     casters: ShadowCasters,
   ) {
     Self::set_region(context, region);
@@ -145,28 +139,24 @@ impl StaticShadowPass {
     &self,
     context: &mut RasterContext<'_>,
     region: [u32; 4],
-    draw: (
-      &ViewBinding,
-      &[StaticDrawParameters; StaticLayout::COUNT],
-      &wgpu::BindGroup,
-    ),
+    draw: StaticLayoutBindings<'_>,
     args: &wgpu::Buffer,
     casters: ShadowCasters,
   ) {
     Self::set_region(context, region);
-    self.record_casters(context, draw, (args, 0), casters);
+    self.record_casters(context, draw, IndirectArgs::of(args), casters);
   }
 
-  /// Draws the `casters` a list holds of the kinds asked for, each batch's arguments from `args_offset`.
+  /// Draws the `casters` a list holds of the kinds asked for, each batch's arguments from the offset `args` start at.
   fn record_casters(
     &self,
     context: &mut RasterContext<'_>,
-    (view, layouts, textures): (
-      &ViewBinding,
-      &[StaticDrawParameters; StaticLayout::COUNT],
-      &wgpu::BindGroup,
-    ),
-    (args, args_offset): (&wgpu::Buffer, u64),
+    StaticLayoutBindings {
+      view,
+      layouts,
+      textures,
+    }: StaticLayoutBindings<'_>,
+    args: IndirectArgs<'_>,
     casters: ShadowCasters,
   ) {
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
@@ -181,13 +171,15 @@ impl StaticShadowPass {
       context.get_pass().set_pipeline(pipeline);
       context
         .get_pass()
-        .draw_indirect(args, args_offset + batch.get_args_offset());
+        .draw_indirect(args.buffer, args.offset + batch.get_args_offset());
     }
   }
 
   fn create_pipelines(
     source: PipelineSource<'_>,
-    (view_layout, layout, texture_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
+    view_layout: &wgpu::BindGroupLayout,
+    layout: &wgpu::BindGroupLayout,
+    texture_layout: &wgpu::BindGroupLayout,
     writer_layouts: &[wgpu::BindGroupLayout; 2],
   ) -> XrfResult<(
     Vec<wgpu::RenderPipeline>,
@@ -227,14 +219,18 @@ impl StaticShadowPass {
     let writers: [wgpu::RenderPipeline; 2] = [
       Self::create_depth_writer(
         source,
-        ("frame/shadow_tile_restore", "shadow tile restore"),
-        ("vs_fullscreen", "fs_restore"),
+        "frame/shadow_tile_restore",
+        "shadow tile restore",
+        "vs_fullscreen",
+        "fs_restore",
         &writer_layouts[0],
       )?,
       Self::create_depth_writer(
         source,
-        ("frame/overhead_shift", "overhead shift"),
-        ("vs_fullscreen", "fs_shift"),
+        "frame/overhead_shift",
+        "overhead shift",
+        "vs_fullscreen",
+        "fs_shift",
         &writer_layouts[1],
       )?,
     ];
@@ -253,8 +249,10 @@ impl StaticShadowPass {
   /// A pipeline writing a shadow map's depth over its viewport from what its bind group reads, whatever stood there.
   fn create_depth_writer(
     source: PipelineSource<'_>,
-    (module, label): (&'static str, &'static str),
-    (vertex, fragment): (&'static str, &'static str),
+    module: &'static str,
+    label: &'static str,
+    vertex: &'static str,
+    fragment: &'static str,
     layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<wgpu::RenderPipeline> {
     source.get_render_pipeline(

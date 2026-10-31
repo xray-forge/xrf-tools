@@ -1,5 +1,6 @@
 use glam::{Mat4, Vec4};
 
+use crate::context::gpu_tracing::GpuTracing;
 use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_indirect_light_mode::RenderIndirectLightMode;
@@ -13,6 +14,8 @@ use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::pre_exposure::PreExposure;
 use crate::pass::sky_harmonics::SkyHarmonics;
+use crate::pass::vbao_frame::VbaoFrame;
+use crate::pass::vbao_light::VbaoLight;
 use crate::pass::vbao_uniform::VbaoUniform;
 
 fn enhanced() -> RenderIndirectLightSettings {
@@ -75,7 +78,7 @@ fn gathers_only_enhanced_with_an_intensity() {
 #[test]
 fn searches_once_for_whatever_the_bitmask_yields() {
   let engine: RenderIndirectLightSettings = RenderIndirectLightSettings::default();
-  let search = |options: &RenderViewOptions| BitmaskSearch::new(options, true);
+  let search = |options: &RenderViewOptions| BitmaskSearch::new(options, GpuTracing::Available);
   let shared: RenderViewOptions = options_with(RenderAmbientOcclusionMethod::Vbao, enhanced());
 
   assert_eq!(search(&options_with(RenderAmbientOcclusionMethod::Gtao, engine)), None);
@@ -159,7 +162,7 @@ fn searches_once_for_whatever_the_bitmask_yields() {
     Some("rtao + indirect accumulate")
   );
   assert_eq!(
-    BitmaskSearch::new(&traced, false),
+    BitmaskSearch::new(&traced, GpuTracing::Unavailable),
     Some(BitmaskSearch {
       is_occluding: true,
       is_lit: true,
@@ -195,20 +198,42 @@ fn adds_the_light_only_where_it_is_gathered() {
 #[test]
 fn carries_the_light_only_with_the_search_history() {
   let settings: RenderAmbientOcclusionSettings = RenderAmbientOcclusionSettings::default();
-  let uniform =
-    |histories: (bool, bool)| VbaoUniform::new(&settings, (1.5, 3.0, 2), Mat4::IDENTITY, (800, 600), 0, histories);
+  let carried: VbaoFrame = VbaoFrame {
+    projection: Mat4::IDENTITY,
+    size: (800, 600),
+    frame: 0,
+    has_history: true,
+    has_light_history: true,
+  };
+  let light = |intensity: f32, radius: f32| VbaoLight {
+    intensity,
+    radius,
+    steps: 2,
+  };
+  let uniform = |frame: VbaoFrame| VbaoUniform::new(&settings, light(1.5, 3.0), frame);
 
-  assert_eq!(uniform((true, true)).has_light_history, 1.0);
-  assert_eq!(uniform((false, true)).has_light_history, 0.0);
-  assert_eq!(uniform((true, false)).has_light_history, 0.0);
-  assert_eq!(uniform((true, true)).intensity, 1.5);
-  assert_eq!(uniform((true, true)).light_radius, 3.0);
+  assert_eq!(uniform(carried).has_light_history, 1.0);
   assert_eq!(
-    VbaoUniform::new(&settings, (1.0, 0.5, 2), Mat4::IDENTITY, (800, 600), 0, (true, true)).light_radius,
-    settings.radius
-  );
-  assert_eq!(
-    VbaoUniform::new(&settings, (-1.0, 0.5, 2), Mat4::IDENTITY, (800, 600), 0, (true, true)).intensity,
+    uniform(VbaoFrame {
+      has_history: false,
+      ..carried
+    })
+    .has_light_history,
     0.0
   );
+  assert_eq!(
+    uniform(VbaoFrame {
+      has_light_history: false,
+      ..carried
+    })
+    .has_light_history,
+    0.0
+  );
+  assert_eq!(uniform(carried).intensity, 1.5);
+  assert_eq!(uniform(carried).light_radius, 3.0);
+  assert_eq!(
+    VbaoUniform::new(&settings, light(1.0, 0.5), carried).light_radius,
+    settings.radius
+  );
+  assert_eq!(VbaoUniform::new(&settings, light(-1.0, 0.5), carried).intensity, 0.0);
 }

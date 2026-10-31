@@ -2,13 +2,14 @@ use glam::{Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_camera_settings::RenderCameraSettings;
-use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_grading_settings::RenderGradingSettings;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_metering::ExposureMetering;
+use crate::pass::light_encoding::LightEncoding;
+use crate::pass::present_frame::PresentFrame;
 use crate::pass::present_marks::PresentMarks;
 
 /// What the present pass shows and the overlays drawn over it read, as WGSL's `Present`.
@@ -65,31 +66,26 @@ impl PresentUniform {
   /// The frames the grain is drawn anew for before it repeats, few enough that a float holds each whole.
   const GRAIN_FRAMES: u32 = 1 << 16;
 
-  pub fn new(
-    view: RenderDebugView,
-    (is_occluded, is_indirect, reflection_ratio): (bool, bool, Option<u32>),
-    is_upscaled: bool,
-    output: RenderRect,
-    corrections: &RenderImageCorrections,
-    (selection, is_bloomed): (Option<[f32; 3]>, bool),
-  ) -> Self {
+  /// A `frame`'s present, its image corrected by `corrections`.
+  pub fn new(frame: PresentFrame, corrections: &RenderImageCorrections) -> Self {
     let [r, g, b] = corrections.grading;
+    let output: RenderRect = frame.output;
 
     Self {
       corrections: Vec4::new(corrections.exposure, corrections.gamma, corrections.saturation, 0.0),
       grading: Vec4::new(r, g, b, 0.0),
-      view: view.get_index(),
-      is_occluded: u32::from(is_occluded),
-      is_upscaled: u32::from(is_upscaled),
+      view: frame.view.get_index(),
+      is_occluded: u32::from(frame.is_occluded),
+      is_upscaled: u32::from(frame.is_upscaled),
       _pad: 0,
       origin: Vec2::new(output.x as f32, output.y as f32),
       size: Vec2::new(output.width as f32, output.height as f32),
-      selection: selection.map_or(Vec4::ZERO, |[r, g, b]| Vec4::new(r, g, b, 1.0)),
+      selection: frame.selection.map_or(Vec4::ZERO, |[r, g, b]| Vec4::new(r, g, b, 1.0)),
       marks: Vec4::ZERO,
-      is_bloomed: if is_bloomed { Self::BLOOM_ENGINE } else { 0 },
-      is_indirect: u32::from(is_indirect),
-      is_reflected: u32::from(reflection_ratio.is_some()),
-      reflection_ratio: reflection_ratio.unwrap_or(1) as f32,
+      is_bloomed: if frame.is_bloomed { Self::BLOOM_ENGINE } else { 0 },
+      is_indirect: u32::from(frame.is_indirect),
+      is_reflected: u32::from(frame.reflection_ratio.is_some()),
+      reflection_ratio: frame.reflection_ratio.unwrap_or(1) as f32,
       deband: Vec4::ZERO,
       display: Vec4::ZERO,
       inspect: Vec4::ZERO,
@@ -125,10 +121,10 @@ impl PresentUniform {
   }
 
   /// The same, the reflections' view showing what the rays met as the display value combine adds it: the light by the
-  /// light's `scale`, encoded where the light is summed (`is_summed`).
-  pub fn with_reflection_light(self, scale: f32, is_summed: bool) -> Self {
+  /// frame's `light` encodes it.
+  pub fn with_reflection_light(self, light: LightEncoding) -> Self {
     Self {
-      inspect: Vec4::new(self.inspect.x, scale, f32::from(u8::from(is_summed)), 0.0),
+      inspect: Vec4::new(self.inspect.x, light.scale, f32::from(u8::from(light.is_summed)), 0.0),
       ..self
     }
   }

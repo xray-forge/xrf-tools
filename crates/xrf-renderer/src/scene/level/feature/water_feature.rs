@@ -5,11 +5,13 @@ use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_water_mode::RenderWaterMode;
 use crate::contract::render_water_settings::RenderWaterSettings;
+use crate::pass::enhanced_water_frame::EnhancedWaterFrame;
 use crate::pass::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::water_draw::WaterDraw;
+use crate::pass::water_reflection_trace::WaterReflectionTrace;
 use crate::pass::water_uniform::WaterUniform;
 use crate::scene::level::feature::ray_guides::RayGuides;
 use crate::scene::level::feature::view_feature::ViewFeature;
@@ -147,23 +149,27 @@ impl WaterFeature {
 
     self.enhanced = EnhancedWaterUniform::new(
       &settings.enhanced,
-      (frame.wind, frame.rain),
-      self.flow,
-      self
-        .reflection
-        .as_ref()
-        .map_or((false, false), |reflection| (true, reflection.histories.is_valid())),
-      (
-        if is_traced { reflections.distance } else { 0.0 },
-        reflections.get_trace_interval(),
-        self.frame,
-        if reflections.is_ray_budgeted {
-          WaterReflection::DIM_TURNS
-        } else {
-          1
+      EnhancedWaterFrame {
+        wind: frame.wind,
+        rain: frame.rain,
+        flow: self.flow,
+        is_reflected: self.reflection.is_some(),
+        has_history: self
+          .reflection
+          .as_ref()
+          .is_some_and(|reflection| reflection.histories.is_valid()),
+        trace: WaterReflectionTrace {
+          distance: if is_traced { reflections.distance } else { 0.0 },
+          turns: reflections.get_trace_interval(),
+          frame: self.frame,
+          dim_turns: if reflections.is_ray_budgeted {
+            WaterReflection::DIM_TURNS
+          } else {
+            1
+          },
+          march_steps: reflections.get_water_steps(),
         },
-        reflections.get_water_steps(),
-      ),
+      },
     );
   }
 

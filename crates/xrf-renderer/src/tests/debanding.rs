@@ -4,10 +4,9 @@ use glam::Vec4;
 
 use crate::contract::render_debanding_mode::RenderDebandingMode;
 use crate::contract::render_debanding_settings::RenderDebandingSettings;
-use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_image_corrections::RenderImageCorrections;
-use crate::contract::render_rect::RenderRect;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::pass::present_frame::PresentFrame;
 use crate::pass::present_uniform::PresentUniform;
 
 fn enhanced() -> RenderDebandingSettings {
@@ -28,14 +27,7 @@ fn options_with(debanding: RenderDebandingSettings) -> RenderViewOptions {
 }
 
 fn present() -> PresentUniform {
-  PresentUniform::new(
-    RenderDebugView::Final,
-    (false, false, None),
-    false,
-    RenderRect::default(),
-    &RenderImageCorrections::default(),
-    (None, false),
-  )
+  PresentUniform::new(PresentFrame::default(), &RenderImageCorrections::default())
 }
 
 #[test]

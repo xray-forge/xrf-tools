@@ -13,6 +13,7 @@ use crate::frame::view_targets::ViewTargets;
 use crate::pass::fsr_accumulate_parameters::FsrAccumulateParameters;
 use crate::pass::fsr_debug_view_parameters::FsrDebugViewParameters;
 use crate::pass::fsr_downsample_parameters::FsrDownsampleParameters;
+use crate::pass::fsr_frame::FsrFrame;
 use crate::pass::fsr_luma_instability_parameters::FsrLumaInstabilityParameters;
 use crate::pass::fsr_pass::FsrPass;
 use crate::pass::fsr_prepare_inputs_parameters::FsrPrepareInputsParameters;
@@ -73,10 +74,16 @@ fn upscales_two_frames_without_a_validation_error() {
   for shown_view in views {
     let offset: Vec2 = jitter.next(1.5);
     let constants: FsrUniform = FsrUniform::new(
-      (render, display),
-      (offset, previous),
+      FsrFrame {
+        render,
+        display,
+        jitter: offset,
+        previous_jitter: previous,
+        phases: TemporalJitter::get_phases(1.5),
+        frame_index: fsr.frames.get_frame(),
+        is_hdr: false,
+      },
       &view,
-      (TemporalJitter::get_phases(1.5), fsr.frames.get_frame()),
     );
 
     previous = offset;
@@ -96,7 +103,8 @@ fn upscales_two_frames_without_a_validation_error() {
       pass.add_passes(
         GraphDeclaration::new(&mut graph, &mut bindings, &mut runtime),
         handles,
-        (&fsr, &constants),
+        &fsr,
+        &constants,
         debug,
       );
 
@@ -130,10 +138,16 @@ fn upscales_two_frames_without_a_validation_error() {
 fn reads_view_depth_back_from_reversed_device_depth() {
   let view: CameraView = CameraView::new(Vec3::ZERO, Mat4::IDENTITY, 60.0, 1.0, 0.5, 100.0);
   let constants: FsrUniform = FsrUniform::new(
-    ((51, 50), (100, 100)),
-    (Vec2::new(0.25, -0.25), Vec2::new(-0.5, 0.5)),
+    FsrFrame {
+      render: (51, 50),
+      display: (100, 100),
+      jitter: Vec2::new(0.25, -0.25),
+      previous_jitter: Vec2::new(-0.5, 0.5),
+      phases: 32,
+      frame_index: 3,
+      is_hdr: false,
+    },
     &view,
-    (32, 3),
   );
   let to_view = |depth: f32| constants.device_to_view.y / (depth - constants.device_to_view.x);
 

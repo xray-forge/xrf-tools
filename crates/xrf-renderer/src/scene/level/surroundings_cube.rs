@@ -20,8 +20,10 @@ use crate::pass::shadow_cull::ShadowCull;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_uniform::StaticCullUniform;
+use crate::pass::static_draw_bindings::StaticDrawBindings;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
+use crate::pass::static_gbuffer_draw::StaticGbufferDraw;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::surroundings_parameters::SurroundingsParameters;
 use crate::pass::surroundings_pass::SurroundingsPass;
@@ -612,9 +614,12 @@ impl SurroundingsCube {
       let args: &wgpu::Buffer = context.get_buffer(args);
 
       StaticShadowPass::set_region(context, region);
-      passes
-        .gbuffer
-        .record(context, (&cut.view, &draws, textures), args, (false, false, false));
+      passes.gbuffer.record(
+        context,
+        StaticDrawBindings::new(&cut.view, &draws, textures),
+        args,
+        StaticGbufferDraw::default(),
+      );
     });
   }
 

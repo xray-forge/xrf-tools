@@ -82,7 +82,8 @@ impl SkyBehindPass {
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    (parameters, sky): (&SkyBehindParameters, &SkyParameters<'_>),
+    parameters: &SkyBehindParameters,
+    sky: &SkyParameters<'_>,
   ) {
     context.bind(parameters);
     context.bind(sky);

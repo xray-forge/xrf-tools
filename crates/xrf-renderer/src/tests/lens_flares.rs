@@ -4,6 +4,7 @@ use glam::Vec3;
 
 use crate::host::render_flare::RenderFlare;
 use crate::host::render_lens_flare::RenderLensFlare;
+use crate::pass::flare_frame::FlareFrame;
 use crate::pass::flare_uniform::FlareUniform;
 use crate::scene::level::lens_flare_fade::LensFlareFade;
 
@@ -95,10 +96,13 @@ fn writes_the_flares_and_gradient_a_lens_flare_draws() {
   let flare: RenderLensFlare = new_flare(1.0, 1.0, FlareUniform::SLOTS + 4);
   let uniform: FlareUniform = FlareUniform::new(
     &flare,
-    (Vec3::new(0.0, 0.0, -1.0), Vec3::Y),
-    Vec3::new(0.9, 0.8, 0.7),
-    0.25,
-    0.016,
+    FlareFrame {
+      to_sun: Vec3::new(0.0, 0.0, -1.0),
+      toward_sun: Vec3::Y,
+      color: Vec3::new(0.9, 0.8, 0.7),
+      faded: 0.25,
+      delta: 0.016,
+    },
   );
 
   assert_eq!(uniform.flares[3].x, 3.0);

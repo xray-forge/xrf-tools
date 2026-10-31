@@ -53,7 +53,7 @@ impl IndirectTracePass {
     });
 
     Ok(Self {
-      pipeline: Self::create_pipeline(source, (view_layout, sky_layout), layouts.as_ref())?,
+      pipeline: Self::create_pipeline(source, view_layout, sky_layout, layouts.as_ref())?,
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
       layouts,
@@ -67,7 +67,7 @@ impl IndirectTracePass {
     if source.get_generation() != self.generation {
       self.generation = source.get_generation();
 
-      match Self::create_pipeline(source, (&self.view_layout, &self.sky_layout), self.layouts.as_ref()) {
+      match Self::create_pipeline(source, &self.view_layout, &self.sky_layout, self.layouts.as_ref()) {
         Ok(pipeline) => self.pipeline = pipeline,
         Err(error) => log::error!("Indirect trace rejected, tracing with the last one: {error}"),
       }
@@ -84,8 +84,10 @@ impl IndirectTracePass {
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    (parameters, sky): (&IndirectTraceParameters<'_>, &SkyParameters<'_>),
-    (trace, textures): (&TraceParameters<'_>, &wgpu::BindGroup),
+    parameters: &IndirectTraceParameters<'_>,
+    sky: &SkyParameters<'_>,
+    trace: &TraceParameters<'_>,
+    textures: &wgpu::BindGroup,
   ) {
     let Some(pipeline) = &self.pipeline else {
       return;
@@ -105,7 +107,8 @@ impl IndirectTracePass {
 
   fn create_pipeline(
     source: PipelineSource<'_>,
-    (view_layout, sky_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
+    view_layout: &wgpu::BindGroupLayout,
+    sky_layout: &wgpu::BindGroupLayout,
     layouts: Option<&[wgpu::BindGroupLayout; 3]>,
   ) -> XrfResult<Option<wgpu::RenderPipeline>> {
     let Some([own_layout, trace_layout, texture_layout]) = layouts else {
