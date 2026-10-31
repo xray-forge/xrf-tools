@@ -1,3 +1,5 @@
+use crate::contract::render_helper_icon::RenderHelperIcon;
+
 /// One shape of a helper in its object's own space, renderer space.
 #[derive(Clone, Debug, PartialEq)]
 pub enum RenderHelperShape {
@@ -14,14 +16,14 @@ pub enum RenderHelperShape {
   Segments {
     ends: Vec<[[f32; 3]; 2]>,
   },
-  /// A point drawn as three crossed axes `size` metres long: what has a place and no shape.
-  Marker {
-    center: [f32; 3],
-    size: f32,
-  },
   /// A spawned object's drawn model, by its index among the level's spawned objects: where it shows, tinted and
   /// outlined in its helper's colour, and its box while it is hovered or selected.
   Model {
     object: u32,
+  },
+  /// A picture standing at a point, drawn at a constant size on screen: what has a place and no shape.
+  Icon {
+    center: [f32; 3],
+    icon: RenderHelperIcon,
   },
 }

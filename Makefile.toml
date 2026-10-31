@@ -222,6 +222,30 @@ description = "Regenerate and format the frontend mirrors of serialized Rust typ
 category = "Code generation"
 dependencies = ["generate-typescript-bindings", "format-typescript-bindings"]
 
+[tasks.export-helper-icons]
+description = "Export the Material icons the renderer's helper icon manifest names, as the UI draws them."
+category = "Code generation"
+cwd = "packages/xrf-ui"
+script_runner = "@shell"
+script = "node cli/export-helper-icons.mjs ../../crates/xrf-renderer/helper-icons/manifest.json"
+
+[tasks.generate-helper-icons]
+description = "Export the helper icons and rasterise them into the renderer's bundled atlas."
+category = "Code generation"
+dependencies = ["export-helper-icons"]
+command = "cargo"
+args = [
+  "test",
+  "-p",
+  "xrf-renderer",
+  "--lib",
+  "--",
+  # Ignored so a plain test run only checks the atlas; rewriting it is intentional.
+  "--ignored",
+  "--exact",
+  "tests::helper_icons::generate_helper_icon_atlas",
+]
+
 # Maintenance.
 
 [tasks.clean]

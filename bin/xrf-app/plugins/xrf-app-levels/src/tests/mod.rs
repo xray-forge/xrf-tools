@@ -10,6 +10,7 @@ mod level_files;
 mod level_follow;
 mod level_map;
 mod level_objects;
+mod level_placements;
 mod level_source;
 mod level_start;
 mod level_viewer_folder;

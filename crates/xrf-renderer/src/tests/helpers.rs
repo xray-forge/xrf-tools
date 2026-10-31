@@ -1,10 +1,12 @@
 use glam::{Mat4, Vec3};
 
+use crate::contract::render_helper_icon::RenderHelperIcon;
 use crate::contract::render_helper_options::RenderHelperOptions;
 use crate::host::render_helper_object::RenderHelperObject;
 use crate::host::render_helper_shape::RenderHelperShape;
 use crate::host::render_level_helpers::RenderLevelHelpers;
-use crate::scene::level::feature::helpers_feature::HelpersFeature;
+use crate::scene::level::feature::helpers_feature::{HelperPart, HelpersFeature};
+use crate::scene::level::helpers::helper_icon_instance::HelperIconInstance;
 use crate::scene::level::helpers::helper_vertex::HelperVertex;
 use crate::scene::level::helpers::level_helpers::LevelHelpers;
 
@@ -85,22 +87,16 @@ fn wires_a_sphere_as_three_great_circles_and_a_box_by_its_edges_where_each_stand
 }
 
 #[test]
-fn wires_segments_as_they_stand_and_a_marker_as_three_crossed_axes() {
+fn wires_segments_where_their_object_stands_them() {
   let helpers: LevelHelpers = LevelHelpers::new(
     RenderLevelHelpers {
       objects: vec![new_object(
         1,
         0,
         Vec3::new(0.0, 5.0, 0.0),
-        vec![
-          RenderHelperShape::Segments {
-            ends: vec![[[0.0; 3], [1.0, 0.0, 0.0]]],
-          },
-          RenderHelperShape::Marker {
-            center: [0.0; 3],
-            size: 2.0,
-          },
-        ],
+        vec![RenderHelperShape::Segments {
+          ends: vec![[[0.0; 3], [1.0, 0.0, 0.0]], [[0.0; 3], [0.0, 0.0, -2.0]]],
+        }],
       )],
     },
     1,
@@ -110,9 +106,7 @@ fn wires_segments_as_they_stand_and_a_marker_as_three_crossed_axes() {
     helpers.segments,
     vec![
       [Vec3::new(0.0, 5.0, 0.0), Vec3::new(1.0, 5.0, 0.0)],
-      [Vec3::new(-1.0, 5.0, 0.0), Vec3::new(1.0, 5.0, 0.0)],
-      [Vec3::new(0.0, 4.0, 0.0), Vec3::new(0.0, 6.0, 0.0)],
-      [Vec3::new(0.0, 5.0, -1.0), Vec3::new(0.0, 5.0, 1.0)],
+      [Vec3::new(0.0, 5.0, 0.0), Vec3::new(0.0, 5.0, -2.0)],
     ]
   );
 }
@@ -128,10 +122,23 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
   };
 
   assert_eq!(
-    ids(HelpersFeature::to_vertices(&helpers, &options(1 << 10 | 1 << 11), no_boxes)),
+    ids(HelpersFeature::to_vertices(
+      &helpers,
+      &options(1 << 10 | 1 << 11),
+      HelperPart::Every,
+      no_boxes
+    )),
     vec![3, 7]
   );
-  assert_eq!(ids(HelpersFeature::to_vertices(&helpers, &options(1 << 11), no_boxes)), vec![3]);
+  assert_eq!(
+    ids(HelpersFeature::to_vertices(
+      &helpers,
+      &options(1 << 11),
+      HelperPart::Every,
+      no_boxes
+    )),
+    vec![3]
+  );
   assert!(
     HelpersFeature::to_vertices(
       &helpers,
@@ -139,6 +146,7 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
         is_shown: false,
         ..options(u32::MAX)
       },
+      HelperPart::Every,
       no_boxes
     )
     .is_empty()
@@ -150,33 +158,25 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
         hidden: vec![3],
         ..options(u32::MAX)
       },
+      HelperPart::Every,
       no_boxes
     )),
     vec![7]
   );
 
-  let selected: Vec<HelperVertex> = HelpersFeature::to_vertices(
-    &helpers,
-    &RenderHelperOptions {
-      selected: vec![7],
-      distance_scale: 2.0,
-      ..options(u32::MAX)
-    },
-    no_boxes,
-  );
+  // Every kept object's draw as none were singled out; the selected one's are drawn apart, over them.
+  let selecting: RenderHelperOptions = RenderHelperOptions {
+    selected: vec![7],
+    distance_scale: 2.0,
+    ..options(u32::MAX)
+  };
+  let every: Vec<HelperVertex> = HelpersFeature::to_vertices(&helpers, &selecting, HelperPart::Every, no_boxes);
+  let singled: Vec<HelperVertex> = HelpersFeature::to_vertices(&helpers, &selecting, HelperPart::Singled, no_boxes);
 
-  assert!(
-    selected
-      .iter()
-      .filter(|it| it.object == 7)
-      .all(|it| it.color[3] == 1.0 && it.fade[0] == 0.0)
-  );
-  assert!(
-    selected
-      .iter()
-      .filter(|it| it.object == 3)
-      .all(|it| it.color[3] == 0.0 && it.fade[0] == 200.0)
-  );
+  assert_eq!(ids(every.clone()), vec![3, 7]);
+  assert!(every.iter().all(|it| it.color[3] == 0.0 && it.fade[0] == 200.0));
+  assert_eq!(ids(singled.clone()), vec![7]);
+  assert!(singled.iter().all(|it| it.color[3] == 1.0 && it.fade[0] == 0.0));
 }
 
 // A model marks its place in its colour while it stands in the scene, by place, and draws its box only while hovered or
@@ -210,7 +210,7 @@ fn marks_each_standing_model_by_its_place_and_boxes_the_hovered_and_selected() {
     vec![[300, orange], [900, orange]]
   );
   assert!(HelpersFeature::to_marks(&helpers, &options(1 << 3), places).is_empty());
-  assert!(HelpersFeature::to_vertices(&helpers, &options(1 << 2), boxes).is_empty());
+  assert!(HelpersFeature::to_vertices(&helpers, &options(1 << 2), HelperPart::Every, boxes).is_empty());
 
   let singled: Vec<HelperVertex> = HelpersFeature::to_vertices(
     &helpers,
@@ -219,15 +219,67 @@ fn marks_each_standing_model_by_its_place_and_boxes_the_hovered_and_selected() {
       hovered: Some(5),
       ..options(1 << 2)
     },
+    HelperPart::Singled,
     boxes,
   );
 
   // Two ends of twelve edges for each of the two.
   assert_eq!(singled.len(), 48);
+  assert!(singled.iter().all(|it| it.color[3]
+    == if it.object == 4 {
+      HelperVertex::SELECTED
+    } else {
+      HelperVertex::HOVERED
+    }));
   assert!(
     singled
       .iter()
-      .all(|it| it.color[3] == if it.object == 4 { HelperVertex::SELECTED } else { HelperVertex::HOVERED })
+      .all(|it| Vec3::from_array(it.position).cmple(Vec3::ONE).all())
   );
-  assert!(singled.iter().all(|it| Vec3::from_array(it.position).cmple(Vec3::ONE).all()));
+}
+
+// An icon stands where its object stands it and draws as its object's wires would, by its cell of the atlas.
+#[test]
+fn stands_each_icon_at_its_point_by_its_cell_drawn_as_its_object() {
+  let helpers: LevelHelpers = LevelHelpers::new(
+    RenderLevelHelpers {
+      objects: vec![
+        new_object(
+          8,
+          4,
+          Vec3::new(1.0, 2.0, 3.0),
+          vec![RenderHelperShape::Icon {
+            center: [0.0, 1.0, 0.0],
+            icon: RenderHelperIcon::Light,
+          }],
+        ),
+        new_object(
+          9,
+          5,
+          Vec3::ZERO,
+          vec![RenderHelperShape::Icon {
+            center: [0.0; 3],
+            icon: RenderHelperIcon::Sound,
+          }],
+        ),
+      ],
+    },
+    1,
+  );
+  let icons: Vec<HelperIconInstance> = HelpersFeature::to_icons(
+    &helpers,
+    &RenderHelperOptions {
+      selected: vec![8],
+      ..options(1 << 4)
+    },
+    HelperPart::Singled,
+  );
+
+  assert_eq!(helpers.segments.len(), 0);
+  assert_eq!(icons.len(), 1);
+  assert_eq!(icons[0].position, [1.0, 3.0, 3.0]);
+  assert_eq!(icons[0].icon, RenderHelperIcon::Light.get_index());
+  assert_eq!(icons[0].object, 8);
+  assert_eq!(icons[0].color[3], HelperVertex::SELECTED);
+  assert_eq!(icons[0].fade[0], 0.0);
 }

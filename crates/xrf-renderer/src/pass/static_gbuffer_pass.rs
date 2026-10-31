@@ -117,14 +117,12 @@ impl StaticGBufferPass {
         (&self.layout, &self.marks_layout),
         &self.texture_layout,
       )
-      .and_then(
-        |pipelines| {
-          let impostors =
-            Self::create_impostor_pipelines(source, &self.view_layout, &self.impostor_layout, &self.texture_layout)?;
+      .and_then(|pipelines| {
+        let impostors =
+          Self::create_impostor_pipelines(source, &self.view_layout, &self.impostor_layout, &self.texture_layout)?;
 
-          Ok((pipelines, impostors))
-        },
-      ) {
+        Ok((pipelines, impostors))
+      }) {
         Ok((pipelines, impostor_pipelines)) => {
           self.pipelines = pipelines;
           self.impostor_pipelines = impostor_pipelines;

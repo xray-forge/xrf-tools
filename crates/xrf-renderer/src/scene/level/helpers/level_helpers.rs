@@ -2,13 +2,14 @@ use std::f32::consts::TAU;
 
 use glam::{BVec3, Mat4, Vec3};
 
+use crate::contract::render_helper_icon::RenderHelperIcon;
 use crate::host::render_helper_object::RenderHelperObject;
 use crate::host::render_helper_shape::RenderHelperShape;
 use crate::host::render_level_helpers::RenderLevelHelpers;
 use crate::scene::level::helpers::level_helper_object::LevelHelperObject;
 
-/// A level's helpers as wires: each helped object and its segments in renderer space, built once a set is read, which
-/// every view of the scene draws from.
+/// A level's helpers as wires and icons: each helped object, its segments and the icons it stands in renderer space,
+/// built once a set is read, which every view of the scene draws from.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LevelHelpers {
   /// Moved on with every set read, so a view builds its wires again.
@@ -17,6 +18,8 @@ pub struct LevelHelpers {
   pub objects: Vec<LevelHelperObject>,
   /// Every wire's two ends.
   pub segments: Vec<[Vec3; 2]>,
+  /// Every icon's point and picture.
+  pub icons: Vec<(Vec3, RenderHelperIcon)>,
 }
 
 impl LevelHelpers {
@@ -39,18 +42,25 @@ impl LevelHelpers {
     (3, 7),
   ];
 
-  /// The wires of `helpers`, numbered `version`.
+  /// The wires and icons of `helpers`, numbered `version`.
   pub fn new(helpers: RenderLevelHelpers, version: u64) -> Self {
     let mut segments: Vec<[Vec3; 2]> = Vec::new();
+    let mut icons: Vec<(Vec3, RenderHelperIcon)> = Vec::new();
     let mut objects: Vec<LevelHelperObject> = helpers
       .objects
       .into_iter()
       .map(|object: RenderHelperObject| {
         let transform: Mat4 = Mat4::from_cols_array(&object.transform);
         let start: usize = segments.len();
+        let first_icon: usize = icons.len();
 
         for shape in &object.shapes {
-          Self::add_shape(&mut segments, transform, shape);
+          match shape {
+            RenderHelperShape::Icon { center, icon } => {
+              icons.push((transform.transform_point3(Vec3::from_array(*center)), *icon));
+            }
+            shape => Self::add_shape(&mut segments, transform, shape),
+          }
         }
 
         LevelHelperObject {
@@ -60,6 +70,7 @@ impl LevelHelpers {
           draw_distance: object.draw_distance,
           place: transform.transform_point3(Vec3::ZERO),
           segments: start..segments.len(),
+          icons: first_icon..icons.len(),
           model: object.shapes.iter().find_map(|shape| match shape {
             RenderHelperShape::Model { object } => Some(*object),
             _ => None,
@@ -74,6 +85,7 @@ impl LevelHelpers {
       version,
       objects,
       segments,
+      icons,
     }
   }
 
@@ -102,7 +114,7 @@ impl LevelHelpers {
   }
 
   /// A shape's wires where `transform` stands it: a sphere's three great circles, a box's twelve edges, segments as
-  /// they are, a marker's three axes, and none for a model.
+  /// they are, and none for a model or an icon.
   fn add_shape(segments: &mut Vec<[Vec3; 2]>, transform: Mat4, shape: &RenderHelperShape) {
     match shape {
       RenderHelperShape::Sphere { center, radius } => {
@@ -132,26 +144,15 @@ impl LevelHelpers {
 
         segments.extend(Self::BOX_EDGES.iter().map(|(from, to)| [corner(*from), corner(*to)]));
       }
-      // A model's own wires are its box, which only its hovering or selection draws, where the scene stands it.
-      RenderHelperShape::Model { .. } => {}
+      // A model's own wires are its box, which only its hovering or selection draws, where the scene stands it; an
+      // icon is drawn as itself.
+      RenderHelperShape::Model { .. } | RenderHelperShape::Icon { .. } => {}
       RenderHelperShape::Segments { ends } => {
         segments.extend(
           ends
             .iter()
             .map(|ends| ends.map(|end| transform.transform_point3(Vec3::from_array(end)))),
         );
-      }
-      RenderHelperShape::Marker { center, size } => {
-        let center: Vec3 = Vec3::from_array(*center);
-
-        segments.extend([Vec3::X, Vec3::Y, Vec3::Z].map(|axis| {
-          let reach: Vec3 = axis * *size * 0.5;
-
-          [
-            transform.transform_point3(center - reach),
-            transform.transform_point3(center + reach),
-          ]
-        }));
       }
     }
   }

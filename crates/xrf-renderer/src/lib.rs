@@ -91,6 +91,7 @@ pub use crate::contract::render_graph_transient::RenderGraphTransient;
 pub use crate::contract::render_grass_report::RenderGrassReport;
 pub use crate::contract::render_grass_settings::RenderGrassSettings;
 pub use crate::contract::render_group_cost::RenderGroupCost;
+pub use crate::contract::render_helper_icon::{RENDER_HELPER_ICONS, RenderHelperIcon, RenderHelperIconEntry};
 pub use crate::contract::render_helper_options::RenderHelperOptions;
 pub use crate::contract::render_image_corrections::RenderImageCorrections;
 pub use crate::contract::render_indirect_light_mode::RenderIndirectLightMode;

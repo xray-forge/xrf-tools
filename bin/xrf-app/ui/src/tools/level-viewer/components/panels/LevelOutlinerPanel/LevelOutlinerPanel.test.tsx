@@ -9,6 +9,8 @@ import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
 import {
   ELevelObjectId,
   ELevelObjectKind,
+  ELevelPlacementDetails,
+  ELevelPlacementFile,
   LEVEL_SPAWN_PART,
   LevelObject,
   LevelObjectsDescription,
@@ -235,6 +237,55 @@ describe("LevelOutlinerPanel", () => {
     expect(sent[0]?.z).toBeLessThan(8);
   });
 
+  it("says what a placement's file and a light's bundle record of it", async () => {
+    const { container, view } = await renderPanel();
+    const sound: LevelObject = mockLevelObject({
+      id: { file: ELevelPlacementFile.SOUNDS, index: 0, source: ELevelObjectId.PLACEMENT },
+      kind: ELevelObjectKind.STATIC_SOUNDS,
+      name: "ambient\\wind",
+      placement: {
+        details: {
+          active: [0, 0],
+          frequency: 1,
+          kind: ELevelPlacementDetails.SOUND,
+          pause: [1500, 4000],
+          play: [0, 0],
+          sound: "ambient\\wind",
+          volume: 0.8,
+        },
+        shapes: [],
+      },
+      spawn: null,
+    });
+
+    act(() => container.get(LevelViewportService).notePicked(toPick(sound)));
+
+    const details: HTMLElement = await view.findByTestId("level-object-details");
+
+    expect(details).toHaveTextContent("Static sounds");
+    expect(details).toHaveTextContent("All day");
+    expect(details).toHaveTextContent("1.5 s to 4 s");
+
+    act(() =>
+      container.get(LevelViewportService).notePicked(
+        toPick(
+          mockLevelObject({
+            id: { index: 3, source: ELevelObjectId.LIGHT },
+            kind: ELevelObjectKind.LIGHTS,
+            light: { color: [1, 0.5, 0.25], isSpot: true, range: 12 },
+            name: "light 3",
+            spawn: null,
+          })
+        )
+      )
+    );
+
+    await waitFor(() =>
+      expect(view.getByTestId("level-object-details")).toHaveTextContent("Point, authored as a spot")
+    );
+    expect(view.getByTestId("level-object-details")).toHaveTextContent("12 m");
+  });
+
   it("says what a volume restricts and the shapes it covers", async () => {
     const { container, view } = await renderPanel();
 
@@ -282,6 +333,22 @@ describe("LevelOutlinerPanel", () => {
 
     await waitFor(() => expect(view.queryByTestId("level-object-details")).not.toBeInTheDocument());
     expect(view.queryByRole("treeitem", { selected: true })).not.toBeInTheDocument();
+  });
+
+  // The Inspector is headed with its stripe button's name as every other side panel is, chosen object or none.
+  it("heads the Inspector with its name, whatever it shows", async () => {
+    const { container, view } = await renderPanel();
+
+    function inspector(): HTMLElement {
+      return view.getByTestId("level-inspector-panel");
+    }
+
+    expect(within(inspector()).getByText("Inspector")).toBeInTheDocument();
+
+    act(() => container.get(LevelViewportService).notePicked(toPick(OBJECTS.objects[2] as LevelObject)));
+
+    expect(await within(inspector()).findByTestId("level-object-details")).toHaveTextContent("medkit");
+    expect(within(inspector()).getByText("Inspector")).toBeInTheDocument();
   });
 
   it("adds a Ctrl-clicked row to the selection and selects a Shift-clicked run", async () => {

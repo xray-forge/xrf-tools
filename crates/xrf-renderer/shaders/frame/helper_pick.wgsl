@@ -1,8 +1,9 @@
 #import "common/camera"
 
-// The level objects' helpers' wires drawn into a pick's one texel, through the camera narrowed to it, as quads a few
-// window pixels wide: a one-pixel wire is too thin to click. Drawn after the scene's clusters and over them, so a click
-// near a wire picks its object whatever stands in front, as an editor's helpers do.
+// The level objects' helpers' wires and icons drawn into a pick's one texel, through the camera narrowed to it: a wire
+// as a quad a few window pixels wide, since a one-pixel wire is too thin to click, an icon as its square. Drawn after
+// the scene's clusters and over them, so a click near a wire or on an icon picks its object whatever stands in front,
+// as an editor's helpers do.
 
 // Window pixels either side of a wire, and past its ends, that a pick still meets it.
 const HELPER_PICK_REACH: f32 = 4.0;
@@ -64,6 +65,39 @@ fn vs_helper_pick(
   let outward: f32 = select(-1.0, 1.0, corner.x > 0.5);
 
   out.clip = vec4<f32>(at.xy + across * corner.y * reach + along * outward * reach, at.z, 1.0);
+
+  return out;
+}
+
+// Window pixels an icon's pick spans each way: most of the icon `frame/overlay` draws (`HELPER_ICON_SIZE`), its clear
+// corners aside.
+const HELPER_ICON_PICK_SIZE: f32 = 32.0;
+
+// One icon an instance: six corners of its square about its point, collapsed behind the eye.
+@vertex
+fn vs_helper_icon_pick(
+  @builtin(vertex_index) index: u32,
+  @location(0) position: vec3<f32>,
+  @location(1) object: u32,
+) -> HelperPickVarying {
+  var corners: array<vec2<f32>, 6> = array<vec2<f32>, 6>(
+    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
+    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0),
+  );
+  let center: vec4<f32> = camera.view_projection * vec4<f32>(position, 1.0);
+  var out: HelperPickVarying;
+
+  out.object = object;
+
+  if (center.w < HELPER_PICK_NEAR) {
+    out.clip = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+
+    return out;
+  }
+
+  let reach: f32 = HELPER_ICON_PICK_SIZE * 0.5 * PICK_UNITS_PER_PIXEL;
+
+  out.clip = vec4<f32>(center.xy / center.w + corners[index] * reach, center.z / center.w, 1.0);
 
   return out;
 }

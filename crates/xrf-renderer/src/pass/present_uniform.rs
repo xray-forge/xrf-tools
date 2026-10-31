@@ -136,7 +136,12 @@ impl PresentUniform {
   /// selection cover faded where `is_rest_faded`.
   pub fn with_marks(self, is_marked: bool, is_rest_faded: bool) -> Self {
     Self {
-      marks: Vec4::new(f32::from(u8::from(is_marked)), f32::from(u8::from(is_rest_faded)), 0.0, 0.0),
+      marks: Vec4::new(
+        f32::from(u8::from(is_marked)),
+        f32::from(u8::from(is_rest_faded)),
+        0.0,
+        0.0,
+      ),
       ..self
     }
   }

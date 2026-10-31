@@ -100,8 +100,9 @@ function toShapeSpheres(transform: VisualTransform, shape: LevelObjectShape): Ar
  * @param object - A level object.
  * @param drawn - The sphere its model spans where it stands, in renderer space, centre then radius, as the renderer
  *   holds it; null for an object not drawn yet, or drawn as nothing.
- * @returns What it spans: its model, else the box about its volume's shapes as `CCF_Shape::ComputeBounds` measures it,
- *   else the box about a patrol path's points, else a metre about where it stands.
+ * @returns What it spans: its model, else the box about its volume's or placement's shapes as
+ *   `CCF_Shape::ComputeBounds` measures it, else the box about a patrol path's points, else a metre about where it
+ *   stands.
  */
 export function toLevelObjectSphere(
   object: LevelObject,
@@ -111,8 +112,9 @@ export function toLevelObjectSphere(
     return { center: { x: drawn[0], y: drawn[1], z: drawn[2] }, radius: drawn[3] || UNREAD_RADIUS };
   }
 
-  const spanned: Array<ILevelObjectSphere> = object.volume
-    ? object.volume.shapes.flatMap((shape: LevelObjectShape) => toShapeSpheres(object.transform, shape))
+  const shapes: ReadonlyArray<LevelObjectShape> = object.volume?.shapes ?? object.placement?.shapes ?? [];
+  const spanned: Array<ILevelObjectSphere> = shapes.length
+    ? shapes.flatMap((shape: LevelObjectShape) => toShapeSpheres(object.transform, shape))
     : (object.patrol?.points ?? []).map((point: Vector3d) => ({ center: toPoint3(point), radius: 0 }));
   const sphere: Nullable<ILevelObjectSphere> = toSphereAboutBox(spanned);
 

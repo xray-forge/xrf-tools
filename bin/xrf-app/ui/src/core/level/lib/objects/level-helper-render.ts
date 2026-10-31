@@ -24,18 +24,22 @@ export function toLevelSpawnIndices(objects: ReadonlyArray<LevelObject>): Array<
 }
 
 /**
- * @param objects - Level objects.
  * @param listed - The level's objects as listed.
+ * @returns Each object's place in the listing by its key: the id the backend gives its helper.
+ */
+export function toLevelListingPlaceMap(listed: ReadonlyArray<LevelObject>): ReadonlyMap<string, number> {
+  return new Map(listed.map((object: LevelObject, index: number) => [toLevelObjectKey(object.id), index]));
+}
+
+/**
+ * @param objects - Level objects.
+ * @param places - Each listed object's place in the listing by its key (`toLevelListingPlaceMap`).
  * @returns The places of those listed among the listing, ascending: the ids the backend gives their helpers.
  */
 export function toLevelListingPlaces(
   objects: ReadonlyArray<LevelObject>,
-  listed: ReadonlyArray<LevelObject>
+  places: ReadonlyMap<string, number>
 ): Array<number> {
-  const places: ReadonlyMap<string, number> = new Map(
-    listed.map((object: LevelObject, index: number) => [toLevelObjectKey(object.id), index])
-  );
-
   return toAscending(
     objects
       .map((object: LevelObject) => places.get(toLevelObjectKey(object.id)))
@@ -56,20 +60,20 @@ export interface ILevelHelperTargets {
 /**
  * @param helpers - Which helpers the viewer draws.
  * @param targets - The level objects the viewport singles out.
- * @param listed - The level's objects as listed, by whose places the backend names their helpers.
+ * @param places - Each listed object's place in the listing by its key, by which the backend names its helper.
  * @returns What the renderer draws of the level's helpers: each kind by its place in the kind table, as the backend
  *   numbers them.
  */
 export function toLevelHelperRenderOptions(
   helpers: ILevelHelperOptions,
   targets: ILevelHelperTargets,
-  listed: ReadonlyArray<LevelObject>
+  places: ReadonlyMap<string, number>
 ): RenderHelperOptions {
   return {
     ...NO_NATIVE_HELPERS,
     distanceScale: helpers.distanceScale,
-    hidden: toLevelListingPlaces(targets.hidden, listed),
-    hovered: (targets.hovered ? toLevelListingPlaces([targets.hovered], listed)[0] : null) ?? null,
+    hidden: toLevelListingPlaces(targets.hidden, places),
+    hovered: targets.hovered ? (places.get(toLevelObjectKey(targets.hovered.id)) ?? null) : null,
     isRestFaded: helpers.isRestFaded,
     isShown: helpers.isShown,
     kinds: LEVEL_OBJECT_KINDS.reduce(
@@ -78,6 +82,6 @@ export function toLevelHelperRenderOptions(
       0
     ),
     occludedStrength: helpers.occludedStrength,
-    selected: toLevelListingPlaces(targets.selected, listed),
+    selected: toLevelListingPlaces(targets.selected, places),
   };
 }

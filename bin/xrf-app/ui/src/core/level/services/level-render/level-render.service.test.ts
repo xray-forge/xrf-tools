@@ -430,6 +430,36 @@ describe("LevelRenderService", () => {
     });
   });
 
+  // A pick a frame away answers the pointer; points arriving meanwhile wait for it, the latest of them alone picked next.
+  it("hovers what the pointer rests on with one pick in flight, picking the latest point next", async () => {
+    const { container, service } = await mockAttachedLevelRender();
+    const answers: Array<(hit: RenderLevelHit) => void> = [];
+
+    mockIpcCommands({
+      [ERenderCommand.PICK]: () =>
+        new Promise<RenderLevelHit>((resolve: (hit: RenderLevelHit) => void) => answers.push(resolve)),
+    });
+
+    const first = service.hover({ x: 1, y: 1 });
+    const second = service.hover({ x: 2, y: 2 });
+    const third = service.hover({ x: 3, y: 3 });
+
+    await waitFor(() => expect(answers).toHaveLength(1));
+    answers[0]?.({ depth: 1, kind: ERenderLevelHit.SPAWN, object: 0, point: [0, 0, 0] });
+    await waitFor(() => expect(answers).toHaveLength(2));
+    answers[1]?.({ depth: 1, kind: ERenderLevelHit.SPAWN, object: 0, point: [0, 0, 0] });
+    await Promise.allSettled([first, second, third]);
+
+    expect(listMockInvokeCalls(ERenderCommand.PICK).map((call) => call.request)).toEqual([
+      { isThrough: false, x: 1, y: 1 },
+      { isThrough: false, x: 3, y: 3 },
+    ]);
+
+    await service.hover(null);
+
+    expect(container.get(LevelViewportService).hovered).toBeNull();
+  });
+
   it("focuses the view's lens where a click lands while the focus is picked, selecting nothing", async () => {
     const { container, service } = await mockAttachedLevelRender();
     const viewport: LevelViewportService = container.get(LevelViewportService);

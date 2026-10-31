@@ -7,7 +7,7 @@ use xrf_vfs::XraySearch;
 
 use crate::level::SelectedLevel;
 use crate::objects::{LevelObject, LevelObjectId, LevelObjectsDescription};
-use crate::parts::{LevelGraphPart, LevelSpawnPart};
+use crate::parts::LevelGraphPart;
 use crate::viewer::map::annotations::{AnnotationOutline, AnnotationPatrol, AnnotationPoint, AnnotationVolume};
 
 /// Everything a level map's annotations can draw of a level, engine space seen from above.
@@ -30,7 +30,7 @@ impl LevelAnnotations {
     let graph: Arc<SpawnLevelGraph> = LevelGraphPart::get(current, search)?;
 
     Ok(Self::of(
-      &LevelObjectsDescription::describe(&*LevelSpawnPart::get(current, search)?, Some(&graph)),
+      &LevelObjectsDescription::read(current, search)?,
       &graph,
       &current.source.require_name()?,
     ))

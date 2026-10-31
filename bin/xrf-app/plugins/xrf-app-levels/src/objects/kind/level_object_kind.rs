@@ -32,6 +32,20 @@ pub enum LevelObjectKind {
   Patrols,
   /// The game graph's vertices on the level.
   GraphPoints,
+  /// Particle systems `level.ps_static` plants for a single player game.
+  StaticParticles,
+  /// Sounds `level.snd_static` plays where they stand.
+  StaticSounds,
+  /// The reverb environments' boxes of `level.snd_env`.
+  SoundEnvironments,
+  /// The volumetric fog's boxes of `level.fog_vol`.
+  FogVolumes,
+  /// The spheres of `level.env_mod` that move the weather toward their own.
+  EnvModifiers,
+  /// Where a multiplayer game respawns actors, artefacts and items (`level.game`); a single player game reads none.
+  RespawnPoints,
+  /// The level's static lights, the sun aside.
+  Lights,
 }
 
 impl LevelObjectKind {

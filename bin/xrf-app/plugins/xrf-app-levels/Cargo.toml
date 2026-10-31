@@ -15,7 +15,7 @@ image = { workspace = true, features = ["png", "tga"] }
 log = { workspace = true }
 rayon = { workspace = true }
 # Rasterises a level map's annotations, which it draws as an SVG.
-resvg = { version = "0.48.1", default-features = false, features = ["text", "system-fonts"] }
+resvg = { workspace = true, features = ["text", "system-fonts"] }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 tauri = { workspace = true }

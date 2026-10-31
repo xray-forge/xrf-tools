@@ -296,7 +296,7 @@ impl GpuState {
         calibration: Self::join(calibration)?,
         present: PresentPass::new(source, view),
         backdrop: BackdropPass::new(source),
-        overlay: OverlayPass::new(source, view),
+        overlay: OverlayPass::new(queue, source, view, bundle),
         table: MaterialTable::new(device, queue),
         brdf_table: BrdfTable::new(device, queue),
         weather_textures: WeatherTextureCache::new(device, queue, workers),

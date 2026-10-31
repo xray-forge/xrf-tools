@@ -31,6 +31,7 @@ mod grass_frame;
 mod grass_spacing;
 mod headless;
 mod height_field;
+mod helper_icons;
 mod helpers;
 mod hex_tiling;
 mod history;

@@ -7,6 +7,7 @@ import { isSessionMovedPast, SessionPartResource } from "@xrf/ipc/session";
 import { SessionChange, SessionId, SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import {
   LEVEL_MAP_PART,
+  LEVEL_PLACEMENTS_PART,
   LEVEL_SPAWN_PART,
   LEVEL_START_PART,
   LEVEL_SURFACES_PART,
@@ -94,7 +95,11 @@ export class LevelLoadService {
     this.levelMap = new SessionPartResource(eventBus, [LEVEL_MAP_PART], levelsCommands.describeLevelMap);
     this.surfaces = new SessionPartResource(eventBus, [LEVEL_SURFACES_PART], levelsCommands.describeSurfaces);
     this.textures = new SessionPartResource(eventBus, [LEVEL_TEXTURES_PART], levelsCommands.describeTextures);
-    this.levelObjects = new SessionPartResource(eventBus, [LEVEL_SPAWN_PART], levelsCommands.describeObjects);
+    this.levelObjects = new SessionPartResource(
+      eventBus,
+      [LEVEL_SPAWN_PART, LEVEL_PLACEMENTS_PART],
+      levelsCommands.describeObjects
+    );
   }
 
   /** The open level, its lifecycle and failure kept. */

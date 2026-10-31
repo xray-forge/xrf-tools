@@ -11,7 +11,13 @@ import {
 } from "#/types/xrf-environment";
 import { LevelEnvModifier } from "#/types/xrf-level";
 import { Vector3d } from "#/types/xrf-math";
-import { RenderBurst, RenderCubeCapture, RenderMapCapture, RenderViewportId } from "#/types/xrf-renderer";
+import {
+  RenderBurst,
+  RenderCubeCapture,
+  RenderHelperIcon,
+  RenderMapCapture,
+  RenderViewportId,
+} from "#/types/xrf-renderer";
 import { ClsId } from "#/types/xrf-spawn";
 import { TextureEncodingFormat, TextureEncodingQuality } from "#/types/xrf-texture";
 import { XrayRoots } from "#/types/xrf-vfs";
@@ -53,13 +59,14 @@ export const LEVEL_MAP_PART = "levelMap" as const;
 /**
  * Every kind of level object, in the order `LevelObjectKind` declares them: smart terrains orange, restrictors blue,
  * anomalies red, level changers green, patrols yellow and graph points pale grey as the map has drawn them, the
- * spawned visuals teal, characters magenta and smart covers cyan.
+ * spawned visuals teal, characters magenta, smart covers cyan, placements muted violet and cyan, lights warm white.
  */
 export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
   {
     color: "#26a69a",
     drawDistance: 200.0,
     group: "spawned",
+    icon: null,
     isDrawn: true,
     isHelpedByDefault: false,
     kind: "props",
@@ -69,6 +76,7 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#4db6ac",
     drawDistance: 200.0,
     group: "spawned",
+    icon: null,
     isDrawn: true,
     isHelpedByDefault: false,
     kind: "items",
@@ -78,6 +86,7 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#00897b",
     drawDistance: 200.0,
     group: "spawned",
+    icon: null,
     isDrawn: true,
     isHelpedByDefault: false,
     kind: "weapons",
@@ -87,6 +96,7 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#80cbc4",
     drawDistance: 200.0,
     group: "spawned",
+    icon: null,
     isDrawn: true,
     isHelpedByDefault: false,
     kind: "lamps",
@@ -96,6 +106,7 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#f06292",
     drawDistance: 300.0,
     group: "characters",
+    icon: "actorStart",
     isDrawn: false,
     isHelpedByDefault: false,
     kind: "actor",
@@ -105,6 +116,7 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#e040fb",
     drawDistance: 300.0,
     group: "characters",
+    icon: "stalker",
     isDrawn: false,
     isHelpedByDefault: false,
     kind: "stalkers",
@@ -114,6 +126,7 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#ab47bc",
     drawDistance: 300.0,
     group: "characters",
+    icon: "creature",
     isDrawn: false,
     isHelpedByDefault: false,
     kind: "creatures",
@@ -123,6 +136,7 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#ce93d8",
     drawDistance: 300.0,
     group: "characters",
+    icon: "trader",
     isDrawn: false,
     isHelpedByDefault: false,
     kind: "traders",
@@ -132,6 +146,7 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#ba68c8",
     drawDistance: 300.0,
     group: "characters",
+    icon: "squad",
     isDrawn: false,
     isHelpedByDefault: false,
     kind: "squads",
@@ -141,6 +156,7 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#ff9800",
     drawDistance: 600.0,
     group: "volumes",
+    icon: null,
     isDrawn: false,
     isHelpedByDefault: true,
     kind: "smartTerrains",
@@ -150,6 +166,7 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#2196f3",
     drawDistance: 250.0,
     group: "volumes",
+    icon: null,
     isDrawn: false,
     isHelpedByDefault: true,
     kind: "restrictors",
@@ -159,6 +176,7 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#f44336",
     drawDistance: 250.0,
     group: "volumes",
+    icon: null,
     isDrawn: false,
     isHelpedByDefault: true,
     kind: "anomalies",
@@ -168,6 +186,7 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#4caf50",
     drawDistance: 600.0,
     group: "volumes",
+    icon: null,
     isDrawn: false,
     isHelpedByDefault: true,
     kind: "levelChangers",
@@ -177,6 +196,7 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#a1887f",
     drawDistance: 150.0,
     group: "volumes",
+    icon: null,
     isDrawn: false,
     isHelpedByDefault: true,
     kind: "climbables",
@@ -186,6 +206,7 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#00bcd4",
     drawDistance: 150.0,
     group: "covers",
+    icon: "smartCover",
     isDrawn: false,
     isHelpedByDefault: false,
     kind: "smartCovers",
@@ -195,6 +216,7 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#ffeb3b",
     drawDistance: 250.0,
     group: "paths",
+    icon: "patrolPoint",
     isDrawn: false,
     isHelpedByDefault: true,
     kind: "patrols",
@@ -204,10 +226,81 @@ export const LEVEL_OBJECT_KINDS: Array<LevelObjectKindEntry> = [
     color: "#e0e0e0",
     drawDistance: 150.0,
     group: "navigation",
+    icon: "graphPoint",
     isDrawn: false,
     isHelpedByDefault: false,
     kind: "graphPoints",
     label: "Graph points",
+  },
+  {
+    color: "#b39ddb",
+    drawDistance: 150.0,
+    group: "placements",
+    icon: "particles",
+    isDrawn: false,
+    isHelpedByDefault: false,
+    kind: "staticParticles",
+    label: "Static particles",
+  },
+  {
+    color: "#80deea",
+    drawDistance: 150.0,
+    group: "placements",
+    icon: "sound",
+    isDrawn: false,
+    isHelpedByDefault: false,
+    kind: "staticSounds",
+    label: "Static sounds",
+  },
+  {
+    color: "#4dd0e1",
+    drawDistance: 150.0,
+    group: "placements",
+    icon: null,
+    isDrawn: false,
+    isHelpedByDefault: false,
+    kind: "soundEnvironments",
+    label: "Sound environments",
+  },
+  {
+    color: "#9575cd",
+    drawDistance: 150.0,
+    group: "placements",
+    icon: null,
+    isDrawn: false,
+    isHelpedByDefault: false,
+    kind: "fogVolumes",
+    label: "Fog volumes",
+  },
+  {
+    color: "#7e57c2",
+    drawDistance: 150.0,
+    group: "placements",
+    icon: null,
+    isDrawn: false,
+    isHelpedByDefault: false,
+    kind: "envModifiers",
+    label: "Weather modifiers",
+  },
+  {
+    color: "#9fa8da",
+    drawDistance: 150.0,
+    group: "placements",
+    icon: "respawnPoint",
+    isDrawn: false,
+    isHelpedByDefault: false,
+    kind: "respawnPoints",
+    label: "Respawn points",
+  },
+  {
+    color: "#fff3c4",
+    drawDistance: 200.0,
+    group: "lights",
+    icon: "light",
+    isDrawn: false,
+    isHelpedByDefault: false,
+    kind: "lights",
+    label: "Lights",
   },
 ];
 
@@ -216,6 +309,9 @@ export const LEVEL_OBJECT_MOTIONS_PART = "objectMotions" as const;
 
 /** What a change event calls what a level's particle systems were read from when it goes stale. */
 export const LEVEL_PARTICLES_PART = "particles" as const;
+
+/** What a change event calls a level's placements when they go stale. */
+export const LEVEL_PLACEMENTS_PART = "placements" as const;
 
 /** What a change event calls a level's sections when they go stale. */
 export const LEVEL_SECTIONS_PART = "sections" as const;
@@ -396,6 +492,10 @@ export type LevelObject = {
   patrol: LevelObjectPatrol | null;
   /** What the spawn records of it, for a patrol point. */
   patrolPoint: LevelObjectPatrolPoint | null;
+  /** What its companion file records of it, for a placement. */
+  placement: LevelObjectPlacement | null;
+  /** What the bundle records of it, for a static light. */
+  light: LevelObjectLight | null;
 };
 
 /** The family a level object's kind belongs to, which the Outliner and the Show popover nest kinds under. */
@@ -412,6 +512,13 @@ export enum ELevelObjectGroup {
   PATHS = "paths",
   /** The game graph's points. */
   NAVIGATION = "navigation",
+  /**
+   * What the level's companion files place: planted particles, static sounds, sound environments, fog volumes,
+   * environment modifiers and respawn points.
+   */
+  PLACEMENTS = "placements",
+  /** The level's static lights. */
+  LIGHTS = "lights",
 }
 
 /** Every `ELevelObjectGroup` as the spelling it crosses IPC as, for a value no member has narrowed. */
@@ -427,6 +534,10 @@ export enum ELevelObjectId {
   PATROL_POINT = "patrolPoint",
   /** A game graph vertex on the level, by its id. */
   GRAPH_POINT = "graphPoint",
+  /** A record of one of the level's companion files, by its index among the file's records. */
+  PLACEMENT = "placement",
+  /** One of the level's static lights, by its index among the bundle's. */
+  LIGHT = "light",
 }
 
 /**
@@ -441,7 +552,11 @@ export type LevelObjectId =
   /** One point of a patrol path, by its index along the path. */
   | { source: "patrolPoint"; path: number; point: number }
   /** A game graph vertex on the level, by its id. */
-  | { source: "graphPoint"; vertex: number };
+  | { source: "graphPoint"; vertex: number }
+  /** A record of one of the level's companion files, by its index among the file's records. */
+  | { source: "placement"; file: LevelPlacementFile; index: number }
+  /** One of the level's static lights, by its index among the bundle's. */
+  | { source: "light"; index: number };
 
 /** What a level object is, which the viewer lists, shows and draws helpers by. */
 export enum ELevelObjectKind {
@@ -468,14 +583,28 @@ export enum ELevelObjectKind {
   PATROLS = "patrols",
   /** The game graph's vertices on the level. */
   GRAPH_POINTS = "graphPoints",
+  /** Particle systems `level.ps_static` plants for a single player game. */
+  STATIC_PARTICLES = "staticParticles",
+  /** Sounds `level.snd_static` plays where they stand. */
+  STATIC_SOUNDS = "staticSounds",
+  /** The reverb environments' boxes of `level.snd_env`. */
+  SOUND_ENVIRONMENTS = "soundEnvironments",
+  /** The volumetric fog's boxes of `level.fog_vol`. */
+  FOG_VOLUMES = "fogVolumes",
+  /** The spheres of `level.env_mod` that move the weather toward their own. */
+  ENV_MODIFIERS = "envModifiers",
+  /** Where a multiplayer game respawns actors, artefacts and items (`level.game`); a single player game reads none. */
+  RESPAWN_POINTS = "respawnPoints",
+  /** The level's static lights, the sun aside. */
+  LIGHTS = "lights",
 }
 
 /** Every `ELevelObjectKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type LevelObjectKind = `${ELevelObjectKind}`;
 
 /**
- * One kind's row of the kind table: what the Outliner, the Show popover, the helpers and the map all name, colour and
- * switch it by.
+ * One kind's row of the kind table: what the Outliner, the Show popover, the helpers and the map all name, colour,
+ * picture and switch it by.
  */
 export type LevelObjectKindEntry = {
   kind: LevelObjectKind;
@@ -483,12 +612,25 @@ export type LevelObjectKindEntry = {
   label: string;
   /** Its helpers' colour, `#rrggbb` in sRGB. */
   color: string;
+  /** The icon its objects' helpers draw where they stand, for a kind whose objects have no shape of their own. */
+  icon: RenderHelperIcon | null;
   /** Metres from the camera past which its helpers fade out. */
   drawDistance: number | null;
   /** Whether its objects have a picture of their own, which the Visible switch shows or hides. */
   isDrawn: boolean;
   /** Whether its helpers are drawn until the viewer is told otherwise. */
   isHelpedByDefault: boolean;
+};
+
+/**
+ * What the bundle records of one static light (`CLight_DB::Load`): whether it was authored as a spot, its colour and
+ * its range in metres. Every engine lights a spot as a point of that range and colour, its cone unread.
+ */
+export type LevelObjectLight = {
+  isSpot: boolean;
+  /** The diffuse colour, linear, as authored. */
+  color: [number | null, number | null, number | null];
+  range: number | null;
 };
 
 /** What a patrol path is drawn and described by: its points where they stand and the links between them. */
@@ -507,6 +649,15 @@ export type LevelObjectPatrolPoint = {
   flags: number;
   levelVertex: number;
   gameVertex: number;
+};
+
+/**
+ * What one of the level's companion files records of a placement: the shapes it covers in its object's own space,
+ * renderer space, none for one placed at a point, and what its file records of it.
+ */
+export type LevelObjectPlacement = {
+  shapes: Array<LevelObjectShape>;
+  details: LevelPlacementDetails;
 };
 
 /** Every `kind` the `LevelObjectShape` union is told apart by, so a switch or a comparison names one. */
@@ -575,6 +726,96 @@ export type LevelPatrolLink = {
   to: number;
   weight: number | null;
 };
+
+/** Every `kind` the `LevelPlacementDetails` union is told apart by, so a switch or a comparison names one. */
+export enum ELevelPlacementDetails {
+  /** A planted particle system, by the effect or group it plays. */
+  PARTICLES = "particles",
+  /**
+   * A static sound (`SStaticSound`): the sound, its volume and frequency, and its windows in milliseconds, each from
+   * and to: the game day's hours it plays in, how long each play lasts and the pause between, none for always, its
+   * whole length and looped forever.
+   */
+  SOUND = "sound",
+  /** A reverb environment's box: the environment outside it and inside it, by name. */
+  SOUND_ENVIRONMENT = "soundEnvironment",
+  /** A volumetric fog body: the profile under `$game_config$` it is drawn by, and how many obstacles cut it. */
+  FOG_VOLUME = "fogVolume",
+  /**
+   * An environment modifier (`CEnvModifier`): how strongly it pulls the weather at its centre, fading to none at its
+   * radius, toward its far plane, fog colour and density, ambient, sky and hemisphere colours, and which of those it
+   * moves, by name.
+   */
+  ENV_MODIFIER = "envModifier",
+  /**
+   * A multiplayer respawn point: what it respawns, its team, the game types it serves as a bit mask, and the item
+   * preset it spawns, empty for any other.
+   */
+  RESPAWN_POINT = "respawnPoint",
+}
+
+/** What a placement's file records of it beyond where it stands and the shapes it covers. */
+export type LevelPlacementDetails =
+  /** A planted particle system, by the effect or group it plays. */
+  | { kind: "particles"; effect: string }
+  /**
+   * A static sound (`SStaticSound`): the sound, its volume and frequency, and its windows in milliseconds, each from
+   * and to: the game day's hours it plays in, how long each play lasts and the pause between, none for always, its
+   * whole length and looped forever.
+   */
+  | {
+      kind: "sound";
+      sound: string;
+      volume: number | null;
+      frequency: number | null;
+      active: [number, number];
+      play: [number, number];
+      pause: [number, number];
+    }
+  /** A reverb environment's box: the environment outside it and inside it, by name. */
+  | { kind: "soundEnvironment"; outer: string; inner: string }
+  /** A volumetric fog body: the profile under `$game_config$` it is drawn by, and how many obstacles cut it. */
+  | { kind: "fogVolume"; profile: string; obstacles: number }
+  /**
+   * An environment modifier (`CEnvModifier`): how strongly it pulls the weather at its centre, fading to none at its
+   * radius, toward its far plane, fog colour and density, ambient, sky and hemisphere colours, and which of those it
+   * moves, by name.
+   */
+  | {
+      kind: "envModifier";
+      power: number | null;
+      farPlane: number | null;
+      fogColor: [number | null, number | null, number | null];
+      fogDensity: number | null;
+      ambient: [number | null, number | null, number | null];
+      skyColor: [number | null, number | null, number | null];
+      hemiColor: [number | null, number | null, number | null];
+      affects: Array<string>;
+    }
+  /**
+   * A multiplayer respawn point: what it respawns, its team, the game types it serves as a bit mask, and the item
+   * preset it spawns, empty for any other.
+   */
+  | { kind: "respawnPoint"; role: string; team: number; gameTypes: number; profile: string };
+
+/** Which of the level's companion files a placement is read from. */
+export enum ELevelPlacementFile {
+  /** `level.ps_static`. */
+  PARTICLES = "particles",
+  /** `level.snd_static`. */
+  SOUNDS = "sounds",
+  /** `level.snd_env`. */
+  SOUND_ENVIRONMENTS = "soundEnvironments",
+  /** `level.fog_vol`. */
+  FOG_VOLUMES = "fogVolumes",
+  /** `level.env_mod`. */
+  ENV_MODIFIERS = "envModifiers",
+  /** `level.game`'s respawn points. */
+  RESPAWN_POINTS = "respawnPoints",
+}
+
+/** Every `ELevelPlacementFile` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type LevelPlacementFile = `${ELevelPlacementFile}`;
 
 /**
  * Whom a logic volume keeps where, `RestrictionSpace::ERestrictorTypes` with the default and the scripted kinds

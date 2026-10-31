@@ -576,7 +576,7 @@ impl RenderThread {
             overlays,
           )
         }),
-      helpers: output.and(level).and_then(SceneView::get_helper_wires),
+      helpers: output.and(level).map(SceneView::get_helper_draws).unwrap_or_default(),
       rect,
       shown,
     })

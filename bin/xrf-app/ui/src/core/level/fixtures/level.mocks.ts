@@ -72,10 +72,12 @@ export function mockLevelObject(
   return {
     id: { index: 0, source: ELevelObjectId.SPAWN },
     kind: ELevelObjectKind.PROPS,
+    light: null,
     name: "crate",
     parent: null,
     patrol: null,
     patrolPoint: null,
+    placement: null,
     spawn: {
       clsid: EClsId.O_PHYS_S,
       release: null,

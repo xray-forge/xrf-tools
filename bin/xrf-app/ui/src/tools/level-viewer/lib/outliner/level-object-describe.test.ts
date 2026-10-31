@@ -3,10 +3,29 @@ import { ELevelObjectShape, ELevelRestriction, LevelObject } from "@xrf/ipc/type
 
 import { mockLevelObject, mockLevelPatrol } from "@/core/level/fixtures/level.mocks";
 import {
+  describeLevelColor,
   describeLevelRestriction,
   describeLevelShape,
+  describeLevelSoundWindow,
   listLevelPatrolLeads,
 } from "@/tools/level-viewer/lib/outliner/level-object-describe";
+
+describe("describeLevelSoundWindow", () => {
+  // `SStaticSound` reads a window of noughts as the sound's own default rather than as nothing.
+  it("says a window of noughts as its default, an active one as the game day's hours and others in seconds", () => {
+    expect(describeLevelSoundWindow([0, 0], "active")).toBe("All day");
+    expect(describeLevelSoundWindow([0, 0], "play")).toBe("The whole sound");
+    expect(describeLevelSoundWindow([0, 0], "pause")).toBe("Looped without a pause");
+    expect(describeLevelSoundWindow([6 * 3_600_000, 21 * 3_600_000 + 30 * 60_000], "active")).toBe("06:00 to 21:30");
+    expect(describeLevelSoundWindow([1500, 4000], "pause")).toBe("1.5 s to 4 s");
+  });
+});
+
+describe("describeLevelColor", () => {
+  it("writes each channel with two decimals", () => {
+    expect(describeLevelColor([1, 0.5, 0.125])).toBe("1.00 0.50 0.13");
+  });
+});
 
 describe("listLevelPatrolLeads", () => {
   it("names the points a patrol point leads on to, with how likely each way is", () => {

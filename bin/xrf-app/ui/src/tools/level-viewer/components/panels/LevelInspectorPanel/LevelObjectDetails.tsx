@@ -12,6 +12,8 @@ import { toLevelObjectPosition } from "@/core/level/lib/objects/level-object-sph
 import { describeLevelRestriction, describeLevelShape } from "@/tools/level-viewer/lib/outliner/level-object-describe";
 import { describeLevelSpawnRelease } from "@/tools/level-viewer/lib/spawn/level-spawn-release";
 
+import { LevelPlacementProperties } from "./LevelPlacementProperties";
+
 interface ILevelObjectDetailsProps extends BaseComponentProps {
   object: LevelObject;
   /** The visual it is drawn as, by name; empty for one drawn as nothing. */
@@ -27,7 +29,8 @@ interface ILevelObjectDetailsProps extends BaseComponentProps {
 
 /**
  * What one level object is: its kind and place, what the spawn records of it, what a volume covers, a patrol path's
- * points and links and a point's flags and ways on, and what a spawned one carries.
+ * points and links and a point's flags and ways on, what a placement's file or a light's bundle records, and what a
+ * spawned one carries.
  */
 export function LevelObjectDetails({
   "data-testid": dataTestId = "level-object-details",
@@ -92,6 +95,8 @@ export function LevelObjectDetails({
           <EditorPanelProperty label={"Links"} value={patrol.links.length} />
         </>
       ) : null}
+
+      <LevelPlacementProperties placement={object.placement} light={object.light} />
 
       {patrolPoint ? (
         <>

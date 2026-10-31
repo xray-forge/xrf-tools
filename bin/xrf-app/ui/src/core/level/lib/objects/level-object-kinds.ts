@@ -23,6 +23,8 @@ export const LEVEL_OBJECT_GROUPS: ReadonlyArray<ILevelObjectGroupEntry> = [
   { group: ELevelObjectGroup.COVERS, label: "Smart covers" },
   { group: ELevelObjectGroup.PATHS, label: "Paths" },
   { group: ELevelObjectGroup.NAVIGATION, label: "Navigation" },
+  { group: ELevelObjectGroup.PLACEMENTS, label: "Placements" },
+  { group: ELevelObjectGroup.LIGHTS, label: "Lights" },
 ];
 
 const KINDS: ReadonlyMap<LevelObjectKind, LevelObjectKindEntry> = new Map(
@@ -59,6 +61,10 @@ export function toLevelObjectKey(id: LevelObjectId): string {
       return `patrolPoint:${id.path}:${id.point}`;
     case ELevelObjectId.GRAPH_POINT:
       return `graphPoint:${id.vertex}`;
+    case ELevelObjectId.PLACEMENT:
+      return `placement:${id.file}:${id.index}`;
+    case ELevelObjectId.LIGHT:
+      return `light:${id.index}`;
     default:
       return assertExhaustive(id);
   }
