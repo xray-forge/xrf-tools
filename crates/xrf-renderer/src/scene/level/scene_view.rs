@@ -58,6 +58,7 @@ use crate::scene::level::cover_textures::CoverTextures;
 use crate::scene::level::feature::bitmask_tracing::BitmaskTracing;
 use crate::scene::level::feature::composited_draw::CompositedDraw;
 use crate::scene::level::feature::fog_feature::FogFeature;
+use crate::scene::level::feature::helpers_feature::HelperDraws;
 use crate::scene::level::feature::light_buffers::LightBuffers;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::overhead_windows::OverheadWindows;
@@ -1080,7 +1081,7 @@ impl SceneView {
       self.features.pick.add_passes(
         (&mut *graph, &mut *bindings),
         (passes.gbuffer, passes.pipelines),
-        (record.textures, &statics, self.features.helpers.get_wires()),
+        (record.textures, &statics, self.features.helpers.get_draws()),
         (slot, frame.is_pick_through),
       );
     }
@@ -1926,9 +1927,9 @@ impl SceneView {
       .set(device, (&scene.helpers, &scene.statics), &options.helpers, marks_layout);
   }
 
-  /// The helpers' wires it draws over its frame, and how many vertices; none where it draws none.
-  pub fn get_helper_wires(&self) -> Option<(&wgpu::Buffer, u32)> {
-    self.features.helpers.get_wires()
+  /// The helpers' wires and icons it draws over its frame.
+  pub fn get_helper_draws(&self) -> HelperDraws<'_> {
+    self.features.helpers.get_draws()
   }
 
   /// The sway the shadows see this frame: the wind, the trees' reach, and where they stand.

@@ -12,16 +12,19 @@ use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::helpers_feature::HelperDraws;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::helpers::helper_icon_instance::HelperIconInstance;
 use crate::scene::level::helpers::helper_vertex::HelperVertex;
 
 /// What a view's picks are drawn into and read back from: the one-texel target with its readbacks, and the narrowed
-/// camera the frame's visible clusters and its helpers' wires are drawn again through, both made on the first pick.
+/// camera the frame's visible clusters and its helpers' wires and icons are drawn again through, both made on the first
+/// pick.
 #[derive(Default)]
 pub struct PickFeature {
   target: Option<PickTarget>,
   view: Option<ViewBinding>,
-  /// The layout the narrowed camera binds by, which the wires' pipeline is made with.
+  /// The layout the narrowed camera binds by, which the wires' and icons' pipelines are made with.
   view_layout: Option<wgpu::BindGroupLayout>,
 }
 
@@ -50,16 +53,12 @@ impl PickFeature {
 
   /// Adds a pick into its readback `slot`: the frame's visible clusters drawn again into its texel, through its
   /// narrowed camera, after every cull of the frame, passing the composited surfaces by where `is_through`, then the
-  /// helpers' `wires` wide over them; then the texel copied out into its readback.
+  /// helpers' wires wide and icons whole over them; then the texel copied out into its readback.
   pub fn add_passes<'a>(
     &'a self,
     (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
     (gbuffer, pipelines): (&'a StaticGBufferPass, PipelineSource<'_>),
-    (textures, scene, wires): (
-      &'a wgpu::BindGroup,
-      &StaticSceneHandles,
-      Option<(&'a wgpu::Buffer, u32)>,
-    ),
+    (textures, scene, helpers): (&'a wgpu::BindGroup, &StaticSceneHandles, HelperDraws<'a>),
     (slot, is_through): (usize, bool),
   ) {
     let (Some(target), Some(view)) = (&self.target, &self.view) else {
@@ -69,13 +68,53 @@ impl PickFeature {
     let depth: GraphTexture = bindings.import_view(graph, "pick depth", &target.depth);
     let draws: StaticDraws = scene.get_camera_draws();
     let args: [GraphBuffer; 2] = [scene.args, scene.late];
-    let wires: Option<(&wgpu::Buffer, u32, wgpu::RenderPipeline)> = wires.and_then(|(buffer, vertices)| {
+    // A pipeline for what of it is drawn, wires and icons each; a draw is one instance a wire or an icon.
+    let create = |(vertex, layout): (&'static str, VertexLayout),
+                  parts: [Option<(&'a wgpu::Buffer, u32)>; 2],
+                  per_instance: u32|
+     -> Option<(Vec<(&'a wgpu::Buffer, u32)>, wgpu::RenderPipeline)> {
+      let draws: Vec<(&wgpu::Buffer, u32)> = parts
+        .into_iter()
+        .flatten()
+        .map(|(buffer, count)| (buffer, count / per_instance))
+        .collect();
+
+      if draws.is_empty() {
+        return None;
+      }
+
       self
-        .create_wire_pipeline(pipelines)
+        .create_helper_pipeline(pipelines, (vertex, "fs_helper_pick"), layout)
         .inspect_err(|error| log::error!("Helper pick shader rejected, picking no helper: {error}"))
         .ok()
-        .map(|pipeline| (buffer, vertices, pipeline))
-    });
+        .map(|pipeline| (draws, pipeline))
+    };
+    let picked = [
+      create(
+        (
+          "vs_helper_pick",
+          VertexLayout::new(
+            HelperVertex::SIZE * 2,
+            wgpu::VertexStepMode::Instance,
+            &HelperVertex::SEGMENT_ATTRIBUTES,
+          ),
+        ),
+        helpers.wires,
+        2,
+      ),
+      create(
+        (
+          "vs_helper_icon_pick",
+          VertexLayout::new(
+            HelperIconInstance::SIZE,
+            wgpu::VertexStepMode::Instance,
+            &HelperIconInstance::PICK_ATTRIBUTES,
+          ),
+        ),
+        helpers.icons,
+        1,
+      ),
+    ];
 
     draws
       .declare(
@@ -95,13 +134,16 @@ impl PickFeature {
 
         gbuffer.pick(context, (view, &draws, textures), &args, is_through);
 
-        if let Some((buffer, vertices, pipeline)) = &wires {
-          let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+        let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
+        for (draws, pipeline) in picked.iter().flatten() {
           pass.set_pipeline(pipeline);
           pass.set_bind_group(0, &view.bind_group, &[]);
-          pass.set_vertex_buffer(0, buffer.slice(..));
-          pass.draw(0..6, 0..vertices / 2);
+
+          for (buffer, instances) in draws {
+            pass.set_vertex_buffer(0, buffer.slice(..));
+            pass.draw(0..6, 0..*instances);
+          }
         }
       });
 
@@ -112,18 +154,19 @@ impl PickFeature {
       .record(move |context| target.copy_out(context.get_encoder(), slot));
   }
 
-  /// The wires' pick pipeline: each wire an instance of its two ends, drawn over whatever the clusters left, with no
-  /// depth test.
-  fn create_wire_pipeline(&self, pipelines: PipelineSource<'_>) -> XrfResult<wgpu::RenderPipeline> {
+  /// A helper pick pipeline: each wire or icon an instance read by `layout`, drawn over whatever the clusters left,
+  /// with no depth test.
+  fn create_helper_pipeline(
+    &self,
+    pipelines: PipelineSource<'_>,
+    (vertex, fragment): (&'static str, &'static str),
+    layout: VertexLayout,
+  ) -> XrfResult<wgpu::RenderPipeline> {
     pipelines.get_render_pipeline(
-      &RenderPipelineDescription::new("helper pick", "frame/helper_pick", "vs_helper_pick")
-        .with_fragment("fs_helper_pick")
+      &RenderPipelineDescription::new("helper pick", "frame/helper_pick", vertex)
+        .with_fragment(fragment)
         .with_bind_group_layouts(&[self.view_layout.as_ref()])
-        .with_vertex_layout(VertexLayout::new(
-          HelperVertex::SIZE * 2,
-          wgpu::VertexStepMode::Instance,
-          &HelperVertex::SEGMENT_ATTRIBUTES,
-        ))
+        .with_vertex_layout(layout)
         .with_depth_stencil(wgpu::DepthStencilState {
           format: PickTarget::DEPTH_FORMAT,
           depth_write_enabled: Some(false),

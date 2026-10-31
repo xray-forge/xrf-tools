@@ -1,0 +1,65 @@
+{
+  "icons": [
+    {
+      "icon": "light",
+      "material": "Lightbulb",
+      "picture": "light.svg"
+    },
+    {
+      "icon": "sound",
+      "material": "VolumeUp",
+      "picture": "sound.svg"
+    },
+    {
+      "icon": "particles",
+      "material": "AutoAwesome",
+      "picture": "particles.svg"
+    },
+    {
+      "icon": "actorStart",
+      "material": "Flag",
+      "picture": "actor-start.svg"
+    },
+    {
+      "icon": "stalker",
+      "material": "Person",
+      "picture": "stalker.svg"
+    },
+    {
+      "icon": "creature",
+      "material": "Pets",
+      "picture": "creature.svg"
+    },
+    {
+      "icon": "trader",
+      "material": "Storefront",
+      "picture": "trader.svg"
+    },
+    {
+      "icon": "squad",
+      "material": "Groups",
+      "picture": "squad.svg"
+    },
+    {
+      "icon": "smartCover",
+      "material": "Shield",
+      "picture": "smart-cover.svg"
+    },
+    {
+      "icon": "patrolPoint",
+      "material": "Place",
+      "picture": "patrol-point.svg"
+    },
+    {
+      "icon": "graphPoint",
+      "material": "Hub",
+      "picture": "graph-point.svg"
+    },
+    {
+      "icon": "respawnPoint",
+      "material": "RestartAlt",
+      "picture": "respawn-point.svg"
+    }
+  ],
+  "source": "@mui/icons-material (Material Icons, Apache License 2.0), as the application's UI draws them"
+}

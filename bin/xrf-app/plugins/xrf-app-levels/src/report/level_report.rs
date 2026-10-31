@@ -323,6 +323,11 @@ impl LevelReport {
     log::warn!("No patrol paths or graph points for {}: {error}", source.get_label());
   }
 
+  /// That one of the level's companion files could not be read, so nothing it places is listed.
+  pub fn unreadable_placements(source: &LevelSource, error: &impl Display) {
+    log::warn!("Placements of {} left out: {error}", source.get_label());
+  }
+
   /// That a spawned visual could not be read, so it is not drawn.
   pub fn undrawn_visual(name: &str, error: &impl Display) {
     log::warn!("Spawned visual '{name}' is not drawn: {error}");

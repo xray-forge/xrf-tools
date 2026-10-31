@@ -17,4 +17,9 @@ pub enum LevelObjectGroup {
   Paths,
   /// The game graph's points.
   Navigation,
+  /// What the level's companion files place: planted particles, static sounds, sound environments, fog volumes,
+  /// environment modifiers and respawn points.
+  Placements,
+  /// The level's static lights.
+  Lights,
 }

@@ -12,6 +12,25 @@ export const RENDER_CUBE_MOST_SUPERSAMPLING: number = 4;
  */
 export const RENDER_DEFAULT_PERIODIC_BUDGET: number = 0.5;
 
+/**
+ * Every helper icon in the atlas's order, row by row and left to right, with the Material icon each is drawn from,
+ * which the page's kind rows show too.
+ */
+export const RENDER_HELPER_ICONS: Array<RenderHelperIconEntry> = [
+  { icon: "light", material: "Lightbulb" },
+  { icon: "sound", material: "VolumeUp" },
+  { icon: "particles", material: "AutoAwesome" },
+  { icon: "actorStart", material: "Flag" },
+  { icon: "stalker", material: "Person" },
+  { icon: "creature", material: "Pets" },
+  { icon: "trader", material: "Storefront" },
+  { icon: "squad", material: "Groups" },
+  { icon: "smartCover", material: "Shield" },
+  { icon: "patrolPoint", material: "Place" },
+  { icon: "graphPoint", material: "Hub" },
+  { icon: "respawnPoint", material: "RestartAlt" },
+];
+
 /** Map pixels a level map spans on a side at most. */
 export const RENDER_MAP_MOST_PIXELS: number = 16384;
 
@@ -1099,6 +1118,38 @@ export type RenderGroupCost = {
   record: number | null;
   /** wgpu's encoding of what was recorded, in the encoder's `finish`. */
   finish: number | null;
+};
+
+/**
+ * A picture a helper draws at a point at a constant size on screen: a cell of the renderer's icon atlas
+ * (`assets/helpers/icons.png`), each rasterised from the Material icon its row of [`RENDER_HELPER_ICONS`] names, as
+ * the page shows the same one beside the kind.
+ */
+export enum ERenderHelperIcon {
+  LIGHT = "light",
+  SOUND = "sound",
+  PARTICLES = "particles",
+  ACTOR_START = "actorStart",
+  STALKER = "stalker",
+  CREATURE = "creature",
+  TRADER = "trader",
+  SQUAD = "squad",
+  SMART_COVER = "smartCover",
+  PATROL_POINT = "patrolPoint",
+  GRAPH_POINT = "graphPoint",
+  RESPAWN_POINT = "respawnPoint",
+}
+
+/** Every `ERenderHelperIcon` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderHelperIcon = `${ERenderHelperIcon}`;
+
+/**
+ * One icon's row of the icon table: the icon, and the Material icon it is drawn from, by its `@mui/icons-material`
+ * module name.
+ */
+export type RenderHelperIconEntry = {
+  icon: RenderHelperIcon;
+  material: string;
 };
 
 /**

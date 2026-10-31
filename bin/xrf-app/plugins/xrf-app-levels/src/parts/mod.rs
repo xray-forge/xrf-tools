@@ -17,8 +17,10 @@ pub(crate) use drawn::{
   PackedLevelParticles,
 };
 pub(crate) use environment::{LevelEnvironment, LevelEnvironmentPart, LevelWeatherPart};
-pub(crate) use level::{LevelCollisionPart, LevelGeometryPart, LevelMapPart, LevelSurfacesPart, LevelTexturesPart};
-pub use level::{LevelMapArea, LevelMapDescription, LevelTextureReference};
+pub(crate) use level::{
+  LevelCollisionPart, LevelGeometryPart, LevelMapPart, LevelPlacementsPart, LevelSurfacesPart, LevelTexturesPart,
+};
+pub use level::{LevelMapArea, LevelMapDescription, LevelPlacements, LevelTextureReference};
 pub(crate) use spawn::{
   LevelGraphPart, LevelHemiPart, LevelSectionsPart, LevelSpawn, LevelSpawnPart, LevelSpawnVisual, LevelSpawnVisuals,
   LevelSpawnVisualsPart, LevelStartPart, SpawnVisualReader,

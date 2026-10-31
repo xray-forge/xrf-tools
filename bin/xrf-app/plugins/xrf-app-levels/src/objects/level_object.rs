@@ -3,7 +3,8 @@ use xrf_math::Vector3d;
 use xrf_visual::VisualTransform;
 
 use crate::objects::{
-  LevelObjectId, LevelObjectKind, LevelObjectPatrol, LevelObjectPatrolPoint, LevelObjectSpawn, LevelObjectVolume,
+  LevelObjectId, LevelObjectKind, LevelObjectLight, LevelObjectPatrol, LevelObjectPatrolPoint, LevelObjectPlacement,
+  LevelObjectSpawn, LevelObjectVolume,
 };
 
 /// One discrete thing placed in a level: what it is, where it stands, what it belongs to, and what its source records
@@ -27,6 +28,10 @@ pub struct LevelObject {
   pub patrol: Option<LevelObjectPatrol>,
   /// What the spawn records of it, for a patrol point.
   pub patrol_point: Option<LevelObjectPatrolPoint>,
+  /// What its companion file records of it, for a placement.
+  pub placement: Option<LevelObjectPlacement>,
+  /// What the bundle records of it, for a static light.
+  pub light: Option<LevelObjectLight>,
 }
 
 impl LevelObject {
@@ -42,6 +47,8 @@ impl LevelObject {
       volume: None,
       patrol: None,
       patrol_point: None,
+      placement: None,
+      light: None,
     }
   }
 

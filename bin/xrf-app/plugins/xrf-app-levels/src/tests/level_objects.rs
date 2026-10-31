@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use xrf_math::Vector3d;
-use xrf_renderer::{RenderHelperShape, RenderLevelHelpers};
+use xrf_renderer::{RenderHelperIcon, RenderHelperShape, RenderLevelHelpers};
 use xrf_spawn::{
   AlifeGraphPoint, AlifeObject, AlifeObjectAbstract, AlifeObjectDynamicVisual, AlifeObjectHangingLamp,
   AlifeObjectInherited, AlifeObjectItem, AlifeObjectPhysic, AlifeObjectSkeleton, AlifeObjectSpaceRestrictor, ClsId,
@@ -10,7 +10,7 @@ use xrf_spawn::{
 
 use crate::objects::{
   LEVEL_OBJECT_KINDS, LevelObject, LevelObjectId, LevelObjectKind, LevelObjectKindEntry, LevelObjectShape,
-  LevelObjectsDescription, LevelPatrolLink, LevelRestriction,
+  LevelObjectSources, LevelObjectsDescription, LevelPatrolLink, LevelRestriction,
 };
 use crate::parts::LevelSpawn;
 use crate::spawn::LevelSpawnRelease;
@@ -108,7 +108,7 @@ fn new_spawn(objects: Vec<AlifeObject>) -> LevelSpawn {
 }
 
 fn describe(objects: Vec<AlifeObject>) -> LevelObjectsDescription {
-  LevelObjectsDescription::describe(&new_spawn(objects), None)
+  LevelObjectsDescription::describe(&LevelObjectSources::of_spawn(&new_spawn(objects)))
 }
 
 /// An object as the listing tests read it: its spawn index, name, kind, visual and story id.
@@ -235,8 +235,8 @@ fn passes_over_what_the_level_holds_nothing_of() {
 // A new game's releases stay in the description, so a panel can say what the level loses and a view can draw them.
 #[test]
 fn marks_what_a_new_game_releases_and_why() {
-  let described: LevelObjectsDescription = LevelObjectsDescription::describe(
-    &LevelSpawn {
+  let described: LevelObjectsDescription =
+    LevelObjectsDescription::describe(&LevelObjectSources::of_spawn(&LevelSpawn {
       arrivals: Vec::new(),
       objects: vec![
         new_object("kept", "medkit", ClsId::SFood, new_item("dynamics\\medkit")),
@@ -247,9 +247,7 @@ fn marks_what_a_new_game_releases_and_why() {
         (1, LevelSpawnRelease::RemoveObjects),
         (2, LevelSpawnRelease::ReplaceItems),
       ]),
-    },
-    None,
-  );
+    }));
   let releases: Vec<(u32, Option<LevelSpawnRelease>)> = described
     .objects
     .iter()
@@ -269,8 +267,10 @@ fn marks_what_a_new_game_releases_and_why() {
 // A path's points follow it as its parts, each standing where it does in renderer space; the graph's points come last.
 #[test]
 fn lists_each_patrol_path_followed_by_its_points_then_the_graph_points() {
-  let described: LevelObjectsDescription =
-    LevelObjectsDescription::describe(&new_spawn(Vec::new()), Some(&new_graph()));
+  let described: LevelObjectsDescription = LevelObjectsDescription::describe(&LevelObjectSources {
+    graph: Some(&new_graph()),
+    ..LevelObjectSources::of_spawn(&new_spawn(Vec::new()))
+  });
   let listed: Vec<(LevelObjectId, LevelObjectKind, &str, Option<LevelObjectId>)> = described
     .objects
     .iter()
@@ -347,8 +347,9 @@ fn lists_each_patrol_path_followed_by_its_points_then_the_graph_points() {
 // a path draws its links with an arrowhead at each end reached, a point its marker.
 #[test]
 fn hands_the_renderer_each_object_with_a_helper_by_its_place_in_the_listing() {
-  let described: LevelObjectsDescription = LevelObjectsDescription::describe(
-    &new_spawn(vec![
+  let described: LevelObjectsDescription = LevelObjectsDescription::describe(&LevelObjectSources {
+    graph: Some(&new_graph()),
+    ..LevelObjectSources::of_spawn(&new_spawn(vec![
       new_object("crate", "physic_object", ClsId::OPhysS, new_physic("physics\\box", 7)),
       new_object(
         "fence",
@@ -356,9 +357,8 @@ fn hands_the_renderer_each_object_with_a_helper_by_its_place_in_the_listing() {
         ClsId::SpcRsS,
         new_restrictor(Vec::new(), 3),
       ),
-    ]),
-    Some(&new_graph()),
-  );
+    ]))
+  });
   let helpers: RenderLevelHelpers = RenderLevelHelpers::from(&described);
   let ids: Vec<u32> = helpers.objects.iter().map(|it| it.id).collect();
 
@@ -372,7 +372,10 @@ fn hands_the_renderer_each_object_with_a_helper_by_its_place_in_the_listing() {
   ));
   assert!(matches!(
     helpers.objects[2].shapes[..],
-    [RenderHelperShape::Marker { .. }]
+    [RenderHelperShape::Icon {
+      icon: RenderHelperIcon::PatrolPoint,
+      ..
+    }]
   ));
   assert_eq!(helpers.objects[1].kind, LevelObjectKind::Patrols as u32);
 }

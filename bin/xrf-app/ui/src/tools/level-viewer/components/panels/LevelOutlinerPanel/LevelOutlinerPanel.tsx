@@ -23,6 +23,7 @@ import {
 } from "@xrf/ui/tree";
 import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { LevelKindIcon } from "@/core/level/components/objects/LevelKindIcon";
 import { isLevelHelperOn } from "@/core/level/lib/objects/level-helper-options";
 import { toLevelObjectKey } from "@/core/level/lib/objects/level-object-kinds";
 import { TLevelVisibleOption } from "@/core/level/lib/objects/level-object-visibility";
@@ -189,7 +190,7 @@ export function LevelOutlinerPanel({
       );
     }
 
-    return (
+    const label: ReactElement = (
       <TreeRowLabel
         label={item.label}
         caption={
@@ -201,6 +202,16 @@ export function LevelOutlinerPanel({
             : `${formatCount(row.count)} placed`
         }
       />
+    );
+
+    // A kind's row shows the icon its helpers draw, where they draw one.
+    return row.kind === "kind" ? (
+      <span className={"flex min-w-0 items-center gap-1"}>
+        <LevelKindIcon kind={row.entry.kind} />
+        {label}
+      </span>
+    ) : (
+      label
     );
   }, []);
 

@@ -12,10 +12,10 @@ use xrf_visual::VisualTransform;
 
 use crate::level::SelectedLevel;
 use crate::objects::{
-  LevelObject, LevelObjectId, LevelObjectKind, LevelObjectPatrol, LevelObjectPatrolPoint, LevelObjectSpawn,
-  LevelObjectVolume,
+  LevelObject, LevelObjectId, LevelObjectKind, LevelObjectPatrol, LevelObjectPatrolPoint, LevelObjectSources,
+  LevelObjectSpawn, LevelObjectVolume,
 };
-use crate::parts::{LevelGraphPart, LevelSpawn, LevelSpawnPart};
+use crate::parts::{LevelGraphPart, LevelPlacements, LevelPlacementsPart, LevelSpawn, LevelSpawnPart};
 use crate::report::LevelReport;
 
 /// Every level object of a level, in the order its sources keep them, and the visuals they are drawn as, each named
@@ -30,7 +30,8 @@ pub struct LevelObjectsDescription {
 
 impl LevelObjectsDescription {
   /// The open level's objects, read through `search`, with how long that took: the spawn's, then the graph's where it
-  /// can be read, its patrols and points left out with a warning where it cannot.
+  /// can be read, its patrols and points left out with a warning where it cannot, then its placements and static
+  /// lights.
   ///
   /// # Errors
   ///
@@ -42,16 +43,28 @@ impl LevelObjectsDescription {
     let graph: Option<Arc<SpawnLevelGraph>> = LevelGraphPart::get(current, search)
       .inspect_err(|error| LevelReport::missing_level_graph(&current.source, error))
       .ok();
-    let described: Self = Self::describe(&spawn, graph.as_deref());
+    let placements: Arc<LevelPlacements> = LevelPlacementsPart::get(current, search);
+    let described: Self = Self::describe(&LevelObjectSources {
+      spawn: &spawn,
+      graph: graph.as_deref(),
+      placements: Some(&placements),
+      lights: current
+        .level
+        .lights
+        .as_ref()
+        .map_or(&[], |lights| lights.lights.as_slice()),
+    });
 
     LevelReport::level_objects(&current.source, &described, started);
 
     Ok(described)
   }
 
-  /// Every object of a level's spawn the level holds, in the spawn's order, each visual named once; then, of its
-  /// `graph`, every patrol path starting on it followed by its points, and its graph points.
-  pub fn describe(spawn: &LevelSpawn, graph: Option<&SpawnLevelGraph>) -> Self {
+  /// Every object of a level's spawn the level holds, in the spawn's order, each visual named once; then, of its graph,
+  /// every patrol path starting on it followed by its points, and its graph points; then what its companion files
+  /// place, file by file, and its static lights.
+  pub fn describe(sources: &LevelObjectSources<'_>) -> Self {
+    let spawn: &LevelSpawn = sources.spawn;
     let mut visuals: Vec<String> = Vec::new();
     let mut indices: HashMap<&str, u32> = HashMap::new();
     let mut objects: Vec<LevelObject> = Vec::new();
@@ -91,7 +104,7 @@ impl LevelObjectsDescription {
       });
     }
 
-    if let Some(graph) = graph {
+    if let Some(graph) = sources.graph {
       for (path, patrol) in graph.patrols.iter().enumerate() {
         Self::add_patrol(&mut objects, path as u32, patrol);
       }
@@ -105,6 +118,12 @@ impl LevelObjectsDescription {
         )
       }));
     }
+
+    if let Some(placements) = sources.placements {
+      Self::add_placements(&mut objects, placements);
+    }
+
+    Self::add_lights(&mut objects, sources.lights);
 
     Self { visuals, objects }
   }
@@ -137,7 +156,7 @@ impl LevelObjectsDescription {
   }
 
   /// Unturned at a point of engine space, in renderer space.
-  fn to_place(position: &Vector3d) -> VisualTransform {
+  pub(super) fn to_place(position: &Vector3d) -> VisualTransform {
     VisualTransform {
       i: Vector3d::new(1.0, 0.0, 0.0),
       j: Vector3d::new(0.0, 1.0, 0.0),

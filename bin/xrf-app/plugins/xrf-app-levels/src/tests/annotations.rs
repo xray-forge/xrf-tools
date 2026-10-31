@@ -12,7 +12,7 @@ use xrf_spawn::{
 };
 use xrf_test_utils::GeneratedResources;
 
-use crate::objects::LevelObjectsDescription;
+use crate::objects::{LevelObjectSources, LevelObjectsDescription};
 use crate::parts::{LevelMapArea, LevelSpawn};
 use crate::tests::fixtures;
 use crate::viewer::map::annotations::{
@@ -130,7 +130,10 @@ fn outlines_a_box_from_above_at_its_place() {
     AlifeObjectInherited::CseAlifeSpaceRestrictor(Box::new(new_restrictor(vec![new_box()], 3))),
   )]);
   let annotations: LevelAnnotations = LevelAnnotations::of(
-    &LevelObjectsDescription::describe(&spawn, Some(&new_graph())),
+    &LevelObjectsDescription::describe(&LevelObjectSources {
+      graph: Some(&new_graph()),
+      ..LevelObjectSources::of_spawn(&spawn)
+    }),
     &new_graph(),
     "zaton",
   );
@@ -163,7 +166,10 @@ fn turns_a_sphere_with_its_object_and_keeps_its_radius() {
     AlifeObjectInherited::CseAlifeSpaceRestrictor(Box::new(new_restrictor(vec![sphere], 4))),
   )]);
   let volume: &AnnotationVolume = &LevelAnnotations::of(
-    &LevelObjectsDescription::describe(&spawn, Some(&new_graph())),
+    &LevelObjectsDescription::describe(&LevelObjectSources {
+      graph: Some(&new_graph()),
+      ..LevelObjectSources::of_spawn(&spawn)
+    }),
     &new_graph(),
     "zaton",
   )
@@ -202,7 +208,10 @@ fn points_a_level_changer_toward_its_destination_across_the_world() {
     AlifeObjectInherited::SeLevelChanger(Box::new(changer)),
   )]);
   let annotations: LevelAnnotations = LevelAnnotations::of(
-    &LevelObjectsDescription::describe(&spawn, Some(&new_graph())),
+    &LevelObjectsDescription::describe(&LevelObjectSources {
+      graph: Some(&new_graph()),
+      ..LevelObjectSources::of_spawn(&spawn)
+    }),
     &new_graph(),
     "zaton",
   );
@@ -316,7 +325,10 @@ fn writes_the_annotations_over_a_map_at_the_size_it_was_captured() -> TauriResul
   })?;
   let svg: String = canvas.write(
     &LevelAnnotations::of(
-      &LevelObjectsDescription::describe(&new_spawn(Vec::new()), Some(&new_graph())),
+      &LevelObjectsDescription::describe(&LevelObjectSources {
+        graph: Some(&new_graph()),
+        ..LevelObjectSources::of_spawn(&new_spawn(Vec::new()))
+      }),
       &new_graph(),
       "zaton",
     ),

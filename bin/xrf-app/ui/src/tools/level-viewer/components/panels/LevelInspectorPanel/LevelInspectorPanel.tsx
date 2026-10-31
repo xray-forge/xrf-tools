@@ -9,6 +9,7 @@ import { getLevelSpawnIndex } from "@/core/level/lib/objects/level-object-kinds"
 import { ELevelPick, TLevelObjectPick, TLevelPick } from "@/core/level/lib/pick/level-pick";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
+import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { listLevelPatrolLeads } from "@/tools/level-viewer/lib/outliner/level-object-describe";
 import { LevelViewerObjectsService } from "@/tools/level-viewer/services/level-viewer-objects";
 
@@ -40,17 +41,14 @@ export function LevelInspectorPanel({
 
   if (!active) {
     return (
-      <EditorPanelEmpty
-        data-testid={dataTestId}
-        id={id}
-        className={className}
-        label={"Nothing selected. Pick an object in the viewport or the Outliner."}
-      />
+      <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Inspector"}>
+        <EditorPanelEmpty label={"Nothing selected. Pick an object in the viewport or the Outliner."} />
+      </EditorPanel>
     );
   }
 
   return (
-    <div data-testid={dataTestId} id={id} className={className}>
+    <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Inspector"}>
       <LevelObjectDetails
         object={active.object}
         visual={active.visual}
@@ -59,6 +57,6 @@ export function LevelInspectorPanel({
         leads={listLevelPatrolLeads(active.object, loadService.objects?.objects ?? [])}
         onGoTo={() => objectsService.frameSelection()}
       />
-    </div>
+    </EditorPanel>
   );
 }

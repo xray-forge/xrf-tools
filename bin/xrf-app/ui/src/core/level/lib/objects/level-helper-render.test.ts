@@ -3,7 +3,11 @@ import { ELevelObjectKind, LEVEL_OBJECT_KINDS, LevelObject, LevelObjectKindEntry
 
 import { mockLevelObject, mockLevelPatrol, mockLevelVolumeObject } from "@/core/level/fixtures/level.mocks";
 import { DEFAULT_LEVEL_HELPER_OPTIONS } from "@/core/level/lib/objects/level-helper-options";
-import { toLevelHelperRenderOptions, toLevelSpawnIndices } from "@/core/level/lib/objects/level-helper-render";
+import {
+  toLevelHelperRenderOptions,
+  toLevelListingPlaceMap,
+  toLevelSpawnIndices,
+} from "@/core/level/lib/objects/level-helper-render";
 
 /** A kind's bit, as the backend numbers kinds by their place in the kind table. */
 function toBit(kind: ELevelObjectKind): number {
@@ -19,7 +23,7 @@ describe("toLevelHelperRenderOptions", () => {
         kinds: { [ELevelObjectKind.RESTRICTORS]: false, [ELevelObjectKind.PROPS]: true },
       },
       { hidden: [], hovered: null, selected: [] },
-      []
+      new Map()
     );
 
     expect(options.isShown).toBe(true);
@@ -32,7 +36,13 @@ describe("toLevelHelperRenderOptions", () => {
   // The backend names each helper by its object's place in the listing, whatever source the object comes from.
   it("names the selected, hidden and hovered objects by their places in the listing, ascending", () => {
     const [path, first, second] = mockLevelPatrol(0, "walk", 2) as [LevelObject, LevelObject, LevelObject];
-    const listed: Array<LevelObject> = [mockLevelObject(), mockLevelVolumeObject(9), path, first, second];
+    const places: ReadonlyMap<string, number> = toLevelListingPlaceMap([
+      mockLevelObject(),
+      mockLevelVolumeObject(9),
+      path,
+      first,
+      second,
+    ]);
     const options = toLevelHelperRenderOptions(
       { ...DEFAULT_LEVEL_HELPER_OPTIONS, isRestFaded: true, isShown: true },
       {
@@ -40,7 +50,7 @@ describe("toLevelHelperRenderOptions", () => {
         hovered: path,
         selected: [second, mockLevelVolumeObject(9)],
       },
-      listed
+      places
     );
 
     expect(options.selected).toEqual([1, 4]);
@@ -51,7 +61,7 @@ describe("toLevelHelperRenderOptions", () => {
       toLevelHelperRenderOptions(
         DEFAULT_LEVEL_HELPER_OPTIONS,
         { hidden: [], hovered: mockLevelVolumeObject(7), selected: [] },
-        listed
+        places
       ).hovered
     ).toBeNull();
   });

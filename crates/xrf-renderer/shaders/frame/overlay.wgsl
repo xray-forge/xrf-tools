@@ -123,24 +123,144 @@ fn vs_helper(@location(0) position: vec3<f32>, @location(1) color: vec4<f32>, @l
   return out;
 }
 
-// A helper's wire: whole where nothing drawn stands in front of it, at its occluded strength where something does, and
-// fading out toward its draw distance, unless its object is selected or hovered.
+// How far in front of a helper the drawn scene must stand to hide it: some centimetres, and a share of its distance, as
+// far as a texel of the jittered depth reaches across ground seen at a slant. A helper lying on what it marks (a
+// patrol's links and points, a cover on the floor) is otherwise hidden and whole by turns as the jitter moves.
+const HELPER_HIDDEN_SLACK: f32 = 0.2;
+const HELPER_HIDDEN_SHARE: f32 = 0.02;
+
+// Whether what is drawn at a texel (`scene`, its depth) hides a helper at `depth`, both reversed: one is the near
+// plane.
+fn is_helper_hidden(scene: f32, depth: f32) -> bool {
+  if (scene <= depth) {
+    return false;
+  }
+
+  let distance: f32 = camera_view_distance(depth);
+
+  return camera_view_distance(scene) < distance - (HELPER_HIDDEN_SLACK + distance * HELPER_HIDDEN_SHARE);
+}
+
+// How much of a helper shows at a point of the world: whole where nothing drawn stands in front of it (`is_hidden`), at
+// its occluded strength where something does, and fading out toward its draw distance, unless its object is singled
+// out (`color.a`, `fade` as `HelperVertex` holds them).
+fn helper_shown(is_hidden: bool, color: vec4<f32>, fade: vec2<f32>, world: vec3<f32>) -> f32 {
+  let is_singled: bool = color.a > 0.0;
+  let reach: f32 = fade.x;
+  let distance: f32 = length(world - camera.position.xyz);
+  let faded: f32 = select(1.0 - smoothstep(reach * HELPER_FADE_START, reach, distance), 1.0, reach <= 0.0);
+
+  return select(1.0, select(fade.y, 1.0, is_singled), is_hidden) * faded;
+}
+
+// A helper's colour, lifted toward white as far as its object is singled out.
+fn helper_colour(color: vec4<f32>) -> vec3<f32> {
+  return mix(color.rgb, vec3<f32>(1.0), HELPER_SELECTED_LIFT * color.a);
+}
+
+// A helper's wire, hidden by what is drawn in front of it fragment by fragment.
 @fragment
 fn fs_helper(in: HelperVarying) -> @location(0) vec4<f32> {
   let texel: vec2<i32> = to_drawn_texel(floor(in.clip.xy - present.origin), camera.viewport.xy, present.size);
-  // Depth is reversed: the scene stands in front where it holds the larger value.
-  let is_hidden: bool = textureLoad(depth_target, texel, 0) > in.clip.z;
-  let is_singled: bool = in.color.a > 0.0;
-  let reach: f32 = in.fade.x;
-  let distance: f32 = length(in.world - camera.position.xyz);
-  let faded: f32 = select(1.0 - smoothstep(reach * HELPER_FADE_START, reach, distance), 1.0, reach <= 0.0);
-  let shown: f32 = select(1.0, select(in.fade.y, 1.0, is_singled), is_hidden) * faded;
+  let is_hidden: bool = is_helper_hidden(textureLoad(depth_target, texel, 0), in.clip.z);
+  let shown: f32 = helper_shown(is_hidden, in.color, in.fade, in.world);
 
   if (shown <= 0.0) {
     discard;
   }
 
-  return vec4<f32>(mix(in.color.rgb, vec3<f32>(1.0), HELPER_SELECTED_LIFT * in.color.a), shown);
+  return vec4<f32>(helper_colour(in.color), shown);
+}
+
+// The helper icons' atlas (`HelperIconAtlas`): cells of `HELPER_ICON_CELL` pixels, white pictures outlined in black.
+@group(2) @binding(0) var helper_icon_atlas: texture_2d<f32>;
+@group(2) @binding(1) var helper_icon_sampler: sampler;
+
+// Window pixels an icon spans each way, whatever its distance; pixels an atlas cell spans.
+const HELPER_ICON_SIZE: f32 = 40.0;
+const HELPER_ICON_CELL: f32 = 64.0;
+
+struct HelperIconVarying {
+  @builtin(position) clip: vec4<f32>,
+  // Where in the atlas.
+  @location(0) uv: vec2<f32>,
+  @location(1) @interpolate(flat) color: vec4<f32>,
+  @location(2) @interpolate(flat) fade: vec2<f32>,
+  @location(3) @interpolate(flat) world: vec3<f32>,
+  // The icon's point in the viewport's pixels and its depth, which it is hidden by as a whole.
+  @location(4) @interpolate(flat) point: vec2<f32>,
+  @location(5) @interpolate(flat) depth: f32,
+};
+
+// An icon's square, two triangles `HELPER_ICON_SIZE` pixels across about its point, collapsed behind the eye.
+@vertex
+fn vs_helper_icon(
+  @builtin(vertex_index) index: u32,
+  @location(0) position: vec3<f32>,
+  @location(1) icon: u32,
+  @location(2) color: vec4<f32>,
+  @location(3) fade: vec2<f32>,
+) -> HelperIconVarying {
+  var corners: array<vec2<f32>, 6> = array<vec2<f32>, 6>(
+    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
+    vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0),
+  );
+  let center: vec4<f32> = camera.motion_current * vec4<f32>(position, 1.0);
+  let corner: vec2<f32> = corners[index];
+  let atlas: vec2<f32> = vec2<f32>(textureDimensions(helper_icon_atlas));
+  let columns: u32 = u32(atlas.x / HELPER_ICON_CELL);
+  let cell: vec2<f32> = vec2<f32>(f32(icon % columns), f32(icon / columns));
+  var out: HelperIconVarying;
+
+  if (center.w <= 0.0) {
+    out.clip = vec4<f32>(0.0, 0.0, 0.0, 1.0);
+
+    return out;
+  }
+
+  let ndc: vec2<f32> = center.xy / center.w;
+
+  out.clip = vec4<f32>(center.xy + corner * HELPER_ICON_SIZE / present.size * center.w, center.z, center.w);
+  // The atlas runs down where the view runs up.
+  out.uv = (cell + corner * vec2<f32>(0.5, -0.5) + 0.5) * HELPER_ICON_CELL / atlas;
+  out.color = color;
+  out.fade = fade;
+  out.world = position;
+  out.point = (ndc * vec2<f32>(0.5, -0.5) + 0.5) * present.size;
+  out.depth = center.z / center.w;
+
+  return out;
+}
+
+// Drawn texels either way of an icon's point whose depth it is hidden by: the farthest of them, so the edge of a pole
+// or a rail passing over the point, moving a texel as the frame's jitter does, does not hide it by turns.
+const HELPER_ICON_REACH: i32 = 1;
+
+// A helper's icon tinted in its kind's colour, its outline kept dark, hidden as a whole by what is drawn in front of
+// its point.
+@fragment
+fn fs_helper_icon(in: HelperIconVarying) -> @location(0) vec4<f32> {
+  let last: vec2<i32> = vec2<i32>(camera.viewport.xy) - 1;
+  let center: vec2<i32> = to_drawn_texel(floor(in.point), camera.viewport.xy, present.size);
+  var offsets: array<vec2<i32>, 5> = array<vec2<i32>, 5>(
+    vec2<i32>(0, 0), vec2<i32>(HELPER_ICON_REACH, 0), vec2<i32>(-HELPER_ICON_REACH, 0),
+    vec2<i32>(0, HELPER_ICON_REACH), vec2<i32>(0, -HELPER_ICON_REACH),
+  );
+  var farthest: f32 = 1.0;
+
+  for (var at: i32 = 0; at < 5; at += 1) {
+    // Depth is reversed: the farthest holds the least.
+    farthest = min(farthest, textureLoad(depth_target, clamp(center + offsets[at], vec2<i32>(0), last), 0));
+  }
+
+  let shown: f32 = helper_shown(is_helper_hidden(farthest, in.depth), in.color, in.fade, in.world);
+  let picture: vec4<f32> = textureSample(helper_icon_atlas, helper_icon_sampler, in.uv);
+
+  if (shown * picture.a <= 0.0) {
+    discard;
+  }
+
+  return vec4<f32>(picture.rgb * helper_colour(in.color), picture.a * shown);
 }
 
 struct SunVarying {

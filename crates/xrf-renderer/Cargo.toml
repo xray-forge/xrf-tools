@@ -47,6 +47,8 @@ objc2-metal = { version = "0.3.2", default-features = false, features = ["std", 
 [dev-dependencies]
 ddsfile = { workspace = true }
 naga = { workspace = true }
+# Rasterises the helper icons' pictures into their atlas, which the generator test writes.
+resvg = { workspace = true }
 serde_json = { workspace = true }
 # The engine's own light animation arithmetic, which the renderer's is held to.
 xrf-light-anim = { workspace = true }

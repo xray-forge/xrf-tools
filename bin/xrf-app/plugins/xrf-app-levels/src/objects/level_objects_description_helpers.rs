@@ -1,18 +1,12 @@
 use glam::Vec3;
 use xrf_renderer::{RenderHelperObject, RenderHelperShape, RenderLevelHelpers};
 
-use crate::objects::{
-  LevelObject, LevelObjectId, LevelObjectKind, LevelObjectKindEntry, LevelObjectShape, LevelObjectsDescription,
-};
+use crate::objects::{LevelObject, LevelObjectId, LevelObjectKindEntry, LevelObjectShape, LevelObjectsDescription};
 
-/// How the level objects with no shape of their own are drawn as helpers.
+/// What each level object is drawn as among the helpers.
 struct HelperLook;
 
 impl HelperLook {
-  /// Metres a patrol point's and a graph point's marker spans.
-  const PATROL_POINT_SIZE: f32 = 0.35;
-  const GRAPH_POINT_SIZE: f32 = 0.5;
-
   /// An arrowhead's barbs: metres at most, a share of the link at most, and their angle off the link.
   const ARROW_LENGTH: f32 = 0.6;
   const ARROW_SHARE: f32 = 0.25;
@@ -76,25 +70,22 @@ impl HelperLook {
       return vec![RenderHelperShape::Segments { ends }];
     }
 
-    match object.kind {
-      LevelObjectKind::Patrols => vec![RenderHelperShape::Marker {
-        center: [0.0; 3],
-        size: Self::PATROL_POINT_SIZE,
-      }],
-      LevelObjectKind::GraphPoints => vec![RenderHelperShape::Marker {
-        center: [0.0; 3],
-        size: Self::GRAPH_POINT_SIZE,
-      }],
-      _ => Vec::new(),
+    if let Some(placement) = object.placement.as_ref().filter(|it| !it.shapes.is_empty()) {
+      return placement.shapes.iter().map(RenderHelperShape::from).collect();
     }
+
+    // What stands at a point with no shape of its own draws its kind's icon there.
+    object.kind.get_entry().icon.map_or_else(Vec::new, |icon| {
+      vec![RenderHelperShape::Icon { center: [0.0; 3], icon }]
+    })
   }
 }
 
 impl From<&LevelObjectsDescription> for RenderLevelHelpers {
   /// The level objects the renderer draws helpers for, each by its place among the listing's objects, switched by its
-  /// kind's place in the kind table, in its kind's colour: a drawn spawned object by its model, the volumes by their
-  /// shapes, a patrol path by its links and each of its points, and the graph points, by markers.
-  // todo: Hand over the characters, the smart covers and the placements as icons once the renderer draws them.
+  /// kind's place in the kind table, in its kind's colour: a drawn spawned object by its model, the volumes and the
+  /// placements covering a space by their shapes, a patrol path by its links, and what stands at a point by its kind's
+  /// icon.
   fn from(description: &LevelObjectsDescription) -> Self {
     Self {
       objects: description
