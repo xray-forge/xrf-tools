@@ -6,17 +6,17 @@ use xrf_spawn::SpawnLevelGraph;
 use xrf_vfs::XraySearch;
 
 use crate::level::SelectedLevel;
-use crate::objects::{LevelObject, LevelObjectId, LevelObjectsDescription};
+use crate::objects::LevelObjectsDescription;
 use crate::parts::LevelGraphPart;
-use crate::viewer::map::annotations::{AnnotationOutline, AnnotationPatrol, AnnotationPoint, AnnotationVolume};
+use crate::viewer::map::annotations::{AnnotationMarker, AnnotationPatrol, AnnotationVolume};
 
-/// Everything a level map's annotations can draw of a level, engine space seen from above.
+/// Everything a level map's annotations can draw of a level's objects, engine space seen from above: what covers a
+/// space by its outlines, the patrol paths by their links, and what stands at a point by a dot.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LevelAnnotations {
   pub volumes: Vec<AnnotationVolume>,
   pub patrols: Vec<AnnotationPatrol>,
-  /// The game graph's vertices on the level, by id.
-  pub graph_points: Vec<(u16, AnnotationPoint)>,
+  pub markers: Vec<AnnotationMarker>,
 }
 
 impl LevelAnnotations {
@@ -45,16 +45,7 @@ impl LevelAnnotations {
         .filter_map(|object| AnnotationVolume::of(object, graph, level))
         .collect(),
       patrols: objects.objects.iter().filter_map(AnnotationPatrol::of).collect(),
-      graph_points: objects
-        .objects
-        .iter()
-        .filter_map(|object: &LevelObject| match object.id {
-          LevelObjectId::GraphPoint { vertex } => {
-            Some((vertex, AnnotationOutline::from_renderer_point(&object.transform.c)))
-          }
-          _ => None,
-        })
-        .collect(),
+      markers: objects.objects.iter().filter_map(AnnotationMarker::of).collect(),
     }
   }
 }

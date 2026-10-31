@@ -8,20 +8,20 @@ use resvg::{tiny_skia, usvg};
 use xrf_app_core::TauriResult;
 use xrf_utils::StagedFile;
 
+use crate::objects::{LevelObjectKind, LevelObjectKindEntry};
 use crate::parts::LevelMapArea;
 use crate::viewer::map::annotations::{
-  AnnotationOutline, AnnotationPoint, AnnotationVolume, LevelAnnotationKind, LevelAnnotations,
-  MapAnnotationsWriteRequest,
+  AnnotationOutline, AnnotationPoint, AnnotationVolume, LevelAnnotations, MapAnnotationsWriteRequest,
 };
 
-/// How a map's annotations are drawn: the area the map covers onto its pixels, what of them is drawn, and whether
-/// every volume and patrol is named rather than the smart terrains and level changers alone (a level has hundreds of
+/// How a map's annotations are drawn: the area the map covers onto its pixels, the kinds of level object drawn, and
+/// whether every object is named rather than the smart terrains and level changers alone (a level has hundreds of
 /// patrols, whose names would bury the map).
 pub struct AnnotationCanvas {
   pub area: LevelMapArea,
   pub width: u32,
   pub height: u32,
-  pub kinds: Vec<LevelAnnotationKind>,
+  pub kinds: Vec<LevelObjectKind>,
   pub is_labelled: bool,
 }
 
@@ -38,8 +38,11 @@ impl AnnotationCanvas {
   const STROKE_AT_BASE: f32 = 0.6;
   const STROKE_LEAST: f32 = 0.35;
 
-  /// A graph point's id against a label.
-  const VERTEX_LABEL_SHARE: f32 = 0.75;
+  /// What is written beside a dot against a label.
+  const TAG_SHARE: f32 = 0.75;
+
+  /// A restrictor keeping the actor in, apart from the kind's blue keeping him out.
+  const RESTRICTOR_IN_COLOUR: &str = "#90caf9";
 
   /// The canvas a write request asks for, over its map's pixels.
   ///
@@ -73,7 +76,43 @@ impl AnnotationCanvas {
     Ok(svg)
   }
 
-  /// The annotations as an SVG over the map: its view box the map's pixels, a group a kind, the lowest first.
+  /// The layer a kind is drawn in, the lowest first: the dots, then the outlines, the patrols' many lines, and the
+  /// volumes always named on top, so the names that matter stand over everything.
+  fn get_layer(kind: LevelObjectKind) -> u8 {
+    match kind {
+      LevelObjectKind::SmartTerrains | LevelObjectKind::LevelChangers => 3,
+      LevelObjectKind::Patrols => 2,
+      LevelObjectKind::Restrictors
+      | LevelObjectKind::Anomalies
+      | LevelObjectKind::Climbables
+      | LevelObjectKind::SoundEnvironments
+      | LevelObjectKind::FogVolumes
+      | LevelObjectKind::EnvModifiers => 1,
+      LevelObjectKind::Props
+      | LevelObjectKind::Items
+      | LevelObjectKind::Weapons
+      | LevelObjectKind::Lamps
+      | LevelObjectKind::Actor
+      | LevelObjectKind::Stalkers
+      | LevelObjectKind::Creatures
+      | LevelObjectKind::Traders
+      | LevelObjectKind::Squads
+      | LevelObjectKind::SmartCovers
+      | LevelObjectKind::GraphPoints
+      | LevelObjectKind::StaticParticles
+      | LevelObjectKind::StaticSounds
+      | LevelObjectKind::RespawnPoints
+      | LevelObjectKind::Lights => 0,
+    }
+  }
+
+  /// A kind's group id in the SVG: its label in kebab case.
+  fn to_group_id(entry: &LevelObjectKindEntry) -> String {
+    entry.label.to_lowercase().replace(' ', "-")
+  }
+
+  /// The annotations as an SVG over the map: its view box the map's pixels, a group a kind in its kind's colour, the
+  /// lowest layer first.
   pub fn draw(&self, annotations: &LevelAnnotations) -> String {
     let growth: f32 = (self.width.max(self.height) as f32 / Self::BASE_SIDE).sqrt();
     let label: f32 = (Self::LABEL_AT_BASE * growth).max(Self::LABEL_LEAST);
@@ -87,47 +126,30 @@ impl AnnotationCanvas {
       h = self.height,
     );
 
-    for kind in LevelAnnotationKind::ALL
-      .into_iter()
-      .filter(|kind| self.kinds.contains(kind))
-    {
-      let colour: &str = kind.get_colour();
+    let mut kinds: Vec<LevelObjectKind> = self.kinds.clone();
+
+    kinds.sort_by_key(|kind| (Self::get_layer(*kind), *kind as usize));
+    kinds.dedup();
+
+    for kind in kinds {
+      let entry: &LevelObjectKindEntry = kind.get_entry();
+      let colour: &str = entry.color;
 
       let _ = write!(
         svg,
         r#"<g id="{}" fill="{colour}" stroke="{colour}" stroke-width="{stroke:.2}">"#,
-        kind.get_id()
+        Self::to_group_id(entry)
       );
 
-      match kind {
-        LevelAnnotationKind::GraphPoints => {
-          let radius: f32 = (stroke * 2.0).max(0.75);
-          let size: f32 = label * Self::VERTEX_LABEL_SHARE;
-
-          // Each dot with its game vertex id beside it.
-          for (id, point) in &annotations.graph_points {
-            let (x, y): (f32, f32) = self.to_pixel(*point);
-            let _ = write!(
-              svg,
-              r#"<circle cx="{x:.1}" cy="{y:.1}" r="{radius:.1}" stroke="none"/>"#
-            );
-            let _ = write!(
-              svg,
-              r##"<text x="{:.1}" y="{:.1}" font-size="{size:.1}" text-anchor="start" stroke="#101010" stroke-width="{:.2}" paint-order="stroke">{id}</text>"##,
-              x + radius * 1.5,
-              y + size * 0.35,
-              size / 10.0,
-            );
-          }
-        }
-        LevelAnnotationKind::Patrols => self.draw_patrols(&mut svg, annotations, (stroke, label)),
-        _ => {
-          for volume in annotations.volumes.iter().filter(|volume| volume.kind == kind) {
-            self.draw_volume(&mut svg, volume, (stroke, label));
-          }
-        }
+      for volume in annotations.volumes.iter().filter(|volume| volume.kind == kind) {
+        self.draw_volume(&mut svg, volume, (stroke, label));
       }
 
+      if kind == LevelObjectKind::Patrols {
+        self.draw_patrols(&mut svg, annotations, (stroke, label));
+      }
+
+      self.draw_markers(&mut svg, annotations, kind, (stroke, label));
       svg.push_str("</g>");
     }
 
@@ -160,8 +182,8 @@ impl AnnotationCanvas {
   /// A volume's outlines, filled faintly, and its name where it is named: a level changer's with an arrow toward its
   /// destination.
   fn draw_volume(&self, svg: &mut String, volume: &AnnotationVolume, (stroke, label): (f32, f32)) {
-    // A restrictor keeping the actor in is cyan, one keeping him out the kind's blue.
-    let colour: Option<&str> = (volume.kind == LevelAnnotationKind::Restrictors && volume.is_in).then_some("#00bcd4");
+    let colour: Option<&str> =
+      (volume.kind == LevelObjectKind::Restrictors && volume.is_in).then_some(Self::RESTRICTOR_IN_COLOUR);
     let paint: String = colour.map_or_else(String::new, |colour| format!(r#" fill="{colour}" stroke="{colour}""#));
 
     for outline in &volume.outlines {
@@ -218,7 +240,7 @@ impl AnnotationCanvas {
 
         Self::draw_label(svg, (x, y - label), &format!("→ {level}"), label);
       }
-      None if volume.kind == LevelAnnotationKind::SmartTerrains || self.is_labelled => {
+      None if volume.kind == LevelObjectKind::SmartTerrains || self.is_labelled => {
         Self::draw_label(svg, (x, y), &volume.name, label);
       }
       None => {}
@@ -248,6 +270,41 @@ impl AnnotationCanvas {
         let (x, y): (f32, f32) = self.to_pixel(*first);
 
         Self::draw_label(svg, (x, y - label * 0.6), &patrol.name, label);
+      }
+    }
+  }
+
+  /// The dots of `kind`, each with its tag beside it, or its name where every object is named.
+  fn draw_markers(
+    &self,
+    svg: &mut String,
+    annotations: &LevelAnnotations,
+    kind: LevelObjectKind,
+    (stroke, label): (f32, f32),
+  ) {
+    let radius: f32 = (stroke * 2.5).max(1.0);
+    let size: f32 = label * Self::TAG_SHARE;
+
+    for marker in annotations.markers.iter().filter(|marker| marker.kind == kind) {
+      let (x, y): (f32, f32) = self.to_pixel(marker.point);
+      let _ = write!(
+        svg,
+        r#"<circle cx="{x:.1}" cy="{y:.1}" r="{radius:.1}" stroke="none"/>"#
+      );
+
+      if let Some(text) = marker
+        .tag
+        .as_deref()
+        .or_else(|| self.is_labelled.then_some(marker.name.as_str()))
+      {
+        let _ = write!(
+          svg,
+          r##"<text x="{:.1}" y="{:.1}" font-size="{size:.1}" text-anchor="start" stroke="#101010" stroke-width="{:.2}" paint-order="stroke">{}</text>"##,
+          x + radius * 1.5,
+          y + size * 0.35,
+          size / 10.0,
+          Self::escape(text)
+        );
       }
     }
   }

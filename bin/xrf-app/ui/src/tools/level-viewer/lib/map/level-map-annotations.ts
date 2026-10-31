@@ -1,25 +1,23 @@
-import { ELevelAnnotationKind, MapAnnotationsWriteRequest } from "@xrf/ipc/types/xrf-app-levels";
+import {
+  LEVEL_OBJECT_KINDS,
+  LevelObjectKind,
+  LevelObjectKindEntry,
+  MapAnnotationsWriteRequest,
+} from "@xrf/ipc/types/xrf-app-levels";
+
+import { ILevelHelperOptions, isLevelHelperOn } from "@/core/level/lib/objects/level-helper-options";
 
 import { ILevelMapRect } from "./level-map-capture";
 
 /** What of a level map's annotations is drawn, as its dialog holds it. */
 export interface ILevelMapAnnotations {
-  kinds: ReadonlyArray<ELevelAnnotationKind>;
-  /** Whether every volume and patrol is named, rather than the smart terrains and level changers alone. */
+  /** The kinds of level object drawn, in the kind table's order. */
+  kinds: ReadonlyArray<LevelObjectKind>;
+  /** Whether every object is named, rather than the smart terrains and level changers alone. */
   isLabelled: boolean;
 }
 
-/** The kinds offered, in the order the dialog lists them, each with its label. */
-export const LEVEL_MAP_ANNOTATION_KINDS: ReadonlyArray<[ELevelAnnotationKind, string]> = [
-  [ELevelAnnotationKind.SMART_TERRAINS, "Smart terrains"],
-  [ELevelAnnotationKind.RESTRICTORS, "Space restrictors"],
-  [ELevelAnnotationKind.ANOMALIES, "Anomalies"],
-  [ELevelAnnotationKind.LEVEL_CHANGERS, "Level changers"],
-  [ELevelAnnotationKind.PATROLS, "Patrol paths"],
-  [ELevelAnnotationKind.GRAPH_POINTS, "Graph points"],
-];
-
-/** None drawn: a map opens bare, and each kind is switched on over it. */
+/** None drawn: a map opens bare where the view draws no helpers. */
 export const DEFAULT_LEVEL_MAP_ANNOTATIONS: ILevelMapAnnotations = {
   kinds: [],
   isLabelled: false,
@@ -29,20 +27,37 @@ export const DEFAULT_LEVEL_MAP_ANNOTATIONS: ILevelMapAnnotations = {
 export const LEVEL_MAP_ANNOTATIONS_EXTENSION: string = "svg";
 
 /**
+ * @param helpers - Which helpers the view draws.
+ * @returns The annotations a captured map opens on: the kinds whose helpers the view draws, none while it draws none.
+ */
+export function toLevelMapAnnotationsOf(helpers: ILevelHelperOptions): ILevelMapAnnotations {
+  if (!helpers.isShown) {
+    return DEFAULT_LEVEL_MAP_ANNOTATIONS;
+  }
+
+  return {
+    ...DEFAULT_LEVEL_MAP_ANNOTATIONS,
+    kinds: LEVEL_OBJECT_KINDS.filter((entry: LevelObjectKindEntry) => isLevelHelperOn(helpers, entry.kind)).map(
+      (entry: LevelObjectKindEntry) => entry.kind
+    ),
+  };
+}
+
+/**
  * @param annotations - What is drawn.
- * @param kind - A kind to switch.
- * @param isShown - Whether it is drawn from now on.
- * @returns The annotations with `kind` drawn or not, in the order the dialog lists them.
+ * @param kinds - Kinds to switch, as a group of the dialog switches its kinds together.
+ * @param isShown - Whether they are drawn from now on.
+ * @returns The annotations with `kinds` drawn or not, in the kind table's order.
  */
 export function toLevelMapAnnotationsWith(
   annotations: ILevelMapAnnotations,
-  kind: ELevelAnnotationKind,
+  kinds: ReadonlyArray<LevelObjectKind>,
   isShown: boolean
 ): ILevelMapAnnotations {
   return {
     ...annotations,
-    kinds: LEVEL_MAP_ANNOTATION_KINDS.map(([it]) => it).filter((it) =>
-      it === kind ? isShown : annotations.kinds.includes(it)
+    kinds: LEVEL_OBJECT_KINDS.map((entry: LevelObjectKindEntry) => entry.kind).filter((kind: LevelObjectKind) =>
+      kinds.includes(kind) ? isShown : annotations.kinds.includes(kind)
     ),
   };
 }

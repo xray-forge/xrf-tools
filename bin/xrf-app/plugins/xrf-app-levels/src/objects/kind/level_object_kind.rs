@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use xrf_spawn::{AlifeObject, AlifeObjectInherited};
 
 use crate::objects::{LEVEL_OBJECT_KINDS, LevelObjectGroup, LevelObjectKindEntry};
@@ -6,7 +6,7 @@ use crate::spawn::LevelSpawnCategory;
 
 /// What a level object is, which the viewer lists, shows and draws helpers by.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum LevelObjectKind {
   Props,

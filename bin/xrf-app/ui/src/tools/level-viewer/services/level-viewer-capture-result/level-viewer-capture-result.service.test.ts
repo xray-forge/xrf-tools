@@ -1,20 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { save } from "@tauri-apps/plugin-dialog";
 import { waitFor } from "@testing-library/react";
-import { EventBus, WireEvent } from "@wirestate/core";
+import { Container, EventBus, WireEvent } from "@wirestate/core";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockIpcCommands } from "@xrf/ipc/testing";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
-import { ELevelAnnotationKind } from "@xrf/ipc/types/xrf-app-levels";
+import { ELevelObjectKind } from "@xrf/ipc/types/xrf-app-levels";
 
 import { mockLevelViewContainer } from "@/core/level/fixtures/level-container";
+import { ILevelHelperOptions } from "@/core/level/lib/objects/level-helper-options";
+import { LevelViewService } from "@/core/level/services/level-view";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { EToolId } from "@/core/routing/tool";
 import { mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { mockToolScope } from "@/fixtures/utils/container";
 import { ELevelCaptureMode } from "@/tools/level-viewer/lib/capture/level-capture";
 import { TLevelCapture } from "@/tools/level-viewer/lib/capture/level-captured";
-import { DEFAULT_LEVEL_MAP_ANNOTATIONS } from "@/tools/level-viewer/lib/map/level-map-annotations";
+import {
+  DEFAULT_LEVEL_MAP_ANNOTATIONS,
+  toLevelMapAnnotationsWith,
+} from "@/tools/level-viewer/lib/map/level-map-annotations";
 import { DEFAULT_LEVEL_MAP_EXPORT } from "@/tools/level-viewer/lib/map/level-map-export";
 import { LevelViewerCaptureResultService } from "@/tools/level-viewer/services/level-viewer-capture-result";
 
@@ -30,6 +35,10 @@ function mockMapCapture(url: string = "blob:map"): TLevelCapture {
 }
 
 function mockResult(raised: Array<INotificationPayload> = []): LevelViewerCaptureResultService {
+  return mockResultContainer(raised).get(LevelViewerCaptureResultService);
+}
+
+function mockResultContainer(raised: Array<INotificationPayload> = []): Container {
   const { container } = mockLevelViewContainer([
     ...mockToolScope(EToolId.LEVEL_VIEWER),
     LevelViewerCaptureResultService,
@@ -42,7 +51,7 @@ function mockResult(raised: Array<INotificationPayload> = []): LevelViewerCaptur
       raised.push(event.payload as INotificationPayload)
     );
 
-  return container.get(LevelViewerCaptureResultService);
+  return container;
 }
 
 beforeEach(() => {
@@ -79,10 +88,10 @@ describe("LevelViewerCaptureResultService", () => {
     });
     expect(service.annotationsUrl).toBe("blob:annotations");
 
-    service.setMapAnnotations({ kinds: [ELevelAnnotationKind.GRAPH_POINTS], isLabelled: true });
+    service.setMapAnnotations({ kinds: [ELevelObjectKind.GRAPH_POINTS], isLabelled: true });
     await service.drawAnnotations();
 
-    expect(asked.at(-1)).toMatchObject({ kinds: [ELevelAnnotationKind.GRAPH_POINTS], isLabelled: true });
+    expect(asked.at(-1)).toMatchObject({ kinds: [ELevelObjectKind.GRAPH_POINTS], isLabelled: true });
   });
 
   it("writes the annotations in the order drawn and exports once the last is written, the capture held meanwhile", async () => {
@@ -113,7 +122,7 @@ describe("LevelViewerCaptureResultService", () => {
 
     service.show(mockMapCapture());
     void service.drawAnnotations();
-    service.setMapAnnotations({ kinds: [ELevelAnnotationKind.GRAPH_POINTS], isLabelled: false });
+    service.setMapAnnotations({ kinds: [ELevelObjectKind.GRAPH_POINTS], isLabelled: false });
 
     const exporting: Promise<void> = service.exportAs() as unknown as Promise<void>;
 
@@ -170,16 +179,42 @@ describe("LevelViewerCaptureResultService", () => {
     expect(service.exported.value).toBeNull();
   });
 
-  it("puts every export and annotation setting back for a dialog opened afresh", () => {
+  it("puts every export setting back for a dialog opened afresh, the annotations bare while the view has no helpers", () => {
     const service: LevelViewerCaptureResultService = mockResult();
 
     service.show(mockMapCapture());
     service.setMapExport({ longSide: 1024 });
-    service.setMapAnnotations({ kinds: [ELevelAnnotationKind.GRAPH_POINTS], isLabelled: true });
+    service.setMapAnnotations({ kinds: [ELevelObjectKind.GRAPH_POINTS], isLabelled: true });
     service.reset();
 
     expect(service.captured).toBeNull();
     expect(service.mapExport).toEqual(DEFAULT_LEVEL_MAP_EXPORT);
     expect(service.mapAnnotations).toEqual(DEFAULT_LEVEL_MAP_ANNOTATIONS);
+  });
+
+  it("opens the annotations on the view's helper choices, changing nothing of the view's", () => {
+    const container: Container = mockResultContainer();
+    const service: LevelViewerCaptureResultService = container.get(LevelViewerCaptureResultService);
+    const view: LevelViewService = container.get(LevelViewService);
+
+    view.toggleHelpers();
+    view.setHelperKinds([ELevelObjectKind.LIGHTS], true);
+
+    const helpers: ILevelHelperOptions = view.helpers;
+
+    service.reset();
+    service.setMapAnnotations(toLevelMapAnnotationsWith(service.mapAnnotations, [ELevelObjectKind.GRAPH_POINTS], true));
+
+    expect(service.mapAnnotations.kinds).toEqual([
+      ELevelObjectKind.SMART_TERRAINS,
+      ELevelObjectKind.RESTRICTORS,
+      ELevelObjectKind.ANOMALIES,
+      ELevelObjectKind.LEVEL_CHANGERS,
+      ELevelObjectKind.CLIMBABLES,
+      ELevelObjectKind.PATROLS,
+      ELevelObjectKind.GRAPH_POINTS,
+      ELevelObjectKind.LIGHTS,
+    ]);
+    expect(view.helpers).toBe(helpers);
   });
 });

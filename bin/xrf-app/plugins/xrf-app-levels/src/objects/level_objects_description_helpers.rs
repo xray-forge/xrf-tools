@@ -48,8 +48,8 @@ impl HelperLook {
       return vec![RenderHelperShape::Model { object: index }];
     }
 
-    if let Some(volume) = &object.volume {
-      return volume.shapes.iter().map(RenderHelperShape::from).collect();
+    if let Some(shapes) = object.get_shapes() {
+      return shapes.iter().map(RenderHelperShape::from).collect();
     }
 
     if let Some(patrol) = &object.patrol {
@@ -68,10 +68,6 @@ impl HelperLook {
         .collect();
 
       return vec![RenderHelperShape::Segments { ends }];
-    }
-
-    if let Some(placement) = object.placement.as_ref().filter(|it| !it.shapes.is_empty()) {
-      return placement.shapes.iter().map(RenderHelperShape::from).collect();
     }
 
     // What stands at a point with no shape of its own draws its kind's icon there.

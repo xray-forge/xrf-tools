@@ -164,6 +164,8 @@ impl RenderThread {
 
   /// Declares a viewport's screenshot: its frame (`output`) presented into a texture of its own at its whole size, as
   /// its window shows it but without its overlays or its selection's outline, then copied out.
+  ///
+  /// todo: draw the level objects' helpers into it when the screenshot asks for them ("Include helpers").
   pub(super) fn declare_screenshot<'a>(
     (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
     gpu: &'a GpuState,

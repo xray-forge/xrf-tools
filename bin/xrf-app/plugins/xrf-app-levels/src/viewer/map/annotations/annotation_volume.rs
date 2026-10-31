@@ -1,12 +1,12 @@
 use xrf_spawn::SpawnLevelGraph;
 
-use crate::objects::{LevelObject, LevelObjectKind, LevelObjectVolume, LevelRestriction};
-use crate::viewer::map::annotations::{AnnotationOutline, AnnotationPoint, LevelAnnotationKind};
+use crate::objects::{LevelObject, LevelObjectKind, LevelObjectShape, LevelObjectVolume, LevelRestriction};
+use crate::viewer::map::annotations::{AnnotationOutline, AnnotationPoint};
 
-/// One logic volume of the level seen from above: a smart terrain, restrictor, anomaly or level changer.
+/// One object of the level covering a space, seen from above: a logic volume, or a placement covering one.
 #[derive(Clone, Debug, PartialEq)]
 pub struct AnnotationVolume {
-  pub kind: LevelAnnotationKind,
+  pub kind: LevelObjectKind,
   pub name: String,
   pub outlines: Vec<AnnotationOutline>,
   /// Whether it keeps the actor inside it, as a restrictor of the in type does.
@@ -17,29 +17,21 @@ pub struct AnnotationVolume {
 }
 
 impl AnnotationVolume {
-  /// `object`'s logic volume from above on the level named `level`, or `None` for an object the map draws none of.
+  /// `object`'s space from above on the level named `level`, or `None` for an object covering none.
   pub fn of(object: &LevelObject, graph: &SpawnLevelGraph, level: &str) -> Option<Self> {
-    let kind: LevelAnnotationKind = match object.kind {
-      LevelObjectKind::SmartTerrains => LevelAnnotationKind::SmartTerrains,
-      LevelObjectKind::Restrictors => LevelAnnotationKind::Restrictors,
-      LevelObjectKind::Anomalies => LevelAnnotationKind::Anomalies,
-      LevelObjectKind::LevelChangers => LevelAnnotationKind::LevelChangers,
-      _ => return None,
-    };
-    let volume: &LevelObjectVolume = object.volume.as_ref()?;
+    let shapes: &[LevelObjectShape] = object.get_shapes()?;
+    let volume: Option<&LevelObjectVolume> = object.volume.as_ref();
 
     Some(Self {
-      kind,
+      kind: object.kind,
       name: object.name.clone(),
-      outlines: volume
-        .shapes
+      outlines: shapes
         .iter()
         .map(|shape| AnnotationOutline::of(shape, &object.transform))
         .collect(),
-      is_in: volume.restriction == LevelRestriction::In,
+      is_in: volume.is_some_and(|volume| volume.restriction == LevelRestriction::In),
       destination: volume
-        .destination
-        .as_ref()
+        .and_then(|volume| volume.destination.as_ref())
         .map(|destination| (destination.clone(), Self::get_toward(graph, level, destination))),
     })
   }

@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
-import { ELevelAnnotationKind, EMapExportAnnotations } from "@xrf/ipc/types/xrf-app-levels";
+import { EMapExportAnnotations, LevelObjectKind } from "@xrf/ipc/types/xrf-app-levels";
 import { ETextureEncodingFormat } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
@@ -13,11 +13,7 @@ import { ReactElement, ReactNode, useCallback } from "react";
 
 import { LEVEL_CAPTURE_DDS_FORMATS } from "@/tools/level-viewer/lib/capture/level-capture";
 import { ILevelViewerImage } from "@/tools/level-viewer/lib/files/level-viewer-image";
-import {
-  ILevelMapAnnotations,
-  LEVEL_MAP_ANNOTATION_KINDS,
-  toLevelMapAnnotationsWith,
-} from "@/tools/level-viewer/lib/map/level-map-annotations";
+import { ILevelMapAnnotations, toLevelMapAnnotationsWith } from "@/tools/level-viewer/lib/map/level-map-annotations";
 import {
   ILevelMapExportSettings,
   isLevelMapExportKindOffered,
@@ -30,6 +26,7 @@ import {
 import { LevelViewerCaptureResultService } from "@/tools/level-viewer/services/level-viewer-capture-result";
 
 import { LevelViewerCaptureExported } from "./LevelViewerCaptureExported";
+import { LevelViewerMapAnnotationKinds } from "./LevelViewerMapAnnotationKinds";
 import { LevelViewerMapAnnotationsOverlay } from "./LevelViewerMapAnnotationsOverlay";
 
 /** How the annotations go into an export, keyed for a choice: none, over the map, or alone. */
@@ -40,9 +37,10 @@ interface ILevelViewerMapResultProps extends BaseComponentProps {
 }
 
 /**
- * A captured level map: the map itself to pan and zoom over its coverage with its annotations over it, what of them is
- * drawn, its file and size, and how it is exported again: as a DDS the game loads, a PNG or the engine's own TGA, at a
- * size, its coverage kept or laid over black, its annotations over it, alone or not at all, alone also as their SVG.
+ * A captured level map: the map itself to pan and zoom over its coverage with its annotations over it, the kinds of
+ * level object they draw (opened on the view's helpers, overriding them for this dialog alone), its file and size, and
+ * how it is exported again: as a DDS the game loads, a PNG or the engine's own TGA, at a size, its coverage kept or
+ * laid over black, its annotations over it, alone or not at all, alone also as their SVG.
  */
 export function LevelViewerMapResult({
   "data-testid": dataTestId = "level-viewer-map-result",
@@ -70,9 +68,9 @@ export function LevelViewerMapResult({
     [annotationsUrl]
   );
 
-  const onAnnotationKind = useCallback(
-    (kind: ELevelAnnotationKind, isShown: boolean) =>
-      resultService.setMapAnnotations(toLevelMapAnnotationsWith(annotations, kind, isShown)),
+  const onAnnotationKinds = useCallback(
+    (kinds: ReadonlyArray<LevelObjectKind>, isShown: boolean) =>
+      resultService.setMapAnnotations(toLevelMapAnnotationsWith(annotations, kinds, isShown)),
     [annotations, resultService]
   );
 
@@ -132,15 +130,8 @@ export function LevelViewerMapResult({
         </Typography>
       </div>
 
-      <div className={"grid grid-cols-3 gap-x-6"}>
-        {LEVEL_MAP_ANNOTATION_KINDS.map(([kind, label]) => (
-          <CheckboxFormRow
-            key={kind}
-            label={label}
-            isChecked={annotations.kinds.includes(kind)}
-            onChange={(isShown: boolean) => onAnnotationKind(kind, isShown)}
-          />
-        ))}
+      <div className={"flex flex-col"}>
+        <LevelViewerMapAnnotationKinds kinds={annotations.kinds} onChange={onAnnotationKinds} />
         <CheckboxFormRow label={"Name every object"} isChecked={annotations.isLabelled} onChange={onLabelled} />
       </div>
 
