@@ -3,18 +3,18 @@ use std::time::Duration;
 
 use xrf_engine_target::XrayEngine;
 use xrf_environment::{AmbientEffect, AmbientEffectKey, AmbientKey, EnvironmentCatalog};
-use xrf_renderer::{RenderAmbient, RenderAmbientEffect, RenderWindBlast};
+use xrf_world::{WorldAmbient, WorldAmbientEffect, WorldWindBlast};
 
-/// A level's ambients and the effects they play near the camera, as the renderer takes them.
-pub struct LevelRenderAmbients;
+/// A level's ambients and the effects they play near the camera, as the world takes them.
+pub struct LevelWorldAmbients;
 
-impl LevelRenderAmbients {
+impl LevelWorldAmbients {
   /// A wind blast's ramp longer than this is read as this: past it a config holds no time a game could play out, and an
   /// infinite one would not fit a `Duration` at all.
   const LONGEST_BLAST_RAMP: f32 = 3600.0;
 
   /// Every ambient a keyframe may name, as it plays on a level: its own file's section over a shared one of the name.
-  pub fn to_render(catalog: &EnvironmentCatalog, level: &str) -> HashMap<String, RenderAmbient> {
+  pub fn to_world(catalog: &EnvironmentCatalog, level: &str) -> HashMap<String, WorldAmbient> {
     catalog
       .ambients
       .iter()
@@ -24,9 +24,10 @@ impl LevelRenderAmbients {
 
         (
           ambient.name.clone(),
-          RenderAmbient {
+          WorldAmbient {
             effects: ambient.get_list(AmbientKey::Effects).to_vec(),
-            period: (Self::to_milliseconds(least), Self::to_milliseconds(most)),
+            least_period: Self::to_milliseconds(least),
+            most_period: Self::to_milliseconds(most),
           },
         )
       })
@@ -34,11 +35,11 @@ impl LevelRenderAmbients {
   }
 
   /// Every effect an ambient may play, `CEnvAmbient::create_effect`.
-  pub fn to_render_effects(catalog: &EnvironmentCatalog) -> HashMap<String, RenderAmbientEffect> {
+  pub fn to_world_effects(catalog: &EnvironmentCatalog) -> HashMap<String, WorldAmbientEffect> {
     catalog
       .ambient_effects
       .iter()
-      .map(|effect| (effect.name.clone(), Self::to_render_effect(effect, catalog)))
+      .map(|effect| (effect.name.clone(), Self::to_world_effect(effect, catalog)))
       .collect()
   }
 
@@ -54,10 +55,10 @@ impl LevelRenderAmbients {
 
   /// One effect: its life in whole milliseconds as the engine floors it, and a blast only where `wind_blast_strength`
   /// is written, which otherwise stands at none from straight ahead.
-  fn to_render_effect(effect: &AmbientEffect, catalog: &EnvironmentCatalog) -> RenderAmbientEffect {
+  fn to_world_effect(effect: &AmbientEffect, catalog: &EnvironmentCatalog) -> WorldAmbientEffect {
     let engine: XrayEngine = catalog.engine;
-    let wind_blast: RenderWindBlast = if effect.has(AmbientEffectKey::WindBlastStrength) {
-      RenderWindBlast {
+    let wind_blast: WorldWindBlast = if effect.has(AmbientEffectKey::WindBlastStrength) {
+      WorldWindBlast {
         strength: effect.get_number(AmbientEffectKey::WindBlastStrength, engine),
         longitude: effect
           .get_number(AmbientEffectKey::WindBlastLongitude, engine)
@@ -66,10 +67,10 @@ impl LevelRenderAmbients {
         out_time: Self::to_seconds(effect.get_number(AmbientEffectKey::WindBlastOutTime, engine)),
       }
     } else {
-      RenderWindBlast::default()
+      WorldWindBlast::default()
     };
 
-    RenderAmbientEffect {
+    WorldAmbientEffect {
       particles: effect.get_text(AmbientEffectKey::Particles, engine).to_owned(),
       life_time: Self::to_milliseconds(effect.get_number(AmbientEffectKey::LifeTime, engine)),
       offset: effect.get_vector::<3>(AmbientEffectKey::Offset, engine),

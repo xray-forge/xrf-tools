@@ -4,13 +4,14 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use xrf_renderer::{RenderLevelSource, RenderSceneFrame, RenderSceneId, RenderViewportId, RenderWorld};
+use xrf_renderer::{RenderSceneFrame, RenderSceneId, RenderViewportId, RenderWorld};
 
+use crate::host::world_level_source::WorldLevelSource;
 use crate::tests::fixtures::{SilentSink, TestLevelSource};
 use crate::tests::test_workers::create_workers;
 use crate::world::World;
 
-fn source(key: Option<&str>) -> Arc<dyn RenderLevelSource> {
+fn source(key: Option<&str>) -> Arc<dyn WorldLevelSource> {
   Arc::new(TestLevelSource {
     key: key.map(String::from),
     ..TestLevelSource::default()

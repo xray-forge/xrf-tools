@@ -2,12 +2,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use glam::{Mat4, Vec3};
-use xrf_renderer::{
-  RenderLevelSource, RenderModelSkeleton, RenderMotion, RenderSceneUpdate, RenderWorkers, StaticObjectProxy,
-};
+use xrf_renderer::{RenderModelSkeleton, RenderMotion, RenderSceneUpdate, RenderWorkers, StaticObjectProxy};
 use xrf_renderer_core::ProxyHandle;
 
 use crate::contract::world_model_pose::WorldModelPose;
+use crate::host::world_level_source::WorldLevelSource;
 use crate::level::animation::model_motions::ModelMotions;
 use crate::level::animation::posed_skeleton::PosedSkeleton;
 
@@ -55,7 +54,7 @@ impl LevelAnimation {
   /// Posts the bone matrices of each skinned object whose pose changes this frame, and the last frame's beside them:
   /// every object where the pose asked for or its motion's arrival changed, else one new or still settling, until it
   /// stands as asked. A motion still on its way poses the bind pose meanwhile.
-  pub fn pose(&mut self, updates: &mut Vec<RenderSceneUpdate>, source: &Arc<dyn RenderLevelSource>) {
+  pub fn pose(&mut self, updates: &mut Vec<RenderSceneUpdate>, source: &Arc<dyn WorldLevelSource>) {
     let pose: &WorldModelPose = &self.pose;
     let motion: Option<&RenderMotion> = match &pose.motion {
       Some(name) if !self.skeletons.is_empty() => self.motions.get(source, name),

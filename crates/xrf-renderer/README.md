@@ -12,7 +12,7 @@ these traits, which the app implements:
 
 | Trait               | What the host gives                                                                        |
 | ------------------- | ------------------------------------------------------------------------------------------ |
-| `RenderLevelSource` | An open level: sectors packed on demand, surfaces, lights, weather, spawn, grass, effects  |
+| `RenderLevelSource` | An open level as a scene draws it: its sector count and shader table's surfaces            |
 | `RenderAssetSource` | Texture bytes by reference, within a scope two sources share when they read the same files |
 | `RenderWindowHost`  | A native window to draw into: its surface target, client size, and whether it is hidden    |
 | `RenderEventSink`   | Where one viewport's `RenderViewportEvent`s go: in the app, the channel its page attached  |
@@ -24,7 +24,8 @@ these traits, which the app implements:
 `RenderWindowHost` is an `unsafe trait`: the surface target it answers must name a live window, or a layer drawn in
 one, until every viewport attached with it is detached and the render thread has handled that detach
 (`RenderQueue::wait_handled` answering anything but a timeout). The renderer presents into it until then.
-`RenderLevelSource` methods are called from loader threads, several side by side.
+What a scene takes in (packed sectors, lights, spawn, grass, particles, the level's weather) the host reads through
+`xrf-world`'s `WorldLevelSource`, which extends `RenderLevelSource`, and hands over each frame.
 
 ## The render thread
 

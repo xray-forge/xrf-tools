@@ -14,11 +14,11 @@ use xrf_material::{XrayReducedTextures, XraySurfaceDescriptor};
 use xrf_particles::{ParticleCollider, ParticleEngineRules};
 use xrf_renderer::{
   RenderAssetSource, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
-  RenderLevelWeather, RenderLoadFailure, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
+  RenderLoadFailure, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
 };
 use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, SectorAttributes, SectorPackage, SectorPacker, VisualPoser};
-use xrf_world::WorldLevelReload;
+use xrf_world::{WorldLevelReload, WorldLevelSource, WorldLevelWeather};
 
 use crate::level::SelectedLevel;
 use crate::objects::LevelObjectsDescription;
@@ -30,10 +30,10 @@ use crate::parts::{
 };
 use crate::render::LevelParticleCollider;
 use crate::report::LevelReport;
-use crate::weather::render::LevelRenderWeather;
+use crate::weather::LevelWorldWeather;
 
-/// The open level as the native renderer draws it: sectors packed when its loader asks, textures read from the roots
-/// the level was opened in.
+/// The open level as the world plays it and the native renderer draws it: sectors packed when its loader asks, textures
+/// read from the roots the level was opened in.
 pub struct LevelRenderSource {
   level: Arc<SessionSnapshot<SelectedLevel>>,
   assets: AssetMountState,
@@ -220,6 +220,12 @@ impl RenderLevelSource for LevelRenderSource {
     self.level.get_sectors().len() as u32
   }
 
+  fn get_surfaces(&self) -> &[XraySurfaceDescriptor] {
+    &self.surfaces
+  }
+}
+
+impl WorldLevelSource for LevelRenderSource {
   /// The level's session: every source of one opening shares a scene, its next snapshots' included, and a level opened
   /// again streams afresh.
   fn get_scene_key(&self) -> Option<String> {
@@ -244,10 +250,6 @@ impl RenderLevelSource for LevelRenderSource {
     Ok(package)
   }
 
-  fn get_surfaces(&self) -> &[XraySurfaceDescriptor] {
-    &self.surfaces
-  }
-
   fn read_lights(&self) -> XrfResult<LightsDescription> {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let search: XraySearch = self.search()?;
@@ -264,14 +266,14 @@ impl RenderLevelSource for LevelRenderSource {
     Ok(packed.lights)
   }
 
-  fn read_weather(&self) -> XrfResult<RenderLevelWeather> {
+  fn read_weather(&self) -> XrfResult<WorldLevelWeather> {
     let level: &SessionSnapshot<SelectedLevel> = &self.level;
     let search: XraySearch = self.search()?;
     let environment: Arc<LevelEnvironment> =
       LevelEnvironmentPart::get(level, &search).map_err(XrfError::new_asset_error)?;
 
     Ok(LevelWeatherPart::record(level, &search, |search| {
-      LevelRenderWeather::read(level, &environment, search)
+      LevelWorldWeather::read(level, &environment, search)
     }))
   }
 

@@ -15,6 +15,7 @@ use crate::weather::fade::weather_fader::WeatherFader;
 use crate::weather::played_weather::PlayedWeather;
 use crate::weather::playing_effect::PlayingEffect;
 use crate::weather::thunder::weather_thunder::WeatherThunder;
+use crate::weather::weather_ambients::WeatherAmbients;
 use crate::weather::weather_lighting::WeatherLighting;
 
 /// Seconds from midnight to noon.
@@ -39,6 +40,8 @@ pub struct WeatherPlayer {
   mix: Option<WeatherMix>,
   /// What was last drawn, which a fade starts from.
   shown: Option<RenderLighting>,
+  /// What the ambient effects play from as of the last mix.
+  ambients: WeatherAmbients,
   pair: WeatherPair,
   fader: WeatherFader,
   advanced_at: Option<Instant>,
@@ -64,6 +67,7 @@ impl Default for WeatherPlayer {
       view: [0.0; 3],
       mix: None,
       shown: None,
+      ambients: WeatherAmbients::default(),
       pair: WeatherPair::default(),
       fader: WeatherFader::default(),
       advanced_at: None,
@@ -113,7 +117,13 @@ impl WeatherPlayer {
 
     if self.weather.is_none() {
       self.shown = None;
+      self.ambients = WeatherAmbients::default();
     }
+  }
+
+  /// What the ambient effects play from: the ambients the keyframes played between name, none while nothing plays.
+  pub fn get_ambients(&self) -> &WeatherAmbients {
+    &self.ambients
   }
 
   pub fn set_control(&mut self, control: WorldWeatherControl) {
@@ -234,7 +244,7 @@ impl WeatherPlayer {
     let (Some(weather), Some(mix), Some(shown)) = (&self.weather, &self.mix, &self.shown) else {
       return lighting;
     };
-    let Some(thunder) = &weather.level.thunder else {
+    let Some(thunder) = &weather.level.render.thunder else {
       return lighting;
     };
     let flash = self
@@ -317,6 +327,8 @@ impl WeatherPlayer {
     }
     .mix_pair([pair[0].as_mixed(), pair[1].as_mixed()], point);
     let target: RenderLighting = WeatherLighting::of(&mix, pair, weather.get_engine());
+
+    self.ambients = WeatherAmbients::of(pair, mix.weight);
 
     // Faded over rather than cut to, as the skies of the engine's own blend never jump.
     if self.is_jumped

@@ -1,5 +1,3 @@
-pub(crate) mod render_ambient;
-pub(crate) mod render_ambient_effect;
 pub(crate) mod render_asset_source;
 pub(crate) mod render_bundle;
 pub(crate) mod render_cache_store;
@@ -43,6 +41,5 @@ pub(crate) mod render_view_frame;
 pub(crate) mod render_view_input;
 pub(crate) mod render_weather_model;
 pub(crate) mod render_wet_surfaces;
-pub(crate) mod render_wind_blast;
 pub(crate) mod render_window_host;
 pub(crate) mod render_world;

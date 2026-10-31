@@ -16,7 +16,7 @@ use xrf_visual::{VisualTransform, ZoneSphere};
 use crate::level::{LevelSource, SelectedLevel};
 use crate::parts::LevelTextureReference;
 use crate::parts::{LevelEnvironmentPart, LevelSpawnPart, PackedLevelParticles};
-use crate::render::LevelRenderAmbients;
+use crate::render::LevelWorldAmbients;
 use crate::report::LevelReport;
 
 /// What a change event calls what a level's particle systems were read from when it goes stale.
@@ -100,7 +100,7 @@ impl LevelParticlesPart {
     // An ambient effect plays near the camera whatever stands in the level, so its particles are described with the
     // rest; a level whose configs cannot be read has said why with its weather.
     let ambient_particles: Vec<String> = LevelEnvironmentPart::get(current, search)
-      .map(|environment| LevelRenderAmbients::list_particles(&environment.catalog))
+      .map(|environment| LevelWorldAmbients::list_particles(&environment.catalog))
       .unwrap_or_default();
     let scope: XrayTextureScope = current.source.get_texture_scope();
     let resolver: XraySurfaceResolver = XraySurfaceResolver::open(search, scope.clone());

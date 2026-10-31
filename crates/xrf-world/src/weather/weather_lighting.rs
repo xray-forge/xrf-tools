@@ -3,8 +3,8 @@ use xrf_engine_target::XrayEngine;
 use xrf_environment::{WeatherDescriptor, WeatherMix, WeatherPlayedKeyframe};
 use xrf_math::EPS_L;
 use xrf_renderer::{
-  EngineSpace, RenderAmbients, RenderClouds, RenderFog, RenderLighting, RenderRainfall, RenderSky, RenderTreeWind,
-  RenderWind, WeatherTextureKind,
+  EngineSpace, RenderClouds, RenderFog, RenderLighting, RenderRainfall, RenderSky, RenderTreeWind, RenderWind,
+  WeatherTextureKind,
 };
 
 /// A weather's mix as the lighting the scene is drawn with.
@@ -60,10 +60,6 @@ impl WeatherLighting {
       },
       engine,
       thunderbolt: None,
-      ambients: RenderAmbients {
-        names: [a.ambient.clone(), b.ambient.clone()],
-        weight: mix.weight,
-      },
       time_of_day: mix.time,
     }
   }

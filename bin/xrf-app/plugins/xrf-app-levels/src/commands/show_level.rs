@@ -6,7 +6,8 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_app_render::{TextureReloads, ViewportShows};
-use xrf_renderer::{RenderLevelSource, RenderViewportId};
+use xrf_renderer::RenderViewportId;
+use xrf_world::WorldLevelSource;
 
 use crate::level::{SelectedLevel, SelectedLevels};
 use crate::render::{LevelRenderSource, ShownLevels};
@@ -30,7 +31,7 @@ pub async fn levels_show_level(
   session_id: Option<SessionId>,
 ) -> TauriResult<Option<u32>> {
   let ticket: u64 = shows.ask(viewport);
-  let source: Option<Arc<dyn RenderLevelSource>> = match session_id {
+  let source: Option<Arc<dyn WorldLevelSource>> = match session_id {
     Some(session_id) => {
       let level: Arc<SessionSnapshot<SelectedLevel>> = levels.require(session_id)?;
 

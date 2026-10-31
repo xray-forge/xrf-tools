@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use glam::Vec3;
@@ -9,10 +10,10 @@ use crate::contract::world_camera_pose::WorldCameraPose;
 use crate::contract::world_model_pose::WorldModelPose;
 use crate::contract::world_toggles::WorldToggles;
 use crate::contract::world_viewport_event::WorldViewportEvent;
+use crate::host::world_event_sink::WorldEventSink;
 use crate::level::ambient::ambient_frame::AmbientFrame;
 use crate::weather::viewport_weather::ViewportWeather;
 use crate::weather::weather_lighting::WeatherLighting;
-use crate::world_event_sink::WorldEventSink;
 
 /// How often a moving camera's pose is published.
 const POSE_INTERVAL: Duration = Duration::from_millis(100);
@@ -102,7 +103,7 @@ impl WorldViewport {
       scene: self.scene,
       camera: self.camera.get_frame(),
       lighting: self.get_lighting(),
-      weather: self.weather.get_level().cloned(),
+      weather: self.weather.get_level().map(|level| Arc::clone(&level.render)),
       clock_rate: self.weather.get_player().get_clock_rate(),
     }
   }
@@ -110,7 +111,7 @@ impl WorldViewport {
   /// What its weather's ambients play from this frame, for the ambient effects of a scene it drives.
   pub fn get_ambient_frame(&self) -> Option<AmbientFrame<'_>> {
     self.weather.get_level().map(|level| AmbientFrame {
-      ambients: &self.weather.get_lighting().ambients,
+      ambients: self.weather.get_player().get_ambients(),
       level,
     })
   }

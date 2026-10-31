@@ -1,13 +1,23 @@
+use xrf_environment::WeatherPlayedKeyframe;
+
 /// The ambients the two keyframes the weather plays between name, `ambient`, and how far it stands from the first to
 /// the second.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct RenderAmbients {
+pub struct WeatherAmbients {
   pub names: [Option<String>; 2],
   /// `CurrentEnv->weight`: none at the first keyframe, one at the second.
   pub weight: f32,
 }
 
-impl RenderAmbients {
+impl WeatherAmbients {
+  /// What a pair of keyframes names, `weight` of the way from the first to the second.
+  pub fn of([a, b]: &[WeatherPlayedKeyframe; 2], weight: f32) -> Self {
+    Self {
+      names: [a.descriptor.ambient.clone(), b.descriptor.ambient.clone()],
+      weight,
+    }
+  }
+
   /// The ambient one frame plays, `Current[data_set]->env_ambient`: the first keyframe's while `chance`, a number in
   /// `[0, 1)`, falls under what remains of the way to the second, else the second's.
   pub fn pick(&self, chance: f32) -> Option<&str> {

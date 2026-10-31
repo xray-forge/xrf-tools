@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
-use xrf_renderer::{RenderLevelSource, RenderMotion, RenderWorkers};
+use xrf_renderer::{RenderMotion, RenderWorkers};
 
+use crate::host::world_level_source::WorldLevelSource;
 use crate::level::loading::loader_slot::LoaderSlot;
 use crate::level::loading::loader_slots::LoaderSlots;
 
@@ -22,7 +23,7 @@ impl ModelMotions {
 
   /// The motion by its name once it is baked, asking for it the first time; none while it is read or where it cannot
   /// be, which the caller poses the bind pose for.
-  pub fn get(&mut self, source: &Arc<dyn RenderLevelSource>, name: &str) -> Option<&RenderMotion> {
+  pub fn get(&mut self, source: &Arc<dyn WorldLevelSource>, name: &str) -> Option<&RenderMotion> {
     let workers: &RenderWorkers = &self.workers;
 
     self.motions.get(name, || {

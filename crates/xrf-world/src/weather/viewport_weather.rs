@@ -2,13 +2,15 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::{Duration, Instant};
 
-use xrf_renderer::{RenderLevelSource, RenderLevelWeather, RenderLighting, RenderWorkers};
+use xrf_renderer::{RenderLighting, RenderWorkers};
 
 use crate::contract::world_ambient_report::WorldAmbientReport;
 use crate::contract::world_weather_control::WorldWeatherControl;
 use crate::contract::world_weather_play::WorldWeatherPlay;
 use crate::contract::world_weather_report::WorldWeatherReport;
 use crate::contract::world_weather_transition::WorldWeatherTransition;
+use crate::host::world_level_source::WorldLevelSource;
+use crate::host::world_level_weather::WorldLevelWeather;
 use crate::weather::played_weather::PlayedWeather;
 use crate::weather::weather_load::WeatherLoad;
 use crate::weather::weather_player::WeatherPlayer;
@@ -23,9 +25,9 @@ pub struct ViewportWeather {
   player: WeatherPlayer,
   /// What was last asked to play, and how it takes over.
   request: (WorldWeatherPlay, WorldWeatherTransition),
-  source: Option<Arc<dyn RenderLevelSource>>,
+  source: Option<Arc<dyn WorldLevelSource>>,
   /// What every weather of the shown level plays with, once read.
-  level: Option<Arc<RenderLevelWeather>>,
+  level: Option<Arc<WorldLevelWeather>>,
   /// Bumped with each level shown and each request, so a read finishing late for an older one is dropped.
   level_generation: u64,
   request_generation: u64,
@@ -70,13 +72,13 @@ impl ViewportWeather {
   }
 
   /// What every weather of the shown level plays with, once read.
-  pub fn get_level(&self) -> Option<&Arc<RenderLevelWeather>> {
+  pub fn get_level(&self) -> Option<&Arc<WorldLevelWeather>> {
     self.level.as_ref()
   }
 
   /// Plays the weather of another level, or of none: what it plays with is read anew, and the last request plays
   /// over it once it is.
-  pub fn show(&mut self, source: Option<Arc<dyn RenderLevelSource>>) {
+  pub fn show(&mut self, source: Option<Arc<dyn WorldLevelSource>>) {
     self.level_generation += 1;
     self.level = None;
     self.player.take(None, WorldWeatherTransition::Cut);
@@ -86,7 +88,7 @@ impl ViewportWeather {
 
   /// Plays on from `source`, a next source of the level shown: where `is_reread`, what every weather plays with is read
   /// again from it, the weather playing until then, and the last request plays over it once read, the clock kept.
-  pub fn follow(&mut self, source: Arc<dyn RenderLevelSource>, is_reread: bool) {
+  pub fn follow(&mut self, source: Arc<dyn WorldLevelSource>, is_reread: bool) {
     self.source = Some(source);
 
     if is_reread {

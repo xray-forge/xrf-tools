@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use glam::Vec3;
 use xrf_renderer::{
-  ParticleEmitterProxy, PlacedEffect, RenderLevelSource, RenderModelFailure, RenderSceneUpdate, RenderSectorFailure,
+  ParticleEmitterProxy, PlacedEffect, RenderModelFailure, RenderSceneUpdate, RenderSectorFailure,
   RenderStreamingProgress, RenderViewOptions, RenderWorkers,
 };
 use xrf_renderer_core::ProxyHandle;
@@ -14,6 +14,7 @@ use crate::contract::world_level_reload::WorldLevelReload;
 use crate::contract::world_model_pose::WorldModelPose;
 use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
 use crate::contract::world_toggles::WorldToggles;
+use crate::host::world_level_source::WorldLevelSource;
 use crate::level::ambient::ambient_frame::AmbientFrame;
 use crate::level::animation::level_animation::LevelAnimation;
 use crate::level::effects::effects_frame::EffectsFrame;
@@ -32,7 +33,7 @@ pub struct WorldLevel {
 }
 
 impl WorldLevel {
-  pub fn start(source: Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
+  pub fn start(source: Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     Self {
       effects: LevelEffects::start(&source, workers),
       streaming: LevelStreaming::start(source, workers),
@@ -42,13 +43,13 @@ impl WorldLevel {
     }
   }
 
-  pub fn get_source(&self) -> &Arc<dyn RenderLevelSource> {
+  pub fn get_source(&self) -> &Arc<dyn WorldLevelSource> {
     self.streaming.get_source()
   }
 
   /// Plays on from `source`, a next source of the same level, reading again what `reload` names from it: what that
   /// replaces leaves the scene with the next frame's posts, and everything else stays as it is drawn. The clock runs on.
-  pub fn reload(&mut self, source: Arc<dyn RenderLevelSource>, reload: WorldLevelReload, workers: &RenderWorkers) {
+  pub fn reload(&mut self, source: Arc<dyn WorldLevelSource>, reload: WorldLevelReload, workers: &RenderWorkers) {
     if reload.is_particles {
       self.effects.reload(&mut self.queued, &source, workers);
     }

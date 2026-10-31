@@ -22,12 +22,10 @@ rayon = { workspace = true }
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 wgpu = { workspace = true }
-xrf-anm = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-dlss = { workspace = true }
 xrf-engine-target = { workspace = true }
 xrf-env-flags = { workspace = true }
-xrf-environment = { workspace = true }
 xrf-error = { workspace = true }
 xrf-ipc = { workspace = true, optional = true }
 xrf-material = { workspace = true }
@@ -60,7 +58,6 @@ xrf-vfs = { workspace = true }
 typescript-bindings = [
   "specta",
   "xrf-ipc",
-  "xrf-environment/typescript-bindings",
   "xrf-engine-target/typescript-bindings",
   "xrf-visual/typescript-bindings",
 ]

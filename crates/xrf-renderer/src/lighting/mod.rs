@@ -12,7 +12,6 @@ pub(crate) mod light_unit;
 pub(crate) mod light_units;
 pub(crate) mod luminance;
 pub(crate) mod material_slice;
-pub(crate) mod render_ambients;
 pub(crate) mod render_clouds;
 pub(crate) mod render_fog;
 pub(crate) mod render_lighting;

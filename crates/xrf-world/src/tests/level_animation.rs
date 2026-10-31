@@ -1,16 +1,17 @@
 use std::sync::Arc;
 
 use glam::Mat4;
-use xrf_renderer::{RenderLevelSource, RenderModelSkeleton, RenderSceneUpdate, StaticObjectProxy};
+use xrf_renderer::{RenderModelSkeleton, RenderSceneUpdate, StaticObjectProxy};
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
 use crate::contract::world_model_pose::WorldModelPose;
+use crate::host::world_level_source::WorldLevelSource;
 use crate::level::animation::level_animation::LevelAnimation;
 use crate::tests::fixtures::TestLevelSource;
 use crate::tests::test_workers::create_workers;
 
 /// How many objects one frame of `animation` posts poses for.
-fn count_posed(animation: &mut LevelAnimation, source: &Arc<dyn RenderLevelSource>) -> usize {
+fn count_posed(animation: &mut LevelAnimation, source: &Arc<dyn WorldLevelSource>) -> usize {
   let mut updates: Vec<RenderSceneUpdate> = Vec::new();
 
   animation.pose(&mut updates, source);
@@ -24,7 +25,7 @@ fn count_posed(animation: &mut LevelAnimation, source: &Arc<dyn RenderLevelSourc
 // again until another is asked.
 #[test]
 fn posts_a_pose_only_until_it_settles() {
-  let source: Arc<dyn RenderLevelSource> = Arc::new(TestLevelSource::default());
+  let source: Arc<dyn WorldLevelSource> = Arc::new(TestLevelSource::default());
   let mut animation: LevelAnimation = LevelAnimation::new(&create_workers());
   let mut handles: ProxyAllocator<StaticObjectProxy> = ProxyAllocator::new();
   let skeleton: RenderModelSkeleton = RenderModelSkeleton {
