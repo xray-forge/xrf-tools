@@ -2,6 +2,7 @@ use glam::{Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::camera::camera_view::CameraView;
+use crate::pass::fsr_frame::FsrFrame;
 
 /// `cbFSR3Upscaler` as `shaders/frame/fsr/common.wgsl`'s `Fsr` lays it out.
 #[repr(C)]
@@ -34,24 +35,18 @@ impl FsrUniform {
   /// AMD's default `fVelocityFactor`: the history's weight falls to its least at half a 4K pixel of motion.
   pub const VELOCITY_FACTOR: f32 = 1.0;
 
-  /// The constants for a frame drawn `render` texels across into a viewport `display` pixels across, its texels
-  /// sampled `jitter` off their centres, `y` down, through `view`'s lens; `previous_jitter` the frame before's.
-  pub fn new(
-    (render, display): ((u32, u32), (u32, u32)),
-    (jitter, previous_jitter): (Vec2, Vec2),
-    view: &CameraView,
-    (phases, frame_index): (u32, u32),
-  ) -> Self {
+  /// The constants for a `frame`, its jitter `y` down, seen through `view`'s lens.
+  pub fn new(frame: FsrFrame, view: &CameraView) -> Self {
     let (near, far): (f32, f32) = view.get_depth_range();
-    let shading: (u32, u32) = Self::get_shading_size(render);
-    let render: Vec2 = Vec2::new(render.0 as f32, render.1 as f32);
-    let display: Vec2 = Vec2::new(display.0 as f32, display.1 as f32);
+    let shading: (u32, u32) = Self::get_shading_size(frame.render);
+    let render: Vec2 = Vec2::new(frame.render.0 as f32, frame.render.1 as f32);
+    let display: Vec2 = Vec2::new(frame.display.0 as f32, frame.display.1 as f32);
 
     Self {
       render_size: render,
       display_size: display,
-      jitter: -jitter,
-      previous_jitter: -previous_jitter,
+      jitter: -frame.jitter,
+      previous_jitter: -frame.previous_jitter,
       downscale: render / display,
       shading_size: Vec2::new(shading.0 as f32, shading.1 as f32),
       // Reversed: `d = n (f - z) / (z (f - n))`, so `z = (n f / (f - n)) / (d + n / (f - n))`.
@@ -61,20 +56,12 @@ impl FsrUniform {
         1.0 / view.projection.x_axis.x,
         1.0 / view.projection.y_axis.y,
       ),
-      jitter_phase_count: phases as f32,
-      frame_index: frame_index as f32,
+      jitter_phase_count: frame.phases as f32,
+      frame_index: frame.frame_index as f32,
       velocity_factor: Self::VELOCITY_FACTOR,
-      hdr: 0.0,
+      hdr: f32::from(u8::from(frame.is_hdr)),
       delta_pre_exposure: 1.0,
       _pad: [0.0; 3],
-    }
-  }
-
-  /// The same over colour of linear light (`is_hdr`), which it accumulates through its reversible tonemap.
-  pub fn with_hdr(self, is_hdr: bool) -> Self {
-    Self {
-      hdr: f32::from(u8::from(is_hdr)),
-      ..self
     }
   }
 

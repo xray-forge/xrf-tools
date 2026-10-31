@@ -16,6 +16,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
+use crate::pass::static_layout_bindings::StaticLayoutBindings;
 use crate::scene::level::feature::composited_draw::CompositedDraw;
 use crate::scene::level::feature::over_scene::add_over_scene;
 use crate::scene::level::feature::view_feature::ViewFeature;
@@ -161,9 +162,13 @@ impl CompositedFeature {
     builder.parameters(&composited).parameters(&sky).record(move |context| {
       let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
 
-      passes
-        .composited
-        .record(context, (view, &layouts, textures), (&composited, &sky), &args);
+      passes.composited.record(
+        context,
+        StaticLayoutBindings::new(view, &layouts, textures),
+        &composited,
+        &sky,
+        &args,
+      );
     });
   }
 
@@ -200,9 +205,13 @@ impl CompositedFeature {
         .parameters(&composited)
         .parameters(&sky)
         .record(move |context| {
-          passes
-            .composited
-            .record_sorted(context, (view, &sorted, textures), (&composited, &sky), runs);
+          passes.composited.record_sorted(
+            context,
+            StaticLayoutBindings::new(view, &sorted, textures),
+            &composited,
+            &sky,
+            runs,
+          );
         });
     }
 
@@ -272,9 +281,13 @@ impl CompositedFeature {
       builder.parameters(&parameters).parameters(&sky).record(move |context| {
         let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
 
-        passes
-          .glass
-          .record(context, (view, &layouts, textures), (&parameters, &sky), &args);
+        passes.glass.record(
+          context,
+          StaticLayoutBindings::new(view, &layouts, textures),
+          &parameters,
+          &sky,
+          &args,
+        );
       });
     }
 
@@ -293,9 +306,13 @@ impl CompositedFeature {
       builder.parameters(&composited).parameters(&sky).record(move |context| {
         let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
 
-        passes
-          .composited
-          .record_distortion(context, (view, &layouts, textures), (&composited, &sky), &args);
+        passes.composited.record_distortion(
+          context,
+          StaticLayoutBindings::new(view, &layouts, textures),
+          &composited,
+          &sky,
+          &args,
+        );
       });
     }
   }
@@ -330,7 +347,7 @@ impl CompositedFeature {
 
       passes
         .composited
-        .record_selection(context, (view, &layouts, textures), &args);
+        .record_selection(context, StaticLayoutBindings::new(view, &layouts, textures), &args);
     });
   }
 }

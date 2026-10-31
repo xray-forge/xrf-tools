@@ -45,7 +45,7 @@ impl SkyHarmonics {
   /// What the sky's own light is multiplied by, per channel, for its harmonics to stand at the light's `level` as
   /// `at_level` takes them, the look's hemisphere scale (`hemi`) in it; none where the sky is too dark to have a shape
   /// and lights evenly at the authored hemisphere's level instead.
-  pub fn get_level_scale(&self, level: RenderLightLevel, (hemi, ambient): (f32, Vec3)) -> Option<Vec3> {
+  pub fn get_level_scale(&self, level: RenderLightLevel, hemi: f32, ambient: Vec3) -> Option<Vec3> {
     let (sky, zenith): (Vec3, Vec3) = (
       self.coefficients[0].truncate() * hemi,
       Self::get_zenith(&self.coefficients) * hemi,
@@ -110,8 +110,8 @@ impl SkyHarmonics {
   /// which a top-heavy cloudy sky lights level ground a quarter over the game's. A sky too dark to have a shape lights
   /// evenly at the authored hemisphere's level. At the anchored levels as at the authored, the hemisphere anchored over
   /// the weather's `ambient` (`anchored_light`), both in the engine's units.
-  pub fn at_level(&self, level: RenderLightLevel, (hemi, ambient): (f32, Vec3)) -> [Vec4; 9] {
-    let Some(scale) = self.get_level_scale(level, (hemi, ambient)) else {
+  pub fn at_level(&self, level: RenderLightLevel, hemi: f32, ambient: Vec3) -> [Vec4; 9] {
+    let Some(scale) = self.get_level_scale(level, hemi, ambient) else {
       let (authored, _) = self.get_level_terms(level, ambient);
 
       return std::array::from_fn(|term| {

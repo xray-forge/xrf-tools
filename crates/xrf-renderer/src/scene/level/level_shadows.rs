@@ -16,6 +16,7 @@ use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::lighting::sun_cascade::SunCascade;
 use crate::lighting::sun_view_rays::SunViewRays;
 use crate::pass::camera_uniform::CameraUniform;
+use crate::pass::indirect_args::IndirectArgs;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::shadow_casters::ShadowCasters;
 use crate::pass::shadow_cull::ShadowCull;
@@ -25,6 +26,7 @@ use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
+use crate::pass::static_layout_bindings::StaticLayoutBindings;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
@@ -390,9 +392,12 @@ impl LevelShadows {
         .record(move |context| {
           let args: &wgpu::Buffer = context.get_buffer(args);
 
-          passes
-            .shadow
-            .record_some(context, (&cut.view, &layouts, textures), args, casters);
+          passes.shadow.record_some(
+            context,
+            StaticLayoutBindings::new(&cut.view, &layouts, textures),
+            args,
+            casters,
+          );
         });
       };
 
@@ -433,9 +438,10 @@ impl LevelShadows {
 
             passes.shadow.record_tile(
               context,
-              (region, Some(&restore)),
-              (&cut.view, &layouts, textures),
-              (args, 0),
+              region,
+              Some(&restore),
+              StaticLayoutBindings::new(&cut.view, &layouts, textures),
+              IndirectArgs::of(args),
               ShadowCasters::Swaying,
             );
           });
@@ -497,9 +503,10 @@ impl LevelShadows {
 
         passes.shadow.record_tile(
           context,
-          (Self::get_band_region(band, resolution), None),
-          (&cut.view, &layouts, textures),
-          (args, 0),
+          Self::get_band_region(band, resolution),
+          None,
+          StaticLayoutBindings::new(&cut.view, &layouts, textures),
+          IndirectArgs::of(args),
           ShadowCasters::Fixed,
         );
       });

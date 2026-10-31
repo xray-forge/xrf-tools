@@ -22,8 +22,10 @@ use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
+use crate::pass::static_layout_bindings::StaticLayoutBindings;
 use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::pass::water_depth_parameters::WaterDepthParameters;
+use crate::pass::water_groups::WaterGroups;
 use crate::pass::water_uniform::WaterUniform;
 use crate::scene::level::overhead_shape::OverheadShape;
 use crate::scene::level::shadow_cut::ShadowCut;
@@ -418,14 +420,18 @@ impl OverheadMap {
             let parameters: WaterDepthParameters = WaterDepthParameters { water };
 
             StaticShadowPass::set_region(context, *region);
-            passes
-              .water
-              .record_depth(context, (&cut.view, textures, *layouts), args, &parameters);
+            let groups: WaterGroups = WaterGroups {
+              view: &cut.view,
+              textures,
+              layouts: *layouts,
+            };
+
+            passes.water.record_depth(context, groups, args, &parameters);
           }
           None => passes.shadow.record_region(
             context,
             *region,
-            (&cut.view, layouts, textures),
+            StaticLayoutBindings::new(&cut.view, layouts, textures),
             args,
             if shape.is_tree_drawn {
               ShadowCasters::All

@@ -128,7 +128,7 @@ impl ParticlesView {
         .parameters(&parameters)
         .color(GraphColorAttachment::new(targets.scene, wgpu::LoadOp::Load))
         .depth(GraphDepthAttachment::new_read_only(targets.depth))
-        .record(move |context| pass.record_colour(context, (view, &parameters, texture_group), &self.batches));
+        .record(move |context| pass.record_colour(context, view, &parameters, texture_group, &self.batches));
     }
 
     if self.is_distorting() {
@@ -138,7 +138,7 @@ impl ParticlesView {
         .color(GraphColorAttachment::new(targets.distortion, wgpu::LoadOp::Load))
         .depth(GraphDepthAttachment::new_read_only(targets.depth))
         .record(move |context| {
-          pass.record_distortion(context, (view, &parameters, texture_group), &self.distortion_runs)
+          pass.record_distortion(context, view, &parameters, texture_group, &self.distortion_runs)
         });
     }
   }

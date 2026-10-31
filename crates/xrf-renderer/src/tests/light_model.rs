@@ -23,6 +23,7 @@ use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::exposure_metering::ExposureMetering;
+use crate::pass::exposure_step::ExposureStep;
 use crate::pass::exposure_uniform::ExposureUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
@@ -370,8 +371,13 @@ fn the_authored_levels_expose_as_the_engines_meter_does() {
     compensation: 0.5,
     ..RenderExposureSettings::default()
   };
-  let authored = ExposureHistogramUniform::new(&settings, RenderLightLevel::Authored, (0.016, 0.3), false);
-  let physical = ExposureHistogramUniform::new(&settings, RenderLightLevel::Physical, (0.016, 0.3), false);
+  let step: ExposureStep = ExposureStep {
+    delta: 0.016,
+    engine_blend: 0.3,
+    is_snapped: false,
+  };
+  let authored = ExposureHistogramUniform::new(&settings, RenderLightLevel::Authored, step);
+  let physical = ExposureHistogramUniform::new(&settings, RenderLightLevel::Physical, step);
   let engine: ExposureUniform = ExposureUniform::new(&settings, 0.3);
 
   assert_eq!(authored.is_engine_metered, 1.0);
@@ -428,7 +434,7 @@ fn the_authored_levels_light_the_shade_in_the_authored_hemispheres_colour() {
   harmonics.coefficients[5].w = authored_zenith.y;
   harmonics.coefficients[6].w = authored_zenith.z;
 
-  let levelled: [Vec4; 9] = harmonics.at_level(RenderLightLevel::Authored, (1.0, Vec3::ZERO));
+  let levelled: [Vec4; 9] = harmonics.at_level(RenderLightLevel::Authored, 1.0, Vec3::ZERO);
 
   assert!(
     (zenith_of(&levelled) - authored_zenith).length() < 1e-5,
@@ -437,14 +443,14 @@ fn the_authored_levels_light_the_shade_in_the_authored_hemispheres_colour() {
   );
   assert!((levelled[1].truncate() / levelled[0].truncate() - Vec3::new(0.4, 0.4, 0.5)).length() < 1e-5);
   assert_eq!(
-    harmonics.at_level(RenderLightLevel::Physical, (1.0, Vec3::ZERO))[0],
+    harmonics.at_level(RenderLightLevel::Physical, 1.0, Vec3::ZERO)[0],
     harmonics.coefficients[0]
   );
 
   harmonics.coefficients[0] = Vec4::new(1.0, 0.5, 0.0, 1.0);
 
   assert!(
-    harmonics.at_level(RenderLightLevel::Authored, (1.0, Vec3::ZERO))[1]
+    harmonics.at_level(RenderLightLevel::Authored, 1.0, Vec3::ZERO)[1]
       .z
       .is_finite()
   );
@@ -478,7 +484,7 @@ fn the_anchored_levels_add_the_lights_the_engines_display_shows_at_their_anchors
   harmonics.coefficients[5].w = hemisphere.y;
   harmonics.coefficients[6].w = hemisphere.z;
 
-  let levelled: [Vec4; 9] = harmonics.at_level(RenderLightLevel::Anchored, (1.0, ambient));
+  let levelled: [Vec4; 9] = harmonics.at_level(RenderLightLevel::Anchored, 1.0, ambient);
 
   assert!((zenith_of(&levelled) - sky).length() < 1e-5, "{}", zenith_of(&levelled));
 }

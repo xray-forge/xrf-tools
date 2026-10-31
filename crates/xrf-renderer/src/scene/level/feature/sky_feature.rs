@@ -88,7 +88,8 @@ impl SkyFeature {
   ) {
     self.views = Some(passes.sky.collect(
       weather_textures,
-      (sky, sun_sprite.as_ref().map(|(texture, _)| texture.as_str())),
+      sky,
+      sun_sprite.as_ref().map(|(texture, _)| texture.as_str()),
       environments,
     ));
     self.sun_sprite = sun_sprite;
@@ -296,7 +297,7 @@ impl SkyFeature {
       (None, Some(unfiltered)) => unfiltered,
       (None, None) => return None,
     };
-    let sky: SkyParameters = passes.sky.import((views, cube), &mut *graph, &mut *bindings);
+    let sky: SkyParameters = passes.sky.import(views, cube, &mut *graph, &mut *bindings);
 
     if let Some(irradiance) = &self.irradiance {
       irradiance.add_passes(GraphDeclaration::new(graph, bindings, runtime), passes, (&sky, &lit));
@@ -377,7 +378,8 @@ impl SkyFeature {
       let settings: UniformBinding<SkyPrefilterUniform> = runtime.push_uniform(&SkyPrefilterUniform::new(
         index as u32,
         prefilter.levels.len() as u32,
-        (level.size, prefilter.probe.get_size()),
+        level.size,
+        prefilter.probe.get_size(),
         SkyPrefilterPass::SAMPLES,
       ));
       let parameters: SkyPrefilterParameters = SkyPrefilterParameters {

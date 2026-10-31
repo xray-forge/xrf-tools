@@ -3,8 +3,10 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::pass::fsr_frame::FsrFrame;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::pre_exposure::PreExposure;
+use crate::pass::temporal_frame::TemporalFrame;
 use crate::pass::temporal_uniform::TemporalUniform;
 use crate::scene::level::feature::resolve_feature::ResolveFeature;
 use crate::scene::level::feature::temporal_jitter::TemporalJitter;
@@ -188,14 +190,30 @@ fn the_resolves_carry_their_history_to_this_frames_pre_exposure() {
   assert_eq!(unknown.get_history_scale(), 1.0);
   assert_eq!(PreExposure::NONE.get_history_scale(), 1.0);
   assert_eq!(
-    TemporalUniform::new((Mat4::IDENTITY, Mat4::IDENTITY, Mat4::IDENTITY), Vec2::ZERO, true, 2.0)
-      .exposure
-      .x,
+    TemporalUniform::new(TemporalFrame {
+      current: Mat4::IDENTITY,
+      previous: Mat4::IDENTITY,
+      previous_view: Mat4::IDENTITY,
+      jitter: Vec2::ZERO,
+      is_history_valid: true,
+      history_scale: 2.0,
+    })
+    .exposure
+    .x,
     2.0
   );
 
   let view: CameraView = CameraView::new(Vec3::ZERO, Mat4::IDENTITY, 60.0, 1.0, 0.1, 100.0);
-  let fsr: FsrUniform = FsrUniform::new(((64, 64), (64, 64)), (Vec2::ZERO, Vec2::ZERO), &view, (8, 1));
+  let fsr: FsrUniform = FsrUniform::new(
+    FsrFrame {
+      render: (64, 64),
+      display: (64, 64),
+      phases: 8,
+      frame_index: 1,
+      ..FsrFrame::default()
+    },
+    &view,
+  );
 
   assert_eq!(fsr.delta_pre_exposure, 1.0);
   assert_eq!(fsr.with_delta_pre_exposure(0.5).delta_pre_exposure, 0.5);

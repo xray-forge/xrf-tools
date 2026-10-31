@@ -87,10 +87,12 @@ impl ParticlePass {
   pub fn record_colour(
     &self,
     context: &mut RasterContext<'_>,
-    groups: (&ViewBinding, &ParticleParameters<'_>, &wgpu::BindGroup),
+    view: &ViewBinding,
+    parameters: &ParticleParameters<'_>,
+    texture_group: &wgpu::BindGroup,
     batches: &[ParticleBatch],
   ) {
-    let pass: &mut wgpu::RenderPass<'static> = Self::bind(context, groups);
+    let pass: &mut wgpu::RenderPass<'static> = Self::bind(context, view, parameters, texture_group);
 
     for batch in batches {
       pass.set_pipeline(&self.pipelines.colour[batch.blend.get_index()]);
@@ -102,10 +104,12 @@ impl ParticlePass {
   pub fn record_distortion(
     &self,
     context: &mut RasterContext<'_>,
-    groups: (&ViewBinding, &ParticleParameters<'_>, &wgpu::BindGroup),
+    view: &ViewBinding,
+    parameters: &ParticleParameters<'_>,
+    texture_group: &wgpu::BindGroup,
     runs: &[Range<u32>],
   ) {
-    let pass: &mut wgpu::RenderPass<'static> = Self::bind(context, groups);
+    let pass: &mut wgpu::RenderPass<'static> = Self::bind(context, view, parameters, texture_group);
     pass.set_pipeline(&self.pipelines.distortion);
 
     for run in runs {
@@ -115,7 +119,9 @@ impl ParticlePass {
 
   fn bind<'c>(
     context: &'c mut RasterContext<'_>,
-    (view, parameters, texture_group): (&ViewBinding, &ParticleParameters<'_>, &wgpu::BindGroup),
+    view: &ViewBinding,
+    parameters: &ParticleParameters<'_>,
+    texture_group: &wgpu::BindGroup,
   ) -> &'c mut wgpu::RenderPass<'static> {
     context.bind(parameters);
 

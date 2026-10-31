@@ -18,12 +18,14 @@ use crate::frame::history::History;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
+use crate::pass::fsr_frame::FsrFrame;
 use crate::pass::fsr_uniform::FsrUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::pre_exposure::PreExposure;
 use crate::pass::ray_guides_parameters::RayGuidesParameters;
 use crate::pass::ray_guides_pass::RayGuidesPass;
+use crate::pass::temporal_frame::TemporalFrame;
 use crate::pass::temporal_parameters::TemporalParameters;
 use crate::pass::temporal_pass::TemporalPass;
 use crate::pass::temporal_uniform::TemporalUniform;
@@ -347,12 +349,14 @@ impl ResolveFeature {
     let current: Mat4 = view.get_view_projection();
     let (last, last_view): (Mat4, Mat4) = previous.unwrap_or((current, view.view));
 
-    *uniform = TemporalUniform::new(
-      (current, last, last_view),
-      self.offset,
-      history.is_valid() && previous.is_some(),
-      self.pre_exposure.get_history_scale(),
-    );
+    *uniform = TemporalUniform::new(TemporalFrame {
+      current,
+      previous: last,
+      previous_view: last_view,
+      jitter: self.offset,
+      is_history_valid: history.is_valid() && previous.is_some(),
+      history_scale: self.pre_exposure.get_history_scale(),
+    });
     *previous = Some((current, view.view));
   }
 
@@ -379,12 +383,17 @@ impl ResolveFeature {
     let previous_offset: Vec2 = -uniform.jitter;
 
     *uniform = FsrUniform::new(
-      (render, display),
-      (self.offset, previous_offset),
+      FsrFrame {
+        render,
+        display,
+        jitter: self.offset,
+        previous_jitter: previous_offset,
+        phases: self.phases,
+        frame_index: targets.frames.get_frame(),
+        is_hdr,
+      },
       view,
-      (self.phases, targets.frames.get_frame()),
     )
-    .with_hdr(is_hdr)
     .with_delta_pre_exposure(self.pre_exposure.get_history_scale());
   }
 
@@ -825,7 +834,8 @@ impl ResolveFeature {
         passes.fsr.add_passes(
           GraphDeclaration::new(graph, bindings, runtime),
           handles,
-          (targets, uniform),
+          targets,
+          uniform,
           debug,
         );
 

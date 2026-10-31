@@ -7,10 +7,13 @@ use crate::context::gpu_requirements::can_trace;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::contact_march_permutation::ContactMarchPermutation;
 use crate::pass::light_binning_parameters::LightBinningParameters;
+use crate::pass::light_contact::LightContact;
 use crate::pass::light_contact_parameters::LightContactParameters;
 use crate::pass::light_shadowing_parameters::LightShadowingParameters;
+use crate::pass::light_trace_bindings::LightTraceBindings;
 use crate::pass::light_tracing_parameters::LightTracingParameters;
 use crate::pass::light_visibility_parameters::LightVisibilityParameters;
+use crate::pass::lights_draw::LightsDraw;
 use crate::pass::lights_parameters::LightsParameters;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::trace_parameters::TraceParameters;
@@ -106,7 +109,8 @@ impl LightsPass {
       &binning_layout,
       [view_layout, &layout, texture_layout],
       [&contact_layout, &shadowing_layout, &visibility_layout],
-      (&tracing_layout, trace_layout.as_ref()),
+      &tracing_layout,
+      trace_layout.as_ref(),
     )?;
     let stand_in = |label: &str, format: wgpu::TextureFormat, layers: Option<u32>| -> wgpu::TextureView {
       device
@@ -167,7 +171,8 @@ impl LightsPass {
         &self.binning_layout,
         [&self.view_layout, &self.layout, &self.texture_layout],
         [&self.contact_layout, &self.shadowing_layout, &self.visibility_layout],
-        (&self.tracing_layout, self.trace_layout.as_ref()),
+        &self.tracing_layout,
+        self.trace_layout.as_ref(),
       ) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Lights rejected, lighting with the last one: {error}"),
@@ -206,7 +211,8 @@ impl LightsPass {
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
-    (parameters, contact): (&LightsParameters<'_>, &LightContactParameters),
+    parameters: &LightsParameters<'_>,
+    contact: &LightContactParameters,
     size: (u32, u32),
   ) {
     context.bind(parameters);
@@ -223,21 +229,23 @@ impl LightsPass {
     );
   }
 
-  /// Finds how much of each shadowed light every pixel of a `size` view sees, reading the contact shadows marched where
-  /// `is_contact`.
+  /// Finds how much of each shadowed light every pixel of a `size` view sees, reading the contact shadows where they
+  /// were marched.
   pub fn record_visibility(
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
-    (parameters, shadowing): (&LightsParameters<'_>, &LightShadowingParameters<'_>),
-    (size, is_contact): ((u32, u32), bool),
+    parameters: &LightsParameters<'_>,
+    shadowing: &LightShadowingParameters<'_>,
+    size: (u32, u32),
+    contact: LightContact,
   ) {
     context.bind(parameters);
     context.bind(shadowing);
 
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
-    pass.set_pipeline(&self.pipelines.visibility[usize::from(is_contact)]);
+    pass.set_pipeline(&self.pipelines.visibility[usize::from(contact.is_marched())]);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.dispatch_workgroups(
       size.0.div_ceil(Self::VISIBILITY_WORKGROUP),
@@ -252,8 +260,8 @@ impl LightsPass {
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
-    (parameters, tracing): (&LightsParameters<'_>, &LightTracingParameters),
-    (trace, textures): (&TraceParameters<'_>, &wgpu::BindGroup),
+    parameters: &LightsParameters<'_>,
+    bindings: LightTraceBindings<'_>,
     size: (u32, u32),
   ) {
     let Some(pipeline) = &self.pipelines.traced else {
@@ -261,14 +269,14 @@ impl LightsPass {
     };
 
     context.bind(parameters);
-    context.bind(tracing);
-    context.bind(trace);
+    context.bind(bindings.tracing);
+    context.bind(bindings.trace);
 
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
     pass.set_pipeline(pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_bind_group(Self::TEXTURE_GROUP, textures, &[]);
+    pass.set_bind_group(Self::TEXTURE_GROUP, bindings.textures, &[]);
     pass.dispatch_workgroups(
       size.0.div_ceil(Self::VISIBILITY_WORKGROUP),
       size.1.div_ceil(Self::VISIBILITY_WORKGROUP),
@@ -276,21 +284,23 @@ impl LightsPass {
     );
   }
 
-  /// Adds every light to the light target, with the contact shadows' marched shares where they were marched
-  /// (`is_contact`); its specular split into the specular target the pass draws into second where `is_split`.
+  /// Adds every light to the light target as `draw` says: with the contact shadows' marched shares where they were
+  /// marched, and its specular split into the specular target the pass draws into second.
   pub fn record_draw(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    (parameters, visibility): (&LightsParameters<'_>, &LightVisibilityParameters),
-    (textures, is_contact, is_split): (&wgpu::BindGroup, bool, bool),
+    parameters: &LightsParameters<'_>,
+    visibility: &LightVisibilityParameters,
+    textures: &wgpu::BindGroup,
+    draw: LightsDraw,
   ) {
     context.bind(parameters);
     context.bind(visibility);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
-    pass.set_pipeline(&self.pipelines.draws[usize::from(is_split)][usize::from(is_contact)]);
+    pass.set_pipeline(&self.pipelines.draws[usize::from(draw.is_split)][usize::from(draw.contact.is_marched())]);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.set_bind_group(2, textures, &[]);
     pass.draw(0..3, 0..1);
@@ -301,7 +311,8 @@ impl LightsPass {
     binning_layout: &wgpu::BindGroupLayout,
     [view_layout, layout, texture_layout]: [&wgpu::BindGroupLayout; 3],
     [contact_layout, shadowing_layout, visibility_layout]: [&wgpu::BindGroupLayout; 3],
-    (tracing_layout, trace_layout): (&wgpu::BindGroupLayout, Option<&wgpu::BindGroupLayout>),
+    tracing_layout: &wgpu::BindGroupLayout,
+    trace_layout: Option<&wgpu::BindGroupLayout>,
   ) -> XrfResult<LightsPipelines> {
     let binning: wgpu::ComputePipeline = source.get_compute_pipeline(
       &ComputePipelineDescription::new("light binning", "frame/light_binning", "cs_bin")

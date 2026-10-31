@@ -65,7 +65,7 @@ impl DisplayMode {
       self.get_index() as f32,
       grading.contrast,
       grading.saturation,
-      self.get_lift((metering.key, metering.bright), grading.contrast),
+      self.get_lift(metering.key, metering.bright, grading.contrast),
     )
   }
 
@@ -83,7 +83,7 @@ impl DisplayMode {
   /// lift, through AgX's steeper middle, into its shoulder; matched there, the bright end shows as the engine's and the
   /// land, which AgX cannot show as the engine does, sinks towards its black. Over the transform's range the key rules
   /// alone: a dusk's bright end is its fires and glints, which would sink the land with them.
-  pub fn get_lift(self, (key, bright): (f32, Option<f32>), contrast: f32) -> f32 {
+  pub fn get_lift(self, key: f32, bright: Option<f32>, contrast: f32) -> f32 {
     self.get_bounded(key, bright, contrast)
   }
 
@@ -103,12 +103,12 @@ impl DisplayMode {
       return 0.0;
     };
     let least: f32 = get_least_shown(transform, Self::ANCHOR_HUE);
-    let lift: f32 = Self::get_match((transform, least), key, contrast);
+    let lift: f32 = Self::get_match(transform, least, key, contrast);
     let Some(bright) = bright else {
       return lift;
     };
     let under: f32 = (least / get_graded(key, contrast).max(f32::MIN_POSITIVE)).log2();
-    let bounded: f32 = lift.min(Self::get_match((transform, least), bright, contrast));
+    let bounded: f32 = lift.min(Self::get_match(transform, least, bright, contrast));
 
     lift + (bounded - lift) * (under / Self::BRIGHT_FADE_STOPS).clamp(0.0, 1.0)
   }
@@ -116,7 +116,7 @@ impl DisplayMode {
   /// The stops that show the land's colour (`ANCHOR_HUE`) at the exposed `key`, graded by `contrast`, through
   /// `transform` as the engine's curve shows it, the key held within `ANCHOR_KEYS` and over the `least` the transform
   /// shows.
-  fn get_match((transform, least): (fn(Vec3) -> Vec3, f32), key: f32, contrast: f32) -> f32 {
+  fn get_match(transform: fn(Vec3) -> Vec3, least: f32, key: f32, contrast: f32) -> f32 {
     let (lowest, most): (f32, f32) = Self::ANCHOR_KEYS;
     let shown: f32 = get_graded(key, contrast).clamp(lowest.max(least), most);
 

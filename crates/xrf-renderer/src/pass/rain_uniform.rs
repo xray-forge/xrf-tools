@@ -4,8 +4,7 @@ use glam::{Vec2, Vec3, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_rain_drops_mode::RenderRainDropsMode;
-use crate::lighting::render_rainfall::RenderRainfall;
-use crate::lighting::render_wind::RenderWind;
+use crate::pass::rain_frame::RainFrame;
 
 /// `drop_max_angle`: how far the strongest wind leans the streaks from the vertical, ten degrees.
 const MAX_LEAN: f32 = 10.0 * std::f32::consts::PI / 180.0;
@@ -133,16 +132,18 @@ impl RainUniform {
   /// `max_desired_items`: streaks at the heaviest rain; half as many at the lightest.
   pub const STREAKS: u32 = 2500;
 
-  /// `strength` is `wind_strength_factor`: a tenth of it leans the engine's streaks with the wind
-  /// (`CEffect_Rain::Born`), and its swing about a half stands in for the gust Monolith's `CEffect_Rain::Prepare` leans
-  /// its drops by.
-  pub fn new(
-    (rain, drops): (&RenderRainfall, RenderRainDropsMode),
-    (wind, strength): (RenderWind, f32),
-    (window, cover_shape): (Vec4, Vec4),
-    aim: Vec2,
-    splash_indices: u32,
-  ) -> Self {
+  /// One `frame`'s rain, its drops leaned by the wind's strength as its field says.
+  pub fn new(frame: RainFrame<'_>) -> Self {
+    let RainFrame {
+      rain,
+      drops,
+      wind,
+      strength,
+      window,
+      cover_shape,
+      aim,
+      splash_indices,
+    } = frame;
     let density: f32 = rain.density.clamp(0.0, 1.0);
     let base: Self = Self {
       color: rain.color.clamp(Vec3::ZERO, Vec3::ONE).extend(density / 2.0 + 0.5),
@@ -270,7 +271,7 @@ impl RainUniform {
   }
 
   /// The same rain on its clock `time`, at its `pace` and leaning along `axis`, as eased from frame to frame.
-  pub fn clocked(self, (time, pace): (f32, f32), axis: Vec3) -> Self {
+  pub fn clocked(self, time: f32, pace: f32, axis: Vec3) -> Self {
     Self {
       time,
       pace,

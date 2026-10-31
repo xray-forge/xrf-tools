@@ -72,7 +72,9 @@ impl SunTracePass {
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    (parameters, trace, textures): (&SunTraceParameters, &TraceParameters<'_>, &wgpu::BindGroup),
+    parameters: &SunTraceParameters,
+    trace: &TraceParameters<'_>,
+    textures: &wgpu::BindGroup,
   ) {
     let Some(pipeline) = &self.pipeline else {
       return;

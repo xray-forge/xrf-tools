@@ -5,6 +5,7 @@ use crate::lighting::render_fog::RenderFog;
 use crate::lighting::render_rainfall::RenderRainfall;
 use crate::lighting::render_tree_wind::RenderTreeWind;
 use crate::lighting::render_wind::RenderWind;
+use crate::pass::rain_frame::RainFrame;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::rain_rings::RainRings;
@@ -121,25 +122,22 @@ fn falls_the_enhanced_drops_over_a_wider_square_thinning_out_past_monolith_s() {
 }
 
 fn falling_rain(drops: RenderRainDropsMode, density: f32, (velocity, strength): (f32, f32)) -> RainUniform {
-  RainUniform::new(
-    (
-      &RenderRainfall {
-        color: Vec3::ONE,
-        density,
-      },
-      drops,
-    ),
-    (
-      RenderWind {
-        direction: 0.0,
-        velocity,
-      },
-      strength,
-    ),
-    (Vec4::ZERO, Vec4::ZERO),
-    Vec2::ZERO,
-    0,
-  )
+  RainUniform::new(RainFrame {
+    rain: &RenderRainfall {
+      color: Vec3::ONE,
+      density,
+    },
+    drops,
+    wind: RenderWind {
+      direction: 0.0,
+      velocity,
+    },
+    strength,
+    window: Vec4::ZERO,
+    cover_shape: Vec4::ZERO,
+    aim: Vec2::ZERO,
+    splash_indices: 0,
+  })
 }
 
 #[test]

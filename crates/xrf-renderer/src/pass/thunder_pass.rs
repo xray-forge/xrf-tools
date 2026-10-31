@@ -79,7 +79,8 @@ impl ThunderPass {
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
     entries: &[ThunderParameters<'_>; 3],
-    (draws, model_indices): ([XraySurfaceDraw; 3], u32),
+    draws: [XraySurfaceDraw; 3],
+    model_indices: u32,
   ) {
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
 

@@ -14,6 +14,7 @@ use crate::host::render_lens_flare::RenderLensFlare;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::flare_draw_parameters::FlareDrawParameters;
+use crate::pass::flare_frame::FlareFrame;
 use crate::pass::flare_measure_parameters::FlareMeasureParameters;
 use crate::pass::flare_pass::FlarePass;
 use crate::pass::flare_texture_parameters::FlareTextureParameters;
@@ -155,7 +156,16 @@ impl FlaresFeature {
       (sprite.texture.clone(), (color * faded).extend(sprite.radius))
     });
 
-    self.values = FlareUniform::new(flare, (to_sun, toward_sun), lighting.sun_color, faded, delta);
+    self.values = FlareUniform::new(
+      flare,
+      FlareFrame {
+        to_sun,
+        toward_sun,
+        color: lighting.sun_color,
+        faded,
+        delta,
+      },
+    );
 
     self.collect_textures(flare, weather_textures);
     self.is_flared = options.show.is_lens_flared;

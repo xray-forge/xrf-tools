@@ -2,6 +2,7 @@ use glam::Vec2;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::lighting::render_fog::RenderFog;
 
 /// What a stage of the fog scattering reads, as `shaders/frame/fog_scattering.wgsl` takes it.
 #[repr(C)]
@@ -21,12 +22,21 @@ pub struct FogScatteringUniform {
 
 impl FogScatteringUniform {
   /// What a view scatters a frame `size` texels across with, or none: the engine's fog asked for, a scattering of none,
-  /// no fog drawn (`is_fogged`), unlit or wireframe.
-  pub fn for_view(options: &RenderViewOptions, is_fogged: bool, size: (u32, u32), time: f32) -> Option<[Self; 3]> {
-    let fog = &options.features.fog;
+  /// no weather's `fog` drawn, unlit or wireframe.
+  pub fn for_view(
+    options: &RenderViewOptions,
+    fog: Option<&RenderFog>,
+    size: (u32, u32),
+    time: f32,
+  ) -> Option<[Self; 3]> {
+    let settings = &options.features.fog;
 
-    (is_fogged && options.show.is_fogged && options.mode.is_lit && !options.mode.is_wireframe && fog.is_scattered())
-      .then(|| Self::stages(size, fog.scattering, time))
+    (fog.is_some()
+      && options.show.is_fogged
+      && options.mode.is_lit
+      && !options.mode.is_wireframe
+      && settings.is_scattered())
+    .then(|| Self::stages(size, settings.scattering, time))
   }
 
   /// The quarter-size blur, the half-size blur, then the scattering at the frame's own size; the first blur reads the

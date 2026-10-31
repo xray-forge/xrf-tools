@@ -144,7 +144,7 @@ impl RainCover {
           graph.add_compute_pass("rain cover pyramid").parameters(&first),
           |builder, level| builder.parameters(level),
         )
-        .record(move |context| passes.pyramid.record_cover(context, pyramid, (&first, &levels)));
+        .record(move |context| passes.pyramid.record_cover(context, pyramid, &first, &levels));
     }
 
     CoverTextures {

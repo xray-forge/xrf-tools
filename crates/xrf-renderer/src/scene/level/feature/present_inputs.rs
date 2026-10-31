@@ -1,4 +1,5 @@
 use crate::pass::exposure_metering::ExposureMetering;
+use crate::pass::light_encoding::LightEncoding;
 use crate::pass::present_marks::PresentMarks;
 
 /// What the other units decided this frame that the window pass reads: whether an ambient occlusion and an indirect
@@ -19,10 +20,7 @@ pub struct PresentInputs {
   pub is_enhanced_bloomed: bool,
   /// Metres from the camera the grass's cards cast the sun's shadow to, none where they cast none.
   pub grass_reach: Option<f32>,
-  /// The scale the frame's light is written at (`light_scale` in `common/lighting`), and whether the light is the
-  /// authored levels' summed light (`LightingUniform::summed_light`).
-  pub light_scale: f32,
-  pub is_light_summed: bool,
+  pub light: LightEncoding,
   /// What the exposure metered, whose exposed key and bright end the display transforms are lifted by.
   pub metering: ExposureMetering,
   /// The frame the film's grains are drawn for.

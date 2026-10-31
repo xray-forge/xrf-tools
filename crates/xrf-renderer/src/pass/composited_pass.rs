@@ -6,7 +6,7 @@ use crate::pass::composited_parameters::CompositedParameters;
 use crate::pass::composited_pipelines::CompositedPipelines;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::sky_parameters::SkyParameters;
-use crate::pass::static_draw_parameters::StaticDrawParameters;
+use crate::pass::static_layout_bindings::StaticLayoutBindings;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_geometry::StaticGeometry;
@@ -98,15 +98,16 @@ impl CompositedPass {
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
-    (view, layouts, textures): (
-      &ViewBinding,
-      &[StaticDrawParameters; StaticLayout::COUNT],
-      &wgpu::BindGroup,
-    ),
-    (composited, sky): (&CompositedParameters<'_>, &SkyParameters<'_>),
+    StaticLayoutBindings {
+      view,
+      layouts,
+      textures,
+    }: StaticLayoutBindings<'_>,
+    composited: &CompositedParameters<'_>,
+    sky: &SkyParameters<'_>,
     args: &[&wgpu::Buffer],
   ) {
-    Self::bind_common(context, (view, textures), (composited, sky));
+    Self::bind_common(context, view, textures, composited, sky);
 
     for (batch, pipeline) in StaticBatch::list_composited().zip(&self.pipelines.composited) {
       // The models' are drawn back to front from the view's sorted list rather than as the cull listed them.
@@ -128,15 +129,16 @@ impl CompositedPass {
   pub fn record_sorted(
     &self,
     context: &mut RasterContext<'_>,
-    (view, sorted, textures): (
-      &ViewBinding,
-      &[StaticDrawParameters; StaticLayout::COUNT],
-      &wgpu::BindGroup,
-    ),
-    (composited, sky): (&CompositedParameters<'_>, &SkyParameters<'_>),
+    StaticLayoutBindings {
+      view,
+      layouts: sorted,
+      textures,
+    }: StaticLayoutBindings<'_>,
+    composited: &CompositedParameters<'_>,
+    sky: &SkyParameters<'_>,
     runs: &[(StaticLayout, u32, u32)],
   ) {
-    Self::bind_common(context, (view, textures), (composited, sky));
+    Self::bind_common(context, view, textures, composited, sky);
 
     for (layout, first, count) in runs {
       // The composited batches run in layout order, one a layout, so a layout's program is its batch's.
@@ -154,8 +156,10 @@ impl CompositedPass {
   /// sits above the composited surfaces' own, past the textures and the draws.
   fn bind_common(
     context: &mut RasterContext<'_>,
-    (view, textures): (&ViewBinding, &wgpu::BindGroup),
-    (composited, sky): (&CompositedParameters<'_>, &SkyParameters<'_>),
+    view: &ViewBinding,
+    textures: &wgpu::BindGroup,
+    composited: &CompositedParameters<'_>,
+    sky: &SkyParameters<'_>,
   ) {
     context.bind(composited);
     context.bind_at(Self::SKY_GROUP, sky);
@@ -172,15 +176,16 @@ impl CompositedPass {
   pub fn record_distortion(
     &self,
     context: &mut RasterContext<'_>,
-    (view, layouts, textures): (
-      &ViewBinding,
-      &[StaticDrawParameters; StaticLayout::COUNT],
-      &wgpu::BindGroup,
-    ),
-    (composited, sky): (&CompositedParameters<'_>, &SkyParameters<'_>),
+    StaticLayoutBindings {
+      view,
+      layouts,
+      textures,
+    }: StaticLayoutBindings<'_>,
+    composited: &CompositedParameters<'_>,
+    sky: &SkyParameters<'_>,
     args: &[&wgpu::Buffer],
   ) {
-    Self::bind_common(context, (view, textures), (composited, sky));
+    Self::bind_common(context, view, textures, composited, sky);
 
     for (layout, pipeline) in StaticLayout::ALL.into_iter().zip(&self.pipelines.distortion) {
       let list: u32 = StaticBatch::get_pass_list(layout, StaticSurfacePass::Distortion);
@@ -201,11 +206,11 @@ impl CompositedPass {
   pub fn record_selection(
     &self,
     context: &mut RasterContext<'_>,
-    (view, layouts, textures): (
-      &ViewBinding,
-      &[StaticDrawParameters; StaticLayout::COUNT],
-      &wgpu::BindGroup,
-    ),
+    StaticLayoutBindings {
+      view,
+      layouts,
+      textures,
+    }: StaticLayoutBindings<'_>,
     args: &[&wgpu::Buffer],
   ) {
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
@@ -230,11 +235,11 @@ impl CompositedPass {
   pub fn record_wallmarks(
     &self,
     context: &mut RasterContext<'_>,
-    (view, layouts, textures): (
-      &ViewBinding,
-      &[StaticDrawParameters; StaticLayout::COUNT],
-      &wgpu::BindGroup,
-    ),
+    StaticLayoutBindings {
+      view,
+      layouts,
+      textures,
+    }: StaticLayoutBindings<'_>,
     args: &[&wgpu::Buffer],
   ) {
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
@@ -266,32 +271,40 @@ impl CompositedPass {
       [Some(view_layout), Some(texture_layout), Some(scene_layout)];
     let composited = Self::create_layout_pipelines(
       source,
-      (&composited_layout, COMPOSITED_FRAGMENT),
-      (ViewTargets::SCENE, Some(COMPOSITED_BLEND), wgpu::ColorWrites::ALL),
+      &composited_layout,
+      COMPOSITED_FRAGMENT,
+      ViewTargets::SCENE,
+      Some(COMPOSITED_BLEND),
+      wgpu::ColorWrites::ALL,
       StaticBatch::list_composited().map(|batch| batch.layout),
     )?;
     let wallmarks = Self::create_layout_pipelines(
       source,
-      (&wallmark_layout, "fs_wallmark"),
-      (ViewTargets::ALBEDO, Some(COMPOSITED_BLEND), wgpu::ColorWrites::ALL),
+      &wallmark_layout,
+      "fs_wallmark",
+      ViewTargets::ALBEDO,
+      Some(COMPOSITED_BLEND),
+      wgpu::ColorWrites::ALL,
       StaticBatch::list_wallmarks().map(|batch| batch.layout),
     )?;
     // Blended over what the water and the particles wrote, as `distort(true)` passes blend by their alpha.
     let distortion = Self::create_layout_pipelines(
       source,
-      (&composited_layout, "fs_composited_distort"),
-      (
-        ViewTargets::DISTORTION,
-        Some(wgpu::BlendState::ALPHA_BLENDING),
-        wgpu::ColorWrites::ALL,
-      ),
+      &composited_layout,
+      "fs_composited_distort",
+      ViewTargets::DISTORTION,
+      Some(wgpu::BlendState::ALPHA_BLENDING),
+      wgpu::ColorWrites::ALL,
       StaticLayout::ALL.into_iter(),
     )?;
     // The mark alone, in the alpha, over whatever the surface behind it marked.
     let selection = Self::create_layout_pipelines(
       source,
-      (&wallmark_layout, "fs_composited_selected"),
-      (ViewTargets::MATERIAL, None, wgpu::ColorWrites::ALPHA),
+      &wallmark_layout,
+      "fs_composited_selected",
+      ViewTargets::MATERIAL,
+      None,
+      wgpu::ColorWrites::ALPHA,
       Self::list_selectable().map(|batch| batch.layout),
     )?;
 
@@ -305,8 +318,11 @@ impl CompositedPass {
 
   fn create_layout_pipelines(
     source: PipelineSource<'_>,
-    (bind_group_layouts, fragment): (&[Option<&wgpu::BindGroupLayout>], &'static str),
-    (format, blend, write_mask): (wgpu::TextureFormat, Option<wgpu::BlendState>, wgpu::ColorWrites),
+    bind_group_layouts: &[Option<&wgpu::BindGroupLayout>],
+    fragment: &'static str,
+    format: wgpu::TextureFormat,
+    blend: Option<wgpu::BlendState>,
+    write_mask: wgpu::ColorWrites,
     layouts: impl Iterator<Item = StaticLayout>,
   ) -> XrfResult<Vec<wgpu::RenderPipeline>> {
     layouts

@@ -13,15 +13,14 @@ pub struct StaticDraws {
 }
 
 impl StaticDraws {
-  /// Declares what every layout's draws read on a pass drawing them, the impostors' too where it draws them.
-  pub fn declare<'g, 'a>(&self, builder: RasterPassBuilder<'g, 'a>, is_impostored: bool) -> RasterPassBuilder<'g, 'a> {
-    let builder: RasterPassBuilder<'g, 'a> = Self::declare_layouts(builder, &self.layouts);
+  /// Declares what every layout's draws read on a pass drawing them.
+  pub fn declare<'g, 'a>(&self, builder: RasterPassBuilder<'g, 'a>) -> RasterPassBuilder<'g, 'a> {
+    Self::declare_layouts(builder, &self.layouts)
+  }
 
-    if is_impostored {
-      builder.parameters(&self.impostors)
-    } else {
-      builder
-    }
+  /// Declares what every layout's draws and the impostors read on a pass drawing them all.
+  pub fn declare_impostored<'g, 'a>(&self, builder: RasterPassBuilder<'g, 'a>) -> RasterPassBuilder<'g, 'a> {
+    self.declare(builder).parameters(&self.impostors)
   }
 
   /// Declares what every layout's draws read on a pass drawing them.

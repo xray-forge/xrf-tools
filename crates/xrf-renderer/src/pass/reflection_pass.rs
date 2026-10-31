@@ -2,6 +2,7 @@ use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, RasterContext};
 
+use crate::pass::budgeted_trace_outputs::BudgetedTraceOutputs;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::reflection_parameters::ReflectionParameters;
@@ -106,11 +107,7 @@ impl ReflectionPass {
     };
 
     Ok(Self {
-      pipelines: Self::create_pipelines(
-        source,
-        (view_layout, &layout, sky_layout),
-        (&request_layout, &out_layout),
-      )?,
+      pipelines: Self::create_pipelines(source, view_layout, &layout, sky_layout, &request_layout, &out_layout)?,
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
       request_layout,
@@ -142,8 +139,11 @@ impl ReflectionPass {
 
       match Self::create_pipelines(
         source,
-        (&self.view_layout, &self.layout, &self.sky_layout),
-        (&self.request_layout, &self.out_layout),
+        &self.view_layout,
+        &self.layout,
+        &self.sky_layout,
+        &self.request_layout,
+        &self.out_layout,
       ) {
         Ok(pipelines) => self.pipelines = pipelines,
         Err(error) => log::error!("Reflections rejected, tracing with the last ones: {error}"),
@@ -177,7 +177,8 @@ impl ReflectionPass {
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    (parameters, sky): (&ReflectionParameters<'_>, &SkyParameters<'_>),
+    parameters: &ReflectionParameters<'_>,
+    sky: &SkyParameters<'_>,
     requests: &TraceRequestParameters,
   ) {
     context.bind(parameters);
@@ -191,20 +192,21 @@ impl ReflectionPass {
     pass.draw(0..3, 0..1);
   }
 
-  /// Traces under ray budgets into `out`'s targets, `size` traced pixels across, listing in `requests` the rays it
-  /// leaves to the scene pass.
+  /// Traces under ray budgets into the `outputs`' targets, `size` traced pixels across, listing in their requests the
+  /// rays it leaves to the scene pass.
   pub fn record_trace_budgeted(
     &self,
     context: &mut ComputeContext<'_>,
     view: &ViewBinding,
-    (parameters, sky): (&ReflectionParameters<'_>, &SkyParameters<'_>),
-    (requests, out): (&TraceRequestParameters, &ReflectionTraceOutParameters),
+    parameters: &ReflectionParameters<'_>,
+    sky: &SkyParameters<'_>,
+    outputs: BudgetedTraceOutputs<'_>,
     (width, height): (u32, u32),
   ) {
     context.bind(parameters);
     context.bind(sky);
-    context.bind(requests);
-    context.bind(out);
+    context.bind(outputs.requests);
+    context.bind(outputs.out);
 
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
@@ -250,8 +252,11 @@ impl ReflectionPass {
 
   fn create_pipelines(
     source: PipelineSource<'_>,
-    (view_layout, layout, sky_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
-    (request_layout, out_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
+    view_layout: &wgpu::BindGroupLayout,
+    layout: &wgpu::BindGroupLayout,
+    sky_layout: &wgpu::BindGroupLayout,
+    request_layout: &wgpu::BindGroupLayout,
+    out_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<ReflectionPipelines> {
     let traced_layout: [Option<&wgpu::BindGroupLayout>; 4] =
       [Some(view_layout), Some(layout), Some(sky_layout), Some(request_layout)];

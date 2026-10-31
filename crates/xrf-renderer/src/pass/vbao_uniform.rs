@@ -1,8 +1,9 @@
-use glam::Mat4;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::pass::noise_turn::NoiseTurn;
+use crate::pass::vbao_frame::VbaoFrame;
+use crate::pass::vbao_light::VbaoLight;
 
 /// The exponent a strength of one raises the filtered visibility to, chosen by looking: creases read without
 /// blackening.
@@ -50,38 +51,31 @@ pub struct VbaoUniform {
 }
 
 impl VbaoUniform {
-  /// The settings over a search target of a size, through the camera's projection, on the noise's `frame`, with or
-  /// without the occlusion's and the indirect light's histories to carry; an `intensity` of zero gathers no light,
-  /// and the light is gathered from `light_radius` metres around in `light_steps` past the occlusion's.
-  pub fn new(
-    settings: &RenderAmbientOcclusionSettings,
-    (intensity, light_radius, light_steps): (f32, f32, u32),
-    projection: Mat4,
-    (width, height): (u32, u32),
-    frame: u32,
-    (has_history, has_light_history): (bool, bool),
-  ) -> Self {
+  /// The settings over one `frame` of the search, gathering the indirect `light` beside the occlusion.
+  pub fn new(settings: &RenderAmbientOcclusionSettings, light: VbaoLight, frame: VbaoFrame) -> Self {
     let frames: u32 = settings.vbao.get_accumulation();
+    let (width, height): (u32, u32) = frame.size;
+    let has_history: bool = frame.has_history && frames > 1;
     // A noise held still where nothing gathers it, so it never crawls.
-    let [slice_noise, step_noise] = NoiseTurn::get_r2(if frames > 1 { frame } else { 0 }, NOISE_FRAMES);
+    let [slice_noise, step_noise] = NoiseTurn::get_r2(if frames > 1 { frame.frame } else { 0 }, NOISE_FRAMES);
 
     Self {
       radius: settings.radius,
       thickness: settings.vbao.thickness.max(0.0),
       power: BASE_POWER * settings.strength.max(0.0),
       // Clip x over view x at a metre is the projection's first element.
-      spread: 2.0 / (projection.x_axis.x * width.max(1) as f32),
+      spread: 2.0 / (frame.projection.x_axis.x * width.max(1) as f32),
       reach: (height as f32 * MAX_REACH).max(1.0),
       frames: frames as f32,
-      has_history: f32::from(u8::from(has_history && frames > 1)),
+      has_history: f32::from(u8::from(has_history)),
       slice_noise,
       step_noise,
-      intensity: intensity.max(0.0),
-      has_light_history: f32::from(u8::from(has_light_history && has_history && frames > 1)),
-      light_radius: light_radius.max(settings.radius),
+      intensity: light.intensity.max(0.0),
+      has_light_history: f32::from(u8::from(frame.has_light_history && has_history)),
+      light_radius: light.radius.max(settings.radius),
       slices: settings.vbao.get_slices(),
       steps: settings.vbao.get_steps(),
-      light_steps,
+      light_steps: light.steps,
       rays: settings.rtao.get_rays(),
     }
   }

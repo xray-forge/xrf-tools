@@ -112,7 +112,8 @@ impl ThunderFeature {
     view: &'a ViewBinding,
     (handles, lighting): (ViewTargetHandles, UniformBinding<LightingUniform>),
   ) {
-    let (Some(draws), Some((textures, model)), Some((_, models, no_model))) = (self.draw, &self.views, &self.models)
+    let (Some((draws, model_indices)), Some((textures, model)), Some((_, models, no_model))) =
+      (self.draw, &self.views, &self.models)
     else {
       return;
     };
@@ -134,7 +135,7 @@ impl ThunderFeature {
         add_over_scene(&mut *graph, handles, "thunder"),
         |builder, parameters| builder.parameters(parameters),
       )
-      .record(move |context| passes.thunder.record(context, view, &entries, draws));
+      .record(move |context| passes.thunder.record(context, view, &entries, draws, model_indices));
   }
 }
 

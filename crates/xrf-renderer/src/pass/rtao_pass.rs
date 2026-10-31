@@ -74,7 +74,9 @@ impl RtaoPass {
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
-    (parameters, trace, textures): (&VbaoParameters, &TraceParameters<'_>, &wgpu::BindGroup),
+    parameters: &VbaoParameters,
+    trace: &TraceParameters<'_>,
+    textures: &wgpu::BindGroup,
   ) {
     let Some(pipeline) = &self.pipeline else {
       return;

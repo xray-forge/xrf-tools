@@ -13,7 +13,7 @@ pub struct SkyPrefilterUniform {
 
 impl SkyPrefilterUniform {
   /// Mip `level` of `levels`, `size` texels a side over a first mip `first` a side, sampling `samples` directions.
-  pub fn new(level: u32, levels: u32, (size, first): (u32, u32), samples: u32) -> Self {
+  pub fn new(level: u32, levels: u32, size: u32, first: u32, samples: u32) -> Self {
     Self {
       level: Vec4::new(
         level as f32,

@@ -6,6 +6,7 @@ use crate::contract::render_shadow_settings::{RENDER_MAX_SHADOW_CASCADES, RENDER
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_with;
 use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::sun_draw::SunDraw;
 use crate::pass::sun_filter_permutation::SunFilterPermutation;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_trace_pass::SunTracePass;
@@ -114,22 +115,21 @@ impl SunPass {
     }
   }
 
-  /// Lights the G-buffer by the sun into the light target the pass draws into, shadowed by its traced shadow where
-  /// `is_traced`, its cascades filtered `filter_reach` texels each way; its specular split into the specular target the
-  /// pass draws into third where `is_split`.
+  /// Lights the G-buffer by the sun into the light target the pass draws into, as `draw` says: shadowed by its traced
+  /// shadow or its cascades filtered, and its specular split into the specular target the pass draws into third.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
     view: &ViewBinding,
     parameters: &SunParameters<'_>,
-    (is_traced, is_split, filter_reach): (bool, bool, u32),
+    draw: SunDraw,
   ) {
     context.bind(parameters);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
-    let variant: usize = usize::from(is_traced) + 2 * usize::from(is_split);
+    let variant: usize = usize::from(draw.is_traced) + 2 * usize::from(draw.is_split);
 
-    pass.set_pipeline(&self.pipelines[(filter_reach as usize).min(Self::REACHES - 1)][variant]);
+    pass.set_pipeline(&self.pipelines[(draw.filter_reach as usize).min(Self::REACHES - 1)][variant]);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.draw(0..3, 0..1);
   }
@@ -152,7 +152,9 @@ impl SunPass {
 
       create_fullscreen_pipeline_with(
         source,
-        (SunFilterPermutation::MODULE, entry, &permutation),
+        SunFilterPermutation::MODULE,
+        entry,
+        &permutation,
         &[Some(view_layout), Some(layout)],
         &targets[..if is_split { 3 } else { 2 }],
       )

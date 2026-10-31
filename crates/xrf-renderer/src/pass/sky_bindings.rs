@@ -54,7 +54,8 @@ impl SkyBindings {
   pub fn collect(
     &self,
     cache: WeatherTextures<'_>,
-    (sky, sun): (&RenderSky, Option<&str>),
+    sky: &RenderSky,
+    sun: Option<&str>,
     environments: &[String],
   ) -> SkyViews {
     let view =
@@ -81,7 +82,8 @@ impl SkyBindings {
   /// the sky binds.
   pub fn import<'r>(
     &'r self,
-    (views, prefiltered): (&'r SkyViews, &'r wgpu::TextureView),
+    views: &'r SkyViews,
+    prefiltered: &'r wgpu::TextureView,
     graph: &mut FrameGraph<'_>,
     bindings: &mut GraphBindings<'r>,
   ) -> SkyParameters<'r> {

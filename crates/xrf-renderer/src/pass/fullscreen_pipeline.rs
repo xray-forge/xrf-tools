@@ -23,13 +23,15 @@ pub fn create_fullscreen_pipeline_into(
   layouts: &[Option<&wgpu::BindGroupLayout>],
   targets: &[Option<wgpu::ColorTargetState>],
 ) -> XrfResult<wgpu::RenderPipeline> {
-  create_fullscreen_pipeline_with(source, (module, fragment, &()), layouts, targets)
+  create_fullscreen_pipeline_with(source, module, fragment, &(), layouts, targets)
 }
 
 /// `create_fullscreen_pipeline_into` with the fragment's variant, its override constants, given by `permutation`.
 pub fn create_fullscreen_pipeline_with<P: ShaderPermutation>(
   source: PipelineSource<'_>,
-  (module, fragment, permutation): (&'static str, &'static str, &P),
+  module: &'static str,
+  fragment: &'static str,
+  permutation: &P,
   layouts: &[Option<&wgpu::BindGroupLayout>],
   targets: &[Option<wgpu::ColorTargetState>],
 ) -> XrfResult<wgpu::RenderPipeline> {

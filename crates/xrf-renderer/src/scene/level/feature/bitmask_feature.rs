@@ -5,7 +5,7 @@ use xrf_renderer_core::{
   FrameGraph, GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding,
 };
 
-use crate::context::gpu_requirements::can_trace;
+use crate::context::gpu_tracing::GpuTracing;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
 use crate::contract::render_view_options::RenderViewOptions;
@@ -17,6 +17,9 @@ use crate::pass::bitmask_pass_names::BitmaskPassNames;
 use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::trace_parameters::TraceParameters;
+use crate::pass::vbao_frame::VbaoFrame;
+use crate::pass::vbao_gathering::VbaoGathering;
+use crate::pass::vbao_light::VbaoLight;
 use crate::pass::vbao_parameters::VbaoParameters;
 use crate::pass::vbao_pass::VbaoPass;
 use crate::pass::vbao_uniform::VbaoUniform;
@@ -55,7 +58,7 @@ impl BitmaskFeature {
   ) {
     let settings: RenderAmbientOcclusionSettings = options.features.ambient_occlusion;
 
-    self.search = BitmaskSearch::new(options, can_trace(device));
+    self.search = BitmaskSearch::new(options, GpuTracing::of(device));
     self.written.set([false; 2]);
     self.indirect_light = options.features.indirect_light;
 
@@ -103,18 +106,21 @@ impl BitmaskFeature {
     self.uniform = VbaoUniform::new(
       &settings,
       if is_lit {
-        (
-          self.indirect_light.intensity,
-          self.indirect_light.radius,
-          self.indirect_light.get_steps(),
-        )
+        VbaoLight {
+          intensity: self.indirect_light.intensity,
+          radius: self.indirect_light.radius,
+          steps: self.indirect_light.get_steps(),
+        }
       } else {
-        (0.0, 0.0, 0)
+        VbaoLight::default()
       },
-      projection,
-      size,
-      reference_sample.unwrap_or_else(|| history.map_or(0, History::get_frame)),
-      (history.is_some_and(History::is_valid), has_light_history),
+      VbaoFrame {
+        projection,
+        size,
+        frame: reference_sample.unwrap_or_else(|| history.map_or(0, History::get_frame)),
+        has_history: history.is_some_and(History::is_valid),
+        has_light_history,
+      },
     );
   }
 
@@ -239,7 +245,11 @@ impl BitmaskFeature {
             .color(clear(search_visibility)),
           |builder, light| builder.color(clear(light)),
         )
-        .record(move |context| passes.vbao.record_search(context, is_lit, view, &searching));
+        .record(move |context| {
+          passes
+            .vbao
+            .record_search(context, VbaoGathering::of(is_lit), view, &searching)
+        });
     }
 
     if let Some(trace) = trace {
@@ -273,7 +283,7 @@ impl BitmaskFeature {
       .parameters(&tracing)
       .parameters(&trace)
       .color(clear(searched))
-      .record(move |context| passes.rtao.record(context, view, (&tracing, &trace, textures)));
+      .record(move |context| passes.rtao.record(context, view, &tracing, &trace, textures));
   }
 
   /// Accumulates the search with the last frame's into its histories while it accumulates, then filters it into the
@@ -320,7 +330,7 @@ impl BitmaskFeature {
           light_history: previous_light,
           ..base
         };
-        let is_lit_accumulated: bool = written_light.is_some();
+        let gathering: VbaoGathering = VbaoGathering::of(written_light.is_some());
 
         written_light
           .into_iter()
@@ -331,11 +341,7 @@ impl BitmaskFeature {
               .color(clear(written)),
             |builder, light| builder.color(clear(light)),
           )
-          .record(move |context| {
-            passes
-              .vbao
-              .record_accumulate(context, is_lit_accumulated, view, &accumulate)
-          });
+          .record(move |context| passes.vbao.record_accumulate(context, gathering, view, &accumulate));
 
         (written, written_light.or(lit_searched))
       }

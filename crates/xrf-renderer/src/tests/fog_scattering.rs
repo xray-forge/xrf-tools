@@ -134,17 +134,20 @@ fn writes_the_height_fog_only_where_it_is_drawn() {
 fn scatters_only_an_enhanced_fog_drawn_lit_and_solid() {
   let size: (u32, u32) = (1001, 503);
   let scattered: RenderViewOptions = options_with(enhanced());
+  let fog: Option<RenderFog> = fogged().fog;
 
-  assert!(FogScatteringUniform::for_view(&scattered, true, size, 0.0).is_some());
-  assert!(FogScatteringUniform::for_view(&scattered, false, size, 0.0).is_none());
-  assert!(FogScatteringUniform::for_view(&options_with(RenderFogSettings::default()), true, size, 0.0).is_none());
+  assert!(FogScatteringUniform::for_view(&scattered, fog.as_ref(), size, 0.0).is_some());
+  assert!(FogScatteringUniform::for_view(&scattered, None, size, 0.0).is_none());
+  assert!(
+    FogScatteringUniform::for_view(&options_with(RenderFogSettings::default()), fog.as_ref(), size, 0.0).is_none()
+  );
   assert!(
     FogScatteringUniform::for_view(
       &options_with(RenderFogSettings {
         scattering: 0.0,
         ..enhanced()
       }),
-      true,
+      fog.as_ref(),
       size,
       0.0
     )
@@ -155,13 +158,13 @@ fn scatters_only_an_enhanced_fog_drawn_lit_and_solid() {
 
   wireframe.mode.is_wireframe = true;
 
-  assert!(FogScatteringUniform::for_view(&wireframe, true, size, 0.0).is_none());
+  assert!(FogScatteringUniform::for_view(&wireframe, fog.as_ref(), size, 0.0).is_none());
 
   let mut unfogged: RenderViewOptions = scattered;
 
   unfogged.show.is_fogged = false;
 
-  assert!(FogScatteringUniform::for_view(&unfogged, true, size, 0.0).is_none());
+  assert!(FogScatteringUniform::for_view(&unfogged, fog.as_ref(), size, 0.0).is_none());
 }
 
 // A quarter, a half, then the frame's own size, rounding up; the strength held to one.

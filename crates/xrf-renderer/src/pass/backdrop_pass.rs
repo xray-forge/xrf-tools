@@ -63,10 +63,12 @@ impl BackdropPass {
   /// Returns an error when the shader does not compose or compile.
   pub fn prepare(
     &mut self,
-    (device, encoder): (&wgpu::Device, &mut FrameEncoder),
+    device: &wgpu::Device,
+    encoder: &mut FrameEncoder,
     source: PipelineSource<'_>,
     format: wgpu::TextureFormat,
-    (window, backdrop): (&mut Option<WindowBackdrop>, &BackdropUniform),
+    window: &mut Option<WindowBackdrop>,
+    backdrop: &BackdropUniform,
   ) -> XrfResult {
     let window: &mut WindowBackdrop = window.get_or_insert_with(|| {
       let uniform: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
