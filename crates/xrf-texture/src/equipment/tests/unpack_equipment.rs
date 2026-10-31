@@ -1,4 +1,5 @@
-//! Equipment extraction writes one icon per section name, so the name must not be able to leave the destination.
+//! Equipment extraction writes one icon per section name, cut from the source at its grid slot, so the name must not
+//! be able to leave the destination and the slot must lie inside the source.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -95,4 +96,18 @@ fn writes_each_icon_under_its_section_name_as_spelled() {
   assert!(root.join("out").join("wpn_AK74.dds").is_file());
   assert!(root.join("out").join("wpn ak74 (old).dds").is_file());
   assert_eq!(fs::read(root.join("victim.dds")).expect("sentinel"), SENTINEL);
+}
+
+#[test]
+fn skips_an_icon_whose_pixels_pass_u32() {
+  let root: PathBuf = create_root("past-u32");
+  let mut options: EquipmentSpriteUnpackOptions = options_for(&root, &["wpn_near", "wpn_far"]);
+
+  // 85,899,346 columns of 50 pixels wrap a `u32` to 4, which would cut the icon from inside the source.
+  options.ltx.set_to("wpn_far", "inv_grid_x".into(), "85899346".into());
+
+  EquipmentSpriteUnpacker::unpack_sprites(options).expect("unpack");
+
+  assert!(root.join("out").join("wpn_near.dds").is_file());
+  assert!(!root.join("out").join("wpn_far.dds").exists());
 }
