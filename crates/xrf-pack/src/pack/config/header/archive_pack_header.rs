@@ -41,8 +41,9 @@ impl ArchivePackHeader {
       )));
     };
 
+    // Spelled exactly: `CInifile` lower-cases section names but finds keys with `strcmp`.
     for key in Self::REQUIRED_KEYS {
-      if !items.iter().any(|item| item.key.eq_ignore_ascii_case(key)) {
+      if !items.iter().any(|item| item.key == key) {
         return Err(XrfError::new_invalid_error(format!(
           "The archive header names no '{key}'. 'CLocatorAPI' reads it without checking whether it is there, so a \
            volume without it stops the engine on load rather than mounting oddly. Add it, or drop the header \
@@ -51,7 +52,7 @@ impl ArchivePackHeader {
       }
     }
 
-    let Some(entry_point) = items.iter().find(|item| item.key.eq_ignore_ascii_case("entry_point")) else {
+    let Some(entry_point) = items.iter().find(|item| item.key == "entry_point") else {
       return Ok(());
     };
 

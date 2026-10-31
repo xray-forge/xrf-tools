@@ -55,6 +55,9 @@ impl ArchivePackHeaderEntry {
   }
 
   /// The default header with `overrides` applied by key, keeping the order the defaults were written in.
+  ///
+  /// Keys match without case, so `Entry_Point` sets the default's `entry_point` in the spelling the engine finds: it
+  /// matches keys exactly, and an override added beside the default would be ignored.
   pub fn over_default(overrides: &[Self]) -> Vec<Self> {
     let mut entries: Vec<Self> = Self::split(&ArchivePackHeader::default_text());
 

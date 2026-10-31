@@ -70,6 +70,16 @@ fn a_header_missing_a_key_the_engine_reads_unconditionally_is_refused() {
 }
 
 #[test]
+fn a_required_key_is_found_only_as_spelled() {
+  // `CInifile` lower-cases the section name but finds a key with `strcmp`, so `r_string` misses `Entry_Point`.
+  let message: String = refusal(Some(
+    "[Header]\r\nauto_load = true\r\nEntry_Point = $fs_root$\\gamedata\\\r\n",
+  ));
+
+  assert!(message.contains("names no 'entry_point'"), "'{message}'");
+}
+
+#[test]
 fn a_header_with_no_section_is_refused() {
   let message: String = refusal(Some("auto_load = true\r\nentry_point = $fs_root$\\gamedata\\\r\n"));
 

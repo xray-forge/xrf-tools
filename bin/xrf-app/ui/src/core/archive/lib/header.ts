@@ -13,8 +13,11 @@ export const RESERVED_HEADER_KEYS: ReadonlyArray<string> = [HEADER_ENTRY_POINT, 
 export const DEFAULT_ENTRY_POINT: string = "$fs_root$\\gamedata\\";
 
 /**
- * Whether two header keys name the same value, which the engine decides with case ignored: it lower-cases the
- * section before reading it (`ArchivePackHeaderEntry::over_default`).
+ * Whether two header keys are the same key to an editor, with case ignored.
+ *
+ * The engine matches keys exactly, so this is a guard rather than its rule: a key differing from a present one only in
+ * case is refused as a duplicate, and a control writing `entry_point` or `auto_load` replaces a folded match with the
+ * engine's own spelling. `ArchivePackHeaderEntry::over_default` folds `--header` keys the same way.
  *
  * @param left - One key, as written.
  * @param right - The other.
