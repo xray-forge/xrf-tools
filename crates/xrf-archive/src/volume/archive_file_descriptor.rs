@@ -61,6 +61,12 @@ impl ArchiveFileDescriptor {
     self
   }
 
+  /// What decides between two copies of one engine path, the greater winning: the later volume, then the later
+  /// authored name, which settles two spellings one volume holds the same way every time.
+  pub fn get_precedence(&self) -> (u32, &str) {
+    (self.volume, &self.name)
+  }
+
   /// Whether the payload is stored LZO-compressed. Equal sizes are how the format says "stored as is".
   pub fn is_compressed(&self) -> bool {
     self.size_compressed != self.size_real

@@ -68,6 +68,9 @@ with `outcome` set to `JobOutcome::Cancelled`, so check the result's `outcome` b
   `gamedata\`) joined with its authored name. `extract_directory` writes the entries under one prefix of their names
   within the project, matched on whole path components without case, relative to that prefix; nothing under it is a
   `NotFound` error.
+- Both write one file per engine path: names spelled apart only by case are one file to the engine, which reads the
+  copy with the greater `ArchiveFileDescriptor::get_precedence` (the later volume), so that copy is the one written, on
+  every host.
 - Every entry name is checked before the first write: a name with a `.` or `..` component or a colon fails the run.
 - `unpack` and `extract_directory` follow existing symlinks, junctions, and other reparse points below the destination
   root; `ArchiveExtractOptions::with_link_policy(HostLinkPolicy::Refuse)` (`xrf_utils::HostLinkPolicy`) refuses them

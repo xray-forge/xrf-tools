@@ -267,9 +267,10 @@ fn extract_directory_stops_between_entries_when_cancelled() {
   assert!(!out.join("system.ltx").exists());
 }
 
-/// Two entries spelled apart only by case are one file on Windows: one of them writes it, never both at once.
+/// Two entries of one volume spelled apart only by case are one file to the engine, on every host: the later authored
+/// name writes it, the way the engine settles the tie.
 #[test]
-fn extract_directory_writes_a_file_the_host_names_twice_once() {
+fn extract_directory_writes_a_file_the_engine_names_twice_once() {
   let directory: PathBuf = create_temporary_directory("directory-case");
   let project: ArchiveProject = create_project(
     &directory,
@@ -287,16 +288,12 @@ fn extract_directory_writes_a_file_the_host_names_twice_once() {
     .expect("extraction");
 
   assert_eq!(result.outcome, JobOutcome::Completed);
-
-  if cfg!(windows) {
-    assert_eq!(result.extracted_count, 1);
-    assert!(
-      ["[upper]", "[lower]"].contains(&fs::read_to_string(out.join("system.ltx")).expect("the file").as_str()),
-      "one entry's payload, whole"
-    );
-  } else {
-    assert_eq!(result.extracted_count, 2);
-  }
+  assert_eq!(result.extracted_count, 1);
+  assert_eq!(
+    fs::read_to_string(out.join("system.ltx")).expect("the file"),
+    "[lower]",
+    "`system` sorts after `System`"
+  );
 }
 
 #[test]

@@ -149,7 +149,7 @@ impl XrayArchiveSource {
             .get(&slot.get().name)
             .expect("an indexed name belongs to the table it was read from");
 
-          if Self::to_precedence(descriptor) > Self::to_precedence(incumbent) {
+          if descriptor.get_precedence() > incumbent.get_precedence() {
             losers.push((slot.key().clone(), incumbent));
             slot.insert(IndexedEntry::of(descriptor, name));
           } else {
@@ -205,7 +205,7 @@ impl XrayArchiveSource {
 
       // Highest precedence first, so each copy is judged against the one directly ahead of it. The winner outranks
       // every one of them by construction, so it leads without being sorted in.
-      behind.sort_by(|first, second| Self::to_precedence(second).cmp(&Self::to_precedence(first)));
+      behind.sort_by(|first, second| second.get_precedence().cmp(&first.get_precedence()));
 
       for (index, loser) in behind.iter().enumerate() {
         let ahead: &ArchiveFileDescriptor = if index == 0 { winner } else { behind[index - 1] };
@@ -261,11 +261,6 @@ impl XrayArchiveSource {
     XrayLogicalPath::normalize(&name)
       .inspect_err(|error| log::warn!("Skipping archive entry '{}': {error}", descriptor.name))
       .ok()
-  }
-
-  /// What decides between two copies of one identity: volume order first, then the authored name.
-  fn to_precedence(descriptor: &ArchiveFileDescriptor) -> (u32, &str) {
-    (descriptor.volume, &descriptor.name)
   }
 
   /// The volume one copy sits in, which is what a person needs to act on it.

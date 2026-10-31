@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::fs;
 use std::fs::File;
 use std::path::Path;
@@ -6,6 +8,7 @@ use std::time::Duration;
 use xrf_archive::{ArchiveFileDescriptor, ArchiveOpenVolumes, ArchiveProject};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{HostDestination, HostRelativePath, format_path};
+use xrf_vfs::XrayLogicalPath;
 
 use crate::path::{relative_to_prefix, to_host_relative};
 use crate::unpack::{
@@ -37,9 +40,8 @@ impl ArchiveUnpacker {
     // serves the whole run without a cursor to race for.
     let volumes: ArchiveOpenVolumes<'_> = project.open_volumes()?;
 
-    let entries: Vec<TreeEntry<&ArchiveFileDescriptor>> = project
-      .files
-      .values()
+    let entries: Vec<TreeEntry<&ArchiveFileDescriptor>> = Self::resolve_entries(project)
+      .into_iter()
       .map(|descriptor| {
         Ok(TreeEntry {
           source: descriptor,
@@ -85,9 +87,8 @@ impl ArchiveUnpacker {
 
     // Selected before anything is written, so the run knows how much it is about to do. The alternative - filtering
     // inside the write loop - leaves the total unknowable until the end, which is exactly when it stops being useful.
-    let selected: Vec<TreeEntry<&ArchiveFileDescriptor>> = project
-      .files
-      .values()
+    let selected: Vec<TreeEntry<&ArchiveFileDescriptor>> = Self::resolve_entries(project)
+      .into_iter()
       .filter_map(|descriptor| relative_to_prefix(&descriptor.name, &normalized).map(|relative| (descriptor, relative)))
       .map(|(descriptor, relative)| {
         Ok(TreeEntry {
@@ -145,6 +146,41 @@ impl ArchiveUnpacker {
       destination: format_path(destination.as_ref()).to_string(),
       size: descriptor.size_real as u64,
     })
+  }
+
+  /// The entries a bulk write takes: every directory record, and for each engine path the one file the engine resolves
+  /// it to.
+  fn resolve_entries(project: &ArchiveProject) -> Vec<&ArchiveFileDescriptor> {
+    let mut resolved: Vec<&ArchiveFileDescriptor> = Vec::with_capacity(project.files.len());
+    let mut winners: HashMap<String, &ArchiveFileDescriptor> = HashMap::new();
+
+    for descriptor in project.files.values() {
+      if descriptor.is_directory {
+        resolved.push(descriptor);
+
+        continue;
+      }
+
+      // A name that is no engine path keeps its own slot, and is refused as a host path when its turn to be written
+      // comes, as it was before.
+      let identity: String =
+        XrayLogicalPath::normalize(&descriptor.name).unwrap_or_else(|_| descriptor.name.to_string());
+
+      match winners.entry(identity) {
+        Entry::Vacant(slot) => {
+          slot.insert(descriptor);
+        }
+        Entry::Occupied(mut slot) => {
+          if descriptor.get_precedence() > slot.get().get_precedence() {
+            slot.insert(descriptor);
+          }
+        }
+      }
+    }
+
+    resolved.extend(winners.into_values());
+
+    resolved
   }
 
   /// Writes the selected entries through the shared tree writer, reading each payload out of its volume.
