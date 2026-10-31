@@ -2,8 +2,8 @@ use std::ffi::OsString;
 use std::io::Result as IoResult;
 use std::path::Path;
 
-/// What the host's filesystem accepts, for tests that pin containment and non-text path rules: links it may refuse to
-/// create, and a file name it holds but `Path::to_str` refuses.
+/// What the host's filesystem accepts, for tests that pin containment, non-text path and unreadable-tree rules: links it
+/// may refuse to create, a file name it holds but `Path::to_str` refuses, and a directory it can be told not to list.
 pub struct HostFilesystem;
 
 impl HostFilesystem {
@@ -58,6 +58,64 @@ impl HostFilesystem {
 
       OsString::from_wide(&[0x041C, 0xD83D, 0x043E])
     }
+  }
+
+  /// Make `directory` unlistable for the running account, answering whether the denial took effect.
+  ///
+  /// The only portable way to make a walk fail. No account is bound by its own denial on every host, though: `root`
+  /// ignores a zero mode outright. A run that cannot deny says so and skips, rather than passing a check it never made.
+  pub fn deny_listing(directory: &Path) -> bool {
+    Self::set_listing_denied(directory, true);
+
+    if std::fs::read_dir(directory).is_ok() {
+      eprintln!(
+        "skipping: '{}' stays readable for the account running this",
+        directory.display()
+      );
+
+      Self::allow_listing(directory);
+
+      return false;
+    }
+
+    true
+  }
+
+  /// Give back what [`Self::deny_listing`] took, so the scratch tree can be removed again.
+  pub fn allow_listing(directory: &Path) {
+    Self::set_listing_denied(directory, false);
+  }
+
+  #[cfg(unix)]
+  fn set_listing_denied(directory: &Path, is_denied: bool) {
+    use std::os::unix::fs::PermissionsExt;
+
+    let mode: u32 = if is_denied { 0o000 } else { 0o755 };
+
+    std::fs::set_permissions(directory, std::fs::Permissions::from_mode(mode)).expect("directory mode");
+  }
+
+  /// Windows has no mode bits, so a deny entry for the running account is what stops this process listing the directory.
+  ///
+  /// A failure is left to the caller's own readability check, because a filesystem that carries no access list refuses
+  /// the command and stays readable, which is exactly the case that should skip.
+  #[cfg(windows)]
+  fn set_listing_denied(directory: &Path, is_denied: bool) {
+    use std::process::{Command, Stdio};
+
+    let user: String = std::env::var("USERNAME").expect("the running account");
+    let rule: [String; 2] = if is_denied {
+      [String::from("/deny"), format!("{user}:(RD)")]
+    } else {
+      [String::from("/remove:d"), user]
+    };
+
+    let _ = Command::new("icacls")
+      .arg(directory)
+      .args(rule)
+      .stdout(Stdio::null())
+      .stderr(Stdio::null())
+      .status();
   }
 
   /// One raw argument, because `cmd` re-parses the line and both paths may hold spaces.

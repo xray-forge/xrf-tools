@@ -1,7 +1,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_test_utils::GeneratedResources;
+use xrf_error::XrfResult;
+use xrf_test_utils::{GeneratedResources, HostFilesystem};
 
 use crate::mount::XrayMountPlan;
 use crate::{
@@ -147,6 +148,70 @@ fn a_declaration_reads_its_volumes_as_deep_as_its_recurs_column_says() {
       .get_mounts()
       .iter()
       .all(|mount| mount.origin == "$arch_dir$" || mount.origin == "$game_data$")
+  );
+}
+
+#[test]
+fn a_recursive_declaration_reaches_volumes_only_its_subdirectories_hold() {
+  // `Recurse` descends whether or not the declared directory holds a volume itself, so a `db\` whose volumes all sit a
+  // level down is mounted the same as one holding a volume at its top.
+  let volumes: [&str; 1] = ["db\\configs\\configs.db0"];
+
+  let deep_root: PathBuf = install_with("nested_only_recurs_true", RECURSIVE_ARCH_DIR_FSGAME, &volumes);
+  let shallow_root: PathBuf = install_with("nested_only_recurs_false", ARCH_DIR_FSGAME, &volumes);
+
+  assert_eq!(
+    archive_paths(
+      &XrayMountPlan::from_fsgame(&deep_root).expect("fsgame plans"),
+      &deep_root
+    ),
+    vec![declared("db\\configs\\configs.db0")]
+  );
+  assert!(
+    archive_paths(
+      &XrayMountPlan::from_fsgame(&shallow_root).expect("fsgame plans"),
+      &shallow_root
+    )
+    .is_empty(),
+    "a non-recursive alias still reads only the directory it names"
+  );
+}
+
+#[test]
+fn a_recursive_declaration_it_cannot_walk_is_planned_for_its_open_to_report() {
+  // `$app_data_root$` is recursive and outside gamedata, so it is walked for volumes. A subtree it cannot list is the
+  // unreadable case one level down: planned as one archive, whose open fails and is recorded, rather than costing the
+  // rest of the installation.
+  let root: PathBuf = install(
+    "unwalkable",
+    &["appdata\\locked\\save.sav", "gamedata\\configs\\system.ltx"],
+  );
+  let locked: PathBuf = root.join("appdata").join("locked");
+
+  if !HostFilesystem::deny_listing(&locked) {
+    return;
+  }
+
+  let plan: XrfResult<XrayMountPlan> = XrayMountPlan::from_fsgame(&root);
+
+  HostFilesystem::allow_listing(&locked);
+
+  let plan: XrayMountPlan = plan.expect("the installation still plans");
+
+  assert_eq!(archive_paths(&plan, &root), vec![declared("appdata")]);
+}
+
+#[test]
+fn a_recursive_declaration_inside_gamedata_is_not_walked_for_volumes() {
+  // `$game_meshes$` is recursive and lies inside gamedata, whose own mount reads its loose files; walking every such
+  // subtree for volumes would cost a full gamedata walk on every mount.
+  let plan: XrayMountPlan = plan("gamedata_recursive", &["gamedata\\meshes\\nested\\meshes.db0"]);
+
+  assert!(
+    plan
+      .get_mounts()
+      .iter()
+      .all(|mount| mount.kind == XraySourceKind::Directory)
   );
 }
 

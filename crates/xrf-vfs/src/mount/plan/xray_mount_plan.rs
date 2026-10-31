@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use xrf_archive::{ArchiveDescriptor, ArchiveProject};
 use xrf_error::XrfResult;
@@ -78,9 +78,14 @@ impl XrayMountPlan {
 
   /// Appends one archive mount per volume beneath `path`, highest priority first.
   fn with_volumes_beneath(self, path: &Path, origin: &str) -> XrfResult<Self> {
+    self.with_volumes(ArchiveProject::get_discover_volumes(path)?, origin)
+  }
+
+  /// Appends one archive mount per volume, given in merge order, highest priority first.
+  fn with_volumes(self, volumes: Vec<PathBuf>, origin: &str) -> XrfResult<Self> {
     let mut plan: Self = self;
 
-    for volume in ArchiveProject::get_discover_volumes(path)?.into_iter().rev() {
+    for volume in volumes.into_iter().rev() {
       plan = plan.with_kind(volume, "", origin, XraySourceKind::Archive)?;
     }
 
@@ -119,23 +124,17 @@ impl XrayMountPlan {
       }
 
       // A recursive alias reaches volumes a subdirectory holds, because `ProcessOne` archives any `.db*` file
-      // `Recurse` descends onto. Anomaly declares every `$arch_dir*$` with `recurs = false`, which stops at the
-      // directory itself and is the branch below.
+      // `Recurse` descends onto, whether or not the directory holds one itself. Anomaly declares every `$arch_dir*$`
+      // with `recurs = false`, which stops at the directory itself.
       //
-      // Still gated on the volumes the directory holds itself, which is cheap. Asking whether any recursive alias has
-      // a volume somewhere beneath it would walk each declared gamedata subtree on every mount, and such an alias is
-      // already absent from the plan for holding no volumes at all.
-      match Self::scan_volumes(&path) {
-        VolumeScan::Present => {
-          plan = if declaration.is_recursive {
-            plan.with_volumes_beneath(&path, &declaration.alias)?
-          } else {
-            plan.with_kind(path, "", &declaration.alias, XraySourceKind::Archive)?
-          };
-        }
-        // The fsgame norm: most declared aliases resolve inside gamedata or name writable state, and a real installation
-        // omits some twenty of them. Recording those would make every healthy project report incomplete coverage.
-        VolumeScan::Absent => {}
+      // A recursive alias inside gamedata is searched only when it holds volumes directly: the gamedata mount already
+      // reads its loose files, and walking every such subtree for volumes nothing ships there would cost a full
+      // gamedata walk on every mount.
+      // todo: Mount volumes a recursive alias inside gamedata reaches only in its subdirectories, which the engine
+      // archives too.
+      let scan: VolumeScan = Self::scan_volumes(&path);
+
+      match scan {
         // Planned as one archive despite the failed listing, so opening it fails where the omission is recorded and
         // reported rather than here, where nothing but the log would ever say the source went unread. Never the
         // recursive branch: discovering volumes beneath a directory that cannot be listed is the same failure, and
@@ -143,6 +142,26 @@ impl XrayMountPlan {
         VolumeScan::Unreadable => {
           plan = plan.with_kind(path, "", &declaration.alias, XraySourceKind::Archive)?;
         }
+        _ if declaration.is_recursive && (scan == VolumeScan::Present || !Self::is_inside_gamedata(fsgame, &path)) => {
+          plan = match ArchiveProject::get_discover_volumes(&path) {
+            Ok(volumes) => plan.with_volumes(volumes, &declaration.alias)?,
+            // Walked only for being recursive, holding no volume of its own: a subtree that cannot be walked is the
+            // unreadable case one level down, planned the same way so it is recorded rather than failing the rest of
+            // the installation.
+            Err(error) if scan == VolumeScan::Absent => {
+              log::warn!("Cannot walk declared directory {}: {error}", format_path(&path));
+
+              plan.with_kind(path, "", &declaration.alias, XraySourceKind::Archive)?
+            }
+            Err(error) => return Err(error),
+          };
+        }
+        VolumeScan::Present => {
+          plan = plan.with_kind(path, "", &declaration.alias, XraySourceKind::Archive)?;
+        }
+        // The fsgame norm: most declared aliases resolve inside gamedata or name writable state, and a real installation
+        // omits some twenty of them. Recording those would make every healthy project report incomplete coverage.
+        VolumeScan::Absent => {}
       }
     }
 
@@ -254,6 +273,13 @@ impl XrayMountPlan {
   /// Whether a loose directory is the installation's gamedata root rather than one of its subdirectories.
   fn is_gamedata_root(fsgame: &FsgameFile, path: &Path) -> bool {
     fsgame.resolve("$game_data$").is_some_and(|gamedata| gamedata == path)
+  }
+
+  /// Whether a declared directory is the installation's gamedata root or lies below it.
+  fn is_inside_gamedata(fsgame: &FsgameFile, path: &Path) -> bool {
+    fsgame
+      .resolve("$game_data$")
+      .is_some_and(|gamedata| path.starts_with(gamedata))
   }
 }
 

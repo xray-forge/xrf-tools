@@ -1,16 +1,14 @@
 //! What the configuration's rules put in the archive and keep out of it, and what an excluded subtree is spared.
-//!
-//! The rules themselves are unit tested beside the configuration that owns them. These pack real trees, which is
-//! where a rule can be caught reaching a neighbour it shares a prefix with, or reading a subtree it excluded.
 
 use std::path::PathBuf;
 
 use xrf_archive::ArchiveProject;
 use xrf_error::XrfError;
 use xrf_ltx::Ltx;
+use xrf_test_utils::HostFilesystem;
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
-use crate::pack::tests::fixtures::{BINARY, CONFIG, allow_directory, create_config, deny_directory, open, pack, read};
+use crate::pack::tests::fixtures::{BINARY, CONFIG, create_config, open, pack, read};
 use crate::pack::{ArchivePackResult, ArchivePacker};
 
 #[test]
@@ -130,14 +128,14 @@ fn refuses_to_pack_a_source_subtree_it_cannot_read() {
   );
   let locked: PathBuf = config.source.join("scripts").join("locked");
 
-  if !deny_directory(&locked) {
+  if !HostFilesystem::deny_listing(&locked) {
     return;
   }
 
   let result: Result<ArchivePackResult, XrfError> = ArchivePacker::pack(&config);
 
   // Restored before asserting, so a failed expectation still leaves a tree the next run can remove.
-  allow_directory(&locked);
+  HostFilesystem::allow_listing(&locked);
 
   assert!(
     result.is_err(),
@@ -167,13 +165,13 @@ fn does_not_read_a_recursively_excluded_subtree() {
     is_recursive: true,
   }];
 
-  if !deny_directory(&locked) {
+  if !HostFilesystem::deny_listing(&locked) {
     return;
   }
 
   let result: Result<ArchivePackResult, XrfError> = ArchivePacker::pack(&config);
 
-  allow_directory(&locked);
+  HostFilesystem::allow_listing(&locked);
 
   assert_eq!(
     result.expect("the excluded subtree is never read").files_total,
