@@ -2,7 +2,7 @@ use std::ptr;
 use std::sync::{Arc, Weak};
 
 use xrf_material::XraySurfaceDraw;
-use xrf_renderer_core::{FrameGraph, GraphBindings, GraphRuntime, StorageArray, UniformBinding};
+use xrf_renderer_core::{GraphDeclaration, StorageArray, UniformBinding};
 
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::view_target_handles::ViewTargetHandles;
@@ -103,7 +103,11 @@ impl ThunderFeature {
   /// `lighting`; nothing while no bolt strikes.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (handles, lighting): (ViewTargetHandles, UniformBinding<LightingUniform>),

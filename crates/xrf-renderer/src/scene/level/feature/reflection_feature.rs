@@ -1,6 +1,6 @@
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBufferAccess, GraphColorAttachment, GraphRuntime, GraphTexture,
-  GraphTextureDescriptor, StorageValue, UniformBinding,
+  FrameGraph, GraphBufferAccess, GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor,
+  StorageValue, UniformBinding,
 };
 
 use crate::context::gpu_requirements::can_trace;
@@ -122,7 +122,7 @@ impl ReflectionFeature {
   /// are and never stop a ray going for what lies behind them. Nothing where they are not traced.
   pub fn add_pyramid_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     depth: GraphTexture,
   ) {
@@ -160,7 +160,7 @@ impl ReflectionFeature {
   /// draw, the depth the target the last frame drew into.
   pub fn import_source<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
   ) -> Option<(GraphTexture, GraphTexture)> {
     self.history.as_ref().map(|history| {
       (
@@ -177,7 +177,11 @@ impl ReflectionFeature {
   /// (what each traced pixel met, the ray's length in alpha), none where they are not traced.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (targets, lit, (wet_surface, wet_reach)): (ViewTargetHandles, LightingHandles<'a>, (GraphTexture, GraphTexture)),
@@ -201,7 +205,8 @@ impl ReflectionFeature {
     };
     let traced: GraphTexture = create("reflections traced", (width, height), ReflectionPass::TRACED);
     let ends: GraphTexture = create("reflections ends", (width, height), ReflectionPass::ENDS);
-    let frames: Option<ReflectionFrameHandles> = Self::import_frames((&mut *graph, &mut *bindings), history);
+    let frames: Option<ReflectionFrameHandles> =
+      Self::import_frames(GraphDeclaration::new(graph, bindings, runtime), history);
     let read: [GraphTexture; 3] = frames.as_ref().map_or([empty; 3], |frames| {
       [frames.radiance[0], frames.surface[0], frames.held[0]]
     });
@@ -238,7 +243,7 @@ impl ReflectionFeature {
       history_sampler: passes.reflections.get_sampler(),
     };
     self.add_trace_passes(
-      (&mut *graph, &mut *bindings),
+      GraphDeclaration::new(graph, bindings, runtime),
       passes,
       view,
       (&parameters, sky, lit),
@@ -262,7 +267,7 @@ impl ReflectionFeature {
   /// for read back for its list's room.
   fn add_trace_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (parameters, sky, lit): (&ReflectionParameters<'a>, SkyParameters<'a>, LightingHandles<'a>),
@@ -473,7 +478,7 @@ impl ReflectionFeature {
   /// The denoiser's history as the frame's graph holds it, the side read and the side written of each, while it is
   /// denoised.
   fn import_frames<'a>(
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     history: &'a ReflectionHistory,
   ) -> Option<ReflectionFrameHandles> {
     history.frames.as_ref().map(|frames| {

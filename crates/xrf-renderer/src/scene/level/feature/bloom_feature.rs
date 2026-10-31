@@ -1,7 +1,5 @@
 use xrf_engine_target::XrayEngine;
-use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
-};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding};
 
 use crate::contract::render_bloom_settings::RenderBloomSettings;
 use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
@@ -122,7 +120,11 @@ impl BloomFeature {
   /// and the depth and marks it reads are the frame's as drawn (`frame`).
   pub fn add_enhanced_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (targets, image, frame, lighting): (
@@ -255,7 +257,7 @@ impl BloomFeature {
   /// texel, the same light however the jitter falls.
   pub fn add_engine_passes<'a>(
     &self,
-    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     handles: ViewTargetHandles,
   ) {

@@ -1,7 +1,5 @@
 use glam::Vec4;
-use xrf_renderer_core::{
-  FrameGraph, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
-};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding};
 
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::view_target_handles::ViewTargetHandles;
@@ -46,7 +44,7 @@ impl SunTraceFeature {
   /// sees at each pixel; none otherwise, the sun's cascades shadowing the frame.
   pub fn add_passes<'a>(
     &self,
-    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     targets: ViewTargetHandles,

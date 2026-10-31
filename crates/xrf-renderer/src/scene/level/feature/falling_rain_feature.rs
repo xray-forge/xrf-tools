@@ -2,9 +2,7 @@ use std::ptr;
 use std::sync::{Arc, Weak};
 
 use glam::{Vec2, Vec3, Vec4};
-use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, StorageArray, StorageValue,
-};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, StorageArray, StorageValue};
 
 use crate::contract::render_rain_settings::RenderRainSettings;
 
@@ -184,7 +182,11 @@ impl FallingRainFeature {
   /// and the distortion under the enhanced streaks, which draw after the resolve (`add_over_resolved`).
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (handles, lit, covers): (
@@ -193,7 +195,8 @@ impl FallingRainFeature {
       (Option<GraphTexture>, GraphTexture, GraphTexture),
     ),
   ) {
-    let Some((counts, parameters)) = self.get_parameters((&mut *graph, &mut *bindings, runtime), passes, covers, None)
+    let Some((counts, parameters)) =
+      self.get_parameters(GraphDeclaration::new(graph, bindings, runtime), passes, covers, None)
     else {
       return;
     };
@@ -202,7 +205,12 @@ impl FallingRainFeature {
     let look: Option<RainLookParameters<'a>> = (self.uniform.is_enhanced != 0).then(|| {
       let nothing: GraphTexture = bindings.import_view(&mut *graph, "rain nothing", passes.rain.get_nothing());
 
-      self.get_look((&mut *graph, &mut *bindings), passes, (handles, lit), nothing)
+      self.get_look(
+        GraphDeclaration::new(graph, bindings, runtime),
+        passes,
+        (handles, lit),
+        nothing,
+      )
     });
     let mut pass = add_over_scene(&mut *graph, handles, "rain").parameters(&parameters);
 
@@ -219,7 +227,11 @@ impl FallingRainFeature {
   /// no history holds them; answers the copy, which the window pass shows in its place, none without enhanced rain.
   pub fn add_over_resolved<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (handles, lit, covers): (
@@ -233,12 +245,21 @@ impl FallingRainFeature {
       return None;
     }
 
-    let ((streaks, _, _), parameters) =
-      self.get_parameters((&mut *graph, &mut *bindings, runtime), passes, covers, Some(size))?;
+    let ((streaks, _, _), parameters) = self.get_parameters(
+      GraphDeclaration::new(graph, bindings, runtime),
+      passes,
+      covers,
+      Some(size),
+    )?;
     let layer: GraphTexture = passes.rain.add_layer(&mut *graph, shown, size);
     // `phase_ssfx_rain`: what the drops bend, the image as shown, blurred small.
     let refracted: GraphTexture = passes.rain.add_blur(&mut *graph, shown, size);
-    let look: RainLookParameters<'a> = self.get_look((&mut *graph, &mut *bindings), passes, (handles, lit), refracted);
+    let look: RainLookParameters<'a> = self.get_look(
+      GraphDeclaration::new(graph, bindings, runtime),
+      passes,
+      (handles, lit),
+      refracted,
+    );
 
     graph
       .add_raster_pass("rain")
@@ -254,7 +275,11 @@ impl FallingRainFeature {
   /// answers them, none without them.
   pub fn add_rings<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     covers: (Option<GraphTexture>, GraphTexture, GraphTexture),
@@ -265,7 +290,7 @@ impl FallingRainFeature {
       .as_ref()
       .filter(|_| is_read && self.uniform.get_rings() > 0.0)?;
     let ((_, near, _), parameters) =
-      self.get_parameters((&mut *graph, &mut *bindings, runtime), passes, covers, None)?;
+      self.get_parameters(GraphDeclaration::new(graph, bindings, runtime), passes, covers, None)?;
     let levels: [GraphTexture; RainRings::LEVELS as usize] =
       std::array::from_fn(|level| bindings.import_view(&mut *graph, "rain rings level", &rings.level_views[level]));
 
@@ -280,7 +305,11 @@ impl FallingRainFeature {
   /// streaks, the near ones and the splash's indices to draw; none without rain or a cover.
   fn get_parameters<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     (cover, surface_water, surface_lowest): (Option<GraphTexture>, GraphTexture, GraphTexture),
     over: Option<(u32, u32)>,
@@ -311,7 +340,7 @@ impl FallingRainFeature {
   /// What the enhanced rain reads beside it, the image it bends being `refracted`.
   fn get_look<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     (handles, lit): (ViewTargetHandles, &LightingHandles<'a>),
     refracted: GraphTexture,

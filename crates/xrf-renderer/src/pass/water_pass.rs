@@ -1,8 +1,8 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
-  GraphTexture, GraphTextureDescriptor, PassParameters, RasterContext, RasterPassBuilder, RenderPipelineDescription,
-  StorageValue, UniformBinding,
+  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDeclaration,
+  GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, PassParameters, RasterContext,
+  RasterPassBuilder, RenderPipelineDescription, StorageValue, UniformBinding,
 };
 
 use crate::frame::texture_copy::add_texture_copy;
@@ -255,7 +255,7 @@ impl WaterPass {
 
     let (blurred, clear): (GraphTexture, GraphTexture) = match reflection {
       Some(reflection) => self.add_reflection_passes(
-        (graph, bindings, runtime),
+        GraphDeclaration::new(graph, bindings, runtime),
         (draw, frame),
         (enhanced, scene, nothing),
         reflection,
@@ -310,7 +310,11 @@ impl WaterPass {
   /// blurred. Answers the reflection blurred and the history written.
   fn add_reflection_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     (draw, frame): (&WaterDraw<'a>, &WaterFrameHandles<'a>),
     (enhanced, scene, nothing): (UniformBinding<EnhancedWaterUniform>, GraphTexture, GraphTexture),
     (reflection, histories, blue_noise): (&'a WaterReflection, [GraphTexture; 2], GraphTexture),

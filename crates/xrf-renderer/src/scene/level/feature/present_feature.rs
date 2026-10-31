@@ -1,4 +1,4 @@
-use xrf_renderer_core::{FrameGraph, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor};
 
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_view_options::RenderViewOptions;
@@ -82,7 +82,7 @@ impl PresentFeature {
   /// says, drawn back into it. Nothing where nothing distorts.
   pub fn add_distortion_pass<'a>(
     &self,
-    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     handles: ViewTargetHandles,

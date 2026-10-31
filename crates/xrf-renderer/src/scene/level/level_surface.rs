@@ -1,5 +1,5 @@
 use glam::{Vec2, Vec4};
-use xrf_renderer_core::{FrameGraph, GraphBindings, GraphRuntime, GraphTexture, UniformBinding};
+use xrf_renderer_core::{GraphDeclaration, GraphTexture, UniformBinding};
 
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
@@ -174,7 +174,11 @@ impl LevelSurface {
   /// Answers its lowest heights, its puddles and its water as the graph knows them; the dry stand-ins otherwise.
   pub fn add_surface_passes<'a>(
     surface: Option<&'a LevelSurface>,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
     (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
@@ -189,7 +193,7 @@ impl LevelSurface {
       let water: UniformBinding<WaterUniform> = runtime.push_uniform(water);
 
       return surface.add_passes(
-        (graph, bindings, runtime),
+        GraphDeclaration::new(graph, bindings, runtime),
         passes,
         scene,
         (params, textures),
@@ -211,7 +215,11 @@ impl LevelSurface {
   /// depth, which the wet passes read.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
     (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
@@ -224,7 +232,7 @@ impl LevelSurface {
     let cells: u32 = Self::get_cells(self.map.get_shape());
 
     self.water.add_passes(
-      (&mut *graph, &mut *bindings, &mut *runtime),
+      GraphDeclaration::new(graph, bindings, runtime),
       passes,
       (scene, water_depth),
       (params, textures),
@@ -235,7 +243,7 @@ impl LevelSurface {
     // over a water map not yet drawn where the level's water has streamed in would stand under it.
     if self.map.is_due() || self.water.is_due() || self.is_fire_due {
       self.add_placing_passes(
-        (&mut *graph, &mut *bindings, runtime),
+        GraphDeclaration::new(graph, bindings, runtime),
         passes,
         scene,
         (params, textures),
@@ -262,7 +270,11 @@ impl LevelSurface {
   /// Draws the surface where it is due, and places its lowest heights and sites from it and the water.
   fn add_placing_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
     (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
@@ -273,7 +285,7 @@ impl LevelSurface {
     let sites: GraphTexture = bindings.import_view(&mut *graph, "puddle sites", &self.sites);
 
     self.map.add_passes(
-      (&mut *graph, &mut *bindings, &mut *runtime),
+      GraphDeclaration::new(graph, bindings, runtime),
       passes,
       (scene, surface),
       (params, textures),

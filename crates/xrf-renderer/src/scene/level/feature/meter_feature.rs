@@ -1,4 +1,4 @@
-use xrf_renderer_core::{FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, StorageValue, StorageValueMut};
+use xrf_renderer_core::{GraphBuffer, GraphBufferAccess, GraphDeclaration, StorageValue, StorageValueMut};
 
 use crate::contract::render_meter_reading::RenderMeterReading;
 use crate::contract::render_view_options::RenderViewOptions;
@@ -47,7 +47,7 @@ impl MeterFeature {
   /// its way; nothing while it does not meter.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (targets, lit): (ViewTargetHandles, LightingHandles<'a>),

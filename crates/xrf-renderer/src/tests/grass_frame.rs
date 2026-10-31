@@ -1,7 +1,9 @@
 use std::sync::Arc;
 
 use glam::{Mat4, Vec3};
-use xrf_renderer_core::{FrameGraph, GraphBindings, GraphCompileOptions, GraphRuntime, GraphTexture, PipelineCache};
+use xrf_renderer_core::{
+  FrameGraph, GraphBindings, GraphCompileOptions, GraphDeclaration, GraphRuntime, GraphTexture, PipelineCache,
+};
 use xrf_visual::{DetailsDescription, DetailsModel, DetailsPackage, VisualSection};
 
 use crate::camera::camera_view::CameraView;
@@ -187,7 +189,10 @@ impl GrassFrames {
         (&self.targets, ViewTargetUses::default(), &self.targets.light),
       );
       let planting: GrassPlanting = grass
-        .add_planting((&mut graph, &mut bindings, &mut self.runtime), (pass, Some(level)))
+        .add_planting(
+          GraphDeclaration::new(&mut graph, &mut bindings, &mut self.runtime),
+          (pass, Some(level)),
+        )
         .expect("the grass is planted");
       let occlusion: GrassOcclusionParameters = GrassOcclusionParameters {
         pyramid: bindings.import_view(&mut graph, "grass test pyramid", &self.pyramid.view),
@@ -198,7 +203,11 @@ impl GrassFrames {
 
       grass.add_cull(&mut graph, (pass, Some(level)), (planting, occlusion));
 
-      let cards: Option<GrassCardHandles> = grass.add_cards((&mut graph, &mut bindings), (pass, Some(level)), planting);
+      let cards: Option<GrassCardHandles> = grass.add_cards(
+        GraphDeclaration::new(&mut graph, &mut bindings, &mut self.runtime),
+        (pass, Some(level)),
+        planting,
+      );
 
       grass.add_draw(
         &mut graph,
@@ -209,7 +218,7 @@ impl GrassFrames {
 
       let casters: GrassShadowCasters<'_> = grass
         .get_shadow_casters(
-          (&mut graph, &mut bindings),
+          GraphDeclaration::new(&mut graph, &mut bindings, &mut self.runtime),
           (pass, Some(level), textures.get_bind_group()),
           cards,
         )

@@ -1,6 +1,4 @@
-use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphTexture, GraphTextureDescriptor, StorageValue,
-};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, StorageValue};
 
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::combine_parameters::CombineParameters;
@@ -37,7 +35,7 @@ impl CombineFeature {
   /// surface and the wet reach the units before it answered (`products`, in that order).
   pub fn add_passes<'a>(
     &self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (handles, lit, sky): (ViewTargetHandles, LightingHandles<'a>, SkyParameters<'a>),

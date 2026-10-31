@@ -1,7 +1,7 @@
 use glam::{Mat4, UVec4, Vec2, Vec3, Vec4};
 use xrf_math::EPS_S;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
+  FrameGraph, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDeclaration, GraphDepthAttachment,
   GraphTexture,
 };
 
@@ -194,14 +194,18 @@ impl StaticsFeature {
   /// tests against and the trees' sway pushed; none before the pyramid is made.
   pub fn import<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     statics: &'a StaticScene,
     wind: &WindUniform,
   ) -> Option<StaticSceneHandles> {
     let pyramid: &'a DepthPyramid = self.pyramid.as_ref()?;
 
     Some(StaticSceneHandles::import(
-      (graph, bindings, runtime),
+      GraphDeclaration::new(graph, bindings, runtime),
       statics,
       &pyramid.view,
       (&self.cull, &self.occlusion, wind),
@@ -251,7 +255,7 @@ impl StaticsFeature {
   /// drawn.
   pub fn add_gbuffer_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &StaticSceneHandles),
     targets: ViewTargetHandles,

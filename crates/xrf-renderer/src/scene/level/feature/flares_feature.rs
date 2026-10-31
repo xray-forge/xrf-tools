@@ -3,8 +3,7 @@ use std::time::Instant;
 
 use glam::{Vec3, Vec4};
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphColorAttachment, GraphRuntime, GraphTexture, StorageValue,
-  StorageValueMut, UniformBinding,
+  GraphBuffer, GraphColorAttachment, GraphDeclaration, GraphTexture, StorageValue, StorageValueMut, UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -173,7 +172,11 @@ impl FlaresFeature {
   /// Measures how much of the sun shows and draws the flares and the gradient, where this frame draws them.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     pass: &'a FlarePass,
     (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
     view: &'a ViewBinding,

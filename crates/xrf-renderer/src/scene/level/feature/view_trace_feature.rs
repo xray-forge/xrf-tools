@@ -2,8 +2,7 @@ use std::collections::HashMap;
 
 use glam::Vec3;
 use xrf_renderer_core::{
-  AccelerationStructureBinding, FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphRuntime, StorageArray,
-  StorageArrayMut,
+  AccelerationStructureBinding, GraphBuffer, GraphBufferAccess, GraphDeclaration, StorageArray, StorageArrayMut,
 };
 
 use crate::frame::frame_encoder::FrameEncoder;
@@ -178,7 +177,7 @@ impl ViewTraceFeature {
   /// standing.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     statics: &StaticSceneHandles,
   ) -> Option<AccelerationStructureBinding<'a>> {
@@ -325,7 +324,11 @@ impl ViewTraceFeature {
   pub fn add_scene_trace<'a>(
     &'a self,
     scene: &'a LevelScene,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
     (grass_cards, lights, grass): (Option<GrassCardHandles>, &'a LightsFeature, &'a GrassView),
   ) -> Option<(TraceParameters<'a>, &'a wgpu::BindGroup)> {
@@ -361,7 +364,7 @@ impl ViewTraceFeature {
 
     // The view's own top level where its nearest trees stand swayed or its grass stands, the scene's otherwise.
     let swayed: Option<AccelerationStructureBinding<'a>> =
-      self.add_passes((&mut *graph, &mut *bindings), passes, &statics);
+      self.add_passes(GraphDeclaration::new(graph, bindings, runtime), passes, &statics);
 
     scene
       .trace

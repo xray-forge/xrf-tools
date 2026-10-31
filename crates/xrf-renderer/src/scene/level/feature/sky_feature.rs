@@ -1,7 +1,6 @@
 use glam::Vec4;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphColorAttachment, GraphRuntime, GraphTexture, StorageValue,
-  UniformBinding,
+  FrameGraph, GraphBuffer, GraphColorAttachment, GraphDeclaration, GraphTexture, StorageValue, UniformBinding,
 };
 
 use crate::contract::render_light_level::RenderLightLevel;
@@ -278,7 +277,11 @@ impl SkyFeature {
   /// sky's parameters, which the combine, the water and the composited surfaces bind, none before it is prepared.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     (handles, lit): (ViewTargetHandles, LightingHandles<'a>),
     surroundings: Option<(
@@ -296,12 +299,12 @@ impl SkyFeature {
     let sky: SkyParameters = passes.sky.import((views, cube), &mut *graph, &mut *bindings);
 
     if let Some(irradiance) = &self.irradiance {
-      irradiance.add_passes((&mut *graph, &mut *bindings), passes, (&sky, &lit));
+      irradiance.add_passes(GraphDeclaration::new(graph, bindings, runtime), passes, (&sky, &lit));
     }
 
     if let Some(prefilter) = &self.prefilter {
       self.add_prefilter_passes(
-        (&mut *graph, &mut *bindings, runtime),
+        GraphDeclaration::new(graph, bindings, runtime),
         passes,
         (&sky, prefilter, &lit),
         surroundings,
@@ -333,7 +336,11 @@ impl SkyFeature {
   /// drawn where none is; each after it from the mips before it over its roughness's lobe.
   fn add_prefilter_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     (sky, prefilter, lit): (&SkyParameters<'a>, &'a SkyPrefilter, &LightingHandles<'a>),
     surroundings: Option<(
@@ -353,7 +360,7 @@ impl SkyFeature {
 
       if let (0, Some((cube, scene, cull))) = (index, surroundings) {
         cube.add_passes(
-          (&mut *graph, &mut *bindings, runtime),
+          GraphDeclaration::new(graph, bindings, runtime),
           passes,
           scene,
           cull,

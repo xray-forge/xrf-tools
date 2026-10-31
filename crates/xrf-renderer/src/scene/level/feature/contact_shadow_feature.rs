@@ -1,7 +1,5 @@
 use glam::{Vec2, Vec3, Vec4};
-use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
-};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding};
 
 use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
@@ -76,7 +74,11 @@ impl ContactShadowFeature {
   /// and the uniform the lights read theirs by.
   pub fn add_passes<'a>(
     &self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     targets: ViewTargetHandles,

@@ -1,6 +1,6 @@
 use glam::{IVec2, IVec4, Vec3};
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime,
+  FrameGraph, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDeclaration, GraphDepthAttachment,
   GraphTexture, StorageArray, StorageArrayMut, StorageValue, StorageValueMut, UniformBinding,
 };
 
@@ -260,7 +260,7 @@ impl GrassView {
   /// The cards of `level` as the cascades draw them, stood this frame (`cards`), where they do.
   pub fn get_shadow_casters<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     (pass, level, textures): (&'a GrassPass, Option<&'a GrassLevel>, &'a wgpu::BindGroup),
     cards: Option<GrassCardHandles>,
   ) -> Option<GrassShadowCasters<'a>> {
@@ -284,7 +284,7 @@ impl GrassView {
   /// view traces them; none where the grass casts no shadow.
   pub fn add_cards<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     (pass, level): (&'a GrassPass, Option<&'a GrassLevel>),
     planting: GrassPlanting,
   ) -> Option<GrassCardHandles> {
@@ -434,7 +434,11 @@ impl GrassView {
   /// what the frame's cull, cards and draw bind of it.
   pub fn add_planting<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     (pass, level): (&'a GrassPass, Option<&'a GrassLevel>),
   ) -> Option<GrassPlanting> {
     let (Some(level), Some(build), Some((puddles, puddle_window))) = (level, &self.build, &self.puddles) else {

@@ -1,4 +1,4 @@
-use xrf_renderer_core::{FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, StorageValue, StorageValueMut};
+use xrf_renderer_core::{GraphBuffer, GraphBufferAccess, GraphDeclaration, StorageValue, StorageValueMut};
 
 use crate::frame::gpu_readback::GpuReadback;
 use crate::pass::level_passes::LevelPasses;
@@ -46,7 +46,7 @@ impl SkyIrradiance {
   /// Projects the sky this frame and copies the harmonics out, unless an earlier copy is still on its way.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     (sky, lit): (&SkyParameters<'a>, &LightingHandles<'a>),
   ) {

@@ -1,6 +1,4 @@
-use xrf_renderer_core::{
-  FrameGraph, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
-};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_camera_settings::RenderCameraSettings;
@@ -71,7 +69,7 @@ impl CameraFeature {
   /// `handles.motion`; the depth of field; the motion blur; and the lens.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     handles: ViewTargetHandles,
     (shown, size): (GraphTexture, (u32, u32)),

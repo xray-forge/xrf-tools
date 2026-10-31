@@ -1,4 +1,4 @@
-use xrf_renderer_core::{FrameGraph, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor};
 
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::indirect_trace_parameters::IndirectTraceParameters;
@@ -39,7 +39,7 @@ impl IndirectTraceFeature {
   /// group a missed ray reads. Answers the light and how far each ray went.
   pub fn add_passes<'a>(
     &self,
-    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (targets, lit, sky): (ViewTargetHandles, LightingHandles<'a>, SkyParameters<'a>),

@@ -1,4 +1,4 @@
-use xrf_renderer_core::{FrameGraph, GraphColorAttachment, GraphDepthAttachment, GraphRuntime};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphDepthAttachment};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_view_options::RenderViewOptions;
@@ -29,7 +29,7 @@ impl CalibrationFeature {
   /// Draws the props into the G-buffer over what the scene drew; nothing while they are not shown.
   pub fn add_passes<'a>(
     &self,
-    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     targets: ViewTargetHandles,

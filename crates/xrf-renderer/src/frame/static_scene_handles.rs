@@ -1,7 +1,6 @@
 use glam::UVec2;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphRuntime, GraphTexture, ShaderAtomicU32, StorageArray, StorageArrayMut,
-  UniformBinding,
+  GraphBuffer, GraphDeclaration, GraphTexture, ShaderAtomicU32, StorageArray, StorageArrayMut, UniformBinding,
 };
 
 use crate::pass::static_cull_parameters::StaticCullParameters;
@@ -52,7 +51,11 @@ impl StaticSceneHandles {
   /// Imports the static scene into a frame's graph once: its buffers, the camera's lists, arguments and candidates, the
   /// occlusion pyramid, and the cull's, occlusion's and wind's uniforms pushed, for every cull and static draw to bind.
   pub fn import<'r>(
-    (graph, bindings, runtime): (&mut FrameGraph<'_>, &mut GraphBindings<'r>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'r>,
     scene: &'r StaticScene,
     pyramid: &'r wgpu::TextureView,
     (cull, occlusion, wind): (&StaticCullUniform, &StaticOcclusionUniform, &WindUniform),

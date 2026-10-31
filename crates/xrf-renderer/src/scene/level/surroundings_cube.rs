@@ -1,6 +1,6 @@
 use glam::{Mat4, Vec2, Vec3};
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBufferAccess, GraphColorAttachment, GraphDepthAttachment, GraphRuntime, GraphTexture,
+  GraphBufferAccess, GraphColorAttachment, GraphDeclaration, GraphDepthAttachment, GraphTexture,
   GraphTextureDescriptor, StorageArray, StorageArrayMut, StorageValue, UniformBinding,
 };
 
@@ -461,7 +461,11 @@ impl SurroundingsCube {
   /// mip, where this frame lights one.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
     (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
@@ -474,10 +478,11 @@ impl SurroundingsCube {
     let size: u32 = self.size;
     let drawn: u32 = kept.drawn;
     if let Some(band) = self.band_due {
-      let targets: [GraphTexture; 4] = Self::import_layer((&mut *graph, &mut *bindings), kept.get_spare());
+      let targets: [GraphTexture; 4] =
+        Self::import_layer(GraphDeclaration::new(graph, bindings, runtime), kept.get_spare());
 
       self.add_draw_passes(
-        (&mut *graph, &mut *bindings),
+        GraphDeclaration::new(graph, bindings, runtime),
         passes,
         scene,
         (params, textures),
@@ -490,12 +495,14 @@ impl SurroundingsCube {
       return;
     }
 
-    let [albedo, normal, material, depth]: [GraphTexture; 4] =
-      Self::import_layer((&mut *graph, &mut *bindings), kept.get_face(self.face));
+    let [albedo, normal, material, depth]: [GraphTexture; 4] = Self::import_layer(
+      GraphDeclaration::new(graph, bindings, runtime),
+      kept.get_face(self.face),
+    );
 
     if self.is_redrawn {
       self.add_draw_passes(
-        (&mut *graph, &mut *bindings),
+        GraphDeclaration::new(graph, bindings, runtime),
         passes,
         scene,
         (params, textures),
@@ -539,7 +546,7 @@ impl SurroundingsCube {
   /// cull's and draw's pass names: the whole face, cleared, or `band` of it, the first band clearing the rest.
   fn add_draw_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
     (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
@@ -613,7 +620,7 @@ impl SurroundingsCube {
 
   /// A layer of the faces' G-buffers as the frame's graph knows it: its albedo, normal, material and depth.
   fn import_layer<'a>(
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     layer: &'a [wgpu::TextureView; 4],
   ) -> [GraphTexture; 4] {
     std::array::from_fn(|target| {

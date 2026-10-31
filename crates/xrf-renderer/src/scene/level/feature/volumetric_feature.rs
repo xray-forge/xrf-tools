@@ -1,7 +1,7 @@
 use glam::Vec4;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphDepthAttachment, GraphRuntime, GraphTexture,
-  GraphTextureDescriptor, StorageArray, UniformBinding,
+  GraphColorAttachment, GraphDeclaration, GraphDepthAttachment, GraphTexture, GraphTextureDescriptor, StorageArray,
+  UniformBinding,
 };
 
 use crate::contract::render_view_options::RenderViewOptions;
@@ -76,7 +76,11 @@ impl VolumetricFeature {
   #[allow(clippy::type_complexity)]
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
     (lights, atlas): (&'a LightsFeature, LightShadowAtlas<'a>),
   ) -> (
@@ -85,13 +89,13 @@ impl VolumetricFeature {
     Option<(UniformBinding<FroxelUniform>, GraphTexture)>,
   ) {
     let volumes: Option<GraphTexture> = self.add_light_volume_passes(
-      (&mut *graph, &mut *bindings, &mut *runtime),
+      GraphDeclaration::new(graph, bindings, runtime),
       record.passes,
       (record.view, record.textures),
       (record.handles, lights, atlas, record.lit.lighting),
     );
     let froxels: Option<(UniformBinding<FroxelUniform>, GraphTexture)> = self.add_froxel_passes(
-      (graph, bindings, runtime),
+      GraphDeclaration::new(graph, bindings, runtime),
       record.passes,
       record.view,
       (record.lit, atlas, lights),
@@ -104,7 +108,11 @@ impl VolumetricFeature {
   /// composite; answers them, none where the froxels draw instead or no light draws shafts.
   fn add_light_volume_passes<'a>(
     &self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     (view, textures): (&'a ViewBinding, &'a wgpu::BindGroup),
     (handles, lights, atlas, lighting): (
@@ -168,7 +176,11 @@ impl VolumetricFeature {
   /// integrated, for the sun shafts' composite to read in place of both shafts, none where they do not draw.
   fn add_froxel_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (lit, atlas, lights): (LightingHandles<'a>, LightShadowAtlas<'a>, &'a LightsFeature),

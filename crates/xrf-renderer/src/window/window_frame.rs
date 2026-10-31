@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use xrf_renderer_core::{FrameGraph, GraphBindings, GraphColorAttachment, GraphTexture, GraphTextureAccess};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureAccess};
 
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_viewport_id::RenderViewportId;
@@ -51,7 +51,7 @@ impl WindowFrame {
   /// to what the window shows, its overlays, then the captures copied out of it.
   pub fn declare<'a>(
     &self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     (target, backdrop): (&'a wgpu::TextureView, Option<&'a WindowBackdrop>),
     composed: Vec<ComposedView<'a>>,
     (backdrop_pass, present, overlay, grid): (&'a BackdropPass, &'a PresentPass, &'a OverlayPass, &'a GridPass),
