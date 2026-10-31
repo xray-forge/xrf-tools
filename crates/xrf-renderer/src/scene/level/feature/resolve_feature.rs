@@ -36,6 +36,7 @@ use crate::scene::level::feature::fsr_targets::FsrTargets;
 use crate::scene::level::feature::ray_guides::RayGuides;
 use crate::scene::level::feature::ray_reconstruction_resolve::RayReconstructionResolve;
 use crate::scene::level::feature::resolve::Resolve;
+use crate::scene::level::feature::resolve_decisions::ResolveDecisions;
 use crate::scene::level::feature::temporal_jitter::TemporalJitter;
 use crate::scene::level::feature::temporal_resolve::TemporalResolve;
 use crate::scene::level::feature::view_feature::ViewFeature;
@@ -205,14 +206,14 @@ impl ResolveFeature {
   /// the `frame` asks: the temporal resolve's history made or kept and what it reads, and the frame at the viewport's
   /// size while it is drawn or resolved at another. DLSS reconstructs rays where asked, the GPU has it and the scene
   /// holds linear light, with the model the light asks; else it upscales alone. The light is written at
-  /// `pre_exposure`, which each resolve carries its history by.
+  /// `pre_exposure`, which each resolve carries its history by. Answers what the units prepared after it read.
   pub fn prepare(
     &mut self,
     frame: &ViewPrepare<'_>,
     now: Instant,
     render: Option<(u32, u32)>,
     pre_exposure: PreExposure,
-  ) {
+  ) -> ResolveDecisions {
     let &ViewPrepare {
       device,
       dlss,
@@ -271,7 +272,7 @@ impl ResolveFeature {
     }
 
     let Some(render) = render else {
-      return;
+      return self.get_decisions();
     };
     // What reaches the viewport's rescale: what the temporal resolve resolved, or the frame as drawn.
     let source: (u32, u32) = if self.resolve.is_some() { display } else { render };
@@ -310,6 +311,16 @@ impl ResolveFeature {
       sharpness: upscaling.get_sharpness(),
       linear: f32::from(u8::from(is_linear)),
     };
+
+    self.get_decisions()
+  }
+
+  fn get_decisions(&self) -> ResolveDecisions {
+    ResolveDecisions {
+      noise_frame: self.noise_frame,
+      reference_sample: self.get_reference_sample(),
+      is_ray_reconstructed: self.is_ray_reconstructed(),
+    }
   }
 
   /// TAA's history at the output's size, kept while it still fits, and what it reads: this frame's view projection,

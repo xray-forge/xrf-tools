@@ -4,10 +4,14 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::lighting_uniform::LightingUniform;
+use crate::scene::level::feature::resolve_decisions::ResolveDecisions;
 
-/// The values every unit of a view reads this frame, prepared before them: the camera and the sun it is drawn by, the
-/// shading switches, the shadows asked for, whether it draws its edges alone, and the lighting uniform.
+/// The values every unit of a view reads this frame, prepared before them: what its resolve decided, the camera and the
+/// sun it is drawn by, the shading switches, the shadows asked for, whether it draws its edges alone, and the lighting
+/// uniform.
 pub struct ViewFrame {
+  /// What the resolve decided, prepared before every other unit.
+  pub resolve: ResolveDecisions,
   pub camera: CameraView,
   /// Where the sunlight travels.
   pub sun_direction: Vec3,
@@ -24,6 +28,7 @@ pub struct ViewFrame {
 impl Default for ViewFrame {
   fn default() -> Self {
     Self {
+      resolve: ResolveDecisions::default(),
       camera: CameraView {
         position: Vec3::ZERO,
         view: Mat4::IDENTITY,

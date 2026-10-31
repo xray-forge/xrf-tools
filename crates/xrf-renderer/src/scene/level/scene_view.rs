@@ -67,6 +67,7 @@ use crate::scene::level::feature::present_inputs::PresentInputs;
 use crate::scene::level::feature::rain_covers::RainCovers;
 use crate::scene::level::feature::ray_guides::RayGuides;
 use crate::scene::level::feature::reflection_source::ReflectionSource;
+use crate::scene::level::feature::resolve_decisions::ResolveDecisions;
 use crate::scene::level::feature::resolve_feature::ResolveFeature;
 use crate::scene::level::feature::scene_features::SceneFeatures;
 use crate::scene::level::feature::sun_sprite::SunSprite;
@@ -168,7 +169,7 @@ impl SceneView {
 
   /// Whether DLSS reconstructs rays as it resolves its frame.
   pub fn is_ray_reconstructed(&self) -> bool {
-    self.features.resolve.is_ray_reconstructed()
+    self.shared.resolve.is_ray_reconstructed
   }
 
   /// What its window's present pass reads this frame.
@@ -286,7 +287,7 @@ impl SceneView {
   }
 
   /// Sizes the targets to the viewport and readies every unit's frame, in the order each reads what an earlier one
-  /// decided: the weather and the sky, the scene, the view's own units, then the lighting.
+  /// decided: the resolve's decisions, the weather and the sky, the scene, the view's own units, then the lighting.
   pub fn prepare(&mut self, scene: &mut LevelScene, encoder: &mut FrameEncoder, frame: &ViewPrepare<'_>) {
     profiling::scope!("prepare view");
 
@@ -300,6 +301,8 @@ impl SceneView {
     let time: f32 = scene.get_time().as_secs_f32();
     let now: Instant = self.clock.tick(scene.get_now());
 
+    self.decide(frame, now);
+
     // What of the scene drawn by passes of its own the view may see: none of the water's or the surface passes' work
     // runs for what is out of sight.
     let sight: StaticSight = scene.statics.get_sight(&frame.view.get_frustum());
@@ -311,11 +314,23 @@ impl SceneView {
       .follow_skeletons(scene, frame.device, &mut *encoder);
 
     self.prepare_scene(scene, encoder, frame, &lighting_frame, time);
-    self.prepare_view(scene, encoder, frame, &sight, now);
+    self.prepare_view(scene, encoder, frame, &sight);
     self.prepare_lighting(scene, encoder, frame, &lighting_frame, time);
   }
 
-  /// The units the weather drives: the shadows' maps, the exposure, the flares and the sky, the water, the wind, the
+  /// What every other unit reads of the frame's resolve, prepared before any of them: the exposure, whose scale the
+  /// resolve carries its history by, then the resolve, whose decisions the view's frame holds.
+  fn decide(&mut self, frame: &ViewPrepare<'_>, now: Instant) {
+    self.features.exposure.prepare(frame.queue, frame.options, now);
+    self.shared.resolve = self.features.resolve.prepare(
+      frame,
+      now,
+      self.targets.as_ref().map(|targets| (targets.width, targets.height)),
+      self.features.exposure.get_pre_exposure(),
+    );
+  }
+
+  /// The units the weather drives: the shadows' maps, the flares and the sky, the water, the wind, the
   /// falling rain and the wet surfaces following it, the thunder, and the post units reading the weather. Answers what
   /// the lighting draws the sky with.
   fn prepare_weather(
@@ -333,7 +348,6 @@ impl SceneView {
       device,
       (options.features.shadows.get_cascade_count() > 0).then_some(options.features.shadows.resolution),
     );
-    self.features.exposure.prepare(frame.queue, options, now);
 
     let sun_sprite: Option<SunSprite> = self.features.flares.prepare(frame, now);
 
@@ -366,7 +380,7 @@ impl SceneView {
       falling.as_ref(),
       time,
       windows,
-      self.features.resolve.get_noise_frame(),
+      self.shared.resolve.noise_frame,
     );
     self.follow_rain_surfaces(windows);
 
@@ -416,7 +430,7 @@ impl SceneView {
 
     let is_traced: bool = options.is_light_traced() && frame.passes.scene_trace.is_traced() && scene.trace.is_some();
     // The sun's cascades shadow the frame where they are asked for and the sun is not traced in their place.
-    let is_sun_traced: bool = is_traced && SunTraceFeature::is_asked(options, &self.features.resolve);
+    let is_sun_traced: bool = is_traced && SunTraceFeature::is_asked(options, self.shared.resolve);
     let is_cascaded: bool = options.features.shadows.get_cascade_count() > 0 && !is_sun_traced;
 
     let grass: GrassViewFrame<'_> = GrassViewFrame {
@@ -493,36 +507,24 @@ impl SceneView {
     encoder: &mut FrameEncoder,
     frame: &ViewPrepare<'_>,
     sight: &StaticSight,
-    now: Instant,
   ) {
     let (device, options, view) = (frame.device, frame.options, frame.view);
     let (width, height) = frame.drawn;
     let half: (u32, u32) = (width.div_ceil(2), height.div_ceil(2));
+    let resolve: ResolveDecisions = self.shared.resolve;
 
-    self.features.resolve.prepare(
-      frame,
-      now,
-      self.targets.as_ref().map(|targets| (targets.width, targets.height)),
-      self.features.exposure.get_pre_exposure(),
-    );
     self.features.smoothing.prepare(frame);
     self.features.ambient_occlusion.prepare(options, view.projection, half);
-    self
-      .features
-      .bitmask
-      .prepare(frame, half, self.features.resolve.get_reference_sample());
+    self.features.bitmask.prepare(frame, half, resolve.reference_sample);
     let is_light_traced: bool = frame.passes.indirect_trace.is_traced()
-      && self.features.resolve.is_ray_reconstructed()
+      && resolve.is_ray_reconstructed
       && self.features.bitmask.get_search().is_some_and(|search| search.is_lit);
 
     self.features.indirect_trace.prepare(
       is_light_traced.then(|| self.features.bitmask.get_indirect_light().intensity),
-      self.features.resolve.get_noise_frame(),
+      resolve.noise_frame,
     );
-    self
-      .features
-      .reflections
-      .prepare(frame, &self.features.resolve, &self.features.wet);
+    self.features.reflections.prepare(frame, resolve, &self.features.wet);
     self.features.view_trace.prepare(
       frame,
       &mut *encoder,
@@ -546,7 +548,7 @@ impl SceneView {
     time: f32,
   ) {
     let (device, options, view) = (frame.device, frame.options, frame.view);
-    let noise_frame: u32 = self.features.resolve.get_noise_frame();
+    let noise_frame: u32 = self.shared.resolve.noise_frame;
 
     self.shared.lighting = LightingUniform::new(frame.lighting, view.view, options, lighting_frame);
     self.shared.lighting.height_fog.w *= FogFeature::get_indoor_share(scene.camera_hemi);
@@ -561,7 +563,7 @@ impl SceneView {
     self
       .features
       .sun_trace
-      .prepare(options, &self.shared.lighting, noise_frame, &self.features.resolve);
+      .prepare(options, &self.shared.lighting, self.shared.resolve);
 
     scene.particles.fill(view, options, &mut self.features.particles);
 
@@ -806,8 +808,8 @@ impl SceneView {
         contact,
         contact_lights: self.features.contact_shadows.get_light_count(),
         // The shadowed lights traced where DLSS ray reconstruction denoises them, their atlas faces otherwise.
-        traced: traced.filter(|_| self.features.resolve.is_ray_reconstructed()),
-        noise_frame: self.features.resolve.get_noise_frame(),
+        traced: traced.filter(|_| self.shared.resolve.is_ray_reconstructed),
+        noise_frame: self.shared.resolve.noise_frame,
       },
     );
     lights.add_overflow_pass(&mut *graph, buffers);

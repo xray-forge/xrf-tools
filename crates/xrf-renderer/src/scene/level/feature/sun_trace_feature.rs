@@ -8,7 +8,7 @@ use crate::pass::sun_trace_parameters::SunTraceParameters;
 use crate::pass::sun_trace_pass::SunTracePass;
 use crate::pass::sun_trace_uniform::SunTraceUniform;
 use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::feature::resolve_feature::ResolveFeature;
+use crate::scene::level::feature::resolve_decisions::ResolveDecisions;
 use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::feature::view_feature::ViewFeature;
 
@@ -22,23 +22,17 @@ pub struct SunTraceFeature {
 }
 
 impl SunTraceFeature {
-  /// Takes this frame's trace towards the sun as the frame's `lighting` gives it, its noise turned by `noise_frame`,
-  /// where DLSS ray reconstruction resolves the frame (`resolve`).
-  pub fn prepare(
-    &mut self,
-    options: &RenderViewOptions,
-    lighting: &LightingUniform,
-    noise_frame: u32,
-    resolve: &ResolveFeature,
-  ) {
+  /// Takes this frame's trace towards the sun as the frame's `lighting` gives it, where DLSS ray reconstruction resolves
+  /// the frame, its noise turned as the `resolve` decided.
+  pub fn prepare(&mut self, options: &RenderViewOptions, lighting: &LightingUniform, resolve: ResolveDecisions) {
     self.is_traced = Self::is_asked(options, resolve);
-    self.uniform = SunTraceUniform::new(lighting.to_sun, noise_frame);
+    self.uniform = SunTraceUniform::new(lighting.to_sun, resolve.noise_frame);
   }
 
   /// Whether a view traces the sun's shadow, the scene's trace allowing: where DLSS ray reconstruction resolves its
-  /// frame (`resolve`), lit and solid.
-  pub fn is_asked(options: &RenderViewOptions, resolve: &ResolveFeature) -> bool {
-    resolve.is_ray_reconstructed() && options.mode.is_lit && !options.mode.is_wireframe
+  /// frame, as its `resolve` decided, lit and solid.
+  pub fn is_asked(options: &RenderViewOptions, resolve: ResolveDecisions) -> bool {
+    resolve.is_ray_reconstructed && options.mode.is_lit && !options.mode.is_wireframe
   }
 
   /// Traces the sun's shadow where it does this frame and the scene's trace is built (`traced`), answering what the sun

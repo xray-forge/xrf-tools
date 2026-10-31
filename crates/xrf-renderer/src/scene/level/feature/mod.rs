@@ -43,6 +43,7 @@ pub(crate) mod reflection_frame_handles;
 pub(crate) mod reflection_history;
 pub(crate) mod reflection_source;
 pub(crate) mod resolve;
+pub(crate) mod resolve_decisions;
 pub(crate) mod resolve_feature;
 pub(crate) mod scene_features;
 pub(crate) mod sky_feature;

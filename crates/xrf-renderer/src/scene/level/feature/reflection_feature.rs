@@ -31,7 +31,7 @@ use crate::scene::level::feature::reflection_frame::ReflectionFrame;
 use crate::scene::level::feature::reflection_frame_handles::ReflectionFrameHandles;
 use crate::scene::level::feature::reflection_history::ReflectionHistory;
 use crate::scene::level::feature::reflection_source::ReflectionSource;
-use crate::scene::level::feature::resolve_feature::ResolveFeature;
+use crate::scene::level::feature::resolve_decisions::ResolveDecisions;
 use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
@@ -53,8 +53,8 @@ pub struct ReflectionFeature {
 }
 
 impl ReflectionFeature {
-  /// Takes this frame's reflections for the frame as drawn, raw where DLSS ray reconstruction resolves it (`resolve`),
-  /// the dry surfaces left untraced unless asked where the level is not wet (`wet`): the history at the size they
+  /// Takes this frame's reflections for the frame as drawn, raw where the view's `resolve` decided DLSS reconstructs
+  /// rays, the dry surfaces left untraced unless asked where the level is not wet (`wet`): the history at the size they
   /// trace at and the pyramid over the frame's depth made or kept while they are traced, dropped otherwise, the
   /// trace's request list fitted, and what their passes read.
   pub fn prepare(
@@ -65,10 +65,10 @@ impl ReflectionFeature {
       options,
       ..
     }: &ViewPrepare<'_>,
-    resolve: &ResolveFeature,
+    resolve: ResolveDecisions,
     wet: &WetFeature,
   ) {
-    let (is_reconstructed, is_wet): (bool, bool) = (resolve.is_ray_reconstructed(), wet.is_wet());
+    let (is_reconstructed, is_wet): (bool, bool) = (resolve.is_ray_reconstructed, wet.is_wet());
     self.settings = options.features.reflections;
     self.trace = ReflectionTrace::new(options).map(|trace| trace.with_raw(is_reconstructed));
 
