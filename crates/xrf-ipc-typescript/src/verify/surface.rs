@@ -183,4 +183,21 @@ mod tests {
     assert_eq!(changed.changed, ["types/xrf-fixture.ts::LIMIT"]);
     assert!(changed.is_breaking());
   }
+
+  // The generator writes an array constant's type as `Entry[]`, which the formatter rewrites as `Array<Entry>`.
+  #[test]
+  fn reads_an_array_constant_alike_in_both_spellings_of_its_type() {
+    let committed: Surface = read(
+      "array-committed",
+      "export const KINDS: Array<Entry> = [\n  {\n    kind: \"props\",\n  },\n];\n",
+    );
+    let fresh: Surface = read("array-fresh", "export const KINDS: Entry[] = [{ kind: \"props\" }];\n");
+    let retyped: SurfaceDrift = committed.compare_to(&read(
+      "array-retyped",
+      "export const KINDS: Array<Other> = [{ kind: \"props\" }];\n",
+    ));
+
+    assert!(!committed.compare_to(&fresh).is_breaking());
+    assert_eq!(retyped.changed, ["types/xrf-fixture.ts::KINDS"]);
+  }
 }

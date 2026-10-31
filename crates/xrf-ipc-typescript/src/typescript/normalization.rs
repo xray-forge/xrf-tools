@@ -18,6 +18,13 @@ fn normalize_declaration(declaration: &mut Decl) {
     Decl::TsInterface(interface) => normalize_type_elements(&mut interface.body.body),
     Decl::Var(variable) => {
       for declarator in &mut variable.decls {
+        // A constant's own annotation, `Entry[]` fresh and `Array<Entry>` once formatted, sits on its binding.
+        if let Pat::Ident(binding) = &mut declarator.name
+          && let Some(annotation) = &mut binding.type_ann
+        {
+          normalize_type(&mut annotation.type_ann);
+        }
+
         if let Some(initializer) = &mut declarator.init {
           normalize_expression(initializer);
         }
