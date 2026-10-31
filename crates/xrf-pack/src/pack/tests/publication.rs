@@ -1,11 +1,4 @@
 //! What packing refuses to publish over, and what a run that did not finish leaves behind.
-//!
-//! Two halves of one rule. A destination already holding the set is refused unless the caller forces it, and because
-//! of that refusal every volume of the set in a destination afterwards belongs to the run that just failed there — so
-//! it is taken back rather than left as residue.
-//!
-//! Where a volume may be published is the same subject: a set is every volume of one name directly under the
-//! destination, whatever a configuration tried to name it.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -22,9 +15,6 @@ use crate::pack::tests::fixtures::{CONFIG, borrow_files, create_source, distinct
 use crate::pack::{ArchivePackOptions, ArchivePackResult, ArchivePacker};
 
 /// A source tree of its own, packed as `packed` into the scope's shared destination.
-///
-/// Unlike the shared fixture, the destination is left exactly as the test found it: what a second run does to a
-/// destination the first one filled is the whole subject here.
 fn create_run(scope: &str, run: &str, files: &[(&str, &[u8])]) -> ArchivePackConfig {
   let source: PathBuf = GeneratedResources::create_dir(&format!("{scope}/{run}")).expect("source directory");
 
@@ -80,10 +70,6 @@ fn list_files(destination: &Path) -> Vec<String> {
 }
 
 /// Stops the run it watches as soon as one entry has been written.
-///
-/// Reported to at a zero interval, so the write phase's first advance arrives here rather than being coalesced away.
-/// Waiting for that advance is what makes the cancellation land inside the write loop, with a volume already created,
-/// instead of at the boundary before it where there would be nothing to clean up.
 #[derive(Default)]
 struct CancelOnFirstEntry {
   job: std::sync::OnceLock<JobHandle>,
