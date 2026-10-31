@@ -110,7 +110,7 @@ describe("NativeViewportTarget", () => {
     const { element } = mockTree();
     const { inputs, viewport } = mockViewport();
     const onClick = jest.fn();
-    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport, onClick);
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport, { onClick });
 
     element.dispatchEvent(pointer("pointerdown", { button: 0, buttons: 1, clientX: 20, clientY: 30 }));
     element.dispatchEvent(pointer("pointermove", { buttons: 1, clientX: 22, clientY: 31 }));
@@ -121,7 +121,7 @@ describe("NativeViewportTarget", () => {
 
     // In css pixels from the element's own corner.
     expect(onClick).toHaveBeenCalledTimes(1);
-    expect(onClick).toHaveBeenCalledWith({ x: 12, y: 11 }, false, false);
+    expect(onClick).toHaveBeenCalledWith({ isThrough: false, isToggling: false, point: { x: 12, y: 11 } });
     expect(inputs).toEqual([]);
 
     target.dispose();
@@ -131,7 +131,7 @@ describe("NativeViewportTarget", () => {
     const { element } = mockTree();
     const { inputs, viewport } = mockViewport();
     const onClick = jest.fn();
-    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport, onClick);
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport, { onClick });
 
     element.dispatchEvent(pointer("pointerdown", { button: 0, buttons: 1, clientX: 20, clientY: 30 }));
     element.dispatchEvent(pointer("pointermove", { buttons: 1, clientX: 25, clientY: 30 }));
@@ -161,7 +161,7 @@ describe("NativeViewportTarget", () => {
     const { element } = mockTree();
     const { inputs, viewport } = mockViewport();
     const onHover = jest.fn();
-    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport, null, onHover);
+    const target: NativeViewportTarget = new NativeViewportTarget(element, viewport, { onHover });
 
     element.dispatchEvent(pointer("pointermove", { buttons: 0, clientX: 20, clientY: 30 }));
     element.dispatchEvent(pointer("pointermove", { buttons: 0, clientX: 22, clientY: 31 }));

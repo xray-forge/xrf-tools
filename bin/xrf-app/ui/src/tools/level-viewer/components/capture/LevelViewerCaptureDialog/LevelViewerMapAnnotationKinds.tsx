@@ -9,11 +9,12 @@ import {
   LEVEL_OBJECT_GROUPS,
   listLevelObjectGroupKinds,
 } from "@/core/level/lib/objects/level-object-kinds";
+import { ILevelMapAnnotationKindsChange } from "@/tools/level-viewer/lib/map/level-map-annotations";
 
 interface ILevelViewerMapAnnotationKindsProps extends BaseComponentProps {
   /** The kinds drawn. */
   kinds: ReadonlyArray<LevelObjectKind>;
-  onChange: (kinds: ReadonlyArray<LevelObjectKind>, isShown: boolean) => void;
+  onChange: (change: ILevelMapAnnotationKindsChange) => void;
 }
 
 /**
@@ -41,7 +42,7 @@ export function LevelViewerMapAnnotationKinds({
                 label={group.label}
                 isChecked={drawn === members.length}
                 isIndeterminate={drawn > 0 && drawn < members.length}
-                onChange={(isShown: boolean) => onChange(members, isShown)}
+                onChange={(isShown: boolean) => onChange({ isShown, kinds: members })}
               />
             ) : null}
             <div className={cn(entries.length > 1 && "pl-6")}>
@@ -50,7 +51,7 @@ export function LevelViewerMapAnnotationKinds({
                   key={entry.kind}
                   label={entry.label}
                   isChecked={kinds.includes(entry.kind)}
-                  onChange={(isShown: boolean) => onChange([entry.kind], isShown)}
+                  onChange={(isShown: boolean) => onChange({ isShown, kinds: [entry.kind] })}
                 />
               ))}
             </div>

@@ -43,17 +43,23 @@ export function toLevelMapAnnotationsOf(helpers: ILevelHelperOptions): ILevelMap
   };
 }
 
+/** Kinds a map's annotations switch together, as a family of the dialog does, and whether they are drawn from now on. */
+export interface ILevelMapAnnotationKindsChange {
+  kinds: ReadonlyArray<LevelObjectKind>;
+  isShown: boolean;
+}
+
 /**
  * @param annotations - What is drawn.
- * @param kinds - Kinds to switch, as a group of the dialog switches its kinds together.
- * @param isShown - Whether they are drawn from now on.
- * @returns The annotations with `kinds` drawn or not, in the kind table's order.
+ * @param change - The kinds switched, and whether they are drawn from now on.
+ * @returns The annotations with the kinds switched, in the kind table's order.
  */
 export function toLevelMapAnnotationsWith(
   annotations: ILevelMapAnnotations,
-  kinds: ReadonlyArray<LevelObjectKind>,
-  isShown: boolean
+  change: ILevelMapAnnotationKindsChange
 ): ILevelMapAnnotations {
+  const { kinds, isShown } = change;
+
   return {
     ...annotations,
     kinds: LEVEL_OBJECT_KINDS.map((entry: LevelObjectKindEntry) => entry.kind).filter((kind: LevelObjectKind) =>

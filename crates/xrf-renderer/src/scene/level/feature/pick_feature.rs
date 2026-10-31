@@ -5,17 +5,16 @@ use xrf_renderer_core::{
 };
 
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::pick_pass::PickPass;
 use crate::frame::pick_target::PickTarget;
-use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::static_draws::StaticDraws;
-use crate::pass::static_gbuffer_pass::StaticGBufferPass;
 use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::feature::helpers_feature::HelperDraws;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::helpers::helper_icon_instance::HelperIconInstance;
-use crate::scene::level::helpers::helper_vertex::HelperVertex;
+use crate::scene::level::helpers::gpu::helper_buffer::HelperBuffer;
+use crate::scene::level::helpers::gpu::helper_icon_instance::HelperIconInstance;
+use crate::scene::level::helpers::gpu::helper_vertex::HelperVertex;
 
 /// What a view's picks are drawn into and read back from: the one-texel target with its readbacks, and the narrowed
 /// camera the frame's visible clusters and its helpers' wires and icons are drawn again through, both made on the first
@@ -51,68 +50,58 @@ impl PickFeature {
     Some(slot)
   }
 
-  /// Adds a pick into its readback `slot`: the frame's visible clusters drawn again into its texel, through its
-  /// narrowed camera, after every cull of the frame, passing the composited surfaces by where `is_through`, then the
-  /// helpers' wires wide and icons whole over them; then the texel copied out into its readback.
+  /// Adds a pick into its readback slot: the frame's visible clusters drawn again into its texel, through its narrowed
+  /// camera, after every cull of the frame, passing the composited surfaces by where it is through, then the helpers'
+  /// wires wide and icons whole over them; then the texel copied out into its readback.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
-    (gbuffer, pipelines): (&'a StaticGBufferPass, PipelineSource<'_>),
-    (textures, scene, helpers): (&'a wgpu::BindGroup, &StaticSceneHandles, HelperDraws<'a>),
-    (slot, is_through): (usize, bool),
+    graph: &mut FrameGraph<'a>,
+    bindings: &mut GraphBindings<'a>,
+    pick: PickPass<'a, '_>,
   ) {
     let (Some(target), Some(view)) = (&self.target, &self.view) else {
       return;
     };
+    let PickPass {
+      gbuffer,
+      pipelines,
+      textures,
+      scene,
+      helpers,
+      slot,
+      is_through,
+    } = pick;
     let color: GraphTexture = bindings.import_view(graph, "pick", &target.color);
     let depth: GraphTexture = bindings.import_view(graph, "pick depth", &target.depth);
     let draws: StaticDraws = scene.get_camera_draws();
     let args: [GraphBuffer; 2] = [scene.args, scene.late];
-    // A pipeline for what of it is drawn, wires and icons each; a draw is one instance a wire or an icon.
-    let create = |(vertex, layout): (&'static str, VertexLayout),
-                  parts: [Option<(&'a wgpu::Buffer, u32)>; 2],
-                  per_instance: u32|
-     -> Option<(Vec<(&'a wgpu::Buffer, u32)>, wgpu::RenderPipeline)> {
-      let draws: Vec<(&wgpu::Buffer, u32)> = parts
-        .into_iter()
-        .flatten()
-        .map(|(buffer, count)| (buffer, count / per_instance))
-        .collect();
-
-      if draws.is_empty() {
-        return None;
-      }
-
-      self
-        .create_helper_pipeline(pipelines, (vertex, "fs_helper_pick"), layout)
-        .inspect_err(|error| log::error!("Helper pick shader rejected, picking no helper: {error}"))
-        .ok()
-        .map(|pipeline| (draws, pipeline))
-    };
-    let picked = [
-      create(
-        (
-          "vs_helper_pick",
-          VertexLayout::new(
+    let parts = helpers.in_order();
+    let picked: [Option<HelperPick<'a>>; 2] = [
+      self.to_helper_pick(
+        pipelines,
+        HelperPickKind {
+          vertex: "vs_helper_pick",
+          layout: VertexLayout::new(
             HelperVertex::SIZE * 2,
             wgpu::VertexStepMode::Instance,
             &HelperVertex::SEGMENT_ATTRIBUTES,
           ),
-        ),
-        helpers.wires,
-        2,
+          per_instance: 2,
+        },
+        parts.map(|part| part.wires),
       ),
-      create(
-        (
-          "vs_helper_icon_pick",
-          VertexLayout::new(
+      self.to_helper_pick(
+        pipelines,
+        HelperPickKind {
+          vertex: "vs_helper_icon_pick",
+          layout: VertexLayout::new(
             HelperIconInstance::SIZE,
             wgpu::VertexStepMode::Instance,
             &HelperIconInstance::PICK_ATTRIBUTES,
           ),
-        ),
-        helpers.icons,
-        1,
+          per_instance: 1,
+        },
+        parts.map(|part| part.icons),
       ),
     ];
 
@@ -136,13 +125,13 @@ impl PickFeature {
 
         let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
-        for (draws, pipeline) in picked.iter().flatten() {
-          pass.set_pipeline(pipeline);
+        for pick in picked.iter().flatten() {
+          pass.set_pipeline(&pick.pipeline);
           pass.set_bind_group(0, &view.bind_group, &[]);
 
-          for (buffer, instances) in draws {
-            pass.set_vertex_buffer(0, buffer.slice(..));
-            pass.draw(0..6, 0..*instances);
+          for buffer in &pick.buffers {
+            pass.set_vertex_buffer(0, buffer.buffer.slice(..));
+            pass.draw(0..6, 0..buffer.count / pick.per_instance);
           }
         }
       });
@@ -154,19 +143,43 @@ impl PickFeature {
       .record(move |context| target.copy_out(context.get_encoder(), slot));
   }
 
-  /// A helper pick pipeline: each wire or icon an instance read by `layout`, drawn over whatever the clusters left,
-  /// with no depth test.
+  /// How the helpers of `kind` are picked from `buffers`, each part's in turn, with its pipeline; none where no part
+  /// holds any, or where the shader is rejected.
+  fn to_helper_pick<'a>(
+    &self,
+    pipelines: PipelineSource<'_>,
+    kind: HelperPickKind,
+    buffers: [Option<&'a HelperBuffer>; 2],
+  ) -> Option<HelperPick<'a>> {
+    let buffers: Vec<&'a HelperBuffer> = buffers.into_iter().flatten().collect();
+
+    if buffers.is_empty() {
+      return None;
+    }
+
+    self
+      .create_helper_pipeline(pipelines, &kind)
+      .inspect_err(|error| log::error!("Helper pick shader rejected, picking no helper: {error}"))
+      .ok()
+      .map(|pipeline| HelperPick {
+        buffers,
+        pipeline,
+        per_instance: kind.per_instance,
+      })
+  }
+
+  /// A helper pick pipeline: each wire or icon an instance read as `kind` reads it, drawn over whatever the clusters
+  /// left, with no depth test.
   fn create_helper_pipeline(
     &self,
     pipelines: PipelineSource<'_>,
-    (vertex, fragment): (&'static str, &'static str),
-    layout: VertexLayout,
+    kind: &HelperPickKind,
   ) -> XrfResult<wgpu::RenderPipeline> {
     pipelines.get_render_pipeline(
-      &RenderPipelineDescription::new("helper pick", "frame/helper_pick", vertex)
-        .with_fragment(fragment)
+      &RenderPipelineDescription::new("helper pick", "frame/helper_pick", kind.vertex)
+        .with_fragment("fs_helper_pick")
         .with_bind_group_layouts(&[self.view_layout.as_ref()])
-        .with_vertex_layout(layout)
+        .with_vertex_layout(kind.layout.clone())
         .with_depth_stencil(wgpu::DepthStencilState {
           format: PickTarget::DEPTH_FORMAT,
           depth_write_enabled: Some(false),
@@ -199,6 +212,21 @@ impl PickFeature {
       target.abandon();
     }
   }
+}
+
+/// What a helper pick draws of one kind, wires or icons: its vertex entry, how its instances are read, and how many
+/// of its buffer's items one instance takes.
+struct HelperPickKind {
+  vertex: &'static str,
+  layout: VertexLayout,
+  per_instance: u32,
+}
+
+/// One kind of helper picked: the parts' buffers it draws, its pipeline, and how many items one instance takes.
+struct HelperPick<'a> {
+  buffers: Vec<&'a HelperBuffer>,
+  pipeline: wgpu::RenderPipeline,
+  per_instance: u32,
 }
 
 impl ViewFeature for PickFeature {

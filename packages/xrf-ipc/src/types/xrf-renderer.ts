@@ -1924,6 +1924,14 @@ export enum ERenderScale {
 export type RenderScale = `${ERenderScale}`;
 
 /**
+ * How a screenshot of a viewport is drawn: its finished frame whole, without its overlays or its selection's outline,
+ * and its level objects' helpers over it where `is_helped`, as its window draws them.
+ */
+export type RenderScreenshot = {
+  isHelped: boolean;
+};
+
+/**
  * What of a viewport's level is selected, and the colour it is marked in: outlined where it is drawn, and a spawned
  * object boxed too.
  */

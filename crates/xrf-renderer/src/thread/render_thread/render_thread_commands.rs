@@ -22,6 +22,7 @@ use crate::scene::level::level_scene::LevelScene;
 use crate::thread::render_command::RenderCommand;
 use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::pending_pick::PendingPick;
+use crate::viewport::pending_screenshot::PendingScreenshot;
 use crate::viewport::render_viewport::RenderViewport;
 
 use super::RenderThread;
@@ -189,9 +190,9 @@ impl RenderThread {
           viewport.captures.push(reply);
         }
       }
-      RenderCommand::Screenshot { id, is_helped, reply } => {
+      RenderCommand::Screenshot { id, screenshot, reply } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.screenshots.push((reply, is_helped));
+          viewport.screenshots.push(PendingScreenshot { screenshot, reply });
         }
       }
       RenderCommand::CaptureMap { id, capture, events } => {

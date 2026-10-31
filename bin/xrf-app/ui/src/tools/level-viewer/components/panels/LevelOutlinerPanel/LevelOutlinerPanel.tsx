@@ -26,7 +26,7 @@ import { ReactElement, ReactNode, useCallback, useEffect, useMemo, useRef, useSt
 import { LevelKindIcon } from "@/core/level/components/objects/LevelKindIcon";
 import { isLevelHelperOn } from "@/core/level/lib/objects/level-helper-options";
 import { toLevelObjectKey } from "@/core/level/lib/objects/level-object-kinds";
-import { TLevelVisibleOption } from "@/core/level/lib/objects/level-object-visibility";
+import { ILevelVisibleOptionsChange, TLevelVisibleOption } from "@/core/level/lib/objects/level-object-visibility";
 import { ELevelPick, TLevelPick, toLevelObjectPick } from "@/core/level/lib/pick/level-pick";
 import { ILevelSpawnReport, isLevelSpawnReading } from "@/core/level/lib/spawn/level-spawn-report";
 import { LevelLoadService } from "@/core/level/services/level-load";
@@ -45,7 +45,8 @@ import {
 import { describeLevelSpawnRelease } from "@/tools/level-viewer/lib/spawn/level-spawn-release";
 import { LevelViewerObjectsService } from "@/tools/level-viewer/services/level-viewer-objects";
 
-import { LevelOutlinerKindActions, LevelOutlinerObjectActions } from "./LevelOutlinerRowActions";
+import { LevelOutlinerKindActions } from "./LevelOutlinerKindActions";
+import { LevelOutlinerObjectActions } from "./LevelOutlinerObjectActions";
 
 /**
  * What the panel says while it lists nothing: why the spawn could not be read, that it is being read, or that it
@@ -240,15 +241,13 @@ export function LevelOutlinerPanel({
           isVisible={(option: TLevelVisibleOption) => options[option]}
           isHelped={(kind: LevelObjectKind) => isLevelHelperOn(helpers, kind)}
           isHelpersShown={helpers.isShown}
-          onVisibleChange={(changed: ReadonlyArray<TLevelVisibleOption>, isOn: boolean) =>
+          onVisibleChange={(change: ILevelVisibleOptionsChange) =>
             viewService.setOptions({
               ...options,
-              ...Object.fromEntries(changed.map((option: TLevelVisibleOption) => [option, isOn])),
+              ...Object.fromEntries(change.options.map((option: TLevelVisibleOption) => [option, change.isOn])),
             })
           }
-          onHelperChange={(changed: ReadonlyArray<LevelObjectKind>, isOn: boolean) =>
-            viewService.setHelperKinds(changed, isOn)
-          }
+          onHelperChange={viewService.setHelperKinds}
         />
       );
     },

@@ -24,6 +24,7 @@ use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_model::StaticModel;
 use crate::scene::static_scene::static_model_place::StaticModelPlace;
 use crate::scene::static_scene::static_model_proxy::StaticModelProxy;
+use crate::scene::static_scene::static_object_box::StaticObjectBox;
 use crate::scene::static_scene::static_object_proxy::StaticObjectProxy;
 use crate::scene::static_scene::static_objects::StaticObjects;
 use crate::scene::static_scene::static_place::StaticPlace;
@@ -164,11 +165,16 @@ impl StaticScene {
     self.objects.find(object).map(|object| object.place.get_offset())
   }
 
-  /// A spawned object's box as it stands: its model's box in its own space, and where it stands it.
-  pub fn get_object_box(&self, object: u32) -> Option<(Mat4, [Vec3; 2])> {
+  /// A spawned object's box as it stands, while it stands in the scene.
+  pub fn get_object_box(&self, object: u32) -> Option<StaticObjectBox> {
     let object: &StaticObjectProxy = self.objects.find(object)?;
+    let [min, max]: [Vec3; 2] = self.models.get(object.model)?.bounds;
 
-    Some((object.transform, self.models.get(object.model)?.bounds))
+    Some(StaticObjectBox {
+      transform: object.transform,
+      min,
+      max,
+    })
   }
 
   /// What a selection marks, once what it names is in the scene: a spawned object's place; a mesh's place; or the

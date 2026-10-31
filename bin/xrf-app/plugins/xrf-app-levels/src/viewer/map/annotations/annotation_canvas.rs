@@ -11,7 +11,8 @@ use xrf_utils::StagedFile;
 use crate::objects::{LevelObjectKind, LevelObjectKindEntry};
 use crate::parts::LevelMapArea;
 use crate::viewer::map::annotations::{
-  AnnotationOutline, AnnotationPoint, AnnotationVolume, LevelAnnotations, MapAnnotationsWriteRequest,
+  AnnotationMarker, AnnotationOutline, AnnotationPatrol, AnnotationPoint, AnnotationVolume, LevelAnnotations,
+  MapAnnotationsWriteRequest,
 };
 
 /// How a map's annotations are drawn: the area the map covers onto its pixels, the kinds of level object drawn, and
@@ -115,8 +116,11 @@ impl AnnotationCanvas {
   /// lowest layer first.
   pub fn draw(&self, annotations: &LevelAnnotations) -> String {
     let growth: f32 = (self.width.max(self.height) as f32 / Self::BASE_SIDE).sqrt();
-    let label: f32 = (Self::LABEL_AT_BASE * growth).max(Self::LABEL_LEAST);
-    let stroke: f32 = (Self::STROKE_AT_BASE * growth).max(Self::STROKE_LEAST);
+    let pen: AnnotationPen = AnnotationPen {
+      stroke: (Self::STROKE_AT_BASE * growth).max(Self::STROKE_LEAST),
+      label: (Self::LABEL_AT_BASE * growth).max(Self::LABEL_LEAST),
+    };
+    let AnnotationPen { stroke, label } = pen;
     let mut svg: String = String::new();
 
     let _ = write!(
@@ -142,14 +146,18 @@ impl AnnotationCanvas {
       );
 
       for volume in annotations.volumes.iter().filter(|volume| volume.kind == kind) {
-        self.draw_volume(&mut svg, volume, (stroke, label));
+        self.draw_volume(&mut svg, volume, pen);
       }
 
       if kind == LevelObjectKind::Patrols {
-        self.draw_patrols(&mut svg, annotations, (stroke, label));
+        self.draw_patrols(&mut svg, &annotations.patrols, pen);
       }
 
-      self.draw_markers(&mut svg, annotations, kind, (stroke, label));
+      self.draw_markers(
+        &mut svg,
+        annotations.markers.iter().filter(|marker| marker.kind == kind),
+        pen,
+      );
       svg.push_str("</g>");
     }
 
@@ -181,7 +189,8 @@ impl AnnotationCanvas {
 
   /// A volume's outlines, filled faintly, and its name where it is named: a level changer's with an arrow toward its
   /// destination.
-  fn draw_volume(&self, svg: &mut String, volume: &AnnotationVolume, (stroke, label): (f32, f32)) {
+  fn draw_volume(&self, svg: &mut String, volume: &AnnotationVolume, pen: AnnotationPen) {
+    let AnnotationPen { stroke, label } = pen;
     let colour: Option<&str> =
       (volume.kind == LevelObjectKind::Restrictors && volume.is_in).then_some(Self::RESTRICTOR_IN_COLOUR);
     let paint: String = colour.map_or_else(String::new, |colour| format!(r#" fill="{colour}" stroke="{colour}""#));
@@ -248,10 +257,11 @@ impl AnnotationCanvas {
   }
 
   /// The patrols' links as lines and points as dots, each named at its first point where every object is named.
-  fn draw_patrols(&self, svg: &mut String, annotations: &LevelAnnotations, (stroke, label): (f32, f32)) {
+  fn draw_patrols(&self, svg: &mut String, patrols: &[AnnotationPatrol], pen: AnnotationPen) {
+    let AnnotationPen { stroke, label } = pen;
     let radius: f32 = (stroke * 2.5).max(1.0);
 
-    for patrol in &annotations.patrols {
+    for patrol in patrols {
       for (from, to) in &patrol.links {
         let (x1, y1): (f32, f32) = self.to_pixel(patrol.points[*from]);
         let (x2, y2): (f32, f32) = self.to_pixel(patrol.points[*to]);
@@ -274,18 +284,17 @@ impl AnnotationCanvas {
     }
   }
 
-  /// The dots of `kind`, each with its tag beside it, or its name where every object is named.
-  fn draw_markers(
+  /// `markers` as dots, each with its tag beside it, or its name where every object is named.
+  fn draw_markers<'a>(
     &self,
     svg: &mut String,
-    annotations: &LevelAnnotations,
-    kind: LevelObjectKind,
-    (stroke, label): (f32, f32),
+    markers: impl Iterator<Item = &'a AnnotationMarker>,
+    pen: AnnotationPen,
   ) {
-    let radius: f32 = (stroke * 2.5).max(1.0);
-    let size: f32 = label * Self::TAG_SHARE;
+    let radius: f32 = (pen.stroke * 2.5).max(1.0);
+    let size: f32 = pen.label * Self::TAG_SHARE;
 
-    for marker in annotations.markers.iter().filter(|marker| marker.kind == kind) {
+    for marker in markers {
       let (x, y): (f32, f32) = self.to_pixel(marker.point);
       let _ = write!(
         svg,
@@ -374,4 +383,11 @@ impl AnnotationCanvas {
       .replace('>', "&gt;")
       .replace('"', "&quot;")
   }
+}
+
+/// The sizes the annotations are drawn at on a map, in its pixels: a line's width and a label's height.
+#[derive(Clone, Copy)]
+struct AnnotationPen {
+  stroke: f32,
+  label: f32,
 }

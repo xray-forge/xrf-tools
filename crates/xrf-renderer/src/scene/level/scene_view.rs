@@ -31,6 +31,7 @@ use crate::contract::render_water_settings::RenderWaterSettings;
 use crate::frame::frame_clock::FrameClock;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
+use crate::frame::pick_pass::PickPass;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_target_handles::ViewTargetHandles;
@@ -58,7 +59,6 @@ use crate::scene::level::cover_textures::CoverTextures;
 use crate::scene::level::feature::bitmask_tracing::BitmaskTracing;
 use crate::scene::level::feature::composited_draw::CompositedDraw;
 use crate::scene::level::feature::fog_feature::FogFeature;
-use crate::scene::level::feature::helpers_feature::HelperDraws;
 use crate::scene::level::feature::light_buffers::LightBuffers;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::overhead_windows::OverheadWindows;
@@ -74,6 +74,9 @@ use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::grass_planting::GrassPlanting;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
 use crate::scene::level::grass_view_frame::GrassViewFrame;
+use crate::scene::level::helpers::view::helper_draws::HelperDraws;
+use crate::scene::level::helpers::view::helper_marks_pass::HelperMarksPass;
+use crate::scene::level::helpers::view::helper_sources::HelperSources;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
@@ -915,8 +918,7 @@ impl SceneView {
           || features.rain.is_distorting()
           || features.composited.is_distorting()),
       selection_color: features.overlays.get_selection_color(),
-      is_marked: features.helpers.get_marks().is_some(),
-      is_rest_faded: features.helpers.is_rest_faded(),
+      marks: features.helpers.get_present_marks(),
       is_engine_bloomed: features.bloom.is_engine_drawn(),
       is_enhanced_bloomed: features.bloom.is_enhanced_drawn(),
       grass_reach: features.grass.get_cascade_reach(),
@@ -1070,19 +1072,30 @@ impl SceneView {
 
     if let Some(marks) = self.features.helpers.add_marks_pass(
       &mut *graph,
-      passes.gbuffer,
-      (view, record.textures),
-      (&statics, handles),
+      HelperMarksPass {
+        gbuffer: passes.gbuffer,
+        view,
+        textures: record.textures,
+        scene: &statics,
+        handles,
+      },
     ) {
       output.marks = marks;
     }
 
     if let Some(slot) = frame.pick_slot {
       self.features.pick.add_passes(
-        (&mut *graph, &mut *bindings),
-        (passes.gbuffer, passes.pipelines),
-        (record.textures, &statics, self.features.helpers.get_draws()),
-        (slot, frame.is_pick_through),
+        &mut *graph,
+        &mut *bindings,
+        PickPass {
+          gbuffer: passes.gbuffer,
+          pipelines: passes.pipelines,
+          textures: record.textures,
+          scene: &statics,
+          helpers: self.features.helpers.get_draws(),
+          slot,
+          is_through: frame.is_pick_through,
+        },
       );
     }
 
@@ -1913,18 +1926,10 @@ impl SceneView {
     self.features.overlays.get_overlays()
   }
 
-  /// Builds its helpers' wires and marks again where the scene's helpers, its spawned objects or `options` moved since,
-  /// the marks bound by `marks_layout` (`StaticGBufferPass::get_marks_layout`).
-  pub fn set_helpers(
-    &mut self,
-    scene: &LevelScene,
-    (device, marks_layout): (&wgpu::Device, &wgpu::BindGroupLayout),
-    options: &RenderViewOptions,
-  ) {
-    self
-      .features
-      .helpers
-      .set(device, (&scene.helpers, &scene.statics), &options.helpers, marks_layout);
+  /// Builds its helpers' wires and marks again where the scene's helpers, its spawned objects or the options `sources`
+  /// hold moved since.
+  pub fn set_helpers(&mut self, device: &wgpu::Device, sources: HelperSources<'_>) {
+    self.features.helpers.set(device, sources);
   }
 
   /// The helpers' wires and icons it draws over its frame.

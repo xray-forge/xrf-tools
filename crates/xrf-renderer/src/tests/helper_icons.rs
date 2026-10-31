@@ -6,7 +6,7 @@ use serde_json::{Value, json};
 
 use crate::contract::render_helper_icon::{RENDER_HELPER_ICONS, RenderHelperIcon};
 use crate::host::render_bundle::RENDER_BUNDLE_SOURCE;
-use crate::scene::level::helpers::helper_icon_atlas::HelperIconAtlas;
+use crate::scene::level::helpers::gpu::helper_icon_atlas::HelperIconAtlas;
 
 /// Where the icons' manifest and the pictures exported for it stand, which only the generator reads.
 fn get_sources() -> PathBuf {

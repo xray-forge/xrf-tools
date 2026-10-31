@@ -9,7 +9,7 @@ import { Nullable } from "@xrf/types";
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
 import { NativeViewport } from "@/core/render/lib/native/native-viewport";
-import { NativeViewportTarget } from "@/core/render/lib/native/native-viewport-target";
+import { INativeViewportClick, NativeViewportTarget } from "@/core/render/lib/native/native-viewport-target";
 import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
@@ -88,12 +88,10 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
     });
 
     this.viewport = viewport;
-    this.target = new NativeViewportTarget(
-      container,
-      viewport,
-      (point: IRenderViewPoint, isThrough: boolean, isToggling: boolean) => this.onClick(point, isThrough, isToggling),
-      (point: Nullable<IRenderViewPoint>) => this.onHover(point)
-    );
+    this.target = new NativeViewportTarget(container, viewport, {
+      onClick: (click: INativeViewportClick) => this.onClick(click),
+      onHover: (point: Nullable<IRenderViewPoint>) => this.onHover(point),
+    });
     this.onAttached(container);
     this.reactions.push(...this.start(viewport));
   }
@@ -161,11 +159,9 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   /**
    * Called for a click on the viewport, the second of a double click aside.
    *
-   * @param _point - Where, in css pixels from the viewport's top left corner.
-   * @param _isThrough - Whether Alt was held, which picks through glass.
-   * @param _isToggling - Whether Ctrl (Cmd on macOS) was held, which adds to the selection or takes from it.
+   * @param _click - Where it landed, and the keys held with it.
    */
-  protected onClick(_point: IRenderViewPoint, _isThrough: boolean, _isToggling: boolean): void {}
+  protected onClick(_click: INativeViewportClick): void {}
 
   /**
    * Called with where the pointer rests over the viewport, at most once a frame.

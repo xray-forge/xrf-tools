@@ -38,66 +38,57 @@ impl LevelObjectKindEntry {
     [channel(1), channel(3), channel(5)]
   }
 
-  /// A spawned visual's row: drawn as its model, its helper off until asked.
-  const fn spawned(kind: LevelObjectKind, label: &'static str, color: &'static str) -> Self {
-    Self {
-      kind,
-      group: LevelObjectGroup::Spawned,
-      label,
-      color,
-      icon: None,
-      draw_distance: 200.0,
-      is_drawn: true,
-      is_helped_by_default: false,
-    }
-  }
+  /// What every spawned visual's row shares, its own kind, label and colour aside: drawn as its model, its helper off
+  /// until asked.
+  const SPAWNED: Self = Self {
+    kind: LevelObjectKind::Props,
+    group: LevelObjectGroup::Spawned,
+    label: "",
+    color: "",
+    icon: None,
+    draw_distance: 200.0,
+    is_drawn: true,
+    is_helped_by_default: false,
+  };
 
-  /// A character's row: no picture, its icon off until asked.
-  const fn character(kind: LevelObjectKind, label: &'static str, color: &'static str, icon: RenderHelperIcon) -> Self {
-    Self {
-      kind,
-      group: LevelObjectGroup::Characters,
-      label,
-      color,
-      icon: Some(icon),
-      draw_distance: 300.0,
-      is_drawn: false,
-      is_helped_by_default: false,
-    }
-  }
+  /// What every character's row shares, its own kind, label, colour and icon aside: no picture, its icon off until
+  /// asked.
+  const CHARACTER: Self = Self {
+    kind: LevelObjectKind::Actor,
+    group: LevelObjectGroup::Characters,
+    label: "",
+    color: "",
+    icon: None,
+    draw_distance: 300.0,
+    is_drawn: false,
+    is_helped_by_default: false,
+  };
 
-  /// A logic volume's row: no picture, its outline drawn once helpers are.
-  const fn volume(kind: LevelObjectKind, label: &'static str, color: &'static str, draw_distance: f32) -> Self {
-    Self {
-      kind,
-      group: LevelObjectGroup::Volumes,
-      label,
-      color,
-      icon: None,
-      draw_distance,
-      is_drawn: false,
-      is_helped_by_default: true,
-    }
-  }
+  /// What every logic volume's row shares, its own kind, label, colour and draw distance aside: no picture, its outline
+  /// drawn once helpers are.
+  const VOLUME: Self = Self {
+    kind: LevelObjectKind::SmartTerrains,
+    group: LevelObjectGroup::Volumes,
+    label: "",
+    color: "",
+    icon: None,
+    draw_distance: 250.0,
+    is_drawn: false,
+    is_helped_by_default: true,
+  };
 
-  /// A placement's row: no picture, its helper off until asked; an icon for a placement at a point.
-  const fn placement(
-    kind: LevelObjectKind,
-    label: &'static str,
-    color: &'static str,
-    icon: Option<RenderHelperIcon>,
-  ) -> Self {
-    Self {
-      kind,
-      group: LevelObjectGroup::Placements,
-      label,
-      color,
-      icon,
-      draw_distance: 150.0,
-      is_drawn: false,
-      is_helped_by_default: false,
-    }
-  }
+  /// What every placement's row shares, its own kind, label, colour and icon aside: no picture, its helper off until
+  /// asked.
+  const PLACEMENT: Self = Self {
+    kind: LevelObjectKind::StaticParticles,
+    group: LevelObjectGroup::Placements,
+    label: "",
+    color: "",
+    icon: None,
+    draw_distance: 150.0,
+    is_drawn: false,
+    is_helped_by_default: false,
+  };
 }
 
 /// Every kind of level object, in the order `LevelObjectKind` declares them: smart terrains orange, restrictors blue,
@@ -105,35 +96,98 @@ impl LevelObjectKindEntry {
 /// spawned visuals teal, characters magenta, smart covers cyan, placements muted violet and cyan, lights warm white.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
 pub const LEVEL_OBJECT_KINDS: &[LevelObjectKindEntry] = &[
-  LevelObjectKindEntry::spawned(LevelObjectKind::Props, "Props", "#26a69a"),
-  LevelObjectKindEntry::spawned(LevelObjectKind::Items, "Items", "#4db6ac"),
-  LevelObjectKindEntry::spawned(LevelObjectKind::Weapons, "Weapons", "#00897b"),
-  LevelObjectKindEntry::spawned(LevelObjectKind::Lamps, "Lamps", "#80cbc4"),
-  LevelObjectKindEntry::character(
-    LevelObjectKind::Actor,
-    "Actor start",
-    "#f06292",
-    RenderHelperIcon::ActorStart,
-  ),
-  LevelObjectKindEntry::character(
-    LevelObjectKind::Stalkers,
-    "Stalkers",
-    "#e040fb",
-    RenderHelperIcon::Stalker,
-  ),
-  LevelObjectKindEntry::character(
-    LevelObjectKind::Creatures,
-    "Creatures",
-    "#ab47bc",
-    RenderHelperIcon::Creature,
-  ),
-  LevelObjectKindEntry::character(LevelObjectKind::Traders, "Traders", "#ce93d8", RenderHelperIcon::Trader),
-  LevelObjectKindEntry::character(LevelObjectKind::Squads, "Squads", "#ba68c8", RenderHelperIcon::Squad),
-  LevelObjectKindEntry::volume(LevelObjectKind::SmartTerrains, "Smart terrains", "#ff9800", 600.0),
-  LevelObjectKindEntry::volume(LevelObjectKind::Restrictors, "Restrictors", "#2196f3", 250.0),
-  LevelObjectKindEntry::volume(LevelObjectKind::Anomalies, "Anomalies", "#f44336", 250.0),
-  LevelObjectKindEntry::volume(LevelObjectKind::LevelChangers, "Level changers", "#4caf50", 600.0),
-  LevelObjectKindEntry::volume(LevelObjectKind::Climbables, "Ladders", "#a1887f", 150.0),
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::Props,
+    label: "Props",
+    color: "#26a69a",
+    ..LevelObjectKindEntry::SPAWNED
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::Items,
+    label: "Items",
+    color: "#4db6ac",
+    ..LevelObjectKindEntry::SPAWNED
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::Weapons,
+    label: "Weapons",
+    color: "#00897b",
+    ..LevelObjectKindEntry::SPAWNED
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::Lamps,
+    label: "Lamps",
+    color: "#80cbc4",
+    ..LevelObjectKindEntry::SPAWNED
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::Actor,
+    label: "Actor start",
+    color: "#f06292",
+    icon: Some(RenderHelperIcon::ActorStart),
+    ..LevelObjectKindEntry::CHARACTER
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::Stalkers,
+    label: "Stalkers",
+    color: "#e040fb",
+    icon: Some(RenderHelperIcon::Stalker),
+    ..LevelObjectKindEntry::CHARACTER
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::Creatures,
+    label: "Creatures",
+    color: "#ab47bc",
+    icon: Some(RenderHelperIcon::Creature),
+    ..LevelObjectKindEntry::CHARACTER
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::Traders,
+    label: "Traders",
+    color: "#ce93d8",
+    icon: Some(RenderHelperIcon::Trader),
+    ..LevelObjectKindEntry::CHARACTER
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::Squads,
+    label: "Squads",
+    color: "#ba68c8",
+    icon: Some(RenderHelperIcon::Squad),
+    ..LevelObjectKindEntry::CHARACTER
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::SmartTerrains,
+    label: "Smart terrains",
+    color: "#ff9800",
+    draw_distance: 600.0,
+    ..LevelObjectKindEntry::VOLUME
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::Restrictors,
+    label: "Restrictors",
+    color: "#2196f3",
+    ..LevelObjectKindEntry::VOLUME
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::Anomalies,
+    label: "Anomalies",
+    color: "#f44336",
+    ..LevelObjectKindEntry::VOLUME
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::LevelChangers,
+    label: "Level changers",
+    color: "#4caf50",
+    draw_distance: 600.0,
+    ..LevelObjectKindEntry::VOLUME
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::Climbables,
+    label: "Ladders",
+    color: "#a1887f",
+    draw_distance: 150.0,
+    ..LevelObjectKindEntry::VOLUME
+  },
   LevelObjectKindEntry {
     kind: LevelObjectKind::SmartCovers,
     group: LevelObjectGroup::Covers,
@@ -164,32 +218,45 @@ pub const LEVEL_OBJECT_KINDS: &[LevelObjectKindEntry] = &[
     is_drawn: false,
     is_helped_by_default: false,
   },
-  LevelObjectKindEntry::placement(
-    LevelObjectKind::StaticParticles,
-    "Static particles",
-    "#b39ddb",
-    Some(RenderHelperIcon::Particles),
-  ),
-  LevelObjectKindEntry::placement(
-    LevelObjectKind::StaticSounds,
-    "Static sounds",
-    "#80deea",
-    Some(RenderHelperIcon::Sound),
-  ),
-  LevelObjectKindEntry::placement(
-    LevelObjectKind::SoundEnvironments,
-    "Sound environments",
-    "#4dd0e1",
-    None,
-  ),
-  LevelObjectKindEntry::placement(LevelObjectKind::FogVolumes, "Fog volumes", "#9575cd", None),
-  LevelObjectKindEntry::placement(LevelObjectKind::EnvModifiers, "Weather modifiers", "#7e57c2", None),
-  LevelObjectKindEntry::placement(
-    LevelObjectKind::RespawnPoints,
-    "Respawn points",
-    "#9fa8da",
-    Some(RenderHelperIcon::RespawnPoint),
-  ),
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::StaticParticles,
+    label: "Static particles",
+    color: "#b39ddb",
+    icon: Some(RenderHelperIcon::Particles),
+    ..LevelObjectKindEntry::PLACEMENT
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::StaticSounds,
+    label: "Static sounds",
+    color: "#80deea",
+    icon: Some(RenderHelperIcon::Sound),
+    ..LevelObjectKindEntry::PLACEMENT
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::SoundEnvironments,
+    label: "Sound environments",
+    color: "#4dd0e1",
+    ..LevelObjectKindEntry::PLACEMENT
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::FogVolumes,
+    label: "Fog volumes",
+    color: "#9575cd",
+    ..LevelObjectKindEntry::PLACEMENT
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::EnvModifiers,
+    label: "Weather modifiers",
+    color: "#7e57c2",
+    ..LevelObjectKindEntry::PLACEMENT
+  },
+  LevelObjectKindEntry {
+    kind: LevelObjectKind::RespawnPoints,
+    label: "Respawn points",
+    color: "#9fa8da",
+    icon: Some(RenderHelperIcon::RespawnPoint),
+    ..LevelObjectKindEntry::PLACEMENT
+  },
   LevelObjectKindEntry {
     kind: LevelObjectKind::Lights,
     group: LevelObjectGroup::Lights,
@@ -201,3 +268,7 @@ pub const LEVEL_OBJECT_KINDS: &[LevelObjectKindEntry] = &[
     is_helped_by_default: false,
   },
 ];
+
+// A view switches the helpers a bit a kind (`RenderHelperOptions::kinds`), so a kind past the mask's width would never
+// draw; widen the mask before the table outgrows it.
+const _: () = assert!(LEVEL_OBJECT_KINDS.len() <= u32::BITS as usize);

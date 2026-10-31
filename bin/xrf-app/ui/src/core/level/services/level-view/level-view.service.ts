@@ -8,7 +8,11 @@ import { TOGGLE_LEVEL_HELPERS_KEYBIND_COMMAND } from "@/core/level/commands";
 import { ILevelCameraOptions, toLevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { ILevelFeatureOptions, toLevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
 import { DEFAULT_LEVEL_LOD_OPTIONS, ILevelLodOptions } from "@/core/level/lib/lod/level-lod-options";
-import { ILevelHelperOptions, toLevelHelperOptions } from "@/core/level/lib/objects/level-helper-options";
+import {
+  ILevelHelperKindsChange,
+  ILevelHelperOptions,
+  toLevelHelperOptions,
+} from "@/core/level/lib/objects/level-helper-options";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import {
   DEFAULT_LEVEL_HEMI_STRENGTH,
@@ -102,11 +106,12 @@ export class LevelViewService {
   }
 
   /**
-   * @param kinds - Kinds of level object.
-   * @param isOn - Whether their helpers are drawn from now on, while helpers are.
+   * @param change - Kinds of level object, and whether their helpers are drawn from now on, while helpers are.
    */
   @BoundAction()
-  public setHelperKinds(kinds: ReadonlyArray<LevelObjectKind>, isOn: boolean): void {
+  public setHelperKinds(change: ILevelHelperKindsChange): void {
+    const { kinds, isOn } = change;
+
     this.storedHelpers.set({
       ...this.helpers,
       kinds: { ...this.helpers.kinds, ...Object.fromEntries(kinds.map((kind: LevelObjectKind) => [kind, isOn])) },

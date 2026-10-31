@@ -24,19 +24,19 @@ describe("LevelViewerMapAnnotationKinds", () => {
 
     await userEvent.click(volumes);
 
-    expect(onChange).toHaveBeenLastCalledWith(
-      [
+    expect(onChange).toHaveBeenLastCalledWith({
+      isShown: true,
+      kinds: [
         ELevelObjectKind.SMART_TERRAINS,
         ELevelObjectKind.RESTRICTORS,
         ELevelObjectKind.ANOMALIES,
         ELevelObjectKind.LEVEL_CHANGERS,
         ELevelObjectKind.CLIMBABLES,
       ],
-      true
-    );
+    });
 
     await userEvent.click(getByRole("checkbox", { name: "Lights" }));
 
-    expect(onChange).toHaveBeenLastCalledWith([ELevelObjectKind.LIGHTS], true);
+    expect(onChange).toHaveBeenLastCalledWith({ isShown: true, kinds: [ELevelObjectKind.LIGHTS] });
   });
 });

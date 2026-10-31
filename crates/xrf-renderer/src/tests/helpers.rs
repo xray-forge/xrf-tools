@@ -5,10 +5,12 @@ use crate::contract::render_helper_options::RenderHelperOptions;
 use crate::host::render_helper_object::RenderHelperObject;
 use crate::host::render_helper_shape::RenderHelperShape;
 use crate::host::render_level_helpers::RenderLevelHelpers;
-use crate::scene::level::feature::helpers_feature::{HelperPart, HelpersFeature};
-use crate::scene::level::helpers::helper_icon_instance::HelperIconInstance;
-use crate::scene::level::helpers::helper_vertex::HelperVertex;
+use crate::scene::level::feature::helpers_feature::HelpersFeature;
+use crate::scene::level::helpers::gpu::helper_icon_instance::HelperIconInstance;
+use crate::scene::level::helpers::gpu::helper_vertex::HelperVertex;
 use crate::scene::level::helpers::level_helpers::LevelHelpers;
+use crate::scene::level::helpers::view::helper_part::HelperPart;
+use crate::scene::static_scene::static_object_box::StaticObjectBox;
 
 fn new_object(id: u32, kind: u32, at: Vec3, shapes: Vec<RenderHelperShape>) -> RenderHelperObject {
   RenderHelperObject {
@@ -51,7 +53,7 @@ fn new_helpers() -> LevelHelpers {
 }
 
 /// A scene standing no spawned object.
-fn no_boxes(_: u32) -> Option<(Mat4, [Vec3; 2])> {
+fn no_boxes(_: u32) -> Option<StaticObjectBox> {
   None
 }
 
@@ -201,7 +203,13 @@ fn marks_each_standing_model_by_its_place_and_boxes_the_hovered_and_selected() {
       _ => None,
     }
   };
-  let boxes = |_: u32| -> Option<(Mat4, [Vec3; 2])> { Some((Mat4::IDENTITY, [Vec3::ZERO, Vec3::ONE])) };
+  let boxes = |_: u32| -> Option<StaticObjectBox> {
+    Some(StaticObjectBox {
+      transform: Mat4::IDENTITY,
+      min: Vec3::ZERO,
+      max: Vec3::ONE,
+    })
+  };
   let orange: u32 = 255 | 128 << 8 | 255 << 24;
 
   assert_eq!(helpers.segments.len(), 0);

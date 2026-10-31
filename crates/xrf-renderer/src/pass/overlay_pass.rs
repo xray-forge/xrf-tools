@@ -4,13 +4,12 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription, VertexLayout};
 
 use crate::host::render_bundle::RenderBundle;
+use crate::pass::overlay_draw::OverlayDraw;
 use crate::pass::overlay_parameters::OverlayParameters;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::feature::helpers_feature::HelperDraws;
-use crate::scene::level::helpers::helper_icon_atlas::HelperIconAtlas;
-use crate::scene::level::helpers::helper_icon_instance::HelperIconInstance;
-use crate::scene::level::helpers::helper_vertex::HelperVertex;
+use crate::scene::level::helpers::gpu::helper_icon_atlas::HelperIconAtlas;
+use crate::scene::level::helpers::gpu::helper_icon_instance::HelperIconInstance;
+use crate::scene::level::helpers::gpu::helper_vertex::HelperVertex;
 use crate::scene::level::level_overlays::LevelOverlays;
 
 /// Draws a viewport's overlays into the window's pass after its frame: line segments and points, depth tested against
@@ -24,7 +23,7 @@ pub struct OverlayPass {
   /// None where the bundle holds no atlas it can read, and no icon is drawn.
   atlas: Option<wgpu::BindGroup>,
   /// The lines', the sun's, the points', the helpers' wires' and icons', one set a window format, built on first use.
-  pipelines: HashMap<wgpu::TextureFormat, [wgpu::RenderPipeline; 5]>,
+  pipelines: HashMap<wgpu::TextureFormat, OverlayPipelines>,
   generation: u64,
 }
 
@@ -103,7 +102,7 @@ impl OverlayPass {
 
     self.generation = source.get_generation();
 
-    let rebuilt: XrfResult<HashMap<wgpu::TextureFormat, [wgpu::RenderPipeline; 5]>> = self
+    let rebuilt: XrfResult<HashMap<wgpu::TextureFormat, OverlayPipelines>> = self
       .pipelines
       .keys()
       .map(|format| Ok((*format, self.create_pipeline(source, *format)?)))
@@ -122,7 +121,7 @@ impl OverlayPass {
   /// Returns an error when the shader does not compose or compile.
   pub fn prepare(&mut self, source: PipelineSource<'_>, format: wgpu::TextureFormat) -> XrfResult {
     if !self.pipelines.contains_key(&format) {
-      let pipelines: [wgpu::RenderPipeline; 5] = self.create_pipeline(source, format)?;
+      let pipelines: OverlayPipelines = self.create_pipeline(source, format)?;
 
       self.pipelines.insert(format, pipelines);
     }
@@ -131,186 +130,160 @@ impl OverlayPass {
   }
 
   /// The lines', the sun's, the points', the helpers' wires' and icons' pipelines drawing into a window format.
-  fn create_pipeline(
-    &self,
-    source: PipelineSource<'_>,
-    format: wgpu::TextureFormat,
-  ) -> XrfResult<[wgpu::RenderPipeline; 5]> {
+  fn create_pipeline(&self, source: PipelineSource<'_>, format: wgpu::TextureFormat) -> XrfResult<OverlayPipelines> {
     // The camera and the overlays' parameters every pipeline binds; only the icons bind the atlas, as a third group.
     let groups: [Option<&wgpu::BindGroupLayout>; 2] = [Some(&self.view_layout), Some(&self.layout)];
     let iconed: [Option<&wgpu::BindGroupLayout>; 3] = [groups[0], groups[1], Some(&self.atlas_layout)];
-    let create = |(vertex, fragment): (&'static str, &'static str),
-                  (topology, buffer): (wgpu::PrimitiveTopology, VertexLayout),
-                  blend: Option<wgpu::BlendState>,
-                  layouts: &[Option<&wgpu::BindGroupLayout>]|
-     -> XrfResult<wgpu::RenderPipeline> {
+    let create = |kind: OverlayPipelineKind| -> XrfResult<wgpu::RenderPipeline> {
       source.get_render_pipeline(
-        &RenderPipelineDescription::new(vertex, "frame/overlay", vertex)
-          .with_fragment(fragment)
-          .with_bind_group_layouts(layouts)
-          .with_vertex_layout(buffer)
+        &RenderPipelineDescription::new(kind.vertex, "frame/overlay", kind.vertex)
+          .with_fragment(kind.fragment)
+          .with_bind_group_layouts(if kind.is_iconed { &iconed } else { &groups })
+          .with_vertex_layout(kind.layout)
           .with_primitive(wgpu::PrimitiveState {
-            topology,
+            topology: kind.topology,
             ..Default::default()
           })
           .with_target(wgpu::ColorTargetState {
             format,
-            blend,
+            blend: kind.blend,
             write_mask: wgpu::ColorWrites::ALL,
           }),
       )
     };
-    let lines: wgpu::RenderPipeline = create(
-      ("vs_line", "fs_line"),
-      (
-        wgpu::PrimitiveTopology::LineList,
-        VertexLayout::new(
+
+    Ok(OverlayPipelines {
+      lines: create(OverlayPipelineKind {
+        vertex: "vs_line",
+        fragment: "fs_line",
+        topology: wgpu::PrimitiveTopology::LineList,
+        layout: VertexLayout::new(
           (LevelOverlays::LINE_FLOATS * size_of::<f32>()) as u64,
           wgpu::VertexStepMode::Vertex,
           &wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x4],
         ),
-      ),
-      None,
-      &groups,
-    )?;
-    let sun: wgpu::RenderPipeline = create(
-      ("vs_sun", "fs_sun"),
-      (
-        wgpu::PrimitiveTopology::TriangleList,
-        VertexLayout::new(
+        blend: None,
+        is_iconed: false,
+      })?,
+      sun: create(OverlayPipelineKind {
+        vertex: "vs_sun",
+        fragment: "fs_sun",
+        topology: wgpu::PrimitiveTopology::TriangleList,
+        layout: VertexLayout::new(
           (LevelOverlays::SUN_FLOATS * size_of::<f32>()) as u64,
           wgpu::VertexStepMode::Instance,
           &wgpu::vertex_attr_array![0 => Float32x4],
         ),
-      ),
-      None,
-      &groups,
-    )?;
-    let points: wgpu::RenderPipeline = create(
-      ("vs_point", "fs_point"),
-      (
-        wgpu::PrimitiveTopology::TriangleList,
-        VertexLayout::new(
+        blend: None,
+        is_iconed: false,
+      })?,
+      points: create(OverlayPipelineKind {
+        vertex: "vs_point",
+        fragment: "fs_point",
+        topology: wgpu::PrimitiveTopology::TriangleList,
+        layout: VertexLayout::new(
           (LevelOverlays::POINT_FLOATS * size_of::<f32>()) as u64,
           wgpu::VertexStepMode::Instance,
           &wgpu::vertex_attr_array![0 => Float32x4, 1 => Float32x4],
         ),
-      ),
-      None,
-      &groups,
-    )?;
-    let helpers: wgpu::RenderPipeline = create(
-      ("vs_helper", "fs_helper"),
-      (
-        wgpu::PrimitiveTopology::LineList,
-        VertexLayout::new(
+        blend: None,
+        is_iconed: false,
+      })?,
+      wires: create(OverlayPipelineKind {
+        vertex: "vs_helper",
+        fragment: "fs_helper",
+        topology: wgpu::PrimitiveTopology::LineList,
+        layout: VertexLayout::new(
           HelperVertex::SIZE,
           wgpu::VertexStepMode::Vertex,
           &HelperVertex::ATTRIBUTES,
         ),
-      ),
-      Some(wgpu::BlendState::ALPHA_BLENDING),
-      &groups,
-    )?;
-
-    let icons: wgpu::RenderPipeline = create(
-      ("vs_helper_icon", "fs_helper_icon"),
-      (
-        wgpu::PrimitiveTopology::TriangleList,
-        VertexLayout::new(
+        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+        is_iconed: false,
+      })?,
+      icons: create(OverlayPipelineKind {
+        vertex: "vs_helper_icon",
+        fragment: "fs_helper_icon",
+        topology: wgpu::PrimitiveTopology::TriangleList,
+        layout: VertexLayout::new(
           HelperIconInstance::SIZE,
           wgpu::VertexStepMode::Instance,
           &HelperIconInstance::ATTRIBUTES,
         ),
-      ),
-      Some(wgpu::BlendState::ALPHA_BLENDING),
-      &iconed,
-    )?;
-
-    Ok([lines, sun, points, helpers, icons])
+        blend: Some(wgpu::BlendState::ALPHA_BLENDING),
+        is_iconed: true,
+      })?,
+    })
   }
 
-  /// Draws into the window's pass, whose viewport and scissor are the viewport's rectangle already: the overlays, then
-  /// the helpers' wires, two vertices a wire, and their icons, six corners each, over them.
-  pub fn draw(
-    &self,
-    context: &mut RasterContext<'_>,
-    format: wgpu::TextureFormat,
-    (view, parameters): (&ViewBinding, &OverlayParameters),
-    (overlays, helpers): (&LevelOverlays, HelperDraws<'_>),
-  ) {
-    let Some([lines, sun, points, wires, icons]) = self.pipelines.get(&format) else {
+  /// Draws into a pass whose viewport and scissor are the view's already, the window's or a screenshot's own: the
+  /// page's overlays where given, then every kept object's helpers and the singled out ones' over them, two vertices a
+  /// wire and six corners an icon.
+  pub fn draw(&self, context: &mut RasterContext<'_>, format: wgpu::TextureFormat, draw: OverlayDraw<'_>) {
+    let Some(pipelines) = self.pipelines.get(&format) else {
       return;
     };
 
-    context.bind(parameters);
+    context.bind(draw.parameters);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
-    pass.set_bind_group(0, &view.bind_group, &[]);
+    pass.set_bind_group(0, &draw.view.bind_group, &[]);
 
-    for (buffer, count) in [&overlays.lines, &overlays.skeleton_lines].into_iter().flatten() {
-      pass.set_pipeline(lines);
-      pass.set_vertex_buffer(0, buffer.slice(..));
-      pass.draw(0..*count, 0..1);
-    }
-
-    if let Some((buffer, count)) = &overlays.points {
-      pass.set_pipeline(points);
-      pass.set_vertex_buffer(0, buffer.slice(..));
-      pass.draw(0..6, 0..*count);
-    }
-
-    if let Some(buffer) = &overlays.sun {
-      pass.set_pipeline(sun);
-      pass.set_vertex_buffer(0, buffer.slice(..));
-      pass.draw(0..6, 0..1);
-    }
-
-    self.draw_helper_parts(pass, (wires, icons), helpers);
-  }
-
-  /// Draws the helpers alone into a pass whose viewport is the view's whole picture, as a screenshot including them is.
-  pub fn draw_helpers(
-    &self,
-    context: &mut RasterContext<'_>,
-    format: wgpu::TextureFormat,
-    (view, parameters): (&ViewBinding, &OverlayParameters),
-    helpers: HelperDraws<'_>,
-  ) {
-    let Some([.., wires, icons]) = self.pipelines.get(&format) else {
-      return;
-    };
-
-    context.bind(parameters);
-
-    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
-
-    pass.set_bind_group(0, &view.bind_group, &[]);
-    self.draw_helper_parts(pass, (wires, icons), helpers);
-  }
-
-  /// Every kept object's wires and icons, then the singled out ones' over them, two vertices a wire and six corners an
-  /// icon.
-  fn draw_helper_parts(
-    &self,
-    pass: &mut wgpu::RenderPass<'static>,
-    (wires, icons): (&wgpu::RenderPipeline, &wgpu::RenderPipeline),
-    helpers: HelperDraws<'_>,
-  ) {
-    for (part_wires, part_icons) in helpers.wires.into_iter().zip(helpers.icons) {
-      if let Some((buffer, count)) = part_wires {
-        pass.set_pipeline(wires);
+    if let Some(overlays) = draw.overlays {
+      for (buffer, count) in [&overlays.lines, &overlays.skeleton_lines].into_iter().flatten() {
+        pass.set_pipeline(&pipelines.lines);
         pass.set_vertex_buffer(0, buffer.slice(..));
-        pass.draw(0..count, 0..1);
+        pass.draw(0..*count, 0..1);
       }
 
-      if let (Some((buffer, count)), Some(atlas)) = (part_icons, &self.atlas) {
-        pass.set_pipeline(icons);
+      if let Some((buffer, count)) = &overlays.points {
+        pass.set_pipeline(&pipelines.points);
+        pass.set_vertex_buffer(0, buffer.slice(..));
+        pass.draw(0..6, 0..*count);
+      }
+
+      if let Some(buffer) = &overlays.sun {
+        pass.set_pipeline(&pipelines.sun);
+        pass.set_vertex_buffer(0, buffer.slice(..));
+        pass.draw(0..6, 0..1);
+      }
+    }
+
+    for part in draw.helpers.in_order() {
+      if let Some(wires) = part.wires {
+        pass.set_pipeline(&pipelines.wires);
+        pass.set_vertex_buffer(0, wires.buffer.slice(..));
+        pass.draw(0..wires.count, 0..1);
+      }
+
+      if let (Some(icons), Some(atlas)) = (part.icons, &self.atlas) {
+        pass.set_pipeline(&pipelines.icons);
         pass.set_bind_group(2, atlas, &[]);
-        pass.set_vertex_buffer(0, buffer.slice(..));
-        pass.draw(0..6, 0..count);
+        pass.set_vertex_buffer(0, icons.buffer.slice(..));
+        pass.draw(0..6, 0..icons.count);
       }
     }
   }
+}
+
+/// The overlay pass's pipelines drawing into one format: the page's lines, sun and points, and the helpers' wires and
+/// icons.
+struct OverlayPipelines {
+  lines: wgpu::RenderPipeline,
+  sun: wgpu::RenderPipeline,
+  points: wgpu::RenderPipeline,
+  wires: wgpu::RenderPipeline,
+  icons: wgpu::RenderPipeline,
+}
+
+/// One of the overlay pass's pipelines: its vertex and fragment entries, its primitives and how their vertices are
+/// read, how it blends, and whether it binds the helper icon atlas.
+struct OverlayPipelineKind {
+  vertex: &'static str,
+  fragment: &'static str,
+  topology: wgpu::PrimitiveTopology,
+  layout: VertexLayout,
+  blend: Option<wgpu::BlendState>,
+  is_iconed: bool,
 }

@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { formatBytes, formatCount } from "@xrf/format";
-import { EMapExportAnnotations, LevelObjectKind } from "@xrf/ipc/types/xrf-app-levels";
+import { EMapExportAnnotations } from "@xrf/ipc/types/xrf-app-levels";
 import { ETextureEncodingFormat } from "@xrf/ipc/types/xrf-texture";
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
@@ -13,7 +13,11 @@ import { ReactElement, ReactNode, useCallback } from "react";
 
 import { LEVEL_CAPTURE_DDS_FORMATS } from "@/tools/level-viewer/lib/capture/level-capture";
 import { ILevelViewerImage } from "@/tools/level-viewer/lib/files/level-viewer-image";
-import { ILevelMapAnnotations, toLevelMapAnnotationsWith } from "@/tools/level-viewer/lib/map/level-map-annotations";
+import {
+  ILevelMapAnnotationKindsChange,
+  ILevelMapAnnotations,
+  toLevelMapAnnotationsWith,
+} from "@/tools/level-viewer/lib/map/level-map-annotations";
 import {
   ILevelMapExportSettings,
   isLevelMapExportKindOffered,
@@ -69,8 +73,8 @@ export function LevelViewerMapResult({
   );
 
   const onAnnotationKinds = useCallback(
-    (kinds: ReadonlyArray<LevelObjectKind>, isShown: boolean) =>
-      resultService.setMapAnnotations(toLevelMapAnnotationsWith(annotations, kinds, isShown)),
+    (change: ILevelMapAnnotationKindsChange) =>
+      resultService.setMapAnnotations(toLevelMapAnnotationsWith(annotations, change)),
     [annotations, resultService]
   );
 

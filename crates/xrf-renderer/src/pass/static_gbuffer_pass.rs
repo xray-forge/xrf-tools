@@ -9,6 +9,7 @@ use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draw_permutation::StaticDrawPermutation;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_impostor_parameters::StaticImpostorParameters;
+use crate::pass::static_mark_draw::StaticMarkDraw;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
@@ -48,8 +49,15 @@ impl StaticGBufferPass {
     let layout: wgpu::BindGroupLayout = StaticDrawParameters::create_layout(device);
     let impostor_layout: wgpu::BindGroupLayout = StaticImpostorParameters::create_layout(device);
     let marks_layout: wgpu::BindGroupLayout = Self::create_marks_layout(device);
-    let pipelines: GBufferPipelines =
-      Self::create_pipelines(source, view_layout, (&layout, &marks_layout), texture_layout)?;
+    let pipelines: GBufferPipelines = Self::create_pipelines(
+      source,
+      GBufferLayouts {
+        view: view_layout,
+        draw: &layout,
+        texture: texture_layout,
+        marks: &marks_layout,
+      },
+    )?;
     let impostor_pipelines = Self::create_impostor_pipelines(source, view_layout, &impostor_layout, texture_layout)?;
     // A texture's texels start at nothing.
     let unmarked: wgpu::TextureView = device
@@ -113,9 +121,12 @@ impl StaticGBufferPass {
 
       match Self::create_pipelines(
         source,
-        &self.view_layout,
-        (&self.layout, &self.marks_layout),
-        &self.texture_layout,
+        GBufferLayouts {
+          view: &self.view_layout,
+          draw: &self.layout,
+          texture: &self.texture_layout,
+          marks: &self.marks_layout,
+        },
       )
       .and_then(|pipelines| {
         let impostors =
@@ -237,21 +248,16 @@ impl StaticGBufferPass {
   /// Draws the spawned models' batches of the clusters the argument buffers list again into the marks target the graph
   /// opened, over the view's depth, each fragment where its model drew the depth kept: the colour its helper marks it
   /// in (`marks`), nothing for an unmarked one.
-  pub fn mark(
-    &self,
-    context: &mut RasterContext<'_>,
-    (view, draws, textures, marks): (&ViewBinding, &StaticDraws, &wgpu::BindGroup, &wgpu::BindGroup),
-    args: &[&wgpu::Buffer],
-  ) {
-    context.get_pass().set_bind_group(0, &view.bind_group, &[]);
-    context.get_pass().set_bind_group(1, textures, &[]);
-    context.get_pass().set_bind_group(3, marks, &[]);
+  pub fn mark(&self, context: &mut RasterContext<'_>, draw: StaticMarkDraw<'_>) {
+    context.get_pass().set_bind_group(0, &draw.view.bind_group, &[]);
+    context.get_pass().set_bind_group(1, draw.textures, &[]);
+    context.get_pass().set_bind_group(3, draw.marks, &[]);
 
     for (batch, pipeline) in Self::list_marked().zip(&self.pipelines.marks) {
-      context.bind(&draws.layouts[batch.layout.get_index()]);
+      context.bind(&draw.draws.layouts[batch.layout.get_index()]);
       context.get_pass().set_pipeline(pipeline);
 
-      for args in args {
+      for args in draw.args {
         context.get_pass().draw_indirect(args, batch.get_args_offset());
       }
     }
@@ -300,12 +306,13 @@ impl StaticGBufferPass {
     ])
   }
 
-  fn create_pipelines(
-    source: PipelineSource<'_>,
-    view_layout: &wgpu::BindGroupLayout,
-    (layout, marks_layout): (&wgpu::BindGroupLayout, &wgpu::BindGroupLayout),
-    texture_layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<GBufferPipelines> {
+  fn create_pipelines(source: PipelineSource<'_>, layouts: GBufferLayouts<'_>) -> XrfResult<GBufferPipelines> {
+    let GBufferLayouts {
+      view: view_layout,
+      draw: layout,
+      texture: texture_layout,
+      marks: marks_layout,
+    } = layouts;
     let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_gbuffer_targets(true);
     let pick_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(PickTarget::FORMAT.into())];
     let create_one = |label: &'static str,
@@ -522,6 +529,16 @@ impl StaticGBufferPass {
       marks,
     })
   }
+}
+
+/// The layouts the static G-buffer's pipelines bind: the camera's, the static draw's, the textures' and, for the helper
+/// marks, the marked models'.
+#[derive(Clone, Copy)]
+struct GBufferLayouts<'a> {
+  view: &'a wgpu::BindGroupLayout,
+  draw: &'a wgpu::BindGroupLayout,
+  texture: &'a wgpu::BindGroupLayout,
+  marks: &'a wgpu::BindGroupLayout,
 }
 
 /// The static G-buffer's pipelines, by batch: a frame's draws without the inspections' code, then with it.

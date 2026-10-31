@@ -7,8 +7,8 @@ use xrf_error::XrfResult;
 use xrf_renderer::{
   BurstEvent, CaptureEvent, RenderBurst, RenderCapture, RenderCommand, RenderCubeCapture, RenderEventSink,
   RenderFrameReport, RenderLoadReport, RenderMapCapture, RenderMemoryReport, RenderOverlay, RenderPick, RenderQueue,
-  RenderSelection, RenderSettings, RenderTextureReport, RenderViewOptions, RenderViewportId, RenderViewportLayout,
-  RenderWait, RenderWindowHost,
+  RenderScreenshot, RenderSelection, RenderSettings, RenderTextureReport, RenderViewOptions, RenderViewportId,
+  RenderViewportLayout, RenderWait, RenderWindowHost,
 };
 
 /// The renderer as the application calls it: each call a command on the render thread's queue, numbering the
@@ -115,10 +115,14 @@ impl Renderer {
     self.ask(|reply| RenderCommand::Capture { id, reply })
   }
 
-  /// A viewport's next finished frame whole, without its overlays, its level object helpers over it where `is_helped`,
-  /// read back; the reply is let go unanswered for a viewport the renderer does not draw.
-  pub fn screenshot_viewport(&self, id: RenderViewportId, is_helped: bool) -> Receiver<XrfResult<RenderCapture>> {
-    self.ask(|reply| RenderCommand::Screenshot { id, is_helped, reply })
+  /// A viewport's next finished frame whole, drawn as `screenshot` asks, read back; the reply is let go unanswered for a
+  /// viewport the renderer does not draw.
+  pub fn screenshot_viewport(
+    &self,
+    id: RenderViewportId,
+    screenshot: RenderScreenshot,
+  ) -> Receiver<XrfResult<RenderCapture>> {
+    self.ask(|reply| RenderCommand::Screenshot { id, screenshot, reply })
   }
 
   /// Captures a level map in a viewport, answering what it tells as it goes; dropping the answer stops it.

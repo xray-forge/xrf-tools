@@ -153,14 +153,14 @@ describe("LevelViewerSnapshotService", () => {
     const snapshot: LevelViewerSnapshotService = container.get(LevelViewerSnapshotService);
 
     view.toggleHelpers();
-    view.setHelperKinds([ELevelObjectKind.LIGHTS], true);
+    view.setHelperKinds({ isOn: true, kinds: [ELevelObjectKind.LIGHTS] });
     view.setHelperLook({ isRestFaded: true });
 
     const file: ILevelViewerSnapshot = snapshot.describe(null);
 
     view.toggleHelpers();
-    view.setHelperKinds([ELevelObjectKind.LIGHTS], false);
-    view.setHelperKinds([ELevelObjectKind.STALKERS], true);
+    view.setHelperKinds({ isOn: false, kinds: [ELevelObjectKind.LIGHTS] });
+    view.setHelperKinds({ isOn: true, kinds: [ELevelObjectKind.STALKERS] });
     view.setHelperLook({ isRestFaded: false });
 
     const result: ILevelViewerSnapshotApplied = await snapshot.importSnapshot(file);

@@ -67,17 +67,30 @@ interface IClick {
   y: number;
 }
 
-/**
- * Told where a click on the viewport landed, in css pixels from its top left corner, whether Alt was held, which picks
- * through glass, and whether Ctrl (Cmd on macOS) was, which adds to the selection or takes from it.
- */
-export type TNativeViewportClick = (point: IRenderViewPoint, isThrough: boolean, isToggling: boolean) => void;
+/** A click on the viewport, as its target tells it. */
+export interface INativeViewportClick {
+  /** Where it landed, in css pixels from the viewport's top left corner. */
+  point: IRenderViewPoint;
+  /** Whether Alt was held, which picks through glass. */
+  isThrough: boolean;
+  /** Whether Ctrl (Cmd on macOS) was held, which adds to the selection or takes from it. */
+  isToggling: boolean;
+}
+
+/** Told of a click on the viewport. */
+export type TNativeViewportClick = (click: INativeViewportClick) => void;
 
 /**
  * Told where the pointer rests over the viewport with no button held, in css pixels from its top left corner, at most
  * once a frame; null once it leaves or a press takes it.
  */
 export type TNativeViewportHover = (point: Nullable<IRenderViewPoint>) => void;
+
+/** What a viewport's target tells of the pointer: its clicks, and where it rests; none told where not given. */
+export interface INativeViewportPointerListeners {
+  onClick?: TNativeViewportClick;
+  onHover?: TNativeViewportHover;
+}
 
 /**
  * The page's side of a native viewport: an element the renderer draws under.
@@ -107,8 +120,7 @@ export class NativeViewportTarget {
   public constructor(
     private readonly element: HTMLElement,
     private readonly viewport: NativeViewport,
-    private readonly onClick: Nullable<TNativeViewportClick> = null,
-    private readonly onHover: Nullable<TNativeViewportHover> = null
+    private readonly told: INativeViewportPointerListeners = {}
   ) {
     this.hadTabIndex = element.hasAttribute("tabindex");
 
@@ -185,7 +197,7 @@ export class NativeViewportTarget {
 
     if (this.hovered) {
       this.viewport.sendInput({ kind: EWorldInputEvent.HOVER, x: this.hovered.x, y: this.hovered.y });
-      this.onHover?.(this.hovered);
+      this.told.onHover?.(this.hovered);
       this.hovered = null;
     }
   }
@@ -323,7 +335,7 @@ export class NativeViewportTarget {
     this.clicked = isSecond ? null : { time: pointer.timeStamp, x: point.x, y: point.y };
 
     if (!isSecond) {
-      this.onClick?.(point, pointer.altKey, pointer.ctrlKey || pointer.metaKey);
+      this.told.onClick?.({ isThrough: pointer.altKey, isToggling: pointer.ctrlKey || pointer.metaKey, point });
     }
   }
 
@@ -398,7 +410,7 @@ export class NativeViewportTarget {
 
       this.element.setPointerCapture?.(pointer.pointerId);
       this.hovered = null;
-      this.onHover?.(null);
+      this.told.onHover?.(null);
       this.press = {
         button: pointer.button,
         lastX: pointer.clientX,
@@ -425,7 +437,7 @@ export class NativeViewportTarget {
     pointerleave: (): void => {
       if (!this.press) {
         this.hovered = null;
-        this.onHover?.(null);
+        this.told.onHover?.(null);
       }
     },
     pointermove: (event: Event): void => {

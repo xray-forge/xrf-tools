@@ -1,10 +1,12 @@
 use crate::pass::exposure_metering::ExposureMetering;
+use crate::pass::present_marks::PresentMarks;
 
 /// What the other units decided this frame that the window pass reads: whether an ambient occlusion and an indirect
 /// light are drawn, how many frame pixels a traced reflection pixel stands for, whether anything distorts the frame,
-/// the selection's colour, the helpers' marks and fading, which bloom is laid over it, how far the grass casts the sun's shadow, the light's scale
-/// and whether it is summed, which the reflections' view shows what the rays met by, what the exposure metered,
-/// which the display transforms are lifted by, and the frame the camera's film grain is drawn for.
+/// the selection's colour, the helpers' marks and fading, which bloom is laid over it, how far the grass casts the
+/// sun's shadow, the light's scale and whether it is summed, which the reflections' view shows what the rays met by,
+/// what the exposure metered, which the display transforms are lifted by, and the frame the camera's film grain is
+/// drawn for.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct PresentInputs {
   pub is_occluded: bool,
@@ -12,9 +14,7 @@ pub struct PresentInputs {
   pub reflection_ratio: Option<u32>,
   pub is_distorting: bool,
   pub selection_color: Option<[f32; 3]>,
-  /// Whether the helpers mark models this frame, and whether what no mark or selection covers fades.
-  pub is_marked: bool,
-  pub is_rest_faded: bool,
+  pub marks: PresentMarks,
   pub is_engine_bloomed: bool,
   pub is_enhanced_bloomed: bool,
   /// Metres from the camera the grass's cards cast the sun's shadow to, none where they cast none.
