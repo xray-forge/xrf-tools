@@ -11,6 +11,7 @@ use crate::pass::camera_effects_stage::CameraEffectsStage;
 use crate::pass::camera_effects_uniform::CameraEffectsUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::pipeline_source::PipelineSource;
+use crate::scene::level::feature::image_chain::ImageChain;
 use crate::scene::level::feature::view_feature::ViewFeature;
 
 /// The camera the resolved frame is shown through (`RenderCameraSettings`): its depth of field, then its motion blur,
@@ -64,16 +65,19 @@ impl CameraFeature {
     }
   }
 
-  /// Adds the camera over `shown`, the image the resolve shows, `size` pixels across, answering the image it leaves,
-  /// none where it draws nothing: the distance and motion under each pixel, read from the drawn `depth` and
-  /// `handles.motion`; the depth of field; the motion blur; and the lens.
+  /// Adds the camera over the image the resolve shows (`chain`), answering the image it leaves, none where it draws
+  /// nothing: the distance and motion under each pixel, read from the drawn `depth` and `handles.motion`; the depth of
+  /// field; the motion blur; and the lens.
   pub fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     handles: ViewTargetHandles,
-    shown: GraphTexture,
-    size: (u32, u32),
+    ImageChain {
+      shown,
+      shown_size: size,
+      ..
+    }: ImageChain,
   ) -> Option<GraphTexture> {
     let (settings, view) = self.frame.as_ref()?;
     let (_, pipelines) = self.pipelines.as_ref()?;

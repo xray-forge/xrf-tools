@@ -23,6 +23,7 @@ pub(crate) mod fsr_frame;
 pub(crate) mod fsr_graph_textures;
 pub(crate) mod fsr_targets;
 pub(crate) mod helpers_feature;
+pub(crate) mod image_chain;
 pub(crate) mod indirect_trace_feature;
 pub(crate) mod light_buffers;
 pub(crate) mod light_draw_inputs;

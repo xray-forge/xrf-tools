@@ -33,6 +33,7 @@ use crate::pass::upscale_uniform::UpscaleUniform;
 use crate::scene::level::feature::before_water_readers::BeforeWaterReaders;
 use crate::scene::level::feature::dlss_resolve::DlssResolve;
 use crate::scene::level::feature::fsr_targets::FsrTargets;
+use crate::scene::level::feature::image_chain::ImageChain;
 use crate::scene::level::feature::ray_guides::RayGuides;
 use crate::scene::level::feature::ray_reconstruction_resolve::RayReconstructionResolve;
 use crate::scene::level::feature::resolve::Resolve;
@@ -827,7 +828,8 @@ impl ResolveFeature {
   /// Adds the resolve of `frame`, the finished frame at the drawn size, against the frame as it stood before the
   /// blended surfaces (`opaque`, the scene where none was kept), DLSS's ray reconstruction reading `guides`. At the
   /// drawn size, the temporal resolve; then, at the viewport's, the upscale where nothing upscaled it and the
-  /// sharpening. Answers the frame at the drawn size and the image the viewport shows.
+  /// sharpening. Answers the frame at the drawn size and the image the viewport shows, which the layers after the
+  /// resolve are laid over.
   pub fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
@@ -841,7 +843,7 @@ impl ResolveFeature {
     frame: GraphTexture,
     opaque: Option<GraphTexture>,
     guides: Option<RayGuides>,
-  ) -> (GraphTexture, GraphTexture) {
+  ) -> ImageChain {
     let upscaled: Option<[GraphTexture; 2]> = self.upscaled.as_ref().map(|[upscaled, sharpened]| {
       [
         bindings.import_view(&mut *graph, "upscaled", &upscaled.view),
@@ -968,7 +970,12 @@ impl ResolveFeature {
       shown = Some(sharpened);
     }
 
-    (frame, shown.unwrap_or(frame))
+    ImageChain {
+      resolved: frame,
+      shown: shown.unwrap_or(frame),
+      shown_size: self.get_shown_size(handles.size),
+      is_rescaled: self.is_rescaled(),
+    }
   }
 
   /// Adds DLSS's upscale of `frame`, the finished frame at the drawn size, through the view's depth and motion, and

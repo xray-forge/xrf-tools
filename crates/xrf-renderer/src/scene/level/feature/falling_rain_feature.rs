@@ -16,6 +16,7 @@ use crate::pass::rain_frame::RainFrame;
 use crate::pass::rain_look_parameters::RainLookParameters;
 use crate::pass::rain_parameters::RainParameters;
 use crate::pass::rain_uniform::RainUniform;
+use crate::scene::level::feature::image_chain::ImageChain;
 use crate::scene::level::feature::over_scene::add_over_scene;
 use crate::scene::level::feature::overhead_windows::OverheadWindows;
 use crate::scene::level::feature::rain_covers::RainCovers;
@@ -234,8 +235,8 @@ impl FallingRainFeature {
     pass.record(move |context| passes.rain.record(context, view, &parameters, look.as_ref(), counts));
   }
 
-  /// Adds the enhanced streaks over a copy of `shown`, the image the temporal resolve shows, `size` texels across, so
-  /// no history holds them; answers the copy, which the window pass shows in its place, none without enhanced rain.
+  /// Adds the enhanced streaks over a copy of the image the resolve shows (`chain`), so no history holds them; answers
+  /// the copy, which the window pass shows in its place, none without enhanced rain.
   pub fn add_over_resolved<'a>(
     &'a self,
     GraphDeclaration {
@@ -245,8 +246,11 @@ impl FallingRainFeature {
     }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
     covers: RainCovers,
-    shown: GraphTexture,
-    size: (u32, u32),
+    ImageChain {
+      shown,
+      shown_size: size,
+      ..
+    }: ImageChain,
   ) -> Option<GraphTexture> {
     let ViewRecord { passes, view, .. } = record;
 

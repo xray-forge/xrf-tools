@@ -59,6 +59,7 @@ use crate::scene::level::feature::combine_inputs::CombineInputs;
 use crate::scene::level::feature::composited_draw::CompositedDraw;
 use crate::scene::level::feature::drop_rings::DropRings;
 use crate::scene::level::feature::fog_feature::FogFeature;
+use crate::scene::level::feature::image_chain::ImageChain;
 use crate::scene::level::feature::light_buffers::LightBuffers;
 use crate::scene::level::feature::light_draw_inputs::LightDrawInputs;
 use crate::scene::level::feature::lights_feature::LightsFeature;
@@ -1535,7 +1536,7 @@ impl SceneView {
       depth: depth_with_water.unwrap_or(handles.depth),
       ..handles
     };
-    let (mut resolved, mut shown): (GraphTexture, GraphTexture) = self.features.resolve.add_passes(
+    let mut chain: ImageChain = self.features.resolve.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),
       ViewRecord {
         handles: surfaced,
@@ -1546,28 +1547,20 @@ impl SceneView {
       ray_guides,
     );
 
-    // The camera over the resolved image, so no history carries its blurs; the frame as drawn is that image too where
-    // nothing rescaled it.
-    if let Some(image) = self.features.camera.add_passes(
+    // The camera over the resolved image, so no history carries its blurs.
+    chain = chain.lay(self.features.camera.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),
       passes,
       surfaced,
-      shown,
-      self.features.resolve.get_shown_size(handles.size),
-    ) {
-      if !self.features.resolve.is_rescaled() {
-        resolved = image;
-      }
-
-      shown = image;
-    }
+      chain,
+    ));
 
     // The enhanced bloom from the resolved image the present shows, before the streaks laid over it.
     let enhanced_bloom: Option<GraphTexture> =
       self
         .features
         .bloom
-        .add_enhanced_passes(GraphDeclaration::new(graph, bindings, runtime), record, shown);
+        .add_enhanced_passes(GraphDeclaration::new(graph, bindings, runtime), record, chain.shown);
 
     // A selected composited surface, glass, marked where the present outlines the selection, once the enhanced
     // bloom has read the marks.
@@ -1575,29 +1568,21 @@ impl SceneView {
       self.features.composited.add_selection_passes(&mut *graph, passes, draw);
     }
 
-    // The enhanced streaks over what the resolve shows, so no history carries them; the frame as drawn is that image
-    // too where nothing rescaled it.
-    if let Some(layer) = self.features.rain.add_over_resolved(
+    // The enhanced streaks over what the resolve shows, so no history carries them.
+    chain = chain.lay(self.features.rain.add_over_resolved(
       GraphDeclaration::new(graph, bindings, runtime),
       record,
       RainCovers::of(&shadowed),
-      shown,
-      self.features.resolve.get_shown_size(handles.size),
-    ) {
-      if !self.features.resolve.is_rescaled() {
-        resolved = layer;
-      }
-
-      shown = layer;
-    }
+      chain,
+    ));
 
     self
       .features
       .exposure
       .add_passes(GraphDeclaration::new(graph, bindings, runtime), record);
 
-    output.scene = resolved;
-    output.shown = shown;
+    output.scene = chain.resolved;
+    output.shown = chain.shown;
     output.indirect_light = lit_frame.indirect_light.unwrap_or(record.unlit);
     output.reflections = lit_frame.reflections.unwrap_or(record.untraced);
     output.reflection_ends = lit_frame.reflection_ends.unwrap_or(record.no_ends);
