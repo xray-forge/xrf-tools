@@ -116,10 +116,13 @@ impl ArchivePackSourceCollector {
   }
 
   fn collect_directory(&mut self, config: &ArchivePackConfig, directory: &ArchivePackDirectory) -> XrfResult<()> {
-    let root: PathBuf = if directory.path.is_empty() {
+    // Spelled as an archive name first, so a rule with a leading separator stays below the source rather than joining
+    // as an absolute path.
+    let prefix: String = normalize_archive_name(&directory.path);
+    let root: PathBuf = if prefix.is_empty() {
       config.source.clone()
     } else {
-      config.source.join(directory.path.replace('\\', "/"))
+      config.source.join(prefix.replace('\\', "/"))
     };
 
     if !Self::is_present_source_root(&root)? {

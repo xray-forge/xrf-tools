@@ -6,6 +6,9 @@ use std::path::{Path, PathBuf};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{HostRelativePath, format_path};
 
+/// Either separator a name or a rule may be spelled with.
+const SEPARATORS: [char; 2] = ['\\', '/'];
+
 /// Converts an engine name into host path components below a destination root.
 ///
 /// # Errors
@@ -46,29 +49,41 @@ pub(crate) fn normalize_archive_name(name: &str) -> String {
 
 /// Whether an engine name is a directory prefix itself or lies below it.
 pub(crate) fn is_component_prefix(name: &str, prefix: &str) -> bool {
-  if prefix.is_empty() {
-    return true;
-  }
+  is_root(prefix) || strip_name_prefix(name, prefix).is_some_and(|tail| tail.is_empty() || tail.starts_with(SEPARATORS))
+}
 
-  let Some((head, tail)) = name.split_at_checked(prefix.len()) else {
-    return false;
-  };
-
-  head.eq_ignore_ascii_case(prefix) && (tail.is_empty() || tail.starts_with(['\\', '/']))
+/// Whether an engine name and a directory rule name the same directory.
+pub(crate) fn is_same_name(name: &str, other: &str) -> bool {
+  strip_name_prefix(name, other).is_some_and(|tail| tail.trim_matches(SEPARATORS).is_empty())
 }
 
 /// The part of an engine name below a directory prefix, or `None` when it lies outside it.
 pub(crate) fn relative_to_prefix<'a>(name: &'a str, prefix: &str) -> Option<&'a str> {
-  if prefix.is_empty() {
+  if is_root(prefix) {
     return Some(name);
   }
 
-  if !is_component_prefix(name, prefix) {
-    return None;
-  }
+  strip_name_prefix(name, prefix)?.strip_prefix(SEPARATORS)
+}
 
-  // The boundary is proven, so what follows the prefix is either empty or starts at the separator.
-  name[prefix.len()..].strip_prefix(['\\', '/'])
+/// Whether a directory rule names the source root, which holds every name.
+fn is_root(prefix: &str) -> bool {
+  prefix.trim_matches(SEPARATORS).is_empty()
+}
+
+/// What follows `prefix` in `name`, compared the way an author's directory rule means it: without ASCII case, either
+/// separator standing for the other, and a separator at either end of the prefix ignored. `None` when the name does not
+/// open with it; the tail is not checked for a component boundary.
+fn strip_name_prefix<'a>(name: &'a str, prefix: &str) -> Option<&'a str> {
+  let prefix: &str = prefix.trim_matches(SEPARATORS);
+  // `get` refuses a length that would cut a character, which a byte comparison below would otherwise read across.
+  let head: &str = name.get(..prefix.len())?;
+  let is_same: bool = head.bytes().zip(prefix.bytes()).all(|(left, right)| {
+    left.eq_ignore_ascii_case(&right)
+      || (SEPARATORS.contains(&char::from(left)) && SEPARATORS.contains(&char::from(right)))
+  });
+
+  is_same.then(|| &name[prefix.len()..])
 }
 
 /// Whether `path` names `root` itself or something inside it.
@@ -116,7 +131,7 @@ mod tests {
   use std::ffi::OsString;
   use std::path::{Path, PathBuf};
 
-  use super::{is_component_prefix, relative_to_prefix, to_archive_name, to_host_relative};
+  use super::{is_component_prefix, is_same_name, relative_to_prefix, to_archive_name, to_host_relative};
 
   /// A file name the host accepts and UTF-8 cannot spell: raw bytes on Unix, a lone surrogate on Windows.
   fn unrepresentable_name() -> OsString {
@@ -240,5 +255,38 @@ mod tests {
     assert!(is_component_prefix("configs\\a.ltx", "Configs"));
     // Slicing at the prefix length must not land inside a character.
     assert!(!is_component_prefix("тексты", "configs"));
+  }
+
+  #[test]
+  fn a_rule_names_its_directory_however_its_separators_are_spelled() {
+    for rule in [
+      "configs\\private",
+      "configs/private",
+      "configs\\private\\",
+      "configs/private/",
+      "\\configs\\private",
+    ] {
+      assert!(is_component_prefix("configs\\private", rule), "'{rule}'");
+      assert!(is_component_prefix("configs\\private\\draft.ltx", rule), "'{rule}'");
+      assert!(
+        !is_component_prefix("configs\\private_backup\\draft.ltx", rule),
+        "'{rule}'"
+      );
+      assert!(!is_component_prefix("configs\\public\\release.ltx", rule), "'{rule}'");
+
+      assert!(is_same_name("configs\\private", rule), "'{rule}'");
+      assert!(!is_same_name("configs\\private\\draft.ltx", rule), "'{rule}'");
+
+      assert_eq!(
+        relative_to_prefix("configs\\private\\draft.ltx", rule),
+        Some("draft.ltx"),
+        "'{rule}'"
+      );
+    }
+
+    for root in ["", "\\", "/"] {
+      assert!(is_component_prefix("configs\\a.ltx", root), "'{root}' is the root");
+      assert_eq!(relative_to_prefix("configs\\a.ltx", root), Some("configs\\a.ltx"));
+    }
   }
 }

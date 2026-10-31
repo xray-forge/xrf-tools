@@ -2,6 +2,7 @@ use xrf_ltx::Ltx;
 
 use crate::archive_config_ltx::ArchiveConfigLtx;
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
+use crate::path::normalize_archive_name;
 
 impl ArchivePackConfig {
   /// Section listing files by name rather than by directory.
@@ -42,7 +43,7 @@ impl ArchivePackConfig {
       path: if path == ".\\" || path == "./" {
         String::new()
       } else {
-        path.replace('/', "\\").trim_end_matches('\\').to_string()
+        normalize_archive_name(path)
       },
       is_recursive: matches!(value, "true" | "on" | "yes" | "1"),
     }

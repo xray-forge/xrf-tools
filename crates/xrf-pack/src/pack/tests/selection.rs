@@ -7,8 +7,9 @@ use std::path::PathBuf;
 
 use xrf_archive::ArchiveProject;
 use xrf_error::XrfError;
+use xrf_ltx::Ltx;
 
-use crate::pack::config::ArchivePackDirectory;
+use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
 use crate::pack::tests::fixtures::{BINARY, CONFIG, allow_directory, create_config, deny_directory, open, pack, read};
 use crate::pack::{ArchivePackResult, ArchivePacker};
 
@@ -55,6 +56,63 @@ fn an_excluded_directory_does_not_reach_the_neighbour_it_shares_a_prefix_with() 
 
   for name in ["configs\\", "configs\\system.ltx", "configs\\weapons\\w_ak74.ltx"] {
     assert!(!project.files.contains_key(name), "'{name}' is excluded");
+  }
+}
+
+#[test]
+fn an_exclusion_names_its_directory_however_its_separators_are_spelled() {
+  const FILES: [(&str, &[u8]); 3] = [
+    ("configs\\private\\draft.ltx", CONFIG),
+    ("configs\\private_backup\\draft.ltx", CONFIG),
+    ("configs\\public\\release.ltx", CONFIG),
+  ];
+
+  /// The files a packed set holds, sorted so two sets compare as lists.
+  fn packed_files(scope: &str, configure: impl FnOnce(&mut ArchivePackConfig)) -> Vec<String> {
+    let (_, destination) = pack(scope, &FILES, configure);
+    let mut names: Vec<String> = open(&destination)
+      .files
+      .values()
+      .filter(|entry| !entry.is_directory)
+      .map(|entry| entry.name.to_string())
+      .collect();
+
+    names.sort();
+
+    names
+  }
+
+  // The xrCompress dialect, whose import already spelled rules the way an archive names directories.
+  let from_ltx: Vec<String> = packed_files("exclusion_spellings/ltx", |config| {
+    *config = config
+      .clone()
+      .with_ltx(&Ltx::read_from_str("[exclude_folders]\nconfigs/private = true\n").expect("ltx parses"));
+  });
+
+  assert_eq!(
+    from_ltx,
+    ["configs\\private_backup\\draft.ltx", "configs\\public\\release.ltx"],
+    "the directory is excluded and the sibling sharing its prefix is not"
+  );
+
+  // What JSON, the desktop packer and a direct call hand over unchanged.
+  for (index, path) in [
+    "configs/private",
+    "configs\\private\\",
+    "configs/private/",
+    "\\configs\\private",
+  ]
+  .into_iter()
+  .enumerate()
+  {
+    let packed: Vec<String> = packed_files(&format!("exclusion_spellings/{index}"), |config| {
+      config.exclude_directories = vec![ArchivePackDirectory {
+        path: String::from(path),
+        is_recursive: true,
+      }];
+    });
+
+    assert_eq!(packed, from_ltx, "'{path}' selects what the LTX rule does");
   }
 }
 

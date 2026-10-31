@@ -3,16 +3,17 @@
 use crate::archive_extension_pattern::ArchiveExtensionPattern;
 use crate::pack::config::ArchivePackConfig;
 use crate::pack::source::ArchivePackSkipReason;
-use crate::path::is_component_prefix;
+use crate::path::{is_component_prefix, is_same_name};
 
 impl ArchivePackConfig {
   /// A recursive exclusion covers the directory and everything below it; a plain one covers only the directory itself.
+  /// A rule is matched however its author spelled the separators, so `configs/private\` names `configs\private`.
   pub(crate) fn is_excluded_directory(&self, name: &str) -> bool {
     self.is_recursively_excluded_directory(name)
       || self
         .exclude_directories
         .iter()
-        .any(|directory| !directory.is_recursive && name.eq_ignore_ascii_case(&directory.path))
+        .any(|directory| !directory.is_recursive && is_same_name(name, &directory.path))
   }
 
   /// The recursive half on its own, which is what a walk prunes on: nothing below such a directory can be
@@ -194,6 +195,28 @@ mod tests {
     }
 
     assert!(config_excluding("Configs", true).is_excluded_directory("CONFIGS\\system.ltx"));
+  }
+
+  #[test]
+  fn an_exclusion_is_matched_however_its_separators_are_spelled() {
+    for path in ["configs/weapons", "configs\\weapons\\", "configs/weapons/"] {
+      let recursive: ArchivePackConfig = config_excluding(path, true);
+      let shallow: ArchivePackConfig = config_excluding(path, false);
+
+      assert!(
+        recursive.is_excluded_directory("configs\\weapons\\w_ak74.ltx"),
+        "'{path}'"
+      );
+      assert!(
+        !recursive.is_excluded_directory("configs\\weapons_old\\w_ak74.ltx"),
+        "'{path}'"
+      );
+      assert!(shallow.is_excluded_directory("configs\\weapons"), "'{path}'");
+      assert!(
+        !shallow.is_excluded_directory("configs\\weapons\\w_ak74.ltx"),
+        "'{path}'"
+      );
+    }
   }
 
   #[test]
