@@ -63,7 +63,7 @@ export interface ILevelViewOptions extends ILevelSurfaceOptions {
   /** Burns the campfires, as the engine starts them, rather than leaving them to smoulder out. */
   isCampfireLit: boolean;
   /** Plays the weather's ambient effects near the camera, with the wind they bring. */
-  isAmbientPlayed: boolean;
+  isAmbientEffectPlayed: boolean;
   /** Draws the spawned physics objects, breakables, boxes and vehicles. */
   isSpawnedProps: boolean;
   /** Draws the spawned items but weapons. */
@@ -81,7 +81,7 @@ export const DEFAULT_LEVEL_HEMI_STRENGTH: number = 1;
 
 export const DEFAULT_LEVEL_VIEW_OPTIONS: ILevelViewOptions = {
   ...DEFAULT_LEVEL_SURFACE_OPTIONS,
-  isAmbientPlayed: true,
+  isAmbientEffectPlayed: true,
   isAntialiased: true,
   isAxesVisible: false,
   isCalibrationVisible: false,

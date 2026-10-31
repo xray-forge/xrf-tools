@@ -215,7 +215,7 @@ export type WorldToggles = {
   /** Whether its campfires burn, as `CZoneCampfire` starts, rather than smoulder out. */
   isCampfireLit: boolean;
   /** Whether the weather's ambient effects play near the camera and bring their wind. */
-  isAmbientPlayed: boolean;
+  isAmbientEffectPlayed: boolean;
   /** Which groups of the level's spawned objects are drawn. */
   isSpawnedProps: boolean;
   isSpawnedItems: boolean;

@@ -19,7 +19,7 @@ pub struct WorldToggles {
   /// Whether its campfires burn, as `CZoneCampfire` starts, rather than smoulder out.
   pub is_campfire_lit: bool,
   /// Whether the weather's ambient effects play near the camera and bring their wind.
-  pub is_ambient_played: bool,
+  pub is_ambient_effect_played: bool,
   /// Which groups of the level's spawned objects are drawn.
   pub is_spawned_props: bool,
   pub is_spawned_items: bool,
@@ -39,7 +39,7 @@ impl Default for WorldToggles {
       is_thundering: true,
       is_windy: true,
       is_campfire_lit: true,
-      is_ambient_played: true,
+      is_ambient_effect_played: true,
       is_spawned_props: true,
       is_spawned_items: true,
       is_spawned_weapons: true,
