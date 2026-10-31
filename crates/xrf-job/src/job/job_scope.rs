@@ -4,9 +4,6 @@ use crate::job::JobState;
 use crate::job::LevelState;
 
 /// A level of a job, entered until this is dropped.
-///
-/// Shared rather than borrowed, so a pool of workers can all advance one level without threading a lifetime through
-/// every function the operation is built from.
 pub struct JobScope {
   state: Arc<JobState>,
   level: Arc<LevelState>,
@@ -18,9 +15,6 @@ impl JobScope {
   }
 
   /// Count one unit of this level as done.
-  ///
-  /// Called once per entry from every worker, so the common path is a single relaxed increment plus a counter gate.
-  /// Deciding emission here rather than in the caller is what keeps one rule over every operation.
   pub fn advance(&self) {
     self.advance_by(1);
   }
@@ -32,9 +26,6 @@ impl JobScope {
   }
 
   /// Enter a level inside this one.
-  ///
-  /// Offered here as well as on the handle so the nesting reads as nesting at the call site; both do the same thing,
-  /// because the stack is the job's rather than any one scope's.
   pub fn enter(&self, id: impl Into<String>, total: Option<u64>) -> JobScope {
     JobState::enter(&self.state, id, total)
   }
@@ -46,11 +37,7 @@ impl JobScope {
 }
 
 impl Drop for JobScope {
-  /// Leaves the level, counting it against its parent.
-  ///
-  /// Two emissions rather than one, and intentionally: the first shows this level at its final count, which is the only
-  /// moment a finished child is visible at all, and the second shows the parent with that child counted. A boundary is
-  /// rare enough that the pair costs nothing, and collapsing them would lose whichever half a reader was watching.
+  /// Leaves the level. The level it was entered in counts only what its own owner advances.
   fn drop(&mut self) {
     self.state.emit();
     self.state.leave(&self.level);

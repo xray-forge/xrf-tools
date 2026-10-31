@@ -46,10 +46,13 @@ or `advance_by(units)`, nests with its own `enter`, and reads its count with `ge
 on; leave it empty for parallel work.
 
 Each `JobProgress` snapshot carries the whole active stack, outermost first, plus `duration` since the handle was
-created and the current `detail`. A parent level counts its finished children, a leaf its own units. Entering and
-leaving a level are reported at once; `advance` reports only when the interval has passed, from whichever worker gets
-there first, so a sink is called from arbitrary threads and blocking in it blocks that worker. `report_if_due` lets a
-phase with nothing to count still report, and `get_progress` reads the current snapshot on demand.
+created and the current `detail`. Every level counts what its owner advances — checks for a parent, units for a leaf —
+and leaving a child counts nothing against its parent. The stack describes nesting, not siblings: work running beside
+other work of one job takes `without_progress`, a handle sharing the job's cancellation and clock whose levels and
+detail reach no sink. Entering and leaving a level are reported at once; `advance` reports only when the interval has
+passed, from whichever worker gets there first, so a sink is called from arbitrary threads and blocking in it blocks
+that worker. `report_if_due` lets a phase with nothing to count still report, and `get_progress` reads the current
+snapshot on demand.
 
 Sinks: `NoopSink` discards and `RecordingSink` keeps every snapshot for tests (`list_reported`, `take_reported`). A
 consumer renders progress through a sink of its own: the CLI's `TerminalProgressSink` writes a line to stderr at a

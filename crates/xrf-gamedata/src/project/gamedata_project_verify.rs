@@ -15,10 +15,7 @@ use crate::{
 const CHECK_WINDOW: usize = 6;
 
 /// Phase a verification reports while it works through the checks it was asked for.
-///
-/// Named for the units it counts rather than for the operation, because the checks nested inside it are verifications
-/// too: a stack reading `verify / verify` would say nothing about which level was which.
-const PHASE_CHECKS: &str = "checks";
+pub(crate) const PHASE_CHECKS: &str = "checks";
 
 impl GamedataProject {
   pub fn verify(&self, options: &GamedataProjectVerifyOptions) -> XrfResult<GamedataVerificationReport> {
@@ -50,9 +47,10 @@ impl GamedataProject {
     result.add_report(GamedataVerificationType::Coverage.run(self, options));
     result.add_report(GamedataVerificationType::Collisions.run(self, options));
 
-    // One level over the selected checks, and each check that reports its own work nests inside it: the LTX checks
-    // enter their own file-level scopes on this same handle, so a run reads as `checks 3/11` above `verify 400/2000`
-    // rather than as one bar that sits still for minutes. This is the first consumer to nest across two crates.
+    // One level over the selected checks, advanced once per finished check and by nothing else. A check running alone
+    // nests its own levels inside it, so a lone LTX check reads as `checks 0/1` above `verify 400/2000`; checks running
+    // beside each other report on handles of their own that reach no sink, because one stack would show them as nested
+    // in each other, and their per-file detail would replace the schedule's list of what is running.
     let verifying: xrf_job::JobScope = options.job.enter(PHASE_CHECKS, Some(checks.len() as u64));
 
     // Checks run together on whatever pool the caller installed, because most of them cannot use one on their own:
@@ -78,6 +76,7 @@ impl GamedataProject {
     let mut reports: Vec<Option<GamedataVerificationCheckReport>> = Vec::with_capacity(checks.len());
 
     for (wave, released_together) in checks.chunks(window).enumerate() {
+      let is_alone: bool = released_together.len() == 1;
       let mut released: Vec<Option<GamedataVerificationCheckReport>> = released_together
         .par_iter()
         .enumerate()
@@ -93,8 +92,18 @@ impl GamedataProject {
 
           schedule.enter(&options.job, index, *check);
 
-          let report: GamedataVerificationCheckReport =
-            check.run(self, &options.with_output(slot.get_output().clone()));
+          let report: GamedataVerificationCheckReport = check.run(
+            self,
+            &GamedataProjectVerifyOptions {
+              output: slot.get_output().clone(),
+              job: if is_alone {
+                options.job.clone()
+              } else {
+                options.job.without_progress()
+              },
+              ..options.clone()
+            },
+          );
 
           schedule.leave(&options.job, index);
           verifying.advance();

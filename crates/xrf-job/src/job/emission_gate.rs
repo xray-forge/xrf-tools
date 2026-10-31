@@ -2,10 +2,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 /// Decides when a running job's next snapshot is worth sending, and which thread sends it.
-///
-/// Split from the job's own state because it is the one part of reporting that is a concurrency argument rather than a
-/// description of the work: every worker of a parallel operation reaches it on every unit, and the rule it enforces —
-/// at most one snapshot per interval, from whichever thread got there first — is what keeps that cheap.
 pub(crate) struct EmissionGate {
   started_at: Instant,
   interval: Duration,
@@ -22,26 +18,26 @@ impl EmissionGate {
     }
   }
 
+  /// A gate on the same clock that has never emitted.
+  pub fn sharing_clock(&self) -> Self {
+    Self {
+      started_at: self.started_at,
+      interval: self.interval,
+      last_emit: AtomicU64::new(0),
+    }
+  }
+
   /// How long the run has been going.
   pub fn elapsed(&self) -> Duration {
     self.started_at.elapsed()
   }
 
   /// Whether every unit is reported, which is what a test asserting the sequence asks for.
-  ///
-  /// Such a gate is never claimed: with no interval to enforce, a losing thread would silently drop a snapshot the
-  /// test is waiting for.
   pub fn is_immediate(&self) -> bool {
     self.interval.is_zero()
   }
 
   /// Whether this thread is the one that reports now.
-  ///
-  /// The clock is read per unit rather than every so many of them. A counter in front of it would save that read, but
-  /// it would also make the reporting rate a function of how many units an operation has: ten large files over three
-  /// minutes would report once and then sit still until the next phase, which is precisely the frozen bar this exists
-  /// to remove. The read is tens of nanoseconds against work measured in microseconds at best, and the expensive part
-  /// — claiming the emission — is still reached only once an interval has actually passed.
   pub fn claim(&self) -> bool {
     let elapsed: u64 = self.elapsed_millis();
     let last: u64 = self.last_emit.load(Ordering::Relaxed);
@@ -59,9 +55,6 @@ impl EmissionGate {
   }
 
   /// Take the current interval without contending for it, for an emission that is never throttled.
-  ///
-  /// What a phase change uses: it is the highest-value thing a job says, and a reader that missed one would show the
-  /// wrong phase for as long as the next one lasts.
   pub fn stamp(&self) {
     self.last_emit.store(self.elapsed_millis(), Ordering::Relaxed);
   }

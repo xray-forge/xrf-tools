@@ -57,9 +57,9 @@ fn a_level_counts_its_own_units() {
 }
 
 #[test]
-fn a_parent_counts_its_children_rather_than_their_units() {
-  // The whole reason one mechanism serves "check 3 of 7" and "asset 400 of 40000": a parent's counts are its finished
-  // children, not a sum of what they did.
+fn a_parent_counts_what_its_owner_advances_rather_than_its_children() {
+  // A level over checks advances once per check. Only some checks nest a level of their own, so a parent that also
+  // counted its children's exits would pass its total by however many of them nested (issue 0154).
   let (job, sink) = recording();
   let verifying: JobScope = job.enter("verify", Some(2));
 
@@ -69,12 +69,42 @@ fn a_parent_counts_its_children_rather_than_their_units() {
     checking.advance_by(40);
   }
 
-  let reported: Vec<JobProgress> = sink.list_reported();
-  let last: &JobProgress = reported.last().expect("a snapshot after the child left");
+  verifying.advance();
 
-  assert_eq!(ids(last), vec!["verify"]);
+  let reported: Vec<JobProgress> = sink.list_reported();
+  let left: &JobProgress = &reported[reported.len() - 2];
+  let last: &JobProgress = reported.last().expect("a snapshot after the parent advanced");
+
+  assert_eq!(ids(left), vec!["verify"]);
+  assert_eq!(left.levels[0].completed, 0, "leaving a child counts nothing");
   assert_eq!(last.levels[0].completed, 1);
   assert_eq!(last.levels[0].total, Some(2));
+}
+
+#[test]
+fn a_handle_without_progress_shares_cancellation_but_reports_nothing() {
+  // What a worker beside sibling work holds: its levels and detail would otherwise land on the job's one stack as if
+  // nested inside a sibling's, while a cancel from either side still has to stop both.
+  let (job, sink) = recording();
+  let _checks: JobScope = job.enter("checks", Some(1));
+  let check: JobHandle = job.without_progress();
+  let reported: usize = sink.list_reported().len();
+
+  {
+    let walking: JobScope = check.enter("files", Some(2));
+
+    check.set_detail(Some(String::from("system.ltx")));
+    walking.advance();
+  }
+
+  assert_eq!(sink.list_reported().len(), reported, "nothing reached the job's sink");
+  assert_eq!(ids(&job.get_progress().expect("checks is entered")), vec!["checks"]);
+  assert_eq!(job.get_progress().expect("checks is entered").detail, None);
+
+  check.cancel();
+
+  assert!(job.is_cancelled());
+  assert!(job.without_progress().is_cancelled());
 }
 
 #[test]

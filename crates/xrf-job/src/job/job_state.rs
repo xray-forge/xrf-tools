@@ -6,6 +6,7 @@ use crate::job::EmissionGate;
 use crate::job::JobScope;
 use crate::job::LevelState;
 use crate::progress::JobProgress;
+use crate::progress::NoopSink;
 use crate::progress::ProgressLevel;
 use crate::progress::ProgressSink;
 use crate::progress::ProgressUnit;
@@ -18,8 +19,8 @@ pub(crate) struct JobState {
   /// When the run started, and which thread may report right now.
   gate: EmissionGate,
   /// Relaxed, because nothing is published through this flag: the operation reads it, decides to stop, and reports what
-  /// it had already finished through its own return value.
-  cancelled: AtomicBool,
+  /// it had already finished through its own return value. Shared with every handle made by `without_progress`.
+  cancelled: Arc<AtomicBool>,
   /// The active stack, outermost first. Written on enter and leave, read only when a snapshot is actually being built.
   levels: RwLock<Vec<Arc<LevelState>>>,
   detail: RwLock<Option<String>>,
@@ -31,7 +32,19 @@ impl JobState {
       sink,
       is_reporting,
       gate: EmissionGate::new(interval),
-      cancelled: AtomicBool::new(false),
+      cancelled: Arc::new(AtomicBool::new(false)),
+      levels: RwLock::new(Vec::new()),
+      detail: RwLock::new(None),
+    }
+  }
+
+  /// The same run, cancelled and timed with this one, with a stack of its own that reports nowhere.
+  pub(crate) fn without_progress(&self) -> Self {
+    Self {
+      sink: Arc::new(NoopSink),
+      is_reporting: false,
+      gate: self.gate.sharing_clock(),
+      cancelled: Arc::clone(&self.cancelled),
       levels: RwLock::new(Vec::new()),
       detail: RwLock::new(None),
     }
@@ -58,7 +71,7 @@ impl JobState {
     JobScope::new(Arc::clone(state), level)
   }
 
-  /// Leave a level, counting it against whatever now sits below it.
+  /// Leave a level, showing whatever now sits below it.
   pub(crate) fn leave(&self, level: &Arc<LevelState>) {
     let mut levels: RwLockWriteGuard<Vec<Arc<LevelState>>> = self.write_levels();
 
@@ -68,13 +81,11 @@ impl JobState {
       levels.remove(index);
     }
 
-    let parent: Option<Arc<LevelState>> = levels.last().cloned();
+    let is_inside_another: bool = !levels.is_empty();
 
     drop(levels);
 
-    if let Some(parent) = parent {
-      parent.advance_by(1);
-
+    if is_inside_another {
       self.emit();
     }
   }

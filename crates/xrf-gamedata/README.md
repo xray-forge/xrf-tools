@@ -133,8 +133,10 @@ problem is a finding of its own, naming what is wrong and where; a check does no
 
 ## Progress and execution
 
-Pass a job handle through the verify options for nested progress and cooperative cancellation; after cancellation no
-further check starts, and running checks stop at their own iteration boundaries. Checks run together on the caller's
+Pass a job handle through the verify options for progress and cooperative cancellation; after cancellation no further
+check starts, and running checks stop at their own iteration boundaries. Progress is one `checks` level advanced once
+per finished check. A check running alone reports its own levels beneath it; checks running beside each other report
+none, since one stack would show them nested in each other. Checks run together on the caller's
 Rayon pool, a few at a time while output is being read, all at once when output is silent; an execution limit belongs
 around the whole operation, as described in [xrf-job](../xrf-job/README.md). Live messages go through `OutputOptions`,
 and each check's output is released in selection order, so a run says the same things in the same order however its
