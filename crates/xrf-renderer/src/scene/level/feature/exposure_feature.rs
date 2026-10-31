@@ -352,7 +352,7 @@ impl ExposureFeature {
       graph
         .add_compute_pass("exposure histogram")
         .parameters(&parameters)
-        .record(move |context| passes.exposure.record_histogram(context, &parameters, size));
+        .record(move |context| passes.image.exposure.record_histogram(context, &parameters, size));
       graph
         .add_encoder_pass("exposure readback")
         .buffer(state, GraphBufferAccess::CopySource)
@@ -375,7 +375,7 @@ impl ExposureFeature {
     graph
       .add_compute_pass("exposure")
       .parameters(&parameters)
-      .record(move |context| passes.exposure.record(context, &parameters));
+      .record(move |context| passes.image.exposure.record(context, &parameters));
   }
 
   /// Copies the head of the exposure's state (`source`) out with the frame `encoder` records, unless a copy is still on

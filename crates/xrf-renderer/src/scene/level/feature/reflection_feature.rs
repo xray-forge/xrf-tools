@@ -170,6 +170,7 @@ impl ReflectionFeature {
       )
       .record(move |context| {
         passes
+          .scene
           .pyramid
           .record(context, pyramid, &first, &levels, PyramidReduction::Nearest)
       });
@@ -221,9 +222,12 @@ impl ReflectionFeature {
     } = source?;
     let sky: SkyParameters<'a> = *sky;
     let reflection: UniformBinding<ReflectionUniform> = runtime.push_uniform(&self.uniform);
-    let empty: GraphTexture = bindings.import_view(graph, "reflections empty", passes.reflections.get_empty());
-    let blue_noise: GraphTexture =
-      bindings.import_view(graph, "reflection blue noise", &passes.water.get_maps().blue_noise);
+    let empty: GraphTexture = bindings.import_view(graph, "reflections empty", passes.tracing.reflections.get_empty());
+    let blue_noise: GraphTexture = bindings.import_view(
+      graph,
+      "reflection blue noise",
+      &passes.weather.water.get_maps().blue_noise,
+    );
     let nearest_depth: GraphTexture = bindings.import_view(graph, "nearest depth pyramid", &history.pyramid.view);
 
     let (width, height) = history.size;
@@ -267,7 +271,7 @@ impl ReflectionFeature {
       resolved: empty,
       history_full: empty,
       guide: empty,
-      history_sampler: passes.reflections.get_sampler(),
+      history_sampler: passes.tracing.reflections.get_sampler(),
     };
     self.add_trace_passes(
       GraphDeclaration::new(graph, bindings, runtime),
@@ -316,6 +320,7 @@ impl ReflectionFeature {
 
     let listed: TraceRequestHandles =
       passes
+        .tracing
         .scene_trace
         .add_reset(graph, bindings, "reflection trace requests clear", &history.requests);
     let requests: TraceRequestParameters = listed.to_listed();
@@ -330,7 +335,7 @@ impl ReflectionFeature {
         .parameters(&requests)
         .parameters(&out)
         .record(move |context| {
-          passes.reflections.record_trace_budgeted(
+          passes.tracing.reflections.record_trace_budgeted(
             context,
             view,
             &parameters,
@@ -352,6 +357,7 @@ impl ReflectionFeature {
         .color(clear(ends))
         .record(move |context| {
           passes
+            .tracing
             .reflections
             .record_trace(context, view, &parameters, &sky, &requests)
         });
@@ -362,7 +368,7 @@ impl ReflectionFeature {
       let (trace_requests, trace_request_head) = listed.to_read();
       let head = listed.head;
 
-      passes.scene_trace.add_trace(
+      passes.tracing.scene_trace.add_trace(
         graph,
         SceneTraceRequest {
           dispatch_label: "reflection scene dispatch",
@@ -442,6 +448,7 @@ impl ReflectionFeature {
       .color(clear(guide))
       .record(move |context| {
         passes
+          .tracing
           .reflections
           .record_stage(context, view, &parameters, ReflectionStage::Guide)
       });
@@ -513,7 +520,12 @@ impl ReflectionFeature {
           graph.add_raster_pass(name).parameters(&stage_parameters),
           |builder, output| builder.color(clear(output)),
         )
-        .record(move |context| passes.reflections.record_stage(context, view, &stage_parameters, stage));
+        .record(move |context| {
+          passes
+            .tracing
+            .reflections
+            .record_stage(context, view, &stage_parameters, stage)
+        });
     }
 
     written_full

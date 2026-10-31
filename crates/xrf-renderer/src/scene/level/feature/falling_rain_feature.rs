@@ -220,7 +220,7 @@ impl FallingRainFeature {
     // The enhanced splashes bend the ground and the streaks undo the water's distortion under them, which the window
     // pass would bend the drops drawn after the resolve by; neither reads a blurred image.
     let look: Option<RainLookParameters<'a>> = (self.uniform.is_enhanced != 0).then(|| {
-      let nothing: GraphTexture = bindings.import_view(&mut *graph, "rain nothing", passes.rain.get_nothing());
+      let nothing: GraphTexture = bindings.import_view(&mut *graph, "rain nothing", passes.effects.rain.get_nothing());
 
       self.get_look(GraphDeclaration::new(graph, bindings, runtime), record, nothing)
     });
@@ -232,7 +232,12 @@ impl FallingRainFeature {
         .color(GraphColorAttachment::new(handles.distortion, wgpu::LoadOp::Load));
     }
 
-    pass.record(move |context| passes.rain.record(context, view, &parameters, look.as_ref(), counts));
+    pass.record(move |context| {
+      passes
+        .effects
+        .rain
+        .record(context, view, &parameters, look.as_ref(), counts)
+    });
   }
 
   /// Adds the enhanced streaks over a copy of the image the resolve shows (`chain`), so no history holds them; answers
@@ -264,9 +269,9 @@ impl FallingRainFeature {
       covers,
       Some(size),
     )?;
-    let layer: GraphTexture = passes.rain.add_layer(&mut *graph, shown, size);
+    let layer: GraphTexture = passes.effects.rain.add_layer(&mut *graph, shown, size);
     // `phase_ssfx_rain`: what the drops bend, the image as shown, blurred small.
-    let refracted: GraphTexture = passes.rain.add_blur(&mut *graph, shown, size);
+    let refracted: GraphTexture = passes.effects.rain.add_blur(&mut *graph, shown, size);
     let look: RainLookParameters<'a> =
       self.get_look(GraphDeclaration::new(graph, bindings, runtime), record, refracted);
 
@@ -275,7 +280,12 @@ impl FallingRainFeature {
       .color(GraphColorAttachment::new(layer, wgpu::LoadOp::Load))
       .parameters(&parameters)
       .parameters(&look)
-      .record(move |context| passes.rain.record_over(context, view, &parameters, &look, streaks));
+      .record(move |context| {
+        passes
+          .effects
+          .rain
+          .record_over(context, view, &parameters, &look, streaks)
+      });
 
     Some(layer)
   }
@@ -298,6 +308,7 @@ impl FallingRainFeature {
       std::array::from_fn(|level| bindings.import_view(&mut *graph, "rain rings level", &rings.level_views[level]));
 
     passes
+      .effects
       .rain
       .add_rings(&mut *graph, view, parameters, levels, rings.size, near);
 
@@ -337,7 +348,7 @@ impl FallingRainFeature {
         surface_lowest,
         streak_texture: bindings.import_view(&mut *graph, "rain streak", streak),
         splash_texture: bindings.import_view(&mut *graph, "rain splash", splash),
-        rain_sampler: passes.rain.get_sampler(),
+        rain_sampler: passes.effects.rain.get_sampler(),
         splash_vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "splash vertices", &model.vertices)),
         splash_indices: StorageArray::new(bindings.import_buffer(&mut *graph, "splash indices", &model.indices)),
       },
@@ -355,10 +366,10 @@ impl FallingRainFeature {
   ) -> RainLookParameters<'a> {
     RainLookParameters {
       refracted,
-      refracted_sampler: passes.rain.get_sampler(),
-      drop_map: bindings.import_view(&mut *graph, "rain drop map", &passes.rain.get_maps().drop),
-      splash_map: bindings.import_view(&mut *graph, "rain splash map", &passes.rain.get_maps().splash),
-      map_sampler: passes.rain.get_map_sampler(),
+      refracted_sampler: passes.effects.rain.get_sampler(),
+      drop_map: bindings.import_view(&mut *graph, "rain drop map", &passes.effects.rain.get_maps().drop),
+      splash_map: bindings.import_view(&mut *graph, "rain splash map", &passes.effects.rain.get_maps().splash),
+      map_sampler: passes.effects.rain.get_map_sampler(),
       depth_target: handles.depth,
       light_target: handles.light,
       lighting: lit.lighting,

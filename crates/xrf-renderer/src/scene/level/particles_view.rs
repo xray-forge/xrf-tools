@@ -123,7 +123,7 @@ impl ParticlesView {
     }: ViewRecord<'a>,
     surfaces: &'a wgpu::Buffer,
   ) {
-    let pass: &'a ParticlePass = passes.particles;
+    let pass: &'a ParticlePass = &passes.effects.particles;
     let lighting: UniformBinding<LightingUniform> = lit.lighting;
     let parameters: ParticleParameters = ParticleParameters {
       vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "particle vertices", &self.vertex_buffer)),

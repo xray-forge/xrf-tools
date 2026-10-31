@@ -175,8 +175,8 @@ impl BitmaskFeature {
     let names: BitmaskPassNames = search.get_names();
     let is_lit: bool = search.is_lit;
     let occlusion: UniformBinding<VbaoUniform> = runtime.push_uniform(&self.uniform);
-    let empty: GraphTexture = bindings.import_view(graph, "vbao history empty", passes.vbao.get_empty());
-    let dark: GraphTexture = bindings.import_view(graph, "indirect light none", passes.vbao.get_dark());
+    let empty: GraphTexture = bindings.import_view(graph, "vbao history empty", passes.lighting.vbao.get_empty());
+    let dark: GraphTexture = bindings.import_view(graph, "indirect light none", passes.lighting.vbao.get_dark());
     let (width, height) = (targets.size.0.div_ceil(2), targets.size.1.div_ceil(2));
     let mut create = |label: &'static str, format: wgpu::TextureFormat| -> GraphTexture {
       graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format))
@@ -225,7 +225,7 @@ impl BitmaskFeature {
       .add_raster_pass(VbaoPass::POINTS_PASS)
       .parameters(&laying)
       .color(clear(points))
-      .record(move |context| passes.vbao.record_points(context, view, &laying));
+      .record(move |context| passes.lighting.vbao.record_points(context, view, &laying));
 
     if is_lit {
       let copy: VbaoParameters = base;
@@ -234,7 +234,7 @@ impl BitmaskFeature {
         .add_raster_pass(BitmaskSearch::SOURCE_PASS)
         .parameters(&copy)
         .color(clear(light_source))
-        .record(move |context| passes.vbao.record_light_source(context, view, &copy));
+        .record(move |context| passes.lighting.vbao.record_light_source(context, view, &copy));
     }
 
     let searching: VbaoParameters = VbaoParameters { light_source, ..base };
@@ -251,6 +251,7 @@ impl BitmaskFeature {
         )
         .record(move |context| {
           passes
+            .lighting
             .vbao
             .record_search(context, VbaoGathering::of(is_lit), view, &searching)
         });
@@ -294,7 +295,7 @@ impl BitmaskFeature {
       .parameters(&tracing)
       .parameters(&trace)
       .color(clear(searched))
-      .record(move |context| passes.rtao.record(context, view, &tracing, &trace, textures));
+      .record(move |context| passes.tracing.rtao.record(context, view, &tracing, &trace, textures));
   }
 
   /// Accumulates the search with the last frame's into its histories while it accumulates, then filters it into the
@@ -354,7 +355,12 @@ impl BitmaskFeature {
               .color(clear(written)),
             |builder, light| builder.color(clear(light)),
           )
-          .record(move |context| passes.vbao.record_accumulate(context, gathering, view, &accumulate));
+          .record(move |context| {
+            passes
+              .lighting
+              .vbao
+              .record_accumulate(context, gathering, view, &accumulate)
+          });
 
         (written, written_light.or(lit_searched))
       }
@@ -375,7 +381,7 @@ impl BitmaskFeature {
         graph.add_raster_pass(names.filter).parameters(&filtering),
         |builder, target| builder.color(clear(target)),
       )
-      .record(move |context| passes.vbao.record_filter(context, search, view, &filtering));
+      .record(move |context| passes.lighting.vbao.record_filter(context, search, view, &filtering));
   }
 }
 

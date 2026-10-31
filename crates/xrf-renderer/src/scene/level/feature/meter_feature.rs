@@ -70,7 +70,7 @@ impl MeterFeature {
     graph
       .add_compute_pass("meter")
       .parameters(&parameters)
-      .record(move |context| passes.meter.record(context, view, &parameters));
+      .record(move |context| passes.image.meter.record(context, view, &parameters));
     graph
       .add_encoder_pass("meter readback")
       .buffer(sample, GraphBufferAccess::CopySource)

@@ -543,7 +543,10 @@ impl SurroundingsCube {
       .add_compute_pass(SurroundingsPass::RESOLVE_PASS)
       .parameters(&parameters)
       .record(move |context| {
-        passes.surroundings.record(context, &self.cut.view, size, &parameters);
+        passes
+          .tracing
+          .surroundings
+          .record(context, &self.cut.view, size, &parameters);
       });
   }
 
@@ -600,6 +603,7 @@ impl SurroundingsCube {
       .parameters(&cull)
       .record(move |context| {
         passes
+          .scene
           .cull
           .record_shadow(context, &cut.view, &cull, params, ShadowCull::Cascade);
       });
@@ -624,7 +628,7 @@ impl SurroundingsCube {
       let args: &wgpu::Buffer = context.get_buffer(args);
 
       StaticShadowPass::set_region(context, region);
-      passes.gbuffer.record(
+      passes.scene.gbuffer.record(
         context,
         StaticDrawBindings::new(&cut.view, &draws, textures),
         args,

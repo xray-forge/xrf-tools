@@ -215,6 +215,7 @@ pub(crate) mod smaa_parameters;
 pub(crate) mod smaa_pass;
 pub(crate) mod smaa_stage;
 pub(crate) mod smoothing_uniform;
+pub(crate) mod stage;
 pub(crate) mod static_cull_parameters;
 pub(crate) mod static_cull_pass;
 pub(crate) mod static_cull_permutation;

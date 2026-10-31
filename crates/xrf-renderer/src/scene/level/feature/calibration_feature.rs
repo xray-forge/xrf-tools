@@ -49,7 +49,7 @@ impl CalibrationFeature {
       })
       .depth(GraphDepthAttachment::new(targets.depth, wgpu::LoadOp::Load))
       .parameters(&parameters)
-      .record(move |context| passes.calibration.record(context, view, &parameters));
+      .record(move |context| passes.scene.calibration.record(context, view, &parameters));
   }
 }
 

@@ -267,7 +267,7 @@ impl LightsFeature {
       graph
         .add_compute_pass("light binning")
         .parameters(&parameters)
-        .record(move |context| passes.lights.record_binning(context, &parameters));
+        .record(move |context| passes.lighting.lights.record_binning(context, &parameters));
     }
 
     buffers
@@ -352,6 +352,7 @@ impl LightsFeature {
         .parameters(&marching)
         .record(move |context| {
           passes
+            .lighting
             .lights
             .record_contact(context, view, &parameters, &marching, size)
         });
@@ -360,7 +361,11 @@ impl LightsFeature {
     } else {
       (
         None,
-        bindings.import_view(graph, "light threshold none", passes.lights.get_unthresholded()),
+        bindings.import_view(
+          graph,
+          "light threshold none",
+          passes.lighting.lights.get_unthresholded(),
+        ),
       )
     };
     let visibility: GraphTexture = if let (Some(TracedScene { trace, textures }), true) = (traced, is_shadowed) {
@@ -380,7 +385,7 @@ impl LightsFeature {
         .parameters(&tracing)
         .parameters(&trace)
         .record(move |context| {
-          passes.lights.record_tracing(
+          passes.lighting.lights.record_tracing(
             context,
             view,
             &parameters,
@@ -396,7 +401,7 @@ impl LightsFeature {
       visibility
     } else if is_shadowed {
       let light_contact: GraphTexture = light_contact
-        .unwrap_or_else(|| bindings.import_view(graph, "light contact none", passes.lights.get_uncontacted()));
+        .unwrap_or_else(|| bindings.import_view(graph, "light contact none", passes.lighting.lights.get_uncontacted()));
       let visibility: GraphTexture = graph.create_texture(
         GraphTextureDescriptor::new_2d("light visibility", width, height, LightsPass::VISIBILITY_FORMAT)
           .with_array_layer_count(LightsPass::VISIBILITY_LAYERS),
@@ -414,7 +419,7 @@ impl LightsFeature {
         .parameters(&parameters)
         .parameters(&shadowing)
         .record(move |context| {
-          passes.lights.record_visibility(
+          passes.lighting.lights.record_visibility(
             context,
             view,
             &parameters,
@@ -426,7 +431,7 @@ impl LightsFeature {
 
       visibility
     } else {
-      bindings.import_view(graph, "light visibility none", passes.lights.get_unshadowed())
+      bindings.import_view(graph, "light visibility none", passes.lighting.lights.get_unshadowed())
     };
     let visibility: LightVisibilityParameters = LightVisibilityParameters {
       light_visibility: visibility,
@@ -445,7 +450,7 @@ impl LightsFeature {
     }
 
     pass.record(move |context| {
-      passes.lights.record_draw(
+      passes.lighting.lights.record_draw(
         context,
         view,
         &parameters,

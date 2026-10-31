@@ -429,7 +429,8 @@ impl SceneView {
       .statics
       .prepare(&scene.statics, options, view, frame.drawn);
 
-    let is_traced: bool = options.is_light_traced() && frame.passes.scene_trace.is_traced() && scene.trace.is_some();
+    let is_traced: bool =
+      options.is_light_traced() && frame.passes.tracing.scene_trace.is_traced() && scene.trace.is_some();
     // The sun's cascades shadow the frame where they are asked for and the sun is not traced in their place.
     let is_sun_traced: bool = is_traced && SunTraceFeature::is_asked(options, self.shared.resolve);
     let is_cascaded: bool = options.features.shadows.get_cascade_count() > 0 && !is_sun_traced;
@@ -445,7 +446,7 @@ impl SceneView {
       // Where the puddles stood last frame, which no tuft is planted in: the wet readies after the grass.
       puddles: LevelSurface::get_grass_puddles(
         self.features.level_surface.as_ref(),
-        frame.passes.wet.get_dry()[1],
+        frame.passes.weather.wet.get_dry()[1],
         &self.features.wet,
       ),
       is_traced,
@@ -517,7 +518,7 @@ impl SceneView {
     self.features.smoothing.prepare(frame);
     self.features.ambient_occlusion.prepare(options, view.projection, half);
     self.features.bitmask.prepare(frame, half, resolve.reference_sample);
-    let is_light_traced: bool = frame.passes.indirect_trace.is_traced()
+    let is_light_traced: bool = frame.passes.tracing.indirect_trace.is_traced()
       && resolve.is_ray_reconstructed
       && self.features.bitmask.get_search().is_some_and(|search| search.is_lit);
 
@@ -936,8 +937,13 @@ impl SceneView {
       is_engine_bloomed: self.features.bloom.is_engine_built(),
       is_specular_split: self.shared.lighting.is_light_anchored(),
     };
-    let handles: ViewTargetHandles =
-      ViewTargetHandles::import(&mut *graph, &mut *bindings, targets, uses, passes.vbao.get_dark());
+    let handles: ViewTargetHandles = ViewTargetHandles::import(
+      &mut *graph,
+      &mut *bindings,
+      targets,
+      uses,
+      passes.lighting.vbao.get_dark(),
+    );
     let statics: StaticSceneHandles = self.features.statics.import(
       GraphDeclaration::new(graph, bindings, runtime),
       &scene.statics,
@@ -951,9 +957,17 @@ impl SceneView {
       statics,
       cull: self.features.statics.get_cull(),
       lit: self.import_lighting(GraphDeclaration::new(graph, bindings, runtime), passes),
-      unlit: bindings.import_view(&mut *graph, "indirect light none", passes.vbao.get_dark()),
-      untraced: bindings.import_view(&mut *graph, "reflections none", passes.reflections.get_untraced()),
-      no_ends: bindings.import_view(&mut *graph, "reflection ends none", passes.reflections.get_no_ends()),
+      unlit: bindings.import_view(&mut *graph, "indirect light none", passes.lighting.vbao.get_dark()),
+      untraced: bindings.import_view(
+        &mut *graph,
+        "reflections none",
+        passes.tracing.reflections.get_untraced(),
+      ),
+      no_ends: bindings.import_view(
+        &mut *graph,
+        "reflection ends none",
+        passes.tracing.reflections.get_no_ends(),
+      ),
     };
 
     graph.begin_group("scene");
@@ -984,7 +998,7 @@ impl SceneView {
         )
       })
       .flatten()
-      .unwrap_or_else(|| bindings.import_view(&mut *graph, "rain rings none", passes.rain.get_nothing()));
+      .unwrap_or_else(|| bindings.import_view(&mut *graph, "rain rings none", passes.effects.rain.get_nothing()));
     let wet: WetTargets =
       self
         .features
@@ -1000,7 +1014,7 @@ impl SceneView {
       reflections: record.untraced,
       reflection_ends: record.no_ends,
       bloom: handles.bloom[0],
-      marks: bindings.import_view(&mut *graph, "helper marks none", passes.gbuffer.get_unmarked()),
+      marks: bindings.import_view(&mut *graph, "helper marks none", passes.scene.gbuffer.get_unmarked()),
     };
 
     let lit: LightingRecorded<'a> = self.record_lighting(
@@ -1026,7 +1040,7 @@ impl SceneView {
     if let Some(marks) = self.features.helpers.add_marks_pass(
       &mut *graph,
       HelperMarksPass {
-        gbuffer: passes.gbuffer,
+        gbuffer: &passes.scene.gbuffer,
         view,
         textures: record.textures,
         scene: &statics,
@@ -1041,7 +1055,7 @@ impl SceneView {
         &mut *graph,
         &mut *bindings,
         PickPass {
-          gbuffer: passes.gbuffer,
+          gbuffer: &passes.scene.gbuffer,
           pipelines: passes.pipelines,
           textures: record.textures,
           scene: &statics,
@@ -1069,9 +1083,9 @@ impl SceneView {
     LightingHandles {
       lighting: runtime.push_uniform(&self.shared.lighting),
       exposure: bindings.import_buffer(&mut *graph, "exposure", &self.features.exposure.state),
-      material_lut: bindings.import_view(&mut *graph, "material table", &passes.table.view),
-      brdf_table: bindings.import_view(&mut *graph, "brdf table", &passes.brdf_table.view),
-      lut_sampler: &passes.table.sampler,
+      material_lut: bindings.import_view(&mut *graph, "material table", &passes.lighting.table.view),
+      brdf_table: bindings.import_view(&mut *graph, "brdf table", &passes.lighting.brdf_table.view),
+      lut_sampler: &passes.lighting.table.sampler,
       shadow_maps: bindings.import_view(
         &mut *graph,
         "sun shadow maps",
@@ -1079,7 +1093,7 @@ impl SceneView {
           .features
           .shadows
           .get_maps()
-          .map_or(passes.sun.get_unshadowed(), |maps| &maps.view),
+          .map_or(passes.lighting.sun.get_unshadowed(), |maps| &maps.view),
       ),
       shadows: runtime.push_uniform(self.features.shadows.get_values()),
     }
@@ -1108,7 +1122,7 @@ impl SceneView {
     } = record;
     let is_drawn: bool = !self.shared.is_wireframe;
     let grass: GrassSource = GrassSource {
-      pass: passes.grass,
+      pass: &passes.scene.grass,
       level: scene.grass.get_level(),
     };
 
@@ -1206,7 +1220,7 @@ impl SceneView {
     let grass_casters: Option<GrassShadowCasters> = self.features.grass.get_shadow_casters(
       GraphDeclaration::new(graph, bindings, runtime),
       GrassSource {
-        pass: passes.grass,
+        pass: &passes.scene.grass,
         level: scene.grass.get_level(),
       },
       textures,

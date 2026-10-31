@@ -81,7 +81,7 @@ impl ViewTraceFeature {
     cards: Option<&wgpu::Blas>,
   ) {
     let camera: Vec3 = view.position;
-    let is_traced: bool = options.is_scene_traced() && passes.scene_trace.is_traced();
+    let is_traced: bool = options.is_scene_traced() && passes.tracing.scene_trace.is_traced();
 
     let Some(trace) = trace.filter(|_| is_traced) else {
       self.trace = None;
@@ -215,7 +215,7 @@ impl ViewTraceFeature {
       graph
         .add_compute_pass("trace sway")
         .parameters(&parameters)
-        .record(move |context| passes.trace_sway.record(context, &parameters, count));
+        .record(move |context| passes.tracing.trace_sway.record(context, &parameters, count));
     }
     graph
       .add_encoder_pass("trace sway build")
@@ -357,7 +357,7 @@ impl ViewTraceFeature {
     let grass_colours: Option<GraphBuffer> = scene
       .trace
       .as_ref()
-      .filter(|_| passes.scene_trace.is_traced())
+      .filter(|_| passes.tracing.scene_trace.is_traced())
       .zip(grass_level)
       .map(|(_, grass)| {
         let colours: GraphBuffer = bindings.import_buffer(&mut *graph, "grass colours", &grass.colours);
@@ -370,7 +370,12 @@ impl ViewTraceFeature {
         graph
           .add_compute_pass("grass colours")
           .parameters(&parameters)
-          .record(move |context| passes.grass_colours.record(context, &parameters, texture_group, models));
+          .record(move |context| {
+            passes
+              .scene
+              .grass_colours
+              .record(context, &parameters, texture_group, models)
+          });
 
         colours
       });
@@ -382,7 +387,7 @@ impl ViewTraceFeature {
     scene
       .trace
       .as_ref()
-      .filter(|_| passes.scene_trace.is_traced())
+      .filter(|_| passes.tracing.scene_trace.is_traced())
       .map(|trace| TracedScene {
         trace: TraceParameters {
           trace_scene: swayed.unwrap_or_else(|| trace.get_structure()),

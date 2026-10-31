@@ -147,7 +147,12 @@ impl VolumetricFeature {
       .add_raster_pass("light volumes depth")
       .parameters(&parameters)
       .depth(GraphDepthAttachment::new(depth, wgpu::LoadOp::Clear(0.0)))
-      .record(move |context| passes.light_volumes.record_depth(context, view, &parameters, textures));
+      .record(move |context| {
+        passes
+          .weather
+          .light_volumes
+          .record_depth(context, view, &parameters, textures)
+      });
     graph
       .add_raster_pass("light volumes")
       .parameters(&parameters)
@@ -158,6 +163,7 @@ impl VolumetricFeature {
       .depth(GraphDepthAttachment::new_read_only(depth))
       .record(move |context| {
         passes
+          .weather
           .light_volumes
           .record(context, view, &parameters, textures, slices)
       });
@@ -197,7 +203,7 @@ impl VolumetricFeature {
       shadow_sampler: atlas.sampler,
       froxels,
       froxel_history: history,
-      froxel_sampler: passes.froxels.get_sampler(),
+      froxel_sampler: passes.weather.froxels.get_sampler(),
       froxel_current: current,
     };
     let integrate: FroxelIntegrateParameters = FroxelIntegrateParameters {
@@ -209,11 +215,11 @@ impl VolumetricFeature {
     graph
       .add_compute_pass("froxels")
       .parameters(&inject)
-      .record(move |context| passes.froxels.record_inject(context, view, &inject));
+      .record(move |context| passes.weather.froxels.record_inject(context, view, &inject));
     graph
       .add_compute_pass("froxels integrate")
       .parameters(&integrate)
-      .record(move |context| passes.froxels.record_integrate(context, view, &integrate));
+      .record(move |context| passes.weather.froxels.record_integrate(context, view, &integrate));
 
     Some(Froxels {
       uniform: froxels,

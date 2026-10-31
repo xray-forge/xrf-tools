@@ -82,14 +82,14 @@ impl WaterFeature {
       skies: [&views.cubes[0], &views.cubes[1]],
       sky_sampler: passes.sky.get_clamp(),
       water: self,
-      scene_trace: passes.scene_trace,
+      scene_trace: &passes.tracing.scene_trace,
       traced,
       rings,
       sun_seen,
       guides,
     };
 
-    Some(passes.water.add_passes(graph, bindings, runtime, draw))
+    Some(passes.weather.water.add_passes(graph, bindings, runtime, draw))
   }
 
   /// Starts its maps' scroll, its traced pixels' turn, its wave's last place and its reflection's histories again from

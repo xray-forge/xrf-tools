@@ -85,7 +85,7 @@ impl ContactShadowFeature {
 
     if !self.is_sun {
       return (
-        bindings.import_view(graph, "contact shadows lit", passes.contact_shadows.get_lit()),
+        bindings.import_view(graph, "contact shadows lit", passes.lighting.contact_shadows.get_lit()),
         contact,
       );
     }
@@ -112,7 +112,7 @@ impl ContactShadowFeature {
         marched,
         wgpu::LoadOp::Clear(wgpu::Color::WHITE),
       ))
-      .record(move |context| passes.contact_shadows.record(context, view, &parameters));
+      .record(move |context| passes.lighting.contact_shadows.record(context, view, &parameters));
 
     (marched, contact)
   }

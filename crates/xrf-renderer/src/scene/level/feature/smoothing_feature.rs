@@ -31,7 +31,7 @@ impl SmoothingFeature {
     };
 
     let mode: RenderAntialiasing = options.features.antialiasing;
-    let mode: RenderAntialiasing = match (mode, passes.smaa) {
+    let mode: RenderAntialiasing = match (mode, passes.image.smaa.as_ref()) {
       (RenderAntialiasing::Smaa, None) => RenderAntialiasing::Fxaa,
       _ => mode,
     };
@@ -65,7 +65,7 @@ impl SmoothingFeature {
       |label: &'static str, format: wgpu::TextureFormat| GraphTextureDescriptor::new_2d(label, width, height, format);
     let target: GraphTexture = graph.create_texture(sized("smoothed", ViewTargets::SCENE));
 
-    match (mode, passes.smaa) {
+    match (mode, passes.image.smaa.as_ref()) {
       (RenderAntialiasing::Smaa, Some(pass)) => {
         let edges: GraphTexture = graph.create_texture(sized("smaa edges", SmaaPass::TARGET_FORMAT));
         let weights: GraphTexture = graph.create_texture(sized("smaa weights", SmaaPass::TARGET_FORMAT));
@@ -107,7 +107,7 @@ impl SmoothingFeature {
         let parameters: FxaaParameters = FxaaParameters {
           frame,
           smoothing,
-          frame_sampler: passes.fxaa.get_sampler(),
+          frame_sampler: passes.image.fxaa.get_sampler(),
         };
 
         graph
@@ -117,7 +117,7 @@ impl SmoothingFeature {
             target,
             wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
           ))
-          .record(move |context| passes.fxaa.record(context, &parameters));
+          .record(move |context| passes.image.fxaa.record(context, &parameters));
       }
     }
 

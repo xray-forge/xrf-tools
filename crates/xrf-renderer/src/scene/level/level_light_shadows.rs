@@ -617,6 +617,7 @@ impl LevelLightShadows {
         move |context| {
           for (slot, cull) in &culls {
             passes
+              .scene
               .cull
               .record_shadow(context, &self.views[*slot], cull, params, ShadowCull::LightFace);
           }
@@ -647,7 +648,7 @@ impl LevelLightShadows {
           let args: &wgpu::Buffer = context.get_buffer(args);
 
           for (slot, tile, layouts) in &statics {
-            passes.shadow.record_tile(
+            passes.lighting.shadow.record_tile(
               context,
               tile.get_region(),
               None,
@@ -691,7 +692,7 @@ impl LevelLightShadows {
           _ => (None, ShadowCasters::All),
         };
 
-        passes.shadow.record_tile(
+        passes.lighting.shadow.record_tile(
           context,
           tile.get_region(),
           restored,

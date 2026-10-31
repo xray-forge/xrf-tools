@@ -81,11 +81,11 @@ impl CombineFeature {
           target,
           wgpu::LoadOp::Clear(wgpu::Color::BLACK),
         ))
-        .record(move |context| passes.sky_behind.record(context, view, &parameters, &sky));
+        .record(move |context| passes.weather.sky_behind.record(context, view, &parameters, &sky));
 
       target
     } else {
-      bindings.import_view(graph, "sky behind unseen", passes.sky_behind.get_unseen())
+      bindings.import_view(graph, "sky behind unseen", passes.weather.sky_behind.get_unseen())
     };
     let parameters: CombineParameters = CombineParameters {
       albedo_target: handles.albedo,
@@ -120,7 +120,7 @@ impl CombineFeature {
         handles.high,
         wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
       ))
-      .record(move |context| passes.combine.record(context, view, &parameters, &sky));
+      .record(move |context| passes.lighting.combine.record(context, view, &parameters, &sky));
   }
 }
 

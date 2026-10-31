@@ -68,8 +68,10 @@ impl SunShaftsFeature {
     }
 
     let (width, height) = handles.size;
-    let empty: GraphTexture = bindings.import_view(&mut *graph, "sun shafts none", passes.reflections.get_empty());
-    let no_froxels: GraphTexture = bindings.import_view(&mut *graph, "froxels none", passes.froxels.get_empty());
+    let empty: GraphTexture =
+      bindings.import_view(&mut *graph, "sun shafts none", passes.tracing.reflections.get_empty());
+    let no_froxels: GraphTexture =
+      bindings.import_view(&mut *graph, "froxels none", passes.weather.froxels.get_empty());
     let Froxels {
       uniform: froxel_uniform,
       integrated: froxel_integrated,
@@ -88,7 +90,7 @@ impl SunShaftsFeature {
       scene_before: empty,
       froxels: froxel_uniform,
       froxel_integrated: no_froxels,
-      froxel_sampler: passes.froxels.get_sampler(),
+      froxel_sampler: passes.weather.froxels.get_sampler(),
     };
     let mut parameters: SunShaftsParameters = SunShaftsParameters {
       light_volumes: light_volumes.unwrap_or(empty),
@@ -112,7 +114,12 @@ impl SunShaftsFeature {
           marched,
           wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
         ))
-        .record(move |context| passes.sun_shafts.record(context, view, &march, SunShaftsDraw::March));
+        .record(move |context| {
+          passes
+            .weather
+            .sun_shafts
+            .record(context, view, &march, SunShaftsDraw::March)
+        });
     }
 
     // At the authored levels the sun's shafts, the lights' and the froxels' gathered light join the frame's display
@@ -141,7 +148,7 @@ impl SunShaftsFeature {
       .parameters(&parameters)
       .color(GraphColorAttachment::new(handles.scene, wgpu::LoadOp::Load))
       .color(GraphColorAttachment::new(handles.high, wgpu::LoadOp::Load))
-      .record(move |context| passes.sun_shafts.record(context, view, &parameters, draw));
+      .record(move |context| passes.weather.sun_shafts.record(context, view, &parameters, draw));
   }
 }
 

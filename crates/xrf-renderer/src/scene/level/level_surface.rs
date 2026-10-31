@@ -195,15 +195,15 @@ impl LevelSurface {
     if let (Some(surface), Some(wet)) = (surface, wet) {
       let keep: PuddleKeepInputs = PuddleKeepInputs {
         wet,
-        noise: &passes.water.get_maps().perlin,
-        sampler: passes.wet.get_sampler(),
+        noise: &passes.weather.water.get_maps().perlin,
+        sampler: passes.weather.wet.get_sampler(),
       };
       let water: UniformBinding<WaterUniform> = runtime.push_uniform(water);
 
       return surface.add_passes(GraphDeclaration::new(graph, bindings, runtime), record, water, keep);
     }
 
-    let [lowest, puddles, water]: [&'a wgpu::TextureView; 3] = passes.wet.get_dry();
+    let [lowest, puddles, water]: [&'a wgpu::TextureView; 3] = passes.weather.wet.get_dry();
 
     [
       bindings.import_view(&mut *graph, "level surface lowest", lowest),
@@ -257,7 +257,7 @@ impl LevelSurface {
     graph
       .add_compute_pass("puddles")
       .parameters(&keeping)
-      .record(move |context| passes.puddle_sites.record_keep(context, cells, &keeping));
+      .record(move |context| passes.weather.puddle_sites.record_keep(context, cells, &keeping));
 
     [lowest, puddles, water_depth]
   }
@@ -309,6 +309,7 @@ impl LevelSurface {
       .parameters(&placing)
       .record(move |context| {
         passes
+          .weather
           .puddle_sites
           .record(context, shape.resolution, cells, &heights, &placing)
       });

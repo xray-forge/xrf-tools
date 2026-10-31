@@ -165,7 +165,7 @@ impl CompositedFeature {
     builder.parameters(&composited).parameters(&sky).record(move |context| {
       let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
 
-      passes.composited.record(
+      passes.effects.composited.record(
         context,
         StaticLayoutBindings::new(view, &layouts, textures),
         &composited,
@@ -210,7 +210,7 @@ impl CompositedFeature {
         .parameters(&composited)
         .parameters(&sky)
         .record(move |context| {
-          passes.composited.record_sorted(
+          passes.effects.composited.record_sorted(
             context,
             StaticLayoutBindings::new(view, &sorted, textures),
             &composited,
@@ -255,7 +255,7 @@ impl CompositedFeature {
       graph
         .add_compute_pass("glass copy dispatch")
         .parameters(&counted)
-        .record(move |context| passes.glass.record_copy_dispatch(context, &counted));
+        .record(move |context| passes.effects.glass.record_copy_dispatch(context, &counted));
       graph
         .add_compute_pass("glass copy")
         .parameters(&copied)
@@ -263,7 +263,7 @@ impl CompositedFeature {
         .record(move |context| {
           let dispatch: &wgpu::Buffer = context.get_buffer(dispatch);
 
-          passes.glass.record_copy(context, &copied, dispatch);
+          passes.effects.glass.record_copy(context, &copied, dispatch);
         });
 
       let parameters: GlassParameters = GlassParameters {
@@ -275,7 +275,7 @@ impl CompositedFeature {
         shadows: lit.shadows,
         glass: runtime.push_uniform(&glass),
         glass_scene: copy,
-        scene_sampler: passes.glass.get_scene_sampler(),
+        scene_sampler: passes.effects.glass.get_scene_sampler(),
         depth_target: handles.depth,
       };
       let builder = args.iter().fold(
@@ -286,7 +286,7 @@ impl CompositedFeature {
       builder.parameters(&parameters).parameters(&sky).record(move |context| {
         let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
 
-        passes.glass.record(
+        passes.effects.glass.record(
           context,
           StaticLayoutBindings::new(view, &layouts, textures),
           &parameters,
@@ -311,7 +311,7 @@ impl CompositedFeature {
       builder.parameters(&composited).parameters(&sky).record(move |context| {
         let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
 
-        passes.composited.record_distortion(
+        passes.effects.composited.record_distortion(
           context,
           StaticLayoutBindings::new(view, &layouts, textures),
           &composited,
@@ -351,6 +351,7 @@ impl CompositedFeature {
       let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
 
       passes
+        .effects
         .composited
         .record_selection(context, StaticLayoutBindings::new(view, &layouts, textures), &args);
     });

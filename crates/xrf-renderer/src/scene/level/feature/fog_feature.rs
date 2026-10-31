@@ -80,8 +80,11 @@ impl FogFeature {
     let Some(stages) = self.stages else {
       return;
     };
-    let empty: GraphTexture =
-      bindings.import_view(&mut *graph, "fog scattering empty", passes.fog_scattering.get_empty());
+    let empty: GraphTexture = bindings.import_view(
+      &mut *graph,
+      "fog scattering empty",
+      passes.weather.fog_scattering.get_empty(),
+    );
     let mut create = |label: &'static str, stage: &FogScatteringUniform, format: wgpu::TextureFormat| {
       graph.create_texture(GraphTextureDescriptor::new_2d(
         label,
@@ -105,7 +108,7 @@ impl FogFeature {
       let parameters: FogScatteringParameters = FogScatteringParameters {
         source,
         blurred,
-        source_sampler: passes.fog_scattering.get_sampler(),
+        source_sampler: passes.weather.fog_scattering.get_sampler(),
         depth_target: targets.depth,
         lighting: lit.lighting,
         scattering: runtime.push_uniform(&stages[stage]),
@@ -118,7 +121,7 @@ impl FogFeature {
           written,
           wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
         ))
-        .record(move |context| passes.fog_scattering.record(context, view, &parameters, stage));
+        .record(move |context| passes.weather.fog_scattering.record(context, view, &parameters, stage));
     }
 
     add_texture_copy(&mut *graph, FogScatteringPass::STAGES[3], scattered, targets.scene);

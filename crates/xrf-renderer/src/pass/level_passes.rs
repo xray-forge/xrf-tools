@@ -1,115 +1,23 @@
-use crate::pass::ambient_occlusion_pass::AmbientOcclusionPass;
-use crate::pass::bloom_pass::BloomPass;
-use crate::pass::brdf_table::BrdfTable;
-use crate::pass::calibration_pass::CalibrationPass;
-use crate::pass::camera_effects_pass::CameraEffectsPass;
-use crate::pass::combine_pass::CombinePass;
-use crate::pass::composited_pass::CompositedPass;
-use crate::pass::contact_shadow_pass::ContactShadowPass;
-use crate::pass::depth_pyramid_pass::DepthPyramidPass;
-use crate::pass::distort_pass::DistortPass;
-use crate::pass::enhanced_bloom_pass::EnhancedBloomPass;
-use crate::pass::exposure_pass::ExposurePass;
-use crate::pass::flare_pass::FlarePass;
-use crate::pass::fog_scattering_pass::FogScatteringPass;
-use crate::pass::froxel_pass::FroxelPass;
-use crate::pass::fsr_pass::FsrPass;
-use crate::pass::fxaa_pass::FxaaPass;
-use crate::pass::glass_pass::GlassPass;
-use crate::pass::grass_colour_pass::GrassColourPass;
-use crate::pass::grass_pass::GrassPass;
-use crate::pass::indirect_trace_pass::IndirectTracePass;
-use crate::pass::light_volume_pass::LightVolumePass;
-use crate::pass::lights_pass::LightsPass;
-use crate::pass::material_table::MaterialTable;
-use crate::pass::meter_pass::MeterPass;
-use crate::pass::particle_pass::ParticlePass;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::puddle_sites_pass::PuddleSitesPass;
-use crate::pass::rain_pass::RainPass;
-use crate::pass::ray_guides_pass::RayGuidesPass;
-use crate::pass::reflection_pass::ReflectionPass;
-use crate::pass::rtao_pass::RtaoPass;
-use crate::pass::scene_trace_pass::SceneTracePass;
-use crate::pass::sky_behind_pass::SkyBehindPass;
 use crate::pass::sky_bindings::SkyBindings;
-use crate::pass::sky_haze_pass::SkyHazePass;
-use crate::pass::sky_irradiance_pass::SkyIrradiancePass;
-use crate::pass::sky_motion_pass::SkyMotionPass;
-use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
-use crate::pass::smaa_pass::SmaaPass;
-use crate::pass::static_cull_pass::StaticCullPass;
-use crate::pass::static_gbuffer_pass::StaticGBufferPass;
-use crate::pass::static_shadow_pass::StaticShadowPass;
-use crate::pass::sun_pass::SunPass;
-use crate::pass::sun_shafts_pass::SunShaftsPass;
-use crate::pass::sun_trace_pass::SunTracePass;
-use crate::pass::surroundings_pass::SurroundingsPass;
-use crate::pass::temporal_pass::TemporalPass;
-use crate::pass::thunder_pass::ThunderPass;
-use crate::pass::trace_sway_pass::TraceSwayPass;
-use crate::pass::upscale_pass::UpscalePass;
-use crate::pass::vbao_pass::VbaoPass;
-use crate::pass::water_pass::WaterPass;
-use crate::pass::wet_pass::WetPass;
+use crate::pass::stage::effect_passes::EffectPasses;
+use crate::pass::stage::image_passes::ImagePasses;
+use crate::pass::stage::lighting_passes::LightingPasses;
+use crate::pass::stage::scene_passes::ScenePasses;
+use crate::pass::stage::tracing_passes::TracingPasses;
+use crate::pass::stage::weather_passes::WeatherPasses;
 
-/// The passes a level's frame runs, borrowed from the GPU state together.
+/// The passes a level's frame runs, borrowed from the GPU state together, by the part of the frame they draw.
 #[derive(Clone, Copy)]
 pub struct LevelPasses<'a> {
   /// Where the feature units ask for their pipelines.
   pub pipelines: PipelineSource<'a>,
-  pub cull: &'a StaticCullPass,
-  pub gbuffer: &'a StaticGBufferPass,
-  pub shadow: &'a StaticShadowPass,
-  pub pyramid: &'a DepthPyramidPass,
-  pub puddle_sites: &'a PuddleSitesPass,
-  pub contact_shadows: &'a ContactShadowPass,
-  pub sun: &'a SunPass,
-  pub sun_trace: &'a SunTracePass,
-  pub ambient_occlusion: &'a AmbientOcclusionPass,
-  pub vbao: &'a VbaoPass,
-  pub rtao: &'a RtaoPass,
-  pub indirect_trace: &'a IndirectTracePass,
-  pub reflections: &'a ReflectionPass,
-  pub scene_trace: &'a SceneTracePass,
-  pub trace_sway: &'a TraceSwayPass,
-  pub grass_colours: &'a GrassColourPass,
-  pub lights: &'a LightsPass,
-  pub combine: &'a CombinePass,
-  pub sky_behind: &'a SkyBehindPass,
-  pub ray_guides: &'a RayGuidesPass,
-  pub distort: &'a DistortPass,
-  pub sky_haze: &'a SkyHazePass,
-  pub sky_motion: &'a SkyMotionPass,
-  pub sky_irradiance: &'a SkyIrradiancePass,
-  pub sky_prefilter: &'a SkyPrefilterPass,
-  pub surroundings: &'a SurroundingsPass,
+  /// The sky's textures, which the lit and traced passes bind.
   pub sky: &'a SkyBindings,
-  pub water: &'a WaterPass,
-  pub composited: &'a CompositedPass,
-  pub glass: &'a GlassPass,
-  pub particles: &'a ParticlePass,
-  pub grass: &'a GrassPass,
-  pub rain: &'a RainPass,
-  pub wet: &'a WetPass,
-  pub thunder: &'a ThunderPass,
-  pub flares: &'a FlarePass,
-  pub sun_shafts: &'a SunShaftsPass,
-  pub light_volumes: &'a LightVolumePass,
-  pub froxels: &'a FroxelPass,
-  pub bloom: &'a BloomPass,
-  pub enhanced_bloom: &'a EnhancedBloomPass,
-  pub camera_effects: &'a CameraEffectsPass,
-  pub fog_scattering: &'a FogScatteringPass,
-  pub temporal: &'a TemporalPass,
-  pub fsr: &'a FsrPass,
-  pub fxaa: &'a FxaaPass,
-  /// None where its lookup textures could not be read, and the frame smooths as FXAA does.
-  pub smaa: Option<&'a SmaaPass>,
-  pub upscale: &'a UpscalePass,
-  pub exposure: &'a ExposurePass,
-  pub meter: &'a MeterPass,
-  pub calibration: &'a CalibrationPass,
-  pub table: &'a MaterialTable,
-  pub brdf_table: &'a BrdfTable,
+  pub scene: &'a ScenePasses,
+  pub lighting: &'a LightingPasses,
+  pub tracing: &'a TracingPasses,
+  pub weather: &'a WeatherPasses,
+  pub effects: &'a EffectPasses,
+  pub image: &'a ImagePasses,
 }

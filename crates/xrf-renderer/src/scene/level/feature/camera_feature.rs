@@ -39,7 +39,7 @@ impl CameraFeature {
     self.frame = None;
 
     if is_drawn {
-      self.ask_pipelines(passes.camera_effects, passes.pipelines);
+      self.ask_pipelines(&passes.image.camera_effects, passes.pipelines);
       self.frame = self.pipelines.as_ref().map(|_| (*settings, *view));
     }
   }
@@ -88,7 +88,7 @@ impl CameraFeature {
       return None;
     }
 
-    let pass: &'a CameraEffectsPass = passes.camera_effects;
+    let pass: &'a CameraEffectsPass = &passes.image.camera_effects;
     let camera_effects: UniformBinding<CameraEffectsUniform> = runtime.push_uniform(&uniform);
     let per = |tile: u32| (size.0.div_ceil(tile), size.1.div_ceil(tile));
     // Adds one stage reading `source`, `beside` and `tiles` and the `inputs` beside them, answering the target of

@@ -106,7 +106,7 @@ impl PresentFeature {
       distortion: handles.distortion,
       depth_target: handles.depth,
       bloom_target: handles.bloom[0],
-      bloom_sampler: passes.bloom.get_sampler(),
+      bloom_sampler: passes.image.bloom.get_sampler(),
       distort: runtime.push_uniform(&distortion),
     };
 
@@ -117,7 +117,7 @@ impl PresentFeature {
         handles.scene,
         wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
       ))
-      .record(move |context| passes.distort.record(context, view, &parameters));
+      .record(move |context| passes.effects.distort.record(context, view, &parameters));
   }
 
   /// How many times the sky is averaged this frame.

@@ -46,7 +46,7 @@ impl SunFeature {
       shadows: lit.shadows,
       contact_shadows,
       sun_traced: sun_traced
-        .unwrap_or_else(|| bindings.import_view(&mut *graph, "sun untraced", passes.sun.get_untraced())),
+        .unwrap_or_else(|| bindings.import_view(&mut *graph, "sun untraced", passes.lighting.sun.get_untraced())),
       wet_surface: wet.surface,
       wet_reach: wet.reach,
     };
@@ -84,7 +84,7 @@ impl SunFeature {
       filter_reach,
     };
 
-    pass.record(move |context| passes.sun.record(context, view, &sun, draw));
+    pass.record(move |context| passes.lighting.sun.record(context, view, &sun, draw));
 
     seen
   }

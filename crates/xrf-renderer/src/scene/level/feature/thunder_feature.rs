@@ -128,7 +128,7 @@ impl ThunderFeature {
       [(0, bolt), (1, no_model), (2, no_model)].map(|(entry, buffers)| ThunderParameters {
         thunder,
         thunder_texture: bindings.import_view(&mut *graph, "thunder texture", &textures[entry]),
-        thunder_sampler: passes.thunder.get_sampler(),
+        thunder_sampler: passes.effects.thunder.get_sampler(),
         model_vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "thunder vertices", &buffers.vertices)),
         model_indices: StorageArray::new(bindings.import_buffer(&mut *graph, "thunder indices", &buffers.indices)),
         lighting,
@@ -140,7 +140,12 @@ impl ThunderFeature {
         add_over_scene(&mut *graph, handles, "thunder"),
         |builder, parameters| builder.parameters(parameters),
       )
-      .record(move |context| passes.thunder.record(context, view, &entries, draws, model_indices));
+      .record(move |context| {
+        passes
+          .effects
+          .thunder
+          .record(context, view, &entries, draws, model_indices)
+      });
   }
 }
 

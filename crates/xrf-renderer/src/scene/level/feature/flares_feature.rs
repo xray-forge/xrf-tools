@@ -192,7 +192,7 @@ impl FlaresFeature {
     let (true, Some(state)) = (self.is_drawn, &self.state) else {
       return;
     };
-    let pass: &FlarePass = passes.flares;
+    let pass: &FlarePass = &passes.effects.flares;
     let flares: UniformBinding<FlareUniform> = runtime.push_uniform(&self.values);
     let state: GraphBuffer = bindings.import_buffer(&mut *graph, "flare visibility", state);
     let measure: FlareMeasureParameters = FlareMeasureParameters {

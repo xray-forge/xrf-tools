@@ -257,6 +257,7 @@ impl StaticsFeature {
       let args: Vec<&wgpu::Buffer> = draw_args.iter().map(|args| context.get_buffer(*args)).collect();
 
       passes
+        .scene
         .gbuffer
         .record_overdraw(context, StaticDrawBindings::new(view, &draws, textures), &args);
     });
@@ -317,7 +318,7 @@ impl StaticsFeature {
       builder.record(move |context| {
         let draw_args: &wgpu::Buffer = context.get_buffer(draw_args);
 
-        passes.gbuffer.record(
+        passes.scene.gbuffer.record(
           context,
           StaticDrawBindings::new(view, &draws, textures),
           draw_args,
@@ -333,7 +334,7 @@ impl StaticsFeature {
     graph
       .add_compute_pass("cull")
       .parameters(&cull)
-      .record(move |context| passes.cull.record_early(context, view, &cull, params));
+      .record(move |context| passes.scene.cull.record_early(context, view, &cull, params));
     add_draw(graph, "g-buffer", scene.args, true);
 
     if self.cull.is_occluding == 0 {
@@ -367,6 +368,7 @@ impl StaticsFeature {
       )
       .record(move |context| {
         passes
+          .scene
           .pyramid
           .record(context, pyramid, &first, &levels, PyramidReduction::Farthest)
       });
@@ -377,7 +379,10 @@ impl StaticsFeature {
       .record(move |context| {
         let (late, dispatch) = (context.get_buffer(late), context.get_buffer(late_dispatch));
 
-        passes.cull.record_late_dispatch(context.get_encoder(), late, dispatch);
+        passes
+          .scene
+          .cull
+          .record_late_dispatch(context.get_encoder(), late, dispatch);
       });
     graph
       .add_compute_pass("late cull")
@@ -386,7 +391,7 @@ impl StaticsFeature {
       .record(move |context| {
         let dispatch: &wgpu::Buffer = context.get_buffer(late_dispatch);
 
-        passes.cull.record_late(context, view, &cull, dispatch);
+        passes.scene.cull.record_late(context, view, &cull, dispatch);
       });
     add_draw(graph, "late g-buffer", late, false);
   }
@@ -443,6 +448,7 @@ impl StaticsFeature {
       let args: Vec<&wgpu::Buffer> = args.iter().map(|args| context.get_buffer(*args)).collect();
 
       passes
+        .effects
         .composited
         .record_wallmarks(context, StaticLayoutBindings::new(view, &layouts, textures), &args);
     });

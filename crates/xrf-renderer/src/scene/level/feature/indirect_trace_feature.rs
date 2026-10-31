@@ -86,6 +86,7 @@ impl IndirectTraceFeature {
       ))
       .record(move |context| {
         passes
+          .tracing
           .indirect_trace
           .record(context, view, &parameters, &sky, &trace, textures)
       });

@@ -392,7 +392,7 @@ impl LevelShadows {
       })
       .record(move |context| {
         for (view, cull, kind) in &culls {
-          passes.cull.record_shadow(context, view, cull, params, *kind);
+          passes.scene.cull.record_shadow(context, view, cull, params, *kind);
         }
       });
 
@@ -415,7 +415,7 @@ impl LevelShadows {
         .record(move |context| {
           let args: &wgpu::Buffer = context.get_buffer(args);
 
-          passes.shadow.record_some(
+          passes.lighting.shadow.record_some(
             context,
             StaticLayoutBindings::new(&cut.view, &layouts, textures),
             args,
@@ -459,7 +459,7 @@ impl LevelShadows {
           .record(move |context| {
             let args: &wgpu::Buffer = context.get_buffer(args);
 
-            passes.shadow.record_tile(
+            passes.lighting.shadow.record_tile(
               context,
               region,
               Some(&restore),
@@ -524,7 +524,7 @@ impl LevelShadows {
       .record(move |context| {
         let args: &wgpu::Buffer = context.get_buffer(args);
 
-        passes.shadow.record_tile(
+        passes.lighting.shadow.record_tile(
           context,
           Self::get_band_region(band, resolution),
           None,

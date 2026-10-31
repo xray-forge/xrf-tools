@@ -51,7 +51,7 @@ impl BloomFeature {
     self.enhanced = EnhancedBloomUniform::for_view(options).filter(|_| size.is_some());
 
     if self.enhanced.is_some() {
-      self.ask_pipelines(passes.enhanced_bloom, passes.pipelines);
+      self.ask_pipelines(&passes.image.enhanced_bloom, passes.pipelines);
       self.enhanced = self.enhanced.filter(|_| self.pipelines.is_some());
     }
 
@@ -147,9 +147,12 @@ impl BloomFeature {
     let lighting: UniformBinding<LightingUniform> = lit.lighting;
     let settings: &RenderEnhancedBloomSettings = self.enhanced.as_ref()?;
     let (_, pipelines) = self.pipelines.as_ref()?;
-    let pass: &'a EnhancedBloomPass = passes.enhanced_bloom;
-    let empty: GraphTexture =
-      bindings.import_view(&mut *graph, "enhanced bloom empty", passes.fog_scattering.get_empty());
+    let pass: &'a EnhancedBloomPass = &passes.image.enhanced_bloom;
+    let empty: GraphTexture = bindings.import_view(
+      &mut *graph,
+      "enhanced bloom empty",
+      passes.weather.fog_scattering.get_empty(),
+    );
     let half_size: (u32, u32) = EnhancedBloomUniform::get_level_size(frame, 1);
     let stage = |size: (u32, u32)| EnhancedBloomUniform::new(size, frame, settings);
     let mut create = |label: &'static str, (width, height): (u32, u32), format: wgpu::TextureFormat| {
@@ -283,7 +286,7 @@ impl BloomFeature {
     ]) {
       let parameters: BloomParameters = BloomParameters {
         source: read,
-        source_sampler: passes.bloom.get_sampler(),
+        source_sampler: passes.image.bloom.get_sampler(),
         bloom: runtime.push_uniform(&stages[stage.get_index()]),
       };
 
@@ -294,7 +297,7 @@ impl BloomFeature {
           written,
           wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
         ))
-        .record(move |context| passes.bloom.record(context, stage, &parameters));
+        .record(move |context| passes.image.bloom.record(context, stage, &parameters));
     }
   }
 }

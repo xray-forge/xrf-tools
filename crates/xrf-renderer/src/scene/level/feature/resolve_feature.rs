@@ -817,7 +817,7 @@ impl ResolveFeature {
       .color(clear(guides.bias))
       .color(clear(diffuse_hit_distance))
       .color(clear(guides.diffuse_albedo))
-      .record(move |context| passes.ray_guides.record(context, view, &parameters));
+      .record(move |context| passes.tracing.ray_guides.record(context, view, &parameters));
 
     Some(RayGuides {
       diffuse_hit_distance: diffuse_hits.map(|_| diffuse_hit_distance),
@@ -870,7 +870,7 @@ impl ResolveFeature {
           )
         });
 
-        passes.fsr.add_passes(
+        passes.image.fsr.add_passes(
           GraphDeclaration::new(graph, bindings, runtime),
           handles,
           targets,
@@ -906,7 +906,7 @@ impl ResolveFeature {
           frame,
           depth_target: handles.depth,
           history: bindings.import_view(&mut *graph, "temporal history", &history.get_read().view),
-          history_sampler: passes.temporal.get_sampler(),
+          history_sampler: passes.image.temporal.get_sampler(),
           temporal: runtime.push_uniform(uniform),
           motion_target: handles.motion,
           opaque: opaque.unwrap_or(handles.scene),
@@ -924,7 +924,7 @@ impl ResolveFeature {
             flickered,
             wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
           ))
-          .record(move |context| passes.temporal.record(context, view, &parameters));
+          .record(move |context| passes.image.temporal.record(context, view, &parameters));
 
         Some(target)
       }
@@ -944,7 +944,7 @@ impl ResolveFeature {
             upscaled,
             wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
           ))
-          .record(move |context| passes.upscale.record(context, stage, &parameters));
+          .record(move |context| passes.image.upscale.record(context, stage, &parameters));
 
         (frame, Some(upscaled))
       }
@@ -966,7 +966,7 @@ impl ResolveFeature {
           sharpened,
           wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
         ))
-        .record(move |context| passes.upscale.record(context, UpscaleStage::Rcas, &parameters));
+        .record(move |context| passes.image.upscale.record(context, UpscaleStage::Rcas, &parameters));
       shown = Some(sharpened);
     }
 

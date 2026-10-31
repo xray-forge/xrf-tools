@@ -216,7 +216,7 @@ impl SkyFeature {
       .add_raster_pass("sky motion")
       .parameters(&sky_motion)
       .color(GraphColorAttachment::new(handles.motion, wgpu::LoadOp::Load))
-      .record(move |context| passes.sky_motion.record(context, view, &sky_motion));
+      .record(move |context| passes.weather.sky_motion.record(context, view, &sky_motion));
   }
 
   /// What the lighting draws the sky with this frame: a keyframe whose textures are not all up blended out, so a sky
@@ -339,7 +339,7 @@ impl SkyFeature {
           handles.haze,
           wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
         ))
-        .record(move |context| passes.sky_haze.record(context, &parameters, &sky));
+        .record(move |context| passes.weather.sky_haze.record(context, &parameters, &sky));
     }
 
     Some(sky)
@@ -362,7 +362,11 @@ impl SkyFeature {
   ) {
     let ViewRecord { passes, lit, .. } = record;
     let (lighting, exposure): (UniformBinding<LightingUniform>, GraphBuffer) = (lit.lighting, lit.exposure);
-    let empty: GraphTexture = bindings.import_view(&mut *graph, "sky prefilter none", passes.sky_prefilter.get_empty());
+    let empty: GraphTexture = bindings.import_view(
+      &mut *graph,
+      "sky prefilter none",
+      passes.weather.sky_prefilter.get_empty(),
+    );
 
     for (index, level) in prefilter.levels.iter().enumerate() {
       let source: GraphTexture = level.source.as_ref().map_or(empty, |before| {
@@ -404,7 +408,7 @@ impl SkyFeature {
       graph
         .add_compute_pass(SkyPrefilterPass::PASSES[index])
         .parameters(&parameters)
-        .record(move |context| passes.sky_prefilter.record(context, size, &parameters));
+        .record(move |context| passes.weather.sky_prefilter.record(context, size, &parameters));
     }
   }
 }

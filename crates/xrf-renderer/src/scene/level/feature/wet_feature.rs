@@ -176,7 +176,7 @@ impl WetFeature {
     rings: GraphTexture,
   ) -> WetTargets {
     let (Some(covers), Some(wet), Some([splash, flow])) = (covers, wet, &self.views) else {
-      let none: &'a wgpu::TextureView = passes.reflections.get_empty();
+      let none: &'a wgpu::TextureView = passes.tracing.reflections.get_empty();
 
       return WetTargets {
         surface: bindings.import_view(&mut *graph, "wet surface none", none),
@@ -184,7 +184,7 @@ impl WetFeature {
       };
     };
     let is_enhanced: bool = self.uniform.is_enhanced > 0.5;
-    let maps: &EnhancedWaterMaps = passes.water.get_maps();
+    let maps: &EnhancedWaterMaps = passes.weather.water.get_maps();
     let (width, height) = handles.size;
     let wet_reach: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
       "wet reach",
@@ -200,7 +200,7 @@ impl WetFeature {
         WetPass::SURFACE,
       ))
     } else {
-      bindings.import_view(&mut *graph, "wet surface none", passes.reflections.get_empty())
+      bindings.import_view(&mut *graph, "wet surface none", passes.tracing.reflections.get_empty())
     };
     let patch: WetPatchParameters = WetPatchParameters {
       depth_target: handles.depth,
@@ -219,7 +219,7 @@ impl WetFeature {
       puddle_noise: bindings.import_view(&mut *graph, "puddle noise", &maps.perlin),
       puddle_normal: bindings.import_view(&mut *graph, "puddle normal", &maps.normal),
       rain_rings: rings,
-      wet_sampler: passes.wet.get_sampler(),
+      wet_sampler: passes.weather.wet.get_sampler(),
       wet,
     };
     let apply: WetApplyParameters = WetApplyParameters {
@@ -256,7 +256,7 @@ impl WetFeature {
           is_enhanced,
         };
 
-        passes.wet.record(context, draw, view, &patch)
+        passes.weather.wet.record(context, draw, view, &patch)
       });
 
     graph
@@ -270,7 +270,7 @@ impl WetFeature {
           is_enhanced,
         };
 
-        passes.wet.record(context, draw, view, &apply)
+        passes.weather.wet.record(context, draw, view, &apply)
       });
 
     WetTargets {

@@ -57,8 +57,11 @@ impl AmbientOcclusionFeature {
 
     let occlusion: UniformBinding<AmbientOcclusionUniform> = runtime.push_uniform(&self.uniform);
     // The search reads no source, but binds one: a texel of nothing, as neither target is written yet.
-    let unsearched: GraphTexture =
-      bindings.import_view(&mut *graph, "ambient occlusion unsearched", passes.vbao.get_dark());
+    let unsearched: GraphTexture = bindings.import_view(
+      &mut *graph,
+      "ambient occlusion unsearched",
+      passes.lighting.vbao.get_dark(),
+    );
 
     for stage in AmbientOcclusionStage::ALL {
       let (read, written): (usize, usize) = stage.get_targets();
@@ -82,7 +85,12 @@ impl AmbientOcclusionFeature {
           targets.occlusion[written],
           wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
         ))
-        .record(move |context| passes.ambient_occlusion.record(context, stage, view, &parameters));
+        .record(move |context| {
+          passes
+            .lighting
+            .ambient_occlusion
+            .record(context, stage, view, &parameters)
+        });
     }
   }
 }

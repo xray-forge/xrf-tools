@@ -69,7 +69,7 @@ impl SkyIrradiance {
     graph
       .add_compute_pass("sky irradiance")
       .parameters(&parameters)
-      .record(move |context| passes.sky_irradiance.record(context, &parameters));
+      .record(move |context| passes.weather.sky_irradiance.record(context, &parameters));
     graph
       .add_encoder_pass("sky irradiance readback")
       .buffer(buffer, GraphBufferAccess::CopySource)

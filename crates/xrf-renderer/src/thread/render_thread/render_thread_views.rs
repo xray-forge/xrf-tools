@@ -509,7 +509,7 @@ impl RenderThread {
           helpers: &scene.helpers,
           statics: &scene.statics,
           options: &options.helpers,
-          marks_layout: gpu.static_gbuffer.get_marks_layout(),
+          marks_layout: gpu.scene.gbuffer.get_marks_layout(),
         },
       );
 

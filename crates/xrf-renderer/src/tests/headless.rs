@@ -151,7 +151,7 @@ fn builds_every_pass() {
 
   match GpuState::new(context, &shaders, &create_workers(), &TestBundle::checkout(), None) {
     Ok(gpu) => assert!(
-      gpu.smaa.is_some(),
+      gpu.image.smaa.is_some(),
       "SMAA reads its lookup textures from the checkout's bundle"
     ),
     Err(error) => panic!("A pass cannot be built: {error}"),
@@ -173,7 +173,7 @@ fn builds_without_what_the_bundle_lacks() {
     &TestBundle::empty(),
     None,
   ) {
-    Ok(gpu) => assert!(gpu.smaa.is_none()),
+    Ok(gpu) => assert!(gpu.image.smaa.is_none()),
     Err(error) => panic!("A missing bundled file failed the GPU: {error}"),
   }
 }

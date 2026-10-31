@@ -379,7 +379,7 @@ impl OverheadMap {
           };
 
           for (cut, cull) in &culls {
-            passes.cull.record_shadow(context, &cut.view, cull, params, kind);
+            passes.scene.cull.record_shadow(context, &cut.view, cull, params, kind);
           }
         }
       });
@@ -415,7 +415,7 @@ impl OverheadMap {
 
     builder.record(move |context| {
       if let Some(shifted) = &shifted {
-        passes.shadow.record_shift(context, shifted);
+        passes.lighting.shadow.record_shift(context, shifted);
       }
 
       for (cut, region, args, _, layouts) in &cuts {
@@ -432,9 +432,9 @@ impl OverheadMap {
               layouts: *layouts,
             };
 
-            passes.water.record_depth(context, groups, args, &parameters);
+            passes.weather.water.record_depth(context, groups, args, &parameters);
           }
-          None => passes.shadow.record_region(
+          None => passes.lighting.shadow.record_region(
             context,
             *region,
             StaticLayoutBindings::new(&cut.view, layouts, textures),
