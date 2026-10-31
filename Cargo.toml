@@ -217,9 +217,22 @@ opt-level = 3
 [profile.release.package.wgpu-types]
 opt-level = 3
 
-# Keep development builds fast.
+# Keep development builds fast. Line tables keep panics and backtraces readable; full debug information for a debugger
+# lives in the `debugging` profile, as it slows every compile and link and doubles the target folder.
 [profile.dev]
 opt-level = 0
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
+# Development with full debug information, in its own target folder, for stepping through and inspecting in a debugger.
+[profile.debugging]
+inherits = "dev"
+debug = "full"
+
+[profile.debugging.package."*"]
+debug = "full"
 
 # Development with optimisation, in its own target folder: the workspace at level 1, near release on byte loops while
 # it still builds fast, and dependencies at 3, built once, where image encoding, shader compilation and decoding run.
