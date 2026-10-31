@@ -439,6 +439,52 @@ fn applies_a_file_written_behind_the_snapshot() {
 }
 
 #[test]
+fn refuses_to_create_over_a_file_written_behind_the_snapshot() {
+  let root: PathBuf = directory("commit_created_behind", &["configs/other.ltx"]);
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  vfs.mount_directory("", &root).expect("the tree mounts");
+
+  let before: XraySearch = search(vfs);
+
+  // Written after the mount, so the snapshot holds no file there and the author never read one.
+  fs::write(root.join("configs/system.ltx"), b"authored").expect("a file written outside the VFS");
+
+  let error: String = before
+    .get_vfs()
+    .commit(
+      &XrayTransaction::new(&before)
+        .with_write(SYSTEM_LTX, "override")
+        .unwrap(),
+    )
+    .expect_err("creating over a file nobody read is refused")
+    .to_string();
+
+  assert!(error.contains("refusing a stale change"), "{error}");
+  assert_eq!(fs::read(root.join("configs/system.ltx")).unwrap(), b"authored");
+  assert_eq!(
+    list_names(&root.join("configs")),
+    ["other.ltx", "system.ltx"],
+    "nothing is staged beside it"
+  );
+
+  // A snapshot taken now holds the file, so the same write is an ordinary replace of what it read.
+  let mut reopened: XrayVfs = XrayVfs::new();
+
+  reopened.mount_directory("", &root).expect("the tree mounts again");
+
+  let reopened: XraySearch = search(reopened);
+  let (after, _): (XraySearch, XrayChangeSet) = commit(
+    &reopened,
+    XrayTransaction::new(&reopened)
+      .with_write(SYSTEM_LTX, "override")
+      .unwrap(),
+  );
+
+  assert_eq!(text(&after, SYSTEM_LTX), "override");
+}
+
+#[test]
 fn an_empty_transaction_moves_no_revision() {
   let mut vfs: XrayVfs = XrayVfs::new();
 

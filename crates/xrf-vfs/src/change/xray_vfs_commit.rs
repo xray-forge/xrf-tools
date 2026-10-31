@@ -172,6 +172,18 @@ impl XrayVfs {
       (true, false) => XrayChange::created(mount.get_id(), path)?,
     };
 
+    // The snapshot holds no file there, so the author wrote without ever reading one: a file on disk now appeared behind
+    // it, and replacing it would lose bytes nobody saw. Refused as a stale change, for the author to reopen and decide.
+    // todo: Swap a created file into place exclusively, linking rather than renaming, so one that appears between this
+    // check and the swap is refused too.
+    if change.get_kind() == XrayChangeKind::Created && target.exists() {
+      return Err(XrfError::new_asset_error(format!(
+        "refusing a stale change: '{}' appeared on disk after this snapshot was taken, and writing '{path}' would \
+         replace it unread",
+        format_path(&target)
+      )));
+    }
+
     Ok((change, target))
   }
 
