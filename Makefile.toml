@@ -164,11 +164,11 @@ command = "node"
 args = ["${NODE_TAURI}", "dev", "--features", "dlss", "--config", "tauri.dlss.conf.json", "--", "--profile", "profiling"]
 
 [tasks.serve-backend]
-description = "Run the desktop backend without the UI dev server."
+description = "Run the desktop backend without the UI dev server, with full debug information for a debugger."
 category = "Development"
 dependencies = ["fetch-sdks"]
 command = "cargo"
-args = ["run", "-p", "xrf-app", "--no-default-features"]
+args = ["run", "-p", "xrf-app", "--no-default-features", "--profile", "debugging"]
 
 [tasks.serve-ui]
 description = "Run the UI dev server without the backend."

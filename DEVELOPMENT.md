@@ -23,12 +23,15 @@ use the Tauri CLI version locked in `bin/xrf-app/ui`, so `cargo-make` is the onl
 `dev-app` starts the Tauri backend and the Vite UI in watch mode. Use `serve-backend` or `serve-ui` when working on one
 layer independently or need to attach debugger.
 
-Local development and tests use Rust optimization level 0 for faster builds. Use `cargo make dev-app-optimized` for
-renderer and viewer work or expensive asset operations: it runs Tauri with the `dev-optimized` profile (workspace crates
-at level 1, dependencies at level 3) in its own `target/dev-optimized` folder, so it never rebuilds what `dev-app`
-built. The IDE run configuration `tauri: dev-optimized` does the same. Profile with `cargo make dev-app-profiling`: the
-`profiling` profile builds release code with line tables, unstripped, in `target/profiling`, so a profiler measures and
-names the code that ships.
+Local development and tests use Rust optimization level 0 and line tables only for faster builds: panics and backtraces
+name files and lines, but a debugger cannot inspect variables. `serve-backend` and the IDE run configuration
+`tauri: debug` build the `debugging` profile, with full debug information, in its own `target/debugging` folder.
+
+Use `cargo make dev-app-optimized` for renderer and viewer work or expensive asset operations: it runs Tauri with the
+`dev-optimized` profile (workspace crates at level 1, dependencies at level 3) in its own `target/dev-optimized` folder,
+so it never rebuilds what `dev-app` built. The IDE run configuration `tauri: dev-optimized` does the same. Profile with
+`cargo make dev-app-profiling`: the `profiling` profile builds release code with line tables, unstripped, in
+`target/profiling`, so a profiler measures and names the code that ships.
 
 ## Task reference
 
@@ -39,7 +42,7 @@ names the code that ships.
 | `dev-app`           | Runs the desktop backend and UI in watch mode.                      |
 | `dev-app-optimized` | Runs the same watch mode with DLSS and the `dev-optimized` profile. |
 | `dev-app-profiling` | Runs the same watch mode with DLSS and the `profiling` profile.     |
-| `serve-backend`     | Runs the desktop backend without the UI dev server.                 |
+| `serve-backend`     | Runs the desktop backend without the UI dev server, for a debugger. |
 | `serve-ui`          | Runs the Vite UI dev server without the backend.                    |
 
 ### Build
