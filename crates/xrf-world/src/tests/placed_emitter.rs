@@ -15,7 +15,8 @@ fn emitter() -> PlacedEmitter {
       name: String::from("fire"),
     },
     Mat4::IDENTITY,
-    (None, None),
+    None,
+    None,
   )
 }
 

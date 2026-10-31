@@ -22,6 +22,7 @@ use crate::contract::world_weather_transition::WorldWeatherTransition;
 use crate::host::world_event_sink::WorldEventSink;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::effects::effects_frame::EffectsFrame;
+use crate::level::level_drive::LevelDrive;
 use crate::level::world_level::WorldLevel;
 use crate::weather::viewport_weather::ViewportWeather;
 use crate::world_scene::WorldScene;
@@ -157,7 +158,7 @@ impl World {
 
     for viewer in &scene.viewers {
       if let Some(world) = self.viewports.get_mut(viewer) {
-        world.weather.follow(Arc::clone(&source), reload.is_weather);
+        world.weather.follow(Arc::clone(&source), reload);
       }
     }
 
@@ -336,16 +337,8 @@ impl RenderWorld for World {
     let mut frames: HashMap<RenderSceneId, RenderSceneFrame> = HashMap::with_capacity(self.scenes.len());
 
     for (id, scene) in &mut self.scenes {
-      let RenderSceneFeedback {
-        sector_failures,
-        model_failures,
-        finished_effects,
-      } = feedback.remove(id).unwrap_or_default();
-
       // The scene told it once, so it is taken even in a frame no viewport drives the scene.
-      scene
-        .level
-        .take_feedback((sector_failures, model_failures), finished_effects);
+      scene.level.take_feedback(feedback.remove(id).unwrap_or_default());
 
       let driver: Option<RenderViewportId> = scene.get_driver();
       let Some(driving) = driver.and_then(|driver| self.viewports.get(&driver)) else {
@@ -353,8 +346,12 @@ impl RenderWorld for World {
       };
       let (updates, effects): (Vec<RenderSceneUpdate>, EffectsFrame) = scene.level.advance(
         now,
-        (&driving.options, &driving.toggles, driving.get_ambient_frame()),
-        driving.eye,
+        LevelDrive {
+          options: &driving.options,
+          toggles: &driving.toggles,
+          ambient: driving.get_ambient_frame(),
+          eye: driving.eye,
+        },
       );
 
       frames.insert(

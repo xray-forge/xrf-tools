@@ -10,6 +10,7 @@ use xrf_renderer::{
 };
 
 use crate::weather::thunder::thunder_flash::ThunderFlash;
+use crate::weather::thunder::thunder_play::ThunderPlay;
 
 /// `EPS_L`: real seconds a strike followed at once waits after the last one ends.
 const SECOND_DELAY: f32 = EPS_L;
@@ -67,23 +68,23 @@ impl WeatherThunder {
     self.advanced_at = None;
   }
 
-  /// `OnFrame`: schedules a strike as the weather starts to name a collection, strikes when one is due, and plays the
-  /// strike under way. `now` is its real clock and `view` in engine space; none while no strike is under way.
+  /// `OnFrame`: schedules a strike as the weather starts to name a collection while `play` lets it strike, strikes
+  /// when one is due, and plays the strike under way. `now` is its real clock and `view` in engine space; none while no
+  /// strike is under way.
   pub fn advance(
     &mut self,
     thunder: &RenderThunder,
     mix: &WeatherMix,
-    is_enabled: bool,
+    play: ThunderPlay,
     now: Duration,
     view: Vec3,
   ) -> Option<ThunderFlash> {
     let step: f32 = self
       .advanced_at
       .map_or(0.0, |at| now.saturating_sub(at).min(LONGEST_STEP).as_secs_f32());
-    let palette: Vec<(&String, &RenderThunderbolt)> = if is_enabled {
-      Self::list_palette(thunder, mix)
-    } else {
-      Vec::new()
+    let palette: Vec<(&String, &RenderThunderbolt)> = match play {
+      ThunderPlay::Striking => Self::list_palette(thunder, mix),
+      ThunderPlay::Held => Vec::new(),
     };
     let settings: Option<RenderThunderSettings> = thunder.settings;
     let is_striking: bool = !palette.is_empty() && settings.is_some();

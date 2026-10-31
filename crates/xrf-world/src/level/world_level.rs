@@ -2,23 +2,18 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use glam::Vec3;
-use xrf_renderer::{
-  ParticleEmitterProxy, PlacedEffect, RenderModelFailure, RenderSceneUpdate, RenderSectorFailure,
-  RenderStreamingProgress, RenderViewOptions, RenderWorkers,
-};
-use xrf_renderer_core::ProxyHandle;
+use xrf_renderer::{RenderSceneFeedback, RenderSceneUpdate, RenderStreamingProgress, RenderWorkers};
 
 use crate::contract::world_ambient_report::WorldAmbientReport;
 use crate::contract::world_level_problems::WorldLevelProblems;
 use crate::contract::world_level_reload::WorldLevelReload;
 use crate::contract::world_model_pose::WorldModelPose;
 use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
-use crate::contract::world_toggles::WorldToggles;
 use crate::host::world_level_source::WorldLevelSource;
-use crate::level::ambient::ambient_frame::AmbientFrame;
 use crate::level::animation::level_animation::LevelAnimation;
 use crate::level::effects::effects_frame::EffectsFrame;
 use crate::level::effects::level_effects::LevelEffects;
+use crate::level::level_drive::LevelDrive;
 use crate::level::streaming::level_streaming::LevelStreaming;
 
 /// A level as a viewport's world plays it: what streams it into its scene, how its skinned objects are posed, and what
@@ -54,7 +49,7 @@ impl WorldLevel {
       self.effects.reload(&mut self.queued, &source, workers);
     }
 
-    self.effects.follow_motions(&source, reload.is_motions);
+    self.effects.follow_motions(&source, reload);
 
     self
       .streaming
@@ -75,38 +70,39 @@ impl WorldLevel {
     self.effects.report_ambient()
   }
 
-  /// Takes what the level's scene told of the last frame, whether or not a viewport drives it now: `failures` are the
-  /// sectors and the spawned models it could not take in of the posts before, and `finished` the effects it finished.
+  /// Takes what the level's scene told of the last frame, whether or not a viewport drives it now: the sectors and the
+  /// spawned models it could not take in of the posts before, and the effects it finished.
   pub fn take_feedback(
     &mut self,
-    failures: (Vec<RenderSectorFailure>, Vec<RenderModelFailure>),
-    finished: Vec<(ProxyHandle<ParticleEmitterProxy>, PlacedEffect)>,
+    RenderSceneFeedback {
+      sector_failures,
+      model_failures,
+      finished_effects,
+    }: RenderSceneFeedback,
   ) {
-    self.streaming.take_failures(&mut self.animation, failures);
-    self.effects.note_finished(finished);
+    self
+      .streaming
+      .take_failures(&mut self.animation, sector_failures, model_failures);
+    self.effects.note_finished(finished_effects);
   }
 
-  /// This frame's posts to the level's scene at the frame's `now` by the view's options and the frame's weather, the
-  /// camera standing at `eye` in engine space, and what its effects give the scene besides.
-  pub fn advance(
-    &mut self,
-    now: Instant,
-    (options, toggles, ambient): (&RenderViewOptions, &WorldToggles, Option<AmbientFrame<'_>>),
-    eye: Vec3,
-  ) -> (Vec<RenderSceneUpdate>, EffectsFrame) {
+  /// This frame's posts to the level's scene at the frame's `now` as its driving viewport gives it, and what its effects
+  /// give the scene besides.
+  pub fn advance(&mut self, now: Instant, drive: LevelDrive<'_>) -> (Vec<RenderSceneUpdate>, EffectsFrame) {
     let mut updates: Vec<RenderSceneUpdate> = std::mem::take(&mut self.queued);
 
     self
       .streaming
-      .stream(&mut updates, &mut self.animation, toggles.get_spawn_filter());
+      .stream(&mut updates, &mut self.animation, drive.toggles.get_spawn_filter());
     self.animation.pose(&mut updates, self.streaming.get_source());
 
+    let (campfires, motions): (&[u16], &[String]) = self.streaming.list_light_followed();
     let effects: EffectsFrame = self.effects.advance(
       &mut updates,
       now.saturating_duration_since(self.opened),
-      (options, toggles, ambient),
-      eye,
-      self.streaming.list_light_followed(),
+      drive,
+      campfires,
+      motions,
     );
 
     (updates, effects)

@@ -29,7 +29,7 @@ fn folder(name: &str) -> PathBuf {
 }
 
 /// A two by one sample of frame 0: a flat shade, its marks `marks` in both texels.
-fn send_sample(events: &Sender<BurstEvent>, sample: Option<u32>, (shade, marks): (u8, u8)) {
+fn send_sample(events: &Sender<BurstEvent>, sample: Option<u32>, shade: u8, marks: u8) {
   events
     .send(BurstEvent::Shot {
       index: 0,
@@ -56,8 +56,8 @@ fn writes_a_references_frame_as_its_samples_mean_and_its_marks_shares() {
   let folder: PathBuf = folder("reference");
   let (events, receiver) = channel();
 
-  send_sample(&events, Some(0), (100, BurstMarks::PLANT | BurstMarks::GRASS));
-  send_sample(&events, Some(1), (201, BurstMarks::PLANT));
+  send_sample(&events, Some(0), 100, BurstMarks::PLANT | BurstMarks::GRASS);
+  send_sample(&events, Some(1), 201, BurstMarks::PLANT);
   events.send(BurstEvent::Finished).expect("the writer to listen");
 
   let outcome: BurstOutcome = BurstWriter::new(folder.clone(), &REFERENCE)
@@ -82,7 +82,7 @@ fn writes_a_bursts_frame_as_it_comes() {
   let folder: PathBuf = folder("frames");
   let (events, receiver) = channel();
 
-  send_sample(&events, None, (40, BurstMarks::MOVED));
+  send_sample(&events, None, 40, BurstMarks::MOVED);
   events.send(BurstEvent::Finished).expect("the writer to listen");
 
   BurstWriter::new(
@@ -110,7 +110,7 @@ fn writes_a_bursts_frame_as_it_comes() {
 fn refuses_a_sample_out_of_order_and_a_burst_that_stopped() {
   let (events, receiver) = channel();
 
-  send_sample(&events, Some(1), (0, 0));
+  send_sample(&events, Some(1), 0, 0);
 
   assert!(
     BurstWriter::new(folder("out-of-order"), &REFERENCE)

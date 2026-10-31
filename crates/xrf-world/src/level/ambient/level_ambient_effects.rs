@@ -62,14 +62,14 @@ impl Default for LevelAmbientEffects {
 
 impl LevelAmbientEffects {
   /// Lets an effect whose particles died go, blows the wind on, starts an effect when one is due, and stops it once its
-  /// time is up or indoors, in the order the engine takes them each frame, posting what the scene plays. `eye` is where
-  /// the camera stands, in engine space; `now` is the level's clock.
+  /// time is up or indoors, in the order the engine takes them each frame, posting what the scene plays. `outdoors` is
+  /// where the camera stands outdoors, in engine space, none where it stands indoors; `now` is the level's clock.
   pub fn update(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
     mut systems: AmbientSystems<'_>,
     frame: Option<AmbientFrame<'_>>,
-    (eye, is_indoors): (Vec3, bool),
+    outdoors: Option<Vec3>,
     now: Duration,
   ) {
     if let Some(playing) = &self.playing
@@ -86,17 +86,17 @@ impl LevelAmbientEffects {
       self.next_time = Duration::ZERO;
     }
 
-    if !is_indoors
+    if let Some(eye) = outdoors
       && self.playing.is_none()
       && now > self.next_time
       && let Some(frame) = frame
     {
-      self.start(updates, &mut systems, frame, (eye, now));
+      self.start(updates, &mut systems, frame, eye, now);
     }
 
     self.wind.rise(now);
 
-    if is_indoors || now >= self.stop_time {
+    if outdoors.is_none() || now >= self.stop_time {
       // `Stop()`, deferred: it emits no more, and what it emitted lives on.
       if let Some(playing) = &mut self.playing
         && !playing.is_stopping
@@ -126,8 +126,8 @@ impl LevelAmbientEffects {
   }
 
   /// Where they stand at a moment of the level's clock: what plays and how much of its life is left, and how long until
-  /// the next may start.
-  pub fn report(&self, now: Duration, is_indoors: bool) -> WorldAmbientReport {
+  /// the next may start. Whether the camera stands indoors is the camera's estimate to fill; it is left outdoors.
+  pub fn report(&self, now: Duration) -> WorldAmbientReport {
     WorldAmbientReport {
       effect: self.playing.as_ref().map(|playing| WorldAmbientEffectReport {
         name: playing.name.clone(),
@@ -138,7 +138,7 @@ impl LevelAmbientEffects {
           self.stop_time.saturating_sub(now)
         },
       }),
-      is_indoors,
+      is_indoors: false,
       wait: self.next_time.saturating_sub(now),
       played: self.played as u32,
     }
@@ -153,13 +153,14 @@ impl LevelAmbientEffects {
   }
 
   /// Plays an effect of the ambient the frame plays, `get_rnd_effect`, and draws when the next may start,
-  /// `get_rnd_effect_time`; an ambient without effects plays none and draws nothing.
+  /// `get_rnd_effect_time`, the camera standing at `eye`; an ambient without effects plays none and draws nothing.
   fn start(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
     systems: &mut AmbientSystems<'_>,
     frame: AmbientFrame<'_>,
-    (eye, now): (Vec3, Duration),
+    eye: Vec3,
+    now: Duration,
   ) {
     // `Current[data_set]`, drawn only when the keyframes' ambients differ and only here, where it is read, so that the
     // run of numbers does not depend on the frame rate.

@@ -98,7 +98,11 @@ impl SurfaceTally {
     for at in (start..end).step_by(stride) {
       let vertex: usize = Self::read_u32(indices, at as usize) as usize;
       let is_tree: bool = geometry.uv_components as usize == LevelVertexLayout::TREE_COORDINATE_SHORTS;
-      let coordinate: Option<(f32, f32)> = Self::read_coordinate((uvs, tangents, binormals), vertex, is_tree);
+      let coordinate: Option<(f32, f32)> = if is_tree {
+        Self::read_tree_coordinate(uvs, vertex)
+      } else {
+        Self::read_baked_coordinate(uvs, tangents, binormals, vertex)
+      };
 
       if let Some((u, v)) = coordinate.filter(|(u, v)| u.is_finite() && v.is_finite()) {
         let at: WorldSurfaceSpan = WorldSurfaceSpan::at(u, v);
@@ -110,23 +114,20 @@ impl SurfaceTally {
     span
   }
 
-  /// One vertex's base coordinate: a tree's two shorts over its quantisation, or a baked surface's with the low bytes
-  /// that ride in the fourth byte of its tangent and binormal; none where its shorts lie past the array.
-  fn read_coordinate(
-    (uvs, tangents, binormals): (&[u8], &[u8], &[u8]),
-    vertex: usize,
-    is_tree: bool,
-  ) -> Option<(f32, f32)> {
-    if is_tree {
-      let at: usize = vertex * LevelVertexLayout::TREE_COORDINATE_SHORTS;
-      let (u, v) = Self::read_i16(uvs, at).zip(Self::read_i16(uvs, at + 1))?;
+  /// One tree vertex's base coordinate: its two shorts over its quantisation; none where they lie past the array.
+  fn read_tree_coordinate(uvs: &[u8], vertex: usize) -> Option<(f32, f32)> {
+    let at: usize = vertex * LevelVertexLayout::TREE_COORDINATE_SHORTS;
+    let (u, v) = Self::read_i16(uvs, at).zip(Self::read_i16(uvs, at + 1))?;
 
-      return Some((
-        f32::from(u) / LevelVertexLayout::TREE_QUANT,
-        f32::from(v) / LevelVertexLayout::TREE_QUANT,
-      ));
-    }
+    Some((
+      f32::from(u) / LevelVertexLayout::TREE_QUANT,
+      f32::from(v) / LevelVertexLayout::TREE_QUANT,
+    ))
+  }
 
+  /// One baked surface vertex's base coordinate, with the low bytes that ride in the fourth byte of its tangent and
+  /// binormal; none where its shorts lie past the array.
+  fn read_baked_coordinate(uvs: &[u8], tangents: &[u8], binormals: &[u8], vertex: usize) -> Option<(f32, f32)> {
     let at: usize = vertex * LevelVertexLayout::BASE_COORDINATE_SHORTS;
     let (u, v) = Self::read_i16(uvs, at).zip(Self::read_i16(uvs, at + 1))?;
     let fraction = |bytes: &[u8]| {

@@ -58,8 +58,10 @@ impl CubeExporter {
     let faces: Vec<RgbaImage> = CubeAssembly::split(&cross).map_err(|error| error.to_string())?;
     let captured: u32 = cross.width() / 4;
     // A DDS takes whole blocks, which every face size offered already is.
-    let is_blocked: bool = matches!(format, CubeExportFormat::Dds(_));
-    let (side, _): (u32, u32) = ViewerImage::get_export_size((captured, captured), *size, is_blocked);
+    let (side, _): (u32, u32) = match format {
+      CubeExportFormat::Dds(_) => ViewerImage::get_dds_export_size((captured, captured), *size),
+      _ => ViewerImage::get_export_size((captured, captured), *size),
+    };
     let faces: Vec<RgbaImage> = faces
       .into_iter()
       .map(|face| {

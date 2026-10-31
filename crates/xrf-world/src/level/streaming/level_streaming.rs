@@ -196,7 +196,8 @@ impl LevelStreaming {
   pub fn take_failures(
     &mut self,
     animation: &mut LevelAnimation,
-    (failures, model_failures): (Vec<RenderSectorFailure>, Vec<RenderModelFailure>),
+    failures: Vec<RenderSectorFailure>,
+    model_failures: Vec<RenderModelFailure>,
   ) {
     self.forget_failed_models(animation, model_failures);
 

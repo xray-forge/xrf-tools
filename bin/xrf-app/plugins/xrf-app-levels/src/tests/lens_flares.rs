@@ -21,9 +21,9 @@ fn list(items: &[&str]) -> EnvironmentValue {
   EnvironmentValue::List(items.iter().map(|it| (*it).to_owned()).collect())
 }
 
-fn sun_sprite(switch: bool, texture: &str) -> Vec<(LensFlareKey, EnvironmentValue)> {
+fn sun_sprite(switch: EnvironmentValue, texture: &str) -> Vec<(LensFlareKey, EnvironmentValue)> {
   vec![
-    (LensFlareKey::Sun, EnvironmentValue::Flag(switch)),
+    (LensFlareKey::Sun, switch),
     (LensFlareKey::SunTexture, text(texture)),
     (LensFlareKey::SunRadius, EnvironmentValue::Number(0.3)),
     (LensFlareKey::SunIgnoreColor, EnvironmentValue::Flag(false)),
@@ -32,7 +32,7 @@ fn sun_sprite(switch: bool, texture: &str) -> Vec<(LensFlareKey, EnvironmentValu
 
 #[test]
 fn reads_the_sprite_flares_and_gradient_a_section_draws() {
-  let mut values = sun_sprite(true, "fx\\fx_sun_halo.tga");
+  let mut values = sun_sprite(EnvironmentValue::Flag(true), "fx\\fx_sun_halo.tga");
 
   values.extend([
     (LensFlareKey::Flares, EnvironmentValue::Flag(true)),
@@ -103,7 +103,7 @@ fn takes_the_sprite_from_source_unless_sun_is_written_over_it() {
     Some(("fx\\fx_sun".to_owned(), true))
   );
 
-  sourced.extend(sun_sprite(false, "fx\\fx_sun_halo"));
+  sourced.extend(sun_sprite(EnvironmentValue::Flag(false), "fx\\fx_sun_halo"));
 
   assert!(
     LevelLensFlares::to_render(&new_flare(sourced), XrayEngine::Vanilla)

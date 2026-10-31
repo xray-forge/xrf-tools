@@ -1,5 +1,6 @@
 pub(crate) mod camera_hemi;
 pub(crate) mod campfire;
+pub(crate) mod campfire_state;
 pub(crate) mod effects_frame;
 pub(crate) mod level_campfires;
 pub(crate) mod level_effects;

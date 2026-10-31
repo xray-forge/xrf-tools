@@ -52,16 +52,16 @@ fn new_request(path: PathBuf, target: PathBuf, format: MapExportFormat) -> MapEx
 
 #[test]
 fn exports_at_most_the_capture_keeping_its_shape() {
-  assert_eq!(ViewerImage::get_export_size((4096, 2732), 2048, false), (2048, 1366));
-  assert_eq!(ViewerImage::get_export_size((4096, 2732), 8192, false), (4096, 2732));
-  assert_eq!(ViewerImage::get_export_size((1000, 3000), 1500, false), (500, 1500));
+  assert_eq!(ViewerImage::get_export_size((4096, 2732), 2048), (2048, 1366));
+  assert_eq!(ViewerImage::get_export_size((4096, 2732), 8192), (4096, 2732));
+  assert_eq!(ViewerImage::get_export_size((1000, 3000), 1500), (500, 1500));
 }
 
 #[test]
 fn rounds_a_dds_to_whole_blocks() {
   // 2732 / 2 is 1366, between the blocks 1364 and 1368, nearer the second.
-  assert_eq!(ViewerImage::get_export_size((4096, 2732), 2048, true), (2048, 1368));
-  assert_eq!(ViewerImage::get_export_size((5, 3), 5, true), (4, 4));
+  assert_eq!(ViewerImage::get_dds_export_size((4096, 2732), 2048), (2048, 1368));
+  assert_eq!(ViewerImage::get_dds_export_size((5, 3), 5), (4, 4));
 }
 
 #[test]

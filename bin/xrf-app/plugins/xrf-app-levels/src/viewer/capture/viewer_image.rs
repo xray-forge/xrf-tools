@@ -11,22 +11,27 @@ use xrf_dds::DdsEncoding;
 pub struct ViewerImage;
 
 impl ViewerImage {
-  /// An export's pixels: the longer side `long_side` at most the capture's, a DDS rounded to whole blocks.
+  /// An export's pixels: the longer side `long_side` at most the capture's.
+  pub fn get_export_size(size: (u32, u32), long_side: u32) -> (u32, u32) {
+    Self::fit_export_size(size, long_side, 1)
+  }
+
+  /// The same for a DDS, rounded to whole blocks.
   ///
   /// The rounding resamples rather than pads: the game stretches the texture over the map's area, so it must cover it.
-  pub fn get_export_size((width, height): (u32, u32), long_side: u32, is_blocked: bool) -> (u32, u32) {
+  pub fn get_dds_export_size(size: (u32, u32), long_side: u32) -> (u32, u32) {
+    Self::fit_export_size(size, long_side, DdsEncoding::BLOCK_SIZE)
+  }
+
+  /// An export's pixels, the longer side `long_side` at most the capture's, each side rounded to whole `block`s.
+  fn fit_export_size((width, height): (u32, u32), long_side: u32, block: u32) -> (u32, u32) {
     let longest: u32 = width.max(height).max(1);
     let scale: f64 = f64::from(long_side.clamp(1, longest)) / f64::from(longest);
+    let block: f64 = f64::from(block);
     let side = |pixels: u32| -> u32 {
       let scaled: f64 = (f64::from(pixels) * scale).round().max(1.0);
 
-      if is_blocked {
-        let block: f64 = f64::from(DdsEncoding::BLOCK_SIZE);
-
-        ((scaled / block).round().max(1.0) * block) as u32
-      } else {
-        scaled as u32
-      }
+      ((scaled / block).round().max(1.0) * block) as u32
     };
 
     (side(width), side(height))

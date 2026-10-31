@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use crate::level::effects::campfire::Campfire;
+use crate::level::effects::campfire_state::CampfireState;
 
 fn at(milliseconds: u64) -> Duration {
   Duration::from_millis(milliseconds)
@@ -8,7 +9,7 @@ fn at(milliseconds: u64) -> Duration {
 
 #[test]
 fn plays_and_stops_its_idle_effect_freely_while_settled() {
-  let campfire: Campfire = Campfire::new(true);
+  let campfire: Campfire = Campfire::new(CampfireState::Lit);
 
   assert!(campfire.is_lit());
   assert!(campfire.can_play_idle(at(0)));
@@ -17,9 +18,9 @@ fn plays_and_stops_its_idle_effect_freely_while_settled() {
 
 #[test]
 fn plays_its_idle_effect_two_seconds_into_a_turn_on() {
-  let mut campfire: Campfire = Campfire::new(false);
+  let mut campfire: Campfire = Campfire::new(CampfireState::Out);
 
-  campfire.turn(true, at(1000));
+  campfire.turn(CampfireState::Lit, at(1000));
 
   assert!(campfire.is_lit());
   assert!(!campfire.can_play_idle(at(1000)));
@@ -29,9 +30,9 @@ fn plays_its_idle_effect_two_seconds_into_a_turn_on() {
 
 #[test]
 fn stops_its_idle_effect_half_a_second_into_a_turn_off() {
-  let mut campfire: Campfire = Campfire::new(true);
+  let mut campfire: Campfire = Campfire::new(CampfireState::Lit);
 
-  campfire.turn(false, at(1000));
+  campfire.turn(CampfireState::Out, at(1000));
 
   assert!(!campfire.is_lit());
   assert!(!campfire.can_stop_idle(at(1000)));
@@ -41,11 +42,11 @@ fn stops_its_idle_effect_half_a_second_into_a_turn_off() {
 
 #[test]
 fn ramps_its_light_over_a_turn() {
-  let mut campfire: Campfire = Campfire::new(true);
+  let mut campfire: Campfire = Campfire::new(CampfireState::Lit);
 
   assert_eq!(campfire.get_light_share(at(0)), 1.0);
 
-  campfire.turn(false, at(1000));
+  campfire.turn(CampfireState::Out, at(1000));
 
   assert_eq!(campfire.get_light_share(at(1000)), 1.0);
   assert_eq!(campfire.get_light_share(at(2500)), 0.5);
@@ -54,7 +55,7 @@ fn ramps_its_light_over_a_turn() {
 
   assert_eq!(campfire.get_light_share(at(4000)), 0.0);
 
-  campfire.turn(true, at(5000));
+  campfire.turn(CampfireState::Lit, at(5000));
 
   assert_eq!(campfire.get_light_share(at(5000)), 0.0);
   assert_eq!(campfire.get_light_share(at(6500)), 0.5);
@@ -62,14 +63,14 @@ fn ramps_its_light_over_a_turn() {
 
 #[test]
 fn settles_once_the_turn_has_taken_its_time() {
-  let mut campfire: Campfire = Campfire::new(true);
+  let mut campfire: Campfire = Campfire::new(CampfireState::Lit);
 
-  campfire.turn(false, at(1000));
+  campfire.turn(CampfireState::Out, at(1000));
   campfire.settle(at(3999));
 
-  assert_ne!(campfire, Campfire::new(false));
+  assert_ne!(campfire, Campfire::new(CampfireState::Out));
 
   campfire.settle(at(4000));
 
-  assert_eq!(campfire, Campfire::new(false));
+  assert_eq!(campfire, Campfire::new(CampfireState::Out));
 }

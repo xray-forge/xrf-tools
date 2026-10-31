@@ -7,6 +7,7 @@ use xrf_anm::AnmFile;
 use xrf_renderer::RenderWorkers;
 use xrf_visual::VisualTransform;
 
+use crate::contract::world_level_reload::WorldLevelReload;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::loading::loader_slot::LoaderSlot;
 use crate::level::loading::loader_slots::LoaderSlots;
@@ -34,12 +35,12 @@ impl LevelObjectMotions {
     }
   }
 
-  /// Reads from `source`, a next source of the same level, from now on: where `is_reread`, every motion read before is
-  /// let go and read again from it the next time something asks, else each stays as it was read.
-  pub fn follow(&mut self, source: &Arc<dyn WorldLevelSource>, is_reread: bool) {
+  /// Reads from `source`, a next source of the same level, from now on: where `reload` names the motions, every motion
+  /// read before is let go and read again from it the next time something asks, else each stays as it was read.
+  pub fn follow(&mut self, source: &Arc<dyn WorldLevelSource>, reload: WorldLevelReload) {
     self.source = Arc::clone(source);
 
-    if is_reread {
+    if reload.is_motions {
       self.motions = LoaderSlots::default();
     }
   }

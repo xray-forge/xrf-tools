@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use xrf_renderer::{RenderLighting, RenderWorkers};
 
 use crate::contract::world_ambient_report::WorldAmbientReport;
+use crate::contract::world_level_reload::WorldLevelReload;
 use crate::contract::world_weather_control::WorldWeatherControl;
 use crate::contract::world_weather_play::WorldWeatherPlay;
 use crate::contract::world_weather_report::WorldWeatherReport;
@@ -12,6 +13,7 @@ use crate::contract::world_weather_transition::WorldWeatherTransition;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_level_weather::WorldLevelWeather;
 use crate::weather::played_weather::PlayedWeather;
+use crate::weather::thunder::thunder_play::ThunderPlay;
 use crate::weather::weather_load::WeatherLoad;
 use crate::weather::weather_player::WeatherPlayer;
 
@@ -86,12 +88,13 @@ impl ViewportWeather {
     self.read_level();
   }
 
-  /// Plays on from `source`, a next source of the level shown: where `is_reread`, what every weather plays with is read
-  /// again from it, the weather playing until then, and the last request plays over it once read, the clock kept.
-  pub fn follow(&mut self, source: Arc<dyn WorldLevelSource>, is_reread: bool) {
+  /// Plays on from `source`, a next source of the level shown: where `reload` names the weather, what every weather
+  /// plays with is read again from it, the weather playing until then, and the last request plays over it once read,
+  /// the clock kept.
+  pub fn follow(&mut self, source: Arc<dyn WorldLevelSource>, reload: WorldLevelReload) {
     self.source = Some(source);
 
-    if is_reread {
+    if reload.is_weather {
       self.level_generation += 1;
       self.read_level();
     }
@@ -134,20 +137,20 @@ impl ViewportWeather {
     self.player.play_effect(name);
   }
 
-  /// Takes what the loaders read, moves the clock on to a frame and lights the scene by it. `view` is where the camera
-  /// stands, in engine space; `is_up` says whether a lighting's skies are up.
+  /// Takes what the loaders read, moves the clock on to a frame and lights the scene by it, striking as `thunder` lets
+  /// it. `view` is where the camera stands, in engine space; `is_up` says whether a lighting's skies are up.
   pub fn advance(
     &mut self,
     now: Instant,
     view: [f32; 3],
-    is_thundering: bool,
+    thunder: ThunderPlay,
     is_up: impl FnMut(&RenderLighting) -> bool,
   ) {
     while let Ok(load) = self.receiver.try_recv() {
       self.take(load);
     }
 
-    if let Some(lighting) = self.player.advance(now, view, is_thundering, is_up) {
+    if let Some(lighting) = self.player.advance(now, view, thunder, is_up) {
       self.lighting = lighting;
       self.is_default_lighting = false;
     } else if !self.player.is_playing() && !self.is_default_lighting {

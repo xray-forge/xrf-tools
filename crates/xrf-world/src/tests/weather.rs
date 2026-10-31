@@ -16,6 +16,7 @@ use crate::contract::world_weather_transition::WorldWeatherTransition;
 use crate::host::world_level_weather::WorldLevelWeather;
 use crate::weather::fade::weather_fade::WeatherFade;
 use crate::weather::played_weather::PlayedWeather;
+use crate::weather::thunder::thunder_play::ThunderPlay;
 use crate::weather::thunder::weather_thunder::WeatherThunder;
 use crate::weather::weather_lighting::WeatherLighting;
 use crate::weather::weather_player::WeatherPlayer;
@@ -90,7 +91,7 @@ fn plays_a_cycle_from_a_seek_and_runs_its_clock() {
   // A second past noon: exactly on a keyframe, `SelectEnvs` blends towards it from the one before.
   player.seek((NOON + 1) as f32);
 
-  let lit: RenderLighting = player.advance(start, [0.0; 3], false, |_| true).unwrap();
+  let lit: RenderLighting = player.advance(start, [0.0; 3], ThunderPlay::Held, |_| true).unwrap();
 
   assert!((sun_of(&lit) - 0.5).abs() < 1e-3);
   assert_eq!(player.report().unwrap().between, [NOON as f32, (NOON + 7200) as f32]);
@@ -101,19 +102,19 @@ fn plays_a_cycle_from_a_seek_and_runs_its_clock() {
     is_paused: false,
     is_dynamic_sun: false,
   });
-  player.advance(start, [0.0; 3], false, |_| true);
+  player.advance(start, [0.0; 3], ThunderPlay::Held, |_| true);
 
   let later: RenderLighting = player
-    .advance(start + Duration::from_secs(1), [0.0; 3], false, |_| true)
+    .advance(start + Duration::from_secs(1), [0.0; 3], ThunderPlay::Held, |_| true)
     .unwrap();
 
   assert!((sun_of(&later) - 0.75).abs() < 1e-3);
   assert!((player.report().unwrap().time - (NOON + 3601) as f32).abs() < 1e-2);
   // A paused clock lights nothing anew.
   player.set_control(WorldWeatherControl::default());
-  player.advance(start + Duration::from_secs(1), [0.0; 3], false, |_| true);
+  player.advance(start + Duration::from_secs(1), [0.0; 3], ThunderPlay::Held, |_| true);
   assert_eq!(
-    player.advance(start + Duration::from_secs(2), [0.0; 3], false, |_| true),
+    player.advance(start + Duration::from_secs(2), [0.0; 3], ThunderPlay::Held, |_| true),
     None
   );
 }
@@ -125,7 +126,7 @@ fn fades_into_another_weather_once_its_skies_are_up() {
 
   player.take(Some(afternoon()), WorldWeatherTransition::Cut);
   player.seek(NOON as f32);
-  player.advance(start, [0.0; 3], false, |_| true);
+  player.advance(start, [0.0; 3], ThunderPlay::Held, |_| true);
 
   let bright: PlayedWeather = PlayedWeather::cycle(
     vec![keyframe(0, 1.5), keyframe(NOON, 1.5)],
@@ -135,18 +136,24 @@ fn fades_into_another_weather_once_its_skies_are_up() {
   player.take(Some(bright), WorldWeatherTransition::Fade);
 
   // Its skies still going up, it waits on what was shown.
-  let waiting: RenderLighting = player.advance(start, [0.0; 3], false, |_| false).unwrap();
+  let waiting: RenderLighting = player.advance(start, [0.0; 3], ThunderPlay::Held, |_| false).unwrap();
 
   assert!((sun_of(&waiting) - 0.5).abs() < 1e-6);
 
   let started: RenderLighting = player
-    .advance(start + Duration::from_millis(100), [0.0; 3], false, |_| true)
+    .advance(start + Duration::from_millis(100), [0.0; 3], ThunderPlay::Held, |_| {
+      true
+    })
     .unwrap();
   let halfway: RenderLighting = player
-    .advance(start + Duration::from_millis(850), [0.0; 3], false, |_| true)
+    .advance(start + Duration::from_millis(850), [0.0; 3], ThunderPlay::Held, |_| {
+      true
+    })
     .unwrap();
   let done: RenderLighting = player
-    .advance(start + Duration::from_millis(1700), [0.0; 3], false, |_| true)
+    .advance(start + Duration::from_millis(1700), [0.0; 3], ThunderPlay::Held, |_| {
+      true
+    })
     .unwrap();
 
   assert!((sun_of(&started) - 0.5).abs() < 1e-6);
@@ -172,9 +179,9 @@ fn lays_an_effect_over_the_cycle_and_gives_the_cycle_back() {
     WorldWeatherTransition::Cut,
   );
   player.seek(1000.0);
-  player.advance(start, [0.0; 3], false, |_| true);
+  player.advance(start, [0.0; 3], ThunderPlay::Held, |_| true);
   player.play_effect(Some("fx"));
-  player.advance(start, [0.0; 3], false, |_| true);
+  player.advance(start, [0.0; 3], ThunderPlay::Held, |_| true);
 
   let playing = player.report().unwrap().effect.unwrap();
 
@@ -189,7 +196,9 @@ fn lays_an_effect_over_the_cycle_and_gives_the_cycle_back() {
   });
 
   for second in 1..=2 {
-    player.advance(start + Duration::from_secs(second), [0.0; 3], false, |_| true);
+    player.advance(start + Duration::from_secs(second), [0.0; 3], ThunderPlay::Held, |_| {
+      true
+    });
   }
 
   assert_eq!(player.report().unwrap().effect, None);
@@ -306,7 +315,7 @@ fn strikes_a_bolt_of_the_collection_each_period_and_lights_by_its_colour() {
   for step in 0..200 {
     let now: Duration = Duration::from_millis(step * 50);
 
-    if let Some(flash) = strikes.advance(&thunder, &mix, true, now, Vec3::ZERO) {
+    if let Some(flash) = strikes.advance(&thunder, &mix, ThunderPlay::Striking, now, Vec3::ZERO) {
       assert_eq!(flash.strike.bolt, "bolt");
       assert!(flash.color.distance(Vec3::new(1.0, 128.0 / 255.0, 0.0)) < 1e-5);
       // It strikes beyond the view, from above the ground.
@@ -323,7 +332,13 @@ fn strikes_a_bolt_of_the_collection_each_period_and_lights_by_its_colour() {
 
   assert!((0..200).all(|step| {
     quiet
-      .advance(&thunder, &mix, false, Duration::from_millis(step * 50), Vec3::ZERO)
+      .advance(
+        &thunder,
+        &mix,
+        ThunderPlay::Held,
+        Duration::from_millis(step * 50),
+        Vec3::ZERO,
+      )
       .is_none()
   }));
 }

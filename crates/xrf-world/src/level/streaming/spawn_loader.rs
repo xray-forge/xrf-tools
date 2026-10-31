@@ -135,7 +135,7 @@ impl SpawnLoader {
                 .lock()
                 .unwrap_or_else(PoisonError::into_inner)
                 .extend(std::mem::take(&mut models.failures));
-              Self::send_models((&indexed, &names, first), models, &sender, &sent);
+              Self::send_models(&indexed, &names, first, models, &sender, &sent);
             }
             Err(error) => {
               log::warn!("Spawned models cannot be drawn: {error}");
@@ -155,9 +155,12 @@ impl SpawnLoader {
     }
   }
 
-  /// Packs each model read and sends it with the objects standing as it, lit by their cubes where they have them.
+  /// Packs each model read of the batch of `names`, the visuals from `first` on, and sends it with the objects standing
+  /// as it, lit by their cubes where they have them.
   fn send_models(
-    (indexed, names, first): (&IndexedSpawn, &[String], usize),
+    indexed: &IndexedSpawn,
+    names: &[String],
+    first: usize,
     models: RenderSpawnModels,
     sender: &Sender<SpawnLoad>,
     sent: &AtomicU32,

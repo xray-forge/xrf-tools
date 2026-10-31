@@ -247,10 +247,10 @@ impl AnnotationCanvas {
           );
         }
 
-        Self::draw_label(svg, (x, y - label), &format!("→ {level}"), label);
+        Self::draw_label(svg, x, y - label, &format!("→ {level}"), label);
       }
       None if volume.kind == LevelObjectKind::SmartTerrains || self.is_labelled => {
-        Self::draw_label(svg, (x, y), &volume.name, label);
+        Self::draw_label(svg, x, y, &volume.name, label);
       }
       None => {}
     }
@@ -279,7 +279,7 @@ impl AnnotationCanvas {
       if let Some(first) = patrol.points.first().filter(|_| self.is_labelled) {
         let (x, y): (f32, f32) = self.to_pixel(*first);
 
-        Self::draw_label(svg, (x, y - label * 0.6), &patrol.name, label);
+        Self::draw_label(svg, x, y - label * 0.6, &patrol.name, label);
       }
     }
   }
@@ -318,8 +318,8 @@ impl AnnotationCanvas {
     }
   }
 
-  /// `text` at `at` in its group's colour, a thin dark outline under it so it reads over any ground.
-  fn draw_label(svg: &mut String, (x, y): (f32, f32), text: &str, size: f32) {
+  /// `text` at `x` across and `y` down in its group's colour, a thin dark outline under it so it reads over any ground.
+  fn draw_label(svg: &mut String, x: f32, y: f32, text: &str, size: f32) {
     let _ = write!(
       svg,
       r##"<text x="{x:.1}" y="{y:.1}" stroke="#101010" stroke-width="{:.2}" paint-order="stroke" fill-opacity="1">{}</text>"##,

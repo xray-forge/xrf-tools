@@ -121,8 +121,9 @@ impl AmbientScene {
     }
   }
 
-  /// Updates the effects at a moment, applies their posts, then steps what plays as the particles do.
-  fn update(&mut self, frame: AmbientFrame<'_>, is_indoors: bool, now: u64) {
+  /// Updates the effects at a moment, the camera `outdoors` or indoors where none, applies their posts, then steps what
+  /// plays as the particles do.
+  fn update(&mut self, frame: AmbientFrame<'_>, outdoors: Option<Vec3>, now: u64) {
     let mut updates: Vec<RenderSceneUpdate> = Vec::new();
     let finished: Vec<ProxyHandle<ParticleEmitterProxy>> = std::mem::take(&mut self.finished);
 
@@ -135,7 +136,7 @@ impl AmbientScene {
         finished: &finished,
       },
       Some(frame),
-      (OUTDOORS, is_indoors),
+      outdoors,
       Duration::from_millis(now),
     );
 
@@ -223,7 +224,7 @@ fn list_starts(engine: XrayEngine, names: &[&str], span: u64) -> Vec<(u64, Strin
   let mut was_playing: bool = false;
 
   for now in (1..span).step_by(50) {
-    scene.update(frame, false, now);
+    scene.update(frame, Some(OUTDOORS), now);
 
     let playing: Option<&ParticleObject> = scene.get_playing().filter(|it| !it.is_stopping());
 
@@ -290,14 +291,14 @@ fn an_effect_stops_once_its_life_is_up_and_goes_once_it_has_died() {
     level: &weather,
   };
 
-  scene.update(frame, false, 1);
-  scene.update(frame, false, 900);
+  scene.update(frame, Some(OUTDOORS), 1);
+  scene.update(frame, Some(OUTDOORS), 900);
   assert!(scene.get_playing().is_some_and(|it| !it.is_stopping()));
 
-  scene.update(frame, false, 1_001);
+  scene.update(frame, Some(OUTDOORS), 1_001);
   assert!(scene.get_playing().is_none_or(|it| it.is_stopping()));
 
-  scene.update(frame, false, 1_100);
+  scene.update(frame, Some(OUTDOORS), 1_100);
   assert!(scene.get_playing().is_none());
 }
 
@@ -310,13 +311,13 @@ fn indoors_no_effect_starts_and_one_playing_stops() {
     level: &weather,
   };
 
-  scene.update(frame, true, 1);
+  scene.update(frame, None, 1);
   assert!(scene.get_playing().is_none());
 
   let mut going_in: AmbientScene = AmbientScene::new(XrayEngine::Vanilla, &["nature\\fog"]);
 
-  going_in.update(frame, false, 1);
-  going_in.update(frame, true, 100);
+  going_in.update(frame, Some(OUTDOORS), 1);
+  going_in.update(frame, None, 100);
   assert!(going_in.get_playing().is_none_or(|it| it.is_stopping()));
 }
 
@@ -330,7 +331,7 @@ fn an_ambient_without_effects_plays_none() {
       ambients: &ambients,
       level: &weather,
     },
-    false,
+    Some(OUTDOORS),
     1,
   );
   assert!(scene.get_playing().is_none());
@@ -345,9 +346,9 @@ fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
     level: &weather,
   };
 
-  scene.update(frame, false, 1);
+  scene.update(frame, Some(OUTDOORS), 1);
 
-  let first: WorldAmbientReport = scene.effects.report(Duration::from_millis(500), false);
+  let first: WorldAmbientReport = scene.effects.report(Duration::from_millis(500));
 
   assert!(
     first
@@ -358,9 +359,9 @@ fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
   assert!(first.wait >= Duration::from_millis(9_500));
 
   scene.effects.play_now();
-  scene.update(frame, false, 600);
+  scene.update(frame, Some(OUTDOORS), 600);
 
-  let second: WorldAmbientReport = scene.effects.report(Duration::from_millis(600), false);
+  let second: WorldAmbientReport = scene.effects.report(Duration::from_millis(600));
 
   assert!(
     second
@@ -373,7 +374,6 @@ fn playing_one_now_ends_the_one_playing_and_starts_without_waiting() {
 
   // Indoors it is ended and none starts.
   scene.effects.play_now();
-  scene.update(frame, true, 700);
+  scene.update(frame, None, 700);
   assert!(scene.get_playing().is_none());
-  assert!(scene.effects.report(Duration::from_millis(700), true).is_indoors);
 }

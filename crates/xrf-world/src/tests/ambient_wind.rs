@@ -27,7 +27,7 @@ fn blasting(gust_factor: f32) -> WorldAmbientEffect {
 
 /// One frame of the wind as the ambient effects take it at `seconds`, the effect started at `started` seconds and
 /// stopped with its life.
-fn frame(wind: &mut AmbientWind, seconds: f32, (effect, started): (&WorldAmbientEffect, f32)) -> AmbientGust {
+fn frame(wind: &mut AmbientWind, seconds: f32, effect: &WorldAmbientEffect, started: f32) -> AmbientGust {
   let time: Duration = Duration::from_secs_f32(seconds);
 
   wind.blow(time);
@@ -84,7 +84,7 @@ fn gusts_keep_moving_a_year_on() {
 fn a_blast_rises_turns_falls_and_leaves_no_wind_behind() {
   let effect: WorldAmbientEffect = blasting(0.0);
   let mut wind: AmbientWind = AmbientWind::default();
-  let mut at = |time: f32| frame(&mut wind, time, (&effect, 10.0));
+  let mut at = |time: f32| frame(&mut wind, time, &effect, 10.0);
 
   at(9.0);
 

@@ -27,7 +27,8 @@ impl PlacedEmitter {
     handle: ProxyHandle<ParticleEmitterProxy>,
     source: RenderParticleSource,
     transform: Mat4,
-    (motion, zone_sphere): (Option<String>, Option<ZoneSphere>),
+    motion: Option<String>,
+    zone_sphere: Option<ZoneSphere>,
   ) -> Self {
     Self {
       handle,

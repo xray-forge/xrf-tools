@@ -76,18 +76,20 @@ impl WeatherFade {
       || from.environments != to.environments
       || from.clouds.textures != to.clouds.textures;
     let walked = |a: &[Option<String>; 2], b: &[Option<String>; 2]| {
-      Self::walk(
-        Slots {
-          pair: a,
-          blend: from.blend,
-        },
-        Slots {
-          pair: b,
-          blend: to.blend,
-        },
-        t,
-        is_walked,
-      )
+      let leaving: Slots<'_> = Slots {
+        pair: a,
+        blend: from.blend,
+      };
+      let coming: Slots<'_> = Slots {
+        pair: b,
+        blend: to.blend,
+      };
+
+      if is_walked {
+        Self::walk(leaving, coming, t)
+      } else {
+        Self::move_blend(leaving, coming, t)
+      }
     };
     let (textures, blend) = walked(&from.textures, &to.textures);
     let (environments, _) = walked(&from.environments, &to.environments);
@@ -109,16 +111,15 @@ impl WeatherFade {
     }
   }
 
+  /// Two slots of pairs that stay the same: only their blend moves.
+  fn move_blend(from: Slots<'_>, to: Slots<'_>, t: f32) -> ([Option<String>; 2], f32) {
+    (to.pair.clone(), from.blend + (to.blend - from.blend) * t)
+  }
+
   /// Two slots walked from one pair to another: the first third leaves the old pair on its heavier half, the second
-  /// blends that half to the new pair's heavier one, the last brings the new pair to its own blend. Pairs that stay the
-  /// same only have their blend moved.
-  fn walk(from: Slots<'_>, to: Slots<'_>, t: f32, is_walked: bool) -> ([Option<String>; 2], f32) {
+  /// blends that half to the new pair's heavier one, the last brings the new pair to its own blend.
+  fn walk(from: Slots<'_>, to: Slots<'_>, t: f32) -> ([Option<String>; 2], f32) {
     let mix = |a: f32, b: f32, t: f32| a + (b - a) * t;
-
-    if !is_walked {
-      return (to.pair.clone(), mix(from.blend, to.blend, t));
-    }
-
     let phase: f32 = t * 3.0;
     let from_heavier: usize = usize::from(from.blend >= 0.5);
     let to_heavier: usize = usize::from(to.blend >= 0.5);

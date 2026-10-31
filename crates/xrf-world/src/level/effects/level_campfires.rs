@@ -2,13 +2,14 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use crate::level::effects::campfire::Campfire;
+use crate::level::effects::campfire_state::CampfireState;
 
 /// A level's campfires, by their spawned objects' ids, switched together as the view lights them or puts them out:
 /// each stands in the switch's state the first time anything asks for it, and every one turns whenever the switch
 /// flips, whether or not its particles or its light are drawn.
 pub struct LevelCampfires {
   campfires: HashMap<u16, Campfire>,
-  is_lit: bool,
+  state: CampfireState,
   /// The level's clock at this frame, which every campfire's turn is timed by.
   now: Duration,
 }
@@ -24,21 +25,21 @@ impl LevelCampfires {
     Self {
       campfires: HashMap::new(),
       // `m_turned_on`: a campfire spawns lit.
-      is_lit: true,
+      state: CampfireState::Lit,
       now: Duration::ZERO,
     }
   }
 
-  /// Moves on to `now`, the level's clock: turns every campfire to the view's switch when it flips, and settles each
-  /// turn that has taken its time.
-  pub fn prepare(&mut self, is_lit: bool, now: Duration) {
+  /// Moves on to `now`, the level's clock: turns every campfire to the view's switch, `state`, when it flips, and
+  /// settles each turn that has taken its time.
+  pub fn prepare(&mut self, state: CampfireState, now: Duration) {
     self.now = now;
 
-    if is_lit != self.is_lit {
-      self.is_lit = is_lit;
+    if state != self.state {
+      self.state = state;
 
       for campfire in self.campfires.values_mut() {
-        campfire.turn(is_lit, now);
+        campfire.turn(state, now);
       }
     }
 
@@ -49,9 +50,9 @@ impl LevelCampfires {
 
   /// The campfire spawned as an object, standing in the switch's state if nothing asked for it before.
   pub fn get(&mut self, id: u16) -> &Campfire {
-    let is_lit: bool = self.is_lit;
+    let state: CampfireState = self.state;
 
-    self.campfires.entry(id).or_insert_with(|| Campfire::new(is_lit))
+    self.campfires.entry(id).or_insert_with(|| Campfire::new(state))
   }
 
   /// How much of a campfire's idle light shows this frame.

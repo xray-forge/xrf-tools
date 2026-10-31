@@ -11,9 +11,11 @@ use crate::contract::world_weather_control::WorldWeatherControl;
 use crate::contract::world_weather_effect_report::WorldWeatherEffectReport;
 use crate::contract::world_weather_report::WorldWeatherReport;
 use crate::contract::world_weather_transition::WorldWeatherTransition;
+use crate::weather::fade::fade_skies::FadeSkies;
 use crate::weather::fade::weather_fader::WeatherFader;
 use crate::weather::played_weather::PlayedWeather;
 use crate::weather::playing_effect::PlayingEffect;
+use crate::weather::thunder::thunder_play::ThunderPlay;
 use crate::weather::thunder::weather_thunder::WeatherThunder;
 use crate::weather::weather_ambients::WeatherAmbients;
 use crate::weather::weather_lighting::WeatherLighting;
@@ -187,8 +189,8 @@ impl WeatherPlayer {
     self.is_jumped = true;
   }
 
-  /// Moves the clock on to a frame, mixes the weather again where anything changed, and strikes over it while
-  /// thundering.
+  /// Moves the clock on to a frame, mixes the weather again where anything changed, and strikes over it as `thunder`
+  /// lets it.
   ///
   /// Returns what the scene is lit by now, or none where that did not change or nothing plays. `is_up` says whether a
   /// lighting's skies are up, which a fade waits for.
@@ -196,7 +198,7 @@ impl WeatherPlayer {
     &mut self,
     now: Instant,
     view: [f32; 3],
-    is_thundering: bool,
+    thunder: ThunderPlay,
     is_up: impl FnMut(&RenderLighting) -> bool,
   ) -> Option<RenderLighting> {
     let step: Duration = self
@@ -229,7 +231,7 @@ impl WeatherPlayer {
       None
     };
 
-    self.flash(now, view, is_thundering, lighting)
+    self.flash(now, view, thunder, lighting)
   }
 
   /// What is shown lit by the strike under way, what is shown once more the frame after one ends, or the same.
@@ -237,7 +239,7 @@ impl WeatherPlayer {
     &mut self,
     now: Instant,
     view: [f32; 3],
-    is_thundering: bool,
+    play: ThunderPlay,
     lighting: Option<RenderLighting>,
   ) -> Option<RenderLighting> {
     let clock: Duration = now.saturating_duration_since(self.epoch);
@@ -247,9 +249,7 @@ impl WeatherPlayer {
     let Some(thunder) = &weather.level.render.thunder else {
       return lighting;
     };
-    let flash = self
-      .thunder
-      .advance(thunder, mix, is_thundering, clock, glam::Vec3::from(view));
+    let flash = self.thunder.advance(thunder, mix, play, clock, glam::Vec3::from(view));
 
     if let (Some(flash), Some(settings)) = (flash, thunder.settings) {
       self.is_flashing = true;
@@ -345,7 +345,7 @@ impl WeatherPlayer {
     self.is_forced = false;
     self.is_jumped = false;
 
-    let lighting: RenderLighting = self.fader.apply(now, &target, is_up(&target));
+    let lighting: RenderLighting = self.fader.apply(now, &target, FadeSkies::of(is_up(&target)));
 
     self.mix = Some(mix);
     self.shown = Some(lighting.clone());

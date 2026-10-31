@@ -71,7 +71,7 @@ impl BurstWriter {
           time,
           picture,
           marks,
-        }) => self.take((index, sample.unwrap_or(0), time), &picture, &marks)?,
+        }) => self.take(index, sample.unwrap_or(0), time, &picture, &marks)?,
         Ok(BurstEvent::Finished) => return Ok(self.outcome),
         Ok(BurstEvent::Stopped { error }) => return Err(format!("The burst stopped: {error}")),
         Err(RecvTimeoutError::Timeout) => {
@@ -87,13 +87,9 @@ impl BurstWriter {
     }
   }
 
-  /// Adds a frame's sample to its sum, the first starting it, and writes the frame once its last is in.
-  fn take(
-    &mut self,
-    (index, sample, time): (u32, u32, f32),
-    picture: &RenderCapture,
-    marks: &BurstMarks,
-  ) -> TauriResult {
+  /// Adds sample `sample` of frame `index`, drawn at the scene's `time` in seconds, to the frame's sum, the first
+  /// starting it, and writes the frame once its last is in.
+  fn take(&mut self, index: u32, sample: u32, time: f32, picture: &RenderCapture, marks: &BurstMarks) -> TauriResult {
     let expected: (u32, u32) = self
       .sum
       .as_ref()

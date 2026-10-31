@@ -12,6 +12,7 @@ use crate::contract::world_toggles::WorldToggles;
 use crate::contract::world_viewport_event::WorldViewportEvent;
 use crate::host::world_event_sink::WorldEventSink;
 use crate::level::ambient::ambient_frame::AmbientFrame;
+use crate::weather::thunder::thunder_play::ThunderPlay;
 use crate::weather::viewport_weather::ViewportWeather;
 use crate::weather::weather_lighting::WeatherLighting;
 
@@ -75,14 +76,14 @@ impl WorldViewport {
 
     // The weather is weighed where the camera stands, in engine space; a fade waits for the skies it fades into.
     let position: Vec3 = self.camera.get_pose().position.into();
-    let is_thundering: bool = self.toggles.is_thundering && options.mode.is_lit;
+    let thunder: ThunderPlay = ThunderPlay::of(self.toggles.is_thundering && options.mode.is_lit);
 
     let eye: Vec3 = EngineSpace::mirror(position);
 
     self.eye = eye;
     self.options.clone_from(options);
 
-    self.weather.advance(now, eye.to_array(), is_thundering, |lighting| {
+    self.weather.advance(now, eye.to_array(), thunder, |lighting| {
       skies.request_sky(&lighting.sky)
     });
 

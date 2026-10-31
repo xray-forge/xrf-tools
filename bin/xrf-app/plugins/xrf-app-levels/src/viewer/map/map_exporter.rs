@@ -54,8 +54,10 @@ impl MapExporter {
     }
 
     let capture: RgbaImage = ViewerImage::read_capture(source)?;
-    let is_blocked: bool = matches!(format, MapExportFormat::Dds(_));
-    let (width, height): (u32, u32) = ViewerImage::get_export_size(capture.dimensions(), *long_side, is_blocked);
+    let (width, height): (u32, u32) = match format {
+      MapExportFormat::Dds(_) => ViewerImage::get_dds_export_size(capture.dimensions(), *long_side),
+      _ => ViewerImage::get_export_size(capture.dimensions(), *long_side),
+    };
     let mut image: RgbaImage = if (width, height) == capture.dimensions() {
       capture
     } else {

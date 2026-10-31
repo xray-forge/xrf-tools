@@ -2,6 +2,7 @@ use std::time::{Duration, Instant};
 
 use xrf_renderer::RenderLighting;
 
+use crate::weather::fade::fade_skies::FadeSkies;
 use crate::weather::fade::weather_fade::WeatherFade;
 
 /// Real time a fade waits for the skies it fades into before it starts without them.
@@ -50,13 +51,15 @@ impl WeatherFader {
     }
   }
 
-  /// What to draw: the fade under way, or the weather where none is.
-  pub fn apply(&mut self, now: Instant, target: &RenderLighting, is_up: bool) -> RenderLighting {
+  /// What to draw: the fade under way, or the weather where none is; a fade starts once its `skies` are up.
+  pub fn apply(&mut self, now: Instant, target: &RenderLighting, skies: FadeSkies) -> RenderLighting {
     let Some(fading) = &mut self.fading else {
       return target.clone();
     };
 
-    if fading.started_at.is_none() && (is_up || now.duration_since(fading.asked_at.unwrap_or(now)) >= LONGEST_WAIT) {
+    if fading.started_at.is_none()
+      && (skies == FadeSkies::Up || now.duration_since(fading.asked_at.unwrap_or(now)) >= LONGEST_WAIT)
+    {
       fading.started_at = Some(now);
     }
 
