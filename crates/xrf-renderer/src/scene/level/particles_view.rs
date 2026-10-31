@@ -4,16 +4,16 @@ use xrf_particles::ParticleEffectInstance;
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphDepthAttachment, StorageArray, UniformBinding};
 
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::particle_batch::ParticleBatch;
 use crate::pass::particle_blend::ParticleBlend;
 use crate::pass::particle_parameters::ParticleParameters;
 use crate::pass::particle_pass::ParticlePass;
 use crate::pass::particle_vertex::ParticleVertex;
-use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::particle_sprite::ParticleSprite;
+use crate::scene::level::particle_surface::ParticleSurface;
+use crate::scene::level::view_record::ViewRecord;
 
 /// Quads the vertex buffer holds at first; it doubles past them.
 const INITIAL_QUADS: u64 = 4096;
@@ -54,13 +54,15 @@ impl ParticlesView {
   }
 
   /// Adds an effect's quads after those added before, as `sprite` faces them with its `surface`: into its equation's
-  /// batch where it blends (`blend`), into a distortion run where it distorts.
+  /// batch where it blends, into a distortion run where it distorts, as the surface draws (`drawing`).
   pub fn push_effect(
     &mut self,
-    (sprite, effect): (&ParticleSprite, &ParticleEffectInstance),
+    sprite: &ParticleSprite,
+    effect: &ParticleEffectInstance,
     surface: u32,
-    (blend, is_distorting): (Option<ParticleBlend>, bool),
+    drawing: &ParticleSurface,
   ) {
+    let (blend, is_distorting): (Option<ParticleBlend>, bool) = (drawing.blend, drawing.is_distorting);
     let first: u32 = self.vertices.len() as u32 / ParticleVertex::CORNERS;
 
     sprite.push(effect, surface, &mut self.vertices);
@@ -94,7 +96,7 @@ impl ParticlesView {
   }
 
   /// Writes the quads filled this frame, growing the buffer past them.
-  pub fn upload(&mut self, (device, encoder): (&wgpu::Device, &mut FrameEncoder)) {
+  pub fn upload(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder) {
     let size: u64 = (self.vertices.len() * size_of::<ParticleVertex>()) as u64;
 
     if size > self.vertex_buffer.size() {
@@ -106,14 +108,23 @@ impl ParticlesView {
     }
   }
 
-  /// Draws the quads filled this frame over the scene, then the distorting ones into the distortion target.
+  /// Draws the quads filled this frame over the scene, then the distorting ones into the distortion target, each
+  /// surface's record read from `surfaces`.
   pub fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    pass: &'a ParticlePass,
-    (targets, lighting, surfaces): (ViewTargetHandles, UniformBinding<LightingUniform>, &'a wgpu::Buffer),
-    (view, texture_group): (&'a ViewBinding, &'a wgpu::BindGroup),
+    ViewRecord {
+      passes,
+      view,
+      textures: texture_group,
+      handles: targets,
+      lit,
+      ..
+    }: ViewRecord<'a>,
+    surfaces: &'a wgpu::Buffer,
   ) {
+    let pass: &'a ParticlePass = passes.particles;
+    let lighting: UniformBinding<LightingUniform> = lit.lighting;
     let parameters: ParticleParameters = ParticleParameters {
       vertices: StorageArray::new(bindings.import_buffer(&mut *graph, "particle vertices", &self.vertex_buffer)),
       surfaces: StorageArray::new(bindings.import_buffer(&mut *graph, "particle surfaces", surfaces)),

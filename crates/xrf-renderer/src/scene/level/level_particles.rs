@@ -23,6 +23,8 @@ use crate::pass::particle_blend::ParticleBlend;
 use crate::pass::particle_surface_record::ParticleSurfaceRecord;
 use crate::scene::level::particle_emitter_proxy::ParticleEmitterProxy;
 use crate::scene::level::particle_sprite::ParticleSprite;
+use crate::scene::level::particle_stop::ParticleStop;
+use crate::scene::level::particle_surface::ParticleSurface;
 use crate::scene::level::particles_view::ParticlesView;
 use crate::scene::level::placed_effect::PlacedEffect;
 use crate::scene::level::placed_objects::PlacedObjects;
@@ -61,13 +63,6 @@ struct LevelSystems {
   /// Each effect definition's surface, by the definition's address.
   surface_of: HashMap<usize, u32>,
   texture_slots: Vec<u32>,
-}
-
-/// How an effect's sprite draws: its equation, none for one drawing no colour, whether it distorts, and its record.
-struct ParticleSurface {
-  blend: Option<ParticleBlend>,
-  is_distorting: bool,
-  record: ParticleSurfaceRecord,
 }
 
 /// A step's outcome: the emitters it stepped, the effects that stopped, what they came to and what it took.
@@ -111,7 +106,8 @@ impl LevelParticles {
   pub fn add_definitions(
     &mut self,
     device: &wgpu::Device,
-    (textures, source): (&mut TextureCache, &Arc<dyn RenderAssetSource>),
+    textures: &mut TextureCache,
+    source: &Arc<dyn RenderAssetSource>,
     read: RenderParticleDefinitions,
   ) {
     let mut surfaces: Vec<ParticleSurface> = Vec::with_capacity(read.surfaces.len());
@@ -222,15 +218,15 @@ impl LevelParticles {
 
     emitter
       .objects
-      .play(effect, name, (&emitter.transform, emitter.seed), &context, now);
+      .play(effect, name, &emitter.transform, emitter.seed, &context, now);
   }
 
-  /// Stops an effect playing at an emitter: at once, or letting its particles live out their lives (`is_deferred`).
-  pub fn stop(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, effect: PlacedEffect, is_deferred: bool) {
+  /// Stops an effect playing at an emitter, as `stop` asks.
+  pub fn stop(&mut self, handle: ProxyHandle<ParticleEmitterProxy>, effect: PlacedEffect, stop: ParticleStop) {
     self.settle();
 
     if let Some(emitter) = self.emitters.get_mut(handle) {
-      emitter.objects.stop(effect, is_deferred);
+      emitter.objects.stop(effect, stop);
     }
   }
 
@@ -423,7 +419,7 @@ impl LevelParticles {
     let sprite: ParticleSprite = ParticleSprite::new(view.view);
 
     for (_, effect, surface, drawing) in drawn {
-      into.push_effect((&sprite, effect), surface, (drawing.blend, drawing.is_distorting));
+      into.push_effect(&sprite, effect, surface, drawing);
     }
   }
 

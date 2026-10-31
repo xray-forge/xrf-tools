@@ -11,7 +11,7 @@ use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_texture_group::RenderTextureGroup;
 use crate::contract::render_texture_report::RenderTextureReport;
 use crate::contract::render_viewport_id::RenderViewportId;
-use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::frame_upload::FrameUpload;
 use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
@@ -30,6 +30,7 @@ use crate::scene::level::level_lights::LevelLights;
 use crate::scene::level::level_load::LevelLoad;
 use crate::scene::level::level_particles::LevelParticles;
 use crate::scene::level::level_wetness::LevelWetness;
+use crate::scene::level::particle_stop::ParticleStop;
 use crate::scene::static_scene::static_item_context::StaticItemContext;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::static_scene::static_sector_proxy::StaticSectorProxy;
@@ -136,15 +137,16 @@ impl LevelScene {
   const SECTOR_WAIT_MOST: u32 = 4;
 
   /// Takes a frame the world gave it: applies what it posted, the sectors as `scheduler` grants them, keeps what its
-  /// effects and motions do, moves the lights its motions carry, readies the static draws and, while a view of it
-  /// traces rays (`is_traced`), their acceleration structures, and asks for the cubes its surfaces mix toward; the
-  /// sectors it could not take in are told back with its feedback.
+  /// effects and motions do, moves the lights its motions carry, readies the static draws, and asks for the cubes its
+  /// surfaces mix toward; the sectors it could not take in are told back with its feedback. Its acceleration
+  /// structures follow (`update_trace`, `drop_trace`).
   pub fn advance(
     &mut self,
-    (device, queue, encoder): (&wgpu::Device, &wgpu::Queue, &mut FrameEncoder),
-    (textures, weather_textures): (&mut TextureCache, &mut WeatherTextureCache),
+    FrameUpload { device, queue, encoder }: FrameUpload<'_>,
+    textures: &mut TextureCache,
+    weather_textures: &mut WeatherTextureCache,
     scheduler: &mut PeriodicScheduler,
-    (frame, is_traced): (RenderSceneFrame, bool),
+    frame: RenderSceneFrame,
   ) {
     let RenderSceneFrame {
       source,
@@ -177,10 +179,27 @@ impl LevelScene {
       }
     }
 
-    self.apply((device, queue, encoder), (&mut *textures, &assets), updates);
+    self.apply(
+      StaticItemContext {
+        device,
+        queue,
+        encoder: &mut *encoder,
+        textures: &mut *textures,
+        source: &assets,
+      },
+      updates,
+    );
 
-    let failures: Vec<RenderSectorFailure> =
-      self.add_sectors((device, queue, encoder), (&mut *textures, &assets), scheduler);
+    let failures: Vec<RenderSectorFailure> = self.add_sectors(
+      StaticItemContext {
+        device,
+        queue,
+        encoder: &mut *encoder,
+        textures: &mut *textures,
+        source: &assets,
+      },
+      scheduler,
+    );
 
     self.sector_failures.extend(failures);
     // Refilled in place, so a frame allocates nothing once the list is as long as it gets.
@@ -199,17 +218,25 @@ impl LevelScene {
     self.camera_hemi = camera_hemi;
     self.lights.begin_frame(&motions);
     self.statics.prepare_draws(device, queue, encoder);
+  }
 
-    // Made when a view starts tracing, let go when none does.
-    if !(is_traced && self.statics.is_traced()) {
-      self.trace = None;
-    } else if self.trace.is_none() {
-      self.trace = Some(StaticTrace::new(device, queue));
+  /// Makes its acceleration structures where a view of it traces rays and its static scene is traced, and brings them
+  /// up to this frame's static scene; let go where the static scene is not traced.
+  pub fn update_trace(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, encoder: &mut wgpu::CommandEncoder) {
+    if !self.statics.is_traced() {
+      self.drop_trace();
+
+      return;
     }
 
-    if let Some(trace) = &mut self.trace {
-      trace.update(device, queue, encoder, &self.statics);
-    }
+    let trace: &mut StaticTrace = self.trace.get_or_insert_with(|| StaticTrace::new(device, queue));
+
+    trace.update(device, queue, encoder, &self.statics);
+  }
+
+  /// Lets its acceleration structures go, where no view of it traces rays.
+  pub fn drop_trace(&mut self) {
+    self.trace = None;
   }
 
   /// Moves it to the time this frame is drawn at on the frames' clock, which everything living in it moves by.
@@ -263,8 +290,13 @@ impl LevelScene {
   /// most `SECTOR_WAIT_MOST` frames. Answers those it could not take in.
   fn add_sectors(
     &mut self,
-    (device, queue, encoder): (&wgpu::Device, &wgpu::Queue, &mut wgpu::CommandEncoder),
-    (textures, assets): (&mut TextureCache, &Arc<dyn RenderAssetSource>),
+    StaticItemContext {
+      device,
+      queue,
+      encoder,
+      textures,
+      source: assets,
+    }: StaticItemContext<'_>,
     scheduler: &mut PeriodicScheduler,
   ) -> Vec<RenderSectorFailure> {
     if self.pending.is_empty() {
@@ -320,7 +352,8 @@ impl LevelScene {
           source: assets,
         },
         self.source.get_surfaces(),
-        (handle, &package),
+        handle,
+        &package,
       );
 
       self.sector_time = started.elapsed().as_secs_f32() * 1000.0;
@@ -345,8 +378,13 @@ impl LevelScene {
   /// Applies what the world posted this frame, in the order posted, the sectors queued to be taken in.
   fn apply(
     &mut self,
-    (device, queue, encoder): (&wgpu::Device, &wgpu::Queue, &mut wgpu::CommandEncoder),
-    (textures, assets): (&mut TextureCache, &Arc<dyn RenderAssetSource>),
+    StaticItemContext {
+      device,
+      queue,
+      encoder,
+      textures,
+      source: assets,
+    }: StaticItemContext<'_>,
     updates: Vec<RenderSceneUpdate>,
   ) {
     for update in updates {
@@ -370,7 +408,8 @@ impl LevelScene {
               textures: &mut *textures,
               source: assets,
             },
-            (handle, &model),
+            handle,
+            &model,
           ) {
             log::warn!("Native viewport could not add a spawned model: {error}");
 
@@ -387,7 +426,7 @@ impl LevelScene {
         RenderSceneUpdate::AddObject { model, .. }
           if self.model_failures.iter().any(|failure| failure.handle == model) => {}
         RenderSceneUpdate::AddObject { handle, model, place } => {
-          if let Err(error) = self.statics.add_object(device, queue, handle, (model, &place)) {
+          if let Err(error) = self.statics.add_object(device, queue, handle, model, &place) {
             log::warn!(
               "Native viewport could not stand spawned object {}: {error}",
               place.object
@@ -398,14 +437,14 @@ impl LevelScene {
           self.statics.remove_object(handle);
         }
         RenderSceneUpdate::AddLights(lights) => self.lights.add_lights(lights, textures, assets),
-        RenderSceneUpdate::AddGrass(details) => self.grass.replace(device, details, (&mut *textures, assets)),
+        RenderSceneUpdate::AddGrass(details) => self.grass.replace(device, details, &mut *textures, assets),
         RenderSceneUpdate::SetHelpers(helpers) => {
           self.helpers = LevelHelpers::new(helpers, self.helpers.version + 1);
         }
         RenderSceneUpdate::AddParticles(definitions) => {
           self
             .particles
-            .add_definitions(device, (&mut *textures, assets), definitions);
+            .add_definitions(device, &mut *textures, assets, definitions);
         }
         RenderSceneUpdate::AddEmitter {
           handle,
@@ -422,7 +461,7 @@ impl LevelScene {
           handle,
           effect,
           is_deferred,
-        } => self.particles.stop(handle, effect, is_deferred),
+        } => self.particles.stop(handle, effect, ParticleStop::of(is_deferred)),
         RenderSceneUpdate::MoveEmitter {
           handle,
           transform,

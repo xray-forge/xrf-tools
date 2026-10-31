@@ -9,6 +9,7 @@ use crate::scene::static_scene::static_place::StaticPlace;
 use crate::scene::static_scene::static_row::StaticRow;
 use crate::scene::static_scene::static_sight::StaticSight;
 use crate::scene::static_scene::static_slot::StaticSlot;
+use crate::scene::static_scene::static_slot_draw::StaticSlotDraw;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
 use crate::scene::static_scene::static_sorted_run::StaticSortedRun;
 use crate::scene::static_scene::static_spans::StaticSpans;
@@ -69,7 +70,12 @@ impl StaticSceneWriter {
     &mut self,
     base: &StaticGeometryBase,
     clusters: Vec<(u32, u32, Vec4)>,
-    (kind, batch, surface, passes): (u32, StaticBatch, u32, u32),
+    StaticSlotDraw {
+      kind,
+      batch,
+      surface,
+      passes,
+    }: StaticSlotDraw,
     info: StaticSlotInfo,
   ) -> (u32, u32) {
     let slot: u32 = self.slots.len() as u32;

@@ -77,14 +77,14 @@ impl LevelLoad {
       bytes: progress.bytes,
       textures: settled,
       textures_total: total,
-      is_ready: self.is_done(settled == total),
+      is_ready: settled == total && self.are_parts_done(),
       durations: self.durations,
     }
   }
 
   /// Whether everything the level opens with is resident, so it draws as it will.
   pub fn is_ready(&self, slots: impl IntoIterator<Item = impl Borrow<u32>>, textures: &TextureCache) -> bool {
-    self.is_done(textures.is_settled(slots))
+    textures.is_settled(slots) && self.are_parts_done()
   }
 
   /// What the level still waits for, said for a log: the parts not finished and the textures not settled.
@@ -104,9 +104,10 @@ impl LevelLoad {
     pending.join(", ")
   }
 
-  /// Whether every sector is taken in, the spawn, grass, lights and particles read, and every texture settled.
-  fn is_done(&self, is_settled: bool) -> bool {
-    is_settled && self.list_parts().iter().all(|(_, is_done)| *is_done)
+  /// Whether every sector is taken in and the spawn, grass, lights and particles read: done once every texture settles
+  /// too.
+  fn are_parts_done(&self) -> bool {
+    self.list_parts().iter().all(|(_, is_done)| *is_done)
   }
 
   /// The parts the level opens with beside its textures, by name, and whether each has finished.

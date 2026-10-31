@@ -13,13 +13,11 @@ use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::pass::camera_uniform::CameraUniform;
-use crate::pass::level_passes::LevelPasses;
 use crate::pass::overhead_shift_parameters::OverheadShiftParameters;
 use crate::pass::overhead_shift_uniform::OverheadShiftUniform;
 use crate::pass::shadow_casters::ShadowCasters;
 use crate::pass::shadow_cull::ShadowCull;
 use crate::pass::static_cull_parameters::StaticCullParameters;
-use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_layout_bindings::StaticLayoutBindings;
@@ -31,6 +29,7 @@ use crate::scene::level::overhead_shape::OverheadShape;
 use crate::scene::level::shadow_cut::ShadowCut;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::sun_shadow_maps::SunShadowMaps;
+use crate::scene::level::view_record::ViewRecord;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// A square of the level around the camera seen straight down, as its shape lays it out: a depth whose every texel says
@@ -306,9 +305,9 @@ impl OverheadMap {
     }
   }
 
-  /// Declares its draw, where this frame's `commit` took it: whole, culled and drawn; or shifted from a copy of
-  /// itself, its strips culled and drawn over. Drawn of the level's shadow casters, or of its water, its waves lifted
-  /// by `water`, where it is a map of the water.
+  /// Declares its draw into `depth`, where this frame's `commit` took it: whole, culled and drawn; or shifted from a
+  /// copy of itself, its strips culled and drawn over. Drawn of the level's shadow casters, or of its water, its waves
+  /// lifted by `water`, where it is a map of the water.
   pub fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
@@ -316,14 +315,21 @@ impl OverheadMap {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    (scene, depth): (&StaticSceneHandles, GraphTexture),
-    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
+    ViewRecord {
+      passes,
+      textures,
+      statics,
+      cull: params,
+      ..
+    }: ViewRecord<'a>,
+    depth: GraphTexture,
     water: Option<UniformBinding<WaterUniform>>,
   ) {
     if !self.is_due {
       return;
     }
+
+    let scene: &StaticSceneHandles = &statics;
 
     let shape: OverheadShape = self.shape;
     let resolution: u32 = shape.resolution;

@@ -8,6 +8,7 @@ use xrf_renderer_core::{GraphOwner, GraphPassTime, GraphTaggedTime};
 use crate::context::gpu_requirements::can_trace;
 use crate::contract::render_dlss_availability::RenderDlssAvailability;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::frame_upload::FrameUpload;
 use crate::frame::gpu_memory::GpuMemory;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_scene_feedback::RenderSceneFeedback;
@@ -18,6 +19,7 @@ use crate::host::render_world::RenderWorld;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::scene_view::SceneView;
 use crate::scene::texture::sky_texture_requests::SkyTextureRequests;
+use crate::scene::texture::texture_upload_pace::TextureUploadPace;
 use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::viewport_device::ViewportDevice;
 
@@ -195,11 +197,23 @@ impl RenderThread {
       });
 
       scene.advance(
-        (&gpu.context.device, &gpu.context.queue, &mut *encoder),
-        (&mut gpu.textures, &mut gpu.weather_textures),
+        FrameUpload {
+          device: &gpu.context.device,
+          queue: &gpu.context.queue,
+          encoder: &mut *encoder,
+        },
+        &mut gpu.textures,
+        &mut gpu.weather_textures,
         &mut self.periodic,
-        (frame, traced.contains(&id)),
+        frame,
       );
+
+      // Made when a view starts tracing, let go when none does.
+      if traced.contains(&id) {
+        scene.update_trace(&gpu.context.device, &gpu.context.queue, encoder);
+      } else {
+        scene.drop_trace();
+      }
     }
 
     live
@@ -293,9 +307,10 @@ impl RenderThread {
     profiling::scope!("texture uploads");
 
     gpu.textures.update(
-      (&gpu.context.device, &gpu.context.queue),
+      &gpu.context.device,
+      &gpu.context.queue,
       &mut self.periodic,
-      is_opening,
+      TextureUploadPace::of(is_opening),
     );
     gpu.weather_textures.update(&gpu.context.device, &gpu.context.queue);
   }

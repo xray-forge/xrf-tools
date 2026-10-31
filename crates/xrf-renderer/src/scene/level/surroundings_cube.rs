@@ -15,11 +15,9 @@ use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::camera_uniform::CameraUniform;
-use crate::pass::level_passes::LevelPasses;
 use crate::pass::shadow_cull::ShadowCull;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_cull_parameters::StaticCullParameters;
-use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::static_draw_bindings::StaticDrawBindings;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
@@ -29,10 +27,10 @@ use crate::pass::surroundings_parameters::SurroundingsParameters;
 use crate::pass::surroundings_pass::SurroundingsPass;
 use crate::pass::surroundings_uniform::SurroundingsUniform;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::shadow_cut::ShadowCut;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::surroundings_faces::SurroundingsFaces;
+use crate::scene::level::view_record::ViewRecord;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// The level around the camera as a cube, a face a frame, lit into the prefiltered sky cube's first mip, so a
@@ -220,8 +218,12 @@ impl SurroundingsCube {
       });
       self.offer_face(
         scheduler,
-        (redraw.face, false, redraw.position),
-        (&LIGHT_PASSES, Self::LIGHT_SEED, 1.0),
+        CubeOffer::Face {
+          face: redraw.face,
+          is_redrawn: false,
+          position: redraw.position,
+        },
+        PeriodicJob::new_now(&LIGHT_PASSES, Self::LIGHT_SEED, 1.0),
       );
 
       return;
@@ -230,7 +232,15 @@ impl SurroundingsCube {
     let order = || (1..=6).map(|step| (self.face + step) % 6);
 
     if let Some(face) = order().find(|face| self.drawn[*face as usize].is_none_or(|it| it.size != size)) {
-      self.offer_face(scheduler, (face, true, camera), (&DRAW_PASSES, Self::DRAW_SEED, texels));
+      self.offer_face(
+        scheduler,
+        CubeOffer::Face {
+          face,
+          is_redrawn: true,
+          position: camera,
+        },
+        PeriodicJob::new_now(&DRAW_PASSES, Self::DRAW_SEED, texels),
+      );
 
       return;
     }
@@ -292,8 +302,12 @@ impl SurroundingsCube {
 
       self.offer_face(
         scheduler,
-        (face, false, position),
-        (&LIGHT_PASSES, Self::LIGHT_SEED, 1.0),
+        CubeOffer::Face {
+          face,
+          is_redrawn: false,
+          position,
+        },
+        PeriodicJob::new_now(&LIGHT_PASSES, Self::LIGHT_SEED, 1.0),
       );
     }
   }
@@ -425,22 +439,11 @@ impl SurroundingsCube {
     [0, first, drawn, last - first]
   }
 
-  fn offer_face(
-    &mut self,
-    scheduler: &mut PeriodicScheduler,
-    (face, is_redrawn, position): (u32, bool, Vec3),
-    (passes, seed, units): (&'static [&'static str], f32, f32),
-  ) {
-    let ticket: PeriodicTicket = scheduler.offer(PeriodicJob::new_now(passes, seed, units));
+  /// Offers `scheduler` a face's draw (`offer`) as `job`.
+  fn offer_face(&mut self, scheduler: &mut PeriodicScheduler, offer: CubeOffer, job: PeriodicJob) {
+    let ticket: PeriodicTicket = scheduler.offer(job);
 
-    self.offer = Some((
-      ticket,
-      CubeOffer::Face {
-        face,
-        is_redrawn,
-        position,
-      },
-    ));
+    self.offer = Some((ticket, offer));
   }
 
   /// A face's camera from `position`, looking down its axis with the up a cube texture's face lays its texels by.
@@ -468,15 +471,14 @@ impl SurroundingsCube {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    scene: &StaticSceneHandles,
-    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
-    (lit, sky): (&LightingHandles<'a>, &SkyParameters<'a>),
+    record: ViewRecord<'a>,
+    sky: &SkyParameters<'a>,
     faces: GraphTexture,
   ) {
     let Some(kept) = &self.faces else {
       return;
     };
+    let ViewRecord { passes, lit, .. } = record;
     let size: u32 = self.size;
     let drawn: u32 = kept.drawn;
     if let Some(band) = self.band_due {
@@ -485,10 +487,10 @@ impl SurroundingsCube {
 
       self.add_draw_passes(
         GraphDeclaration::new(graph, bindings, runtime),
-        passes,
-        scene,
-        (params, textures),
-        (&self.band, &BAND_PASSES, Some(band)),
+        record,
+        &self.band,
+        &BAND_PASSES,
+        Some(band),
         targets,
       );
     }
@@ -505,10 +507,10 @@ impl SurroundingsCube {
     if self.is_redrawn {
       self.add_draw_passes(
         GraphDeclaration::new(graph, bindings, runtime),
-        passes,
-        scene,
-        (params, textures),
-        (&self.cut, &DRAW_PASSES, None),
+        record,
+        &self.cut,
+        &DRAW_PASSES,
+        None,
         [albedo, normal, material, depth],
       );
     }
@@ -545,16 +547,23 @@ impl SurroundingsCube {
   }
 
   /// Declares a cull by `cut` and its draw into a G-buffer, `targets` its albedo, normal, material and depth, under the
-  /// cull's and draw's pass names: the whole face, cleared, or `band` of it, the first band clearing the rest.
+  /// cull's and draw's pass `names`: the whole face, cleared, or `band` of it, the first band clearing the rest.
   fn add_draw_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    scene: &StaticSceneHandles,
-    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
-    (cut, names, band): (&'a ShadowCut, &'static [&'static str], Option<u32>),
+    ViewRecord {
+      passes,
+      textures,
+      statics,
+      cull: params,
+      ..
+    }: ViewRecord<'a>,
+    cut: &'a ShadowCut,
+    names: &'static [&'static str],
+    band: Option<u32>,
     [albedo, normal, material, depth]: [GraphTexture; 4],
   ) {
+    let scene: &StaticSceneHandles = &statics;
     let (cull_pass, draw_pass): (&'static str, &'static str) = (names[0], names[1]);
     let args = bindings.import_buffer(graph, draw_pass, &cut.args);
     let lists = bindings.import_buffer(graph, cull_pass, cut.get_lists());

@@ -354,18 +354,12 @@ impl SkyFeature {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    ViewRecord {
-      passes,
-      textures,
-      statics,
-      cull,
-      lit,
-      ..
-    }: ViewRecord<'a>,
+    record: ViewRecord<'a>,
     sky: &SkyParameters<'a>,
     prefilter: &'a SkyPrefilter,
     surroundings: Option<&'a SurroundingsCube>,
   ) {
+    let ViewRecord { passes, lit, .. } = record;
     let (lighting, exposure): (UniformBinding<LightingUniform>, GraphBuffer) = (lit.lighting, lit.exposure);
     let empty: GraphTexture = bindings.import_view(&mut *graph, "sky prefilter none", passes.sky_prefilter.get_empty());
 
@@ -376,14 +370,7 @@ impl SkyFeature {
       let faces: GraphTexture = bindings.import_view(&mut *graph, "sky prefilter level", &level.target);
 
       if let (0, Some(cube)) = (index, surroundings) {
-        cube.add_passes(
-          GraphDeclaration::new(graph, bindings, runtime),
-          passes,
-          &statics,
-          (cull, textures),
-          (&lit, sky),
-          faces,
-        );
+        cube.add_passes(GraphDeclaration::new(graph, bindings, runtime), record, sky, faces);
 
         continue;
       }

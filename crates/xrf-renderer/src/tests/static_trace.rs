@@ -248,7 +248,8 @@ fn traces_a_sector_through_its_records() {
         source: &source,
       },
       &[],
-      (handle, &create_sector()),
+      handle,
+      &create_sector(),
     )
     .unwrap();
   scene.prepare_draws(device, queue, &mut encoder);
@@ -545,7 +546,8 @@ fn traces_spawned_objects_where_they_stand() {
         source: &source,
       },
       &[],
-      (sectors.allocate(), &create_sector()),
+      sectors.allocate(),
+      &create_sector(),
     )
     .unwrap();
   scene
@@ -557,7 +559,8 @@ fn traces_spawned_objects_where_they_stand() {
         textures: &mut textures,
         source: &source,
       },
-      (model, &create_model()),
+      model,
+      &create_model(),
     )
     .unwrap();
 
@@ -569,7 +572,7 @@ fn traces_spawned_objects_where_they_stand() {
       group: 0,
     };
 
-    scene.add_object(device, queue, *handle, (model, &place)).unwrap();
+    scene.add_object(device, queue, *handle, model, &place).unwrap();
   }
 
   scene.prepare_draws(device, queue, &mut encoder);

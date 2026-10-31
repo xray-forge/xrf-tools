@@ -8,6 +8,7 @@ pub(crate) mod frame_span_timer;
 pub(crate) mod frame_statistics;
 pub(crate) mod frame_summary;
 pub(crate) mod frame_texture;
+pub(crate) mod frame_upload;
 pub(crate) mod gpu_memory;
 pub(crate) mod gpu_readback;
 pub(crate) mod history;

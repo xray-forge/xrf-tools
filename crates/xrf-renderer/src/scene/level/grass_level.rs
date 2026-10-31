@@ -52,7 +52,8 @@ impl GrassLevel {
   pub fn new(
     device: &wgpu::Device,
     details: &RenderLevelDetails,
-    (textures, source): (&mut TextureCache, &Arc<dyn RenderAssetSource>),
+    textures: &mut TextureCache,
+    source: &Arc<dyn RenderAssetSource>,
   ) -> Self {
     let description: &DetailsDescription = &details.package.description;
     let buffer: &[u8] = &details.package.buffer;

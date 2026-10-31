@@ -3,20 +3,20 @@ use xrf_renderer_core::{GraphDeclaration, GraphTexture, UniformBinding};
 
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
-use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lowest_heights_parameters::LowestHeightsParameters;
 use crate::pass::puddle_keep_parameters::PuddleKeepParameters;
 use crate::pass::puddle_sites_parameters::PuddleSitesParameters;
 use crate::pass::puddle_sites_uniform::PuddleSitesUniform;
-use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::water_uniform::WaterUniform;
 use crate::pass::wet_uniform::WetUniform;
+use crate::scene::level::feature::wet_feature::WetFeature;
 use crate::scene::level::overhead_map::OverheadMap;
 use crate::scene::level::overhead_shape::OverheadShape;
 use crate::scene::level::puddle_keep_inputs::PuddleKeepInputs;
 use crate::scene::level::shadow_frame::ShadowFrame;
+use crate::scene::level::view_record::ViewRecord;
 
 /// The level's surface around the camera, which the enhanced rain places its puddles on: its overhead map without its
 /// trees, its water over the same square, and what is placed from them each time they are drawn, kept until they are
@@ -127,18 +127,22 @@ impl LevelSurface {
   }
 
   /// Where the puddles stood last frame as the grass plants around them: a surface's puddles and the window they cover,
-  /// or the dry stand-in (`dry`) where none is made; `has_puddles` whether the wet surfaces draw any.
+  /// or the dry stand-in (`dry`) where none is made; marked as puddles only where the `wet` surfaces draw any.
   pub fn get_grass_puddles<'a>(
     surface: Option<&'a LevelSurface>,
     dry: &'a wgpu::TextureView,
-    has_puddles: bool,
+    wet: &WetFeature,
   ) -> (&'a wgpu::TextureView, GrassPuddlesUniform) {
     let (window, shape): (Vec4, Vec4) = surface.map_or(Self::get_unmade().0, Self::get_window);
     let uniform: GrassPuddlesUniform = GrassPuddlesUniform::new(window, shape);
 
     (
       surface.map_or(dry, |surface| &surface.puddles),
-      if has_puddles { uniform.with_puddles() } else { uniform },
+      if wet.has_puddles() {
+        uniform.with_puddles()
+      } else {
+        uniform
+      },
     )
   }
 
@@ -182,11 +186,12 @@ impl LevelSurface {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    scene: &StaticSceneHandles,
-    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
-    (wet, water): (Option<UniformBinding<WetUniform>>, &WaterUniform),
+    record: ViewRecord<'a>,
+    wet: Option<UniformBinding<WetUniform>>,
+    water: &WaterUniform,
   ) -> [GraphTexture; 3] {
+    let passes: LevelPasses<'a> = record.passes;
+
     if let (Some(surface), Some(wet)) = (surface, wet) {
       let keep: PuddleKeepInputs = PuddleKeepInputs {
         wet,
@@ -195,13 +200,7 @@ impl LevelSurface {
       };
       let water: UniformBinding<WaterUniform> = runtime.push_uniform(water);
 
-      return surface.add_passes(
-        GraphDeclaration::new(graph, bindings, runtime),
-        passes,
-        scene,
-        (params, textures),
-        (water, keep),
-      );
+      return surface.add_passes(GraphDeclaration::new(graph, bindings, runtime), record, water, keep);
     }
 
     let [lowest, puddles, water]: [&'a wgpu::TextureView; 3] = passes.wet.get_dry();
@@ -223,11 +222,11 @@ impl LevelSurface {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    scene: &StaticSceneHandles,
-    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
-    (water, keep): (UniformBinding<WaterUniform>, PuddleKeepInputs<'a>),
+    record: ViewRecord<'a>,
+    water: UniformBinding<WaterUniform>,
+    keep: PuddleKeepInputs<'a>,
   ) -> [GraphTexture; 3] {
+    let passes: LevelPasses<'a> = record.passes;
     let lowest: GraphTexture = bindings.import_view(&mut *graph, "level surface lowest", &self.lowest);
     let sites: GraphTexture = bindings.import_view(&mut *graph, "puddle sites", &self.sites);
     let puddles: GraphTexture = bindings.import_view(&mut *graph, "puddles", &self.puddles);
@@ -236,22 +235,15 @@ impl LevelSurface {
 
     self.water.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      (scene, water_depth),
-      (params, textures),
+      record,
+      water_depth,
       Some(water),
     );
 
     // Sites are placed again whenever either map is drawn: the two are drawn on frames of their own, and sites placed
     // over a water map not yet drawn where the level's water has streamed in would stand under it.
     if self.map.is_due() || self.water.is_due() || self.is_fire_due {
-      self.add_placing_passes(
-        GraphDeclaration::new(graph, bindings, runtime),
-        passes,
-        scene,
-        (params, textures),
-        water_depth,
-      );
+      self.add_placing_passes(GraphDeclaration::new(graph, bindings, runtime), record, water_depth);
     }
 
     let keeping: PuddleKeepParameters<'a> = PuddleKeepParameters {
@@ -278,22 +270,17 @@ impl LevelSurface {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    scene: &StaticSceneHandles,
-    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
+    record: ViewRecord<'a>,
     water_depth: GraphTexture,
   ) {
+    let passes: LevelPasses<'a> = record.passes;
     let surface: GraphTexture = bindings.import_view(&mut *graph, "level surface", &self.map.depth);
     let lowest: GraphTexture = bindings.import_view(&mut *graph, "level surface lowest", &self.lowest);
     let sites: GraphTexture = bindings.import_view(&mut *graph, "puddle sites", &self.sites);
 
-    self.map.add_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      (scene, surface),
-      (params, textures),
-      None,
-    );
+    self
+      .map
+      .add_passes(GraphDeclaration::new(graph, bindings, runtime), record, surface, None);
 
     let (window, shape) = self.get_window();
     let uniform: UniformBinding<PuddleSitesUniform> = runtime.push_uniform(&PuddleSitesUniform {

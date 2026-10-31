@@ -1,8 +1,10 @@
 pub(crate) mod decoded_texture;
+pub(crate) mod fourier_direction;
 pub(crate) mod height_field;
 pub(crate) mod sky_texture_requests;
 pub(crate) mod texture_cache;
 pub(crate) mod texture_role;
+pub(crate) mod texture_upload_pace;
 pub(crate) mod weather_texture_cache;
 pub(crate) mod weather_texture_kind;
 pub(crate) mod weather_textures;

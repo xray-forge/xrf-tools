@@ -76,7 +76,8 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
         textures: &mut textures,
         source: &source,
       },
-      (model, &create_model(2)),
+      model,
+      &create_model(2),
     )
     .unwrap();
 
@@ -84,9 +85,7 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
     .map(|object| {
       let handle: ProxyHandle<StaticObjectProxy> = objects.allocate();
 
-      scene
-        .add_object(device, queue, handle, (model, &place(object)))
-        .unwrap();
+      scene.add_object(device, queue, handle, model, &place(object)).unwrap();
 
       handle
     })
@@ -115,7 +114,7 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
   assert!(!scene.has_object(2) && scene.has_object(1) && scene.has_object(3));
 
   scene
-    .add_object(device, queue, objects.allocate(), (model, &place(2)))
+    .add_object(device, queue, objects.allocate(), model, &place(2))
     .unwrap();
 
   assert!(scene.has_object(2), "shown again, it stands again");
@@ -134,7 +133,7 @@ fn stands_objects_as_a_model_and_takes_them_out_again() {
   assert_eq!(scene.get_pools().places.used, 1, "only the origin place is held");
   assert!(
     scene
-      .add_object(device, queue, objects.allocate(), (model, &place(4)))
+      .add_object(device, queue, objects.allocate(), model, &place(4))
       .is_err()
   );
 }
@@ -162,7 +161,8 @@ fn tells_a_cache_only_of_changes_within_what_it_covers() {
         textures: &mut textures,
         source: &source,
       },
-      (model, &create_model(1)),
+      model,
+      &create_model(1),
     )
     .unwrap();
 
@@ -176,7 +176,7 @@ fn tells_a_cache_only_of_changes_within_what_it_covers() {
   // An object stood at 20 m along x is within the near volume and not the far one.
   let handle: ProxyHandle<StaticObjectProxy> = objects.allocate();
 
-  scene.add_object(device, queue, handle, (model, &place(2))).unwrap();
+  scene.add_object(device, queue, handle, model, &place(2)).unwrap();
 
   assert!(scene.is_changed_since(before, near));
   assert!(!scene.is_changed_since(before, far));

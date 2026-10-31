@@ -17,13 +17,11 @@ use crate::lighting::sun_cascade::SunCascade;
 use crate::lighting::sun_view_rays::SunViewRays;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::indirect_args::IndirectArgs;
-use crate::pass::level_passes::LevelPasses;
 use crate::pass::shadow_casters::ShadowCasters;
 use crate::pass::shadow_cull::ShadowCull;
 use crate::pass::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::pass::shadow_uniform::ShadowUniform;
 use crate::pass::static_cull_parameters::StaticCullParameters;
-use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_layout_bindings::StaticLayoutBindings;
@@ -35,6 +33,7 @@ use crate::scene::level::shadow_cut::ShadowCut;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::shadow_prefetch::ShadowPrefetch;
 use crate::scene::level::sun_shadow_maps::SunShadowMaps;
+use crate::scene::level::view_record::ViewRecord;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// Each cascade's passes, as the frame's timings name them, in the order a job lists them: a whole draw; its static
@@ -138,6 +137,21 @@ struct CascadeOffer {
   contents: usize,
 }
 
+/// The draw a cascade asks for: how it is drawn, the fit it is drawn at, and whether it is drawn at once whatever its
+/// stagger, as one the grass casts into is.
+struct CascadeRequest {
+  draw: CascadeDraw,
+  fit: SunCascade,
+  is_urgent: bool,
+}
+
+/// What a cascade keeping a static layer is offered by: whether the grass casts into it, and whether another kept
+/// cascade already redraws its trees this frame, which it notes where it redraws its own.
+struct CascadeSplit<'s> {
+  has_grass: bool,
+  is_trees_taken: &'s mut bool,
+}
+
 /// A level's sun shadow: its cascades fitted along the camera's view every frame, each culled and drawn into its map
 /// only when its box moved, the scene changed under it, its trees' sway shows or the grass casts into it.
 #[derive(Default)]
@@ -200,14 +214,17 @@ impl LevelShadows {
     &self.values
   }
 
-  /// Makes the maps at the resolution the settings ask for while any cascade is drawn (`is_cast`), again where it
-  /// changed, so the sun binds them before the frame draws; lets them go while none is.
-  pub fn prepare(&mut self, device: &wgpu::Device, resolution: u32, is_cast: bool) {
+  /// Makes the maps at the `resolution` the settings ask for while any cascade is drawn, again where it changed, so the
+  /// sun binds them before the frame draws; lets them go while none is (no `resolution`).
+  pub fn prepare(&mut self, device: &wgpu::Device, resolution: Option<u32>) {
+    let Some(resolution) = resolution else {
+      self.release();
+
+      return;
+    };
     let resolution: u32 = resolution.clamp(1, device.limits().max_texture_dimension_2d);
 
-    if !is_cast {
-      self.release();
-    } else if self.maps.as_ref().is_none_or(|maps| maps.resolution != resolution) {
+    if self.maps.as_ref().is_none_or(|maps| maps.resolution != resolution) {
       self.maps = Some(SunShadowMaps::new(device, resolution));
       self.statics = None;
       self.kept = None;
@@ -303,11 +320,17 @@ impl LevelShadows {
   pub fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    (scene, maps): (&StaticSceneHandles, GraphTexture),
-    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
+    ViewRecord {
+      passes,
+      textures,
+      statics,
+      cull: params,
+      lit,
+      ..
+    }: ViewRecord<'a>,
     grass: Option<GrassShadowCasters<'a>>,
   ) {
+    let (scene, maps): (&StaticSceneHandles, GraphTexture) = (&statics, lit.shadow_maps);
     if self.due.is_empty() && self.bands.is_empty() {
       return;
     }
@@ -405,10 +428,10 @@ impl LevelShadows {
 
       match (draw, statics, kept) {
         (CascadeDraw::Kept, _, Some(kept)) => {
-          Self::add_layer_copy(&mut *graph, KEPT_PASSES[index][0], (kept, maps), (layer, layer));
+          Self::add_layer_copy(&mut *graph, KEPT_PASSES[index][0], kept, maps, layer, layer);
 
           if let Some(grass) = grass.filter(|_| has_grass) {
-            grass.add_pass(&mut *graph, GRASS_PASSES[index], (maps, layer), &cut.view);
+            grass.add_pass(&mut *graph, GRASS_PASSES[index], maps, layer, &cut.view);
           }
         }
         (CascadeDraw::Banded(band), Some(_), _) => {
@@ -461,7 +484,7 @@ impl LevelShadows {
             );
           }
 
-          Self::add_layer_copy(&mut *graph, copy_pass, (statics, target), (static_layer, target_layer));
+          Self::add_layer_copy(&mut *graph, copy_pass, statics, target, static_layer, target_layer);
           draw_casters(
             &mut *graph,
             sway_pass,
@@ -470,11 +493,11 @@ impl LevelShadows {
           );
 
           if let Some(kept) = kept {
-            Self::add_layer_copy(&mut *graph, KEPT_PASSES[index][0], (kept, maps), (target_layer, layer));
+            Self::add_layer_copy(&mut *graph, KEPT_PASSES[index][0], kept, maps, target_layer, layer);
           }
 
           if let Some(grass) = grass.filter(|_| has_grass) {
-            grass.add_pass(&mut *graph, GRASS_PASSES[index], (maps, layer), &cut.view);
+            grass.add_pass(&mut *graph, GRASS_PASSES[index], maps, layer, &cut.view);
           }
         }
         _ => draw_casters(
@@ -738,7 +761,10 @@ impl LevelShadows {
         index,
         cascade,
         frame,
-        (has_grass, &mut is_trees_taken),
+        CascadeSplit {
+          has_grass,
+          is_trees_taken: &mut is_trees_taken,
+        },
         scheduler,
       ));
 
@@ -791,8 +817,11 @@ impl LevelShadows {
       cascade,
       frame,
       scheduler,
-      (CascadeDraw::Whole, fit),
-      cascade.has_drawn_grass,
+      CascadeRequest {
+        draw: CascadeDraw::Whole,
+        fit,
+        is_urgent: cascade.has_drawn_grass,
+      },
     ))
   }
 
@@ -808,7 +837,10 @@ impl LevelShadows {
     index: usize,
     cascade: &mut ShadowCascadeView,
     frame: &ShadowFrame<'_>,
-    (has_grass, is_trees_taken): (bool, &mut bool),
+    CascadeSplit {
+      has_grass,
+      is_trees_taken,
+    }: CascadeSplit<'_>,
     scheduler: &mut PeriodicScheduler,
   ) -> Option<CascadeOffer> {
     let scene = frame.scene;
@@ -854,8 +886,11 @@ impl LevelShadows {
         cascade,
         frame,
         scheduler,
-        (CascadeDraw::Banded(band), static_fit),
-        false,
+        CascadeRequest {
+          draw: CascadeDraw::Banded(band),
+          fit: static_fit,
+          is_urgent: false,
+        },
       ));
     }
 
@@ -865,8 +900,11 @@ impl LevelShadows {
         cascade,
         frame,
         scheduler,
-        (CascadeDraw::Kept, cascade.drawn_fit),
-        true,
+        CascadeRequest {
+          draw: CascadeDraw::Kept,
+          fit: cascade.drawn_fit,
+          is_urgent: true,
+        },
       ));
     }
 
@@ -878,31 +916,30 @@ impl LevelShadows {
       return None;
     }
 
-    let draw: (CascadeDraw, SunCascade) = if is_held {
+    let (draw, fit): (CascadeDraw, SunCascade) = if is_held {
       (CascadeDraw::Swaying, static_fit)
     } else {
       (CascadeDraw::Static, current)
     };
+    let is_urgent: bool = has_grass || cascade.has_drawn_grass;
 
     Some(Self::offer(
       index,
       cascade,
       frame,
       scheduler,
-      draw,
-      has_grass || cascade.has_drawn_grass,
+      CascadeRequest { draw, fit, is_urgent },
     ))
   }
 
-  /// Offers a cascade's draw `draw` at a fit: at once for the nearest, one never drawn, staggering off, one whose box
-  /// strayed past its map, or one the grass casts into (`is_urgent`); else within its stagger.
+  /// Offers the draw a cascade asks for (`request`): at once for the nearest, one never drawn, staggering off, one whose
+  /// box strayed past its map, or an urgent one; else within its stagger.
   fn offer(
     index: usize,
     cascade: &ShadowCascadeView,
     frame: &ShadowFrame<'_>,
     scheduler: &mut PeriodicScheduler,
-    (draw, fit): (CascadeDraw, SunCascade),
-    is_urgent: bool,
+    CascadeRequest { draw, fit, is_urgent }: CascadeRequest,
   ) -> CascadeOffer {
     let (passes, seed): (&'static [&'static str], f32) = match draw {
       CascadeDraw::Whole => (&WHOLE_PASSES[index], WHOLE_SEEDS[index]),
@@ -1046,12 +1083,14 @@ impl LevelShadows {
     [0, first, resolution, last - first]
   }
 
-  /// Adds a pass copying one layer of a cascade's static layers into its layer of the maps.
+  /// Adds a pass copying layer `source` of a cascade's static layers (`statics`) into layer `destination` of the maps.
   fn add_layer_copy(
     graph: &mut FrameGraph<'_>,
     name: &'static str,
-    (statics, maps): (GraphTexture, GraphTexture),
-    (source, destination): (u32, u32),
+    statics: GraphTexture,
+    maps: GraphTexture,
+    source: u32,
+    destination: u32,
   ) {
     graph
       .add_encoder_pass(name)

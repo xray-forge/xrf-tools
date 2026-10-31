@@ -3,16 +3,14 @@ use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
-use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::pass::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
 use crate::pass::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
-use crate::pass::level_passes::LevelPasses;
-use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::scene::level::cover_pyramid::CoverPyramid;
 use crate::scene::level::cover_textures::CoverTextures;
 use crate::scene::level::overhead_map::OverheadMap;
 use crate::scene::level::overhead_shape::OverheadShape;
 use crate::scene::level::shadow_frame::ShadowFrame;
+use crate::scene::level::view_record::ViewRecord;
 
 /// What stands over the rain around the camera, drawn straight down as both engines draw their rain shadow map, which
 /// stops the streaks and keeps what is under it dry: one overhead map, fitted to the wet reach where the wetting
@@ -103,20 +101,15 @@ impl RainCover {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    scene: &StaticSceneHandles,
-    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
+    record: ViewRecord<'a>,
   ) -> CoverTextures {
+    let ViewRecord { passes, .. } = record;
     let depth: GraphTexture = bindings.import_view(&mut *graph, "rain cover", &self.map.depth);
 
     if self.map.is_due() {
-      self.map.add_passes(
-        GraphDeclaration::new(graph, bindings, runtime),
-        passes,
-        (scene, depth),
-        (params, textures),
-        None,
-      );
+      self
+        .map
+        .add_passes(GraphDeclaration::new(graph, bindings, runtime), record, depth, None);
 
       // Each level as its own resource, the cover reduced into the first and each into the next.
       let level_views: Vec<GraphTexture> = self

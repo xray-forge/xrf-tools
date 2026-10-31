@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use glam::Vec3;
-use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceSampler};
+use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw, XraySurfaceSampler};
 use xrf_visual::SectorSurface;
 
 use crate::host::render_asset_source::RenderAssetSource;
@@ -24,11 +24,11 @@ pub struct StaticWaterSurfaceBuilder;
 
 impl StaticWaterSurfaceBuilder {
   /// A water surface as its draws read it: the base, the normal map scrolled twice over, the foam laid in the shallows
-  /// and the distortion, by the samplers its script binds them to, and its program's model.
+  /// and the distortion, by the samplers its script binds them to, and its program's model; soft where its entry draws
+  /// soft water.
   pub fn build(
     surface: &SectorSurface,
     descriptor: &XraySurfaceDescriptor,
-    is_soft: bool,
     textures: &mut TextureCache,
     source: &Arc<dyn RenderAssetSource>,
     color: Vec3,
@@ -36,6 +36,7 @@ impl StaticWaterSurfaceBuilder {
     let base_sampler = |name: &str| descriptor.find_sampler(XraySurfaceSampler::BASE_ELEMENT, name);
     let base: Option<&str> = base_sampler("s_base").or(surface.texture_name.as_deref());
     let mut texture_slots: [u32; 8] = [0; 8];
+    let is_soft: bool = matches!(descriptor.draw, XraySurfaceDraw::Water { is_soft: true });
     let mut flags: u32 = if is_soft { StaticSurface::IS_SOFT_WATER } else { 0 };
 
     for (reference, slot, role, flag) in [

@@ -34,10 +34,12 @@ use crate::scene::static_scene::static_sector_proxy::StaticSectorProxy;
 use crate::scene::static_scene::static_selection::StaticSelection;
 use crate::scene::static_scene::static_sight::StaticSight;
 use crate::scene::static_scene::static_slot::StaticSlot;
+use crate::scene::static_scene::static_slot_draw::StaticSlotDraw;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
 use crate::scene::static_scene::static_sorted_place::StaticSortedPlace;
 use crate::scene::static_scene::static_sorted_run::StaticSortedRun;
 use crate::scene::static_scene::static_spans::StaticSpans;
+use crate::scene::static_scene::static_surface_ask::StaticSurfaceAsk;
 use crate::scene::static_scene::static_surface_key::StaticSurfaceKey;
 use crate::scene::static_scene::static_surface_use::StaticSurfaceUse;
 use crate::scene::static_scene::static_surfaces::StaticSurfaces;
@@ -260,7 +262,8 @@ impl StaticScene {
     &mut self,
     context: &mut StaticItemContext<'_>,
     descriptors: &[XraySurfaceDescriptor],
-    (handle, package): (ProxyHandle<StaticSectorProxy>, &SectorPackage),
+    handle: ProxyHandle<StaticSectorProxy>,
+    package: &SectorPackage,
   ) -> XrfResult {
     if self.sectors.is_held(handle) {
       return Err(XrfError::new_invalid_error(format!(
@@ -278,15 +281,8 @@ impl StaticScene {
       self.put_impostors(&mut writer, impostors, buffer, context);
     }
 
-    for (mesh, group) in description.instances.iter().enumerate() {
-      self.put_instances(
-        (&mut writer, &mut swaying),
-        (description.sector, mesh as u32),
-        group,
-        buffer,
-        descriptors,
-        context,
-      );
+    for mesh in 0..description.instances.len() as u32 {
+      self.put_instances(&mut writer, &mut swaying, package, mesh, descriptors, context);
     }
 
     self
@@ -419,7 +415,8 @@ impl StaticScene {
   pub fn add_model(
     &mut self,
     context: &mut StaticItemContext<'_>,
-    (handle, model): (ProxyHandle<StaticModelProxy>, &StaticModel),
+    handle: ProxyHandle<StaticModelProxy>,
+    model: &StaticModel,
   ) -> XrfResult {
     if self.models.is_held(handle) {
       return Err(XrfError::new_invalid_error(format!(
@@ -442,7 +439,11 @@ impl StaticScene {
       };
       let Some(StaticSurfaceUse { surface, class, passes }) = self.surfaces.resolve(
         &mut writer,
-        (key, &part.surface, part.descriptor.as_ref()),
+        StaticSurfaceAsk {
+          key,
+          surface: &part.surface,
+          descriptor: part.descriptor.as_ref(),
+        },
         context.textures,
         context.source,
       ) else {
@@ -471,7 +472,12 @@ impl StaticScene {
         let (slot, count): (u32, u32) = writer.put_slot(
           &base,
           clusters.to_vec(),
-          (StaticSlot::LISTED, batch, surface, passes),
+          StaticSlotDraw {
+            kind: StaticSlot::LISTED,
+            batch,
+            surface,
+            passes,
+          },
           StaticSlotInfo {
             sector: StaticSlotInfo::NO_SECTOR,
             shader_id: part.surface.shader_id,
@@ -567,7 +573,8 @@ impl StaticScene {
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     handle: ProxyHandle<StaticObjectProxy>,
-    (model, place): (ProxyHandle<StaticModelProxy>, &StaticModelPlace),
+    model: ProxyHandle<StaticModelProxy>,
+    place: &StaticModelPlace,
   ) -> XrfResult {
     if self.objects.is_held(handle) {
       return Err(XrfError::new_invalid_error(format!(
@@ -823,17 +830,19 @@ impl StaticScene {
     self.sectors.as_slice().iter().find(|it| it.sector == sector)
   }
 
-  /// Puts an instanced group: its geometry once, a slot per progressive band, a place per instance and a row per
-  /// instance and band.
+  /// Puts a sector's instanced group, its `mesh`: its geometry once, a slot per progressive band, a place per instance
+  /// and a row per instance and band, each place's sway noted into `swaying`.
   fn put_instances(
     &mut self,
-    (writer, swaying): (&mut StaticSceneWriter, &mut Vec<(Vec4, f32)>),
-    (sector, mesh): (u32, u32),
-    group: &SectorInstanceGroup,
-    buffer: &[u8],
+    writer: &mut StaticSceneWriter,
+    swaying: &mut Vec<(Vec4, f32)>,
+    package: &SectorPackage,
+    mesh: u32,
     descriptors: &[XraySurfaceDescriptor],
     context: &mut StaticItemContext<'_>,
   ) {
+    let group: &SectorInstanceGroup = &package.description.instances[mesh as usize];
+    let (sector, buffer): (u32, &[u8]) = (package.description.sector, &package.buffer);
     let geometry: &SectorGeometry = &group.geometry;
 
     if geometry.index_count == 0 || group.instance_count == 0 {
@@ -871,9 +880,15 @@ impl StaticScene {
     };
     let (band_slots, local): (Vec<(u32, u32)>, Vec4) = Self::put_bands(
       writer,
-      (&base, &GeometryClusters::new(geometry, buffer)),
+      &base,
+      &GeometryClusters::new(geometry, buffer),
       &bands,
-      (batch, surface, passes),
+      StaticSlotDraw {
+        kind: StaticSlot::LISTED,
+        batch,
+        surface,
+        passes,
+      },
       info,
     );
     let transforms: Vec<f32> = read_pods(buffer, &group.transforms);
@@ -1030,7 +1045,12 @@ impl StaticScene {
         let (slot, clusters): (u32, u32) = writer.put_slot(
           &base,
           cut,
-          (StaticSlot::SINGLE, batch, surface, passes),
+          StaticSlotDraw {
+            kind: StaticSlot::SINGLE,
+            batch,
+            surface,
+            passes,
+          },
           StaticSlotInfo {
             sector: description.sector,
             shader_id: section.surface.shader_id,
@@ -1171,36 +1191,27 @@ impl StaticScene {
   }
 
   /// A level's surface as `resolve_surface` takes one: its shader table entry, dressed by that entry's descriptor.
-  fn level_surface<'a>(
-    surface: &'a SectorSurface,
-    descriptors: &'a [XraySurfaceDescriptor],
-  ) -> (StaticSurfaceKey, &'a SectorSurface, Option<&'a XraySurfaceDescriptor>) {
-    (
-      StaticSurfaceKey::Level(surface.shader_id),
+  fn level_surface<'a>(surface: &'a SectorSurface, descriptors: &'a [XraySurfaceDescriptor]) -> StaticSurfaceAsk<'a> {
+    StaticSurfaceAsk {
+      key: StaticSurfaceKey::Level(surface.shader_id),
       surface,
-      descriptors.get(surface.shader_id as usize),
-    )
+      descriptor: descriptors.get(surface.shader_id as usize),
+    }
   }
 
-  /// Puts a slot per band (`bands`, each a first index and a count) of an instanced group's geometry. Answers the band
-  /// slots with their clusters, and the bands' bounding sphere in the mesh's own space.
+  /// Puts a slot per band (`bands`, each a first index and a count) of an instanced group's geometry, each drawn as
+  /// `draw` asks. Answers the band slots with their clusters, and the bands' bounding sphere in the mesh's own space.
   fn put_bands(
     writer: &mut StaticSceneWriter,
-    (base, clusters): (&StaticGeometryBase, &GeometryClusters<'_>),
+    base: &StaticGeometryBase,
+    clusters: &GeometryClusters<'_>,
     bands: &[(u32, u32)],
-    (batch, surface, passes): (StaticBatch, u32, u32),
+    draw: StaticSlotDraw,
     info: StaticSlotInfo,
   ) -> (Vec<(u32, u32)>, Vec4) {
     let band_slots: Vec<(u32, u32)> = bands
       .iter()
-      .map(|range| {
-        writer.put_slot(
-          base,
-          clusters.cut(range.0, range.1),
-          (StaticSlot::LISTED, batch, surface, passes),
-          info,
-        )
-      })
+      .map(|range| writer.put_slot(base, clusters.cut(range.0, range.1), draw, info))
       .collect();
     let local: Vec4 = Self::bound_spheres(
       &writer.spheres[writer.spheres.len() - band_slots.iter().map(|it| it.1 as usize).sum::<usize>()..],

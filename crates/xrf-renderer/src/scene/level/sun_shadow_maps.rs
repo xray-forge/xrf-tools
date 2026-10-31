@@ -17,7 +17,8 @@ impl SunShadowMaps {
   pub fn new(device: &wgpu::Device, resolution: u32) -> Self {
     Self::create(
       device,
-      (resolution, RENDER_MAX_SHADOW_CASCADES as u32),
+      resolution,
+      RENDER_MAX_SHADOW_CASCADES as u32,
       "sun shadow maps",
       wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
     )
@@ -27,7 +28,8 @@ impl SunShadowMaps {
   pub fn new_static(device: &wgpu::Device, resolution: u32, layers: u32) -> Self {
     Self::create(
       device,
-      (resolution, layers),
+      resolution,
+      layers,
       "sun static shadow maps",
       wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::TEXTURE_BINDING,
     )
@@ -38,7 +40,8 @@ impl SunShadowMaps {
   pub fn new_kept(device: &wgpu::Device, resolution: u32, layers: u32) -> Self {
     Self::create(
       device,
-      (resolution, layers),
+      resolution,
+      layers,
       "sun kept shadow maps",
       wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::COPY_SRC | wgpu::TextureUsages::COPY_DST,
     )
@@ -46,7 +49,8 @@ impl SunShadowMaps {
 
   fn create(
     device: &wgpu::Device,
-    (resolution, layers): (u32, u32),
+    resolution: u32,
+    layers: u32,
     label: &'static str,
     usage: wgpu::TextureUsages,
   ) -> Self {

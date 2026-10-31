@@ -206,7 +206,8 @@ impl StaticGeometry {
       if result.is_ok() {
         result = Self::allocate_span(
           &mut self.words[layout],
-          (device, queue),
+          device,
+          queue,
           words.len() / StaticLayout::STRIDE as usize,
         )
         .map(|span| spans.words[layout] = span);
@@ -224,7 +225,7 @@ impl StaticGeometry {
 
     for ((buffer, held), count) in buffers.into_iter().zip(counts) {
       if result.is_ok() {
-        result = Self::allocate_span(buffer, (device, queue), count).map(|span| *held = span);
+        result = Self::allocate_span(buffer, device, queue, count).map(|span| *held = span);
       }
     }
 
@@ -337,7 +338,8 @@ impl StaticGeometry {
   /// A range of `count` elements of a buffer, none for no elements.
   fn allocate_span(
     buffer: &mut SpanBuffer,
-    (device, queue): (&wgpu::Device, &wgpu::Queue),
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
     count: usize,
   ) -> XrfResult<Option<Span>> {
     if count == 0 {

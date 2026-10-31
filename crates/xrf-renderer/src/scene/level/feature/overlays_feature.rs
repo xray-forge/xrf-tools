@@ -54,7 +54,7 @@ impl OverlaysFeature {
   /// Follows the scene's skeletons where the overlays draw them.
   pub fn follow_skeletons(&mut self, scene: &LevelScene, device: &wgpu::Device, encoder: &mut FrameEncoder) {
     if let Some(overlays) = self.overlays.as_mut().filter(|it| it.skeleton.is_some()) {
-      overlays.set_skeleton((device, encoder), &scene.skeleton_segments);
+      overlays.set_skeleton(device, encoder, &scene.skeleton_segments);
     }
   }
 

@@ -18,7 +18,6 @@ use crate::pass::grass_draw_parameters::GrassDrawParameters;
 use crate::pass::grass_draws::GrassDraws;
 use crate::pass::grass_level_parameters::GrassLevelParameters;
 use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
-use crate::pass::grass_pass::GrassPass;
 use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::grass_sort_parameters::GrassSortParameters;
 use crate::pass::grass_uniform::GrassUniform;
@@ -32,7 +31,9 @@ use crate::scene::level::grass_card_handles::GrassCardHandles;
 use crate::scene::level::grass_cards::GrassCards;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::grass_planting::GrassPlanting;
+use crate::scene::level::grass_ring::GrassRing;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
+use crate::scene::level::grass_source::GrassSource;
 use crate::scene::level::grass_view_frame::GrassViewFrame;
 
 /// Metres a detail slot spans, `dm_slot_size`.
@@ -152,7 +153,8 @@ impl GrassView {
     let reach: i32 = (settings.get_radius() / 4.0).floor() as i32 * 2;
     let density: f32 = Self::get_density(
       settings.density.clamp(0.1, 0.99),
-      (reach, camera.is_orthographic()),
+      reach,
+      GrassRing::of(camera),
       device.limits().max_storage_buffer_binding_size,
     );
     let steps: i32 = (SLOT_METERS / density).ceil() as i32;
@@ -235,11 +237,11 @@ impl GrassView {
       .and_then(|cards| cards.blas.as_ref())
   }
 
-  /// The spacing the tufts are planted at: `density`'s, or, under a lens of parallel rays, as much wider as the lists
-  /// need to hold every slot's within `reach`. A view through a lens keeps its spacing and loses its farthest bands
-  /// where the lists run out, its least seen; a level map's tile must plant all of its ground alike.
-  pub(crate) fn get_density(density: f32, (reach, is_flat): (i32, bool), binding_limit: u64) -> f32 {
-    if !is_flat {
+  /// The spacing the tufts are planted at: `density`'s, or, a `ring` planted flat, as much wider as the lists need to
+  /// hold every slot's within `reach`. A view through a lens keeps its spacing and loses its farthest bands where the
+  /// lists run out, its least seen; a level map's tile must plant all of its ground alike.
+  pub(crate) fn get_density(density: f32, reach: i32, ring: GrassRing, binding_limit: u64) -> f32 {
+    if ring == GrassRing::Lens {
       return density;
     }
 
@@ -261,7 +263,8 @@ impl GrassView {
   pub fn get_shadow_casters<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    (pass, level, textures): (&'a GrassPass, Option<&'a GrassLevel>, &'a wgpu::BindGroup),
+    GrassSource { pass, level }: GrassSource<'a>,
+    textures: &'a wgpu::BindGroup,
     cards: Option<GrassCardHandles>,
   ) -> Option<GrassShadowCasters<'a>> {
     self.cards.as_ref().filter(|_| self.is_card_cascaded)?;
@@ -285,7 +288,7 @@ impl GrassView {
   pub fn add_cards<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    (pass, level): (&'a GrassPass, Option<&'a GrassLevel>),
+    GrassSource { pass, level }: GrassSource<'a>,
     planting: GrassPlanting,
   ) -> Option<GrassCardHandles> {
     let (Some(level), Some(build), Some(cards)) = (level, &self.build, self.cards.as_ref()) else {
@@ -442,7 +445,7 @@ impl GrassView {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    (pass, level): (&'a GrassPass, Option<&'a GrassLevel>),
+    GrassSource { pass, level }: GrassSource<'a>,
   ) -> Option<GrassPlanting> {
     let (Some(level), Some(build), Some((puddles, puddle_window))) = (level, &self.build, &self.puddles) else {
       return None;
@@ -513,8 +516,9 @@ impl GrassView {
   pub fn add_cull<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
-    (pass, level): (&'a GrassPass, Option<&'a GrassLevel>),
-    (planting, occlusion): (GrassPlanting, GrassOcclusionParameters),
+    GrassSource { pass, level }: GrassSource<'a>,
+    planting: GrassPlanting,
+    occlusion: GrassOcclusionParameters,
   ) {
     let (Some(level), Some(build)) = (level, &self.build) else {
       return;
@@ -567,9 +571,11 @@ impl GrassView {
   pub fn add_draw<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
-    (pass, level): (&'a GrassPass, Option<&'a GrassLevel>),
-    (targets, planting): (ViewTargetHandles, GrassPlanting),
-    (view, textures): (&'a ViewBinding, &'a wgpu::BindGroup),
+    GrassSource { pass, level }: GrassSource<'a>,
+    targets: ViewTargetHandles,
+    planting: GrassPlanting,
+    view: &'a ViewBinding,
+    textures: &'a wgpu::BindGroup,
   ) {
     let Some(level) = level else {
       return;

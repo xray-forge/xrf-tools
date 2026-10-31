@@ -8,12 +8,10 @@ use xrf_renderer_core::{GraphDeclaration, ProxyHandle, ProxyStore};
 use xrf_visual::{LightAnimatorDescription, LightDescription, LightKind, LightVolumetric, LightsDescription};
 
 use crate::camera::camera_frustum::CameraFrustum;
-use crate::camera::camera_view::CameraView;
 use crate::contract::render_light_shafts::RenderLightShafts;
 use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
-use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::lighting::light_animation::to_animated_color;
 use crate::lighting::light_basis::LightBasis;
@@ -21,11 +19,9 @@ use crate::lighting::light_bulb::get_bulb_radius;
 use crate::lighting::light_shadow_size::{LIGHT_SHADOW_POINT_FACES, to_light_shadow_scale};
 use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::srgb::{anchored_light, authored_light};
-use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_record::LightRecord;
 use crate::pass::light_volume_record::LightVolumeRecord;
 use crate::pass::light_volumes_uniform::LightVolumesUniform;
-use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
 use crate::scene::level::level_light_shadows::LevelLightShadows;
@@ -34,6 +30,7 @@ use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::light_shadow_set::LightShadowSet;
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::shadow_frame::ShadowFrame;
+use crate::scene::level::view_record::ViewRecord;
 use crate::scene::level::zone_fast_mode::ZONE_FAST_DISTANCE;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
@@ -170,11 +167,9 @@ impl LevelLights {
       camera,
       settings,
       engine,
-      lod,
       statics,
       sway,
       grass_reach,
-      campfire_shares,
       is_scene_first,
       is_physical,
       is_specular_linear,
@@ -182,6 +177,7 @@ impl LevelLights {
       is_falloff_inverse_square,
       light_scale,
       time,
+      ..
     } = frame;
 
     into.begin(
@@ -203,7 +199,7 @@ impl LevelLights {
       let lights: &ProxyStore<LightDescription> = &self.lights;
       let eye: Vec3 = camera.position;
       let forward: Vec3 = -camera.view.inverse().z_axis.truncate();
-      let mut in_view: Vec<InView> = self.collect_in_view(camera, settings, (lod, campfire_shares), is_shadowing);
+      let mut in_view: Vec<InView> = self.collect_in_view(&frame);
 
       in_view.sort_by(|a, b| a.distance.total_cmp(&b.distance));
 
@@ -232,9 +228,12 @@ impl LevelLights {
             forward,
             is_in_view,
             is_scene_first,
+            statics,
+            sway,
+            grass_reach,
           };
 
-          self.shadows.ask(&ask, (statics, sway, grass_reach));
+          self.shadows.ask(&ask);
         }
       }
 
@@ -278,8 +277,9 @@ impl LevelLights {
         let mut record: LightRecord = Self::to_record(
           &self.projectors,
           light,
-          (&it.basis, it.bound),
-          (color * held, specular * held),
+          &it,
+          color * held,
+          specular * held,
           range,
           camera.view,
         );
@@ -336,16 +336,20 @@ impl LevelLights {
     into.write(encoder, camera, settings.shadow_filter, self.shadows.get_atlas_use());
   }
 
-  /// The lights a view sees this frame, by its `camera` and `settings`: in its frustum, or, out of it, a shadowed one
-  /// the eye stands near, its faces kept ready for a turn; each with its fades by the cull's levels of detail (`lod`)
-  /// and its campfire's share (`campfire_shares`); none a campfire or a torrid zone has put out.
+  /// The lights a view sees this frame, by its camera and settings: in its frustum, or, out of it, a shadowed one the
+  /// eye stands near, its faces kept ready for a turn; each with its fades by the cull's levels of detail and its
+  /// campfire's share; none a campfire or a torrid zone has put out.
   fn collect_in_view(
     &self,
-    camera: &CameraView,
-    settings: &RenderLightsSettings,
-    (lod, campfire_shares): ((f32, f32), &HashMap<u16, f32>),
-    is_shadowing: bool,
+    &LightsFrame {
+      camera,
+      settings,
+      lod,
+      campfire_shares,
+      ..
+    }: &LightsFrame<'_>,
   ) -> Vec<InView> {
+    let is_shadowing: bool = settings.is_enabled && settings.is_shadowed;
     let frustum: CameraFrustum = camera.get_frustum();
     let eye: Vec3 = camera.position;
 
@@ -383,7 +387,11 @@ impl LevelLights {
           return None;
         }
 
-        let fades: Fades = Self::to_fades(light, &basis, eye, lod, is_shadowing && light.is_shadowed);
+        let fades: Fades = if is_shadowing && light.is_shadowed {
+          Self::to_shadow_fades(light, &basis, eye, lod)
+        } else {
+          Fades::WHOLE
+        };
 
         // `light::get_LOD`: a shadowed light is drawn at all only past `EPS_L`.
         (fades.shown > EPS_L).then_some(InView {
@@ -451,33 +459,18 @@ impl LevelLights {
   pub fn add_shadow_passes<'a>(
     &'a self,
     declaration: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    scene: &StaticSceneHandles,
-    frame: (&'a StaticCullUniform, &'a wgpu::BindGroup),
+    record: ViewRecord<'a>,
     grass: Option<GrassShadowCasters<'a>>,
   ) {
-    self.shadows.add_passes(declaration, passes, scene, frame, grass);
+    self.shadows.add_passes(declaration, record, grass);
   }
 
   pub fn get_shadow_atlas(&self) -> LightShadowAtlas<'_> {
     self.shadows.get_atlas()
   }
 
-  fn to_fades(
-    light: &LightDescription,
-    basis: &LightBasis,
-    eye: Vec3,
-    (start, end): (f32, f32),
-    is_shadowed: bool,
-  ) -> Fades {
-    if !is_shadowed {
-      return Fades {
-        whole: 1.0,
-        faces: [1.0; 6],
-        shown: 1.0,
-      };
-    }
-
+  /// How far a shadowed light has faded from `eye` over the cull's levels of detail, `start` to `end` metres.
+  fn to_shadow_fades(light: &LightDescription, basis: &LightBasis, eye: Vec3, (start, end): (f32, f32)) -> Fades {
     if matches!(light.kind, LightKind::Spot) {
       let fade: f32 = LightBasis::to_light_lod(basis.get_spatial_sphere(light), eye, start, end);
 
@@ -498,15 +491,17 @@ impl LevelLights {
     }
   }
 
-  /// A light's record, in view space.
+  /// A light's record, in view space: standing as `it` sees it, of `color` and `specular` weight, out to `range`.
   fn to_record(
     projectors: &[u32],
     light: &LightDescription,
-    (basis, bound): (&LightBasis, Vec4),
-    (color, specular): (Vec3, f32),
+    it: &InView,
+    color: Vec3,
+    specular: f32,
     range: f32,
     view: Mat4,
   ) -> LightRecord {
+    let (basis, bound): (&LightBasis, Vec4) = (&it.basis, it.bound);
     let is_spot: bool = matches!(light.kind, LightKind::Spot);
     let projector: f32 = light
       .projector
@@ -750,4 +745,13 @@ struct Fades {
   whole: f32,
   faces: [f32; 6],
   shown: f32,
+}
+
+impl Fades {
+  /// Not faded at all, as an unshadowed light is.
+  const WHOLE: Self = Self {
+    whole: 1.0,
+    faces: [1.0; 6],
+    shown: 1.0,
+  };
 }

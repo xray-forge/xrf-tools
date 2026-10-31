@@ -67,12 +67,12 @@ impl StaticSurfaceBuilder {
     source: &Arc<dyn RenderAssetSource>,
   ) -> Option<(StaticSurface, StaticClass)> {
     if let Some(descriptor) = descriptor
-      && let XraySurfaceDraw::Water { is_soft } = descriptor.draw
+      && let XraySurfaceDraw::Water { .. } = descriptor.draw
     {
       let color: Vec3 = Self::to_surface_color(surface.shader_id);
 
       return Some((
-        StaticWaterSurfaceBuilder::build(surface, descriptor, is_soft, textures, source, color),
+        StaticWaterSurfaceBuilder::build(surface, descriptor, textures, source, color),
         StaticClass::Water,
       ));
     }
@@ -188,7 +188,7 @@ impl StaticSurfaceBuilder {
     );
     name(StaticSurface::HEMI, surface.hemi.as_deref(), TextureRole::Hemi);
 
-    let mut flags: u32 = Self::to_flags(descriptor, &slots.map(|it| it.is_some()), (class, reference, blend));
+    let mut flags: u32 = Self::to_flags(descriptor, &slots.map(|it| it.is_some()), class, reference, blend);
 
     let terrain: Option<&'a XraySurfaceTerrain> = descriptor
       .and_then(|it| it.terrain.as_ref())
@@ -250,7 +250,9 @@ impl StaticSurfaceBuilder {
   fn to_flags(
     descriptor: Option<&XraySurfaceDescriptor>,
     named: &[bool; 7],
-    (class, reference, blend): (StaticClass, u8, u32),
+    class: StaticClass,
+    reference: u8,
+    blend: u32,
   ) -> u32 {
     let mut flags: u32 = 0;
 

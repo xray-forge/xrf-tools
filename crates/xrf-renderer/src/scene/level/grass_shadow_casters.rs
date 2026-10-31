@@ -40,7 +40,8 @@ impl<'a> GrassShadowCasters<'a> {
     &self,
     graph: &mut FrameGraph<'a>,
     name: &'static str,
-    (maps, layer): (GraphTexture, u32),
+    maps: GraphTexture,
+    layer: u32,
     view: &'a ViewBinding,
   ) {
     let casters: GrassShadowCasters<'a> = *self;

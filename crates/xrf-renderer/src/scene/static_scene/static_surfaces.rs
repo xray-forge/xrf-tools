@@ -1,13 +1,13 @@
 use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 
-use xrf_material::XraySurfaceDescriptor;
 use xrf_visual::SectorSurface;
 
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
 use crate::scene::static_scene::static_scene_writer::StaticSceneWriter;
 use crate::scene::static_scene::static_surface::StaticSurface;
+use crate::scene::static_scene::static_surface_ask::StaticSurfaceAsk;
 use crate::scene::static_scene::static_surface_builder::StaticSurfaceBuilder;
 use crate::scene::static_scene::static_surface_key::StaticSurfaceKey;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
@@ -68,11 +68,15 @@ impl StaticSurfaces {
   }
 
   /// A surface's row, its class and the surface passes it takes part in, made into `writer` the first time it is
-  /// asked for; none for a surface no static draw draws.
+  /// asked for (`ask`); none for a surface no static draw draws.
   pub fn resolve(
     &mut self,
     writer: &mut StaticSceneWriter,
-    (key, surface, descriptor): (StaticSurfaceKey, &SectorSurface, Option<&XraySurfaceDescriptor>),
+    StaticSurfaceAsk {
+      key,
+      surface,
+      descriptor,
+    }: StaticSurfaceAsk<'_>,
     textures: &mut TextureCache,
     source: &Arc<dyn RenderAssetSource>,
   ) -> Option<StaticSurfaceUse> {

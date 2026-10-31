@@ -5,6 +5,8 @@
 
 use std::f32::consts::TAU;
 
+use crate::scene::texture::fourier_direction::FourierDirection;
+
 /// The least a normal may face out of its surface before its slope is held, so a texel lying flat along it cannot make
 /// the slope run away.
 const LEAST_FACING: f32 = 0.2;
@@ -50,8 +52,18 @@ impl HeightField {
     let mut slope_x: (Vec<f32>, Vec<f32>) = (slopes.iter().map(|it| it.0).collect(), vec![0.0; slopes.len()]);
     let mut slope_y: (Vec<f32>, Vec<f32>) = (slopes.iter().map(|it| it.1 * sign).collect(), vec![0.0; slopes.len()]);
 
-    Self::transform_2d(width, height, (&mut slope_x.0, &mut slope_x.1), false);
-    Self::transform_2d(width, height, (&mut slope_y.0, &mut slope_y.1), false);
+    Self::transform_2d(
+      width,
+      height,
+      (&mut slope_x.0, &mut slope_x.1),
+      FourierDirection::Forward,
+    );
+    Self::transform_2d(
+      width,
+      height,
+      (&mut slope_y.0, &mut slope_y.1),
+      FourierDirection::Forward,
+    );
 
     // The forward difference's own frequency response, so the heights' differences give back the slopes exactly.
     let mut surface: (Vec<f32>, Vec<f32>) = (vec![0.0; slopes.len()], vec![0.0; slopes.len()]);
@@ -95,7 +107,12 @@ impl HeightField {
       }
     }
 
-    Self::transform_2d(width, height, (&mut surface.0, &mut surface.1), true);
+    Self::transform_2d(
+      width,
+      height,
+      (&mut surface.0, &mut surface.1),
+      FourierDirection::Inverse,
+    );
 
     surface.0
   }
@@ -158,9 +175,14 @@ impl HeightField {
 
   /// A two dimensional discrete Fourier transform in place, `width` by `height`, both powers of two: rows, then
   /// columns; the inverse scaled by the texel count.
-  fn transform_2d(width: usize, height: usize, (real, imaginary): (&mut [f32], &mut [f32]), is_inverse: bool) {
-    let across: Vec<(f32, f32)> = Self::create_twiddles(width, is_inverse);
-    let down: Vec<(f32, f32)> = Self::create_twiddles(height, is_inverse);
+  fn transform_2d(
+    width: usize,
+    height: usize,
+    (real, imaginary): (&mut [f32], &mut [f32]),
+    direction: FourierDirection,
+  ) {
+    let across: Vec<(f32, f32)> = Self::create_twiddles(width, direction);
+    let down: Vec<(f32, f32)> = Self::create_twiddles(height, direction);
 
     for row in 0..height {
       let span = row * width..(row + 1) * width;
@@ -184,7 +206,7 @@ impl HeightField {
       }
     }
 
-    if is_inverse {
+    if direction == FourierDirection::Inverse {
       let scale: f32 = 1.0 / (width * height) as f32;
 
       real.iter_mut().for_each(|it| *it *= scale);
@@ -193,8 +215,11 @@ impl HeightField {
   }
 
   /// The turns a transform of `size` multiplies by, `e^(∓2πik/size)` for the first half of `k`, as cosine and sine.
-  fn create_twiddles(size: usize, is_inverse: bool) -> Vec<(f32, f32)> {
-    let direction: f32 = if is_inverse { 1.0 } else { -1.0 };
+  fn create_twiddles(size: usize, direction: FourierDirection) -> Vec<(f32, f32)> {
+    let direction: f32 = match direction {
+      FourierDirection::Forward => -1.0,
+      FourierDirection::Inverse => 1.0,
+    };
 
     (0..size / 2)
       .map(|index| {

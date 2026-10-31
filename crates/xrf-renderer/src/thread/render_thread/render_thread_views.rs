@@ -30,6 +30,7 @@ use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::scene_view::SceneView;
 use crate::scene::level::view_lens::ViewLens;
+use crate::scene::level::view_pick::ViewPick;
 use crate::scene::level::view_prepare::ViewPrepare;
 use crate::scene::static_scene::static_selection::StaticSelection;
 use crate::scene::texture::texture_cache::TextureCache;
@@ -202,10 +203,13 @@ impl RenderThread {
       (pick, ndc, CameraUniform::new(&narrowed, pixel, switches))
     });
     let readied: Option<LevelFrame> = view_state.begin_frame(
-      (device, encoder),
-      pick
-        .as_ref()
-        .map(|(pick, _, camera)| (camera, view_layout, pick.is_through)),
+      device,
+      encoder,
+      pick.as_ref().map(|(pick, _, camera)| ViewPick {
+        camera,
+        view_layout,
+        is_through: pick.is_through,
+      }),
     );
 
     match (readied, pick) {
@@ -415,7 +419,7 @@ impl RenderThread {
 
     let device: &wgpu::Device = &gpu.context.device;
 
-    let frame: LevelFrame = view_state.begin_frame((device, encoder), None)?;
+    let frame: LevelFrame = view_state.begin_frame(device, encoder, None)?;
 
     Some((id, frame, None))
   }
@@ -495,7 +499,7 @@ impl RenderThread {
         },
       );
 
-      view_state.request_textures(scene, &mut gpu.weather_textures, (lighting, weather), options);
+      view_state.request_textures(scene, &mut gpu.weather_textures, lighting, weather, options);
       Self::ask_heights(&mut gpu.textures, options);
     }
     *load += loading.elapsed();

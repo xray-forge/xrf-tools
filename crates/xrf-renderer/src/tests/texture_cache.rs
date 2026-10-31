@@ -13,6 +13,7 @@ use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
+use crate::scene::texture::texture_upload_pace::TextureUploadPace;
 use crate::tests::test_context::create_test_context;
 use crate::tests::test_workers::{TEST_WORKER_NAME, create_workers};
 
@@ -55,7 +56,12 @@ fn settle(cache: &mut TextureCache, context: &GpuContext, slot: u32) -> RenderTe
   let started: Instant = Instant::now();
 
   loop {
-    cache.update((&context.device, &context.queue), &mut PeriodicScheduler::new(), true);
+    cache.update(
+      &context.device,
+      &context.queue,
+      &mut PeriodicScheduler::new(),
+      TextureUploadPace::Opening,
+    );
 
     let state: RenderTextureState = cache.describe(&[slot], RenderTextureGroup::Surfaces).remove(0).state;
 
@@ -146,7 +152,12 @@ fn a_load_landing_after_its_slot_was_freed_is_not_drawn_in_the_slots_next_textur
 
   open.send(()).unwrap();
   std::thread::sleep(Duration::from_millis(50));
-  cache.update((&context.device, &context.queue), &mut PeriodicScheduler::new(), true);
+  cache.update(
+    &context.device,
+    &context.queue,
+    &mut PeriodicScheduler::new(),
+    TextureUploadPace::Opening,
+  );
 
   assert_eq!(
     cache.describe(&[fast], RenderTextureGroup::Surfaces).remove(0).state,
@@ -265,7 +276,12 @@ fn wait_reads(
 
   // A read past the count, had one come, lands in this time too.
   std::thread::sleep(Duration::from_millis(100));
-  cache.update((&context.device, &context.queue), &mut PeriodicScheduler::new(), true);
+  cache.update(
+    &context.device,
+    &context.queue,
+    &mut PeriodicScheduler::new(),
+    TextureUploadPace::Opening,
+  );
 
   reads()
 }

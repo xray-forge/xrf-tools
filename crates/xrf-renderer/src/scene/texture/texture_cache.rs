@@ -15,6 +15,7 @@ use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::host::render_asset_source::{RenderAssetSource, get_texture_name};
 use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::scene::texture::texture_role::TextureRole;
+use crate::scene::texture::texture_upload_pace::TextureUploadPace;
 use crate::thread::loader_receiver::LoaderReceiver;
 use crate::thread::render_workers::RenderWorkers;
 
@@ -351,7 +352,7 @@ impl TextureCache {
 
     self.workers.spawn(move || {
       if source.get_texture_stamp(&reference) != recorded {
-        let _ = sender.send(Self::read_slot(&source, (slot, generation), (&reference, role), lod));
+        let _ = sender.send(Self::read_slot(&source, slot, generation, &reference, role, lod));
       }
     });
   }
@@ -371,15 +372,17 @@ impl TextureCache {
     );
 
     self.workers.spawn(move || {
-      let _ = sender.send(Self::read_slot(&source, (slot, generation), (&reference, role), lod));
+      let _ = sender.send(Self::read_slot(&source, slot, generation, &reference, role, lod));
     });
   }
 
   /// What reading a slot's texture comes to, with the stamp of the file it was read from.
   fn read_slot(
     source: &Arc<dyn RenderAssetSource>,
-    (slot, generation): (u32, u32),
-    (reference, role): (&str, TextureRole),
+    slot: u32,
+    generation: u32,
+    reference: &str,
+    role: TextureRole,
     lod: u32,
   ) -> TextureLoad {
     // Taken before the read, so a write landing during it is read again later rather than missed.
@@ -549,14 +552,15 @@ impl TextureCache {
     }
   }
 
-  /// Takes what the loaders finished and uploads it, then rebinds the array if a slot changed: up to `UPLOAD_BYTES` a
-  /// frame while a level opens (`is_opening`), and as `scheduler` grants them, in a round of their own, once every
+  /// Takes what the loaders finished and uploads it at `pace`, then rebinds the array if a slot changed: up to
+  /// `UPLOAD_BYTES` a frame while a level opens, and as `scheduler` grants them, in a round of their own, once every
   /// level stands.
   pub fn update(
     &mut self,
-    (device, queue): (&wgpu::Device, &wgpu::Queue),
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
     scheduler: &mut PeriodicScheduler,
-    is_opening: bool,
+    pace: TextureUploadPace,
   ) {
     while let Ok((slot, generation, load, stamp)) = self.receiver.try_recv() {
       if self.generations.get(slot as usize) != Some(&generation) {
@@ -577,7 +581,7 @@ impl TextureCache {
       .uploads
       .retain(|(slot, generation, _)| self.generations[*slot as usize] == *generation);
 
-    if is_opening {
+    if pace == TextureUploadPace::Opening {
       let mut spent: u64 = 0;
 
       // The first upload of a frame always goes, so one texture larger than the budget is not held forever.
@@ -585,7 +589,7 @@ impl TextureCache {
         && let Some((slot, _, texture)) = self.uploads.pop_front()
       {
         spent += texture.get_size();
-        self.upload((device, queue), slot, &texture);
+        self.upload(device, queue, slot, &texture);
       }
 
       self.waited = 0;
@@ -612,7 +616,7 @@ impl TextureCache {
 
       for ((slot, generation, texture), ticket) in offered.into_iter().zip(tickets) {
         if scheduler.is_granted(ticket) {
-          self.upload((device, queue), slot, &texture);
+          self.upload(device, queue, slot, &texture);
         } else {
           kept.push((slot, generation, texture));
         }
@@ -632,7 +636,7 @@ impl TextureCache {
   }
 
   /// Uploads a loaded texture into its slot.
-  fn upload(&mut self, (device, queue): (&wgpu::Device, &wgpu::Queue), slot: u32, texture: &DecodedTexture) {
+  fn upload(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, slot: u32, texture: &DecodedTexture) {
     // One view the device refuses would make the whole bindless group invalid, and every surface with it.
     let limits: wgpu::Limits = device.limits();
 

@@ -23,12 +23,10 @@ use crate::lighting::light_shadow_size::{
 };
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::indirect_args::IndirectArgs;
-use crate::pass::level_passes::LevelPasses;
 use crate::pass::shadow_casters::ShadowCasters;
 use crate::pass::shadow_cull::ShadowCull;
 use crate::pass::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::pass::static_cull_parameters::StaticCullParameters;
-use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_layout_bindings::StaticLayoutBindings;
@@ -40,13 +38,12 @@ use crate::scene::level::light_shadow_entry::LightShadowEntry;
 use crate::scene::level::light_shadow_face::LightShadowFace;
 use crate::scene::level::light_shadow_set::LightShadowSet;
 use crate::scene::level::shadow_frame::ShadowFrame;
-use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::level::shadow_tile::ShadowTile;
 use crate::scene::level::shadow_tile_allocator::ShadowTileAllocator;
+use crate::scene::level::view_record::ViewRecord;
 use crate::scene::static_scene::growable_buffer::GrowableBuffer;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 use crate::scene::static_scene::static_layout::StaticLayout;
-use crate::scene::static_scene::static_scene::StaticScene;
 
 /// Shadow faces offered at most in one frame, each with a slot of its own in the lists and the draw arguments: the most
 /// copies of the visible list the static scene admits an item by.
@@ -223,11 +220,7 @@ impl LevelLightShadows {
   /// Takes a shadowed light in view this frame, nearest first, or one out of view kept ready, after every one in view:
   /// gives it faces where it has none at the size it wants, and puts forward those of its faces wanting a draw. One
   /// kept ready keeps the faces it has, and takes new ones only from free room.
-  pub fn ask(
-    &mut self,
-    ask: &LightShadowAsk<'_>,
-    (statics, sway, grass_reach): (&StaticScene, &ShadowSway<'_>, Option<f32>),
-  ) {
+  pub fn ask(&mut self, ask: &LightShadowAsk<'_>) {
     let LightShadowAsk {
       light,
       basis,
@@ -251,7 +244,7 @@ impl LevelLightShadows {
     };
 
     self.replace_set(ask, asked);
-    self.push_candidates(ask, (statics, sway, grass_reach), (spatial, distance, cone));
+    self.push_candidates(ask, spatial, distance, cone);
   }
 
   /// The size of the faces a light asks for, from the texels it wants: the size it has while that stays near enough,
@@ -306,20 +299,16 @@ impl LevelLightShadows {
         Self::release_set(&mut self.allocator, next);
       }
 
-      entry.next = self.create_set(ask.light, ask.basis, asked, ask.is_in_view);
+      entry.next = self.create_set(ask, asked);
     }
 
     self.entries.insert(ask.handle, entry);
   }
 
   /// Puts forward the faces of a light wanting a draw: those holding nothing yet or changed under, those its light
-  /// carried, and those the sway or the grass's cards move in.
-  fn push_candidates(
-    &mut self,
-    ask: &LightShadowAsk<'_>,
-    (statics, sway, grass_reach): (&StaticScene, &ShadowSway<'_>, Option<f32>),
-    (spatial, distance, cone): (Vec4, f32, f32),
-  ) {
+  /// carried, and those the sway or the grass's cards move in: the light's bounding sphere (`spatial`), `distance`
+  /// metres from the eye, its cone as `cone`.
+  fn push_candidates(&mut self, ask: &LightShadowAsk<'_>, spatial: Vec4, distance: f32, cone: f32) {
     let LightShadowAsk {
       handle,
       light,
@@ -327,6 +316,9 @@ impl LevelLightShadows {
       eye,
       is_in_view,
       is_scene_first,
+      statics,
+      sway,
+      grass_reach,
       ..
     } = *ask;
     let Some(entry) = self.entries.get_mut(&handle) else {
@@ -557,15 +549,20 @@ impl LevelLightShadows {
   pub fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    scene: &StaticSceneHandles,
-    (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),
+    ViewRecord {
+      passes,
+      textures,
+      statics,
+      cull: params,
+      ..
+    }: ViewRecord<'a>,
     grass: Option<GrassShadowCasters<'a>>,
   ) {
     if self.due.is_empty() {
       return;
     }
 
+    let scene: &StaticSceneHandles = &statics;
     let template: GraphBuffer = scene.args_template;
     let args: GraphBuffer = bindings.import_buffer(graph, "light shadow draw arguments", &self.args);
     let lists: GraphBuffer = bindings.import_buffer(graph, "light shadow lists", self.lists.get_buffer());
@@ -794,15 +791,15 @@ impl LevelLightShadows {
     set.faces.get(face)
   }
 
-  /// A light's faces at a size, room made from the lights out of view longest where it `may_evict`, and at smaller
-  /// squares where there is still none.
-  fn create_set(
-    &mut self,
-    light: &LightDescription,
-    basis: &LightBasis,
-    size: u32,
-    may_evict: bool,
-  ) -> Option<LightShadowSet> {
+  /// The faces a light asks for (`ask`) at a size, room made from the lights out of view longest where a view sees it,
+  /// and at smaller squares where there is still none.
+  fn create_set(&mut self, ask: &LightShadowAsk<'_>, size: u32) -> Option<LightShadowSet> {
+    let LightShadowAsk {
+      light,
+      basis,
+      is_in_view: may_evict,
+      ..
+    } = *ask;
     let is_spot: bool = matches!(light.kind, LightKind::Spot);
     let count: usize = if is_spot { 1 } else { LIGHT_SHADOW_POINT_FACES.len() };
     let near: f32 = if light.near > 0.0 { light.near } else { DEFAULT_NEAR };

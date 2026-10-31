@@ -40,7 +40,6 @@ use crate::frame::view_targets::ViewTargets;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
@@ -78,10 +77,11 @@ use crate::scene::level::feature::volumetric_shafts::VolumetricShafts;
 use crate::scene::level::feature::water_frame::WaterFrame;
 use crate::scene::level::feature::water_inputs::WaterInputs;
 use crate::scene::level::feature::wet_targets::WetTargets;
+use crate::scene::level::feature::wind_feature::WindFeature;
 use crate::scene::level::grass_card_handles::GrassCardHandles;
-use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::grass_planting::GrassPlanting;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
+use crate::scene::level::grass_source::GrassSource;
 use crate::scene::level::grass_view_frame::GrassViewFrame;
 use crate::scene::level::helpers::view::helper_draws::HelperDraws;
 use crate::scene::level::helpers::view::helper_marks_pass::HelperMarksPass;
@@ -103,6 +103,7 @@ use crate::scene::level::shadows_recorded::ShadowsRecorded;
 use crate::scene::level::sky_views::SkyViews;
 use crate::scene::level::surroundings_cube::SurroundingsCube;
 use crate::scene::level::view_frame::ViewFrame;
+use crate::scene::level::view_pick::ViewPick;
 use crate::scene::level::view_prepare::ViewPrepare;
 use crate::scene::level::view_record::ViewRecord;
 use crate::scene::static_scene::static_batch::StaticBatch;
@@ -232,7 +233,8 @@ impl SceneView {
     &mut self,
     scene: &LevelScene,
     weather_textures: &mut WeatherTextureCache,
-    (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
+    lighting: &RenderLighting,
+    weather: Option<&Arc<RenderLevelWeather>>,
     options: &RenderViewOptions,
   ) {
     let assets: Arc<dyn RenderAssetSource> = Arc::clone(&scene.source) as Arc<dyn RenderAssetSource>;
@@ -301,7 +303,7 @@ impl SceneView {
     // What of the scene drawn by passes of its own the view may see: none of the water's or the surface passes' work
     // runs for what is out of sight.
     let sight: StaticSight = scene.statics.get_sight(&frame.view.get_frustum());
-    let lighting_frame: LightingFrame = self.prepare_weather(scene, frame, &sight, (time, now));
+    let lighting_frame: LightingFrame = self.prepare_weather(scene, frame, &sight, time, now);
 
     self
       .features
@@ -309,7 +311,7 @@ impl SceneView {
       .follow_skeletons(scene, frame.device, &mut *encoder);
 
     self.prepare_scene(scene, encoder, frame, &lighting_frame, time);
-    self.prepare_view(scene, encoder, frame, (&sight, now));
+    self.prepare_view(scene, encoder, frame, &sight, now);
     self.prepare_lighting(scene, encoder, frame, &lighting_frame, time);
   }
 
@@ -321,15 +323,15 @@ impl SceneView {
     scene: &LevelScene,
     frame: &ViewPrepare<'_>,
     sight: &StaticSight,
-    (time, now): (f32, Instant),
+    time: f32,
+    now: Instant,
   ) -> LightingFrame {
     let (device, options, lighting) = (frame.device, frame.options, frame.lighting);
     let size: Option<(u32, u32)> = self.targets.as_ref().map(|targets| (targets.width, targets.height));
 
     self.features.shadows.prepare(
       device,
-      options.features.shadows.resolution,
-      options.features.shadows.get_cascade_count() > 0,
+      (options.features.shadows.get_cascade_count() > 0).then_some(options.features.shadows.resolution),
     );
     self.features.exposure.prepare(frame.queue, options, now);
 
@@ -429,7 +431,7 @@ impl SceneView {
       puddles: LevelSurface::get_grass_puddles(
         self.features.level_surface.as_ref(),
         frame.passes.wet.get_dry()[1],
-        self.features.wet.has_puddles(),
+        &self.features.wet,
       ),
       is_traced,
       cascade_reach: is_cascaded
@@ -453,7 +455,7 @@ impl SceneView {
           self.features.statics.get_cull().glod_end,
         ),
         statics: &scene.statics,
-        sway: &Self::to_sway(&scene.statics, self.features.wind.get_sway()),
+        sway: &Self::to_sway(&scene.statics, &self.features.wind),
         grass_reach: self.features.grass.get_cascade_reach(),
         campfire_shares: &scene.campfire_shares,
         is_scene_first: frame.is_scene_first,
@@ -490,7 +492,8 @@ impl SceneView {
     scene: &LevelScene,
     encoder: &mut FrameEncoder,
     frame: &ViewPrepare<'_>,
-    (sight, now): (&StaticSight, Instant),
+    sight: &StaticSight,
+    now: Instant,
   ) {
     let (device, options, view) = (frame.device, frame.options, frame.view);
     let (width, height) = frame.drawn;
@@ -562,8 +565,8 @@ impl SceneView {
 
     scene.particles.fill(view, options, &mut self.features.particles);
 
-    self.features.particles.upload((device, &mut *encoder));
-    self.prepare_present(options, frame.output, (time, noise_frame));
+    self.features.particles.upload(device, &mut *encoder);
+    self.prepare_present(options, frame.output, time, noise_frame);
     self.features.volumetric.prepare(device, options);
   }
 
@@ -639,7 +642,7 @@ impl SceneView {
       sun_direction: shared.sun_direction,
       is_sunlit: shared.lighting.sun.truncate() != Vec3::ZERO,
       switches: shared.switches,
-      sway: Self::to_sway(statics, features.wind.get_sway()),
+      sway: Self::to_sway(statics, &features.wind),
       grass_reach: features.grass.get_cascade_reach(),
     };
 
@@ -700,7 +703,7 @@ impl SceneView {
       sun_direction: shared.sun_direction,
       is_sunlit: shared.lighting.sun.truncate() != Vec3::ZERO,
       switches: shared.switches,
-      sway: Self::to_sway(statics, features.wind.get_sway()),
+      sway: Self::to_sway(statics, &features.wind),
       grass_reach: features.grass.get_cascade_reach(),
     };
 
@@ -739,7 +742,7 @@ impl SceneView {
       sun_direction: self.shared.sun_direction,
       is_sunlit: self.shared.lighting.sun.truncate() != Vec3::ZERO,
       switches: self.shared.switches,
-      sway: Self::to_sway(statics, self.features.wind.get_sway()),
+      sway: Self::to_sway(statics, &self.features.wind),
       grass_reach: self.features.grass.get_cascade_reach(),
     };
 
@@ -845,7 +848,7 @@ impl SceneView {
   /// Notes what the window pass reads, once every other unit knows what it draws: whether the water, a particle, the
   /// enhanced rain's splashes or a distorting surface of the scene moves what is seen through it, which bloom it lays
   /// over the frame, the sky debanding, its noise turning with `time`, and the film's grain, drawn for `noise_frame`.
-  fn prepare_present(&mut self, options: &RenderViewOptions, output: RenderRect, (time, noise_frame): (f32, u32)) {
+  fn prepare_present(&mut self, options: &RenderViewOptions, output: RenderRect, time: f32, noise_frame: u32) {
     if self.targets.is_none() {
       return;
     }
@@ -883,21 +886,22 @@ impl SceneView {
   /// picked and the readback it is copied into while one is free, and the depth the next frame's occlusion tests.
   pub fn begin_frame(
     &mut self,
-    (device, encoder): (&wgpu::Device, &mut FrameEncoder),
-    pick: Option<(&CameraUniform, &wgpu::BindGroupLayout, bool)>,
+    device: &wgpu::Device,
+    encoder: &mut FrameEncoder,
+    pick: Option<ViewPick<'_>>,
   ) -> Option<LevelFrame> {
     if self.targets.is_none() || !self.features.statics.is_ready() {
       return None;
     }
 
     let pick_slot: Option<usize> =
-      pick.and_then(|(camera, view_layout, _)| self.features.pick.ready(device, encoder, camera, view_layout));
+      pick.and_then(|pick| self.features.pick.ready(device, encoder, pick.camera, pick.view_layout));
 
     self.features.statics.begin_frame();
 
     Some(LevelFrame {
       pick_slot,
-      is_pick_through: pick.is_some_and(|(_, _, is_through)| is_through),
+      is_pick_through: pick.is_some_and(|pick| pick.is_through),
       is_scene_first: false,
     })
   }
@@ -960,7 +964,8 @@ impl SceneView {
       scene,
       GraphDeclaration::new(graph, bindings, runtime),
       record,
-      (grass_cards, frame.is_scene_first),
+      grass_cards,
+      frame,
     );
 
     graph.begin_group("lighting");
@@ -999,7 +1004,9 @@ impl SceneView {
       scene,
       GraphDeclaration::new(graph, bindings, runtime),
       record,
-      (grass_cards, wet, rings),
+      grass_cards,
+      wet,
+      rings,
     );
 
     graph.begin_group("post");
@@ -1008,7 +1015,8 @@ impl SceneView {
       scene,
       GraphDeclaration::new(graph, bindings, runtime),
       record,
-      (lit, shadowed),
+      lit,
+      shadowed,
       &mut output,
     );
 
@@ -1096,14 +1104,17 @@ impl SceneView {
       ..
     } = record;
     let is_drawn: bool = !self.shared.is_wireframe;
-    let grass_level: Option<&GrassLevel> = scene.grass.get_level();
+    let grass: GrassSource = GrassSource {
+      pass: passes.grass,
+      level: scene.grass.get_level(),
+    };
 
     ViewTargets::add_distortion_clear(&mut *graph, handles);
 
-    let grass_planting: Option<GrassPlanting> = self.features.grass.add_planting(
-      GraphDeclaration::new(graph, bindings, runtime),
-      (passes.grass, grass_level),
-    );
+    let grass_planting: Option<GrassPlanting> = self
+      .features
+      .grass
+      .add_planting(GraphDeclaration::new(graph, bindings, runtime), grass);
 
     self
       .features
@@ -1126,16 +1137,15 @@ impl SceneView {
       self
         .features
         .grass
-        .add_cull(&mut *graph, (passes.grass, grass_level), (grass_planting, occlusion));
+        .add_cull(&mut *graph, grass, grass_planting, occlusion);
     }
 
     // The grass's cards, which cast its shadows into the sun's cascades or the trace, stood once its ring is planted.
     let grass_cards: Option<GrassCardHandles> = grass_planting.and_then(|grass_planting| {
-      self.features.grass.add_cards(
-        GraphDeclaration::new(graph, bindings, runtime),
-        (passes.grass, grass_level),
-        grass_planting,
-      )
+      self
+        .features
+        .grass
+        .add_cards(GraphDeclaration::new(graph, bindings, runtime), grass, grass_planting)
     });
     // The depth the reflections walk their rays over, kept before the grass draws, or after it where the grass is
     // reflected.
@@ -1152,12 +1162,10 @@ impl SceneView {
     self.features.statics.add_stats_pass(&mut *graph, &statics);
 
     if let (true, Some(grass_planting)) = (is_drawn, grass_planting) {
-      self.features.grass.add_draw(
-        &mut *graph,
-        (passes.grass, grass_level),
-        (handles, grass_planting),
-        (view, textures),
-      );
+      self
+        .features
+        .grass
+        .add_draw(&mut *graph, grass, handles, grass_planting, view, textures);
     }
 
     if is_grass_reflected {
@@ -1178,7 +1186,7 @@ impl SceneView {
 
   /// The shadows' group: the sun's cascades with the grass's cards, the rain's cover while it rains or the surfaces are
   /// wet, the level's surface the enhanced wetting places its puddles by, and the lamps' faces where this view draws
-  /// the scene's first (`is_scene_first`).
+  /// the scene's first (as `frame` notes).
   fn record_shadows<'a>(
     &'a self,
     scene: &'a LevelScene,
@@ -1188,29 +1196,24 @@ impl SceneView {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
-    (grass_cards, is_scene_first): (Option<GrassCardHandles>, bool),
+    grass_cards: Option<GrassCardHandles>,
+    frame: &LevelFrame,
   ) -> ShadowsRecorded {
-    let ViewRecord {
-      passes,
-      textures,
-      statics,
-      cull,
-      lit,
-      ..
-    } = record;
+    let ViewRecord { passes, textures, .. } = record;
     let grass_casters: Option<GrassShadowCasters> = self.features.grass.get_shadow_casters(
       GraphDeclaration::new(graph, bindings, runtime),
-      (passes.grass, scene.grass.get_level(), textures),
+      GrassSource {
+        pass: passes.grass,
+        level: scene.grass.get_level(),
+      },
+      textures,
       grass_cards,
     );
 
-    self.features.shadows.add_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      (&statics, lit.shadow_maps),
-      (cull, textures),
-      grass_casters,
-    );
+    self
+      .features
+      .shadows
+      .add_passes(GraphDeclaration::new(graph, bindings, runtime), record, grass_casters);
 
     // The rain's cover, which its passes draw and reduce and the rain and the wet surfaces read.
     let covers: Option<CoverTextures> = self
@@ -1218,14 +1221,7 @@ impl SceneView {
       .rain_cover
       .as_ref()
       .filter(|_| self.features.rain.is_raining() || self.features.wet.is_wet())
-      .map(|rain_cover| {
-        rain_cover.add_passes(
-          GraphDeclaration::new(graph, bindings, runtime),
-          passes,
-          &statics,
-          (cull, textures),
-        )
-      });
+      .map(|rain_cover| rain_cover.add_passes(GraphDeclaration::new(graph, bindings, runtime), record));
     let wet: Option<UniformBinding<WetUniform>> = self.features.wet.push_uniform(runtime);
     // The level's surface seen from overhead, its lowest heights, its puddle sites and its water, which the enhanced
     // wetting places its puddles by.
@@ -1236,20 +1232,15 @@ impl SceneView {
         .as_ref()
         .filter(|_| self.features.wet.is_enhanced()),
       GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      &statics,
-      (cull, textures),
-      (wet, self.features.water.get_uniform()),
+      record,
+      wet,
+      self.features.water.get_uniform(),
     );
 
-    if is_scene_first {
-      scene.lights.add_shadow_passes(
-        GraphDeclaration::new(graph, bindings, runtime),
-        passes,
-        &statics,
-        (cull, textures),
-        grass_casters,
-      );
+    if frame.is_scene_first {
+      scene
+        .lights
+        .add_shadow_passes(GraphDeclaration::new(graph, bindings, runtime), record, grass_casters);
     }
 
     ShadowsRecorded { covers, wet, surface }
@@ -1267,7 +1258,9 @@ impl SceneView {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
-    (grass_cards, wet, rings): (Option<GrassCardHandles>, WetTargets, GraphTexture),
+    grass_cards: Option<GrassCardHandles>,
+    wet: WetTargets,
+    rings: GraphTexture,
   ) -> LightingRecorded<'a> {
     let ViewRecord { handles, statics, .. } = record;
     // The scene's trace, which RTAO, the reflections and the water trace their rays through.
@@ -1413,13 +1406,13 @@ impl SceneView {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
-    (lit_frame, shadowed): (LightingRecorded<'a>, ShadowsRecorded),
+    lit_frame: LightingRecorded<'a>,
+    shadowed: ShadowsRecorded,
     output: &mut SceneOutput,
   ) {
     let ViewRecord {
       passes,
       view,
-      textures,
       handles,
       statics,
       lit,
@@ -1452,9 +1445,8 @@ impl SceneView {
     if is_drawn && self.features.particles.is_drawing() {
       self.features.particles.add_passes(
         GraphDeclaration::new(graph, bindings, runtime),
-        passes.particles,
-        (handles, lit.lighting, scene.particles.get_surfaces()),
-        (view, textures),
+        record,
+        scene.particles.get_surfaces(),
       );
     }
 
@@ -1861,8 +1853,10 @@ impl SceneView {
     self.features.helpers.get_draws()
   }
 
-  /// The sway the shadows see this frame: the wind, the trees' reach, and where they stand.
-  fn to_sway(scene: &StaticScene, (amplitude, time): (f32, f32)) -> ShadowSway<'_> {
+  /// The sway the shadows see this frame: the `wind`, the trees' reach, and where they stand.
+  fn to_sway<'s>(scene: &'s StaticScene, wind: &WindFeature) -> ShadowSway<'s> {
+    let (amplitude, time): (f32, f32) = wind.get_sway();
+
     ShadowSway {
       amplitude,
       reach: scene.get_sway_reach(),

@@ -26,6 +26,7 @@ use crate::scene::level::grass_card_handles::GrassCardHandles;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::grass_planting::GrassPlanting;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
+use crate::scene::level::grass_source::GrassSource;
 use crate::scene::level::grass_view::GrassView;
 use crate::scene::level::grass_view_frame::GrassViewFrame;
 use crate::scene::level::level_grass::LevelGrass;
@@ -188,10 +189,14 @@ impl GrassFrames {
         &mut bindings,
         (&self.targets, ViewTargetUses::default(), &self.targets.light),
       );
+      let source: GrassSource = GrassSource {
+        pass,
+        level: Some(level),
+      };
       let planting: GrassPlanting = grass
         .add_planting(
           GraphDeclaration::new(&mut graph, &mut bindings, &mut self.runtime),
-          (pass, Some(level)),
+          source,
         )
         .expect("the grass is planted");
       let occlusion: GrassOcclusionParameters = GrassOcclusionParameters {
@@ -201,31 +206,34 @@ impl GrassFrames {
           .push_uniform(&<StaticOcclusionUniform as bytemuck::Zeroable>::zeroed()),
       };
 
-      grass.add_cull(&mut graph, (pass, Some(level)), (planting, occlusion));
+      grass.add_cull(&mut graph, source, planting, occlusion);
 
       let cards: Option<GrassCardHandles> = grass.add_cards(
         GraphDeclaration::new(&mut graph, &mut bindings, &mut self.runtime),
-        (pass, Some(level)),
+        source,
         planting,
       );
 
       grass.add_draw(
         &mut graph,
-        (pass, Some(level)),
-        (handles, planting),
-        (&self.view, textures.get_bind_group()),
+        source,
+        handles,
+        planting,
+        &self.view,
+        textures.get_bind_group(),
       );
 
       let casters: GrassShadowCasters<'_> = grass
         .get_shadow_casters(
           GraphDeclaration::new(&mut graph, &mut bindings, &mut self.runtime),
-          (pass, Some(level), textures.get_bind_group()),
+          source,
+          textures.get_bind_group(),
           cards,
         )
         .expect("the cards cast into the cascades");
       let cascades: GraphTexture = bindings.import_view(&mut graph, "grass test cascades", &self.maps.view);
 
-      casters.add_pass(&mut graph, "grass test cascade", (cascades, 0), &self.view);
+      casters.add_pass(&mut graph, "grass test cascade", cascades, 0, &self.view);
 
       let compiled = graph.compile(&GraphCompileOptions::default()).unwrap();
 
@@ -256,7 +264,8 @@ fn plants_draws_and_casts_the_grass_without_a_validation_error() {
   let level: GrassLevel = GrassLevel::new(
     &context.device,
     &create_details(1),
-    (&mut frames.textures, &frames.assets),
+    &mut frames.textures,
+    &frames.assets,
   );
   let mut grass: GrassView = GrassView::new(&context.device);
 
@@ -288,7 +297,8 @@ fn a_replaced_grass_is_planted_again_and_drawn_without_a_validation_error() {
       scene.replace(
         &context.device,
         Some(create_details(models)),
-        (&mut frames.textures, &frames.assets),
+        &mut frames.textures,
+        &frames.assets,
       );
     }
 
@@ -304,7 +314,7 @@ fn a_replaced_grass_is_planted_again_and_drawn_without_a_validation_error() {
   assert!(generations[2] > generations[1], "a replaced grass is planted again");
   assert_eq!(generations[2], generations[3]);
 
-  scene.replace(&context.device, None, (&mut frames.textures, &frames.assets));
+  scene.replace(&context.device, None, &mut frames.textures, &frames.assets);
 
   assert!(scene.get_level().is_none());
 

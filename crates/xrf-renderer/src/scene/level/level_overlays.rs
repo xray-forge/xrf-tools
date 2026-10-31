@@ -93,7 +93,7 @@ impl LevelOverlays {
   }
 
   /// Takes this frame's skeleton segments, child then parent, in renderer space, while the set draws a skeleton.
-  pub fn set_skeleton(&mut self, (device, encoder): (&wgpu::Device, &mut FrameEncoder), segments: &[(Vec3, Vec3)]) {
+  pub fn set_skeleton(&mut self, device: &wgpu::Device, encoder: &mut FrameEncoder, segments: &[(Vec3, Vec3)]) {
     let Some((color, is_depth_tested)) = self.skeleton else {
       return;
     };

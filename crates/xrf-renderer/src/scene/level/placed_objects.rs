@@ -1,6 +1,7 @@
 use glam::{Mat4, Vec3};
 use xrf_particles::{ParticleObject, ParticleUpdateContext};
 
+use crate::scene::level::particle_stop::ParticleStop;
 use crate::scene::level::placed_effect::PlacedEffect;
 
 /// What plays at an emitter, an object a [`PlacedEffect`], each with whether its end was told to the world.
@@ -14,7 +15,8 @@ impl PlacedObjects {
     &mut self,
     effect: PlacedEffect,
     name: &str,
-    (transform, seed): (&Mat4, i32),
+    transform: &Mat4,
+    seed: i32,
     context: &ParticleUpdateContext,
     now: u64,
   ) {
@@ -35,13 +37,12 @@ impl PlacedObjects {
     *slot = Some((object, false));
   }
 
-  /// Stops an effect: deferred, it emits no more and what it emitted lives on (`Stop(TRUE)`); otherwise it goes at once
-  /// with its particles (`Stop(FALSE)`, then `Destroy`).
-  pub fn stop(&mut self, effect: PlacedEffect, is_deferred: bool) {
+  /// Stops an effect as `stop` asks.
+  pub fn stop(&mut self, effect: PlacedEffect, stop: ParticleStop) {
     let slot: &mut Option<(ParticleObject, bool)> = &mut self.0[effect.get_index()];
 
     match slot {
-      Some((object, _)) if is_deferred => {
+      Some((object, _)) if stop == ParticleStop::Deferred => {
         if !object.is_stopping() {
           object.stop(true);
         }

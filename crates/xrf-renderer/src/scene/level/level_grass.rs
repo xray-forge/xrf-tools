@@ -29,9 +29,10 @@ impl LevelGrass {
     &mut self,
     device: &wgpu::Device,
     details: Option<RenderLevelDetails>,
-    (textures, source): (&mut TextureCache, &Arc<dyn RenderAssetSource>),
+    textures: &mut TextureCache,
+    source: &Arc<dyn RenderAssetSource>,
   ) {
-    self.level = details.map(|details| GrassLevel::new(device, &details, (textures, source)));
+    self.level = details.map(|details| GrassLevel::new(device, &details, textures, source));
 
     if let Some(level) = &self.level {
       log::info!(
