@@ -10,7 +10,7 @@ use xrf_renderer::{RenderHelperIcon, RenderHelperObject, RenderHelperShape, Rend
 
 use crate::objects::{
   LevelObject, LevelObjectId, LevelObjectKind, LevelObjectShape, LevelObjectSources, LevelObjectsDescription,
-  LevelPlacementDetails, LevelPlacementFile,
+  LevelPlacementDetails, LevelPlacementFile, LevelSoundWindow,
 };
 use crate::parts::{LevelPlacements, LevelSpawn};
 
@@ -229,7 +229,11 @@ fn lists_what_the_companion_files_place_then_the_static_lights() {
       .as_ref()
       .expect("a sound's record")
       .details,
-    LevelPlacementDetails::Sound { play: [1000, 2000], .. }
+    LevelPlacementDetails::Sound {
+      play: LevelSoundWindow { from: 1000, to: 2000 },
+      active,
+      ..
+    } if *active == LevelSoundWindow::default()
   ));
   assert!(matches!(
     &described.objects[4].placement.as_ref().expect("a modifier's record").details,

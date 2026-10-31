@@ -5,7 +5,7 @@ use xrf_visual::VisualTransform;
 
 use crate::objects::{
   LevelObject, LevelObjectId, LevelObjectKind, LevelObjectLight, LevelObjectPlacement, LevelObjectShape,
-  LevelObjectsDescription, LevelPlacementDetails, LevelPlacementFile,
+  LevelObjectsDescription, LevelPlacementDetails, LevelPlacementFile, LevelSoundWindow,
 };
 use crate::parts::LevelPlacements;
 
@@ -52,9 +52,9 @@ impl LevelObjectsDescription {
           sound: sound.sound.clone(),
           volume: sound.volume,
           frequency: sound.frequency,
-          active: [sound.active.from, sound.active.to],
-          play: [sound.play.from, sound.play.to],
-          pause: [sound.pause.from, sound.pause.to],
+          active: LevelSoundWindow::from(&sound.active),
+          play: LevelSoundWindow::from(&sound.play),
+          pause: LevelSoundWindow::from(&sound.pause),
         },
       }));
     }

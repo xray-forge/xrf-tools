@@ -245,11 +245,11 @@ describe("LevelOutlinerPanel", () => {
       name: "ambient\\wind",
       placement: {
         details: {
-          active: [0, 0],
+          active: { from: 0, to: 0 },
           frequency: 1,
           kind: ELevelPlacementDetails.SOUND,
-          pause: [1500, 4000],
-          play: [0, 0],
+          pause: { from: 1500, to: 4000 },
+          play: { from: 0, to: 0 },
           sound: "ambient\\wind",
           volume: 0.8,
         },

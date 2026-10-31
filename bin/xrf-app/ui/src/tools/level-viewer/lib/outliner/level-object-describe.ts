@@ -7,6 +7,7 @@ import {
   LevelObjectShape,
   LevelPatrolLink,
   LevelRestriction,
+  LevelSoundWindow,
 } from "@xrf/ipc/types/xrf-app-levels";
 import { Vector3d } from "@xrf/ipc/types/xrf-math";
 import { toPoint3 } from "@xrf/math";
@@ -79,19 +80,16 @@ function formatDayTime(milliseconds: number): string {
 }
 
 /**
- * A static sound's window, from and to in milliseconds, as `SStaticSound` reads it: none, both nought, means the
- * sound's own default.
+ * A static sound's window, from and to in milliseconds, as `SStaticSound` reads it: both nought means the sound's own
+ * default.
  *
  * @param window - From and to, in milliseconds.
  * @param kind - What the window measures: the game day's hours the sound plays in, how long each play lasts, or the
  *   pause between plays.
  * @returns It as the Inspector says it.
  */
-export function describeLevelSoundWindow(
-  window: ReadonlyArray<Nullable<number>>,
-  kind: "active" | "play" | "pause"
-): string {
-  const [from = 0, to = 0] = window.map((it: Nullable<number>) => it ?? 0);
+export function describeLevelSoundWindow(window: LevelSoundWindow, kind: "active" | "play" | "pause"): string {
+  const { from, to } = window;
 
   if (from === 0 && to === 0) {
     return { active: "All day", pause: "Looped without a pause", play: "The whole sound" }[kind];
