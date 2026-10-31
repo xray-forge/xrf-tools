@@ -17,43 +17,16 @@ pub struct ArchivePacker;
 
 impl ArchivePacker {
   /// Pack the configured source into `<name>.db<N>` volumes and report what was written.
-  ///
-  /// The plain door. A caller that wants to watch the run, be able to stop it, or replace a set the destination
-  /// already holds uses [`Self::pack_opt`].
   pub fn pack(config: &ArchivePackConfig) -> XrfResult<ArchivePackResult> {
     Self::pack_opt(config, ArchivePackOptions::default())
   }
 
   /// Volumes of this configuration's set the destination already holds.
-  ///
-  /// What [`Self::pack_opt`] refuses over, published so a caller can ask before starting rather than be told once the
-  /// source tree has been walked. Asking twice is not a race worth closing: this is a courtesy for someone about to
-  /// commit to minutes of work, and the refusal inside the run is the guarantee.
   pub fn list_published_volumes(config: &ArchivePackConfig) -> XrfResult<Vec<PathBuf>> {
     Ok(ArchivePublishedSet::read(config)?.get_volumes().to_vec())
   }
 
   /// Pack the configured source, reporting to and stoppable through `options`.
-  ///
-  /// Produces the exact layout the engine mounts: an optional header chunk, one data chunk holding every payload, and
-  /// a descriptor table whose offsets are absolute positions in the volume.
-  ///
-  /// `max_volume_size` is a hard maximum on each finished file. An entry is placed only once its
-  /// stored-or-compressed payload and its descriptor row are known, and a cap that cannot hold some entry in a
-  /// volume of its own is refused rather than exceeded (`ArchiveVolumeLayout` places them).
-  ///
-  /// A destination already holding volumes of this set is refused unless `options` forces it, because publication is
-  /// destructive: volumes are opened at their final names, so a run that fails or is stopped partway cannot give back
-  /// what it overwrote. Refused before the source tree is walked, so the run nobody wanted is also the cheapest one.
-  ///
-  /// Where nothing was refused, nothing is left behind either. Every volume of the set in the destination afterwards
-  /// was written by this run, so a failure or a cancellation removes them and leaves the destination as it was found.
-  /// A forced run is the exception, and the reason [`ArchivePackResult::volumes_opened`] exists: there, what is on
-  /// disk cannot be told apart from what the run replaced, so it is reported rather than deleted.
-  ///
-  /// What the run decides is said as it is decided, through the options' output at verbose level, so a transcript of
-  /// a run that stopped already names the volume being written and the last entry it reached. Saying it changes no
-  /// byte of what is written.
   pub fn pack_opt(config: &ArchivePackConfig, options: ArchivePackOptions) -> XrfResult<ArchivePackResult> {
     config.validate_for_packing()?;
     Self::require_destination_outside_source(config)?;
@@ -64,9 +37,6 @@ impl ArchivePacker {
   }
 
   /// Refuse a destination that is the source or lies inside it.
-  ///
-  /// The walk would read it as source, so a rebuild would pack the previous run's volumes, and read them while this run
-  /// replaces them. A source inside the destination is fine: the volumes land beside it, not in it.
   ///
   /// # Errors
   ///
@@ -86,9 +56,6 @@ impl ArchivePacker {
   }
 
   /// Refuse a destination already holding volumes of this set, unless the run was allowed to replace them.
-  ///
-  /// Answers with what it found, because the same set decides what a failed run may take back: only a destination
-  /// that held nothing of this set to begin with can be restored by deleting.
   ///
   /// # Errors
   ///
@@ -124,9 +91,6 @@ impl ArchivePacker {
   }
 
   /// The run itself, from the source walk to the named set.
-  ///
-  /// Split from [`Self::pack_opt`] so one place decides what a run that did not finish leaves behind, rather than
-  /// every early return deciding it again and one of them forgetting.
   fn pack_into(config: &ArchivePackConfig, options: &ArchivePackOptions) -> XrfResult<ArchivePackResult> {
     let started_at: Instant = Instant::now();
     let job: &JobHandle = &options.job;
@@ -190,15 +154,6 @@ impl ArchivePacker {
   }
 
   /// Write one already-decided name table into the destination's volume set.
-  ///
-  /// The half a pack and a patch share. What differs between them is entirely upstream — one walks a tree and the
-  /// other compares two mounted worlds — and everything from the volume layout to naming a lone volume is the same
-  /// work over the same table, so it lives once. The caller still owns its own counts and measurements, because only
-  /// it knows what its collection phase cost.
-  ///
-  /// A run cancelled mid-write answers with what it had opened, marked [`JobOutcome::Cancelled`], rather than with a
-  /// separate signal: the result already carries an outcome, and a caller that forgot to check it would otherwise
-  /// report a partial set as a finished one.
   ///
   /// # Errors
   ///
@@ -277,9 +232,6 @@ impl ArchivePacker {
   }
 
   /// Take back every volume of the set now in the destination.
-  ///
-  /// Listed again rather than read off the result: a run can fail before it has a result to report, and the volume it
-  /// failed inside is on disk either way. Listing the destination is the one answer that covers both.
   fn remove_written_volumes(config: &ArchivePackConfig) {
     match ArchivePublishedSet::read(config) {
       Ok(written) => written.remove_all(),
@@ -315,10 +267,6 @@ impl ArchivePacker {
   }
 
   /// What a run that stopped has to say for itself.
-  ///
-  /// The counts describe what was reached, never what was asked for: `files_total` is the size of the job, and the
-  /// volume lists are what is actually on disk. Naming the set is intentionally skipped — a single volume keeps its
-  /// index, because renaming it would dress an incomplete set as a finished one.
   fn describe_cancelled(
     mut result: ArchivePackResult,
     source: &ArchivePackSource,
