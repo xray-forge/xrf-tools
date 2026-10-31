@@ -393,28 +393,6 @@ export type EnvironmentCycleEntry = {
   findings: number;
 };
 
-/** What a level map's annotations draw, each kind on its own switch and in its own colour. */
-export enum ELevelAnnotationKind {
-  /** The smart terrains' shapes, named. */
-  SMART_TERRAINS = "smartTerrains",
-  /** The space restrictors' shapes, those keeping the actor in apart from those keeping him out. */
-  RESTRICTORS = "restrictors",
-  /** The anomalous and torrid zones' shapes. */
-  ANOMALIES = "anomalies",
-  /** The level changers' shapes, each with an arrow toward the level it leads to and its name. */
-  LEVEL_CHANGERS = "levelChangers",
-  /** The game graph's vertices on the level, as dots. */
-  GRAPH_POINTS = "graphPoints",
-  /**
-   * The patrol paths starting on the level: their links as lines, their points as dots, named at the first where
-   * every object is named.
-   */
-  PATROLS = "patrols",
-}
-
-/** Every `ELevelAnnotationKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
-export type LevelAnnotationKind = `${ELevelAnnotationKind}`;
-
 /**
  * What a game's console sets of how its levels are lit, exposed and corrected: its installation's `user.ltx` over its
  * shipped defaults (Anomaly's `default_controls.ltx`); each `None` it leaves to the engine.
@@ -952,12 +930,12 @@ export type LevelWeatherTexture = {
 
 /**
  * The annotations asked of a level map: its PNG in the screenshots folder, beside which they are written as an SVG,
- * the ground it covers, what of them is drawn, and whether every volume is named.
+ * the ground it covers, the kinds of level object drawn, and whether every object is named.
  */
 export type MapAnnotationsWriteRequest = {
   path: string;
   area: LevelMapArea;
-  kinds: Array<LevelAnnotationKind>;
+  kinds: Array<LevelObjectKind>;
   isLabelled: boolean;
 };
 

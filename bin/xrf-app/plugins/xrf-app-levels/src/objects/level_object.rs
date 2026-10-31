@@ -4,7 +4,7 @@ use xrf_visual::VisualTransform;
 
 use crate::objects::{
   LevelObjectId, LevelObjectKind, LevelObjectLight, LevelObjectPatrol, LevelObjectPatrolPoint, LevelObjectPlacement,
-  LevelObjectSpawn, LevelObjectVolume,
+  LevelObjectShape, LevelObjectSpawn, LevelObjectVolume,
 };
 
 /// One discrete thing placed in a level: what it is, where it stands, what it belongs to, and what its source records
@@ -49,6 +49,16 @@ impl LevelObject {
       patrol_point: None,
       placement: None,
       light: None,
+    }
+  }
+
+  /// The space it covers, in its own space: a logic volume's shapes, or those of a placement covering one; `None` for
+  /// an object standing at a point or a path, which the helpers and the map draw otherwise.
+  pub fn get_shapes(&self) -> Option<&[LevelObjectShape]> {
+    match (&self.volume, &self.placement) {
+      (Some(volume), _) => Some(&volume.shapes),
+      (None, Some(placement)) if !placement.shapes.is_empty() => Some(&placement.shapes),
+      _ => None,
     }
   }
 

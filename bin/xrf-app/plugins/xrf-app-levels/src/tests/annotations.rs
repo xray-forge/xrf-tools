@@ -11,13 +11,16 @@ use xrf_spawn::{
   GraphLevel, Patrol, PatrolLink, PatrolPoint, Shape, SpawnLevelGraph,
 };
 use xrf_test_utils::GeneratedResources;
+use xrf_visual::VisualTransform;
 
-use crate::objects::{LevelObjectSources, LevelObjectsDescription};
+use crate::objects::{
+  LEVEL_OBJECT_KINDS, LevelObject, LevelObjectId, LevelObjectKind, LevelObjectPlacement, LevelObjectShape,
+  LevelObjectSources, LevelObjectsDescription, LevelPlacementDetails, LevelPlacementFile,
+};
 use crate::parts::{LevelMapArea, LevelSpawn};
 use crate::tests::fixtures;
 use crate::viewer::map::annotations::{
-  AnnotationCanvas, AnnotationOutline, AnnotationVolume, LevelAnnotationKind, LevelAnnotations,
-  MapAnnotationsWriteRequest,
+  AnnotationCanvas, AnnotationMarker, AnnotationOutline, AnnotationVolume, LevelAnnotations, MapAnnotationsWriteRequest,
 };
 
 fn new_restrictor(shape: Vec<Shape>, restrictor_type: u8) -> AlifeObjectSpaceRestrictor {
@@ -102,7 +105,20 @@ fn zaton_area() -> LevelMapArea {
   }
 }
 
-fn zaton_canvas(kinds: Vec<LevelAnnotationKind>, is_labelled: bool) -> AnnotationCanvas {
+fn every_kind() -> Vec<LevelObjectKind> {
+  LEVEL_OBJECT_KINDS.iter().map(|entry| entry.kind).collect()
+}
+
+fn new_marker(kind: LevelObjectKind, name: &str, point: [f32; 2], tag: Option<&str>) -> AnnotationMarker {
+  AnnotationMarker {
+    kind,
+    name: String::from(name),
+    point,
+    tag: tag.map(String::from),
+  }
+}
+
+fn zaton_canvas(kinds: Vec<LevelObjectKind>, is_labelled: bool) -> AnnotationCanvas {
   AnnotationCanvas {
     area: zaton_area(),
     width: 1200,
@@ -116,7 +132,7 @@ fn zaton_request(root: &Path) -> MapAnnotationsWriteRequest {
   MapAnnotationsWriteRequest {
     path: root.join("map.png"),
     area: zaton_area(),
-    kinds: LevelAnnotationKind::ALL.to_vec(),
+    kinds: every_kind(),
     is_labelled: false,
   }
 }
@@ -152,7 +168,7 @@ fn outlines_a_box_from_above_at_its_place() {
 
   // Its eight corners from above are four, the box's footprint about its place.
   assert_eq!(corners, vec![[8, 18], [8, 22], [12, 18], [12, 22]]);
-  assert_eq!(volume.kind, LevelAnnotationKind::Restrictors);
+  assert_eq!(volume.kind, LevelObjectKind::Restrictors);
   assert!(!volume.is_in);
 }
 
@@ -220,9 +236,87 @@ fn points_a_level_changer_toward_its_destination_across_the_world() {
     annotations.volumes[0].destination,
     Some((String::from("pripyat"), Some([0.0, 1.0])))
   );
-  // A link to a point the patrol does not hold is left out.
+  // A link to a point the patrol does not hold is left out, and its points are drawn with it rather than as dots.
   assert_eq!(annotations.patrols[0].links, vec![(0, 1)]);
-  assert_eq!(annotations.graph_points, vec![(321, [5.0, 6.0])]);
+  assert_eq!(
+    annotations.markers,
+    vec![new_marker(
+      LevelObjectKind::GraphPoints,
+      "vertex 321",
+      [5.0, 6.0],
+      Some("321")
+    )]
+  );
+}
+
+#[test]
+fn outlines_a_placement_covering_a_space_and_dots_what_stands_at_a_point() {
+  let at = |x: f32, z: f32| VisualTransform::of_spawn(&Vector3d::new(x, 0.0, z), &Vector3d::new(0.0, 0.0, 0.0));
+  let mut environment: LevelObject = LevelObject::new(
+    LevelObjectId::Placement {
+      file: LevelPlacementFile::SoundEnvironments,
+      index: 0,
+    },
+    LevelObjectKind::SoundEnvironments,
+    String::from("cave"),
+    at(30.0, 40.0),
+  );
+  let mut particles: LevelObject = LevelObject::new(
+    LevelObjectId::Placement {
+      file: LevelPlacementFile::Particles,
+      index: 0,
+    },
+    LevelObjectKind::StaticParticles,
+    String::from("ambient\\fire"),
+    at(-5.0, 7.0),
+  );
+
+  environment.placement = Some(LevelObjectPlacement {
+    shapes: vec![LevelObjectShape::Sphere {
+      center: Vector3d::new(0.0, 0.0, 0.0),
+      radius: 6.0,
+    }],
+    details: LevelPlacementDetails::SoundEnvironment {
+      outer: String::from("outdoor"),
+      inner: String::from("cave"),
+    },
+  });
+  particles.placement = Some(LevelObjectPlacement {
+    shapes: Vec::new(),
+    details: LevelPlacementDetails::Particles {
+      effect: String::from("ambient\\fire"),
+    },
+  });
+
+  let annotations: LevelAnnotations = LevelAnnotations::of(
+    &LevelObjectsDescription {
+      visuals: Vec::new(),
+      objects: vec![environment, particles],
+    },
+    &new_graph(),
+    "zaton",
+  );
+  let [volume] = annotations.volumes.as_slice() else {
+    panic!("one volume expected, not {}", annotations.volumes.len());
+  };
+
+  assert_eq!(volume.kind, LevelObjectKind::SoundEnvironments);
+  assert_eq!(
+    volume.outlines,
+    vec![AnnotationOutline::Circle {
+      center: [30.0, 40.0],
+      radius: 6.0
+    }]
+  );
+  assert_eq!(
+    annotations.markers,
+    vec![new_marker(
+      LevelObjectKind::StaticParticles,
+      "ambient\\fire",
+      [-5.0, 7.0],
+      None
+    )]
+  );
 }
 
 #[test]
@@ -242,7 +336,7 @@ fn refuses_an_area_spanning_no_ground() {
 
 #[test]
 fn lays_the_area_over_the_map_north_up() {
-  let canvas: AnnotationCanvas = zaton_canvas(LevelAnnotationKind::ALL.to_vec(), false);
+  let canvas: AnnotationCanvas = zaton_canvas(every_kind(), false);
 
   assert_eq!(canvas.to_pixel([-600.0, 585.0]), (0.0, 0.0));
   assert_eq!(canvas.to_pixel([600.0, -615.0]), (1200.0, 1200.0));
@@ -254,7 +348,7 @@ fn draws_a_group_a_kind_asked_and_names_only_what_it_names() {
   let annotations: LevelAnnotations = LevelAnnotations {
     volumes: vec![
       AnnotationVolume {
-        kind: LevelAnnotationKind::SmartTerrains,
+        kind: LevelObjectKind::SmartTerrains,
         name: String::from("zat_stalker_base_smart"),
         outlines: vec![AnnotationOutline::Circle {
           center: [0.0, 0.0],
@@ -264,7 +358,7 @@ fn draws_a_group_a_kind_asked_and_names_only_what_it_names() {
         destination: None,
       },
       AnnotationVolume {
-        kind: LevelAnnotationKind::Restrictors,
+        kind: LevelObjectKind::Restrictors,
         name: String::from("zat_<restrictor>"),
         outlines: vec![AnnotationOutline::Circle {
           center: [50.0, 0.0],
@@ -275,23 +369,34 @@ fn draws_a_group_a_kind_asked_and_names_only_what_it_names() {
       },
     ],
     patrols: Vec::new(),
-    graph_points: Vec::new(),
+    markers: vec![new_marker(LevelObjectKind::Stalkers, "zat_guard", [10.0, 0.0], None)],
   };
   let quiet: String = zaton_canvas(
-    vec![LevelAnnotationKind::SmartTerrains, LevelAnnotationKind::Restrictors],
+    vec![
+      LevelObjectKind::SmartTerrains,
+      LevelObjectKind::Restrictors,
+      LevelObjectKind::Stalkers,
+    ],
     false,
   )
   .draw(&annotations);
-  let named: String = zaton_canvas(vec![LevelAnnotationKind::Restrictors], true).draw(&annotations);
+  let named: String =
+    zaton_canvas(vec![LevelObjectKind::Restrictors, LevelObjectKind::Stalkers], true).draw(&annotations);
+  let group = |svg: &str, id: &str| svg.find(&format!(r#"<g id="{id}""#));
 
   assert!(quiet.starts_with(r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200""#));
-  assert!(quiet.contains(r#"<g id="smart-terrains""#) && quiet.contains(r#"<g id="restrictors""#));
-  assert!(!quiet.contains(r#"<g id="patrols""#));
+  assert!(group(&quiet, "smart-terrains").is_some() && group(&quiet, "restrictors").is_some());
+  assert!(group(&quiet, "patrols").is_none());
+  // The dots lowest, the outlines over them and the smart terrains, always named, on top.
+  assert!(group(&quiet, "stalkers") < group(&quiet, "restrictors"));
+  assert!(group(&quiet, "restrictors") < group(&quiet, "smart-terrains"));
+  assert!(quiet.contains(r##"fill="#e040fb""##));
   assert!(quiet.contains(">zat_stalker_base_smart</text>"));
-  assert!(!quiet.contains("zat_&lt;restrictor&gt;"));
-  // A restrictor keeping the actor in is cyan.
-  assert!(quiet.contains("#00bcd4"));
-  assert!(named.contains(">zat_&lt;restrictor&gt;</text>") && !named.contains("smart-terrains"));
+  assert!(!quiet.contains("zat_&lt;restrictor&gt;") && !quiet.contains("zat_guard"));
+  // A restrictor keeping the actor in is a lighter blue.
+  assert!(quiet.contains("#90caf9"));
+  assert!(named.contains(">zat_&lt;restrictor&gt;</text>") && named.contains(">zat_guard</text>"));
+  assert!(!named.contains("smart-terrains"));
 }
 
 #[test]
@@ -354,9 +459,14 @@ fn names_each_graph_point_by_its_game_vertex() {
   let annotations: LevelAnnotations = LevelAnnotations {
     volumes: Vec::new(),
     patrols: Vec::new(),
-    graph_points: vec![(321, [0.0, -15.0])],
+    markers: vec![new_marker(
+      LevelObjectKind::GraphPoints,
+      "vertex 321",
+      [0.0, -15.0],
+      Some("321"),
+    )],
   };
-  let svg: String = zaton_canvas(vec![LevelAnnotationKind::GraphPoints], false).draw(&annotations);
+  let svg: String = zaton_canvas(vec![LevelObjectKind::GraphPoints], false).draw(&annotations);
 
   assert!(svg.contains(r#"<g id="graph-points""#));
   assert!(svg.contains(r#"<circle cx="600.0" cy="600.0""#));

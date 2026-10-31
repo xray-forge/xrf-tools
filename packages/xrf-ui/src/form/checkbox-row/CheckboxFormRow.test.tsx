@@ -54,6 +54,20 @@ describe("CheckboxFormRow", () => {
     expect(onChange).toHaveBeenCalledWith(true);
   });
 
+  it("shows a switch over several of which only some are on as mixed, turning it on when clicked", async () => {
+    const onChange = jest.fn();
+    const { getByRole } = renderWithTheme(
+      <CheckboxFormRow label={"Volumes"} isChecked={false} isIndeterminate onChange={onChange} />
+    );
+    const checkbox = getByRole("checkbox", { name: "Volumes" });
+
+    expect(checkbox).toHaveAttribute("data-indeterminate", "true");
+
+    await userEvent.click(checkbox);
+
+    expect(onChange).toHaveBeenCalledWith(true);
+  });
+
   it("keeps generated associations separate and blocks the disabled input and label", async () => {
     const onChange = jest.fn();
     const { getAllByRole, getByRole, getByText } = renderWithTheme(

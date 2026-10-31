@@ -8,6 +8,7 @@ import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
 import { LevelLoadService } from "@/core/level/services/level-load";
+import { LevelViewService } from "@/core/level/services/level-view";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
 import { CommandReporter } from "@/core/operations/lib/command-reporter";
 import { noop } from "@/lib/callbacks/noop";
@@ -25,6 +26,7 @@ import { copyLevelViewerImage } from "@/tools/level-viewer/lib/files/level-viewe
 import {
   DEFAULT_LEVEL_MAP_ANNOTATIONS,
   ILevelMapAnnotations,
+  toLevelMapAnnotationsOf,
   toMapAnnotationsWriteRequest,
 } from "@/tools/level-viewer/lib/map/level-map-annotations";
 import {
@@ -72,7 +74,10 @@ export class LevelViewerCaptureResultService {
    */
   private annotationsWritten: Promise<unknown> = Promise.resolve();
 
-  public constructor(private readonly loadService: LevelLoadService = inject(LevelLoadService)) {}
+  public constructor(
+    private readonly loadService: LevelLoadService = inject(LevelLoadService),
+    private readonly viewService: LevelViewService = inject(LevelViewService)
+  ) {}
 
   @OnDeactivation()
   public onDeactivation(): void {
@@ -109,13 +114,16 @@ export class LevelViewerCaptureResultService {
     this.showAnnotations(null);
   }
 
-  /** Shows nothing and puts every export and annotation setting back, for a dialog opened afresh. */
+  /**
+   * Shows nothing and puts every export setting back, for a dialog opened afresh, its annotations on the view's helper
+   * choices: the dialog overrides them for its own maps and changes nothing of the view's.
+   */
   @BoundAction()
   public reset(): void {
     this.show(null);
     this.mapExport = DEFAULT_LEVEL_MAP_EXPORT;
     this.cubeExport = DEFAULT_LEVEL_CUBE_EXPORT;
-    this.mapAnnotations = DEFAULT_LEVEL_MAP_ANNOTATIONS;
+    this.mapAnnotations = toLevelMapAnnotationsOf(this.viewService.helpers);
   }
 
   /** Goes back to the parameters from what was captured, which stays in its folder; nothing while it is exported. */

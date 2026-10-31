@@ -8,6 +8,8 @@ export interface ICheckboxFormRowProps extends BaseComponentProps {
   label: string;
   description?: string;
   isChecked: boolean;
+  /** Shows neither checked nor clear, for a switch over several of which only some are on. */
+  isIndeterminate?: boolean;
   isDisabled?: boolean;
   onChange: (isChecked: boolean) => void;
 }
@@ -20,6 +22,7 @@ export function CheckboxFormRow({
   label,
   description,
   isChecked,
+  isIndeterminate = false,
   isDisabled = false,
   onChange,
 }: ICheckboxFormRowProps): ReactElement {
@@ -33,6 +36,7 @@ export function CheckboxFormRow({
           slotProps={{ input: { "aria-labelledby": labelId, "aria-describedby": describedBy } }}
           size={"small"}
           checked={isChecked}
+          indeterminate={isIndeterminate}
           disabled={isDisabled}
           onChange={(_, checked) => onChange(checked)}
         />
