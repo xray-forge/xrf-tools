@@ -42,13 +42,19 @@ the volumes' common parent directory.
 
 ### Names and precedence
 
-Volumes merge in path order. When two volumes contain the same entry name, the later volume wins. A directory named
-`patches` has no special priority here. To apply the archive-directory declaration order from `fsgame.ltx`, open the
-installation through `xrf-vfs`.
+Volumes merge in path order. When two volumes mount the same entry at the same place, the later volume wins. A
+directory named `patches` has no special priority here. To apply the archive-directory declaration order from
+`fsgame.ltx`, open the installation through `xrf-vfs`.
 
-Entry names are decoded from Windows-1251 and kept as authored. Reads by name use an exact lookup: they do not fold
-case, replace separators, or add a volume's unpack root. Use a name from `project.files` when its spelling is unknown;
-use `xrf-vfs` when the input is an engine logical path that needs normalization and resolution.
+The engine registers an entry under its volume's entry point, so two volumes holding `common.ltx` under
+`$fs_root$\gamedata\configs\` and `$fs_root$\gamedata\scripts\` hold two files. An entry's `name` within the project is
+its authored name behind the directories of its volume's entry point that the set's other volumes do not share:
+`configs\common.ltx` and `scripts\common.ltx` there. A set mounted at one directory, as nearly every set is, names each
+entry exactly as authored. `entry.authored_name` keeps the row as the volume records it.
+
+Entry names are decoded from Windows-1251. Reads by name use an exact lookup: they do not fold case, replace
+separators, or add a volume's unpack root. Use a name from `project.files` when its spelling is unknown; use `xrf-vfs`
+when the input is an engine logical path that needs normalization and resolution.
 
 ## Inspect entries and volumes
 
@@ -70,7 +76,8 @@ without one is an empty file. Thus `project.files.len()` counts entries, includi
 `ArchiveDescriptor::output_root_path` comes from the volume metadata's `[header] entry_point`, with the leading alias
 removed (`$fs_root$\gamedata\` becomes `gamedata\`). It is empty for a volume with no metadata chunk, and a metadata
 chunk without an `entry_point` fails the open. It describes an unpack root, not an additional prefix to pass to
-`read_file_bytes`.
+`read_file_bytes`. `ArchiveDescriptor::mount_root` is where the engine registers the volume under `$fs_root$`: the same
+directories, or `gamedata` for a volume without metadata, which `output_root_path` cannot tell from `$fs_root$\`.
 
 ### Understand size totals
 

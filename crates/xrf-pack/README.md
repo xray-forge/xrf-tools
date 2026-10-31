@@ -60,8 +60,9 @@ with `outcome` set to `JobOutcome::Cancelled`, so check the result's `outcome` b
 ### Unpacking and extraction
 
 - `unpack` writes every entry below the destination at its volume's unpack root (`[header] entry_point`, such as
-  `gamedata\`) joined with its name. `extract_directory` writes the entries under one name prefix, matched on whole
-  path components without case, relative to that prefix; nothing under it is a `NotFound` error.
+  `gamedata\`) joined with its authored name. `extract_directory` writes the entries under one prefix of their names
+  within the project, matched on whole path components without case, relative to that prefix; nothing under it is a
+  `NotFound` error.
 - Every entry name is checked before the first write: a name with a `.` or `..` component or a colon fails the run.
 - `unpack` and `extract_directory` follow existing symlinks, junctions, and other reparse points below the destination
   root; `ArchiveExtractOptions::with_link_policy(HostLinkPolicy::Refuse)` (`xrf_utils::HostLinkPolicy`) refuses them

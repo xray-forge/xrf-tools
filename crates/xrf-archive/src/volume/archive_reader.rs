@@ -77,6 +77,7 @@ impl ArchiveReader {
         entries: files.len(),
         modified_at: Self::timestamp_millis(metadata.modified().ok()),
         output_root_path: header.output_root_path,
+        mount_root: header.mount_root,
         path: self.path.clone(),
         size_compressed,
         size_real,
@@ -95,7 +96,7 @@ impl ArchiveReader {
   /// Walks the volume's top-level chunks, keeping the name table and the metadata and skipping the rest.
   fn read_header(&mut self, volume_size: u64) -> XrfResult<ArchiveHeader> {
     let mut files: Option<HashMap<Arc<str>, ArchiveFileDescriptor>> = None;
-    let mut output_root_path: PathBuf = PathBuf::new();
+    let mut root_path: Option<String> = None;
 
     loop {
       let raw_chunk_id: u32 = match self.file.read_u32::<XRayByteOrder>() {
@@ -127,14 +128,16 @@ impl ArchiveReader {
         let chunk: Vec<u8> = self.read_chunk(chunk_size, is_compressed)?;
         let metadata: String = decode_bytes_to_string_without_bom_handling(&chunk, Self::header_encoding())?;
 
-        output_root_path = ArchiveMetadata::find_root_path(&metadata)
-          .ok_or_else(|| {
-            XrfError::new_read_error(format!(
-              "archive {} has a metadata chunk without an [header] entry_point",
-              format_path(&self.path)
-            ))
-          })?
-          .into();
+        root_path = Some(
+          ArchiveMetadata::find_root_path(&metadata)
+            .ok_or_else(|| {
+              XrfError::new_read_error(format!(
+                "archive {} has a metadata chunk without an [header] entry_point",
+                format_path(&self.path)
+              ))
+            })?
+            .to_owned(),
+        );
       } else {
         // A volume may carry chunks this reader has no use for; skipping keeps an unknown one from ending the walk.
         self.file.seek(SeekFrom::Current(i64::from(chunk_size)))?;
@@ -149,7 +152,8 @@ impl ArchiveReader {
     })?;
 
     Ok(ArchiveHeader {
-      output_root_path,
+      mount_root: ArchiveMetadata::to_mount_root(root_path.as_deref()),
+      output_root_path: root_path.map(PathBuf::from).unwrap_or_default(),
       files,
     })
   }

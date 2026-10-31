@@ -73,6 +73,7 @@ mod tests {
       entries,
       modified_at: None,
       output_root_path: PathBuf::from("gamedata/"),
+      mount_root: String::from("gamedata"),
       path: PathBuf::from(format!("C:/game/db/{name}")),
       size_compressed: 0,
       size_real: 0,
@@ -80,15 +81,11 @@ mod tests {
   }
 
   fn descriptor(name: &str, is_directory: bool) -> ArchiveFileDescriptor {
-    ArchiveFileDescriptor {
-      crc: 0,
-      is_directory,
-      name: Arc::from(name),
-      offset: 0,
-      size_compressed: 0,
-      size_real: 0,
-      volume: 0,
-    }
+    let mut descriptor: ArchiveFileDescriptor = ArchiveFileDescriptor::new(0, Arc::from(name), 0, 0, 0);
+
+    descriptor.is_directory = is_directory;
+
+    descriptor
   }
 
   #[test]

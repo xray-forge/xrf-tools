@@ -195,9 +195,10 @@ impl ArchiveUnpacker {
     )
   }
 
-  /// Where one archived entry lands, relative to a destination root.
+  /// Where one archived entry lands, relative to a destination root: its authored name under its own volume's root,
+  /// which already holds the part of the entry point the project's name adds.
   fn build_relative_path(unpack_root: &Path, descriptor: &ArchiveFileDescriptor) -> XrfResult<HostRelativePath> {
-    Ok(to_host_relative(&unpack_root.to_string_lossy())?.join_path(&to_host_relative(&descriptor.name)?))
+    Ok(to_host_relative(&unpack_root.to_string_lossy())?.join_path(&to_host_relative(&descriptor.authored_name)?))
   }
 }
 
