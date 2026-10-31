@@ -10,6 +10,7 @@ use crate::pack::config::ArchivePackConfig;
 use crate::pack::source::{ArchivePackNameTable, ArchivePackPayloads, ArchivePackSource, ArchivePackSourceCollector};
 use crate::pack::volume::{ArchiveDescriptorTable, ArchivePublishedSet, ArchiveVolumeLayout, ArchiveVolumeWriter};
 use crate::pack::{ArchivePackNarrator, ArchivePackOptions, ArchivePackResult};
+use crate::path::is_inside_directory;
 
 /// Writes one volume set from a source tree.
 pub struct ArchivePacker;
@@ -55,10 +56,33 @@ impl ArchivePacker {
   /// byte of what is written.
   pub fn pack_opt(config: &ArchivePackConfig, options: ArchivePackOptions) -> XrfResult<ArchivePackResult> {
     config.validate_for_packing()?;
+    Self::require_destination_outside_source(config)?;
 
     let published: ArchivePublishedSet = Self::guard_destination(config, options.is_forced)?;
 
     Self::settle_publication(config, &published, Self::pack_into(config, &options))
+  }
+
+  /// Refuse a destination that is the source or lies inside it.
+  ///
+  /// The walk would read it as source, so a rebuild would pack the previous run's volumes, and read them while this run
+  /// replaces them. A source inside the destination is fine: the volumes land beside it, not in it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an invalid error naming both paths.
+  fn require_destination_outside_source(config: &ArchivePackConfig) -> XrfResult<()> {
+    if !is_inside_directory(&config.destination, &config.source) {
+      return Ok(());
+    }
+
+    Err(XrfError::new_invalid_error(format!(
+      "Destination '{}' is inside the source '{}'. Volumes written into the tree being packed become part of it, so the \
+       next run would pack this run's own output. Write them beside the source instead, such as a 'db' directory next \
+       to 'gamedata'.",
+      format_path(&config.destination),
+      format_path(&config.source),
+    )))
   }
 
   /// Refuse a destination already holding volumes of this set, unless the run was allowed to replace them.
