@@ -711,9 +711,8 @@ export enum ELevelPlacementDetails {
   /** A planted particle system, by the effect or group it plays. */
   PARTICLES = "particles",
   /**
-   * A static sound (`SStaticSound`): the sound, its volume and frequency, and its windows in milliseconds, each from
-   * and to: the game day's hours it plays in, how long each play lasts and the pause between, none for always, its
-   * whole length and looped forever.
+   * A static sound (`SStaticSound`): the sound, its volume and frequency, and its windows: the game day's hours it
+   * plays in, how long each play lasts and the pause between.
    */
   SOUND = "sound",
   /** A reverb environment's box: the environment outside it and inside it, by name. */
@@ -738,18 +737,17 @@ export type LevelPlacementDetails =
   /** A planted particle system, by the effect or group it plays. */
   | { kind: "particles"; effect: string }
   /**
-   * A static sound (`SStaticSound`): the sound, its volume and frequency, and its windows in milliseconds, each from
-   * and to: the game day's hours it plays in, how long each play lasts and the pause between, none for always, its
-   * whole length and looped forever.
+   * A static sound (`SStaticSound`): the sound, its volume and frequency, and its windows: the game day's hours it
+   * plays in, how long each play lasts and the pause between.
    */
   | {
       kind: "sound";
       sound: string;
       volume: number | null;
       frequency: number | null;
-      active: [number, number];
-      play: [number, number];
-      pause: [number, number];
+      active: LevelSoundWindow;
+      play: LevelSoundWindow;
+      pause: LevelSoundWindow;
     }
   /** A reverb environment's box: the environment outside it and inside it, by name. */
   | { kind: "soundEnvironment"; outer: string; inner: string }
@@ -811,6 +809,15 @@ export enum ELevelRestriction {
 
 /** Every `ELevelRestriction` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type LevelRestriction = `${ELevelRestriction}`;
+
+/**
+ * One of a static sound's windows, in milliseconds, as `SStaticSound` compares a clock against it: from and to, both
+ * nought for the sound's own default (all day, its whole length, looped without a pause).
+ */
+export type LevelSoundWindow = {
+  from: number;
+  to: number;
+};
 
 /** Every `kind` the `LevelSource` union is told apart by, so a switch or a comparison names one. */
 export enum ELevelSource {

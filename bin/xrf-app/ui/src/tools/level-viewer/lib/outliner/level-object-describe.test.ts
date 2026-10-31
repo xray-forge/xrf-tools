@@ -13,11 +13,13 @@ import {
 describe("describeLevelSoundWindow", () => {
   // `SStaticSound` reads a window of noughts as the sound's own default rather than as nothing.
   it("says a window of noughts as its default, an active one as the game day's hours and others in seconds", () => {
-    expect(describeLevelSoundWindow([0, 0], "active")).toBe("All day");
-    expect(describeLevelSoundWindow([0, 0], "play")).toBe("The whole sound");
-    expect(describeLevelSoundWindow([0, 0], "pause")).toBe("Looped without a pause");
-    expect(describeLevelSoundWindow([6 * 3_600_000, 21 * 3_600_000 + 30 * 60_000], "active")).toBe("06:00 to 21:30");
-    expect(describeLevelSoundWindow([1500, 4000], "pause")).toBe("1.5 s to 4 s");
+    expect(describeLevelSoundWindow({ from: 0, to: 0 }, "active")).toBe("All day");
+    expect(describeLevelSoundWindow({ from: 0, to: 0 }, "play")).toBe("The whole sound");
+    expect(describeLevelSoundWindow({ from: 0, to: 0 }, "pause")).toBe("Looped without a pause");
+    expect(describeLevelSoundWindow({ from: 6 * 3_600_000, to: 21 * 3_600_000 + 30 * 60_000 }, "active")).toBe(
+      "06:00 to 21:30"
+    );
+    expect(describeLevelSoundWindow({ from: 1500, to: 4000 }, "pause")).toBe("1.5 s to 4 s");
   });
 });
 

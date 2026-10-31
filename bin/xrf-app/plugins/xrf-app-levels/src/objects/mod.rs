@@ -22,5 +22,5 @@ pub use level_object_sources::LevelObjectSources;
 pub use level_object_spawn::LevelObjectSpawn;
 pub use level_objects_description::LevelObjectsDescription;
 pub use path::{LevelObjectPatrol, LevelObjectPatrolPoint, LevelPatrolLink};
-pub use placement::{LevelObjectPlacement, LevelPlacementDetails, LevelPlacementFile};
+pub use placement::{LevelObjectPlacement, LevelPlacementDetails, LevelPlacementFile, LevelSoundWindow};
 pub use volume::{LevelObjectShape, LevelObjectVolume, LevelRestriction};

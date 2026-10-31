@@ -1,5 +1,7 @@
 use serde::Serialize;
 
+use crate::objects::LevelSoundWindow;
+
 /// What a placement's file records of it beyond where it stands and the shapes it covers.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -7,16 +9,15 @@ use serde::Serialize;
 pub enum LevelPlacementDetails {
   /// A planted particle system, by the effect or group it plays.
   Particles { effect: String },
-  /// A static sound (`SStaticSound`): the sound, its volume and frequency, and its windows in milliseconds, each from
-  /// and to: the game day's hours it plays in, how long each play lasts and the pause between, none for always, its
-  /// whole length and looped forever.
+  /// A static sound (`SStaticSound`): the sound, its volume and frequency, and its windows: the game day's hours it
+  /// plays in, how long each play lasts and the pause between.
   Sound {
     sound: String,
     volume: f32,
     frequency: f32,
-    active: [u32; 2],
-    play: [u32; 2],
-    pause: [u32; 2],
+    active: LevelSoundWindow,
+    play: LevelSoundWindow,
+    pause: LevelSoundWindow,
   },
   /// A reverb environment's box: the environment outside it and inside it, by name.
   SoundEnvironment { outer: String, inner: String },
