@@ -7,7 +7,6 @@ use crate::contract::render_light_scales::RenderLightScales;
 use crate::contract::render_sun_shafts::RenderSunShafts;
 use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::luminance::luminance;
-use crate::lighting::render_ambients::RenderAmbients;
 use crate::lighting::render_clouds::RenderClouds;
 use crate::lighting::render_fog::RenderFog;
 use crate::lighting::render_rainfall::RenderRainfall;
@@ -54,8 +53,6 @@ pub struct RenderLighting {
   pub engine: XrayEngine,
   /// The bolt striking this frame, or none.
   pub thunderbolt: Option<RenderThunderboltStrike>,
-  /// What the weather's ambient effects play from.
-  pub ambients: RenderAmbients,
   /// Seconds since midnight the weather stands at, which the physical light levels read the sun's height by.
   pub time_of_day: f32,
 }
@@ -163,7 +160,6 @@ impl Default for RenderLighting {
       wind: RenderWind::default(),
       engine: XrayEngine::Vanilla,
       thunderbolt: None,
-      ambients: RenderAmbients::default(),
       time_of_day: 12.0 * 3600.0,
     }
   }

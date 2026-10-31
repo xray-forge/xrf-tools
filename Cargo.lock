@@ -7829,6 +7829,7 @@ dependencies = [
  "xrf-utils",
  "xrf-vfs",
  "xrf-visual",
+ "xrf-world",
 ]
 
 [[package]]
@@ -7872,6 +7873,7 @@ dependencies = [
  "xrf-test-utils",
  "xrf-vfs",
  "xrf-visual",
+ "xrf-world",
 ]
 
 [[package]]
@@ -8458,12 +8460,10 @@ dependencies = [
  "specta",
  "wgpu",
  "windows",
- "xrf-anm",
  "xrf-dds",
  "xrf-dlss",
  "xrf-engine-target",
  "xrf-env-flags",
- "xrf-environment",
  "xrf-error",
  "xrf-ipc",
  "xrf-light-anim",

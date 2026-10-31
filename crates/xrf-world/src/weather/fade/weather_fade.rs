@@ -51,7 +51,6 @@ impl WeatherFade {
       },
       engine: to.engine,
       thunderbolt: to.thunderbolt.clone(),
-      ambients: to.ambients.clone(),
       // Both lightings stand at the same moment; a fade changes the weather, not the clock.
       time_of_day: to.time_of_day,
     }

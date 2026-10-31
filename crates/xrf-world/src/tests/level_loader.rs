@@ -5,8 +5,9 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
-use xrf_renderer::{RenderLevelSource, RenderWorkers};
+use xrf_renderer::RenderWorkers;
 
+use crate::host::world_level_source::WorldLevelSource;
 use crate::level::loading::level_loader::LevelLoader;
 use crate::level::loading::sector_load::SectorLoad;
 use crate::tests::fixtures::TestLevelSource;
@@ -17,11 +18,11 @@ const WAIT: Duration = Duration::from_secs(10);
 
 /// A level of `sectors` sectors, each packing into nothing once `gate` lets it (at once where none is given), counting
 /// how many were packed.
-fn counted_source(sectors: u32, gate: Option<Receiver<()>>) -> (Arc<dyn RenderLevelSource>, Arc<AtomicU32>) {
+fn counted_source(sectors: u32, gate: Option<Receiver<()>>) -> (Arc<dyn WorldLevelSource>, Arc<AtomicU32>) {
   let packed: Arc<AtomicU32> = Arc::new(AtomicU32::new(0));
   let counter: Arc<AtomicU32> = Arc::clone(&packed);
   let gate: Mutex<Option<Receiver<()>>> = Mutex::new(gate);
-  let source: Arc<dyn RenderLevelSource> = Arc::new(TestLevelSource {
+  let source: Arc<dyn WorldLevelSource> = Arc::new(TestLevelSource {
     sectors,
     pack: Box::new(move |_| {
       if let Some(gate) = gate.lock().unwrap_or_else(PoisonError::into_inner).as_ref() {

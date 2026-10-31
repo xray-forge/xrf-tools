@@ -19,10 +19,11 @@ use crate::contract::world_toggles::WorldToggles;
 use crate::contract::world_weather_control::WorldWeatherControl;
 use crate::contract::world_weather_play::WorldWeatherPlay;
 use crate::contract::world_weather_transition::WorldWeatherTransition;
+use crate::host::world_event_sink::WorldEventSink;
+use crate::host::world_level_source::WorldLevelSource;
 use crate::level::effects::effects_frame::EffectsFrame;
 use crate::level::world_level::WorldLevel;
 use crate::weather::viewport_weather::ViewportWeather;
-use crate::world_event_sink::WorldEventSink;
 use crate::world_scene::WorldScene;
 use crate::world_viewport::WorldViewport;
 
@@ -100,7 +101,7 @@ impl World {
   pub fn show_level(
     &mut self,
     viewport: RenderViewportId,
-    source: Option<Arc<dyn RenderLevelSource>>,
+    source: Option<Arc<dyn WorldLevelSource>>,
   ) -> Option<RenderSceneId> {
     // A viewport detached since shows nothing, rather than starting a scene nothing would let go.
     if !self.viewports.contains_key(&viewport) {
@@ -110,7 +111,7 @@ impl World {
     self.leave_scene(viewport);
     self.get_viewport(viewport).weather.show(source.clone());
 
-    let source: Arc<dyn RenderLevelSource> = source?;
+    let source: Arc<dyn WorldLevelSource> = source?;
     let key: Option<String> = source.get_scene_key();
     let id: RenderSceneId = match key.as_deref().and_then(|key| self.find_scene(key)) {
       Some(id) => id,
@@ -146,7 +147,7 @@ impl World {
   pub fn reload_scene(
     &mut self,
     key: &str,
-    source: Arc<dyn RenderLevelSource>,
+    source: Arc<dyn WorldLevelSource>,
     reload: WorldLevelReload,
   ) -> Option<RenderSceneId> {
     let id: RenderSceneId = self.find_scene(key)?;
@@ -166,7 +167,7 @@ impl World {
   /// Streams the scene sources share by `key` afresh from `source`, a level read again whole, as a scene of its own:
   /// every viewport showing the one before shows it, its weather read again, and the one before goes. Answers the new
   /// scene, none where no scene has the key.
-  pub fn reopen_scene(&mut self, key: &str, source: Arc<dyn RenderLevelSource>) -> Option<RenderSceneId> {
+  pub fn reopen_scene(&mut self, key: &str, source: Arc<dyn WorldLevelSource>) -> Option<RenderSceneId> {
     let before: RenderSceneId = self.find_scene(key)?;
     let WorldScene { key, viewers, .. } = self.scenes.remove(&before)?;
     let id: RenderSceneId = self.take_scene_id();
@@ -359,7 +360,7 @@ impl RenderWorld for World {
       frames.insert(
         *id,
         RenderSceneFrame {
-          source: Arc::clone(scene.level.get_source()),
+          source: Arc::clone(scene.level.get_source()) as Arc<dyn RenderLevelSource>,
           driver,
           updates,
           streaming: scene.level.get_progress(),
@@ -377,7 +378,7 @@ impl RenderWorld for World {
 
   fn restart_scenes(&mut self) {
     for scene in self.scenes.values_mut() {
-      let source: Arc<dyn RenderLevelSource> = Arc::clone(scene.level.get_source());
+      let source: Arc<dyn WorldLevelSource> = Arc::clone(scene.level.get_source());
 
       scene.level = WorldLevel::start(source, &self.workers);
       scene.follow_driver(&self.viewports);

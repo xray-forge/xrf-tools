@@ -6,13 +6,14 @@ use glam::Vec3;
 use xrf_environment::{WeatherDescriptor, WeatherMix, WeatherMixPoint, WeatherMixer, WeatherSunSource};
 use xrf_material::XraySurfaceDraw;
 use xrf_renderer::{
-  RenderLevelWeather, RenderLighting, RenderThunder, RenderThunderSettings, RenderThunderbolt,
-  RenderThunderboltGradient, WeatherTextureKind,
+  RenderLighting, RenderThunder, RenderThunderSettings, RenderThunderbolt, RenderThunderboltGradient,
+  WeatherTextureKind,
 };
 use xrf_visual::{LightAnimatorDescription, LightAnimatorKey};
 
 use crate::contract::world_weather_control::WorldWeatherControl;
 use crate::contract::world_weather_transition::WorldWeatherTransition;
+use crate::host::world_level_weather::WorldLevelWeather;
 use crate::weather::fade::weather_fade::WeatherFade;
 use crate::weather::played_weather::PlayedWeather;
 use crate::weather::thunder::weather_thunder::WeatherThunder;
@@ -72,7 +73,7 @@ fn keyframe(time: u32, sun: f32) -> WeatherDescriptor {
 fn afternoon() -> PlayedWeather {
   PlayedWeather::cycle(
     vec![keyframe(NOON, 0.5), keyframe(NOON + 7200, 1.0)],
-    Arc::new(RenderLevelWeather::default()),
+    Arc::new(WorldLevelWeather::default()),
   )
 }
 
@@ -128,7 +129,7 @@ fn fades_into_another_weather_once_its_skies_are_up() {
 
   let bright: PlayedWeather = PlayedWeather::cycle(
     vec![keyframe(0, 1.5), keyframe(NOON, 1.5)],
-    Arc::new(RenderLevelWeather::default()),
+    Arc::new(WorldLevelWeather::default()),
   );
 
   player.take(Some(bright), WorldWeatherTransition::Fade);
@@ -157,7 +158,7 @@ fn fades_into_another_weather_once_its_skies_are_up() {
 fn lays_an_effect_over_the_cycle_and_gives_the_cycle_back() {
   let start: Instant = Instant::now();
   let effect: Vec<WeatherDescriptor> = vec![keyframe(0, 2.0), keyframe(60, 2.0)];
-  let level: RenderLevelWeather = RenderLevelWeather {
+  let level: WorldLevelWeather = WorldLevelWeather {
     effects: HashMap::from([("fx".to_owned(), effect)]),
     ..Default::default()
   };
@@ -200,7 +201,7 @@ fn stands_a_keyframe_set_by_hand_by_its_own_angles() {
     is_dynamic_sun: true,
     ..Default::default()
   };
-  let manual: PlayedWeather = PlayedWeather::keyframe(keyframe(NOON, 1.0), Arc::new(RenderLevelWeather::default()));
+  let manual: PlayedWeather = PlayedWeather::keyframe(keyframe(NOON, 1.0), Arc::new(WorldLevelWeather::default()));
 
   assert_eq!(manual.get_sun(&control), WeatherSunSource::Authored);
   assert_eq!(afternoon().get_sun(&control), WeatherSunSource::Dynamic);

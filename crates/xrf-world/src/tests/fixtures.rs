@@ -7,13 +7,14 @@ use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer::{
-  RenderAssetSource, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather,
-  RenderSpawnModels,
+  RenderAssetSource, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn, RenderSpawnModels,
 };
 use xrf_visual::{LightsDescription, SectorPackage};
 
 use crate::contract::world_viewport_event::WorldViewportEvent;
-use crate::world_event_sink::WorldEventSink;
+use crate::host::world_event_sink::WorldEventSink;
+use crate::host::world_level_source::WorldLevelSource;
+use crate::host::world_level_weather::WorldLevelWeather;
 
 /// How a test level packs a sector.
 pub type TestSectorPack = Box<dyn Fn(u32) -> XrfResult<SectorPackage> + Send + Sync>;
@@ -79,6 +80,12 @@ impl RenderLevelSource for TestLevelSource {
     self.sectors
   }
 
+  fn get_surfaces(&self) -> &[XraySurfaceDescriptor] {
+    &[]
+  }
+}
+
+impl WorldLevelSource for TestLevelSource {
   fn get_scene_key(&self) -> Option<String> {
     self.key.clone()
   }
@@ -87,17 +94,13 @@ impl RenderLevelSource for TestLevelSource {
     (self.pack)(sector)
   }
 
-  fn get_surfaces(&self) -> &[XraySurfaceDescriptor] {
-    &[]
-  }
-
   fn read_lights(&self) -> XrfResult<LightsDescription> {
     self.reads.lights.fetch_add(1, Ordering::SeqCst);
 
     Err(Self::none())
   }
 
-  fn read_weather(&self) -> XrfResult<RenderLevelWeather> {
+  fn read_weather(&self) -> XrfResult<WorldLevelWeather> {
     self.reads.weather.fetch_add(1, Ordering::SeqCst);
 
     Err(Self::none())

@@ -2,10 +2,10 @@
 
 pub(crate) mod camera;
 pub(crate) mod contract;
+pub(crate) mod host;
 pub(crate) mod level;
 pub(crate) mod weather;
 pub(crate) mod world;
-pub(crate) mod world_event_sink;
 pub(crate) mod world_scene;
 pub(crate) mod world_viewport;
 
@@ -33,5 +33,10 @@ pub use crate::contract::world_weather_effect_report::WorldWeatherEffectReport;
 pub use crate::contract::world_weather_play::WorldWeatherPlay;
 pub use crate::contract::world_weather_report::WorldWeatherReport;
 pub use crate::contract::world_weather_transition::WorldWeatherTransition;
+pub use crate::host::world_ambient::WorldAmbient;
+pub use crate::host::world_ambient_effect::WorldAmbientEffect;
+pub use crate::host::world_event_sink::WorldEventSink;
+pub use crate::host::world_level_source::WorldLevelSource;
+pub use crate::host::world_level_weather::WorldLevelWeather;
+pub use crate::host::world_wind_blast::WorldWindBlast;
 pub use crate::world::World;
-pub use crate::world_event_sink::WorldEventSink;

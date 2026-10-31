@@ -15,10 +15,10 @@ use xrf_app_render::WorldState;
 use xrf_dltx::DltxDialect;
 use xrf_engine_target::{XrayEngine, XrayEngineResolution};
 use xrf_level::{LevelGeomFile, LevelHeaderChunk, LevelShadersChunk, LevelVisualsChunk};
-use xrf_renderer::{RenderLevelSource, RenderSceneId, RenderViewportId, RenderWorkers, RenderWorld};
+use xrf_renderer::{RenderSceneId, RenderViewportId, RenderWorkers, RenderWorld};
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
-use xrf_world::{WorldEventSink, WorldViewportEvent};
+use xrf_world::{WorldEventSink, WorldLevelSource, WorldViewportEvent};
 
 use crate::level::{LevelSource, OpenedLevel, SelectedLevel, SelectedLevels};
 use crate::parts::{
@@ -224,7 +224,7 @@ fn a_commit_to_a_file_the_level_was_read_from_reads_it_again_and_streams_its_sce
 
     world.attach(viewport, Box::new(Silence));
     world
-      .show_level(viewport, Some(source as Arc<dyn RenderLevelSource>))
+      .show_level(viewport, Some(source as Arc<dyn WorldLevelSource>))
       .expect("the level shown")
   };
 
@@ -289,7 +289,7 @@ fn a_commit_to_a_texture_of_a_shown_level_moves_its_scene_onto_the_next_snapshot
 
     world.attach(viewport, Box::new(Silence));
     world
-      .show_level(viewport, Some(Arc::clone(&source) as Arc<dyn RenderLevelSource>))
+      .show_level(viewport, Some(Arc::clone(&source) as Arc<dyn WorldLevelSource>))
       .expect("the level shown")
   };
 
@@ -340,7 +340,7 @@ fn a_shown_level_that_fails_to_read_again_stays_drawn_as_it_was() {
 
     world.attach(viewport, Box::new(Silence));
     world
-      .show_level(viewport, Some(Arc::clone(&source) as Arc<dyn RenderLevelSource>))
+      .show_level(viewport, Some(Arc::clone(&source) as Arc<dyn WorldLevelSource>))
       .expect("the level shown")
   };
 
@@ -382,7 +382,7 @@ fn a_show_holding_a_snapshot_a_commit_moved_past_draws_the_source_the_commit_mov
 
     world.attach(viewport, Box::new(Silence));
     world
-      .show_level(viewport, Some(Arc::clone(&source) as Arc<dyn RenderLevelSource>))
+      .show_level(viewport, Some(Arc::clone(&source) as Arc<dyn WorldLevelSource>))
       .expect("the level shown");
   }
 

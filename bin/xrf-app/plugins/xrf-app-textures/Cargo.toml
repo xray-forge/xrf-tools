@@ -32,6 +32,7 @@ xrf-thm = { workspace = true }
 xrf-utils = { workspace = true }
 xrf-vfs = { workspace = true }
 xrf-visual = { workspace = true }
+xrf-world = { workspace = true }
 
 [dev-dependencies]
 # The mock runtime, which dispatches a command the way a webview would without one.
@@ -55,6 +56,7 @@ typescript-bindings = [
   "xrf-texture/typescript-bindings",
   "xrf-vfs/typescript-bindings",
   "xrf-visual/typescript-bindings",
+  "xrf-world/typescript-bindings",
 ]
 
 [lints]

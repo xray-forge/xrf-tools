@@ -7,13 +7,14 @@ use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_renderer::{
-  RenderAssetSource, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather,
+  RenderAssetSource, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
   RenderModelSkeleton, RenderMotion, RenderSpawnCategory, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
   RenderSpawnObject,
 };
 use xrf_visual::{
   LightsDescription, SectorPackage, VisualDescription, VisualMotionPose, VisualPackage, VisualPoser, VisualTransform,
 };
+use xrf_world::{WorldLevelSource, WorldLevelWeather};
 
 use crate::{SelectedVisual, VisualPoses};
 
@@ -124,20 +125,22 @@ impl RenderLevelSource for VisualRenderSource {
     0
   }
 
-  fn pack_sector(&self, sector: u32) -> XrfResult<SectorPackage> {
-    Err(XrfError::new_not_found_error(format!("A model has no sector {sector}")))
-  }
-
   fn get_surfaces(&self) -> &[XraySurfaceDescriptor] {
     &[]
+  }
+}
+
+impl WorldLevelSource for VisualRenderSource {
+  fn pack_sector(&self, sector: u32) -> XrfResult<SectorPackage> {
+    Err(XrfError::new_not_found_error(format!("A model has no sector {sector}")))
   }
 
   fn read_lights(&self) -> XrfResult<LightsDescription> {
     Ok(LightsDescription::default())
   }
 
-  fn read_weather(&self) -> XrfResult<RenderLevelWeather> {
-    Ok(RenderLevelWeather::default())
+  fn read_weather(&self) -> XrfResult<WorldLevelWeather> {
+    Ok(WorldLevelWeather::default())
   }
 
   fn read_weather_cycle(&self, name: &str) -> XrfResult<Vec<WeatherDescriptor>> {

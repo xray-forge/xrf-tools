@@ -5,8 +5,8 @@ use std::time::{Duration, Instant};
 use glam::{Mat4, Vec3};
 use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationShape};
 use xrf_anm::AnmFile;
-use xrf_renderer::RenderLevelSource;
 
+use crate::host::world_level_source::WorldLevelSource;
 use crate::level::effects::level_object_motions::LevelObjectMotions;
 use crate::tests::fixtures::TestLevelSource;
 use crate::tests::test_workers::create_workers;
@@ -48,7 +48,7 @@ fn create_line_motion() -> AnmFile {
 }
 
 /// A level with nothing but `line.anm`.
-fn create_source() -> Arc<dyn RenderLevelSource> {
+fn create_source() -> Arc<dyn WorldLevelSource> {
   Arc::new(TestLevelSource {
     motions: HashMap::from([(String::from("line.anm"), create_line_motion())]),
     ..TestLevelSource::default()
@@ -75,7 +75,7 @@ fn read(motions: &mut LevelObjectMotions, name: &str) -> Option<(Mat4, Vec3)> {
 // At 1.5 s the object stands 4.5 m along x, and since the frame at 1 s it moved 1.5 m in half a second.
 #[test]
 fn moves_an_object_along_its_motion_with_its_velocity() {
-  let source: Arc<dyn RenderLevelSource> = create_source();
+  let source: Arc<dyn WorldLevelSource> = create_source();
   let mut motions: LevelObjectMotions = LevelObjectMotions::new(&source, &create_workers());
 
   motions.prepare(Duration::from_millis(1000));
@@ -90,7 +90,7 @@ fn moves_an_object_along_its_motion_with_its_velocity() {
 // From 1.9 s to 2.1 s the two-second motion wraps: it still moves at its 3 m a second, not back across the seam.
 #[test]
 fn keeps_an_object_s_velocity_across_its_loop_s_seam() {
-  let source: Arc<dyn RenderLevelSource> = create_source();
+  let source: Arc<dyn WorldLevelSource> = create_source();
   let mut motions: LevelObjectMotions = LevelObjectMotions::new(&source, &create_workers());
 
   motions.prepare(Duration::from_millis(1900));
@@ -102,7 +102,7 @@ fn keeps_an_object_s_velocity_across_its_loop_s_seam() {
 }
 
 /// A next source of the same level, whose `line.anm` stands its object still at the start of its line.
-fn create_still_source() -> Arc<dyn RenderLevelSource> {
+fn create_still_source() -> Arc<dyn WorldLevelSource> {
   let mut still: AnmFile = create_line_motion();
 
   still.channels[0].keys.truncate(1);
@@ -115,7 +115,7 @@ fn create_still_source() -> Arc<dyn RenderLevelSource> {
 
 #[test]
 fn reads_its_motions_again_from_a_next_source_only_when_told() {
-  let source: Arc<dyn RenderLevelSource> = create_source();
+  let source: Arc<dyn WorldLevelSource> = create_source();
   let mut motions: LevelObjectMotions = LevelObjectMotions::new(&source, &create_workers());
 
   motions.prepare(Duration::from_millis(1000));
@@ -136,7 +136,7 @@ fn reads_its_motions_again_from_a_next_source_only_when_told() {
 
 #[test]
 fn leaves_an_object_standing_without_its_motion() {
-  let source: Arc<dyn RenderLevelSource> = create_source();
+  let source: Arc<dyn WorldLevelSource> = create_source();
   let mut motions: LevelObjectMotions = LevelObjectMotions::new(&source, &create_workers());
 
   motions.prepare(Duration::from_millis(1000));

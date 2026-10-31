@@ -4,9 +4,10 @@ use std::time::Duration;
 use glam::{Mat4, Vec3};
 use xrf_animation_envelope::AnimationPlayback;
 use xrf_anm::AnmFile;
-use xrf_renderer::{RenderLevelSource, RenderWorkers};
+use xrf_renderer::RenderWorkers;
 use xrf_visual::VisualTransform;
 
+use crate::host::world_level_source::WorldLevelSource;
 use crate::level::loading::loader_slot::LoaderSlot;
 use crate::level::loading::loader_slots::LoaderSlots;
 
@@ -14,7 +15,7 @@ use crate::level::loading::loader_slots::LoaderSlots;
 /// carries asks, and played looping from when the level began opening (`CObjectAnimator::Play(true)` at spawn), one
 /// clock for every zone, so a zone's idle effect and its idle light move together.
 pub struct LevelObjectMotions {
-  source: Arc<dyn RenderLevelSource>,
+  source: Arc<dyn WorldLevelSource>,
   workers: RenderWorkers,
   motions: LoaderSlots<AnmFile>,
   /// The level's clock at this frame and at the one before.
@@ -23,7 +24,7 @@ pub struct LevelObjectMotions {
 }
 
 impl LevelObjectMotions {
-  pub fn new(source: &Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
+  pub fn new(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     Self {
       source: Arc::clone(source),
       workers: workers.clone(),
@@ -35,7 +36,7 @@ impl LevelObjectMotions {
 
   /// Reads from `source`, a next source of the same level, from now on: where `is_reread`, every motion read before is
   /// let go and read again from it the next time something asks, else each stays as it was read.
-  pub fn follow(&mut self, source: &Arc<dyn RenderLevelSource>, is_reread: bool) {
+  pub fn follow(&mut self, source: &Arc<dyn WorldLevelSource>, is_reread: bool) {
     self.source = Arc::clone(source);
 
     if is_reread {

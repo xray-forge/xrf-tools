@@ -1,13 +1,13 @@
-//! A level's ambients and their effects, as the renderer takes them.
+//! A level's ambients and their effects, as the world takes them.
 
 use std::time::Duration;
 
 use xrf_environment::{
   Ambient, AmbientEffect, AmbientEffectKey, AmbientKey, EnvironmentCatalog, EnvironmentValue, LevelAmbients,
 };
-use xrf_renderer::{RenderAmbient, RenderAmbientEffect, RenderWindBlast};
+use xrf_world::{WorldAmbient, WorldAmbientEffect, WorldWindBlast};
 
-use crate::render::LevelRenderAmbients;
+use crate::render::LevelWorldAmbients;
 use crate::tests::fixtures;
 
 fn new_ambient(name: &str, effects: &[&str], period: [f32; 2]) -> Ambient {
@@ -82,14 +82,15 @@ fn takes_a_levels_own_ambient_over_the_shared_one() {
   let catalog: EnvironmentCatalog = new_catalog();
 
   assert_eq!(
-    LevelRenderAmbients::to_render(&catalog, "zaton").get("day"),
-    Some(&RenderAmbient {
+    LevelWorldAmbients::to_world(&catalog, "zaton").get("day"),
+    Some(&WorldAmbient {
       effects: vec![String::from("fog")],
-      period: (Duration::from_secs(5), Duration::from_secs(6)),
+      least_period: Duration::from_secs(5),
+      most_period: Duration::from_secs(6),
     })
   );
   assert_eq!(
-    LevelRenderAmbients::to_render(&catalog, "jupiter")
+    LevelWorldAmbients::to_world(&catalog, "jupiter")
       .get("day")
       .map(|it| it.effects.len()),
     Some(2)
@@ -99,20 +100,20 @@ fn takes_a_levels_own_ambient_over_the_shared_one() {
 // `iFloor(life_time * 1000)`: the life in whole milliseconds; a blast only where its strength is written.
 #[test]
 fn reads_an_effects_life_and_wind_as_the_engine_does() {
-  let effects = LevelRenderAmbients::to_render_effects(&new_catalog());
+  let effects = LevelWorldAmbients::to_world_effects(&new_catalog());
 
   assert_eq!(
     effects.get("fog"),
-    Some(&RenderAmbientEffect {
+    Some(&WorldAmbientEffect {
       particles: String::from("nature\\fog_stormy"),
       life_time: Duration::from_millis(10_000),
       offset: [0.0, 0.0, 10.0],
       wind_gust_factor: 0.015,
-      wind_blast: RenderWindBlast::default(),
+      wind_blast: WorldWindBlast::default(),
     })
   );
 
-  let blast: RenderWindBlast = effects.get("blast").map(|it| it.wind_blast).unwrap_or_default();
+  let blast: WorldWindBlast = effects.get("blast").map(|it| it.wind_blast).unwrap_or_default();
 
   assert_eq!(blast.strength, 2.0);
   assert!((blast.longitude - std::f32::consts::FRAC_PI_2).abs() < 1e-6);
@@ -134,7 +135,7 @@ fn reads_an_unbounded_wind_blast_ramp_as_an_hour() {
     ],
   ));
 
-  let blast: RenderWindBlast = LevelRenderAmbients::to_render_effects(&catalog)
+  let blast: WorldWindBlast = LevelWorldAmbients::to_world_effects(&catalog)
     .get("endless")
     .map(|it| it.wind_blast)
     .unwrap_or_default();
@@ -145,7 +146,7 @@ fn reads_an_unbounded_wind_blast_ramp_as_an_hour() {
 
 #[test]
 fn lists_every_effects_particles() {
-  let mut particles: Vec<String> = LevelRenderAmbients::list_particles(&new_catalog());
+  let mut particles: Vec<String> = LevelWorldAmbients::list_particles(&new_catalog());
 
   particles.sort();
 

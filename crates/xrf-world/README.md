@@ -23,8 +23,11 @@ it holds is keyed by `RenderViewportId`:
 
 ## Levels and scenes
 
-`show_level(viewport, source)` shows a level, a `RenderLevelSource`, in a viewport and plays its weather there, or shows
-nothing with `None`. It answers the `RenderSceneId` that load reports name:
+`show_level(viewport, source)` shows a level, a `WorldLevelSource`, in a viewport and plays its weather there, or shows
+nothing with `None`. The app implements the trait: it extends the renderer's `RenderLevelSource` with every read the
+world makes (sectors packed, lights, spawn and its models, grass, particles, motions, and the level's weather, a
+`WorldLevelWeather` whose `render` part the renderer draws with), each called from loader threads, several side by
+side. It answers the `RenderSceneId` that load reports name:
 
 - Viewports whose sources answer the same `get_scene_key` share one scene, streamed, posed and played once for all of
   them. The first viewport showing it drives it: the scene streams around that viewport's camera and stands its skinned
@@ -49,10 +52,12 @@ attached rests. The world allocates the handles of the items it posts with `xrf-
 the renderer inserts each at the handle the world already holds. When the renderer lets go of its GPU,
 `restart_scenes` streams every scene in again from the start.
 
-The contract types (`World*`) cross IPC to the page; the `typescript-bindings` feature derives their Specta types for
-the generated mirrors.
+The contract types (`World*` under `src/contract/`) cross IPC to the page; the `typescript-bindings` feature derives
+their Specta types for the generated mirrors. What the host provides (`src/host/`: the level source, its weather and
+ambients, the event sink) stays in the process.
 
 ## Checks
 
-Run `cargo test --locked -p xrf-world`. Sources: [`World`](src/world.rs), the [level](src/level/world_level.rs) and its
+Run `cargo test --locked -p xrf-world`. Sources: [`World`](src/world.rs), its
+[level source](src/host/world_level_source.rs), the [level](src/level/world_level.rs) and its
 [streaming](src/level/streaming/), the [weather](src/weather/) and the [cameras](src/camera/).

@@ -9,10 +9,10 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer::{
   RenderAssetSource, RenderBundle, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
-  RenderLevelWeather, RenderQueue, RenderSpawnModels, RenderViewportId, RenderWindowHost, RenderWorkers,
-  SurfaceTargetUnsafe,
+  RenderQueue, RenderSpawnModels, RenderViewportId, RenderWindowHost, RenderWorkers, SurfaceTargetUnsafe,
 };
 use xrf_visual::{LightsDescription, SectorPackage};
+use xrf_world::{WorldLevelSource, WorldLevelWeather};
 
 use crate::{RenderViewports, Renderer, ViewportShows, WorldState};
 
@@ -69,19 +69,21 @@ impl RenderLevelSource for EmptyLevel {
     0
   }
 
-  fn pack_sector(&self, _: u32) -> XrfResult<SectorPackage> {
-    Err(XrfError::new_not_found_error("sector"))
-  }
-
   fn get_surfaces(&self) -> &[XraySurfaceDescriptor] {
     &[]
+  }
+}
+
+impl WorldLevelSource for EmptyLevel {
+  fn pack_sector(&self, _: u32) -> XrfResult<SectorPackage> {
+    Err(XrfError::new_not_found_error("sector"))
   }
 
   fn read_lights(&self) -> XrfResult<LightsDescription> {
     Err(XrfError::new_not_found_error("lights"))
   }
 
-  fn read_weather(&self) -> XrfResult<RenderLevelWeather> {
+  fn read_weather(&self) -> XrfResult<WorldLevelWeather> {
     Err(XrfError::new_not_found_error("weather"))
   }
 
@@ -141,7 +143,7 @@ fn attach(viewports: &RenderViewports, window: &str) -> RenderViewportId {
     .expect("a viewport number")
 }
 
-fn level() -> Option<Arc<dyn RenderLevelSource>> {
+fn level() -> Option<Arc<dyn WorldLevelSource>> {
   Some(Arc::new(EmptyLevel))
 }
 

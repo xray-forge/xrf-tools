@@ -3,13 +3,13 @@ use std::time::Duration;
 use glam::{Mat4, Vec3};
 use xrf_engine_target::XrayEngine;
 use xrf_particles::ParticleLibrary;
-use xrf_renderer::{
-  AmbientGust, ParticleEmitterProxy, PlacedEffect, RenderAmbient, RenderAmbientEffect, RenderSceneUpdate, WeatherRandom,
-};
+use xrf_renderer::{AmbientGust, ParticleEmitterProxy, PlacedEffect, RenderSceneUpdate, WeatherRandom};
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
 use crate::contract::world_ambient_effect_report::WorldAmbientEffectReport;
 use crate::contract::world_ambient_report::WorldAmbientReport;
+use crate::host::world_ambient::WorldAmbient;
+use crate::host::world_ambient_effect::WorldAmbientEffect;
 use crate::level::ambient::ambient_frame::AmbientFrame;
 use crate::level::ambient::ambient_systems::AmbientSystems;
 use crate::level::ambient::ambient_wind::AmbientWind;
@@ -238,15 +238,15 @@ impl LevelAmbientEffects {
   }
 
   /// `Random.randI(min, max)` over the ambient's period, in whole milliseconds.
-  fn draw_period(&mut self, ambient: &RenderAmbient) -> Duration {
-    let (least, most): (Duration, Duration) = ambient.period;
-    let (least, most): (u64, u64) = (least.as_millis() as u64, most.as_millis() as u64);
+  fn draw_period(&mut self, ambient: &WorldAmbient) -> Duration {
+    let least: u64 = ambient.least_period.as_millis() as u64;
+    let most: u64 = ambient.most_period.as_millis() as u64;
 
     Duration::from_millis(least + ((most.saturating_sub(least)) as f32 * self.random.next_fraction()) as u64)
   }
 
   /// The effect's offset, which Monolith moves half a metre to five aside on each level axis, either way.
-  fn draw_offset(&mut self, effect: &RenderAmbientEffect, engine: XrayEngine) -> Vec3 {
+  fn draw_offset(&mut self, effect: &WorldAmbientEffect, engine: XrayEngine) -> Vec3 {
     let mut offset: Vec3 = Vec3::from(effect.offset);
 
     if engine == XrayEngine::Extended {

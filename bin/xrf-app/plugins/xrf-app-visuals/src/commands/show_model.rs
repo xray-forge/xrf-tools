@@ -6,7 +6,8 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_app_render::TextureReloads;
 use xrf_app_render::ViewportShows;
-use xrf_renderer::{RenderLevelSource, RenderViewportId};
+use xrf_renderer::RenderViewportId;
+use xrf_world::WorldLevelSource;
 
 use crate::{SelectedVisual, VisualModels, VisualPoses, VisualRenderSource};
 
@@ -28,7 +29,7 @@ pub async fn visuals_show_model(
   detail: f32,
 ) -> TauriResult<Option<u32>> {
   let ticket: u64 = shows.ask(viewport);
-  let source: Option<Arc<dyn RenderLevelSource>> = match session_id {
+  let source: Option<Arc<dyn WorldLevelSource>> = match session_id {
     Some(session_id) => {
       let visual: Arc<SessionSnapshot<SelectedVisual>> = models.require(session_id)?;
 

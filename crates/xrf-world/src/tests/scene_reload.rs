@@ -10,6 +10,7 @@ use xrf_renderer::{
 };
 
 use crate::contract::world_level_reload::WorldLevelReload;
+use crate::host::world_level_source::WorldLevelSource;
 use crate::tests::fixtures::{SilentSink, TestLevelReads, TestLevelSource};
 use crate::tests::test_workers::create_workers;
 use crate::world::World;
@@ -21,7 +22,7 @@ const WAIT: Duration = Duration::from_secs(10);
 const QUIET: Duration = Duration::from_millis(100);
 
 /// A source of the level `zaton` counting its reads into `reads`.
-fn source(reads: &Arc<TestLevelReads>) -> Arc<dyn RenderLevelSource> {
+fn source(reads: &Arc<TestLevelReads>) -> Arc<dyn WorldLevelSource> {
   Arc::new(TestLevelSource {
     key: Some(String::from("zaton")),
     reads: Arc::clone(reads),
@@ -90,7 +91,7 @@ fn show(reads: &Arc<TestLevelReads>) -> (World, RenderViewportId, RenderSceneId)
 fn a_next_source_keeps_the_scene_its_viewers_and_everything_drawn() {
   let reads: Arc<TestLevelReads> = Arc::default();
   let (mut world, viewport, scene) = show(&reads);
-  let next: Arc<dyn RenderLevelSource> = source(&reads);
+  let next: Arc<dyn WorldLevelSource> = source(&reads);
 
   assert_eq!(
     world.reload_scene("zaton", Arc::clone(&next), WorldLevelReload::default()),
@@ -103,7 +104,10 @@ fn a_next_source_keeps_the_scene_its_viewers_and_everything_drawn() {
   let frames: HashMap<RenderSceneId, RenderSceneFrame> = world.advance_scenes(Instant::now(), HashMap::new());
 
   assert_eq!(frames.keys().copied().collect::<Vec<_>>(), vec![scene]);
-  assert!(Arc::ptr_eq(&frames[&scene].source, &next));
+  assert!(Arc::ptr_eq(
+    &frames[&scene].source,
+    &(Arc::clone(&next) as Arc<dyn RenderLevelSource>)
+  ));
   assert!(frames[&scene].updates.is_empty());
   // An unaffected commit reads nothing again.
   assert_eq!(reads.count(), [1, 1, 1, 1, 1]);

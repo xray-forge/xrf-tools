@@ -6,14 +6,14 @@ use glam::{Mat4, Vec3};
 use xrf_engine_target::XrayEngine;
 use xrf_particles::ParticleLibrary;
 use xrf_renderer::{
-  AmbientGust, LoaderReceiver, ParticleEmitterProxy, PlacedEffect, RenderLevelParticles, RenderLevelSource,
-  RenderParticleDefinitions, RenderParticleSource, RenderSceneUpdate, RenderViewOptions, RenderWorkers,
-  ZONE_FAST_DISTANCE, take_answer,
+  AmbientGust, LoaderReceiver, ParticleEmitterProxy, PlacedEffect, RenderLevelParticles, RenderParticleDefinitions,
+  RenderParticleSource, RenderSceneUpdate, RenderViewOptions, RenderWorkers, ZONE_FAST_DISTANCE, take_answer,
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
 use crate::contract::world_ambient_report::WorldAmbientReport;
 use crate::contract::world_toggles::WorldToggles;
+use crate::host::world_level_source::WorldLevelSource;
 use crate::level::ambient::ambient_frame::AmbientFrame;
 use crate::level::ambient::ambient_systems::AmbientSystems;
 use crate::level::ambient::level_ambient_effects::LevelAmbientEffects;
@@ -52,7 +52,7 @@ struct EffectSystems {
 }
 
 impl LevelEffects {
-  pub fn start(source: &Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
+  pub fn start(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     Self {
       pending: Some(Self::read_particles(source, workers)),
       systems: None,
@@ -68,11 +68,11 @@ impl LevelEffects {
 
   /// Reads the level's particles on the workers.
   fn read_particles(
-    source: &Arc<dyn RenderLevelSource>,
+    source: &Arc<dyn WorldLevelSource>,
     workers: &RenderWorkers,
   ) -> LoaderReceiver<Result<Option<RenderLevelParticles>, String>> {
     let (sender, receiver) = LoaderReceiver::channel();
-    let reader: Arc<dyn RenderLevelSource> = Arc::clone(source);
+    let reader: Arc<dyn WorldLevelSource> = Arc::clone(source);
 
     workers.spawn(move || {
       let particles = reader.read_particles().map_err(|error| error.to_string());
@@ -93,7 +93,7 @@ impl LevelEffects {
   pub fn reload(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
-    source: &Arc<dyn RenderLevelSource>,
+    source: &Arc<dyn WorldLevelSource>,
     workers: &RenderWorkers,
   ) {
     self.ambient.release(updates, &mut self.emitters);
@@ -109,7 +109,7 @@ impl LevelEffects {
 
   /// Reads its object motions from `source`, a next source of the same level, from now on, every one read again where
   /// `is_motions`.
-  pub fn follow_motions(&mut self, source: &Arc<dyn RenderLevelSource>, is_motions: bool) {
+  pub fn follow_motions(&mut self, source: &Arc<dyn WorldLevelSource>, is_motions: bool) {
     self.motions.follow(source, is_motions);
   }
 

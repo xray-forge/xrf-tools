@@ -5,10 +5,11 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use glam::Mat4;
 use xrf_renderer::{
-  LoaderReceiver, RenderLevelSource, RenderLevelSpawn, RenderLoadFailure, RenderSpawnModels, RenderSpawnObject,
-  RenderWorkers, StaticModel, StaticModelPlace, take_answer,
+  LoaderReceiver, RenderLevelSpawn, RenderLoadFailure, RenderSpawnModels, RenderSpawnObject, RenderWorkers,
+  StaticModel, StaticModelPlace, take_answer,
 };
 
+use crate::host::world_level_source::WorldLevelSource;
 use crate::level::loading::loader_flight::LoaderFlight;
 use crate::level::streaming::indexed_spawn::IndexedSpawn;
 use crate::level::streaming::spawn_load::SpawnLoad;
@@ -22,7 +23,7 @@ const VISUALS_PER_BATCH: usize = 16;
 /// thread with the objects standing as it; the next batches start as the render thread takes models, once a frame.
 /// Dropped, it lets go of the batches not started yet.
 pub struct SpawnLoader {
-  source: Arc<dyn RenderLevelSource>,
+  source: Arc<dyn WorldLevelSource>,
   workers: RenderWorkers,
   /// The objects on their way from their loader, none once they came or could not be read.
   reading: Option<LoaderReceiver<Option<RenderLevelSpawn>>>,
@@ -41,10 +42,10 @@ pub struct SpawnLoader {
 }
 
 impl SpawnLoader {
-  pub fn start(source: Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
+  pub fn start(source: Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     let (spawn_sender, spawn_receiver) = LoaderReceiver::channel();
     let (sender, receiver) = LoaderReceiver::channel();
-    let reader: Arc<dyn RenderLevelSource> = Arc::clone(&source);
+    let reader: Arc<dyn WorldLevelSource> = Arc::clone(&source);
 
     workers.spawn(move || {
       let spawn: Option<RenderLevelSpawn> = reader

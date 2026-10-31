@@ -3,18 +3,20 @@
 use std::time::Duration;
 
 use glam::Vec3;
-use xrf_renderer::{AmbientGust, RenderAmbientEffect, RenderWindBlast, WindNoise};
+use xrf_renderer::{AmbientGust, WindNoise};
 
+use crate::host::world_ambient_effect::WorldAmbientEffect;
+use crate::host::world_wind_blast::WorldWindBlast;
 use crate::level::ambient::ambient_wind::AmbientWind;
 
 /// An effect living five seconds whose blast rises to full strength over two, towards `+z`, and falls over two.
-fn blasting(gust_factor: f32) -> RenderAmbientEffect {
-  RenderAmbientEffect {
+fn blasting(gust_factor: f32) -> WorldAmbientEffect {
+  WorldAmbientEffect {
     particles: String::from("nature\\vortex_01"),
     life_time: Duration::from_secs(5),
     offset: [0.0; 3],
     wind_gust_factor: gust_factor,
-    wind_blast: RenderWindBlast {
+    wind_blast: WorldWindBlast {
       strength: 1.0,
       longitude: 0.0,
       in_time: Duration::from_secs(2),
@@ -25,7 +27,7 @@ fn blasting(gust_factor: f32) -> RenderAmbientEffect {
 
 /// One frame of the wind as the ambient effects take it at `seconds`, the effect started at `started` seconds and
 /// stopped with its life.
-fn frame(wind: &mut AmbientWind, seconds: f32, (effect, started): (&RenderAmbientEffect, f32)) -> AmbientGust {
+fn frame(wind: &mut AmbientWind, seconds: f32, (effect, started): (&WorldAmbientEffect, f32)) -> AmbientGust {
   let time: Duration = Duration::from_secs_f32(seconds);
 
   wind.blow(time);
@@ -80,7 +82,7 @@ fn gusts_keep_moving_a_year_on() {
 
 #[test]
 fn a_blast_rises_turns_falls_and_leaves_no_wind_behind() {
-  let effect: RenderAmbientEffect = blasting(0.0);
+  let effect: WorldAmbientEffect = blasting(0.0);
   let mut wind: AmbientWind = AmbientWind::default();
   let mut at = |time: f32| frame(&mut wind, time, (&effect, 10.0));
 

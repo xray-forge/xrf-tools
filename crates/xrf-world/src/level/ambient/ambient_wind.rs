@@ -1,7 +1,9 @@
 use std::time::Duration;
 
 use glam::Vec4;
-use xrf_renderer::{AmbientGust, RenderAmbientEffect, WindNoise};
+use xrf_renderer::{AmbientGust, WindNoise};
+
+use crate::host::world_ambient_effect::WorldAmbientEffect;
 
 /// `MAX_NOISE_FREQ`: the noise's frequency at a gust factor of one.
 const MAX_NOISE_FREQUENCY: f32 = 0.03;
@@ -66,7 +68,7 @@ impl AmbientWind {
 
   /// An effect starts: its gusts, and its blast rising from the strength of the moment and turning from the blast's
   /// direction, or from its own where the wind was still.
-  pub fn start(&mut self, effect: &RenderAmbientEffect, time: Duration) {
+  pub fn start(&mut self, effect: &WorldAmbientEffect, time: Duration) {
     let blast = &effect.wind_blast;
     let life: Duration = effect.life_time;
     // `wind_blast_direction.setHP(deg2rad(wind_blast_longitude), 0)`.

@@ -2,21 +2,21 @@ use std::sync::Arc;
 
 use xrf_engine_target::XrayEngine;
 use xrf_environment::{WeatherDescriptor, WeatherPlayedKeyframe, WeatherSunSource};
-use xrf_renderer::RenderLevelWeather;
 
 use crate::contract::world_weather_control::WorldWeatherControl;
+use crate::host::world_level_weather::WorldLevelWeather;
 
 /// A weather a viewport plays: its keyframes, sorted by time, over what every weather of its level plays with.
 pub struct PlayedWeather {
   pub keyframes: Vec<WeatherPlayedKeyframe>,
-  pub level: Arc<RenderLevelWeather>,
+  pub level: Arc<WorldLevelWeather>,
   /// Whether it is a keyframe set by hand, which stands its sun by its own angles on either engine.
   pub is_manual: bool,
 }
 
 impl PlayedWeather {
   /// A cycle of the level's game.
-  pub fn cycle(keyframes: Vec<WeatherDescriptor>, level: Arc<RenderLevelWeather>) -> Self {
+  pub fn cycle(keyframes: Vec<WeatherDescriptor>, level: Arc<WorldLevelWeather>) -> Self {
     Self {
       keyframes: keyframes
         .into_iter()
@@ -28,7 +28,7 @@ impl PlayedWeather {
   }
 
   /// A keyframe set by hand, as a cycle of one.
-  pub fn keyframe(keyframe: WeatherDescriptor, level: Arc<RenderLevelWeather>) -> Self {
+  pub fn keyframe(keyframe: WeatherDescriptor, level: Arc<WorldLevelWeather>) -> Self {
     Self {
       keyframes: vec![WeatherPlayedKeyframe::of(Arc::new(keyframe))],
       level,

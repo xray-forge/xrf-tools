@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
-use xrf_renderer::{RenderLevelSource, RenderSceneId, RenderViewportId};
+use xrf_renderer::{RenderSceneId, RenderViewportId};
+use xrf_world::WorldLevelSource;
 
 use crate::WorldState;
 
@@ -37,7 +38,7 @@ impl ViewportShows {
     &self,
     viewport: RenderViewportId,
     ticket: u64,
-    source: Option<Arc<dyn RenderLevelSource>>,
+    source: Option<Arc<dyn WorldLevelSource>>,
   ) -> Option<RenderSceneId> {
     let tickets: MutexGuard<'_, HashMap<RenderViewportId, u64>> = self.lock();
 

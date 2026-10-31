@@ -9,15 +9,17 @@ use xrf_particles::{
   ParticleEffect, ParticleEffectSprite, ParticleEngineRules, ParticleInstance, ParticleLibrary, ParticleObject,
   ParticleUpdateContext, ParticlesEffectsChunk, ParticlesFile, ParticlesGroupsChunk, ParticlesHeaderChunk,
 };
-use xrf_renderer::{
-  ParticleEmitterProxy, RenderAmbient, RenderAmbientEffect, RenderAmbients, RenderLevelWeather, RenderSceneUpdate,
-};
+use xrf_renderer::{ParticleEmitterProxy, RenderSceneUpdate};
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
 use crate::contract::world_ambient_report::WorldAmbientReport;
+use crate::host::world_ambient::WorldAmbient;
+use crate::host::world_ambient_effect::WorldAmbientEffect;
+use crate::host::world_level_weather::WorldLevelWeather;
 use crate::level::ambient::ambient_frame::AmbientFrame;
 use crate::level::ambient::ambient_systems::AmbientSystems;
 use crate::level::ambient::level_ambient_effects::LevelAmbientEffects;
+use crate::weather::weather_ambients::WeatherAmbients;
 
 const OUTDOORS: Vec3 = Vec3::new(10.0, 2.0, -5.0);
 
@@ -54,13 +56,14 @@ fn library(names: &[&str]) -> ParticleLibrary {
 }
 
 /// A level whose `day` ambient plays the named effects, each a second long, every ten to twenty seconds.
-fn weather(effects: &[&str]) -> RenderLevelWeather {
-  RenderLevelWeather {
+fn weather(effects: &[&str]) -> WorldLevelWeather {
+  WorldLevelWeather {
     ambients: HashMap::from([(
       String::from("day"),
-      RenderAmbient {
+      WorldAmbient {
         effects: effects.iter().map(|it| String::from(*it)).collect(),
-        period: (Duration::from_secs(10), Duration::from_secs(20)),
+        least_period: Duration::from_secs(10),
+        most_period: Duration::from_secs(20),
       },
     )]),
     ambient_effects: effects
@@ -68,21 +71,21 @@ fn weather(effects: &[&str]) -> RenderLevelWeather {
       .map(|name| {
         (
           String::from(*name),
-          RenderAmbientEffect {
+          WorldAmbientEffect {
             particles: format!("nature\\{name}"),
             life_time: Duration::from_secs(1),
             offset: [0.0, 5.0, 0.0],
-            ..RenderAmbientEffect::default()
+            ..WorldAmbientEffect::default()
           },
         )
       })
       .collect(),
-    ..RenderLevelWeather::default()
+    ..WorldLevelWeather::default()
   }
 }
 
-fn day() -> RenderAmbients {
-  RenderAmbients {
+fn day() -> WeatherAmbients {
+  WeatherAmbients {
     names: [Some(String::from("day")), Some(String::from("day"))],
     weight: 0.3,
   }
@@ -243,7 +246,7 @@ fn list_starts(engine: XrayEngine, names: &[&str], span: u64) -> Vec<(u64, Strin
 
 #[test]
 fn a_frame_plays_the_first_keyframes_ambient_while_the_chance_falls_short_of_the_way_left() {
-  let ambients: RenderAmbients = RenderAmbients {
+  let ambients: WeatherAmbients = WeatherAmbients {
     names: [Some(String::from("dawn")), Some(String::from("day"))],
     weight: 0.25,
   };

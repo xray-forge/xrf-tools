@@ -3,9 +3,9 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_renderer::{
-  LoaderReceiver, RenderLevelDetails, RenderLevelHelpers, RenderLevelSource, RenderLoadFailure, RenderModelFailure,
-  RenderModelSkeleton, RenderSceneUpdate, RenderSectorFailure, RenderStreamingProgress, RenderWorkers,
-  StaticModelPlace, StaticModelProxy, StaticObjectProxy, StaticSectorProxy, take_answer,
+  LoaderReceiver, RenderLevelDetails, RenderLevelHelpers, RenderLoadFailure, RenderModelFailure, RenderModelSkeleton,
+  RenderSceneUpdate, RenderSectorFailure, RenderStreamingProgress, RenderWorkers, StaticModelPlace, StaticModelProxy,
+  StaticObjectProxy, StaticSectorProxy, take_answer,
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::LightsDescription;
@@ -14,6 +14,7 @@ use crate::contract::world_level_problems::WorldLevelProblems;
 use crate::contract::world_level_reload::WorldLevelReload;
 use crate::contract::world_sector_skip::WorldSectorSkip;
 use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
+use crate::host::world_level_source::WorldLevelSource;
 use crate::level::animation::level_animation::LevelAnimation;
 use crate::level::loading::level_loader::LevelLoader;
 use crate::level::loading::sector_load::SectorLoad;
@@ -34,7 +35,7 @@ const MODELS_PER_FRAME: usize = 16;
 /// what they read is posted a frame, the handles its posts name, which spawn groups stand, and what came in and what
 /// could not.
 pub struct LevelStreaming {
-  source: Arc<dyn RenderLevelSource>,
+  source: Arc<dyn WorldLevelSource>,
   sectors: LevelLoader,
   spawn: SpawnLoader,
   lights: Option<LoaderReceiver<Result<LightsDescription, String>>>,
@@ -65,7 +66,7 @@ pub struct LevelStreaming {
 }
 
 impl LevelStreaming {
-  pub fn start(source: Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
+  pub fn start(source: Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     Self {
       sectors: LevelLoader::start(Arc::clone(&source), workers),
       spawn: SpawnLoader::start(Arc::clone(&source), workers),
@@ -92,11 +93,11 @@ impl LevelStreaming {
 
   /// Reads the level's lights on the workers.
   fn read_lights(
-    source: &Arc<dyn RenderLevelSource>,
+    source: &Arc<dyn WorldLevelSource>,
     workers: &RenderWorkers,
   ) -> LoaderReceiver<Result<LightsDescription, String>> {
     let (sender, receiver) = LoaderReceiver::channel();
-    let source: Arc<dyn RenderLevelSource> = Arc::clone(source);
+    let source: Arc<dyn WorldLevelSource> = Arc::clone(source);
 
     workers.spawn(move || {
       let lights: Result<LightsDescription, String> = source.read_lights().map_err(|error| error.to_string());
@@ -113,11 +114,11 @@ impl LevelStreaming {
 
   /// Reads the level's grass on the workers.
   fn read_grass(
-    source: &Arc<dyn RenderLevelSource>,
+    source: &Arc<dyn WorldLevelSource>,
     workers: &RenderWorkers,
   ) -> LoaderReceiver<Result<Option<RenderLevelDetails>, String>> {
     let (sender, receiver) = LoaderReceiver::channel();
-    let source: Arc<dyn RenderLevelSource> = Arc::clone(source);
+    let source: Arc<dyn WorldLevelSource> = Arc::clone(source);
 
     workers.spawn(move || {
       let grass: Result<Option<RenderLevelDetails>, String> = source.read_details().map_err(|error| error.to_string());
@@ -134,11 +135,11 @@ impl LevelStreaming {
 
   /// Reads the level objects the viewer draws helpers for on the workers.
   fn read_helpers(
-    source: &Arc<dyn RenderLevelSource>,
+    source: &Arc<dyn WorldLevelSource>,
     workers: &RenderWorkers,
   ) -> LoaderReceiver<Result<RenderLevelHelpers, String>> {
     let (sender, receiver) = LoaderReceiver::channel();
-    let source: Arc<dyn RenderLevelSource> = Arc::clone(source);
+    let source: Arc<dyn WorldLevelSource> = Arc::clone(source);
 
     workers.spawn(move || {
       let helpers: Result<RenderLevelHelpers, String> = source.read_helpers().map_err(|error| error.to_string());
@@ -153,7 +154,7 @@ impl LevelStreaming {
     receiver
   }
 
-  pub fn get_source(&self) -> &Arc<dyn RenderLevelSource> {
+  pub fn get_source(&self) -> &Arc<dyn WorldLevelSource> {
     &self.source
   }
 
@@ -165,7 +166,7 @@ impl LevelStreaming {
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
     animation: &mut LevelAnimation,
-    source: Arc<dyn RenderLevelSource>,
+    source: Arc<dyn WorldLevelSource>,
     reload: WorldLevelReload,
     workers: &RenderWorkers,
   ) {

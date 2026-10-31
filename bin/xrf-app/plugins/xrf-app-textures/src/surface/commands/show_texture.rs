@@ -5,7 +5,8 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_render::ViewportShows;
-use xrf_renderer::{RenderLevelSource, RenderViewportId};
+use xrf_renderer::RenderViewportId;
+use xrf_world::WorldLevelSource;
 
 use crate::describe::TextureDescription;
 use crate::surface::{TextureRenderSource, TexturesShowRequest};
@@ -23,7 +24,7 @@ pub async fn textures_show_texture(
 ) -> TauriResult<Option<u32>> {
   // Taken before the description's hop, so a texture asked for later is never replaced by this one.
   let ticket: u64 = shows.ask(viewport);
-  let source: Option<Arc<dyn RenderLevelSource>> = match request {
+  let source: Option<Arc<dyn WorldLevelSource>> = match request {
     Some(request) => {
       log::info!(
         "Showing texture '{}' in native viewport {} on a {:?}",

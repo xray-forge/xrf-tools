@@ -2,9 +2,10 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 
-use xrf_renderer::{LoaderReceiver, RenderLevelSource, RenderWorkers};
+use xrf_renderer::{LoaderReceiver, RenderWorkers};
 use xrf_visual::SectorPackage;
 
+use crate::host::world_level_source::WorldLevelSource;
 use crate::level::loading::loader_flight::LoaderFlight;
 use crate::level::loading::sector_load::SectorLoad;
 use crate::level::streaming::surface_tally::SurfaceTally;
@@ -14,7 +15,7 @@ use crate::level::streaming::surface_tally::SurfaceTally;
 /// the finished ones, once a frame. Dropped, it lets go of the sectors not started yet, so a level closed mid open
 /// stops costing work.
 pub struct LevelLoader {
-  source: Arc<dyn RenderLevelSource>,
+  source: Arc<dyn WorldLevelSource>,
   workers: RenderWorkers,
   sender: Sender<SectorLoad>,
   receiver: LoaderReceiver<SectorLoad>,
@@ -25,7 +26,7 @@ pub struct LevelLoader {
 }
 
 impl LevelLoader {
-  pub fn start(source: Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
+  pub fn start(source: Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     let (sender, receiver) = LoaderReceiver::channel();
     let mut loader: Self = Self {
       total: source.get_sector_count(),
@@ -82,7 +83,7 @@ impl LevelLoader {
   }
 
   /// One sector packed, with what its surfaces draw.
-  fn pack(source: &dyn RenderLevelSource, sector: u32) -> Result<(SectorPackage, SurfaceTally), String> {
+  fn pack(source: &dyn WorldLevelSource, sector: u32) -> Result<(SectorPackage, SurfaceTally), String> {
     let pack: Result<(SectorPackage, SurfaceTally), String> = source
       .pack_sector(sector)
       .map(|package| {
