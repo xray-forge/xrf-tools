@@ -16,6 +16,13 @@ pub struct ArchiveDescriptor {
   pub entries: usize,
   /// Root the volume unpacks under, from `[header] entry_point` with its alias stripped.
   pub output_root_path: PathBuf,
+  /// Directory under `$fs_root$` the engine registers this volume's entries in, with backslash separators and none at
+  /// either end: the entry point without its alias, which always stands for `$fs_root$` there, or `gamedata` for a
+  /// volume without metadata (`CLocatorAPI::LoadArchive`). Unlike `output_root_path`, it tells those two apart from an
+  /// entry point of `$fs_root$\` itself.
+  #[serde(skip)]
+  #[cfg_attr(feature = "typescript-bindings", specta(skip))]
+  pub mount_root: String,
   /// The volume file this descriptor was read from.
   pub path: PathBuf,
   /// Bytes this volume's entries occupy as stored, summed while its name table was read.
@@ -32,6 +39,21 @@ impl ArchiveDescriptor {
 
       extension.starts_with("db") || extension.starts_with("xdb")
     })
+  }
+
+  /// The directories of [`Self::mount_root`], outermost first.
+  pub fn list_mount_directories(&self) -> impl Iterator<Item = &str> {
+    self.mount_root.split('\\').filter(|directory| !directory.is_empty())
+  }
+
+  /// The directories of [`Self::mount_root`] after its first `outer`, each ending in a separator: the prefix that puts
+  /// an authored name where this volume mounts it, seen from that outer directory.
+  pub fn to_mount_prefix_below(&self, outer: usize) -> String {
+    self
+      .list_mount_directories()
+      .skip(outer)
+      .map(|directory| format!("{directory}\\"))
+      .collect()
   }
 
   /// Bytes this volume's entries occupy once unpacked.

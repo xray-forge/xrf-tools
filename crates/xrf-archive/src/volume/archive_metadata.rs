@@ -26,6 +26,16 @@ impl ArchiveMetadata {
     None
   }
 
+  /// The directory under `$fs_root$` the engine registers a volume's entries in, given the entry point
+  /// [`Self::find_root_path`] found: the alias always stands for `$fs_root$` there, and a volume without metadata
+  /// mounts at `gamedata` (`CLocatorAPI::LoadArchive`). Separators are backslashes, with none at either end.
+  pub(crate) fn to_mount_root(root_path: Option<&str>) -> String {
+    root_path.map_or_else(
+      || String::from("gamedata"),
+      |root| root.trim().replace('/', "\\").trim_matches('\\').to_owned(),
+    )
+  }
+
   /// The name of a line ending in `[name]`, whatever precedes the bracket.
   fn parse_section_name(line: &str) -> Option<&str> {
     let (_, name) = line.strip_suffix(']')?.rsplit_once('[')?;
@@ -75,6 +85,18 @@ mod tests {
       ArchiveMetadata::find_root_path("[header]\r\nentry_point = $fs_root$\\\r\n"),
       Some("")
     );
+  }
+
+  #[test]
+  fn a_volume_mounts_under_the_file_system_root_or_at_gamedata_without_metadata() {
+    assert_eq!(
+      ArchiveMetadata::to_mount_root(Some("gamedata\\configs\\")),
+      "gamedata\\configs"
+    );
+    assert_eq!(ArchiveMetadata::to_mount_root(Some("levels/ ")), "levels");
+    assert_eq!(ArchiveMetadata::to_mount_root(Some("gamedata")), "gamedata");
+    assert_eq!(ArchiveMetadata::to_mount_root(Some("")), "");
+    assert_eq!(ArchiveMetadata::to_mount_root(None), "gamedata");
   }
 
   #[test]

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
@@ -134,7 +135,7 @@ impl XrayArchiveSource {
         continue;
       }
 
-      let Some(normalized) = Self::to_identity(descriptor) else {
+      let Some(normalized) = Self::to_identity(project, descriptor) else {
         continue;
       };
 
@@ -158,14 +159,15 @@ impl XrayArchiveSource {
       }
     }
 
-    // What the name-table merge overwrote. Each is outranked by the entry that displaced it - same authored name, later
-    // volume - so one can never win its identity, and every one of them is a loser without being compared.
+    // What the name-table merge overwrote. Each is outranked by the entry that displaced it - same name within the
+    // project, so same mount, later volume - so one can never win its identity, and every one of them is a loser
+    // without being compared.
     for descriptor in &project.shadowed {
       if descriptor.is_directory {
         continue;
       }
 
-      if let Some(normalized) = Self::to_identity(descriptor) {
+      if let Some(normalized) = Self::to_identity(project, descriptor) {
         losers.push((normalized, descriptor));
       }
     }
@@ -232,9 +234,31 @@ impl XrayArchiveSource {
     (collisions, shadowed)
   }
 
-  /// The engine identity one entry folds to, or nothing when its name is not one.
-  fn to_identity(descriptor: &ArchiveFileDescriptor) -> Option<String> {
-    XrayLogicalPath::normalize(&descriptor.name)
+  /// The engine identity one entry folds to, or nothing when its name is not one: its authored name below the part of
+  /// its volume's entry point inside `gamedata`.
+  // todo: Mount an entry whose volume's entry point lies outside `gamedata` where the engine registers it, rather than as
+  // though its authored name were a path under `gamedata`.
+  fn to_identity(project: &ArchiveProject, descriptor: &ArchiveFileDescriptor) -> Option<String> {
+    let below_gamedata: String = project
+      .get_volume_of(descriptor)
+      .ok()
+      .filter(|volume| {
+        volume
+          .list_mount_directories()
+          .next()
+          .is_some_and(|outermost| outermost.eq_ignore_ascii_case("gamedata"))
+      })
+      .map(|volume| volume.to_mount_prefix_below(1))
+      .unwrap_or_default();
+
+    // Nearly every volume mounts at `gamedata` itself, so its names are normalized as they stand.
+    let name: Cow<'_, str> = if below_gamedata.is_empty() {
+      Cow::Borrowed(&descriptor.authored_name)
+    } else {
+      Cow::Owned(below_gamedata + &descriptor.authored_name)
+    };
+
+    XrayLogicalPath::normalize(&name)
       .inspect_err(|error| log::warn!("Skipping archive entry '{}': {error}", descriptor.name))
       .ok()
   }
@@ -424,6 +448,7 @@ mod tests {
           entries: 0,
           modified_at: None,
           output_root_path: PathBuf::from("gamedata"),
+          mount_root: String::from("gamedata"),
           path: PathBuf::from(*volume),
           size_compressed: 0,
           size_real: 0,

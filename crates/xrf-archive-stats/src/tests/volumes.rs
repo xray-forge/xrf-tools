@@ -7,15 +7,12 @@ use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
 use crate::{ArchiveCompression, ArchiveExtensionUsage, ArchiveStatistics, ArchiveVolumeSummary};
 
 fn descriptor(name: &str, size_real: u32, size_compressed: u32, is_directory: bool) -> ArchiveFileDescriptor {
-  ArchiveFileDescriptor {
-    crc: 0,
-    is_directory,
-    name: Arc::from(name),
-    offset: 0,
-    size_compressed,
-    size_real,
-    volume: 0,
-  }
+  let mut descriptor: ArchiveFileDescriptor =
+    ArchiveFileDescriptor::new(0, Arc::from(name), 0, size_compressed, size_real);
+
+  descriptor.is_directory = is_directory;
+
+  descriptor
 }
 
 /// A volume set holding one of each thing a breakdown has to treat differently.
@@ -36,6 +33,7 @@ fn project() -> ArchiveProject {
       modified_at: Some(1_700_000_000_000),
       entries: 7,
       output_root_path: PathBuf::from("gamedata/"),
+      mount_root: String::from("gamedata"),
       path: PathBuf::from("C:/game/db/textures.db0"),
       size_compressed: 11_876,
       size_real: 15_848,
@@ -211,6 +209,7 @@ fn a_volume_set_reports_the_copies_its_merge_displaced() {
       modified_at: None,
       entries: 1,
       output_root_path: PathBuf::from("gamedata/"),
+      mount_root: String::from("gamedata"),
       path: PathBuf::from("C:/game/db/base.db0"),
       size_compressed: 100,
       size_real: 900,
