@@ -98,7 +98,7 @@ pub struct SceneFeatures {
 
 impl SceneFeatures {
   /// The units of a view whose views bind by `view_layout`.
-  pub fn new((device, queue): (&wgpu::Device, &wgpu::Queue), view_layout: &wgpu::BindGroupLayout) -> Self {
+  pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, view_layout: &wgpu::BindGroupLayout) -> Self {
     Self {
       shadows: LevelShadows::default(),
       rain_cover: None,

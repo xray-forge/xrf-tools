@@ -5,7 +5,6 @@ use xrf_renderer_core::{
 
 use crate::camera::camera_frustum::CameraFrustum;
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::glass_copy_dispatch_parameters::GlassCopyDispatchParameters;
@@ -22,6 +21,7 @@ use crate::scene::level::feature::over_scene::add_over_scene;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::lighting_handles::LightingHandles;
+use crate::scene::level::view_prepare::ViewPrepare;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_sight::StaticSight;
 use crate::scene::static_scene::static_sorted_place::StaticSortedPlace;
@@ -43,13 +43,15 @@ pub struct CompositedFeature {
 }
 
 impl CompositedFeature {
-  /// Takes this frame's composited surfaces through `view`, with what of the scene is in `sight`: the sorted list
+  /// Takes this frame's composited surfaces through the camera, with what of the `scene` is in `sight`: the sorted list
   /// written through `encoder`, whether the enhanced glass draws, and whether a distorting surface may.
   pub fn prepare(
     &mut self,
-    (scene, device, encoder): (&LevelScene, &wgpu::Device, &mut FrameEncoder),
-    view: &CameraView,
-    options: &RenderViewOptions,
+    &ViewPrepare {
+      device, view, options, ..
+    }: &ViewPrepare<'_>,
+    scene: &LevelScene,
+    encoder: &mut FrameEncoder,
     sight: &StaticSight,
   ) {
     self.prepare_sorted(scene, device, encoder, view);
@@ -144,7 +146,8 @@ impl CompositedFeature {
     &self,
     graph: &mut FrameGraph<'a>,
     passes: LevelPasses<'a>,
-    (draw, sky): (&CompositedDraw<'a>, SkyParameters<'a>),
+    draw: &CompositedDraw<'a>,
+    sky: SkyParameters<'a>,
   ) {
     let CompositedDraw {
       view,
@@ -184,7 +187,9 @@ impl CompositedFeature {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
-    (draw, sky, lit): (&CompositedDraw<'a>, SkyParameters<'a>, LightingHandles<'a>),
+    draw: &CompositedDraw<'a>,
+    sky: SkyParameters<'a>,
+    lit: LightingHandles<'a>,
   ) {
     let CompositedDraw {
       view,

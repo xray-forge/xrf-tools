@@ -1,14 +1,11 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use glam::{Vec3, Vec4};
+use glam::Vec3;
 use xrf_renderer_core::{
   GraphBuffer, GraphColorAttachment, GraphDeclaration, GraphTexture, StorageValue, StorageValueMut, UniformBinding,
 };
 
-use crate::camera::camera_view::CameraView;
-use crate::contract::render_view_options::RenderViewOptions;
-use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_lens_flare::RenderLensFlare;
 use crate::host::render_level_weather::RenderLevelWeather;
@@ -19,10 +16,11 @@ use crate::pass::flare_measure_parameters::FlareMeasureParameters;
 use crate::pass::flare_pass::FlarePass;
 use crate::pass::flare_texture_parameters::FlareTextureParameters;
 use crate::pass::flare_uniform::FlareUniform;
-use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::sun_sprite::SunSprite;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::lens_flare_fade::LensFlareFade;
-use crate::scene::level::lighting_handles::LightingHandles;
+use crate::scene::level::view_prepare::ViewPrepare;
+use crate::scene::level::view_record::ViewRecord;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 use crate::scene::texture::weather_textures::WeatherTextures;
@@ -59,7 +57,8 @@ impl FlaresFeature {
   /// Asks for the textures of the lens flare drawn now and of the one the keyframes name, so a fade has both.
   pub fn request(
     &self,
-    (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
+    lighting: &RenderLighting,
+    weather: Option<&Arc<RenderLevelWeather>>,
     weather_textures: &mut WeatherTextureCache,
     assets: &Arc<dyn RenderAssetSource>,
   ) {
@@ -85,22 +84,9 @@ impl FlaresFeature {
   /// Steps the fade and notes what the flares draw by and with, their visibility made while they draw and let go of
   /// while they do not; answers the sun's sprite as the sky draws it, its texture and its colour and radius, none where
   /// no sprite is drawn.
-  pub fn prepare(
-    &mut self,
-    device: &wgpu::Device,
-    (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
-    options: &RenderViewOptions,
-    weather_textures: WeatherTextures<'_>,
-    (view, rate, now): (&CameraView, f32, Instant),
-    has_targets: bool,
-  ) -> Option<(String, Vec4)> {
-    let sprite: Option<(String, Vec4)> = self.prepare_drawn(
-      (lighting, weather),
-      options,
-      weather_textures,
-      (view, rate, now),
-      has_targets,
-    );
+  pub fn prepare(&mut self, frame: &ViewPrepare<'_>, now: Instant) -> Option<SunSprite> {
+    let sprite: Option<SunSprite> = self.prepare_drawn(frame, now);
+    let device: &wgpu::Device = frame.device;
 
     if !self.is_drawn {
       self.state = None;
@@ -118,12 +104,17 @@ impl FlaresFeature {
 
   fn prepare_drawn(
     &mut self,
-    (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
-    options: &RenderViewOptions,
-    weather_textures: WeatherTextures<'_>,
-    (view, rate, now): (&CameraView, f32, Instant),
-    has_targets: bool,
-  ) -> Option<(String, Vec4)> {
+    &ViewPrepare {
+      view,
+      options,
+      lighting,
+      weather,
+      weather_textures,
+      weather_rate: rate,
+      ..
+    }: &ViewPrepare<'_>,
+    now: Instant,
+  ) -> Option<SunSprite> {
     let delta: f32 = self
       .last
       .map_or(0.0, |last| now.saturating_duration_since(last).as_secs_f32());
@@ -150,10 +141,13 @@ impl FlaresFeature {
     }
 
     let light: Vec3 = lighting.sun_color.clamp(Vec3::ZERO, Vec3::ONE);
-    let sprite: Option<(String, Vec4)> = flare.sprite.as_ref().map(|sprite| {
+    let sprite: Option<SunSprite> = flare.sprite.as_ref().map(|sprite| {
       let color: Vec3 = if sprite.is_colorless { Vec3::ONE } else { light };
 
-      (sprite.texture.clone(), (color * faded).extend(sprite.radius))
+      SunSprite {
+        texture: sprite.texture.clone(),
+        look: (color * faded).extend(sprite.radius),
+      }
     });
 
     self.values = FlareUniform::new(
@@ -169,7 +163,7 @@ impl FlaresFeature {
 
     self.collect_textures(flare, weather_textures);
     self.is_flared = options.show.is_lens_flared;
-    self.is_drawn = has_targets && ((self.is_flared && !flare.flares.is_empty()) || flare.gradient.is_some());
+    self.is_drawn = (self.is_flared && !flare.flares.is_empty()) || flare.gradient.is_some();
 
     sprite
   }
@@ -187,13 +181,18 @@ impl FlaresFeature {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    pass: &'a FlarePass,
-    (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
-    view: &'a ViewBinding,
+    ViewRecord {
+      passes,
+      view,
+      handles: targets,
+      lit,
+      ..
+    }: ViewRecord<'a>,
   ) {
     let (true, Some(state)) = (self.is_drawn, &self.state) else {
       return;
     };
+    let pass: &FlarePass = passes.flares;
     let flares: UniformBinding<FlareUniform> = runtime.push_uniform(&self.values);
     let state: GraphBuffer = bindings.import_buffer(&mut *graph, "flare visibility", state);
     let measure: FlareMeasureParameters = FlareMeasureParameters {

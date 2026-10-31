@@ -16,8 +16,8 @@ use crate::pass::enhanced_bloom_uniform::EnhancedBloomUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::view_record::ViewRecord;
 
 /// The bloom, the engine's or the enhanced one in its place: the engine's build and blurs at its fixed size, read by
 /// the present; or the enhanced chain from the resolved image, its finish handed to the present.
@@ -126,7 +126,7 @@ impl BloomFeature {
   /// over it: the half-size blur across and down, the build, six halvings, five doublings back to half size, and the
   /// finish; none where the enhanced bloom does not draw. Built after the resolve, as the major engines build theirs: from
   /// the frame as drawn, a glint that comes and goes with the jitter bloomed into a halo nothing smoothed. Its sizes
-  /// and the depth and marks it reads are the frame's as drawn (`frame`).
+  /// and the depth and marks it reads are the frame's as drawn.
   pub fn add_enhanced_passes<'a>(
     &'a self,
     GraphDeclaration {
@@ -134,15 +134,17 @@ impl BloomFeature {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    (targets, image, frame, lighting): (
-      ViewTargetHandles,
-      GraphTexture,
-      (u32, u32),
-      UniformBinding<LightingUniform>,
-    ),
+    ViewRecord {
+      passes,
+      view,
+      handles: targets,
+      lit,
+      ..
+    }: ViewRecord<'a>,
+    image: GraphTexture,
   ) -> Option<GraphTexture> {
+    let frame: (u32, u32) = targets.size;
+    let lighting: UniformBinding<LightingUniform> = lit.lighting;
     let settings: &RenderEnhancedBloomSettings = self.enhanced.as_ref()?;
     let (_, pipelines) = self.pipelines.as_ref()?;
     let pass: &'a EnhancedBloomPass = passes.enhanced_bloom;

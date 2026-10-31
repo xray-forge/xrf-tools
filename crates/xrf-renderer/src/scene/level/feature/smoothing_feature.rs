@@ -1,6 +1,7 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding};
 
 use crate::contract::render_antialiasing::RenderAntialiasing;
+use crate::contract::render_debug_view::RenderDebugView;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fxaa_parameters::FxaaParameters;
 use crate::pass::level_passes::LevelPasses;
@@ -9,6 +10,7 @@ use crate::pass::smaa_pass::SmaaPass;
 use crate::pass::smaa_stage::SmaaStage;
 use crate::pass::smoothing_uniform::SmoothingUniform;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::view_prepare::ViewPrepare;
 
 /// The smoothing pass over the frame as drawn, FXAA or SMAA, while one smooths it.
 #[derive(Default)]
@@ -20,12 +22,15 @@ pub struct SmoothingFeature {
 
 impl SmoothingFeature {
   /// Takes this frame's smoothing, where the antialiasing asked for is FXAA or SMAA and the view shows its final
-  /// frame (`is_shown`); SMAA whose lookup textures could not be read smooths as FXAA does, which needs none.
-  pub fn prepare(&mut self, passes: LevelPasses<'_>, mode: RenderAntialiasing, (is_shown, is_linear): (bool, bool)) {
+  /// frame; SMAA whose lookup textures could not be read smooths as FXAA does, which needs none.
+  pub fn prepare(&mut self, &ViewPrepare { passes, options, .. }: &ViewPrepare<'_>) {
+    let is_shown: bool = options.mode.debug_view == RenderDebugView::Final;
+
     self.uniform = SmoothingUniform {
-      linear: f32::from(u8::from(is_linear)),
+      linear: f32::from(u8::from(options.is_scene_linear())),
     };
 
+    let mode: RenderAntialiasing = options.features.antialiasing;
     let mode: RenderAntialiasing = match (mode, passes.smaa) {
       (RenderAntialiasing::Smaa, None) => RenderAntialiasing::Fxaa,
       _ => mode,
@@ -49,7 +54,8 @@ impl SmoothingFeature {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
-    (frame, (width, height)): (GraphTexture, (u32, u32)),
+    frame: GraphTexture,
+    (width, height): (u32, u32),
   ) -> GraphTexture {
     let Some(mode) = self.mode else {
       return frame;

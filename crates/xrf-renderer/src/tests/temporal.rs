@@ -108,14 +108,14 @@ fn a_reference_sample_is_drawn_unresolved_at_its_place_of_the_jitter() {
   options.features.antialiasing = RenderAntialiasing::Taa;
   resolve.set_reference(Some((5, 64)));
 
-  assert_eq!(resolve.next_jitter(&options, 2.0, false), TemporalJitter::at(5));
+  assert_eq!(resolve.next_jitter(&options, 2.0, None), TemporalJitter::at(5));
   assert_eq!(resolve.get_temporal(), None);
   assert_eq!(resolve.get_texture_bias(), -1.0);
   assert_eq!(resolve.get_reference_sample(), Some(5));
   assert_eq!(resolve.get_noise_frame(), 5);
 
   resolve.set_reference(Some((2, 64)));
-  resolve.next_jitter(&options, 2.0, false);
+  resolve.next_jitter(&options, 2.0, None);
 
   assert_eq!(resolve.get_noise_frame(), 2);
 
@@ -124,7 +124,7 @@ fn a_reference_sample_is_drawn_unresolved_at_its_place_of_the_jitter() {
   assert_eq!(resolve.get_reference_sample(), None);
 
   assert_eq!(resolve.get_temporal(), None);
-  assert_ne!(resolve.next_jitter(&options, 1.0, false), TemporalJitter::at(5));
+  assert_ne!(resolve.next_jitter(&options, 1.0, None), TemporalJitter::at(5));
   assert_eq!(resolve.get_temporal(), Some(RenderAntialiasing::Taa));
 }
 
@@ -136,11 +136,11 @@ fn a_restarted_resolve_jitters_from_the_first_place_again() {
 
   options.features.antialiasing = RenderAntialiasing::Taa;
 
-  let first: Vec<Vec2> = (0..3).map(|_| resolve.next_jitter(&options, 1.0, false)).collect();
+  let first: Vec<Vec2> = (0..3).map(|_| resolve.next_jitter(&options, 1.0, None)).collect();
 
   resolve.restart();
 
-  let again: Vec<Vec2> = (0..3).map(|_| resolve.next_jitter(&options, 1.0, false)).collect();
+  let again: Vec<Vec2> = (0..3).map(|_| resolve.next_jitter(&options, 1.0, None)).collect();
 
   assert_eq!(first, again);
   assert_eq!(resolve.get_noise_frame(), 0);

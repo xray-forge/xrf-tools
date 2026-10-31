@@ -11,8 +11,6 @@ use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::stats_readback::StatsReadback;
-use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::pass::level_passes::LevelPasses;
 use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::pass::pyramid_level_parameters::PyramidLevelParameters;
 use crate::pass::pyramid_reduction::PyramidReduction;
@@ -24,9 +22,9 @@ use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_gbuffer_draw::StaticGbufferDraw;
 use crate::pass::static_layout_bindings::StaticLayoutBindings;
 use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
-use crate::pass::view_binding::ViewBinding;
 use crate::pass::wind_uniform::WindUniform;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::view_record::ViewRecord;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 use crate::scene::static_scene::static_layout::StaticLayout;
@@ -230,10 +228,16 @@ impl StaticsFeature {
   pub fn add_overdraw_pass<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
-    passes: LevelPasses<'a>,
-    (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &StaticSceneHandles),
+    ViewRecord {
+      passes,
+      view,
+      textures,
+      statics,
+      ..
+    }: ViewRecord<'a>,
     light: GraphTexture,
   ) {
+    let scene: &StaticSceneHandles = &statics;
     if !self.is_overdrawn {
       return;
     }
@@ -262,10 +266,16 @@ impl StaticsFeature {
   pub fn add_gbuffer_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &StaticSceneHandles),
-    targets: ViewTargetHandles,
+    ViewRecord {
+      passes,
+      view,
+      textures,
+      handles: targets,
+      statics,
+      ..
+    }: ViewRecord<'a>,
   ) {
+    let scene: &StaticSceneHandles = &statics;
     let Some(pyramid) = &self.pyramid else {
       return;
     };
@@ -400,10 +410,16 @@ impl StaticsFeature {
   pub fn add_wallmark_passes<'a>(
     &self,
     graph: &mut FrameGraph<'a>,
-    passes: LevelPasses<'a>,
-    (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &StaticSceneHandles),
-    targets: ViewTargetHandles,
+    ViewRecord {
+      passes,
+      view,
+      textures,
+      handles: targets,
+      statics,
+      ..
+    }: ViewRecord<'a>,
   ) {
+    let scene: &StaticSceneHandles = &statics;
     if !self.is_wallmarked {
       return;
     }

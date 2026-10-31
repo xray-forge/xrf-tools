@@ -34,7 +34,8 @@ impl PickFeature {
   /// is on its way.
   pub fn ready(
     &mut self,
-    (device, encoder): (&wgpu::Device, &mut FrameEncoder),
+    device: &wgpu::Device,
+    encoder: &mut FrameEncoder,
     camera: &CameraUniform,
     view_layout: &wgpu::BindGroupLayout,
   ) -> Option<usize> {

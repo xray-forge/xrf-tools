@@ -449,7 +449,7 @@ impl RenderThread {
     let jitter: Vec2 = view_state.next_jitter(
       options,
       resolved.0 as f32 / drawn_rect.width.max(1) as f32,
-      gpu.context.dlss.is_some(),
+      gpu.context.dlss.as_ref(),
     );
     let drawn: CameraView = view.jittered(jitter, Vec2::new(drawn_rect.width as f32, drawn_rect.height as f32));
     let unjittered: Mat4 = view.get_view_projection();

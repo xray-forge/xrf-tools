@@ -1,16 +1,13 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor};
 
-use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::indirect_trace_parameters::IndirectTraceParameters;
 use crate::pass::indirect_trace_pass::IndirectTracePass;
 use crate::pass::indirect_trace_uniform::IndirectTraceUniform;
-use crate::pass::level_passes::LevelPasses;
 use crate::pass::sky_parameters::SkyParameters;
-use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::vbao_pass::VbaoPass;
-use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::lighting_handles::LightingHandles;
+use crate::scene::level::view_record::ViewRecord;
 
 /// The indirect light traced in the screen-space bounce's place, where DLSS ray reconstruction denoises the frame and
 /// the bitmask search gathers light: one ray a pixel at the frame's size, as ray reconstruction takes its noise, lit
@@ -23,16 +20,16 @@ pub struct IndirectTraceFeature {
 }
 
 impl IndirectTraceFeature {
-  /// Takes this frame's trace, `is_asked` where its pass is built, DLSS ray reconstruction resolves the frame and the
-  /// bitmask search gathers light, at the light's `intensity`, its noise turned by `noise_frame`.
-  pub fn prepare(&mut self, is_asked: bool, (intensity, noise_frame): (f32, u32)) {
-    self.is_asked = is_asked;
-    self.uniform = IndirectTraceUniform::new(noise_frame, intensity);
+  /// Takes this frame's trace at the light's `intensity`, where its pass is built, DLSS ray reconstruction resolves the
+  /// frame and the bitmask search gathers light, none otherwise; its noise turned by `noise_frame`.
+  pub fn prepare(&mut self, intensity: Option<f32>, noise_frame: u32) {
+    self.is_asked = intensity.is_some();
+    self.uniform = IndirectTraceUniform::new(noise_frame, intensity.unwrap_or_default());
   }
 
-  /// Whether it traces this frame where the scene's trace is built (`is_scene_traced`).
-  pub fn is_traced(&self, is_scene_traced: bool) -> bool {
-    self.is_asked && is_scene_traced
+  /// Whether it traces this frame through the scene's trace, where that is built (`traced`).
+  pub fn is_traced(&self, traced: Option<&TracedScene<'_>>) -> bool {
+    self.is_asked && traced.is_some()
   }
 
   /// Traces the indirect light where it does this frame and the scene's trace is built (`traced`), against the sky's
@@ -40,12 +37,17 @@ impl IndirectTraceFeature {
   pub fn add_passes<'a>(
     &self,
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    (targets, lit, sky): (ViewTargetHandles, LightingHandles<'a>, SkyParameters<'a>),
-    traced: Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>,
+    ViewRecord {
+      passes,
+      view,
+      handles: targets,
+      lit,
+      ..
+    }: ViewRecord<'a>,
+    sky: SkyParameters<'a>,
+    traced: Option<TracedScene<'a>>,
   ) -> Option<(GraphTexture, GraphTexture)> {
-    let (trace, textures) = traced.filter(|_| self.is_asked)?;
+    let TracedScene { trace, textures } = traced.filter(|_| self.is_asked)?;
     let (width, height) = targets.size;
     let light: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
       "indirect traced",

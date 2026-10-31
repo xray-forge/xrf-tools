@@ -9,6 +9,7 @@ use crate::pass::contact_shadow_parameters::ContactShadowParameters;
 use crate::pass::contact_shadow_pass::ContactShadowPass;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::grass_cards::GrassCards;
@@ -24,14 +25,11 @@ pub struct ContactShadowFeature {
 }
 
 impl ContactShadowFeature {
-  /// Takes this frame's contact shadows towards the sun's view space direction `to_sun`, the sun lighting by `sun`, for
-  /// a frame `height` texels tall, their noise turned by `noise_frame`.
-  pub fn prepare(
-    &mut self,
-    options: &RenderViewOptions,
-    (to_sun, sun): (Vec4, Vec4),
-    (height, noise_frame): (u32, u32),
-  ) {
+  /// Takes this frame's contact shadows towards the sun as the frame's `lighting` gives it, for a frame `height` texels
+  /// tall, their noise turned by `noise_frame`.
+  pub fn prepare(&mut self, options: &RenderViewOptions, lighting: &LightingUniform, height: u32, noise_frame: u32) {
+    let (to_sun, sun): (Vec4, Vec4) = (lighting.to_sun, lighting.sun);
+
     let shadows: &RenderShadowSettings = &options.features.shadows;
     let is_marched: bool = options.mode.is_lit && !options.mode.is_wireframe;
     // A sun of no colour adds nothing for its contact shadows to take away.

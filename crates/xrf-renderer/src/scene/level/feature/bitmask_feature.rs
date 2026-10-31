@@ -8,7 +8,6 @@ use xrf_renderer_core::{
 use crate::context::gpu_tracing::GpuTracing;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
-use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::frame_texture::FrameTexture;
 use crate::frame::history::History;
 use crate::frame::view_target_handles::ViewTargetHandles;
@@ -16,7 +15,6 @@ use crate::frame::view_targets::ViewTargets;
 use crate::pass::bitmask_pass_names::BitmaskPassNames;
 use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::level_passes::LevelPasses;
-use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::vbao_frame::VbaoFrame;
 use crate::pass::vbao_gathering::VbaoGathering;
 use crate::pass::vbao_light::VbaoLight;
@@ -24,9 +22,12 @@ use crate::pass::vbao_parameters::VbaoParameters;
 use crate::pass::vbao_pass::VbaoPass;
 use crate::pass::vbao_uniform::VbaoUniform;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::bitmask_targets::BitmaskTargets;
 use crate::scene::level::feature::bitmask_tracing::BitmaskTracing;
+use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
+use crate::scene::level::view_prepare::ViewPrepare;
 
 /// The visibility-bitmask search at half the frame's size, for VBAO's occlusion, the indirect light or both, RTAO
 /// tracing the occlusion in its place where asked: what it searches for this frame, what its passes read, and its
@@ -52,10 +53,13 @@ impl BitmaskFeature {
   /// settled value; the accumulation's own frames turn it otherwise.
   pub fn prepare(
     &mut self,
-    (device, options): (&wgpu::Device, &RenderViewOptions),
-    (projection, size): (Mat4, (u32, u32)),
+    &ViewPrepare {
+      device, view, options, ..
+    }: &ViewPrepare<'_>,
+    size: (u32, u32),
     reference_sample: Option<u32>,
   ) {
+    let projection: Mat4 = view.projection;
     let settings: RenderAmbientOcclusionSettings = options.features.ambient_occlusion;
 
     self.search = BitmaskSearch::new(options, GpuTracing::of(device));
@@ -157,7 +161,7 @@ impl BitmaskFeature {
       is_light_traced,
     } = tracing;
     let asked: BitmaskSearch = self.search?;
-    let trace: Option<(TraceParameters<'a>, &'a wgpu::BindGroup)> = traced.filter(|_| asked.is_traced);
+    let trace: Option<TracedScene<'a>> = traced.filter(|_| asked.is_traced);
     let search: BitmaskSearch = BitmaskSearch {
       is_traced: trace.is_some(),
       is_lit: asked.is_lit && !is_light_traced,
@@ -253,15 +257,21 @@ impl BitmaskFeature {
     }
 
     if let Some(trace) = trace {
-      Self::add_trace_pass(graph, passes, view, (base, trace), searched);
+      Self::add_trace_pass(graph, passes, view, base, trace, searched);
     }
 
     self.add_gather_passes(
       GraphDeclaration::new(graph, bindings, runtime),
       passes,
       view,
-      (base, search, names),
-      (searched, filtered, lit_searched, lit_filtered),
+      base,
+      search,
+      BitmaskTargets {
+        searched,
+        filtered_occlusion: filtered,
+        lit_searched,
+        lit_filtered,
+      },
     );
 
     lit_filtered
@@ -272,7 +282,8 @@ impl BitmaskFeature {
     graph: &mut FrameGraph<'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
-    (base, (trace, textures)): (VbaoParameters, (TraceParameters<'a>, &'a wgpu::BindGroup)),
+    base: VbaoParameters,
+    TracedScene { trace, textures }: TracedScene<'a>,
     searched: GraphTexture,
   ) {
     let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
@@ -294,14 +305,16 @@ impl BitmaskFeature {
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
-    (base, search, names): (VbaoParameters, BitmaskSearch, BitmaskPassNames),
-    (searched, filtered_occlusion, lit_searched, lit_filtered): (
-      GraphTexture,
-      GraphTexture,
-      Option<GraphTexture>,
-      Option<GraphTexture>,
-    ),
+    base: VbaoParameters,
+    search: BitmaskSearch,
+    BitmaskTargets {
+      searched,
+      filtered_occlusion,
+      lit_searched,
+      lit_filtered,
+    }: BitmaskTargets,
   ) {
+    let names: BitmaskPassNames = search.get_names();
     let (dark, is_lit): (GraphTexture, bool) = (base.light_source, search.is_lit);
     let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
     // The last frame's accumulations and this frame's, while it accumulates.

@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
+use xrf_dlss::Dlss;
 use xrf_error::XrfResult;
 use xrf_renderer_core::{GraphDeclaration, GraphTexture, UniformBinding};
 
@@ -12,7 +13,6 @@ use crate::contract::render_applied_reflections::RenderAppliedReflections;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::render_bloom_mode::RenderBloomMode;
-use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_grass_report::RenderGrassReport;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_light_level::RenderLightLevel;
@@ -45,30 +45,39 @@ use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::display_mode::DisplayMode;
 use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::pass::level_passes::LevelPasses;
-use crate::pass::light_trace_uniform::LightTraceUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::present_uniform::PresentUniform;
 use crate::pass::rain_uniform::RainUniform;
 use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::sky_parameters::SkyParameters;
-use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::pass::wet_uniform::WetUniform;
 use crate::scene::level::cover_textures::CoverTextures;
+use crate::scene::level::feature::before_water_readers::BeforeWaterReaders;
 use crate::scene::level::feature::bitmask_tracing::BitmaskTracing;
+use crate::scene::level::feature::combine_inputs::CombineInputs;
 use crate::scene::level::feature::composited_draw::CompositedDraw;
+use crate::scene::level::feature::drop_rings::DropRings;
 use crate::scene::level::feature::fog_feature::FogFeature;
 use crate::scene::level::feature::light_buffers::LightBuffers;
+use crate::scene::level::feature::light_draw_inputs::LightDrawInputs;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::overhead_windows::OverheadWindows;
 use crate::scene::level::feature::present_inputs::PresentInputs;
+use crate::scene::level::feature::rain_covers::RainCovers;
 use crate::scene::level::feature::ray_guides::RayGuides;
+use crate::scene::level::feature::reflection_source::ReflectionSource;
 use crate::scene::level::feature::resolve_feature::ResolveFeature;
 use crate::scene::level::feature::scene_features::SceneFeatures;
+use crate::scene::level::feature::sun_sprite::SunSprite;
 use crate::scene::level::feature::sun_trace_feature::SunTraceFeature;
+use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
+use crate::scene::level::feature::volumetric_shafts::VolumetricShafts;
 use crate::scene::level::feature::water_frame::WaterFrame;
+use crate::scene::level::feature::water_inputs::WaterInputs;
+use crate::scene::level::feature::wet_targets::WetTargets;
 use crate::scene::level::grass_card_handles::GrassCardHandles;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::grass_planting::GrassPlanting;
@@ -213,7 +222,7 @@ impl SceneView {
     Self {
       shared: ViewFrame::default(),
       targets: None,
-      features: SceneFeatures::new((device, queue), view_layout),
+      features: SceneFeatures::new(device, queue, view_layout),
       clock: FrameClock::default(),
     }
   }
@@ -264,7 +273,7 @@ impl SceneView {
       self
         .features
         .flares
-        .request((lighting, weather), weather_textures, &assets);
+        .request(lighting, weather, weather_textures, &assets);
       weather_textures.request_sky(&lighting.sky, options.show.is_clouded, &assets);
     } else {
       // The irradiance cubes light the hemisphere whether or not the sky is drawn.
@@ -297,7 +306,7 @@ impl SceneView {
     self
       .features
       .overlays
-      .follow_skeletons((scene, frame.device, &mut *encoder));
+      .follow_skeletons(scene, frame.device, &mut *encoder);
 
     self.prepare_scene(scene, encoder, frame, &lighting_frame, time);
     self.prepare_view(scene, encoder, frame, (&sight, now));
@@ -315,7 +324,6 @@ impl SceneView {
     (time, now): (f32, Instant),
   ) -> LightingFrame {
     let (device, options, lighting) = (frame.device, frame.options, frame.lighting);
-    let weather = (lighting, frame.weather);
     let size: Option<(u32, u32)> = self.targets.as_ref().map(|targets| (targets.width, targets.height));
 
     self.features.shadows.prepare(
@@ -325,21 +333,9 @@ impl SceneView {
     );
     self.features.exposure.prepare(frame.queue, options, now);
 
-    let sun_sprite: Option<(String, Vec4)> = self.features.flares.prepare(
-      device,
-      weather,
-      options,
-      frame.weather_textures,
-      (frame.view, frame.weather_rate, now),
-      self.targets.is_some(),
-    );
+    let sun_sprite: Option<SunSprite> = self.features.flares.prepare(frame, now);
 
-    self.features.sky.prepare(
-      device,
-      (frame.passes, options),
-      (&lighting.sky, sun_sprite, &scene.environments.1),
-      frame.weather_textures,
-    );
+    self.features.sky.prepare(frame, sun_sprite, &scene.environments.1);
     self.features.water.prepare(
       device,
       options,
@@ -357,56 +353,36 @@ impl SceneView {
     // The falling rain while the weather rains and the view shows it, then the wet surfaces, which follow it; the
     // ambient effects blow the wind the rain reads this frame.
     let windows: OverheadWindows = self.get_overhead_windows();
-    let falling: Option<RainUniform> = self.features.rain.prepare(
-      device,
-      weather,
-      (
-        (lighting.rain.filter(|_| options.mode.is_lit), &options.features.rain),
-        scene.gust,
-        (time, frame.view.get_look()),
-      ),
-      (windows.cover, windows.cover_shape),
-      frame.weather_textures,
-    );
+    let falling: Option<RainUniform> = self.features.rain.prepare(frame, scene.gust, time, windows);
 
     self.features.rain.follow_display(
       DisplayMode::of(options).get_display(&options.features.grading, &self.features.exposure.get_metering()),
     );
     self.features.wet.prepare(
-      weather,
-      (options, !frame.view.is_orthographic()),
-      (&scene.wetness, falling.as_ref(), time),
-      (windows, self.features.resolve.get_noise_frame()),
-      frame.weather_textures,
+      frame,
+      &scene.wetness,
+      falling.as_ref(),
+      time,
+      windows,
+      self.features.resolve.get_noise_frame(),
     );
     self.follow_rain_surfaces(windows);
 
     // The enhanced drops' rings, where they land on the level water's map, which the water and the puddles ripple by.
-    let rings: (f32, f32, f32) = (
-      self.features.rain.get_rings(),
-      options.features.rain.ring_distance.max(0.0),
-      options.features.rain.ring_strength.max(0.0),
-    );
+    let rings: DropRings = DropRings {
+      tile: self.features.rain.get_rings(),
+      reach: options.features.rain.ring_distance.max(0.0),
+      strength: options.features.rain.ring_strength.max(0.0),
+    };
 
     self.features.water.follow_rings(rings);
     self.features.wet.follow_rings(rings);
-    self
-      .features
-      .thunder
-      .prepare(device, weather, options, frame.weather_textures);
+    self.features.thunder.prepare(frame);
 
-    let lighting_frame: LightingFrame = self.features.sky.get_lighting_frame(
-      (lighting, options),
-      frame.weather_textures,
-      (
-        (
-          self.features.exposure.is_adapting(),
-          self.features.exposure.get_pre_exposure(),
-          self.features.exposure.get_metering(),
-        ),
-        time,
-      ),
-    );
+    let lighting_frame: LightingFrame = self
+      .features
+      .sky
+      .get_lighting_frame(frame, &self.features.exposure, time);
 
     self.features.sun_shafts.prepare(options, lighting);
     self
@@ -437,8 +413,9 @@ impl SceneView {
       .prepare(&scene.statics, options, view, frame.drawn);
 
     let is_traced: bool = options.is_light_traced() && frame.passes.scene_trace.is_traced() && scene.trace.is_some();
-    let is_cascaded: bool =
-      SunTraceFeature::is_cascaded(options, is_traced, self.features.resolve.is_ray_reconstructed());
+    // The sun's cascades shadow the frame where they are asked for and the sun is not traced in their place.
+    let is_sun_traced: bool = is_traced && SunTraceFeature::is_asked(options, &self.features.resolve);
+    let is_cascaded: bool = options.features.shadows.get_cascade_count() > 0 && !is_sun_traced;
 
     let grass: GrassViewFrame<'_> = GrassViewFrame {
       camera: view,
@@ -520,58 +497,36 @@ impl SceneView {
     let half: (u32, u32) = (width.div_ceil(2), height.div_ceil(2));
 
     self.features.resolve.prepare(
-      (device, frame.dlss),
-      (view, now),
-      (
-        self.targets.as_ref().map(|targets| (targets.width, targets.height)),
-        frame.resolved,
-        frame.output,
-      ),
-      (
-        options.output.upscaling,
-        (options.is_scene_linear(), options.is_light_physical()),
-        self.features.exposure.get_pre_exposure(),
-      ),
+      frame,
+      now,
+      self.targets.as_ref().map(|targets| (targets.width, targets.height)),
+      self.features.exposure.get_pre_exposure(),
     );
-    self.features.smoothing.prepare(
-      frame.passes,
-      options.features.antialiasing,
-      (
-        self.targets.is_some() && options.mode.debug_view == RenderDebugView::Final,
-        options.is_scene_linear(),
-      ),
-    );
+    self.features.smoothing.prepare(frame);
     self.features.ambient_occlusion.prepare(options, view.projection, half);
-    self.features.bitmask.prepare(
-      (device, options),
-      (view.projection, half),
-      self.features.resolve.get_reference_sample(),
-    );
+    self
+      .features
+      .bitmask
+      .prepare(frame, half, self.features.resolve.get_reference_sample());
+    let is_light_traced: bool = frame.passes.indirect_trace.is_traced()
+      && self.features.resolve.is_ray_reconstructed()
+      && self.features.bitmask.get_search().is_some_and(|search| search.is_lit);
+
     self.features.indirect_trace.prepare(
-      frame.passes.indirect_trace.is_traced()
-        && self.features.resolve.is_ray_reconstructed()
-        && self.features.bitmask.get_search().is_some_and(|search| search.is_lit),
-      (
-        self.features.bitmask.get_indirect_light().intensity,
-        self.features.resolve.get_noise_frame(),
-      ),
-    );
-    self.features.reflections.prepare(
-      device,
-      options,
-      frame.drawn,
-      (self.features.resolve.is_ray_reconstructed(), self.features.wet.is_wet()),
-    );
-    self.features.view_trace.prepare(
-      (device, &mut *encoder),
-      (scene.trace.as_ref(), self.features.grass.get_cards_blas()),
-      view.position,
-      options.is_scene_traced() && frame.passes.scene_trace.is_traced(),
+      is_light_traced.then(|| self.features.bitmask.get_indirect_light().intensity),
+      self.features.resolve.get_noise_frame(),
     );
     self
       .features
-      .composited
-      .prepare((scene, device, &mut *encoder), view, options, sight);
+      .reflections
+      .prepare(frame, &self.features.resolve, &self.features.wet);
+    self.features.view_trace.prepare(
+      frame,
+      &mut *encoder,
+      scene.trace.as_ref(),
+      self.features.grass.get_cards_blas(),
+    );
+    self.features.composited.prepare(frame, scene, &mut *encoder, sight);
     self.features.meter.prepare(device, options);
     self.features.calibration.prepare(options, view);
     self.features.camera.prepare(frame.passes, options, view);
@@ -596,17 +551,14 @@ impl SceneView {
       .features
       .combine
       .prepare(&self.shared.lighting, view.get_depth_range().1);
-    self.features.contact_shadows.prepare(
-      options,
-      (self.shared.lighting.to_sun, self.shared.lighting.sun),
-      (frame.drawn.1, noise_frame),
-    );
-    self.features.sun_trace.prepare(
-      options,
-      self.shared.lighting.to_sun,
-      noise_frame,
-      self.features.resolve.is_ray_reconstructed(),
-    );
+    self
+      .features
+      .contact_shadows
+      .prepare(options, &self.shared.lighting, frame.drawn.1, noise_frame);
+    self
+      .features
+      .sun_trace
+      .prepare(options, &self.shared.lighting, noise_frame, &self.features.resolve);
 
     scene.particles.fill(view, options, &mut self.features.particles);
 
@@ -620,7 +572,7 @@ impl SceneView {
   fn follow_overhead_maps(&mut self) {
     let windows: OverheadWindows = self.get_overhead_windows();
 
-    self.features.rain.follow_cover(windows.cover, windows.cover_shape);
+    self.features.rain.follow_cover(windows);
     self.features.wet.follow(windows);
     self.follow_rain_surfaces(windows);
   }
@@ -629,10 +581,7 @@ impl SceneView {
   fn follow_rain_surfaces(&mut self, windows: OverheadWindows) {
     let is_drawn: bool = self.features.level_surface.is_some() && self.features.wet.is_enhanced();
 
-    self
-      .features
-      .rain
-      .follow_surfaces((windows.water, windows.surface, windows.surface_shape), is_drawn);
+    self.features.rain.follow_surfaces(is_drawn.then_some(windows));
   }
 
   /// Where the rain cover and the level's surface stand now.
@@ -803,20 +752,22 @@ impl SceneView {
   /// the sun reaches each pixel.
   fn add_lighting_passes<'a>(
     &'a self,
+    scene: &'a LevelScene,
     GraphDeclaration {
       graph,
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    (view, textures, scene): (&'a ViewBinding, &'a wgpu::BindGroup, &'a LevelScene),
-    (targets, lit, traced): (
-      ViewTargetHandles,
-      LightingHandles<'a>,
-      Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>,
-    ),
-    wetting: (GraphTexture, GraphTexture),
+    record: ViewRecord<'a>,
+    traced: Option<TracedScene<'a>>,
+    wet: WetTargets,
   ) -> (Option<GraphTexture>, GraphTexture) {
+    let ViewRecord {
+      passes,
+      view,
+      handles: targets,
+      ..
+    } = record;
     let lights: &'a LightsFeature = &self.features.lights;
     let buffers: LightBuffers = lights.add_binning_passes(GraphDeclaration::new(graph, bindings, runtime), passes);
 
@@ -835,36 +786,26 @@ impl SceneView {
     );
     let sun_seen: GraphTexture = self.features.sun.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      view,
-      (targets, lit, wetting),
-      (
-        contact_shadows,
-        sun_traced,
-        self.features.shadows.get_values().filter_reach,
-      ),
+      record,
+      wet,
+      contact_shadows,
+      sun_traced,
+      self.features.shadows.get_values().filter_reach,
     );
-
-    // The shadowed lights traced where DLSS ray reconstruction denoises them, their atlas faces otherwise.
-    let traced_lights: Option<(
-      TraceParameters<'a>,
-      &'a wgpu::BindGroup,
-      UniformBinding<LightTraceUniform>,
-    )> = traced
-      .filter(|_| self.features.resolve.is_ray_reconstructed())
-      .map(|(trace, textures)| {
-        let light_trace: LightTraceUniform = LightTraceUniform::new(self.features.resolve.get_noise_frame());
-
-        (trace, textures, runtime.push_uniform(&light_trace))
-      });
 
     lights.add_draw_passes(
       GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      (view, textures, scene.lights.get_shadow_atlas()),
-      (targets, lit, buffers, wetting),
-      (contact, self.features.contact_shadows.get_light_count()),
-      traced_lights,
+      record,
+      LightDrawInputs {
+        atlas: scene.lights.get_shadow_atlas(),
+        buffers,
+        wet,
+        contact,
+        contact_lights: self.features.contact_shadows.get_light_count(),
+        // The shadowed lights traced where DLSS ray reconstruction denoises them, their atlas faces otherwise.
+        traced: traced.filter(|_| self.features.resolve.is_ray_reconstructed()),
+        noise_frame: self.features.resolve.get_noise_frame(),
+      },
     );
     lights.add_overflow_pass(&mut *graph, buffers);
     // The occlusion and the indirect light recorded beside the lights, so neither group bounds the frame's encoding.
@@ -883,7 +824,7 @@ impl SceneView {
       targets,
       BitmaskTracing {
         traced,
-        is_light_traced: self.features.indirect_trace.is_traced(traced.is_some()),
+        is_light_traced: self.features.indirect_trace.is_traced(traced.as_ref()),
       },
     );
 
@@ -915,6 +856,7 @@ impl SceneView {
       water.is_enabled && water.is_distorted && water.mode != RenderWaterMode::Enhanced && options.mode.is_lit;
     let features: &SceneFeatures = &self.features;
     let inputs: PresentInputs = PresentInputs {
+      is_upscaled: features.resolve.is_rescaled(),
       is_occluded: features.ambient_occlusion.is_drawn(),
       is_indirect: features.bitmask.get_search().is_some_and(|search| search.is_lit),
       reflection_ratio: features.reflections.get_trace().map(ReflectionTrace::get_ratio),
@@ -934,10 +876,7 @@ impl SceneView {
     };
 
     self.features.bloom.keep_for_distortion(inputs.is_distorting);
-    self
-      .features
-      .present
-      .prepare(options, (self.features.resolve.is_rescaled(), output), inputs, time);
+    self.features.present.prepare(options, output, inputs, time);
   }
 
   /// Readies a frame for its graph, none before the view's targets are made: a pick's camera narrowed to the texel
@@ -952,7 +891,7 @@ impl SceneView {
     }
 
     let pick_slot: Option<usize> =
-      pick.and_then(|(camera, view_layout, _)| self.features.pick.ready((device, encoder), camera, view_layout));
+      pick.and_then(|(camera, view_layout, _)| self.features.pick.ready(device, encoder, camera, view_layout));
 
     self.features.statics.begin_frame();
 
@@ -1027,28 +966,22 @@ impl SceneView {
     graph.begin_group("lighting");
 
     // The rings the enhanced drops leave where they land, while the puddles or the enhanced water ripple by them.
-    let rings: GraphTexture = self
-      .features
-      .rain
-      .add_rings(
-        GraphDeclaration::new(graph, bindings, runtime),
-        passes,
-        view,
-        (
-          shadowed.covers.map(|covers| covers.depth),
-          shadowed.surface[2],
-          shadowed.surface[0],
-        ),
-        self.features.wet.has_puddles() || self.features.water.is_enhanced(),
-      )
+    let is_rippled: bool = self.features.wet.has_puddles() || self.features.water.is_enhanced();
+    let rings: GraphTexture = is_rippled
+      .then(|| {
+        self.features.rain.add_rings(
+          GraphDeclaration::new(graph, bindings, runtime),
+          record,
+          RainCovers::of(&shadowed),
+        )
+      })
+      .flatten()
       .unwrap_or_else(|| bindings.import_view(&mut *graph, "rain rings none", passes.rain.get_nothing()));
-    let (wet_surface, wet_reach): (GraphTexture, GraphTexture) = self.features.wet.add_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      view,
-      (handles, shadowed.covers, shadowed.wet, rings),
-      shadowed.surface,
-    );
+    let wet: WetTargets =
+      self
+        .features
+        .wet
+        .add_passes(GraphDeclaration::new(graph, bindings, runtime), record, shadowed, rings);
     let mut output: SceneOutput = SceneOutput {
       targets: handles,
       scene: handles.scene,
@@ -1066,7 +999,7 @@ impl SceneView {
       scene,
       GraphDeclaration::new(graph, bindings, runtime),
       record,
-      (grass_cards, wet_surface, wet_reach, rings),
+      (grass_cards, wet, rings),
     );
 
     graph.begin_group("post");
@@ -1172,12 +1105,10 @@ impl SceneView {
       (passes.grass, grass_level),
     );
 
-    self.features.statics.add_gbuffer_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      (view, textures, &statics),
-      handles,
-    );
+    self
+      .features
+      .statics
+      .add_gbuffer_passes(GraphDeclaration::new(graph, bindings, runtime), record);
     if is_drawn {
       self
         .features
@@ -1238,10 +1169,7 @@ impl SceneView {
     }
 
     if is_drawn {
-      self
-        .features
-        .statics
-        .add_wallmark_passes(&mut *graph, passes, (view, textures, &statics), handles);
+      self.features.statics.add_wallmark_passes(&mut *graph, record);
       self.features.sky.add_motion_pass(&mut *graph, passes, view, handles);
     }
 
@@ -1339,47 +1267,35 @@ impl SceneView {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
-    (grass_cards, wet_surface, wet_reach, rings): (Option<GrassCardHandles>, GraphTexture, GraphTexture, GraphTexture),
+    (grass_cards, wet, rings): (Option<GrassCardHandles>, WetTargets, GraphTexture),
   ) -> LightingRecorded<'a> {
-    let ViewRecord {
-      passes,
-      view,
-      textures,
-      handles,
-      statics,
-      cull,
-      lit,
-      unlit,
-      untraced,
-      ..
-    } = record;
+    let ViewRecord { handles, statics, .. } = record;
     // The scene's trace, which RTAO, the reflections and the water trace their rays through.
-    let traced: Option<(TraceParameters, &wgpu::BindGroup)> = self.features.view_trace.add_scene_trace(
+    let traced: Option<TracedScene> = self.features.view_trace.add_scene_trace(
       scene,
       GraphDeclaration::new(graph, bindings, runtime),
       record,
-      (grass_cards, &self.features.lights, &self.features.grass),
+      grass_cards,
+      &self.features.lights,
+      &self.features.grass,
     );
     let (mut indirect_light, sun_seen): (Option<GraphTexture>, GraphTexture) = self.add_lighting_passes(
+      scene,
       GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      (view, textures, scene),
-      (handles, lit, traced),
-      (wet_surface, wet_reach),
+      record,
+      traced,
+      wet,
     );
 
     self
       .features
       .statics
-      .add_overdraw_pass(&mut *graph, passes, (view, textures, &statics), handles.light);
+      .add_overdraw_pass(&mut *graph, record, handles.light);
     let surroundings: &SurroundingsCube = &self.features.surroundings;
     let sky: Option<SkyParameters> = self.features.sky.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      (handles, lit),
-      surroundings
-        .is_active()
-        .then_some((surroundings, &statics, (cull, textures))),
+      record,
+      surroundings.is_active().then_some(surroundings),
     );
     let mut reflections: Option<GraphTexture> = None;
     let mut reflection_ends: Option<GraphTexture> = None;
@@ -1390,7 +1306,7 @@ impl SceneView {
 
     // The last frame's scene and depth the reflections keep: read by this frame's hits, written again after the
     // particles draw.
-    let source: Option<(GraphTexture, GraphTexture)> = self
+    let source: Option<ReflectionSource> = self
       .features
       .reflections
       .import_source(GraphDeclaration::new(graph, bindings, runtime));
@@ -1400,24 +1316,23 @@ impl SceneView {
       // How far the traced indirect light's rays went, where it is traced.
       let mut indirect_hits: Option<GraphTexture> = None;
 
-      if let Some((light, hits)) = self.features.indirect_trace.add_passes(
-        GraphDeclaration::new(graph, bindings, runtime),
-        passes,
-        view,
-        (handles, lit, sky),
-        traced,
-      ) {
+      if let Some((light, hits)) =
+        self
+          .features
+          .indirect_trace
+          .add_passes(GraphDeclaration::new(graph, bindings, runtime), record, sky, traced)
+      {
         indirect_light = Some(light);
         indirect_hits = Some(hits);
       }
 
       if let Some((history, ends, traced)) = self.features.reflections.add_passes(
         GraphDeclaration::new(graph, bindings, runtime),
-        passes,
-        view,
-        (handles, lit, (wet_surface, wet_reach)),
+        record,
+        wet,
         source,
-        (&sky, traced),
+        &sky,
+        traced,
       ) {
         reflections = Some(history);
         reflection_ends = Some(ends);
@@ -1426,56 +1341,49 @@ impl SceneView {
 
       self.features.combine.add_passes(
         GraphDeclaration::new(graph, bindings, runtime),
-        passes,
-        view,
-        (handles, lit, sky),
-        [
-          indirect_light.unwrap_or(unlit),
-          reflections.unwrap_or(untraced),
-          wet_surface,
-          wet_reach,
+        record,
+        sky,
+        CombineInputs {
+          indirect_light,
+          reflections,
+          wet,
           sun_seen,
-        ],
+        },
       );
-      ray_guides = self.features.resolve.add_guide_passes(
-        &mut *graph,
-        passes,
-        view,
-        (
-          handles,
-          lit.lighting,
-          (wet_surface, wet_reach),
-          traced_rays.unwrap_or(untraced),
-        ),
-        (indirect_hits, unlit),
-      );
+      ray_guides = self
+        .features
+        .resolve
+        .add_guide_passes(&mut *graph, record, wet, traced_rays, indirect_hits);
     }
 
     let water_views: Option<&SkyViews> = self.features.sky.get_views();
     let before_water: Option<GraphTexture> = self.features.resolve.add_before_water(
       &mut *graph,
       handles,
-      (
-        ray_guides.is_some(),
-        water_views.is_some() && self.features.water.is_drawn() && self.features.water.is_enhanced(),
-      ),
+      BeforeWaterReaders {
+        is_guided: ray_guides.is_some(),
+        is_water_reading: water_views.is_some() && self.features.water.is_drawn() && self.features.water.is_enhanced(),
+      },
     );
     let opaque: Option<GraphTexture> = self.features.resolve.add_reactive_passes(
       GraphDeclaration::new(graph, bindings, runtime),
-      (handles.scene, before_water),
+      handles.scene,
+      before_water,
     );
 
     let depth_with_water: Option<GraphTexture> = self.features.water.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),
       record,
-      (
-        water_views,
+      WaterInputs {
+        views: water_views,
         before_water,
-        self.features.statics.list_draw_args(&statics),
-        ray_guides,
-      ),
-      [rings, sun_seen],
-      sky.zip(traced).map(|(sky, (trace, textures))| (sky, trace, textures)),
+        args: self.features.statics.list_draw_args(&statics),
+        guides: ray_guides,
+        rings,
+        sun_seen,
+        sky,
+        traced,
+      },
     );
 
     LightingRecorded {
@@ -1538,7 +1446,7 @@ impl SceneView {
       });
 
     if let Some((draw, sky)) = &composited_draw {
-      self.features.composited.add_passes(&mut *graph, passes, (draw, *sky));
+      self.features.composited.add_passes(&mut *graph, passes, draw, *sky);
     }
 
     if is_drawn && self.features.particles.is_drawing() {
@@ -1554,75 +1462,59 @@ impl SceneView {
       self.features.composited.add_after_particles(
         GraphDeclaration::new(graph, bindings, runtime),
         passes,
-        (draw, *sky, lit),
+        draw,
+        *sky,
+        lit,
       );
     }
 
     // What a reflection reads a frame later: the scene with the water and the particles drawn, before the sun shafts,
     // the rain and the flares, which belong to this camera and not to what it reflects. The depth it stood on is the
     // target itself, which the reflections keep at the frame's end.
-    if let Some((source_scene, _)) = source {
-      add_texture_copy(&mut *graph, "reflection source scene", handles.scene, source_scene);
+    if let Some(source) = source {
+      add_texture_copy(&mut *graph, "reflection source scene", handles.scene, source.scene);
     }
 
     // The volumetrics, the flares and the bloom, then the resolve, recorded beside the forward passes.
     graph.begin_group("effects");
 
-    let (light_volumes, is_froxeled, froxels) = self.features.volumetric.add_passes(
+    let shafts: VolumetricShafts = self.features.volumetric.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),
       record,
-      (&self.features.lights, light_atlas),
+      &self.features.lights,
+      light_atlas,
     );
 
     self.features.sun_shafts.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      view,
-      (handles, lit),
-      (light_volumes, is_froxeled),
-      (froxels, source.map(|(scene, _)| scene)),
+      record,
+      shafts,
+      source.map(|source| source.scene),
     );
     self.features.rain.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      view,
-      (
-        handles,
-        &lit,
-        (
-          shadowed.covers.map(|covers| covers.depth),
-          shadowed.surface[2],
-          shadowed.surface[0],
-        ),
-      ),
+      record,
+      RainCovers::of(&shadowed),
     );
-    self.features.thunder.add_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      view,
-      (handles, lit.lighting),
-    );
+    self
+      .features
+      .thunder
+      .add_passes(GraphDeclaration::new(graph, bindings, runtime), record);
 
-    ResolveFeature::add_transparency_guide(&mut *graph, handles, (&mut ray_guides, before_water));
+    ResolveFeature::add_transparency_guide(&mut *graph, handles, &mut ray_guides, before_water);
 
-    self.features.flares.add_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      passes.flares,
-      (handles, lit),
-      view,
-    );
-    self.features.fog.add_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      view,
-      (handles, lit),
-    );
-    self.features.meter.add_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      view,
-      (handles, lit),
-    );
+    self
+      .features
+      .flares
+      .add_passes(GraphDeclaration::new(graph, bindings, runtime), record);
+    self
+      .features
+      .fog
+      .add_passes(GraphDeclaration::new(graph, bindings, runtime), record);
+    self
+      .features
+      .meter
+      .add_passes(GraphDeclaration::new(graph, bindings, runtime), record);
 
     let size: (u32, u32) = handles.size;
 
@@ -1641,7 +1533,8 @@ impl SceneView {
     let smoothed: GraphTexture = self.features.smoothing.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),
       passes,
-      (handles.scene, size),
+      handles.scene,
+      size,
     );
     // The water's pixels carried by its surface rather than by what lies under it.
     let surfaced: ViewTargetHandles = ViewTargetHandles {
@@ -1650,9 +1543,13 @@ impl SceneView {
     };
     let (mut resolved, mut shown): (GraphTexture, GraphTexture) = self.features.resolve.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      view,
-      (surfaced, smoothed, opaque, ray_guides),
+      ViewRecord {
+        handles: surfaced,
+        ..record
+      },
+      smoothed,
+      opaque,
+      ray_guides,
     );
 
     // The camera over the resolved image, so no history carries its blurs; the frame as drawn is that image too where
@@ -1661,7 +1558,8 @@ impl SceneView {
       GraphDeclaration::new(graph, bindings, runtime),
       passes,
       surfaced,
-      (shown, self.features.resolve.get_shown_size(handles.size)),
+      shown,
+      self.features.resolve.get_shown_size(handles.size),
     ) {
       if !self.features.resolve.is_rescaled() {
         resolved = image;
@@ -1671,12 +1569,11 @@ impl SceneView {
     }
 
     // The enhanced bloom from the resolved image the present shows, before the streaks laid over it.
-    let enhanced_bloom: Option<GraphTexture> = self.features.bloom.add_enhanced_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      view,
-      (handles, shown, size, lit.lighting),
-    );
+    let enhanced_bloom: Option<GraphTexture> =
+      self
+        .features
+        .bloom
+        .add_enhanced_passes(GraphDeclaration::new(graph, bindings, runtime), record, shown);
 
     // A selected composited surface, glass, marked where the present outlines the selection, once the enhanced
     // bloom has read the marks.
@@ -1688,18 +1585,10 @@ impl SceneView {
     // too where nothing rescaled it.
     if let Some(layer) = self.features.rain.add_over_resolved(
       GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      view,
-      (
-        handles,
-        &lit,
-        (
-          shadowed.covers.map(|covers| covers.depth),
-          shadowed.surface[2],
-          shadowed.surface[0],
-        ),
-      ),
-      (shown, self.features.resolve.get_shown_size(handles.size)),
+      record,
+      RainCovers::of(&shadowed),
+      shown,
+      self.features.resolve.get_shown_size(handles.size),
     ) {
       if !self.features.resolve.is_rescaled() {
         resolved = layer;
@@ -1708,11 +1597,10 @@ impl SceneView {
       shown = layer;
     }
 
-    self.features.exposure.add_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      (handles.high, (handles.scene, handles.depth), handles.size, &lit),
-    );
+    self
+      .features
+      .exposure
+      .add_passes(GraphDeclaration::new(graph, bindings, runtime), record);
 
     output.scene = resolved;
     output.shown = shown;
@@ -1790,9 +1678,9 @@ impl SceneView {
   }
 
   /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down, on a GPU that has DLSS where
-  /// `has_dlss`: jittered while it resolves frames temporally and shows the finished frame, still otherwise.
-  pub fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32, has_dlss: bool) -> Vec2 {
-    self.features.resolve.next_jitter(options, ratio, has_dlss)
+  /// `dlss` gives it: jittered while it resolves frames temporally and shows the finished frame, still otherwise.
+  pub fn next_jitter(&mut self, options: &RenderViewOptions, ratio: f32, dlss: Option<&Dlss>) -> Vec2 {
+    self.features.resolve.next_jitter(options, ratio, dlss)
   }
 
   /// The mip bias the surfaces' textures are read at this frame, as `next_jitter` decided it.
@@ -1944,10 +1832,7 @@ impl SceneView {
     version: u64,
     selection: Option<&RenderSelection>,
   ) {
-    self
-      .features
-      .overlays
-      .set((scene, device), (overlays, version), selection);
+    self.features.overlays.set(scene, device, overlays, version, selection);
   }
 
   /// What a selection marks in the scene now, resolved again only once the target or the scene changed; none where

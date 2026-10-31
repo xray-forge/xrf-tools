@@ -1,20 +1,17 @@
-use xrf_renderer_core::{
-  GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, StorageValue, UniformBinding,
-};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, StorageValue};
 
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::texture_copy::add_texture_copy;
-use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::froxel_uniform::FroxelUniform;
-use crate::pass::level_passes::LevelPasses;
 use crate::pass::sun_shafts_parameters::SunShaftsParameters;
 use crate::pass::sun_shafts_pass::{SunShaftsDraw, SunShaftsPass};
-use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::froxels::Froxels;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::lighting_handles::LightingHandles;
+use crate::scene::level::feature::volumetric_shafts::VolumetricShafts;
+use crate::scene::level::view_record::ViewRecord;
 
 /// The sun's shafts, marched at half size through its shadow while the weather shafts it, and the composite that adds
 /// them, the shadowed lights' shafts or the enhanced volume's froxels in their place over the scene and its high part.
@@ -39,8 +36,8 @@ impl SunShaftsFeature {
     self.is_display_added = options.is_light_physical() && options.features.light_level == RenderLightLevel::Authored;
   }
 
-  /// Adds the sun's shafts marched, unless the froxels draw in their place (`is_froxeled`), and the composite of them
-  /// with the shadowed lights' shafts or the froxels; nothing where none of them is drawn. At the authored levels the
+  /// Adds the sun's shafts marched, unless the froxels draw in their place, and the composite of them with the shadowed
+  /// lights' shafts or the froxels (`shafts`); nothing where none of them is drawn. At the authored levels the
   /// composite writes the frame over from a copy of it, the shafts added to its display values: the frame as the
   /// reflections copied it for the next frame (`copied`), which stands as the composite finds it, or one of its own.
   pub fn add_passes<'a>(
@@ -50,14 +47,19 @@ impl SunShaftsFeature {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    (handles, lit): (ViewTargetHandles, LightingHandles<'a>),
-    (light_volumes, is_froxeled): (Option<GraphTexture>, bool),
-    (froxels, copied): (
-      Option<(UniformBinding<FroxelUniform>, GraphTexture)>,
-      Option<GraphTexture>,
-    ),
+    ViewRecord {
+      passes,
+      view,
+      handles,
+      lit,
+      ..
+    }: ViewRecord<'a>,
+    VolumetricShafts {
+      light_volumes,
+      is_froxeled,
+      froxels,
+    }: VolumetricShafts,
+    copied: Option<GraphTexture>,
   ) {
     let is_shafted: bool = self.is_shafted && !is_froxeled;
 
@@ -68,8 +70,13 @@ impl SunShaftsFeature {
     let (width, height) = handles.size;
     let empty: GraphTexture = bindings.import_view(&mut *graph, "sun shafts none", passes.reflections.get_empty());
     let no_froxels: GraphTexture = bindings.import_view(&mut *graph, "froxels none", passes.froxels.get_empty());
-    let (froxel_uniform, froxel_integrated) =
-      froxels.unwrap_or_else(|| (runtime.push_uniform(&FroxelUniform::default()), no_froxels));
+    let Froxels {
+      uniform: froxel_uniform,
+      integrated: froxel_integrated,
+    } = froxels.unwrap_or_else(|| Froxels {
+      uniform: runtime.push_uniform(&FroxelUniform::default()),
+      integrated: no_froxels,
+    });
     let march: SunShaftsParameters = SunShaftsParameters {
       depth_target: handles.depth,
       shadow_maps: lit.shadow_maps,

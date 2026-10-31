@@ -48,7 +48,8 @@ impl SkyIrradiance {
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
-    (sky, lit): (&SkyParameters<'a>, &LightingHandles<'a>),
+    sky: &SkyParameters<'a>,
+    lit: &LightingHandles<'a>,
   ) {
     let buffer: GraphBuffer = bindings.import_buffer(&mut *graph, "sky harmonics", &self.buffer);
     let parameters: SkyIrradianceParameters = SkyIrradianceParameters {

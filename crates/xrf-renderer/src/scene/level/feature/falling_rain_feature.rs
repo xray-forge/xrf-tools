@@ -6,11 +6,9 @@ use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, St
 
 use crate::contract::render_rain_settings::RenderRainSettings;
 
-use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::host::render_rain::RenderRain;
 use crate::lighting::ambient_gust::AmbientGust;
-use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::render_rainfall::RenderRainfall;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::rain_counts::RainCounts;
@@ -18,14 +16,15 @@ use crate::pass::rain_frame::RainFrame;
 use crate::pass::rain_look_parameters::RainLookParameters;
 use crate::pass::rain_parameters::RainParameters;
 use crate::pass::rain_uniform::RainUniform;
-use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::over_scene::add_over_scene;
+use crate::scene::level::feature::overhead_windows::OverheadWindows;
+use crate::scene::level::feature::rain_covers::RainCovers;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::rain_rings::RainRings;
+use crate::scene::level::view_prepare::ViewPrepare;
+use crate::scene::level::view_record::ViewRecord;
 use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
-use crate::scene::texture::weather_textures::WeatherTextures;
 
 /// The falling rain, while the weather rains and the view shows it: the splash's model built for the level's weather,
 /// the uniform at the rain cover's window, the streak's and the splash's textures, and the drops drawn.
@@ -51,21 +50,30 @@ pub struct FallingRainFeature {
 }
 
 impl FallingRainFeature {
-  /// Takes this frame's rain where `rainfall` falls as the rain's `settings` say, the camera looking along `look`: the
-  /// splash's model built for the level's weather, the uniform at the rain cover's window and shape (`cover`), and
-  /// the textures; answers the uniform, which the wet surfaces follow, none where the weather has no rain to draw.
+  /// Takes this frame's rain where the weather rains on a lit view, as the rain's settings say, blown by `gust` at
+  /// `time`: the splash's model built for the level's weather, the uniform at the rain cover's window and shape (in
+  /// `windows`), and the textures; answers the uniform, which the wet surfaces follow, none where the weather has no
+  /// rain to draw.
   pub fn prepare(
     &mut self,
-    device: &wgpu::Device,
-    (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
-    ((rainfall, settings), gust, (time, look)): (
-      (Option<RenderRainfall>, &RenderRainSettings),
-      AmbientGust,
-      (f32, Vec3),
-    ),
-    (cover, (texels, reach)): (Vec4, (f32, f32)),
-    weather_textures: WeatherTextures<'_>,
+    &ViewPrepare {
+      device,
+      view,
+      options,
+      lighting,
+      weather,
+      weather_textures,
+      ..
+    }: &ViewPrepare<'_>,
+    gust: AmbientGust,
+    time: f32,
+    windows: OverheadWindows,
   ) -> Option<RainUniform> {
+    let rainfall: Option<RenderRainfall> = lighting.rain.filter(|_| options.mode.is_lit);
+    let settings: &RenderRainSettings = &options.features.rain;
+    let look: Vec3 = view.get_look();
+    let (cover, (texels, reach)): (Vec4, (f32, f32)) = (windows.cover, windows.cover_shape);
+
     self.draw = None;
     self.views = None;
 
@@ -165,8 +173,10 @@ impl FallingRainFeature {
   }
 
   /// Follows the rain cover to where it stands once it has moved, as the drops read it.
-  pub fn follow_cover(&mut self, cover: Vec4, (texels, reach): (f32, f32)) {
-    self.uniform.window = cover;
+  pub fn follow_cover(&mut self, windows: OverheadWindows) {
+    let (texels, reach): (f32, f32) = windows.cover_shape;
+
+    self.uniform.window = windows.cover;
     self.uniform.cover_shape = Vec4::new(texels, reach, 0.0, 0.0);
   }
 
@@ -176,14 +186,14 @@ impl FallingRainFeature {
     self.uniform.display = display;
   }
 
-  /// Follows the level water's and the level surface's maps (`water`, `surface`, both of `shape`), which the enhanced
-  /// drops land on where `is_drawn`.
-  pub fn follow_surfaces(&mut self, (water, surface, shape): (Vec4, Vec4, Vec4), is_drawn: bool) {
-    let is_landing: bool = is_drawn && self.uniform.is_enhanced != 0;
+  /// Follows the level water's and the level surface's maps where `windows` gives them, none where the surfaces are not
+  /// drawn, which the enhanced drops land on.
+  pub fn follow_surfaces(&mut self, windows: Option<OverheadWindows>) {
+    let landing: Option<OverheadWindows> = windows.filter(|_| self.uniform.is_enhanced != 0);
 
-    self.uniform.water = if is_landing { water } else { Vec4::ZERO };
-    self.uniform.surface = if is_landing { surface } else { Vec4::ZERO };
-    self.uniform.water_shape = if is_landing { shape } else { Vec4::ZERO };
+    self.uniform.water = landing.map_or(Vec4::ZERO, |it| it.water);
+    self.uniform.surface = landing.map_or(Vec4::ZERO, |it| it.surface);
+    self.uniform.water_shape = landing.map_or(Vec4::ZERO, |it| it.surface_shape);
   }
 
   /// Adds the rain over the scene, falling onto `covers`: the engine's streaks and splashes, or the enhanced splashes
@@ -195,14 +205,12 @@ impl FallingRainFeature {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    (handles, lit, covers): (
-      ViewTargetHandles,
-      &LightingHandles<'a>,
-      (Option<GraphTexture>, GraphTexture, GraphTexture),
-    ),
+    record: ViewRecord<'a>,
+    covers: RainCovers,
   ) {
+    let ViewRecord {
+      passes, view, handles, ..
+    } = record;
     let Some((counts, parameters)) =
       self.get_parameters(GraphDeclaration::new(graph, bindings, runtime), passes, covers, None)
     else {
@@ -213,12 +221,7 @@ impl FallingRainFeature {
     let look: Option<RainLookParameters<'a>> = (self.uniform.is_enhanced != 0).then(|| {
       let nothing: GraphTexture = bindings.import_view(&mut *graph, "rain nothing", passes.rain.get_nothing());
 
-      self.get_look(
-        GraphDeclaration::new(graph, bindings, runtime),
-        passes,
-        (handles, lit),
-        nothing,
-      )
+      self.get_look(GraphDeclaration::new(graph, bindings, runtime), record, nothing)
     });
     let mut pass = add_over_scene(&mut *graph, handles, "rain").parameters(&parameters);
 
@@ -240,15 +243,13 @@ impl FallingRainFeature {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    (handles, lit, covers): (
-      ViewTargetHandles,
-      &LightingHandles<'a>,
-      (Option<GraphTexture>, GraphTexture, GraphTexture),
-    ),
-    (shown, size): (GraphTexture, (u32, u32)),
+    record: ViewRecord<'a>,
+    covers: RainCovers,
+    shown: GraphTexture,
+    size: (u32, u32),
   ) -> Option<GraphTexture> {
+    let ViewRecord { passes, view, .. } = record;
+
     if self.uniform.is_enhanced == 0 {
       return None;
     }
@@ -262,12 +263,8 @@ impl FallingRainFeature {
     let layer: GraphTexture = passes.rain.add_layer(&mut *graph, shown, size);
     // `phase_ssfx_rain`: what the drops bend, the image as shown, blurred small.
     let refracted: GraphTexture = passes.rain.add_blur(&mut *graph, shown, size);
-    let look: RainLookParameters<'a> = self.get_look(
-      GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      (handles, lit),
-      refracted,
-    );
+    let look: RainLookParameters<'a> =
+      self.get_look(GraphDeclaration::new(graph, bindings, runtime), record, refracted);
 
     graph
       .add_raster_pass("rain")
@@ -279,8 +276,7 @@ impl FallingRainFeature {
     Some(layer)
   }
 
-  /// Adds the rings the enhanced drops leave where they land on `covers`, while `is_read` says something reads them;
-  /// answers them, none without them.
+  /// Adds the rings the enhanced drops leave where they land on `covers`; answers them, none without them.
   pub fn add_rings<'a>(
     &'a self,
     GraphDeclaration {
@@ -288,15 +284,10 @@ impl FallingRainFeature {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    covers: (Option<GraphTexture>, GraphTexture, GraphTexture),
-    is_read: bool,
+    ViewRecord { passes, view, .. }: ViewRecord<'a>,
+    covers: RainCovers,
   ) -> Option<GraphTexture> {
-    let rings: &RainRings = self
-      .rings
-      .as_ref()
-      .filter(|_| is_read && self.uniform.get_rings() > 0.0)?;
+    let rings: &RainRings = self.rings.as_ref().filter(|_| self.uniform.get_rings() > 0.0)?;
     let (RainCounts { near, .. }, parameters) =
       self.get_parameters(GraphDeclaration::new(graph, bindings, runtime), passes, covers, None)?;
     let levels: [GraphTexture; RainRings::LEVELS as usize] =
@@ -319,7 +310,11 @@ impl FallingRainFeature {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
-    (cover, surface_water, surface_lowest): (Option<GraphTexture>, GraphTexture, GraphTexture),
+    RainCovers {
+      cover,
+      surface_water,
+      surface_lowest,
+    }: RainCovers,
     over: Option<(u32, u32)>,
   ) -> Option<(RainCounts, RainParameters<'a>)> {
     let (Some(counts), Some(cover), Some([streak, splash]), Some((_, model))) =
@@ -349,8 +344,9 @@ impl FallingRainFeature {
   fn get_look<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    (handles, lit): (ViewTargetHandles, &LightingHandles<'a>),
+    ViewRecord {
+      passes, handles, lit, ..
+    }: ViewRecord<'a>,
     refracted: GraphTexture,
   ) -> RainLookParameters<'a> {
     RainLookParameters {

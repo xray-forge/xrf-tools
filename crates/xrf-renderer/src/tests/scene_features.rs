@@ -12,7 +12,7 @@ fn holds_nothing_while_off() {
     return;
   };
   let layout: wgpu::BindGroupLayout = ViewBinding::create_layout(&context.device);
-  let mut features: SceneFeatures = SceneFeatures::new((&context.device, &context.queue), &layout);
+  let mut features: SceneFeatures = SceneFeatures::new(&context.device, &context.queue, &layout);
   let kept: u64 = [
     &features.exposure as &dyn ViewFeature,
     &features.lights,

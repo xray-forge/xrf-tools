@@ -5,21 +5,16 @@ use xrf_renderer_core::{
 
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_reflection_probe::RenderReflectionProbe;
-use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
-use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::lighting::daylight::Daylight;
 use crate::lighting::light_units::LightUnits;
-use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::render_sky::RenderSky;
-use crate::pass::exposure_metering::ExposureMetering;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::pre_exposure::PreExposure;
 use crate::pass::sky_harmonics::SkyHarmonics;
 use crate::pass::sky_haze_parameters::SkyHazeParameters;
 use crate::pass::sky_motion_parameters::SkyMotionParameters;
@@ -27,16 +22,17 @@ use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
 use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
 use crate::pass::sky_prefilter_uniform::SkyPrefilterUniform;
-use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::exposure_feature::ExposureFeature;
 use crate::scene::level::feature::sky_irradiance::SkyIrradiance;
 use crate::scene::level::feature::sky_prefilter::SkyPrefilter;
+use crate::scene::level::feature::sun_sprite::SunSprite;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::sky_views::SkyViews;
 use crate::scene::level::surroundings_cube::SurroundingsCube;
+use crate::scene::level::view_prepare::ViewPrepare;
+use crate::scene::level::view_record::ViewRecord;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
-use crate::scene::texture::weather_textures::WeatherTextures;
 
 /// The sky a view draws and reflects: its textures as the weather holds them this frame, with the sun's sprite, the
 /// prefiltered cube the reflections and the enhanced specular read, filled again as the frame's scheduler grants it (at
@@ -45,8 +41,8 @@ use crate::scene::texture::weather_textures::WeatherTextures;
 #[derive(Default)]
 pub struct SkyFeature {
   views: Option<SkyViews>,
-  /// The sun's sprite as the sky draws it, its texture and its colour and radius, where one is drawn.
-  sun_sprite: Option<(String, Vec4)>,
+  /// The sun's sprite as the sky draws it, where one is drawn.
+  sun_sprite: Option<SunSprite>,
   /// The prefiltered cube, while the enhanced reflections and specular read it.
   prefilter: Option<SkyPrefilter>,
   /// What the sky group binds in the prefiltered cube's place while none is kept: the weather's placeholder cube.
@@ -81,15 +77,22 @@ impl SkyFeature {
   /// that changed.
   pub fn prepare(
     &mut self,
-    device: &wgpu::Device,
-    (passes, options): (LevelPasses<'_>, &RenderViewOptions),
-    (sky, sun_sprite, environments): (&RenderSky, Option<(String, Vec4)>, &[String]),
-    weather_textures: WeatherTextures<'_>,
+    &ViewPrepare {
+      device,
+      passes,
+      options,
+      lighting,
+      weather_textures,
+      ..
+    }: &ViewPrepare<'_>,
+    sun_sprite: Option<SunSprite>,
+    environments: &[String],
   ) {
+    let sky: &RenderSky = &lighting.sky;
     self.views = Some(passes.sky.collect(
       weather_textures,
       sky,
-      sun_sprite.as_ref().map(|(texture, _)| texture.as_str()),
+      sun_sprite.as_ref().map(|sprite| sprite.texture.as_str()),
       environments,
     ));
     self.sun_sprite = sun_sprite;
@@ -192,7 +195,7 @@ impl SkyFeature {
   }
 
   /// The sun's sprite as the sky draws it, where one is drawn.
-  pub fn get_sun_sprite(&self) -> Option<&(String, Vec4)> {
+  pub fn get_sun_sprite(&self) -> Option<&SunSprite> {
     self.sun_sprite.as_ref()
   }
 
@@ -221,10 +224,20 @@ impl SkyFeature {
   /// metered; at the physical light levels the world's light, and the units the light is in by the sky last projected.
   pub fn get_lighting_frame(
     &self,
-    (lighting, options): (&RenderLighting, &RenderViewOptions),
-    weather_textures: WeatherTextures<'_>,
-    ((is_adapting, pre_exposure, metering), time): ((bool, PreExposure, ExposureMetering), f32),
+    &ViewPrepare {
+      options,
+      lighting,
+      weather_textures,
+      ..
+    }: &ViewPrepare<'_>,
+    exposure: &ExposureFeature,
+    time: f32,
   ) -> LightingFrame {
+    let (is_adapting, pre_exposure, metering) = (
+      exposure.is_adapting(),
+      exposure.get_pre_exposure(),
+      exposure.get_metering(),
+    );
     let sky: &RenderSky = &lighting.sky;
     let daylight: Option<Daylight> = (options.is_light_physical()
       && options.features.light_level == RenderLightLevel::Physical)
@@ -258,8 +271,8 @@ impl SkyFeature {
       sky_harmonics: self.harmonics,
       sun_sprite: self
         .get_sun_sprite()
-        .filter(|(texture, _)| weather_textures.is_up(texture))
-        .map_or(Vec4::ZERO, |(_, sprite)| *sprite),
+        .filter(|sprite| weather_textures.is_up(&sprite.texture))
+        .map_or(Vec4::ZERO, |sprite| sprite.look),
     }
   }
 
@@ -283,14 +296,12 @@ impl SkyFeature {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    (handles, lit): (ViewTargetHandles, LightingHandles<'a>),
-    surroundings: Option<(
-      &'a SurroundingsCube,
-      &StaticSceneHandles,
-      (&'a StaticCullUniform, &'a wgpu::BindGroup),
-    )>,
+    record: ViewRecord<'a>,
+    surroundings: Option<&'a SurroundingsCube>,
   ) -> Option<SkyParameters<'a>> {
+    let ViewRecord {
+      passes, handles, lit, ..
+    } = record;
     let views: &'a SkyViews = self.views.as_ref()?;
     let cube: &'a wgpu::TextureView = match (&self.prefilter, &self.unfiltered) {
       (Some(prefilter), _) => &prefilter.cube,
@@ -300,14 +311,15 @@ impl SkyFeature {
     let sky: SkyParameters = passes.sky.import(views, cube, &mut *graph, &mut *bindings);
 
     if let Some(irradiance) = &self.irradiance {
-      irradiance.add_passes(GraphDeclaration::new(graph, bindings, runtime), passes, (&sky, &lit));
+      irradiance.add_passes(GraphDeclaration::new(graph, bindings, runtime), passes, &sky, &lit);
     }
 
     if let Some(prefilter) = &self.prefilter {
       self.add_prefilter_passes(
         GraphDeclaration::new(graph, bindings, runtime),
-        passes,
-        (&sky, prefilter, &lit),
+        record,
+        &sky,
+        prefilter,
         surroundings,
       );
     }
@@ -342,13 +354,17 @@ impl SkyFeature {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    (sky, prefilter, lit): (&SkyParameters<'a>, &'a SkyPrefilter, &LightingHandles<'a>),
-    surroundings: Option<(
-      &'a SurroundingsCube,
-      &StaticSceneHandles,
-      (&'a StaticCullUniform, &'a wgpu::BindGroup),
-    )>,
+    ViewRecord {
+      passes,
+      textures,
+      statics,
+      cull,
+      lit,
+      ..
+    }: ViewRecord<'a>,
+    sky: &SkyParameters<'a>,
+    prefilter: &'a SkyPrefilter,
+    surroundings: Option<&'a SurroundingsCube>,
   ) {
     let (lighting, exposure): (UniformBinding<LightingUniform>, GraphBuffer) = (lit.lighting, lit.exposure);
     let empty: GraphTexture = bindings.import_view(&mut *graph, "sky prefilter none", passes.sky_prefilter.get_empty());
@@ -359,13 +375,13 @@ impl SkyFeature {
       });
       let faces: GraphTexture = bindings.import_view(&mut *graph, "sky prefilter level", &level.target);
 
-      if let (0, Some((cube, scene, cull))) = (index, surroundings) {
+      if let (0, Some(cube)) = (index, surroundings) {
         cube.add_passes(
           GraphDeclaration::new(graph, bindings, runtime),
           passes,
-          scene,
-          cull,
-          (lit, sky),
+          &statics,
+          (cull, textures),
+          (&lit, sky),
           faces,
         );
 

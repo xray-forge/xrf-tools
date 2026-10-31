@@ -1,0 +1,9 @@
+use crate::pass::trace_parameters::TraceParameters;
+
+/// The level's geometry as a frame traces rays against it: the trace's parameters every consumer binds, and the
+/// texture cache's group a hit samples.
+#[derive(Clone, Copy)]
+pub struct TracedScene<'a> {
+  pub trace: TraceParameters<'a>,
+  pub textures: &'a wgpu::BindGroup,
+}

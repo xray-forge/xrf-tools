@@ -1,15 +1,14 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, StorageValue};
 
-use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::combine_parameters::CombineParameters;
-use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::sky_behind_parameters::SkyBehindParameters;
 use crate::pass::sky_behind_pass::SkyBehindPass;
 use crate::pass::sky_parameters::SkyParameters;
-use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::combine_inputs::CombineInputs;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::lighting_handles::LightingHandles;
+use crate::scene::level::feature::wet_targets::WetTargets;
+use crate::scene::level::view_record::ViewRecord;
 
 /// The fog's square below which the sky behind changes no pixel by half an eight-bit step, as `frame/combine.wgsl`
 /// declares it.
@@ -31,16 +30,34 @@ impl CombineFeature {
     self.is_sky_behind = lighting.params.y > 0.5 && lighting.fog.w > 0.5 && fog * fog >= UNSEEN_SKY;
   }
 
-  /// Adds the combine into the scene and the high target, reading the indirect light, the reflections, the wet
-  /// surface and the wet reach the units before it answered (`products`, in that order).
+  /// Adds the combine into the scene and the high target, reading what the units before it answered (`inputs`), the
+  /// record's stand-ins for what they did not draw.
   pub fn add_passes<'a>(
     &self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    (handles, lit, sky): (ViewTargetHandles, LightingHandles<'a>, SkyParameters<'a>),
-    [indirect_light, reflections, wet_surface, wet_reach, sun_seen]: [GraphTexture; 5],
+    ViewRecord {
+      passes,
+      view,
+      handles,
+      lit,
+      unlit,
+      untraced,
+      ..
+    }: ViewRecord<'a>,
+    sky: SkyParameters<'a>,
+    CombineInputs {
+      indirect_light,
+      reflections,
+      wet,
+      sun_seen,
+    }: CombineInputs,
   ) {
+    let indirect_light: GraphTexture = indirect_light.unwrap_or(unlit);
+    let reflections: GraphTexture = reflections.unwrap_or(untraced);
+    let WetTargets {
+      surface: wet_surface,
+      reach: wet_reach,
+    } = wet;
     let sky_behind_map: GraphTexture = if self.is_sky_behind {
       let (width, height) = handles.size;
       let target: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(

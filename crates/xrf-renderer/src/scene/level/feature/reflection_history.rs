@@ -2,6 +2,7 @@ use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::frame_texture::FrameTexture;
 use crate::frame::history::History;
 use crate::frame::view_targets::ViewTargets;
+use crate::pass::reflection_trace::ReflectionTrace;
 use crate::pass::trace_request_list::TraceRequestList;
 use crate::scene::level::feature::reflection_frame::ReflectionFrame;
 
@@ -62,9 +63,10 @@ impl ReflectionHistory {
     }
   }
 
-  /// The history at the size traced at, its denoiser's frames where it is denoised, and the pyramid and the kept scene
-  /// over the frame's size.
-  pub fn new(device: &wgpu::Device, size: (u32, u32), frame_size: (u32, u32), is_denoised: bool) -> Self {
+  /// The history at the size `trace` traces at, its denoiser's frames where it is denoised, and the pyramid and the
+  /// kept scene over the frame's size.
+  pub fn new(device: &wgpu::Device, trace: ReflectionTrace, frame_size: (u32, u32)) -> Self {
+    let (size, is_denoised): ((u32, u32), bool) = (Self::get_traced_size(trace, frame_size), !trace.is_raw);
     let create = |label: &str, size: (u32, u32), format: wgpu::TextureFormat, usage: wgpu::TextureUsages| {
       FrameTexture::new(device, label, size, format, usage)
     };
@@ -110,9 +112,18 @@ impl ReflectionHistory {
     }
   }
 
-  /// Whether it is traced at a size over a frame of another, denoised or not.
-  pub fn is_sized(&self, size: (u32, u32), frame_size: (u32, u32), is_denoised: bool) -> bool {
-    self.size == size && (self.pyramid.width, self.pyramid.height) == frame_size && self.frames.is_some() == is_denoised
+  /// Whether it is traced as `trace` traces over a frame of `frame_size`, denoised or not as it asks.
+  pub fn is_sized(&self, trace: ReflectionTrace, frame_size: (u32, u32)) -> bool {
+    self.size == Self::get_traced_size(trace, frame_size)
+      && (self.pyramid.width, self.pyramid.height) == frame_size
+      && self.frames.is_some() != trace.is_raw
+  }
+
+  /// The size `trace` traces a frame of `frame_size` at.
+  pub fn get_traced_size(trace: ReflectionTrace, (width, height): (u32, u32)) -> (u32, u32) {
+    let ratio: u32 = trace.get_ratio();
+
+    (width.div_ceil(ratio), height.div_ceil(ratio))
   }
 
   /// Whether the denoiser's side this frame reads holds the frame before.

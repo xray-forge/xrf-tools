@@ -5,11 +5,9 @@ use xrf_renderer_core::{
 
 use crate::context::gpu_requirements::can_trace;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
-use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::frame_texture::FrameTexture;
 use crate::frame::stats_readback::StatsReadback;
-use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::budgeted_trace_outputs::BudgetedTraceOutputs;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::pyramid_depth_parameters::PyramidDepthParameters;
@@ -26,16 +24,21 @@ use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::scene_trace_bindings::SceneTraceBindings;
 use crate::pass::scene_trace_request::SceneTraceRequest;
 use crate::pass::sky_parameters::SkyParameters;
-use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::trace_request_handles::TraceRequestHandles;
 use crate::pass::trace_request_parameters::TraceRequestParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::reflection_frame::ReflectionFrame;
 use crate::scene::level::feature::reflection_frame_handles::ReflectionFrameHandles;
 use crate::scene::level::feature::reflection_history::ReflectionHistory;
+use crate::scene::level::feature::reflection_source::ReflectionSource;
+use crate::scene::level::feature::resolve_feature::ResolveFeature;
+use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
-use crate::scene::level::lighting_handles::LightingHandles;
+use crate::scene::level::feature::wet_feature::WetFeature;
+use crate::scene::level::feature::wet_targets::WetTargets;
+use crate::scene::level::view_prepare::ViewPrepare;
+use crate::scene::level::view_record::ViewRecord;
 
 /// The screen-space reflections, while they are traced: their settings and trace this frame, what their passes read,
 /// and what they keep from frame to frame.
@@ -50,17 +53,22 @@ pub struct ReflectionFeature {
 }
 
 impl ReflectionFeature {
-  /// Takes this frame's reflections for a frame `size` texels across, raw where DLSS ray reconstruction resolves it
-  /// (`is_reconstructed`), the dry surfaces left untraced unless asked where the level is not wet (`is_wet`): the
-  /// history at the size they trace at and the pyramid over the frame's depth made or kept while they are traced,
-  /// dropped otherwise, the trace's request list fitted, and what their passes read.
+  /// Takes this frame's reflections for the frame as drawn, raw where DLSS ray reconstruction resolves it (`resolve`),
+  /// the dry surfaces left untraced unless asked where the level is not wet (`wet`): the history at the size they
+  /// trace at and the pyramid over the frame's depth made or kept while they are traced, dropped otherwise, the
+  /// trace's request list fitted, and what their passes read.
   pub fn prepare(
     &mut self,
-    device: &wgpu::Device,
-    options: &RenderViewOptions,
-    (width, height): (u32, u32),
-    (is_reconstructed, is_wet): (bool, bool),
+    &ViewPrepare {
+      device,
+      drawn: (width, height),
+      options,
+      ..
+    }: &ViewPrepare<'_>,
+    resolve: &ResolveFeature,
+    wet: &WetFeature,
   ) {
+    let (is_reconstructed, is_wet): (bool, bool) = (resolve.is_ray_reconstructed(), wet.is_wet());
     self.settings = options.features.reflections;
     self.trace = ReflectionTrace::new(options).map(|trace| trace.with_raw(is_reconstructed));
 
@@ -69,16 +77,14 @@ impl ReflectionFeature {
 
       return;
     };
-    let ratio: u32 = trace.get_ratio();
-    let traced: (u32, u32) = (width.div_ceil(ratio), height.div_ceil(ratio));
-    let is_denoised: bool = !trace.is_raw;
+    let traced: (u32, u32) = ReflectionHistory::get_traced_size(trace, (width, height));
 
     if !self
       .history
       .as_ref()
-      .is_some_and(|it| it.is_sized(traced, (width, height), is_denoised))
+      .is_some_and(|it| it.is_sized(trace, (width, height)))
     {
-      self.history = Some(ReflectionHistory::new(device, traced, (width, height), is_denoised));
+      self.history = Some(ReflectionHistory::new(device, trace, (width, height)));
     }
 
     let can_trace: bool = can_trace(device);
@@ -174,12 +180,10 @@ impl ReflectionFeature {
   pub fn import_source<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-  ) -> Option<(GraphTexture, GraphTexture)> {
-    self.history.as_ref().map(|history| {
-      (
-        bindings.import_view(&mut *graph, "reflection source scene", &history.scene.view),
-        bindings.import_view(&mut *graph, "reflection source depth", &history.depth),
-      )
+  ) -> Option<ReflectionSource> {
+    self.history.as_ref().map(|history| ReflectionSource {
+      scene: bindings.import_view(&mut *graph, "reflection source scene", &history.scene.view),
+      depth: bindings.import_view(&mut *graph, "reflection source depth", &history.depth),
     })
   }
 
@@ -195,16 +199,26 @@ impl ReflectionFeature {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    (targets, lit, (wet_surface, wet_reach)): (ViewTargetHandles, LightingHandles<'a>, (GraphTexture, GraphTexture)),
-    source: Option<(GraphTexture, GraphTexture)>,
-    (sky, scene_trace): (&SkyParameters<'a>, Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>),
+    record: ViewRecord<'a>,
+    wet: WetTargets,
+    source: Option<ReflectionSource>,
+    sky: &SkyParameters<'a>,
+    scene_trace: Option<TracedScene<'a>>,
   ) -> Option<(GraphTexture, GraphTexture, GraphTexture)> {
     self.trace?;
 
+    let ViewRecord {
+      passes,
+      view,
+      handles: targets,
+      lit,
+      ..
+    } = record;
     let history: &'a ReflectionHistory = self.history.as_ref()?;
-    let (source_scene, source_depth): (GraphTexture, GraphTexture) = source?;
+    let ReflectionSource {
+      scene: source_scene,
+      depth: source_depth,
+    } = source?;
     let sky: SkyParameters<'a> = *sky;
     let reflection: UniformBinding<ReflectionUniform> = runtime.push_uniform(&self.uniform);
     let empty: GraphTexture = bindings.import_view(graph, "reflections empty", passes.reflections.get_empty());
@@ -230,8 +244,8 @@ impl ReflectionFeature {
       depth_target: targets.depth,
       light_target: targets.light,
       occlusion_target: targets.occlusion[0],
-      wet_surface,
-      wet_reach,
+      wet_surface: wet.surface,
+      wet_reach: wet.reach,
       material_lut: lit.material_lut,
       lut_sampler: lit.lut_sampler,
       lighting: lit.lighting,
@@ -257,11 +271,14 @@ impl ReflectionFeature {
     };
     self.add_trace_passes(
       GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      view,
-      (&parameters, sky, lit),
-      (traced, ends),
-      (history, scene_trace),
+      record,
+      &parameters,
+      sky,
+      ReflectionTraceOutParameters {
+        traced_out: traced,
+        ends_out: ends,
+      },
+      scene_trace,
     );
 
     // Raw, DLSS ray reconstruction denoises the trace in the frame, so combine reads it as traced.
@@ -270,26 +287,30 @@ impl ReflectionFeature {
     };
 
     let written_full: GraphTexture =
-      Self::add_denoise_passes(graph, passes, view, parameters, (traced, frames), history.size);
+      Self::add_denoise_passes(graph, passes, view, parameters, traced, frames, history.size);
 
     Some((written_full, ends, traced))
   }
 
-  /// Walks every glossy pixel's ray over the nearest depth's pyramid into `traced` and `ends`, then the rays the screen
+  /// Walks every glossy pixel's ray over the nearest depth's pyramid into `out`'s targets, then the rays the screen
   /// left against the level's geometry where the scene is traced (`scene_trace`); raw, how many rays the trace asked
   /// for read back for its list's room.
   fn add_trace_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    (parameters, sky, lit): (&ReflectionParameters<'a>, SkyParameters<'a>, LightingHandles<'a>),
-    (traced, ends): (GraphTexture, GraphTexture),
-    (history, scene_trace): (
-      &'a ReflectionHistory,
-      Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>,
-    ),
+    ViewRecord { passes, view, lit, .. }: ViewRecord<'a>,
+    parameters: &ReflectionParameters<'a>,
+    sky: SkyParameters<'a>,
+    out: ReflectionTraceOutParameters,
+    scene_trace: Option<TracedScene<'a>>,
   ) {
+    let Some(history) = self.history.as_ref() else {
+      return;
+    };
+    let ReflectionTraceOutParameters {
+      traced_out: traced,
+      ends_out: ends,
+    } = out;
     let parameters: ReflectionParameters<'a> = *parameters;
     let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
 
@@ -300,10 +321,6 @@ impl ReflectionFeature {
     let requests: TraceRequestParameters = listed.to_listed();
 
     if self.settings.is_ray_budgeted {
-      let out: ReflectionTraceOutParameters = ReflectionTraceOutParameters {
-        traced_out: traced,
-        ends_out: ends,
-      };
       let size: (u32, u32) = history.size;
 
       graph
@@ -341,7 +358,7 @@ impl ReflectionFeature {
     }
 
     // The rays the trace left, traced against the level's geometry.
-    if let Some((trace, textures)) = scene_trace {
+    if let Some(TracedScene { trace, textures }) = scene_trace {
       let (trace_requests, trace_request_head) = listed.to_read();
       let head = listed.head;
 
@@ -395,7 +412,8 @@ impl ReflectionFeature {
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     parameters: ReflectionParameters<'a>,
-    (traced, frames): (GraphTexture, ReflectionFrameHandles),
+    traced: GraphTexture,
+    frames: ReflectionFrameHandles,
     (width, height): (u32, u32),
   ) -> GraphTexture {
     let clear = |target: GraphTexture| GraphColorAttachment::new(target, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));

@@ -2,14 +2,15 @@ use crate::pass::exposure_metering::ExposureMetering;
 use crate::pass::light_encoding::LightEncoding;
 use crate::pass::present_marks::PresentMarks;
 
-/// What the other units decided this frame that the window pass reads: whether an ambient occlusion and an indirect
-/// light are drawn, how many frame pixels a traced reflection pixel stands for, whether anything distorts the frame,
+/// What the other units decided this frame that the window pass reads: whether the scene was upscaled into the
+/// viewport, whether an ambient occlusion and an indirect light are drawn, how many frame pixels a traced reflection pixel stands for, whether anything distorts the frame,
 /// the selection's colour, the helpers' marks and fading, which bloom is laid over it, how far the grass casts the
 /// sun's shadow, the light's scale and whether it is summed, which the reflections' view shows what the rays met by,
 /// what the exposure metered, which the display transforms are lifted by, and the frame the camera's film grain is
 /// drawn for.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct PresentInputs {
+  pub is_upscaled: bool,
   pub is_occluded: bool,
   pub is_indirect: bool,
   pub reflection_ratio: Option<u32>,

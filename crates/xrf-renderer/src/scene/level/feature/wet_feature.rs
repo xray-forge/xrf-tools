@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use glam::Vec4;
 use xrf_engine_target::XrayEngine;
 use xrf_renderer_core::{
@@ -7,27 +5,24 @@ use xrf_renderer_core::{
 };
 
 use crate::contract::render_rain_settings::RenderRainSettings;
-use crate::contract::render_view_options::RenderViewOptions;
-use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::host::render_level_weather::RenderLevelWeather;
-use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::enhanced_water_maps::EnhancedWaterMaps;
-use crate::pass::level_passes::LevelPasses;
 use crate::pass::rain_uniform::RainUniform;
-use crate::pass::view_binding::ViewBinding;
 use crate::pass::wet_apply_parameters::WetApplyParameters;
 use crate::pass::wet_draw::WetDraw;
 use crate::pass::wet_pass::WetPass;
 use crate::pass::wet_patch_parameters::WetPatchParameters;
 use crate::pass::wet_stage::WetStage;
 use crate::pass::wet_uniform::WetUniform;
-use crate::scene::level::cover_textures::CoverTextures;
+use crate::scene::level::feature::drop_rings::DropRings;
 use crate::scene::level::feature::overhead_windows::OverheadWindows;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::feature::wet_targets::WetTargets;
 use crate::scene::level::level_wetness::LevelWetness;
 use crate::scene::level::rain_wetness::RainWetness;
+use crate::scene::level::shadows_recorded::ShadowsRecorded;
+use crate::scene::level::view_prepare::ViewPrepare;
+use crate::scene::level::view_record::ViewRecord;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
-use crate::scene::texture::weather_textures::WeatherTextures;
 
 /// The wet surfaces: the G-buffer wetted by the level's wetness and its puddles' fill (`LevelWetness`, the scene's)
 /// while the rain falls and, enhanced, while the level is still wet after it stops.
@@ -41,16 +36,26 @@ pub struct WetFeature {
 impl WetFeature {
   /// Takes this frame's wetting from the level's wetness (`level`) at the scene's clock `time`: with the falling rain's
   /// uniform where it falls, over the overhead maps where they stand (`windows`), its cover's noise turned by
-  /// `noise_frame`; dry for a view with no eye (`has_eye`), as the overhead maps stand about one.
+  /// `noise_frame`; dry for an orthographic view, which has no eye for the overhead maps to stand about.
   pub fn prepare(
     &mut self,
-    (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
-    (options, has_eye): (&RenderViewOptions, bool),
-    (level, falling, time): (&LevelWetness, Option<&RainUniform>, f32),
-    (windows, noise_frame): (OverheadWindows, u32),
-    weather_textures: WeatherTextures<'_>,
+    &ViewPrepare {
+      view,
+      options,
+      lighting,
+      weather,
+      weather_textures,
+      ..
+    }: &ViewPrepare<'_>,
+    level: &LevelWetness,
+    falling: Option<&RainUniform>,
+    time: f32,
+    windows: OverheadWindows,
+    noise_frame: u32,
   ) {
     self.views = None;
+
+    let has_eye: bool = !view.is_orthographic();
 
     let settings: RenderRainSettings = options.features.rain;
     let is_enhanced: bool = settings.is_enhanced();
@@ -112,10 +117,9 @@ impl WetFeature {
     ]);
   }
 
-  /// Follows the enhanced drops' rings this frame: the tile they wrap over (`RainUniform::get_rings`), none without
-  /// them, the metres they reach and their strength.
-  pub fn follow_rings(&mut self, (tile, reach, strength): (f32, f32, f32)) {
-    self.uniform.rings = Vec4::new(tile, reach, strength, 0.0);
+  /// Follows the enhanced drops' rings this frame.
+  pub fn follow_rings(&mut self, rings: DropRings) {
+    self.uniform.rings = Vec4::new(rings.tile, rings.reach, rings.strength, 0.0);
   }
 
   /// Follows the overhead maps to where they stand once they have moved, as the wet surfaces read them.
@@ -155,31 +159,29 @@ impl WetFeature {
     self.is_wet().then(|| runtime.push_uniform(&self.uniform))
   }
 
-  /// Adds the wetting of the G-buffer before any light is drawn over it, through the rain's `covers` and the level's
-  /// surface (its lowest heights, its puddle sites and its water), the puddles rippled by the enhanced drops' `rings`;
-  /// answers the wet surface the enhanced patch writes
-  /// and the gloss the reflections' wet reach adds, which the reflections and combine read, a texel of nothing for each
-  /// while dry.
+  /// Adds the wetting of the G-buffer before any light is drawn over it, through the rain's cover and the level's
+  /// surface (its lowest heights, its puddle sites and its water) as the shadows phase drew them, the puddles rippled
+  /// by the enhanced drops' `rings`; answers what it writes for the reflections and combine.
   pub fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    (handles, covers, wet, rings): (
-      ViewTargetHandles,
-      Option<CoverTextures>,
-      Option<UniformBinding<WetUniform>>,
-      GraphTexture,
-    ),
-    [surface_lowest, puddles, surface_water]: [GraphTexture; 3],
-  ) -> (GraphTexture, GraphTexture) {
+    ViewRecord {
+      passes, view, handles, ..
+    }: ViewRecord<'a>,
+    ShadowsRecorded {
+      covers,
+      wet,
+      surface: [surface_lowest, puddles, surface_water],
+    }: ShadowsRecorded,
+    rings: GraphTexture,
+  ) -> WetTargets {
     let (Some(covers), Some(wet), Some([splash, flow])) = (covers, wet, &self.views) else {
       let none: &'a wgpu::TextureView = passes.reflections.get_empty();
 
-      return (
-        bindings.import_view(&mut *graph, "wet surface none", none),
-        bindings.import_view(&mut *graph, "wet reach none", none),
-      );
+      return WetTargets {
+        surface: bindings.import_view(&mut *graph, "wet surface none", none),
+        reach: bindings.import_view(&mut *graph, "wet reach none", none),
+      };
     };
     let is_enhanced: bool = self.uniform.is_enhanced > 0.5;
     let maps: &EnhancedWaterMaps = passes.water.get_maps();
@@ -271,7 +273,10 @@ impl WetFeature {
         passes.wet.record(context, draw, view, &apply)
       });
 
-    (wet_surface, wet_reach)
+    WetTargets {
+      surface: wet_surface,
+      reach: wet_reach,
+    }
   }
 }
 

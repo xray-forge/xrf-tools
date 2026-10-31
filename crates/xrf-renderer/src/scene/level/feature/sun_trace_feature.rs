@@ -1,14 +1,15 @@
-use glam::Vec4;
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding};
 
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
+use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::sun_trace_parameters::SunTraceParameters;
 use crate::pass::sun_trace_pass::SunTracePass;
 use crate::pass::sun_trace_uniform::SunTraceUniform;
-use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::resolve_feature::ResolveFeature;
+use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::feature::view_feature::ViewFeature;
 
 /// The sun's shadow traced, where DLSS ray reconstruction resolves a lit, solid frame and the scene's trace is built:
@@ -21,23 +22,23 @@ pub struct SunTraceFeature {
 }
 
 impl SunTraceFeature {
-  /// Takes this frame's trace towards the sun's view space direction `to_sun`, its noise turned by `noise_frame`,
-  /// where DLSS ray reconstruction resolves the frame (`is_reconstructed`).
-  pub fn prepare(&mut self, options: &RenderViewOptions, to_sun: Vec4, noise_frame: u32, is_reconstructed: bool) {
-    self.is_traced = Self::is_asked(options, is_reconstructed);
-    self.uniform = SunTraceUniform::new(to_sun, noise_frame);
+  /// Takes this frame's trace towards the sun as the frame's `lighting` gives it, its noise turned by `noise_frame`,
+  /// where DLSS ray reconstruction resolves the frame (`resolve`).
+  pub fn prepare(
+    &mut self,
+    options: &RenderViewOptions,
+    lighting: &LightingUniform,
+    noise_frame: u32,
+    resolve: &ResolveFeature,
+  ) {
+    self.is_traced = Self::is_asked(options, resolve);
+    self.uniform = SunTraceUniform::new(lighting.to_sun, noise_frame);
   }
 
   /// Whether a view traces the sun's shadow, the scene's trace allowing: where DLSS ray reconstruction resolves its
-  /// frame (`is_reconstructed`), lit and solid.
-  pub fn is_asked(options: &RenderViewOptions, is_reconstructed: bool) -> bool {
-    is_reconstructed && options.mode.is_lit && !options.mode.is_wireframe
-  }
-
-  /// Whether the sun's cascades shadow the frame: cascades asked for, and the sun not traced in their place where the
-  /// view traces its light (`is_traced`) and DLSS ray reconstruction resolves it (`is_reconstructed`).
-  pub fn is_cascaded(options: &RenderViewOptions, is_traced: bool, is_reconstructed: bool) -> bool {
-    options.features.shadows.get_cascade_count() > 0 && !(is_traced && Self::is_asked(options, is_reconstructed))
+  /// frame (`resolve`), lit and solid.
+  pub fn is_asked(options: &RenderViewOptions, resolve: &ResolveFeature) -> bool {
+    resolve.is_ray_reconstructed() && options.mode.is_lit && !options.mode.is_wireframe
   }
 
   /// Traces the sun's shadow where it does this frame and the scene's trace is built (`traced`), answering what the sun
@@ -48,9 +49,9 @@ impl SunTraceFeature {
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     targets: ViewTargetHandles,
-    traced: Option<(TraceParameters<'a>, &'a wgpu::BindGroup)>,
+    traced: Option<TracedScene<'a>>,
   ) -> Option<GraphTexture> {
-    let (trace, textures) = traced.filter(|_| self.is_traced)?;
+    let TracedScene { trace, textures } = traced.filter(|_| self.is_traced)?;
     let sun_trace: UniformBinding<SunTraceUniform> = runtime.push_uniform(&self.uniform);
     let (width, height) = targets.size;
     let seen: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(

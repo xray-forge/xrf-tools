@@ -3,13 +3,10 @@ use xrf_renderer_core::{GraphBuffer, GraphBufferAccess, GraphDeclaration, Storag
 use crate::contract::render_meter_reading::RenderMeterReading;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::gpu_readback::GpuReadback;
-use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::pass::level_passes::LevelPasses;
 use crate::pass::meter_parameters::MeterParameters;
 use crate::pass::meter_sample::MeterSample;
-use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::lighting_handles::LightingHandles;
+use crate::scene::level::view_record::ViewRecord;
 
 /// A view's spot meter, while it meters a lit view: the sample its pass writes, the readback the sample is copied into
 /// without waiting, and the last reading that came back.
@@ -48,9 +45,13 @@ impl MeterFeature {
   pub fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
+    ViewRecord {
+      passes,
+      view,
+      handles: targets,
+      lit,
+      ..
+    }: ViewRecord<'a>,
   ) {
     let Some((buffer, readback)) = &self.sample else {
       return;

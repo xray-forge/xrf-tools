@@ -4,16 +4,13 @@ use crate::contract::render_applied_height_fog::RenderAppliedHeightFog;
 use crate::contract::render_fog_settings::RenderFogSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::texture_copy::add_texture_copy;
-use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::fog_scattering_parameters::FogScatteringParameters;
 use crate::pass::fog_scattering_pass::FogScatteringPass;
 use crate::pass::fog_scattering_uniform::FogScatteringUniform;
-use crate::pass::level_passes::LevelPasses;
-use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::lighting_handles::LightingHandles;
+use crate::scene::level::view_record::ViewRecord;
 
 /// The camera hemi under which the enhanced fog's height fog is gone and over which it is whole, about the engine's
 /// indoors at `0.05` (`CGamePersistent::WeathersUpdate`).
@@ -72,9 +69,13 @@ impl FogFeature {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    (targets, lit): (ViewTargetHandles, LightingHandles<'a>),
+    ViewRecord {
+      passes,
+      view,
+      handles: targets,
+      lit,
+      ..
+    }: ViewRecord<'a>,
   ) {
     let Some(stages) = self.stages else {
       return;

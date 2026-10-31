@@ -13,12 +13,14 @@ use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::trace_sway_parameters::TraceSwayParameters;
 use crate::pass::trace_sway_slot::TraceSwaySlot;
 use crate::scene::level::feature::lights_feature::LightsFeature;
+use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::grass_card_handles::GrassCardHandles;
 use crate::scene::level::grass_cards::GrassCards;
 use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::level::grass_view::GrassView;
 use crate::scene::level::level_scene::LevelScene;
+use crate::scene::level::view_prepare::ViewPrepare;
 use crate::scene::level::view_record::ViewRecord;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_trace::StaticTrace;
@@ -62,16 +64,25 @@ impl ViewTraceFeature {
   const MOST: usize = 64;
   const MOST_VERTICES: u32 = 1 << 20;
 
-  /// Takes this frame's swaying trees about the camera at `camera`, where the scene's trace stands (`trace`) and the
-  /// view traces (`is_traced`): the nearest chosen, a structure made for each newly chosen, the sway pass's slots
-  /// written and the view's top level filled, with the grass's `cards` where the view stands them.
+  /// Takes this frame's swaying trees about the camera, where the scene's trace stands (`trace`) and the view traces
+  /// the scene: the nearest chosen, a structure made for each newly chosen, the sway pass's slots written and the
+  /// view's top level filled, with the grass's `cards` where the view stands them.
   pub fn prepare(
     &mut self,
-    (device, encoder): (&wgpu::Device, &mut FrameEncoder),
-    (trace, cards): (Option<&StaticTrace>, Option<&wgpu::Blas>),
-    camera: Vec3,
-    is_traced: bool,
+    &ViewPrepare {
+      device,
+      passes,
+      view,
+      options,
+      ..
+    }: &ViewPrepare<'_>,
+    encoder: &mut FrameEncoder,
+    trace: Option<&StaticTrace>,
+    cards: Option<&wgpu::Blas>,
   ) {
+    let camera: Vec3 = view.position;
+    let is_traced: bool = options.is_scene_traced() && passes.scene_trace.is_traced();
+
     let Some(trace) = trace.filter(|_| is_traced) else {
       self.trace = None;
 
@@ -330,8 +341,10 @@ impl ViewTraceFeature {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
-    (grass_cards, lights, grass): (Option<GrassCardHandles>, &'a LightsFeature, &'a GrassView),
-  ) -> Option<(TraceParameters<'a>, &'a wgpu::BindGroup)> {
+    grass_cards: Option<GrassCardHandles>,
+    lights: &'a LightsFeature,
+    grass: &'a GrassView,
+  ) -> Option<TracedScene<'a>> {
     let ViewRecord {
       passes,
       textures: texture_group,
@@ -370,67 +383,61 @@ impl ViewTraceFeature {
       .trace
       .as_ref()
       .filter(|_| passes.scene_trace.is_traced())
-      .map(|trace| {
-        (
-          TraceParameters {
-            trace_scene: swayed.unwrap_or_else(|| trace.get_structure()),
-            trace_instances: StorageArray::new(bindings.import_buffer(
-              &mut *graph,
-              "static trace instances",
-              trace.get_instances(),
-            )),
-            trace_records: StorageArray::new(bindings.import_buffer(
-              &mut *graph,
-              "static trace records",
-              trace.get_records(),
-            )),
-            trace_places: StorageArray::new(statics.places),
-            trace_baked_words: StorageArray::new(statics.words[StaticLayout::Baked.get_index()]),
-            trace_tree_words: StorageArray::new(statics.words[StaticLayout::Tree.get_index()]),
-            trace_model_words: StorageArray::new(statics.words[StaticLayout::Model.get_index()]),
-            trace_indices: StorageArray::new(statics.indices),
-            trace_surfaces: StorageArray::new(statics.surfaces),
-            trace_lights: StorageArray::new(bindings.import_buffer(
-              &mut *graph,
-              "light records",
-              &lights.record_buffer,
-            )),
-            trace_light_view: runtime.push_uniform(&lights.uniform),
-            trace_shadow_atlas: bindings.import_view(
-              &mut *graph,
-              "light shadow atlas",
-              scene.lights.get_shadow_atlas().view,
-            ),
-            trace_shadow_sampler: scene.lights.get_shadow_atlas().sampler,
-            trace_sun_maps: lit.shadow_maps,
-            trace_sun_shadows: lit.shadows,
-            trace_grass_grid: StorageArray::new(bindings.import_buffer(
-              &mut *graph,
-              "grass grid",
-              grass_level.map_or(trace.get_empty(), |grass| &grass.cells),
-            )),
-            trace_grass_slots: StorageArray::new(bindings.import_buffer(
-              &mut *graph,
-              "grass slots",
-              grass_level.map_or(trace.get_empty(), |grass| &grass.slots),
-            )),
-            trace_grass_models: StorageArray::new(bindings.import_buffer(
-              &mut *graph,
-              "grass models",
-              grass_level.map_or(trace.get_empty(), |grass| &grass.models),
-            )),
-            trace_grass_colours: StorageArray::new(
-              grass_colours.unwrap_or_else(|| bindings.import_buffer(&mut *graph, "grass colours", trace.get_empty())),
-            ),
-            trace_grass: runtime.push_uniform(grass.get_trace_uniform()),
-            trace_grass_cards: StorageArray::new(
-              grass_cards
-                .map(|cards| cards.triangles)
-                .unwrap_or_else(|| bindings.import_buffer(&mut *graph, "grass card triangles", trace.get_empty())),
-            ),
-          },
-          texture_group,
-        )
+      .map(|trace| TracedScene {
+        trace: TraceParameters {
+          trace_scene: swayed.unwrap_or_else(|| trace.get_structure()),
+          trace_instances: StorageArray::new(bindings.import_buffer(
+            &mut *graph,
+            "static trace instances",
+            trace.get_instances(),
+          )),
+          trace_records: StorageArray::new(bindings.import_buffer(
+            &mut *graph,
+            "static trace records",
+            trace.get_records(),
+          )),
+          trace_places: StorageArray::new(statics.places),
+          trace_baked_words: StorageArray::new(statics.words[StaticLayout::Baked.get_index()]),
+          trace_tree_words: StorageArray::new(statics.words[StaticLayout::Tree.get_index()]),
+          trace_model_words: StorageArray::new(statics.words[StaticLayout::Model.get_index()]),
+          trace_indices: StorageArray::new(statics.indices),
+          trace_surfaces: StorageArray::new(statics.surfaces),
+          trace_lights: StorageArray::new(bindings.import_buffer(&mut *graph, "light records", &lights.record_buffer)),
+          trace_light_view: runtime.push_uniform(&lights.uniform),
+          trace_shadow_atlas: bindings.import_view(
+            &mut *graph,
+            "light shadow atlas",
+            scene.lights.get_shadow_atlas().view,
+          ),
+          trace_shadow_sampler: scene.lights.get_shadow_atlas().sampler,
+          trace_sun_maps: lit.shadow_maps,
+          trace_sun_shadows: lit.shadows,
+          trace_grass_grid: StorageArray::new(bindings.import_buffer(
+            &mut *graph,
+            "grass grid",
+            grass_level.map_or(trace.get_empty(), |grass| &grass.cells),
+          )),
+          trace_grass_slots: StorageArray::new(bindings.import_buffer(
+            &mut *graph,
+            "grass slots",
+            grass_level.map_or(trace.get_empty(), |grass| &grass.slots),
+          )),
+          trace_grass_models: StorageArray::new(bindings.import_buffer(
+            &mut *graph,
+            "grass models",
+            grass_level.map_or(trace.get_empty(), |grass| &grass.models),
+          )),
+          trace_grass_colours: StorageArray::new(
+            grass_colours.unwrap_or_else(|| bindings.import_buffer(&mut *graph, "grass colours", trace.get_empty())),
+          ),
+          trace_grass: runtime.push_uniform(grass.get_trace_uniform()),
+          trace_grass_cards: StorageArray::new(
+            grass_cards
+              .map(|cards| cards.triangles)
+              .unwrap_or_else(|| bindings.import_buffer(&mut *graph, "grass card triangles", trace.get_empty())),
+          ),
+        },
+        textures: texture_group,
       })
   }
 }

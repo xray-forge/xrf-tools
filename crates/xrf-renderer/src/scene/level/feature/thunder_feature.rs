@@ -4,20 +4,16 @@ use std::sync::{Arc, Weak};
 use xrf_material::XraySurfaceDraw;
 use xrf_renderer_core::{GraphDeclaration, StorageArray, UniformBinding};
 
-use crate::contract::render_view_options::RenderViewOptions;
-use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::host::render_level_weather::RenderLevelWeather;
-use crate::lighting::render_lighting::RenderLighting;
-use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::thunder_parameters::ThunderParameters;
 use crate::pass::thunder_uniform::ThunderUniform;
-use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::over_scene::add_over_scene;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::view_prepare::ViewPrepare;
+use crate::scene::level::view_record::ViewRecord;
 use crate::scene::level::weather_model_buffers::WeatherModelBuffers;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
-use crate::scene::texture::weather_textures::WeatherTextures;
 
 /// The strike, while a bolt strikes and the view shows it: every bolt model built for the level's weather, the uniform
 /// where the strike stands, and what its model and its two glows bind and draw.
@@ -39,10 +35,14 @@ impl ThunderFeature {
   /// weather, the uniform where the strike stands, and what its model and glows bind.
   pub fn prepare(
     &mut self,
-    device: &wgpu::Device,
-    (lighting, weather): (&RenderLighting, Option<&Arc<RenderLevelWeather>>),
-    options: &RenderViewOptions,
-    weather_textures: WeatherTextures<'_>,
+    &ViewPrepare {
+      device,
+      options,
+      lighting,
+      weather,
+      weather_textures,
+      ..
+    }: &ViewPrepare<'_>,
   ) {
     self.draw = None;
     self.views = None;
@@ -108,10 +108,15 @@ impl ThunderFeature {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    (handles, lighting): (ViewTargetHandles, UniformBinding<LightingUniform>),
+    ViewRecord {
+      passes,
+      view,
+      handles,
+      lit,
+      ..
+    }: ViewRecord<'a>,
   ) {
+    let lighting: UniformBinding<LightingUniform> = lit.lighting;
     let (Some((draws, model_indices)), Some((textures, model)), Some((_, models, no_model))) =
       (self.draw, &self.views, &self.models)
     else {

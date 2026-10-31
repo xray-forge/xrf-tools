@@ -29,8 +29,10 @@ impl OverlaysFeature {
   /// selected spawned object's box.
   pub fn set(
     &mut self,
-    (scene, device): (&LevelScene, &wgpu::Device),
-    (overlays, version): (&[RenderOverlay], u64),
+    scene: &LevelScene,
+    device: &wgpu::Device,
+    overlays: &[RenderOverlay],
+    version: u64,
     selection: Option<&RenderSelection>,
   ) {
     let boxed: Option<RenderOverlay> = selection.and_then(|selection| match selection.target {
@@ -50,7 +52,7 @@ impl OverlaysFeature {
   }
 
   /// Follows the scene's skeletons where the overlays draw them.
-  pub fn follow_skeletons(&mut self, (scene, device, encoder): (&LevelScene, &wgpu::Device, &mut FrameEncoder)) {
+  pub fn follow_skeletons(&mut self, scene: &LevelScene, device: &wgpu::Device, encoder: &mut FrameEncoder) {
     if let Some(overlays) = self.overlays.as_mut().filter(|it| it.skeleton.is_some()) {
       overlays.set_skeleton((device, encoder), &scene.skeleton_segments);
     }

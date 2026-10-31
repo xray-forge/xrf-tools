@@ -5,22 +5,20 @@ use xrf_renderer_core::{
 };
 
 use crate::contract::render_view_options::RenderViewOptions;
-use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::froxel_inject_parameters::FroxelInjectParameters;
 use crate::pass::froxel_integrate_parameters::FroxelIntegrateParameters;
 use crate::pass::froxel_uniform::FroxelUniform;
-use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_volume_parameters::LightVolumeParameters;
 use crate::pass::light_volume_pass::LightVolumePass;
 use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::froxel_volume::FroxelVolume;
+use crate::scene::level::feature::froxels::Froxels;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
+use crate::scene::level::feature::volumetric_shafts::VolumetricShafts;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
-use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::view_record::ViewRecord;
 
 /// The volumetric lighting: the enhanced froxels, a grid along the view filled over its history and integrated, in
@@ -72,8 +70,7 @@ impl VolumetricFeature {
   }
 
   /// Adds the shadowed lights' shafts (`accum_volumetric`), or the enhanced volume's froxels in place of both shafts,
-  /// for the sun shafts' composite: the shafts' target, whether the froxels stand in for them, and the froxels.
-  #[allow(clippy::type_complexity)]
+  /// for the sun shafts' composite.
   pub fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
@@ -82,26 +79,19 @@ impl VolumetricFeature {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
-    (lights, atlas): (&'a LightsFeature, LightShadowAtlas<'a>),
-  ) -> (
-    Option<GraphTexture>,
-    bool,
-    Option<(UniformBinding<FroxelUniform>, GraphTexture)>,
-  ) {
-    let volumes: Option<GraphTexture> = self.add_light_volume_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      record.passes,
-      (record.view, record.textures),
-      (record.handles, lights, atlas, record.lit.lighting),
-    );
-    let froxels: Option<(UniformBinding<FroxelUniform>, GraphTexture)> = self.add_froxel_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      record.passes,
-      record.view,
-      (record.lit, atlas, lights),
-    );
+    lights: &'a LightsFeature,
+    atlas: LightShadowAtlas<'a>,
+  ) -> VolumetricShafts {
+    let light_volumes: Option<GraphTexture> =
+      self.add_light_volume_passes(GraphDeclaration::new(graph, bindings, runtime), record, lights, atlas);
+    let froxels: Option<Froxels> =
+      self.add_froxel_passes(GraphDeclaration::new(graph, bindings, runtime), record, lights, atlas);
 
-    (volumes, self.is_froxeled(), froxels)
+    VolumetricShafts {
+      light_volumes,
+      is_froxeled: self.is_froxeled(),
+      froxels,
+    }
   }
 
   /// Adds the shadowed lights' shafts at half the frame's size, added up over the frame's depth for the sun shafts'
@@ -113,15 +103,18 @@ impl VolumetricFeature {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    (view, textures): (&'a ViewBinding, &'a wgpu::BindGroup),
-    (handles, lights, atlas, lighting): (
-      ViewTargetHandles,
-      &'a LightsFeature,
-      LightShadowAtlas<'a>,
-      UniformBinding<LightingUniform>,
-    ),
+    ViewRecord {
+      passes,
+      view,
+      textures,
+      handles,
+      lit,
+      ..
+    }: ViewRecord<'a>,
+    lights: &'a LightsFeature,
+    atlas: LightShadowAtlas<'a>,
   ) -> Option<GraphTexture> {
+    let lighting: UniformBinding<LightingUniform> = lit.lighting;
     if self.is_froxeled() || !lights.has_volumes() {
       return None;
     }
@@ -181,10 +174,10 @@ impl VolumetricFeature {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    view: &'a ViewBinding,
-    (lit, atlas, lights): (LightingHandles<'a>, LightShadowAtlas<'a>, &'a LightsFeature),
-  ) -> Option<(UniformBinding<FroxelUniform>, GraphTexture)> {
+    ViewRecord { passes, view, lit, .. }: ViewRecord<'a>,
+    lights: &'a LightsFeature,
+    atlas: LightShadowAtlas<'a>,
+  ) -> Option<Froxels> {
     let (Some(uniform), Some(volume)) = (&self.uniform, &self.froxels) else {
       return None;
     };
@@ -222,7 +215,10 @@ impl VolumetricFeature {
       .parameters(&integrate)
       .record(move |context| passes.froxels.record_integrate(context, view, &integrate));
 
-    Some((froxels, integrated))
+    Some(Froxels {
+      uniform: froxels,
+      integrated,
+    })
   }
 }
 

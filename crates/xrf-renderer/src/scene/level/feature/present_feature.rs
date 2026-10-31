@@ -29,15 +29,9 @@ pub struct PresentFeature {
 }
 
 impl PresentFeature {
-  /// Takes this frame's present into `output`, of a scene upscaled into it where `is_upscaled`, once every other unit
-  /// has decided what it reads (`inputs`), the debanding's noise turning with `time`.
-  pub fn prepare(
-    &mut self,
-    options: &RenderViewOptions,
-    (is_upscaled, output): (bool, RenderRect),
-    inputs: PresentInputs,
-    time: f32,
-  ) {
+  /// Takes this frame's present into `output`, once every other unit has decided what it reads (`inputs`), the
+  /// debanding's noise turning with `time`.
+  pub fn prepare(&mut self, options: &RenderViewOptions, output: RenderRect, inputs: PresentInputs, time: f32) {
     let water = &options.features.water;
 
     self.debanding = PresentUniform::get_debanding(options);
@@ -51,7 +45,7 @@ impl PresentFeature {
       PresentFrame {
         view: options.mode.debug_view,
         output,
-        is_upscaled,
+        is_upscaled: inputs.is_upscaled,
         is_occluded: inputs.is_occluded,
         is_indirect: inputs.is_indirect,
         reflection_ratio: inputs.reflection_ratio,

@@ -1,14 +1,13 @@
 use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
-use xrf_renderer_core::{
-  GraphBuffer, GraphBufferAccess, GraphDeclaration, GraphTexture, StorageArrayMut, StorageValueMut,
-};
+use xrf_renderer_core::{GraphBuffer, GraphBufferAccess, GraphDeclaration, StorageArrayMut, StorageValueMut};
 
 use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::gpu_readback::GpuReadback;
+use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::exposure_head::ExposureHead;
 use crate::pass::exposure_histogram_parameters::ExposureHistogramParameters;
 use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
@@ -17,10 +16,9 @@ use crate::pass::exposure_parameters::ExposureParameters;
 use crate::pass::exposure_state::ExposureState;
 use crate::pass::exposure_step::ExposureStep;
 use crate::pass::exposure_uniform::ExposureUniform;
-use crate::pass::level_passes::LevelPasses;
 use crate::pass::pre_exposure::PreExposure;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::lighting_handles::LightingHandles;
+use crate::scene::level::view_record::ViewRecord;
 
 /// The longest step between frames the adaptation takes, so a stall does not snap it to what one frame measured.
 const LONGEST_STEP: Duration = Duration::from_millis(250);
@@ -312,9 +310,9 @@ impl ExposureFeature {
     head.ok()
   }
 
-  /// Adds the adaptation into the exposure's state the lit passes share (`lit`): the frame's luminance measured from the
-  /// high target and the scale moved towards it, or under the physical light the `size` scene's light counted into the
-  /// histogram and the scale settled from it, at the authored levels the frame read as the engine's meter reads it
+  /// Adds the adaptation into the exposure's state the lit passes share: the frame's luminance measured from the high
+  /// target and the scale moved towards it, or under the physical light the scene's light counted into the histogram
+  /// and the scale settled from it, at the authored levels the frame read as the engine's meter reads it
   /// through the frame's lighting; nothing while it does not measure.
   pub fn add_passes<'a>(
     &'a self,
@@ -323,14 +321,17 @@ impl ExposureFeature {
       bindings,
       runtime,
     }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    (high, (scene, depth_target), size, lit): (
-      GraphTexture,
-      (GraphTexture, GraphTexture),
-      (u32, u32),
-      &LightingHandles<'a>,
-    ),
+    ViewRecord {
+      passes, handles, lit, ..
+    }: ViewRecord<'a>,
   ) {
+    let ViewTargetHandles {
+      high,
+      scene,
+      depth: depth_target,
+      size,
+      ..
+    } = handles;
     if !self.is_measuring {
       return;
     }

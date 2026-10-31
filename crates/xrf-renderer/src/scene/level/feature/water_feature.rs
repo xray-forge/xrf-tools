@@ -1,4 +1,4 @@
-use xrf_renderer_core::{GraphBuffer, GraphDeclaration, GraphTexture};
+use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
 use crate::context::gpu_requirements::can_trace;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
@@ -13,10 +13,12 @@ use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::water_draw::WaterDraw;
 use crate::pass::water_reflection_trace::WaterReflectionTrace;
 use crate::pass::water_uniform::WaterUniform;
-use crate::scene::level::feature::ray_guides::RayGuides;
+use crate::scene::level::feature::drop_rings::DropRings;
+use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
 use crate::scene::level::feature::water_frame::WaterFrame;
+use crate::scene::level::feature::water_inputs::WaterInputs;
 use crate::scene::level::feature::water_reflection::WaterReflection;
 use crate::scene::level::sky_views::SkyViews;
 use crate::scene::level::view_record::ViewRecord;
@@ -41,12 +43,10 @@ pub struct WaterFeature {
 }
 
 impl WaterFeature {
-  /// Draws the water of a frame's `record` where it draws, over the sky's `views` and the frame copied before it
-  /// (`before_water`, which the enhanced water refracts and reflects), from the cull's argument buffers `args`; its
-  /// rays the screen left traced where the scene's trace is built (`traced`, with the sky's group), the enhanced water
-  /// rippled by the enhanced drops' `rings` and shone on by the sun where it reaches the bottom (`sun_seen`), writing
-  /// ray reconstruction's `guides` where it reads them. Answers the G-buffer's depth with the nearest water's over it
-  /// where the water draws.
+  /// Draws the water of a frame's `record` where it draws, from what it reads beside it (`inputs`): the enhanced water
+  /// rippled by the enhanced drops' rings and shone on by the sun where it reaches the bottom, its rays the screen left
+  /// traced where the scene's trace is built. Answers the G-buffer's depth with the nearest water's over it where the
+  /// water draws.
   pub fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
@@ -55,15 +55,20 @@ impl WaterFeature {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
-    (views, before_water, args, guides): (
-      Option<&'a SkyViews>,
-      Option<GraphTexture>,
-      Vec<GraphBuffer>,
-      Option<RayGuides>,
-    ),
-    [rings, sun_seen]: [GraphTexture; 2],
-    traced: Option<(SkyParameters<'a>, TraceParameters<'a>, &'a wgpu::BindGroup)>,
+    WaterInputs {
+      views,
+      before_water,
+      args,
+      guides,
+      rings,
+      sun_seen,
+      sky,
+      traced,
+    }: WaterInputs<'a>,
   ) -> Option<GraphTexture> {
+    let traced: Option<(SkyParameters<'a>, TraceParameters<'a>, &'a wgpu::BindGroup)> = sky
+      .zip(traced)
+      .map(|(sky, TracedScene { trace, textures })| (sky, trace, textures));
     let views: &SkyViews = views.filter(|_| self.is_drawn())?;
     let passes: LevelPasses<'a> = record.passes;
     let draw: WaterDraw<'a> = WaterDraw {
@@ -186,12 +191,11 @@ impl WaterFeature {
     &self.uniform
   }
 
-  /// Follows the enhanced drops' rings this frame: the tile they wrap over (`RainUniform::get_rings`), none without
-  /// them, the metres they reach and their strength.
-  pub fn follow_rings(&mut self, (tile, reach, strength): (f32, f32, f32)) {
-    self.enhanced.rings_tile = tile;
-    self.enhanced.rings_reach = reach;
-    self.enhanced.rings_strength = strength;
+  /// Follows the enhanced drops' rings this frame.
+  pub fn follow_rings(&mut self, rings: DropRings) {
+    self.enhanced.rings_tile = rings.tile;
+    self.enhanced.rings_reach = rings.reach;
+    self.enhanced.rings_strength = rings.strength;
   }
 
   pub fn get_enhanced_uniform(&self) -> &EnhancedWaterUniform {

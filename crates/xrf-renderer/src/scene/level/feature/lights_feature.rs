@@ -10,8 +10,6 @@ use crate::contract::render_lights_settings::RenderLightsSettings;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::stats_readback::StatsReadback;
-use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::light_binning_parameters::LightBinningParameters;
 use crate::pass::light_contact::LightContact;
@@ -28,12 +26,11 @@ use crate::pass::lights_draw::LightsDraw;
 use crate::pass::lights_parameters::LightsParameters;
 use crate::pass::lights_pass::LightsPass;
 use crate::pass::lights_uniform::LightsUniform;
-use crate::pass::trace_parameters::TraceParameters;
-use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::light_buffers::LightBuffers;
+use crate::scene::level::feature::light_draw_inputs::LightDrawInputs;
+use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
-use crate::scene::level::lighting_handles::LightingHandles;
+use crate::scene::level::view_record::ViewRecord;
 
 /// Clusters the view is cut into, and lights one holds at most.
 const LIGHT_CLUSTERS: u64 = LightsPass::LIGHT_CLUSTERS as u64;
@@ -123,17 +120,24 @@ impl LightsFeature {
     self.report.excess = excess;
   }
 
-  /// Writes a light's record after those written before, counting it shadowed where `is_shadowed`; answers its index,
-  /// none once `MAX_LIGHTS` are written.
-  pub fn push(&mut self, record: LightRecord, is_shadowed: bool) -> Option<u32> {
+  /// Writes a light's record after those written before; answers its index, none once `MAX_LIGHTS` are written.
+  pub fn push(&mut self, record: LightRecord) -> Option<u32> {
     if self.records.len() >= Self::MAX_LIGHTS {
       return None;
     }
 
     self.records.push(record);
-    self.report.shadowed += u32::from(is_shadowed);
 
     Some(self.records.len() as u32 - 1)
+  }
+
+  /// The same, the light counted shadowed.
+  pub fn push_shadowed(&mut self, record: LightRecord) -> Option<u32> {
+    let index: Option<u32> = self.push(record);
+
+    self.report.shadowed += u32::from(index.is_some());
+
+    index
   }
 
   /// Adds the shafts a written record draws, and the slices they draw.
@@ -178,7 +182,8 @@ impl LightsFeature {
     &mut self,
     encoder: &mut FrameEncoder,
     camera: &CameraView,
-    (filter, atlas): (RenderLightShadowFilter, RenderPoolUse),
+    filter: RenderLightShadowFilter,
+    atlas: RenderPoolUse,
   ) {
     self.report.atlas = atlas;
     self.count = self.records.len() as u32;
@@ -270,26 +275,33 @@ impl LightsFeature {
 
   /// Adds every light in view drawn into the light target over the sun: first the contact shadows marched by `contact`
   /// towards each texel's `contact_lights` strongest at half the frame's size, where they are; then how much of each
-  /// shadowed light every pixel sees, through the scene's shadow `atlas` and those contact shadows, unless no light in
-  /// view is shadowed; then the lights, at the anchored levels over the surface the wet surface and the wet reach
-  /// (`wet_surface`, `wet_reach`) give a water film. Nothing while none stands in view.
+  /// shadowed light every pixel sees, traced through the scene where `traced` gives it, or through the scene's shadow
+  /// `atlas` and those contact shadows, unless no light in view is shadowed; then the lights, at the anchored levels
+  /// over the surface the wetting gives a water film. Nothing while none stands in view.
   pub fn add_draw_passes<'a>(
     &self,
-    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    passes: LevelPasses<'a>,
-    (view, textures, atlas): (&'a ViewBinding, &'a wgpu::BindGroup, LightShadowAtlas<'a>),
-    (targets, lit, buffers, (wet_surface, wet_reach)): (
-      ViewTargetHandles,
-      LightingHandles<'a>,
-      LightBuffers,
-      (GraphTexture, GraphTexture),
-    ),
-    (contact, contact_lights): (UniformBinding<ContactShadowUniform>, u32),
-    traced: Option<(
-      TraceParameters<'a>,
-      &'a wgpu::BindGroup,
-      UniformBinding<LightTraceUniform>,
-    )>,
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
+    ViewRecord {
+      passes,
+      view,
+      textures,
+      handles: targets,
+      lit,
+      ..
+    }: ViewRecord<'a>,
+    LightDrawInputs {
+      atlas,
+      buffers,
+      wet,
+      contact,
+      contact_lights,
+      traced,
+      noise_frame,
+    }: LightDrawInputs<'a>,
   ) {
     if self.count == 0 {
       return;
@@ -311,8 +323,8 @@ impl LightsFeature {
       items: StorageArray::new(buffers.items),
       lights: buffers.uniform,
       contact,
-      wet_surface,
-      wet_reach,
+      wet_surface: wet.surface,
+      wet_reach: wet.reach,
     };
     let is_contact: bool = contact_lights > 0;
     let is_shadowed: bool = is_contact || self.is_any_shadowed();
@@ -351,7 +363,8 @@ impl LightsFeature {
         bindings.import_view(graph, "light threshold none", passes.lights.get_unthresholded()),
       )
     };
-    let visibility: GraphTexture = if let (Some((trace, textures, light_trace)), true) = (traced, is_shadowed) {
+    let visibility: GraphTexture = if let (Some(TracedScene { trace, textures }), true) = (traced, is_shadowed) {
+      let light_trace: UniformBinding<LightTraceUniform> = runtime.push_uniform(&LightTraceUniform::new(noise_frame));
       let visibility: GraphTexture = graph.create_texture(
         GraphTextureDescriptor::new_2d("light visibility", width, height, LightsPass::VISIBILITY_FORMAT)
           .with_array_layer_count(LightsPass::VISIBILITY_LAYERS),

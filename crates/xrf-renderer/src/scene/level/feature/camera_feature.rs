@@ -72,7 +72,8 @@ impl CameraFeature {
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     handles: ViewTargetHandles,
-    (shown, size): (GraphTexture, (u32, u32)),
+    shown: GraphTexture,
+    size: (u32, u32),
   ) -> Option<GraphTexture> {
     let (settings, view) = self.frame.as_ref()?;
     let (_, pipelines) = self.pipelines.as_ref()?;

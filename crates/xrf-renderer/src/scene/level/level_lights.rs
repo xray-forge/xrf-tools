@@ -308,7 +308,12 @@ impl LevelLights {
           }
         }
 
-        let Some(index) = into.push(record, set.is_some()) else {
+        let pushed: Option<u32> = if set.is_some() {
+          into.push_shadowed(record)
+        } else {
+          into.push(record)
+        };
+        let Some(index) = pushed else {
           break;
         };
 
@@ -328,7 +333,7 @@ impl LevelLights {
       }
     }
 
-    into.write(encoder, camera, (settings.shadow_filter, self.shadows.get_atlas_use()));
+    into.write(encoder, camera, settings.shadow_filter, self.shadows.get_atlas_use());
   }
 
   /// The lights a view sees this frame, by its `camera` and `settings`: in its frustum, or, out of it, a shadowed one
