@@ -2,15 +2,17 @@ use std::collections::BTreeSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use xrf_error::XrfResult;
+use rayon::prelude::*;
+use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{Ltx, LtxResolution, Section};
 
 use crate::project::animations::hud::player_hud_animations_verification_result::GamedataPlayerHudAnimationsVerificationResult;
-use crate::project::gamedata_asset_sweep::GamedataAssetSweep;
-use crate::project::gamedata_asset_sweep_outcome::GamedataAssetSweepOutcome;
+use crate::project::animations::hud::player_hud_motion_requests::PlayerHudMotionRequests;
+use crate::project::animations::hud::player_hud_motion_verdict::PlayerHudMotionVerdict;
+use crate::project::animations::hud::player_hud_motions::PlayerHudMotions;
 use crate::project::gamedata_item_section::GamedataItemSection;
 use crate::project::gamedata_visual_motions::GamedataVisualMotions;
-use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
+use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
 /// Verifies the player hands: their visual plays motions, and every motion a weapon's HUD section asks of them.
 pub(crate) struct PlayerHudAnimationsVerifier<'a> {
@@ -36,83 +38,78 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
       .filter(|(_, section)| GamedataItemSection::is_player_hud(section))
       .collect();
 
-    let outcome: GamedataAssetSweepOutcome =
-      GamedataAssetSweep::new(self.options).run(&player_hud_sections, |options, (section_name, section)| {
-        xrf_output::verbose!(options.output, "Verify player hud config [{section_name}]");
+    let read: Vec<(String, PlayerHudMotions, Vec<String>)> = player_hud_sections
+      .par_iter()
+      .filter(|_| !self.options.job.is_cancelled())
+      .map(|(section_name, section)| {
+        let mut problems: Vec<String> = Vec::new();
+        let motions: PlayerHudMotions = self.read_motions(section_name, section, &mut problems);
 
-        self
-          .verify_player_hud(system_ltx, section_name, section)
-          .into_iter()
-          .map(|message| {
-            xrf_output::error!(options.output, "{message}");
-
-            GamedataFindingFactory::for_asset(GamedataVerificationRule::AnimationsPlayerHud, &system_ltx_path, message)
-          })
-          .collect()
-      })?;
+        (section_name.to_string(), motions, problems)
+      })
+      .collect();
 
     self.options.job.check_cancelled()?;
 
+    let mut invalid_hands: BTreeSet<String> = BTreeSet::new();
+    let mut messages: Vec<String> = Vec::new();
+    let mut hands: Vec<(String, PlayerHudMotions)> = Vec::with_capacity(read.len());
+
+    for (section_name, motions, problems) in read {
+      if !problems.is_empty() {
+        invalid_hands.insert(section_name.clone());
+        messages.extend(problems);
+      }
+
+      // Hands playing nothing were reported above; judging every weapon's motions against them would only repeat it.
+      if !motions.is_empty() {
+        hands.push((section_name, motions));
+      }
+    }
+
+    let verdict: PlayerHudMotionVerdict =
+      PlayerHudMotionRequests::collect(system_ltx).verify(&hands, self.project.engine.engine);
+
+    invalid_hands.extend(verdict.invalid_hands);
+    messages.extend(verdict.messages);
+
+    let mut findings: Vec<Finding> = messages
+      .into_iter()
+      .map(|message| {
+        GamedataFindingFactory::for_asset(GamedataVerificationRule::AnimationsPlayerHud, &system_ltx_path, message)
+      })
+      .collect();
+
+    findings.sort_by(GamedataFindingFactory::cmp_by_asset_path_and_message);
+
+    for finding in &findings {
+      xrf_output::error!(self.options.output, "{}", finding.message());
+    }
+
+    let checked_huds_count: u32 = Self::to_count(player_hud_sections.len())?;
+    let invalid_huds_count: u32 = Self::to_count(invalid_hands.len())?;
+
     xrf_output::info!(
       self.options.output,
-      "Verified gamedata huds, {}/{} valid",
-      outcome.checked_count - outcome.invalid_count,
-      outcome.checked_count,
+      "Verified gamedata player HUD sections, {}/{} valid",
+      checked_huds_count - invalid_huds_count,
+      checked_huds_count,
     );
 
     Ok(GamedataPlayerHudAnimationsVerificationResult {
-      checked_huds_count: outcome.checked_count,
-      findings: outcome.findings,
-      invalid_huds_count: outcome.invalid_count,
+      checked_huds_count,
+      findings,
+      invalid_huds_count,
     })
   }
 
-  /// Every problem with one player HUD section, a message each.
-  fn verify_player_hud(&self, system_ltx: &Ltx, section_name: &str, section: &Section) -> Vec<String> {
-    let mut messages: Vec<String> = Vec::new();
-    let motions: BTreeSet<String> = self.read_motions(section_name, section, &mut messages);
-
-    if motions.is_empty() {
-      messages.push(format!("Player HUD section [{section_name}] has no animations"));
-
-      return messages;
-    }
-
-    for (weapon_name, weapon) in system_ltx.iter() {
-      if self.options.job.is_cancelled() {
-        break;
-      }
-
-      // A weapon without a HUD section the hands can play is reported by the weapons check.
-      let Some(hud) = weapon
-        .get("hud")
-        .filter(|_| GamedataItemSection::is_weapon(weapon))
-        .and_then(|hud| system_ltx.section(hud))
-      else {
-        continue;
-      };
-
-      for (field_name, field_value) in hud {
-        if !field_name.starts_with("anm_") {
-          continue;
-        }
-
-        let motion: &str = GamedataItemSection::get_motion_name(field_value);
-
-        if !motions.contains(motion) {
-          messages.push(format!(
-            "Player HUD section [{section_name}] has no motion '{motion}', which weapon [{weapon_name}] plays as {field_name}"
-          ));
-        }
-      }
-    }
-
-    messages
+  fn to_count(count: usize) -> XrfResult<u32> {
+    u32::try_from(count).map_err(|_| XrfError::new_verify_error("Player HUD count exceeds the supported result range"))
   }
 
-  /// The motions the hands visual plays, each problem reading them added to `messages`. Resolved and read through the
+  /// The motions the hands visual plays, each problem reading them added to `problems`. Resolved and read through the
   /// VFS, so an archived hands visual and its banks are checked too.
-  fn read_motions(&self, section_name: &str, section: &Section, messages: &mut Vec<String>) -> BTreeSet<String> {
+  fn read_motions(&self, section_name: &str, section: &Section, problems: &mut Vec<String>) -> PlayerHudMotions {
     let mut motions: BTreeSet<String> = BTreeSet::new();
     let visual: &str = section.get("visual").unwrap_or_default();
 
@@ -123,22 +120,22 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
       .flatten()
       .map(|location| location.get_logical_path().to_string())
     else {
-      messages.push(format!(
+      problems.push(format!(
         "Player HUD section [{section_name}] visual '{visual}' is not found"
       ));
 
-      return motions;
+      return PlayerHudMotions::default();
     };
 
     let refs: Vec<String> = match GamedataVisualMotions::read_refs(self.project, &visual_path) {
       Ok(Some(refs)) => refs,
-      Ok(None) => return motions,
+      Ok(None) => Vec::new(),
       Err(error) => {
-        messages.push(format!(
+        problems.push(format!(
           "Player HUD section [{section_name}] visual '{visual_path}' motion refs do not read: {error}"
         ));
 
-        return motions;
+        return PlayerHudMotions::default();
       }
     };
 
@@ -146,17 +143,22 @@ impl<'a> PlayerHudAnimationsVerifier<'a> {
     for motion_ref in &refs {
       for bank in GamedataVisualMotions::resolve_banks(self.project, motion_ref).unwrap_or_default() {
         match GamedataVisualMotions::read_names(self.project, &bank) {
-          Ok(names) if names.is_empty() => messages.push(format!(
+          Ok(names) if names.is_empty() => problems.push(format!(
             "Player HUD section [{section_name}] motion bank '{bank}' holds no motions"
           )),
           Ok(names) => motions.extend(names),
-          Err(error) => messages.push(format!(
+          Err(error) => problems.push(format!(
             "Player HUD section [{section_name}] motion bank '{bank}' does not read: {error}"
           )),
         }
       }
     }
 
-    motions
+    // One message for hands that play nothing, unless a problem above already says why.
+    if motions.is_empty() && problems.is_empty() {
+      problems.push(format!("Player HUD section [{section_name}] has no animations"));
+    }
+
+    PlayerHudMotions::new(motions)
   }
 }

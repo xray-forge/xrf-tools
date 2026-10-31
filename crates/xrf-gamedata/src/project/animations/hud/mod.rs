@@ -6,3 +6,8 @@ pub(crate) mod hud_motion_collisions_verification_result;
 pub(crate) mod hud_motion_collisions_verifier;
 pub(crate) mod player_hud_animations_verification_result;
 pub(crate) mod player_hud_animations_verifier;
+pub(crate) mod player_hud_motion_requests;
+pub(crate) mod player_hud_motion_verdict;
+pub(crate) mod player_hud_motions;
+#[cfg(test)]
+mod tests;

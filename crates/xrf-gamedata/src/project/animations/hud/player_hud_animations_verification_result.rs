@@ -14,7 +14,7 @@ impl GamedataCheckResult for GamedataPlayerHudAnimationsVerificationResult {
 
   fn get_summary(&self) -> String {
     format!(
-      "{}/{} HUD animations valid",
+      "{}/{} player HUD sections valid",
       self.checked_huds_count - self.invalid_huds_count,
       self.checked_huds_count
     )
