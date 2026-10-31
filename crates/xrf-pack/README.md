@@ -121,8 +121,8 @@ destination rules above, including `with_force` and rollback.
 Volumes receive a mountable `[header]` by default (`auto_load = true`, `entry_point = $fs_root$\gamedata\`). Keep it
 unless you need a different one: the engine treats a headerless `.db` as an encrypted Shadow of Chernobyl archive. A
 header that is present must be loadable, or packing refuses it: it needs a `[header]` section, `auto_load`, and an
-`entry_point` that is `gamedata` or begins with an alias such as `$fs_root$`, because the engine stops on load
-otherwise.
+`entry_point` that is `gamedata` or an alias followed by a path, such as `$fs_root$\gamedata\`
+(`ArchiveMetadata::is_mountable_entry_point`), because the engine stops on load or reads past the value otherwise.
 
 `max_volume_size` caps each finished volume, including chunk headers, header text, stored payloads, and the descriptor
 table. Unlike xrCompress's `XRP_TARGET_SIZE`, it cannot be exceeded by the next file or the final table.

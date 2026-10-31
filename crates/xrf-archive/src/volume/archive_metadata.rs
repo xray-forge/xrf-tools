@@ -105,18 +105,22 @@ impl ArchiveMetadata {
       .collect()
   }
 
-  /// The entry point without its leading `$alias$\`.
-  fn strip_root_alias(entry_point: &str) -> &str {
-    entry_point
-      .strip_prefix('$')
-      .and_then(|rest| rest.split_once('$'))
-      .filter(|(alias, _)| !alias.is_empty() && alias.chars().all(Self::is_word_char))
-      .and_then(|(_, path)| path.strip_prefix('\\'))
-      .unwrap_or(entry_point)
+  /// Whether `CLocatorAPI::LoadArchive` can mount an entry point: the `gamedata` literal, without case, or a value
+  /// opening with `$` that holds a `\`. Any other value trips its leading-`$` assertion, and a `$` value with no `\`
+  /// makes it take the whole value as the alias and read past the end of it.
+  pub fn is_mountable_entry_point(entry_point: &str) -> bool {
+    entry_point.eq_ignore_ascii_case("gamedata") || (entry_point.starts_with('$') && entry_point.contains('\\'))
   }
 
-  fn is_word_char(character: char) -> bool {
-    character.is_alphanumeric() || character == '_'
+  /// The entry point without its alias: for a value opening with `$`, everything after its first `\`, since
+  /// `LoadArchive` takes the alias up to there whatever it spells and mounts the rest under `$fs_root$`. A `$` value with
+  /// no `\` leaves nothing; any other value is kept as it stands.
+  fn strip_root_alias(entry_point: &str) -> &str {
+    if !entry_point.starts_with('$') {
+      return entry_point;
+    }
+
+    entry_point.split_once('\\').map_or("", |(_, path)| path)
   }
 }
 
@@ -226,16 +230,40 @@ mod tests {
   }
 
   #[test]
-  fn an_alias_is_stripped_only_when_it_is_one() {
-    assert_eq!(ArchiveMetadata::strip_root_alias("$game_data$\\meshes"), "meshes");
-    assert_eq!(ArchiveMetadata::strip_root_alias("$$\\meshes"), "$$\\meshes");
-    assert_eq!(
-      ArchiveMetadata::strip_root_alias("$game data$\\meshes"),
-      "$game data$\\meshes"
-    );
-    assert_eq!(
-      ArchiveMetadata::strip_root_alias("$game_data$meshes"),
-      "$game_data$meshes"
-    );
+  fn an_alias_is_everything_up_to_the_first_backslash_whatever_it_spells() {
+    for (entry_point, root) in [
+      ("$game_data$\\meshes", "meshes"),
+      ("$$\\meshes", "meshes"),
+      ("$game data$\\meshes", "meshes"),
+      ("$fs_root$\\gamedata\\configs\\", "gamedata\\configs\\"),
+      // No `\` leaves no path: the engine reads past such a value, and the packer refuses one.
+      ("$game_data$meshes", ""),
+      ("gamedata", "gamedata"),
+    ] {
+      assert_eq!(ArchiveMetadata::strip_root_alias(entry_point), root, "'{entry_point}'");
+    }
+  }
+
+  #[test]
+  fn an_entry_point_is_mountable_as_gamedata_or_an_alias_with_a_path() {
+    for entry_point in [
+      "gamedata",
+      "GameData",
+      "$fs_root$\\gamedata\\",
+      "$$\\meshes",
+      "$fs_root$\\",
+    ] {
+      assert!(
+        ArchiveMetadata::is_mountable_entry_point(entry_point),
+        "'{entry_point}'"
+      );
+    }
+
+    for entry_point in ["mydata\\", "$game_data$", "\"$fs_root$\\gamedata\\\"", ""] {
+      assert!(
+        !ArchiveMetadata::is_mountable_entry_point(entry_point),
+        "'{entry_point}'"
+      );
+    }
   }
 }

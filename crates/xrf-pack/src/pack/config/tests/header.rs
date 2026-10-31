@@ -81,10 +81,18 @@ fn a_header_with_no_section_is_refused() {
 
 #[test]
 fn an_entry_point_the_loader_asserts_on_is_refused() {
-  // `LoadArchive` special-cases the bare `gamedata` literal and otherwise asserts the value opens with an alias.
-  let message: String = refusal(Some("[header]\r\nauto_load = true\r\nentry_point = mydata\\\r\n"));
+  // `LoadArchive` special-cases the bare `gamedata` literal and otherwise asserts the value opens with an alias, then
+  // reads the path after the alias's first `\`, past the end of a value that has none.
+  for entry_point in ["mydata\\", "$game_data$"] {
+    let message: String = refusal(Some(&format!(
+      "[header]\r\nauto_load = true\r\nentry_point = {entry_point}\r\n"
+    )));
 
-  assert!(message.contains("is neither 'gamedata' nor an alias"), "'{message}'");
+    assert!(
+      message.contains("is neither 'gamedata' nor an alias"),
+      "'{entry_point}': '{message}'"
+    );
+  }
 }
 
 #[test]

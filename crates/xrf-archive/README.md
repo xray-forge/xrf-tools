@@ -74,7 +74,8 @@ Use `entry.is_directory` to distinguish directory rows from files. Directory nam
 without one is an empty file. Thus `project.files.len()` counts entries, including directories.
 
 `ArchiveDescriptor::output_root_path` comes from the volume metadata's `[header] entry_point`, with the leading alias
-removed (`$fs_root$\gamedata\` becomes `gamedata\`). `ArchiveMetadata::read_header` reads the metadata as the engine's
+removed as the engine removes it, everything up to its first `\` whatever it spells (`$fs_root$\gamedata\` becomes
+`gamedata\`). `ArchiveMetadata::read_header` reads the metadata as the engine's
 INI loader does: `;` and `//` comments outside quotes are dropped, a section is named up to its first `]` without case,
 and a value loses all whitespace outside quotes. It is empty for a volume with no metadata chunk, and a metadata
 chunk without an `entry_point` fails the open. It describes an unpack root, not an additional prefix to pass to

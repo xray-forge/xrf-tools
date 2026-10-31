@@ -30,7 +30,7 @@ impl ArchivePackHeader {
   /// # Errors
   ///
   /// Returns an invalid error for a missing `[header]` section, a missing `auto_load` or `entry_point`, and an
-  /// `entry_point` that is neither the bare `gamedata` literal nor an alias reference beginning with `$`.
+  /// `entry_point` the engine cannot mount ([`ArchiveMetadata::is_mountable_entry_point`]).
   pub(crate) fn require_loadable(header: &str) -> XrfResult {
     // Read as the engine reads it, so a comment neither hides the section nor joins a value it is checked by.
     let Some(items) = ArchiveMetadata::read_header(header) else {
@@ -55,11 +55,11 @@ impl ArchivePackHeader {
       return Ok(());
     };
 
-    // `LoadArchive` special-cases the bare literal and otherwise asserts the value opens with an alias.
-    if !entry_point.value.eq_ignore_ascii_case("gamedata") && !entry_point.value.starts_with('$') {
+    if !ArchiveMetadata::is_mountable_entry_point(&entry_point.value) {
       return Err(XrfError::new_invalid_error(format!(
-        "Archive header entry point '{}' is neither 'gamedata' nor an alias such as '$fs_root$\\gamedata\\'. \
-         'CLocatorAPI::LoadArchive' asserts on the leading '$', so the engine stops on load.",
+        "Archive header entry point '{}' is neither 'gamedata' nor an alias followed by a path, such as \
+         '$fs_root$\\gamedata\\'. 'CLocatorAPI::LoadArchive' asserts on the leading '$' and reads the path after the \
+         alias's first '\\', so the engine stops on load or reads past the value.",
         entry_point.value
       )));
     }
