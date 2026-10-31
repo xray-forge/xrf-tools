@@ -3,7 +3,7 @@ use std::sync::Arc;
 use glam::Vec4;
 use xrf_engine_target::XrayEngine;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
+  GraphColorAttachment, GraphDeclaration, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
 };
 
 use crate::contract::render_rain_settings::RenderRainSettings;
@@ -161,7 +161,7 @@ impl WetFeature {
   /// while dry.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (handles, covers, wet, rings): (

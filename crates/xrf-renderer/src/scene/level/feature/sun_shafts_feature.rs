@@ -1,6 +1,5 @@
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, StorageValue,
-  UniformBinding,
+  GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, StorageValue, UniformBinding,
 };
 
 use crate::contract::render_light_level::RenderLightLevel;
@@ -46,7 +45,11 @@ impl SunShaftsFeature {
   /// reflections copied it for the next frame (`copied`), which stands as the composite finds it, or one of its own.
   pub fn add_passes<'a>(
     &self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (handles, lit): (ViewTargetHandles, LightingHandles<'a>),

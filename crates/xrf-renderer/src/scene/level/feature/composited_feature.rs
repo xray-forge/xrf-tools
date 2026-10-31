@@ -1,7 +1,6 @@
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphBufferDescriptor, GraphColorAttachment,
-  GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, StorageArray, StorageArrayMut,
-  StorageValue,
+  FrameGraph, GraphBuffer, GraphBufferAccess, GraphBufferDescriptor, GraphColorAttachment, GraphDeclaration,
+  GraphDepthAttachment, GraphTexture, GraphTextureDescriptor, StorageArray, StorageArrayMut, StorageValue,
 };
 
 use crate::camera::camera_frustum::CameraFrustum;
@@ -174,7 +173,11 @@ impl CompositedFeature {
   /// water and the particles wrote, as the engine draws `mapDistort` after every forward pass.
   pub fn add_after_particles<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     (draw, sky, lit): (&CompositedDraw<'a>, SkyParameters<'a>, LightingHandles<'a>),
   ) {

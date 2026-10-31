@@ -1,6 +1,4 @@
-use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor,
-};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor};
 
 use crate::contract::render_applied_height_fog::RenderAppliedHeightFog;
 use crate::contract::render_fog_settings::RenderFogSettings;
@@ -69,7 +67,11 @@ impl FogFeature {
   /// the scattered frame copied back over the scene; nothing where it does not scatter.
   pub fn add_passes<'a>(
     &self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (targets, lit): (ViewTargetHandles, LightingHandles<'a>),

@@ -3,8 +3,8 @@ use std::time::{Duration, Instant};
 use glam::{Mat4, Vec2, Vec3};
 use xrf_dlss::{Dlss, DlssInputs, DlssPreset, DlssQuality, DlssRayInputs, DlssRayPreset};
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureAccess,
-  GraphTextureDescriptor, UniformBinding,
+  FrameGraph, GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureAccess, GraphTextureDescriptor,
+  UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -686,7 +686,7 @@ impl ResolveFeature {
   /// own target, which its passes read.
   pub fn add_reactive_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     (scene, before_water): (GraphTexture, Option<GraphTexture>),
   ) -> Option<GraphTexture> {
     match &self.resolve {
@@ -787,7 +787,11 @@ impl ResolveFeature {
   /// sharpening. Answers the frame at the drawn size and the image the viewport shows.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (handles, frame, opaque, guides): (ViewTargetHandles, GraphTexture, Option<GraphTexture>, Option<RayGuides>),
@@ -819,7 +823,7 @@ impl ResolveFeature {
         });
 
         passes.fsr.add_passes(
-          (&mut *graph, &mut *bindings, runtime),
+          GraphDeclaration::new(graph, bindings, runtime),
           handles,
           (targets, uniform),
           debug,
@@ -827,11 +831,15 @@ impl ResolveFeature {
 
         Some(debug.map_or(history, |(_, shown)| shown))
       }
-      Some(Resolve::Dlss(resolve)) => {
-        Some(self.add_dlss_pass((&mut *graph, &mut *bindings), (resolve, handles, frame)))
-      }
+      Some(Resolve::Dlss(resolve)) => Some(self.add_dlss_pass(
+        GraphDeclaration::new(graph, bindings, runtime),
+        (resolve, handles, frame),
+      )),
       Some(Resolve::RayReconstruction(resolve)) => guides.map(|guides| {
-        self.add_ray_reconstruction_pass((&mut *graph, &mut *bindings), (resolve, handles, frame, guides))
+        self.add_ray_reconstruction_pass(
+          GraphDeclaration::new(graph, bindings, runtime),
+          (resolve, handles, frame, guides),
+        )
       }),
       Some(Resolve::Temporal(temporal)) => {
         let TemporalResolve {
@@ -919,7 +927,7 @@ impl ResolveFeature {
   /// the transformer presets ignore one.
   fn add_dlss_pass<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     (resolve, handles, frame): (&'a DlssResolve, ViewTargetHandles, GraphTexture),
   ) -> GraphTexture {
     let output: GraphTexture = bindings.import_view(&mut *graph, "dlss output", &resolve.output.view);
@@ -966,7 +974,7 @@ impl ResolveFeature {
   /// and albedo and the frame's `guides`, and answers the frame it writes at the output's size.
   fn add_ray_reconstruction_pass<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     (resolve, handles, frame, guides): (&'a RayReconstructionResolve, ViewTargetHandles, GraphTexture, RayGuides),
   ) -> GraphTexture {
     let output: GraphTexture = bindings.import_view(&mut *graph, "ray reconstruction output", &resolve.output.view);

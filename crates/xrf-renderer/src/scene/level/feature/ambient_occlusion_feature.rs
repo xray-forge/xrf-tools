@@ -1,5 +1,5 @@
 use glam::Mat4;
-use xrf_renderer_core::{FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, UniformBinding};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, UniformBinding};
 
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_view_options::RenderViewOptions;
@@ -42,7 +42,11 @@ impl AmbientOcclusionFeature {
   /// nothing where it is not drawn or the bitmask search's place finds it.
   pub fn add_passes<'a>(
     &self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     targets: ViewTargetHandles,

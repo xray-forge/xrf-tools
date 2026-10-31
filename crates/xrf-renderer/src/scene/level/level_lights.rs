@@ -4,7 +4,7 @@ use std::sync::Arc;
 use glam::{Mat4, Vec2, Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_math::{EPS_L, Vector3d};
-use xrf_renderer_core::{FrameGraph, GraphBindings, ProxyHandle, ProxyStore};
+use xrf_renderer_core::{GraphDeclaration, ProxyHandle, ProxyStore};
 use xrf_visual::{LightAnimatorDescription, LightDescription, LightKind, LightVolumetric, LightsDescription};
 
 use crate::camera::camera_frustum::CameraFrustum;
@@ -445,13 +445,13 @@ impl LevelLights {
   /// casting from it.
   pub fn add_shadow_passes<'a>(
     &'a self,
-    graph: (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    declaration: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
     frame: (&'a StaticCullUniform, &'a wgpu::BindGroup),
     grass: Option<GrassShadowCasters<'a>>,
   ) {
-    self.shadows.add_passes(graph, passes, scene, frame, grass);
+    self.shadows.add_passes(declaration, passes, scene, frame, grass);
   }
 
   pub fn get_shadow_atlas(&self) -> LightShadowAtlas<'_> {

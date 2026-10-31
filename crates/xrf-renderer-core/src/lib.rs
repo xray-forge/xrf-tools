@@ -21,10 +21,10 @@ pub use crate::alloc::{Span, SpanAllocator, SpanBuffer, SpanLane, SpanWrites, Up
 pub use crate::graph::{
   CompiledGraph, ComputeContext, ComputePassBuilder, EncodeGroup, EncoderContext, EncoderPassBuilder, ExecutedGraph,
   ExecutedGroup, FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphBufferDescriptor,
-  GraphColorAttachment, GraphCompileOptions, GraphDepthAttachment, GraphOwner, GraphPassKind, GraphPassReport,
-  GraphPassTime, GraphReport, GraphResolvedTexture, GraphRuntime, GraphTaggedTime, GraphTexture, GraphTextureAccess,
-  GraphTextureDescriptor, GraphTimer, GraphTransientReport, PassMarker, RasterContext, RasterPassBuilder,
-  TransientBufferKey, TransientPool, TransientSlot, TransientTextureKey,
+  GraphColorAttachment, GraphCompileOptions, GraphDeclaration, GraphDepthAttachment, GraphOwner, GraphPassKind,
+  GraphPassReport, GraphPassTime, GraphReport, GraphResolvedTexture, GraphRuntime, GraphTaggedTime, GraphTexture,
+  GraphTextureAccess, GraphTextureDescriptor, GraphTimer, GraphTransientReport, PassMarker, RasterContext,
+  RasterPassBuilder, TransientBufferKey, TransientPool, TransientSlot, TransientTextureKey,
 };
 pub use crate::param::{
   AccelerationStructureBinding, BindGroupCache, PassBinding, PassBindingLayout, PassParameters, PassResources,

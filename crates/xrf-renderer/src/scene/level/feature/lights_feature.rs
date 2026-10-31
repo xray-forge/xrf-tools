@@ -1,5 +1,5 @@
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphRuntime, GraphTexture,
+  FrameGraph, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDeclaration, GraphTexture,
   GraphTextureDescriptor, StorageArray, StorageArrayMut, UniformBinding,
 };
 
@@ -228,7 +228,11 @@ impl LightsFeature {
   /// clusters; answers the lights as the graph holds them.
   pub fn add_binning_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
   ) -> LightBuffers {
     let buffers: LightBuffers = LightBuffers {
@@ -268,7 +272,7 @@ impl LightsFeature {
   /// (`wet_surface`, `wet_reach`) give a water film. Nothing while none stands in view.
   pub fn add_draw_passes<'a>(
     &self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     (view, textures, atlas): (&'a ViewBinding, &'a wgpu::BindGroup, LightShadowAtlas<'a>),
     (targets, lit, buffers, (wet_surface, wet_reach)): (

@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
-  ComputePipelineDescription, FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment,
-  GraphRuntime, GraphTexture, PassParameters, StorageArray, StorageArrayMut, UniformBinding,
+  ComputePipelineDescription, FrameGraph, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDeclaration,
+  GraphTexture, PassParameters, StorageArray, StorageArrayMut, UniformBinding,
 };
 
 use crate::contract::render_debug_view::RenderDebugView;
@@ -133,7 +133,11 @@ impl FsrPass {
   /// views (`RenderDebugView::is_fsr`), it is drawn last into the target beside it.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     targets: ViewTargetHandles,
     (fsr, uniform): (&'a FsrTargets, &FsrUniform),
     debug: Option<(RenderDebugView, GraphTexture)>,

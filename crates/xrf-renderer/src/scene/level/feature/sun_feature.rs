@@ -1,4 +1,4 @@
-use xrf_renderer_core::{FrameGraph, GraphBindings, GraphColorAttachment, GraphTexture, GraphTextureDescriptor};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor};
 
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
@@ -19,7 +19,7 @@ impl SunFeature {
   /// traced, filtered `filter_reach` texels each way. Answers how much of the sun each pixel sees.
   pub fn add_passes<'a>(
     &self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (targets, lit, (wet_surface, wet_reach)): (ViewTargetHandles, LightingHandles<'a>, (GraphTexture, GraphTexture)),

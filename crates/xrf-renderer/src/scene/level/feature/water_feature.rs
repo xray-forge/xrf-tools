@@ -1,4 +1,4 @@
-use xrf_renderer_core::{FrameGraph, GraphBindings, GraphBuffer, GraphRuntime, GraphTexture};
+use xrf_renderer_core::{GraphBuffer, GraphDeclaration, GraphTexture};
 
 use crate::context::gpu_requirements::can_trace;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
@@ -47,7 +47,11 @@ impl WaterFeature {
   /// where the water draws.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
     (views, before_water, args, guides): (
       Option<&'a SkyViews>,

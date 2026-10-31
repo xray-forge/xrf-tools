@@ -1,7 +1,7 @@
 use glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphDepthAttachment, GraphRuntime, GraphTexture,
-  GraphTextureDescriptor, StorageArray, StorageArrayMut, UniformBinding,
+  GraphBuffer, GraphBufferAccess, GraphDeclaration, GraphDepthAttachment, GraphTexture, GraphTextureDescriptor,
+  StorageArray, StorageArrayMut, UniformBinding,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -309,7 +309,11 @@ impl OverheadMap {
   /// by `water`, where it is a map of the water.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     (scene, depth): (&StaticSceneHandles, GraphTexture),
     (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),

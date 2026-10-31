@@ -3,8 +3,8 @@ use std::collections::{HashMap, HashSet};
 use glam::{Vec3, Vec4};
 use xrf_math::EPS_S;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphDepthAttachment, GraphTexture, ProxyHandle,
-  StorageArray, StorageArrayMut,
+  GraphBuffer, GraphBufferAccess, GraphDeclaration, GraphDepthAttachment, GraphTexture, ProxyHandle, StorageArray,
+  StorageArrayMut,
 };
 use xrf_visual::{LightDescription, LightKind};
 
@@ -554,7 +554,7 @@ impl LevelLightShadows {
   /// `grass`'s cards over those whose light casts from it.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     scene: &StaticSceneHandles,
     (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),

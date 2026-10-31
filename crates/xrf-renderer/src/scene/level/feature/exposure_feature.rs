@@ -2,8 +2,7 @@ use std::time::{Duration, Instant};
 
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphRuntime, GraphTexture, StorageArrayMut,
-  StorageValueMut,
+  GraphBuffer, GraphBufferAccess, GraphDeclaration, GraphTexture, StorageArrayMut, StorageValueMut,
 };
 
 use crate::contract::render_exposure_settings::RenderExposureSettings;
@@ -315,7 +314,11 @@ impl ExposureFeature {
   /// through the frame's lighting; nothing while it does not measure.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     (high, (scene, depth_target), size, lit): (
       GraphTexture,

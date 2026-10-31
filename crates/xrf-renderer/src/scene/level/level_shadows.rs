@@ -1,6 +1,6 @@
 use glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphDepthAttachment, GraphTexture, GraphTextureAccess,
+  FrameGraph, GraphBuffer, GraphBufferAccess, GraphDeclaration, GraphDepthAttachment, GraphTexture, GraphTextureAccess,
   StorageArray, StorageArrayMut,
 };
 
@@ -300,7 +300,7 @@ impl LevelShadows {
   /// over the nearest, and each band into its cascade's hidden static layer.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     (scene, maps): (&StaticSceneHandles, GraphTexture),
     (params, textures): (&'a StaticCullUniform, &'a wgpu::BindGroup),

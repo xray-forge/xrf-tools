@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::{
-  ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphOwner, GraphReport, GraphRuntime,
+  ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphDeclaration, GraphOwner, GraphReport, GraphRuntime,
 };
 
 use wgpu::util::StagingBelt;
@@ -426,7 +426,7 @@ impl RenderThread {
 
       let output: Option<SceneOutput> = view.record(
         scene,
-        (&mut graph, &mut bindings, &mut *runtime),
+        GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
         gpu.get_level_passes(&self.shaders),
         binding,
         &gpu.textures,
@@ -492,7 +492,7 @@ impl RenderThread {
         .filter(|_| window.is_backdrop_painted);
 
       window.declare(
-        (&mut graph, &mut bindings),
+        GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
         (target, backdrop),
         composed,
         (&gpu.backdrop, &gpu.present, &gpu.overlay, grid),
@@ -502,7 +502,7 @@ impl RenderThread {
 
     for (id, capture, _) in captures.iter().filter(|(_, capture, _)| capture.is_screenshot()) {
       Self::declare_screenshot(
-        (&mut graph, runtime),
+        GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
         gpu,
         &self.viewports,
         (*id, capture),
@@ -512,7 +512,7 @@ impl RenderThread {
 
     for (id, capture) in shots {
       Self::declare_capture_shot(
-        (&mut graph, runtime),
+        GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
         gpu,
         &self.viewports,
         (*id, capture),
@@ -522,7 +522,7 @@ impl RenderThread {
 
     for (id, shot) in bursts {
       Self::declare_burst_shot(
-        (&mut graph, runtime),
+        GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
         gpu,
         &self.viewports,
         (*id, shot),

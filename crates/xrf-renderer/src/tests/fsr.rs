@@ -1,6 +1,7 @@
 use glam::{Mat4, Vec2, Vec3};
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphCompileOptions, GraphRuntime, GraphTexture, PassParameters, PipelineCache,
+  FrameGraph, GraphBindings, GraphCompileOptions, GraphDeclaration, GraphRuntime, GraphTexture, PassParameters,
+  PipelineCache,
 };
 
 use crate::camera::camera_view::CameraView;
@@ -93,7 +94,7 @@ fn upscales_two_frames_without_a_validation_error() {
         shown_view.map(|view| (view, bindings.import_view(&mut graph, "fsr debug view", &shown.view)));
 
       pass.add_passes(
-        (&mut graph, &mut bindings, &mut runtime),
+        GraphDeclaration::new(&mut graph, &mut bindings, &mut runtime),
         handles,
         (&fsr, &constants),
         debug,

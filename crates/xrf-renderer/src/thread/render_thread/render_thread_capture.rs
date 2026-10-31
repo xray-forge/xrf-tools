@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use xrf_error::XrfError;
 use xrf_renderer_core::{
-  FrameGraph, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureAccess, GraphTextureDescriptor,
-  UniformBinding,
+  FrameGraph, GraphColorAttachment, GraphDeclaration, GraphRuntime, GraphTexture, GraphTextureAccess,
+  GraphTextureDescriptor, UniformBinding,
 };
 
 use crate::capture::burst::burst_job::BurstJob;
@@ -173,7 +173,7 @@ impl RenderThread {
   /// its window shows it but without its overlays or its selection's outline, its helpers drawn over it where it asks,
   /// then copied out.
   pub(super) fn declare_screenshot<'a>(
-    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     gpu: &'a GpuState,
     viewports: &'a BTreeMap<RenderViewportId, RenderViewport>,
     (id, capture): (RenderViewportId, &'a FrameCapture),
@@ -214,7 +214,7 @@ impl RenderThread {
   /// Declares a capture's shot: the frame its capture drew (`output`) presented into a texture of its own at the
   /// shot's drawn size, then copied out with its depth, which a map tile's coverage is read from.
   pub(super) fn declare_capture_shot<'a>(
-    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     gpu: &'a GpuState,
     viewports: &'a BTreeMap<RenderViewportId, RenderViewport>,
     (id, capture): (RenderViewportId, &'a FrameCapture),
@@ -258,7 +258,7 @@ impl RenderThread {
   /// Declares a burst's frame: its viewport's frame (`output`) presented into a texture of its own at the viewport's
   /// whole size, as a screenshot is, then copied out with the G-buffer's material target, whose alpha holds the marks.
   pub(super) fn declare_burst_shot<'a>(
-    (graph, runtime): (&mut FrameGraph<'a>, &mut GraphRuntime),
+    GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     gpu: &'a GpuState,
     viewports: &'a BTreeMap<RenderViewportId, RenderViewport>,
     (id, shot): (RenderViewportId, &'a BurstShot),

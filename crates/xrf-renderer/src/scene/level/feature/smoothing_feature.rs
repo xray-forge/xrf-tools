@@ -1,6 +1,4 @@
-use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
-};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding};
 
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::frame::view_targets::ViewTargets;
@@ -45,7 +43,11 @@ impl SmoothingFeature {
   /// itself where nothing smooths it.
   pub fn add_passes<'a>(
     &self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     (frame, (width, height)): (GraphTexture, (u32, u32)),
   ) -> GraphTexture {

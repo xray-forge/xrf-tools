@@ -1,9 +1,7 @@
 use std::ops::Range;
 
 use xrf_particles::ParticleEffectInstance;
-use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphDepthAttachment, StorageArray, UniformBinding,
-};
+use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphDepthAttachment, StorageArray, UniformBinding};
 
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::view_target_handles::ViewTargetHandles;
@@ -111,7 +109,7 @@ impl ParticlesView {
   /// Draws the quads filled this frame over the scene, then the distorting ones into the distortion target.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     pass: &'a ParticlePass,
     (targets, lighting, surfaces): (ViewTargetHandles, UniformBinding<LightingUniform>, &'a wgpu::Buffer),
     (view, texture_group): (&'a ViewBinding, &'a wgpu::BindGroup),

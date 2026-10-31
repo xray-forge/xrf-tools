@@ -2,7 +2,7 @@ use std::cell::Cell;
 
 use glam::Mat4;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
+  FrameGraph, GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding,
 };
 
 use crate::context::gpu_requirements::can_trace;
@@ -136,7 +136,11 @@ impl BitmaskFeature {
   /// Where the indirect light is traced in its place (`is_light_traced`), it searches for the occlusion alone.
   pub fn add_passes<'a>(
     &'a self,
-    (graph, bindings, runtime): (&mut FrameGraph<'a>, &mut GraphBindings<'a>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     targets: ViewTargetHandles,
@@ -243,7 +247,7 @@ impl BitmaskFeature {
     }
 
     self.add_gather_passes(
-      (graph, bindings),
+      GraphDeclaration::new(graph, bindings, runtime),
       passes,
       view,
       (base, search, names),
@@ -277,7 +281,7 @@ impl BitmaskFeature {
   /// parameters with nothing read, `searched` and `lit_searched` what the search wrote.
   fn add_gather_passes<'a>(
     &'a self,
-    (graph, bindings): (&mut FrameGraph<'a>, &mut GraphBindings<'a>),
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     (base, search, names): (VbaoParameters, BitmaskSearch, BitmaskPassNames),
