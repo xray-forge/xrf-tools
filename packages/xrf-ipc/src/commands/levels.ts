@@ -167,10 +167,11 @@ export const levelsCommands = {
   saveBurst: (request: BurstCaptureRequest) => __TAURI_INVOKE<BurstOutcome>(ELevelsCommand.SAVE_BURST, { request }),
   /**
    * Write a viewport's next finished frame to a PNG file of the level viewer's screenshots folder: the whole viewport at
-   * its drawn size, without its overlays or its selection's outline.
+   * its drawn size, without its overlays or its selection's outline, its level objects' helpers over it where
+   * `is_helped`.
    */
-  saveScreenshot: (viewport: RenderViewportId, path: string) =>
-    __TAURI_INVOKE<null>(ELevelsCommand.SAVE_SCREENSHOT, { viewport, path }),
+  saveScreenshot: (viewport: RenderViewportId, path: string, isHelped: boolean) =>
+    __TAURI_INVOKE<null>(ELevelsCommand.SAVE_SCREENSHOT, { viewport, path, isHelped }),
   /** Write a level view as its JSON text to the JSON file the page names. */
   saveView: (path: string, text: string) => __TAURI_INVOKE<null>(ELevelsCommand.SAVE_VIEW, { path, text }),
   /**
@@ -225,7 +226,10 @@ export interface ILevelsCommandSignatures {
   [ELevelsCommand.READ_VIEW]: IIpcCommandSignature<typeof levelsCommands.readView, ["path"]>;
   [ELevelsCommand.RESTORE_LEVEL]: IIpcCommandSignature<typeof levelsCommands.restoreLevel, ["tool"]>;
   [ELevelsCommand.SAVE_BURST]: IIpcCommandSignature<typeof levelsCommands.saveBurst, ["request"]>;
-  [ELevelsCommand.SAVE_SCREENSHOT]: IIpcCommandSignature<typeof levelsCommands.saveScreenshot, ["viewport", "path"]>;
+  [ELevelsCommand.SAVE_SCREENSHOT]: IIpcCommandSignature<
+    typeof levelsCommands.saveScreenshot,
+    ["viewport", "path", "isHelped"]
+  >;
   [ELevelsCommand.SAVE_VIEW]: IIpcCommandSignature<typeof levelsCommands.saveView, ["path", "text"]>;
   [ELevelsCommand.SHOW_LEVEL]: IIpcCommandSignature<typeof levelsCommands.showLevel, ["viewport", "sessionId"]>;
   [ELevelsCommand.WRITE_MAP_ANNOTATIONS]: IIpcCommandSignature<

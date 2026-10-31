@@ -5,11 +5,13 @@ import { PhotoCameraOutlinedIcon as PhotoCameraIcon } from "@xrf/ui/icons/photo-
 import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
 import { LEVEL_KEYBIND_COMMANDS } from "@/core/level/commands";
 
-/** Saves the viewport's finished frame, without its overlays, to the screenshots folder. */
+/** Saves the viewport's finished frame, without its overlays, to the screenshots folder; helpers only where asked. */
 export const TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND: IKeybindCommand = defineKeybindCommand({
   category: EKeybindCommandCategory.VIEW,
   chords: ["F9"],
-  description: "Saves the viewport's finished frame, without its overlays, to the screenshots folder.",
+  description:
+    "Saves the viewport's finished frame, without its overlays, to the screenshots folder; with the helpers where " +
+    "Helpers › Include in screenshots is on.",
   icon: <PhotoCameraIcon />,
   id: "level-viewer/take-screenshot",
   label: "Take screenshot",

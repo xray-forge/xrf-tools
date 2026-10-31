@@ -74,6 +74,14 @@ export class LevelViewService {
     return this.storedHelpers.value;
   }
 
+  /**
+   * @param helpers - Which helpers are drawn from now on, and how, as a view's snapshot gives them back.
+   */
+  @BoundAction()
+  public setHelpers(helpers: ILevelHelperOptions): void {
+    this.storedHelpers.set(helpers);
+  }
+
   /** Draws the helpers or leaves them all out, as `G` does, each kind keeping its choice. */
   @KeybindCommand(TOGGLE_LEVEL_HELPERS_KEYBIND_COMMAND)
   @BoundAction()
@@ -86,7 +94,9 @@ export class LevelViewService {
    */
   @BoundAction()
   public setHelperLook(
-    helpers: Partial<Pick<ILevelHelperOptions, "distanceScale" | "isRestFaded" | "occludedStrength">>
+    helpers: Partial<
+      Pick<ILevelHelperOptions, "distanceScale" | "isRestFaded" | "isScreenshotHelped" | "occludedStrength">
+    >
   ): void {
     this.storedHelpers.set({ ...this.helpers, ...helpers });
   }

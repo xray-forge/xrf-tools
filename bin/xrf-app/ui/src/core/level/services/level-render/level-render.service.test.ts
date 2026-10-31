@@ -182,6 +182,25 @@ describe("LevelRenderService", () => {
     });
   });
 
+  it("draws the helpers into a screenshot only while they are drawn and asked into screenshots", async () => {
+    const { container, service } = await mockAttachedLevelRender();
+    const view: LevelViewService = container.get(LevelViewService);
+
+    mockIpcCommands({ [ELevelsCommand.SAVE_SCREENSHOT]: null });
+
+    await service.saveScreenshot("shot-1.png");
+    view.setHelperLook({ isScreenshotHelped: true });
+    await service.saveScreenshot("shot-2.png");
+    view.toggleHelpers();
+    await service.saveScreenshot("shot-3.png");
+
+    expect(listMockInvokeCalls(ELevelsCommand.SAVE_SCREENSHOT)).toEqual([
+      { isHelped: false, path: "shot-1.png", viewport: LEVEL_VIEWPORT },
+      { isHelped: false, path: "shot-2.png", viewport: LEVEL_VIEWPORT },
+      { isHelped: true, path: "shot-3.png", viewport: LEVEL_VIEWPORT },
+    ]);
+  });
+
   it("shows the open level in its viewport and reveals it once the renderer has it resident", async () => {
     const { service } = await mockAttachedLevelRender();
 

@@ -9,7 +9,7 @@ import { BuildInfo } from "@xrf/ipc/types/xrf-build-info";
 import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { Logger } from "@xrf/logging";
 import { getPathName } from "@xrf/path";
-import { Maybe, Nullable } from "@xrf/types";
+import { isRecord, Maybe, Nullable } from "@xrf/types";
 
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { isLevelGoTo, toLevelGoTo, toRoundedLevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
@@ -20,6 +20,7 @@ import {
   toLevelRendererFeatures,
 } from "@/core/level/lib/features/level-feature-options";
 import { ELevelLookSource, ILevelLookChoice, toLevelLookChoice } from "@/core/level/lib/look/level-look-choice";
+import { ILevelHelperOptions, toLevelHelperOptions } from "@/core/level/lib/objects/level-helper-options";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelLookService } from "@/core/level/services/level-look";
@@ -165,8 +166,8 @@ export class LevelViewerSnapshotService {
   /**
    * @param build - The build that draws the view, or null where it is not known.
    * @returns The view as it stands: the camera's place where the viewport has reported it, the weather's cycle where
-   *   the weather lights the level, the look's own values where they are edited by hand, and every setting as the view
-   *   draws it with every toolbar toggle on, the toggles beside them.
+   *   the weather lights the level, the look's own values where they are edited by hand, the helpers, and every setting
+   *   as the view draws it with every toolbar toggle on, the toggles beside them.
    */
   public describe(build: Nullable<BuildInfo>): ILevelViewerSnapshot {
     const camera: Nullable<ILevelCamera> = this.viewportService.camera;
@@ -196,6 +197,7 @@ export class LevelViewerSnapshotService {
         this.renderSettingsService.renderOutputScale
       ),
       options: { ...this.viewService.options },
+      helpers: { ...this.viewService.helpers },
       settings: {
         ...toLevelRendererFeatures(this.renderSettingsService.rendererFeatures, features, LEVEL_FEATURE_TOGGLES_ON),
       },
@@ -228,8 +230,8 @@ export class LevelViewerSnapshotService {
   }
 
   /**
-   * Applies the changes chosen of a snapshot to the view: its settings and output, toolbar and look, then its weather
-   * and camera.
+   * Applies the changes chosen of a snapshot to the view: its settings and output, toolbar, helpers and look, then its
+   * weather and camera.
    *
    * @param entries - The values chosen; those not changing the view are passed over.
    * @returns What was applied, and what could not be with why.
@@ -242,6 +244,7 @@ export class LevelViewerSnapshotService {
       settings,
       output,
       options,
+      helpers,
       look,
       weather,
       camera,
@@ -262,6 +265,19 @@ export class LevelViewerSnapshotService {
 
     if (options) {
       this.viewService.setOptions({ ...this.viewService.options, ...options });
+    }
+
+    if (helpers) {
+      // The values and kinds chosen over the helpers drawn now.
+      const current: ILevelHelperOptions = this.viewService.helpers;
+
+      this.viewService.setHelpers(
+        toLevelHelperOptions({
+          ...current,
+          ...helpers,
+          kinds: { ...current.kinds, ...(isRecord(helpers.kinds) ? helpers.kinds : {}) },
+        })
+      );
     }
 
     if (typeof look?.source === "string") {

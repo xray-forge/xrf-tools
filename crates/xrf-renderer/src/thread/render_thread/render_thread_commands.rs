@@ -189,9 +189,9 @@ impl RenderThread {
           viewport.captures.push(reply);
         }
       }
-      RenderCommand::Screenshot { id, reply } => {
+      RenderCommand::Screenshot { id, is_helped, reply } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.screenshots.push(reply);
+          viewport.screenshots.push((reply, is_helped));
         }
       }
       RenderCommand::CaptureMap { id, capture, events } => {

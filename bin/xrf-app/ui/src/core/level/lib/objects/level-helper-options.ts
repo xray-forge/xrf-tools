@@ -17,6 +17,8 @@ export interface ILevelHelperOptions {
   distanceScale: number;
   /** Dims and greys what no marked model or selection covers, so the helped objects stand out ("Fade the rest"). */
   isRestFaded: boolean;
+  /** Draws the helpers into a screenshot too, while they are drawn ("Include in screenshots"). */
+  isScreenshotHelped: boolean;
 }
 
 /** How strongly an occluded wire shows: from none to whole. */
@@ -25,10 +27,11 @@ export const LEVEL_HELPER_OCCLUDED_LIMITS: IRenderLimits = { max: 1, min: 0, ste
 /** How far every kind's draw distance is scaled: from a quarter to four times. */
 export const LEVEL_HELPER_DISTANCE_LIMITS: IRenderLimits = { max: 4, min: 0.25, step: 0.25 };
 
-/** The photo mode, every kind left to the kind table, an occluded wire at a quarter, nothing faded. */
+/** The photo mode, each kind left to the kind table, an occluded wire at a quarter, nothing faded or screenshotted. */
 export const DEFAULT_LEVEL_HELPER_OPTIONS: ILevelHelperOptions = {
   distanceScale: 1,
   isRestFaded: false,
+  isScreenshotHelped: false,
   isShown: false,
   kinds: {},
   occludedStrength: 0.25,
@@ -67,6 +70,10 @@ export function toLevelHelperOptions(stored: unknown): ILevelHelperOptions {
     ),
     isRestFaded:
       typeof stored.isRestFaded === "boolean" ? stored.isRestFaded : DEFAULT_LEVEL_HELPER_OPTIONS.isRestFaded,
+    isScreenshotHelped:
+      typeof stored.isScreenshotHelped === "boolean"
+        ? stored.isScreenshotHelped
+        : DEFAULT_LEVEL_HELPER_OPTIONS.isScreenshotHelped,
     isShown: typeof stored.isShown === "boolean" ? stored.isShown : DEFAULT_LEVEL_HELPER_OPTIONS.isShown,
     kinds: Object.fromEntries(
       LEVEL_OBJECT_KINDS.filter((entry: LevelObjectKindEntry) => typeof kinds[entry.kind] === "boolean").map(

@@ -15,8 +15,8 @@ import { RenderValueSlider } from "@/core/render/components/controls/RenderValue
 
 /**
  * The helpers' master switch, `G`: the inspector's wires and marks over the level objects, or the photo mode with none,
- * each kind keeping its choice; whether what they leave unmarked fades; and how the wires show behind the level and how
- * far off they fade.
+ * each kind keeping its choice; whether what they leave unmarked fades and whether a screenshot draws them too; and how
+ * the wires show behind the level and how far off they fade.
  */
 export function LevelHelpersAction({
   "data-testid": dataTestId = "level-helpers-action",
@@ -43,6 +43,12 @@ export function LevelHelpersAction({
         description={"Dims and greys what no helper marks, so the helped objects stand out"}
         isChecked={helpers.isRestFaded}
         onChange={(isRestFaded: boolean) => viewService.setHelperLook({ isRestFaded })}
+      />
+      <CheckboxFormRow
+        label={"Include in screenshots"}
+        description={"Draws the helpers into a screenshot (F9) as the view shows them; a map's are its annotations"}
+        isChecked={helpers.isScreenshotHelped}
+        onChange={(isScreenshotHelped: boolean) => viewService.setHelperLook({ isScreenshotHelped })}
       />
       <RenderValueSlider
         label={"Behind the level"}

@@ -115,10 +115,10 @@ impl Renderer {
     self.ask(|reply| RenderCommand::Capture { id, reply })
   }
 
-  /// A viewport's next finished frame whole, without its overlays, read back; the reply is let go unanswered for a
-  /// viewport the renderer does not draw.
-  pub fn screenshot_viewport(&self, id: RenderViewportId) -> Receiver<XrfResult<RenderCapture>> {
-    self.ask(|reply| RenderCommand::Screenshot { id, reply })
+  /// A viewport's next finished frame whole, without its overlays, its level object helpers over it where `is_helped`,
+  /// read back; the reply is let go unanswered for a viewport the renderer does not draw.
+  pub fn screenshot_viewport(&self, id: RenderViewportId, is_helped: bool) -> Receiver<XrfResult<RenderCapture>> {
+    self.ask(|reply| RenderCommand::Screenshot { id, is_helped, reply })
   }
 
   /// Captures a level map in a viewport, answering what it tells as it goes; dropping the answer stops it.

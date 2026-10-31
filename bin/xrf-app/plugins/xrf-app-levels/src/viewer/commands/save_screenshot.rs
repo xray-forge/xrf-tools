@@ -11,7 +11,8 @@ use xrf_renderer::RenderViewportId;
 use crate::viewer::LevelViewerFolder;
 
 /// Write a viewport's next finished frame to a PNG file of the level viewer's screenshots folder: the whole viewport at
-/// its drawn size, without its overlays or its selection's outline.
+/// its drawn size, without its overlays or its selection's outline, its level objects' helpers over it where
+/// `is_helped`.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "save_screenshot")]
 pub async fn levels_save_screenshot(
@@ -20,12 +21,13 @@ pub async fn levels_save_screenshot(
   execution: State<'_, ExecutionState>,
   viewport: RenderViewportId,
   path: PathBuf,
+  is_helped: bool,
 ) -> TauriResult {
   LevelViewerFolder::require_screenshot(&directories, &path)?;
 
   CaptureFile::save(
     &execution,
-    renderer.screenshot_viewport(viewport),
+    renderer.screenshot_viewport(viewport, is_helped),
     path,
     format!("Viewport {} drew no frame to take a screenshot of", viewport.0),
   )
