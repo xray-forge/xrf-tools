@@ -92,13 +92,9 @@ impl RenderThread {
           continue;
         };
 
-        match FrameCapture::new_shot(
-          device,
-          window.format,
-          shot.get_drawn_size(),
-          viewport.frame,
-          shot.is_covered(),
-        ) {
+        // A capture's shot is copied out as a screenshot is, a map's tile with its depth's coverage.
+        match FrameCapture::new_screenshot(device, window.format, shot.get_drawn_size(), viewport.frame) {
+          Ok(capture) if shot.is_covered() => shots.push((*id, capture.with_coverage(device, shot.get_drawn_size()))),
           Ok(capture) => shots.push((*id, capture)),
           Err(error) => viewport.stop_capture(&error.to_string()),
         }
@@ -140,7 +136,9 @@ impl RenderThread {
 
         match BurstShot::new(
           device,
-          (window.format, (rect.width, rect.height), viewport.frame),
+          window.format,
+          (rect.width, rect.height),
+          viewport.frame,
           material,
           frame,
         ) {
@@ -176,7 +174,8 @@ impl RenderThread {
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     gpu: &'a GpuState,
     viewports: &'a BTreeMap<RenderViewportId, RenderViewport>,
-    (id, capture): (RenderViewportId, &'a FrameCapture),
+    id: RenderViewportId,
+    capture: &'a FrameCapture,
     output: Option<&SceneOutput>,
   ) {
     let Some(viewport) = viewports.get(&id) else {
@@ -217,7 +216,8 @@ impl RenderThread {
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     gpu: &'a GpuState,
     viewports: &'a BTreeMap<RenderViewportId, RenderViewport>,
-    (id, capture): (RenderViewportId, &'a FrameCapture),
+    id: RenderViewportId,
+    capture: &'a FrameCapture,
     output: Option<&SceneOutput>,
   ) {
     let (Some(output), Some((_, view, binding))) =
@@ -261,7 +261,8 @@ impl RenderThread {
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
     gpu: &'a GpuState,
     viewports: &'a BTreeMap<RenderViewportId, RenderViewport>,
-    (id, shot): (RenderViewportId, &'a BurstShot),
+    id: RenderViewportId,
+    shot: &'a BurstShot,
     output: Option<&SceneOutput>,
   ) {
     let Some(viewport) = viewports.get(&id) else {

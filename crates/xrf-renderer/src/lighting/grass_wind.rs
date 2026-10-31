@@ -2,6 +2,7 @@ use std::f32::consts::TAU;
 
 use glam::Vec4;
 
+use crate::lighting::foliage_motion::FoliageMotion;
 use crate::lighting::grass_swing::GrassSwing;
 use crate::pass::grass_wind_uniform::GrassWindUniform;
 
@@ -30,16 +31,16 @@ pub struct GrassWind {
 }
 
 impl GrassWind {
-  /// The sway at a time, in seconds, at the wind's strength; still where the wind does not blow.
-  pub fn advance(&mut self, time: f32, is_windy: bool, strength: f32) -> GrassWindUniform {
-    let wind: GrassWindUniform = self.turn(time, is_windy, strength).following(self.last.as_ref());
+  /// The sway at a time, in seconds, at the wind's strength; still where the grass is held still.
+  pub fn advance(&mut self, time: f32, motion: FoliageMotion, strength: f32) -> GrassWindUniform {
+    let wind: GrassWindUniform = self.turn(time, motion, strength).following(self.last.as_ref());
 
     self.last = Some(wind);
 
     wind
   }
 
-  fn turn(&mut self, time: f32, is_windy: bool, strength: f32) -> GrassWindUniform {
+  fn turn(&mut self, time: f32, motion: FoliageMotion, strength: f32) -> GrassWindUniform {
     let elapsed: f32 = time - self.time.unwrap_or(time);
     let step: f32 = if (0.0..=1.0).contains(&elapsed) {
       elapsed
@@ -49,7 +50,7 @@ impl GrassWind {
 
     self.time = Some(time);
 
-    if !is_windy {
+    if motion == FoliageMotion::Still {
       return GrassWindUniform::default();
     }
 

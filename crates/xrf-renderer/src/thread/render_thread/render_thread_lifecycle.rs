@@ -5,6 +5,7 @@ use std::time::Instant;
 use xrf_error::XrfResult;
 
 use crate::context::gpu_context::GpuContext;
+use crate::context::gpu_libraries::GpuLibraries;
 use crate::context::library_versions::locate_dlss_runtime;
 use crate::contract::render_backend::RenderBackend;
 use crate::thread::gpu_state::GpuState;
@@ -127,7 +128,10 @@ impl RenderThread {
     match GpuContext::create_preferred(
       RenderBackend::get_asked(self.settings.backend),
       self.settings.gpu,
-      (dxc.as_deref(), dlss.as_deref()),
+      GpuLibraries {
+        dxc: dxc.as_deref(),
+        dlss: dlss.as_deref(),
+      },
     )
     .and_then(|context| {
       let building: Instant = Instant::now();
@@ -135,7 +139,8 @@ impl RenderThread {
         context,
         &self.shaders,
         &self.workers,
-        (self.bundle.as_ref(), self.store.as_deref()),
+        self.bundle.as_ref(),
+        self.store.as_deref(),
       );
 
       log::info!("Renderer's passes built in {} ms", building.elapsed().as_millis());

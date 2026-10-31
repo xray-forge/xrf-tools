@@ -37,13 +37,19 @@ impl CaptureShot {
     matches!(self, Self::Tile(_))
   }
 
-  /// The options it is drawn with, from the viewport's `options`; metering, its exposure adapts as its kind meters.
-  pub fn apply_look(&self, options: &RenderViewOptions, is_metering: bool) -> RenderViewOptions {
-    match (self, is_metering) {
-      (Self::Tile(tile), false) => MapCaptureLook::apply(options, tile),
-      (Self::Tile(tile), true) => MapCaptureLook::apply_metering(options, tile),
-      (Self::Face(_), false) => CubeCaptureLook::apply(options),
-      (Self::Face(_), true) => CubeCaptureLook::apply_metering(options),
+  /// The options it is drawn with, from the viewport's `options`.
+  pub fn apply_look(&self, options: &RenderViewOptions) -> RenderViewOptions {
+    match self {
+      Self::Tile(tile) => MapCaptureLook::apply(options, tile),
+      Self::Face(_) => CubeCaptureLook::apply(options),
+    }
+  }
+
+  /// The same, metering: its exposure adapts as its kind meters.
+  pub fn apply_metering_look(&self, options: &RenderViewOptions) -> RenderViewOptions {
+    match self {
+      Self::Tile(tile) => MapCaptureLook::apply_metering(options, tile),
+      Self::Face(_) => CubeCaptureLook::apply_metering(options),
     }
   }
 

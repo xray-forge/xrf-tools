@@ -28,7 +28,9 @@ impl BurstShot {
   /// Returns an error for a frame of a format a capture cannot read.
   pub fn new(
     device: &wgpu::Device,
-    (format, size, drawn): (wgpu::TextureFormat, (u32, u32), u64),
+    format: wgpu::TextureFormat,
+    size: (u32, u32),
+    drawn: u64,
     material_size: (u32, u32),
     frame: (u32, Option<u32>, f32),
   ) -> XrfResult<Self> {

@@ -37,6 +37,8 @@ use crate::scene::texture::texture_cache::TextureCache;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::thread::gpu_state::GpuState;
 use crate::thread::scene_view_framing::SceneViewFraming;
+use crate::thread::shown_scene::ShownScene;
+use crate::thread::view_work::ViewWork;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::render_viewport::RenderViewport;
 use crate::window::window_frame::WindowFrame;
@@ -117,13 +119,20 @@ impl RenderThread {
 
       self.periodic.set_owner(PeriodicOwner::View(*id));
 
-      match Self::ready_view(
-        (gpu, &self.shaders),
-        (viewport, scene, is_first),
+      let readied: Option<ViewFrame> = Self::ready_view(
+        &mut ViewWork {
+          gpu: &mut *gpu,
+          shaders: &self.shaders,
+          encoder: &mut *encoder,
+          periodic: &mut self.periodic,
+          phases: &mut *phases,
+        },
+        viewport,
+        scene.map(|scene| ShownScene { scene, is_first }),
         rect,
-        (&mut *encoder, &mut self.periodic),
-        (&mut phases.load, &mut phases.prepare),
-      ) {
+      );
+
+      match readied {
         Some(mut frame) => {
           if let (true, Some(scene)) = (is_first, scene_id) {
             frame.1.is_scene_first = true;
@@ -140,25 +149,31 @@ impl RenderThread {
     (frames, firsts)
   }
 
-  /// The sizes a viewport's frame is resolved at and drawn at over its rectangle `rect`: the settings' output
-  /// resolution first, then the render scale's share of it, where it shows a scene (`is_scened`); nothing else is drawn
-  /// but at the viewport's size. Each side stays within `most`, the largest texture the device makes.
-  fn get_view_sizes(
-    options: &RenderViewOptions,
+  /// The sizes a viewport's frame showing a scene is resolved at and drawn at over its rectangle `rect`: the settings'
+  /// output resolution first, then the render scale's share of it. Each side stays within `most`, the largest texture
+  /// the device makes.
+  fn get_scene_sizes(options: &RenderViewOptions, rect: &RenderRect, most: u32) -> ((u32, u32), RenderRect) {
+    Self::fit_view_sizes(
+      options.output.get_output_size((rect.width, rect.height)),
+      options.output.upscaling.scale,
+      rect,
+      most,
+    )
+  }
+
+  /// The same for a viewport's frame showing no scene, which is drawn but at the viewport's size.
+  fn get_grid_sizes(rect: &RenderRect, most: u32) -> ((u32, u32), RenderRect) {
+    Self::fit_view_sizes((rect.width, rect.height), RenderScale::Native, rect, most)
+  }
+
+  /// The sizes a frame `resolved` across and down, each side within `most`, is resolved at and drawn at by
+  /// `render_scale` over its rectangle `rect`.
+  fn fit_view_sizes(
+    resolved: (u32, u32),
+    render_scale: RenderScale,
     rect: &RenderRect,
-    is_scened: bool,
     most: u32,
   ) -> ((u32, u32), RenderRect) {
-    let render_scale: RenderScale = if is_scened {
-      options.output.upscaling.scale
-    } else {
-      RenderScale::Native
-    };
-    let resolved: (u32, u32) = if is_scened {
-      options.output.get_output_size((rect.width, rect.height))
-    } else {
-      (rect.width, rect.height)
-    };
     let resolved: (u32, u32) = (resolved.0.min(most), resolved.1.min(most));
 
     (
@@ -179,13 +194,21 @@ impl RenderThread {
   }
 
   /// Readies a view's graph frame, with one pick a frame drawn from this frame's culled clusters while a readback is
-  /// free for it: the camera narrowed to the pick's texel of the viewport's rectangle (`rect`, at `scale`), its
-  /// `switches` the view's. A pick no readback is free for waits for the next frame.
+  /// free for it: the camera narrowed to the pick's texel of the viewport's rectangle as the view is framed, at the
+  /// viewport's `scale`. A pick no readback is free for waits for the next frame.
   fn ready_pick(
-    (id, view_state, picks): (RenderViewportId, &mut SceneView, &mut Vec<PendingPick>),
-    (device, encoder, view_layout): (&wgpu::Device, &mut FrameEncoder, &wgpu::BindGroupLayout),
-    (view, rect, scale, switches): (&CameraView, &RenderRect, f32, Vec4),
+    work: &mut ViewWork<'_>,
+    id: RenderViewportId,
+    view_state: &mut SceneView,
+    picks: &mut Vec<PendingPick>,
+    framing: &SceneViewFraming<'_>,
+    scale: f32,
   ) -> Option<ViewFrame> {
+    let (view, rect): (&CameraView, &RenderRect) = (&framing.view, &framing.rect);
+    let switches: Vec4 = CameraUniform::get_switches(framing.options);
+    let (device, view_layout): (&wgpu::Device, &wgpu::BindGroupLayout) =
+      (&work.gpu.context.device, &work.gpu.view_layout);
+    let encoder: &mut FrameEncoder = &mut *work.encoder;
     let pick: Option<(PendingPick, Vec2, CameraUniform)> = (!picks.is_empty()).then(|| {
       let pick: PendingPick = picks.remove(0);
       let ndc: Vec2 = Vec2::new(
@@ -245,21 +268,15 @@ impl RenderThread {
 
   /// Readies one viewport's frame of the scene it shows: writes its camera, asks for the textures its weather draws
   /// with, prepares its frame, and readies its graph's frame with a pick when one waits; none where it shows no scene.
-  /// `rect` is its whole rectangle; what loading and preparing take is added to `load` and `prepare`.
+  /// `rect` is its whole rectangle.
   fn ready_view(
-    (gpu, shaders): (&mut GpuState, &ShaderLibrary),
-    (viewport, scene, is_scene_first): (&mut RenderViewport, Option<&mut LevelScene>, bool),
+    work: &mut ViewWork<'_>,
+    viewport: &mut RenderViewport,
+    scene: Option<ShownScene<'_>>,
     rect: &RenderRect,
-    (encoder, periodic): (&mut FrameEncoder, &mut PeriodicScheduler),
-    (load, prepare): (&mut Duration, &mut Duration),
   ) -> Option<ViewFrame> {
     if viewport.is_capturing() {
-      return Self::ready_capture_view(
-        (gpu, shaders),
-        (viewport, scene, is_scene_first),
-        (encoder, periodic),
-        (load, prepare),
-      );
+      return Self::ready_capture_view(work, viewport, scene);
     }
 
     let burst: Option<&BurstJob> = viewport.burst.as_ref().filter(|burst| !burst.is_ended());
@@ -272,12 +289,12 @@ impl RenderThread {
     let reference: Option<(u32, u32)> = burst.and_then(BurstJob::get_reference);
     let is_restarted: bool = burst.is_some_and(BurstJob::is_starting);
     let id: RenderViewportId = viewport.id;
-    let device: &wgpu::Device = &gpu.context.device;
+    let device: &wgpu::Device = &work.gpu.context.device;
     let scale: f32 = viewport.get_scale();
     let view: CameraView = Self::get_camera_view(viewport, rect);
     let binding: &ViewBinding = viewport
       .binding
-      .get_or_insert_with(|| ViewBinding::new(device, &gpu.view_layout));
+      .get_or_insert_with(|| ViewBinding::new(device, &work.gpu.view_layout));
 
     let mut options: RenderViewOptions = ViewLens::fit(&viewport.options, &view).into_owned();
 
@@ -287,12 +304,11 @@ impl RenderThread {
     }
 
     let switches: Vec4 = CameraUniform::get_switches(&options);
-    let (resolved, drawn_rect): ((u32, u32), RenderRect) = Self::get_view_sizes(
-      &options,
-      rect,
-      scene.is_some(),
-      device.limits().max_texture_dimension_2d,
-    );
+    let most: u32 = device.limits().max_texture_dimension_2d;
+    let (resolved, drawn_rect): ((u32, u32), RenderRect) = match scene {
+      Some(_) => Self::get_scene_sizes(&options, rect, most),
+      None => Self::get_grid_sizes(rect, most),
+    };
     let RenderViewport {
       shown,
       world,
@@ -308,7 +324,7 @@ impl RenderThread {
       let unjittered: Mat4 = view.get_view_projection();
 
       binding.write(
-        encoder,
+        work.encoder,
         &CameraUniform::new(&view, drawn_rect, switches)
           .with_wireframe(options.mode.is_wireframe)
           .with_surface_color(options.mode.surface_color)
@@ -327,44 +343,32 @@ impl RenderThread {
 
     view_state.sample_reference(reference);
 
-    Self::prepare_scene_view(
-      (gpu, shaders),
-      (scene, &mut *view_state, binding, is_scene_first),
-      &SceneViewFraming {
-        view,
-        rect: *rect,
-        resolved,
-        drawn: drawn_rect,
-        options: &options,
-        lighting: &lighting,
-        weather,
-        overlays: Some((overlays, *overlays_version)),
-        selection: selection.as_ref(),
-        weather_rate: world.clock_rate,
-      },
-      (encoder, periodic),
-      (load, prepare),
-    );
+    let framing: SceneViewFraming = SceneViewFraming {
+      view,
+      rect: *rect,
+      resolved,
+      drawn: drawn_rect,
+      options: &options,
+      lighting: &lighting,
+      weather,
+      overlays: Some((overlays, *overlays_version)),
+      selection: selection.as_ref(),
+      weather_rate: world.clock_rate,
+    };
 
-    let device: &wgpu::Device = &gpu.context.device;
-
-    Self::ready_pick(
-      (id, view_state, picks),
-      (device, encoder, &gpu.view_layout),
-      (&view, rect, scale, switches),
-    )
+    Self::prepare_scene_view(work, scene, &mut *view_state, binding, &framing);
+    Self::ready_pick(work, id, view_state, picks, &framing, scale)
   }
 
   /// Readies the frame of a viewport capturing: its capture's view drawn through the shot it stands at, with the
   /// capture's look and lighting, over the viewport's world frame; none while its last shots come back.
   fn ready_capture_view(
-    (gpu, shaders): (&mut GpuState, &ShaderLibrary),
-    (viewport, scene, is_scene_first): (&mut RenderViewport, Option<&mut LevelScene>, bool),
-    (encoder, periodic): (&mut FrameEncoder, &mut PeriodicScheduler),
-    (load, prepare): (&mut Duration, &mut Duration),
+    work: &mut ViewWork<'_>,
+    viewport: &mut RenderViewport,
+    scene: Option<ShownScene<'_>>,
   ) -> Option<ViewFrame> {
     let id: RenderViewportId = viewport.id;
-    let scene: &mut LevelScene = scene?;
+    let scene: ShownScene = scene?;
     let RenderViewport {
       capture,
       world,
@@ -374,10 +378,14 @@ impl RenderThread {
     let capture: &mut CaptureJob = capture.as_mut()?;
     let shot: CaptureShot = capture.get_drawn_shot()?;
     let view: CameraView = shot.get_view();
-    let options: RenderViewOptions =
-      ViewLens::fit(&shot.apply_look(options, capture.is_metering()), &view).into_owned();
-    let device: &wgpu::Device = &gpu.context.device;
-    let queue: &wgpu::Queue = &gpu.context.queue;
+    let look: RenderViewOptions = if capture.is_metering() {
+      shot.apply_metering_look(options)
+    } else {
+      shot.apply_look(options)
+    };
+    let options: RenderViewOptions = ViewLens::fit(&look, &view).into_owned();
+    let device: &wgpu::Device = &work.gpu.context.device;
+    let queue: &wgpu::Queue = &work.gpu.context.queue;
     let (width, height): (u32, u32) = shot.get_drawn_size();
     let rect: RenderRect = RenderRect {
       x: 0,
@@ -386,8 +394,8 @@ impl RenderThread {
       height,
     };
     let (resolved, drawn_rect): ((u32, u32), RenderRect) =
-      Self::get_view_sizes(&options, &rect, true, device.limits().max_texture_dimension_2d);
-    let view_layout: &wgpu::BindGroupLayout = &gpu.view_layout;
+      Self::get_scene_sizes(&options, &rect, device.limits().max_texture_dimension_2d);
+    let view_layout: &wgpu::BindGroupLayout = &work.gpu.view_layout;
     let (view_state, binding): (&mut SceneView, &ViewBinding) = capture.get_view_mut(|| {
       (
         SceneView::new(device, queue, view_layout),
@@ -399,8 +407,10 @@ impl RenderThread {
     let lighting: Cow<'_, RenderLighting> = shot.apply_lighting(lighting);
 
     Self::prepare_scene_view(
-      (gpu, shaders),
-      (scene, &mut *view_state, binding, is_scene_first),
+      work,
+      scene,
+      &mut *view_state,
+      binding,
       &SceneViewFraming {
         view,
         rect,
@@ -413,27 +423,31 @@ impl RenderThread {
         selection: None,
         weather_rate: world.clock_rate,
       },
-      (encoder, periodic),
-      (load, prepare),
     );
 
-    let device: &wgpu::Device = &gpu.context.device;
-
-    let frame: LevelFrame = view_state.begin_frame(device, encoder, None)?;
+    let frame: LevelFrame = view_state.begin_frame(&work.gpu.context.device, work.encoder, None)?;
 
     Some((id, frame, None))
   }
 
   /// Prepares one view of a scene for its frame: writes its camera, its jitter and motion with it, asks for the
   /// textures its weather draws with and its overlays where it has them, prepares its features and offers its periodic
-  /// work; what loading and preparing take is added to `load` and `prepare`.
+  /// work; what loading and preparing take is added to the frame's phases.
   fn prepare_scene_view(
-    (gpu, shaders): (&mut GpuState, &ShaderLibrary),
-    (scene, view_state, binding, is_scene_first): (&mut LevelScene, &mut SceneView, &ViewBinding, bool),
+    work: &mut ViewWork<'_>,
+    ShownScene {
+      scene,
+      is_first: is_scene_first,
+    }: ShownScene<'_>,
+    view_state: &mut SceneView,
+    binding: &ViewBinding,
     framing: &SceneViewFraming<'_>,
-    (encoder, periodic): (&mut FrameEncoder, &mut PeriodicScheduler),
-    (load, prepare): (&mut Duration, &mut Duration),
   ) {
+    let gpu: &mut GpuState = &mut *work.gpu;
+    let shaders: &ShaderLibrary = work.shaders;
+    let encoder: &mut FrameEncoder = &mut *work.encoder;
+    let periodic: &mut PeriodicScheduler = &mut *work.periodic;
+    let phases: &mut FramePhases = &mut *work.phases;
     let SceneViewFraming {
       view,
       rect,
@@ -502,7 +516,7 @@ impl RenderThread {
       view_state.request_textures(scene, &mut gpu.weather_textures, lighting, weather, options);
       Self::ask_heights(&mut gpu.textures, options);
     }
-    *load += loading.elapsed();
+    phases.load += loading.elapsed();
 
     let preparing: Instant = Instant::now();
 
@@ -534,7 +548,7 @@ impl RenderThread {
       );
       view_state.offer_periodic(scene, device, periodic, &gpu.view_layout);
     }
-    *prepare += preparing.elapsed();
+    phases.prepare += preparing.elapsed();
   }
 
   /// What a view is lit by and the weather it plays: an asset viewer's rig and none, else its world's frame's.

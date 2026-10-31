@@ -23,7 +23,7 @@ impl GpuMemory {
 
   /// What the allocator holds now, its peak carried on from `last`, and the adapter's memory; none where the backend
   /// reports nothing.
-  pub fn read((adapter, device): (&wgpu::Adapter, &wgpu::Device), last: Option<&Self>) -> Option<Self> {
+  pub fn read(adapter: &wgpu::Adapter, device: &wgpu::Device, last: Option<&Self>) -> Option<Self> {
     let report: wgpu::AllocatorReport = device.generate_allocator_report()?;
     let allocated: u64 = report.total_allocated_bytes;
 

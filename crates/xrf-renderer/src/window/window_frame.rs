@@ -5,15 +5,13 @@ use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, Gr
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
-use crate::pass::backdrop_pass::BackdropPass;
-use crate::pass::grid_pass::GridPass;
 use crate::pass::overlay_draw::OverlayDraw;
-use crate::pass::overlay_pass::OverlayPass;
-use crate::pass::present_pass::PresentPass;
 use crate::pass::view_binding::ViewBinding;
+use crate::window::composed_overlays::ComposedOverlays;
 use crate::window::composed_view::ComposedView;
 use crate::window::render_window::RenderWindow;
 use crate::window::window_backdrop::WindowBackdrop;
+use crate::window::window_passes::WindowPasses;
 
 /// A window this frame draws: its format, each viewport drawn into it with its whole rectangle and the part the window
 /// shows, what the page is cleared to around them and whether its backdrop is painted over that; and the image it draws
@@ -52,9 +50,15 @@ impl WindowFrame {
   pub fn declare<'a>(
     &self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
-    (target, backdrop): (&'a wgpu::TextureView, Option<&'a WindowBackdrop>),
+    target: &'a wgpu::TextureView,
+    backdrop: Option<&'a WindowBackdrop>,
     composed: Vec<ComposedView<'a>>,
-    (backdrop_pass, present, overlay, grid): (&'a BackdropPass, &'a PresentPass, &'a OverlayPass, &'a GridPass),
+    WindowPasses {
+      backdrop: backdrop_pass,
+      present,
+      overlay,
+      grid,
+    }: WindowPasses<'a>,
     captures: &'a [(RenderViewportId, FrameCapture, CaptureReply)],
   ) {
     let format: wgpu::TextureFormat = self.format;
@@ -74,7 +78,7 @@ impl WindowFrame {
         };
 
         match &view.overlays {
-          Some((overlay, _)) => builder.parameters(overlay),
+          Some(overlays) => builder.parameters(&overlays.parameters),
           None => builder,
         }
       },
@@ -105,14 +109,14 @@ impl WindowFrame {
           None => grid.draw(pass, binding),
         }
 
-        if let Some((parameters, overlays)) = &view.overlays {
+        if let Some(ComposedOverlays { parameters, overlays }) = &view.overlays {
           overlay.draw(
             context,
             format,
             OverlayDraw {
               view: binding,
               parameters,
-              overlays: Some(overlays),
+              overlays: Some(*overlays),
               helpers: view.helpers,
             },
           );

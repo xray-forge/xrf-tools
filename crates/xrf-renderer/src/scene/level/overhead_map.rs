@@ -240,7 +240,7 @@ impl OverheadMap {
     let job: PeriodicJob = if self.drawn.is_none() {
       PeriodicJob::new_now(passes, self.shape.seed, units)
     } else {
-      PeriodicJob::new_waiting(passes, self.shape.seed, units, (self.waited, Self::WAIT_MOST))
+      PeriodicJob::new_waiting(passes, self.shape.seed, units, self.waited, Self::WAIT_MOST)
     };
 
     self.offer = Some((scheduler.offer(job), state, draw));

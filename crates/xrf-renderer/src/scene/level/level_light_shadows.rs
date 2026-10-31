@@ -428,7 +428,7 @@ impl LevelLightShadows {
       let job: PeriodicJob = if wait_most == 0 {
         PeriodicJob::new_now(&FACE_PASSES, FACE_SEED, texels)
       } else {
-        PeriodicJob::new_waiting(&FACE_PASSES, FACE_SEED, texels, (state.waited, wait_most))
+        PeriodicJob::new_waiting(&FACE_PASSES, FACE_SEED, texels, state.waited, wait_most)
       };
 
       self.queue.push((index, is_next, face, scheduler.offer(job)));

@@ -149,7 +149,8 @@ impl SkyFeature {
         &SkyPrefilterPass::PASSES,
         Self::REFILL_SEED,
         1.0,
-        (self.waited, Self::REFILL_WAIT_MOST),
+        self.waited,
+        Self::REFILL_WAIT_MOST,
       )
     } else {
       PeriodicJob::new_now(&SkyPrefilterPass::PASSES, Self::REFILL_SEED, 1.0)

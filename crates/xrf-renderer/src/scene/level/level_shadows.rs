@@ -957,7 +957,7 @@ impl LevelShadows {
     let job: PeriodicJob = if is_now {
       PeriodicJob::new_now(passes, seed, 1.0)
     } else {
-      PeriodicJob::new_waiting(passes, seed, 1.0, (cascade.waited, 1 << index))
+      PeriodicJob::new_waiting(passes, seed, 1.0, cascade.waited, 1 << index)
     };
 
     CascadeOffer {
@@ -1062,7 +1062,8 @@ impl LevelShadows {
       &BAND_PASSES[index],
       WHOLE_SEEDS[index] / BANDS as f32,
       1.0,
-      (prefetch.waited, BAND_WAIT_MOST),
+      prefetch.waited,
+      BAND_WAIT_MOST,
     );
 
     Some(scheduler.offer(job))

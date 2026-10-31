@@ -6,6 +6,8 @@ use xrf_dlss::{Dlss, DlssInstance};
 use xrf_env_flags::{EnvFlags, SwitchFlag};
 use xrf_error::{XrfError, XrfResult};
 
+use crate::context::gpu_instance_use::GpuInstanceUse;
+use crate::context::gpu_libraries::GpuLibraries;
 use crate::context::gpu_requirements::{
   OPTIONAL_FEATURES, REQUIRED_FEATURES, can_trace, get_missing_features, get_ray_query_features,
 };
@@ -41,19 +43,15 @@ impl GpuContext {
   pub const MEMORY_BLOCK: u64 = 16 * 1024 * 1024;
 
   /// Starts the GPU on a hardware adapter of a backend: the GPU `gpu` names where the backend has it, else the one the
-  /// backend picks automatically. D3D12 compiles with the DXC library at the first of `libraries` where it loads, and
-  /// Vulkan loads DLSS's runtime library from the directory at the second where the build has DLSS.
+  /// backend picks automatically. D3D12 compiles with the DXC library `libraries` names where it loads, and Vulkan
+  /// loads DLSS's runtime library from the directory they name where the build has DLSS.
   ///
   /// # Errors
   ///
   /// Returns an error when no adapter of that backend exists, when it lacks a required feature, or when its device
   /// cannot be created.
-  pub fn create(
-    backend: RenderBackend,
-    gpu: Option<RenderGpu>,
-    libraries: (Option<&Path>, Option<&Path>),
-  ) -> XrfResult<Self> {
-    Self::create_with(backend, gpu, false, libraries)
+  pub fn create(backend: RenderBackend, gpu: Option<RenderGpu>, libraries: GpuLibraries<'_>) -> XrfResult<Self> {
+    Self::create_with(backend, gpu, GpuInstanceUse::Hardware, libraries)
   }
 
   /// Starts the GPU on the first backend of `RenderBackend::list_tried` that starts: the one asked for, else the first
@@ -65,7 +63,7 @@ impl GpuContext {
   pub fn create_preferred(
     asked: Option<RenderBackend>,
     gpu: Option<RenderGpu>,
-    libraries: (Option<&Path>, Option<&Path>),
+    libraries: GpuLibraries<'_>,
   ) -> XrfResult<Self> {
     let mut problems: Vec<String> = Vec::new();
 
@@ -116,8 +114,10 @@ impl GpuContext {
   ///
   /// Returns an error when neither a hardware nor a software adapter can be had with the required features.
   pub fn create_headless(backend: RenderBackend, dxc: Option<&Path>) -> XrfResult<Self> {
-    Self::create_with(backend, None, false, (dxc, None))
-      .or_else(|_| Self::create_with(backend, None, true, (dxc, None)))
+    let libraries: GpuLibraries = GpuLibraries { dxc, dlss: None };
+
+    Self::create_with(backend, None, GpuInstanceUse::Hardware, libraries)
+      .or_else(|_| Self::create_with(backend, None, GpuInstanceUse::Software, libraries))
   }
 
   /// Whether the device was lost, after which nothing it made draws again.
@@ -127,8 +127,9 @@ impl GpuContext {
 
   /// Every hardware GPU of a backend with the features the renderer needs, the one it picks automatically first.
   fn list_gpus(backend: RenderBackend) -> XrfResult<Vec<RenderGpuDescription>> {
-    let instance: DlssInstance = Self::create_instance(backend, false, (None, None));
-    let automatic: Option<wgpu::Adapter> = Self::request_automatic(&instance.instance, backend, false).ok();
+    let instance: DlssInstance = Self::create_instance(backend, GpuInstanceUse::Listing, GpuLibraries::default());
+    let automatic: Option<wgpu::Adapter> =
+      Self::request_automatic(&instance.instance, backend, GpuInstanceUse::Listing).ok();
     let listed: Vec<wgpu::Adapter> = pollster::block_on(instance.instance.enumerate_adapters(backend.to_backends()));
     let mut gpus: Vec<RenderGpuDescription> = Vec::new();
     let mut problems: Vec<String> = Vec::new();
@@ -156,12 +157,12 @@ impl GpuContext {
     }
   }
 
-  /// Creates an instance of a backend. D3D12 compiles with the DXC library at `dxc`, or FXC if none is given; with
-  /// `is_upscaled` the instance is ready for DLSS, loading its runtime from `dlss` where the application ships one.
+  /// Creates an instance of a backend for `instance_use`, with the `libraries` it loads: ready for DLSS where it draws
+  /// on hardware.
   fn create_instance(
     backend: RenderBackend,
-    is_upscaled: bool,
-    (dxc, dlss): (Option<&Path>, Option<&Path>),
+    instance_use: GpuInstanceUse,
+    GpuLibraries { dxc, dlss }: GpuLibraries<'_>,
   ) -> DlssInstance {
     let mut descriptor: wgpu::InstanceDescriptor = wgpu::InstanceDescriptor::new_without_display_handle();
 
@@ -176,7 +177,7 @@ impl GpuContext {
     // rest of wgpu's switches override it either way.
     descriptor.flags = Self::read_instance_flags();
 
-    DlssInstance::new(descriptor, is_upscaled, dlss)
+    DlssInstance::new(descriptor, instance_use.is_upscaled(), dlss)
   }
 
   /// The build's instance flags with each of wgpu's switches set in the environment applied, read as any xrf switch.
@@ -221,32 +222,33 @@ impl GpuContext {
     flags
   }
 
-  /// The adapter the backend picks automatically: its high-performance one, or a software one if `is_fallback`.
+  /// The adapter the backend picks automatically: its high-performance one, or a software one for a software
+  /// `instance_use`.
   fn request_automatic(
     instance: &wgpu::Instance,
     backend: RenderBackend,
-    is_fallback: bool,
+    instance_use: GpuInstanceUse,
   ) -> XrfResult<wgpu::Adapter> {
     pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
       power_preference: wgpu::PowerPreference::HighPerformance,
       compatible_surface: None,
-      force_fallback_adapter: is_fallback,
+      force_fallback_adapter: instance_use.is_fallback(),
       apply_limit_buckets: false,
     }))
     .map_err(|error| XrfError::new_unexpected_error(format!("No {} adapter: {error}", backend.get_label())))
   }
 
   /// Creates an instance of a backend and picks its adapter: the hardware GPU `gpu` names if the backend has it with
-  /// every required feature, otherwise the automatic one (a software one if `is_fallback`).
+  /// every required feature, otherwise the automatic one (a software one for a software `instance_use`).
   fn request_adapter(
     backend: RenderBackend,
     gpu: Option<RenderGpu>,
-    (is_fallback, is_upscaled): (bool, bool),
-    libraries: (Option<&Path>, Option<&Path>),
+    instance_use: GpuInstanceUse,
+    libraries: GpuLibraries<'_>,
   ) -> XrfResult<(DlssInstance, wgpu::Adapter)> {
-    let instance: DlssInstance = Self::create_instance(backend, is_upscaled, libraries);
+    let instance: DlssInstance = Self::create_instance(backend, instance_use, libraries);
 
-    if let Some(asked) = gpu.filter(|_| !is_fallback) {
+    if let Some(asked) = gpu.filter(|_| !instance_use.is_fallback()) {
       let listed: Vec<wgpu::Adapter> = pollster::block_on(instance.instance.enumerate_adapters(backend.to_backends()));
       let chosen: Option<wgpu::Adapter> = listed.into_iter().find(|adapter| {
         let info: wgpu::AdapterInfo = adapter.get_info();
@@ -267,7 +269,7 @@ impl GpuContext {
       }
     }
 
-    let adapter: wgpu::Adapter = Self::request_automatic(&instance.instance, backend, is_fallback)?;
+    let adapter: wgpu::Adapter = Self::request_automatic(&instance.instance, backend, instance_use)?;
 
     Ok((instance, adapter))
   }
@@ -290,25 +292,27 @@ impl GpuContext {
   fn create_with(
     backend: RenderBackend,
     gpu: Option<RenderGpu>,
-    is_fallback: bool,
-    (dxc, dlss): (Option<&Path>, Option<&Path>),
+    instance_use: GpuInstanceUse,
+    GpuLibraries { dxc, dlss }: GpuLibraries<'_>,
   ) -> XrfResult<Self> {
     let dxc: Option<&Path> = dxc.filter(|_| backend == RenderBackend::D3d12);
     // A DXC library that does not load fails the instance's D3D12 backend, so FXC is tried in its place.
-    let upscaled: (bool, bool) = (is_fallback, !is_fallback);
-    let (instance, adapter, shader_compiler) = match Self::request_adapter(backend, gpu, upscaled, (dxc, dlss)) {
-      Ok((instance, adapter)) => (instance, adapter, dxc.map_or("FXC", |_| "DXC")),
-      // DXC is what failed only where FXC then starts; where FXC fails too, the adapter's own error stands.
-      Err(error) if dxc.is_some() => match Self::request_adapter(backend, gpu, upscaled, (None, dlss)) {
-        Ok((instance, adapter)) => {
-          log::warn!("D3D12 compiles with FXC, the DXC library not loading: {error}");
+    let (instance, adapter, shader_compiler) =
+      match Self::request_adapter(backend, gpu, instance_use, GpuLibraries { dxc, dlss }) {
+        Ok((instance, adapter)) => (instance, adapter, dxc.map_or("FXC", |_| "DXC")),
+        // DXC is what failed only where FXC then starts; where FXC fails too, the adapter's own error stands.
+        Err(error) if dxc.is_some() => {
+          match Self::request_adapter(backend, gpu, instance_use, GpuLibraries { dxc: None, dlss }) {
+            Ok((instance, adapter)) => {
+              log::warn!("D3D12 compiles with FXC, the DXC library not loading: {error}");
 
-          (instance, adapter, "FXC")
+              (instance, adapter, "FXC")
+            }
+            Err(_) => return Err(error),
+          }
         }
-        Err(_) => return Err(error),
-      },
-      Err(error) => return Err(error),
-    };
+        Err(error) => return Err(error),
+      };
     let shader_compiler: Option<&'static str> = (backend == RenderBackend::D3d12).then_some(shader_compiler);
     let info: wgpu::AdapterInfo = Self::check_adapter(&adapter)?;
 

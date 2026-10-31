@@ -83,30 +83,18 @@ impl FrameCapture {
     })
   }
 
-  /// A capture's shot `size` pixels across, drawn in `format`, the frame `frame`, waiting for its copy, and its depth's
-  /// where it is `is_covered`, as a map's tile is.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error for a frame of a format a capture cannot read.
-  pub fn new_shot(
-    device: &wgpu::Device,
-    format: wgpu::TextureFormat,
-    (width, height): (u32, u32),
-    frame: u64,
-    is_covered: bool,
-  ) -> XrfResult<Self> {
+  /// The same, a shot `width` by `height` pixels across, its depth's coverage waiting for its copy too, as a map's tile's
+  /// is.
+  pub fn with_coverage(self, device: &wgpu::Device, (width, height): (u32, u32)) -> Self {
     let row: u32 = (width * 4).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT);
 
-    Ok(Self {
-      coverage: is_covered.then(|| {
-        (
-          GpuReadback::new(device, "map tile coverage", (row * height) as u64),
-          row,
-        )
-      }),
-      ..Self::new_screenshot(device, format, (width, height), frame)?
-    })
+    Self {
+      coverage: Some((
+        GpuReadback::new(device, "map tile coverage", (row * height) as u64),
+        row,
+      )),
+      ..self
+    }
   }
 
   /// The same, drawn as `screenshot` asks.

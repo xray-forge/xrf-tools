@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use xrf_error::XrfError;
-use xrf_renderer_core::{ExecutedGraph, ExecutedGroup, GraphRuntime};
+use xrf_renderer_core::{ExecutedGraph, ExecutedGroup};
 
 use wgpu::util::StagingBelt;
 
@@ -10,13 +10,13 @@ use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::frame_phases::FramePhases;
-use crate::frame::frame_span_timer::FrameSpanTimer;
 use crate::host::render_scene_id::RenderSceneId;
-use crate::thread::gpu_state::GpuState;
+use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::pick_in_flight::PickInFlight;
 use crate::window::window_frame::WindowFrame;
 
-use super::{BurstCopy, RenderThread, ShotCopy, ViewFrame};
+use super::frame_copies::FrameCopies;
+use super::{RenderThread, ViewFrame};
 
 impl RenderThread {
   /// Gives up a frame its graph could not draw: what the frame's own encoder holds is not of the frame (the uploads and
@@ -25,13 +25,16 @@ impl RenderThread {
   /// burst's frames no longer following one another.
   pub(super) fn abandon_frame(
     &mut self,
-    (gpu, kept): (&GpuState, &mut Option<StagingBelt>),
+    running: &mut RunningGpu,
     encoder: FrameEncoder,
-    (frames, firsts): (Vec<ViewFrame>, &[(RenderSceneId, RenderViewportId)]),
+    frames: Vec<ViewFrame>,
+    firsts: &[(RenderSceneId, RenderViewportId)],
     captures: Vec<(RenderViewportId, FrameCapture, CaptureReply)>,
     error: &XrfError,
   ) {
     log::error!("The frame cannot be drawn: {error}");
+
+    let RunningGpu { gpu, belt: kept, .. } = running;
 
     let scope: wgpu::ErrorScopeGuard = gpu.context.device.push_error_scope(wgpu::ErrorFilter::Validation);
     let (commands, belt): (wgpu::CommandBuffer, StagingBelt) = encoder.finish();
@@ -77,17 +80,20 @@ impl RenderThread {
   /// groups as executed.
   pub(super) fn submit_frame(
     &mut self,
-    (gpu, runtime, frame_span, kept): (
-      &GpuState,
-      &mut GraphRuntime,
-      &mut FrameSpanTimer,
-      &mut Option<StagingBelt>,
-    ),
+    running: &mut RunningGpu,
     executed: ExecutedGraph,
     encoder: FrameEncoder,
-    (recording, waited): (Instant, Duration),
+    recording: Instant,
+    waited: Duration,
     phases: &mut FramePhases,
   ) -> Vec<ExecutedGroup> {
+    let RunningGpu {
+      gpu,
+      runtime,
+      frame_span,
+      belt: kept,
+      ..
+    } = running;
     let device: &wgpu::Device = &gpu.context.device;
     let finishing: Instant = Instant::now();
     let mut commands: Vec<wgpu::CommandBuffer> = {
@@ -126,8 +132,11 @@ impl RenderThread {
   pub(super) fn end_view_frames(
     &mut self,
     frames: Vec<ViewFrame>,
-    captures: Vec<(RenderViewportId, FrameCapture, CaptureReply)>,
-    (mut shots, mut bursts): (Vec<ShotCopy>, Vec<BurstCopy>),
+    FrameCopies {
+      captures,
+      mut shots,
+      mut bursts,
+    }: FrameCopies,
   ) {
     for (id, frame, pick) in frames {
       let Some(viewport) = self.viewports.get_mut(&id) else {
@@ -191,7 +200,8 @@ impl RenderThread {
     queue: &wgpu::Queue,
     windows: Vec<WindowFrame>,
     phases: FramePhases,
-    (cpu, span): (Duration, Option<f32>),
+    cpu: Duration,
+    span: Option<f32>,
     groups: &[ExecutedGroup],
   ) {
     self.pacer.note_ready(self.last_frame.elapsed());
@@ -225,7 +235,7 @@ impl RenderThread {
       for (id, _, _) in &window.drawn {
         if let Some(viewport) = self.viewports.get_mut(id) {
           viewport.frame += 1;
-          viewport.record_frame((interval, cpu, span), &window_phases, groups);
+          viewport.record_frame(interval, cpu, span, &window_phases, groups);
         }
       }
     }

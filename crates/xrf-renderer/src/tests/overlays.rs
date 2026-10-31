@@ -3,17 +3,14 @@ use crate::contract::render_overlay_segment::RenderOverlaySegment;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::tests::test_context::create_test_context;
 
-fn lines(segments: usize, is_depth_tested: bool) -> RenderOverlay {
-  RenderOverlay::Lines {
-    segments: vec![
-      RenderOverlaySegment {
-        ends: [[0.0; 3]; 2],
-        colors: [[1.0; 3]; 2],
-      };
-      segments
-    ],
-    is_depth_tested,
-  }
+fn segments(count: usize) -> Vec<RenderOverlaySegment> {
+  vec![
+    RenderOverlaySegment {
+      ends: [[0.0; 3]; 2],
+      colors: [[1.0; 3]; 2],
+    };
+    count
+  ]
 }
 
 /// Every set's segments as two vertices each, and the sun apart from them.
@@ -25,8 +22,14 @@ fn packs_segments_and_the_sun() {
   let overlays: LevelOverlays = LevelOverlays::new(
     &context.device,
     &[
-      lines(1, true),
-      lines(2, false),
+      RenderOverlay::Lines {
+        segments: segments(1),
+        is_depth_tested: true,
+      },
+      RenderOverlay::Lines {
+        segments: segments(2),
+        is_depth_tested: false,
+      },
       RenderOverlay::Sun {
         color: [1.0, 0.9, 0.8],
         size: 24.0,
@@ -39,7 +42,14 @@ fn packs_segments_and_the_sun() {
   assert_eq!(overlays.lines.as_ref().map(|(_, count)| *count), Some(6));
   assert!(overlays.sun.is_some());
 
-  let empty: LevelOverlays = LevelOverlays::new(&context.device, &[lines(0, true)], 6);
+  let empty: LevelOverlays = LevelOverlays::new(
+    &context.device,
+    &[RenderOverlay::Lines {
+      segments: segments(0),
+      is_depth_tested: true,
+    }],
+    6,
+  );
 
   assert!(empty.lines.is_none());
   assert!(empty.sun.is_none());

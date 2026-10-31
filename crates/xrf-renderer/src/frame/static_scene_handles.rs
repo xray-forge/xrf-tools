@@ -58,7 +58,9 @@ impl StaticSceneHandles {
     }: GraphDeclaration<'_, 'r>,
     scene: &'r StaticScene,
     pyramid: &'r wgpu::TextureView,
-    (cull, occlusion, wind): (&StaticCullUniform, &StaticOcclusionUniform, &WindUniform),
+    cull: &StaticCullUniform,
+    occlusion: &StaticOcclusionUniform,
+    wind: &WindUniform,
   ) -> Self {
     let mut import = |label: &'static str, buffer: &'r wgpu::Buffer| bindings.import_buffer(graph, label, buffer);
     let handles = (

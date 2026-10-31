@@ -1,6 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use crate::context::gpu_context::GpuContext;
+use crate::context::gpu_libraries::GpuLibraries;
 use crate::contract::render_backend::RenderBackend;
 use crate::contract::render_backend_availability::RenderBackendAvailability;
 use crate::contract::render_gpu::RenderGpu;
@@ -27,7 +28,10 @@ fn draws_on_the_chosen_gpu_and_falls_back_to_the_automatic_one() {
   };
   let RenderBackendAvailability { backend, gpus, .. } = availability;
   let dxc: Option<PathBuf> = checkout_dxc();
-  let libraries: (Option<&Path>, Option<&Path>) = (dxc.as_deref(), None);
+  let libraries: GpuLibraries = GpuLibraries {
+    dxc: dxc.as_deref(),
+    dlss: None,
+  };
 
   let fallback: GpuContext = GpuContext::create(backend, Some(MISSING), libraries).expect("the automatic GPU starts");
 

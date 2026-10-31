@@ -73,8 +73,18 @@ impl ViewTargets {
   }
 
   /// The G-buffer's colour targets in the order a G-buffer pass holds them and its draws write them: albedo, normal,
-  /// material, motion and relief, the relief written only by draws that march it (`is_relief_written`).
-  pub fn get_gbuffer_targets(is_relief_written: bool) -> [Option<wgpu::ColorTargetState>; 5] {
+  /// material, motion and relief, the relief left unwritten.
+  pub fn get_gbuffer_targets() -> [Option<wgpu::ColorTargetState>; 5] {
+    Self::get_gbuffer_targets_writing(wgpu::ColorWrites::empty())
+  }
+
+  /// The same for draws that march the relief, which they write.
+  pub fn get_marching_gbuffer_targets() -> [Option<wgpu::ColorTargetState>; 5] {
+    Self::get_gbuffer_targets_writing(wgpu::ColorWrites::ALL)
+  }
+
+  /// The G-buffer's colour targets, the relief written as `relief_writes` asks.
+  fn get_gbuffer_targets_writing(relief_writes: wgpu::ColorWrites) -> [Option<wgpu::ColorTargetState>; 5] {
     [
       Some(Self::ALBEDO.into()),
       Some(Self::NORMAL.into()),
@@ -83,11 +93,7 @@ impl ViewTargets {
       Some(wgpu::ColorTargetState {
         format: Self::RELIEF,
         blend: None,
-        write_mask: if is_relief_written {
-          wgpu::ColorWrites::ALL
-        } else {
-          wgpu::ColorWrites::empty()
-        },
+        write_mask: relief_writes,
       }),
     ]
   }

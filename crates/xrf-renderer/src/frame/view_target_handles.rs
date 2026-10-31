@@ -38,7 +38,9 @@ impl ViewTargetHandles {
   pub fn import<'r>(
     graph: &mut FrameGraph<'_>,
     bindings: &mut GraphBindings<'r>,
-    (targets, uses, none): (&'r ViewTargets, ViewTargetUses, &'r wgpu::TextureView),
+    targets: &'r ViewTargets,
+    uses: ViewTargetUses,
+    none: &'r wgpu::TextureView,
   ) -> Self {
     let (width, height) = (targets.width, targets.height);
     let half: (u32, u32) = (width.div_ceil(2), height.div_ceil(2));

@@ -934,7 +934,7 @@ impl SceneView {
       is_specular_split: self.shared.lighting.is_light_anchored(),
     };
     let handles: ViewTargetHandles =
-      ViewTargetHandles::import(&mut *graph, &mut *bindings, (targets, uses, passes.vbao.get_dark()));
+      ViewTargetHandles::import(&mut *graph, &mut *bindings, targets, uses, passes.vbao.get_dark());
     let statics: StaticSceneHandles = self.features.statics.import(
       GraphDeclaration::new(graph, bindings, runtime),
       &scene.statics,

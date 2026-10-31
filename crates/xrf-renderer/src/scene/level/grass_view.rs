@@ -9,6 +9,7 @@ use crate::contract::render_grass_report::RenderGrassReport;
 use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::frame::stats_readback::StatsReadback;
 use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::lighting::foliage_motion::FoliageMotion;
 use crate::lighting::grass_wind::GrassWind;
 use crate::pass::grass_build_parameters::GrassBuildParameters;
 use crate::pass::grass_card_shadow_parameters::GrassCardShadowParameters;
@@ -118,7 +119,7 @@ impl GrassView {
     } = *frame;
     let wind: GrassWindUniform = self
       .wind
-      .advance(time, is_windy, strength)
+      .advance(time, FoliageMotion::of(is_windy), strength)
       .with_foliage(foliage)
       .with_alignment(settings.is_aligned);
 

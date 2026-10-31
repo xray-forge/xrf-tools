@@ -9,15 +9,15 @@ use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 static PASSES: [&str; 2] = ["job cull", "job draw"];
 static OTHER: [&str; 1] = ["other draw"];
 
-fn waiting(cost: f32, (waited, wait_most): (u32, u32)) -> PeriodicJob {
-  PeriodicJob::new_waiting(&PASSES, cost, 1.0, (waited, wait_most))
+fn waiting(cost: f32, waited: u32, wait_most: u32) -> PeriodicJob {
+  PeriodicJob::new_waiting(&PASSES, cost, 1.0, waited, wait_most)
 }
 
 #[test]
 fn grants_what_must_draw_whatever_the_budget() {
   let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
 
-  scheduler.begin(0.5, (&[], &[]));
+  scheduler.begin(0.5, &[], &[]);
 
   let tickets: Vec<PeriodicTicket> = (0..3)
     .map(|_| scheduler.offer(PeriodicJob::new_now(&PASSES, 1.0, 1.0)))
@@ -33,11 +33,11 @@ fn grants_what_must_draw_whatever_the_budget() {
 fn grants_the_most_urgent_within_the_budget() {
   let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
 
-  scheduler.begin(0.5, (&[], &[]));
+  scheduler.begin(0.5, &[], &[]);
 
-  let relaxed: PeriodicTicket = scheduler.offer(waiting(0.3, (0, 8)));
-  let urgent: PeriodicTicket = scheduler.offer(waiting(0.3, (2, 4)));
-  let small: PeriodicTicket = scheduler.offer(waiting(0.1, (0, 8)));
+  let relaxed: PeriodicTicket = scheduler.offer(waiting(0.3, 0, 8));
+  let urgent: PeriodicTicket = scheduler.offer(waiting(0.3, 2, 4));
+  let small: PeriodicTicket = scheduler.offer(waiting(0.1, 0, 8));
 
   scheduler.grant();
 
@@ -50,11 +50,11 @@ fn grants_the_most_urgent_within_the_budget() {
 fn takes_one_overdue_job_past_the_budget() {
   let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
 
-  scheduler.begin(0.0, (&[], &[]));
+  scheduler.begin(0.0, &[], &[]);
 
-  let late: PeriodicTicket = scheduler.offer(waiting(1.0, (4, 4)));
-  let later: PeriodicTicket = scheduler.offer(waiting(1.0, (9, 4)));
-  let waiting_job: PeriodicTicket = scheduler.offer(waiting(1.0, (1, 4)));
+  let late: PeriodicTicket = scheduler.offer(waiting(1.0, 4, 4));
+  let later: PeriodicTicket = scheduler.offer(waiting(1.0, 9, 4));
+  let waiting_job: PeriodicTicket = scheduler.offer(waiting(1.0, 1, 4));
 
   scheduler.grant();
 
@@ -67,7 +67,7 @@ fn takes_one_overdue_job_past_the_budget() {
 fn withdraws_what_a_view_offered() {
   let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
 
-  scheduler.begin(1.0, (&[], &[]));
+  scheduler.begin(1.0, &[], &[]);
 
   let streamed: PeriodicTicket = scheduler.offer(PeriodicJob::new_now(&PASSES, 0.1, 1.0));
 
@@ -92,14 +92,14 @@ fn withdraws_what_a_view_offered() {
 fn answers_only_this_frame_s_tickets() {
   let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
 
-  scheduler.begin(1.0, (&[], &[]));
+  scheduler.begin(1.0, &[], &[]);
 
   let ticket: PeriodicTicket = scheduler.offer(PeriodicJob::new_now(&PASSES, 0.1, 1.0));
 
   scheduler.grant();
   assert!(scheduler.is_granted(ticket));
 
-  scheduler.begin(1.0, (&[], &[]));
+  scheduler.begin(1.0, &[], &[]);
   scheduler.offer(PeriodicJob::new_now(&PASSES, 0.1, 1.0));
   scheduler.grant();
   assert!(!scheduler.is_granted(ticket));
@@ -110,7 +110,7 @@ fn learns_a_job_s_cost_from_its_passes() {
   let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
   let job: PeriodicJob = PeriodicJob::new_now(&PASSES, 0.001, 100.0);
 
-  scheduler.begin(1.0, (&[], &[]));
+  scheduler.begin(1.0, &[], &[]);
 
   let frame: u64 = scheduler.get_frame();
 
@@ -129,15 +129,13 @@ fn learns_a_job_s_cost_from_its_passes() {
   // reads like the job's merged.
   scheduler.begin(
     1.0,
-    (
-      &[
-        time(&["job cull"], 0.2),
-        time(&["job draw"], 0.6),
-        time(&["job draw", "other draw"], 5.0),
-        time(&["job cull + job draw"], 7.0),
-      ],
-      &[],
-    ),
+    &[
+      time(&["job cull"], 0.2),
+      time(&["job draw"], 0.6),
+      time(&["job draw", "other draw"], 5.0),
+      time(&["job cull + job draw"], 7.0),
+    ],
+    &[],
   );
 
   assert!((scheduler.get_cost(&job) - 0.8).abs() < 1e-6);
@@ -147,16 +145,16 @@ fn learns_a_job_s_cost_from_its_passes() {
 fn shares_a_frame_s_budget_and_its_overdue_job_across_rounds() {
   let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
 
-  scheduler.begin(0.5, (&[], &[]));
+  scheduler.begin(0.5, &[], &[]);
 
-  let streamed: PeriodicTicket = scheduler.offer(waiting(0.3, (0, 8)));
-  let late: PeriodicTicket = scheduler.offer(waiting(0.1, (4, 4)));
+  let streamed: PeriodicTicket = scheduler.offer(waiting(0.3, 0, 8));
+  let late: PeriodicTicket = scheduler.offer(waiting(0.1, 4, 4));
 
   scheduler.grant();
 
-  let drawn: PeriodicTicket = scheduler.offer(waiting(0.2, (0, 8)));
-  let later: PeriodicTicket = scheduler.offer(waiting(1.0, (9, 4)));
-  let small: PeriodicTicket = scheduler.offer(waiting(0.1, (0, 8)));
+  let drawn: PeriodicTicket = scheduler.offer(waiting(0.2, 0, 8));
+  let later: PeriodicTicket = scheduler.offer(waiting(1.0, 9, 4));
+  let small: PeriodicTicket = scheduler.offer(waiting(0.1, 0, 8));
 
   scheduler.grant();
 
@@ -172,11 +170,11 @@ fn shares_a_frame_s_budget_and_its_overdue_job_across_rounds() {
 fn spends_the_budget_on_what_must_draw_first() {
   let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
 
-  scheduler.begin(0.5, (&[], &[]));
+  scheduler.begin(0.5, &[], &[]);
   scheduler.offer(PeriodicJob::new_now(&OTHER, 0.3, 1.0));
 
-  let large: PeriodicTicket = scheduler.offer(waiting(0.3, (0, 8)));
-  let small: PeriodicTicket = scheduler.offer(waiting(0.1, (0, 8)));
+  let large: PeriodicTicket = scheduler.offer(waiting(0.3, 0, 8));
+  let small: PeriodicTicket = scheduler.offer(waiting(0.1, 0, 8));
 
   scheduler.grant();
 
@@ -188,11 +186,11 @@ fn spends_the_budget_on_what_must_draw_first() {
 fn fits_a_job_s_cost_to_the_frames_gpu_times() {
   let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
   // Seeded at a tenth of a millisecond, it costs half a millisecond over a 5 ms frame, every third frame.
-  let job: PeriodicJob = waiting(0.1, (0, 2));
+  let job: PeriodicJob = waiting(0.1, 0, 2);
   let mut spans: Vec<(u64, f32)> = Vec::new();
 
   for frame in 0..600 {
-    scheduler.begin(1.0, (&[], &spans));
+    scheduler.begin(1.0, &[], &spans);
     spans.clear();
 
     let tag: u64 = scheduler.get_frame();

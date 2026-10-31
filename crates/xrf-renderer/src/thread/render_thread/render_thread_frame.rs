@@ -21,6 +21,7 @@ use crate::scene::level::scene_view::SceneView;
 use crate::scene::texture::sky_texture_requests::SkyTextureRequests;
 use crate::scene::texture::texture_upload_pace::TextureUploadPace;
 use crate::thread::running_gpu::RunningGpu;
+use crate::viewport::reported_graph::ReportedGraph;
 use crate::viewport::viewport_device::ViewportDevice;
 
 use super::{ALLOCATOR_REPORT_EVERY, RenderThread, TEXTURE_SWEEP};
@@ -59,7 +60,7 @@ impl RenderThread {
     self.show_asked_scenes();
     self.retain_scenes(&live);
     self.keep_textures(now);
-    self.draw_windows((now.elapsed(), span), encoder);
+    self.draw_windows(now.elapsed(), span, encoder);
     self.report_viewports(now);
     self.save_level_pipelines();
   }
@@ -153,12 +154,11 @@ impl RenderThread {
     let times: Vec<GraphTaggedTime> = running.runtime.timer.take_tagged();
     let spans: Vec<(u64, f32)> = running.frame_span.take();
     let span: Option<f32> = spans.last().map(|(_, span)| *span);
-    let budget: f32 =
-      self
-        .periodic_budget
-        .update((delta, span), self.settings.frame_rate, self.settings.periodic_budget);
+    let budget: f32 = self
+      .periodic_budget
+      .update(delta, span, self.settings.frame_rate, self.settings.periodic_budget);
 
-    self.periodic.begin(budget, (&times, &spans));
+    self.periodic.begin(budget, &times, &spans);
     running.frame_span.begin(&mut encoder, self.periodic.get_frame());
 
     Some((encoder, span))
@@ -346,7 +346,8 @@ impl RenderThread {
 
     let allocator: Option<&GpuMemory> = Self::read_allocator_report(
       &mut self.allocator_report,
-      (&gpu.context.adapter, &gpu.context.device),
+      &gpu.context.adapter,
+      &gpu.context.device,
       now,
     );
 
@@ -366,12 +367,13 @@ impl RenderThread {
       viewport.report(
         now,
         device,
-        (allocator, &mut self.scenes),
-        (
-          &mut runtime.timer,
-          &composition,
-          self.graph_report.as_ref().map(|(_, report)| report),
-        ),
+        allocator,
+        &mut self.scenes,
+        ReportedGraph {
+          timer: &mut runtime.timer,
+          composition: &composition,
+          graph: self.graph_report.as_ref().map(|(_, report)| report),
+        },
       );
 
       if let Some((id, scene)) = viewport
@@ -388,7 +390,8 @@ impl RenderThread {
   /// kept, its peak carried on.
   pub(super) fn read_allocator_report<'a>(
     report: &'a mut Option<(Instant, Option<GpuMemory>)>,
-    gpu: (&wgpu::Adapter, &wgpu::Device),
+    adapter: &wgpu::Adapter,
+    device: &wgpu::Device,
     now: Instant,
   ) -> Option<&'a GpuMemory> {
     if report
@@ -398,7 +401,7 @@ impl RenderThread {
       profiling::scope!("allocator report");
 
       let last: Option<&GpuMemory> = report.as_ref().and_then(|(_, held)| held.as_ref());
-      let held: Option<GpuMemory> = GpuMemory::read(gpu, last);
+      let held: Option<GpuMemory> = GpuMemory::read(adapter, device, last);
 
       *report = Some((now, held));
     }

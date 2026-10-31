@@ -286,7 +286,7 @@ impl StaticGBufferPass {
     texture_layout: &wgpu::BindGroupLayout,
   ) -> XrfResult<[wgpu::RenderPipeline; 2]> {
     // An impostor marches no relief.
-    let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_gbuffer_targets(false);
+    let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_gbuffer_targets();
     let pick_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(PickTarget::FORMAT.into())];
     let create =
       |fragment: &'static str, targets: &[Option<wgpu::ColorTargetState>]| -> XrfResult<wgpu::RenderPipeline> {
@@ -318,7 +318,7 @@ impl StaticGBufferPass {
       texture: texture_layout,
       marks: marks_layout,
     } = layouts;
-    let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_gbuffer_targets(true);
+    let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_marching_gbuffer_targets();
     let pick_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(PickTarget::FORMAT.into())];
     let create_one = |label: &'static str,
                       (vertex, fragment, permutation): (&'static str, &'static str, &StaticDrawPermutation),

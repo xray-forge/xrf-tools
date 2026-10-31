@@ -263,7 +263,7 @@ fn traces_a_sector_through_its_records() {
     [10.0, 10.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0],
     [50.0, 10.0, 50.0, 1.0, 0.0, -1.0, 0.0, 0.0],
   ];
-  let answers: Vec<Answer> = run_probes(device, queue, encoder, (&scene, &trace), &probes);
+  let answers: Vec<Answer> = run_probes(device, queue, encoder, &scene, &trace, &probes);
 
   assert!((answers[0].distance - 10.0).abs() < 1e-3, "{:?}", answers[0]);
   assert!((answers[1].distance - 5.0).abs() < 1e-3, "{:?}", answers[1]);
@@ -297,7 +297,7 @@ fn traces_nothing_in_an_empty_scene() {
     [0.0, 10.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0],
     [0.25, 0.5, 0.25, 1.0, 0.0, -1.0, 0.0, 0.0],
   ];
-  let answers: Vec<Answer> = run_probes(device, queue, encoder, (&scene, &trace), &probes);
+  let answers: Vec<Answer> = run_probes(device, queue, encoder, &scene, &trace, &probes);
 
   assert_eq!(trace.get_instance_count(), 0);
   assert!(answers.iter().all(|answer| answer.distance < 0.0), "{answers:?}");
@@ -308,7 +308,8 @@ fn run_probes(
   device: &wgpu::Device,
   queue: &wgpu::Queue,
   mut encoder: FrameEncoder,
-  (scene, trace): (&StaticScene, &StaticTrace),
+  scene: &StaticScene,
+  trace: &StaticTrace,
   probes: &[[f32; 8]],
 ) -> Vec<Answer> {
   let scope: wgpu::ErrorScopeGuard = device.push_error_scope(wgpu::ErrorFilter::Validation);
@@ -585,7 +586,7 @@ fn traces_spawned_objects_where_they_stand() {
     [30.0, 10.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0],
     [40.0, 10.0, 0.0, 1.0, 0.0, -1.0, 0.0, 0.0],
   ];
-  let answers: Vec<Answer> = run_probes(device, queue, encoder, (&scene, &trace), &probes);
+  let answers: Vec<Answer> = run_probes(device, queue, encoder, &scene, &trace, &probes);
 
   assert!((answers[0].distance - 8.0).abs() < 1e-3, "{:?}", answers[0]);
   assert!((answers[1].distance - 7.0).abs() < 1e-3, "{:?}", answers[1]);
@@ -602,7 +603,7 @@ fn traces_spawned_objects_where_they_stand() {
   scene.prepare_draws(device, queue, &mut encoder);
   trace.update(device, queue, &mut encoder, &scene);
 
-  let answers: Vec<Answer> = run_probes(device, queue, encoder, (&scene, &trace), &probes);
+  let answers: Vec<Answer> = run_probes(device, queue, encoder, &scene, &trace, &probes);
 
   assert!(answers[0].distance < 0.0, "{:?}", answers[0]);
   assert!((answers[1].distance - 7.0).abs() < 1e-3, "{:?}", answers[1]);

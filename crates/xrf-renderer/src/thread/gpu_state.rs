@@ -160,7 +160,8 @@ impl GpuState {
     context: GpuContext,
     shaders: &ShaderLibrary,
     workers: &RenderWorkers,
-    (bundle, store): (&dyn RenderBundle, Option<&dyn RenderCacheStore>),
+    bundle: &dyn RenderBundle,
+    store: Option<&dyn RenderCacheStore>,
   ) -> XrfResult<Self> {
     let device: &wgpu::Device = &context.device;
     // The driver's pipelines kept from the last run on this adapter and driver, where its backend keeps them.

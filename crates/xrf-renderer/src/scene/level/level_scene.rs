@@ -323,7 +323,8 @@ impl LevelScene {
             &SECTOR_PASSES,
             Self::SECTOR_SEED,
             bytes,
-            (self.waited, Self::SECTOR_WAIT_MOST),
+            self.waited,
+            Self::SECTOR_WAIT_MOST,
           )
         })
       })

@@ -37,6 +37,7 @@ use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::render_viewport::RenderViewport;
 
+mod frame_copies;
 mod render_thread_capture;
 mod render_thread_commands;
 mod render_thread_draw;

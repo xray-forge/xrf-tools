@@ -64,7 +64,7 @@ impl CalibrationPass {
       &RenderPipelineDescription::new("calibration", "frame/calibration", "vs_calibration")
         .with_fragment("fs_calibration")
         .with_bind_group_layouts(&[Some(view_layout), Some(layout)])
-        .with_targets(ViewTargets::get_gbuffer_targets(true).to_vec())
+        .with_targets(ViewTargets::get_marching_gbuffer_targets().to_vec())
         .with_depth_stencil(wgpu::DepthStencilState {
           format: ViewTargets::DEPTH,
           depth_write_enabled: Some(true),

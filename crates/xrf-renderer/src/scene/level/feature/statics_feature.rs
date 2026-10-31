@@ -210,7 +210,9 @@ impl StaticsFeature {
       GraphDeclaration::new(graph, bindings, runtime),
       statics,
       &pyramid.view,
-      (&self.cull, &self.occlusion, wind),
+      &self.cull,
+      &self.occlusion,
+      wind,
     ))
   }
 

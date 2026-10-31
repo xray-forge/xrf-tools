@@ -28,12 +28,16 @@ fn reports_only_once_due_and_drawn() {
   };
 
   statistics.record(
-    (Duration::from_millis(10), Duration::from_millis(1), Some(4.0)),
+    Duration::from_millis(10),
+    Duration::from_millis(1),
+    Some(4.0),
     &phases(2, 4),
     &groups(1, 2),
   );
   statistics.record(
-    (Duration::from_millis(30), Duration::from_millis(3), None),
+    Duration::from_millis(30),
+    Duration::from_millis(3),
+    None,
     &phases(4, 8),
     &groups(3, 4),
   );

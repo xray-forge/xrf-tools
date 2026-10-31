@@ -3,6 +3,7 @@ use std::f32::consts::FRAC_PI_2;
 use glam::Vec4;
 
 use crate::contract::render_foliage_settings::RenderFoliageSettings;
+use crate::lighting::foliage_motion::FoliageMotion;
 use crate::lighting::render_wind::RenderWind;
 use crate::pass::foliage_wind_values::FoliageWindValues;
 
@@ -24,15 +25,17 @@ impl FoliageWind {
   /// The least velocity the fields drift at, so a near calm does not crawl in slow motion.
   const LEAST_VELOCITY: f32 = 200.0;
 
-  /// Moves the fields on by the seconds since the last frame at this frame's wind, still while `is_windy` is off;
+  /// Moves the fields on by the seconds since the last frame at this frame's `wind`, as far as `motion` lets them;
   /// `wetness`, from nothing to one, bends the leaves' normals harder.
   pub fn advance(
     &mut self,
     time: f32,
     settings: &RenderFoliageSettings,
-    (wind, is_windy): (RenderWind, bool),
+    wind: RenderWind,
+    motion: FoliageMotion,
     wetness: f32,
   ) -> FoliageWindValues {
+    let is_windy: bool = motion == FoliageMotion::Blowing;
     let elapsed: f32 = self.clock.map_or(0.0, |clock| (time - clock).max(0.0));
     let velocity: f32 = wind
       .velocity

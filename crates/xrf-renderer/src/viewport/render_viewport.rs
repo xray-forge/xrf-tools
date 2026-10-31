@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use glam::{Mat4, Vec3};
 use xrf_error::XrfError;
-use xrf_renderer_core::{ExecutedGroup, GraphOwner, GraphPassTime, GraphReport, GraphTimer};
+use xrf_renderer_core::{ExecutedGroup, GraphOwner, GraphPassTime};
 
 use crate::capture::burst::burst_job::BurstJob;
 use crate::capture::capture_job::CaptureJob;
@@ -46,6 +46,7 @@ use crate::scene::level::scene_view::SceneView;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::pending_screenshot::PendingScreenshot;
 use crate::viewport::pick_in_flight::PickInFlight;
+use crate::viewport::reported_graph::ReportedGraph;
 use crate::viewport::viewport_device::ViewportDevice;
 
 /// One rectangle of a window drawn by the renderer, with what its world gave this frame and its page's channel.
@@ -311,14 +312,17 @@ impl RenderViewport {
     GraphOwner::Part(self.id.0)
   }
 
-  /// Notes a frame for the next report: its times (interval, render thread, GPU span), phases and encode groups.
+  /// Notes a frame for the next report: its `interval`, its time on the render thread (`cpu`), the GPU's latest span,
+  /// phases and encode groups.
   pub fn record_frame(
     &mut self,
-    times: (Duration, Duration, Option<f32>),
+    interval: Duration,
+    cpu: Duration,
+    gpu: Option<f32>,
     phases: &FramePhases,
     groups: &[ExecutedGroup],
   ) {
-    self.statistics.record(times, phases, groups);
+    self.statistics.record(interval, cpu, gpu, phases, groups);
   }
 
   /// Reports the frames since the last report, once one is due: `allocator` what the GPU allocator and the GPU's own
@@ -329,8 +333,13 @@ impl RenderViewport {
     &mut self,
     now: Instant,
     device: ViewportDevice<'_>,
-    (allocator, scenes): (Option<&GpuMemory>, &mut HashMap<RenderSceneId, LevelScene>),
-    (timer, composition, graph): (&mut GraphTimer, &[GraphPassTime], Option<&GraphReport>),
+    allocator: Option<&GpuMemory>,
+    scenes: &mut HashMap<RenderSceneId, LevelScene>,
+    ReportedGraph {
+      timer,
+      composition,
+      graph,
+    }: ReportedGraph<'_>,
   ) {
     let Some(summary) = self.statistics.take(now) else {
       return;

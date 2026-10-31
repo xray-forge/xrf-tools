@@ -1,5 +1,6 @@
 use crate::contract::render_foliage_settings::RenderFoliageSettings;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::lighting::foliage_motion::FoliageMotion;
 use crate::lighting::foliage_wind::FoliageWind;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::foliage_wind_values::FoliageWindValues;
@@ -30,7 +31,8 @@ impl WindFeature {
     let foliage: FoliageWindValues = self.foliage.advance(
       time,
       &settings,
-      (lighting.wind, lighting.trees.is_some()),
+      lighting.wind,
+      FoliageMotion::of(lighting.trees.is_some()),
       lighting.rain.map_or(0.0, |rain| rain.density.clamp(0.0, 1.0)),
     );
     let wind: WindUniform = WindUniform::new(lighting.trees.as_ref(), time)

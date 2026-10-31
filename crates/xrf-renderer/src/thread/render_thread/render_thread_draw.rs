@@ -4,14 +4,15 @@ use std::time::{Duration, Instant};
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_renderer_core::{
-  ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphDeclaration, GraphOwner, GraphReport, GraphRuntime,
+  ExecutedGraph, ExecutedGroup, FrameGraph, GraphBindings, GraphDeclaration, GraphOwner, GraphReport,
 };
 
 use wgpu::util::StagingBelt;
 
+use crate::contract::render_frame_rate::RenderFrameRate;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_viewport_id::RenderViewportId;
-use crate::frame::frame_capture::{CaptureReply, FrameCapture};
+use crate::frame::frame_capture::CaptureReply;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::frame_phases::FramePhases;
 use crate::frame::frame_statistics::FrameStatistics;
@@ -29,12 +30,15 @@ use crate::thread::gpu_state::GpuState;
 use crate::thread::retry_backoff::RetryBackoff;
 use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::render_viewport::RenderViewport;
+use crate::window::composed_overlays::ComposedOverlays;
 use crate::window::composed_view::ComposedView;
 use crate::window::render_window::RenderWindow;
 use crate::window::window_backdrop::WindowBackdrop;
 use crate::window::window_frame::WindowFrame;
+use crate::window::window_passes::WindowPasses;
 
-use super::{BurstCopy, CaptureCopy, RenderThread, ShotCopy, ViewFrame};
+use super::frame_copies::FrameCopies;
+use super::{RenderThread, ViewFrame};
 
 impl RenderThread {
   /// Readies each window this frame draws: its swapchain configured for its size now, made where it is new or was
@@ -43,7 +47,7 @@ impl RenderThread {
     let Some(RunningGpu { gpu, .. }) = &mut self.running else {
       return Vec::new();
     };
-    let is_vsync: bool = self.settings.frame_rate.is_vsync;
+    let frame_rate: RenderFrameRate = self.settings.frame_rate;
     let mut windows: Vec<WindowFrame> = Vec::new();
 
     for (key, host) in &self.hosts {
@@ -99,7 +103,7 @@ impl RenderThread {
       let Some(window) = gpu.windows.get_mut(key) else {
         continue;
       };
-      let size: Option<(u32, u32)> = window.ready(&gpu.context, is_vsync);
+      let size: Option<(u32, u32)> = window.ready(&gpu.context, &frame_rate);
       // Each viewport's whole rectangle, which its camera and targets are sized by, and the part of it the window
       // shows, which its picture is cropped to. A capture draws into a texture of its own, so its viewport is drawn
       // however it is laid out and whether or not the window shows anything.
@@ -194,7 +198,7 @@ impl RenderThread {
   /// Draws every window's viewports: `update` is what the frame spent before any window, `span` the GPU's milliseconds
   /// on the latest frame read back, where one came back. The running GPU is taken out for the frame, so each phase is a
   /// method of the thread's own.
-  pub(super) fn draw_windows(&mut self, timing: (Duration, Option<f32>), mut encoder: FrameEncoder) {
+  pub(super) fn draw_windows(&mut self, update: Duration, span: Option<f32>, mut encoder: FrameEncoder) {
     let windows: Vec<WindowFrame> = self.ready_windows(&mut encoder);
 
     self.answer_unseen_picks(&windows);
@@ -210,7 +214,7 @@ impl RenderThread {
       running.gpu.context.queue.submit([commands]);
       running.belt = Some(belt);
     } else {
-      self.draw_frame(&mut running, timing, windows, encoder);
+      self.draw_frame(&mut running, update, span, windows, encoder);
     }
 
     self.running = Some(running);
@@ -237,79 +241,62 @@ impl RenderThread {
   fn draw_frame(
     &mut self,
     running: &mut RunningGpu,
-    (update, span): (Duration, Option<f32>),
+    update: Duration,
+    span: Option<f32>,
     mut windows: Vec<WindowFrame>,
     mut encoder: FrameEncoder,
   ) {
-    let RunningGpu {
-      gpu,
-      runtime,
-      frame_span,
-      belt,
-      ..
-    } = running;
     let started: Instant = Instant::now();
     let mut phases: FramePhases = FramePhases {
       update,
       ..FramePhases::default()
     };
     let (frames, firsts): (Vec<ViewFrame>, Vec<(RenderSceneId, RenderViewportId)>) =
-      self.ready_views(gpu, &windows, &mut encoder, &mut phases);
+      self.ready_views(&mut running.gpu, &windows, &mut encoder, &mut phases);
 
-    self.commit_periodic(gpu, (&frames, &firsts), &mut encoder);
+    self.commit_periodic(&running.gpu, &frames, &firsts, &mut encoder);
 
     let composing: Instant = Instant::now();
 
     if !frames.is_empty() {
-      self.prepare_composition(gpu, &windows);
+      self.prepare_composition(&mut running.gpu, &windows);
     }
 
     phases.compose = composing.elapsed();
 
-    let gpu: &GpuState = gpu;
-    let mut captures: Vec<(RenderViewportId, FrameCapture, CaptureReply)> =
-      self.take_captures(&gpu.context.device, &windows);
-    let shots: Vec<ShotCopy> = self.take_capture_shots(&gpu.context.device, &windows);
-    let bursts: Vec<BurstCopy> = self.take_burst_shots(&gpu.context.device, &windows, &frames);
+    let device: &wgpu::Device = &running.gpu.context.device;
+    let mut copies: FrameCopies = FrameCopies {
+      captures: self.take_captures(device, &windows),
+      shots: self.take_capture_shots(device, &windows),
+      bursts: self.take_burst_shots(device, &windows, &frames),
+    };
 
-    runtime.timer.set_enabled(self.settings.is_gpu_timed);
-    runtime.timer.set_tag(self.periodic.get_frame());
+    running.runtime.timer.set_enabled(self.settings.is_gpu_timed);
+    running.runtime.timer.set_tag(self.periodic.get_frame());
 
     let recording: Instant = Instant::now();
     let mut retried: Vec<(RenderViewportId, CaptureReply)> = Vec::new();
-    let recorded: XrfResult<ExecutedGraph> = self.record_frame(
-      (gpu, runtime),
-      &mut windows,
-      &frames,
-      (&mut captures, &shots, &bursts),
-      &mut retried,
-      started,
-    );
+    let recorded: XrfResult<ExecutedGraph> =
+      self.record_frame(running, &mut windows, &frames, &mut copies, &mut retried, started);
 
     self.retry_captures(retried);
 
     let executed: ExecutedGraph = match recorded {
       Ok(executed) => executed,
       Err(error) => {
-        self.abandon_frame((gpu, belt), encoder, (frames, &firsts), captures, &error);
+        self.abandon_frame(running, encoder, frames, &firsts, copies.captures, &error);
 
         return;
       }
     };
     let waited: Duration = windows.iter().map(|window| window.acquire).sum();
-    let groups: Vec<ExecutedGroup> = self.submit_frame(
-      (gpu, runtime, frame_span, belt),
-      executed,
-      encoder,
-      (recording, waited),
-      &mut phases,
-    );
+    let groups: Vec<ExecutedGroup> = self.submit_frame(running, executed, encoder, recording, waited, &mut phases);
 
-    self.end_view_frames(frames, captures, (shots, bursts));
+    self.end_view_frames(frames, copies);
 
     let cpu: Duration = started.elapsed().saturating_sub(waited);
 
-    self.present_windows(&gpu.context.queue, windows, phases, (cpu, span), &groups);
+    self.present_windows(&running.gpu.context.queue, windows, phases, cpu, span, &groups);
 
     profiling::finish_frame!();
   }
@@ -319,7 +306,8 @@ impl RenderThread {
   fn commit_periodic(
     &mut self,
     gpu: &GpuState,
-    (frames, firsts): (&[ViewFrame], &[(RenderSceneId, RenderViewportId)]),
+    frames: &[ViewFrame],
+    firsts: &[(RenderSceneId, RenderViewportId)],
     encoder: &mut FrameEncoder,
   ) {
     for (scene_id, id) in firsts {
@@ -398,14 +386,22 @@ impl RenderThread {
   /// for the next frame; then each window composed and the captures copied out of it.
   fn record_frame(
     &mut self,
-    (gpu, runtime): (&GpuState, &mut GraphRuntime),
+    running: &mut RunningGpu,
     windows: &mut [WindowFrame],
     frames: &[ViewFrame],
-    (captures, shots, bursts): (&mut Vec<CaptureCopy>, &[ShotCopy], &[BurstCopy]),
+    copies: &mut FrameCopies,
     retried: &mut Vec<(RenderViewportId, CaptureReply)>,
     started: Instant,
   ) -> XrfResult<ExecutedGraph> {
     profiling::scope!("record");
+
+    let RunningGpu { gpu, runtime, .. } = running;
+    let gpu: &GpuState = gpu;
+    let FrameCopies {
+      captures,
+      shots,
+      bursts,
+    } = copies;
 
     // Each window's image as the composition draws into it, once acquired.
     let mut targets: Vec<Option<wgpu::TextureView>> = Vec::with_capacity(windows.len());
@@ -485,7 +481,7 @@ impl RenderThread {
         .drawn
         .iter()
         .filter(|(id, ..)| !self.viewports.get(id).is_some_and(RenderViewport::is_capturing))
-        .filter_map(|(id, rect, shown)| Self::compose_view(&self.viewports, gpu, (*id, *rect, *shown), outputs.get(id)))
+        .filter_map(|(id, rect, shown)| Self::compose_view(&self.viewports, gpu, *id, *rect, *shown, outputs.get(id)))
         .collect();
       let backdrop: Option<&WindowBackdrop> = gpu
         .windows
@@ -495,9 +491,15 @@ impl RenderThread {
 
       window.declare(
         GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
-        (target, backdrop),
+        target,
+        backdrop,
         composed,
-        (&gpu.backdrop, &gpu.present, &gpu.overlay, grid),
+        WindowPasses {
+          backdrop: &gpu.backdrop,
+          present: &gpu.present,
+          overlay: &gpu.overlay,
+          grid,
+        },
         captures,
       );
     }
@@ -507,27 +509,30 @@ impl RenderThread {
         GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
         gpu,
         &self.viewports,
-        (*id, capture),
+        *id,
+        capture,
         outputs.get(id),
       );
     }
 
-    for (id, capture) in shots {
+    for (id, capture) in shots.iter() {
       Self::declare_capture_shot(
         GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
         gpu,
         &self.viewports,
-        (*id, capture),
+        *id,
+        capture,
         outputs.get(id),
       );
     }
 
-    for (id, shot) in bursts {
+    for (id, shot) in bursts.iter() {
       Self::declare_burst_shot(
         GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
         gpu,
         &self.viewports,
-        (*id, shot),
+        *id,
+        shot,
         outputs.get(id),
       );
     }
@@ -557,7 +562,9 @@ impl RenderThread {
   fn compose_view<'a>(
     viewports: &'a BTreeMap<RenderViewportId, RenderViewport>,
     gpu: &'a GpuState,
-    (id, rect, shown): (RenderViewportId, RenderRect, RenderRect),
+    id: RenderViewportId,
+    rect: RenderRect,
+    shown: RenderRect,
     output: Option<&SceneOutput>,
   ) -> Option<ComposedView<'a>> {
     let viewport: &RenderViewport = viewports.get(&id)?;
@@ -568,15 +575,13 @@ impl RenderThread {
       present: output.map(|output| Self::to_present_parameters(gpu, output)),
       overlays: output
         .zip(level.and_then(SceneView::get_overlays))
-        .map(|(output, overlays)| {
-          (
-            OverlayParameters {
-              depth_target: output.targets.depth,
-              present: output.present,
-              lighting: output.lighting,
-            },
-            overlays,
-          )
+        .map(|(output, overlays)| ComposedOverlays {
+          parameters: OverlayParameters {
+            depth_target: output.targets.depth,
+            present: output.present,
+            lighting: output.lighting,
+          },
+          overlays,
         }),
       helpers: output.and(level).map(SceneView::get_helper_draws).unwrap_or_default(),
       rect,

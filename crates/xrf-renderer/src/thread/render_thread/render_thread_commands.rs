@@ -170,7 +170,8 @@ impl RenderThread {
         let described: Option<RenderMemoryReport> = self.running.as_ref().map(|running| {
           RenderMemoryReport::of(Self::read_allocator_report(
             &mut self.allocator_report,
-            (&running.gpu.context.adapter, &running.gpu.context.device),
+            &running.gpu.context.adapter,
+            &running.gpu.context.device,
             Instant::now(),
           ))
         });

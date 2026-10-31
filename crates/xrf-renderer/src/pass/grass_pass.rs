@@ -362,7 +362,7 @@ impl GrassPass {
   fn create_draw(source: PipelineSource<'_>, layouts: [&wgpu::BindGroupLayout; 3]) -> XrfResult<wgpu::RenderPipeline> {
     // A tuft marches no relief: what the ground under it wrote stands, which the wet pass, wetting terrain alone, reads
     // nowhere grass is drawn.
-    let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_gbuffer_targets(false);
+    let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_gbuffer_targets();
 
     // `CULL_NONE`, as `CDetailManager::Render` draws every tuft.
     source.get_render_pipeline(

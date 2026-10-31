@@ -2,7 +2,7 @@ use xrf_renderer_core::{GraphOwner, GraphPassKind, GraphPassReport, GraphReport}
 
 use crate::frame::jitter_guard::{JitterGuard, JitteredRead};
 
-fn pass(name: &str, owner: GraphOwner, (reads, writes): (&[usize], &[usize])) -> GraphPassReport {
+fn pass(name: &str, owner: GraphOwner, reads: &[usize], writes: &[usize]) -> GraphPassReport {
   GraphPassReport {
     name: name.to_string(),
     kind: GraphPassKind::Raster,
@@ -44,15 +44,15 @@ fn finds_the_reads_of_the_jittered_frame_after_a_resolve() {
   let report: GraphReport = report(
     &["frame", "history", "streaks", "other frame", "high"],
     vec![
-      pass("opaque", view, (&[], &[0, 2, 4])),
-      pass("unresolved opaque", unresolved, (&[], &[3])),
-      pass(JitterGuard::RESOLVES[0], view, (&[0], &[1])),
-      pass("sharpen", view, (&[1], &[])),
-      pass("bloom from the frame", view, (&[0], &[])),
-      pass("exposure histogram", view, (&[4], &[])),
-      pass("streaks cleared", view, (&[], &[2])),
-      pass("streaks read", view, (&[2], &[])),
-      pass("window", GraphOwner::Frame, (&[0, 1, 3], &[])),
+      pass("opaque", view, &[], &[0, 2, 4]),
+      pass("unresolved opaque", unresolved, &[], &[3]),
+      pass(JitterGuard::RESOLVES[0], view, &[0], &[1]),
+      pass("sharpen", view, &[1], &[]),
+      pass("bloom from the frame", view, &[0], &[]),
+      pass("exposure histogram", view, &[4], &[]),
+      pass("streaks cleared", view, &[], &[2]),
+      pass("streaks read", view, &[2], &[]),
+      pass("window", GraphOwner::Frame, &[0, 1, 3], &[]),
     ],
   );
 
@@ -70,9 +70,9 @@ fn allows_the_present_the_raw_traced_targets_of_ray_reconstruction() {
   let report: GraphReport = report(
     &["frame", "indirect traced", "reflections traced", "resolved"],
     vec![
-      pass("opaque", view, (&[], &[0, 1, 2])),
-      pass(JitterGuard::RESOLVES[2], view, (&[0, 1, 2], &[3])),
-      pass("window", GraphOwner::Frame, (&[0, 1, 2, 3], &[])),
+      pass("opaque", view, &[], &[0, 1, 2]),
+      pass(JitterGuard::RESOLVES[2], view, &[0, 1, 2], &[3]),
+      pass("window", GraphOwner::Frame, &[0, 1, 2, 3], &[]),
     ],
   );
 
@@ -85,9 +85,9 @@ fn finds_nothing_in_a_frame_never_resolved() {
   let report: GraphReport = report(
     &["frame"],
     vec![
-      pass("opaque", GraphOwner::Part(1), (&[], &[0])),
-      pass("bloom from the frame", GraphOwner::Part(1), (&[0], &[])),
-      pass("window", GraphOwner::Frame, (&[0], &[])),
+      pass("opaque", GraphOwner::Part(1), &[], &[0]),
+      pass("bloom from the frame", GraphOwner::Part(1), &[0], &[]),
+      pass("window", GraphOwner::Frame, &[0], &[]),
     ],
   );
 

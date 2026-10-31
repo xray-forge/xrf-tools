@@ -7,7 +7,7 @@ use crate::scene::level::feature::exposure_feature::ExposureFeature;
 use crate::tests::test_context::create_test_context;
 
 /// Puts a head metering `adapted` into the exposure's state and copies it out as a frame does, asking for it back.
-fn copy_out((device, queue): (&wgpu::Device, &wgpu::Queue), exposure: &ExposureFeature, adapted: f32) {
+fn copy_out(device: &wgpu::Device, queue: &wgpu::Queue, exposure: &ExposureFeature, adapted: f32) {
   let head: ExposureHead = ExposureHead {
     adapted,
     used: adapted,
@@ -30,43 +30,43 @@ fn a_light_model_switch_drops_what_was_metered_before_it() {
   let Some(context) = create_test_context("to read back with") else {
     return;
   };
-  let gpu: (&wgpu::Device, &wgpu::Queue) = (&context.device, &context.queue);
-  let wait = || gpu.0.poll(wgpu::PollType::wait_indefinitely()).unwrap();
+  let (device, queue): (&wgpu::Device, &wgpu::Queue) = (&context.device, &context.queue);
+  let wait = || device.poll(wgpu::PollType::wait_indefinitely()).unwrap();
   let engine: RenderViewOptions = RenderViewOptions::default();
   let mut physical: RenderViewOptions = RenderViewOptions::default();
 
   physical.features.light_model = RenderLightModel::Physical;
 
   let now: Instant = Instant::now();
-  let mut exposure: ExposureFeature = ExposureFeature::new(gpu.0, gpu.1);
+  let mut exposure: ExposureFeature = ExposureFeature::new(device, queue);
 
-  exposure.prepare(gpu.1, &physical, now);
+  exposure.prepare(queue, &physical, now);
 
   let start: f32 = exposure.get_pre_exposure().current;
   let metered: f32 = start * 4096.0;
 
   // Back by the switch to the engine's light.
-  copy_out(gpu, &exposure, metered);
+  copy_out(device, queue, &exposure, metered);
   wait();
-  exposure.prepare(gpu.1, &engine, now);
-  exposure.prepare(gpu.1, &physical, now);
+  exposure.prepare(queue, &engine, now);
+  exposure.prepare(queue, &physical, now);
 
   assert_eq!(exposure.get_pre_exposure().current, start);
 
   // Still on its way across both switches, back only after them.
-  copy_out(gpu, &exposure, metered);
-  exposure.prepare(gpu.1, &engine, now);
-  exposure.prepare(gpu.1, &physical, now);
+  copy_out(device, queue, &exposure, metered);
+  exposure.prepare(queue, &engine, now);
+  exposure.prepare(queue, &physical, now);
   wait();
-  exposure.prepare(gpu.1, &physical, now);
+  exposure.prepare(queue, &physical, now);
 
   assert_eq!(exposure.get_pre_exposure().current, start);
   assert_eq!(exposure.get_metering().land, None);
 
   // Copied out under the physical light since.
-  copy_out(gpu, &exposure, metered);
+  copy_out(device, queue, &exposure, metered);
   wait();
-  exposure.prepare(gpu.1, &physical, now);
+  exposure.prepare(queue, &physical, now);
 
   assert_eq!(exposure.get_pre_exposure().current, metered);
   assert_eq!(exposure.get_metering().bright, Some(2.0));

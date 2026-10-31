@@ -604,7 +604,8 @@ impl TextureCache {
             &UPLOAD_PASSES,
             UPLOAD_SEED,
             texture.get_size() as f32,
-            (self.waited, UPLOAD_WAIT_MOST),
+            self.waited,
+            UPLOAD_WAIT_MOST,
           ))
         })
         .collect();

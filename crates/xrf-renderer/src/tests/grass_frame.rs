@@ -187,7 +187,9 @@ impl GrassFrames {
       let handles: ViewTargetHandles = ViewTargetHandles::import(
         &mut graph,
         &mut bindings,
-        (&self.targets, ViewTargetUses::default(), &self.targets.light),
+        &self.targets,
+        ViewTargetUses::default(),
+        &self.targets.light,
       );
       let source: GrassSource = GrassSource {
         pass,

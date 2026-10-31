@@ -94,7 +94,9 @@ fn upscales_two_frames_without_a_validation_error() {
       let handles: ViewTargetHandles = ViewTargetHandles::import(
         &mut graph,
         &mut bindings,
-        (&targets, ViewTargetUses::default(), &targets.light),
+        &targets,
+        ViewTargetUses::default(),
+        &targets.light,
       );
 
       let debug: Option<(RenderDebugView, GraphTexture)> =

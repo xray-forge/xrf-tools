@@ -7,7 +7,7 @@ use crate::contract::render_page_wash::RenderPageWash;
 use crate::contract::render_rect::RenderRect;
 use crate::pass::backdrop_uniform::BackdropUniform;
 
-fn plane(x: i32, width: u32, is_washed: bool) -> RenderPagePlane {
+fn plane(x: i32, width: u32) -> RenderPagePlane {
   RenderPagePlane {
     rect: RenderRect {
       x,
@@ -17,13 +17,16 @@ fn plane(x: i32, width: u32, is_washed: bool) -> RenderPagePlane {
     },
     radii: [8.0, 8.0, 0.0, 0.0],
     color: RenderColor { r: 255, g: 0, b: 51 },
-    is_washed,
+    is_washed: false,
   }
 }
 
 fn wash(width: u32, height: u32, angle: f32) -> RenderPageBackdrop {
   RenderPageBackdrop {
-    planes: vec![plane(0, 400, true)],
+    planes: vec![RenderPagePlane {
+      is_washed: true,
+      ..plane(0, 400)
+    }],
     wash: Some(RenderPageWash {
       rect: RenderRect {
         x: 10,
@@ -41,7 +44,7 @@ fn wash(width: u32, height: u32, angle: f32) -> RenderPageBackdrop {
 #[test]
 fn clears_to_one_plane_without_a_wash() {
   let uniform: BackdropUniform = BackdropUniform::new(&RenderPageBackdrop {
-    planes: vec![plane(0, 400, false)],
+    planes: vec![plane(0, 400)],
     wash: None,
   });
 
@@ -62,7 +65,7 @@ fn clears_to_black_where_the_page_paints_nothing() {
 #[test]
 fn paints_each_inner_plane_in_its_own_box() {
   let uniform: BackdropUniform = BackdropUniform::new(&RenderPageBackdrop {
-    planes: vec![plane(0, 400, false), plane(40, 300, false)],
+    planes: vec![plane(0, 400), plane(40, 300)],
     wash: None,
   });
 
@@ -74,7 +77,7 @@ fn paints_each_inner_plane_in_its_own_box() {
 
 #[test]
 fn keeps_the_outermost_and_the_innermost_planes() {
-  let planes: Vec<RenderPagePlane> = (0..6).map(|index| plane(index, 100, false)).collect();
+  let planes: Vec<RenderPagePlane> = (0..6).map(|index| plane(index, 100)).collect();
   let uniform: BackdropUniform = BackdropUniform::new(&RenderPageBackdrop { planes, wash: None });
   let kept: Vec<f32> = uniform.boxes.iter().map(|it| it.x).collect();
 

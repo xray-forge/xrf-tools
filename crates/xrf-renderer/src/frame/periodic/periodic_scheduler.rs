@@ -82,7 +82,7 @@ impl PeriodicScheduler {
   /// the passes the timer read back since the last frame, and from the GPU's milliseconds on each frame read back
   /// (`spans`, by the frame's tag) where its passes were not timed. What is offered next is the scenes' own until a
   /// view is named.
-  pub fn begin(&mut self, budget: f32, (times, spans): (&[GraphTaggedTime], &[(u64, f32)])) {
+  pub fn begin(&mut self, budget: f32, times: &[GraphTaggedTime], spans: &[(u64, f32)]) {
     self.learn(times);
     self.fit(times, spans);
     self.budget = budget.max(0.0);

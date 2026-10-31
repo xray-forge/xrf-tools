@@ -208,14 +208,14 @@ fn draws_a_face_with_the_whole_look_but_its_lens_flare_and_a_tile_with_its_cover
 
   options.output.upscaling.scale = RenderScale::Quality;
 
-  let look: RenderViewOptions = face.apply_look(&options, false);
+  let look: RenderViewOptions = face.apply_look(&options);
 
   assert!(look.show.is_sky_visible && look.show.is_fogged && !look.show.is_lens_flared);
   assert_eq!(look.features.grass.is_enabled, options.features.grass.is_enabled);
   assert_eq!(look.output.upscaling.scale, RenderScale::Native);
   assert!(
-    face.apply_look(&options, true).features.exposure.adaptation
-      < tile.apply_look(&options, true).features.exposure.adaptation
+    face.apply_metering_look(&options).features.exposure.adaptation
+      < tile.apply_metering_look(&options).features.exposure.adaptation
   );
   assert!(!face.is_covered() && tile.is_covered());
 

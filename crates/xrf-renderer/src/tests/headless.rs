@@ -149,7 +149,7 @@ fn builds_every_pass() {
   };
   let shaders: ShaderLibrary = ShaderLibrary::default();
 
-  match GpuState::new(context, &shaders, &create_workers(), (&TestBundle::checkout(), None)) {
+  match GpuState::new(context, &shaders, &create_workers(), &TestBundle::checkout(), None) {
     Ok(gpu) => assert!(
       gpu.smaa.is_some(),
       "SMAA reads its lookup textures from the checkout's bundle"
@@ -170,7 +170,8 @@ fn builds_without_what_the_bundle_lacks() {
     context,
     &ShaderLibrary::default(),
     &create_workers(),
-    (&TestBundle::empty(), None),
+    &TestBundle::empty(),
+    None,
   ) {
     Ok(gpu) => assert!(gpu.smaa.is_none()),
     Err(error) => panic!("A missing bundled file failed the GPU: {error}"),

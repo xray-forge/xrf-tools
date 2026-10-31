@@ -282,7 +282,8 @@ impl SurroundingsCube {
         &BAND_PASSES,
         Self::DRAW_SEED,
         texels / Self::BANDS as f32,
-        (redraw.waited, Self::BAND_WAIT_MOST),
+        redraw.waited,
+        Self::BAND_WAIT_MOST,
       );
 
       self.offer = Some((scheduler.offer(job), CubeOffer::Band));

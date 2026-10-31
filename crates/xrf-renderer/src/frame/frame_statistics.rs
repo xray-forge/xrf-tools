@@ -47,7 +47,9 @@ impl FrameStatistics {
   /// each encode group cost.
   pub fn record(
     &mut self,
-    (interval, cpu, gpu): (Duration, Duration, Option<f32>),
+    interval: Duration,
+    cpu: Duration,
+    gpu: Option<f32>,
     phases: &FramePhases,
     groups: &[ExecutedGroup],
   ) {
