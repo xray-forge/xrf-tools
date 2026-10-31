@@ -1,6 +1,7 @@
 //! An open level through commits: one to a file the level itself was read from reads it again off the commit and its
 //! scene streams afresh; one to a file only a part read, a render read's or the start's, names that part stale.
 
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -15,16 +16,18 @@ use xrf_app_render::WorldState;
 use xrf_dltx::DltxDialect;
 use xrf_engine_target::{XrayEngine, XrayEngineResolution};
 use xrf_level::{LevelGeomFile, LevelHeaderChunk, LevelShadersChunk, LevelVisualsChunk};
-use xrf_renderer::{RenderSceneId, RenderViewportId, RenderWorkers, RenderWorld};
+use xrf_renderer::{
+  RenderSceneFrame, RenderSceneId, RenderStreamingProgress, RenderViewportId, RenderWorkers, RenderWorld,
+};
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
 use xrf_world::{WorldEventSink, WorldLevelSource, WorldViewportEvent};
 
 use crate::level::{LevelSource, OpenedLevel, SelectedLevel, SelectedLevels};
 use crate::parts::{
-  LevelDetailsPart, LevelEnvironment, LevelGeometryPart, LevelLightsPart, LevelMapPart, LevelObjectMotionsPart,
-  LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelStartPart, LevelSurfacesPart, LevelTexturesPart,
-  LevelWeatherPart,
+  LevelDetailsPart, LevelEnvironment, LevelEnvironmentPart, LevelGeometryPart, LevelLightsPart, LevelMapPart,
+  LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelStartPart, LevelSurfacesPart,
+  LevelTexturesPart, LevelWeatherPart,
 };
 use crate::render::{LevelRenderSource, LevelSceneFollower, ShownLevels};
 
@@ -171,6 +174,32 @@ fn wait_until(mut is_done: impl FnMut() -> bool) -> bool {
   true
 }
 
+/// Waits until the world took every read a shown level's scene and weather started, and every part those reads asked of
+/// `snapshot` is built: a commit names a part still building stale beside what it moved, so whoever waits on it asks the
+/// next snapshot. The weather's read asks the environment, then the weather part around the rest, which asks no part.
+fn settle(world: &WorldState, snapshot: &SessionSnapshot<SelectedLevel>) {
+  let is_settled = || {
+    let frames: HashMap<RenderSceneId, RenderSceneFrame> = world.lock().advance_scenes(Instant::now(), HashMap::new());
+    let is_streamed: bool = !frames.is_empty()
+      && frames.values().all(|frame| {
+        let progress: &RenderStreamingProgress = &frame.streaming;
+
+        progress.is_sectors_done
+          && progress.is_spawn_done
+          && progress.is_lights_done
+          && progress.is_grass_done
+          && progress.is_particles_done
+      });
+
+    is_streamed
+      && snapshot.parts.get::<LevelEnvironmentPart>().is_some()
+      && snapshot.parts.get::<LevelWeatherPart>().is_some()
+      && snapshot.parts.list_built().len() == snapshot.parts.list_inputs().len()
+  };
+
+  assert!(wait_until(is_settled), "the shown level's reads settled");
+}
+
 /// Every session change a subscriber took, in order.
 #[derive(Clone, Default)]
 struct ChangeLog {
@@ -293,6 +322,7 @@ fn a_commit_to_a_texture_of_a_shown_level_moves_its_scene_onto_the_next_snapshot
       .expect("the level shown")
   };
 
+  settle(&world, &opened);
   write(&assets, &search, TEXTURE, "created");
 
   let change: SessionChange = take_change(&log);
