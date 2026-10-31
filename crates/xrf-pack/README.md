@@ -46,7 +46,12 @@ with `outcome` set to `JobOutcome::Cancelled`, so check the result's `outcome` b
   reported at once; one file reached under two spellings is packed once. A host path that is not valid Unicode is
   refused rather than dropped.
 - A run that selects no files is refused. The include, exclude, and skip rules (`is_with_skip_list`, on by default,
-  applies xrCompress's hard-coded list) decide the selection; `files_skipped` counts what they left out.
+  applies xrCompress's hard-coded list, widened from `.db` to every extension the engine mounts as a volume, `.db*` and
+  `.xdb*` as `ArchiveDescriptor::is_volume_path` tests them) decide the selection; `files_skipped` counts what they left
+  out.
+- A destination that is the source or lies inside it is refused before the walk, since the next run would pack this
+  run's volumes as source. Write volumes beside the source, such as `db` next to `gamedata`; a source inside the
+  destination is fine.
 - In the default `ArchivePackMode::Compress`, only `ltx`, `xml`, and `script` files are LZO-compressed, as xrCompress
   does, and only when compression saves enough to keep; `Store` stores everything. A file whose payload equals one
   already written to the same volume costs only a descriptor row (`files_aliased`).

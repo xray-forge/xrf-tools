@@ -349,3 +349,44 @@ fn refuses_a_volume_name_that_would_leave_the_destination_before_writing() {
     "and writes nothing beside it"
   );
 }
+
+#[test]
+fn a_destination_inside_the_source_is_refused_before_anything_is_written() {
+  let source: PathBuf = create_source(
+    "a_destination_inside_the_source_is_refused_before_anything_is_written",
+    &[("configs\\system.ltx", CONFIG)],
+  );
+
+  for destination in [source.join("output"), source.clone()] {
+    // A set an earlier build left there, which a forced rebuild walking the source would have packed as an asset.
+    fs::create_dir_all(&destination).expect("destination directory");
+    fs::write(destination.join("packed.db0"), b"previous").expect("previous volume");
+
+    let config: ArchivePackConfig = ArchivePackConfig::new(&source, &destination, "packed");
+    let error: XrfError = ArchivePacker::pack_opt(&config, ArchivePackOptions::default().with_force(true))
+      .expect_err("a destination inside the source is refused");
+
+    assert!(matches!(error, XrfError::Invalid { .. }), "{error}");
+    assert!(error.to_string().contains("is inside the source"), "{error}");
+    assert_eq!(
+      fs::read(destination.join("packed.db0")).expect("previous volume"),
+      b"previous",
+      "nothing in '{}' was replaced",
+      destination.display()
+    );
+  }
+}
+
+#[test]
+fn a_source_inside_the_destination_packs_beside_it() {
+  let source: PathBuf = create_source(
+    "a_source_inside_the_destination_packs_beside_it",
+    &[("configs\\system.ltx", CONFIG)],
+  );
+  let destination: PathBuf = source.parent().expect("scope directory").to_path_buf();
+  let result: ArchivePackResult =
+    ArchivePacker::pack(&ArchivePackConfig::new(&source, &destination, "packed")).expect("the source packs");
+
+  assert_eq!(result.files_total, 1);
+  assert_eq!(read(&open(&result.volumes[0]), "configs\\system.ltx"), CONFIG);
+}

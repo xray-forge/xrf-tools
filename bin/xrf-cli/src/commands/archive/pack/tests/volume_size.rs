@@ -11,19 +11,27 @@ use crate::commands::archive::pack::command::PackCommand;
 use crate::core::command::CommandResult;
 use crate::core::command::command_testing::run_command;
 
-/// A source tree holding one small file, and a destination beside it that packing creates.
+/// A source tree holding one small file, and a destination beside it that packing creates, both under one case root.
 fn create_roots(name: &str) -> XrfResult<(PathBuf, PathBuf)> {
   let root: PathBuf = GeneratedResources::create_dir(&format!("archive_pack/{name}"))?;
+  let source: PathBuf = root.join("gamedata");
 
-  fs::create_dir_all(root.join("configs"))?;
+  fs::create_dir_all(source.join("configs"))?;
   fs::write(
-    root.join("configs").join("system.ltx"),
+    source.join("configs").join("system.ltx"),
     "[section]
 value = 1
 ",
   )?;
 
-  Ok((root.clone(), root.join("packed")))
+  Ok((source, root.join("packed")))
+}
+
+/// Remove a case's roots, which share the parent [`create_roots`] made.
+fn remove_roots(source: &Path) -> CommandResult {
+  fs::remove_dir_all(source.parent().expect("case root"))?;
+
+  Ok(())
 }
 
 fn pack(source: &Path, destination: &Path, megabytes: u64, is_oversized_allowed: bool) -> CommandResult {
@@ -65,9 +73,7 @@ fn refuses_a_cap_past_what_the_engine_mounts() -> CommandResult {
   assert!(error.contains("--oversized-volumes"), "{error}");
   assert!(!destination.exists(), "a refused request writes nothing");
 
-  fs::remove_dir_all(source)?;
-
-  Ok(())
+  remove_roots(&source)
 }
 
 /// The flag is read before the size, so lifting the cap and naming the size in one invocation works whatever order
@@ -85,9 +91,7 @@ fn packs_past_that_cap_when_the_flag_lifts_it() -> CommandResult {
 
   assert!(destination.join("gamedata.db").is_file(), "the set is published");
 
-  fs::remove_dir_all(source)?;
-
-  Ok(())
+  remove_roots(&source)
 }
 
 /// The typo guard is not what the flag lifts: a stray digit is refused with the flag on.
@@ -106,7 +110,5 @@ fn refuses_a_mistyped_cap_even_with_the_flag() -> CommandResult {
   assert!(error.contains("stray digit"), "{error}");
   assert!(!destination.exists(), "a refused request writes nothing");
 
-  fs::remove_dir_all(source)?;
-
-  Ok(())
+  remove_roots(&source)
 }

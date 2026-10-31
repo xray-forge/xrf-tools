@@ -1,6 +1,8 @@
 //! Whether one name belongs in the archive, answered by the configuration that carries the rules.
 
 use crate::archive_extension_pattern::ArchiveExtensionPattern;
+use xrf_archive::ArchiveDescriptor;
+
 use crate::pack::config::ArchivePackConfig;
 use crate::pack::source::ArchivePackSkipReason;
 use crate::path::{is_component_prefix, is_same_name};
@@ -40,11 +42,11 @@ impl ArchivePackConfig {
     let extension: &str = ArchiveExtensionPattern::extension_of(file);
     let stem: &str = &file[..file.len() - extension.len()];
 
-    Self::is_on_skip_list(&lowered, stem, extension).then_some(ArchivePackSkipReason::SkipList)
+    Self::is_on_skip_list(&lowered, file, stem, extension).then_some(ArchivePackSkipReason::SkipList)
   }
 
-  /// The built-in list itself, over a lowered name already split into its stem and dotted extension.
-  fn is_on_skip_list(lowered: &str, stem: &str, extension: &str) -> bool {
+  /// The built-in list itself, over a lowered name, its last component, and that component's stem and dotted extension.
+  fn is_on_skip_list(lowered: &str, file: &str, stem: &str, extension: &str) -> bool {
     if lowered.contains("textures\\lod\\") || lowered.contains("textures\\det\\") {
       return true;
     }
@@ -69,8 +71,14 @@ impl ArchivePackConfig {
 
     if matches!(
       extension,
-      ".txt" | ".tga" | ".db" | ".smf" | ".vcproj" | ".sln" | ".old" | ".rc"
+      ".txt" | ".tga" | ".smf" | ".vcproj" | ".sln" | ".old" | ".rc"
     ) {
+      return true;
+    }
+
+    // Archive volumes, which xrCompress lists only as `.db`: every extension the engine mounts as one. It mounts a volume
+    // from the filesystem, never from inside another, so a packed `.db0` or `.xdb` is weight nothing reads.
+    if ArchiveDescriptor::is_volume_path(file) {
       return true;
     }
 
@@ -116,6 +124,12 @@ mod tests {
       "readme.txt",
       "textures\\wall.tga",
       "database\\nested.db",
+      // Every volume spelling, which a source tree holds when an earlier build was written into it.
+      "db\\configs.db0",
+      "db\\patch.xdb",
+      "db\\patch.xdb3",
+      "db\\Configs.DB1",
+      "db\\patch.dbf",
       // The engine tests the character after the dot, so a backup marker leads the extension.
       "configs\\system.~ltx",
       "configs\\system._ltx",
@@ -136,6 +150,8 @@ mod tests {
       "levels\\l01_escape\\build.lights",
       "meshes\\actor.ogf",
       "configs\\system.ltx~",
+      // A directory named like a volume is not one, and the files in it pack.
+      "levels\\old.db0\\level.ltx",
     ] {
       assert!(!is_skipped(&config(), name), "{name} should be kept");
     }
