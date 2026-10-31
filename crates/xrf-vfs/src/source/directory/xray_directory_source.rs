@@ -102,6 +102,10 @@ impl XrayAssetSource for XrayDirectorySource {
     }
   }
 
+  fn find_ignored_prefix(&self, path: &str) -> Option<&str> {
+    self.index.find_ignored_prefix(path)
+  }
+
   fn with_changes(&self, created: &[&str], deleted: &[&str]) -> XrfResult<Box<dyn XrayAssetSource>> {
     Ok(Box::new(Self {
       index: self.index.with_changes(created, deleted)?,

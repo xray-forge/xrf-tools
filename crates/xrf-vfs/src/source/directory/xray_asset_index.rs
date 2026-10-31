@@ -63,11 +63,16 @@ impl XrayAssetIndex {
     })
   }
 
+  /// The ignored prefix a normalized path lies under, if it lies under one.
+  pub(crate) fn find_ignored_prefix(&self, path: &str) -> Option<&str> {
+    self
+      .ignored
+      .iter()
+      .find(|prefix| is_component_prefix(path, prefix))
+      .map(String::as_str)
+  }
+
   /// This index once the `created` paths were added and the `deleted` ones removed, walking nothing again.
-  ///
-  /// A created path the index already answers for, or one under an ignored prefix, changes nothing, as a walk would
-  /// have kept the first file or skipped it. A deleted path another file collided with is answered by that file, as a
-  /// walk without the deleted one would answer it.
   ///
   /// # Errors
   ///
@@ -86,12 +91,7 @@ impl XrayAssetIndex {
     for path in created {
       let logical_path: String = normalize(path)?.into_owned();
 
-      if next.assets.contains_key(&logical_path)
-        || next
-          .ignored
-          .iter()
-          .any(|prefix| is_component_prefix(&logical_path, prefix))
-      {
+      if next.assets.contains_key(&logical_path) || next.find_ignored_prefix(&logical_path).is_some() {
         continue;
       }
 

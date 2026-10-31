@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use crate::source::XrayDirectorySource;
 use crate::vfs::tests::fixtures::{FakeArchiveSource, directory};
 use crate::{
   XrayAsset, XrayCachePolicy, XrayChange, XrayChangeKind, XrayChangeSet, XrayInput, XrayInputKind, XrayInputRecord,
@@ -152,6 +153,47 @@ fn refuses_to_create_a_path_behind_the_archived_copy_answering_for_it() {
 
   assert!(error.contains("ahead of every writable loose mount"), "{error}");
   assert!(!back.join("configs/system.ltx").exists());
+}
+
+// A loose mount leaving a prefix out never answers for a file written under it, so the commit refuses, naming the
+// prefix, and writes nothing: for a new path, and for a file the mount left out while an archive answers for it.
+#[test]
+fn refuses_to_write_under_a_prefix_the_loose_mount_leaves_out() {
+  const DRAFT_LTX: &str = "configs\\wip\\draft.ltx";
+
+  let front: PathBuf = directory("commit_ignored", &["configs/wip/draft.ltx", "configs/other.ltx"]);
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  vfs
+    .mount(
+      "",
+      Box::new(XrayDirectorySource::read_ignoring(&front, &[String::from("configs\\wip")]).expect("the tree indexes")),
+    )
+    .expect("the tree mounts");
+  vfs
+    .mount("", Box::new(FakeArchiveSource::new("archived", &[DRAFT_LTX])))
+    .expect("the archive mounts");
+
+  let search: XraySearch = search(vfs);
+
+  assert_eq!(text(&search, DRAFT_LTX), "archived");
+
+  for path in [DRAFT_LTX, "configs\\wip\\new.ltx"] {
+    let error: String = search
+      .get_vfs()
+      .commit(&XrayTransaction::new(&search).with_write(path, "written").unwrap())
+      .expect_err("a write the mount leaves out is refused")
+      .to_string();
+
+    assert!(error.contains("leaves out 'configs\\wip'"), "{path}: {error}");
+  }
+
+  assert_eq!(
+    fs::read(front.join("configs/wip/draft.ltx")).unwrap(),
+    b"commit_ignored",
+    "the left-out file keeps the bytes the fixture wrote"
+  );
+  assert!(!front.join("configs/wip/new.ltx").exists());
 }
 
 // A writer that saves the file it showed refuses rather than create an override of an archived copy, or a new file.

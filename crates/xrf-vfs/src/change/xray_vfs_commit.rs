@@ -236,8 +236,8 @@ impl XrayVfs {
       .collect()
   }
 
-  /// The first writable mount the scopes reach whose base holds `path`, in search order, ahead of `winner`, the
-  /// read-only mount answering for it, where one does.
+  /// The first writable mount the scopes reach whose base holds `path` and which does not leave it out, in search order,
+  /// ahead of `winner`, the read-only mount answering for it, where one does.
   fn find_writable_for<'a>(
     &'a self,
     scopes: &[XrayLookupScope],
@@ -245,6 +245,8 @@ impl XrayVfs {
     winner: Option<&XrayMount>,
   ) -> XrfResult<&'a XrayMount> {
     let mut is_behind: bool = false;
+    // A mount whose base holds the path but leaves it out: a file written there would never be answered for.
+    let mut excluding: Option<(&XrayMount, &str)> = None;
 
     for mount in scopes
       .iter()
@@ -257,22 +259,36 @@ impl XrayVfs {
     {
       is_behind |= winner.is_some_and(|winner| winner.get_id() == mount.get_id());
 
-      if mount.is_writable() && mount.to_source_path(path).is_some() {
-        return match winner.filter(|_| is_behind) {
-          None => Ok(mount),
-          Some(winner) => Err(XrfError::new_asset_error(format!(
-            "cannot write '{path}': the copy in '{}' answers for it ahead of every writable loose mount the search \
-             reaches, so a file created in '{}' would stay unseen",
-            winner.get_label(),
-            mount.get_label()
-          ))),
-        };
+      let Some(source_path) = mount.to_source_path(path).filter(|_| mount.is_writable()) else {
+        continue;
+      };
+
+      if let Some(prefix) = mount.get_source().find_ignored_prefix(source_path) {
+        excluding = excluding.or(Some((mount, prefix)));
+
+        continue;
       }
+
+      return match winner.filter(|_| is_behind) {
+        None => Ok(mount),
+        Some(winner) => Err(XrfError::new_asset_error(format!(
+          "cannot write '{path}': the copy in '{}' answers for it ahead of every writable loose mount the search \
+           reaches, so a file created in '{}' would stay unseen",
+          winner.get_label(),
+          mount.get_label()
+        ))),
+      };
     }
 
-    Err(XrfError::new_asset_error(format!(
-      "cannot write '{path}': no writable loose mount the search reaches can hold it"
-    )))
+    Err(match excluding {
+      Some((mount, prefix)) => XrfError::new_asset_error(format!(
+        "cannot write '{path}': mount '{}' leaves out '{prefix}', so a file created there would stay unseen",
+        mount.get_label()
+      )),
+      None => XrfError::new_asset_error(format!(
+        "cannot write '{path}': no writable loose mount the search reaches can hold it"
+      )),
+    })
   }
 
   fn get_mount(&self, id: XrayMountId) -> XrfResult<&XrayMount> {

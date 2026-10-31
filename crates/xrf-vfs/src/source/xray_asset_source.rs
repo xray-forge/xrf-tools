@@ -47,6 +47,14 @@ pub trait XrayAssetSource: Debug + Send + Sync {
     None
   }
 
+  /// The prefix this source leaves out that a source-relative path lies under, so a file written there is never answered
+  /// for; `None` for a path the source takes.
+  fn find_ignored_prefix(&self, path: &str) -> Option<&str> {
+    let _ = path;
+
+    None
+  }
+
   /// This source once the `created` paths were added on disk and the `deleted` ones removed, without reading anything
   /// it holds again.
   ///
