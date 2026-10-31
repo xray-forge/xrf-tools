@@ -94,7 +94,7 @@ export function LevelWeatherPanel({
 
           <LevelWeatherAmbientSection
             ambient={isWeather ? (weatherService.report?.ambient ?? null) : null}
-            isPlayed={viewService.options.isAmbientPlayed}
+            isPlayed={viewService.options.isAmbientEffectPlayed}
             onPlay={renderService.playAmbientEffect}
           />
 

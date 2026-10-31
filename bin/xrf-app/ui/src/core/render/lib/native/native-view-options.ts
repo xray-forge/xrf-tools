@@ -182,7 +182,7 @@ export function toNativeWorldToggles(
 ): WorldToggles {
   return {
     hiddenSpawnObjects,
-    isAmbientPlayed: switches.isAmbientPlayed,
+    isAmbientEffectPlayed: switches.isAmbientEffectPlayed,
     isCampfireLit: switches.isCampfireLit,
     isRainy: switches.isRainy,
     isSpawnedItems: switches.isSpawnedItems,

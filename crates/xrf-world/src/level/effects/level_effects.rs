@@ -169,7 +169,7 @@ impl LevelEffects {
         ambient,
         (
           eye,
-          systems.hemi.is_indoors() || !toggles.is_ambient_played || !is_playing,
+          systems.hemi.is_indoors() || !toggles.is_ambient_effect_played || !is_playing,
         ),
         now,
       );

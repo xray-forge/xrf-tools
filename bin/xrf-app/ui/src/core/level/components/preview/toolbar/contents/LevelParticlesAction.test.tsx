@@ -21,7 +21,7 @@ describe("LevelParticlesAction", () => {
 
     expect(view.options).toEqual({
       ...DEFAULT_LEVEL_VIEW_OPTIONS,
-      isAmbientPlayed: !DEFAULT_LEVEL_VIEW_OPTIONS.isAmbientPlayed,
+      isAmbientEffectPlayed: !DEFAULT_LEVEL_VIEW_OPTIONS.isAmbientEffectPlayed,
       isCampfireLit: !DEFAULT_LEVEL_VIEW_OPTIONS.isCampfireLit,
       isParticled: !DEFAULT_LEVEL_VIEW_OPTIONS.isParticled,
     });

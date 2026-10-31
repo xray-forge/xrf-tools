@@ -17,7 +17,7 @@ export function LevelParticlesAction({
 }: BaseComponentProps): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);
 
-  const { isParticled, isCampfireLit, isAmbientPlayed } = viewService.options;
+  const { isParticled, isCampfireLit, isAmbientEffectPlayed } = viewService.options;
 
   return (
     <EditorPopoverGroup
@@ -46,12 +46,12 @@ export function LevelParticlesAction({
       <EditorPopoverGroupSection
         label={"Ambient effects"}
         description={
-          isAmbientPlayed
+          isAmbientEffectPlayed
             ? "Plays the weather's fog, leaves and vortices near the camera outdoors, with their wind"
             : "Plays none, and the air stays still"
         }
-        isOn={isAmbientPlayed}
-        onToggle={() => viewService.toggleOption("isAmbientPlayed")}
+        isOn={isAmbientEffectPlayed}
+        onToggle={() => viewService.toggleOption("isAmbientEffectPlayed")}
       />
     </EditorPopoverGroup>
   );
