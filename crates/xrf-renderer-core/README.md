@@ -109,7 +109,7 @@ command buffers in order for one submit, and what each group cost the CPU (`grou
 
 `GraphTimer` measures each pass on the GPU with no code in any pass. While enabled (`set_enabled`), the graph writes a
 timestamp at the start of each encode group and after each pass, each group into its own range of the query set so the
-groups still record at once; a render pass of merged passes counts as one, its passes' names joined with ` + `. Call
+groups still record at once; a render pass of merged passes counts as one, its passes' names joined by a spaced plus (`TimedPass::SEPARATOR`). Call
 `request` after each submit: it maps the stamps without waiting, a few frames in flight at once. `take(owner)` answers
 each of that owner's passes' mean milliseconds a frame since its last call, a pass a frame skipped counting as zero so
 the passes add up to the frame; `take_tagged` answers every pass of every frame under the tag set with `set_tag`. A
