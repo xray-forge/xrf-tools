@@ -10,17 +10,18 @@ use crate::pass::view::view_binding::ViewBinding;
 use crate::pass::window::overlay_draw::OverlayDraw;
 use crate::window::composed_overlays::ComposedOverlays;
 use crate::window::composed_view::ComposedView;
+use crate::window::display_target::DisplayTarget;
 use crate::window::render_window::RenderWindow;
 use crate::window::window_backdrop::WindowBackdrop;
 use crate::window::window_passes::WindowPasses;
 use crate::window::window_viewport::WindowViewport;
 
-/// A window this frame draws: its format, each viewport drawn into it, what the page is cleared to around them and
-/// whether its backdrop is painted over that; and the image it draws into, taken only once every view's work is
-/// recorded, so the render thread readies the frame while the GPU still draws the last.
+/// A window this frame draws: what it presents into, each viewport drawn into it, what the page is cleared to around
+/// them and whether its backdrop is painted over that; and the image it draws into, taken only once every view's work
+/// is recorded, so the render thread readies the frame while the GPU still draws the last.
 pub struct WindowFrame {
   pub key: u64,
-  pub format: wgpu::TextureFormat,
+  pub target: DisplayTarget,
   /// Whether it shows anything this frame: one minimised or sized to nothing draws only its viewports' captures, which
   /// draw into textures of their own, and takes no image.
   pub is_shown: bool,
@@ -67,7 +68,7 @@ impl WindowFrame {
     }: WindowPasses<'a>,
     captures: impl IntoIterator<Item = &'a FrameCapture>,
   ) {
-    let format: wgpu::TextureFormat = self.format;
+    let format: wgpu::TextureFormat = self.target.format;
 
     graph.begin_group("window");
 

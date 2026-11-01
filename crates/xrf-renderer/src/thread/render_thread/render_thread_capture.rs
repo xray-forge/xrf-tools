@@ -30,6 +30,7 @@ use crate::thread::gpu_state::GpuState;
 use crate::thread::views::readied_view::ReadiedView;
 use crate::viewport::capture::pending_screenshot::PendingScreenshot;
 use crate::viewport::render_viewport::RenderViewport;
+use crate::window::display_target::DisplayTarget;
 use crate::window::window_frame::WindowFrame;
 use crate::window::window_viewport::WindowViewport;
 
@@ -50,7 +51,7 @@ impl RenderThread {
         };
 
         if let Some(reply) = viewport.take_capture() {
-          match FrameCapture::new(device, window.format, *shown, viewport.get_frame()) {
+          match FrameCapture::new(device, window.target.format, *shown, viewport.get_frame()) {
             Ok(capture) => captures.push(CaptureCopy {
               viewport: *id,
               capture,
@@ -63,7 +64,12 @@ impl RenderThread {
         }
 
         if let Some(PendingScreenshot { screenshot, reply }) = viewport.take_screenshot() {
-          match FrameCapture::new_screenshot(device, window.format, (rect.width, rect.height), viewport.get_frame()) {
+          match FrameCapture::new_screenshot(
+            device,
+            DisplayTarget::CAPTURE.format,
+            (rect.width, rect.height),
+            viewport.get_frame(),
+          ) {
             Ok(capture) => captures.push(CaptureCopy {
               viewport: *id,
               capture: capture.with_screenshot(screenshot),
@@ -80,8 +86,8 @@ impl RenderThread {
     captures
   }
 
-  /// The captures' shots this frame copies out, each on the last of its settling frames, in its window's format; a
-  /// shot that cannot be copied stops its capture.
+  /// The captures' shots this frame copies out, each on the last of its settling frames, drawn into the captures' own
+  /// target; a shot that cannot be copied stops its capture.
   pub(super) fn take_capture_shots(&mut self, device: &wgpu::Device, windows: &[WindowFrame]) -> Vec<ShotCopy> {
     let mut shots: Vec<ShotCopy> = Vec::new();
 
@@ -99,7 +105,12 @@ impl RenderThread {
         };
 
         // A capture's shot is copied out as a screenshot is, a map's tile with its depth's coverage.
-        match FrameCapture::new_screenshot(device, window.format, shot.get_drawn_size(), viewport.get_frame()) {
+        match FrameCapture::new_screenshot(
+          device,
+          DisplayTarget::CAPTURE.format,
+          shot.get_drawn_size(),
+          viewport.get_frame(),
+        ) {
           Ok(capture) => shots.push(ShotCopy {
             viewport: *id,
             capture: match shot.is_covered() {
@@ -116,7 +127,7 @@ impl RenderThread {
   }
 
   /// The bursts' frames this frame copies out, each one read back drawn by a viewport readied this frame (`frames`), in
-  /// its window's format at the viewport's whole size; a frame that cannot be copied stops its burst.
+  /// the captures' own target at the viewport's whole size; a frame that cannot be copied stops its burst.
   pub(super) fn take_burst_shots(
     &mut self,
     device: &wgpu::Device,
@@ -146,7 +157,7 @@ impl RenderThread {
 
         match BurstShot::new(
           device,
-          window.format,
+          DisplayTarget::CAPTURE.format,
           (rect.width, rect.height),
           viewport.get_frame(),
           material,

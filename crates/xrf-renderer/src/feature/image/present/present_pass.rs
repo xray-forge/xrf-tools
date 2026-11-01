@@ -81,7 +81,8 @@ impl PresentPass {
     &self.bloom_sampler
   }
 
-  /// Draws into the window's pass, whose viewport and scissor are the viewport's rectangle already.
+  /// Draws into the window's pass, whose viewport and scissor are the viewport's rectangle already; nothing into a
+  /// `format` whose pipeline could not be built, which `prepare` answered and the composition logged.
   pub fn draw(
     &self,
     context: &mut RasterContext<'_>,

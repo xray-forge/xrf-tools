@@ -6,6 +6,7 @@ use xrf_error::{XrfError, XrfResult};
 use crate::context::gpu_context::GpuContext;
 use crate::contract::settings::render_frame_rate::RenderFrameRate;
 use crate::host::render_window_host::RenderWindowHost;
+use crate::window::display_target::DisplayTarget;
 use crate::window::window_backdrop::WindowBackdrop;
 
 /// Frames the swapchain may queue ahead of the display: one fewer misses every other refresh under the window's
@@ -83,8 +84,9 @@ impl RenderWindow {
     &mut self.backdrop
   }
 
-  pub fn get_format(&self) -> wgpu::TextureFormat {
-    self.format
+  /// What it presents into: its swapchain, in the format it picked.
+  pub fn get_target(&self) -> DisplayTarget {
+    DisplayTarget { format: self.format }
   }
 
   /// Whether the surface was lost: the window is then drawn into through a new one.

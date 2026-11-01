@@ -36,6 +36,7 @@ use crate::thread::views::scene_recorder::SceneRecorder;
 use crate::viewport::render_viewport::RenderViewport;
 use crate::window::composed_overlays::ComposedOverlays;
 use crate::window::composed_view::ComposedView;
+use crate::window::display_target::DisplayTarget;
 use crate::window::render_window::RenderWindow;
 use crate::window::window_backdrop::WindowBackdrop;
 use crate::window::window_frame::WindowFrame;
@@ -94,9 +95,10 @@ impl RenderThread {
         }
       }
 
-      let Some(format) = gpu.windows.get(key).map(RenderWindow::get_format) else {
+      let Some(target) = gpu.windows.get(key).map(RenderWindow::get_target) else {
         continue;
       };
+      let format: wgpu::TextureFormat = target.format;
 
       if let Err(error) = gpu.ensure_grid(&self.shaders, format) {
         log::error!("Viewport cannot be drawn: {error}");
@@ -136,7 +138,7 @@ impl RenderThread {
         if !drawn.is_empty() {
           windows.push(WindowFrame {
             key: *key,
-            format,
+            target,
             is_shown: false,
             drawn,
             clear: wgpu::Color::TRANSPARENT,
@@ -191,7 +193,7 @@ impl RenderThread {
 
       windows.push(WindowFrame {
         key: *key,
-        format,
+        target,
         is_shown: true,
         drawn,
         clear: backdrop.get_clear(),
@@ -265,20 +267,19 @@ impl RenderThread {
 
     self.commit_periodic(&running.gpu, &frames, &recorders, &mut encoder);
 
-    let composing: Instant = Instant::now();
-
-    if !frames.is_empty() {
-      self.prepare_composition(&mut running.gpu, &windows);
-    }
-
-    phases.compose = composing.elapsed();
-
     let device: &wgpu::Device = &running.gpu.context.device;
     let mut copies: FrameCopies = FrameCopies {
       captures: self.take_captures(device, &windows),
       shots: self.take_capture_shots(device, &windows),
       bursts: self.take_burst_shots(device, &windows, &frames),
     };
+    let composing: Instant = Instant::now();
+
+    if !frames.is_empty() {
+      self.prepare_composition(&mut running.gpu, &windows, &copies);
+    }
+
+    phases.compose = composing.elapsed();
 
     running.runtime.timer.set_enabled(self.settings.is_gpu_timed);
     running.runtime.timer.set_tag(self.periodic.get_frame());
@@ -361,9 +362,20 @@ impl RenderThread {
     }
   }
 
-  /// Readies the present's and the overlays' pipelines for each window's image format.
-  fn prepare_composition(&mut self, gpu: &mut GpuState, windows: &[WindowFrame]) {
-    for format in windows.iter().map(|window| window.format).collect::<HashSet<_>>() {
+  /// Readies the present's and the overlays' pipelines for what this frame presents into: each window's target, and
+  /// the captures' own where the frame draws a screenshot, a capture's shot or a burst's frame apart (`copies`). A
+  /// pipeline that cannot be built is logged here, and what it would present is left undrawn.
+  fn prepare_composition(&mut self, gpu: &mut GpuState, windows: &[WindowFrame], copies: &FrameCopies) {
+    let is_drawn_apart: bool = copies.captures.iter().any(|copy| copy.capture.is_screenshot())
+      || !copies.shots.is_empty()
+      || !copies.bursts.is_empty();
+    let targets: HashSet<DisplayTarget> = windows
+      .iter()
+      .map(|window| window.target)
+      .chain(is_drawn_apart.then_some(DisplayTarget::CAPTURE))
+      .collect();
+
+    for DisplayTarget { format } in targets {
       match gpu.present.prepare(
         PipelineSource {
           cache: &gpu.pipelines,
@@ -492,7 +504,7 @@ impl RenderThread {
     graph.begin_owner(GraphOwner::Frame);
 
     for (window, target) in windows.iter().zip(&targets) {
-      let (Some(target), Some(grid)) = (target, gpu.get_grid(window.format)) else {
+      let (Some(target), Some(grid)) = (target, gpu.get_grid(window.target.format)) else {
         continue;
       };
       // A viewport capturing is left to the backdrop: its frames are the capture's shots.
