@@ -1,6 +1,6 @@
 #import "generated/structs"
 
-// The lens flare as `pass/flare_uniform.rs` writes it, for the pass that measures how much of the sun shows and the one
+// The lens flare as `feature/effects/flares/flare_uniform.rs` writes it, for the pass that measures how much of the sun shows and the one
 // that draws the flares over the frame.
 
 // Where the sun's rays are tested from and against: how far apart the four side rays bend, `fScale`.

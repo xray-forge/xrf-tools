@@ -2,7 +2,7 @@
 #import "generated/structs"
 
 // A local light as it lights a point in view space, shared by the lights pass and a traced hit: its falloff, a spot's
-// cone and projector, and a shadowed light's map in the shadow atlas, as `pass/light_record.rs` writes its record.
+// cone and projector, and a shadowed light's map in the shadow atlas, as `scene/level/lights/light_record.rs` writes its record.
 
 // `gbd.P += gbd.N * 0.015`: the virtual offset `accum_base` moves a point by with the optimised G-buffer.
 const VIRTUAL_OFFSET: f32 = 0.015;

@@ -8,7 +8,7 @@
 
 #import "generated/frame/sky_haze"
 
-// Texels across, one a bearing, and down, one a height, as `frame/view_targets.rs` sizes the map.
+// Texels across, one a bearing, and down, one a height, as `frame/targets/view_targets.rs` sizes the map.
 const HAZE_SIZE: vec2<f32> = vec2<f32>(64.0, 32.0);
 
 // Taps a ring holds, and the rings: a centre and rings of eight around it.

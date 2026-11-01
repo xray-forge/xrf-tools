@@ -5,7 +5,7 @@
 // A tuft as the cull keeps it (`grass/planting`): its place and yaw, then its size, hemisphere, sun, and its wave with
 // its ground's normal packed in one float; stood, turned, scaled and swayed as the grass draw stands it, so what the
 // trace's cards hold is where the frame draws it. How the grass sways (`GrassWind`) is declared by
-// `pass/grass_wind_uniform.rs`, in the engine's space.
+// `feature/scene/grass/draw/grass_wind_uniform.rs`, in the engine's space.
 
 // A waving tuft's vertex leant across the ground by its wave's `wind`, as far as its height over the foot times the
 // wave at its place, and as much of that as its own height in the model lets it. The wave runs through the engine's

@@ -1,4 +1,4 @@
-// The frame's lighting, as `pass/lighting_uniform.rs` writes it, and the engine's own lighting functions.
+// The frame's lighting, as `pass/frame_lighting/lighting_uniform.rs` writes it, and the engine's own lighting functions.
 
 #import "generated/structs"
 #import "common/luminance"

@@ -1,7 +1,7 @@
 #import "generated/structs"
 
-// The grass's records, as `scene/level/grass_level.rs` writes them; what the planting is set to (`GrassParams`), as
-// `pass/grass_uniform.rs` declares it, and its models' (`GrassModel`) as `pass/grass_model_record.rs` does.
+// The grass's records, as `feature/scene/grass/level/grass_level.rs` writes them; what the planting is set to (`GrassParams`), as
+// `feature/scene/grass/grass_uniform.rs` declares it, and its models' (`GrassModel`) as `feature/scene/grass/level/grass_model_record.rs` does.
 
 // Steps a ground normal's `x` and `z` are kept on each, as a tuft's record packs them.
 const GROUND_NORMAL_STEPS: u32 = 1024u;
