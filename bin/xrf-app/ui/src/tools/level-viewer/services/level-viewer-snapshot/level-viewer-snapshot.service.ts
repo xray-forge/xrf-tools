@@ -194,7 +194,7 @@ export class LevelViewerSnapshotService {
       options: { ...this.viewService.options },
       helpers: { ...this.viewService.helpers },
       settings: {
-        ...this.renderService.drawnFeatures,
+        ...this.renderService.drawing.features,
       },
     };
   }
@@ -373,7 +373,7 @@ export class LevelViewerSnapshotService {
     }
 
     if (typeof weather.time === "number") {
-      this.renderService.seekWeather(weather.time);
+      this.renderService.weather.seek(weather.time);
     }
 
     if (typeof weather.isPlaying === "boolean") {
@@ -397,7 +397,7 @@ export class LevelViewerSnapshotService {
     const goTo: TLevelViewerSnapshotPart = { ...(current ? toLevelGoTo(current) : {}), ...place };
 
     if (isLevelGoTo(goTo)) {
-      this.renderService.goTo(goTo);
+      this.renderService.camera.goTo(goTo);
 
       return [];
     }

@@ -48,7 +48,7 @@ export function LevelWaterAction({
   const isEnhanced: boolean = water.mode === ERenderWaterMode.ENHANCED;
   // The water's reflection is set in the Reflections group, beside the surfaces' and the ray trace both share.
   const reflections: TRenderReflectionSettings = toLevelModeFeature("reflections", settings, features);
-  const isReflectionTraced: boolean = renderService.isTraceable && reflections.isTraced;
+  const isReflectionTraced: boolean = renderService.drawing.isTraceable && reflections.isTraced;
 
   const onSetEnhanced = useCallback(
     (part: Partial<TRenderEnhancedWaterSettings>): void => setNested("enhanced", part),

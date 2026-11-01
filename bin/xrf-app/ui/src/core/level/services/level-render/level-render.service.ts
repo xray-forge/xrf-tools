@@ -1,99 +1,40 @@
 import { inject, Injectable } from "@wirestate/core";
-import { BoundAction, comparer, Computed, reaction } from "@wirestate/mobx";
-import { call, cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
+import { BoundAction, Computed } from "@wirestate/mobx";
+import { cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
-import { CaptureOutcome } from "@xrf/ipc/types/xrf-app-render";
-import {
-  ERenderDlssAvailability,
-  RenderAntialiasing,
-  RenderCubeCapture,
-  RenderDlssAvailability,
-  RenderLevelHit,
-  RenderLoadReport,
-  RenderMapCapture,
-  RenderViewOptions,
-  RenderViewportId,
-} from "@xrf/ipc/types/xrf-renderer";
-import {
-  EWorldCameraCommand,
-  EWorldWeatherPlay,
-  WorldCamera,
-  WorldCameraPose,
-  WorldToggles,
-  WorldWeatherControl,
-  WorldWeatherPlay,
-  WorldWeatherReport,
-} from "@xrf/ipc/types/xrf-world";
+import { RenderLoadReport, RenderViewportId } from "@xrf/ipc/types/xrf-renderer";
+import { WorldCameraPose, WorldWeatherReport } from "@xrf/ipc/types/xrf-world";
 import { Logger } from "@xrf/logging";
-import { Maybe, Nullable } from "@xrf/types";
+import { Nullable } from "@xrf/types";
 
-import { ILevelGoTo, toLevelGoToViewpoint } from "@/core/level/lib/camera/level-camera-goto";
-import { ILevelCameraOptions } from "@/core/level/lib/camera/level-camera-options";
 import { toLevelCameraReading } from "@/core/level/lib/camera/level-camera-reading";
-import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/level-viewpoint";
-import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
-import {
-  ILevelFeatureOptions,
-  LEVEL_FEATURE_TOGGLES_ON,
-  TLevelOutputOptions,
-  toLevelFocusDistance,
-  toLevelOutput,
-  toLevelRendererAntialiasing,
-  toLevelRendererFeatures,
-} from "@/core/level/lib/features/level-feature-options";
-import {
-  toLevelHelperRenderOptions,
-  toLevelListingPlaceMap,
-  toLevelSpawnIndices,
-} from "@/core/level/lib/objects/level-helper-render";
-import {
-  ELevelPick,
-  ILevelPickParts,
-  relocateLevelObjects,
-  relocateLevelPick,
-  TLevelPick,
-  toLevelPick,
-} from "@/core/level/lib/pick/level-pick";
-import { toLevelPickSelection } from "@/core/level/lib/pick/level-pick-selection";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
-import { toLevelFrameOverlays } from "@/core/level/lib/render/level-render-frame";
-import { ILevelRenderJob } from "@/core/level/lib/render/level-render-job";
-import { toLevelCameraAt, toLevelViewOptions } from "@/core/level/lib/render/level-render-view";
 import { ILevelResident, toLevelResident } from "@/core/level/lib/render/level-resident";
 import { LevelSceneShow } from "@/core/level/lib/render/level-scene-show";
-import { ELevelShading, toShownLevelShading } from "@/core/level/lib/view/level-shading";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelLookService } from "@/core/level/services/level-look";
+import { LevelRenderCamera } from "@/core/level/services/level-render/level-render.service.camera";
+import { LevelRenderCaptures } from "@/core/level/services/level-render/level-render.service.captures";
+import { ILevelRenderContext } from "@/core/level/services/level-render/level-render.service.context";
+import { LevelRenderDrawing } from "@/core/level/services/level-render/level-render.service.drawing";
+import { LevelRenderPicks } from "@/core/level/services/level-render/level-render.service.picks";
+import { LevelRenderWeather } from "@/core/level/services/level-render/level-render.service.weather";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { ELevelSelectionMode, LevelViewportService } from "@/core/level/services/level-viewport";
+import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
-import { toDrawnAntialiasing } from "@/core/render/lib/features/image/render-antialiasing-choices";
-import { toDrawnRenderLightLevel } from "@/core/render/lib/features/tone/render-light-level-choices";
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
-import { toNativeWorldToggles } from "@/core/render/lib/native/contract/native-view-options";
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/viewport/native-render-surface-service";
 import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
 import { INativeViewportClick } from "@/core/render/lib/native/viewport/native-viewport-target";
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
-import { toRenderOutput } from "@/core/render/lib/settings/device/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
-/** A pick asked of the viewport: where, whether glass is passed by, and how what it picks changes the selection. */
-export interface ILevelPickRequest {
-  /** In css pixels from the viewport's top left corner. */
-  point: IRenderViewPoint;
-  /** Whether glass is passed by, picking what stands behind it. */
-  isThrough: boolean;
-  /** Replacing the selection where not given. */
-  mode?: ELevelSelectionMode;
-}
-
 /**
- * Owns the native viewport the open level is drawn in: everything said to it, the scene it shows the level as, and what
- * it is asked of the level once resident.
+ * Owns the native viewport the open level is drawn in: its lifetime, the scene it shows the level as, and what it is
+ * asked of the level once resident. What is said to it otherwise is its parts': the camera, what the level is drawn
+ * with, the picks, the captures and the weather, each reached by its field.
  */
 @Injectable()
 export class LevelRenderService extends NativeRenderSurfaceService {
@@ -105,7 +46,16 @@ export class LevelRenderService extends NativeRenderSurfaceService {
    */
   public readonly resident: CommandOperation<ILevelResident> = new CommandOperation(this.log);
 
-  private readonly config: ILevelRenderConfig = DEFAULT_LEVEL_RENDER_CONFIG;
+  /** Where the camera stands, gone to and flown on from. */
+  public readonly camera: LevelRenderCamera;
+  /** What the level is drawn with on the GPU drawing it, what its world plays, and the overlays over it. */
+  public readonly drawing: LevelRenderDrawing;
+  /** What of the level is drawn where the viewport is clicked or hovered, and what that changes. */
+  public readonly picks: LevelRenderPicks;
+  /** What the viewport writes to files. */
+  public readonly captures: LevelRenderCaptures;
+  /** The level's weather as the viewport plays it. */
+  public readonly weather: LevelRenderWeather;
 
   /** Which scene shows the open level, and whether it is revealed. */
   private readonly shown: LevelSceneShow = new LevelSceneShow({
@@ -115,25 +65,39 @@ export class LevelRenderService extends NativeRenderSurfaceService {
 
   /** The level open, whose extent and start frame the camera. */
   private level: Nullable<SelectedLevelDescription> = null;
-  /**
-   * Where the camera was last stood: the level's start, or a place gone to. The toolbar's speeds and lens are sent
-   * with it, so changing one leaves the camera where it has flown rather than taking it back.
-   */
-  private viewpoint: Nullable<ILevelViewpoint> = null;
   /** Stops hearing the viewport's focus, while one is attached. */
   private unlisten: Nullable<() => void> = null;
-  /** The hover pick in flight, settled either way, which the next hover waits for; null while none is. */
-  private hovering: Nullable<Promise<void>> = null;
 
   public constructor(
     private readonly loadService: LevelLoadService = inject(LevelLoadService),
-    private readonly viewService: LevelViewService = inject(LevelViewService),
+    viewService: LevelViewService = inject(LevelViewService),
     private readonly viewportService: LevelViewportService = inject(LevelViewportService),
     private readonly weatherService: LevelWeatherService = inject(LevelWeatherService),
-    private readonly lookService: LevelLookService = inject(LevelLookService),
+    lookService: LevelLookService = inject(LevelLookService),
     renderSettingsService: RenderSettingsService = inject(RenderSettingsService)
   ) {
     super(renderSettingsService);
+
+    const config: ILevelRenderConfig = DEFAULT_LEVEL_RENDER_CONFIG;
+    const context: ILevelRenderContext = {
+      getFrame: () => this.frame,
+      getLevel: () => this.level,
+      getViewport: () => this.viewport,
+    };
+
+    this.camera = new LevelRenderCamera(context, { config, loadService, viewService });
+    this.drawing = new LevelRenderDrawing(context, {
+      config,
+      loadService,
+      lookService,
+      renderSettingsService,
+      viewService,
+      viewportService,
+      weatherService,
+    });
+    this.picks = new LevelRenderPicks(context, { loadService, viewService, viewportService });
+    this.captures = new LevelRenderCaptures(context, viewService);
+    this.weather = new LevelRenderWeather(context, weatherService);
   }
 
   /**
@@ -154,409 +118,15 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     return this.applied?.sun ?? null;
   }
 
-  /** Whether the GPU drawing the view traces rays, taken as yes until a frame names the GPU. */
-  @Computed()
-  public get isTraceable(): boolean {
-    return !this.frame.adapter || this.frame.hasRayQueries;
-  }
-
-  /** Whether the view's frame is drawn smaller than the viewport. */
-  @Computed()
-  public get isUpscaled(): boolean {
-    return this.frame.renderWidth > 0 && this.frame.renderWidth < this.frame.width;
-  }
-
-  /** Whether the GPU drawing the view upscales with DLSS, and what it lacks where not: available until a frame says. */
-  @Computed()
-  public get dlss(): RenderDlssAvailability {
-    return this.frame.adapter ? this.frame.dlss : ERenderDlssAvailability.AVAILABLE;
-  }
-
-  /** Whether the GPU drawing the view reconstructs rays with DLSS: available until a frame says otherwise. */
-  @Computed()
-  public get rayReconstruction(): RenderDlssAvailability {
-    return this.frame.adapter ? this.frame.rayReconstruction : ERenderDlssAvailability.AVAILABLE;
-  }
-
-  /** Whether the view's last frame was reconstructed by DLSS ray reconstruction, its traces taken raw. */
-  @Computed()
-  public get isRayReconstructed(): boolean {
-    return this.frame.isRayReconstructed;
-  }
-
-  /** What smooths the view's frame: the toolbar's antialiasing over the settings', FSR for DLSS on a GPU without it. */
-  @Computed()
-  public get antialiasing(): RenderAntialiasing {
-    return toDrawnAntialiasing(
-      toLevelRendererAntialiasing(
-        this.renderSettingsService.rendererFeatures.antialiasing,
-        this.viewService.features,
-        this.viewService.options.isAntialiased
-      ),
-      this.dlss
-    );
-  }
-
-  /** What the viewport shows of its surfaces: the view's shading, the final frame for FSR's while FSR is not drawing. */
-  @Computed()
-  public get shading(): ELevelShading {
-    return toShownLevelShading(this.viewService.shading, this.antialiasing);
-  }
-
-  /**
-   * What the view sets over the settings as it is drawn: a dev light level it keeps drawn as the authored one outside
-   * dev mode, as the settings' own is (`RenderSettingsService.rendererFeatures`).
-   */
-  @Computed()
-  public get viewFeatures(): ILevelFeatureOptions {
-    const features: ILevelFeatureOptions = this.viewService.features;
-
-    return features.lightLevel === null
-      ? features
-      : {
-          ...features,
-          lightLevel: toDrawnRenderLightLevel(features.lightLevel, this.renderSettingsService.isDevLightLevelAvailable),
-        };
-  }
-
-  /** Every feature as the view draws it with every toolbar toggle on, which its popovers show and its snapshots keep. */
-  @Computed()
-  public get drawnFeatures(): IRenderFeatureSettings {
-    return toLevelRendererFeatures(
-      this.renderSettingsService.rendererFeatures,
-      this.viewFeatures,
-      LEVEL_FEATURE_TOGGLES_ON
-    );
-  }
-
-  /** What the level is asked to be drawn with: the toolbar, the look and the settings together. */
-  @Computed()
-  public get viewOptions(): RenderViewOptions {
-    const output: Required<TLevelOutputOptions> = toLevelOutput(
-      this.viewService.features.output,
-      this.renderSettingsService.renderResolution,
-      this.renderSettingsService.renderOutputScale
-    );
-
-    const options: RenderViewOptions = toLevelViewOptions({
-      features: this.renderSettingsService.rendererFeatures,
-      hemiStrength: this.viewService.hemiStrength,
-      lod: this.viewService.lod,
-      look: this.lookService.look,
-      options: this.viewService.options,
-      output: toRenderOutput(output.resolution, output.scale),
-      shading: this.shading,
-      sunShafts: this.weatherService.sunShafts,
-      view: this.viewFeatures,
-    });
-    const { hidden, hovered, selected } = this.viewportService;
-
-    return {
-      ...options,
-      helpers: toLevelHelperRenderOptions(this.viewService.helpers, { hidden, hovered, selected }, this.listingPlaces),
-    };
-  }
-
-  /** Each listed level object's place in the listing by its key, which names its helper: built once a listing. */
-  @Computed()
-  public get listingPlaces(): ReadonlyMap<string, number> {
-    return toLevelListingPlaceMap(this.loadService.objects?.objects ?? []);
-  }
-
-  /** What of the level's world the toolbar lets play, less the spawned objects hidden one by one. */
-  @Computed()
-  public get worldToggles(): WorldToggles {
-    return toNativeWorldToggles(this.viewService.options, toLevelSpawnIndices(this.viewportService.hidden));
-  }
-
-  /**
-   * Stands the camera at a place, facing the way asked.
-   *
-   * @param goTo - Where, as the readout states it.
-   */
-  @BoundAction()
-  public goTo(goTo: ILevelGoTo): void {
-    this.stand(toLevelGoToViewpoint(goTo));
-  }
-
-  /**
-   * Says what of the open level is drawn under a point of the viewport, which is then what is selected. The scene shown
-   * let go meanwhile cancels it, as what it hit names something else now.
-   *
-   * @param request - Where, whether glass is passed by, and how what it picks changes the selection.
-   */
-  @LatestFlow()
-  public *pick(request: ILevelPickRequest): TFlow {
-    const viewport: Nullable<NativeViewport> = this.viewport;
-    const { point, isThrough, mode = ELevelSelectionMode.REPLACE } = request;
-
-    if (!viewport || !this.level) {
-      return;
-    }
-
-    const hit: Nullable<RenderLevelHit> = yield* call(viewport.pick({ x: point.x, y: point.y, isThrough }));
-
-    this.viewportService.notePicked(hit ? toLevelPick(hit, this.loadService.objects) : null, mode);
-  }
-
-  /**
-   * Notes the level object under a point of the viewport as hovered, picking at once with one hover pick in flight at a
-   * time: a point arriving meanwhile waits for it and is picked next, and a newer one drops the point waiting, so the
-   * pointer is answered as fast as a pick comes back and never queues the renderer's readbacks.
-   *
-   * @param point - Where, in css pixels from the viewport's top left corner; null for nothing hovered.
-   */
-  @LatestFlow()
-  public *hover(point: Nullable<IRenderViewPoint>): TFlow {
-    if (!point || !this.viewport || !this.level) {
-      this.viewportService.noteHovered(null);
-
-      return;
-    }
-
-    if (this.hovering) {
-      yield* call(this.hovering);
-    }
-
-    // The pick in flight may have outlived the viewport or the level it was asked of.
-    const viewport: Nullable<NativeViewport> = this.viewport;
-
-    if (!viewport || !this.level) {
-      return;
-    }
-
-    const picking: Promise<Nullable<RenderLevelHit>> = viewport.pick({ x: point.x, y: point.y, isThrough: false });
-
-    const settled: Promise<void> = picking
-      .then(
-        () => undefined,
-        () => undefined
-      )
-      .then(() => {
-        if (this.hovering === settled) {
-          this.hovering = null;
-        }
-      });
-
-    this.hovering = settled;
-
-    const hit: Nullable<RenderLevelHit> = yield* call(picking);
-    const pick: Nullable<TLevelPick> = hit ? toLevelPick(hit, this.loadService.objects) : null;
-
-    this.viewportService.noteHovered(pick?.kind === ELevelPick.OBJECT ? pick.object : null);
-  }
-
-  /**
-   * Focuses the view's lens on what is drawn under a point of the viewport, its depth of field turned on, and stops
-   * picking the focus; a click meeting nothing of the level leaves the focus as it was.
-   *
-   * @param point - Where, in css pixels from the viewport's top left corner.
-   * @param isThrough - Whether glass is passed by, focusing on what stands behind it.
-   */
-  @LatestFlow()
-  public *focusAt(point: IRenderViewPoint, isThrough: boolean): TFlow {
-    const viewport: Nullable<NativeViewport> = this.viewport;
-
-    this.viewportService.setFocusPicking(false);
-
-    if (!viewport || !this.level) {
-      return;
-    }
-
-    const hit: Nullable<RenderLevelHit> = yield* call(viewport.pick({ x: point.x, y: point.y, isThrough }));
-    const depth: Nullable<number> = hit?.depth ?? null;
-
-    if (depth !== null && depth > 0) {
-      const features: ILevelFeatureOptions = this.viewService.features;
-
-      this.viewService.setFeatures({
-        ...features,
-        camera: { ...features.camera, focusDistance: toLevelFocusDistance(depth), isDefocused: true },
-      });
-    }
-  }
-
-  /**
-   * @param object - A spawned object, by its index among the level's.
-   * @returns Its bounding sphere in renderer space, centre then radius; null until its model is drawn or with no
-   *   viewport attached.
-   */
-  public async locateSpawnObject(object: number): Promise<Nullable<[number, number, number, number]>> {
-    return this.viewport ? this.viewport.locateSpawnObject(object) : null;
-  }
-
-  /**
-   * @param path - The PNG file to write the viewport's next finished frame to, without its overlays, its helpers over
-   *   it where they are drawn and asked into screenshots.
-   * @returns Whether it was written, which it is not with no viewport attached; rejects for a screenshot that failed.
-   */
-  public async saveScreenshot(path: string): Promise<boolean> {
-    const { isShown, isScreenshotHelped } = this.viewService.helpers;
-
-    return this.viewport
-      ? this.viewport.ask(
-          "saveScreenshot",
-          async (id: RenderViewportId) => {
-            await levelsCommands.saveScreenshot({
-              path,
-              screenshot: { isHelped: isShown && isScreenshotHelped },
-              viewport: id,
-            });
-
-            return true;
-          },
-          false
-        )
-      : false;
-  }
-
-  /**
-   * @param capture - The level map asked for.
-   * @param path - The PNG file to write it to.
-   * @param job - The job it runs as, by its id, and where its progress is told.
-   * @returns How it ended, or null with no viewport attached; rejects for a capture that failed.
-   */
-  public async captureMap(
-    capture: RenderMapCapture,
-    path: string,
-    job: ILevelRenderJob
-  ): Promise<Nullable<CaptureOutcome>> {
-    return this.viewport
-      ? this.viewport.ask<Nullable<CaptureOutcome>>(
-          "captureMap",
-          (id: RenderViewportId) => levelsCommands.captureMap({ viewport: id, capture, path }, job.id, job.progress),
-          null
-        )
-      : null;
-  }
-
-  /**
-   * @param capture - The cubemap asked for, around the camera.
-   * @param path - The PNG file to write its cross to.
-   * @param job - The job it runs as, by its id, and where its progress is told.
-   * @returns How it ended, or null with no viewport attached; rejects for a capture that failed.
-   */
-  public async captureCube(
-    capture: RenderCubeCapture,
-    path: string,
-    job: ILevelRenderJob
-  ): Promise<Nullable<CaptureOutcome>> {
-    return this.viewport
-      ? this.viewport.ask<Nullable<CaptureOutcome>>(
-          "captureCube",
-          (id: RenderViewportId) => levelsCommands.captureCube({ viewport: id, capture, path }, job.id, job.progress),
-          null
-        )
-      : null;
-  }
-
-  /**
-   * Plays the level's weather on from a time of day, which is where its clock stands from then on.
-   *
-   * @param time - Seconds since midnight.
-   */
-  @BoundAction()
-  public seekWeather(time: number): void {
-    this.weatherService.seekTo(time);
-    this.viewport?.seekWeather(time);
-  }
-
-  /**
-   * @param name - The weather effect to play over the cycle from the clock's time, or null to end the one playing.
-   */
-  @BoundAction()
-  public playWeatherEffect(name: Nullable<string>): void {
-    this.viewport?.playWeatherEffect(name);
-  }
-
-  /** Plays a weather ambient effect near the camera at once, ending the one playing; none plays indoors. */
-  @BoundAction()
-  public playAmbientEffect(): void {
-    this.viewport?.playAmbientEffect();
-  }
-
   protected start(viewport: NativeViewport): Array<() => void> {
     return [
       this.loadService.followLevel(this.openLevel),
-      // What is picked stays as the level streams afresh: the parts read again find it anew (`relocatePick`).
+      // What is picked stays as the level streams afresh: the parts read again find it anew.
       this.loadService.followScene(this.shown.move),
-      reaction(() => this.viewService.cameraOptions, this.applyCamera),
-      reaction(
-        () => this.viewOptions,
-        (options: RenderViewOptions) => viewport.setViewOptions(options),
-        { equals: comparer.structural, fireImmediately: true }
-      ),
-      reaction(
-        () => this.worldToggles,
-        (toggles: WorldToggles) => viewport.setWorldToggles(toggles),
-        { equals: comparer.structural, fireImmediately: true }
-      ),
-      reaction(
-        (): ILevelPickParts => ({ objects: this.loadService.objects, surfaces: this.loadService.surfaces.value }),
-        this.relocatePick,
-        { equals: comparer.shallow }
-      ),
-      reaction(
-        () => this.viewportService.picked,
-        (picked: Nullable<TLevelPick>) => viewport.setSelection(toLevelPickSelection(picked)),
-        { fireImmediately: true }
-      ),
-      // Nothing is hovered while helpers are off, so none is lifted the moment they come back.
-      reaction(
-        () => this.viewService.helpers.isShown,
-        (isShown: boolean) => {
-          if (!isShown) {
-            void this.hover(null);
-          }
-        }
-      ),
-      // Keyed by the extent and the switches alone: the overlays themselves are long arrays.
-      reaction(
-        () => {
-          const level: Maybe<SelectedLevelDescription> = this.loadService.level.value?.selected.value;
-          const { isAxesVisible, isGridVisible, isSunMarked } = this.viewService.options;
-          const box: Nullable<ILevelBox> = level ? toLevelBox(level.bounds) : null;
-
-          return { box, isAxesVisible, isGridVisible, isSunMarked };
-        },
-        ({ box, ...options }) => viewport.setOverlays(toLevelFrameOverlays(box, options, this.config)),
-        { equals: comparer.structural, fireImmediately: true }
-      ),
-      ...this.watchWeather(viewport),
-    ];
-  }
-
-  /**
-   * The level's weather played by the viewport, and how it plays, as either changes.
-   *
-   * @param viewport - The viewport it plays in.
-   * @returns What stops watching.
-   */
-  private watchWeather(viewport: NativeViewport): Array<() => void> {
-    const { weatherService } = this;
-
-    return [
-      reaction(
-        () => weatherService.weather,
-        (play: Nullable<WorldWeatherPlay>, previous: Maybe<Nullable<WorldWeatherPlay>>) => {
-          viewport.playWeather(play ?? { kind: EWorldWeatherPlay.NONE }, weatherService.transition);
-
-          // The renderer's clock starts at noon: a level's first weather plays on from where its own clock stands.
-          if (play && !previous) {
-            viewport.seekWeather(weatherService.time);
-          }
-        },
-        { equals: comparer.structural, fireImmediately: true }
-      ),
-      reaction(
-        (): WorldWeatherControl => ({
-          ...weatherService.control,
-          // The keyframe set by hand stands its sun by its own angles.
-          isDynamicSun: weatherService.control.isDynamicSun && !weatherService.isManual,
-        }),
-        (control: WorldWeatherControl) => viewport.setWeatherControl(control),
-        { equals: comparer.structural, fireImmediately: true }
-      ),
+      ...this.camera.start(),
+      ...this.drawing.start(viewport),
+      ...this.picks.start(viewport),
+      ...this.weather.start(viewport),
     ];
   }
 
@@ -574,20 +144,12 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     };
   }
 
-  protected onClick({ point, isThrough, isToggling }: INativeViewportClick): void {
-    if (this.viewportService.isFocusPicking) {
-      void this.focusAt(point, isThrough);
-    } else {
-      void this.pick({
-        isThrough,
-        mode: isToggling ? ELevelSelectionMode.TOGGLE : ELevelSelectionMode.REPLACE,
-        point,
-      });
-    }
+  protected onClick(click: INativeViewportClick): void {
+    this.picks.click(click);
   }
 
   protected onHover(point: Nullable<IRenderViewPoint>): void {
-    void this.hover(this.viewService.helpers.isShown ? point : null);
+    this.picks.rest(point);
   }
 
   protected onDetached(): void {
@@ -597,7 +159,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
 
   protected release(): void {
     this.level = null;
-    this.viewpoint = null;
+    this.camera.release();
     this.shown.release();
   }
 
@@ -643,11 +205,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   @BoundAction()
   private leaveScene(): void {
     cancelFlow(this, "resident");
-    cancelFlow(this, "pick");
-    cancelFlow(this, "focusAt");
-    cancelFlow(this, "hover");
-    this.hovering = null;
-    this.viewportService.noteHovered(null);
+    this.picks.leave();
     this.resident.reset();
   }
 
@@ -663,7 +221,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       return;
     }
 
-    this.stand(toLevelStartViewpoint(level?.bounds ?? null, this.loadService.start.value));
+    this.camera.standAtStart();
     // Another level's surfaces and objects are numbered afresh, and its load starts from nothing read.
     this.viewportService.notePicked(null);
     this.viewportService.revealAll();
@@ -674,59 +232,5 @@ export class LevelRenderService extends NativeRenderSurfaceService {
         viewport.ask("showLevel", (id: RenderViewportId) => levelsCommands.showLevel(id, sessionId), null),
       this.shown.noteShown
     );
-  }
-
-  /**
-   * Keeps what is picked, selected and hidden across the open level's parts read anew, each found by what it is, or
-   * drops it with what it named.
-   *
-   * @param after - The parts as read now.
-   * @param before - The parts it was picked among.
-   */
-  @BoundAction()
-  private relocatePick(after: ILevelPickParts, before: ILevelPickParts): void {
-    const { hidden, picked, selected } = this.viewportService;
-    const relocated: Nullable<TLevelPick> = picked ? relocateLevelPick(picked, before, after) : null;
-
-    if (after.objects === before.objects) {
-      if (relocated !== picked) {
-        this.viewportService.notePickRelocated(relocated);
-      }
-
-      return;
-    }
-
-    this.viewportService.notePickRelocated(
-      relocated,
-      relocateLevelObjects(selected, before.objects, after.objects),
-      relocateLevelObjects(hidden, before.objects, after.objects)
-    );
-  }
-
-  /** The toolbar's speeds and lens, from the same place: the camera keeps where it has flown. */
-  @BoundAction()
-  private applyCamera(camera: ILevelCameraOptions): void {
-    const viewpoint: ILevelViewpoint =
-      this.viewpoint ?? toLevelStartViewpoint(this.level?.bounds ?? null, this.loadService.start.value);
-
-    this.viewport?.setCamera(this.toCamera(viewpoint, camera));
-  }
-
-  /**
-   * Stands the camera at a place, anew: the same place again moves nothing a description compares, and the camera has
-   * flown on since.
-   *
-   * @param viewpoint - Where it stands and what it looks at.
-   */
-  private stand(viewpoint: ILevelViewpoint): void {
-    const viewport: Nullable<NativeViewport> = this.viewport;
-
-    this.viewpoint = viewpoint;
-    viewport?.setCamera(this.toCamera(viewpoint, this.viewService.cameraOptions));
-    viewport?.commandCamera({ kind: EWorldCameraCommand.RESET });
-  }
-
-  private toCamera(viewpoint: ILevelViewpoint, options: ILevelCameraOptions): WorldCamera {
-    return toLevelCameraAt(viewpoint, options, this.config);
   }
 }

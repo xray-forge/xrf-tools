@@ -434,9 +434,9 @@ export class LevelViewerCaptureService {
   ): Promise<Nullable<CaptureOutcome>> {
     switch (request.mode) {
       case ELevelCaptureMode.MAP:
-        return this.renderService.captureMap(toRenderMapCapture(request.parameters), path, job);
+        return this.renderService.captures.captureMap(toRenderMapCapture(request.parameters), path, job);
       case ELevelCaptureMode.CUBEMAP:
-        return this.renderService.captureCube(toRenderCubeCapture(request.parameters), path, job);
+        return this.renderService.captures.captureCube(toRenderCubeCapture(request.parameters), path, job);
       default:
         return assertExhaustive(request);
     }
@@ -471,7 +471,7 @@ export class LevelViewerCaptureService {
     } catch (error: unknown) {
       // A game with no map weather is captured under its own at noon, its clock held there.
       this.log.warn("No map weather to capture under, the current one at noon instead:", error);
-      this.renderService.seekWeather(LEVEL_WEATHER_NOON);
+      this.renderService.weather.seek(LEVEL_WEATHER_NOON);
     }
   }
 
@@ -489,7 +489,7 @@ export class LevelViewerCaptureService {
     } catch (error: unknown) {
       this.fail("put the weather back", error);
     } finally {
-      this.renderService.seekWeather(weather.time);
+      this.renderService.weather.seek(weather.time);
     }
   }
 

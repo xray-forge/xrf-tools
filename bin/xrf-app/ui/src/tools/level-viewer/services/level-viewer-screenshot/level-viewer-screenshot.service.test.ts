@@ -42,7 +42,7 @@ function mockScreenshots(): ILevelViewContainerDescriptor & {
       raised.push(event.payload as INotificationPayload)
     );
   jest.spyOn(LevelViewerSnapshotService.prototype, "level", "get").mockReturnValue("levels/zaton");
-  jest.spyOn(descriptor.render, "saveScreenshot").mockResolvedValue(true);
+  jest.spyOn(descriptor.render.captures, "saveScreenshot").mockResolvedValue(true);
 
   return { ...descriptor, raised, screenshots: descriptor.container.get(LevelViewerScreenshotService) };
 }
@@ -185,7 +185,7 @@ describe("LevelViewerScreenshotService", () => {
 
     const first: Nullable<ILevelViewerScreenshot> = await flowResult(screenshots.take());
 
-    jest.mocked(render.saveScreenshot).mockResolvedValue(false);
+    jest.mocked(render.captures.saveScreenshot).mockResolvedValue(false);
 
     await expect(flowResult(screenshots.take())).resolves.toBeNull();
     expect(screenshots.shot.value).toBe(first);

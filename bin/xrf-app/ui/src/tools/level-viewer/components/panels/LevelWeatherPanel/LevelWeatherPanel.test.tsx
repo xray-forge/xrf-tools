@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it } from "@jest/globals";
+import { afterEach, describe, expect, it, jest } from "@jest/globals";
 import { act, RenderResult, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { Container, Injectable } from "@wirestate/core";
+import { Container } from "@wirestate/core";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { IpcCommandMocks, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 import { EXrayEngine } from "@xrf/ipc/types/xrf-engine-target";
@@ -19,6 +19,7 @@ import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-sour
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelLookService } from "@/core/level/services/level-look";
 import { LevelRenderService } from "@/core/level/services/level-render";
+import { LevelRenderWeather } from "@/core/level/services/level-render/level-render.service.weather";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
@@ -32,26 +33,20 @@ import { LevelWeatherPanel } from "./LevelWeatherPanel";
 /** What the panel asked the viewport playing the weather for, which no viewport is attached to hear. */
 const asked: Array<string> = [];
 
-@Injectable()
-class TestLevelRenderService extends LevelRenderService {
-  public override playWeatherEffect(name: Nullable<string>): void {
-    asked.push(`effect ${name}`);
-  }
-
-  public override playAmbientEffect(): void {
-    asked.push("ambient");
-  }
-}
-
 /** The services the panel reads, the viewport playing the weather stood in for. */
 function mockPanelContainer(): Container {
+  jest
+    .spyOn(LevelRenderWeather.prototype, "playEffect")
+    .mockImplementation((name: Nullable<string>) => void asked.push(`effect ${name}`));
+  jest.spyOn(LevelRenderWeather.prototype, "playAmbientEffect").mockImplementation(() => void asked.push("ambient"));
+
   return mockContainer([
     LevelLoadService,
     LevelLookService,
     LevelViewService,
     LevelViewportService,
     LevelWeatherService,
-    { token: LevelRenderService, type: "Instance", value: TestLevelRenderService },
+    LevelRenderService,
   ]);
 }
 
@@ -97,6 +92,7 @@ async function renderPanel(responses: IpcCommandMocks = {}): Promise<RenderResul
 
 afterEach(() => {
   asked.length = 0;
+  jest.restoreAllMocks();
   resetMockInvoke();
   clearLocalStorage();
 });

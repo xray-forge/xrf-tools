@@ -246,7 +246,7 @@ export class LevelViewerScreenshotService {
     // The view as it stands for the frame asked for next, before the camera moves on.
     const view: ILevelViewerSnapshot = this.snapshotService.describe(null);
 
-    if (!(await this.renderService.saveScreenshot(path))) {
+    if (!(await this.renderService.captures.saveScreenshot(path))) {
       throw new Error("The level viewer has no viewport attached");
     }
 

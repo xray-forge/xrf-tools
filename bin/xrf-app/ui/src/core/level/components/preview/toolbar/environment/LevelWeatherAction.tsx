@@ -99,13 +99,13 @@ export function LevelWeatherAction({
         <LevelWeatherEffectSelect
           effects={description?.effects ?? []}
           playing={report?.effect ?? null}
-          onPlay={renderService.playWeatherEffect}
+          onPlay={renderService.weather.playEffect}
         />
 
         <LevelWeatherClock
           time={time}
           isPlaying={isPlaying}
-          onSeek={renderService.seekWeather}
+          onSeek={renderService.weather.seek}
           onPlaying={weatherService.setPlaying}
         />
 

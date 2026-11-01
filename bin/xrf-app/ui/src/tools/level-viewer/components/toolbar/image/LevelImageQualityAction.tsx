@@ -83,10 +83,10 @@ export function LevelImageQualityAction({
   // Whether the scene holds linear light, which ray reconstruction needs.
   const isSceneLinear: boolean = isRenderSceneLinear(drawn);
   // Whether the frame is drawn smaller than the viewport, which sharpening applies to besides a temporal resolve.
-  const isUpscaled: boolean = renderService.isUpscaled;
+  const isUpscaled: boolean = renderService.drawing.isUpscaled;
   // What the GPU can do: FSR smooths in place of DLSS, and DLSS upscales alone, where it lacks them.
-  const dlss: RenderDlssAvailability = renderService.dlss;
-  const rayReconstruction: RenderDlssAvailability = renderService.rayReconstruction;
+  const dlss: RenderDlssAvailability = renderService.drawing.dlss;
+  const rayReconstruction: RenderDlssAvailability = renderService.drawing.rayReconstruction;
 
   // The settings' mode is the view's to narrow to none alone: it cannot smooth what the settings do not.
   const isAvailable: boolean = settings.antialiasing !== ERenderAntialiasing.NONE;

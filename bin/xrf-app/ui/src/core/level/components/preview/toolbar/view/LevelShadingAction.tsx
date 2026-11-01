@@ -42,8 +42,8 @@ export function LevelShadingAction({
   const { set: setTerrain } = useLevelFeatureOverride("terrain");
 
   const options: ILevelViewOptions = viewService.options;
-  const shading: ELevelShading = renderService.shading;
-  const shadings: ReadonlyArray<ILevelShadingChoice> = getLevelShadings(renderService.antialiasing);
+  const shading: ELevelShading = renderService.drawing.shading;
+  const shadings: ReadonlyArray<ILevelShadingChoice> = getLevelShadings(renderService.drawing.antialiasing);
   const parallax: TRenderParallaxSettings = toLevelModeFeature("parallax", settings, features);
   const { isWireframe, isBumped, isWallmarked } = options;
   const isParallaxAvailable: boolean = parallax.isSteep || parallax.mode === ERenderParallaxMode.ENHANCED;

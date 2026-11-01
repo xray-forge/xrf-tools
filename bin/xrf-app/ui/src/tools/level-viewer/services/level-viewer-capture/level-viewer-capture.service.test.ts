@@ -122,7 +122,7 @@ describe("LevelViewerCaptureService", () => {
     const captured: Array<RenderMapCapture> = [];
 
     view.setOptions({ ...DEFAULT_LEVEL_VIEW_OPTIONS, isSpawnedProps: true });
-    jest.spyOn(render, "captureMap").mockImplementation(async (capture: RenderMapCapture) => {
+    jest.spyOn(render.captures, "captureMap").mockImplementation(async (capture: RenderMapCapture) => {
       shownDuring.push(view.options.isSpawnedProps);
       captured.push(capture);
 
@@ -165,7 +165,7 @@ describe("LevelViewerCaptureService", () => {
 
     mockFlow(weather, "cutTo", () => Promise.reject(new Error("no cycle 'map'")));
     mockFlow(weather, "release");
-    jest.spyOn(render, "captureMap").mockImplementation(async () => {
+    jest.spyOn(render.captures, "captureMap").mockImplementation(async () => {
       timeDuring.push(weather.time);
 
       return { outcome: "completed", width: 2048, height: 2048 };
@@ -187,7 +187,7 @@ describe("LevelViewerCaptureService", () => {
 
     view.setOptions({ ...DEFAULT_LEVEL_VIEW_OPTIONS, isSpawnedProps: true });
     mockFlow(weather, "cutTo");
-    jest.spyOn(render, "captureMap").mockRejectedValue(new Error("the device was lost"));
+    jest.spyOn(render.captures, "captureMap").mockRejectedValue(new Error("the device was lost"));
 
     service.open();
     await service.capture();
@@ -210,7 +210,7 @@ describe("LevelViewerCaptureService", () => {
 
     mockFlow(weather, "cutTo");
     mockFlow(weather, "release");
-    jest.spyOn(render, "captureMap").mockResolvedValue({ outcome: "cancelled", width: 2048, height: 2048 });
+    jest.spyOn(render.captures, "captureMap").mockResolvedValue({ outcome: "cancelled", width: 2048, height: 2048 });
 
     service.open();
     await service.capture();
@@ -226,7 +226,7 @@ describe("LevelViewerCaptureService", () => {
     const pausedDuring: Array<boolean> = [];
     const captured: Array<RenderCubeCapture> = [];
 
-    jest.spyOn(render, "captureCube").mockImplementation(async (capture: RenderCubeCapture) => {
+    jest.spyOn(render.captures, "captureCube").mockImplementation(async (capture: RenderCubeCapture) => {
       pausedDuring.push(weather.control.isPaused);
       captured.push(capture);
 

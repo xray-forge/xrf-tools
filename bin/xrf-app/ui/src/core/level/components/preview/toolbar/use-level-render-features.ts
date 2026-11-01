@@ -20,7 +20,7 @@ export interface ILevelRenderFeatures {
   features: ILevelFeatureOptions;
   /**
    * Every feature as the view draws it with every toolbar toggle on: its own values over the settings', a dev light
-   * level drawn as the authored one outside dev mode (`LevelRenderService.drawnFeatures`).
+   * level drawn as the authored one outside dev mode (`LevelRenderDrawing.features`).
    */
   drawn: IRenderFeatureSettings;
   /** What the view resolves its frame at: its own resolution and scale over the settings'. */
@@ -39,7 +39,7 @@ export function useLevelRenderFeatures(): ILevelRenderFeatures {
   const features: ILevelFeatureOptions = viewService.features;
   const resolution: ERenderResolution = renderSettingsService.renderResolution;
   const scale: number = renderSettingsService.renderOutputScale;
-  const drawn: IRenderFeatureSettings = renderService.drawnFeatures;
+  const drawn: IRenderFeatureSettings = renderService.drawing.features;
   const output: Required<TLevelOutputOptions> = useMemo(
     () => toLevelOutput(features.output, resolution, scale),
     [features.output, resolution, scale]

@@ -62,7 +62,7 @@ export function LevelOcclusionAction({
   const hemiStrength: number = viewService.hemiStrength;
   // The indirect light as the view draws it, which the occlusion's search gathers.
   const indirectLight: TRenderIndirectLightSettings = toLevelModeFeature("indirectLight", settings, features);
-  const isTraceable: boolean = renderService.isTraceable;
+  const isTraceable: boolean = renderService.drawing.isTraceable;
   const occlusion: TRenderAmbientOcclusionSettings = state.value;
   const vbao: TRenderAmbientOcclusionVbaoSettings = occlusion.vbao;
   const isScreen: boolean = options.isOccluded && state.isAvailable;

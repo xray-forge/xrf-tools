@@ -43,9 +43,9 @@ export function LevelReflectionsAction({
   const water: ILevelFeature<"water"> = useLevelFeature("water");
 
   const value: TRenderReflectionSettings = toLevelModeFeature("reflections", settings, features);
-  const isTraceable: boolean = renderService.isTraceable;
+  const isTraceable: boolean = renderService.drawing.isTraceable;
   // Under ray reconstruction the surfaces trace every pixel every frame, at the frame's size.
-  const isRayReconstructed: boolean = renderService.isRayReconstructed;
+  const isRayReconstructed: boolean = renderService.drawing.isRayReconstructed;
   const isSurfaces: boolean = value.mode === ERenderReflectionMode.ENHANCED;
   const isWaterEnhanced: boolean = water.state.value.mode === ERenderWaterMode.ENHANCED;
   const isWater: boolean = isWaterEnhanced && value.isWaterReflected;

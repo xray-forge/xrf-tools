@@ -28,7 +28,9 @@ function renderDialog(): TLevelViewRenderResult & { service: LevelViewerCaptureS
 
   mockFlow(rendered.weather, "cutTo");
   mockFlow(rendered.weather, "release");
-  jest.spyOn(rendered.render, "captureMap").mockResolvedValue({ outcome: "completed", width: 2048, height: 2048 });
+  jest
+    .spyOn(rendered.render.captures, "captureMap")
+    .mockResolvedValue({ outcome: "completed", width: 2048, height: 2048 });
 
   return { ...rendered, service: rendered.container.get(LevelViewerCaptureService) };
 }

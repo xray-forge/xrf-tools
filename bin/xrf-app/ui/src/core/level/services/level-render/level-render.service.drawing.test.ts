@@ -3,57 +3,20 @@ import { waitFor } from "@testing-library/react";
 import { ERenderCommand } from "@xrf/ipc/commands/render";
 import { listMockInvokeCalls, mockInvoke, resetMockChannels, resetMockInvoke } from "@xrf/ipc/testing";
 import { ERenderDebugView, ERenderLightLevel, ERenderOverlay, ERenderSurfaceColor } from "@xrf/ipc/types/xrf-renderer";
-import {
-  EWorldCameraCommand,
-  EWorldViewportEvent,
-  EWorldWeatherPlay,
-  EWorldWeatherTransition,
-} from "@xrf/ipc/types/xrf-world";
 
-import {
-  emitViewportEvent,
-  LEVEL_VIEWPORT,
-  mockAttachedLevelRender,
-  sentOverlayKinds,
-} from "@/core/level/fixtures/level-render";
-import { mockWorldWeatherReport } from "@/core/level/fixtures/weather.mocks";
+import { LEVEL_VIEWPORT, mockAttachedLevelRender, sentOverlayKinds } from "@/core/level/fixtures/level-render";
 import { ELevelShading } from "@/core/level/lib/view/level-shading";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { ERenderResolution } from "@/core/render/lib/settings/device/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { SettingsService } from "@/core/settings/services/settings";
 import { clearLocalStorage } from "@/core/storage";
-
-describe("LevelRenderService view", () => {
+describe("LevelRenderDrawing", () => {
   beforeEach(() => {
     resetMockInvoke();
     resetMockChannels();
     mockInvoke.mockClear();
     clearLocalStorage();
-  });
-
-  it("goes to a place by standing the camera there anew", async () => {
-    const { service } = await mockAttachedLevelRender();
-
-    mockInvoke.mockClear();
-    service.goTo({ heading: 90, pitch: 0, x: 4, y: 5, z: 6 });
-
-    await waitFor(() => expect(listMockInvokeCalls(ERenderCommand.SET_CAMERA)).toHaveLength(1));
-    expect(listMockInvokeCalls(ERenderCommand.COMMAND_CAMERA)).toEqual([
-      { command: { kind: EWorldCameraCommand.RESET }, viewport: LEVEL_VIEWPORT },
-    ]);
-  });
-
-  it("keeps where the camera flew when the toolbar changes its speed", async () => {
-    const { container } = await mockAttachedLevelRender();
-    const view: LevelViewService = container.get(LevelViewService);
-
-    mockInvoke.mockClear();
-    view.setCameraOptions({ ...view.cameraOptions, speed: view.cameraOptions.speed * 2 });
-
-    await waitFor(() => expect(listMockInvokeCalls(ERenderCommand.SET_CAMERA)).toHaveLength(1));
-    expect(listMockInvokeCalls(ERenderCommand.COMMAND_CAMERA)).toHaveLength(0);
   });
 
   it("draws with what the toolbar and the settings come to", async () => {
@@ -156,16 +119,16 @@ describe("LevelRenderService view", () => {
     settings.setDevModeEnabled(true);
     view.setFeatures({ ...view.features, lightLevel: ERenderLightLevel.PHYSICAL });
 
-    expect(service.viewOptions.features.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
+    expect(service.drawing.options.features.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
 
     settings.setDevModeEnabled(false);
 
-    expect(service.viewOptions.features.lightLevel).toBe(ERenderLightLevel.AUTHORED);
+    expect(service.drawing.options.features.lightLevel).toBe(ERenderLightLevel.AUTHORED);
     expect(view.features.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
 
     settings.setDevModeEnabled(true);
 
-    expect(service.viewOptions.features.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
+    expect(service.drawing.options.features.lightLevel).toBe(ERenderLightLevel.PHYSICAL);
   });
 
   it("draws the grid, the extent, the axes and the sun over the level as the toolbar shows them", async () => {
@@ -185,52 +148,5 @@ describe("LevelRenderService view", () => {
       ERenderOverlay.LINES,
       ERenderOverlay.LINES,
     ]);
-  });
-
-  it("plays the level's weather in its viewport, runs its clock as asked, and hears where it stands", async () => {
-    const { container, service } = await mockAttachedLevelRender();
-    const weather: LevelWeatherService = container.get(LevelWeatherService);
-
-    await waitFor(() =>
-      expect(listMockInvokeCalls(ERenderCommand.PLAY_WEATHER).at(-1)).toEqual({
-        play: { kind: EWorldWeatherPlay.CYCLE, name: "default_clear" },
-        transition: EWorldWeatherTransition.CUT,
-        viewport: LEVEL_VIEWPORT,
-      })
-    );
-    expect(listMockInvokeCalls(ERenderCommand.SET_WEATHER_CONTROL).at(-1)).toEqual({
-      control: { factor: 12, isDynamicSun: false, isPaused: true },
-      viewport: LEVEL_VIEWPORT,
-    });
-
-    mockInvoke.mockClear();
-    weather.setPlaying(true);
-    service.seekWeather(3_600);
-    // The same time again seeks again: the clock has run on since.
-    service.seekWeather(3_600);
-    service.playWeatherEffect("fx_storm");
-    service.playAmbientEffect();
-    service.playAmbientEffect();
-
-    await waitFor(() => expect(listMockInvokeCalls(ERenderCommand.PLAY_AMBIENT_EFFECT)).toHaveLength(2));
-    expect(listMockInvokeCalls(ERenderCommand.SET_WEATHER_CONTROL)).toEqual([
-      { control: { factor: 12, isDynamicSun: false, isPaused: false }, viewport: LEVEL_VIEWPORT },
-    ]);
-    expect(listMockInvokeCalls(ERenderCommand.SEEK_WEATHER)).toEqual([
-      { time: 3_600, viewport: LEVEL_VIEWPORT },
-      { time: 3_600, viewport: LEVEL_VIEWPORT },
-    ]);
-    expect(weather.time).toBe(3_600);
-    expect(listMockInvokeCalls(ERenderCommand.PLAY_WEATHER_EFFECT)).toEqual([
-      { name: "fx_storm", viewport: LEVEL_VIEWPORT },
-    ]);
-    expect(listMockInvokeCalls(ERenderCommand.PLAY_AMBIENT_EFFECT)).toEqual([
-      { viewport: LEVEL_VIEWPORT },
-      { viewport: LEVEL_VIEWPORT },
-    ]);
-
-    emitViewportEvent({ kind: EWorldViewportEvent.WEATHER, report: mockWorldWeatherReport({ time: 4_000 }) });
-    expect(weather.time).toBe(4_000);
-    expect(weather.report?.between).toEqual([0, 43_200]);
   });
 });

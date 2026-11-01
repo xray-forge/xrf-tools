@@ -69,7 +69,7 @@ export function LevelWeatherPanel({
         effect={isWeather ? (weatherService.report?.effect ?? null) : null}
         onSource={weatherService.setSource}
         onCycle={onSelectCycle}
-        onEffect={renderService.playWeatherEffect}
+        onEffect={renderService.weather.playEffect}
       />
 
       {description ? (
@@ -81,7 +81,7 @@ export function LevelWeatherPanel({
             control={weatherService.control}
             isSunTabled={description.engine === EXrayEngine.EXTENDED && description.sunTable !== null}
             isManual={isManual}
-            onSeek={renderService.seekWeather}
+            onSeek={renderService.weather.seek}
             onPlaying={weatherService.setPlaying}
             onFactor={weatherService.setFactor}
             onDynamicSun={weatherService.setDynamicSun}
@@ -95,7 +95,7 @@ export function LevelWeatherPanel({
           <LevelWeatherAmbientSection
             ambient={isWeather ? (weatherService.report?.ambient ?? null) : null}
             isPlayed={viewService.options.isAmbientEffectPlayed}
-            onPlay={renderService.playAmbientEffect}
+            onPlay={renderService.weather.playAmbientEffect}
           />
 
           {cycle ? <LevelWeatherFindingsSection file={cycle.file} findings={cycle.findings} /> : null}

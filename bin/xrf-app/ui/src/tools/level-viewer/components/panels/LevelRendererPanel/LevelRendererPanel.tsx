@@ -50,7 +50,7 @@ export function LevelRendererPanel({
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Renderer"}>
       <LevelRendererResidentSection load={viewportService.load} memory={frame.memory} />
       <LevelRendererMemorySection memory={frame.memory} />
-      <LevelRendererAppliedSection applied={renderService.applied} requested={renderService.viewOptions} />
+      <LevelRendererAppliedSection applied={renderService.applied} requested={renderService.drawing.options} />
 
       <LevelRendererFrameSection frame={frame} />
       <LevelRendererGraphSection

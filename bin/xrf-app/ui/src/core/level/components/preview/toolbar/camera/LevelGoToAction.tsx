@@ -38,7 +38,7 @@ export function LevelGoToAction({
       icon={<MyLocationIcon />}
       isDisabled={isDisabled}
     >
-      <LevelGoToForm readCamera={readCamera} onGoTo={renderService.goTo} />
+      <LevelGoToForm readCamera={readCamera} onGoTo={renderService.camera.goTo} />
     </EditorPopoverAction>
   );
 }

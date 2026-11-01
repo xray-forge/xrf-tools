@@ -81,7 +81,7 @@ export class LevelViewerObjectsService {
       const index: Nullable<number> = getLevelSpawnIndex(object.id);
       const drawn: Nullable<[number, number, number, number]> =
         index !== null && getLevelObjectKind(object.kind).isDrawn
-          ? yield* call(this.renderService.locateSpawnObject(index))
+          ? yield* call(this.renderService.picks.locateSpawnObject(index))
           : null;
 
       spheres.push(toLevelObjectSphere(object, drawn));
@@ -94,7 +94,7 @@ export class LevelViewerObjectsService {
       return;
     }
 
-    this.renderService.goTo(
+    this.renderService.camera.goTo(
       toLevelFramedGoTo(this.viewportService.camera, sphere, this.viewService.cameraOptions.fieldOfView)
     );
   }

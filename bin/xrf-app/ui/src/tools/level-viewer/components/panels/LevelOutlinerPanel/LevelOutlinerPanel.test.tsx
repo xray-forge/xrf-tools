@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from "@jest/globals";
+import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { act, RenderResult, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
-import { Container, EventBus, Injectable } from "@wirestate/core";
+import { Container, EventBus } from "@wirestate/core";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { SESSION_CHANGE_EVENT } from "@xrf/ipc/session";
 import { mockIpcCommands } from "@xrf/ipc/testing";
@@ -28,6 +28,8 @@ import { ELevelPick, TLevelObjectPick } from "@/core/level/lib/pick/level-pick";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelLookService } from "@/core/level/services/level-look";
 import { LevelRenderService } from "@/core/level/services/level-render";
+import { LevelRenderCamera } from "@/core/level/services/level-render/level-render.service.camera";
+import { LevelRenderPicks } from "@/core/level/services/level-render/level-render.service.picks";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
@@ -59,18 +61,6 @@ const OBJECTS: LevelObjectsDescription = {
 };
 
 const sent: Array<ILevelGoTo> = [];
-
-@Injectable()
-class TestLevelRenderService extends LevelRenderService {
-  public override goTo(goTo: ILevelGoTo): void {
-    sent.push(goTo);
-  }
-
-  // The sphere the renderer holds for the crate's model, a metre and a half up from where it stands.
-  public override async locateSpawnObject(): Promise<[number, number, number, number]> {
-    return [5, 1.5, 8, 0.75];
-  }
-}
 
 /** Lets the listing, started by the open, land. */
 async function settle(): Promise<void> {
@@ -104,7 +94,7 @@ async function renderPanel(
 
   const container: Container = mockContainer([
     LevelLoadService,
-    { token: LevelRenderService, type: "Instance", value: TestLevelRenderService },
+    LevelRenderService,
     LevelViewService,
     LevelViewportService,
     LevelWeatherService,
@@ -143,6 +133,13 @@ async function chooseFirstCrate(view: RenderResult): Promise<void> {
 describe("LevelOutlinerPanel", () => {
   beforeEach(() => {
     sent.length = 0;
+    jest.spyOn(LevelRenderCamera.prototype, "goTo").mockImplementation((goTo: ILevelGoTo) => void sent.push(goTo));
+    // The sphere the renderer holds for the crate's model, a metre and a half up from where it stands.
+    jest.spyOn(LevelRenderPicks.prototype, "locateSpawnObject").mockResolvedValue([5, 1.5, 8, 0.75]);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("lists each family of kinds the level holds, counting what it holds", async () => {

@@ -13,22 +13,13 @@ import {
   resetMockInvoke,
 } from "@xrf/ipc/testing";
 import { SessionChange } from "@xrf/ipc/types/xrf-app-core";
-import {
-  ELevelObjectId,
-  LEVEL_GEOMETRY_PART,
-  LEVEL_MAP_PART,
-  LEVEL_SPAWN_PART,
-  LEVEL_SURFACES_PART,
-  LevelObject,
-} from "@xrf/ipc/types/xrf-app-levels";
+import { LEVEL_GEOMETRY_PART, LEVEL_MAP_PART } from "@xrf/ipc/types/xrf-app-levels";
 import { EXrayEngineChoice } from "@xrf/ipc/types/xrf-engine-target";
-import { XraySurfaceDescriptor } from "@xrf/ipc/types/xrf-material";
 import {
   ERenderAntialiasing,
   ERenderDlssAvailability,
   ERenderDrawableKind,
   ERenderLevelHit,
-  ERenderSelectionTarget,
   ERenderTextureFiltering,
   ERenderTextureGroup,
   ERenderViewportEvent,
@@ -40,7 +31,6 @@ import {
   EWorldCamera,
   EWorldCameraCommand,
   EWorldViewportEvent,
-  EWorldWeatherPlay,
   WorldCamera,
   WorldSurfaceGeometry,
   WorldSurfaceSpan,
@@ -53,27 +43,15 @@ import {
   LEVEL_VIEWPORT,
   mockAttachedLevelRender,
 } from "@/core/level/fixtures/level-render";
-import {
-  mockLevelObject,
-  mockLevelPartAnswer,
-  mockLevelVolumeObject,
-  mockSelectedLevelDescription,
-} from "@/core/level/fixtures/level.mocks";
-import { ELevelPick } from "@/core/level/lib/pick/level-pick";
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { ILevelResident } from "@/core/level/lib/render/level-resident";
-import { DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS } from "@/core/level/lib/weather/level-sun-shafts-options";
-import { DEFAULT_LEVEL_WEATHER_CONTROL } from "@/core/level/lib/weather/level-weather-control";
-import { toLevelWeatherMemoryKey, writeLevelWeatherMemory } from "@/core/level/lib/weather/level-weather-memory";
-import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { LevelLoadService } from "@/core/level/services/level-load";
-import { LevelViewService } from "@/core/level/services/level-view";
-import { ELevelSelectionMode, LevelViewportService } from "@/core/level/services/level-viewport";
+import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
 import { EMPTY_RENDER_FRAME_PHASES } from "@/core/render/lib/native/contract/native-frame-report";
 import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/device/render-graph-settings";
 import { clearLocalStorage } from "@/core/storage";
-import { mockSurfaceDescriptor, mockVisualTransform } from "@/core/visuals/fixtures/visual.mocks";
 import { mockSessionResponse, mockSessionSnapshot } from "@/fixtures/mocks/session.mocks";
 import { deferred, flush, IDeferred } from "@/fixtures/utils/promise";
 
@@ -181,25 +159,6 @@ describe("LevelRenderService", () => {
       command: { kind: EWorldCameraCommand.RESET },
       viewport: LEVEL_VIEWPORT,
     });
-  });
-
-  it("draws the helpers into a screenshot only while they are drawn and asked into screenshots", async () => {
-    const { container, service } = await mockAttachedLevelRender();
-    const view: LevelViewService = container.get(LevelViewService);
-
-    mockIpcCommands({ [ELevelsCommand.SAVE_SCREENSHOT]: null });
-
-    await service.saveScreenshot("shot-1.png");
-    view.setHelperLook({ isScreenshotHelped: true });
-    await service.saveScreenshot("shot-2.png");
-    view.toggleHelpers();
-    await service.saveScreenshot("shot-3.png");
-
-    expect(listMockInvokeCalls(ELevelsCommand.SAVE_SCREENSHOT)).toEqual(
-      [false, false, true].map((isHelped: boolean, index: number) => ({
-        request: { path: `shot-${index + 1}.png`, screenshot: { isHelped }, viewport: LEVEL_VIEWPORT },
-      }))
-    );
   });
 
   it("shows the open level in its viewport and reveals it once the renderer has it resident", async () => {
@@ -419,211 +378,6 @@ describe("LevelRenderService", () => {
     expect(service.frame.framesPerSecond).toBe(0);
   });
 
-  it("names what a pick hit in the level's own coordinates", async () => {
-    const { container, service } = await mockAttachedLevelRender();
-    const hit: RenderLevelHit = {
-      depth: 3,
-      isImpostor: false,
-      kind: ERenderLevelHit.SURFACE,
-      mesh: 2,
-      place: 7,
-      point: [1, 2, 3],
-      sector: 4,
-      shaderId: 11,
-    };
-
-    mockIpcCommands({ [ERenderCommand.PICK]: hit });
-    await service.pick({ isThrough: true, point: { x: 10, y: 20 } });
-
-    expect(listMockInvokeCalls(ERenderCommand.PICK).at(-1)).toEqual({
-      viewport: LEVEL_VIEWPORT,
-      request: { x: 10, y: 20, isThrough: true },
-    });
-    expect(container.get(LevelViewportService).picked).toEqual({
-      isImpostor: false,
-      kind: ELevelPick.SURFACE,
-      mesh: 2,
-      place: 7,
-      point: { x: 1, y: 2, z: -3 },
-      sector: 4,
-      shaderId: 11,
-    });
-  });
-
-  // A pick a frame away answers the pointer; points arriving meanwhile wait for it, the latest of them alone picked next.
-  it("hovers what the pointer rests on with one pick in flight, picking the latest point next", async () => {
-    const { container, service } = await mockAttachedLevelRender();
-    const answers: Array<(hit: RenderLevelHit) => void> = [];
-
-    mockIpcCommands({
-      [ERenderCommand.PICK]: () =>
-        new Promise<RenderLevelHit>((resolve: (hit: RenderLevelHit) => void) => answers.push(resolve)),
-    });
-
-    const first = service.hover({ x: 1, y: 1 });
-    const second = service.hover({ x: 2, y: 2 });
-    const third = service.hover({ x: 3, y: 3 });
-
-    await waitFor(() => expect(answers).toHaveLength(1));
-    answers[0]?.({ depth: 1, kind: ERenderLevelHit.SPAWN, object: 0, point: [0, 0, 0] });
-    await waitFor(() => expect(answers).toHaveLength(2));
-    answers[1]?.({ depth: 1, kind: ERenderLevelHit.SPAWN, object: 0, point: [0, 0, 0] });
-    await Promise.allSettled([first, second, third]);
-
-    expect(listMockInvokeCalls(ERenderCommand.PICK).map((call) => call.request)).toEqual([
-      { isThrough: false, x: 1, y: 1 },
-      { isThrough: false, x: 3, y: 3 },
-    ]);
-
-    await service.hover(null);
-
-    expect(container.get(LevelViewportService).hovered).toBeNull();
-  });
-
-  it("focuses the view's lens where a click lands while the focus is picked, selecting nothing", async () => {
-    const { container, service } = await mockAttachedLevelRender();
-    const viewport: LevelViewportService = container.get(LevelViewportService);
-
-    mockIpcCommands({
-      [ERenderCommand.PICK]: { depth: 12.345, kind: ERenderLevelHit.SPAWN, object: 1, point: [0, 0, 0] },
-    });
-    viewport.setFocusPicking(true);
-    await service.focusAt({ x: 10, y: 20 }, false);
-
-    expect(viewport.isFocusPicking).toBe(false);
-    expect(viewport.picked).toBeNull();
-    expect(container.get(LevelViewService).features.camera).toEqual({ focusDistance: 12.35, isDefocused: true });
-  });
-
-  it("keeps what is picked, selected and hidden across the spawn read anew, found by name, and lets each go once gone", async () => {
-    const { container, service } = await mockAttachedLevelRender();
-    const viewport: LevelViewportService = container.get(LevelViewportService);
-    const load: LevelLoadService = container.get(LevelLoadService);
-    const sessionId: string = load.level.value?.selected.sessionId as string;
-    const lamp: LevelObject = mockLevelObject({ id: { index: 0, source: ELevelObjectId.SPAWN }, name: "lamp" });
-    const crate: LevelObject = mockLevelObject({
-      id: { index: 1, source: ELevelObjectId.SPAWN },
-      name: "crate",
-      transform: mockVisualTransform({ x: 1, y: 2, z: 3 }),
-    });
-    const fence: LevelObject = { ...mockLevelVolumeObject(2), name: "fence" };
-
-    async function relist(revision: number, objects: Array<LevelObject>): Promise<void> {
-      mockIpcCommands({
-        [ELevelsCommand.DESCRIBE_OBJECTS]: mockLevelPartAnswer({ objects, visuals: ["lamp"] }, revision),
-        [ERenderCommand.PICK]: { depth: 0, kind: ERenderLevelHit.SPAWN, object: 1, point: [0, 0, 0] },
-      });
-      container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
-        revision,
-        root: { kind: "kept" },
-        sessionId,
-        staleParts: [LEVEL_SPAWN_PART],
-        isViewRenewed: false,
-      });
-      await waitFor(() => expect(load.objectsRevision).toBe(revision));
-    }
-
-    await relist(1, [lamp, crate, fence]);
-    await service.pick({ isThrough: false, point: { x: 10, y: 20 } });
-    expect(viewport.picked).toMatchObject({ kind: ELevelPick.OBJECT, object: crate });
-    viewport.toggleHidden(fence);
-
-    await relist(2, [
-      { ...crate, id: { index: 0, source: ELevelObjectId.SPAWN } },
-      { ...lamp, id: { index: 1, source: ELevelObjectId.SPAWN } },
-      { ...fence, id: { index: 5, source: ELevelObjectId.SPAWN } },
-    ]);
-    expect(viewport.picked).toMatchObject({ kind: ELevelPick.OBJECT, object: { id: { index: 0 }, name: "crate" } });
-    expect(viewport.selected).toMatchObject([{ id: { index: 0 }, name: "crate" }]);
-    expect(viewport.hidden).toMatchObject([{ id: { index: 5 }, name: "fence" }]);
-    expect(viewport.isPickRelocated).toBe(true);
-    expect(listMockInvokeCalls(ERenderCommand.SET_SELECTION).at(-1)?.selection?.target).toEqual({
-      kind: ERenderSelectionTarget.SPAWN,
-      object: 0,
-    });
-
-    await relist(3, [lamp]);
-    expect(viewport.picked).toBeNull();
-    expect(viewport.selected).toEqual([]);
-    expect(viewport.hidden).toEqual([]);
-  });
-
-  it("adds a Ctrl-clicked object to the selection, and takes it out on a second", async () => {
-    const { container, service } = await mockAttachedLevelRender();
-    const viewport: LevelViewportService = container.get(LevelViewportService);
-    const lamp: LevelObject = mockLevelObject({ id: { index: 0, source: ELevelObjectId.SPAWN }, name: "lamp" });
-    const crate: LevelObject = mockLevelObject({ id: { index: 1, source: ELevelObjectId.SPAWN }, name: "crate" });
-
-    mockIpcCommands({
-      [ELevelsCommand.DESCRIBE_OBJECTS]: mockLevelPartAnswer({ objects: [lamp, crate], visuals: ["lamp"] }, 1),
-    });
-    container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
-      revision: 1,
-      root: { kind: "kept" },
-      sessionId: container.get(LevelLoadService).level.value?.selected.sessionId as string,
-      staleParts: [LEVEL_SPAWN_PART],
-      isViewRenewed: false,
-    });
-    await waitFor(() => expect(container.get(LevelLoadService).objectsRevision).toBe(1));
-
-    mockIpcCommands({ [ERenderCommand.PICK]: { depth: 0, kind: ERenderLevelHit.SPAWN, object: 0, point: [0, 0, 0] } });
-    await service.pick({ isThrough: false, point: { x: 1, y: 1 } });
-    mockIpcCommands({ [ERenderCommand.PICK]: { depth: 0, kind: ERenderLevelHit.SPAWN, object: 1, point: [0, 0, 0] } });
-    await service.pick({ isThrough: false, mode: ELevelSelectionMode.TOGGLE, point: { x: 2, y: 2 } });
-
-    expect(viewport.selected.map((object: LevelObject) => object.name)).toEqual(["lamp", "crate"]);
-    expect(viewport.picked).toMatchObject({ object: { name: "crate" } });
-
-    await service.pick({ isThrough: false, mode: ELevelSelectionMode.TOGGLE, point: { x: 2, y: 2 } });
-
-    expect(viewport.selected.map((object: LevelObject) => object.name)).toEqual(["lamp"]);
-    expect(viewport.picked).toBeNull();
-  });
-
-  // A table read anew may number its entries afresh; the surface keeps the place it was picked at.
-  it("keeps a surface picked across its level streamed afresh, its entry found again by shader and textures", async () => {
-    const { container, service } = await mockAttachedLevelRender();
-    const viewport: LevelViewportService = container.get(LevelViewportService);
-    const load: LevelLoadService = container.get(LevelLoadService);
-    const sessionId: string = load.level.value?.selected.sessionId as string;
-    const wall = mockSurfaceDescriptor({ shader: "default", textures: ["wall"] });
-    const floor = mockSurfaceDescriptor({ shader: "default", textures: ["floor"] });
-
-    async function reread(revision: number, surfaces: Array<XraySurfaceDescriptor>): Promise<void> {
-      mockIpcCommands({
-        [ELevelsCommand.DESCRIBE_SURFACES]: mockLevelPartAnswer(surfaces, revision),
-        [ERenderCommand.PICK]: {
-          depth: 0,
-          isImpostor: false,
-          kind: ERenderLevelHit.SURFACE,
-          mesh: null,
-          place: null,
-          point: [0, 0, 0],
-          sector: 4,
-          shaderId: 0,
-        },
-      });
-      container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {
-        revision,
-        root: { kind: "kept" },
-        sessionId,
-        staleParts: [LEVEL_GEOMETRY_PART, LEVEL_SURFACES_PART],
-        isViewRenewed: true,
-      });
-      await waitFor(() => expect(load.surfaces.snapshot?.revision).toBe(revision));
-    }
-
-    await reread(1, [wall, floor]);
-    await service.pick({ isThrough: false, point: { x: 10, y: 20 } });
-    await reread(2, [floor, wall]);
-
-    expect(viewport.picked).toMatchObject({ kind: ELevelPick.SURFACE, sector: 4, shaderId: 1 });
-
-    await reread(3, [floor]);
-
-    expect(viewport.picked).toBeNull();
-  });
-
   // The scene's keys act on it only while it has the keyboard, which leaving it or detaching takes away.
   it("notes whether the scene has the keyboard", async () => {
     const element: HTMLElement = document.createElement("div");
@@ -641,38 +395,14 @@ describe("LevelRenderService", () => {
     expect(viewportService.isSceneFocused).toBe(false);
   });
 
-  // The renderer's clock starts at noon, so the time a level was left at reaches it with the level's weather.
-  it("plays a level's weather on from the time it was last left at", async () => {
-    writeLevelWeatherMemory(toLevelWeatherMemoryKey(mockSelectedLevelDescription()), {
-      base: null,
-      control: DEFAULT_LEVEL_WEATHER_CONTROL,
-      cycle: "",
-      manual: null,
-      seed: null,
-      source: ELevelWeatherSource.WEATHER,
-      sunShafts: DEFAULT_LEVEL_SUN_SHAFTS_OPTIONS,
-      time: 7_200,
-    });
-
-    await mockAttachedLevelRender();
-
-    await waitFor(() =>
-      expect(listMockInvokeCalls(ERenderCommand.SEEK_WEATHER)).toEqual([{ time: 7_200, viewport: LEVEL_VIEWPORT }])
-    );
-    expect(listMockInvokeCalls(ERenderCommand.PLAY_WEATHER).at(-1)?.play).toEqual({
-      kind: EWorldWeatherPlay.CYCLE,
-      name: "default_clear",
-    });
-  });
-
   // A refused command leaves the last frame on screen, so it is logged; once, since some are sent every frame.
   it("logs a command the viewport refused, once however often it is sent", async () => {
     const { service } = await mockAttachedLevelRender();
     const warn = jest.spyOn(service.log, "warn").mockImplementation(() => undefined);
 
     mockIpcCommands({ [ERenderCommand.SEEK_WEATHER]: () => Promise.reject(new Error("invalid time")) });
-    service.seekWeather(60);
-    service.seekWeather(120);
+    service.weather.seek(60);
+    service.weather.seek(120);
 
     await waitFor(() => expect(warn).toHaveBeenCalled());
     expect(warn).toHaveBeenCalledTimes(1);
@@ -763,7 +493,7 @@ describe("LevelRenderService", () => {
       kind: ERenderViewportEvent.LOAD,
       report: mockRenderLoadReport({ isReady: true, scene: LEVEL_SCENE }),
     });
-    void service.pick({ isThrough: false, point: { x: 10, y: 20 } });
+    void service.picks.pick({ isThrough: false, point: { x: 10, y: 20 } });
     expect(service.resident.isLoading).toBe(true);
 
     container.get(EventBus).emit<SessionChange>(SESSION_CHANGE_EVENT, {

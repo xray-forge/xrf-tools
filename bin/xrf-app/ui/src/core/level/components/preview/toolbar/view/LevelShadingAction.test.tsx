@@ -165,11 +165,11 @@ describe("LevelShadingAction", () => {
     act(() => renderSettings.setRendererOverrides({ antialiasing: ERenderAntialiasing.TAA }));
 
     expect(view.shading).toBe(ELevelShading.FSR_LOCKS);
-    expect(render.shading).toBe(ELevelShading.FINAL);
+    expect(render.drawing.shading).toBe(ELevelShading.FINAL);
     expect(getByRole("button", { name: "Shading" })).toHaveAccessibleDescription("Final frame");
 
     act(() => renderSettings.setRendererOverrides({ antialiasing: ERenderAntialiasing.FSR }));
 
-    expect(render.shading).toBe(ELevelShading.FSR_LOCKS);
+    expect(render.drawing.shading).toBe(ELevelShading.FSR_LOCKS);
   });
 });
