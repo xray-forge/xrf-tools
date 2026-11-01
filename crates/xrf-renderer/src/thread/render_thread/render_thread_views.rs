@@ -32,7 +32,7 @@ use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::level::view::view_lens::ViewLens;
 use crate::scene::level::view::view_pick::ViewPick;
 use crate::scene::level::view::view_prepare::ViewPrepare;
-use crate::scene::static_scene::static_selection::StaticSelection;
+use crate::scene::static_scene::draw::static_selection::StaticSelection;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::thread::gpu_state::GpuState;

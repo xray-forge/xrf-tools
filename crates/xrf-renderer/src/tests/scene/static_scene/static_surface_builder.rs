@@ -5,10 +5,10 @@ use xrf_material::{
 use xrf_vfs::XrayResolution;
 use xrf_visual::SectorSurface;
 
-use crate::scene::static_scene::static_class::StaticClass;
-use crate::scene::static_scene::static_surface::StaticSurface;
-use crate::scene::static_scene::static_surface_builder::StaticSurfaceBuilder;
-use crate::scene::static_scene::static_surface_plan::StaticSurfacePlan;
+use crate::scene::static_scene::draw::static_class::StaticClass;
+use crate::scene::static_scene::surface::build::static_surface_builder::StaticSurfaceBuilder;
+use crate::scene::static_scene::surface::build::static_surface_plan::StaticSurfacePlan;
+use crate::scene::static_scene::surface::static_surface::StaticSurface;
 use crate::scene::texture::texture_role::TextureRole;
 
 /// A level surface of shader table entry 1, dressed by `texture`.

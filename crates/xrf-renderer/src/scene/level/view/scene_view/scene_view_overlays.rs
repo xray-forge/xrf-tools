@@ -5,7 +5,7 @@ use crate::scene::level::page::helpers::view::helper_draws::HelperDraws;
 use crate::scene::level::page::helpers::view::helper_sources::HelperSources;
 use crate::scene::level::page::level_overlays::LevelOverlays;
 use crate::scene::level::view::scene_view::SceneView;
-use crate::scene::static_scene::static_selection::StaticSelection;
+use crate::scene::static_scene::draw::static_selection::StaticSelection;
 
 impl SceneView {
   /// Makes what it draws over its frame where the page's overlays or the selection's box changed: the page's, then a

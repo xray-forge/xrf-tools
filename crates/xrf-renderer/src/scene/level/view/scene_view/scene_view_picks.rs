@@ -4,7 +4,7 @@ use xrf_error::XrfResult;
 use crate::contract::viewport::render_level_hit::RenderLevelHit;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::view::scene_view::SceneView;
-use crate::scene::static_scene::static_slot_info::StaticSlotInfo;
+use crate::scene::static_scene::draw::slot::static_slot_info::StaticSlotInfo;
 
 /// What a pick's texel says it met: a cluster, by its index and place, an impostor, by its index, or a helper's wire,
 /// by the id its helper carries (`PICKED_HELPER` in `frame/helper_pick`).

@@ -10,7 +10,7 @@ use crate::scene::level::page::helpers::gpu::helper_icon_instance::HelperIconIns
 use crate::scene::level::page::helpers::gpu::helper_vertex::HelperVertex;
 use crate::scene::level::page::helpers::level_helpers::LevelHelpers;
 use crate::scene::level::page::helpers::view::helper_part::HelperPart;
-use crate::scene::static_scene::static_object_box::StaticObjectBox;
+use crate::scene::static_scene::item::object::static_object_box::StaticObjectBox;
 
 fn new_object(id: u32, kind: u32, at: Vec3, shapes: Vec<RenderHelperShape>) -> RenderHelperObject {
   RenderHelperObject {

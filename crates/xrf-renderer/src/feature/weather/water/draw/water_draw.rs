@@ -9,7 +9,7 @@ use crate::feature::weather::water::water_feature::WaterFeature;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::view::record::lighting_handles::LightingHandles;
-use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 
 /// What a frame's water is drawn from: the view's targets as its graph imported them, the frame copied as it stood
 /// before the water, what the static draws bind, the frame's lighting, both skies, the view's water, and the scene pass

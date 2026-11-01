@@ -1,4 +1,4 @@
-use crate::scene::static_scene::static_row::StaticRow;
+use crate::scene::static_scene::draw::slot::static_row::StaticRow;
 
 /// The fields `records.wgsl`'s `row_band`, `row_bands` and `row_windows` read back out of a band word.
 fn unpack(word: u32) -> [u32; 3] {

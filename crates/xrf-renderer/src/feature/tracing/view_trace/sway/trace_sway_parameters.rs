@@ -2,8 +2,8 @@ use xrf_renderer_core::{PassParameters, StorageArray, StorageArrayMut, UniformBi
 
 use crate::feature::scene::wind::wind_uniform::WindUniform;
 use crate::feature::tracing::view_trace::sway::trace_sway_slot::TraceSwaySlot;
-use crate::scene::static_scene::static_place::StaticPlace;
-use crate::scene::static_scene::static_surface::StaticSurface;
+use crate::scene::static_scene::item::static_place::StaticPlace;
+use crate::scene::static_scene::surface::static_surface::StaticSurface;
 
 /// What the trace's sway pass reads and writes: the tree arena's words, the places and surfaces, the view's wind, the
 /// swaying instances, and their swayed vertices, three floats each, in renderer space.

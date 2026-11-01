@@ -2,7 +2,7 @@ use xrf_renderer_core::RasterPassBuilder;
 
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::feature::scene::statics::draw::static_impostor_parameters::StaticImpostorParameters;
-use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 
 /// What a view's static draws bind: each layout's parameters drawing its visible list, and the impostors'.
 #[derive(Clone, Copy)]

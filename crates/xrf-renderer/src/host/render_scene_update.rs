@@ -7,11 +7,11 @@ use crate::host::render_level_helpers::RenderLevelHelpers;
 use crate::host::render_particle_definitions::RenderParticleDefinitions;
 use crate::scene::level::particles::placed::particle_emitter_proxy::ParticleEmitterProxy;
 use crate::scene::level::particles::placed::placed_effect::PlacedEffect;
-use crate::scene::static_scene::static_model::StaticModel;
-use crate::scene::static_scene::static_model_place::StaticModelPlace;
-use crate::scene::static_scene::static_model_proxy::StaticModelProxy;
-use crate::scene::static_scene::static_object_proxy::StaticObjectProxy;
-use crate::scene::static_scene::static_sector_proxy::StaticSectorProxy;
+use crate::scene::static_scene::item::model::static_model::StaticModel;
+use crate::scene::static_scene::item::model::static_model_place::StaticModelPlace;
+use crate::scene::static_scene::item::model::static_model_proxy::StaticModelProxy;
+use crate::scene::static_scene::item::object::static_object_proxy::StaticObjectProxy;
+use crate::scene::static_scene::item::static_sector_proxy::StaticSectorProxy;
 
 /// One change the world posts to a level's scene, applied at the start of the frame it arrives with; an add carries
 /// the handle the world allocated for it, which its later updates and its remove name.

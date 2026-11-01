@@ -9,8 +9,8 @@ use crate::feature::scene::statics::draw::static_layout_bindings::StaticLayoutBi
 use crate::pass::build::indirect_args::IndirectArgs;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::overhead::overhead_shift_parameters::OverheadShiftParameters;
-use crate::scene::static_scene::static_batch::StaticBatch;
-use crate::scene::static_scene::static_class::StaticClass;
+use crate::scene::static_scene::draw::static_batch::StaticBatch;
+use crate::scene::static_scene::draw::static_class::StaticClass;
 
 /// The variant every shadow draw is built with: it leaves out the surfaces casting none.
 const SHADOW_DRAW: StaticDrawPermutation = StaticDrawPermutation {

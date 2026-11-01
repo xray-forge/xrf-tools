@@ -25,9 +25,9 @@ use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::stats_readback::StatsReadback;
 use crate::scene::level::view::record::view_record::ViewRecord;
-use crate::scene::static_scene::static_batch::StaticBatch;
-use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
-use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::draw::static_batch::StaticBatch;
+use crate::scene::static_scene::draw::static_cull_scratch::StaticCullScratch;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
 
 /// What the camera's lens is scaled by for the frustum a sun cascade's trees are kept for: a third or so wider each way

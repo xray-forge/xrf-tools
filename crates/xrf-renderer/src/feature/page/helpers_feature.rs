@@ -22,7 +22,7 @@ use crate::scene::level::page::helpers::view::helper_marks_pass::HelperMarksPass
 use crate::scene::level::page::helpers::view::helper_part::HelperPart;
 use crate::scene::level::page::helpers::view::helper_part_draws::HelperPartDraws;
 use crate::scene::level::page::helpers::view::helper_sources::HelperSources;
-use crate::scene::static_scene::static_object_box::StaticObjectBox;
+use crate::scene::static_scene::item::object::static_object_box::StaticObjectBox;
 
 /// What a view draws of its scene's helpers: the wires and icons its options keep, which the window pass draws and a
 /// pick draws again, and the spawned models they mark, which the helper marks pass draws in their colours for the

@@ -33,15 +33,15 @@ use crate::pass::view::noise_turn::NoiseTurn;
 use crate::pass::window::backdrop_uniform::BackdropUniform;
 use crate::scene::level::lights::atlas::level_light_shadows::LevelLightShadows;
 use crate::scene::level::particles::particle_surface_record::ParticleSurfaceRecord;
-use crate::scene::static_scene::static_class::StaticClass;
-use crate::scene::static_scene::static_geometry::StaticGeometry;
-use crate::scene::static_scene::static_impostor::StaticImpostor;
-use crate::scene::static_scene::static_layout::StaticLayout;
-use crate::scene::static_scene::static_row::StaticRow;
-use crate::scene::static_scene::static_slot::StaticSlot;
-use crate::scene::static_scene::static_surface::StaticSurface;
-use crate::scene::static_scene::static_surface_builder::StaticSurfaceBuilder;
-use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
+use crate::scene::static_scene::draw::slot::static_row::StaticRow;
+use crate::scene::static_scene::draw::slot::static_slot::StaticSlot;
+use crate::scene::static_scene::draw::static_class::StaticClass;
+use crate::scene::static_scene::geometry::static_geometry::StaticGeometry;
+use crate::scene::static_scene::geometry::static_impostor::StaticImpostor;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
+use crate::scene::static_scene::surface::build::static_surface_builder::StaticSurfaceBuilder;
+use crate::scene::static_scene::surface::static_surface::StaticSurface;
+use crate::scene::static_scene::surface::static_surface_pass::StaticSurfacePass;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// The inverse square's lamps give as much light within their reach as the engine's falloff does: the two integrated

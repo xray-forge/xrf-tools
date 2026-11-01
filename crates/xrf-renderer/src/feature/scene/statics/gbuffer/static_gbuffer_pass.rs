@@ -12,10 +12,10 @@ use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::StaticGbufferD
 use crate::frame::pick_target::PickTarget;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::build::pipeline_source::PipelineSource;
-use crate::scene::static_scene::static_batch::StaticBatch;
-use crate::scene::static_scene::static_class::StaticClass;
-use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
-use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::draw::static_batch::StaticBatch;
+use crate::scene::static_scene::draw::static_class::StaticClass;
+use crate::scene::static_scene::draw::static_cull_scratch::StaticCullScratch;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 
 /// Draws the static scene into a viewport's G-buffer: the cut-out batches' depth alone first, and the opaque ones' too
 /// where the frame asks for a depth pass, then one indirect draw a batch, its visible clusters as instances, a batch

@@ -30,7 +30,7 @@ use crate::pass::view::camera_uniform::CameraUniform;
 use crate::scene::level::shadow::overhead_shape::OverheadShape;
 use crate::scene::level::shadow::shadow_frame::ShadowFrame;
 use crate::scene::level::view::record::view_record::ViewRecord;
-use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 
 /// A square of the level around the camera seen straight down, as its shape lays it out: a depth whose every texel says
 /// how high the first thing over that column stands. It moves a whole step at a time. Moved at the same height with

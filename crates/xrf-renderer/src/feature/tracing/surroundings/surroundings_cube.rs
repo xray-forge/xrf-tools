@@ -31,7 +31,7 @@ use crate::frame::view_targets::ViewTargets;
 use crate::pass::view::camera_uniform::CameraUniform;
 use crate::scene::level::shadow::shadow_frame::ShadowFrame;
 use crate::scene::level::view::record::view_record::ViewRecord;
-use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 
 /// The level around the camera as a cube, a face a frame, lit into the prefiltered sky cube's first mip, so a
 /// reflection that meets nothing on the screen reads the trees and the hills around it rather than the sky alone.

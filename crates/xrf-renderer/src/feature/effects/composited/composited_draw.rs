@@ -7,7 +7,7 @@ use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::view::record::lighting_handles::LightingHandles;
 use crate::scene::level::view::record::view_record::ViewRecord;
-use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 
 /// What the composited surfaces' passes draw with in a frame: the view and the bindless textures, the targets, the
 /// static scene's handles and the camera's layout draws, its draw arguments (the early phase's, and the late phase's

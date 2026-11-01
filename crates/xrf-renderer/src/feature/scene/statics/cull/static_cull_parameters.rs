@@ -3,12 +3,12 @@ use xrf_renderer_core::{GraphTexture, PassParameters, ShaderAtomicU32, StorageAr
 
 use crate::feature::scene::statics::cull::static_cull_uniform::StaticCullUniform;
 use crate::feature::scene::statics::cull::static_occlusion_uniform::StaticOcclusionUniform;
-use crate::scene::static_scene::static_cluster::StaticCluster;
-use crate::scene::static_scene::static_impostor::StaticImpostor;
-use crate::scene::static_scene::static_place::StaticPlace;
-use crate::scene::static_scene::static_region::StaticRegion;
-use crate::scene::static_scene::static_row::StaticRow;
-use crate::scene::static_scene::static_slot::StaticSlot;
+use crate::scene::static_scene::draw::slot::static_row::StaticRow;
+use crate::scene::static_scene::draw::slot::static_slot::StaticSlot;
+use crate::scene::static_scene::draw::static_region::StaticRegion;
+use crate::scene::static_scene::geometry::static_cluster::StaticCluster;
+use crate::scene::static_scene::geometry::static_impostor::StaticImpostor;
+use crate::scene::static_scene::item::static_place::StaticPlace;
 
 /// What a cull of the static scene reads and writes: the scene's records, the view's visible list and draw arguments,
 /// and for the camera's two phases the candidates, the late arguments, the depth pyramid and the view it was reduced

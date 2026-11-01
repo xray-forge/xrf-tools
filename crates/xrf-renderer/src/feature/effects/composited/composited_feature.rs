@@ -23,10 +23,10 @@ use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::view::record::lighting_handles::LightingHandles;
 use crate::scene::level::view::view_prepare::ViewPrepare;
-use crate::scene::static_scene::static_layout::StaticLayout;
-use crate::scene::static_scene::static_sight::StaticSight;
-use crate::scene::static_scene::static_sorted_place::StaticSortedPlace;
-use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
+use crate::scene::static_scene::draw::static_sight::StaticSight;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
+use crate::scene::static_scene::item::static_sorted_place::StaticSortedPlace;
+use crate::scene::static_scene::surface::static_surface_pass::StaticSurfacePass;
 
 /// The static scene's composited surfaces over the lit scene: the blended, added and multiplied ones in the cull's
 /// order, the strictly sorted ones back to front, the enhanced glass, the distorting surfaces' special pass and the

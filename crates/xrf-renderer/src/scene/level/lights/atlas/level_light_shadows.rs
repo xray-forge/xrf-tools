@@ -41,9 +41,9 @@ use crate::scene::level::lights::atlas::shadow_tile::ShadowTile;
 use crate::scene::level::lights::atlas::shadow_tile_allocator::ShadowTileAllocator;
 use crate::scene::level::shadow::shadow_frame::ShadowFrame;
 use crate::scene::level::view::record::view_record::ViewRecord;
-use crate::scene::static_scene::growable_buffer::GrowableBuffer;
-use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
-use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::draw::static_cull_scratch::StaticCullScratch;
+use crate::scene::static_scene::geometry::growable_buffer::GrowableBuffer;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 
 /// Shadow faces offered at most in one frame, each with a slot of its own in the lists and the draw arguments: the most
 /// copies of the visible list the static scene admits an item by.

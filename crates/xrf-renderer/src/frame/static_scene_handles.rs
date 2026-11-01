@@ -10,8 +10,8 @@ use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawPara
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
 use crate::feature::scene::statics::draw::static_impostor_parameters::StaticImpostorParameters;
 use crate::feature::scene::wind::wind_uniform::WindUniform;
-use crate::scene::static_scene::static_geometry::StaticGeometry;
-use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::geometry::static_geometry::StaticGeometry;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
 
 /// The static scene's buffers as a frame graph imports them, once a frame, with the uniforms its culls and draws read

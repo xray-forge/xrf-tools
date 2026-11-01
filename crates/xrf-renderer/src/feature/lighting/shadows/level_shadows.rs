@@ -34,7 +34,7 @@ use crate::pass::view::camera_uniform::CameraUniform;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::shadow::shadow_frame::ShadowFrame;
 use crate::scene::level::view::record::view_record::ViewRecord;
-use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 
 /// Each cascade's passes, as the frame's timings name them, in the order a job lists them: a whole draw; its static
 /// layer drawn, copied in and the trees drawn over it; the copy with the trees over it alone; and a band of its next

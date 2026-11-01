@@ -1,8 +1,8 @@
 use glam::{UVec4, Vec4};
 use xrf_renderer_core::{PassParameters, StorageArray};
 
-use crate::scene::static_scene::static_impostor::StaticImpostor;
-use crate::scene::static_scene::static_surface::StaticSurface;
+use crate::scene::static_scene::geometry::static_impostor::StaticImpostor;
+use crate::scene::static_scene::surface::static_surface::StaticSurface;
 
 /// What the impostors' draw reads: the impostors, their corners, the cull's terms and list of those drawn, and the
 /// surfaces they wear.

@@ -7,7 +7,7 @@ use crate::host::render_helper_shape::RenderHelperShape;
 use crate::host::render_level_helpers::RenderLevelHelpers;
 use crate::scene::level::page::helpers::level_helper_icon::LevelHelperIcon;
 use crate::scene::level::page::helpers::level_helper_object::LevelHelperObject;
-use crate::scene::static_scene::static_object_box::StaticObjectBox;
+use crate::scene::static_scene::item::object::static_object_box::StaticObjectBox;
 
 /// A level's helpers as wires and icons: each helped object, its segments and the icons it stands in renderer space,
 /// built once a set is read, which every view of the scene draws from.

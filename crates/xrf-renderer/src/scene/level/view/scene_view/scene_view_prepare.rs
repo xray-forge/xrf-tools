@@ -29,7 +29,7 @@ use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::lights::lights_frame::LightsFrame;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::level::view::view_prepare::ViewPrepare;
-use crate::scene::static_scene::static_sight::StaticSight;
+use crate::scene::static_scene::draw::static_sight::StaticSight;
 
 impl SceneView {
   /// The units the weather drives: the shadows' maps, the effects laid over the lit frame (whose flares give the sky its

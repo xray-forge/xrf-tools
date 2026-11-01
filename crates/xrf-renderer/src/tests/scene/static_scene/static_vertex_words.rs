@@ -1,6 +1,6 @@
 use glam::Vec3;
 
-use crate::scene::static_scene::static_vertex_words::StaticVertexWords;
+use crate::scene::static_scene::geometry::vertex::static_vertex_words::StaticVertexWords;
 
 /// A packed direction as `vertex.wgsl` reads it: the word's bytes as `unorm8x4`, then `.zyx * 2 - 1`.
 fn unpack(word: u32) -> Vec3 {

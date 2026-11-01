@@ -1,4 +1,4 @@
-use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 
 /// Which of the static scene's casters a shadow draw draws: all of them, those that stand still (everything but the
 /// trees), or those that sway (the trees).

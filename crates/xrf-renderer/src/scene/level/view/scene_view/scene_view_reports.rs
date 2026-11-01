@@ -11,7 +11,7 @@ use crate::feature::image::present::present_uniform::PresentUniform;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::level::view::view_reports::ViewReports;
-use crate::scene::static_scene::static_batch::StaticBatch;
+use crate::scene::static_scene::draw::static_batch::StaticBatch;
 
 impl SceneView {
   /// Asks for the counts recorded with the frame just submitted, which `take_reports` reads once they are back.

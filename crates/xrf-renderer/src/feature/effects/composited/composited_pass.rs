@@ -8,10 +8,10 @@ use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;
-use crate::scene::static_scene::static_batch::StaticBatch;
-use crate::scene::static_scene::static_geometry::StaticGeometry;
-use crate::scene::static_scene::static_layout::StaticLayout;
-use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
+use crate::scene::static_scene::draw::static_batch::StaticBatch;
+use crate::scene::static_scene::geometry::static_geometry::StaticGeometry;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
+use crate::scene::static_scene::surface::static_surface_pass::StaticSurfacePass;
 
 /// The fragment entry compositing surfaces over the lit frame.
 const COMPOSITED_FRAGMENT: &str = "fs_composited";

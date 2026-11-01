@@ -8,8 +8,8 @@ use crate::feature::scene::statics::cull::static_cull_uniform::StaticCullUniform
 use crate::pass::build::compute_grid::ComputeGrid;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;
-use crate::scene::static_scene::static_batch::StaticBatch;
-use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
+use crate::scene::static_scene::draw::static_batch::StaticBatch;
+use crate::scene::static_scene::draw::static_cull_scratch::StaticCullScratch;
 
 /// The cull's entry points, in the order its pipelines are held.
 const ENTRIES: [&str; 6] = [

@@ -6,10 +6,10 @@ use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
 use crate::feature::scene::grass::level::grass_model_record::GrassModelRecord;
 use crate::feature::scene::grass::trace_grass_uniform::TraceGrassUniform;
 use crate::scene::level::lights::light_record::LightRecord;
-use crate::scene::static_scene::static_place::StaticPlace;
-use crate::scene::static_scene::static_surface::StaticSurface;
-use crate::scene::static_scene::static_trace_instance::StaticTraceInstance;
-use crate::scene::static_scene::static_trace_record::StaticTraceRecord;
+use crate::scene::static_scene::item::static_place::StaticPlace;
+use crate::scene::static_scene::surface::static_surface::StaticSurface;
+use crate::scene::static_scene::trace::static_trace_instance::StaticTraceInstance;
+use crate::scene::static_scene::trace::static_trace_record::StaticTraceRecord;
 
 /// What a pass tracing rays against the level's static geometry binds (`StaticTrace`): the top-level structure; each
 /// instance's first record and place, and each geometry's record naming its indices, vertices and surface; the places,

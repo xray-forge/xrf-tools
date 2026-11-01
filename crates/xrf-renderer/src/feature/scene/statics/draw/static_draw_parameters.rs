@@ -2,10 +2,10 @@ use glam::{UVec2, Vec4};
 use xrf_renderer_core::{PassParameters, StorageArray, UniformBinding};
 
 use crate::feature::scene::wind::wind_uniform::WindUniform;
-use crate::scene::static_scene::static_cluster::StaticCluster;
-use crate::scene::static_scene::static_place::StaticPlace;
-use crate::scene::static_scene::static_slot::StaticSlot;
-use crate::scene::static_scene::static_surface::StaticSurface;
+use crate::scene::static_scene::draw::slot::static_slot::StaticSlot;
+use crate::scene::static_scene::geometry::static_cluster::StaticCluster;
+use crate::scene::static_scene::item::static_place::StaticPlace;
+use crate::scene::static_scene::surface::static_surface::StaticSurface;
 
 /// What a static draw pulls its vertices through: a view's visible list, the clusters, slots and places it names, one
 /// layout's vertex words through the shared indices, the surfaces, the wind, and skinned models' links and bones.

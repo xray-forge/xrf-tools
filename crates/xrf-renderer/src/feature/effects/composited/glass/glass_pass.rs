@@ -12,9 +12,9 @@ use crate::feature::scene::statics::draw::static_layout_bindings::StaticLayoutBi
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::build::pipeline_source::PipelineSource;
-use crate::scene::static_scene::static_batch::StaticBatch;
-use crate::scene::static_scene::static_layout::StaticLayout;
-use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;
+use crate::scene::static_scene::draw::static_batch::StaticBatch;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
+use crate::scene::static_scene::surface::static_surface_pass::StaticSurfacePass;
 
 /// Draws a viewport's visible glass as the enhanced glass draws it, over the frame and its copy taken just before:
 /// what stands behind refracted, the sky reflected by the fresnel and the sun's highlight, written whole rather than
