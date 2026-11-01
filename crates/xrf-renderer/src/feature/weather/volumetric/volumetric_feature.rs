@@ -47,7 +47,18 @@ impl VolumetricFeature {
       return;
     }
 
-    let volume: &FroxelVolume = self.froxels.get_or_insert_with(|| FroxelVolume::new(device));
+    let volume: &mut FroxelVolume = self.froxels.get_or_insert_with(|| FroxelVolume::new(device));
+
+    // A grid laid along another distance holds what stood elsewhere, which reprojecting it would smear in: its history
+    // starts again.
+    if self
+      .uniform
+      .as_ref()
+      .is_some_and(|uniform| uniform.size.w != settings.distance)
+    {
+      volume.histories.invalidate();
+    }
+
     let [width, height, depth] = FroxelVolume::SIZE;
     // Each frame's points a golden share further along their slices, so the history gathers the whole of each: the
     // share's 32 bits times the frame, wrapping, which keeps every frame's step exact however long the view runs.
