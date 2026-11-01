@@ -130,7 +130,7 @@ describe("LevelImageQualityAction", () => {
 
     await openSettings(rendered);
 
-    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toBeChecked();
+    expect(rendered.getByRole("checkbox", { name: "DLSS ray reconstruction" })).toBeChecked();
     expect(rendered.getByRole("button", { name: "J" })).toBeDisabled();
 
     await userEvent.click(
@@ -139,7 +139,7 @@ describe("LevelImageQualityAction", () => {
 
     expect(rendered.view.features.upscaling).toEqual({ rayReconstructionPreset: ERenderRayReconstructionPreset.E });
 
-    await userEvent.click(rendered.getByRole("checkbox", { name: "Ray reconstruction" }));
+    await userEvent.click(rendered.getByRole("checkbox", { name: "DLSS ray reconstruction" }));
 
     expect(rendered.view.features.upscaling).toEqual({
       isRayReconstructed: false,
@@ -157,9 +157,9 @@ describe("LevelImageQualityAction", () => {
 
     await openSettings(rendered);
 
-    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toBeDisabled();
-    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).not.toBeChecked();
-    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toHaveAccessibleDescription(
+    expect(rendered.getByRole("checkbox", { name: "DLSS ray reconstruction" })).toBeDisabled();
+    expect(rendered.getByRole("checkbox", { name: "DLSS ray reconstruction" })).not.toBeChecked();
+    expect(rendered.getByRole("checkbox", { name: "DLSS ray reconstruction" })).toHaveAccessibleDescription(
       "Needs an NVIDIA RTX GPU and a driver with DLSS ray reconstruction."
     );
 
@@ -172,9 +172,9 @@ describe("LevelImageQualityAction", () => {
     });
     act(() => rendered.renderSettings.setRendererOverrides({ tonemap: ERenderTonemapMode.ENGINE }));
 
-    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toBeDisabled();
-    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toHaveAccessibleDescription(
-      "Needs the Enhanced tonemap: ray reconstruction works on linear light."
+    expect(rendered.getByRole("checkbox", { name: "DLSS ray reconstruction" })).toBeDisabled();
+    expect(rendered.getByRole("checkbox", { name: "DLSS ray reconstruction" })).toHaveAccessibleDescription(
+      "Needs the Enhanced tonemap or the physical light: ray reconstruction works on linear light."
     );
   });
 

@@ -28,11 +28,11 @@ import { LevelLookService } from "@/core/level/services/level-look";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
 import {
   explainRenderBloomMode,
-  formatBloomStrength,
   RENDER_BLOOM_MODE_OPTIONS,
-  RENDER_ENHANCED_BLOOM_LIMITS,
+  RENDER_ENHANCED_BLOOM_SETTINGS,
 } from "@/core/render/lib/features/tone/render-bloom-choices";
 import {
   explainRenderDisplayTransform,
@@ -59,8 +59,6 @@ import { RenderSettingsService } from "@/core/render/services/render-settings.se
 import { LevelLookSection } from "@/tools/level-viewer/components/toolbar/image/LevelLookSection";
 import { LevelLookSliders } from "@/tools/level-viewer/components/toolbar/image/LevelLookSliders";
 import {
-  ILevelEnhancedBloomField,
-  LEVEL_ENHANCED_BLOOM_FIELDS,
   LEVEL_LOOK_BLOOM_FIELDS,
   LEVEL_LOOK_IMAGE_FIELDS,
   LEVEL_LOOK_LIGHT_SCALE_FIELDS,
@@ -203,11 +201,6 @@ export function LevelLookAction({
 
   const onBloomMode = useCallback((mode: RenderBloomMode): void => setBloom({ mode }), [setBloom]);
 
-  const onBloomStrength = useCallback(
-    (key: ILevelEnhancedBloomField["key"], value: number): void => setBloom({ [key]: value }),
-    [setBloom]
-  );
-
   return (
     <EditorPopoverAction
       data-testid={dataTestId}
@@ -335,17 +328,13 @@ export function LevelLookAction({
           />
 
           <div className={"flex flex-col gap-1"}>
-            {LEVEL_ENHANCED_BLOOM_FIELDS.map((field: ILevelEnhancedBloomField) => (
-              <RenderValueSlider
-                key={field.key}
-                label={field.label}
-                value={bloom[field.key]}
-                {...RENDER_ENHANCED_BLOOM_LIMITS[field.key]}
-                isDisabled={!isEnhancedBloom}
-                format={formatBloomStrength}
-                onChange={(value: number) => onBloomStrength(field.key, value)}
-              />
-            ))}
+            <RenderSettingEntries
+              settings={RENDER_ENHANCED_BLOOM_SETTINGS}
+              names={["threshold", "exposure", "blur", "vibrance", "sky"]}
+              group={bloom}
+              features={drawn}
+              onSet={setBloom}
+            />
           </div>
 
           <CheckboxFormRow

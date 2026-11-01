@@ -1,20 +1,12 @@
 import { useInjection } from "@wirestate/react";
-import {
-  ERenderAntialiasing,
-  ERenderScale,
-  ERenderTonemapMode,
-  RenderAntialiasing,
-  RenderDlssPreset,
-  RenderRayReconstructionPreset,
-  RenderScale,
-  RenderTextureFiltering,
-} from "@xrf/ipc/types/xrf-renderer";
-import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
+import { ERenderScale, RenderAntialiasing, RenderTextureFiltering } from "@xrf/ipc/types/xrf-renderer";
 import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
 import { SliderFormRow } from "@xrf/ui/form/slider-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
+import { RenderSettingRow } from "@/core/render/components/settings/RenderSettingRow";
+import { RenderSettingRows } from "@/core/render/components/settings/RenderSettingRows";
 import {
   explainRenderAntialiasing,
   isTemporalAntialiasing,
@@ -27,18 +19,12 @@ import {
   RENDER_OUTPUT_SCALE_LIMITS,
   RENDER_RESOLUTION_OPTIONS,
 } from "@/core/render/lib/features/image/render-display-choices";
-import {
-  describeDlssPreset,
-  describeRayReconstructionPreset,
-  formatSharpening,
-  RENDER_DLSS_PRESET_OPTIONS,
-  RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS,
-  RENDER_SCALE_OPTIONS,
-  RENDER_SHARPENING_LIMITS,
-} from "@/core/render/lib/features/image/render-upscaling-choices";
+import { RENDER_UPSCALING_SETTINGS } from "@/core/render/lib/features/image/render-upscaling-choices";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { ERenderResolution } from "@/core/render/lib/settings/device/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
+
+import { useRendererOverride } from "./use-renderer-override";
 
 /**
  * What every viewport resolves its frame at and how much of that the scene is drawn at before it is upscaled to it,
@@ -48,6 +34,8 @@ export function SettingsRendererAntialiasing(): ReactElement {
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
   const features: IRenderFeatureSettings = renderSettingsService.rendererFeatures;
+
+  const onSetUpscaling = useRendererOverride("upscaling");
 
   return (
     <DetailSection
@@ -77,15 +65,12 @@ export function SettingsRendererAntialiasing(): ReactElement {
           onChange={renderSettingsService.setRenderOutputScale}
         />
 
-        <ChoiceFormRow
-          label={"Upscaling quality"}
-          description={
-            "Share of the output resolution the scene is drawn at. TAA, FSR and DLSS upscale temporally; other " +
-            "modes use FSR 1."
-          }
-          options={RENDER_SCALE_OPTIONS}
-          value={features.upscaling.scale}
-          onChange={(scale: RenderScale) => renderSettingsService.setRendererOverrides({ upscaling: { scale } })}
+        <RenderSettingRow
+          settings={RENDER_UPSCALING_SETTINGS}
+          name={"scale"}
+          group={features.upscaling}
+          features={features}
+          onSet={onSetUpscaling}
         />
 
         <ChoiceFormRow
@@ -119,58 +104,26 @@ export function SettingsRendererAntialiasing(): ReactElement {
           onChange={(value: string) => renderSettingsService.setRendererOverrides({ textureLod: Number(value) })}
         />
 
-        <ChoiceFormRow
-          label={"DLSS model"}
-          description={describeDlssPreset(features.upscaling.dlssPreset)}
-          options={RENDER_DLSS_PRESET_OPTIONS}
-          value={features.upscaling.dlssPreset}
-          isDisabled={features.antialiasing !== ERenderAntialiasing.DLSS || features.upscaling.isRayReconstructed}
-          onChange={(dlssPreset: RenderDlssPreset) =>
-            renderSettingsService.setRendererOverrides({ upscaling: { dlssPreset } })
-          }
+        <RenderSettingRows
+          settings={RENDER_UPSCALING_SETTINGS}
+          names={["dlssPreset", "rayReconstructionPreset", "isRayReconstructed"]}
+          group={features.upscaling}
+          features={features}
+          onSet={onSetUpscaling}
         />
 
-        <ChoiceFormRow
-          label={"Ray reconstruction model"}
-          description={describeRayReconstructionPreset(features.upscaling.rayReconstructionPreset)}
-          options={RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS}
-          value={features.upscaling.rayReconstructionPreset}
-          isDisabled={features.antialiasing !== ERenderAntialiasing.DLSS || !features.upscaling.isRayReconstructed}
-          onChange={(rayReconstructionPreset: RenderRayReconstructionPreset) =>
-            renderSettingsService.setRendererOverrides({ upscaling: { rayReconstructionPreset } })
-          }
-        />
-
-        <CheckboxFormRow
-          label={"DLSS ray reconstruction"}
-          description={
-            "Denoises the traced light as DLSS upscales. Needs the Enhanced tonemap and an RTX GPU with ray reconstruction."
-          }
-          isChecked={features.upscaling.isRayReconstructed}
-          isDisabled={
-            features.antialiasing !== ERenderAntialiasing.DLSS || features.tonemap !== ERenderTonemapMode.ENHANCED
-          }
-          onChange={(isRayReconstructed: boolean) =>
-            renderSettingsService.setRendererOverrides({ upscaling: { isRayReconstructed } })
-          }
-        />
-
-        <SliderFormRow
-          label={"Sharpening"}
-          description={
-            "RCAS sharpening of a frame drawn smaller than the viewport or resolved temporally (TAA, FSR, DLSS). " +
-            "Inactive otherwise."
-          }
-          value={features.upscaling.sharpening}
-          {...RENDER_SHARPENING_LIMITS}
+        <RenderSettingRow
+          settings={RENDER_UPSCALING_SETTINGS}
+          name={"sharpening"}
+          group={features.upscaling}
+          features={features}
           isDisabled={
             !isTemporalAntialiasing(features.antialiasing) &&
             features.upscaling.scale === ERenderScale.NATIVE &&
             renderSettingsService.renderResolution === ERenderResolution.AUTO &&
             renderSettingsService.renderOutputScale >= 1
           }
-          format={formatSharpening}
-          onChange={(sharpening: number) => renderSettingsService.setRendererOverrides({ upscaling: { sharpening } })}
+          onSet={onSetUpscaling}
         />
       </div>
     </DetailSection>

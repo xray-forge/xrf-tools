@@ -1,13 +1,10 @@
 import { useInjection } from "@wirestate/react";
 import {
   ERenderAntialiasing,
-  ERenderLightModel,
-  ERenderTonemapMode,
   RenderAntialiasing,
   RenderDlssAvailability,
   RenderDlssPreset,
   RenderRayReconstructionPreset,
-  RenderScale,
 } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
@@ -31,6 +28,7 @@ import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { RenderSettingEntry } from "@/core/render/components/settings/RenderSettingEntry";
 import {
   describeRenderAntialiasing,
   isTemporalAntialiasing,
@@ -46,11 +44,10 @@ import {
   describeDlssUnavailability,
   describeRayReconstructionPreset,
   describeRayReconstructionUnavailability,
-  formatSharpening,
+  isRenderSceneLinear,
   RENDER_DLSS_PRESET_SHORT_OPTIONS,
   RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS,
-  RENDER_SCALE_OPTIONS,
-  RENDER_SHARPENING_LIMITS,
+  RENDER_UPSCALING_SETTINGS,
 } from "@/core/render/lib/features/image/render-upscaling-choices";
 import { ERenderResolution } from "@/core/render/lib/settings/device/render-resolution";
 
@@ -82,10 +79,9 @@ export function LevelImageQualityAction({
   const { isOn, toggle } = useLevelViewToggle("isAntialiased");
   const { set: setUpscaling } = useLevelFeatureOverride("upscaling");
   const { set: setOutput } = useLevelFeatureOverride("output");
-  const { scale, sharpening, dlssPreset, rayReconstructionPreset: rayPreset } = drawn.upscaling;
-  // Whether the scene holds linear light, the Enhanced tonemap or the physical light, which ray reconstruction needs.
-  const isSceneLinear: boolean =
-    drawn.tonemap === ERenderTonemapMode.ENHANCED || drawn.lightModel === ERenderLightModel.PHYSICAL;
+  const { dlssPreset, rayReconstructionPreset: rayPreset } = drawn.upscaling;
+  // Whether the scene holds linear light, which ray reconstruction needs.
+  const isSceneLinear: boolean = isRenderSceneLinear(drawn);
   // Whether the frame is drawn smaller than the viewport, which sharpening applies to besides a temporal resolve.
   const isUpscaled: boolean = renderService.isUpscaled;
   // What the GPU can do: FSR smooths in place of DLSS, and DLSS upscales alone, where it lacks them.
@@ -148,19 +144,19 @@ export function LevelImageQualityAction({
           </Typography>
         ) : null}
 
-        <RenderValueChoice
-          label={"Upscaling quality"}
-          options={RENDER_SCALE_OPTIONS}
-          value={scale}
-          isStacked
-          onChange={(next: RenderScale) => setUpscaling({ scale: next })}
+        <RenderSettingEntry
+          settings={RENDER_UPSCALING_SETTINGS}
+          name={"scale"}
+          group={drawn.upscaling}
+          features={drawn}
+          onSet={setUpscaling}
         />
 
         <CheckboxFormRow
-          label={"Ray reconstruction"}
+          label={RENDER_UPSCALING_SETTINGS.isRayReconstructed.label}
           description={
             isDlss
-              ? (rayProblem ?? "Denoises and upscales in one network, over each surface's albedo and normal.")
+              ? (rayProblem ?? (RENDER_UPSCALING_SETTINGS.isRayReconstructed.description as string))
               : "Comes with DLSS, under Mode."
           }
           isChecked={isDlss && isRayReconstructed}
@@ -169,7 +165,7 @@ export function LevelImageQualityAction({
         />
 
         <RenderValueChoice
-          label={"DLSS model"}
+          label={RENDER_UPSCALING_SETTINGS.dlssPreset.label}
           options={RENDER_DLSS_PRESET_SHORT_OPTIONS}
           value={dlssPreset}
           isDisabled={!isDlss || isRayReconstructed}
@@ -177,7 +173,7 @@ export function LevelImageQualityAction({
         />
 
         <RenderValueChoice
-          label={"Ray reconstruction model"}
+          label={RENDER_UPSCALING_SETTINGS.rayReconstructionPreset.label}
           options={RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS}
           value={rayPreset}
           isDisabled={!isDlss || !isRayReconstructed}
@@ -190,13 +186,13 @@ export function LevelImageQualityAction({
           </Typography>
         ) : null}
 
-        <RenderValueSlider
-          label={"Sharpening"}
-          value={sharpening}
-          {...RENDER_SHARPENING_LIMITS}
-          format={formatSharpening}
+        <RenderSettingEntry
+          settings={RENDER_UPSCALING_SETTINGS}
+          name={"sharpening"}
+          group={drawn.upscaling}
+          features={drawn}
           isDisabled={!isSharpenable}
-          onChange={(next: number) => setUpscaling({ sharpening: next })}
+          onSet={setUpscaling}
         />
 
         {isSharpenable ? null : (

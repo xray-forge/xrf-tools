@@ -1,6 +1,5 @@
 import { ILevelLook } from "@/core/level/lib/look/level-look";
 import { RENDER_EXPOSURE_LIMITS } from "@/core/render/lib/features/tone/render-exposure-choices";
-import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { ELevelLookFieldOff } from "@/tools/level-viewer/lib/look/level-look-field-off";
 
 /** One number of the look a slider sets. */
@@ -14,21 +13,6 @@ export interface ILevelLookField {
   read: (look: ILevelLook) => number;
   write: (look: ILevelLook, value: number) => ILevelLook;
 }
-
-/** One of the enhanced bloom's strengths a slider sets. */
-export interface ILevelEnhancedBloomField {
-  key: Exclude<keyof TRenderEnhancedBloomSettings, "mode">;
-  label: string;
-}
-
-/** The enhanced bloom's sliders, in the order they are offered. */
-export const LEVEL_ENHANCED_BLOOM_FIELDS: ReadonlyArray<ILevelEnhancedBloomField> = [
-  { key: "threshold", label: "Threshold" },
-  { key: "exposure", label: "Brightness" },
-  { key: "blur", label: "Blur" },
-  { key: "vibrance", label: "Vibrance" },
-  { key: "sky", label: "Sky" },
-];
 
 /** The engine meter's sliders, which only the engine light model reads: the physical light meters by histogram. */
 export const LEVEL_LOOK_TONEMAP_FIELDS: ReadonlyArray<ILevelLookField> = [

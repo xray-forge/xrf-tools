@@ -1,9 +1,12 @@
 import { formatNumber } from "@xrf/format";
 import {
+  ERenderAntialiasing,
   ERenderDlssAvailability,
   ERenderDlssPreset,
+  ERenderLightModel,
   ERenderRayReconstructionPreset,
   ERenderScale,
+  ERenderTonemapMode,
   RenderDlssAvailability,
   RenderDlssPreset,
   RenderRayReconstructionPreset,
@@ -13,6 +16,11 @@ import { Nullable } from "@xrf/types";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 import { IRenderLimits, toRenderLimits } from "@/core/render/lib/features/render-limits";
+import { ERenderSettingControl, TRenderSettings } from "@/core/render/lib/features/render-setting";
+import {
+  IRenderFeatureSettings,
+  TRenderUpscalingSettings,
+} from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/schema/render-feature-schema";
 
 /** How far the upscaled frame's sharpening goes. */
@@ -67,7 +75,7 @@ const RAY_RECONSTRUCTION_UNAVAILABILITY: Readonly<Record<RenderDlssAvailability,
 
 /**
  * @param availability - Whether the GPU drawing a view reconstructs rays with DLSS.
- * @param isLinear - Whether the scene holds linear light, as the Enhanced tonemap keeps it.
+ * @param isLinear - Whether the scene holds linear light, as the Enhanced tonemap and the physical light keep it.
  * @returns Why ray reconstruction cannot be turned on there, said so the reader knows what would let it; none where
  *   it can.
  */
@@ -77,8 +85,17 @@ export function describeRayReconstructionUnavailability(
 ): Nullable<string> {
   return (
     RAY_RECONSTRUCTION_UNAVAILABILITY[availability] ??
-    (isLinear ? null : "Needs the Enhanced tonemap: ray reconstruction works on linear light.")
+    (isLinear ? null : "Needs the Enhanced tonemap or the physical light: ray reconstruction works on linear light.")
   );
+}
+
+/**
+ * @param features - Every feature as drawn.
+ * @returns Whether the scene holds linear light, which ray reconstruction needs: the Enhanced tonemap's or the physical
+ *   light's, as the renderer decides it (`RenderViewOptions::is_scene_linear`).
+ */
+export function isRenderSceneLinear(features: IRenderFeatureSettings): boolean {
+  return features.tonemap === ERenderTonemapMode.ENHANCED || features.lightModel === ERenderLightModel.PHYSICAL;
 }
 
 const RENDER_DLSS_PRESET_NAMES: Readonly<Record<RenderDlssPreset, string>> = {
@@ -142,3 +159,58 @@ export const RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS: ReadonlyArray<
 export const RENDER_DLSS_PRESET_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderDlssPreset>> = Object.values(
   ERenderDlssPreset
 ).map((value: RenderDlssPreset) => ({ label: RENDER_DLSS_PRESET_NAMES[value], value }));
+
+/** Whether DLSS resolves the frame, which none of its values tune otherwise. */
+function isUnresolvedByDlss(features: IRenderFeatureSettings): boolean {
+  return features.antialiasing !== ERenderAntialiasing.DLSS;
+}
+
+/**
+ * How each upscaling setting is set, in the settings and the Image quality popover alike. Whether a frame is drawn
+ * smaller than its viewport, which sharpening applies to, and what the GPU can do are the surfaces' to tell their rows.
+ */
+export const RENDER_UPSCALING_SETTINGS: TRenderSettings<TRenderUpscalingSettings> = {
+  dlssPreset: {
+    control: ERenderSettingControl.CHOICE,
+    explain: describeDlssPreset,
+    isInert: (upscaling: TRenderUpscalingSettings, features: IRenderFeatureSettings) =>
+      isUnresolvedByDlss(features) || upscaling.isRayReconstructed,
+    label: "DLSS model",
+    options: RENDER_DLSS_PRESET_OPTIONS,
+  },
+  isRayReconstructed: {
+    control: ERenderSettingControl.CHECKBOX,
+    description:
+      "Denoises the traced light as DLSS upscales. Needs the Enhanced tonemap or the physical light, and an RTX GPU " +
+      "with ray reconstruction.",
+    isInert: (_: TRenderUpscalingSettings, features: IRenderFeatureSettings) =>
+      isUnresolvedByDlss(features) || !isRenderSceneLinear(features),
+    label: "DLSS ray reconstruction",
+  },
+  rayReconstructionPreset: {
+    control: ERenderSettingControl.CHOICE,
+    explain: describeRayReconstructionPreset,
+    isInert: (upscaling: TRenderUpscalingSettings, features: IRenderFeatureSettings) =>
+      isUnresolvedByDlss(features) || !upscaling.isRayReconstructed,
+    label: "Ray reconstruction model",
+    options: RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS,
+  },
+  scale: {
+    control: ERenderSettingControl.CHOICE,
+    description:
+      "Share of the output resolution the scene is drawn at. TAA, FSR and DLSS upscale temporally; other modes use " +
+      "FSR 1.",
+    isStacked: true,
+    label: "Upscaling quality",
+    options: RENDER_SCALE_OPTIONS,
+  },
+  sharpening: {
+    control: ERenderSettingControl.SLIDER,
+    description:
+      "RCAS sharpening of a frame drawn smaller than the viewport or resolved temporally (TAA, FSR, DLSS). " +
+      "Inactive otherwise.",
+    format: formatSharpening,
+    label: "Sharpening",
+    limits: RENDER_SHARPENING_LIMITS,
+  },
+};
