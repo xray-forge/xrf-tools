@@ -2,9 +2,9 @@ use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet, RasterContext};
 
+use crate::feature::tracing::reflections::draw::reflection_parameters::ReflectionParameters;
+use crate::feature::tracing::reflections::draw::reflection_stage::ReflectionStage;
 use crate::feature::tracing::reflections::history::reflection_history::ReflectionHistory;
-use crate::feature::tracing::reflections::reflection_parameters::ReflectionParameters;
-use crate::feature::tracing::reflections::reflection_stage::ReflectionStage;
 use crate::feature::tracing::reflections::trace::budgeted_trace_outputs::BudgetedTraceOutputs;
 use crate::feature::tracing::reflections::trace::reflection_trace_out_parameters::ReflectionTraceOutParameters;
 use crate::feature::tracing::scene_trace::requests::trace_request_parameters::TraceRequestParameters;

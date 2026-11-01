@@ -3,9 +3,9 @@ use xrf_renderer_core::{
   ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet, RasterContext, RenderPipelineDescription,
 };
 
-use crate::feature::effects::flares::flare_draw_parameters::FlareDrawParameters;
-use crate::feature::effects::flares::flare_measure_parameters::FlareMeasureParameters;
-use crate::feature::effects::flares::flare_texture_parameters::FlareTextureParameters;
+use crate::feature::effects::flares::draw::flare_draw_parameters::FlareDrawParameters;
+use crate::feature::effects::flares::draw::flare_measure_parameters::FlareMeasureParameters;
+use crate::feature::effects::flares::draw::flare_texture_parameters::FlareTextureParameters;
 use crate::feature::effects::flares::flare_uniform::FlareUniform;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::pipeline_source::PipelineSource;

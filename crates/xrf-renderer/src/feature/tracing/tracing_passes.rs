@@ -5,8 +5,8 @@ use crate::feature::tracing::indirect_trace::indirect_trace_pass::IndirectTraceP
 use crate::feature::tracing::indirect_trace::indirect_trace_uniform::IndirectTraceUniform;
 use crate::feature::tracing::ray_guides::ray_guides_parameters::RayGuidesParameters;
 use crate::feature::tracing::ray_guides::ray_guides_pass::RayGuidesPass;
-use crate::feature::tracing::reflections::reflection_parameters::ReflectionParameters;
-use crate::feature::tracing::reflections::reflection_pass::ReflectionPass;
+use crate::feature::tracing::reflections::draw::reflection_parameters::ReflectionParameters;
+use crate::feature::tracing::reflections::draw::reflection_pass::ReflectionPass;
 use crate::feature::tracing::reflections::reflection_uniform::ReflectionUniform;
 use crate::feature::tracing::reflections::trace::reflection_trace_out_parameters::ReflectionTraceOutParameters;
 use crate::feature::tracing::rtao::rtao_pass::RtaoPass;

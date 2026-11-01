@@ -6,11 +6,11 @@ use xrf_renderer_core::{
   GraphBuffer, GraphColorAttachment, GraphDeclaration, GraphTexture, StorageValue, StorageValueMut, UniformBinding,
 };
 
-use crate::feature::effects::flares::flare_draw_parameters::FlareDrawParameters;
+use crate::feature::effects::flares::draw::flare_draw_parameters::FlareDrawParameters;
+use crate::feature::effects::flares::draw::flare_measure_parameters::FlareMeasureParameters;
+use crate::feature::effects::flares::draw::flare_pass::FlarePass;
+use crate::feature::effects::flares::draw::flare_texture_parameters::FlareTextureParameters;
 use crate::feature::effects::flares::flare_frame::FlareFrame;
-use crate::feature::effects::flares::flare_measure_parameters::FlareMeasureParameters;
-use crate::feature::effects::flares::flare_pass::FlarePass;
-use crate::feature::effects::flares::flare_texture_parameters::FlareTextureParameters;
 use crate::feature::effects::flares::flare_uniform::FlareUniform;
 use crate::feature::effects::flares::lens_flare_fade::LensFlareFade;
 use crate::feature::effects::flares::sun_sprite::SunSprite;
