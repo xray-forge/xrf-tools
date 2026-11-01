@@ -5,7 +5,7 @@ use glam::{Mat4, Vec3};
 use xrf_renderer::{RenderModelSkeleton, RenderMotion, RenderSceneUpdate, RenderWorkers, StaticObjectProxy};
 use xrf_renderer_core::ProxyHandle;
 
-use crate::contract::world_model_pose::WorldModelPose;
+use crate::contract::level::world_model_pose::WorldModelPose;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::animation::model_motions::ModelMotions;
 use crate::level::animation::posed_skeleton::PosedSkeleton;

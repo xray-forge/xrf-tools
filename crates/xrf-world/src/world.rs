@@ -7,18 +7,18 @@ use xrf_renderer::{
   RenderViewInput, RenderViewportId, RenderWorkers, RenderWorld,
 };
 
-use crate::contract::world_ambient_report::WorldAmbientReport;
-use crate::contract::world_camera::WorldCamera;
-use crate::contract::world_camera_command::WorldCameraCommand;
-use crate::contract::world_input_event::WorldInputEvent;
-use crate::contract::world_level_problems::WorldLevelProblems;
-use crate::contract::world_level_reload::WorldLevelReload;
-use crate::contract::world_model_pose::WorldModelPose;
-use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::camera::world_camera::WorldCamera;
+use crate::contract::camera::world_camera_command::WorldCameraCommand;
+use crate::contract::camera::world_input_event::WorldInputEvent;
+use crate::contract::level::world_level_problems::WorldLevelProblems;
+use crate::contract::level::world_level_reload::WorldLevelReload;
+use crate::contract::level::world_model_pose::WorldModelPose;
+use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::weather::world_ambient_report::WorldAmbientReport;
+use crate::contract::weather::world_weather_control::WorldWeatherControl;
+use crate::contract::weather::world_weather_play::WorldWeatherPlay;
+use crate::contract::weather::world_weather_transition::WorldWeatherTransition;
 use crate::contract::world_toggles::WorldToggles;
-use crate::contract::world_weather_control::WorldWeatherControl;
-use crate::contract::world_weather_play::WorldWeatherPlay;
-use crate::contract::world_weather_transition::WorldWeatherTransition;
 use crate::host::world_event_sink::WorldEventSink;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::effects::effects_frame::EffectsFrame;

@@ -4,12 +4,12 @@ use std::time::{Duration, Instant};
 
 use xrf_renderer::{RenderLighting, RenderWorkers};
 
-use crate::contract::world_ambient_report::WorldAmbientReport;
-use crate::contract::world_level_reload::WorldLevelReload;
-use crate::contract::world_weather_control::WorldWeatherControl;
-use crate::contract::world_weather_play::WorldWeatherPlay;
-use crate::contract::world_weather_report::WorldWeatherReport;
-use crate::contract::world_weather_transition::WorldWeatherTransition;
+use crate::contract::level::world_level_reload::WorldLevelReload;
+use crate::contract::weather::world_ambient_report::WorldAmbientReport;
+use crate::contract::weather::world_weather_control::WorldWeatherControl;
+use crate::contract::weather::world_weather_play::WorldWeatherPlay;
+use crate::contract::weather::world_weather_report::WorldWeatherReport;
+use crate::contract::weather::world_weather_transition::WorldWeatherTransition;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_level_weather::WorldLevelWeather;
 use crate::weather::played_weather::PlayedWeather;

@@ -6,7 +6,7 @@ use glam::{Mat4, Vec3};
 use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationShape};
 use xrf_anm::AnmFile;
 
-use crate::contract::world_level_reload::WorldLevelReload;
+use crate::contract::level::world_level_reload::WorldLevelReload;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::effects::level_object_motions::LevelObjectMotions;
 use crate::tests::fixtures::TestLevelSource;

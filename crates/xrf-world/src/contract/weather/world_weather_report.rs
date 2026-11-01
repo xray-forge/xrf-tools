@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use xrf_environment::WeatherDescriptor;
 
-use crate::contract::world_ambient_report::WorldAmbientReport;
-use crate::contract::world_weather_effect_report::WorldWeatherEffectReport;
+use crate::contract::weather::world_ambient_report::WorldAmbientReport;
+use crate::contract::weather::world_weather_effect_report::WorldWeatherEffectReport;
 
 /// Where a viewport's weather stands.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

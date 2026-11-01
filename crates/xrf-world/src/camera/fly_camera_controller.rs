@@ -6,10 +6,10 @@ use glam::{EulerRot, Mat4, Quat, Vec3};
 use xrf_renderer::CameraFrame;
 
 use crate::camera::fly_key::FlyKey;
-use crate::contract::world_camera::WorldCamera;
-use crate::contract::world_camera_command::WorldCameraCommand;
-use crate::contract::world_camera_pose::WorldCameraPose;
-use crate::contract::world_input_event::WorldInputEvent;
+use crate::contract::camera::world_camera::WorldCamera;
+use crate::contract::camera::world_camera_command::WorldCameraCommand;
+use crate::contract::camera::world_camera_pose::WorldCameraPose;
+use crate::contract::camera::world_input_event::WorldInputEvent;
 
 /// Just short of straight up, so looking at the sky never flips the horizon over.
 const MAX_PITCH: f32 = FRAC_PI_2 - 0.001;

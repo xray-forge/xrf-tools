@@ -6,8 +6,8 @@ use xrf_particles::ParticleLibrary;
 use xrf_renderer::{AmbientGust, ParticleEmitterProxy, PlacedEffect, RenderSceneUpdate, WeatherRandom};
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
-use crate::contract::world_ambient_effect_report::WorldAmbientEffectReport;
-use crate::contract::world_ambient_report::WorldAmbientReport;
+use crate::contract::weather::world_ambient_effect_report::WorldAmbientEffectReport;
+use crate::contract::weather::world_ambient_report::WorldAmbientReport;
 use crate::host::world_ambient::WorldAmbient;
 use crate::host::world_ambient_effect::WorldAmbientEffect;
 use crate::level::ambient::ambient_frame::AmbientFrame;

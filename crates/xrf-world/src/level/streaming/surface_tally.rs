@@ -4,8 +4,8 @@ use xrf_level::LevelVertexLayout;
 use xrf_renderer::get_section_bytes;
 use xrf_visual::{SectorGeometry, SectorPackage};
 
-use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
-use crate::contract::world_surface_span::WorldSurfaceSpan;
+use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::level::world_surface_span::WorldSurfaceSpan;
 
 /// Indices looked at per draw when measuring a coordinate's range.
 const SPAN_SAMPLES: u32 = 2048;

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::contract::world_camera_pose::WorldCameraPose;
-use crate::contract::world_weather_report::WorldWeatherReport;
+use crate::contract::camera::world_camera_pose::WorldCameraPose;
+use crate::contract::weather::world_weather_report::WorldWeatherReport;
 
 /// What a viewport's world tells its page.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

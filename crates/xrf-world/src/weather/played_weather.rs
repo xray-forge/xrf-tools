@@ -3,7 +3,7 @@ use std::sync::Arc;
 use xrf_engine_target::XrayEngine;
 use xrf_environment::{WeatherDescriptor, WeatherPlayedKeyframe, WeatherSunSource};
 
-use crate::contract::world_weather_control::WorldWeatherControl;
+use crate::contract::weather::world_weather_control::WorldWeatherControl;
 use crate::host::world_level_weather::WorldLevelWeather;
 
 /// A weather a viewport plays: its keyframes, sorted by time, over what every weather of its level plays with.

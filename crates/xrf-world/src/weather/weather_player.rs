@@ -7,10 +7,10 @@ use xrf_environment::{
 };
 use xrf_renderer::RenderLighting;
 
-use crate::contract::world_weather_control::WorldWeatherControl;
-use crate::contract::world_weather_effect_report::WorldWeatherEffectReport;
-use crate::contract::world_weather_report::WorldWeatherReport;
-use crate::contract::world_weather_transition::WorldWeatherTransition;
+use crate::contract::weather::world_weather_control::WorldWeatherControl;
+use crate::contract::weather::world_weather_effect_report::WorldWeatherEffectReport;
+use crate::contract::weather::world_weather_report::WorldWeatherReport;
+use crate::contract::weather::world_weather_transition::WorldWeatherTransition;
 use crate::weather::fade::fade_skies::FadeSkies;
 use crate::weather::fade::weather_fader::WeatherFader;
 use crate::weather::played_weather::PlayedWeather;

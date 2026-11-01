@@ -3,7 +3,7 @@ use std::sync::Arc;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::XrfResult;
 
-use crate::contract::world_weather_transition::WorldWeatherTransition;
+use crate::contract::weather::world_weather_transition::WorldWeatherTransition;
 use crate::host::world_level_weather::WorldLevelWeather;
 
 /// What a loader thread read of a viewport's weather, tagged with the level and the request it was read for.

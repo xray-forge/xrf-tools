@@ -7,7 +7,7 @@ use xrf_anm::AnmFile;
 use xrf_renderer::RenderWorkers;
 use xrf_visual::VisualTransform;
 
-use crate::contract::world_level_reload::WorldLevelReload;
+use crate::contract::level::world_level_reload::WorldLevelReload;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::loading::loader_slot::LoaderSlot;
 use crate::level::loading::loader_slots::LoaderSlots;

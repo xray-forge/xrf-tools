@@ -9,7 +9,7 @@ use xrf_renderer::{
   RenderWorld,
 };
 
-use crate::contract::world_level_reload::WorldLevelReload;
+use crate::contract::level::world_level_reload::WorldLevelReload;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::tests::fixtures::{SilentSink, TestLevelReads, TestLevelSource};
 use crate::tests::test_workers::create_workers;

@@ -1,7 +1,7 @@
 use serde::Serialize;
 use xrf_renderer::RenderLoadFailure;
 
-use crate::contract::world_sector_skip::WorldSectorSkip;
+use crate::contract::level::world_sector_skip::WorldSectorSkip;
 
 /// What a viewport's level could not draw the way the level asked: drawables left out of the sectors resident, sectors
 /// that could not be read, and spawned models that could not be.

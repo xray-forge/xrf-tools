@@ -3,8 +3,8 @@ use xrf_visual::{
   VisualSection,
 };
 
-use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
-use crate::contract::world_surface_span::WorldSurfaceSpan;
+use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::level::world_surface_span::WorldSurfaceSpan;
 use crate::level::streaming::surface_tally::SurfaceTally;
 
 fn section(byte_offset: u32, byte_length: u32) -> VisualSection {

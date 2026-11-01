@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::contract::world_drag_end_reason::WorldDragEndReason;
-use crate::contract::world_input_modifiers::WorldInputModifiers;
+use crate::contract::camera::world_drag_end_reason::WorldDragEndReason;
+use crate::contract::camera::world_input_modifiers::WorldInputModifiers;
 
 /// What the person does over a viewport: the drags its page told from clicks, the hover, the wheel and the keys.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

@@ -4,7 +4,7 @@ use glam::Mat4;
 use xrf_renderer::{RenderModelSkeleton, RenderSceneUpdate, StaticObjectProxy};
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
-use crate::contract::world_model_pose::WorldModelPose;
+use crate::contract::level::world_model_pose::WorldModelPose;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::animation::level_animation::LevelAnimation;
 use crate::tests::fixtures::TestLevelSource;

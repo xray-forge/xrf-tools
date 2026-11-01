@@ -11,8 +11,8 @@ use xrf_renderer::{
 };
 use xrf_visual::{LightAnimatorDescription, LightAnimatorKey};
 
-use crate::contract::world_weather_control::WorldWeatherControl;
-use crate::contract::world_weather_transition::WorldWeatherTransition;
+use crate::contract::weather::world_weather_control::WorldWeatherControl;
+use crate::contract::weather::world_weather_transition::WorldWeatherTransition;
 use crate::host::world_level_weather::WorldLevelWeather;
 use crate::weather::fade::weather_fade::WeatherFade;
 use crate::weather::played_weather::PlayedWeather;

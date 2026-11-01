@@ -10,10 +10,10 @@ use xrf_renderer::{
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::LightsDescription;
 
-use crate::contract::world_level_problems::WorldLevelProblems;
-use crate::contract::world_level_reload::WorldLevelReload;
-use crate::contract::world_sector_skip::WorldSectorSkip;
-use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::level::world_level_problems::WorldLevelProblems;
+use crate::contract::level::world_level_reload::WorldLevelReload;
+use crate::contract::level::world_sector_skip::WorldSectorSkip;
+use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::animation::level_animation::LevelAnimation;
 use crate::level::loading::level_loader::LevelLoader;

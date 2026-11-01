@@ -5,9 +5,9 @@ use glam::Vec3;
 use xrf_renderer::{EngineSpace, RenderLighting, RenderSceneId, RenderViewFrame, RenderViewInput, RenderViewOptions};
 
 use crate::camera::camera_controller::CameraController;
-use crate::contract::world_ambient_report::WorldAmbientReport;
-use crate::contract::world_camera_pose::WorldCameraPose;
-use crate::contract::world_model_pose::WorldModelPose;
+use crate::contract::camera::world_camera_pose::WorldCameraPose;
+use crate::contract::level::world_model_pose::WorldModelPose;
+use crate::contract::weather::world_ambient_report::WorldAmbientReport;
 use crate::contract::world_toggles::WorldToggles;
 use crate::contract::world_viewport_event::WorldViewportEvent;
 use crate::host::world_event_sink::WorldEventSink;

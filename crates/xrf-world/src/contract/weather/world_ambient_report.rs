@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use crate::contract::world_ambient_effect_report::WorldAmbientEffectReport;
+use crate::contract::weather::world_ambient_effect_report::WorldAmbientEffectReport;
 
 /// Where the weather's ambient effects near a viewport's camera stand.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

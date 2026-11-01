@@ -12,7 +12,7 @@ use xrf_particles::{
 use xrf_renderer::{ParticleEmitterProxy, RenderSceneUpdate};
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
-use crate::contract::world_ambient_report::WorldAmbientReport;
+use crate::contract::weather::world_ambient_report::WorldAmbientReport;
 use crate::host::world_ambient::WorldAmbient;
 use crate::host::world_ambient_effect::WorldAmbientEffect;
 use crate::host::world_level_weather::WorldLevelWeather;

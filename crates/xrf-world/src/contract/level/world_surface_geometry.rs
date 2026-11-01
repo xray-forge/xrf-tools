@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::contract::world_surface_span::WorldSurfaceSpan;
+use crate::contract::level::world_surface_span::WorldSurfaceSpan;
 
 /// How much geometry one shader table entry of a viewport's level draws, across the sectors resident.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

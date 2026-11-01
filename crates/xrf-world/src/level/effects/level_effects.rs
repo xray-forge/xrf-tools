@@ -11,8 +11,8 @@ use xrf_renderer::{
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
-use crate::contract::world_ambient_report::WorldAmbientReport;
-use crate::contract::world_level_reload::WorldLevelReload;
+use crate::contract::level::world_level_reload::WorldLevelReload;
+use crate::contract::weather::world_ambient_report::WorldAmbientReport;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::ambient::ambient_systems::AmbientSystems;
 use crate::level::ambient::level_ambient_effects::LevelAmbientEffects;

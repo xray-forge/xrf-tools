@@ -4,11 +4,11 @@ use std::time::Instant;
 use glam::Vec3;
 use xrf_renderer::{RenderSceneFeedback, RenderSceneUpdate, RenderStreamingProgress, RenderWorkers};
 
-use crate::contract::world_ambient_report::WorldAmbientReport;
-use crate::contract::world_level_problems::WorldLevelProblems;
-use crate::contract::world_level_reload::WorldLevelReload;
-use crate::contract::world_model_pose::WorldModelPose;
-use crate::contract::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::level::world_level_problems::WorldLevelProblems;
+use crate::contract::level::world_level_reload::WorldLevelReload;
+use crate::contract::level::world_model_pose::WorldModelPose;
+use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::weather::world_ambient_report::WorldAmbientReport;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::animation::level_animation::LevelAnimation;
 use crate::level::effects::effects_frame::EffectsFrame;
