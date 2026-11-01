@@ -58,11 +58,12 @@ pub struct GrassView {
   planted: Option<(u64, i32, u32, u32)>,
   /// Whether this frame plants and draws.
   is_drawn: bool,
-  /// The cards casting the grass's shadows, while it casts them, and whether the view traces them and whether its sun
-  /// cascades draw them this frame.
+  /// The cards casting the grass's shadows, while it casts them, whether the view traces them, and the metres from the
+  /// eye its sun cascades draw them to this frame, none where they draw none: traced, the cards stand further out than
+  /// the cascades they are asked in reach.
   cards: Option<GrassCards>,
   is_card_traced: bool,
-  is_card_cascaded: bool,
+  card_cascade_reach: Option<f32>,
   /// The planting as a traced hit reads it, no models while none is drawn.
   trace: TraceGrassUniform,
   /// The cull's total, read back without waiting on the GPU.
@@ -86,7 +87,7 @@ impl GrassView {
       is_drawn: false,
       cards: None,
       is_card_traced: false,
-      is_card_cascaded: false,
+      card_cascade_reach: None,
       trace: TraceGrassUniform::default(),
       stats: StatsReadback::new(device),
       card_demand: StatsReadback::new(device),
@@ -138,7 +139,7 @@ impl GrassView {
     let is_cascaded: bool = cascade_reach.is_some();
 
     self.is_card_traced = is_traced;
-    self.is_card_cascaded = is_cascaded;
+    self.card_cascade_reach = cascade_reach;
 
     // Made again where the radius or what their tufts ask wants them to hold another number of triangles.
     let capacity: u32 = GrassCards::get_capacity(
@@ -257,9 +258,12 @@ impl GrassView {
   }
 
   /// Metres from the camera the grass casts the sun's shadow to through its cascades this frame, none where it does
-  /// not.
+  /// not: as far as its cards stand, and no further than the cascades they are asked in.
   pub fn get_cascade_reach(&self) -> Option<f32> {
-    (self.cards.is_some() && self.is_drawn && self.is_card_cascaded).then_some(self.values.card_reach)
+    self
+      .card_cascade_reach
+      .filter(|_| self.cards.is_some() && self.is_drawn)
+      .map(|reach| self.values.card_reach.min(reach))
   }
 
   /// What the grass casts into the sun's cascades every frame: its cards, out to their reach; none where it casts none
@@ -282,7 +286,7 @@ impl GrassView {
     textures: &'a wgpu::BindGroup,
     cards: Option<GrassCardHandles>,
   ) -> Option<GrassShadowCasters<'a>> {
-    self.cards.as_ref().filter(|_| self.is_card_cascaded)?;
+    self.cards.as_ref().filter(|_| self.card_cascade_reach.is_some())?;
 
     let (level, cards): (&'a GrassLevel, GrassCardHandles) = (level?, cards?);
 
