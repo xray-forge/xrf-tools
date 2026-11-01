@@ -1,4 +1,3 @@
-import { Channel } from "@tauri-apps/api/core";
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, Computed, flowResult, RefObservable, runInAction } from "@wirestate/mobx";
 import { transformError } from "@xrf/errors";
@@ -12,7 +11,7 @@ import {
   SelectedLevelDescription,
 } from "@xrf/ipc/types/xrf-app-levels";
 import { CaptureOutcome } from "@xrf/ipc/types/xrf-app-render";
-import { EJobOutcome, JobProgress } from "@xrf/ipc/types/xrf-job";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
 import { Logger } from "@xrf/logging";
 import { assertExhaustive, Nullable } from "@xrf/types";
 
@@ -20,6 +19,7 @@ import { KeybindCommand } from "@/core/commands";
 import { IJobNotice, IJobOutcome } from "@/core/jobs/lib";
 import { JobOperation } from "@/core/jobs/lib/job-operation";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
+import { ILevelRenderJob } from "@/core/level/lib/render/level-render-job";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LEVEL_WEATHER_NOON } from "@/core/level/lib/weather/level-weather-control";
 import { ILevelWeatherHold } from "@/core/level/lib/weather/level-weather-hold";
@@ -369,7 +369,7 @@ export class LevelViewerCaptureService {
       const completion: Nullable<TCommandCompletion<CaptureOutcome>> = yield* this.operation.run({
         kind: CAPTURE_JOB_KINDS[mode],
         invoke: async (id, progress): Promise<CaptureOutcome> => {
-          const outcome: Nullable<CaptureOutcome> = await this.captureShots(request, path, [id, progress]);
+          const outcome: Nullable<CaptureOutcome> = await this.captureShots(request, path, { id, progress });
 
           if (!outcome) {
             throw new Error(`The level viewer has no viewport attached to capture a ${name} in`);
@@ -430,7 +430,7 @@ export class LevelViewerCaptureService {
   private captureShots(
     request: TLevelCaptureRequest,
     path: string,
-    job: [string, Channel<JobProgress>]
+    job: ILevelRenderJob
   ): Promise<Nullable<CaptureOutcome>> {
     switch (request.mode) {
       case ELevelCaptureMode.MAP:

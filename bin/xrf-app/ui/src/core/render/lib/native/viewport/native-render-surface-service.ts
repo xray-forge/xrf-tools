@@ -81,7 +81,6 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
         runInAction(() => {
           this.frame = report;
         });
-        this.onFrame(report);
       },
       onLoad: (report: RenderLoadReport): void => this.onLoad(report),
       onWeather: (report: Nullable<WorldWeatherReport>): void => this.onWeather(report),
@@ -128,11 +127,6 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
    * @returns What stops each reaction.
    */
   protected abstract start(viewport: NativeViewport): Array<() => void>;
-
-  /**
-   * @param _report - What the viewport's recent frames cost, as `frame` now holds it.
-   */
-  protected onFrame(_report: RenderFrameReport): void {}
 
   /**
    * @param _pose - Where the viewport's camera stands now.

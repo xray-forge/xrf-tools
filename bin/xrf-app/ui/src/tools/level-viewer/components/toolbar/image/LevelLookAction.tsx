@@ -45,7 +45,6 @@ import {
   formatSunTint,
   getRenderLightLevelOptions,
   RENDER_SUN_TINT_LIMITS,
-  toDrawnRenderLightLevel,
 } from "@/core/render/lib/features/tone/render-light-level-choices";
 import {
   explainRenderLightModel,
@@ -130,7 +129,7 @@ export function LevelLookAction({
   const isPhysical: boolean = lightModel === ERenderLightModel.PHYSICAL;
   const displayTransform: RenderDisplayTransform = drawn.displayTransform;
   const isDevLevelAvailable: boolean = renderSettingsService.isDevLightLevelAvailable;
-  const lightLevel: RenderLightLevel = toDrawnRenderLightLevel(drawn.lightLevel, isDevLevelAvailable);
+  const lightLevel: RenderLightLevel = drawn.lightLevel;
   const isPhysicalLevels: boolean = isPhysical && lightLevel === ERenderLightLevel.PHYSICAL;
 
   const { choice, look, defaults } = lookService;

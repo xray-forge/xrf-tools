@@ -3,11 +3,10 @@ import { useMemo } from "react";
 
 import {
   ILevelFeatureOptions,
-  LEVEL_FEATURE_TOGGLES_ON,
   TLevelOutputOptions,
   toLevelOutput,
-  toLevelRendererFeatures,
 } from "@/core/level/lib/features/level-feature-options";
+import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { ERenderResolution } from "@/core/render/lib/settings/device/render-resolution";
@@ -19,7 +18,10 @@ export interface ILevelRenderFeatures {
   settings: IRenderFeatureSettings;
   /** What the view sets over them. */
   features: ILevelFeatureOptions;
-  /** Every feature as the view draws it with every toolbar toggle on: its own values over the settings'. */
+  /**
+   * Every feature as the view draws it with every toolbar toggle on: its own values over the settings', a dev light
+   * level drawn as the authored one outside dev mode (`LevelRenderService.drawnFeatures`).
+   */
   drawn: IRenderFeatureSettings;
   /** What the view resolves its frame at: its own resolution and scale over the settings'. */
   output: Required<TLevelOutputOptions>;
@@ -31,15 +33,13 @@ export interface ILevelRenderFeatures {
 export function useLevelRenderFeatures(): ILevelRenderFeatures {
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
   const viewService: LevelViewService = useInjection(LevelViewService);
+  const renderService: LevelRenderService = useInjection(LevelRenderService);
 
   const settings: IRenderFeatureSettings = renderSettingsService.rendererFeatures;
   const features: ILevelFeatureOptions = viewService.features;
   const resolution: ERenderResolution = renderSettingsService.renderResolution;
   const scale: number = renderSettingsService.renderOutputScale;
-  const drawn: IRenderFeatureSettings = useMemo(
-    () => toLevelRendererFeatures(settings, features, LEVEL_FEATURE_TOGGLES_ON),
-    [settings, features]
-  );
+  const drawn: IRenderFeatureSettings = renderService.drawnFeatures;
   const output: Required<TLevelOutputOptions> = useMemo(
     () => toLevelOutput(features.output, resolution, scale),
     [features.output, resolution, scale]

@@ -1,4 +1,3 @@
-import { Channel } from "@tauri-apps/api/core";
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, comparer, Computed, reaction } from "@wirestate/mobx";
 import { call, cancelFlow, LatestFlow, TFlow } from "@xrf/flow";
@@ -6,7 +5,6 @@ import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { CaptureOutcome } from "@xrf/ipc/types/xrf-app-render";
-import { JobProgress } from "@xrf/ipc/types/xrf-job";
 import {
   ERenderDlssAvailability,
   RenderAntialiasing,
@@ -38,10 +36,12 @@ import { ILevelViewpoint, toLevelStartViewpoint } from "@/core/level/lib/camera/
 import { ILevelBox, toLevelBox } from "@/core/level/lib/extent/level-extent";
 import {
   ILevelFeatureOptions,
+  LEVEL_FEATURE_TOGGLES_ON,
   TLevelOutputOptions,
   toLevelFocusDistance,
   toLevelOutput,
   toLevelRendererAntialiasing,
+  toLevelRendererFeatures,
 } from "@/core/level/lib/features/level-feature-options";
 import {
   toLevelHelperRenderOptions,
@@ -59,6 +59,7 @@ import {
 import { toLevelPickSelection } from "@/core/level/lib/pick/level-pick-selection";
 import { DEFAULT_LEVEL_RENDER_CONFIG, ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { toLevelFrameOverlays } from "@/core/level/lib/render/level-render-frame";
+import { ILevelRenderJob } from "@/core/level/lib/render/level-render-job";
 import { toLevelCameraAt, toLevelViewOptions } from "@/core/level/lib/render/level-render-view";
 import { ILevelResident, toLevelResident } from "@/core/level/lib/render/level-resident";
 import { LevelSceneShow } from "@/core/level/lib/render/level-scene-show";
@@ -76,6 +77,7 @@ import { toNativeWorldToggles } from "@/core/render/lib/native/contract/native-v
 import { NativeRenderSurfaceService } from "@/core/render/lib/native/viewport/native-render-surface-service";
 import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
 import { INativeViewportClick } from "@/core/render/lib/native/viewport/native-viewport-target";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { toRenderOutput } from "@/core/render/lib/settings/device/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
@@ -201,6 +203,32 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     return toShownLevelShading(this.viewService.shading, this.antialiasing);
   }
 
+  /**
+   * What the view sets over the settings as it is drawn: a dev light level it keeps drawn as the authored one outside
+   * dev mode, as the settings' own is (`RenderSettingsService.rendererFeatures`).
+   */
+  @Computed()
+  public get viewFeatures(): ILevelFeatureOptions {
+    const features: ILevelFeatureOptions = this.viewService.features;
+
+    return features.lightLevel === null
+      ? features
+      : {
+          ...features,
+          lightLevel: toDrawnRenderLightLevel(features.lightLevel, this.renderSettingsService.isDevLightLevelAvailable),
+        };
+  }
+
+  /** Every feature as the view draws it with every toolbar toggle on, which its popovers show and its snapshots keep. */
+  @Computed()
+  public get drawnFeatures(): IRenderFeatureSettings {
+    return toLevelRendererFeatures(
+      this.renderSettingsService.rendererFeatures,
+      this.viewFeatures,
+      LEVEL_FEATURE_TOGGLES_ON
+    );
+  }
+
   /** What the level is asked to be drawn with: the toolbar, the look and the settings together. */
   @Computed()
   public get viewOptions(): RenderViewOptions {
@@ -219,16 +247,7 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       output: toRenderOutput(output.resolution, output.scale),
       shading: this.shading,
       sunShafts: this.weatherService.sunShafts,
-      view: {
-        ...this.viewService.features,
-        lightLevel:
-          this.viewService.features.lightLevel === null
-            ? null
-            : toDrawnRenderLightLevel(
-                this.viewService.features.lightLevel,
-                this.renderSettingsService.isDevLightLevelAvailable
-              ),
-      },
+      view: this.viewFeatures,
     });
     const { hidden, hovered, selected } = this.viewportService;
 
@@ -400,12 +419,12 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   public async captureMap(
     capture: RenderMapCapture,
     path: string,
-    job: [string, Channel<JobProgress>]
+    job: ILevelRenderJob
   ): Promise<Nullable<CaptureOutcome>> {
     return this.viewport
       ? this.viewport.ask<Nullable<CaptureOutcome>>(
           "captureMap",
-          (id: RenderViewportId) => levelsCommands.captureMap({ viewport: id, capture, path }, ...job),
+          (id: RenderViewportId) => levelsCommands.captureMap({ viewport: id, capture, path }, job.id, job.progress),
           null
         )
       : null;
@@ -420,12 +439,12 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   public async captureCube(
     capture: RenderCubeCapture,
     path: string,
-    job: [string, Channel<JobProgress>]
+    job: ILevelRenderJob
   ): Promise<Nullable<CaptureOutcome>> {
     return this.viewport
       ? this.viewport.ask<Nullable<CaptureOutcome>>(
           "captureCube",
-          (id: RenderViewportId) => levelsCommands.captureCube({ viewport: id, capture, path }, ...job),
+          (id: RenderViewportId) => levelsCommands.captureCube({ viewport: id, capture, path }, job.id, job.progress),
           null
         )
       : null;

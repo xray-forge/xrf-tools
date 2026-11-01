@@ -13,12 +13,7 @@ import { isRecord, Maybe, Nullable } from "@xrf/types";
 
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { isLevelGoTo, toLevelGoTo, toRoundedLevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
-import {
-  ILevelFeatureOptions,
-  LEVEL_FEATURE_TOGGLES_ON,
-  toLevelOutput,
-  toLevelRendererFeatures,
-} from "@/core/level/lib/features/level-feature-options";
+import { ILevelFeatureOptions, toLevelOutput } from "@/core/level/lib/features/level-feature-options";
 import { ELevelLookSource, ILevelLookChoice, toLevelLookChoice } from "@/core/level/lib/look/level-look-choice";
 import { ILevelHelperOptions, toLevelHelperOptions } from "@/core/level/lib/objects/level-helper-options";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
@@ -199,7 +194,7 @@ export class LevelViewerSnapshotService {
       options: { ...this.viewService.options },
       helpers: { ...this.viewService.helpers },
       settings: {
-        ...toLevelRendererFeatures(this.renderSettingsService.rendererFeatures, features, LEVEL_FEATURE_TOGGLES_ON),
+        ...this.renderService.drawnFeatures,
       },
     };
   }
