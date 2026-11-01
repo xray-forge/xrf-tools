@@ -1,8 +1,11 @@
+#[cfg(debug_assertions)]
 use std::collections::{HashMap, HashSet};
 
+#[cfg(debug_assertions)]
 use xrf_renderer_core::{GraphOwner, GraphPassReport, GraphReport};
 
 /// A pass after a view's temporal resolve that reads a texture the view drew before it, by their labels.
+#[cfg(debug_assertions)]
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct JitteredRead {
   pub pass: String,
@@ -13,10 +16,13 @@ pub struct JitteredRead {
 /// before it, at the drawn size and jittered a little differently each frame, which the resolve exists to average away.
 /// Such a read puts the jitter back on screen as shimmer, so whatever reads the frame after the resolve reads what it
 /// resolved. It reads the passes' tags: the resolves carry `RESOLVES`, and a pass whose read of a drawn texture averages
-/// it or only shows it carries that texture's `READS_*` tag, beside the reason it gives.
+/// it or only shows it carries that texture's `READS_*` tag, beside the reason it gives. Every build tags its passes;
+/// only a build with debug assertions watches.
+#[cfg_attr(not(debug_assertions), allow(dead_code))]
 #[derive(Default)]
 pub struct JitterGuard {
   /// What was last warned of, warned again only once it changes.
+  #[cfg(debug_assertions)]
   warned: Vec<JitteredRead>,
 }
 
@@ -24,8 +30,6 @@ impl JitterGuard {
   /// The tag of a pass resolving a view's frame: TAA, DLSS, its ray reconstruction, or FSR's accumulation, after its
   /// stages preparing what it accumulates.
   pub const RESOLVES: &'static str = "jitter resolves";
-  /// What the tag of a drawn texture a pass after the resolve reads on purpose starts with, the texture's label after.
-  const READS: &'static str = "jitter reads ";
   pub const READS_ALBEDO: &'static str = "jitter reads albedo";
   pub const READS_AMBIENT_OCCLUSION: &'static str = "jitter reads ambient occlusion";
   pub const READS_DEPTH: &'static str = "jitter reads depth";
@@ -61,6 +65,12 @@ impl JitterGuard {
     Self::READS_REFLECTIONS_TRACED,
     Self::READS_SCENE,
   ];
+}
+
+#[cfg(debug_assertions)]
+impl JitterGuard {
+  /// What the tag of a drawn texture a pass after the resolve reads on purpose starts with, the texture's label after.
+  const READS: &'static str = "jitter reads ";
 
   /// Warns of the frame's reads after a resolve that are not allowed, once each time they change.
   pub fn watch(&mut self, report: &GraphReport) {

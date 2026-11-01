@@ -1,6 +1,5 @@
 pub(crate) mod frame_encoder;
 pub(crate) mod frame_upload;
-#[cfg(debug_assertions)]
 pub(crate) mod jitter_guard;
 pub(crate) mod periodic;
 pub(crate) mod readback;
