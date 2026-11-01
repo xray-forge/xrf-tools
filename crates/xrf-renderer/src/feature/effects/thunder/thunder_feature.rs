@@ -9,7 +9,7 @@ use crate::feature::effects::thunder::thunder_parameters::ThunderParameters;
 use crate::feature::effects::thunder::thunder_uniform::ThunderUniform;
 use crate::feature::effects::weather_model_buffers::WeatherModelBuffers;
 use crate::feature::view::view_feature::ViewFeature;
-use crate::host::render_level_weather::RenderLevelWeather;
+use crate::host::weather::render_level_weather::RenderLevelWeather;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::level::view::view_prepare::ViewPrepare;

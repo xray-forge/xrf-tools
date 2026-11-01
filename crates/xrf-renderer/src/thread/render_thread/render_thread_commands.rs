@@ -17,7 +17,7 @@ use crate::contract::report::texture::render_texture_report::RenderTextureReport
 use crate::contract::settings::gpu::render_backend::RenderBackend;
 use crate::contract::viewport::render_pick::RenderPick;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
-use crate::host::render_scene_id::RenderSceneId;
+use crate::host::world::render_scene_id::RenderSceneId;
 use crate::scene::level::level_scene::LevelScene;
 use crate::thread::render_command::RenderCommand;
 use crate::thread::running_gpu::RunningGpu;

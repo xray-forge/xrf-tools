@@ -2,7 +2,7 @@ use glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::feature::effects::flares::flare_frame::FlareFrame;
-use crate::host::render_lens_flare::RenderLensFlare;
+use crate::host::weather::flares::render_lens_flare::RenderLensFlare;
 
 /// What `shaders/common/flares.wgsl` reads as its `Flares`: where the sun stands, its colour and the lens flare's.
 #[repr(C)]

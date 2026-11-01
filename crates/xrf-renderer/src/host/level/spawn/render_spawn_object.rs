@@ -1,4 +1,4 @@
-use crate::host::render_spawn_category::RenderSpawnCategory;
+use crate::host::level::spawn::render_spawn_category::RenderSpawnCategory;
 
 /// One object of a level's spawn the viewer draws: the visual it stands as, where, and the group showing it.
 #[derive(Clone, Copy, Debug)]

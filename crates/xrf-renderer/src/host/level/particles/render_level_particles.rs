@@ -5,7 +5,7 @@ use xrf_material::XraySurfaceDescriptor;
 use xrf_particles::{ParticleCollider, ParticleEngineRules, ParticleLibrary};
 use xrf_visual::HemiEstimator;
 
-use crate::host::render_particle_placement::RenderParticlePlacement;
+use crate::host::level::particles::render_particle_placement::RenderParticlePlacement;
 
 /// A level's particle systems as its loader reads them: the library they play from, how the engine steps them, where
 /// they stand, how each effect draws, the surfaces colliding effects meet, and how lit the camera stands, which the

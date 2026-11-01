@@ -9,8 +9,8 @@ use xrf_visual::{DetailsDescription, DetailsModel, VisualSection};
 
 use crate::feature::scene::grass::grass_pass::GrassPass;
 use crate::feature::scene::grass::level::grass_model_record::GrassModelRecord;
+use crate::host::level::render_level_details::RenderLevelDetails;
 use crate::host::render_asset_source::RenderAssetSource;
-use crate::host::render_level_details::RenderLevelDetails;
 use crate::scene::section_bytes::read_pods;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;

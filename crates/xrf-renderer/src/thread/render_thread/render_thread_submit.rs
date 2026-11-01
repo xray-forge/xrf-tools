@@ -10,7 +10,7 @@ use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::frame_phases::FramePhases;
-use crate::host::render_scene_id::RenderSceneId;
+use crate::host::world::render_scene_id::RenderSceneId;
 use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::pick_in_flight::PickInFlight;
 use crate::window::window_frame::WindowFrame;

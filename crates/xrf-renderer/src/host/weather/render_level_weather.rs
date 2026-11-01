@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use crate::host::render_lens_flare::RenderLensFlare;
-use crate::host::render_rain::RenderRain;
-use crate::host::render_thunder::RenderThunder;
-use crate::host::render_wet_surfaces::RenderWetSurfaces;
+use crate::host::weather::flares::render_lens_flare::RenderLensFlare;
+use crate::host::weather::render_rain::RenderRain;
+use crate::host::weather::render_wet_surfaces::RenderWetSurfaces;
+use crate::host::weather::thunder::render_thunder::RenderThunder;
 
 /// What the renderer draws any weather of an open level with, whatever cycle it plays.
 #[derive(Clone, Debug, Default)]

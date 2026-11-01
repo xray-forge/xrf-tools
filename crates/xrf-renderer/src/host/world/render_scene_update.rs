@@ -2,9 +2,9 @@ use glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::ProxyHandle;
 use xrf_visual::{LightsDescription, SectorPackage};
 
-use crate::host::render_level_details::RenderLevelDetails;
-use crate::host::render_level_helpers::RenderLevelHelpers;
-use crate::host::render_particle_definitions::RenderParticleDefinitions;
+use crate::host::level::helpers::render_level_helpers::RenderLevelHelpers;
+use crate::host::level::particles::render_particle_definitions::RenderParticleDefinitions;
+use crate::host::level::render_level_details::RenderLevelDetails;
 use crate::scene::level::particles::placed::particle_emitter_proxy::ParticleEmitterProxy;
 use crate::scene::level::particles::placed::placed_effect::PlacedEffect;
 use crate::scene::static_scene::item::model::static_model::StaticModel;

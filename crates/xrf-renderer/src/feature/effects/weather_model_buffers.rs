@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 
-use crate::host::render_weather_model::RenderWeatherModel;
+use crate::host::weather::render_weather_model::RenderWeatherModel;
 
 /// A model the weather draws, on the GPU: rain's splash, which every landing drop draws a copy of, or a thunderbolt.
 /// Its vertices in renderer space, a position then a coordinate each, and its indices.

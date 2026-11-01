@@ -1,6 +1,6 @@
 use xrf_material::XraySurfaceDraw;
 
-use crate::host::render_weather_model::RenderWeatherModel;
+use crate::host::weather::render_weather_model::RenderWeatherModel;
 
 /// A bolt's `lightning_model`: its mesh in engine space, from its top down its length of one, and how its shader
 /// composites it.

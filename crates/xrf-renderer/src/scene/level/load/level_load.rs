@@ -3,8 +3,8 @@ use std::time::{Duration, Instant};
 
 use crate::contract::report::load::render_load_durations::RenderLoadDurations;
 use crate::contract::report::load::render_load_report::RenderLoadReport;
-use crate::host::render_scene_id::RenderSceneId;
-use crate::host::render_streaming_progress::RenderStreamingProgress;
+use crate::host::world::feedback::render_streaming_progress::RenderStreamingProgress;
+use crate::host::world::render_scene_id::RenderSceneId;
 use crate::scene::texture::texture_cache::TextureCache;
 
 /// What a level's load reports: how far its world streamed it, and whether every texture the renderer samples of it is

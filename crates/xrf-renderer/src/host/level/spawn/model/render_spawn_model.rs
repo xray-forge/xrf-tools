@@ -1,7 +1,7 @@
 use xrf_material::XraySurfaceDescriptor;
 use xrf_visual::VisualPackage;
 
-use crate::host::render_model_skeleton::RenderModelSkeleton;
+use crate::host::level::spawn::model::render_model_skeleton::RenderModelSkeleton;
 
 /// One spawned visual as its objects stand: packed and posed, with how each of its submeshes is drawn.
 #[derive(Debug)]

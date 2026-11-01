@@ -1,7 +1,7 @@
 use std::time::{Duration, Instant};
 
 use crate::contract::view::render_view_options::RenderViewOptions;
-use crate::host::render_sky_textures::RenderSkyTextures;
+use crate::host::weather::render_sky_textures::RenderSkyTextures;
 
 /// What the renderer tells the world as it asks for a viewport's frame.
 pub struct RenderViewInput<'a> {

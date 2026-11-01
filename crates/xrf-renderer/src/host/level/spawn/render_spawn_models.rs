@@ -1,6 +1,6 @@
 use crate::contract::report::load::render_load_failure::RenderLoadFailure;
-use crate::host::render_spawn_lighting::RenderSpawnLighting;
-use crate::host::render_spawn_model::RenderSpawnModel;
+use crate::host::level::spawn::model::render_spawn_model::RenderSpawnModel;
+use crate::host::level::spawn::render_spawn_lighting::RenderSpawnLighting;
 
 /// A batch of spawned visuals read, and how the level lights each object standing as one of them.
 #[derive(Debug, Default)]

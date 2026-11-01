@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use xrf_visual::LightAnimatorDescription;
 
-use crate::host::render_thunder_settings::RenderThunderSettings;
-use crate::host::render_thunderbolt::RenderThunderbolt;
-use crate::host::render_thunderbolt_model::RenderThunderboltModel;
+use crate::host::weather::thunder::render_thunder_settings::RenderThunderSettings;
+use crate::host::weather::thunder::render_thunderbolt::RenderThunderbolt;
+use crate::host::weather::thunder::render_thunderbolt_model::RenderThunderboltModel;
 
 /// What a level's weather strikes with (`CEffect_Thunderbolt`): its collections, their bolts, and where bolts strike.
 #[derive(Clone, Debug, Default, PartialEq)]

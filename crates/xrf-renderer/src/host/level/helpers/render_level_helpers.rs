@@ -1,4 +1,4 @@
-use crate::host::render_helper_object::RenderHelperObject;
+use crate::host::level::helpers::render_helper_object::RenderHelperObject;
 
 /// The level objects a level's viewer draws helpers for: editor-only pictures of what draws nothing of its own.
 #[derive(Clone, Debug, Default, PartialEq)]

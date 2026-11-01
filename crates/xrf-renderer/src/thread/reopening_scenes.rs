@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
-use crate::host::render_scene_id::RenderSceneId;
+use crate::host::world::render_scene_id::RenderSceneId;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::texture::texture_cache::TextureCache;
 

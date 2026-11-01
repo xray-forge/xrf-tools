@@ -1,4 +1,4 @@
-use crate::host::render_helper_shape::RenderHelperShape;
+use crate::host::level::helpers::render_helper_shape::RenderHelperShape;
 
 /// One level object the viewer draws a helper for: what names it to the page, the kind its switch is, how it is drawn,
 /// and its shapes where it stands.

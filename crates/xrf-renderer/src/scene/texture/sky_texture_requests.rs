@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::host::render_asset_source::RenderAssetSource;
-use crate::host::render_sky_textures::RenderSkyTextures;
+use crate::host::weather::render_sky_textures::RenderSkyTextures;
 use crate::lighting::render_sky::RenderSky;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;

@@ -20,7 +20,7 @@ use crate::frame::frame_statistics::FrameStatistics;
 #[cfg(debug_assertions)]
 use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::periodic::periodic_owner::PeriodicOwner;
-use crate::host::render_scene_id::RenderSceneId;
+use crate::host::world::render_scene_id::RenderSceneId;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::window::backdrop_uniform::BackdropUniform;
 use crate::pass::window::overlay_parameters::OverlayParameters;

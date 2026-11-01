@@ -1,4 +1,4 @@
-use crate::host::render_thunderbolt_gradient::RenderThunderboltGradient;
+use crate::host::weather::thunder::render_thunderbolt_gradient::RenderThunderboltGradient;
 
 /// A bolt of a collection, as `SThunderboltDesc` loads it.
 #[derive(Clone, Debug, PartialEq)]

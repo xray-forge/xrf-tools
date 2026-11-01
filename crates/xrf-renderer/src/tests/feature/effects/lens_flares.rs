@@ -5,8 +5,8 @@ use glam::Vec3;
 use crate::feature::effects::flares::flare_frame::FlareFrame;
 use crate::feature::effects::flares::flare_uniform::FlareUniform;
 use crate::feature::effects::flares::lens_flare_fade::LensFlareFade;
-use crate::host::render_flare::RenderFlare;
-use crate::host::render_lens_flare::RenderLensFlare;
+use crate::host::weather::flares::render_flare::RenderFlare;
+use crate::host::weather::flares::render_lens_flare::RenderLensFlare;
 
 fn new_flare(rise_time: f32, down_time: f32, flares: usize) -> RenderLensFlare {
   RenderLensFlare {

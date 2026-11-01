@@ -1,4 +1,4 @@
-use crate::host::render_spawn_object::RenderSpawnObject;
+use crate::host::level::spawn::render_spawn_object::RenderSpawnObject;
 
 /// The objects of a level's spawn the viewer draws, and the visuals they stand as, each named once.
 #[derive(Clone, Debug, Default)]

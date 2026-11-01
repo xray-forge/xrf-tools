@@ -16,7 +16,7 @@ use crate::feature::weather::volumetric::shaft_inputs::ShaftInputs;
 use crate::feature::weather::volumetric::volumetric_feature::VolumetricFeature;
 use crate::feature::weather::volumetric::volumetric_shafts::VolumetricShafts;
 use crate::host::render_asset_source::RenderAssetSource;
-use crate::host::render_level_weather::RenderLevelWeather;
+use crate::host::weather::render_level_weather::RenderLevelWeather;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::level::view::view_prepare::ViewPrepare;

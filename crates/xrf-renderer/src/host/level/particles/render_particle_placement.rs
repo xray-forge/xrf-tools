@@ -1,6 +1,6 @@
 use xrf_visual::ZoneSphere;
 
-use crate::host::render_particle_source::RenderParticleSource;
+use crate::host::level::particles::render_particle_source::RenderParticleSource;
 
 /// A particle system placed on a level: what it plays, and where.
 #[derive(Clone, Debug, PartialEq)]

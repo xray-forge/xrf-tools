@@ -2,9 +2,9 @@ use std::f32::consts::TAU;
 
 use glam::{Mat4, Vec3};
 
-use crate::host::render_helper_object::RenderHelperObject;
-use crate::host::render_helper_shape::RenderHelperShape;
-use crate::host::render_level_helpers::RenderLevelHelpers;
+use crate::host::level::helpers::render_helper_object::RenderHelperObject;
+use crate::host::level::helpers::render_helper_shape::RenderHelperShape;
+use crate::host::level::helpers::render_level_helpers::RenderLevelHelpers;
 use crate::scene::level::page::helpers::level_helper_icon::LevelHelperIcon;
 use crate::scene::level::page::helpers::level_helper_object::LevelHelperObject;
 use crate::scene::static_scene::item::object::static_object_box::StaticObjectBox;

@@ -1,7 +1,7 @@
 use xrf_renderer_core::ProxyHandle;
 
-use crate::host::render_model_failure::RenderModelFailure;
-use crate::host::render_sector_failure::RenderSectorFailure;
+use crate::host::world::feedback::render_model_failure::RenderModelFailure;
+use crate::host::world::feedback::render_sector_failure::RenderSectorFailure;
 use crate::scene::level::particles::placed::particle_emitter_proxy::ParticleEmitterProxy;
 use crate::scene::level::particles::placed::placed_effect::PlacedEffect;
 

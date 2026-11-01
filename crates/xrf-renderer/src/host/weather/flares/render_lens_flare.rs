@@ -1,5 +1,5 @@
-use crate::host::render_flare::RenderFlare;
-use crate::host::render_sun_sprite::RenderSunSprite;
+use crate::host::weather::flares::render_flare::RenderFlare;
+use crate::host::weather::flares::render_sun_sprite::RenderSunSprite;
 
 /// A `suns.ltx` section as the renderer draws it: the sun's sprite in the sky, the flares and the gradient over the
 /// frame, and how long a keyframe's change of sun fades over.
