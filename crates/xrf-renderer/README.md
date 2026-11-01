@@ -77,26 +77,31 @@ through a view (`SceneView`), once a frame:
 
 The window pass then presents each view's image. A view's units are split by how much of the frame they draw in. Those
 recording in several phases, or read by every phase, are view-level (`SceneFeatures`). Those drawing in one part of the
-frame alone belong to that part's stage (`scene/level/stage/`), which keeps them private from the other stages. The
-passes they record with are built once for every view and grouped the same way (`pass/stage/`); each pass holds its
-pipelines in a `PipelineSet`.
+frame alone belong to that part's stage, which keeps them private from the other stages. The passes they record with
+are built once for every view and grouped the same way; each pass holds its pipelines in a `PipelineSet`.
 
-### Where a technique plugs in
+The features live in `src/feature/`, one folder a group of passes (`scene`, `lighting`, `tracing`, `weather`,
+`effects`, `image`). A group holds its passes (`image_passes.rs`), its stage where it has one (`image_stage.rs`) and a
+folder a feature (`image/bloom/`) with its unit, passes, parameters, uniforms and the types it produces, whoever reads
+them. What no one feature produces, such as the view binding, the pipeline source and the lighting uniform the frame
+assembles, is in `src/pass/`; the scene's own state and its views are in `src/scene/level/`.
 
-- **An effect drawn in one part of the frame**, such as a post effect after the resolve: add its unit under
-  `scene/level/feature/`, its pass under `pass/` and its shader under `shaders/`. Add the pass to its group in
-  `pass/stage/` (a field, a build and a refresh line), and the unit to its stage (a field, a `prepare` line, a record
-  line and a `view_units!` entry). A pass after the resolve that reads a drawn target on purpose tags the read
+### Where a feature plugs in
+
+- **An effect drawn in one part of the frame**, such as a post effect after the resolve: add its folder under its
+  group (`feature/image/<name>/`: its unit, pass, parameters and uniform) and its shader under `shaders/`. Add the pass
+  to the group's passes (a field, a build and a refresh line), and the unit to its stage (a field, a `prepare` line, a
+  record line and a `view_units!` entry). A pass after the resolve that reads a drawn target on purpose tags the read
   (`JitterGuard::READS_*`), with the reason beside the tag. The setting goes in `contract/`; an applied readout goes in
   the stage's `describe`.
-- **A technique recording in several phases**: a unit in `SceneFeatures`, called from the view's aspects
+- **A feature recording in several phases**: a unit in `SceneFeatures`, called from the view's aspects
   (`scene/level/scene_view/`) in frame order.
 - **New level data**: read by the host through `xrf-world`'s `WorldLevelSource`, handed over as a `RenderSceneUpdate`
   that `LevelScene` applies, and read from the scene by the unit that draws it.
 - **A new drawable kind** beside the static scene: there is no seam yet; the grass is the one such kind
-  (`scene/level/grass_view.rs`), named through the scene, the shadows (`scene/level/level_shadows.rs`) and the traces.
+  (`feature/scene/grass/`), named through the scene, the shadows (`feature/lighting/shadows/`) and the traces.
 - **Another output**, such as HDR: the window's format and the present (`window/render_window.rs`,
-  `pass/present_pass.rs`), whose pipelines are kept one set a format (`PipelineMap`).
+  `feature/image/present/`), whose pipelines are kept one set a format (`PipelineMap`).
 
 ## The contract
 
