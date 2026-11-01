@@ -119,8 +119,8 @@ export class LevelViewService {
   }
 
   /**
-   * What the view sets over the renderer's features for itself: antialiasing, shadows, occlusion, grass and lights. A
-   * preference, kept over runs.
+   * What the view sets over the renderer's features for itself, a group at a time, the rest drawn as the settings say.
+   * A preference, kept over runs.
    */
   @Computed()
   public get features(): ILevelFeatureOptions {
