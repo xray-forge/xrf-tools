@@ -12,10 +12,7 @@ use crate::feature::lighting::sun::direct_light_inputs::DirectLightInputs;
 use crate::feature::scene::drawable::casters::drawable_kind_ref::DrawableKindRef;
 use crate::feature::scene::drawable::draw::drawable_kind_readied::DrawableKindReadied;
 use crate::feature::scene::drawable::draw::drawable_kind_source::DrawableKindSource;
-use crate::feature::scene::grass::cards::grass_card_handles::GrassCardHandles;
-use crate::feature::scene::grass::level::grass_source::GrassSource;
-use crate::feature::scene::grass::trace::grass_trace_source::GrassTraceSource;
-use crate::feature::scene::grass::trace::traced_grass::TracedGrass;
+use crate::feature::scene::drawable::drawable_kind_traced::DrawableKindTraced;
 use crate::feature::scene::statics::cull::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::feature::tracing::indirect_trace::indirect_traced::IndirectTraced;
 use crate::feature::tracing::ray_guides::ray_guide_inputs::RayGuideInputs;
@@ -119,17 +116,6 @@ impl SceneView {
     }
   }
 
-  /// The drawable kinds beside the static scene the view draws, as its scene group finds them.
-  fn list_drawable_kinds<'a>(&'a self, scene: &'a LevelScene, passes: LevelPasses<'a>) -> [DrawableKindSource<'a>; 1] {
-    [DrawableKindSource::Grass {
-      view: &self.features.grass,
-      source: GrassSource {
-        pass: &passes.scene.grass,
-        level: scene.grass.get_level(),
-      },
-    }]
-  }
-
   /// The scene's group, in the phases every drawable kind draws by: the distortion cleared, the kinds readied, the
   /// static scene culled and drawn into the G-buffer, the kinds culled against its depth and their casters stood, those
   /// the reflections walk over drawn before the reflections keep their depth and the rest after, the wall marks and the
@@ -156,8 +142,7 @@ impl SceneView {
 
     ViewTargets::add_distortion_clear(&mut *graph, handles);
 
-    let mut kinds: Vec<DrawableKindReadied<'a>> = self
-      .list_drawable_kinds(scene, passes)
+    let mut kinds: Vec<DrawableKindReadied<'a>> = DrawableKindSource::list(&self.features.grass, scene, passes)
       .into_iter()
       .filter_map(|kind| kind.add_ready(GraphDeclaration::new(graph, bindings, runtime)))
       .collect();
@@ -290,29 +275,28 @@ impl SceneView {
     rings: GraphTexture,
   ) -> LightingRecorded<'a> {
     let ViewRecord { handles, statics, .. } = record;
-    // The grass's part of the scene's trace, where the view traces it: the trace binds the grass's whether or not it
-    // is planted this frame, with its cards where they stand.
-    let grass_cards: Option<GrassCardHandles> = kinds.iter().find_map(|kind| match kind {
-      DrawableKindReadied::Grass { cards, .. } => *cards,
-    });
-    let grass: Option<TracedGrass> = ViewTraceFeature::get_scene_trace(scene, record.passes).map(|trace| {
-      self.features.grass.add_trace(
-        GraphDeclaration::new(graph, bindings, runtime),
-        record,
-        GrassTraceSource {
-          level: scene.grass.get_level(),
-          cards: grass_cards,
-          empty: trace.get_empty(),
-        },
-      )
-    });
+    // Each kind's part of the scene's trace, where the view traces it, recorded whether or not the kind readied: the
+    // trace's shaders bind it regardless.
+    let mut kinds_traced: Vec<DrawableKindTraced> = Vec::new();
+
+    if let Some(trace) = ViewTraceFeature::get_scene_trace(scene, record.passes) {
+      for kind in DrawableKindSource::list(&self.features.grass, scene, record.passes) {
+        kinds_traced.push(kind.add_trace(
+          GraphDeclaration::new(graph, bindings, runtime),
+          record,
+          kinds,
+          trace.get_empty(),
+        ));
+      }
+    }
+
     // The scene's trace, which RTAO, the reflections and the water trace their rays through.
     let traced: Option<TracedScene> = self.features.view_trace.add_scene_trace(
       scene,
       GraphDeclaration::new(graph, bindings, runtime),
       record,
       &self.features.lights,
-      grass,
+      &kinds_traced,
     );
     let sun_seen: GraphTexture = self.add_direct_light(
       scene,

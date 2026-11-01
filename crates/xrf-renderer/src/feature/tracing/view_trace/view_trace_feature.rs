@@ -6,6 +6,7 @@ use xrf_renderer_core::{
 };
 
 use crate::feature::lighting::lights::lights_feature::LightsFeature;
+use crate::feature::scene::drawable::drawable_kind_traced::DrawableKindTraced;
 use crate::feature::scene::drawable::drawable_trace_instance::DrawableTraceInstance;
 use crate::feature::scene::grass::trace::traced_grass::TracedGrass;
 use crate::feature::tracing::view_trace::sway::trace_sway_parameters::TraceSwayParameters;
@@ -332,8 +333,9 @@ impl ViewTraceFeature {
   }
 
   /// The level's geometry a ray the screen does not answer is traced against, as one parameter set a frame which every
-  /// consumer binds (the reflections, the water), where the device traces rays; with the `grass`'s part, which the
-  /// grass recorded over the same trace.
+  /// consumer binds (the reflections, the water), where the device traces rays; with the drawable `kinds`' parts, which
+  /// each kind recorded over the same trace. The trace's shaders bind the grass's by name, so it traces nothing without
+  /// it.
   pub fn add_scene_trace<'a>(
     &'a self,
     scene: &'a LevelScene,
@@ -344,8 +346,9 @@ impl ViewTraceFeature {
     }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
     lights: &'a LightsFeature,
-    grass: Option<TracedGrass>,
+    kinds: &[DrawableKindTraced],
   ) -> Option<TracedScene<'a>> {
+    let grass: Option<TracedGrass> = kinds.iter().find_map(DrawableKindTraced::get_grass);
     let ViewRecord {
       passes,
       textures: texture_group,
