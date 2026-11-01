@@ -220,6 +220,11 @@ impl StaticTrace {
     ];
     let built: (usize, [u64; StaticLayout::COUNT + 1]) = (statics.get_contents(), generations);
 
+    // Nothing changed since the last build: what was built stands, and nothing need be listed to tell.
+    if self.built == Some(built) {
+      return;
+    }
+
     let has_moved: bool = self.built.is_some_and(|(_, held)| held != generations);
 
     if has_moved {
@@ -230,7 +235,7 @@ impl StaticTrace {
     let is_due: bool =
       has_moved || !self.is_only_added(statics) || self.built_at.is_none_or(|at| at.elapsed() >= Self::REBUILD_EVERY);
 
-    if self.built != Some(built) && is_due {
+    if is_due {
       self.built = Some(built);
       self.built_at = Some(Instant::now());
       self.build(device, queue, encoder, statics);
