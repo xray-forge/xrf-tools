@@ -86,8 +86,13 @@ impl LensFlareFade {
     self.blend = self.blend.clamp(0.0, 1.0);
   }
 
-  /// The lens flare drawn now, if any, and how far it has faded in.
-  pub fn get_shown(&self) -> (Option<&str>, f32) {
-    (self.current.as_deref(), self.blend)
+  /// The lens flare drawn now, if any.
+  pub fn get_shown(&self) -> Option<&str> {
+    self.current.as_deref()
+  }
+
+  /// How far the lens flare drawn now has faded in.
+  pub fn get_blend(&self) -> f32 {
+    self.blend
   }
 }

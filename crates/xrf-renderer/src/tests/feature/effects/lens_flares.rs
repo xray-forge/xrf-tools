@@ -48,14 +48,14 @@ fn fades_a_lens_flare_in_over_its_rise_time_at_the_clock_rate() {
   fade.advance(Some("day"), find, start, 10.0);
   fade.advance(Some("day"), find, start + Duration::from_millis(500), 10.0);
 
-  let (name, blend) = fade.get_shown();
+  let blend: f32 = fade.get_blend();
 
-  assert_eq!(name, Some("day"));
+  assert_eq!(fade.get_shown(), Some("day"));
   assert!((blend - 0.5).abs() < 1e-3, "{blend}");
 
   fade.advance(Some("day"), find, start + Duration::from_secs(2), 10.0);
 
-  assert_eq!(fade.get_shown().1, 1.0);
+  assert_eq!(fade.get_blend(), 1.0);
 }
 
 // The engine hides the lens flare shown before the next one rises, each over its own time.
@@ -70,12 +70,12 @@ fn hides_the_lens_flare_shown_before_the_next_one_rises() {
   fade.advance(Some("moon"), find, start + Duration::from_secs(1), 10.0);
   fade.advance(Some("moon"), find, start + Duration::from_millis(1500), 10.0);
 
-  assert_eq!(fade.get_shown().0, Some("day"));
-  assert!((fade.get_shown().1 - 0.5).abs() < 1e-3);
+  assert_eq!(fade.get_shown(), Some("day"));
+  assert!((fade.get_blend() - 0.5).abs() < 1e-3);
 
   fade.advance(Some("moon"), find, start + Duration::from_secs(3), 10.0);
 
-  assert_eq!(fade.get_shown(), (Some("moon"), 0.0));
+  assert_eq!((fade.get_shown(), fade.get_blend()), (Some("moon"), 0.0));
 }
 
 // A paused clock never moves, so a fade waiting on it would never end; it completes at once instead.
@@ -88,7 +88,7 @@ fn completes_every_fade_at_once_while_the_clock_is_paused() {
     fade.advance(Some("day"), find, start, 0.0);
   }
 
-  assert_eq!(fade.get_shown(), (Some("day"), 1.0));
+  assert_eq!((fade.get_shown(), fade.get_blend()), (Some("day"), 1.0));
 }
 
 #[test]

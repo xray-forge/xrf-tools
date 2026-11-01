@@ -3,8 +3,10 @@ use xrf_renderer_core::{
   GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, PipelineSet, UniformBinding,
 };
 
+use crate::contract::feature::image::bloom::render_bloom_mode::RenderBloomMode;
 use crate::contract::feature::image::bloom::render_bloom_settings::RenderBloomSettings;
 use crate::contract::feature::image::bloom::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
+use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::bloom::bloom_filter::BloomFilter;
 use crate::feature::image::bloom::bloom_parameters::BloomParameters;
@@ -107,6 +109,15 @@ impl BloomFeature {
   /// Whether the enhanced bloom draws this frame in the engine's place.
   pub fn is_enhanced_drawn(&self) -> bool {
     self.enhanced.is_some()
+  }
+
+  /// Writes into `applied` which bloom it shows this frame, none where neither is.
+  pub fn describe(&self, applied: &mut RenderAppliedReport) {
+    applied.bloom = if self.is_enhanced_drawn() {
+      Some(RenderBloomMode::Enhanced)
+    } else {
+      self.is_engine_drawn().then_some(RenderBloomMode::Engine)
+    };
   }
 
   /// Adds the enhanced bloom from `image`, the resolved image the present shows, answering what the present screens

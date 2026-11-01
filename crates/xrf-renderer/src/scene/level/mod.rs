@@ -1,4 +1,3 @@
-pub(crate) mod level_frame;
 pub(crate) mod level_grass;
 pub(crate) mod level_prepare;
 pub(crate) mod level_scene;

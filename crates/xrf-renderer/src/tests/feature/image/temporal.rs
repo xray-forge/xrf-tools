@@ -4,7 +4,7 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
-use crate::feature::image::resolve::fsr::fsr_frame::FsrFrame;
+use crate::feature::image::resolve::fsr::fsr_dispatch::FsrDispatch;
 use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
 use crate::feature::image::resolve::resolve_feature::ResolveFeature;
 use crate::feature::image::resolve::temporal::temporal_frame::TemporalFrame;
@@ -205,12 +205,12 @@ fn the_resolves_carry_their_history_to_this_frames_pre_exposure() {
 
   let view: CameraView = CameraView::new(Vec3::ZERO, Mat4::IDENTITY, 60.0, 1.0, 0.1, 100.0);
   let fsr: FsrUniform = FsrUniform::new(
-    FsrFrame {
+    FsrDispatch {
       render: (64, 64),
       display: (64, 64),
       phases: 8,
       frame_index: 1,
-      ..FsrFrame::default()
+      ..FsrDispatch::default()
     },
     &view,
   );

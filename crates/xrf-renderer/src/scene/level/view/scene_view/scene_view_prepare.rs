@@ -11,7 +11,6 @@ use crate::feature::effects::flares::sun_sprite::SunSprite;
 use crate::feature::effects::rain::cover::rain_cover::RainCover;
 use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::effects::rain::rings::drop_rings::DropRings;
-use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::image::present::present_inputs::PresentInputs;
 use crate::feature::scene::drawable::drawable_trace_instance::DrawableTraceInstance;
 use crate::feature::scene::grass::grass_view_frame::GrassViewFrame;
@@ -22,6 +21,7 @@ use crate::feature::view::scene_features::SceneFeatures;
 use crate::feature::weather::fog::fog_feature::FogFeature;
 use crate::feature::weather::water::water_frame::WaterFrame;
 use crate::feature::weather::wet::puddles::level_surface::LevelSurface;
+use crate::feature::weather::wet::puddles::surface_window::SurfaceWindow;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
@@ -74,9 +74,7 @@ impl SceneView {
     let windows: OverheadWindows = self.get_overhead_windows();
     let falling: Option<RainUniform> = self.features.rain.prepare(frame, level.gust, time, windows);
 
-    self.features.rain.follow_display(
-      DisplayMode::of(options).get_display(&options.features.grading, &self.features.exposure.get_metering()),
-    );
+    self.features.rain.follow_display(self.shared.display);
     self.features.wet.prepare(
       frame,
       &level.wetness,
@@ -97,10 +95,7 @@ impl SceneView {
     self.features.water.follow_rings(rings);
     self.features.wet.follow_rings(rings);
 
-    let lighting_frame: LightingFrame = self
-      .features
-      .sky
-      .get_lighting_frame(frame, &self.features.exposure, time);
+    let lighting_frame: LightingFrame = self.features.sky.get_lighting_frame(frame, &self.shared, time);
 
     self
       .features
@@ -183,7 +178,7 @@ impl SceneView {
       is_falloff_inverse_square: options.is_falloff_inverse_square(),
       light_scale: lighting_frame.light_units.local
         * lighting_frame.light_units.light_gain
-        * lighting_frame.pre_exposure.current,
+        * lighting_frame.exposure.pre_exposure.current,
       time,
     };
     let lights: LightAsks = scene.lights.pick(frame_lights, &scene.campfire_shares);
@@ -265,68 +260,70 @@ impl SceneView {
 
   /// Where the rain cover and the level's surface stand now.
   fn get_overhead_windows(&self) -> OverheadWindows {
-    let (cover, cover_shape): (Vec4, (f32, f32)) = self
-      .features
-      .rain_cover
-      .as_ref()
-      .map_or(RainCover::get_unmade(), |cover| (cover.get_window(), cover.get_shape()));
-    let ((surface, surface_shape), water): ((Vec4, Vec4), Vec4) = self
-      .features
-      .level_surface
-      .as_ref()
-      .map_or(LevelSurface::get_unmade(), |surface| {
-        (surface.get_window(), surface.get_water_window())
-      });
+    let cover: Option<&RainCover> = self.features.rain_cover.as_ref();
+    let surface: Option<&LevelSurface> = self.features.level_surface.as_ref();
+    let SurfaceWindow {
+      window: surface_window,
+      shape: surface_shape,
+    } = surface.map_or(LevelSurface::get_unmade_window(), LevelSurface::get_window);
 
     OverheadWindows {
-      cover,
-      cover_shape,
-      surface,
+      cover: cover.map_or(RainCover::get_unmade_window(), RainCover::get_window),
+      cover_shape: cover.map_or(RainCover::get_unmade_shape(), RainCover::get_shape),
+      surface: surface_window,
       surface_shape,
-      water,
+      water: surface.map_or(LevelSurface::get_unmade_water_window(), LevelSurface::get_water_window),
     }
   }
 
-  /// Notes what the window pass reads, once every other unit knows what it draws: whether the water, a particle, the
-  /// enhanced rain's splashes or a distorting surface of the scene moves what is seen through it, which bloom it lays
-  /// over the frame, the sky debanding, its noise turning with `time`, and the film's grain, drawn for `noise_frame`.
+  /// Whether the water, a particle, the enhanced rain's splashes or a distorting surface of the scene moves what is seen
+  /// through the frame, once every unit knows what it draws.
+  pub(super) fn is_distorting(&self, options: &RenderViewOptions) -> bool {
+    let water: &RenderWaterSettings = &options.features.water;
+    // The enhanced water refracts what is behind it itself and writes no distortion.
+    let is_water_distorting: bool =
+      water.is_enabled && water.is_distorted && water.mode != RenderWaterMode::Enhanced && options.mode.is_lit;
+    let features: &SceneFeatures = &self.features;
+
+    !options.mode.is_wireframe
+      && (is_water_distorting
+        || features.particles.is_distorting()
+        || features.rain.is_distorting()
+        || features.composited.is_distorting())
+  }
+
+  /// Notes what the window pass reads, once every other unit knows what it draws: whether the frame distorts
+  /// (`is_distorting`), which bloom it lays over the frame, the sky debanding, its noise turning with `time`, and the
+  /// film's grain, drawn for `noise_frame`.
   pub(super) fn prepare_present(
     &mut self,
     options: &RenderViewOptions,
     output: RenderRect,
     time: f32,
     noise_frame: u32,
+    is_distorting: bool,
   ) {
     if self.targets.is_none() {
       return;
     }
 
-    let water: &RenderWaterSettings = &options.features.water;
-    // The enhanced water refracts what is behind it itself and writes no distortion.
-    let is_water_distorting: bool =
-      water.is_enabled && water.is_distorted && water.mode != RenderWaterMode::Enhanced && options.mode.is_lit;
     let features: &SceneFeatures = &self.features;
     let inputs: PresentInputs = PresentInputs {
       is_upscaled: features.resolve.is_rescaled(),
       is_occluded: self.stages.lighting.is_occluded(),
       is_indirect: self.stages.lighting.is_indirect(),
       reflection_ratio: features.reflections.get_trace().map(ReflectionTrace::get_ratio),
-      is_distorting: !options.mode.is_wireframe
-        && (is_water_distorting
-          || features.particles.is_distorting()
-          || features.rain.is_distorting()
-          || features.composited.is_distorting()),
+      is_distorting,
       selection_color: features.overlays.get_selection_color(),
       marks: features.helpers.get_present_marks(),
       is_engine_bloomed: features.bloom.is_engine_drawn(),
       is_enhanced_bloomed: features.bloom.is_enhanced_drawn(),
       grass_reach: features.grass.get_cascade_reach(),
       light: self.shared.lighting.get_light_encoding(),
-      metering: features.exposure.get_metering(),
+      display: self.shared.display,
       grain_frame: noise_frame,
     };
 
-    self.features.bloom.keep_for_distortion(inputs.is_distorting);
     self.features.present.prepare(options, output, inputs, time);
   }
 }

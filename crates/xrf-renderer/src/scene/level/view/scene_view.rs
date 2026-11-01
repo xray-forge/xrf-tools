@@ -6,6 +6,8 @@ use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::effects::rain::cover::rain_covers::RainCovers;
+use crate::feature::image::exposure::reading::exposure_decisions::ExposureDecisions;
+use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::scene::drawable::draw::drawable_kind_readied::DrawableKindReadied;
 use crate::feature::scene::wind::wind_feature::WindFeature;
 use crate::feature::view::scene_features::SceneFeatures;
@@ -25,13 +27,13 @@ use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
-use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_prepare::LevelPrepare;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::lights::asks::light_asks::LightAsks;
 use crate::scene::level::page::helpers::view::helper_marks_pass::HelperMarksPass;
 use crate::scene::level::shadow::shadow_sway::ShadowSway;
 use crate::scene::level::view::record::lighting_recorded::LightingRecorded;
+use crate::scene::level::view::record::readied_frame::ReadiedFrame;
 use crate::scene::level::view::record::shadows_recorded::ShadowsRecorded;
 use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::level::view::scene_asks::SceneAsks;
@@ -174,8 +176,9 @@ impl SceneView {
   }
 
   /// Finishes readying its frame once its scene settled every view's asks (`LevelScene::settle`): writes its lights as
-  /// it asked for them, the faces now settled, and fills its effects' quads from the step the scene joined; then notes
-  /// what the window pass reads, with `options` and over `output` as its frame was prepared.
+  /// it asked for them, the faces now settled, and fills its effects' quads from the step the scene joined; then, every
+  /// unit knowing what it draws, keeps the engine's bloom for a distorting frame's blur and notes what the window pass
+  /// reads, with `options` and over `output` as its frame was prepared.
   pub fn finish_prepare(
     &mut self,
     scene: &LevelScene,
@@ -194,23 +197,33 @@ impl SceneView {
       .particles
       .fill(&self.shared.camera, options, &mut self.features.particles);
     self.features.particles.upload(device, &mut *encoder);
+
+    let is_distorting: bool = self.is_distorting(options);
+
+    self.features.bloom.keep_for_distortion(is_distorting);
     self.prepare_present(
       options,
       output,
       scene.get_time().as_secs_f32(),
       self.shared.resolve.noise_frame,
+      is_distorting,
     );
   }
 
-  /// What every other unit reads of the frame's resolve, prepared before any of them: the exposure, whose scale the
-  /// resolve carries its history by, then the resolve, whose decisions the view's frame holds.
+  /// What every other unit reads of the frame's exposure and resolve, prepared before any of them, which the view's frame
+  /// holds: the exposure, whose scale the resolve carries its history by and whose metering the present shows the frame
+  /// by, then the resolve.
   fn decide(&mut self, frame: &ViewPrepare<'_>, now: Instant) {
-    self.features.exposure.prepare(frame.queue, frame.options, now);
+    let options: &RenderViewOptions = frame.options;
+    let exposure: ExposureDecisions = self.features.exposure.prepare(frame.queue, options, now);
+
+    self.shared.exposure = exposure;
+    self.shared.display = DisplayMode::of(options).get_display(&options.features.grading, &exposure.metering);
     self.shared.resolve = self.features.resolve.prepare(
       frame,
       now,
       self.targets.as_ref().map(|targets| (targets.width, targets.height)),
-      self.features.exposure.get_pre_exposure(),
+      exposure.pre_exposure,
     );
   }
 
@@ -232,7 +245,7 @@ impl SceneView {
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
     pick: Option<ViewPick<'_>>,
-  ) -> Option<LevelFrame> {
+  ) -> Option<ReadiedFrame> {
     if self.targets.is_none() || !self.features.statics.is_ready() {
       return None;
     }
@@ -242,7 +255,7 @@ impl SceneView {
 
     self.features.statics.begin_frame();
 
-    Some(LevelFrame {
+    Some(ReadiedFrame {
       pick_slot,
       is_pick_through: pick.is_some_and(|pick| pick.is_through),
       is_scene_recorder: false,
@@ -265,7 +278,7 @@ impl SceneView {
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     textures: &'a TextureCache,
-    frame: &LevelFrame,
+    frame: &ReadiedFrame,
   ) -> Option<SceneOutput> {
     profiling::scope!("declare");
 

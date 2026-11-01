@@ -7,7 +7,7 @@ use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlus
 use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
 use crate::contract::feature::weather::fog::render_fog_settings::RenderFogSettings;
 use crate::contract::view::render_view_options::RenderViewOptions;
-use crate::feature::image::present::display::display_mode::DisplayMode;
+use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::lighting::bitmask::bitmask_search::BitmaskSearch;
 use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;
 use crate::lighting::lamp::light_specular::to_light_specular;
@@ -125,7 +125,8 @@ impl LightingUniform {
     // physical, in its units at the pre-exposure. The sky's, the clouds' and the sprite's colour the pictures they
     // tint, which the shaders decode with them; the forward passes' as the engine binds them.
     let is_physical: bool = options.is_light_physical();
-    let light_scale: f32 = frame.light_units.weather * frame.pre_exposure.current;
+    let pre_exposure: PreExposure = frame.exposure.pre_exposure;
+    let light_scale: f32 = frame.light_units.weather * pre_exposure.current;
     let gain: f32 = frame.light_units.light_gain;
     let light = |colour: Vec3| authored_light(colour, is_physical) * gain * light_scale;
     let level: Option<RenderLightLevel> = options.get_physical_light_level();
@@ -142,7 +143,7 @@ impl LightingUniform {
       Some(daylight) => {
         let sun: Vec3 = daylight.sun / std::f32::consts::PI;
 
-        (sun * frame.pre_exposure.current).extend(to_light_specular(sun, true) * frame.pre_exposure.current)
+        (sun * pre_exposure.current).extend(to_light_specular(sun, true) * pre_exposure.current)
       }
       None if is_anchored => {
         // The hemisphere's zenith as the irradiance pass last looked it up, the weather's stand-in cube's before.
@@ -211,8 +212,8 @@ impl LightingUniform {
         flag(is_physical),
       ),
       pre_exposure: Vec4::new(
-        frame.pre_exposure.current,
-        frame.pre_exposure.previous,
+        pre_exposure.current,
+        pre_exposure.previous,
         frame.light_units.weather,
         frame.light_units.local,
       ),
@@ -223,7 +224,7 @@ impl LightingUniform {
           0.0
         },
         flag(options.mode.is_lit),
-        flag(frame.is_adapting),
+        flag(frame.exposure.is_adapting),
         flag(is_occluded),
       ),
       forward_ambient: lighting.ambient_color.extend(0.0),
@@ -286,7 +287,7 @@ impl LightingUniform {
           Some(RenderLightLevel::Physical) | None => Vec4::ZERO,
         }
       },
-      display: DisplayMode::of(options).get_display(&options.features.grading, &frame.metering),
+      display: frame.display,
     }
   }
 

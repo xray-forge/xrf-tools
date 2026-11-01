@@ -1,21 +1,18 @@
 use glam::Vec4;
 
-use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
-use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
+use crate::feature::image::exposure::reading::exposure_decisions::ExposureDecisions;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
 use crate::lighting::unit::daylight::Daylight;
 use crate::lighting::unit::light_units::LightUnits;
 
-/// What a viewport's frame adds to its lighting before the uniform is written: the exposure, what is up of the sky,
-/// and the clocks.
+/// What a viewport's frame adds to its lighting before the uniform is written: the exposure, how the present shows the
+/// frame, what is up of the sky, and the clocks.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LightingFrame {
-  /// Whether the exposure adapts this frame.
-  pub is_adapting: bool,
-  /// The scale the frame's light is written at, and the last frame's.
-  pub pre_exposure: PreExposure,
-  /// What the exposure last metered, which the game's pictures are shown by.
-  pub metering: ExposureMetering,
+  /// What the view's exposure decided for this frame.
+  pub exposure: ExposureDecisions,
+  /// How the present shows the frame (`DisplayMode::get_display`), as the view decided it for this frame.
+  pub display: Vec4,
   /// The cd/m² a light of one in the engine's units stands for, the weather's and the local lights'.
   pub light_units: LightUnits,
   /// The world's light the physical levels light the sun by; none at the authored levels or under the engine's light.

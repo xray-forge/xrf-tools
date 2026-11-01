@@ -6,7 +6,6 @@ use xrf_renderer_core::{
 use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
 use crate::contract::feature::tracing::render_reflection_probe::RenderReflectionProbe;
 use crate::feature::effects::flares::sun_sprite::SunSprite;
-use crate::feature::image::exposure::exposure_feature::ExposureFeature;
 use crate::feature::tracing::surroundings::surroundings_cube::SurroundingsCube;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::sky::dome::sky_haze_parameters::SkyHazeParameters;
@@ -31,6 +30,7 @@ use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::view::record::view_record::ViewRecord;
+use crate::scene::level::view::view_frame::ViewFrame;
 use crate::scene::level::view::view_prepare::ViewPrepare;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
@@ -221,8 +221,8 @@ impl SkyFeature {
 
   /// What the lighting draws the sky with this frame: a keyframe whose textures are not all up blended out, so a sky
   /// still going up shows the other one; whether both irradiance cubes are up; the clouds' `time`; the sun's sprite
-  /// while its texture is up; whether the exposure adapts (`is_adapting`), the scale the light is written at and what it
-  /// metered; at the physical light levels the world's light, and the units the light is in by the sky last projected.
+  /// while its texture is up; the exposure and the display the view decided (`shared`); at the physical light levels the
+  /// world's light, and the units the light is in by the sky last projected.
   pub fn get_lighting_frame(
     &self,
     &ViewPrepare {
@@ -231,14 +231,9 @@ impl SkyFeature {
       weather_textures,
       ..
     }: &ViewPrepare<'_>,
-    exposure: &ExposureFeature,
+    shared: &ViewFrame,
     time: f32,
   ) -> LightingFrame {
-    let (is_adapting, pre_exposure, metering) = (
-      exposure.is_adapting(),
-      exposure.get_pre_exposure(),
-      exposure.get_metering(),
-    );
     let sky: &RenderSky = &lighting.sky;
     let daylight: Option<Daylight> = (options.is_light_physical()
       && options.features.light_level == RenderLightLevel::Physical)
@@ -254,9 +249,8 @@ impl SkyFeature {
     };
 
     LightingFrame {
-      is_adapting,
-      pre_exposure,
-      metering,
+      exposure: shared.exposure,
+      display: shared.display,
       light_units: LightUnits::of(options, lighting, &self.harmonics, daylight.as_ref()),
       daylight,
       sky_blend: match (side(0), side(1)) {

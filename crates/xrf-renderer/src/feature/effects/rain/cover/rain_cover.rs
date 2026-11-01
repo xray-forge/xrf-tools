@@ -2,6 +2,7 @@ use glam::Vec4;
 use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
 use crate::feature::effects::rain::cover::cover_textures::CoverTextures;
+use crate::feature::effects::rain::cover::rain_cover_shape::RainCoverShape;
 use crate::feature::scene::pyramid::cover_pyramid::CoverPyramid;
 use crate::feature::scene::pyramid::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
 use crate::feature::scene::pyramid::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
@@ -64,14 +65,14 @@ impl RainCover {
     self.map.get_window()
   }
 
-  /// The window and the shape of a cover not made yet.
-  pub fn get_unmade() -> (Vec4, (f32, f32)) {
-    let shape: OverheadShape = OverheadShape::RAIN_COVER;
+  /// The window of a cover not made yet.
+  pub fn get_unmade_window() -> Vec4 {
+    OverheadMap::get_unmade_window(OverheadShape::RAIN_COVER)
+  }
 
-    (
-      OverheadMap::get_unmade_window(shape),
-      (shape.resolution as f32, shape.depth),
-    )
+  /// The shape of a cover not made yet.
+  pub fn get_unmade_shape() -> RainCoverShape {
+    RainCoverShape::of(OverheadShape::RAIN_COVER)
   }
 
   /// Bytes its map and its pyramid take.
@@ -85,11 +86,8 @@ impl RainCover {
     map + pyramid
   }
 
-  /// Its texels across and the metres it reaches down.
-  pub fn get_shape(&self) -> (f32, f32) {
-    let shape: OverheadShape = self.map.get_shape();
-
-    (shape.resolution as f32, shape.depth)
+  pub fn get_shape(&self) -> RainCoverShape {
+    RainCoverShape::of(self.map.get_shape())
   }
 
   /// Declares its draw and its pyramid's reduction where this frame's `commit` took it, and answers its depth

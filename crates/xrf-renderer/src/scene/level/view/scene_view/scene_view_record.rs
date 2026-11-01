@@ -33,10 +33,10 @@ use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::feature::weather::wet::wet_uniform::WetUniform;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::level_passes::LevelPasses;
-use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::view::record::lighting_handles::LightingHandles;
 use crate::scene::level::view::record::lighting_recorded::LightingRecorded;
+use crate::scene::level::view::record::readied_frame::ReadiedFrame;
 use crate::scene::level::view::record::shadows_recorded::ShadowsRecorded;
 use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::level::view::scene_view::SceneView;
@@ -230,7 +230,7 @@ impl SceneView {
     }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
     kinds: &[DrawableKindReadied<'a>],
-    frame: &LevelFrame,
+    frame: &ReadiedFrame,
   ) -> ShadowsRecorded {
     let casters: Vec<DrawableKindRef<'a>> = kinds
       .iter()

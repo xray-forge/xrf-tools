@@ -6,7 +6,7 @@ use xrf_renderer_core::{
 
 use crate::feature::weather::water::enhanced::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::feature::weather::water::reflection::water_blur_parameters::WaterBlurParameters;
-use crate::feature::weather::water::reflection::water_blur_uniform::WaterBlurUniform;
+use crate::feature::weather::water::reflection::water_blur_way::WaterBlurWay;
 use crate::feature::weather::water::reflection::water_reflection::WaterReflection;
 use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::build::pipeline_source::PipelineSource;
@@ -51,12 +51,17 @@ impl WaterBlurPass {
       .refresh(source.cache, || Self::create_pipeline(source, &self.layout))
   }
 
-  /// Declares one way of the blur, from `source` into a transient of `size`, and answers that transient.
+  /// Declares one way of the blur, from its source into a transient of its size, and answers that transient.
   pub fn add<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     runtime: &mut GraphRuntime,
-    (name, source, (width, height), way): (&'static str, GraphTexture, (u32, u32), WaterBlurUniform),
+    WaterBlurWay {
+      name,
+      source,
+      size: (width, height),
+      way,
+    }: WaterBlurWay,
     enhanced: UniformBinding<EnhancedWaterUniform>,
   ) -> GraphTexture {
     let target: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(

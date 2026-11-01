@@ -5,8 +5,7 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 use crate::contract::feature::weather::fog::render_fog_mode::RenderFogMode;
 use crate::contract::feature::weather::fog::render_fog_settings::RenderFogSettings;
 use crate::contract::view::render_view_options::RenderViewOptions;
-use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
-use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
+use crate::feature::image::exposure::reading::exposure_decisions::ExposureDecisions;
 use crate::feature::weather::fog::fog_scattering_uniform::FogScatteringUniform;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
 use crate::lighting::unit::light_units::LightUnits;
@@ -52,9 +51,8 @@ fn height_fog(options: &RenderViewOptions, lighting: &RenderLighting) -> Vec4 {
     Mat4::IDENTITY,
     options,
     &LightingFrame {
-      is_adapting: false,
-      pre_exposure: PreExposure::NONE,
-      metering: ExposureMetering::default(),
+      exposure: ExposureDecisions::default(),
+      display: Vec4::ZERO,
       light_units: LightUnits::NONE,
       daylight: None,
       sky_blend: 0.0,

@@ -75,13 +75,15 @@ impl EffectStage {
     sun_sprite
   }
 
-  /// Writes into `applied` what it draws this frame: the enhanced height fog.
-  pub fn describe(&self, applied: &mut RenderAppliedReport) {
+  /// Writes into `applied` what it draws this frame: the enhanced height fog, and the lens flare it shows where the sky
+  /// draws the sun (`is_sun_drawn`).
+  pub fn describe(&self, applied: &mut RenderAppliedReport, is_sun_drawn: bool) {
     applied.height_fog = self.fog.get_applied();
+    applied.sun = self.get_shown_flare().filter(|_| is_sun_drawn).map(str::to_owned);
   }
 
   /// The lens flare it shows, none while it shows none.
-  pub fn get_shown_flare(&self) -> Option<&str> {
+  fn get_shown_flare(&self) -> Option<&str> {
     self.flares.get_shown()
   }
 

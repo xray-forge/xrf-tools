@@ -5,6 +5,7 @@ use xrf_renderer_core::{
 };
 
 use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
+use crate::feature::effects::rain::cover::rain_cover_shape::RainCoverShape;
 use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::effects::rain::rings::drop_rings::DropRings;
 use crate::feature::view::overhead_windows::OverheadWindows;
@@ -77,7 +78,7 @@ impl WetFeature {
       return;
     };
 
-    let (texels, reach): (f32, f32) = windows.cover_shape;
+    let RainCoverShape { texels, reach } = windows.cover_shape;
 
     self.uniform = WetUniform {
       density: falling.map_or(0.0, |_| lighting.rain.map_or(0.0, |rain| rain.density.clamp(0.0, 1.0))),
@@ -124,7 +125,7 @@ impl WetFeature {
 
   /// Follows the overhead maps to where they stand once they have moved, as the wet surfaces read them.
   pub fn follow(&mut self, windows: OverheadWindows) {
-    let (texels, reach): (f32, f32) = windows.cover_shape;
+    let RainCoverShape { texels, reach } = windows.cover_shape;
 
     self.uniform.cover = windows.cover;
     self.uniform.cover_state.x = texels;

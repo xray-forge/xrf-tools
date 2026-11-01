@@ -10,6 +10,7 @@ use crate::feature::image::camera::camera_effects_parameters::CameraEffectsParam
 use crate::feature::image::camera::camera_effects_pass::CameraEffectsPass;
 use crate::feature::image::camera::camera_effects_stage::CameraEffectsStage;
 use crate::feature::image::camera::camera_effects_uniform::CameraEffectsUniform;
+use crate::feature::image::camera::camera_frame::CameraFrame;
 use crate::feature::image::image_chain::ImageChain;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::jitter_guard::JitterGuard;
@@ -21,8 +22,8 @@ use crate::pass::level_passes::LevelPasses;
 /// the finished frame, and turns one of them on.
 #[derive(Default)]
 pub struct CameraFeature {
-  /// What the camera draws this frame: its settings and the view it looks through.
-  frame: Option<(RenderCameraSettings, CameraView)>,
+  /// What the camera draws this frame with, none where it draws nothing.
+  frame: Option<CameraFrame>,
   /// The stages' pipelines, asked for once it draws.
   pipelines: Option<PipelineSet<[wgpu::RenderPipeline; CameraEffectsStage::COUNT]>>,
 }
@@ -48,7 +49,10 @@ impl CameraFeature {
         log::error!("Camera effects rejected, showing with the last ones: {error}");
       }
 
-      self.frame = self.pipelines.as_ref().map(|_| (*settings, *view));
+      self.frame = self.pipelines.as_ref().map(|_| CameraFrame {
+        settings: *settings,
+        view: *view,
+      });
     }
   }
 
@@ -66,7 +70,7 @@ impl CameraFeature {
       ..
     }: ImageChain,
   ) -> Option<GraphTexture> {
-    let (settings, view) = self.frame.as_ref()?;
+    let CameraFrame { settings, view } = self.frame.as_ref()?;
     let pipelines: &[wgpu::RenderPipeline; CameraEffectsStage::COUNT] = self.pipelines.as_deref()?;
     let uniform: CameraEffectsUniform = CameraEffectsUniform::new(settings, view, (handles.size, size));
 

@@ -1,3 +1,4 @@
+pub(crate) mod traced_water;
 pub(crate) mod water_depth_parameters;
 pub(crate) mod water_draw;
 pub(crate) mod water_groups;

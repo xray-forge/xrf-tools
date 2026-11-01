@@ -1,12 +1,14 @@
 use glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::{
-  FrameGraph, GraphBuffer, GraphBufferAccess, GraphDeclaration, GraphDepthAttachment, GraphTexture, GraphTextureAccess,
-  StorageArray, StorageArrayMut,
+  FrameGraph, GraphBuffer, GraphBufferAccess, GraphDeclaration, GraphDepthAttachment, GraphTexture, StorageArray,
+  StorageArrayMut,
 };
 
 use crate::camera::camera_frustum::CameraFrustum;
 use crate::camera::camera_view::CameraView;
 use crate::contract::feature::lighting::render_shadow_settings::{RENDER_MAX_SHADOW_CASCADES, RenderShadowSettings};
+use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
+use crate::contract::report::applied::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::lighting::shadows::cascade_target::CascadeTarget;
 use crate::feature::lighting::shadows::cascades::shadow_cascade_view::ShadowCascadeView;
@@ -29,6 +31,8 @@ use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
+use crate::frame::targets::texture_copy::add_layer_copy;
+use crate::frame::targets::texture_layer::TextureLayer;
 use crate::lighting::sun::sun_cascade::SunCascade;
 use crate::lighting::sun::sun_view_rays::SunViewRays;
 use crate::pass::build::indirect_args::IndirectArgs;
@@ -213,6 +217,17 @@ impl LevelShadows {
   /// The maps, while any cascade is drawn.
   pub fn get_maps(&self) -> Option<&SunShadowMaps> {
     self.maps.as_ref()
+  }
+
+  /// Writes into `applied` the cascades `settings` ask for this frame and the maps' resolution, none without a cascade.
+  pub fn describe(&self, applied: &mut RenderAppliedReport, settings: &RenderShadowSettings) {
+    let cascades: usize = settings.get_cascade_count();
+
+    applied.shadows = (cascades > 0).then(|| RenderAppliedShadows {
+      cascades: settings.cascades[..cascades].to_vec(),
+      resolution: self.maps.as_ref().map_or(0, |maps| maps.resolution),
+      filter: settings.filter,
+    });
   }
 
   /// What the passes lit by the sun sample its cascades by, as this frame fitted them.
@@ -461,7 +476,12 @@ impl LevelShadows {
 
       match (draw, statics, kept) {
         (CascadeDraw::Kept, _, Some(kept)) => {
-          Self::add_layer_copy(&mut *graph, KEPT_PASSES[index][0], kept, maps, layer, layer);
+          add_layer_copy(
+            &mut *graph,
+            KEPT_PASSES[index][0],
+            TextureLayer { texture: kept, layer },
+            TextureLayer { texture: maps, layer },
+          );
           add_moving(&mut *graph);
         }
         (CascadeDraw::Banded(band), Some(_), _) => {
@@ -515,7 +535,18 @@ impl LevelShadows {
             );
           }
 
-          Self::add_layer_copy(&mut *graph, copy_pass, statics, target, static_layer, target_layer);
+          add_layer_copy(
+            &mut *graph,
+            copy_pass,
+            TextureLayer {
+              texture: statics,
+              layer: static_layer,
+            },
+            TextureLayer {
+              texture: target,
+              layer: target_layer,
+            },
+          );
           draw_casters(
             &mut *graph,
             sway_pass,
@@ -524,7 +555,15 @@ impl LevelShadows {
           );
 
           if let Some(kept) = kept {
-            Self::add_layer_copy(&mut *graph, KEPT_PASSES[index][0], kept, maps, target_layer, layer);
+            add_layer_copy(
+              &mut *graph,
+              KEPT_PASSES[index][0],
+              TextureLayer {
+                texture: kept,
+                layer: target_layer,
+              },
+              TextureLayer { texture: maps, layer },
+            );
           }
 
           add_moving(&mut *graph);
@@ -1134,44 +1173,6 @@ impl LevelShadows {
     let (first, last): (u32, u32) = (band * resolution / BANDS, (band + 1) * resolution / BANDS);
 
     [0, first, resolution, last - first]
-  }
-
-  /// Adds a pass copying layer `source` of a cascade's static layers (`statics`) into layer `destination` of the maps.
-  fn add_layer_copy(
-    graph: &mut FrameGraph<'_>,
-    name: &'static str,
-    statics: GraphTexture,
-    maps: GraphTexture,
-    source: u32,
-    destination: u32,
-  ) {
-    graph
-      .add_encoder_pass(name)
-      .texture(statics, GraphTextureAccess::CopySource)
-      .texture(maps, GraphTextureAccess::CopyDestination)
-      .record(move |context| {
-        let (from, into) = (context.get_texture(statics), context.get_texture(maps));
-        let size: wgpu::Extent3d = wgpu::Extent3d {
-          depth_or_array_layers: 1,
-          ..into.texture.size()
-        };
-
-        context.get_encoder().copy_texture_to_texture(
-          Self::to_layer(from.texture, source),
-          Self::to_layer(into.texture, destination),
-          size,
-        );
-      });
-  }
-
-  /// One layer of a texture, whole, as a copy reads or writes it.
-  fn to_layer(texture: &wgpu::Texture, layer: u32) -> wgpu::TexelCopyTextureInfo<'_> {
-    wgpu::TexelCopyTextureInfo {
-      texture,
-      mip_level: 0,
-      origin: wgpu::Origin3d { x: 0, y: 0, z: layer },
-      aspect: wgpu::TextureAspect::All,
-    }
   }
 }
 

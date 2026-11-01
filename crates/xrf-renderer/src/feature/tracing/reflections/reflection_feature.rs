@@ -5,6 +5,9 @@ use xrf_renderer_core::{
 
 use crate::context::gpu_requirements::can_trace;
 use crate::contract::feature::tracing::render_reflection_settings::RenderReflectionSettings;
+use crate::contract::feature::tracing::render_trace_size::RenderTraceSize;
+use crate::contract::report::applied::render_applied_reflections::RenderAppliedReflections;
+use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
 use crate::feature::image::resolve::resolve_decisions::ResolveDecisions;
 use crate::feature::scene::pyramid::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::feature::scene::pyramid::pyramid_level_parameters::PyramidLevelParameters;
@@ -131,6 +134,20 @@ impl ReflectionFeature {
   /// How they are traced this frame, none where they are not.
   pub fn get_trace(&self) -> Option<ReflectionTrace> {
     self.trace
+  }
+
+  /// Writes into `applied` how they are traced this frame, none where they are not: their strength, the share of the
+  /// frame traced, full where the raw signal is, and the steps a ray walks.
+  pub fn describe(&self, applied: &mut RenderAppliedReport) {
+    applied.reflections = self.trace.map(|trace| RenderAppliedReflections {
+      intensity: trace.intensity,
+      trace_size: if trace.is_raw {
+        RenderTraceSize::Full
+      } else {
+        trace.trace_size
+      },
+      steps: self.settings.get_steps(),
+    });
   }
 
   /// Reduces the frame's `depth` as it stands now (before or after the grass drew) to its nearest, level by level, the

@@ -1,13 +1,10 @@
-use crate::contract::feature::image::bloom::render_bloom_mode::RenderBloomMode;
 use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;
-use crate::contract::feature::tracing::render_trace_size::RenderTraceSize;
-use crate::contract::report::applied::render_applied_reflections::RenderAppliedReflections;
 use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
-use crate::contract::report::applied::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::report::frame::render_pool_use::RenderPoolUse;
 use crate::contract::report::scene::render_static_report::RenderStaticReport;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::present::present_uniform::PresentUniform;
+use crate::feature::view::scene_features::SceneFeatures;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::level::view::view_reports::ViewReports;
@@ -62,53 +59,30 @@ impl SceneView {
     self.features.present.get_uniform()
   }
 
-  /// What its frames are drawn with, smoothed by `antialiasing`, as resolved from what `options` asked; each stage
-  /// writes its own part.
+  /// What its frames are drawn with, smoothed by `antialiasing`, as resolved from what `options` asked; each unit and
+  /// stage writes its own part.
   fn describe_applied(&self, options: &RenderViewOptions, antialiasing: RenderAntialiasing) -> RenderAppliedReport {
-    let cascades: usize = self.shared.shadow_settings.get_cascade_count();
+    let features: &SceneFeatures = &self.features;
     let mut applied: RenderAppliedReport = RenderAppliedReport {
       antialiasing,
       is_ray_reconstructed: self.shared.resolve.is_ray_reconstructed,
-      render_scale: self.features.resolve.get_upscaling().scale,
-      shadows: (cascades > 0).then(|| RenderAppliedShadows {
-        cascades: self.shared.shadow_settings.cascades[..cascades].to_vec(),
-        resolution: self.features.shadows.get_maps().map_or(0, |maps| maps.resolution),
-        filter: self.shared.shadow_settings.filter,
-      }),
-      reflections: self
-        .features
-        .reflections
-        .get_trace()
-        .map(|trace| RenderAppliedReflections {
-          intensity: trace.intensity,
-          trace_size: if trace.is_raw {
-            RenderTraceSize::Full
-          } else {
-            trace.trace_size
-          },
-          steps: self.features.reflections.get_settings().get_steps(),
-        }),
-      debanding: self.features.present.get_debanding(),
-      bloom: if self.features.bloom.is_enhanced_drawn() {
-        Some(RenderBloomMode::Enhanced)
-      } else {
-        self.features.bloom.is_engine_drawn().then_some(RenderBloomMode::Engine)
-      },
-      lights: Some(self.features.lights.get_settings()).filter(|settings| settings.is_enabled),
-      grass: self.features.grass.get_applied(&options.features.grass),
       is_water: options.features.water.is_enabled,
       environment: None,
-      sun: self
-        .features
-        .sky
-        .get_sun_sprite()
-        .and_then(|_| self.stages.effects.get_shown_flare())
-        .map(str::to_owned),
       ..RenderAppliedReport::default()
     };
 
+    features.resolve.describe(&mut applied);
+    features.shadows.describe(&mut applied, &self.shared.shadow_settings);
+    features.reflections.describe(&mut applied);
+    features.present.describe(&mut applied);
+    features.bloom.describe(&mut applied);
+    features.lights.describe(&mut applied);
+    features.grass.describe(&mut applied, &options.features.grass);
     self.stages.lighting.describe(&mut applied);
-    self.stages.effects.describe(&mut applied);
+    self
+      .stages
+      .effects
+      .describe(&mut applied, features.sky.get_sun_sprite().is_some());
 
     applied
   }

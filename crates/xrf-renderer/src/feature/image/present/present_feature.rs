@@ -1,10 +1,10 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor};
 
+use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::effects::distort::distort_parameters::DistortParameters;
 use crate::feature::effects::distort::distort_uniform::DistortUniform;
-use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::image::present::present_frame::PresentFrame;
 use crate::feature::image::present::present_inputs::PresentInputs;
 use crate::feature::image::present::present_uniform::PresentUniform;
@@ -59,7 +59,7 @@ impl PresentFeature {
     } else {
       present
     }
-    .with_display(DisplayMode::of(options), &options.features.grading, &inputs.metering)
+    .with_display(inputs.display)
     .with_marks(inputs.marks)
     .with_grass_reach(inputs.grass_reach)
     .with_reflection_light(inputs.light)
@@ -120,9 +120,9 @@ impl PresentFeature {
       .record(move |context| passes.effects.distort.record(context, view, &parameters));
   }
 
-  /// How many times the sky is averaged this frame.
-  pub fn get_debanding(&self) -> Option<u32> {
-    self.debanding
+  /// Writes into `applied` how many times the sky is averaged this frame.
+  pub fn describe(&self, applied: &mut RenderAppliedReport) {
+    applied.debanding = self.debanding;
   }
 }
 

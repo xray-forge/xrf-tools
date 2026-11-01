@@ -6,8 +6,7 @@ use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlus
 use crate::contract::feature::lighting::render_indirect_light_mode::RenderIndirectLightMode;
 use crate::contract::feature::lighting::render_indirect_light_settings::RenderIndirectLightSettings;
 use crate::contract::view::render_view_options::RenderViewOptions;
-use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
-use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
+use crate::feature::image::exposure::reading::exposure_decisions::ExposureDecisions;
 use crate::feature::lighting::bitmask::bitmask_search::BitmaskSearch;
 use crate::feature::lighting::bitmask::vbao::vbao_frame::VbaoFrame;
 use crate::feature::lighting::bitmask::vbao::vbao_light::VbaoLight;
@@ -41,9 +40,8 @@ fn lighting_with(options: &RenderViewOptions) -> LightingUniform {
     Mat4::IDENTITY,
     options,
     &LightingFrame {
-      is_adapting: false,
-      pre_exposure: PreExposure::NONE,
-      metering: ExposureMetering::default(),
+      exposure: ExposureDecisions::default(),
+      display: Vec4::ZERO,
       light_units: LightUnits::NONE,
       daylight: None,
       sky_blend: 0.0,

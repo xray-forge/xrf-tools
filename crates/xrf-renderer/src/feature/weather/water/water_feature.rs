@@ -6,12 +6,10 @@ use crate::contract::feature::weather::water::render_water_mode::RenderWaterMode
 use crate::contract::feature::weather::water::render_water_settings::RenderWaterSettings;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::effects::rain::rings::drop_rings::DropRings;
-use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
-use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
-use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::feature::weather::sky::sky_views::SkyViews;
+use crate::feature::weather::water::draw::traced_water::TracedWater;
 use crate::feature::weather::water::draw::water_draw::WaterDraw;
 use crate::feature::weather::water::enhanced::enhanced_water_frame::EnhancedWaterFrame;
 use crate::feature::weather::water::enhanced::enhanced_water_uniform::EnhancedWaterUniform;
@@ -66,9 +64,7 @@ impl WaterFeature {
       traced,
     }: WaterInputs<'a>,
   ) -> Option<GraphTexture> {
-    let traced: Option<(SkyParameters<'a>, TraceParameters<'a>, &'a wgpu::BindGroup)> = sky
-      .zip(traced)
-      .map(|(sky, TracedScene { trace, textures })| (sky, trace, textures));
+    let traced: Option<TracedWater<'a>> = sky.zip(traced).map(|(sky, scene)| TracedWater { sky, scene });
     let views: &SkyViews = views.filter(|_| self.is_drawn())?;
     let passes: LevelPasses<'a> = record.passes;
     let draw: WaterDraw<'a> = WaterDraw {

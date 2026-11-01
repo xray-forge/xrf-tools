@@ -1,13 +1,10 @@
 use glam::{Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
-use crate::contract::feature::image::display::render_grading_settings::RenderGradingSettings;
 use crate::contract::feature::image::display::render_image_corrections::RenderImageCorrections;
 use crate::contract::feature::image::render_camera_settings::RenderCameraSettings;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_rect::RenderRect;
-use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
-use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::image::present::present_frame::PresentFrame;
 use crate::feature::page::present_marks::PresentMarks;
 use crate::pass::frame_lighting::light_encoding::LightEncoding;
@@ -102,13 +99,9 @@ impl PresentUniform {
     (is_shown && debanding.is_drawn()).then(|| debanding.get_passes())
   }
 
-  /// The same showing its scene by `mode`, graded by `grading` where the light is physical, its transform lifted by the
-  /// frame's exposed key and bright end as the exposure `metering` read them.
-  pub fn with_display(self, mode: DisplayMode, grading: &RenderGradingSettings, metering: &ExposureMetering) -> Self {
-    Self {
-      display: mode.get_display(grading, metering),
-      ..self
-    }
+  /// The same showing its scene as `display` says (`DisplayMode::get_display`).
+  pub fn with_display(self, display: Vec4) -> Self {
+    Self { display, ..self }
   }
 
   /// The same, the cascades' view striping the grass's cards' reach of the sun's shadow (`reach` metres), none where

@@ -7,4 +7,5 @@ pub(crate) mod over_scene;
 pub(crate) mod particles;
 pub(crate) mod rain;
 pub(crate) mod thunder;
+pub(crate) mod weather_built;
 pub(crate) mod weather_model_buffers;

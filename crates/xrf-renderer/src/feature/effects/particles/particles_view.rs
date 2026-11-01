@@ -3,6 +3,7 @@ use std::ops::Range;
 use xrf_particles::ParticleEffectInstance;
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphDepthAttachment, StorageArray, UniformBinding};
 
+use crate::feature::effects::over_scene::add_over_scene;
 use crate::feature::effects::particles::particle_batch::ParticleBatch;
 use crate::feature::effects::particles::particle_parameters::ParticleParameters;
 use crate::feature::effects::particles::particle_pass::ParticlePass;
@@ -134,11 +135,8 @@ impl ParticlesView {
     };
 
     if !self.batches.is_empty() {
-      graph
-        .add_raster_pass("particles")
+      add_over_scene(&mut *graph, targets, "particles")
         .parameters(&parameters)
-        .color(GraphColorAttachment::new(targets.scene, wgpu::LoadOp::Load))
-        .depth(GraphDepthAttachment::new_read_only(targets.depth))
         .record(move |context| pass.record_colour(context, view, &parameters, texture_group, &self.batches));
     }
 

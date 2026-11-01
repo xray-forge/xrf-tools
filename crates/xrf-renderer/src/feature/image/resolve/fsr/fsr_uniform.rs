@@ -2,7 +2,7 @@ use glam::{Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::camera::camera_view::CameraView;
-use crate::feature::image::resolve::fsr::fsr_frame::FsrFrame;
+use crate::feature::image::resolve::fsr::fsr_dispatch::FsrDispatch;
 
 /// `cbFSR3Upscaler` as `shaders/frame/fsr/common.wgsl`'s `Fsr` lays it out.
 #[repr(C)]
@@ -35,18 +35,18 @@ impl FsrUniform {
   /// AMD's default `fVelocityFactor`: the history's weight falls to its least at half a 4K pixel of motion.
   pub const VELOCITY_FACTOR: f32 = 1.0;
 
-  /// The constants for a `frame`, its jitter `y` down, seen through `view`'s lens.
-  pub fn new(frame: FsrFrame, view: &CameraView) -> Self {
+  /// The constants for a `dispatch`, its jitter `y` down, seen through `view`'s lens.
+  pub fn new(dispatch: FsrDispatch, view: &CameraView) -> Self {
     let (near, far): (f32, f32) = view.get_depth_range();
-    let shading: (u32, u32) = Self::get_shading_size(frame.render);
-    let render: Vec2 = Vec2::new(frame.render.0 as f32, frame.render.1 as f32);
-    let display: Vec2 = Vec2::new(frame.display.0 as f32, frame.display.1 as f32);
+    let shading: (u32, u32) = Self::get_shading_size(dispatch.render);
+    let render: Vec2 = Vec2::new(dispatch.render.0 as f32, dispatch.render.1 as f32);
+    let display: Vec2 = Vec2::new(dispatch.display.0 as f32, dispatch.display.1 as f32);
 
     Self {
       render_size: render,
       display_size: display,
-      jitter: -frame.jitter,
-      previous_jitter: -frame.previous_jitter,
+      jitter: -dispatch.jitter,
+      previous_jitter: -dispatch.previous_jitter,
       downscale: render / display,
       shading_size: Vec2::new(shading.0 as f32, shading.1 as f32),
       // Reversed: `d = n (f - z) / (z (f - n))`, so `z = (n f / (f - n)) / (d + n / (f - n))`.
@@ -56,10 +56,10 @@ impl FsrUniform {
         1.0 / view.projection.x_axis.x,
         1.0 / view.projection.y_axis.y,
       ),
-      jitter_phase_count: frame.phases as f32,
-      frame_index: frame.frame_index as f32,
+      jitter_phase_count: dispatch.phases as f32,
+      frame_index: dispatch.frame_index as f32,
       velocity_factor: Self::VELOCITY_FACTOR,
-      hdr: f32::from(u8::from(frame.is_hdr)),
+      hdr: f32::from(u8::from(dispatch.is_hdr)),
       delta_pre_exposure: 1.0,
       _pad: [0.0; 3],
     }

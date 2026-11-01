@@ -23,9 +23,9 @@ use crate::host::world::render_view_frame::RenderViewFrame;
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::pass::view::camera_uniform::CameraUniform;
 use crate::pass::view::view_binding::ViewBinding;
-use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::page::helpers::view::helper_sources::HelperSources;
+use crate::scene::level::view::record::readied_frame::ReadiedFrame;
 use crate::scene::level::view::scene_asks::SceneAsks;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::level::view::view_lens::ViewLens;
@@ -310,7 +310,7 @@ impl RenderThread {
 
       CameraUniform::new(&narrowed, pixel, switches)
     });
-    let readied: Option<LevelFrame> = view_state.begin_frame(
+    let readied: Option<ReadiedFrame> = view_state.begin_frame(
       device,
       encoder,
       drawn.as_ref().zip(camera.as_ref()).map(|(drawn, camera)| ViewPick {

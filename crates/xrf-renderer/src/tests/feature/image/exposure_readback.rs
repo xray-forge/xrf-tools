@@ -3,6 +3,7 @@ use std::time::Instant;
 use crate::contract::feature::lighting::model::render_light_model::RenderLightModel;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::exposure_feature::ExposureFeature;
+use crate::feature::image::exposure::reading::exposure_decisions::ExposureDecisions;
 use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::tests::support::test_context::create_test_context;
 
@@ -40,34 +41,33 @@ fn a_light_model_switch_drops_what_was_metered_before_it() {
   let now: Instant = Instant::now();
   let mut exposure: ExposureFeature = ExposureFeature::new(device, queue);
 
-  exposure.prepare(queue, &physical, now);
-
-  let start: f32 = exposure.get_pre_exposure().current;
+  let start: f32 = exposure.prepare(queue, &physical, now).pre_exposure.current;
   let metered: f32 = start * 4096.0;
 
   // Back by the switch to the engine's light.
   copy_out(device, queue, &exposure, metered);
   wait();
   exposure.prepare(queue, &engine, now);
-  exposure.prepare(queue, &physical, now);
 
-  assert_eq!(exposure.get_pre_exposure().current, start);
+  assert_eq!(exposure.prepare(queue, &physical, now).pre_exposure.current, start);
 
   // Still on its way across both switches, back only after them.
   copy_out(device, queue, &exposure, metered);
   exposure.prepare(queue, &engine, now);
   exposure.prepare(queue, &physical, now);
   wait();
-  exposure.prepare(queue, &physical, now);
 
-  assert_eq!(exposure.get_pre_exposure().current, start);
-  assert_eq!(exposure.get_metering().land, None);
+  let decided: ExposureDecisions = exposure.prepare(queue, &physical, now);
+
+  assert_eq!(decided.pre_exposure.current, start);
+  assert_eq!(decided.metering.land, None);
 
   // Copied out under the physical light since.
   copy_out(device, queue, &exposure, metered);
   wait();
-  exposure.prepare(queue, &physical, now);
 
-  assert_eq!(exposure.get_pre_exposure().current, metered);
-  assert_eq!(exposure.get_metering().bright, Some(2.0));
+  let decided: ExposureDecisions = exposure.prepare(queue, &physical, now);
+
+  assert_eq!(decided.pre_exposure.current, metered);
+  assert_eq!(decided.metering.bright, Some(2.0));
 }

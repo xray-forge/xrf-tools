@@ -43,9 +43,9 @@ impl PictureShares {
       return Self::WHOLE;
     }
 
-    let current: f32 = frame.light_units.weather * frame.pre_exposure.current;
+    let current: f32 = frame.light_units.weather * frame.exposure.pre_exposure.current;
     let is_levels_physical: bool = options.features.light_level == RenderLightLevel::Physical;
-    let reference: f32 = match (options.features.light_level, frame.metering.land) {
+    let reference: f32 = match (options.features.light_level, frame.exposure.metering.land) {
       (RenderLightLevel::Physical, Some(land)) => {
         // The land as the authored levels would light it: their unit, their key light's gain, in place of the world's.
         let gain: f32 = LightUnits::get_key_gain(lighting.get_sun_color(&options.features.light_scales));

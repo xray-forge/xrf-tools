@@ -6,6 +6,7 @@ use xrf_renderer_core::{
 use crate::camera::camera_view::CameraView;
 use crate::contract::feature::lighting::lights::render_light_shadow_filter::RenderLightShadowFilter;
 use crate::contract::feature::lighting::lights::render_lights_settings::RenderLightsSettings;
+use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
 use crate::contract::report::frame::render_pool_use::RenderPoolUse;
 use crate::contract::report::scene::render_lights_report::RenderLightsReport;
 use crate::feature::lighting::lights::contact::light_contact::LightContact;
@@ -156,9 +157,9 @@ impl LightsFeature {
     self.random
   }
 
-  /// The lights as the view asks for them this frame.
-  pub fn get_settings(&self) -> RenderLightsSettings {
-    self.settings
+  /// Writes into `applied` the lights as the view asks for them this frame, none while they are off.
+  pub fn describe(&self, applied: &mut RenderAppliedReport) {
+    applied.lights = Some(self.settings).filter(|settings| settings.is_enabled);
   }
 
   /// Whether a shadowed light draws shafts this frame.

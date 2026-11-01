@@ -16,6 +16,7 @@ use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::image::exposure::exposure_step::ExposureStep;
 use crate::feature::image::exposure::exposure_uniform::ExposureUniform;
 use crate::feature::image::exposure::histogram::exposure_histogram_uniform::ExposureHistogramUniform;
+use crate::feature::image::exposure::reading::exposure_decisions::ExposureDecisions;
 use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::image::present::display::display_mode::DisplayMode;
@@ -49,9 +50,11 @@ fn lighting_at(options: &RenderViewOptions, lighting: &RenderLighting, pre_expos
     Mat4::IDENTITY,
     options,
     &LightingFrame {
-      is_adapting: false,
-      pre_exposure,
-      metering: ExposureMetering::default(),
+      exposure: ExposureDecisions {
+        pre_exposure,
+        ..ExposureDecisions::default()
+      },
+      display: Vec4::ZERO,
       light_units: LightUnits::of(options, lighting, &SkyHarmonics::default(), None),
       daylight: None,
       sky_blend: 0.0,
@@ -511,9 +514,8 @@ fn the_sky_irradiance_stands_at_its_levels() {
 
   let lit = |options: &RenderViewOptions, harmonics: SkyHarmonics| -> [Vec4; 9] {
     let frame: LightingFrame = LightingFrame {
-      is_adapting: false,
-      pre_exposure: PreExposure::NONE,
-      metering: ExposureMetering::default(),
+      exposure: ExposureDecisions::default(),
+      display: Vec4::ZERO,
       light_units: LightUnits::NONE,
       daylight: None,
       sky_blend: 0.0,
@@ -567,9 +569,8 @@ fn the_fog_takes_the_skys_colour_only_at_the_anchored_levels() {
 
   let share = |options: &RenderViewOptions, harmonics: SkyHarmonics| -> f32 {
     let frame: LightingFrame = LightingFrame {
-      is_adapting: false,
-      pre_exposure: PreExposure::NONE,
-      metering: ExposureMetering::default(),
+      exposure: ExposureDecisions::default(),
+      display: Vec4::ZERO,
       light_units: LightUnits::NONE,
       daylight: None,
       sky_blend: 0.0,
@@ -631,12 +632,15 @@ fn the_physical_levels_bring_the_sky_to_the_worlds() {
 
 fn metered_frame(units: LightUnits, current: f32, metering: ExposureMetering) -> LightingFrame {
   LightingFrame {
-    is_adapting: true,
-    pre_exposure: PreExposure {
-      current,
-      previous: current,
+    exposure: ExposureDecisions {
+      is_adapting: true,
+      pre_exposure: PreExposure {
+        current,
+        previous: current,
+      },
+      metering,
     },
-    metering,
+    display: Vec4::ZERO,
     light_units: units,
     daylight: None,
     sky_blend: 0.0,

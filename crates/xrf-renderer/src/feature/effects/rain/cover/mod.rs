@@ -1,3 +1,4 @@
 pub(crate) mod cover_textures;
 pub(crate) mod rain_cover;
+pub(crate) mod rain_cover_shape;
 pub(crate) mod rain_covers;

@@ -3,8 +3,7 @@ use xrf_renderer_core::{GraphBuffer, GraphTexture};
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::feature::tracing::ray_guides::ray_guides::RayGuides;
 use crate::feature::tracing::scene_trace::scene_trace_pass::SceneTracePass;
-use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
-use crate::feature::weather::sky::sky_parameters::SkyParameters;
+use crate::feature::weather::water::draw::traced_water::TracedWater;
 use crate::feature::weather::water::water_feature::WaterFeature;
 use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::pass::view::view_binding::ViewBinding;
@@ -30,7 +29,7 @@ pub struct WaterDraw<'a> {
   pub sky_sampler: &'a wgpu::Sampler,
   pub water: &'a WaterFeature,
   pub scene_trace: &'a SceneTracePass,
-  pub traced: Option<(SkyParameters<'a>, TraceParameters<'a>, &'a wgpu::BindGroup)>,
+  pub traced: Option<TracedWater<'a>>,
   /// The enhanced drops' rings, which the enhanced water ripples by; a texel of nothing without them.
   pub rings: GraphTexture,
   /// How much of the sun reaches each pixel, as the sun pass found it, where the enhanced water's sun shines on its

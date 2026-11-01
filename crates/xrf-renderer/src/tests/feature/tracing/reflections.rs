@@ -8,8 +8,7 @@ use crate::contract::feature::tracing::render_reflection_settings::RenderReflect
 use crate::contract::feature::tracing::render_trace_size::RenderTraceSize;
 use crate::contract::view::output::render_debug_view::RenderDebugView;
 use crate::contract::view::render_view_options::RenderViewOptions;
-use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
-use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
+use crate::feature::image::exposure::reading::exposure_decisions::ExposureDecisions;
 use crate::feature::image::present::present_frame::PresentFrame;
 use crate::feature::image::present::present_uniform::PresentUniform;
 use crate::feature::tracing::reflections::history::reflection_history::ReflectionHistory;
@@ -55,9 +54,8 @@ fn lighting_uniform(options: &RenderViewOptions, lighting: &RenderLighting) -> L
     Mat4::IDENTITY,
     options,
     &LightingFrame {
-      is_adapting: false,
-      pre_exposure: PreExposure::NONE,
-      metering: ExposureMetering::default(),
+      exposure: ExposureDecisions::default(),
+      display: Vec4::ZERO,
       light_units: LightUnits::NONE,
       daylight: None,
       sky_blend: 0.0,

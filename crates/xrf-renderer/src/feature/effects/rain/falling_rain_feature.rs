@@ -1,5 +1,4 @@
-use std::ptr;
-use std::sync::{Arc, Weak};
+use std::sync::Arc;
 
 use glam::{Vec2, Vec3, Vec4};
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, StorageArray, StorageValue};
@@ -8,6 +7,7 @@ use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
 use crate::frame::jitter_guard::JitterGuard;
 
 use crate::feature::effects::over_scene::add_over_scene;
+use crate::feature::effects::rain::cover::rain_cover_shape::RainCoverShape;
 use crate::feature::effects::rain::cover::rain_covers::RainCovers;
 use crate::feature::effects::rain::enhanced::rain_look_parameters::RainLookParameters;
 use crate::feature::effects::rain::rain_counts::RainCounts;
@@ -16,6 +16,7 @@ use crate::feature::effects::rain::rain_parameters::RainParameters;
 use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::effects::rain::rings::rain_rings::RainRings;
 use crate::feature::effects::rain::rings::rain_rings_draw::RainRingsDraw;
+use crate::feature::effects::weather_built::WeatherBuilt;
 use crate::feature::effects::weather_model_buffers::WeatherModelBuffers;
 use crate::feature::image::image_chain::ImageChain;
 use crate::feature::view::overhead_windows::OverheadWindows;
@@ -33,8 +34,7 @@ use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 /// the uniform at the rain cover's window, the streak's and the splash's textures, and the drops drawn.
 #[derive(Default)]
 pub struct FallingRainFeature {
-  /// The splash's model, with the level's weather it was built for, held weakly so its address is never another's.
-  splash: Option<(Weak<RenderLevelWeather>, WeatherModelBuffers)>,
+  splash: Option<WeatherBuilt<WeatherModelBuffers>>,
   uniform: RainUniform,
   /// The streak's and the splash's textures, as the cache holds them when the frame is prepared.
   views: Option<[wgpu::TextureView; 2]>,
@@ -75,7 +75,7 @@ impl FallingRainFeature {
     let rainfall: Option<RenderRainfall> = lighting.rain.filter(|_| options.mode.is_lit);
     let settings: &RenderRainSettings = &options.features.rain;
     let look: Vec3 = view.get_look();
-    let (cover, (texels, reach)): (Vec4, (f32, f32)) = (windows.cover, windows.cover_shape);
+    let (cover, RainCoverShape { texels, reach }) = (windows.cover, windows.cover_shape);
 
     self.draw = None;
     self.views = None;
@@ -94,18 +94,9 @@ impl FallingRainFeature {
     let (weather, rain): (&Arc<RenderLevelWeather>, &RenderRain) =
       weather.and_then(|weather| weather.rain.as_ref().map(|rain: &RenderRain| (weather, rain)))?;
 
-    if self
-      .splash
-      .as_ref()
-      .is_none_or(|(built, _)| !ptr::eq(built.as_ptr(), Arc::as_ptr(weather)))
-    {
-      self.splash = Some((
-        Arc::downgrade(weather),
-        WeatherModelBuffers::new(device, rain.drop.as_ref()),
-      ));
-    }
-
-    let (_, splash) = self.splash.as_ref()?;
+    let splash: &WeatherModelBuffers = WeatherBuilt::follow(&mut self.splash, weather, || {
+      WeatherModelBuffers::new(device, rain.drop.as_ref())
+    });
     let target: RainUniform = RainUniform::new(RainFrame {
       rain: &rainfall,
       drops: settings.drops,
@@ -177,7 +168,7 @@ impl FallingRainFeature {
 
   /// Follows the rain cover to where it stands once it has moved, as the drops read it.
   pub fn follow_cover(&mut self, windows: OverheadWindows) {
-    let (texels, reach): (f32, f32) = windows.cover_shape;
+    let RainCoverShape { texels, reach } = windows.cover_shape;
 
     self.uniform.window = windows.cover;
     self.uniform.cover_shape = Vec4::new(texels, reach, 0.0, 0.0);
@@ -343,11 +334,12 @@ impl FallingRainFeature {
     }: RainCovers,
     over: Option<(u32, u32)>,
   ) -> Option<(RainCounts, RainParameters<'a>)> {
-    let (Some(counts), Some(cover), Some([streak, splash]), Some((_, model))) =
+    let (Some(counts), Some(cover), Some([streak, splash]), Some(model)) =
       (self.draw, cover, &self.views, &self.splash)
     else {
       return None;
     };
+    let model: &WeatherModelBuffers = model.get();
     let uniform: RainUniform = over.map_or(self.uniform, |size| self.uniform.over(size));
 
     Some((
@@ -392,10 +384,7 @@ impl FallingRainFeature {
 impl ViewFeature for FallingRainFeature {
   /// The splash's model, kept for the level's weather, and the enhanced drops' rings.
   fn get_memory(&self) -> u64 {
-    self
-      .splash
-      .as_ref()
-      .map_or(0, |(_, model)| model.vertices.size() + model.indices.size())
+    self.splash.as_ref().map_or(0, |model| model.get().get_memory())
       + self.rings.as_ref().map_or(0, RainRings::get_memory)
   }
 

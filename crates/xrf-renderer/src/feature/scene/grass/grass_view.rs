@@ -6,6 +6,7 @@ use xrf_renderer_core::{
 
 use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;
 use crate::contract::report::applied::render_applied_grass::RenderAppliedGrass;
+use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
 use crate::contract::report::scene::render_drawable_kind::RenderDrawableKind;
 use crate::contract::report::scene::render_drawable_report::RenderDrawableReport;
 use crate::feature::scene::drawable::casters::light_casters::LightCasters;
@@ -471,8 +472,12 @@ impl GrassView {
     self.values.generation
   }
 
-  /// The grass as planted, or none where none is.
-  pub fn get_applied(&self, settings: &RenderGrassSettings) -> Option<RenderAppliedGrass> {
+  /// Writes into `applied` the grass as planted by `settings`, none where none is.
+  pub fn describe(&self, applied: &mut RenderAppliedReport, settings: &RenderGrassSettings) {
+    applied.grass = self.get_applied(settings);
+  }
+
+  fn get_applied(&self, settings: &RenderGrassSettings) -> Option<RenderAppliedGrass> {
     let build = self.build.as_ref().filter(|_| self.is_drawn)?;
     let line: u32 = self.values.reach as u32 * 2 + 1;
     let cells: u32 = line * line;

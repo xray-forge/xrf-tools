@@ -12,6 +12,7 @@ use crate::feature::image::exposure::exposure_step::ExposureStep;
 use crate::feature::image::exposure::exposure_uniform::ExposureUniform;
 use crate::feature::image::exposure::histogram::exposure_histogram_parameters::ExposureHistogramParameters;
 use crate::feature::image::exposure::histogram::exposure_histogram_uniform::ExposureHistogramUniform;
+use crate::feature::image::exposure::reading::exposure_decisions::ExposureDecisions;
 use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
@@ -108,8 +109,18 @@ impl ExposureFeature {
   /// to one, the engine's answer at noon. Under the physical light (`is_physical`) the histogram meters instead, or,
   /// off, the scale holds at its level's (`ExposureHistogramUniform::get_held_scale`); a change of light model starts
   /// the scale afresh, dropping what the other model metered. Then the scale the frame's light is written at: the
-  /// physical light's last read back, one under the engine's.
-  pub fn prepare(&mut self, queue: &wgpu::Queue, options: &RenderViewOptions, now: Instant) {
+  /// physical light's last read back, one under the engine's. Answers what it decided, which every other unit reads.
+  pub fn prepare(&mut self, queue: &wgpu::Queue, options: &RenderViewOptions, now: Instant) -> ExposureDecisions {
+    self.advance(queue, options, now);
+
+    ExposureDecisions {
+      is_adapting: self.is_adapting,
+      pre_exposure: self.pre_exposure,
+      metering: self.metering,
+    }
+  }
+
+  fn advance(&mut self, queue: &wgpu::Queue, options: &RenderViewOptions, now: Instant) {
     let settings: &RenderExposureSettings = &options.features.exposure;
     let is_physical: bool = options.is_light_physical();
     let is_switched: bool = is_physical != self.is_physical;
@@ -271,16 +282,6 @@ impl ExposureFeature {
     self.last.map_or(Duration::ZERO, |last| (now - last).min(LONGEST_STEP))
   }
 
-  /// Whether the passes read the adapted scale, rather than one.
-  pub fn is_adapting(&self) -> bool {
-    self.is_adapting
-  }
-
-  /// The scale this frame's light is written at, and the last frame's.
-  pub fn get_pre_exposure(&self) -> PreExposure {
-    self.pre_exposure
-  }
-
   /// Asks for the scale copied out with the frame just submitted.
   pub fn request_readback(&self) {
     self.readback.request();
@@ -289,11 +290,6 @@ impl ExposureFeature {
   /// Drops the scale a frame that was never submitted copied out.
   pub fn abandon_readback(&self) {
     self.readback.abandon();
-  }
-
-  /// What the physical light's histogram last metered, which the game's pictures are shown by (`PictureShares`).
-  pub fn get_metering(&self) -> ExposureMetering {
-    self.metering
   }
 
   /// The head a copy brought back since the last frame, none from a copy made before the light model changed. Any

@@ -6,3 +6,4 @@ pub(crate) mod puddle_keep_parameters;
 pub(crate) mod puddle_sites_parameters;
 pub(crate) mod puddle_sites_pass;
 pub(crate) mod puddle_sites_uniform;
+pub(crate) mod surface_window;

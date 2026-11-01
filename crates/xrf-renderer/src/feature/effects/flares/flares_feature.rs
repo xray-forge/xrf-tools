@@ -65,7 +65,7 @@ impl FlaresFeature {
     let Some(weather) = weather else {
       return;
     };
-    let names = [lighting.sky.sun.as_deref(), self.fade.get_shown().0];
+    let names = [lighting.sky.sun.as_deref(), self.fade.get_shown()];
 
     for flare in names.into_iter().flatten().filter_map(|name| weather.suns.get(name)) {
       let references = flare
@@ -128,10 +128,8 @@ impl FlaresFeature {
     self.fade.advance(lighting.sky.sun.as_deref(), times, now, rate);
     self.is_drawn = false;
 
-    let (Some(name), faded) = self.fade.get_shown() else {
-      return None;
-    };
-    let name: String = name.to_owned();
+    let name: String = self.fade.get_shown()?.to_owned();
+    let faded: f32 = self.fade.get_blend();
     let flare: &RenderLensFlare = weather.and_then(|it| it.suns.get(&name))?;
     let toward_sun: Vec3 = -lighting.get_sun_direction();
     let to_sun: Vec3 = view.view.transform_vector3(toward_sun).normalize_or_zero();
@@ -170,7 +168,7 @@ impl FlaresFeature {
 
   /// The lens flare drawn now, faded in or out, if any.
   pub fn get_shown(&self) -> Option<&str> {
-    self.fade.get_shown().0
+    self.fade.get_shown()
   }
 
   /// Measures how much of the sun shows and draws the flares and the gradient, where this frame draws them.

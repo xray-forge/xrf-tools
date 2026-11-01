@@ -8,6 +8,7 @@ use crate::feature::weather::wet::puddles::puddle_keep_inputs::PuddleKeepInputs;
 use crate::feature::weather::wet::puddles::puddle_keep_parameters::PuddleKeepParameters;
 use crate::feature::weather::wet::puddles::puddle_sites_parameters::PuddleSitesParameters;
 use crate::feature::weather::wet::puddles::puddle_sites_uniform::PuddleSitesUniform;
+use crate::feature::weather::wet::puddles::surface_window::SurfaceWindow;
 use crate::feature::weather::wet::wet_feature::WetFeature;
 use crate::feature::weather::wet::wet_uniform::WetUniform;
 use crate::frame::frame_encoder::FrameEncoder;
@@ -115,15 +116,11 @@ impl LevelSurface {
     }
   }
 
-  /// Its centre in `x` and `z`, its half width and the height it is seen from; then its texels across, the metres it
-  /// reaches down, and the metres a cell of sites is across.
-  pub fn get_window(&self) -> (Vec4, Vec4) {
-    let shape: OverheadShape = self.map.get_shape();
-
-    (
-      self.map.get_window(),
-      Vec4::new(shape.resolution as f32, shape.depth, Self::SITE_CELL, 0.0),
-    )
+  pub fn get_window(&self) -> SurfaceWindow {
+    SurfaceWindow {
+      window: self.map.get_window(),
+      shape: Self::to_shape(self.map.get_shape()),
+    }
   }
 
   /// Where the puddles stood last frame as the grass plants around them: a surface's puddles and the window they cover,
@@ -133,7 +130,7 @@ impl LevelSurface {
     dry: &'a wgpu::TextureView,
     wet: &WetFeature,
   ) -> (&'a wgpu::TextureView, GrassPuddlesUniform) {
-    let (window, shape): (Vec4, Vec4) = surface.map_or(Self::get_unmade().0, Self::get_window);
+    let SurfaceWindow { window, shape } = surface.map_or(Self::get_unmade_window(), Self::get_window);
     let uniform: GrassPuddlesUniform = GrassPuddlesUniform::new(window, shape);
 
     (
@@ -146,17 +143,24 @@ impl LevelSurface {
     )
   }
 
-  /// The surface's and the water's windows of a surface not made yet.
-  pub fn get_unmade() -> ((Vec4, Vec4), Vec4) {
+  /// The window of a surface not made yet.
+  pub fn get_unmade_window() -> SurfaceWindow {
     let shape: OverheadShape = OverheadShape::LEVEL_SURFACE;
 
-    (
-      (
-        OverheadMap::get_unmade_window(shape),
-        Vec4::new(shape.resolution as f32, shape.depth, Self::SITE_CELL, 0.0),
-      ),
-      OverheadMap::get_unmade_window(OverheadShape::LEVEL_WATER),
-    )
+    SurfaceWindow {
+      window: OverheadMap::get_unmade_window(shape),
+      shape: Self::to_shape(shape),
+    }
+  }
+
+  /// The water's window of a surface not made yet.
+  pub fn get_unmade_water_window() -> Vec4 {
+    OverheadMap::get_unmade_window(OverheadShape::LEVEL_WATER)
+  }
+
+  /// A surface map's texels across and the metres it reaches down, beside the metres a cell of sites is across.
+  fn to_shape(shape: OverheadShape) -> Vec4 {
+    Vec4::new(shape.resolution as f32, shape.depth, Self::SITE_CELL, 0.0)
   }
 
   /// Bytes its two maps, its lowest heights, its sites and its puddles take.
@@ -282,7 +286,7 @@ impl LevelSurface {
       .map
       .add_passes(GraphDeclaration::new(graph, bindings, runtime), record, surface, None);
 
-    let (window, shape) = self.get_window();
+    let SurfaceWindow { window, shape } = self.get_window();
     let uniform: UniformBinding<PuddleSitesUniform> = runtime.push_uniform(&PuddleSitesUniform {
       window,
       shape,

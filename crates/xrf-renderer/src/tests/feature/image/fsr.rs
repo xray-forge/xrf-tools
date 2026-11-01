@@ -11,7 +11,7 @@ use crate::feature::image::resolve::fsr::accumulation::fsr_debug_view_parameters
 use crate::feature::image::resolve::fsr::accumulation::fsr_luma_instability_parameters::FsrLumaInstabilityParameters;
 use crate::feature::image::resolve::fsr::accumulation::fsr_prepare_reactivity_parameters::FsrPrepareReactivityParameters;
 use crate::feature::image::resolve::fsr::accumulation::fsr_reactive_parameters::FsrReactiveParameters;
-use crate::feature::image::resolve::fsr::fsr_frame::FsrFrame;
+use crate::feature::image::resolve::fsr::fsr_dispatch::FsrDispatch;
 use crate::feature::image::resolve::fsr::fsr_pass::FsrPass;
 use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
 use crate::feature::image::resolve::fsr::inputs::fsr_downsample_parameters::FsrDownsampleParameters;
@@ -74,7 +74,7 @@ fn upscales_two_frames_without_a_validation_error() {
   for shown_view in views {
     let offset: Vec2 = jitter.next(1.5);
     let constants: FsrUniform = FsrUniform::new(
-      FsrFrame {
+      FsrDispatch {
         render,
         display,
         jitter: offset,
@@ -140,7 +140,7 @@ fn upscales_two_frames_without_a_validation_error() {
 fn reads_view_depth_back_from_reversed_device_depth() {
   let view: CameraView = CameraView::new(Vec3::ZERO, Mat4::IDENTITY, 60.0, 1.0, 0.5, 100.0);
   let constants: FsrUniform = FsrUniform::new(
-    FsrFrame {
+    FsrDispatch {
       render: (51, 50),
       display: (100, 100),
       jitter: Vec2::new(0.25, -0.25),

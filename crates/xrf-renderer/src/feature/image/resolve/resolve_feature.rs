@@ -10,6 +10,7 @@ use xrf_renderer_core::{
 use crate::camera::camera_view::CameraView;
 use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;
 use crate::contract::feature::image::resolve::render_upscaling_settings::RenderUpscalingSettings;
+use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
 use crate::contract::view::output::render_debug_view::RenderDebugView;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
@@ -17,7 +18,7 @@ use crate::feature::image::image_chain::ImageChain;
 use crate::feature::image::resolve::before_water_readers::BeforeWaterReaders;
 use crate::feature::image::resolve::dlss::dlss_resolve::DlssResolve;
 use crate::feature::image::resolve::dlss::ray_reconstruction_resolve::RayReconstructionResolve;
-use crate::feature::image::resolve::fsr::fsr_frame::FsrFrame;
+use crate::feature::image::resolve::fsr::fsr_dispatch::FsrDispatch;
 use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
 use crate::feature::image::resolve::fsr::targets::fsr_targets::FsrTargets;
 use crate::feature::image::resolve::resolve::Resolve;
@@ -409,7 +410,7 @@ impl ResolveFeature {
     let previous_offset: Vec2 = -uniform.jitter;
 
     *uniform = FsrUniform::new(
-      FsrFrame {
+      FsrDispatch {
         render,
         display,
         jitter: self.offset,
@@ -639,8 +640,9 @@ impl ResolveFeature {
     self.temporal
   }
 
-  pub fn get_upscaling(&self) -> RenderUpscalingSettings {
-    self.upscaling
+  /// Writes into `applied` what it resolves this frame at: the share of the output the scene is rendered at.
+  pub fn describe(&self, applied: &mut RenderAppliedReport) {
+    applied.render_scale = self.upscaling.scale;
   }
 
   /// The size the frame is resolved at.
@@ -743,19 +745,7 @@ impl ResolveFeature {
       Some(Resolve::Fsr { targets, .. }) => {
         let opaque: GraphTexture = bindings.import_view(&mut *graph, "fsr opaque", &targets.opaque.view);
 
-        graph
-          .add_encoder_pass("fsr opaque")
-          .texture(scene, GraphTextureAccess::CopySource)
-          .texture(opaque, GraphTextureAccess::CopyDestination)
-          .record(move |context| {
-            let (scene, opaque) = (context.get_texture(scene), context.get_texture(opaque));
-
-            context.get_encoder().copy_texture_to_texture(
-              scene.texture.as_image_copy(),
-              opaque.texture.as_image_copy(),
-              opaque.texture.size(),
-            );
-          });
+        add_texture_copy(graph, "fsr opaque", scene, opaque);
 
         None
       }

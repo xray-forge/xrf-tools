@@ -12,6 +12,8 @@ use crate::feature::tracing::scene_trace::requests::trace_request_handles::Trace
 use crate::feature::tracing::scene_trace::requests::trace_request_parameters::TraceRequestParameters;
 use crate::feature::tracing::scene_trace::scene_trace_bindings::SceneTraceBindings;
 use crate::feature::tracing::scene_trace::scene_trace_request::SceneTraceRequest;
+use crate::feature::tracing::view_trace::traced_scene::TracedScene;
+use crate::feature::weather::water::draw::traced_water::TracedWater;
 use crate::feature::weather::water::draw::water_depth_parameters::WaterDepthParameters;
 use crate::feature::weather::water::draw::water_draw::WaterDraw;
 use crate::feature::weather::water::draw::water_groups::WaterGroups;
@@ -23,6 +25,8 @@ use crate::feature::weather::water::enhanced::enhanced_water_parameters::Enhance
 use crate::feature::weather::water::enhanced::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::feature::weather::water::reflection::water_blur_pass::WaterBlurPass;
 use crate::feature::weather::water::reflection::water_blur_uniform::WaterBlurUniform;
+use crate::feature::weather::water::reflection::water_blur_way::WaterBlurWay;
+use crate::feature::weather::water::reflection::water_reflected::WaterReflected;
 use crate::feature::weather::water::reflection::water_reflection::WaterReflection;
 use crate::feature::weather::water::reflection::water_reflection_inputs::WaterReflectionInputs;
 use crate::feature::weather::water::reflection::water_reflection_parameters::WaterReflectionParameters;
@@ -234,36 +238,28 @@ impl WaterPass {
       import("water height", &self.maps.height),
       import("water ripples", &self.maps.ripples),
     ];
-    let reflection: Option<(&WaterReflection, [GraphTexture; 2], GraphTexture)> =
-      water.get_reflection().map(|reflection| {
-        (
-          reflection,
-          reflection
-            .histories
-            .get_sides()
-            .map(|side| import("water reflection", &side.view)),
-          import("water blue noise", &self.maps.blue_noise),
-        )
-      });
     let Some(scene) = draw.before_water else {
       return;
     };
+    let reflection: Option<WaterReflectionInputs<'a>> =
+      water.get_reflection().map(|reflection| WaterReflectionInputs {
+        enhanced,
+        scene,
+        nothing,
+        reflection,
+        histories: reflection
+          .histories
+          .get_sides()
+          .map(|side| import("water reflection", &side.view)),
+        blue_noise: import("water blue noise", &self.maps.blue_noise),
+      });
 
-    let (blurred, clear): (GraphTexture, GraphTexture) = match reflection {
-      Some((reflection, histories, blue_noise)) => self.add_reflection_passes(
-        GraphDeclaration::new(graph, bindings, runtime),
-        draw,
-        frame,
-        WaterReflectionInputs {
-          enhanced,
-          scene,
-          nothing,
-          reflection,
-          histories,
-          blue_noise,
-        },
-      ),
-      None => (nothing, nothing),
+    let WaterReflected { blurred, history } = match reflection {
+      Some(inputs) => self.add_reflection_passes(GraphDeclaration::new(graph, bindings, runtime), draw, frame, inputs),
+      None => WaterReflected {
+        blurred: nothing,
+        history: nothing,
+      },
     };
 
     let parameters: EnhancedWaterParameters<'a> = EnhancedWaterParameters {
@@ -277,7 +273,7 @@ impl WaterPass {
       nearest_water: frame.nearest,
       water_scene: scene,
       reflection_blurred: blurred,
-      reflection_clear: clear,
+      reflection_clear: history,
       perlin_map: maps[0],
       sun_seen: draw.sun_seen,
       wave_map: maps[1],
@@ -325,7 +321,7 @@ impl WaterPass {
     draw: &WaterDraw<'a>,
     frame: &WaterFrameHandles<'a>,
     inputs: WaterReflectionInputs<'a>,
-  ) -> (GraphTexture, GraphTexture) {
+  ) -> WaterReflected {
     let WaterReflectionInputs {
       enhanced,
       scene,
@@ -377,7 +373,11 @@ impl WaterPass {
     );
 
     // The rays the screen left, traced against the level's geometry, their hits written into the reflection.
-    if let Some((sky, trace, textures)) = draw.traced {
+    if let Some(TracedWater {
+      sky,
+      scene: TracedScene { trace, textures },
+    }) = draw.traced
+    {
       let (trace_requests, trace_request_head) = listed.to_read();
       let no_ends: GraphTexture = bindings.import_view(graph, "scene trace no ends", draw.scene_trace.get_no_ends());
 
@@ -432,17 +432,30 @@ impl WaterPass {
     let across: GraphTexture = self.blur.add(
       graph,
       runtime,
-      ("water blur across", written, half, WaterBlurUniform::ACROSS),
+      WaterBlurWay {
+        name: "water blur across",
+        source: written,
+        size: half,
+        way: WaterBlurUniform::ACROSS,
+      },
       enhanced,
     );
     let down: GraphTexture = self.blur.add(
       graph,
       runtime,
-      ("water blur down", across, half, WaterBlurUniform::DOWN),
+      WaterBlurWay {
+        name: "water blur down",
+        source: across,
+        size: half,
+        way: WaterBlurUniform::DOWN,
+      },
       enhanced,
     );
 
-    (down, written)
+    WaterReflected {
+      blurred: down,
+      history: written,
+    }
   }
 
   /// Begins the surface's pass: over the scene, the distortion target and the motion, against the read-only depth it
