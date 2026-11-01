@@ -78,7 +78,10 @@ impl<R: Runtime> WindowGeometryTracker<R> {
 
     window.on_window_event(move |event| match event {
       WindowEvent::Moved(_) | WindowEvent::Resized(_) => tracker.record(&tracked),
-      WindowEvent::CloseRequested { .. } | WindowEvent::Destroyed => tracker.close(&tracked),
+      WindowEvent::CloseRequested { .. } => tracker.close(&tracked),
+      // Nothing is left to measure: Tauri lets go of the native window before it reports it destroyed, and every move
+      // and resize up to then was measured as it happened.
+      WindowEvent::Destroyed => tracker.save(),
       _ => (),
     });
   }
@@ -98,9 +101,14 @@ impl<R: Runtime> WindowGeometryTracker<R> {
     });
   }
 
-  /// Take where the window was left and put it on the disk, which no settle delay would outlive the process to do.
+  /// Take where the window was left and put it on the disk.
   fn close(&self, window: &WebviewWindow<R>) {
     drop(self.measure(window));
+    self.save();
+  }
+
+  /// Put what was taken on the disk now, which no settle delay would outlive the process to do.
+  fn save(&self) {
     self.write();
 
     if self.lock().take_unsaved()
