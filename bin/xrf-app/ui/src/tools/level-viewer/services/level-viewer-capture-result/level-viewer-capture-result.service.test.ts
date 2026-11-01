@@ -116,7 +116,7 @@ describe("LevelViewerCaptureResultService", () => {
       [ELevelsCommand.EXPORT_MAP]: () => {
         events.push("export");
 
-        return [2048, 2048];
+        return { height: 2048, width: 2048 };
       },
     });
 
@@ -167,7 +167,7 @@ describe("LevelViewerCaptureResultService", () => {
     const service: LevelViewerCaptureResultService = mockResult();
 
     jest.mocked(save).mockResolvedValueOnce("C:/out/map_zaton.dds");
-    mockIpcCommands({ [ELevelsCommand.EXPORT_MAP]: [2048, 2048] });
+    mockIpcCommands({ [ELevelsCommand.EXPORT_MAP]: { height: 2048, width: 2048 } });
 
     service.show(mockMapCapture("blob:first"));
     await service.exportAs();
