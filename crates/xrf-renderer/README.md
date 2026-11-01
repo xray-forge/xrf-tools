@@ -100,10 +100,13 @@ assembles, is in `src/pass/`; the scene's own state and its views are in `src/sc
 - **New level data**: read by the host through `xrf-world`'s `WorldLevelSource`, handed over as a `RenderSceneUpdate`
   that `LevelScene` applies, and read from the scene by the unit that draws it.
 - **A new drawable kind** beside the static scene, the grass being the one today (`feature/scene/grass/`): a variant
-  of `DrawableKindRef` (`feature/scene/drawable/`), which the consumers drawing every kind alike dispatch through. The
-  sun's cascades and the lights' shadows take a kind's casters as values (`PerFrameCasters`, `LightCasters`) and the
-  view's own top level its instances (`DrawableTraceInstance`), knowing no kind; the view's own phases record each
-  kind, and a kind a trace's hits read has its own bindings in `TraceParameters` and the trace's shaders.
+  of each enum the consumers drawing every kind alike dispatch through (`feature/scene/drawable/`). The scene group
+  draws it into the G-buffer in its phases (`DrawableKindSource` readies it before the static scene draws,
+  `DrawableKindReadied` culls it against their depth, stands its casters and draws it before or after the
+  reflections keep their depth); the sun's cascades and the lights' shadows take its casters as values
+  (`PerFrameCasters`, `LightCasters`) drawn through `DrawableKindRef`, and the view's own top level its instances
+  (`DrawableTraceInstance`), knowing no kind. A kind a trace's hits read has its own bindings in `TraceParameters` and
+  the trace's shaders.
 - **Another output**, such as HDR: the window's format and the present (`window/render_window.rs`,
   `feature/image/present/`), whose pipelines are kept one set a format (`PipelineMap`).
 

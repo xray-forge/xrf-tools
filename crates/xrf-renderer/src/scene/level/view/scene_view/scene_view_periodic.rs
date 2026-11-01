@@ -1,7 +1,7 @@
 use glam::Vec3;
 
 use crate::feature::effects::rain::cover::rain_cover::RainCover;
-use crate::feature::scene::drawable::per_frame_casters::PerFrameCasters;
+use crate::feature::scene::drawable::casters::per_frame_casters::PerFrameCasters;
 use crate::feature::view::scene_features::SceneFeatures;
 use crate::feature::weather::wet::puddles::level_surface::LevelSurface;
 use crate::frame::frame_encoder::FrameEncoder;

@@ -5,7 +5,7 @@ use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::effects::rain::cover::rain_covers::RainCovers;
-use crate::feature::scene::grass::cards::grass_card_handles::GrassCardHandles;
+use crate::feature::scene::drawable::draw::drawable_kind_readied::DrawableKindReadied;
 use crate::feature::scene::wind::wind_feature::WindFeature;
 use crate::feature::view::scene_features::SceneFeatures;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
@@ -216,8 +216,8 @@ impl SceneView {
   }
 
   /// Declares the frame `begin_frame` readied into the frame's graph, in the encode groups the frame is recorded in, on
-  /// as many threads where it is not timed: the scene (culled and drawn into the G-buffer, the grass planted and
-  /// drawn), its shadows (the cascades, the rain's cover, the level's surface and the lamps' faces), its lighting with
+  /// as many threads where it is not timed: the scene (culled and drawn into the G-buffer, the drawable kinds
+  /// readied and drawn), its shadows (the cascades, the rain's cover, the level's surface and the lamps' faces), its lighting with
   /// the reflections and the water, and what blends over it and resolves it; the pick last. Which passes run is decided
   /// by the units; each reads the view, which recording leaves as it is. The present pass reads what it leaves.
   pub fn record<'a>(
@@ -277,7 +277,7 @@ impl SceneView {
 
     graph.begin_group("scene");
 
-    let grass_cards: Option<GrassCardHandles> =
+    let kinds: Vec<DrawableKindReadied<'a>> =
       self.record_scene(scene, GraphDeclaration::new(graph, bindings, runtime), record);
 
     graph.begin_group("shadows");
@@ -286,7 +286,7 @@ impl SceneView {
       scene,
       GraphDeclaration::new(graph, bindings, runtime),
       record,
-      grass_cards,
+      &kinds,
       frame,
     );
 
@@ -326,7 +326,7 @@ impl SceneView {
       scene,
       GraphDeclaration::new(graph, bindings, runtime),
       record,
-      grass_cards,
+      &kinds,
       wet,
       rings,
     );

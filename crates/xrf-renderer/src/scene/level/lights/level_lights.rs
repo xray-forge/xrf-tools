@@ -11,7 +11,7 @@ use crate::camera::camera_frustum::CameraFrustum;
 use crate::contract::feature::lighting::lights::render_lights_settings::RenderLightsSettings;
 use crate::contract::feature::weather::render_light_shafts::RenderLightShafts;
 use crate::feature::lighting::lights::lights_feature::LightsFeature;
-use crate::feature::scene::drawable::drawable_kind_ref::DrawableKindRef;
+use crate::feature::scene::drawable::casters::drawable_kind_ref::DrawableKindRef;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_asset_source::RenderAssetSource;

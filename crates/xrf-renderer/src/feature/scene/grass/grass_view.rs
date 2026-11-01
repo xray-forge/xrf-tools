@@ -7,9 +7,9 @@ use xrf_renderer_core::{
 use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;
 use crate::contract::report::applied::render_applied_grass::RenderAppliedGrass;
 use crate::contract::report::scene::render_grass_report::RenderGrassReport;
+use crate::feature::scene::drawable::casters::light_casters::LightCasters;
+use crate::feature::scene::drawable::casters::per_frame_casters::PerFrameCasters;
 use crate::feature::scene::drawable::drawable_trace_instance::DrawableTraceInstance;
-use crate::feature::scene::drawable::light_casters::LightCasters;
-use crate::feature::scene::drawable::per_frame_casters::PerFrameCasters;
 use crate::feature::scene::grass::build::grass_build::GrassBuild;
 use crate::feature::scene::grass::build::grass_build_parameters::GrassBuildParameters;
 use crate::feature::scene::grass::build::grass_build_size::GrassBuildSize;

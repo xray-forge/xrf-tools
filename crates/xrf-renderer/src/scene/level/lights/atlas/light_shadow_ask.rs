@@ -2,7 +2,7 @@ use glam::Vec3;
 use xrf_renderer_core::ProxyHandle;
 use xrf_visual::LightDescription;
 
-use crate::feature::scene::drawable::light_casters::LightCasters;
+use crate::feature::scene::drawable::casters::light_casters::LightCasters;
 use crate::lighting::lamp::light_basis::LightBasis;
 use crate::scene::level::shadow::shadow_sway::ShadowSway;
 use crate::scene::static_scene::static_scene::StaticScene;

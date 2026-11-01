@@ -1,5 +1,6 @@
-use xrf_renderer_core::{GraphDeclaration, GraphTexture, UniformBinding};
+use xrf_renderer_core::{FrameGraph, GraphDeclaration, GraphTexture, UniformBinding};
 
+use crate::contract::feature::tracing::render_reflection_settings::RenderReflectionSettings;
 use crate::feature::effects::rain::cover::cover_textures::CoverTextures;
 use crate::feature::image::resolve::before_water_readers::BeforeWaterReaders;
 use crate::feature::lighting::combine::combine_inputs::CombineInputs;
@@ -8,14 +9,14 @@ use crate::feature::lighting::lights::draw::light_buffers::LightBuffers;
 use crate::feature::lighting::lights::draw::light_draw_inputs::LightDrawInputs;
 use crate::feature::lighting::lights::lights_feature::LightsFeature;
 use crate::feature::lighting::sun::direct_light_inputs::DirectLightInputs;
-use crate::feature::scene::drawable::drawable_kind_ref::DrawableKindRef;
-use crate::feature::scene::grass::build::grass_planting::GrassPlanting;
+use crate::feature::scene::drawable::casters::drawable_kind_ref::DrawableKindRef;
+use crate::feature::scene::drawable::draw::drawable_kind_readied::DrawableKindReadied;
+use crate::feature::scene::drawable::draw::drawable_kind_source::DrawableKindSource;
 use crate::feature::scene::grass::cards::grass_card_handles::GrassCardHandles;
-use crate::feature::scene::grass::cards::grass_shadow_casters::GrassShadowCasters;
-use crate::feature::scene::grass::draw::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::feature::scene::grass::level::grass_source::GrassSource;
 use crate::feature::scene::grass::trace::grass_trace_source::GrassTraceSource;
 use crate::feature::scene::grass::trace::traced_grass::TracedGrass;
+use crate::feature::scene::statics::cull::static_occlusion_uniform::StaticOcclusionUniform;
 use crate::feature::tracing::indirect_trace::indirect_traced::IndirectTraced;
 use crate::feature::tracing::ray_guides::ray_guide_inputs::RayGuideInputs;
 use crate::feature::tracing::ray_guides::ray_guides::RayGuides;
@@ -118,9 +119,21 @@ impl SceneView {
     }
   }
 
-  /// The scene's group: the distortion cleared, the grass planted, the static scene culled and drawn into the G-buffer,
-  /// the grass culled against its depth and its cards stood, the reflections' depth kept before or after the grass
-  /// draws, the wall marks and the sky's motion. Answers the grass's cards.
+  /// The drawable kinds beside the static scene the view draws, as its scene group finds them.
+  fn list_drawable_kinds<'a>(&'a self, scene: &'a LevelScene, passes: LevelPasses<'a>) -> [DrawableKindSource<'a>; 1] {
+    [DrawableKindSource::Grass {
+      view: &self.features.grass,
+      source: GrassSource {
+        pass: &passes.scene.grass,
+        level: scene.grass.get_level(),
+      },
+    }]
+  }
+
+  /// The scene's group, in the phases every drawable kind draws by: the distortion cleared, the kinds readied, the
+  /// static scene culled and drawn into the G-buffer, the kinds culled against its depth and their casters stood, those
+  /// the reflections walk over drawn before the reflections keep their depth and the rest after, the wall marks and the
+  /// sky's motion. Answers the kinds as the frame readied them.
   pub(super) fn record_scene<'a>(
     &'a self,
     scene: &'a LevelScene,
@@ -130,7 +143,7 @@ impl SceneView {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
-  ) -> Option<GrassCardHandles> {
+  ) -> Vec<DrawableKindReadied<'a>> {
     let ViewRecord {
       passes,
       view,
@@ -140,17 +153,14 @@ impl SceneView {
       ..
     } = record;
     let is_drawn: bool = !self.shared.is_wireframe;
-    let grass: GrassSource = GrassSource {
-      pass: &passes.scene.grass,
-      level: scene.grass.get_level(),
-    };
 
     ViewTargets::add_distortion_clear(&mut *graph, handles);
 
-    let grass_planting: Option<GrassPlanting> = self
-      .features
-      .grass
-      .add_planting(GraphDeclaration::new(graph, bindings, runtime), grass);
+    let mut kinds: Vec<DrawableKindReadied<'a>> = self
+      .list_drawable_kinds(scene, passes)
+      .into_iter()
+      .filter_map(|kind| kind.add_ready(GraphDeclaration::new(graph, bindings, runtime)))
+      .collect();
 
     self
       .features
@@ -163,66 +173,53 @@ impl SceneView {
         .add_passes(GraphDeclaration::new(graph, bindings, runtime), record);
     }
 
-    // The grass is culled once the static scene's depth is reduced, so a cell behind it plants nothing to draw.
-    if let Some(grass_planting) = grass_planting {
-      let occlusion: GrassOcclusionParameters = GrassOcclusionParameters {
-        pyramid: statics.pyramid,
-        occlusion: runtime.push_uniform(&self.features.statics.get_frame_occlusion()),
-      };
+    // The kinds are culled once the static scene's depth is reduced, so what stands behind it draws nothing; then their
+    // casters stand, which the sun's cascades, the lamps' faces and the trace draw.
+    if !kinds.is_empty() {
+      let occlusion: UniformBinding<StaticOcclusionUniform> =
+        runtime.push_uniform(&self.features.statics.get_frame_occlusion());
 
-      self
-        .features
-        .grass
-        .add_cull(&mut *graph, grass, grass_planting, occlusion);
+      for kind in &kinds {
+        kind.add_cull(&mut *graph, statics.pyramid, occlusion);
+      }
     }
 
-    // The grass's cards, which cast its shadows into the sun's cascades or the trace, stood once its ring is planted.
-    let grass_cards: Option<GrassCardHandles> = grass_planting.and_then(|grass_planting| {
-      self
-        .features
-        .grass
-        .add_cards(GraphDeclaration::new(graph, bindings, runtime), grass, grass_planting)
-    });
-    // The depth the reflections walk their rays over, kept before the grass draws, or after it where the grass is
-    // reflected.
-    let is_grass_reflected: bool = self.features.reflections.get_settings().is_grass_reflected;
-
-    if !is_grass_reflected {
-      self.features.reflections.add_pyramid_passes(
-        GraphDeclaration::new(graph, bindings, runtime),
-        passes,
-        handles.depth,
-      );
+    for kind in &mut kinds {
+      kind.add_casters(GraphDeclaration::new(graph, bindings, runtime));
     }
 
     self.features.statics.add_stats_pass(&mut *graph, &statics);
 
-    if let (true, Some(grass_planting)) = (is_drawn, grass_planting) {
-      self
-        .features
-        .grass
-        .add_draw(&mut *graph, grass, handles, grass_planting, view, textures);
-    }
+    // The depth the reflections walk their rays over, kept once the kinds they walk over are drawn, before the rest.
+    let reflections: RenderReflectionSettings = self.features.reflections.get_settings();
+    let add_draws = |graph: &mut FrameGraph<'a>, is_reflected: bool| {
+      for kind in kinds
+        .iter()
+        .filter(|kind| is_drawn && kind.is_reflected(&reflections) == is_reflected)
+      {
+        kind.add_draw(graph, handles, view, textures);
+      }
+    };
 
-    if is_grass_reflected {
-      self.features.reflections.add_pyramid_passes(
-        GraphDeclaration::new(graph, bindings, runtime),
-        passes,
-        handles.depth,
-      );
-    }
+    add_draws(&mut *graph, true);
+    self.features.reflections.add_pyramid_passes(
+      GraphDeclaration::new(graph, bindings, runtime),
+      passes,
+      handles.depth,
+    );
+    add_draws(&mut *graph, false);
 
     if is_drawn {
       self.features.statics.add_wallmark_passes(&mut *graph, record);
       self.features.sky.add_motion_pass(&mut *graph, passes, view, handles);
     }
 
-    grass_cards
+    kinds
   }
 
-  /// The shadows' group: the sun's cascades with the grass's cards, the rain's cover while it rains or the surfaces are
-  /// wet, the level's surface the enhanced wetting places its puddles by, and the lamps' faces where this view draws
-  /// the scene's first (as `frame` notes).
+  /// The shadows' group: the sun's cascades with what the drawable `kinds` cast, the rain's cover while it rains or the
+  /// surfaces are wet, the level's surface the enhanced wetting places its puddles by, and the lamps' faces where this
+  /// view draws the scene's first (as `frame` notes).
   pub(super) fn record_shadows<'a>(
     &'a self,
     scene: &'a LevelScene,
@@ -232,26 +229,18 @@ impl SceneView {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
-    grass_cards: Option<GrassCardHandles>,
+    kinds: &[DrawableKindReadied<'a>],
     frame: &LevelFrame,
   ) -> ShadowsRecorded {
-    let ViewRecord { passes, textures, .. } = record;
-    let grass_casters: Option<GrassShadowCasters> = self.features.grass.get_shadow_casters(
-      GraphDeclaration::new(graph, bindings, runtime),
-      GrassSource {
-        pass: &passes.scene.grass,
-        level: scene.grass.get_level(),
-      },
-      textures,
-      grass_cards,
-    );
-    let kinds: Option<DrawableKindRef> = grass_casters.map(DrawableKindRef::Grass);
+    let casters: Vec<DrawableKindRef<'a>> = kinds
+      .iter()
+      .filter_map(|kind| kind.get_shadow_casters(GraphDeclaration::new(graph, bindings, runtime), record.textures))
+      .collect();
 
-    self.features.shadows.add_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      record,
-      kinds.as_slice(),
-    );
+    self
+      .features
+      .shadows
+      .add_passes(GraphDeclaration::new(graph, bindings, runtime), record, &casters);
 
     // The rain's cover, which its passes draw and reduce and the rain and the wet surfaces read.
     let covers: Option<CoverTextures> = self
@@ -276,11 +265,9 @@ impl SceneView {
     );
 
     if frame.is_scene_first {
-      scene.lights.add_shadow_passes(
-        GraphDeclaration::new(graph, bindings, runtime),
-        record,
-        kinds.as_slice(),
-      );
+      scene
+        .lights
+        .add_shadow_passes(GraphDeclaration::new(graph, bindings, runtime), record, &casters);
     }
 
     ShadowsRecorded { covers, wet, surface }
@@ -298,12 +285,16 @@ impl SceneView {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
-    grass_cards: Option<GrassCardHandles>,
+    kinds: &[DrawableKindReadied<'a>],
     wet: WetTargets,
     rings: GraphTexture,
   ) -> LightingRecorded<'a> {
     let ViewRecord { handles, statics, .. } = record;
-    // The grass's part of the scene's trace, where the view traces it.
+    // The grass's part of the scene's trace, where the view traces it: the trace binds the grass's whether or not it
+    // is planted this frame, with its cards where they stand.
+    let grass_cards: Option<GrassCardHandles> = kinds.iter().find_map(|kind| match kind {
+      DrawableKindReadied::Grass { cards, .. } => *cards,
+    });
     let grass: Option<TracedGrass> = ViewTraceFeature::get_scene_trace(scene, record.passes).map(|trace| {
       self.features.grass.add_trace(
         GraphDeclaration::new(graph, bindings, runtime),

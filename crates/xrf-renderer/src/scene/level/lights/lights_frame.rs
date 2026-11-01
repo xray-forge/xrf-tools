@@ -5,7 +5,7 @@ use xrf_engine_target::XrayEngine;
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::feature::lighting::lights::render_lights_settings::RenderLightsSettings;
-use crate::feature::scene::drawable::light_casters::LightCasters;
+use crate::feature::scene::drawable::casters::light_casters::LightCasters;
 use crate::scene::level::shadow::shadow_sway::ShadowSway;
 use crate::scene::static_scene::static_scene::StaticScene;
 
