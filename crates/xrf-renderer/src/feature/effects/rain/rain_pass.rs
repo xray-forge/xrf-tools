@@ -10,6 +10,7 @@ use crate::feature::effects::rain::enhanced::rain_look_parameters::RainLookParam
 use crate::feature::effects::rain::rain_counts::RainCounts;
 use crate::feature::effects::rain::rain_parameters::RainParameters;
 use crate::feature::effects::rain::rings::rain_rings::RainRings;
+use crate::feature::effects::rain::rings::rain_rings_draw::RainRingsDraw;
 use crate::feature::effects::rain::rings::rain_rings_reduce_parameters::RainRingsReduceParameters;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::host::render_bundle::RenderBundle;
@@ -169,16 +170,14 @@ impl RainPass {
     self.add_fullscreen(&mut *graph, "rain layer", &self.blur[2], image, size)
   }
 
-  /// Declares the enhanced drops' rings drawn into the rain's rings' first level, `levels` each of them alone, then
-  /// reduced into the rest in one dispatch.
+  /// Declares the enhanced drops' rings drawn into the rain's rings' first level, the near drops' each alone, then
+  /// reduced into the rest of the `levels` in one dispatch.
   pub fn add_rings<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
     view: &'a ViewBinding,
     parameters: RainParameters<'a>,
-    levels: [GraphTexture; RainRings::LEVELS as usize],
-    size: u32,
-    streaks: u32,
+    RainRingsDraw { levels, size, near }: RainRingsDraw,
   ) {
     graph
       .add_raster_pass("rain rings")
@@ -194,7 +193,7 @@ impl RainPass {
 
         pass.set_bind_group(0, &view.bind_group, &[]);
         pass.set_pipeline(&self.pipelines[4]);
-        pass.draw(0..streaks * 24, 0..1);
+        pass.draw(0..near * 24, 0..1);
       });
 
     let reduce: RainRingsReduceParameters = RainRingsReduceParameters {

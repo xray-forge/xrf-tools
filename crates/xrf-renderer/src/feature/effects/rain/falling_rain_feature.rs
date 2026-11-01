@@ -15,6 +15,7 @@ use crate::feature::effects::rain::rain_frame::RainFrame;
 use crate::feature::effects::rain::rain_parameters::RainParameters;
 use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::effects::rain::rings::rain_rings::RainRings;
+use crate::feature::effects::rain::rings::rain_rings_draw::RainRingsDraw;
 use crate::feature::effects::weather_model_buffers::WeatherModelBuffers;
 use crate::feature::image::image_chain::ImageChain;
 use crate::feature::view::overhead_windows::OverheadWindows;
@@ -311,10 +312,16 @@ impl FallingRainFeature {
     let levels: [GraphTexture; RainRings::LEVELS as usize] =
       std::array::from_fn(|level| bindings.import_view(&mut *graph, "rain rings level", &rings.level_views[level]));
 
-    passes
-      .effects
-      .rain
-      .add_rings(&mut *graph, view, parameters, levels, rings.size, near);
+    passes.effects.rain.add_rings(
+      &mut *graph,
+      view,
+      parameters,
+      RainRingsDraw {
+        levels,
+        size: rings.size,
+        near,
+      },
+    );
 
     Some(bindings.import_view(&mut *graph, "rain rings", &rings.view))
   }
