@@ -1,5 +1,5 @@
-use crate::contract::render_scale::RenderScale;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::view::output::render_scale::RenderScale;
+use crate::contract::view::render_view_options::RenderViewOptions;
 
 /// How fast the faces' exposure adapts while they are metered in turn: slow enough to settle on all six rather than
 /// the last one drawn, at the step a capture's frames advance it by.

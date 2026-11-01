@@ -3,7 +3,7 @@ use image::{RgbaImage, imageops};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::capture::cube_face::CubeFace;
-use crate::contract::render_capture::RenderCapture;
+use crate::contract::capture::render_capture::RenderCapture;
 
 /// Each face's place in the horizontal cross, in faces across and down, in the engine's order `+x -x +y -y +z -z`: the
 /// up face above the forward one, then the left, forward, right and back faces in a row, the down face below, so every

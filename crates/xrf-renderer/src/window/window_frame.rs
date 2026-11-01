@@ -2,8 +2,8 @@ use std::time::{Duration, Instant};
 
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureAccess};
 
-use crate::contract::render_rect::RenderRect;
-use crate::contract::render_viewport_id::RenderViewportId;
+use crate::contract::viewport::render_rect::RenderRect;
+use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::jitter_guard::JitterGuard;
 use crate::pass::view::view_binding::ViewBinding;

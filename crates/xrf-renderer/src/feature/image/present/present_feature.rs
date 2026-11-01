@@ -1,7 +1,7 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor};
 
-use crate::contract::render_rect::RenderRect;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::view::render_view_options::RenderViewOptions;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::effects::distort::distort_parameters::DistortParameters;
 use crate::feature::effects::distort::distort_uniform::DistortUniform;
 use crate::feature::image::present::display::display_mode::DisplayMode;

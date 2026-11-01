@@ -11,10 +11,10 @@ use crate::context::gpu_libraries::GpuLibraries;
 use crate::context::gpu_requirements::{
   OPTIONAL_FEATURES, REQUIRED_FEATURES, can_trace, get_missing_features, get_ray_query_features,
 };
-use crate::contract::render_backend::RenderBackend;
-use crate::contract::render_backend_availability::RenderBackendAvailability;
-use crate::contract::render_gpu::RenderGpu;
-use crate::contract::render_gpu_description::RenderGpuDescription;
+use crate::contract::settings::gpu::render_backend::RenderBackend;
+use crate::contract::settings::gpu::render_backend_availability::RenderBackendAvailability;
+use crate::contract::settings::gpu::render_gpu::RenderGpu;
+use crate::contract::settings::gpu::render_gpu_description::RenderGpuDescription;
 
 /// The GPU the renderer draws with: one per process, owned by the render thread.
 pub struct GpuContext {

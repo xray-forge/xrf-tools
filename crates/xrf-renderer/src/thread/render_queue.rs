@@ -4,8 +4,8 @@ use std::thread::JoinHandle;
 use std::time::Duration;
 
 use crate::context::library_versions::describe_libraries;
-use crate::contract::render_libraries::RenderLibraries;
-use crate::contract::render_settings::RenderSettings;
+use crate::contract::settings::gpu::render_libraries::RenderLibraries;
+use crate::contract::settings::render_settings::RenderSettings;
 use crate::host::render_bundle::RenderBundle;
 use crate::host::render_cache_store::RenderCacheStore;
 use crate::host::render_world::RenderWorld;

@@ -1,6 +1,6 @@
 use glam::Vec3;
 
-use crate::contract::render_rain_settings::RenderRainSettings;
+use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::render_rainfall::RenderRainfall;
 use crate::scene::level::level_wetness::LevelWetness;

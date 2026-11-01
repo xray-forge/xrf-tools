@@ -3,7 +3,7 @@ use std::time::Duration;
 
 use crate::capture::burst::burst_event::BurstEvent;
 use crate::capture::burst::burst_job::BurstJob;
-use crate::contract::render_burst::RenderBurst;
+use crate::contract::capture::render_burst::RenderBurst;
 
 const BURST: RenderBurst = RenderBurst {
   at: 600.0,

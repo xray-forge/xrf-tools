@@ -1,10 +1,10 @@
-use crate::contract::render_antialiasing::RenderAntialiasing;
-use crate::contract::render_applied_report::RenderAppliedReport;
-use crate::contract::render_grass_report::RenderGrassReport;
-use crate::contract::render_lights_report::RenderLightsReport;
-use crate::contract::render_meter_reading::RenderMeterReading;
-use crate::contract::render_particles_report::RenderParticlesReport;
-use crate::contract::render_static_report::RenderStaticReport;
+use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;
+use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
+use crate::contract::report::scene::render_grass_report::RenderGrassReport;
+use crate::contract::report::scene::render_lights_report::RenderLightsReport;
+use crate::contract::report::scene::render_meter_reading::RenderMeterReading;
+use crate::contract::report::scene::render_particles_report::RenderParticlesReport;
+use crate::contract::report::scene::render_static_report::RenderStaticReport;
 
 /// What a view reports of its recent frames, taken at once each report round: the counts its frames recorded once read
 /// back, the sizes it draws and resolves at, how it smooths its frame, and what it draws with.

@@ -4,8 +4,8 @@ use xrf_renderer_core::{ProxyHandle, ProxyStore, Span, SpanBuffer, SpanLane, Sto
 use xrf_visual::VisualClusters;
 
 use crate::context::gpu_requirements::can_trace;
-use crate::contract::render_pool_use::RenderPoolUse;
-use crate::contract::render_static_report::RenderStaticReport;
+use crate::contract::report::frame::render_pool_use::RenderPoolUse;
+use crate::contract::report::scene::render_static_report::RenderStaticReport;
 use crate::scene::static_scene::static_cluster::StaticCluster;
 use crate::scene::static_scene::static_impostor::StaticImpostor;
 use crate::scene::static_scene::static_layout::StaticLayout;

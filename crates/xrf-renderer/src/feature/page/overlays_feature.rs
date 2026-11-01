@@ -1,9 +1,9 @@
 use glam::Vec3;
 
-use crate::contract::render_overlay::RenderOverlay;
-use crate::contract::render_overlay_segment::RenderOverlaySegment;
-use crate::contract::render_selection::RenderSelection;
-use crate::contract::render_selection_target::RenderSelectionTarget;
+use crate::contract::overlay::render_overlay::RenderOverlay;
+use crate::contract::overlay::render_overlay_segment::RenderOverlaySegment;
+use crate::contract::overlay::render_selection::RenderSelection;
+use crate::contract::overlay::render_selection_target::RenderSelectionTarget;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::scene::level::level_overlays::LevelOverlays;

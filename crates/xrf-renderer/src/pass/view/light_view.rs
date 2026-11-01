@@ -1,4 +1,4 @@
-use crate::contract::render_debug_view::RenderDebugView;
+use crate::contract::view::output::render_debug_view::RenderDebugView;
 
 /// What the sun and the lamps draw into the light target, as `shaders/common/camera.wgsl` numbers it: their light, or
 /// what a debug view shows of them in its place.

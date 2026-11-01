@@ -1,5 +1,5 @@
 use crate::context::gpu_tracing::GpuTracing;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::lighting::bitmask::bitmask_pass_names::BitmaskPassNames;
 
 /// What a frame's visibility-bitmask search yields: VBAO's occlusion, the indirect light, or both from one search; or

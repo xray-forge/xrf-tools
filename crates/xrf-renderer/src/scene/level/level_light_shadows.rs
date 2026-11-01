@@ -9,8 +9,8 @@ use xrf_renderer_core::{
 use xrf_visual::{LightDescription, LightKind};
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_pool_use::RenderPoolUse;
-use crate::contract::render_rect::RenderRect;
+use crate::contract::report::frame::render_pool_use::RenderPoolUse;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::lighting::shadows::shadow_casters::ShadowCasters;
 use crate::feature::lighting::shadows::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::feature::scene::grass::cards::grass_shadow_casters::GrassShadowCasters;

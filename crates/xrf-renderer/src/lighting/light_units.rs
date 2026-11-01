@@ -1,7 +1,7 @@
 use glam::Vec3;
 
-use crate::contract::render_light_level::RenderLightLevel;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
 use crate::lighting::daylight::Daylight;
 use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;

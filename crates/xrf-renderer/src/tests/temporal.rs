@@ -1,8 +1,8 @@
 use glam::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_antialiasing::RenderAntialiasing;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::image::resolve::fsr::fsr_frame::FsrFrame;
 use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;

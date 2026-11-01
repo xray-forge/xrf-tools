@@ -1,4 +1,4 @@
-use crate::contract::render_shadow_settings::RENDER_MAX_SHADOW_CASCADES;
+use crate::contract::feature::lighting::render_shadow_settings::RENDER_MAX_SHADOW_CASCADES;
 
 /// The sun's cascades' maps: one layer a cascade there can be, each a square of reversed depth seen from the sun. The
 /// maps the sun samples, or the static layers, which hold what stands still and are copied into them.

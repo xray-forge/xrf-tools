@@ -7,8 +7,8 @@ use ddsfile::{Caps2, D3DFormat, Dds, NewD3dParams};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::context::gpu_context::GpuContext;
-use crate::contract::render_texture_group::RenderTextureGroup;
-use crate::contract::render_texture_state::RenderTextureState;
+use crate::contract::report::texture::render_texture_group::RenderTextureGroup;
+use crate::contract::report::texture::render_texture_state::RenderTextureState;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::texture::texture_cache::TextureCache;

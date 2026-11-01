@@ -1,6 +1,6 @@
 use xrf_env_flags::EnvFlags;
 
-use crate::contract::render_backend::RenderBackend;
+use crate::contract::settings::gpu::render_backend::RenderBackend;
 
 // The backend asked for is tried first, then every other once in the fallback order; none asked tries them all in it.
 #[cfg(not(target_vendor = "apple"))]

@@ -1,7 +1,7 @@
 use glam::{Mat4, UVec4, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_rect::RenderRect;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::pass::view::camera_uniform::CameraUniform;
 use crate::scene::static_scene::static_selection::StaticSelection;
 

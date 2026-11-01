@@ -2,11 +2,11 @@ use std::time::Instant;
 
 use glam::Vec4;
 
-use crate::contract::render_light_level::RenderLightLevel;
-use crate::contract::render_rect::RenderRect;
-use crate::contract::render_view_options::RenderViewOptions;
-use crate::contract::render_water_mode::RenderWaterMode;
-use crate::contract::render_water_settings::RenderWaterSettings;
+use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
+use crate::contract::feature::weather::water::render_water_mode::RenderWaterMode;
+use crate::contract::feature::weather::water::render_water_settings::RenderWaterSettings;
+use crate::contract::view::render_view_options::RenderViewOptions;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::effects::flares::sun_sprite::SunSprite;
 use crate::feature::effects::rain::cover::rain_cover::RainCover;
 use crate::feature::effects::rain::rain_uniform::RainUniform;

@@ -1,5 +1,5 @@
-use crate::contract::render_trace_size::RenderTraceSize;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::tracing::render_trace_size::RenderTraceSize;
+use crate::contract::view::render_view_options::RenderViewOptions;
 
 /// Whether a frame traces its screen-space reflections, and how: none skips every pass and drops the histories.
 #[derive(Clone, Copy, Debug, PartialEq)]

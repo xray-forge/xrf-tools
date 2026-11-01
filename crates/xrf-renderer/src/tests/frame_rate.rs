@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::contract::render_frame_rate::RenderFrameRate;
+use crate::contract::settings::render_frame_rate::RenderFrameRate;
 
 #[test]
 fn draws_at_the_display_refresh_by_default() {

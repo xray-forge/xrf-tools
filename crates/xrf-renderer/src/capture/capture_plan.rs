@@ -4,10 +4,10 @@ use crate::camera::camera_frame::CameraFrame;
 use crate::capture::capture_shot::CaptureShot;
 use crate::capture::cube_face::CubeFace;
 use crate::capture::map_tile_plan::MapTilePlan;
-use crate::contract::render_cube_capture::{
+use crate::contract::capture::render_cube_capture::{
   RENDER_CUBE_MOST_PIXELS, RENDER_CUBE_MOST_SUPERSAMPLING, RenderCubeCapture,
 };
-use crate::contract::render_map_capture::RenderMapCapture;
+use crate::contract::capture::render_map_capture::RenderMapCapture;
 
 /// What a capture draws: views metered in turn until their exposure settles, then each of its shots in order, the
 /// exposure held for all of them.

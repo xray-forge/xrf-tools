@@ -2,7 +2,7 @@ use glam::{Mat4, Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_camera_settings::RenderCameraSettings;
+use crate::contract::feature::image::render_camera_settings::RenderCameraSettings;
 
 /// What the camera effects' stages read, as WGSL's `CameraEffects`: the shown and the drawn frame's sizes, how the
 /// stored depth turns into metres, the lens, the focus and the shutter.

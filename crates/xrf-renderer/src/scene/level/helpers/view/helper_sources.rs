@@ -1,4 +1,4 @@
-use crate::contract::render_helper_options::RenderHelperOptions;
+use crate::contract::overlay::render_helper_options::RenderHelperOptions;
 use crate::scene::level::helpers::level_helpers::LevelHelpers;
 use crate::scene::static_scene::static_scene::StaticScene;
 

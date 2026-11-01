@@ -4,7 +4,7 @@ use glam::{Mat4, Vec3, Vec4};
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::SectorSurface;
 
-use crate::contract::render_selection_target::RenderSelectionTarget;
+use crate::contract::overlay::render_selection_target::RenderSelectionTarget;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::static_scene::static_item_context::StaticItemContext;

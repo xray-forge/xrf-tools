@@ -2,7 +2,7 @@ use xrf_error::XrfResult;
 
 use crate::capture::burst::burst_event::BurstEvent;
 use crate::capture::burst::burst_marks::BurstMarks;
-use crate::contract::render_capture::RenderCapture;
+use crate::contract::capture::render_capture::RenderCapture;
 use crate::frame::frame_capture::FrameCapture;
 use crate::frame::gpu_readback::GpuReadback;
 

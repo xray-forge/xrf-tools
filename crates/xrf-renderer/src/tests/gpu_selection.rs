@@ -2,9 +2,9 @@ use std::path::PathBuf;
 
 use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_libraries::GpuLibraries;
-use crate::contract::render_backend::RenderBackend;
-use crate::contract::render_backend_availability::RenderBackendAvailability;
-use crate::contract::render_gpu::RenderGpu;
+use crate::contract::settings::gpu::render_backend::RenderBackend;
+use crate::contract::settings::gpu::render_backend_availability::RenderBackendAvailability;
+use crate::contract::settings::gpu::render_gpu::RenderGpu;
 use crate::tests::test_bundle::checkout_dxc;
 
 /// A GPU no machine has.

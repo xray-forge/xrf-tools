@@ -2,8 +2,8 @@
 
 use xrf_renderer_core::{ShaderAddressSpace, ShaderLayoutVerifier};
 
-use crate::contract::render_contact_shadow_settings::RENDER_MAX_CONTACT_SHADOW_LIGHTS;
-use crate::contract::render_debug_view::RenderDebugView;
+use crate::contract::feature::lighting::render_contact_shadow_settings::RENDER_MAX_CONTACT_SHADOW_LIGHTS;
+use crate::contract::view::output::render_debug_view::RenderDebugView;
 use crate::feature::effects::flares::flare_pass::FlarePass;
 use crate::feature::image::camera::camera_effects_uniform::CameraEffectsUniform;
 use crate::feature::image::exposure::exposure_feature::ExposureFeature;

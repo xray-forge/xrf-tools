@@ -1,9 +1,9 @@
 use crate::capture::map_tile::MapTile;
-use crate::contract::render_bloom_mode::RenderBloomMode;
-use crate::contract::render_scale::RenderScale;
-use crate::contract::render_show_flags::RenderShowFlags;
-use crate::contract::render_view_features::RenderViewFeatures;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::image::bloom::render_bloom_mode::RenderBloomMode;
+use crate::contract::view::output::render_scale::RenderScale;
+use crate::contract::view::render_show_flags::RenderShowFlags;
+use crate::contract::view::render_view_features::RenderViewFeatures;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::lighting::render_lighting::RenderLighting;
 
 /// How fast the metering view's exposure adapts, settling within its frames.

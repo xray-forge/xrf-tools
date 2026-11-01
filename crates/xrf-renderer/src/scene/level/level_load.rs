@@ -1,8 +1,8 @@
 use std::borrow::Borrow;
 use std::time::{Duration, Instant};
 
-use crate::contract::render_load_durations::RenderLoadDurations;
-use crate::contract::render_load_report::RenderLoadReport;
+use crate::contract::report::load::render_load_durations::RenderLoadDurations;
+use crate::contract::report::load::render_load_report::RenderLoadReport;
 use crate::host::render_scene_id::RenderSceneId;
 use crate::host::render_streaming_progress::RenderStreamingProgress;
 use crate::scene::texture::texture_cache::TextureCache;

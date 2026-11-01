@@ -1,5 +1,5 @@
-use crate::contract::render_backend::RenderBackend;
-use crate::contract::render_dlss_availability::RenderDlssAvailability;
+use crate::contract::settings::gpu::render_backend::RenderBackend;
+use crate::contract::settings::gpu::render_dlss_availability::RenderDlssAvailability;
 
 /// What a viewport's report says of the device it draws on, the same for every viewport of a frame.
 #[derive(Clone, Copy, Debug)]

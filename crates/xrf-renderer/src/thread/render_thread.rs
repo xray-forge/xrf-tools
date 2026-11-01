@@ -8,8 +8,8 @@ use xrf_renderer_core::GraphReport;
 
 use crate::camera::camera_view::CameraView;
 use crate::capture::burst::burst_shot::BurstShot;
-use crate::contract::render_settings::RenderSettings;
-use crate::contract::render_viewport_id::RenderViewportId;
+use crate::contract::settings::render_settings::RenderSettings;
+use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_clock::FrameClock;
 use crate::frame::frame_pacer::FramePacer;

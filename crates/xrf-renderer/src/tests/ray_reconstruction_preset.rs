@@ -1,6 +1,6 @@
 use xrf_dlss::DlssRayPreset;
 
-use crate::contract::render_ray_reconstruction_preset::RenderRayReconstructionPreset;
+use crate::contract::feature::image::resolve::render_ray_reconstruction_preset::RenderRayReconstructionPreset;
 
 #[test]
 fn leaves_nvidias_pick_to_nvidia_outside_the_physical_light() {

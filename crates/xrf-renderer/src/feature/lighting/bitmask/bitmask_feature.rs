@@ -6,8 +6,8 @@ use xrf_renderer_core::{
 };
 
 use crate::context::gpu_tracing::GpuTracing;
-use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
-use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
+use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+use crate::contract::feature::lighting::render_indirect_light_settings::RenderIndirectLightSettings;
 use crate::feature::lighting::bitmask::bitmask_pass_names::BitmaskPassNames;
 use crate::feature::lighting::bitmask::bitmask_search::BitmaskSearch;
 use crate::feature::lighting::bitmask::bitmask_targets::BitmaskTargets;

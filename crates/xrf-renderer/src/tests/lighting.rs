@@ -1,6 +1,6 @@
 use glam::Vec3;
 
-use crate::contract::render_light_scales::RenderLightScales;
+use crate::contract::feature::lighting::model::render_light_scales::RenderLightScales;
 use crate::feature::lighting::tables::material_table::MaterialTable;
 use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::material_slice::material_slice;

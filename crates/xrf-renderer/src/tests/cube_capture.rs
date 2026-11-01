@@ -9,11 +9,11 @@ use crate::capture::capture_shot::CaptureShot;
 use crate::capture::cube_assembly::CubeAssembly;
 use crate::capture::cube_face::CubeFace;
 use crate::capture::map_tile_plan::MapTilePlan;
-use crate::contract::render_capture::RenderCapture;
-use crate::contract::render_cube_capture::RenderCubeCapture;
-use crate::contract::render_map_capture::RenderMapCapture;
-use crate::contract::render_scale::RenderScale;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::capture::render_capture::RenderCapture;
+use crate::contract::capture::render_cube_capture::RenderCubeCapture;
+use crate::contract::capture::render_map_capture::RenderMapCapture;
+use crate::contract::view::output::render_scale::RenderScale;
+use crate::contract::view::render_view_options::RenderViewOptions;
 
 /// A camera standing at engine `(10, 2, -30)`, its fog ending past its far plane.
 fn camera() -> CameraFrame {

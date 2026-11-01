@@ -1,6 +1,6 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding};
 
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::resolve::resolve_decisions::ResolveDecisions;
 use crate::feature::tracing::sun_trace::sun_trace_parameters::SunTraceParameters;
 use crate::feature::tracing::sun_trace::sun_trace_pass::SunTracePass;

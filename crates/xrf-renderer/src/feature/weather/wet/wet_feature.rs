@@ -4,7 +4,7 @@ use xrf_renderer_core::{
   GraphColorAttachment, GraphDeclaration, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
 };
 
-use crate::contract::render_rain_settings::RenderRainSettings;
+use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
 use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::effects::rain::rings::drop_rings::DropRings;
 use crate::feature::view::overhead_windows::OverheadWindows;

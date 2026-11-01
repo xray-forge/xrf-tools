@@ -1,6 +1,6 @@
 use xrf_renderer_core::ShaderStruct;
 
-use crate::contract::render_water_settings::RenderWaterSettings;
+use crate::contract::feature::weather::water::render_water_settings::RenderWaterSettings;
 
 /// What every water program reads as its `Water`: the clock, the settings both waters share, and the weather's
 /// `water_intensity`.

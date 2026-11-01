@@ -1,7 +1,7 @@
 use glam::Vec3;
 use wgpu::util::DeviceExt;
 
-use crate::contract::render_overlay::RenderOverlay;
+use crate::contract::overlay::render_overlay::RenderOverlay;
 use crate::frame::frame_encoder::FrameEncoder;
 
 /// A viewport's overlays as their vertices: every line segment's two ends, the points, and the sun's disc, uploaded

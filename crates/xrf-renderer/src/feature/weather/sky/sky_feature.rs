@@ -3,8 +3,8 @@ use xrf_renderer_core::{
   FrameGraph, GraphBuffer, GraphColorAttachment, GraphDeclaration, GraphTexture, StorageValue, UniformBinding,
 };
 
-use crate::contract::render_light_level::RenderLightLevel;
-use crate::contract::render_reflection_probe::RenderReflectionProbe;
+use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
+use crate::contract::feature::tracing::render_reflection_probe::RenderReflectionProbe;
 use crate::feature::effects::flares::sun_sprite::SunSprite;
 use crate::feature::image::exposure::exposure_feature::ExposureFeature;
 use crate::feature::tracing::surroundings::surroundings_cube::SurroundingsCube;

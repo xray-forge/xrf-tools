@@ -1,4 +1,4 @@
-use crate::contract::render_helper_icon::RenderHelperIcon;
+use crate::contract::overlay::render_helper_icon::RenderHelperIcon;
 
 /// One shape of a helper in its object's own space, renderer space.
 #[derive(Clone, Debug, PartialEq)]

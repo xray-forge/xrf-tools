@@ -3,7 +3,7 @@ use image::{RgbaImage, imageops};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::capture::map_tile::MapTile;
-use crate::contract::render_capture::RenderCapture;
+use crate::contract::capture::render_capture::RenderCapture;
 
 /// A level map put together from its tiles as each comes back, reduced by Lanczos as `CDemoRecord` resamples.
 pub struct MapAssembly {

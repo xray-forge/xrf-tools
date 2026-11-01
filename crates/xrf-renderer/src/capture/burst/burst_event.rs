@@ -1,7 +1,7 @@
 use xrf_error::XrfError;
 
 use crate::capture::burst::burst_marks::BurstMarks;
-use crate::contract::render_capture::RenderCapture;
+use crate::contract::capture::render_capture::RenderCapture;
 
 /// What a burst tells its caller as it goes.
 #[derive(Debug)]

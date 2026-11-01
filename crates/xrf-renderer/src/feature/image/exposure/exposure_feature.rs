@@ -3,9 +3,9 @@ use std::time::{Duration, Instant};
 use xrf_error::XrfResult;
 use xrf_renderer_core::{GraphBuffer, GraphBufferAccess, GraphDeclaration, StorageArrayMut, StorageValueMut};
 
-use crate::contract::render_exposure_settings::RenderExposureSettings;
-use crate::contract::render_light_level::RenderLightLevel;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::image::render_exposure_settings::RenderExposureSettings;
+use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::exposure_parameters::ExposureParameters;
 use crate::feature::image::exposure::exposure_state::ExposureState;
 use crate::feature::image::exposure::exposure_step::ExposureStep;

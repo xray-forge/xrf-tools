@@ -4,7 +4,7 @@ use image::{Rgba, RgbaImage};
 use resvg::{tiny_skia, usvg};
 use serde_json::{Value, json};
 
-use crate::contract::render_helper_icon::{RENDER_HELPER_ICONS, RenderHelperIcon};
+use crate::contract::overlay::render_helper_icon::{RENDER_HELPER_ICONS, RenderHelperIcon};
 use crate::host::render_bundle::RENDER_BUNDLE_SOURCE;
 use crate::scene::level::helpers::gpu::helper_icon_atlas::HelperIconAtlas;
 

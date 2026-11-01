@@ -1,7 +1,7 @@
 use glam::Vec4;
 
-use crate::contract::render_light_level::RenderLightLevel;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::histogram::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
 use crate::lighting::light_units::LightUnits;

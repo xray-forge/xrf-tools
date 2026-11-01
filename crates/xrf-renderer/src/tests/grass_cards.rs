@@ -1,5 +1,5 @@
-use crate::contract::render_grass_settings::RenderGrassSettings;
-use crate::contract::render_shadow_settings::RenderShadowSettings;
+use crate::contract::feature::lighting::render_shadow_settings::RenderShadowSettings;
+use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;
 use crate::feature::lighting::shadows::level_shadows::LevelShadows;
 use crate::feature::scene::grass::cards::grass_cards::GrassCards;
 

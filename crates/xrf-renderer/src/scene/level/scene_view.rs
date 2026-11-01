@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::effects::rain::cover::rain_covers::RainCovers;
 use crate::feature::scene::grass::cards::grass_card_handles::GrassCardHandles;
 use crate::feature::scene::wind::wind_feature::WindFeature;

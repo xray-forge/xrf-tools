@@ -5,7 +5,7 @@ use xrf_renderer_core::{
 };
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_rect::RenderRect;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::lighting::shadows::cascades::sun_shadow_maps::SunShadowMaps;
 use crate::feature::lighting::shadows::shadow_casters::ShadowCasters;
 use crate::feature::lighting::shadows::shadow_cut::ShadowCut;

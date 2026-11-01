@@ -9,7 +9,7 @@ use xrf_renderer_core::{
 use crate::capture::burst::burst_job::BurstJob;
 use crate::capture::burst::burst_shot::BurstShot;
 use crate::capture::capture_job::CaptureJob;
-use crate::contract::render_viewport_id::RenderViewportId;
+use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::feature::image::present::present_parameters::PresentParameters;
 use crate::feature::image::present::present_pass::PresentPass;
 use crate::feature::image::present::present_uniform::PresentUniform;

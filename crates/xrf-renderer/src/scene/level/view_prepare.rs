@@ -3,8 +3,8 @@ use std::sync::Arc;
 use xrf_dlss::Dlss;
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_rect::RenderRect;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::view::render_view_options::RenderViewOptions;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::level_passes::LevelPasses;

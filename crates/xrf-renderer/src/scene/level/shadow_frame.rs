@@ -1,7 +1,7 @@
 use glam::{Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_shadow_settings::RenderShadowSettings;
+use crate::contract::feature::lighting::render_shadow_settings::RenderShadowSettings;
 use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::static_scene::static_scene::StaticScene;
 

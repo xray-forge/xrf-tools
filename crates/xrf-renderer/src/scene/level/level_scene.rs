@@ -7,10 +7,10 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::ProxyHandle;
 use xrf_visual::SectorPackage;
 
-use crate::contract::render_load_report::RenderLoadReport;
-use crate::contract::render_texture_group::RenderTextureGroup;
-use crate::contract::render_texture_report::RenderTextureReport;
-use crate::contract::render_viewport_id::RenderViewportId;
+use crate::contract::report::load::render_load_report::RenderLoadReport;
+use crate::contract::report::texture::render_texture_group::RenderTextureGroup;
+use crate::contract::report::texture::render_texture_report::RenderTextureReport;
+use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::frame::frame_upload::FrameUpload;
 use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;

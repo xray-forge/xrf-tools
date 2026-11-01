@@ -1,6 +1,6 @@
 use xrf_renderer_core::ShaderStruct;
 
-use crate::contract::render_enhanced_water_settings::RenderEnhancedWaterSettings;
+use crate::contract::feature::weather::water::render_enhanced_water_settings::RenderEnhancedWaterSettings;
 use crate::feature::weather::water::enhanced::enhanced_water_frame::EnhancedWaterFrame;
 
 /// What the enhanced water's programs read as their `EnhancedWater`: its strengths, the weather's wind and rain, how

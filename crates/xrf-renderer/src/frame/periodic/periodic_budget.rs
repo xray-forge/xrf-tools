@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::contract::render_frame_rate::RenderFrameRate;
+use crate::contract::settings::render_frame_rate::RenderFrameRate;
 
 /// What a frame gives the work that may wait, from the headroom its frames leave: where a frame cap or the display's
 /// refresh holds the frames, the interval they are held to less the GPU's smoothed frame time and a margin, between the

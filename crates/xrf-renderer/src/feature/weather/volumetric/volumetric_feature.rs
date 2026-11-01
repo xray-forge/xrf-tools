@@ -4,7 +4,7 @@ use xrf_renderer_core::{
   UniformBinding,
 };
 
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::lighting::lights::lights_feature::LightsFeature;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_frame_end::ViewFrameEnd;

@@ -1,8 +1,8 @@
 use glam::{Vec3, Vec4};
 
-use crate::contract::render_display_transform::RenderDisplayTransform;
-use crate::contract::render_grading_settings::RenderGradingSettings;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::image::display::render_display_transform::RenderDisplayTransform;
+use crate::contract::feature::image::display::render_grading_settings::RenderGradingSettings;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
 use crate::feature::image::present::display::display_curves::{
   agx, get_graded, get_key_match, get_least_shown, pbr_neutral,

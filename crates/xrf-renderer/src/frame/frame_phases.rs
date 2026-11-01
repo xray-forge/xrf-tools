@@ -1,7 +1,7 @@
 use std::ops::AddAssign;
 use std::time::Duration;
 
-use crate::contract::render_frame_phases::RenderFramePhases;
+use crate::contract::report::frame::render_frame_phases::RenderFramePhases;
 
 /// Where the render thread's time went over one frame, or over many summed.
 #[derive(Clone, Copy, Debug, Default)]

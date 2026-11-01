@@ -3,8 +3,8 @@ use std::time::Instant;
 
 use xrf_renderer_core::GraphDeclaration;
 
-use crate::contract::render_applied_report::RenderAppliedReport;
-use crate::contract::render_meter_reading::RenderMeterReading;
+use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
+use crate::contract::report::scene::render_meter_reading::RenderMeterReading;
 use crate::feature::effects::flares::flares_feature::FlaresFeature;
 use crate::feature::effects::flares::sun_sprite::SunSprite;
 use crate::feature::effects::thunder::thunder_feature::ThunderFeature;

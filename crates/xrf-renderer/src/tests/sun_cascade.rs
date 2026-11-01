@@ -5,7 +5,7 @@ use crate::camera::camera_view::CameraView;
 use crate::camera::engine_space::EngineSpace;
 use crate::capture::map_tile::MapTile;
 use crate::capture::map_tile_plan::MapTilePlan;
-use crate::contract::render_map_capture::RenderMapCapture;
+use crate::contract::capture::render_map_capture::RenderMapCapture;
 use crate::lighting::sun_cascade::SunCascade;
 use crate::lighting::sun_cascade_basis::SunCascadeBasis;
 use crate::lighting::sun_view_rays::SunViewRays;

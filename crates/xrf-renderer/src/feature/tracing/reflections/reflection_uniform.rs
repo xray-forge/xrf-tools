@@ -1,6 +1,6 @@
 use xrf_renderer_core::ShaderStruct;
 
-use crate::contract::render_reflection_settings::RenderReflectionSettings;
+use crate::contract::feature::tracing::render_reflection_settings::RenderReflectionSettings;
 use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;
 use crate::feature::tracing::reflections::trace::reflection_trace_frame::ReflectionTraceFrame;
 

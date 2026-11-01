@@ -1,7 +1,7 @@
 use glam::{Mat4, Vec3};
 
-use crate::contract::render_helper_icon::RenderHelperIcon;
-use crate::contract::render_helper_options::RenderHelperOptions;
+use crate::contract::overlay::render_helper_icon::RenderHelperIcon;
+use crate::contract::overlay::render_helper_options::RenderHelperOptions;
 use crate::feature::page::helpers_feature::HelpersFeature;
 use crate::host::render_helper_object::RenderHelperObject;
 use crate::host::render_helper_shape::RenderHelperShape;

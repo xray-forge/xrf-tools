@@ -3,9 +3,9 @@ use xrf_renderer_core::{
 };
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_camera_settings::RenderCameraSettings;
-use crate::contract::render_debug_view::RenderDebugView;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::image::render_camera_settings::RenderCameraSettings;
+use crate::contract::view::output::render_debug_view::RenderDebugView;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::camera::camera_effects_parameters::CameraEffectsParameters;
 use crate::feature::image::camera::camera_effects_pass::CameraEffectsPass;
 use crate::feature::image::camera::camera_effects_stage::CameraEffectsStage;

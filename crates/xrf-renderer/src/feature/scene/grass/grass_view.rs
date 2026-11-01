@@ -4,9 +4,9 @@ use xrf_renderer_core::{
   GraphTexture, StorageArray, StorageArrayMut, StorageValue, StorageValueMut, UniformBinding,
 };
 
-use crate::contract::render_applied_grass::RenderAppliedGrass;
-use crate::contract::render_grass_report::RenderGrassReport;
-use crate::contract::render_grass_settings::RenderGrassSettings;
+use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;
+use crate::contract::report::applied::render_applied_grass::RenderAppliedGrass;
+use crate::contract::report::scene::render_grass_report::RenderGrassReport;
 use crate::feature::scene::grass::build::grass_build::GrassBuild;
 use crate::feature::scene::grass::build::grass_build_parameters::GrassBuildParameters;
 use crate::feature::scene::grass::build::grass_build_size::GrassBuildSize;

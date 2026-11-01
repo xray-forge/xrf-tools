@@ -1,7 +1,7 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, StorageValue};
 
-use crate::contract::render_light_level::RenderLightLevel;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::sun_shafts::sun_shafts_parameters::SunShaftsParameters;
 use crate::feature::weather::sun_shafts::sun_shafts_pass::{SunShaftsDraw, SunShaftsPass};

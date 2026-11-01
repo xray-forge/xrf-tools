@@ -1,11 +1,11 @@
 use glam::{Mat4, Vec4};
 
 use crate::context::gpu_tracing::GpuTracing;
-use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
-use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
-use crate::contract::render_indirect_light_mode::RenderIndirectLightMode;
-use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
+use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+use crate::contract::feature::lighting::render_indirect_light_mode::RenderIndirectLightMode;
+use crate::contract::feature::lighting::render_indirect_light_settings::RenderIndirectLightSettings;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::lighting::bitmask::bitmask_search::BitmaskSearch;

@@ -1,6 +1,6 @@
 use xrf_renderer_core::ShaderStruct;
 
-use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::feature::lighting::bitmask::vbao::vbao_frame::VbaoFrame;
 use crate::feature::lighting::bitmask::vbao::vbao_light::VbaoLight;
 use crate::pass::view::noise_turn::NoiseTurn;

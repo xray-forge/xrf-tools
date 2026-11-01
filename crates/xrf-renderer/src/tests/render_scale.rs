@@ -1,4 +1,4 @@
-use crate::contract::render_scale::RenderScale;
+use crate::contract::view::output::render_scale::RenderScale;
 
 #[test]
 fn draws_each_side_over_the_ratio_truncated_as_the_upscalers_do() {

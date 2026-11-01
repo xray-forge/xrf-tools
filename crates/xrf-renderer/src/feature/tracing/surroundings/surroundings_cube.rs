@@ -6,8 +6,8 @@ use xrf_renderer_core::{
 
 use crate::camera::camera_frustum::CameraFrustum;
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_rect::RenderRect;
-use crate::contract::render_reflection_probe::RenderReflectionProbe;
+use crate::contract::feature::tracing::render_reflection_probe::RenderReflectionProbe;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::lighting::shadows::shadow_cut::ShadowCut;
 use crate::feature::lighting::shadows::static_shadow_pass::StaticShadowPass;
 use crate::feature::scene::statics::cull::shadow_cull::ShadowCull;

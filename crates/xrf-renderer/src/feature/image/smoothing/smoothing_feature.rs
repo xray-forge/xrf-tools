@@ -1,7 +1,7 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding};
 
-use crate::contract::render_antialiasing::RenderAntialiasing;
-use crate::contract::render_debug_view::RenderDebugView;
+use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;
+use crate::contract::view::output::render_debug_view::RenderDebugView;
 use crate::feature::image::smoothing::fxaa_parameters::FxaaParameters;
 use crate::feature::image::smoothing::smaa_parameters::SmaaParameters;
 use crate::feature::image::smoothing::smaa_pass::SmaaPass;

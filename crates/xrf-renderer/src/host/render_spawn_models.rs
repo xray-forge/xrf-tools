@@ -1,4 +1,4 @@
-use crate::contract::render_load_failure::RenderLoadFailure;
+use crate::contract::report::load::render_load_failure::RenderLoadFailure;
 use crate::host::render_spawn_lighting::RenderSpawnLighting;
 use crate::host::render_spawn_model::RenderSpawnModel;
 

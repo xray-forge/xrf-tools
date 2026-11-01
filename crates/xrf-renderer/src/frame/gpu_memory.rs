@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::context::gpu_memory_budget::GpuMemoryBudget;
-use crate::contract::render_memory_section::RenderMemorySection;
+use crate::contract::report::frame::render_memory_section::RenderMemorySection;
 
 /// What the GPU allocator holds, asked of it now and then: allocated and reserved, the most it held allocated since
 /// the renderer started, and what it holds allocated by the names the resources were made under; with what the GPU's

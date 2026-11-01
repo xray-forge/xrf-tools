@@ -1,7 +1,7 @@
 use xrf_renderer_core::PipelineCache;
 
 use crate::camera::camera_frame::CameraFrame;
-use crate::contract::render_rect::RenderRect;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::camera_uniform::CameraUniform;

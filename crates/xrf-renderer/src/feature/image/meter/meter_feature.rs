@@ -1,7 +1,7 @@
 use xrf_renderer_core::{GraphBuffer, GraphBufferAccess, GraphDeclaration, StorageValue, StorageValueMut};
 
-use crate::contract::render_meter_reading::RenderMeterReading;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::report::scene::render_meter_reading::RenderMeterReading;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::meter::meter_parameters::MeterParameters;
 use crate::feature::image::meter::meter_sample::MeterSample;
 use crate::feature::view::view_feature::ViewFeature;

@@ -1,7 +1,7 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphDepthAttachment};
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::scene::calibration::calibration_parameters::CalibrationParameters;
 use crate::feature::scene::calibration::calibration_uniform::CalibrationUniform;
 use crate::feature::view::view_feature::ViewFeature;

@@ -1,6 +1,6 @@
 use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
-use crate::contract::render_antialiasing::RenderAntialiasing;
+use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;
 use crate::feature::image::camera::camera_feature::CameraFeature;
 use crate::feature::image::image_chain::ImageChain;
 use crate::feature::image::smoothing::smoothing_feature::SmoothingFeature;

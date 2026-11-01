@@ -6,8 +6,8 @@ use xrf_renderer_core::{
 };
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_debug_view::RenderDebugView;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::view::output::render_debug_view::RenderDebugView;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::scene::pyramid::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::feature::scene::pyramid::pyramid_level_parameters::PyramidLevelParameters;
 use crate::feature::scene::pyramid::pyramid_reduction::PyramidReduction;

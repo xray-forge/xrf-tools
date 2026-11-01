@@ -1,5 +1,5 @@
-use crate::contract::render_overlay::RenderOverlay;
-use crate::contract::render_overlay_segment::RenderOverlaySegment;
+use crate::contract::overlay::render_overlay::RenderOverlay;
+use crate::contract::overlay::render_overlay_segment::RenderOverlaySegment;
 use crate::scene::level::level_overlays::LevelOverlays;
 use crate::tests::test_context::create_test_context;
 

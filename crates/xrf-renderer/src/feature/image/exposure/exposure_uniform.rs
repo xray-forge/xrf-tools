@@ -1,6 +1,6 @@
 use xrf_renderer_core::ShaderStruct;
 
-use crate::contract::render_exposure_settings::RenderExposureSettings;
+use crate::contract::feature::image::render_exposure_settings::RenderExposureSettings;
 
 /// `MiddleGray`, as `shaders/frame/exposure.wgsl` declares it: the scale is `target / (luminance * weight + floor)`,
 /// moved towards by `blend` of the way.

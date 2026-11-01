@@ -1,8 +1,10 @@
 use glam::{Vec2, Vec4};
 
-use crate::contract::render_contact_shadow_mode::RenderContactShadowMode;
-use crate::contract::render_contact_shadow_settings::{RENDER_MAX_CONTACT_SHADOW_LIGHTS, RenderContactShadowSettings};
-use crate::contract::render_shadow_settings::RenderShadowSettings;
+use crate::contract::feature::lighting::render_contact_shadow_mode::RenderContactShadowMode;
+use crate::contract::feature::lighting::render_contact_shadow_settings::{
+  RENDER_MAX_CONTACT_SHADOW_LIGHTS, RenderContactShadowSettings,
+};
+use crate::contract::feature::lighting::render_shadow_settings::RenderShadowSettings;
 use crate::feature::lighting::contact_shadows::contact_shadow_uniform::ContactShadowUniform;
 
 #[test]

@@ -1,4 +1,4 @@
-use crate::contract::render_rect::RenderRect;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::image::present::present_parameters::PresentParameters;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::helpers::view::helper_draws::HelperDraws;

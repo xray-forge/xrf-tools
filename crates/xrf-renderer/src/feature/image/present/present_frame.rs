@@ -1,5 +1,5 @@
-use crate::contract::render_debug_view::RenderDebugView;
-use crate::contract::render_rect::RenderRect;
+use crate::contract::view::output::render_debug_view::RenderDebugView;
+use crate::contract::viewport::render_rect::RenderRect;
 
 /// What one frame's present shows and where: the view asked for, the viewport's rectangle it is drawn into, and what
 /// the scene it shows was drawn with.

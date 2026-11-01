@@ -1,5 +1,5 @@
 use crate::context::gpu_requirements::can_trace;
-use crate::contract::render_grass_settings::RenderGrassSettings;
+use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;
 
 /// The grass that casts a view's shadows (`shaders/grass/cards.wgsl`): the tufts near its eye stood and swayed as the
 /// frame draws them each frame, their triangles' corners and records and how many stand; the structure built over them,

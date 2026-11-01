@@ -1,11 +1,11 @@
 use glam::{Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
-use crate::contract::render_camera_settings::RenderCameraSettings;
-use crate::contract::render_grading_settings::RenderGradingSettings;
-use crate::contract::render_image_corrections::RenderImageCorrections;
-use crate::contract::render_rect::RenderRect;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::image::display::render_grading_settings::RenderGradingSettings;
+use crate::contract::feature::image::display::render_image_corrections::RenderImageCorrections;
+use crate::contract::feature::image::render_camera_settings::RenderCameraSettings;
+use crate::contract::view::render_view_options::RenderViewOptions;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
 use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::image::present::present_frame::PresentFrame;

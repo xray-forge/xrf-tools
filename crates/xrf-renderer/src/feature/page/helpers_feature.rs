@@ -5,7 +5,7 @@ use xrf_renderer_core::{
   GraphTextureDescriptor,
 };
 
-use crate::contract::render_helper_options::RenderHelperOptions;
+use crate::contract::overlay::render_helper_options::RenderHelperOptions;
 use crate::feature::page::present_marks::PresentMarks;
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
 use crate::feature::scene::statics::draw::static_mark_draw::StaticMarkDraw;

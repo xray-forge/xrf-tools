@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use xrf_renderer_core::ExecutedGroup;
 
-use crate::contract::render_rect::RenderRect;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::frame::frame_phases::FramePhases;
 use crate::frame::frame_statistics::FrameStatistics;
 

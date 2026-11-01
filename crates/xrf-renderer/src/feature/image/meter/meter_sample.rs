@@ -1,6 +1,6 @@
 use xrf_renderer_core::ShaderStruct;
 
-use crate::contract::render_meter_reading::RenderMeterReading;
+use crate::contract::report::scene::render_meter_reading::RenderMeterReading;
 
 /// What the spot meter writes on the GPU, as `shaders/frame/meter.wgsl` reads it: the light at the spot and what the
 /// G-buffer holds there, `drawn` the share of its texels any surface covers.

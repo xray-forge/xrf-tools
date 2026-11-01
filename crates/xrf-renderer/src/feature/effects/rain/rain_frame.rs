@@ -1,6 +1,6 @@
 use glam::{Vec2, Vec4};
 
-use crate::contract::render_rain_drops_mode::RenderRainDropsMode;
+use crate::contract::feature::effects::render_rain_drops_mode::RenderRainDropsMode;
 use crate::lighting::render_rainfall::RenderRainfall;
 use crate::lighting::render_wind::RenderWind;
 

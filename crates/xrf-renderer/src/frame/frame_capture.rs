@@ -2,9 +2,9 @@ use std::sync::mpsc::Sender;
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::contract::render_capture::RenderCapture;
-use crate::contract::render_rect::RenderRect;
-use crate::contract::render_screenshot::RenderScreenshot;
+use crate::contract::capture::render_capture::RenderCapture;
+use crate::contract::capture::render_screenshot::RenderScreenshot;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::frame::gpu_readback::GpuReadback;
 
 /// Where a capture's reply goes.

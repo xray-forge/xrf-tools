@@ -4,7 +4,7 @@
 use glam::{Mat4, Vec2, Vec4};
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_camera_settings::RenderCameraSettings;
+use crate::contract::feature::image::render_camera_settings::RenderCameraSettings;
 use crate::feature::image::camera::camera_effects_uniform::CameraEffectsUniform;
 use crate::tests::wgsl_probe::run_wgsl_probe;
 

@@ -2,12 +2,12 @@ use glam::{Mat4, UVec4, Vec3, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_debug_view::RenderDebugView;
-use crate::contract::render_parallax_settings::RenderParallaxSettings;
-use crate::contract::render_rect::RenderRect;
-use crate::contract::render_surface_color::RenderSurfaceColor;
-use crate::contract::render_terrain_settings::RenderTerrainSettings;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::scene::render_parallax_settings::RenderParallaxSettings;
+use crate::contract::feature::scene::render_terrain_settings::RenderTerrainSettings;
+use crate::contract::view::output::render_debug_view::RenderDebugView;
+use crate::contract::view::render_surface_color::RenderSurfaceColor;
+use crate::contract::view::render_view_options::RenderViewOptions;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::pass::view::light_view::LightView;
 use crate::scene::static_scene::static_selection::StaticSelection;
 

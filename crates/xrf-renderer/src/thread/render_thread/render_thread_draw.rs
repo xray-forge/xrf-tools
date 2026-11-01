@@ -9,9 +9,9 @@ use xrf_renderer_core::{
 
 use wgpu::util::StagingBelt;
 
-use crate::contract::render_frame_rate::RenderFrameRate;
-use crate::contract::render_rect::RenderRect;
-use crate::contract::render_viewport_id::RenderViewportId;
+use crate::contract::settings::render_frame_rate::RenderFrameRate;
+use crate::contract::viewport::render_rect::RenderRect;
+use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::feature::image::present::present_parameters::PresentParameters;
 use crate::frame::frame_capture::CaptureReply;
 use crate::frame::frame_encoder::FrameEncoder;

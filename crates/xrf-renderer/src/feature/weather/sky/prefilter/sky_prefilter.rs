@@ -1,4 +1,4 @@
-use crate::contract::render_reflection_probe::RenderReflectionProbe;
+use crate::contract::feature::tracing::render_reflection_probe::RenderReflectionProbe;
 use crate::feature::weather::sky::prefilter::sky_prefilter_level::SkyPrefilterLevel;
 
 /// The sky as drawn, prefiltered by roughness into a cube's mips: the first mip the sky itself, each after it the sky

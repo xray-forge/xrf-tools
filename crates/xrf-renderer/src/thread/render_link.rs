@@ -1,7 +1,7 @@
 use std::sync::mpsc::Sender;
 use std::thread::JoinHandle;
 
-use crate::contract::render_settings::RenderSettings;
+use crate::contract::settings::render_settings::RenderSettings;
 use crate::thread::render_command::RenderCommand;
 
 /// What the renderer's handle and its thread share, under one lock: commands are sent under it, and the thread only

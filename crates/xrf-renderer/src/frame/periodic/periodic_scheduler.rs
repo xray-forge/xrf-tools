@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use xrf_renderer_core::GraphTaggedTime;
 
-use crate::contract::render_settings::RENDER_DEFAULT_PERIODIC_BUDGET;
+use crate::contract::settings::render_settings::RENDER_DEFAULT_PERIODIC_BUDGET;
 use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_owner::PeriodicOwner;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;

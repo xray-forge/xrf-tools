@@ -3,7 +3,7 @@ use std::time::Duration;
 use glam::{Mat4, Vec2};
 use xrf_dlss::Dlss;
 
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::scene::level::scene_view::SceneView;
 
 impl SceneView {

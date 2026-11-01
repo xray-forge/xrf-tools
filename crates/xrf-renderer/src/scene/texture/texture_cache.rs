@@ -6,9 +6,9 @@ use std::sync::mpsc::Sender;
 
 use xrf_error::XrfResult;
 
-use crate::contract::render_texture_group::RenderTextureGroup;
-use crate::contract::render_texture_report::RenderTextureReport;
-use crate::contract::render_texture_state::RenderTextureState;
+use crate::contract::report::texture::render_texture_group::RenderTextureGroup;
+use crate::contract::report::texture::render_texture_report::RenderTextureReport;
+use crate::contract::report::texture::render_texture_state::RenderTextureState;
 use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;

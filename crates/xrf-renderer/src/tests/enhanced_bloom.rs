@@ -2,10 +2,10 @@
 
 use glam::Vec4;
 
-use crate::contract::render_bloom_mode::RenderBloomMode;
-use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
-use crate::contract::render_image_corrections::RenderImageCorrections;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::image::bloom::render_bloom_mode::RenderBloomMode;
+use crate::contract::feature::image::bloom::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
+use crate::contract::feature::image::display::render_image_corrections::RenderImageCorrections;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::bloom::enhanced::enhanced_bloom_pass::EnhancedBloomPass;
 use crate::feature::image::bloom::enhanced::enhanced_bloom_uniform::EnhancedBloomUniform;
 use crate::feature::image::present::present_frame::PresentFrame;

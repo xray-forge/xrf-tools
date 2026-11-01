@@ -6,7 +6,7 @@ use xrf_renderer_core::{ExecutedGraph, ExecutedGroup};
 use wgpu::util::StagingBelt;
 
 use crate::capture::burst::burst_shot::BurstShot;
-use crate::contract::render_viewport_id::RenderViewportId;
+use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::frame_phases::FramePhases;

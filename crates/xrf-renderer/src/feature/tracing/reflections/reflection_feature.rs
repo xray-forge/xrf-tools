@@ -4,7 +4,7 @@ use xrf_renderer_core::{
 };
 
 use crate::context::gpu_requirements::can_trace;
-use crate::contract::render_reflection_settings::RenderReflectionSettings;
+use crate::contract::feature::tracing::render_reflection_settings::RenderReflectionSettings;
 use crate::feature::image::resolve::resolve_decisions::ResolveDecisions;
 use crate::feature::scene::pyramid::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::feature::scene::pyramid::pyramid_level_parameters::PyramidLevelParameters;

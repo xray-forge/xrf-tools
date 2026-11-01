@@ -1,7 +1,7 @@
 use glam::Vec3;
 use xrf_error::XrfResult;
 
-use crate::contract::render_level_hit::RenderLevelHit;
+use crate::contract::viewport::render_level_hit::RenderLevelHit;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::scene_view::SceneView;
 use crate::scene::static_scene::static_slot_info::StaticSlotInfo;

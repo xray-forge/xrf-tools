@@ -1,10 +1,10 @@
 use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
 use crate::context::gpu_requirements::can_trace;
-use crate::contract::render_reflection_settings::RenderReflectionSettings;
-use crate::contract::render_view_options::RenderViewOptions;
-use crate::contract::render_water_mode::RenderWaterMode;
-use crate::contract::render_water_settings::RenderWaterSettings;
+use crate::contract::feature::tracing::render_reflection_settings::RenderReflectionSettings;
+use crate::contract::feature::weather::water::render_water_mode::RenderWaterMode;
+use crate::contract::feature::weather::water::render_water_settings::RenderWaterSettings;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::effects::rain::rings::drop_rings::DropRings;
 use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;

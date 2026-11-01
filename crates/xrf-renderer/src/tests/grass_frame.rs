@@ -8,7 +8,7 @@ use xrf_visual::{DetailsDescription, DetailsModel, DetailsPackage, VisualSection
 
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
-use crate::contract::render_grass_settings::RenderGrassSettings;
+use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;
 use crate::feature::lighting::shadows::cascades::sun_shadow_maps::SunShadowMaps;
 use crate::feature::scene::grass::build::grass_planting::GrassPlanting;
 use crate::feature::scene::grass::cards::grass_card_handles::GrassCardHandles;

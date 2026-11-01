@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
-use crate::contract::render_viewport_id::RenderViewportId;
+use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::host::render_scene_feedback::RenderSceneFeedback;
 use crate::host::render_scene_frame::RenderSceneFrame;
 use crate::host::render_scene_id::RenderSceneId;

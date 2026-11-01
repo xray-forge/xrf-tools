@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_overlay::RenderOverlay;
-use crate::contract::render_rect::RenderRect;
-use crate::contract::render_selection::RenderSelection;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::overlay::render_overlay::RenderOverlay;
+use crate::contract::overlay::render_selection::RenderSelection;
+use crate::contract::view::render_view_options::RenderViewOptions;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::lighting::render_lighting::RenderLighting;
 

@@ -3,10 +3,10 @@ use xrf_engine_target::XrayEngine;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::context::gpu_tracing::GpuTracing;
-use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
-use crate::contract::render_fog_settings::RenderFogSettings;
-use crate::contract::render_light_level::RenderLightLevel;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
+use crate::contract::feature::weather::fog::render_fog_settings::RenderFogSettings;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::lighting::bitmask::bitmask_search::BitmaskSearch;
 use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;

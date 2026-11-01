@@ -1,8 +1,8 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor};
 
-use crate::contract::render_applied_height_fog::RenderAppliedHeightFog;
-use crate::contract::render_fog_settings::RenderFogSettings;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::weather::fog::render_fog_settings::RenderFogSettings;
+use crate::contract::report::applied::render_applied_height_fog::RenderAppliedHeightFog;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::fog::fog_scattering_parameters::FogScatteringParameters;
 use crate::feature::weather::fog::fog_scattering_pass::FogScatteringPass;

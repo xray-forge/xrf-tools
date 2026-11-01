@@ -1,4 +1,4 @@
-use crate::contract::render_view_output::RenderViewOutput;
+use crate::contract::view::output::render_view_output::RenderViewOutput;
 
 fn output(output_height: Option<u32>, output_scale: f32) -> RenderViewOutput {
   RenderViewOutput {

@@ -2,7 +2,9 @@ use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
-use crate::contract::render_shadow_settings::{RENDER_MAX_SHADOW_CASCADES, RENDER_MAX_SHADOW_FILTER};
+use crate::contract::feature::lighting::render_shadow_settings::{
+  RENDER_MAX_SHADOW_CASCADES, RENDER_MAX_SHADOW_FILTER,
+};
 use crate::feature::lighting::shadows::cascades::sun_shadow_maps::SunShadowMaps;
 use crate::feature::lighting::sun::sun_draw::SunDraw;
 use crate::feature::lighting::sun::sun_filter_permutation::SunFilterPermutation;

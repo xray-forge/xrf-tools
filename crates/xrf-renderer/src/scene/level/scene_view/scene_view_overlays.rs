@@ -1,5 +1,5 @@
-use crate::contract::render_overlay::RenderOverlay;
-use crate::contract::render_selection::RenderSelection;
+use crate::contract::overlay::render_overlay::RenderOverlay;
+use crate::contract::overlay::render_selection::RenderSelection;
 use crate::scene::level::helpers::view::helper_draws::HelperDraws;
 use crate::scene::level::helpers::view::helper_sources::HelperSources;
 use crate::scene::level::level_overlays::LevelOverlays;

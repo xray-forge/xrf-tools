@@ -7,9 +7,9 @@ use xrf_renderer_core::{ProxyHandle, ProxyStore, Span};
 use xrf_visual::{SectorGeometry, SectorImpostors, SectorInstanceGroup, SectorPackage, SectorSurface};
 
 use crate::camera::camera_frustum::CameraFrustum;
-use crate::contract::render_pool_use::RenderPoolUse;
-use crate::contract::render_selection_target::RenderSelectionTarget;
-use crate::contract::render_static_report::RenderStaticReport;
+use crate::contract::overlay::render_selection_target::RenderSelectionTarget;
+use crate::contract::report::frame::render_pool_use::RenderPoolUse;
+use crate::contract::report::scene::render_static_report::RenderStaticReport;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::scene::section_bytes::read_pods;
 use crate::scene::static_scene::geometry_clusters::GeometryClusters;

@@ -4,8 +4,8 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Condvar, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
-use crate::contract::render_viewport_event::RenderViewportEvent;
-use crate::contract::render_viewport_id::RenderViewportId;
+use crate::contract::viewport::render_viewport_event::RenderViewportEvent;
+use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::host::render_event_sink::RenderEventSink;
 use crate::host::render_scene_feedback::RenderSceneFeedback;
 use crate::host::render_scene_frame::RenderSceneFrame;

@@ -1,6 +1,6 @@
 //! How far the enhanced water's maps scroll, summed frame by frame.
 
-use crate::contract::render_enhanced_water_settings::RenderEnhancedWaterSettings;
+use crate::contract::feature::weather::water::render_enhanced_water_settings::RenderEnhancedWaterSettings;
 use crate::feature::weather::water::enhanced::water_flow::WaterFlow;
 use crate::lighting::render_wind::RenderWind;
 

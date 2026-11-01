@@ -1,8 +1,8 @@
 use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
-use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
-use crate::contract::render_applied_indirect_light::RenderAppliedIndirectLight;
-use crate::contract::render_applied_report::RenderAppliedReport;
+use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
+use crate::contract::report::applied::render_applied_indirect_light::RenderAppliedIndirectLight;
+use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
 use crate::feature::image::resolve::resolve_decisions::ResolveDecisions;
 use crate::feature::lighting::ambient_occlusion::ambient_occlusion_feature::AmbientOcclusionFeature;
 use crate::feature::lighting::bitmask::bitmask_feature::BitmaskFeature;

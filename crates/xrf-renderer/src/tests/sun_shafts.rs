@@ -1,6 +1,6 @@
 use xrf_engine_target::XrayEngine;
 
-use crate::contract::render_sun_shafts::RenderSunShafts;
+use crate::contract::feature::weather::render_sun_shafts::RenderSunShafts;
 use crate::lighting::render_lighting::RenderLighting;
 
 // Monolith's high quality by default, the steps held to their range.

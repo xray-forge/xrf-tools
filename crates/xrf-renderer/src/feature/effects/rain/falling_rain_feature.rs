@@ -4,7 +4,7 @@ use std::sync::{Arc, Weak};
 use glam::{Vec2, Vec3, Vec4};
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, StorageArray, StorageValue};
 
-use crate::contract::render_rain_settings::RenderRainSettings;
+use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
 use crate::frame::jitter_guard::JitterGuard;
 
 use crate::feature::effects::over_scene::add_over_scene;

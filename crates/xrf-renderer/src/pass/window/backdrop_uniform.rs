@@ -2,8 +2,8 @@ use bytemuck::{Pod, Zeroable};
 use glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
-use crate::contract::render_page_backdrop::RenderPageBackdrop;
-use crate::contract::render_page_plane::RenderPagePlane;
+use crate::contract::viewport::page::render_page_backdrop::RenderPageBackdrop;
+use crate::contract::viewport::page::render_page_plane::RenderPagePlane;
 
 /// The page's backdrop, as `frame/backdrop.wgsl` reads it: WGSL's `Backdrop`.
 #[repr(C)]

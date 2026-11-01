@@ -3,14 +3,14 @@ use std::borrow::Cow;
 use glam::Vec3;
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_antialiasing::RenderAntialiasing;
-use crate::contract::render_contact_shadow_mode::RenderContactShadowMode;
-use crate::contract::render_reflection_mode::RenderReflectionMode;
-use crate::contract::render_scale::RenderScale;
-use crate::contract::render_show_flags::RenderShowFlags;
-use crate::contract::render_view_features::RenderViewFeatures;
-use crate::contract::render_view_options::RenderViewOptions;
-use crate::contract::render_volumetric_mode::RenderVolumetricMode;
+use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;
+use crate::contract::feature::lighting::render_contact_shadow_mode::RenderContactShadowMode;
+use crate::contract::feature::tracing::render_reflection_mode::RenderReflectionMode;
+use crate::contract::feature::weather::render_volumetric_mode::RenderVolumetricMode;
+use crate::contract::view::output::render_scale::RenderScale;
+use crate::contract::view::render_show_flags::RenderShowFlags;
+use crate::contract::view::render_view_features::RenderViewFeatures;
+use crate::contract::view::render_view_options::RenderViewOptions;
 
 /// What a view's lens lets it draw: the options a view is drawn with, once its camera is known, less what its lens
 /// cannot draw right, whichever view it is.

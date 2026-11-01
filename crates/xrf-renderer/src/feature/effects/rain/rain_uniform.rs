@@ -3,7 +3,7 @@ use std::f32::consts::FRAC_PI_2;
 use glam::{Vec2, Vec3, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
-use crate::contract::render_rain_drops_mode::RenderRainDropsMode;
+use crate::contract::feature::effects::render_rain_drops_mode::RenderRainDropsMode;
 use crate::feature::effects::rain::rain_frame::RainFrame;
 
 /// `drop_max_angle`: how far the strongest wind leans the streaks from the vertical, ten degrees.

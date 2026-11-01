@@ -1,7 +1,7 @@
 use xrf_renderer_core::ShaderStruct;
 
-use crate::contract::render_exposure_settings::RenderExposureSettings;
-use crate::contract::render_light_level::RenderLightLevel;
+use crate::contract::feature::image::render_exposure_settings::RenderExposureSettings;
+use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
 use crate::feature::image::exposure::exposure_step::ExposureStep;
 use crate::feature::image::exposure::exposure_uniform::ExposureUniform;
 use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;

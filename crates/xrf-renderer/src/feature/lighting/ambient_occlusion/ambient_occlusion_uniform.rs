@@ -1,7 +1,7 @@
 use glam::Mat4;
 use xrf_renderer_core::ShaderStruct;
 
-use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 
 /// XeGTAO's `FinalValuePower`, the curve a strength of one gives.
 const FINAL_POWER: f32 = 2.2;

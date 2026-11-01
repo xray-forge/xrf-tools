@@ -7,7 +7,7 @@ use xrf_error::XrfResult;
 use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_libraries::GpuLibraries;
 use crate::context::library_versions::locate_dlss_runtime;
-use crate::contract::render_backend::RenderBackend;
+use crate::contract::settings::gpu::render_backend::RenderBackend;
 use crate::thread::gpu_state::GpuState;
 use crate::thread::retry_backoff::RetryBackoff;
 use crate::thread::running_gpu::RunningGpu;

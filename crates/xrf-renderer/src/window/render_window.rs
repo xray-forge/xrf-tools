@@ -4,7 +4,7 @@ use std::sync::Arc;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::context::gpu_context::GpuContext;
-use crate::contract::render_frame_rate::RenderFrameRate;
+use crate::contract::settings::render_frame_rate::RenderFrameRate;
 use crate::host::render_window_host::RenderWindowHost;
 use crate::window::window_backdrop::WindowBackdrop;
 

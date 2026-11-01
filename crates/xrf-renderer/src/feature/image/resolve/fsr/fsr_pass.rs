@@ -4,7 +4,7 @@ use xrf_renderer_core::{
   GraphTexture, PassParameters, PipelineSet, StorageArray, StorageArrayMut, UniformBinding,
 };
 
-use crate::contract::render_debug_view::RenderDebugView;
+use crate::contract::view::output::render_debug_view::RenderDebugView;
 use crate::feature::image::resolve::fsr::accumulation::fsr_accumulate_parameters::FsrAccumulateParameters;
 use crate::feature::image::resolve::fsr::accumulation::fsr_debug_view_parameters::FsrDebugViewParameters;
 use crate::feature::image::resolve::fsr::accumulation::fsr_luma_instability_parameters::FsrLumaInstabilityParameters;

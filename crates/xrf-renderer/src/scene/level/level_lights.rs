@@ -8,8 +8,8 @@ use xrf_renderer_core::{GraphDeclaration, ProxyHandle, ProxyStore};
 use xrf_visual::{LightAnimatorDescription, LightDescription, LightKind, LightVolumetric, LightsDescription};
 
 use crate::camera::camera_frustum::CameraFrustum;
-use crate::contract::render_light_shafts::RenderLightShafts;
-use crate::contract::render_lights_settings::RenderLightsSettings;
+use crate::contract::feature::lighting::lights::render_lights_settings::RenderLightsSettings;
+use crate::contract::feature::weather::render_light_shafts::RenderLightShafts;
 use crate::feature::lighting::lights::lights_feature::LightsFeature;
 use crate::feature::scene::grass::cards::grass_shadow_casters::GrassShadowCasters;
 use crate::frame::frame_encoder::FrameEncoder;

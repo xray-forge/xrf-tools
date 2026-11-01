@@ -1,7 +1,7 @@
 use xrf_test_utils::GpuRequirement;
 
 use crate::context::gpu_context::GpuContext;
-use crate::contract::render_backend::RenderBackend;
+use crate::contract::settings::gpu::render_backend::RenderBackend;
 use crate::tests::test_bundle::checkout_dxc;
 
 /// A headless context as the application starts one: the first of the platform's backends that starts, D3D12 compiling

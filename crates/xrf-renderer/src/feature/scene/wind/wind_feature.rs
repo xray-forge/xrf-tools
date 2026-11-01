@@ -1,5 +1,5 @@
-use crate::contract::render_foliage_settings::RenderFoliageSettings;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::scene::render_foliage_settings::RenderFoliageSettings;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::scene::wind::foliage_wind_values::FoliageWindValues;
 use crate::feature::scene::wind::wind_uniform::WindUniform;
 use crate::feature::view::view_feature::ViewFeature;

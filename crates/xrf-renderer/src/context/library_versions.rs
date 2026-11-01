@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use xrf_dlss::Dlss;
 
 use crate::context::gpu_context::GpuContext;
-use crate::contract::render_libraries::RenderLibraries;
+use crate::contract::settings::gpu::render_libraries::RenderLibraries;
 use crate::host::render_bundle::RenderBundle;
 
 /// Describes this build's graphics libraries, looking for the DLSS runtime in `bundle`.

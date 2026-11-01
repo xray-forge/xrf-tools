@@ -5,7 +5,7 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::capture::burst::burst_event::BurstEvent;
 use crate::capture::burst::burst_shot::BurstShot;
-use crate::contract::render_burst::RenderBurst;
+use crate::contract::capture::render_burst::RenderBurst;
 
 /// Where a burst stands: drawing one of its frames, the lead-in's counted, at one of its samples; or waiting for the
 /// last frames back.

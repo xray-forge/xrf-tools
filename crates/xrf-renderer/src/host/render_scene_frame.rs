@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use glam::{Mat4, Vec3};
 
-use crate::contract::render_viewport_id::RenderViewportId;
+use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::host::render_level_source::RenderLevelSource;
 use crate::host::render_scene_update::RenderSceneUpdate;
 use crate::host::render_streaming_progress::RenderStreamingProgress;

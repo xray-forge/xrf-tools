@@ -1,4 +1,4 @@
-use crate::contract::render_rain_settings::RenderRainSettings;
+use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::scene::level::puddle_fill::PuddleFill;
 use crate::scene::level::rain_wetness::RainWetness;

@@ -2,9 +2,9 @@ use glam::{Vec3, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_math::EPS;
 
-use crate::contract::render_asset_lighting::RenderAssetLighting;
-use crate::contract::render_light_scales::RenderLightScales;
-use crate::contract::render_sun_shafts::RenderSunShafts;
+use crate::contract::feature::lighting::model::render_light_scales::RenderLightScales;
+use crate::contract::feature::weather::render_sun_shafts::RenderSunShafts;
+use crate::contract::view::asset::render_asset_lighting::RenderAssetLighting;
 use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::luminance::luminance;
 use crate::lighting::render_clouds::RenderClouds;

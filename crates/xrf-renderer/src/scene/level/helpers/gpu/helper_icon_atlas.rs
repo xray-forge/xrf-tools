@@ -2,7 +2,7 @@ use image::RgbaImage;
 use image::imageops::FilterType;
 use xrf_error::{XrfError, XrfResult};
 
-use crate::contract::render_helper_icon::RENDER_HELPER_ICONS;
+use crate::contract::overlay::render_helper_icon::RENDER_HELPER_ICONS;
 use crate::host::render_bundle::RenderBundle;
 
 /// The helpers' icons as one texture: a cell each, [`RENDER_HELPER_ICONS`] row by row, white pictures outlined in

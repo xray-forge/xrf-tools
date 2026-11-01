@@ -3,10 +3,10 @@ use std::cmp::Ordering;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::capture::map_tile::MapTile;
-use crate::contract::render_map_capture::{
+use crate::contract::capture::render_map_capture::{
   RENDER_MAP_MOST_PIXELS, RENDER_MAP_MOST_SUPERSAMPLING, RENDER_MAP_TILE, RENDER_MAP_TILE_MARGIN, RenderMapCapture,
 };
-use crate::contract::render_rect::RenderRect;
+use crate::contract::viewport::render_rect::RenderRect;
 
 /// How a level map is drawn: its tiles row by row from its top left, after a metering view of the whole.
 #[derive(Clone, Debug, PartialEq)]

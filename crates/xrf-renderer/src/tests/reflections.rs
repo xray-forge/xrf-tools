@@ -1,13 +1,13 @@
 use glam::{Mat4, Vec4};
 use xrf_engine_target::XrayEngine;
 
-use crate::contract::render_debug_view::RenderDebugView;
-use crate::contract::render_image_corrections::RenderImageCorrections;
-use crate::contract::render_reflection_mode::RenderReflectionMode;
-use crate::contract::render_reflection_probe::RenderReflectionProbe;
-use crate::contract::render_reflection_settings::RenderReflectionSettings;
-use crate::contract::render_trace_size::RenderTraceSize;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::image::display::render_image_corrections::RenderImageCorrections;
+use crate::contract::feature::tracing::render_reflection_mode::RenderReflectionMode;
+use crate::contract::feature::tracing::render_reflection_probe::RenderReflectionProbe;
+use crate::contract::feature::tracing::render_reflection_settings::RenderReflectionSettings;
+use crate::contract::feature::tracing::render_trace_size::RenderTraceSize;
+use crate::contract::view::output::render_debug_view::RenderDebugView;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::image::present::present_frame::PresentFrame;

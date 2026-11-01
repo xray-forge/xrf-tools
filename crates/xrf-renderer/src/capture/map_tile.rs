@@ -2,7 +2,7 @@ use glam::{Mat4, Vec3};
 
 use crate::camera::camera_view::CameraView;
 use crate::camera::engine_space::EngineSpace;
-use crate::contract::render_rect::RenderRect;
+use crate::contract::viewport::render_rect::RenderRect;
 
 /// The height the camera stands above a capture's top, its near plane there, so nothing at the top is cut by it.
 const EYE_LIFT: f32 = 1.0;

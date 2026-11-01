@@ -8,10 +8,10 @@ use xrf_renderer_core::{
 };
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::render_antialiasing::RenderAntialiasing;
-use crate::contract::render_debug_view::RenderDebugView;
-use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;
+use crate::contract::feature::image::resolve::render_upscaling_settings::RenderUpscalingSettings;
+use crate::contract::view::output::render_debug_view::RenderDebugView;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::image::image_chain::ImageChain;
 use crate::feature::image::resolve::before_water_readers::BeforeWaterReaders;

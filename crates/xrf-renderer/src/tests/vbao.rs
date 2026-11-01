@@ -1,13 +1,13 @@
 use glam::{Mat4, Vec4};
 
-use crate::contract::render_ambient_occlusion_gtao_settings::RenderAmbientOcclusionGtaoSettings;
-use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
-use crate::contract::render_ambient_occlusion_rtao_settings::RenderAmbientOcclusionRtaoSettings;
-use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
-use crate::contract::render_ambient_occlusion_vbao_settings::{
+use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_gtao_settings::RenderAmbientOcclusionGtaoSettings;
+use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
+use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_rtao_settings::RenderAmbientOcclusionRtaoSettings;
+use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_vbao_settings::{
   RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION, RenderAmbientOcclusionVbaoSettings,
 };
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::lighting::bitmask::vbao::vbao_frame::VbaoFrame;

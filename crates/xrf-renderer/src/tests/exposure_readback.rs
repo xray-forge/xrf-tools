@@ -1,7 +1,7 @@
 use std::time::Instant;
 
-use crate::contract::render_light_model::RenderLightModel;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::lighting::model::render_light_model::RenderLightModel;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::exposure_feature::ExposureFeature;
 use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::tests::test_context::create_test_context;

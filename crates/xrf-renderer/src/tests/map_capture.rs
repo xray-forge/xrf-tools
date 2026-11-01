@@ -7,12 +7,12 @@ use crate::capture::map_assembly::MapAssembly;
 use crate::capture::map_capture_look::MapCaptureLook;
 use crate::capture::map_tile::MapTile;
 use crate::capture::map_tile_plan::MapTilePlan;
-use crate::contract::render_antialiasing::RenderAntialiasing;
-use crate::contract::render_capture::RenderCapture;
-use crate::contract::render_map_capture::{RENDER_MAP_TILE_MARGIN, RenderMapCapture};
-use crate::contract::render_rect::RenderRect;
-use crate::contract::render_scale::RenderScale;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::capture::render_capture::RenderCapture;
+use crate::contract::capture::render_map_capture::{RENDER_MAP_TILE_MARGIN, RenderMapCapture};
+use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;
+use crate::contract::view::output::render_scale::RenderScale;
+use crate::contract::view::render_view_options::RenderViewOptions;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::scene::level::view_lens::ViewLens;
 
 /// Zaton's `bound_rect`, 1200 metres a side, drawn between its lowest and highest ground.

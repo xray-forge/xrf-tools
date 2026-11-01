@@ -6,7 +6,7 @@ use xrf_dlss::Dlss;
 use xrf_renderer_core::{GraphOwner, GraphPassTime, GraphTaggedTime};
 
 use crate::context::gpu_requirements::can_trace;
-use crate::contract::render_dlss_availability::RenderDlssAvailability;
+use crate::contract::settings::gpu::render_dlss_availability::RenderDlssAvailability;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::frame_upload::FrameUpload;
 use crate::frame::gpu_memory::GpuMemory;

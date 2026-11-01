@@ -1,8 +1,8 @@
 use glam::Mat4;
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, UniformBinding};
 
-use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::lighting::ambient_occlusion::ambient_occlusion_parameters::AmbientOcclusionParameters;
 use crate::feature::lighting::ambient_occlusion::ambient_occlusion_stage::AmbientOcclusionStage;
 use crate::feature::lighting::ambient_occlusion::ambient_occlusion_uniform::AmbientOcclusionUniform;

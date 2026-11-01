@@ -3,9 +3,9 @@ use xrf_renderer_core::{
   GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, PipelineSet, UniformBinding,
 };
 
-use crate::contract::render_bloom_settings::RenderBloomSettings;
-use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::image::bloom::render_bloom_settings::RenderBloomSettings;
+use crate::contract::feature::image::bloom::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::bloom::bloom_filter::BloomFilter;
 use crate::feature::image::bloom::bloom_parameters::BloomParameters;
 use crate::feature::image::bloom::bloom_stage::BloomStage;

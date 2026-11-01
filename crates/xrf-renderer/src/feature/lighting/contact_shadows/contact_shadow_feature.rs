@@ -1,9 +1,9 @@
 use glam::{Vec2, Vec3, Vec4};
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding};
 
-use crate::contract::render_grass_settings::RenderGrassSettings;
-use crate::contract::render_shadow_settings::RenderShadowSettings;
-use crate::contract::render_view_options::RenderViewOptions;
+use crate::contract::feature::lighting::render_shadow_settings::RenderShadowSettings;
+use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::lighting::contact_shadows::contact_shadow_parameters::ContactShadowParameters;
 use crate::feature::lighting::contact_shadows::contact_shadow_pass::ContactShadowPass;
 use crate::feature::lighting::contact_shadows::contact_shadow_uniform::ContactShadowUniform;
