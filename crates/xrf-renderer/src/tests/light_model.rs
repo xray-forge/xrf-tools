@@ -19,6 +19,7 @@ use crate::feature::image::exposure::histogram::exposure_histogram_uniform::Expo
 use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::image::present::display::display_mode::DisplayMode;
+use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
 use crate::lighting::daylight::Daylight;
 use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
@@ -29,7 +30,6 @@ use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::picture_shares::PictureShares;
-use crate::pass::sky_harmonics::SkyHarmonics;
 
 fn physical() -> RenderViewOptions {
   let mut options: RenderViewOptions = RenderViewOptions::default();

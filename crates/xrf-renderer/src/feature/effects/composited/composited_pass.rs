@@ -3,9 +3,9 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipeli
 
 use crate::feature::effects::composited::composited_parameters::CompositedParameters;
 use crate::feature::effects::composited::composited_pipelines::CompositedPipelines;
+use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_layout_bindings::StaticLayoutBindings;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;

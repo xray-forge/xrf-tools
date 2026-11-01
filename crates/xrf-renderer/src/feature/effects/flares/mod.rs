@@ -6,3 +6,4 @@ pub(crate) mod flare_texture_parameters;
 pub(crate) mod flare_uniform;
 pub(crate) mod flares_feature;
 pub(crate) mod lens_flare_fade;
+pub(crate) mod sun_sprite;

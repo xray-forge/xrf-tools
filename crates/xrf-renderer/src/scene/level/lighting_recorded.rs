@@ -1,6 +1,6 @@
 use xrf_renderer_core::GraphTexture;
 
-use crate::pass::sky_parameters::SkyParameters;
+use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::scene::level::feature::ray_guides::RayGuides;
 use crate::scene::level::feature::reflection_source::ReflectionSource;
 

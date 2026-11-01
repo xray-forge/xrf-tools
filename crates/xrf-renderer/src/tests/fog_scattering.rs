@@ -7,13 +7,13 @@ use crate::contract::render_fog_settings::RenderFogSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
+use crate::feature::weather::fog::fog_scattering_uniform::FogScatteringUniform;
+use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
 use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_fog::RenderFog;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::pass::fog_scattering_uniform::FogScatteringUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::sky_harmonics::SkyHarmonics;
 
 // The enhanced fog, scattering as the pack ships it.
 fn enhanced() -> RenderFogSettings {

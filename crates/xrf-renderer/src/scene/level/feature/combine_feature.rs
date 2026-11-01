@@ -1,13 +1,13 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, StorageValue};
 
+use crate::feature::weather::sky::dome::sky_behind_parameters::SkyBehindParameters;
+use crate::feature::weather::sky::dome::sky_behind_pass::SkyBehindPass;
+use crate::feature::weather::sky::sky_parameters::SkyParameters;
+use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::pass::combine_parameters::CombineParameters;
 use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::sky_behind_parameters::SkyBehindParameters;
-use crate::pass::sky_behind_pass::SkyBehindPass;
-use crate::pass::sky_parameters::SkyParameters;
 use crate::scene::level::feature::combine_inputs::CombineInputs;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::feature::wet_targets::WetTargets;
 use crate::scene::level::view_record::ViewRecord;
 
 /// The fog's square below which the sky behind changes no pixel by half an eight-bit step, as `frame/combine.wgsl`

@@ -20,8 +20,6 @@ use crate::pass::light_trace_bindings::LightTraceBindings;
 use crate::pass::light_trace_uniform::LightTraceUniform;
 use crate::pass::light_tracing_parameters::LightTracingParameters;
 use crate::pass::light_visibility_parameters::LightVisibilityParameters;
-use crate::pass::light_volume_record::LightVolumeRecord;
-use crate::pass::light_volumes_uniform::LightVolumesUniform;
 use crate::pass::lights_draw::LightsDraw;
 use crate::pass::lights_parameters::LightsParameters;
 use crate::pass::lights_pass::LightsPass;
@@ -30,6 +28,8 @@ use crate::scene::level::feature::light_buffers::LightBuffers;
 use crate::scene::level::feature::light_draw_inputs::LightDrawInputs;
 use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::scene::level::light_volume_record::LightVolumeRecord;
+use crate::scene::level::light_volumes_uniform::LightVolumesUniform;
 use crate::scene::level::view_record::ViewRecord;
 
 /// Clusters the view is cut into, and lights one holds at most.

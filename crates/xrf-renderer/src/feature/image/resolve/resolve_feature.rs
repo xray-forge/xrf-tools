@@ -32,6 +32,7 @@ use crate::feature::image::resolve::upscale::upscale_parameters::UpscaleParamete
 use crate::feature::image::resolve::upscale::upscale_pass::UpscalePass;
 use crate::feature::image::resolve::upscale::upscale_stage::UpscaleStage;
 use crate::feature::image::resolve::upscale::upscale_uniform::UpscaleUniform;
+use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::frame::frame_texture::FrameTexture;
 use crate::frame::history::History;
 use crate::frame::jitter_guard::JitterGuard;
@@ -43,7 +44,6 @@ use crate::pass::ray_guides_pass::RayGuidesPass;
 use crate::scene::level::feature::ray_guides::RayGuides;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
-use crate::scene::level::feature::wet_targets::WetTargets;
 use crate::scene::level::view_prepare::ViewPrepare;
 use crate::scene::level::view_record::ViewRecord;
 

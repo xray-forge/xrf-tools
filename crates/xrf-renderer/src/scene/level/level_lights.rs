@@ -20,14 +20,14 @@ use crate::lighting::light_shadow_size::{LIGHT_SHADOW_POINT_FACES, to_light_shad
 use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::srgb::{anchored_light, authored_light};
 use crate::pass::light_record::LightRecord;
-use crate::pass::light_volume_record::LightVolumeRecord;
-use crate::pass::light_volumes_uniform::LightVolumesUniform;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
 use crate::scene::level::level_light_shadows::LevelLightShadows;
 use crate::scene::level::light_shadow_ask::LightShadowAsk;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::light_shadow_set::LightShadowSet;
+use crate::scene::level::light_volume_record::LightVolumeRecord;
+use crate::scene::level::light_volumes_uniform::LightVolumesUniform;
 use crate::scene::level::lights_frame::LightsFrame;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::view_record::ViewRecord;

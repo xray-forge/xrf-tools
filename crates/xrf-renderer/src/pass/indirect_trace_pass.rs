@@ -2,10 +2,10 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::context::gpu_requirements::can_trace;
+use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::indirect_trace_parameters::IndirectTraceParameters;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::vbao_pass::VbaoPass;
 use crate::pass::view_binding::ViewBinding;

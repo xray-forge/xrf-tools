@@ -1,5 +1,5 @@
+use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::pass::reflection_scene_parameters::ReflectionSceneParameters;
-use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
 

@@ -1,10 +1,10 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor};
 
+use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::pass::sun_draw::SunDraw;
 use crate::pass::sun_parameters::SunParameters;
 use crate::pass::sun_pass::SunPass;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::feature::wet_targets::WetTargets;
 use crate::scene::level::view_record::ViewRecord;
 
 /// The sun drawn into the light target over the G-buffer: shadowed by its cascades, or by its trace where that sees it,

@@ -2,9 +2,9 @@ use glam::Vec4;
 
 use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
+use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
 use crate::lighting::daylight::Daylight;
 use crate::lighting::light_units::LightUnits;
-use crate::pass::sky_harmonics::SkyHarmonics;
 
 /// What a viewport's frame adds to its lighting before the uniform is written: the exposure, what is up of the sky,
 /// and the clocks.

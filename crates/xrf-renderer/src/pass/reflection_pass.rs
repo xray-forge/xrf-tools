@@ -2,13 +2,13 @@ use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet, RasterContext};
 
+use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::pass::budgeted_trace_outputs::BudgetedTraceOutputs;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::reflection_parameters::ReflectionParameters;
 use crate::pass::reflection_stage::ReflectionStage;
 use crate::pass::reflection_trace_out_parameters::ReflectionTraceOutParameters;
-use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::trace_request_parameters::TraceRequestParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::reflection_history::ReflectionHistory;

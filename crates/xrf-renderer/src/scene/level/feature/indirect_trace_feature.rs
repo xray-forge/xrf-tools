@@ -1,9 +1,9 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor};
 
+use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::pass::indirect_trace_parameters::IndirectTraceParameters;
 use crate::pass::indirect_trace_pass::IndirectTracePass;
 use crate::pass::indirect_trace_uniform::IndirectTraceUniform;
-use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::vbao_pass::VbaoPass;
 use crate::scene::level::feature::indirect_traced::IndirectTraced;
 use crate::scene::level::feature::traced_scene::TracedScene;

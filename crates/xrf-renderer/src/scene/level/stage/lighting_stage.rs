@@ -4,7 +4,7 @@ use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMeth
 use crate::contract::render_applied_indirect_light::RenderAppliedIndirectLight;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::feature::image::resolve::resolve_decisions::ResolveDecisions;
-use crate::pass::sky_parameters::SkyParameters;
+use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::scene::level::feature::ambient_occlusion_feature::AmbientOcclusionFeature;
 use crate::scene::level::feature::bitmask_feature::BitmaskFeature;
 use crate::scene::level::feature::bitmask_tracing::BitmaskTracing;

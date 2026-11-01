@@ -8,9 +8,9 @@ use crate::feature::effects::composited::glass::glass_copy_dispatch_parameters::
 use crate::feature::effects::composited::glass::glass_copy_parameters::GlassCopyParameters;
 use crate::feature::effects::composited::glass::glass_copy_permutation::GlassCopyPermutation;
 use crate::feature::effects::composited::glass::glass_parameters::GlassParameters;
+use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::static_layout_bindings::StaticLayoutBindings;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_layout::StaticLayout;

@@ -6,6 +6,9 @@ use xrf_renderer_core::{
 use crate::context::gpu_requirements::can_trace;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
 use crate::feature::image::resolve::resolve_decisions::ResolveDecisions;
+use crate::feature::weather::sky::sky_parameters::SkyParameters;
+use crate::feature::weather::wet::wet_feature::WetFeature;
+use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::frame_texture::FrameTexture;
 use crate::frame::stats_readback::StatsReadback;
@@ -24,7 +27,6 @@ use crate::pass::reflection_trace_out_parameters::ReflectionTraceOutParameters;
 use crate::pass::reflection_uniform::ReflectionUniform;
 use crate::pass::scene_trace_bindings::SceneTraceBindings;
 use crate::pass::scene_trace_request::SceneTraceRequest;
-use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::trace_request_handles::TraceRequestHandles;
 use crate::pass::trace_request_parameters::TraceRequestParameters;
 use crate::pass::view_binding::ViewBinding;
@@ -35,8 +37,6 @@ use crate::scene::level::feature::reflection_source::ReflectionSource;
 use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
-use crate::scene::level::feature::wet_feature::WetFeature;
-use crate::scene::level::feature::wet_targets::WetTargets;
 use crate::scene::level::view_prepare::ViewPrepare;
 use crate::scene::level::view_record::ViewRecord;
 

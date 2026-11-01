@@ -6,6 +6,9 @@ use xrf_renderer_core::{
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_rect::RenderRect;
+use crate::feature::weather::water::draw::water_depth_parameters::WaterDepthParameters;
+use crate::feature::weather::water::draw::water_groups::WaterGroups;
+use crate::feature::weather::water::water_uniform::WaterUniform;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
@@ -22,9 +25,6 @@ use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_layout_bindings::StaticLayoutBindings;
 use crate::pass::static_shadow_pass::StaticShadowPass;
-use crate::pass::water_depth_parameters::WaterDepthParameters;
-use crate::pass::water_groups::WaterGroups;
-use crate::pass::water_uniform::WaterUniform;
 use crate::scene::level::overhead_shape::OverheadShape;
 use crate::scene::level::shadow_cut::ShadowCut;
 use crate::scene::level::shadow_frame::ShadowFrame;

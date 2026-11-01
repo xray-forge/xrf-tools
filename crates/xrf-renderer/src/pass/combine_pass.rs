@@ -1,11 +1,11 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
+use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::combine_parameters::CombineParameters;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::view_binding::ViewBinding;
 
 /// Lights a viewport's G-buffer with the light it accumulated and the hemisphere, and tonemaps it into its scene.
