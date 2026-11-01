@@ -26,11 +26,11 @@ use crate::feature::weather::wet::puddles::level_surface::LevelSurface;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
+use crate::scene::level::level_prepare::LevelPrepare;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::lights::lights_frame::LightsFrame;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::level::view::view_prepare::ViewPrepare;
-use crate::scene::static_scene::draw::static_sight::StaticSight;
 
 impl SceneView {
   /// The units the weather drives: the shadows' maps, the effects laid over the lit frame (whose flares give the sky its
@@ -40,11 +40,11 @@ impl SceneView {
     &mut self,
     scene: &LevelScene,
     frame: &ViewPrepare<'_>,
-    sight: &StaticSight,
-    time: f32,
+    level: &LevelPrepare,
     now: Instant,
   ) -> LightingFrame {
     let (device, options, lighting) = (frame.device, frame.options, frame.lighting);
+    let time: f32 = level.time;
     let size: Option<(u32, u32)> = self.targets.as_ref().map(|targets| (targets.width, targets.height));
 
     self.features.shadows.prepare(
@@ -52,7 +52,7 @@ impl SceneView {
       (options.features.shadows.get_cascade_count() > 0).then_some(options.features.shadows.resolution),
     );
 
-    let sun_sprite: Option<SunSprite> = self.stages.effects.prepare(frame, now, time);
+    let sun_sprite: Option<SunSprite> = self.stages.effects.prepare(frame, level, now);
 
     self.features.sky.prepare(frame, sun_sprite, &scene.environments.1);
     self.features.water.prepare(
@@ -60,7 +60,7 @@ impl SceneView {
       options,
       WaterFrame {
         targets: self.targets.as_ref(),
-        is_in_view: sight.is_water(),
+        is_in_view: level.sight.is_water(),
         intensity: lighting.water_intensity,
         wind: lighting.wind,
         rain: lighting.rain.map_or(0.0, |rain| rain.density),
@@ -72,14 +72,14 @@ impl SceneView {
     // The falling rain while the weather rains and the view shows it, then the wet surfaces, which follow it; the
     // ambient effects blow the wind the rain reads this frame.
     let windows: OverheadWindows = self.get_overhead_windows();
-    let falling: Option<RainUniform> = self.features.rain.prepare(frame, scene.gust, time, windows);
+    let falling: Option<RainUniform> = self.features.rain.prepare(frame, level.gust, time, windows);
 
     self.features.rain.follow_display(
       DisplayMode::of(options).get_display(&options.features.grading, &self.features.exposure.get_metering()),
     );
     self.features.wet.prepare(
       frame,
-      &scene.wetness,
+      &level.wetness,
       falling.as_ref(),
       time,
       windows,
@@ -119,9 +119,10 @@ impl SceneView {
     encoder: &mut FrameEncoder,
     frame: &ViewPrepare<'_>,
     lighting_frame: &LightingFrame,
-    time: f32,
+    level: &LevelPrepare,
   ) {
     let (device, options, lighting, view) = (frame.device, frame.options, frame.lighting, frame.view);
+    let time: f32 = level.time;
 
     self
       .features
@@ -140,7 +141,7 @@ impl SceneView {
       // The ambient effects blow the wind the grass reads this frame.
       time,
       is_windy: lighting.trees.is_some(),
-      strength: scene.gust.strength,
+      strength: level.gust.strength,
       foliage: self.features.wind.get_values(),
       // Where the puddles stood last frame, which no tuft is planted in: the wet readies after the grass.
       puddles: LevelSurface::get_grass_puddles(
@@ -207,14 +208,14 @@ impl SceneView {
     self.shared.is_wireframe = options.mode.is_wireframe;
   }
 
-  /// The view's own units: the reflections, the view's trace, the composited surfaces in `sight`, the scene's stage and
-  /// the image's.
+  /// The view's own units: the reflections, the view's trace, the composited surfaces in the `level`'s sight, the
+  /// scene's stage and the image's.
   pub(super) fn prepare_view(
     &mut self,
     scene: &LevelScene,
     encoder: &mut FrameEncoder,
     frame: &ViewPrepare<'_>,
-    sight: &StaticSight,
+    level: &LevelPrepare,
   ) {
     self
       .features
@@ -226,7 +227,10 @@ impl SceneView {
       .features
       .view_trace
       .prepare(frame, &mut *encoder, scene.trace.as_ref(), trace_instances.as_slice());
-    self.features.composited.prepare(frame, scene, &mut *encoder, sight);
+    self
+      .features
+      .composited
+      .prepare(frame, scene, &mut *encoder, &level.sight);
     self.stages.scene.prepare(frame.options, frame.view);
     self.stages.image.prepare(frame);
   }
@@ -239,18 +243,18 @@ impl SceneView {
     encoder: &mut FrameEncoder,
     frame: &ViewPrepare<'_>,
     lighting_frame: &LightingFrame,
-    time: f32,
+    level: &LevelPrepare,
   ) {
     let (device, options, view) = (frame.device, frame.options, frame.view);
 
     self.shared.lighting = LightingUniform::new(frame.lighting, view.view, options, lighting_frame);
-    self.shared.lighting.height_fog.w *= FogFeature::get_indoor_share(scene.camera_hemi);
+    self.shared.lighting.height_fog.w *= FogFeature::get_indoor_share(level.camera_hemi);
     self.stages.lighting.prepare(frame, &self.shared);
 
     scene.particles.fill(view, options, &mut self.features.particles);
 
     self.features.particles.upload(device, &mut *encoder);
-    self.prepare_present(options, frame.output, time, self.shared.resolve.noise_frame);
+    self.prepare_present(options, frame.output, level.time, self.shared.resolve.noise_frame);
   }
 
   /// Writes where the rain cover and the level's surface now stand into what reads them, once `commit_periodic` has

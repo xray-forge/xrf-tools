@@ -25,6 +25,7 @@ use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::level_frame::LevelFrame;
+use crate::scene::level::level_prepare::LevelPrepare;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::page::helpers::view::helper_marks_pass::HelperMarksPass;
 use crate::scene::level::shadow::shadow_sway::ShadowSway;
@@ -35,7 +36,6 @@ use crate::scene::level::view::scene_output::SceneOutput;
 use crate::scene::level::view::view_frame::ViewFrame;
 use crate::scene::level::view::view_pick::ViewPick;
 use crate::scene::level::view::view_prepare::ViewPrepare;
-use crate::scene::static_scene::draw::static_sight::StaticSight;
 use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
@@ -148,24 +148,21 @@ impl SceneView {
       self.features.statics.fit(frame.device, (width, height));
     }
 
-    let time: f32 = scene.get_time().as_secs_f32();
+    let level: LevelPrepare = LevelPrepare::of(scene, frame.view);
     let now: Instant = self.clock.tick(scene.get_now());
 
     self.decide(frame, now);
 
-    // What of the scene drawn by passes of its own the view may see: none of the water's or the surface passes' work
-    // runs for what is out of sight.
-    let sight: StaticSight = scene.statics.get_sight(&frame.view.get_frustum());
-    let lighting_frame: LightingFrame = self.prepare_weather(scene, frame, &sight, time, now);
+    let lighting_frame: LightingFrame = self.prepare_weather(scene, frame, &level, now);
 
     self
       .features
       .overlays
       .follow_skeletons(scene, frame.device, &mut *encoder);
 
-    self.prepare_scene(scene, encoder, frame, &lighting_frame, time);
-    self.prepare_view(scene, encoder, frame, &sight);
-    self.prepare_lighting(scene, encoder, frame, &lighting_frame, time);
+    self.prepare_scene(scene, encoder, frame, &lighting_frame, &level);
+    self.prepare_view(scene, encoder, frame, &level);
+    self.prepare_lighting(scene, encoder, frame, &lighting_frame, &level);
   }
 
   /// What every other unit reads of the frame's resolve, prepared before any of them: the exposure, whose scale the

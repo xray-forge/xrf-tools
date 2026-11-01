@@ -18,6 +18,7 @@ use crate::feature::weather::volumetric::volumetric_shafts::VolumetricShafts;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::weather::render_level_weather::RenderLevelWeather;
 use crate::lighting::weather::render_lighting::RenderLighting;
+use crate::scene::level::level_prepare::LevelPrepare;
 use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::level::view::view_prepare::ViewPrepare;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
@@ -58,16 +59,16 @@ impl EffectStage {
     self.flares.request(lighting, weather, weather_textures, assets);
   }
 
-  /// Takes this frame's units at the view's clock `now` and the scene's `time`: the flares, the strike, the shafts and
-  /// the light volumes, the fog over the drawn frame and the meter. Answers the sun's sprite as the sky draws it, none
-  /// where no sprite is drawn.
-  pub fn prepare(&mut self, frame: &ViewPrepare<'_>, now: Instant, time: f32) -> Option<SunSprite> {
+  /// Takes this frame's units at the view's clock `now` and what the `level` gives it: the flares, the strike, the
+  /// shafts and the light volumes, the fog over the drawn frame at the level's time, and the meter. Answers the sun's
+  /// sprite as the sky draws it, none where no sprite is drawn.
+  pub fn prepare(&mut self, frame: &ViewPrepare<'_>, level: &LevelPrepare, now: Instant) -> Option<SunSprite> {
     let (device, options, lighting) = (frame.device, frame.options, frame.lighting);
     let sun_sprite: Option<SunSprite> = self.flares.prepare(frame, now);
 
     self.thunder.prepare(frame);
     self.sun_shafts.prepare(options, lighting);
-    self.fog.prepare(options, lighting, Some(frame.drawn), time);
+    self.fog.prepare(options, lighting, Some(frame.drawn), level.time);
     self.volumetric.prepare(device, options);
     self.meter.prepare(device, options);
 

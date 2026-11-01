@@ -98,7 +98,10 @@ assembles, is in `src/pass/`; the scene's own state and its views are in `src/sc
 - **A feature recording in several phases**: a unit in `SceneFeatures`, called from the view's aspects
   (`scene/level/view/scene_view/`) in frame order.
 - **New level data**: read by the host through `xrf-world`'s `WorldLevelSource`, handed over as a `RenderSceneUpdate`
-  that `LevelScene` applies, and read from the scene by the unit that draws it.
+  that `LevelScene` applies. A store a unit draws (statics, grass, lights) is read from the scene by that unit; a value
+  every unit readying a view may read (the clock, the gust, the wetness, what the view sees, placed volumes) joins
+  `LevelPrepare` (`scene/level/level_prepare.rs`), which the view takes from the scene once a frame and hands its
+  units and stages.
 - **A new drawable kind** beside the static scene, the grass being the one today (`feature/scene/grass/`): a variant
   of each enum the consumers drawing every kind alike dispatch through (`feature/scene/drawable/`). The scene group
   draws it into the G-buffer in its phases (`DrawableKindSource` readies it before the static scene draws,
