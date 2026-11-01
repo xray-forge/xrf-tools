@@ -279,11 +279,7 @@ impl ResolveFeature {
     // What reaches the viewport's rescale: what the temporal resolve resolved, or the frame as drawn.
     let source: (u32, u32) = if self.resolve.is_some() { display } else { render };
 
-    self.rescale = (source != viewport).then_some(if source.0 < viewport.0 {
-      UpscaleStage::Easu
-    } else {
-      UpscaleStage::Downsample
-    });
+    self.rescale = Self::get_rescale(source, viewport);
     // Sharpened where upscaled, and where a temporal resolve gathers frames at the viewport's size, whose filtering and
     // resampled history soften what moves as an upscale does; never an FSR debug view, which shows its values as they
     // stand.
@@ -662,6 +658,16 @@ impl ResolveFeature {
     self.upscaled.is_some()
   }
 
+  /// The pass taking an image `source` texels across to the `viewport`'s size: up by EASU, down by the downsample;
+  /// none where they are the same.
+  fn get_rescale(source: (u32, u32), viewport: (u32, u32)) -> Option<UpscaleStage> {
+    (source != viewport).then_some(if source.0 < viewport.0 {
+      UpscaleStage::Easu
+    } else {
+      UpscaleStage::Downsample
+    })
+  }
+
   /// The size of the image shown, that of the frame as drawn (`drawn`) unless it is rescaled.
   pub fn get_shown_size(&self, drawn: (u32, u32)) -> (u32, u32) {
     self
@@ -934,7 +940,13 @@ impl ResolveFeature {
       }
       None => None,
     };
-    let (frame, mut shown): (GraphTexture, Option<GraphTexture>) = match (self.rescale, upscaled, resolved) {
+    // A resolve that drew nothing this frame (ray reconstruction before its guides stand) leaves the frame at the drawn
+    // size, which the viewport's rescale then takes in its place.
+    let rescale: Option<UpscaleStage> = match (self.rescale, resolved) {
+      (None, None) if self.resolve.is_some() => Self::get_rescale(handles.size, self.get_shown_size(handles.size)),
+      (rescale, _) => rescale,
+    };
+    let (frame, mut shown): (GraphTexture, Option<GraphTexture>) = match (rescale, upscaled, resolved) {
       (Some(stage), Some([upscaled, _]), resolved) => {
         let parameters: UpscaleParameters = UpscaleParameters {
           source: resolved.unwrap_or(frame),
@@ -957,9 +969,10 @@ impl ResolveFeature {
       _ => (frame, None),
     };
 
-    if let (true, Some([upscaled, sharpened])) = (self.is_sharpened, upscaled) {
+    // The sharpening reads what this frame wrote: the upscaled or resolved image, else the frame at the viewport's size.
+    if let (true, Some([_, sharpened])) = (self.is_sharpened, upscaled) {
       let parameters: UpscaleParameters = UpscaleParameters {
-        source: shown.unwrap_or(upscaled),
+        source: shown.unwrap_or(frame),
         upscale,
       };
 
