@@ -68,7 +68,9 @@ impl EffectStage {
 
     self.thunder.prepare(frame);
     self.sun_shafts.prepare(options, lighting);
-    self.fog.prepare(options, lighting, Some(frame.drawn), level.time);
+    self
+      .fog
+      .prepare(options, lighting, Some(frame.drawn), level.time, level.camera_hemi);
     self.volumetric.prepare(device, options);
     self.meter.prepare(device, options);
 

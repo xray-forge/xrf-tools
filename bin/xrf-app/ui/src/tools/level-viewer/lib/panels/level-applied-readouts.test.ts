@@ -63,6 +63,15 @@ describe("LEVEL_APPLIED_SECTIONS", () => {
     expect(line).toContain(`${FEATURES.shadows.resolution} texels`);
   });
 
+  it("says how much of the height fog the camera sees indoors, and nothing of it outdoors", () => {
+    const fog = { density: 0.4, height: 8, indoorShare: 1, scattering: 0, sunColor: 0.1 };
+
+    expect(readLine("Height fog", mockRenderAppliedReport({ heightFog: fog }))).not.toContain("indoors");
+    expect(readLine("Height fog", mockRenderAppliedReport({ heightFog: { ...fog, indoorShare: 0.25 } }))).toContain(
+      "25% indoors"
+    );
+  });
+
   it("shows the environment only for a report that has one", () => {
     const environment: ILevelAppliedSection | undefined = LEVEL_APPLIED_SECTIONS.find(
       (section: ILevelAppliedSection) => section.title === "Applied environment"

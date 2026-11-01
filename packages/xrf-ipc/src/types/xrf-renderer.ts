@@ -193,6 +193,8 @@ export type RenderAppliedHeightFog = {
   sunColor: number | null;
   /** How readily the frame's bright parts are blurred into it, zero where nothing is scattered. */
   scattering: number | null;
+  /** The share of the height fog the camera sees where it stands: none indoors, whole outdoors. */
+  indoorShare: number | null;
 };
 
 /** The screen-space indirect light as gathered. */

@@ -13,4 +13,6 @@ pub struct RenderAppliedHeightFog {
   pub sun_color: f32,
   /// How readily the frame's bright parts are blurred into it, zero where nothing is scattered.
   pub scattering: f32,
+  /// The share of the height fog the camera sees where it stands: none indoors, whole outdoors.
+  pub indoor_share: f32,
 }

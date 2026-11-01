@@ -6,6 +6,7 @@ use crate::contract::feature::weather::fog::render_fog_mode::RenderFogMode;
 use crate::contract::feature::weather::fog::render_fog_settings::RenderFogSettings;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::reading::exposure_decisions::ExposureDecisions;
+use crate::feature::weather::fog::fog_feature::FogFeature;
 use crate::feature::weather::fog::fog_scattering_uniform::FogScatteringUniform;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
 use crate::lighting::unit::light_units::LightUnits;
@@ -163,6 +164,23 @@ fn scatters_only_an_enhanced_fog_drawn_lit_and_solid() {
   unfogged.show.is_fogged = false;
 
   assert!(FogScatteringUniform::for_view(&unfogged, fog.as_ref(), size, 0.0).is_none());
+}
+
+// The applied height fog says how much of it the camera sees where it stands: whole outdoors and where the level gives
+// no hemi, none indoors.
+#[test]
+fn reports_the_height_fog_faded_indoors() {
+  let share = |camera_hemi: Option<f32>| {
+    let mut fog: FogFeature = FogFeature::default();
+
+    fog.prepare(&options_with(enhanced()), &fogged(), None, 0.0, camera_hemi);
+    fog.get_applied().map(|applied| applied.indoor_share)
+  };
+
+  assert_eq!(share(None), Some(1.0));
+  assert_eq!(share(Some(0.5)), Some(1.0));
+  assert_eq!(share(Some(0.0)), Some(0.0));
+  assert!(share(Some(0.065)).is_some_and(|it| it > 0.0 && it < 1.0));
 }
 
 // A quarter, a half, then the frame's own size, rounding up; the strength held to one.

@@ -210,7 +210,8 @@ export const LEVEL_APPLIED_SECTIONS: ReadonlyArray<ILevelAppliedSection> = [
         read: ({ heightFog }) =>
           heightFog
             ? `${formatFogHeight(heightFog.height ?? 0)} · ${formatFogDensity(heightFog.density ?? 0)} · ` +
-              (heightFog.scattering ? `${formatFogShare(heightFog.scattering)} scattering` : "no scattering")
+              (heightFog.scattering ? `${formatFogShare(heightFog.scattering)} scattering` : "no scattering") +
+              ((heightFog.indoorShare ?? 1) < 1 ? ` · ${formatFogShare(heightFog.indoorShare ?? 1)} indoors` : "")
             : "The engine's fog alone",
       },
     ],

@@ -34,14 +34,15 @@ impl FogFeature {
     })
   }
 
-  /// Takes this frame's fog: the enhanced height fog where the view draws the weather's fog, and the scattering's
-  /// stages for a frame `size` texels across.
+  /// Takes this frame's fog: the enhanced height fog where the view draws the weather's fog, faded indoors by the
+  /// camera's hemi (`camera_hemi`), and the scattering's stages for a frame `size` texels across.
   pub fn prepare(
     &mut self,
     options: &RenderViewOptions,
     lighting: &RenderLighting,
     size: Option<(u32, u32)>,
     time: f32,
+    camera_hemi: Option<f32>,
   ) {
     let fog: &RenderFogSettings = &options.features.fog;
     let is_fogged: bool = options.mode.is_lit && options.show.is_fogged && lighting.fog.is_some();
@@ -52,6 +53,7 @@ impl FogFeature {
       density: fog.density,
       sun_color: fog.sun_color,
       scattering: self.stages.map_or(0.0, |stages| stages[0].intensity),
+      indoor_share: Self::get_indoor_share(camera_hemi),
     });
   }
 
