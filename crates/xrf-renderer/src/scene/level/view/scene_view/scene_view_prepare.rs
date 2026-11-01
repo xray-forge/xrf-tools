@@ -13,6 +13,7 @@ use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::effects::rain::rings::drop_rings::DropRings;
 use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::image::present::present_inputs::PresentInputs;
+use crate::feature::scene::drawable::light_casters::LightCasters;
 use crate::feature::scene::grass::grass_view_frame::GrassViewFrame;
 use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;
 use crate::feature::tracing::sun_trace::sun_trace_feature::SunTraceFeature;
@@ -161,6 +162,9 @@ impl SceneView {
       .features
       .grass
       .prepare(device, scene.grass.get_level(), &options.features.grass, &grass);
+
+    let light_casters: Option<LightCasters> = self.features.grass.get_light_casters();
+
     scene.lights.prepare(
       &mut *encoder,
       &mut self.features.lights,
@@ -174,7 +178,7 @@ impl SceneView {
         ),
         statics: &scene.statics,
         sway: &Self::to_sway(&scene.statics, &self.features.wind),
-        grass_reach: self.features.grass.get_cascade_reach(),
+        casters: light_casters.as_slice(),
         campfire_shares: &scene.campfire_shares,
         is_scene_first: frame.is_scene_first,
         is_physical: options.is_light_physical(),

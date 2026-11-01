@@ -13,7 +13,9 @@ use crate::contract::report::frame::render_pool_use::RenderPoolUse;
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::lighting::shadows::shadow_casters::ShadowCasters;
 use crate::feature::lighting::shadows::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
-use crate::feature::scene::grass::cards::grass_shadow_casters::GrassShadowCasters;
+use crate::feature::scene::drawable::drawable_kind_ref::DrawableKindRef;
+use crate::feature::scene::drawable::drawable_kinds::DrawableKinds;
+use crate::feature::scene::drawable::light_casters::LightCasters;
 use crate::feature::scene::statics::cull::shadow_cull::ShadowCull;
 use crate::feature::scene::statics::cull::static_cull_parameters::StaticCullParameters;
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
@@ -57,13 +59,68 @@ static FACE_PASSES: [&str; 4] = [
   "light shadow static",
 ];
 
-/// A face due this frame as its passes take it: its slot, its square and how it is drawn, its cull and its draws.
-type FaceSlot = (
-  usize,
-  (ShadowTile, FaceDraw, bool),
-  StaticCullParameters,
-  [StaticDrawParameters; StaticLayout::COUNT],
-);
+/// Which of a light's two sets a face is of: the one it lights with, or the one drawn at another size to take its place.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+enum FaceSet {
+  Shown,
+  Next,
+}
+
+/// A face of a light: the light, which of its sets, which face.
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+struct FaceKey {
+  handle: ProxyHandle<LightDescription>,
+  set: FaceSet,
+  face: usize,
+}
+
+/// What orders the faces wanting a draw: in view before out of it, those holding nothing yet or changed under before
+/// those moved or swaying (`is_current`), then by `by`: the nearest stale lights first, the others drawn longest ago.
+#[derive(Clone, Copy, Debug)]
+struct FaceOrder {
+  is_away: bool,
+  is_current: bool,
+  by: f32,
+}
+
+/// A face wanting a draw: what orders it, which face, and the frames it may wait, none where it draws at once.
+#[derive(Clone, Copy, Debug)]
+struct FaceCandidate {
+  order: FaceOrder,
+  key: FaceKey,
+  wait_most: u32,
+}
+
+/// A face offered to this frame's scheduler, by its ticket.
+#[derive(Clone, Copy, Debug)]
+struct FaceOffer {
+  key: FaceKey,
+  ticket: PeriodicTicket,
+}
+
+/// A face this frame draws: its slot, its square, how it is drawn and the drawable kinds whose casters go over it.
+#[derive(Clone, Copy, Debug)]
+struct FaceDue {
+  slot: usize,
+  tile: ShadowTile,
+  draw: FaceDraw,
+  casting: DrawableKinds,
+}
+
+/// A light's face this frame draws, by its light and square.
+#[derive(Clone, Copy, Debug)]
+struct FaceDrawn {
+  handle: ProxyHandle<LightDescription>,
+  tile: ShadowTile,
+}
+
+/// A face due this frame as its passes take it: what it draws, its cull and its draws.
+#[derive(Clone, Copy)]
+struct FaceSlot {
+  due: FaceDue,
+  cull: StaticCullParameters,
+  layouts: [StaticDrawParameters; StaticLayout::COUNT],
+}
 
 /// How a face due this frame is drawn.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -92,19 +149,6 @@ const SHRINK: f32 = 0.66;
 /// Where a face's projection starts where the light gives none: `light::virtual_size`'s default.
 const DEFAULT_NEAR: f32 = 0.1;
 
-/// Metres from the eye within which a light casts the grass's shadow, as Screen Space Shaders' grass shadows for
-/// non-directional lights default to: each of its faces draws the cards again as often as the trees' sway, so a few
-/// nearest lights pay it.
-const GRASS_LIGHT_DISTANCE: f32 = 30.0;
-
-/// How far a tuft's tip leans for the wind's amplitude, in metres, which a grassed face is drawn again for as a tree
-/// is.
-const GRASS_LEAN: f32 = 0.3;
-
-/// A face wanting a draw: what orders it (out of view, then not stale, then how near or how long ago drawn), its light,
-/// whether of the light's next set, which face, and the frames it may wait, none where it draws at once.
-type FaceCandidate = ((bool, bool, f32), ProxyHandle<LightDescription>, bool, usize, u32);
-
 /// The local lights' shadows: a square of an atlas a face, sized as the engine sizes its maps, drawn once and kept
 /// while the scene it casts from stays, a few faces a frame as the frame's scheduler grants them, the nearest first.
 pub struct LevelLightShadows {
@@ -117,21 +161,20 @@ pub struct LevelLightShadows {
   is_cast: bool,
   /// What stands still of the swaying lights' faces, tile for tile as the atlas, while any light asked for sways.
   statics: Option<wgpu::TextureView>,
-  /// Whether a light asked for this frame has trees swaying in its reach.
+  /// Whether a light asked for this frame has anything swaying in its reach: trees, or what a drawable kind leans.
   is_swaying: bool,
   allocator: ShadowTileAllocator,
   entries: HashMap<ProxyHandle<LightDescription>, LightShadowEntry>,
   frame: u64,
-  /// The faces wanting a draw this frame, as their light, set and face, behind what orders them: stale ones first,
-  /// nearest lights first, then the ones over what sways, drawn longest ago first.
+  /// The faces wanting a draw this frame: stale ones first, nearest lights first, then the ones over what sways, drawn
+  /// longest ago first.
   candidates: Vec<FaceCandidate>,
-  /// The faces offered this frame, by their light, set and face, with their ticket.
-  queue: Vec<(ProxyHandle<LightDescription>, bool, usize, PeriodicTicket)>,
-  /// The faces this frame draws, by their slot, their square and how, and whether the grass's cards are drawn over,
-  /// as `prepare` readied them.
-  due: Vec<(usize, ShadowTile, FaceDraw, bool)>,
+  /// The faces offered this frame.
+  queue: Vec<FaceOffer>,
+  /// The faces this frame draws, as `prepare` readied them.
+  due: Vec<FaceDue>,
   /// The lights whose faces this frame draws, by their light and square.
-  drawn: Vec<(ProxyHandle<LightDescription>, ShadowTile)>,
+  drawn: Vec<FaceDrawn>,
   /// A face's camera, a slot each.
   views: Vec<ViewBinding>,
   /// Every slot's visible list, `region` bytes apart.
@@ -306,8 +349,8 @@ impl LevelLightShadows {
   }
 
   /// Puts forward the faces of a light wanting a draw: those holding nothing yet or changed under, those its light
-  /// carried, and those the sway or the grass's cards move in: the light's bounding sphere (`spatial`), `distance`
-  /// metres from the eye, its cone as `cone`.
+  /// carried, and those the sway or a drawable kind's casters move in: the light's bounding sphere (`spatial`),
+  /// `distance` metres from the eye, its cone as `cone`.
   fn push_candidates(&mut self, ask: &LightShadowAsk<'_>, spatial: Vec4, distance: f32, cone: f32) {
     let LightShadowAsk {
       handle,
@@ -318,7 +361,7 @@ impl LevelLightShadows {
       is_scene_first,
       statics,
       sway,
-      grass_reach,
+      casters,
       ..
     } = *ask;
     let Some(entry) = self.entries.get_mut(&handle) else {
@@ -336,36 +379,44 @@ impl LevelLightShadows {
     let touches = |sphere: Vec4| spatial.truncate().distance(sphere.truncate()) < spatial.w + sphere.w;
 
     if entry
-      .swaying
-      .is_none_or(|(at, _)| statics.is_changed_since(at, touches))
+      .swaying_contents
+      .is_none_or(|at| statics.is_changed_since(at, touches))
     {
-      entry.swaying = Some((
-        contents,
-        Self::measure_swaying(basis.position, spatial, near, sway.places),
-      ));
+      entry.swaying_contents = Some(contents);
+      entry.swaying = Self::measure_swaying(basis.position, spatial, near, sway.places);
     }
 
-    // The cards stand about the eye: a light near it whose reach meets them casts their shadow. The scene's first view
-    // draws the faces with its own cards, so only its asks say which lights cast them; another view's leave that be.
+    // A kind's casters stand about the eye: a light near it whose reach meets them casts their shadow. The scene's first
+    // view draws the faces with its own casters, so only its asks say which lights cast them; another view's leave that
+    // be.
     if is_scene_first {
-      entry.is_grassed = distance < GRASS_LIGHT_DISTANCE
-        && grass_reach.is_some_and(|reach| eye.distance(spatial.truncate()) < spatial.w + reach);
+      let is_cast = |casters: &&LightCasters| {
+        distance < casters.light_distance && eye.distance(spatial.truncate()) < spatial.w + casters.reach
+      };
+
+      entry.casting = casters.iter().filter(is_cast).map(|casters| casters.kind).collect();
+      entry.casting_lean = casters
+        .iter()
+        .filter(is_cast)
+        .map(|casters| casters.lean)
+        .fold(0.0, f32::max);
     }
 
-    let is_grassed: bool = entry.is_grassed;
-    let swaying: f32 =
-      entry
-        .swaying
-        .map_or(0.0, |(_, swaying)| swaying)
-        .max(if is_grassed { GRASS_LEAN / near } else { 0.0 });
+    let casting: DrawableKinds = entry.casting;
+    let swaying: f32 = entry.swaying.max(entry.casting_lean / near);
 
     self.is_swaying |= sway.amplitude * swaying > 0.0;
     // How wide a face's texels are, for each metre from the light, times the square's side.
     let spread: f32 = 2.0 * ((cone + LIGHT_SHADOW_WIDENING) * 0.5).tan();
 
-    for (is_next, set) in [(false, &mut entry.shown), (true, &mut entry.next)] {
+    for (set_kind, set) in [(FaceSet::Shown, &mut entry.shown), (FaceSet::Next, &mut entry.next)] {
       if let Some(set) = set {
         for (face, state) in set.faces.iter_mut().enumerate() {
+          let key: FaceKey = FaceKey {
+            handle,
+            set: set_kind,
+            face,
+          };
           // A light a motion carries has moved off where its faces look from: each looks from where it stands now,
           // and is drawn again as a swaying one is, lighting with what it holds meanwhile.
           let is_moved: bool = state.view.position != basis.position;
@@ -382,20 +433,23 @@ impl LevelLightShadows {
             (true, SWAY_WAIT_MOST, SWAY_WAIT_MOST)
           };
 
-          if state.drawn.is_none_or(|drawn| statics.is_changed_since(drawn, touches)) || state.is_grassed != is_grassed
-          {
+          let candidate = |is_current: bool, by: f32, wait_most: u32| FaceCandidate {
+            order: FaceOrder {
+              is_away,
+              is_current,
+              by,
+            },
+            key,
+            wait_most,
+          };
+
+          if state.drawn.is_none_or(|drawn| statics.is_changed_since(drawn, touches)) || state.casting != casting {
             state.drawn_static = None;
-            self
-              .candidates
-              .push(((is_away, false, distance), handle, is_next, face, stale_wait));
+            self.candidates.push(candidate(false, distance, stale_wait));
           } else if is_moved {
-            self
-              .candidates
-              .push(((is_away, true, state.drawn_at), handle, is_next, face, moved_wait));
+            self.candidates.push(candidate(true, state.drawn_at, moved_wait));
           } else if sway.is_redrawn(swaying, spread / state.tile.size as f32, state.drawn_at) {
-            self
-              .candidates
-              .push(((is_away, true, state.drawn_at), handle, is_next, face, SWAY_WAIT_MOST));
+            self.candidates.push(candidate(true, state.drawn_at, SWAY_WAIT_MOST));
           }
         }
       }
@@ -406,22 +460,24 @@ impl LevelLightShadows {
   /// asked for it, by their texels: one holding nothing yet or changed under within `STALE_WAIT_MOST` frames, one
   /// swaying within `SWAY_WAIT_MOST`, one its light carried at once.
   pub fn finish(&mut self, scheduler: &mut PeriodicScheduler) {
-    self
-      .candidates
-      .sort_by(|a, b| (a.0.0, a.0.1).cmp(&(b.0.0, b.0.1)).then(a.0.2.total_cmp(&b.0.2)));
-    let mut queued: HashSet<(ProxyHandle<LightDescription>, bool, usize)> = HashSet::new();
-    let faces: Vec<(ProxyHandle<LightDescription>, bool, usize, u32)> = self
+    self.candidates.sort_by(|a, b| {
+      (a.order.is_away, a.order.is_current)
+        .cmp(&(b.order.is_away, b.order.is_current))
+        .then(a.order.by.total_cmp(&b.order.by))
+    });
+    let mut queued: HashSet<FaceKey> = HashSet::new();
+    let faces: Vec<FaceCandidate> = self
       .candidates
       .iter()
-      .filter(|(_, index, is_next, face, _)| queued.insert((*index, *is_next, *face)))
+      .filter(|candidate| queued.insert(candidate.key))
       .take(FACE_BUDGET)
-      .map(|(_, index, is_next, face, wait_most)| (*index, *is_next, *face, *wait_most))
+      .copied()
       .collect();
 
     self.queue.clear();
 
-    for (index, is_next, face, wait_most) in faces {
-      let Some(state) = self.get_face(index, is_next, face) else {
+    for FaceCandidate { key, wait_most, .. } in faces {
+      let Some(state) = self.get_face(key) else {
         continue;
       };
       let texels: f32 = (state.tile.size as f32).powi(2);
@@ -431,7 +487,10 @@ impl LevelLightShadows {
         PeriodicJob::new_waiting(&FACE_PASSES, FACE_SEED, texels, state.waited, wait_most)
       };
 
-      self.queue.push((index, is_next, face, scheduler.offer(job)));
+      self.queue.push(FaceOffer {
+        key,
+        ticket: scheduler.offer(job),
+      });
     }
   }
 
@@ -465,28 +524,20 @@ impl LevelLightShadows {
     self.region = scene.cull.get_list_bytes().next_multiple_of(self.alignment);
     self.lists.reserve(device, encoder, self.region * FACE_BUDGET as u64);
 
-    for (index, is_next, face, ticket) in std::mem::take(&mut self.queue) {
+    for FaceOffer { key, ticket } in std::mem::take(&mut self.queue) {
       let slot: usize = self.due.len();
       let is_granted: bool = scheduler.is_granted(ticket);
-      let is_split: bool = self.statics.is_some()
-        && self
-          .entries
-          .get(&index)
-          .and_then(|entry| entry.swaying)
-          .is_some_and(|(_, swaying)| swaying > 0.0);
-      let is_grassed: bool = self.entries.get(&index).is_some_and(|entry| entry.is_grassed);
-      let Some(state) = self
-        .entries
-        .get_mut(&index)
-        .and_then(|entry| {
-          if is_next {
-            entry.next.as_mut()
-          } else {
-            entry.shown.as_mut()
-          }
-        })
-        .and_then(|set| set.faces.get_mut(face))
-      else {
+      let Some(entry) = self.entries.get_mut(&key.handle) else {
+        continue;
+      };
+      // Trees swaying in its reach split it into what stands still and what sways.
+      let is_split: bool = self.statics.is_some() && entry.swaying > 0.0;
+      let casting: DrawableKinds = entry.casting;
+      let set: Option<&mut LightShadowSet> = match key.set {
+        FaceSet::Shown => entry.shown.as_mut(),
+        FaceSet::Next => entry.next.as_mut(),
+      };
+      let Some(state) = set.and_then(|set| set.faces.get_mut(key.face)) else {
         continue;
       };
 
@@ -521,14 +572,22 @@ impl LevelLightShadows {
 
       state.drawn = Some(contents);
       state.drawn_at = frame.sway.time;
-      state.is_grassed = is_grassed;
+      state.casting = casting;
 
       if draw == FaceDraw::Static {
         state.drawn_static = Some(contents);
       }
 
-      self.due.push((slot, state.tile, draw, is_grassed));
-      self.drawn.push((index, state.tile));
+      self.due.push(FaceDue {
+        slot,
+        tile: state.tile,
+        draw,
+        casting,
+      });
+      self.drawn.push(FaceDrawn {
+        handle: key.handle,
+        tile: state.tile,
+      });
     }
 
     // A light's new faces, all drawn, take the place of its old.
@@ -544,8 +603,8 @@ impl LevelLightShadows {
   }
 
   /// Declares the faces this frame's `prepare` readied: each slot's arguments started from those a cull starts with,
-  /// every face culled into its slot in one compute pass, then every face drawn into its square in one render pass, the
-  /// `grass`'s cards over those whose light casts from it.
+  /// every face culled into its slot in one compute pass, then every face drawn into its square in one render pass, what
+  /// the drawable `kinds` cast over those whose light casts from them.
   pub fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
@@ -556,7 +615,7 @@ impl LevelLightShadows {
       cull: params,
       ..
     }: ViewRecord<'a>,
-    grass: Option<GrassShadowCasters<'a>>,
+    kinds: &[DrawableKindRef<'a>],
   ) {
     if self.due.is_empty() {
       return;
@@ -570,22 +629,27 @@ impl LevelLightShadows {
       return;
     };
     let atlas: GraphTexture = bindings.import_view(graph, "light shadow atlas", atlas);
+    // The kinds this frame's record brought, which a face draws only those of.
+    let present: DrawableKinds = kinds.iter().map(DrawableKindRef::get_kind).collect();
     // Each slot's cull into its range of the lists and the arguments, and its draws of that range.
     let slots: Vec<FaceSlot> = self
       .due
       .iter()
-      .map(|(slot, tile, draw, is_grassed)| {
-        let (list_offset, args_offset): (u64, u64) = (*slot as u64 * self.region, *slot as u64 * self.args_stride);
+      .map(|due| {
+        let (list_offset, args_offset): (u64, u64) =
+          (due.slot as u64 * self.region, due.slot as u64 * self.args_stride);
 
-        (
-          *slot,
-          (*tile, *draw, *is_grassed && grass.is_some()),
-          scene.get_cull_parameters(
+        FaceSlot {
+          due: FaceDue {
+            casting: due.casting.intersect(present),
+            ..*due
+          },
+          cull: scene.get_cull_parameters(
             StorageArrayMut::new_range(lists, list_offset, self.region),
             StorageArrayMut::new_range(args, args_offset, StaticCullScratch::ARGS_SIZE),
           ),
-          scene.get_layout_draws(StorageArray::new_range(lists, list_offset, self.region)),
-        )
+          layouts: scene.get_layout_draws(StorageArray::new_range(lists, list_offset, self.region)),
+        }
       })
       .collect();
 
@@ -596,30 +660,30 @@ impl LevelLightShadows {
       .record(move |context| {
         let (template, args) = (context.get_buffer(template), context.get_buffer(args));
 
-        for (slot, ..) in &self.due {
+        for due in &self.due {
           context.get_encoder().copy_buffer_to_buffer(
             template,
             0,
             args,
-            *slot as u64 * self.args_stride,
+            due.slot as u64 * self.args_stride,
             StaticCullScratch::ARGS_SIZE,
           );
         }
       });
     slots
       .iter()
-      .fold(graph.add_compute_pass(FACE_PASSES[1]), |builder, (_, _, cull, _)| {
-        builder.parameters(cull)
+      .fold(graph.add_compute_pass(FACE_PASSES[1]), |builder, slot| {
+        builder.parameters(&slot.cull)
       })
       .record({
-        let culls: Vec<(usize, StaticCullParameters)> = slots.iter().map(|(slot, _, cull, _)| (*slot, *cull)).collect();
+        let culls: Vec<FaceSlot> = slots.clone();
 
         move |context| {
-          for (slot, cull) in &culls {
+          for FaceSlot { due, cull, .. } in &culls {
             passes
               .scene
               .cull
-              .record_shadow(context, &self.views[*slot], cull, params, ShadowCull::LightFace);
+              .record_shadow(context, &self.views[due.slot], cull, params, ShadowCull::LightFace);
           }
         }
       });
@@ -628,10 +692,10 @@ impl LevelLightShadows {
       self.statics.as_ref().map(|statics| ShadowTileRestoreParameters {
         static_atlas: bindings.import_view(&mut *graph, "light shadow static atlas", statics),
       });
-    let statics: Vec<(usize, ShadowTile, [StaticDrawParameters; StaticLayout::COUNT])> = slots
+    let statics: Vec<FaceSlot> = slots
       .iter()
-      .filter(|(_, (_, draw, _), ..)| *draw == FaceDraw::Static)
-      .map(|(slot, (tile, ..), _, layouts)| (*slot, *tile, *layouts))
+      .filter(|slot| slot.due.draw == FaceDraw::Static)
+      .copied()
       .collect();
 
     if let (Some(restore), false) = (restore, statics.is_empty()) {
@@ -642,20 +706,20 @@ impl LevelLightShadows {
             .add_raster_pass(FACE_PASSES[3])
             .depth(GraphDepthAttachment::new(restore.static_atlas, wgpu::LoadOp::Load))
             .buffer(args, GraphBufferAccess::Indirect),
-          |builder, (.., layouts)| StaticDraws::declare_layouts(builder, layouts),
+          |builder, slot| StaticDraws::declare_layouts(builder, &slot.layouts),
         )
         .record(move |context| {
           let args: &wgpu::Buffer = context.get_buffer(args);
 
-          for (slot, tile, layouts) in &statics {
+          for FaceSlot { due, layouts, .. } in &statics {
             passes.lighting.shadow.record_tile(
               context,
-              tile.get_region(),
+              due.tile.get_region(),
               None,
-              StaticLayoutBindings::new(&self.views[*slot], layouts, textures),
+              StaticLayoutBindings::new(&self.views[due.slot], layouts, textures),
               IndirectArgs {
                 buffer: args,
-                offset: *slot as u64 * self.args_stride,
+                offset: due.slot as u64 * self.args_stride,
               },
               ShadowCasters::Fixed,
             );
@@ -663,49 +727,53 @@ impl LevelLightShadows {
         });
     }
 
-    let is_restored: bool = slots.iter().any(|(_, (_, draw, _), ..)| *draw != FaceDraw::Whole);
-    let grass: Option<GrassShadowCasters<'a>> =
-      grass.filter(|_| slots.iter().any(|(_, (.., is_grassed), ..)| *is_grassed));
+    let is_restored: bool = slots.iter().any(|slot| slot.due.draw != FaceDraw::Whole);
+    // The kinds any face this frame draws casters of, which the pass reads.
+    let drawn: DrawableKinds = slots
+      .iter()
+      .fold(DrawableKinds::default(), |drawn, slot| drawn.union(slot.due.casting));
+    let drawing: Vec<DrawableKindRef<'a>> = kinds
+      .iter()
+      .filter(|kind| drawn.has(kind.get_kind()))
+      .copied()
+      .collect();
     let builder = slots.iter().fold(
       graph
         .add_raster_pass(FACE_PASSES[2])
         .depth(GraphDepthAttachment::new(atlas, wgpu::LoadOp::Load))
         .buffer(args, GraphBufferAccess::Indirect),
-      |builder, (.., layouts)| StaticDraws::declare_layouts(builder, layouts),
+      |builder, slot| StaticDraws::declare_layouts(builder, &slot.layouts),
     );
     let builder = match restore.filter(|_| is_restored) {
       Some(restore) => builder.parameters(&restore),
       None => builder,
     };
-    let builder = match grass {
-      Some(grass) => grass.declare(builder),
-      None => builder,
-    };
+    let builder = drawing.iter().fold(builder, |builder, kind| kind.declare(builder));
 
     builder.record(move |context| {
       let args: &wgpu::Buffer = context.get_buffer(args);
 
-      for (slot, (tile, draw, is_grassed), _, layouts) in &slots {
+      for FaceSlot { due, layouts, .. } in &slots {
         // A swaying light's face over what stands still, as kept; any other drawn whole.
-        let (restored, casters): (Option<&ShadowTileRestoreParameters>, ShadowCasters) = match (draw, &restore) {
+        let (restored, casters): (Option<&ShadowTileRestoreParameters>, ShadowCasters) = match (due.draw, &restore) {
           (FaceDraw::Static | FaceDraw::Swaying, Some(restore)) => (Some(restore), ShadowCasters::Swaying),
           _ => (None, ShadowCasters::All),
         };
 
         passes.lighting.shadow.record_tile(
           context,
-          tile.get_region(),
+          due.tile.get_region(),
           restored,
-          StaticLayoutBindings::new(&self.views[*slot], layouts, textures),
+          StaticLayoutBindings::new(&self.views[due.slot], layouts, textures),
           IndirectArgs {
             buffer: args,
-            offset: *slot as u64 * self.args_stride,
+            offset: due.slot as u64 * self.args_stride,
           },
           casters,
         );
 
-        if let Some(grass) = grass.filter(|_| *is_grassed) {
-          grass.record(context, &self.views[*slot]);
+        for kind in drawing.iter().filter(|kind| due.casting.has(kind.get_kind())) {
+          kind.record_shadow(context, &self.views[due.slot]);
         }
       }
     });
@@ -714,8 +782,8 @@ impl LevelLightShadows {
   /// Forgets that the faces this frame drew were drawn, where its frame was not submitted: each draws again, and its
   /// light waits for it.
   pub fn abandon_frame(&mut self) {
-    for (index, tile) in std::mem::take(&mut self.drawn) {
-      let Some(entry) = self.entries.get_mut(&index) else {
+    for FaceDrawn { handle, tile } in std::mem::take(&mut self.drawn) {
+      let Some(entry) = self.entries.get_mut(&handle) else {
         continue;
       };
 
@@ -781,12 +849,11 @@ impl LevelLightShadows {
   }
 
   /// A face of a light's shown set or its next.
-  fn get_face(&self, index: ProxyHandle<LightDescription>, is_next: bool, face: usize) -> Option<&LightShadowFace> {
-    let entry: &LightShadowEntry = self.entries.get(&index)?;
-    let set: &LightShadowSet = if is_next {
-      entry.next.as_ref()
-    } else {
-      entry.shown.as_ref()
+  fn get_face(&self, FaceKey { handle, set, face }: FaceKey) -> Option<&LightShadowFace> {
+    let entry: &LightShadowEntry = self.entries.get(&handle)?;
+    let set: &LightShadowSet = match set {
+      FaceSet::Shown => entry.shown.as_ref(),
+      FaceSet::Next => entry.next.as_ref(),
     }?;
 
     set.faces.get(face)
@@ -819,7 +886,7 @@ impl LevelLightShadows {
             drawn_static: None,
             drawn_at: 0.0,
             waited: 0,
-            is_grassed: false,
+            casting: DrawableKinds::default(),
           })
           .collect();
 

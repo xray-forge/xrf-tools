@@ -272,9 +272,11 @@ impl SceneView {
     );
 
     if frame.is_scene_first {
-      scene
-        .lights
-        .add_shadow_passes(GraphDeclaration::new(graph, bindings, runtime), record, grass_casters);
+      scene.lights.add_shadow_passes(
+        GraphDeclaration::new(graph, bindings, runtime),
+        record,
+        kinds.as_slice(),
+      );
     }
 
     ShadowsRecorded { covers, wet, surface }

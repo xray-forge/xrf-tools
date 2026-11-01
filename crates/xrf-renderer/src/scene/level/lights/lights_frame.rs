@@ -5,6 +5,7 @@ use xrf_engine_target::XrayEngine;
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::feature::lighting::lights::render_lights_settings::RenderLightsSettings;
+use crate::feature::scene::drawable::light_casters::LightCasters;
 use crate::scene::level::shadow::shadow_sway::ShadowSway;
 use crate::scene::static_scene::static_scene::StaticScene;
 
@@ -20,12 +21,11 @@ pub struct LightsFrame<'a> {
   pub statics: &'a StaticScene,
   /// How the trees sway, which has a face over them drawn again.
   pub sway: &'a ShadowSway<'a>,
-  /// The metres about the eye the grass's cards stand in, where they cast the sun's shadow this frame, which the
-  /// lights near the eye cast theirs from too.
-  pub grass_reach: Option<f32>,
+  /// What the drawable kinds beside the static scene cast into the faces of the lights near the eye (the grass's cards).
+  pub casters: &'a [LightCasters],
   /// How much of each campfire's idle light shows, by its id.
   pub campfire_shares: &'a HashMap<u16, f32>,
-  /// Whether the view is its scene's first, which draws the lights' faces with its own grass cards.
+  /// Whether the view is its scene's first, which draws the lights' faces with its own casters.
   pub is_scene_first: bool,
   /// Whether the view lights in linear light, the lights' authored colours decoded (`RenderLightModel::Physical`).
   pub is_physical: bool,

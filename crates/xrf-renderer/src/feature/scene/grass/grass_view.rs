@@ -7,6 +7,7 @@ use xrf_renderer_core::{
 use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;
 use crate::contract::report::applied::render_applied_grass::RenderAppliedGrass;
 use crate::contract::report::scene::render_grass_report::RenderGrassReport;
+use crate::feature::scene::drawable::light_casters::LightCasters;
 use crate::feature::scene::drawable::per_frame_casters::PerFrameCasters;
 use crate::feature::scene::grass::build::grass_build::GrassBuild;
 use crate::feature::scene::grass::build::grass_build_parameters::GrassBuildParameters;
@@ -265,6 +266,12 @@ impl GrassView {
   /// there.
   pub fn get_sun_casters(&self) -> Option<PerFrameCasters> {
     self.get_cascade_reach().map(GrassShadowCasters::get_sun_casters)
+  }
+
+  /// What the grass casts into the local lights' faces: its cards, where they stand for the sun's cascades; none where
+  /// they stand for none.
+  pub fn get_light_casters(&self) -> Option<LightCasters> {
+    self.get_cascade_reach().map(GrassShadowCasters::get_light_casters)
   }
 
   /// The cards of `level` as the cascades draw them, stood this frame (`cards`), where they do.

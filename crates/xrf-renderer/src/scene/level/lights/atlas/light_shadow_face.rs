@@ -1,4 +1,5 @@
 use crate::camera::camera_view::CameraView;
+use crate::feature::scene::drawable::drawable_kinds::DrawableKinds;
 use crate::scene::level::lights::atlas::shadow_tile::ShadowTile;
 
 /// One face of a light's shadow: its square of the atlas, the camera it is drawn through, and what the scene held
@@ -14,6 +15,6 @@ pub struct LightShadowFace {
   pub drawn_at: f32,
   /// Frames it has waited for a draw it wants.
   pub waited: u32,
-  /// Whether the grass's cards were drawn into it, which its light casting from the grass or not draws it again.
-  pub is_grassed: bool,
+  /// The drawable kinds whose casters were drawn into it, which its light casting another set draws it again.
+  pub casting: DrawableKinds,
 }

@@ -5,6 +5,7 @@ use xrf_renderer_core::{
 use crate::contract::feature::lighting::render_shadow_settings::RENDER_MAX_SHADOW_CASCADES;
 use crate::feature::lighting::shadows::cascade_target::CascadeTarget;
 use crate::feature::scene::drawable::drawable_kind::DrawableKind;
+use crate::feature::scene::drawable::light_casters::LightCasters;
 use crate::feature::scene::drawable::per_frame_casters::PerFrameCasters;
 use crate::feature::scene::grass::cards::grass_card_shadow_parameters::GrassCardShadowParameters;
 use crate::feature::scene::grass::grass_pass::GrassPass;
@@ -33,6 +34,13 @@ impl<'a> GrassShadowCasters<'a> {
   const STANDING: f32 = 3.0;
   /// Milliseconds a cascade's draw of the cards costs before the timer measured one.
   const SUN_SEED: f32 = 0.03;
+  /// Metres from the eye within which a light casts the grass's shadow, as Screen Space Shaders' grass shadows for
+  /// non-directional lights default to: each of its faces draws the cards again as often as the trees' sway, so a few
+  /// nearest lights pay it.
+  const LIGHT_DISTANCE: f32 = 30.0;
+  /// How far a tuft's tip leans for the wind's amplitude, in metres, which a face over the cards is drawn again for as a
+  /// tree is.
+  const LEAN: f32 = 0.3;
 
   /// The cards as the sun's cascades draw them every frame, standing out to `reach` metres from the eye.
   pub fn get_sun_casters(reach: f32) -> PerFrameCasters {
@@ -42,6 +50,16 @@ impl<'a> GrassShadowCasters<'a> {
       standing: Self::STANDING,
       passes: &SUN_PASSES,
       seed: Self::SUN_SEED,
+    }
+  }
+
+  /// The cards as the local lights' faces draw them, standing out to `reach` metres from the eye.
+  pub fn get_light_casters(reach: f32) -> LightCasters {
+    LightCasters {
+      kind: DrawableKind::Grass,
+      reach,
+      light_distance: Self::LIGHT_DISTANCE,
+      lean: Self::LEAN,
     }
   }
 

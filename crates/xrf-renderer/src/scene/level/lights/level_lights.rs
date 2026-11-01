@@ -11,7 +11,7 @@ use crate::camera::camera_frustum::CameraFrustum;
 use crate::contract::feature::lighting::lights::render_lights_settings::RenderLightsSettings;
 use crate::contract::feature::weather::render_light_shafts::RenderLightShafts;
 use crate::feature::lighting::lights::lights_feature::LightsFeature;
-use crate::feature::scene::grass::cards::grass_shadow_casters::GrassShadowCasters;
+use crate::feature::scene::drawable::drawable_kind_ref::DrawableKindRef;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_asset_source::RenderAssetSource;
@@ -169,7 +169,7 @@ impl LevelLights {
       engine,
       statics,
       sway,
-      grass_reach,
+      casters,
       is_scene_first,
       is_physical,
       is_specular_linear,
@@ -230,7 +230,7 @@ impl LevelLights {
             is_scene_first,
             statics,
             sway,
-            grass_reach,
+            casters,
           };
 
           self.shadows.ask(&ask);
@@ -454,15 +454,15 @@ impl LevelLights {
     self.shadows.abandon_frame();
   }
 
-  /// Declares the culls and draws of the shadow faces this frame's `prepare_shadows` readied, the `grass` over those
-  /// casting from it.
+  /// Declares the culls and draws of the shadow faces this frame's `prepare_shadows` readied, what the drawable `kinds`
+  /// cast over those casting from them.
   pub fn add_shadow_passes<'a>(
     &'a self,
     declaration: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
-    grass: Option<GrassShadowCasters<'a>>,
+    kinds: &[DrawableKindRef<'a>],
   ) {
-    self.shadows.add_passes(declaration, record, grass);
+    self.shadows.add_passes(declaration, record, kinds);
   }
 
   pub fn get_shadow_atlas(&self) -> LightShadowAtlas<'_> {
