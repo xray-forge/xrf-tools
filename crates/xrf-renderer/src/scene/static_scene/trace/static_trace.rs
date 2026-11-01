@@ -363,7 +363,8 @@ impl StaticTrace {
   ) -> Vec<PendingBuild<'s>> {
     let mut pending: Vec<PendingBuild<'s>> = Vec::new();
     let mut create = |structure: Structure, geometries: &'s [StaticTraceGeometry]| -> wgpu::Blas {
-      let sizes: Vec<wgpu::BlasTriangleGeometrySizeDescriptor> = geometries.iter().map(Self::get_size).collect();
+      let sizes: Vec<wgpu::BlasTriangleGeometrySizeDescriptor> =
+        geometries.iter().map(StaticTraceGeometry::get_size).collect();
       let blas: wgpu::Blas = device.create_blas(
         &wgpu::CreateBlasDescriptor {
           label: Some("static trace geometry"),
@@ -533,20 +534,6 @@ impl StaticTrace {
 
     if !records.is_empty() {
       queue.write_buffer(&self.records, 0, bytemuck::cast_slice(records));
-    }
-  }
-
-  fn get_size(geometry: &StaticTraceGeometry) -> wgpu::BlasTriangleGeometrySizeDescriptor {
-    wgpu::BlasTriangleGeometrySizeDescriptor {
-      vertex_format: wgpu::VertexFormat::Float32x3,
-      vertex_count: geometry.vertex_count,
-      index_format: Some(wgpu::IndexFormat::Uint32),
-      index_count: Some(geometry.index_count),
-      flags: if geometry.is_cut_out {
-        wgpu::AccelerationStructureGeometryFlags::empty()
-      } else {
-        wgpu::AccelerationStructureGeometryFlags::OPAQUE
-      },
     }
   }
 

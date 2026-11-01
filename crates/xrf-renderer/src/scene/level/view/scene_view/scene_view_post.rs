@@ -186,8 +186,12 @@ impl SceneView {
     output.scene = chain.resolved;
     output.shown = chain.shown;
     output.indirect_light = lit_frame.indirect_light.unwrap_or(record.unlit);
-    output.reflections = lit_frame.reflections.unwrap_or(record.untraced);
-    output.reflection_ends = lit_frame.reflection_ends.unwrap_or(record.no_ends);
+    output.reflections = lit_frame
+      .reflections
+      .map_or(record.untraced, |reflections| reflections.radiance);
+    output.reflection_ends = lit_frame
+      .reflections
+      .map_or(record.no_ends, |reflections| reflections.ends);
     output.bloom = enhanced_bloom.unwrap_or(handles.bloom[0]);
   }
 }

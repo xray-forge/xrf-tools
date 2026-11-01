@@ -5,4 +5,5 @@ pub(crate) mod reflection_pass;
 pub(crate) mod reflection_source;
 pub(crate) mod reflection_stage;
 pub(crate) mod reflection_uniform;
+pub(crate) mod reflections_recorded;
 pub(crate) mod trace;

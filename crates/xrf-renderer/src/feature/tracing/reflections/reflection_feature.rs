@@ -17,6 +17,7 @@ use crate::feature::tracing::reflections::reflection_pass::ReflectionPass;
 use crate::feature::tracing::reflections::reflection_source::ReflectionSource;
 use crate::feature::tracing::reflections::reflection_stage::ReflectionStage;
 use crate::feature::tracing::reflections::reflection_uniform::ReflectionUniform;
+use crate::feature::tracing::reflections::reflections_recorded::ReflectionsRecorded;
 use crate::feature::tracing::reflections::trace::budgeted_trace_outputs::BudgetedTraceOutputs;
 use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;
 use crate::feature::tracing::reflections::trace::reflection_trace_frame::ReflectionTraceFrame;
@@ -190,9 +191,8 @@ impl ReflectionFeature {
 
   /// Declares the screen-space reflections while they are traced: every glossy pixel's ray walked over the nearest
   /// depth's pyramid, then, denoised, the last frame's reflection reprojected, an eighth-size average, the trace
-  /// filtered across the surface and resolved over time into the view's history. Answers what combine reads (the
-  /// history written, or the trace itself where DLSS ray reconstruction takes it raw), the ends' reasons and the trace
-  /// (what each traced pixel met, the ray's length in alpha), none where they are not traced.
+  /// filtered across the surface and resolved over time into the view's history. Answers what they hand on, none where
+  /// they are not traced.
   pub fn add_passes<'a>(
     &'a self,
     GraphDeclaration {
@@ -205,7 +205,7 @@ impl ReflectionFeature {
     source: Option<ReflectionSource>,
     sky: &SkyParameters<'a>,
     scene_trace: Option<TracedScene<'a>>,
-  ) -> Option<(GraphTexture, GraphTexture, GraphTexture)> {
+  ) -> Option<ReflectionsRecorded> {
     self.trace?;
 
     let ViewRecord {
@@ -287,13 +287,21 @@ impl ReflectionFeature {
 
     // Raw, DLSS ray reconstruction denoises the trace in the frame, so combine reads it as traced.
     let Some(frames) = frames else {
-      return Some((traced, ends, traced));
+      return Some(ReflectionsRecorded {
+        radiance: traced,
+        ends,
+        trace: traced,
+      });
     };
 
     let written_full: GraphTexture =
       Self::add_denoise_passes(graph, passes, view, parameters, traced, frames, history.size);
 
-    Some((written_full, ends, traced))
+    Some(ReflectionsRecorded {
+      radiance: written_full,
+      ends,
+      trace: traced,
+    })
   }
 
   /// Walks every glossy pixel's ray over the nearest depth's pyramid into `out`'s targets, then the rays the screen

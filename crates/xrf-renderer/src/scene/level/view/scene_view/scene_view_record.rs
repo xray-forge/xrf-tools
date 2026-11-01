@@ -17,6 +17,7 @@ use crate::feature::scene::grass::level::grass_source::GrassSource;
 use crate::feature::tracing::indirect_trace::indirect_traced::IndirectTraced;
 use crate::feature::tracing::ray_guides::ray_guides::RayGuides;
 use crate::feature::tracing::reflections::reflection_source::ReflectionSource;
+use crate::feature::tracing::reflections::reflections_recorded::ReflectionsRecorded;
 use crate::feature::tracing::surroundings::surroundings_cube::SurroundingsCube;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
@@ -332,8 +333,7 @@ impl SceneView {
       record,
       surroundings.is_active().then_some(surroundings),
     );
-    let mut reflections: Option<GraphTexture> = None;
-    let mut reflection_ends: Option<GraphTexture> = None;
+    let mut reflections: Option<ReflectionsRecorded> = None;
     let mut ray_guides: Option<RayGuides> = None;
 
     // The reflections and combine record in a group of their own, encoded beside the lights before them.
@@ -347,7 +347,6 @@ impl SceneView {
       .import_source(GraphDeclaration::new(graph, bindings, runtime));
 
     if let Some(sky) = sky {
-      let mut traced_rays: Option<GraphTexture> = None;
       // How far the traced indirect light's rays went, where it is traced.
       let mut indirect_hits: Option<GraphTexture> = None;
 
@@ -361,18 +360,14 @@ impl SceneView {
         indirect_hits = Some(hits);
       }
 
-      if let Some((history, ends, traced)) = self.features.reflections.add_passes(
+      reflections = self.features.reflections.add_passes(
         GraphDeclaration::new(graph, bindings, runtime),
         record,
         wet,
         source,
         &sky,
         traced,
-      ) {
-        reflections = Some(history);
-        reflection_ends = Some(ends);
-        traced_rays = Some(traced);
-      }
+      );
 
       self.stages.lighting.add_combine(
         GraphDeclaration::new(graph, bindings, runtime),
@@ -380,15 +375,18 @@ impl SceneView {
         sky,
         CombineInputs {
           indirect_light,
-          reflections,
+          reflections: reflections.map(|reflections| reflections.radiance),
           wet,
           sun_seen,
         },
       );
-      ray_guides = self
-        .features
-        .resolve
-        .add_guide_passes(&mut *graph, record, wet, traced_rays, indirect_hits);
+      ray_guides = self.features.resolve.add_guide_passes(
+        &mut *graph,
+        record,
+        wet,
+        reflections.map(|reflections| reflections.trace),
+        indirect_hits,
+      );
     }
 
     let water_views: Option<&SkyViews> = self.features.sky.get_views();
@@ -424,7 +422,6 @@ impl SceneView {
     LightingRecorded {
       indirect_light,
       reflections,
-      reflection_ends,
       sky,
       ray_guides,
       before_water,

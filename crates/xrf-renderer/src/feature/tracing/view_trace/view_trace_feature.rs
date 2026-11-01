@@ -186,7 +186,7 @@ impl ViewTraceFeature {
   /// Sways the chosen trees' vertices and builds their structures and the view's top level over them and the grass's
   /// cards, built before it, answering the top level the view's trace binds; none where neither stands, the scene's
   /// standing.
-  pub fn add_passes<'a>(
+  fn add_passes<'a>(
     &'a self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
     passes: LevelPasses<'a>,
@@ -226,7 +226,7 @@ impl ViewTraceFeature {
         let (vertices, indices) = (context.get_buffer(vertices), context.get_buffer(indices));
         let mut first_vertex: u32 = 0;
         let sizes: Vec<wgpu::BlasTriangleGeometrySizeDescriptor> =
-          trace.swayed.iter().map(|it| Self::get_size(&it.geometry)).collect();
+          trace.swayed.iter().map(|it| it.geometry.get_size()).collect();
         let entries: Vec<wgpu::BlasBuildEntry<'_>> = trace
           .swayed
           .iter()
@@ -284,20 +284,6 @@ impl ViewTraceFeature {
       .collect()
   }
 
-  fn get_size(geometry: &StaticTraceGeometry) -> wgpu::BlasTriangleGeometrySizeDescriptor {
-    wgpu::BlasTriangleGeometrySizeDescriptor {
-      vertex_format: wgpu::VertexFormat::Float32x3,
-      vertex_count: geometry.vertex_count,
-      index_format: Some(wgpu::IndexFormat::Uint32),
-      index_count: Some(geometry.index_count),
-      flags: if geometry.is_cut_out {
-        wgpu::AccelerationStructureGeometryFlags::empty()
-      } else {
-        wgpu::AccelerationStructureGeometryFlags::OPAQUE
-      },
-    }
-  }
-
   fn create_blas(device: &wgpu::Device, geometry: &StaticTraceGeometry) -> wgpu::Blas {
     device.create_blas(
       &wgpu::CreateBlasDescriptor {
@@ -306,7 +292,7 @@ impl ViewTraceFeature {
         update_mode: wgpu::AccelerationStructureUpdateMode::PreferUpdate,
       },
       wgpu::BlasGeometrySizeDescriptors::Triangles {
-        descriptors: vec![Self::get_size(geometry)],
+        descriptors: vec![geometry.get_size()],
       },
     )
   }
