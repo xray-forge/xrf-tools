@@ -530,8 +530,9 @@ impl LevelLightShadows {
       let Some(entry) = self.entries.get_mut(&key.handle) else {
         continue;
       };
-      // Trees swaying in its reach split it into what stands still and what sways.
-      let is_split: bool = self.statics.is_some() && entry.swaying > 0.0;
+      // What sways in its reach, trees or a kind's leaning casters, splits it into what stands still, kept in its static
+      // tile, and what moves over its copy: drawing it whole again for the grass alone redrew every caster.
+      let is_split: bool = self.statics.is_some() && (entry.swaying > 0.0 || entry.casting_lean > 0.0);
       let casting: DrawableKinds = entry.casting;
       let set: Option<&mut LightShadowSet> = match key.set {
         FaceSet::Shown => entry.shown.as_mut(),
