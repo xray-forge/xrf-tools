@@ -10,8 +10,8 @@ use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::view::view_prepare::ViewPrepare;
 
 /// The units turning a view's frame into the image it shows, each alone in that part of it: the smoothing before the
-/// resolve, and the camera laid over the resolved image. The present's distortion, the resolve, the enhanced bloom,
-/// the selection, the streaks and the exposure record between them.
+/// resolve, and the layers laid over the resolved image (the camera's). The present's distortion, the resolve, the
+/// enhanced bloom, the selection, the streaks and the exposure record between them.
 #[derive(Default)]
 pub struct ImageStage {
   smoothing: SmoothingFeature,
@@ -49,9 +49,9 @@ impl ImageStage {
     )
   }
 
-  /// Adds the camera over the image the resolve shows (`chain`), reading the drawn depth and motion of `handles`, and
-  /// answers the chain with what it laid over it, so no history carries its blurs.
-  pub fn add_camera<'a>(
+  /// Lays the stage's layers over the image the resolve shows (`chain`), in order, reading the drawn depth and motion of
+  /// `handles`, and answers the chain with what they laid over it, so no history carries them: the camera's effects.
+  pub fn add_over_resolved<'a>(
     &'a self,
     GraphDeclaration {
       graph,

@@ -17,6 +17,7 @@ use crate::feature::scene::grass::level::grass_source::GrassSource;
 use crate::feature::scene::grass::trace::grass_trace_source::GrassTraceSource;
 use crate::feature::scene::grass::trace::traced_grass::TracedGrass;
 use crate::feature::tracing::indirect_trace::indirect_traced::IndirectTraced;
+use crate::feature::tracing::ray_guides::ray_guide_inputs::RayGuideInputs;
 use crate::feature::tracing::ray_guides::ray_guides::RayGuides;
 use crate::feature::tracing::reflections::reflection_source::ReflectionSource;
 use crate::feature::tracing::reflections::reflections_recorded::ReflectionsRecorded;
@@ -363,18 +364,14 @@ impl SceneView {
       .import_source(GraphDeclaration::new(graph, bindings, runtime));
 
     if let Some(sky) = sky {
-      // How far the traced indirect light's rays went, where it is traced.
-      let mut indirect_hits: Option<GraphTexture> = None;
-
-      if let Some(IndirectTraced { light, hits }) =
+      // The traced indirect light, where it is traced, in place of the bitmask's.
+      let indirect: Option<IndirectTraced> =
         self
           .stages
           .lighting
-          .add_indirect_trace(GraphDeclaration::new(graph, bindings, runtime), record, sky, traced)
-      {
-        indirect_light = Some(light);
-        indirect_hits = Some(hits);
-      }
+          .add_indirect_trace(GraphDeclaration::new(graph, bindings, runtime), record, sky, traced);
+
+      indirect_light = indirect.map(|indirect| indirect.light).or(indirect_light);
 
       reflections = self.features.reflections.add_passes(
         GraphDeclaration::new(graph, bindings, runtime),
@@ -399,9 +396,11 @@ impl SceneView {
       ray_guides = self.features.resolve.add_guide_passes(
         &mut *graph,
         record,
-        wet,
-        reflections.map(|reflections| reflections.trace),
-        indirect_hits,
+        RayGuideInputs {
+          wet,
+          reflections,
+          indirect,
+        },
       );
     }
 

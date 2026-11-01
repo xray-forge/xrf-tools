@@ -92,7 +92,7 @@ assembles, is in `src/pass/`; the scene's own state and its views are in `src/sc
   group (`feature/image/<name>/`: its unit, pass, parameters and uniform) and its shader under `shaders/`. Add the pass
   to the group's passes (a field, a build and a refresh line, and its parameters and uniform in `declare_shaders`),
   and the unit to its stage (a field, a `prepare` line, a
-  record line and a `view_units!` entry). A pass after the resolve that reads a drawn target on purpose tags the read
+  record line, after the resolve in `ImageStage::add_over_resolved`, and a `view_units!` entry). A pass after the resolve that reads a drawn target on purpose tags the read
   (`JitterGuard::READS_*`), with the reason beside the tag. The setting goes in `contract/`; an applied readout goes in
   the stage's `describe`.
 - **A feature recording in several phases**: a unit in `SceneFeatures`, called from the view's aspects

@@ -32,12 +32,12 @@ use crate::feature::image::resolve::upscale::upscale_parameters::UpscaleParamete
 use crate::feature::image::resolve::upscale::upscale_pass::UpscalePass;
 use crate::feature::image::resolve::upscale::upscale_stage::UpscaleStage;
 use crate::feature::image::resolve::upscale::upscale_uniform::UpscaleUniform;
+use crate::feature::tracing::ray_guides::ray_guide_inputs::RayGuideInputs;
 use crate::feature::tracing::ray_guides::ray_guides::RayGuides;
 use crate::feature::tracing::ray_guides::ray_guides_parameters::RayGuidesParameters;
 use crate::feature::tracing::ray_guides::ray_guides_pass::RayGuidesPass;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
-use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::targets::frame_texture::FrameTexture;
 use crate::frame::targets::history::History;
@@ -758,8 +758,8 @@ impl ResolveFeature {
   }
 
   /// Adds the guides DLSS ray reconstruction reads, where it resolves this frame, at the drawn size: worked out from
-  /// the G-buffer, what the wetting wrote, the reflections' trace (`traced`) and how far the traced indirect light's
-  /// rays went (`diffuse_hits`), the record's stand-ins where they are not drawn, after combine.
+  /// the G-buffer and `inputs`, the record's stand-ins for the reflections' trace and the indirect light's hit
+  /// distances where they are not drawn, after combine.
   pub fn add_guide_passes<'a>(
     &self,
     graph: &mut FrameGraph<'a>,
@@ -772,9 +772,11 @@ impl ResolveFeature {
       untraced,
       ..
     }: ViewRecord<'a>,
-    wet: WetTargets,
-    traced: Option<GraphTexture>,
-    diffuse_hits: Option<GraphTexture>,
+    RayGuideInputs {
+      wet,
+      reflections,
+      indirect,
+    }: RayGuideInputs,
   ) -> Option<RayGuides> {
     if !self.is_ray_reconstructed() {
       return None;
@@ -803,8 +805,8 @@ impl ResolveFeature {
       wet_surface: wet.surface,
       wet_reach: wet.reach,
       lighting: lit.lighting,
-      traced: traced.unwrap_or(untraced),
-      diffuse_hits: diffuse_hits.unwrap_or(none),
+      traced: reflections.map_or(untraced, |reflections| reflections.trace),
+      diffuse_hits: indirect.map_or(none, |indirect| indirect.hits),
     };
     let clear =
       |texture: GraphTexture| GraphColorAttachment::new(texture, wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT));
@@ -821,7 +823,7 @@ impl ResolveFeature {
       .record(move |context| passes.tracing.ray_guides.record(context, view, &parameters));
 
     Some(RayGuides {
-      diffuse_hit_distance: diffuse_hits.map(|_| diffuse_hit_distance),
+      diffuse_hit_distance: indirect.map(|_| diffuse_hit_distance),
       ..guides
     })
   }

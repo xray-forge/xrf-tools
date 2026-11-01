@@ -152,10 +152,11 @@ impl SceneView {
       ray_guides,
     );
 
-    chain = self
-      .stages
-      .image
-      .add_camera(GraphDeclaration::new(graph, bindings, runtime), passes, surfaced, chain);
+    chain =
+      self
+        .stages
+        .image
+        .add_over_resolved(GraphDeclaration::new(graph, bindings, runtime), passes, surfaced, chain);
 
     // The enhanced bloom from the resolved image the present shows, before the streaks laid over it.
     let enhanced_bloom: Option<GraphTexture> =
