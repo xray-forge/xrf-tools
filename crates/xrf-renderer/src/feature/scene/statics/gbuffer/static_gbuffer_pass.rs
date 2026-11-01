@@ -34,8 +34,7 @@ pub struct StaticGBufferPass {
   /// The texel the present reads where no model is marked: nothing, in alpha too.
   unmarked: wgpu::TextureView,
   pipelines: PipelineSet<GBufferPipelines>,
-  /// The impostors' draw, then their pick.
-  impostor_pipelines: PipelineSet<[wgpu::RenderPipeline; 2]>,
+  impostor_pipelines: PipelineSet<ImpostorPipelines>,
 }
 
 impl StaticGBufferPass {
@@ -150,7 +149,11 @@ impl StaticGBufferPass {
       is_inspected,
       is_prepassed,
     } = draw;
-    let drawing: &FrameDrawPipelines = &self.pipelines.frames[usize::from(is_inspected)];
+    let drawing: &FrameDrawPipelines = if is_inspected {
+      &self.pipelines.inspected
+    } else {
+      &self.pipelines.plain
+    };
     let shading: &[wgpu::RenderPipeline] = if is_prepassed {
       &drawing.prepassed_draws
     } else {
@@ -176,7 +179,7 @@ impl StaticGBufferPass {
 
     if is_first {
       context.bind(&draws.impostors);
-      context.get_pass().set_pipeline(&self.impostor_pipelines[0]);
+      context.get_pass().set_pipeline(&self.impostor_pipelines.draw);
       context
         .get_pass()
         .draw_indirect(args, StaticCullScratch::IMPOSTOR_ARGS_OFFSET);
@@ -213,7 +216,7 @@ impl StaticGBufferPass {
 
     if let Some(args) = args.first() {
       context.bind(&draws.impostors);
-      context.get_pass().set_pipeline(&self.impostor_pipelines[1]);
+      context.get_pass().set_pipeline(&self.impostor_pipelines.pick);
       context
         .get_pass()
         .draw_indirect(args, StaticCullScratch::IMPOSTOR_ARGS_OFFSET);
@@ -275,7 +278,7 @@ impl StaticGBufferPass {
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<[wgpu::RenderPipeline; 2]> {
+  ) -> XrfResult<ImpostorPipelines> {
     // An impostor marches no relief.
     let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_gbuffer_targets();
     let pick_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(PickTarget::FORMAT.into())];
@@ -296,10 +299,10 @@ impl StaticGBufferPass {
         )
       };
 
-    Ok([
-      create("fs_impostor", &targets)?,
-      create("fs_pick_impostor", &pick_targets)?,
-    ])
+    Ok(ImpostorPipelines {
+      draw: create("fs_impostor", &targets)?,
+      pick: create("fs_pick_impostor", &pick_targets)?,
+    })
   }
 
   fn create_pipelines(source: PipelineSource<'_>, layouts: GBufferLayouts<'_>) -> XrfResult<GBufferPipelines> {
@@ -311,10 +314,14 @@ impl StaticGBufferPass {
     } = layouts;
     let targets: [Option<wgpu::ColorTargetState>; 5] = ViewTargets::get_marching_gbuffer_targets();
     let pick_targets: [Option<wgpu::ColorTargetState>; 1] = [Some(PickTarget::FORMAT.into())];
-    let create_one = |label: &'static str,
-                      (vertex, fragment, permutation): (&'static str, &'static str, &StaticDrawPermutation),
-                      targets: &[Option<wgpu::ColorTargetState>],
-                      (is_written, depth_compare, bias): (bool, wgpu::CompareFunction, wgpu::DepthBiasState)|
+    let create_one = |GBufferPipeline {
+                        label,
+                        vertex,
+                        fragment,
+                        permutation,
+                        targets,
+                        depth,
+                      }: GBufferPipeline<'_>|
      -> XrfResult<wgpu::RenderPipeline> {
       source.get_render_pipeline(
         &RenderPipelineDescription::new(label, StaticDrawPermutation::MODULE, vertex)
@@ -329,16 +336,20 @@ impl StaticGBufferPass {
           })
           .with_depth_stencil(wgpu::DepthStencilState {
             format: ViewTargets::DEPTH,
-            depth_write_enabled: Some(is_written),
-            depth_compare: Some(depth_compare),
+            depth_write_enabled: Some(depth.is_written),
+            depth_compare: Some(depth.compare),
             stencil: Default::default(),
-            bias,
+            bias: depth.bias,
           })
           .with_targets(targets.to_vec()),
       )
     };
     let create = |batches: Vec<StaticBatch>,
-                  (is_pick, is_inspected, is_prepassed): (bool, bool, bool)|
+                  GBufferVariant {
+                    is_pick,
+                    is_inspected,
+                    is_prepassed,
+                  }: GBufferVariant|
      -> XrfResult<Vec<wgpu::RenderPipeline>> {
       let permutation: StaticDrawPermutation = StaticDrawPermutation {
         is_shadow_draw: false,
@@ -358,21 +369,25 @@ impl StaticGBufferPass {
           // A composited surface is picked as it is drawn, pulled towards the eye, so glass laid on a wall wins. A
           // cut-out, and an opaque surface after the depth pass, is shaded where its depth-only draw left its depth,
           // and writes none of its own.
-          let depth: (bool, wgpu::CompareFunction, wgpu::DepthBiasState) = match batch.class {
-            class if class.is_composited() => (true, wgpu::CompareFunction::GreaterEqual, CompositedPass::DEPTH_BIAS),
-            StaticClass::CutOut if !is_pick => (false, wgpu::CompareFunction::Equal, wgpu::DepthBiasState::default()),
-            StaticClass::Opaque if is_prepassed => {
-              (false, wgpu::CompareFunction::Equal, wgpu::DepthBiasState::default())
-            }
-            _ => (true, wgpu::CompareFunction::Greater, wgpu::DepthBiasState::default()),
+          let depth: DepthTest = match batch.class {
+            class if class.is_composited() => DepthTest {
+              is_written: true,
+              compare: wgpu::CompareFunction::GreaterEqual,
+              bias: CompositedPass::DEPTH_BIAS,
+            },
+            StaticClass::CutOut if !is_pick => DepthTest::KEPT,
+            StaticClass::Opaque if is_prepassed => DepthTest::KEPT,
+            _ => DepthTest::NEAREST,
           };
 
-          create_one(
-            "static g-buffer",
-            (batch.layout.get_vertex_entry(), fragment, &permutation),
-            if is_pick { &pick_targets } else { &targets },
+          create_one(GBufferPipeline {
+            label: "static g-buffer",
+            vertex: batch.layout.get_vertex_entry(),
+            fragment,
+            permutation: &permutation,
+            targets: if is_pick { &pick_targets } else { &targets },
             depth,
-          )
+          })
         })
         .collect()
     };
@@ -403,23 +418,40 @@ impl StaticGBufferPass {
             "fs_depth_opaque"
           };
 
-          create_one(
-            "static g-buffer depth",
-            (batch.layout.get_vertex_entry(), fragment, &permutation),
-            &untouched,
-            (true, wgpu::CompareFunction::Greater, wgpu::DepthBiasState::default()),
-          )
+          create_one(GBufferPipeline {
+            label: "static g-buffer depth",
+            vertex: batch.layout.get_vertex_entry(),
+            fragment,
+            permutation: &permutation,
+            targets: &untouched,
+            depth: DepthTest::NEAREST,
+          })
         })
         .collect()
     };
     let frame = |is_inspected: bool| -> XrfResult<FrameDrawPipelines> {
-      let draws: Vec<wgpu::RenderPipeline> = create(deferred.clone(), (false, is_inspected, false))?;
+      let draws: Vec<wgpu::RenderPipeline> = create(
+        deferred.clone(),
+        GBufferVariant {
+          is_pick: false,
+          is_inspected,
+          is_prepassed: false,
+        },
+      )?;
       let opaque: Vec<StaticBatch> = deferred
         .iter()
         .copied()
         .filter(|it| it.class == StaticClass::Opaque)
         .collect();
-      let mut prepassed = create(opaque, (false, is_inspected, true))?.into_iter();
+      let mut prepassed = create(
+        opaque,
+        GBufferVariant {
+          is_pick: false,
+          is_inspected,
+          is_prepassed: true,
+        },
+      )?
+      .into_iter();
       // Only the opaque draws change after the depth pass; the cut-outs' are the same pipelines.
       let prepassed_draws: Vec<wgpu::RenderPipeline> = deferred
         .iter()
@@ -518,13 +550,76 @@ impl StaticGBufferPass {
       .collect::<XrfResult<_>>()?;
 
     Ok(GBufferPipelines {
-      frames: [frame(false)?, frame(true)?],
-      picks: create(deferred.clone(), (true, true, false))?,
-      composited_picks: create(Self::list_composited_picks().collect(), (true, true, false))?,
+      plain: frame(false)?,
+      inspected: frame(true)?,
+      picks: create(deferred.clone(), GBufferVariant::PICK)?,
+      composited_picks: create(Self::list_composited_picks().collect(), GBufferVariant::PICK)?,
       overdraws,
       marks,
     })
   }
+}
+
+/// Which of a batch's G-buffer pipelines is made: a pick's or a draw's, with the inspections' code or without, and an
+/// opaque draw shading where the depth pass left its depth.
+#[derive(Clone, Copy)]
+struct GBufferVariant {
+  is_pick: bool,
+  is_inspected: bool,
+  is_prepassed: bool,
+}
+
+impl GBufferVariant {
+  /// A pick, which keeps the inspections' code and draws its own depth.
+  const PICK: Self = Self {
+    is_pick: true,
+    is_inspected: true,
+    is_prepassed: false,
+  };
+}
+
+/// One of the static scene's G-buffer pipelines: its label, its shader entries and permutation, its targets and its
+/// depth test.
+struct GBufferPipeline<'a> {
+  label: &'static str,
+  vertex: &'static str,
+  fragment: &'static str,
+  permutation: &'a StaticDrawPermutation,
+  targets: &'a [Option<wgpu::ColorTargetState>],
+  depth: DepthTest,
+}
+
+/// How a G-buffer pipeline tests and writes depth.
+#[derive(Clone, Copy)]
+struct DepthTest {
+  is_written: bool,
+  compare: wgpu::CompareFunction,
+  bias: wgpu::DepthBiasState,
+}
+
+impl DepthTest {
+  /// The nearest surface's depth written, depth reversed.
+  const NEAREST: Self = Self {
+    is_written: true,
+    compare: wgpu::CompareFunction::Greater,
+    bias: wgpu::DepthBiasState {
+      constant: 0,
+      slope_scale: 0.0,
+      clamp: 0.0,
+    },
+  };
+  /// Shaded only where its depth is the one an earlier draw kept, writing none.
+  const KEPT: Self = Self {
+    is_written: false,
+    compare: wgpu::CompareFunction::Equal,
+    ..Self::NEAREST
+  };
+}
+
+/// The impostors' pipelines: their draw and their pick.
+struct ImpostorPipelines {
+  draw: wgpu::RenderPipeline,
+  pick: wgpu::RenderPipeline,
 }
 
 /// The layouts the static G-buffer's pipelines bind: the camera's, the static draw's, the textures' and, for the helper
@@ -537,9 +632,12 @@ struct GBufferLayouts<'a> {
   marks: &'a wgpu::BindGroupLayout,
 }
 
-/// The static G-buffer's pipelines, by batch: a frame's draws without the inspections' code, then with it.
+/// The static G-buffer's pipelines, by batch.
 struct GBufferPipelines {
-  frames: [FrameDrawPipelines; 2],
+  /// A frame's draws without the inspections' code.
+  plain: FrameDrawPipelines,
+  /// A frame's draws keeping it.
+  inspected: FrameDrawPipelines,
   /// One a batch, writing what is drawn rather than how it looks.
   picks: Vec<wgpu::RenderPipeline>,
   /// One a composited batch, in `StaticGBufferPass::list_composited_picks` order, picking what of them shows.
