@@ -51,7 +51,7 @@ switches, which the renderer reads as its own.
 ## A frame
 
 ```mermaid
-flowchart LR
+flowchart TB
   hostNode["Host: commands, windows, level and asset sources"] --> threadNode["Render thread"]
   worldNode["xrf-world: what moves and plays"] --> threadNode
   threadNode --> sceneNode["LevelScene: statics, lights, grass, particles, weather"]
