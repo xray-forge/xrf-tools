@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::lighting::weather_random::WeatherRandom;
+use crate::lighting::weather::weather_random::WeatherRandom;
 
 /// `PERLIN_SAMPLE_SIZE`: gradients in the table, and the mask that wraps into it.
 const SAMPLES: usize = 256;

@@ -1,8 +1,8 @@
 use glam::Vec3;
 
 use crate::lighting::luminance::luminance;
-use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::authored_colour;
+use crate::lighting::weather::render_lighting::RenderLighting;
 
 /// The world's light for the physical light levels, from the weather's clock and its sun: the sun's or the moon's
 /// illuminance at normal incidence through the atmosphere, and the clear or clouded sky's on a level surface, in lux.

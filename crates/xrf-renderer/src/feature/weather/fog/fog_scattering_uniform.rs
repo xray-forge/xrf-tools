@@ -2,7 +2,7 @@ use glam::Vec2;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::view::render_view_options::RenderViewOptions;
-use crate::lighting::render_fog::RenderFog;
+use crate::lighting::weather::render_fog::RenderFog;
 
 /// What a stage of the fog scattering reads, as `shaders/frame/fog_scattering.wgsl` takes it.
 #[repr(C)]

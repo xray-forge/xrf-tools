@@ -1,5 +1,5 @@
 use crate::frame::view_targets::ViewTargets;
-use crate::lighting::render_wind::RenderWind;
+use crate::lighting::wind::render_wind::RenderWind;
 
 /// What a level view's water reads of its frame beside its own state: the targets, the weather's
 /// `water_intensity`, wind and rain density, and the clock.

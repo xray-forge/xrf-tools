@@ -33,7 +33,7 @@ use crate::frame::gpu_memory::GpuMemory;
 use crate::host::render_event_sink::RenderEventSink;
 use crate::host::world::render_scene_id::RenderSceneId;
 use crate::host::world::render_view_frame::RenderViewFrame;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::view::scene_view::SceneView;

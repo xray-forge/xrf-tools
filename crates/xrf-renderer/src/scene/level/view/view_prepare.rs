@@ -6,7 +6,7 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::host::weather::render_level_weather::RenderLevelWeather;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::pass::level_passes::LevelPasses;
 use crate::scene::texture::weather_textures::WeatherTextures;
 

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use std::sync::mpsc::Sender;
 
 use crate::host::render_asset_source::{RenderAssetSource, get_texture_name};
-use crate::lighting::render_sky::RenderSky;
+use crate::lighting::weather::render_sky::RenderSky;
 use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 use crate::scene::texture::weather_textures::WeatherTextures;

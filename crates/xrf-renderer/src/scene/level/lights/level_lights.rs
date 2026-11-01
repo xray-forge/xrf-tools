@@ -15,11 +15,11 @@ use crate::feature::scene::grass::cards::grass_shadow_casters::GrassShadowCaster
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::host::render_asset_source::RenderAssetSource;
-use crate::lighting::light_animation::to_animated_color;
-use crate::lighting::light_basis::LightBasis;
-use crate::lighting::light_bulb::get_bulb_radius;
-use crate::lighting::light_shadow_size::{LIGHT_SHADOW_POINT_FACES, to_light_shadow_scale};
-use crate::lighting::light_specular::to_light_specular;
+use crate::lighting::lamp::light_animation::to_animated_color;
+use crate::lighting::lamp::light_basis::LightBasis;
+use crate::lighting::lamp::light_bulb::get_bulb_radius;
+use crate::lighting::lamp::light_shadow_size::{LIGHT_SHADOW_POINT_FACES, to_light_shadow_scale};
+use crate::lighting::lamp::light_specular::to_light_specular;
 use crate::lighting::srgb::{anchored_light, authored_light};
 use crate::scene::level::lights::atlas::level_light_shadows::LevelLightShadows;
 use crate::scene::level::lights::atlas::light_shadow_ask::LightShadowAsk;

@@ -9,7 +9,7 @@ use crate::feature::weather::fog::fog_scattering_pass::FogScatteringPass;
 use crate::feature::weather::fog::fog_scattering_uniform::FogScatteringUniform;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_targets::ViewTargets;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// The camera hemi under which the enhanced fog's height fog is gone and over which it is whole, about the engine's

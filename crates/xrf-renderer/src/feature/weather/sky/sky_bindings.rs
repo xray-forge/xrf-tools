@@ -2,7 +2,7 @@ use xrf_renderer_core::{FrameGraph, GraphBindings, GraphTexture, PassParameters}
 
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::feature::weather::sky::sky_views::SkyViews;
-use crate::lighting::render_sky::RenderSky;
+use crate::lighting::weather::render_sky::RenderSky;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 use crate::scene::texture::weather_textures::WeatherTextures;
 

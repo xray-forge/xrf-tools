@@ -1,5 +1,5 @@
 use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::scene::level::wetness::puddle_fill::PuddleFill;
 use crate::scene::level::wetness::rain_wetness::RainWetness;
 

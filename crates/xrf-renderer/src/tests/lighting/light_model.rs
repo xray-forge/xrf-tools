@@ -20,12 +20,12 @@ use crate::feature::image::exposure::reading::exposure_metering::ExposureMeterin
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
-use crate::lighting::daylight::Daylight;
-use crate::lighting::light_specular::to_light_specular;
-use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
-use crate::lighting::light_units::LightUnits;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::lamp::light_specular::to_light_specular;
 use crate::lighting::srgb::{anchored_light, authored_colour, authored_light, srgb_decoded, srgb_encoded};
+use crate::lighting::unit::daylight::Daylight;
+use crate::lighting::unit::light_unit::PHYSICAL_LIGHT_UNIT;
+use crate::lighting::unit::light_units::LightUnits;
+use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::pass::frame_lighting::picture_shares::PictureShares;

@@ -4,7 +4,7 @@ use glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::feature::scene::wind::foliage_wind_values::FoliageWindValues;
-use crate::lighting::render_tree_wind::RenderTreeWind;
+use crate::lighting::wind::render_tree_wind::RenderTreeWind;
 
 /// The sway of the trees as `shaders/static/pulling.wgsl` reads it, built each frame as `FTreeVisual_setup::calculate`
 /// builds it: a wind turning once every `rotation` seconds at the amplitude's length, and a wave travelling through the

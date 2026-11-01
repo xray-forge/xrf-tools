@@ -1,7 +1,7 @@
 use crate::feature::scene::grass::build::grass_build_size::GrassBuildSize;
 use crate::feature::scene::grass::level::grass_level::GrassLevel;
-use crate::lighting::foliage_motion::FoliageMotion;
-use crate::lighting::grass_wind::GrassWind;
+use crate::lighting::wind::foliage_motion::FoliageMotion;
+use crate::lighting::wind::grass_wind::GrassWind;
 
 /// What one storage binding holds at least on every adapter the renderer starts on: 128 MiB.
 const BINDING_LIMIT: u64 = 128 << 20;

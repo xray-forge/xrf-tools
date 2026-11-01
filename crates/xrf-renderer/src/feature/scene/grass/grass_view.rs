@@ -33,8 +33,8 @@ use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::wet::puddles::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::frame::stats_readback::StatsReadback;
 use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::lighting::foliage_motion::FoliageMotion;
-use crate::lighting::grass_wind::GrassWind;
+use crate::lighting::wind::foliage_motion::FoliageMotion;
+use crate::lighting::wind::grass_wind::GrassWind;
 use crate::pass::view::view_binding::ViewBinding;
 
 /// Metres a detail slot spans, `dm_slot_size`.

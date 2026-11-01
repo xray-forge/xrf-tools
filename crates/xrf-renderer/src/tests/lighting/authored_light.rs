@@ -1,6 +1,6 @@
 use glam::{Vec3, Vec4};
 
-use crate::lighting::light_specular::to_light_specular;
+use crate::lighting::lamp::light_specular::to_light_specular;
 use crate::lighting::srgb::{anchored_light, authored_light, srgb_decoded};
 use crate::tests::shader::gpu_probe::run_gpu_probe;
 

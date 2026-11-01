@@ -24,8 +24,8 @@ use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
-use crate::lighting::light_basis::LightBasis;
-use crate::lighting::light_shadow_size::{
+use crate::lighting::lamp::light_basis::LightBasis;
+use crate::lighting::lamp::light_shadow_size::{
   LIGHT_SHADOW_MIN_SIZE, LIGHT_SHADOW_POINT_CONE, LIGHT_SHADOW_POINT_FACES, LIGHT_SHADOW_WIDENING,
   to_light_shadow_size, to_light_shadow_tile_size,
 };

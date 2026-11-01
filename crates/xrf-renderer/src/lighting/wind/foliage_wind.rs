@@ -4,8 +4,8 @@ use glam::Vec4;
 
 use crate::contract::feature::scene::render_foliage_settings::RenderFoliageSettings;
 use crate::feature::scene::wind::foliage_wind_values::FoliageWindValues;
-use crate::lighting::foliage_motion::FoliageMotion;
-use crate::lighting::render_wind::RenderWind;
+use crate::lighting::wind::foliage_motion::FoliageMotion;
+use crate::lighting::wind::render_wind::RenderWind;
 
 /// How far the enhanced foliage's flow fields have drifted, summed frame by frame at each frame's wind, so a change of
 /// wind changes how fast they move from then on, never where they stand.

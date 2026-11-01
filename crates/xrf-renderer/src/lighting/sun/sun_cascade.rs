@@ -1,9 +1,9 @@
 use glam::{Mat4, Vec3};
 
 use crate::camera::camera_view::CameraView;
-use crate::lighting::sun_cascade_basis::SunCascadeBasis;
-use crate::lighting::sun_cascade_placement::SunCascadePlacement;
-use crate::lighting::sun_view_rays::SunViewRays;
+use crate::lighting::sun::sun_cascade_basis::SunCascadeBasis;
+use crate::lighting::sun::sun_cascade_placement::SunCascadePlacement;
+use crate::lighting::sun::sun_view_rays::SunViewRays;
 
 /// How far a cascade's map reaches below its centre at least, in widths: the engine's `1.41421 * map_size`.
 const DEPTH: f32 = std::f32::consts::SQRT_2;

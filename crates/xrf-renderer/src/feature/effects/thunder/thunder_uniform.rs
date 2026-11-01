@@ -1,8 +1,8 @@
 use glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
-use crate::lighting::render_thunderbolt_glow::RenderThunderboltGlow;
-use crate::lighting::render_thunderbolt_strike::RenderThunderboltStrike;
+use crate::lighting::weather::render_thunderbolt_glow::RenderThunderboltGlow;
+use crate::lighting::weather::render_thunderbolt_strike::RenderThunderboltStrike;
 
 /// What `shaders/frame/thunder.wgsl` reads as its `Thunder`: where the strike stands, and its glows.
 #[repr(C)]

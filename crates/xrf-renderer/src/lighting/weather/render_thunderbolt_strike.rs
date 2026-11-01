@@ -1,6 +1,6 @@
 use glam::Vec3;
 
-use crate::lighting::render_thunderbolt_glow::RenderThunderboltGlow;
+use crate::lighting::weather::render_thunderbolt_glow::RenderThunderboltGlow;
 
 /// A bolt striking this frame, as `dxThunderboltRender` draws it.
 #[derive(Clone, Debug, PartialEq)]

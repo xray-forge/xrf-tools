@@ -1,5 +1,5 @@
 use crate::contract::feature::weather::water::render_enhanced_water_settings::RenderEnhancedWaterSettings;
-use crate::lighting::render_wind::RenderWind;
+use crate::lighting::wind::render_wind::RenderWind;
 
 /// How far the enhanced water's maps have scrolled, each frame's seconds at that frame's flow and at the pace its wind
 /// sets. Summed rather than multiplied out, so a change of wind,

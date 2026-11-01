@@ -22,7 +22,7 @@ use crate::host::level::render_level_source::RenderLevelSource;
 use crate::host::weather::render_level_weather::RenderLevelWeather;
 use crate::host::world::render_scene_id::RenderSceneId;
 use crate::host::world::render_view_frame::RenderViewFrame;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::pass::view::camera_uniform::CameraUniform;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::level_frame::LevelFrame;

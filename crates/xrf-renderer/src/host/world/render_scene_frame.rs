@@ -7,7 +7,7 @@ use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::host::level::render_level_source::RenderLevelSource;
 use crate::host::world::feedback::render_streaming_progress::RenderStreamingProgress;
 use crate::host::world::render_scene_update::RenderSceneUpdate;
-use crate::lighting::ambient_gust::AmbientGust;
+use crate::lighting::wind::ambient_gust::AmbientGust;
 
 /// What the world gives a scene's frame: the level it is, what changed in it, how far it is streamed, which viewport
 /// drives what it simulates by its camera, and what its effects and moving zones do.

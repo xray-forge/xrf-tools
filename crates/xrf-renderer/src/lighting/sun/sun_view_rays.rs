@@ -1,7 +1,7 @@
 use glam::{Mat4, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
-use crate::lighting::sun_view_ray::SunViewRay;
+use crate::lighting::sun::sun_view_ray::SunViewRay;
 
 /// The view's four edges, which the sun's cascades are placed along one after another: each cascade starts where the
 /// edges leave the one before it (`render_phase_sun.cpp`, the `rays` each cascade hands the next).

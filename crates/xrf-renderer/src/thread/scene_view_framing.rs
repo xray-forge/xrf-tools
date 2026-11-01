@@ -6,7 +6,7 @@ use crate::contract::overlay::render_selection::RenderSelection;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::host::weather::render_level_weather::RenderLevelWeather;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::weather::render_lighting::RenderLighting;
 
 /// What one view of a scene is drawn through this frame: a viewport's own, or a level map's tile in its place.
 pub struct SceneViewFraming<'a> {

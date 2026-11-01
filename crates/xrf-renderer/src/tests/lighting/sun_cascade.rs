@@ -6,9 +6,9 @@ use crate::camera::engine_space::EngineSpace;
 use crate::capture::map_tile::MapTile;
 use crate::capture::map_tile_plan::MapTilePlan;
 use crate::contract::capture::render_map_capture::RenderMapCapture;
-use crate::lighting::sun_cascade::SunCascade;
-use crate::lighting::sun_cascade_basis::SunCascadeBasis;
-use crate::lighting::sun_view_rays::SunViewRays;
+use crate::lighting::sun::sun_cascade::SunCascade;
+use crate::lighting::sun::sun_cascade_basis::SunCascadeBasis;
+use crate::lighting::sun::sun_view_rays::SunViewRays;
 
 const DOWN: Vec3 = Vec3::new(0.0, -1.0, 0.0);
 

@@ -9,9 +9,9 @@ use crate::feature::image::exposure::reading::exposure_metering::ExposureMeterin
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::weather::fog::fog_scattering_uniform::FogScatteringUniform;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
-use crate::lighting::light_units::LightUnits;
-use crate::lighting::render_fog::RenderFog;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::unit::light_units::LightUnits;
+use crate::lighting::weather::render_fog::RenderFog;
+use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 

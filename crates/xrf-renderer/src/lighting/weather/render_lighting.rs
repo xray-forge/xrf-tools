@@ -5,16 +5,16 @@ use xrf_math::EPS;
 use crate::contract::feature::lighting::model::render_light_scales::RenderLightScales;
 use crate::contract::feature::weather::render_sun_shafts::RenderSunShafts;
 use crate::contract::view::asset::render_asset_lighting::RenderAssetLighting;
-use crate::lighting::light_specular::to_light_specular;
+use crate::lighting::lamp::light_specular::to_light_specular;
 use crate::lighting::luminance::luminance;
-use crate::lighting::render_clouds::RenderClouds;
-use crate::lighting::render_fog::RenderFog;
-use crate::lighting::render_rainfall::RenderRainfall;
-use crate::lighting::render_sky::RenderSky;
-use crate::lighting::render_thunderbolt_strike::RenderThunderboltStrike;
-use crate::lighting::render_tree_wind::RenderTreeWind;
-use crate::lighting::render_wind::RenderWind;
-use crate::lighting::sun_direction::to_renderer_sun_direction;
+use crate::lighting::sun::sun_direction::to_renderer_sun_direction;
+use crate::lighting::weather::render_clouds::RenderClouds;
+use crate::lighting::weather::render_fog::RenderFog;
+use crate::lighting::weather::render_rainfall::RenderRainfall;
+use crate::lighting::weather::render_sky::RenderSky;
+use crate::lighting::weather::render_thunderbolt_strike::RenderThunderboltStrike;
+use crate::lighting::wind::render_tree_wind::RenderTreeWind;
+use crate::lighting::wind::render_wind::RenderWind;
 
 /// The floor `phase_combine` keeps ambient above.
 const MINIMUM_AMBIENT: f32 = 0.001;

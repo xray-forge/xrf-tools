@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::camera::camera_frame::CameraFrame;
 use crate::host::weather::render_level_weather::RenderLevelWeather;
 use crate::host::world::render_scene_id::RenderSceneId;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::weather::render_lighting::RenderLighting;
 
 /// What the world gives a viewport's frame: the scene it asks to show, where its camera stands, and one frame's
 /// environment.

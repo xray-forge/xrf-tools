@@ -2,7 +2,7 @@ use glam::Vec3;
 
 use crate::feature::lighting::shadows::cascades::shadow_prefetch::ShadowPrefetch;
 use crate::feature::lighting::shadows::shadow_cut::ShadowCut;
-use crate::lighting::sun_cascade::SunCascade;
+use crate::lighting::sun::sun_cascade::SunCascade;
 
 /// One cascade of a level's sun shadow: its fit, the cut it is culled and drawn by, and what its map was last drawn at;
 /// and, while it keeps a static layer, which layer that is, what it was drawn at, and the next one drawn ahead.

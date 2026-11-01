@@ -5,10 +5,10 @@ use crate::feature::effects::rain::rain_frame::RainFrame;
 use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::effects::rain::rings::rain_rings::RainRings;
 use crate::feature::scene::wind::wind_uniform::WindUniform;
-use crate::lighting::render_fog::RenderFog;
-use crate::lighting::render_rainfall::RenderRainfall;
-use crate::lighting::render_tree_wind::RenderTreeWind;
-use crate::lighting::render_wind::RenderWind;
+use crate::lighting::weather::render_fog::RenderFog;
+use crate::lighting::weather::render_rainfall::RenderRainfall;
+use crate::lighting::wind::render_tree_wind::RenderTreeWind;
+use crate::lighting::wind::render_wind::RenderWind;
 use crate::scene::level::shadow::shadow_sway::ShadowSway;
 
 #[test]

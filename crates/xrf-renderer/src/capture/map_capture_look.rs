@@ -4,7 +4,7 @@ use crate::contract::view::output::render_scale::RenderScale;
 use crate::contract::view::render_show_flags::RenderShowFlags;
 use crate::contract::view::render_view_features::RenderViewFeatures;
 use crate::contract::view::render_view_options::RenderViewOptions;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::weather::render_lighting::RenderLighting;
 
 /// How fast the metering view's exposure adapts, settling within its frames.
 const METERING_ADAPTATION: f32 = 100.0;

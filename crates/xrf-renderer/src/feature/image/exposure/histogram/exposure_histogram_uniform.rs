@@ -4,8 +4,8 @@ use crate::contract::feature::image::render_exposure_settings::RenderExposureSet
 use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
 use crate::feature::image::exposure::exposure_step::ExposureStep;
 use crate::feature::image::exposure::exposure_uniform::ExposureUniform;
-use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
 use crate::lighting::srgb::SRGB_DISPLAY_POWER;
+use crate::lighting::unit::light_unit::PHYSICAL_LIGHT_UNIT;
 
 /// How the physical light's exposure meters and adapts, as `shaders/frame/exposure_histogram.wgsl` reads it: the log2
 /// luminance the histogram's bins span, the luminance a daylit exterior's average is brought to, how much of a scene's

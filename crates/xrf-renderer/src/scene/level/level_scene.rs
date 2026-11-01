@@ -23,7 +23,7 @@ use crate::host::world::feedback::render_sector_failure::RenderSectorFailure;
 use crate::host::world::render_scene_frame::RenderSceneFrame;
 use crate::host::world::render_scene_id::RenderSceneId;
 use crate::host::world::render_scene_update::RenderSceneUpdate;
-use crate::lighting::ambient_gust::AmbientGust;
+use crate::lighting::wind::ambient_gust::AmbientGust;
 use crate::scene::level::level_grass::LevelGrass;
 use crate::scene::level::lights::level_lights::LevelLights;
 use crate::scene::level::load::level_load::LevelLoad;

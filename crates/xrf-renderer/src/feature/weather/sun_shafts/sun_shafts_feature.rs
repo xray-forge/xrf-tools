@@ -10,7 +10,7 @@ use crate::feature::weather::volumetric::froxels::froxels::Froxels;
 use crate::feature::weather::volumetric::volumetric_shafts::VolumetricShafts;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_targets::ViewTargets;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// The sun's shafts, marched at half size through its shadow while the weather shafts it, and the composite that adds

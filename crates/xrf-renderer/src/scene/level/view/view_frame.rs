@@ -3,7 +3,7 @@ use glam::{Mat4, Vec3, Vec4};
 use crate::camera::camera_view::CameraView;
 use crate::contract::feature::lighting::render_shadow_settings::RenderShadowSettings;
 use crate::feature::image::resolve::resolve_decisions::ResolveDecisions;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// The values every unit of a view reads this frame, prepared before them: what its resolve decided, the camera and the

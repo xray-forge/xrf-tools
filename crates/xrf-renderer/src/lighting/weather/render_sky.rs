@@ -1,6 +1,6 @@
 use glam::Vec3;
 
-use crate::lighting::render_clouds::RenderClouds;
+use crate::lighting::weather::render_clouds::RenderClouds;
 
 /// The sky, as the two keyframes either side of the time name it (`$user$sky0`, `$user$sky1`).
 #[derive(Clone, Debug, PartialEq)]

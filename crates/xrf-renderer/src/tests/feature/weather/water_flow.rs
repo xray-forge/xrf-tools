@@ -2,7 +2,7 @@
 
 use crate::contract::feature::weather::water::render_enhanced_water_settings::RenderEnhancedWaterSettings;
 use crate::feature::weather::water::enhanced::water_flow::WaterFlow;
-use crate::lighting::render_wind::RenderWind;
+use crate::lighting::wind::render_wind::RenderWind;
 
 fn wind(velocity: f32) -> RenderWind {
   RenderWind {

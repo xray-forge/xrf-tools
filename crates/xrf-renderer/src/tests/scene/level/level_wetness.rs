@@ -1,8 +1,8 @@
 use glam::Vec3;
 
 use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
-use crate::lighting::render_lighting::RenderLighting;
-use crate::lighting::render_rainfall::RenderRainfall;
+use crate::lighting::weather::render_lighting::RenderLighting;
+use crate::lighting::weather::render_rainfall::RenderRainfall;
 use crate::scene::level::wetness::level_wetness::LevelWetness;
 
 fn raining(density: f32) -> RenderLighting {

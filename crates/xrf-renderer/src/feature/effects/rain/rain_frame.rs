@@ -1,8 +1,8 @@
 use glam::{Vec2, Vec4};
 
 use crate::contract::feature::effects::render_rain_drops_mode::RenderRainDropsMode;
-use crate::lighting::render_rainfall::RenderRainfall;
-use crate::lighting::render_wind::RenderWind;
+use crate::lighting::weather::render_rainfall::RenderRainfall;
+use crate::lighting::wind::render_wind::RenderWind;
 
 /// What one frame's rain falls by: the weather's rainfall and the drops it is drawn with, the wind and its strength,
 /// where its cover stands, where the enhanced drops' square stands from the eye, and the splash model's indices.

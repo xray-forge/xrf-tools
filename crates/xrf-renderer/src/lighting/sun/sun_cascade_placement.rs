@@ -1,8 +1,8 @@
 use glam::Vec3;
 use xrf_math::{EPS_L, EPS_S};
 
-use crate::lighting::sun_cascade_basis::SunCascadeBasis;
-use crate::lighting::sun_view_ray::SunViewRay;
+use crate::lighting::sun::sun_cascade_basis::SunCascadeBasis;
+use crate::lighting::sun::sun_view_ray::SunViewRay;
 
 /// The engine's first guess at the nearest point behind a side, which any real one is nearer than.
 const FAR_BEHIND: f32 = 10_000.0;

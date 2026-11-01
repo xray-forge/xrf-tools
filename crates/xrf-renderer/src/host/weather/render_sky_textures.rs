@@ -1,4 +1,4 @@
-use crate::lighting::render_sky::RenderSky;
+use crate::lighting::weather::render_sky::RenderSky;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
 /// The textures a weather's skies are drawn with, as the world asks for them: none is drawn before it is resident.

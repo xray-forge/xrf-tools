@@ -6,7 +6,7 @@ use crate::capture::cube_face::CubeFace;
 use crate::capture::map_capture_look::MapCaptureLook;
 use crate::capture::map_tile::MapTile;
 use crate::contract::view::render_view_options::RenderViewOptions;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::weather::render_lighting::RenderLighting;
 
 /// One view a capture draws in place of its viewport's frames: a level map's tile, or a cubemap's face.
 #[derive(Clone, Copy, Debug, PartialEq)]

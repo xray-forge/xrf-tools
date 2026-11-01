@@ -17,8 +17,8 @@ use crate::feature::tracing::reflections::reflection_uniform::ReflectionUniform;
 use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;
 use crate::feature::tracing::reflections::trace::reflection_trace_frame::ReflectionTraceFrame;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
-use crate::lighting::light_units::LightUnits;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::unit::light_units::LightUnits;
+use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 

@@ -18,7 +18,7 @@ use crate::feature::view::view_feature::ViewFeature;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::weather::flares::render_lens_flare::RenderLensFlare;
 use crate::host::weather::render_level_weather::RenderLevelWeather;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::level::view::view_prepare::ViewPrepare;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
