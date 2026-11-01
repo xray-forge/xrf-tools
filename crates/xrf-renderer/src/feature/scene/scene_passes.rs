@@ -16,7 +16,7 @@ use crate::feature::scene::grass::grass_pass::GrassPass;
 use crate::feature::scene::grass::grass_uniform::GrassUniform;
 use crate::feature::scene::grass::level::grass_level_parameters::GrassLevelParameters;
 use crate::feature::scene::grass::level::grass_model_record::GrassModelRecord;
-use crate::feature::scene::grass::trace_grass_uniform::TraceGrassUniform;
+use crate::feature::scene::grass::trace::trace_grass_uniform::TraceGrassUniform;
 use crate::feature::scene::pyramid::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
 use crate::feature::scene::pyramid::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
 use crate::feature::scene::pyramid::depth_pyramid_pass::DepthPyramidPass;

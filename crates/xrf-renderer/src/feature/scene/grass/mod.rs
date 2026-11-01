@@ -7,4 +7,4 @@ pub(crate) mod grass_uniform;
 pub(crate) mod grass_view;
 pub(crate) mod grass_view_frame;
 pub(crate) mod level;
-pub(crate) mod trace_grass_uniform;
+pub(crate) mod trace;

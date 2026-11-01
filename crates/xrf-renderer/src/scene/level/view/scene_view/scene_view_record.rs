@@ -14,12 +14,15 @@ use crate::feature::scene::grass::cards::grass_card_handles::GrassCardHandles;
 use crate::feature::scene::grass::cards::grass_shadow_casters::GrassShadowCasters;
 use crate::feature::scene::grass::draw::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::feature::scene::grass::level::grass_source::GrassSource;
+use crate::feature::scene::grass::trace::grass_trace_source::GrassTraceSource;
+use crate::feature::scene::grass::trace::traced_grass::TracedGrass;
 use crate::feature::tracing::indirect_trace::indirect_traced::IndirectTraced;
 use crate::feature::tracing::ray_guides::ray_guides::RayGuides;
 use crate::feature::tracing::reflections::reflection_source::ReflectionSource;
 use crate::feature::tracing::reflections::reflections_recorded::ReflectionsRecorded;
 use crate::feature::tracing::surroundings::surroundings_cube::SurroundingsCube;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
+use crate::feature::tracing::view_trace::view_trace_feature::ViewTraceFeature;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::feature::weather::sky::sky_views::SkyViews;
 use crate::feature::weather::water::water_inputs::WaterInputs;
@@ -299,14 +302,25 @@ impl SceneView {
     rings: GraphTexture,
   ) -> LightingRecorded<'a> {
     let ViewRecord { handles, statics, .. } = record;
+    // The grass's part of the scene's trace, where the view traces it.
+    let grass: Option<TracedGrass> = ViewTraceFeature::get_scene_trace(scene, record.passes).map(|trace| {
+      self.features.grass.add_trace(
+        GraphDeclaration::new(graph, bindings, runtime),
+        record,
+        GrassTraceSource {
+          level: scene.grass.get_level(),
+          cards: grass_cards,
+          empty: trace.get_empty(),
+        },
+      )
+    });
     // The scene's trace, which RTAO, the reflections and the water trace their rays through.
     let traced: Option<TracedScene> = self.features.view_trace.add_scene_trace(
       scene,
       GraphDeclaration::new(graph, bindings, runtime),
       record,
-      grass_cards,
       &self.features.lights,
-      &self.features.grass,
+      grass,
     );
     let sun_seen: GraphTexture = self.add_direct_light(
       scene,

@@ -6,11 +6,8 @@ use xrf_renderer_core::{
 };
 
 use crate::feature::lighting::lights::lights_feature::LightsFeature;
-use crate::feature::scene::grass::cards::grass_card_handles::GrassCardHandles;
-use crate::feature::scene::grass::cards::grass_cards::GrassCards;
-use crate::feature::scene::grass::colour::grass_colour_parameters::GrassColourParameters;
-use crate::feature::scene::grass::grass_view::GrassView;
-use crate::feature::scene::grass::level::grass_level::GrassLevel;
+use crate::feature::scene::drawable::drawable_trace_instance::DrawableTraceInstance;
+use crate::feature::scene::grass::trace::traced_grass::TracedGrass;
 use crate::feature::tracing::view_trace::sway::trace_sway_parameters::TraceSwayParameters;
 use crate::feature::tracing::view_trace::sway::trace_sway_slot::TraceSwaySlot;
 use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
@@ -31,8 +28,8 @@ use crate::scene::static_scene::trace::static_trace_swaying::StaticTraceSwaying;
 /// A view's own top level, where what its trace meets moves with the view: the nearest instances of trees' geometry
 /// within `REACH` metres, `MOST` of them and `MOST_VERTICES` vertices at most, swayed by the view's wind each frame in
 /// their trees' own space and their structures built over them again, standing in their unswayed instances' place and
-/// at their transforms; and the grass's cards the view stands (`GrassCards`), one more instance after the scene's. The
-/// scene's top level where neither stands.
+/// at their transforms; and the drawable kinds' instances after the scene's (`DrawableTraceInstance`: the grass's cards
+/// the view stands). The scene's top level where neither stands.
 #[derive(Default)]
 pub struct ViewTraceFeature {
   trace: Option<ViewTrace>,
@@ -68,7 +65,8 @@ impl ViewTraceFeature {
 
   /// Takes this frame's swaying trees about the camera, where the scene's trace stands (`trace`) and the view traces
   /// the scene: the nearest chosen, a structure made for each newly chosen, the sway pass's slots written and the
-  /// view's top level filled, with the grass's `cards` where the view stands them.
+  /// view's top level filled, the drawable `kinds`' instances after the scene's (the grass's cards where the view stands
+  /// them).
   pub fn prepare(
     &mut self,
     &ViewPrepare {
@@ -80,7 +78,7 @@ impl ViewTraceFeature {
     }: &ViewPrepare<'_>,
     encoder: &mut FrameEncoder,
     trace: Option<&StaticTrace>,
-    cards: Option<&wgpu::Blas>,
+    kinds: &[DrawableTraceInstance<'_>],
   ) {
     let camera: Vec3 = view.position;
     let is_traced: bool = options.is_scene_traced() && passes.tracing.scene_trace.is_traced();
@@ -92,7 +90,7 @@ impl ViewTraceFeature {
     };
     let chosen: Vec<StaticTraceSwaying> = Self::choose(trace.get_swaying(), camera);
 
-    if chosen.is_empty() && cards.is_none() {
+    if chosen.is_empty() && kinds.is_empty() {
       self.trace = None;
 
       return;
@@ -133,8 +131,9 @@ impl ViewTraceFeature {
         slot
       })
       .collect();
-    // The scene's instances, then the grass's.
-    let instances: usize = trace.get_instance_count() + 1;
+    // The scene's instances, then the kinds'.
+    let scene_instances: usize = trace.get_instance_count();
+    let instances: usize = scene_instances + kinds.len();
     let (mut tlas, key, slot_buffer, vertices) = match previous {
       Some(trace) if trace.tlas.get().len() >= instances => (trace.tlas, trace.key, trace.slots, trace.vertices),
       Some(trace) => (
@@ -173,8 +172,16 @@ impl ViewTraceFeature {
     let replaced: HashMap<u32, &wgpu::Blas> = swayed.iter().map(|it| (it.index, &it.blas)).collect();
 
     trace.fill_view_tlas(&mut tlas, &replaced);
-    tlas[instances - 1] =
-      cards.map(|blas| wgpu::TlasInstance::new(blas, StaticTrace::IDENTITY, GrassCards::INSTANCE, GrassCards::MASK));
+
+    // A kind's structure stands in the renderer's space already.
+    for (index, kind) in kinds.iter().enumerate() {
+      tlas[scene_instances + index] = Some(wgpu::TlasInstance::new(
+        kind.blas,
+        StaticTrace::IDENTITY,
+        kind.custom_index,
+        kind.mask,
+      ));
+    }
 
     self.trace = Some(ViewTrace {
       tlas,
@@ -319,9 +326,14 @@ impl ViewTraceFeature {
     })
   }
 
+  /// The scene's trace where the view traces rays against it this frame: the scene holds one and the device traces.
+  pub fn get_scene_trace<'a>(scene: &'a LevelScene, passes: LevelPasses<'_>) -> Option<&'a StaticTrace> {
+    scene.trace.as_ref().filter(|_| passes.tracing.scene_trace.is_traced())
+  }
+
   /// The level's geometry a ray the screen does not answer is traced against, as one parameter set a frame which every
-  /// consumer binds (the reflections, the water), where the device traces rays; each grass model's colour averaged
-  /// first, which a traced hit on grassed ground blends towards.
+  /// consumer binds (the reflections, the water), where the device traces rays; with the `grass`'s part, which the
+  /// grass recorded over the same trace.
   pub fn add_scene_trace<'a>(
     &'a self,
     scene: &'a LevelScene,
@@ -331,9 +343,8 @@ impl ViewTraceFeature {
       runtime,
     }: GraphDeclaration<'_, 'a>,
     record: ViewRecord<'a>,
-    grass_cards: Option<GrassCardHandles>,
     lights: &'a LightsFeature,
-    grass: &'a GrassView,
+    grass: Option<TracedGrass>,
   ) -> Option<TracedScene<'a>> {
     let ViewRecord {
       passes,
@@ -342,43 +353,14 @@ impl ViewTraceFeature {
       lit,
       ..
     } = record;
-    let grass_level: Option<&'a GrassLevel> = scene.grass.get_level();
-    // Each grass model's colour, which a traced hit on grassed ground blends towards, averaged while the scene traces.
-    let grass_colours: Option<GraphBuffer> = scene
-      .trace
-      .as_ref()
-      .filter(|_| passes.tracing.scene_trace.is_traced())
-      .zip(grass_level)
-      .map(|(_, grass)| {
-        let colours: GraphBuffer = bindings.import_buffer(&mut *graph, "grass colours", &grass.colours);
-        let parameters: GrassColourParameters = GrassColourParameters {
-          grass_models: StorageArray::new(bindings.import_buffer(&mut *graph, "grass models", &grass.models)),
-          grass_colours: StorageArrayMut::new(colours),
-        };
-        let models: u32 = grass.model_count;
 
-        graph
-          .add_compute_pass("grass colours")
-          .parameters(&parameters)
-          .record(move |context| {
-            passes
-              .scene
-              .grass_colours
-              .record(context, &parameters, texture_group, models)
-          });
-
-        colours
-      });
-
-    // The view's own top level where its nearest trees stand swayed or its grass stands, the scene's otherwise.
+    // The view's own top level where its nearest trees stand swayed or a kind's instance stands, the scene's otherwise.
     let swayed: Option<AccelerationStructureBinding<'a>> =
       self.add_passes(GraphDeclaration::new(graph, bindings, runtime), passes, &statics);
 
-    scene
-      .trace
-      .as_ref()
-      .filter(|_| passes.tracing.scene_trace.is_traced())
-      .map(|trace| TracedScene {
+    Self::get_scene_trace(scene, passes)
+      .zip(grass)
+      .map(|(trace, grass)| TracedScene {
         trace: TraceParameters {
           trace_scene: swayed.unwrap_or_else(|| trace.get_structure()),
           trace_instances: StorageArray::new(bindings.import_buffer(
@@ -407,30 +389,12 @@ impl ViewTraceFeature {
           trace_shadow_sampler: scene.lights.get_shadow_atlas().sampler,
           trace_sun_maps: lit.shadow_maps,
           trace_sun_shadows: lit.shadows,
-          trace_grass_grid: StorageArray::new(bindings.import_buffer(
-            &mut *graph,
-            "grass grid",
-            grass_level.map_or(trace.get_empty(), |grass| &grass.cells),
-          )),
-          trace_grass_slots: StorageArray::new(bindings.import_buffer(
-            &mut *graph,
-            "grass slots",
-            grass_level.map_or(trace.get_empty(), |grass| &grass.slots),
-          )),
-          trace_grass_models: StorageArray::new(bindings.import_buffer(
-            &mut *graph,
-            "grass models",
-            grass_level.map_or(trace.get_empty(), |grass| &grass.models),
-          )),
-          trace_grass_colours: StorageArray::new(
-            grass_colours.unwrap_or_else(|| bindings.import_buffer(&mut *graph, "grass colours", trace.get_empty())),
-          ),
-          trace_grass: runtime.push_uniform(grass.get_trace_uniform()),
-          trace_grass_cards: StorageArray::new(
-            grass_cards
-              .map(|cards| cards.triangles)
-              .unwrap_or_else(|| bindings.import_buffer(&mut *graph, "grass card triangles", trace.get_empty())),
-          ),
+          trace_grass_grid: StorageArray::new(grass.grid),
+          trace_grass_slots: StorageArray::new(grass.slots),
+          trace_grass_models: StorageArray::new(grass.models),
+          trace_grass_colours: StorageArray::new(grass.colours),
+          trace_grass: grass.uniform,
+          trace_grass_cards: StorageArray::new(grass.cards),
         },
         textures: texture_group,
       })

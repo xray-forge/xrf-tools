@@ -13,6 +13,7 @@ use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::effects::rain::rings::drop_rings::DropRings;
 use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::image::present::present_inputs::PresentInputs;
+use crate::feature::scene::drawable::drawable_trace_instance::DrawableTraceInstance;
 use crate::feature::scene::drawable::light_casters::LightCasters;
 use crate::feature::scene::grass::grass_view_frame::GrassViewFrame;
 use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;
@@ -219,12 +220,12 @@ impl SceneView {
       .features
       .reflections
       .prepare(frame, self.shared.resolve, &self.features.wet);
-    self.features.view_trace.prepare(
-      frame,
-      &mut *encoder,
-      scene.trace.as_ref(),
-      self.features.grass.get_cards_blas(),
-    );
+    let trace_instances: Option<DrawableTraceInstance> = self.features.grass.get_trace_instance();
+
+    self
+      .features
+      .view_trace
+      .prepare(frame, &mut *encoder, scene.trace.as_ref(), trace_instances.as_slice());
     self.features.composited.prepare(frame, scene, &mut *encoder, sight);
     self.stages.scene.prepare(frame.options, frame.view);
     self.stages.image.prepare(frame);

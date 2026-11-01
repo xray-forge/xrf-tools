@@ -7,6 +7,7 @@ use xrf_renderer_core::{
 use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;
 use crate::contract::report::applied::render_applied_grass::RenderAppliedGrass;
 use crate::contract::report::scene::render_grass_report::RenderGrassReport;
+use crate::feature::scene::drawable::drawable_trace_instance::DrawableTraceInstance;
 use crate::feature::scene::drawable::light_casters::LightCasters;
 use crate::feature::scene::drawable::per_frame_casters::PerFrameCasters;
 use crate::feature::scene::grass::build::grass_build::GrassBuild;
@@ -20,6 +21,7 @@ use crate::feature::scene::grass::cards::grass_card_shadow_parameters::GrassCard
 use crate::feature::scene::grass::cards::grass_cards::GrassCards;
 use crate::feature::scene::grass::cards::grass_cards_parameters::GrassCardsParameters;
 use crate::feature::scene::grass::cards::grass_shadow_casters::GrassShadowCasters;
+use crate::feature::scene::grass::colour::grass_colour_parameters::GrassColourParameters;
 use crate::feature::scene::grass::draw::grass_dispatch::GrassDispatch;
 use crate::feature::scene::grass::draw::grass_draw_parameters::GrassDrawParameters;
 use crate::feature::scene::grass::draw::grass_draws::GrassDraws;
@@ -30,7 +32,9 @@ use crate::feature::scene::grass::grass_view_frame::GrassViewFrame;
 use crate::feature::scene::grass::level::grass_level::GrassLevel;
 use crate::feature::scene::grass::level::grass_level_parameters::GrassLevelParameters;
 use crate::feature::scene::grass::level::grass_source::GrassSource;
-use crate::feature::scene::grass::trace_grass_uniform::TraceGrassUniform;
+use crate::feature::scene::grass::trace::grass_trace_source::GrassTraceSource;
+use crate::feature::scene::grass::trace::trace_grass_uniform::TraceGrassUniform;
+use crate::feature::scene::grass::trace::traced_grass::TracedGrass;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::wet::puddles::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::frame::readback::stats_readback::StatsReadback;
@@ -38,6 +42,7 @@ use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::lighting::wind::foliage_motion::FoliageMotion;
 use crate::lighting::wind::grass_wind::GrassWind;
 use crate::pass::view::view_binding::ViewBinding;
+use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// Metres a detail slot spans, `dm_slot_size`.
 const SLOT_METERS: f32 = 2.0;
@@ -232,13 +237,65 @@ impl GrassView {
     };
   }
 
-  /// The cards' structure where the view traces the grass's shadows this frame.
-  pub fn get_cards_blas(&self) -> Option<&wgpu::Blas> {
+  /// The cards as an instance of the view's own top level, where the view traces the grass's shadows this frame.
+  pub fn get_trace_instance(&self) -> Option<DrawableTraceInstance<'_>> {
     self
       .cards
       .as_ref()
       .filter(|_| self.is_drawn && self.is_card_traced)
       .and_then(|cards| cards.blas.as_ref())
+      .map(|blas| DrawableTraceInstance {
+        blas,
+        custom_index: GrassCards::INSTANCE,
+        mask: GrassCards::MASK,
+      })
+  }
+
+  /// Records what a traced hit reads of the grass this frame: each of the level's models' colour averaged, which a hit
+  /// on grassed ground blends towards; the planting as the hit reads it; and the cards the frame stood.
+  pub fn add_trace<'a>(
+    &'a self,
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'a>,
+    record: ViewRecord<'a>,
+    GrassTraceSource { level, cards, empty }: GrassTraceSource<'a>,
+  ) -> TracedGrass {
+    let ViewRecord { passes, textures, .. } = record;
+    let mut import = |label: &'static str, buffer: Option<&'a wgpu::Buffer>| -> GraphBuffer {
+      bindings.import_buffer(&mut *graph, label, buffer.unwrap_or(empty))
+    };
+    let models: GraphBuffer = import("grass models", level.map(|level| &level.models));
+    let colours: GraphBuffer = import("grass colours", level.map(|level| &level.colours));
+    let grid: GraphBuffer = import("grass grid", level.map(|level| &level.cells));
+    let slots: GraphBuffer = import("grass slots", level.map(|level| &level.slots));
+
+    if let Some(level) = level {
+      let parameters: GrassColourParameters = GrassColourParameters {
+        grass_models: StorageArray::new(models),
+        grass_colours: StorageArrayMut::new(colours),
+      };
+      let count: u32 = level.model_count;
+
+      graph
+        .add_compute_pass("grass colours")
+        .parameters(&parameters)
+        .record(move |context| passes.scene.grass_colours.record(context, &parameters, textures, count));
+    }
+
+    TracedGrass {
+      grid,
+      slots,
+      models,
+      colours,
+      uniform: runtime.push_uniform(&self.trace),
+      cards: cards.map_or_else(
+        || bindings.import_buffer(&mut *graph, "grass card triangles", empty),
+        |cards| cards.triangles,
+      ),
+    }
   }
 
   /// The spacing the tufts are planted at: `density`'s, or, a `ring` planted flat, as much wider as the lists need to

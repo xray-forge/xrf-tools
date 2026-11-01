@@ -11,7 +11,7 @@ use crate::context::gpu_context::GpuContext;
 use crate::context::gpu_requirements::can_trace;
 use crate::feature::lighting::lights::lights_uniform::LightsUniform;
 use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
-use crate::feature::scene::grass::trace_grass_uniform::TraceGrassUniform;
+use crate::feature::scene::grass::trace::trace_grass_uniform::TraceGrassUniform;
 use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::host::render_asset_source::RenderAssetSource;
