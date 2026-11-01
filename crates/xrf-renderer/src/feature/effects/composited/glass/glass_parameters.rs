@@ -3,7 +3,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, UniformBindi
 use crate::feature::effects::composited::glass::glass_uniform::GlassUniform;
 use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What the enhanced glass reads beside its textures: the frame's lighting and exposure, the material table, the sun's
 /// shadow cascades, its strengths, and the frame as it stood before the glass with the depth it stands on.

@@ -1,6 +1,6 @@
 use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
-use crate::feature::image::present::present_marks::PresentMarks;
-use crate::pass::light_encoding::LightEncoding;
+use crate::feature::page::present_marks::PresentMarks;
+use crate::pass::frame_lighting::light_encoding::LightEncoding;
 
 /// What the other units decided this frame that the window pass reads: whether the scene was upscaled into the
 /// viewport, whether an ambient occlusion and an indirect light are drawn, how many frame pixels a traced reflection pixel stands for, whether anything distorts the frame,

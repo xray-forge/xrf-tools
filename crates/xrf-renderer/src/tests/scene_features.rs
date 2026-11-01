@@ -1,7 +1,7 @@
-use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::feature::scene_features::SceneFeatures;
-use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::stage::view_stages::ViewStages;
+use crate::feature::view::scene_features::SceneFeatures;
+use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_stages::ViewStages;
+use crate::pass::view::view_binding::ViewBinding;
 use crate::tests::test_context::create_test_context;
 
 /// A view's feature units hold nothing on the GPU before they draw and nothing once let go of, but for the state made

@@ -6,8 +6,8 @@ use crate::feature::effects::composited::composited_pipelines::CompositedPipelin
 use crate::feature::scene::statics::draw::static_layout_bindings::StaticLayoutBindings;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_geometry::StaticGeometry;
 use crate::scene::static_scene::static_layout::StaticLayout;

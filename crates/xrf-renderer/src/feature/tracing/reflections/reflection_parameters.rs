@@ -2,7 +2,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, UniformBindi
 
 use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::feature::tracing::reflections::reflection_uniform::ReflectionUniform;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What a stage of the screen-space reflections reads: the G-buffer, its light, occlusion and motion, the wet surface,
 /// the material table, the lighting, the exposure and the settings; the frame's nearest depth pyramid and the blue

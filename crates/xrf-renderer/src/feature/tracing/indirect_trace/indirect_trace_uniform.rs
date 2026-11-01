@@ -1,7 +1,7 @@
 use glam::Vec2;
 use xrf_renderer_core::ShaderStruct;
 
-use crate::pass::noise_turn::NoiseTurn;
+use crate::pass::view::noise_turn::NoiseTurn;
 
 /// Metres a bounce's ray reaches at most: past them the light it would carry has fallen off.
 const REACH: f32 = 30.0;

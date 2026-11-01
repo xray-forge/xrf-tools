@@ -2,9 +2,9 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::feature::tracing::ray_guides::ray_guides_parameters::RayGuidesParameters;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline_into;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Works out the guides DLSS ray reconstruction reads beside the frame, at the frame's size: each surface's diffuse and
 /// specular albedo, its world normal with its roughness, and how far its reflection ray and its indirect light ray went.

@@ -2,10 +2,10 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::PipelineMap;
 
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::pass::backdrop_uniform::BackdropUniform;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
-use crate::pass::layout_entries::uniform_entry;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::window::backdrop_uniform::BackdropUniform;
+use crate::pass::window::layout_entries::uniform_entry;
 use crate::window::window_backdrop::WindowBackdrop;
 
 /// Paints the page's backdrop over a window where it is transparent, under its viewports: each box the page paints

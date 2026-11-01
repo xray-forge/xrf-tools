@@ -4,7 +4,7 @@ use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription
 use crate::feature::image::camera::camera_effects_parameters::CameraEffectsParameters;
 use crate::feature::image::camera::camera_effects_stage::CameraEffectsStage;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// The camera the resolved frame is shown through: its depth of field, its motion blur and its lens, each stage a
 /// triangle over its target. Its pipelines come from the pipeline cache, one a stage.

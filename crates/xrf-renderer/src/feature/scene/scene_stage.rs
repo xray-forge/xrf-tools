@@ -3,7 +3,7 @@ use xrf_renderer_core::GraphDeclaration;
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::feature::scene::calibration::calibration_feature::CalibrationFeature;
-use crate::scene::level::feature::view_units::view_units;
+use crate::feature::view::view_units::view_units;
 use crate::scene::level::view_record::ViewRecord;
 
 /// The units of a view's scene that draw in it alone: the calibration props drawn into the G-buffer. The statics, the

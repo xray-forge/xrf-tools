@@ -3,7 +3,7 @@ use xrf_renderer_core::ShaderStruct;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::feature::lighting::bitmask::vbao::vbao_frame::VbaoFrame;
 use crate::feature::lighting::bitmask::vbao::vbao_light::VbaoLight;
-use crate::pass::noise_turn::NoiseTurn;
+use crate::pass::view::noise_turn::NoiseTurn;
 
 /// The exponent a strength of one raises the filtered visibility to, chosen by looking: creases read without
 /// blackening.

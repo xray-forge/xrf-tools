@@ -2,8 +2,8 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
 
 use crate::feature::tracing::view_trace::sway::trace_sway_parameters::TraceSwayParameters;
-use crate::pass::compute_grid::ComputeGrid;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::compute_grid::ComputeGrid;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// Sways the vertices of the trees a view's trace stands swayed (`static/trace_sway`), placed in the world, for their
 /// acceleration structures to be built over.

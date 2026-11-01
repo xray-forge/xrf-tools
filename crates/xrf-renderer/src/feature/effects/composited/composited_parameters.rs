@@ -2,7 +2,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, UniformBindi
 
 use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What the composited surfaces read beside their textures: the frame's lighting and exposure, the material table, and
 /// the sun's shadow cascades.

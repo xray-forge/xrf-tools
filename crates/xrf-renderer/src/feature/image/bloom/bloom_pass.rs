@@ -4,8 +4,8 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 use crate::feature::image::bloom::bloom_parameters::BloomParameters;
 use crate::feature::image::bloom::bloom_stage::BloomStage;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// The engine's bloom (`phase_bloom`): the frame's high part built into the first bloom target, blurred across into the
 /// second and down back into the first, which the present adds over the frame.

@@ -12,7 +12,7 @@ use crate::feature::tracing::scene_trace::requests::trace_request_list::TraceReq
 use crate::feature::tracing::scene_trace::scene_trace_bindings::SceneTraceBindings;
 use crate::feature::tracing::scene_trace::scene_trace_request::SceneTraceRequest;
 use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// The reflections' scene pass, the surfaces' and the water's alike: a pass listing the rays it leaves unanswered
 /// (`TraceRequestList`) has its list emptied before it, then the scene pass traces exactly the rays listed against the

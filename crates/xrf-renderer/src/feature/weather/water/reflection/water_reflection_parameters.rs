@@ -2,7 +2,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
 use crate::feature::weather::water::enhanced::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::feature::weather::water::water_uniform::WaterUniform;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What the enhanced water's reflection reads beside the scene: what every water program reads, the scene before the
 /// water, the history the frames before accumulated, and the noise jittering its march; and this frame's reflection,

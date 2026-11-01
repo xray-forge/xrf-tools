@@ -1,7 +1,7 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
 use crate::feature::weather::water::water_uniform::WaterUniform;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What the engine's water reads beside the scene: the frame's lighting and depth, both skies, and the nearest water.
 #[derive(PassParameters)]

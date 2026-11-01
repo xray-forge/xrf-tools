@@ -5,8 +5,8 @@ use crate::feature::image::smoothing::smaa_parameters::SmaaParameters;
 use crate::feature::image::smoothing::smaa_stage::SmaaStage;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_bundle::RenderBundle;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// `AreaTex` and `SearchTex` of SMAA v2.8 (MIT, Jorge Jimenez et al.), as three.js's `SMAANode` carries them, by their
 /// paths in the renderer's bundle.

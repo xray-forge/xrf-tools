@@ -3,9 +3,9 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::feature::lighting::contact_shadows::contact_shadow_parameters::ContactShadowParameters;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Marches a ray towards the sun over the frame's depth from one drawn pixel of each two by two, into how much sunlight
 /// reaches it and how far along the view it stands, which the sun brings up to every pixel by depth.

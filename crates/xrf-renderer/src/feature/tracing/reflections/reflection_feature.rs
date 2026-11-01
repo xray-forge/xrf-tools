@@ -27,6 +27,8 @@ use crate::feature::tracing::scene_trace::requests::trace_request_parameters::Tr
 use crate::feature::tracing::scene_trace::scene_trace_bindings::SceneTraceBindings;
 use crate::feature::tracing::scene_trace::scene_trace_request::SceneTraceRequest;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
+use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_frame_end::ViewFrameEnd;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::feature::weather::wet::wet_feature::WetFeature;
 use crate::feature::weather::wet::wet_targets::WetTargets;
@@ -34,9 +36,7 @@ use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::frame_texture::FrameTexture;
 use crate::frame::stats_readback::StatsReadback;
 use crate::pass::level_passes::LevelPasses;
-use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
+use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::view_prepare::ViewPrepare;
 use crate::scene::level::view_record::ViewRecord;
 

@@ -7,8 +7,8 @@ use crate::feature::effects::flares::flare_pass::FlarePass;
 use crate::feature::effects::particles::particle_pass::ParticlePass;
 use crate::feature::effects::rain::rain_pass::RainPass;
 use crate::feature::effects::thunder::thunder_pass::ThunderPass;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::stage::pass_build::PassBuild;
+use crate::pass::build::pass_build::PassBuild;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// The passes blending over the lit scene: the composited surfaces and the glass, the particles and the distortion
 /// they bend the frame by, the falling rain, the thunder's bolts, and the sun's flares.

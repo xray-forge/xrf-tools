@@ -4,9 +4,9 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 use crate::feature::lighting::ambient_occlusion::ambient_occlusion_parameters::AmbientOcclusionParameters;
 use crate::feature::lighting::ambient_occlusion::ambient_occlusion_stage::AmbientOcclusionStage;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Ambient occlusion at half the frame's size: searched into its first target, denoised across into the second and
 /// down back into the first, which combine reads.

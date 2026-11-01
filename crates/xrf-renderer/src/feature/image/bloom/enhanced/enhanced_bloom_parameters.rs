@@ -1,7 +1,7 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
 use crate::feature::image::bloom::enhanced::enhanced_bloom_uniform::EnhancedBloomUniform;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What a stage of the enhanced bloom reads: the image it builds, blurs, halves, doubles or finishes, the coarser
 /// halving a doubling adds, their sampler, the depth and marks the build finds the sky and self-lit surfaces by, and

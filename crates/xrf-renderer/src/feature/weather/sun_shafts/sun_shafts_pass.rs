@@ -3,9 +3,9 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::feature::weather::sun_shafts::sun_shafts_parameters::SunShaftsParameters;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline_into;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Adds the sun's light shafts to a viewport's frame after its forward surfaces, as `phase_combine_volumetric` adds
 /// what `accum_direct_volumetric` gathered: `one, one`; marched at half the frame's size first.

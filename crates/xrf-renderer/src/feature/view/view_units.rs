@@ -7,14 +7,14 @@ macro_rules! view_units {
       pub const UNIT_COUNT: usize = [$(stringify!($unit)),+].len();
 
       /// Every unit, as what each answers alike.
-      pub fn list(&self) -> [&dyn $crate::scene::level::feature::view_feature::ViewFeature; Self::UNIT_COUNT] {
+      pub fn list(&self) -> [&dyn $crate::feature::view::view_feature::ViewFeature; Self::UNIT_COUNT] {
         [$(&self.$unit),+]
       }
 
       /// Every unit, to let go of or change alike.
       pub fn list_mut(
         &mut self,
-      ) -> [&mut dyn $crate::scene::level::feature::view_feature::ViewFeature; Self::UNIT_COUNT] {
+      ) -> [&mut dyn $crate::feature::view::view_feature::ViewFeature; Self::UNIT_COUNT] {
         [$(&mut self.$unit),+]
       }
     }

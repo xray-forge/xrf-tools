@@ -4,7 +4,7 @@ use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParamete
 use crate::feature::image::exposure::exposure_feature::ExposureFeature;
 use crate::feature::image::exposure::exposure_parameters::ExposureParameters;
 use crate::feature::image::exposure::histogram::exposure_histogram_parameters::ExposureHistogramParameters;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// `phase_luminance`: measures the scene combine finished, then adapts the scale the next frame's tonemap reads; under
 /// the physical light, a histogram of the scene's light, then the scale brought towards middle grey.

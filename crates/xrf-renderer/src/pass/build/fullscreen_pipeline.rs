@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{RenderPipelineDescription, ShaderPermutation};
 
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// A pass drawing one triangle over its whole target, its vertices from `common/fullscreen`, into one target: a format,
 /// or a format with a blend.

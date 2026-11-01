@@ -6,9 +6,9 @@ use crate::feature::lighting::bitmask::vbao::vbao_pass::VbaoPass;
 use crate::feature::tracing::indirect_trace::indirect_trace_parameters::IndirectTraceParameters;
 use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline_into;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// The indirect light traced at the frame's size where DLSS ray reconstruction denoises the frame
 /// (`frame/indirect_trace`): one ray from each pixel's point, cosine-weighted about its normal, traced against the

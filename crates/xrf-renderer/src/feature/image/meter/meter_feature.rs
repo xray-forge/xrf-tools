@@ -4,8 +4,8 @@ use crate::contract::render_meter_reading::RenderMeterReading;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::feature::image::meter::meter_parameters::MeterParameters;
 use crate::feature::image::meter::meter_sample::MeterSample;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::gpu_readback::GpuReadback;
-use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::view_record::ViewRecord;
 
 /// A view's spot meter, while it meters a lit view: the sample its pass writes, the readback the sample is copied into

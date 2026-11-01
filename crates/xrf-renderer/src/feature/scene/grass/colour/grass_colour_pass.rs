@@ -2,7 +2,7 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
 
 use crate::feature::scene::grass::colour::grass_colour_parameters::GrassColourParameters;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// Averages each detail model's texture over its solid texels into the colour a traced hit on grassed ground blends
 /// towards (`grass/colours`), a workgroup a model, each frame the scene is traced: a few thousand reads a model, and

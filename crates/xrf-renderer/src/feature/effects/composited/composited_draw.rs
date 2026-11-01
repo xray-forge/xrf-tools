@@ -4,7 +4,7 @@ use crate::feature::effects::composited::composited_parameters::CompositedParame
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::view_record::ViewRecord;
 use crate::scene::static_scene::static_layout::StaticLayout;

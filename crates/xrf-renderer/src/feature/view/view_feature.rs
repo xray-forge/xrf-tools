@@ -1,4 +1,4 @@
-use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
+use crate::feature::view::view_frame_end::ViewFrameEnd;
 
 /// What every feature unit of a view answers alike, whatever its own frame looks like: what it holds on the GPU between
 /// frames, nought while it is switched off, letting all of it go, and its history moving on as a frame ends.

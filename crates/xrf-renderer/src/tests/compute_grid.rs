@@ -1,4 +1,4 @@
-use crate::pass::compute_grid::ComputeGrid;
+use crate::pass::build::compute_grid::ComputeGrid;
 
 #[test]
 fn keeps_a_dispatch_that_fits_on_one_row() {

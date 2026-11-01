@@ -1,5 +1,5 @@
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// What every water batch binds below its pass's own group: the view, the bindless textures, and each vertex layout's

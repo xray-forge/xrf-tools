@@ -14,11 +14,11 @@ use crate::feature::image::bloom::enhanced::enhanced_bloom_parameters::EnhancedB
 use crate::feature::image::bloom::enhanced::enhanced_bloom_pass::EnhancedBloomPass;
 use crate::feature::image::bloom::enhanced::enhanced_bloom_stage::EnhancedBloomStage;
 use crate::feature::image::bloom::enhanced::enhanced_bloom_uniform::EnhancedBloomUniform;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::pass::level_passes::LevelPasses;
-use crate::pass::lighting_uniform::LightingUniform;
-use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::view_record::ViewRecord;
 
 /// The bloom, the engine's or the enhanced one in its place: the engine's build and blurs at its fixed size, read by

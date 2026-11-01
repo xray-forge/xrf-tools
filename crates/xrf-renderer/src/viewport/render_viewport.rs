@@ -34,7 +34,7 @@ use crate::host::render_event_sink::RenderEventSink;
 use crate::host::render_scene_id::RenderSceneId;
 use crate::host::render_view_frame::RenderViewFrame;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::scene_view::SceneView;
 use crate::scene::level::view_reports::ViewReports;

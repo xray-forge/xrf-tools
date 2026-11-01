@@ -29,13 +29,13 @@ use crate::feature::scene::grass::level::grass_level::GrassLevel;
 use crate::feature::scene::grass::level::grass_level_parameters::GrassLevelParameters;
 use crate::feature::scene::grass::level::grass_source::GrassSource;
 use crate::feature::scene::grass::trace_grass_uniform::TraceGrassUniform;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::wet::puddles::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::frame::stats_readback::StatsReadback;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::lighting::foliage_motion::FoliageMotion;
 use crate::lighting::grass_wind::GrassWind;
-use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Metres a detail slot spans, `dm_slot_size`.
 const SLOT_METERS: f32 = 2.0;

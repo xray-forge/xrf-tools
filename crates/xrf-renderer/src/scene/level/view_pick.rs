@@ -1,4 +1,4 @@
-use crate::pass::camera_uniform::CameraUniform;
+use crate::pass::view::camera_uniform::CameraUniform;
 
 /// A pick a frame readies: its camera narrowed to the texel picked, the layout the view binds by, and whether it picks
 /// through glass and the other composited surfaces.

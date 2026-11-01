@@ -1,5 +1,5 @@
-use crate::feature::effects::particles::particle_blend::ParticleBlend;
-use crate::feature::effects::particles::particle_surface_record::ParticleSurfaceRecord;
+use crate::scene::level::particle_blend::ParticleBlend;
+use crate::scene::level::particle_surface_record::ParticleSurfaceRecord;
 
 /// How an effect's sprite draws: its equation, none for one drawing no colour, whether it distorts, and its record.
 pub struct ParticleSurface {

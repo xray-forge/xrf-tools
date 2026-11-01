@@ -15,10 +15,10 @@ use crate::feature::tracing::view_trace::sway::trace_sway_parameters::TraceSwayP
 use crate::feature::tracing::view_trace::sway::trace_sway_slot::TraceSwaySlot;
 use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::pass::level_passes::LevelPasses;
-use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::view_prepare::ViewPrepare;
 use crate::scene::level::view_record::ViewRecord;

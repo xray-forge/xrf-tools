@@ -9,9 +9,9 @@ use crate::feature::tracing::reflections::trace::budgeted_trace_outputs::Budgete
 use crate::feature::tracing::reflections::trace::reflection_trace_out_parameters::ReflectionTraceOutParameters;
 use crate::feature::tracing::scene_trace::requests::trace_request_parameters::TraceRequestParameters;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline_into;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Stochastic screen-space reflections at the size their quality traces at: each glossy pixel's ray scattered by its
 /// roughness and walked up and down the frame's nearest depth pyramid, what it met lit; then denoised, the last frame's

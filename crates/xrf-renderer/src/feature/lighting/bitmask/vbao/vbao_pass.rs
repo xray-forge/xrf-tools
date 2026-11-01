@@ -6,9 +6,9 @@ use crate::feature::lighting::bitmask::bitmask_search::BitmaskSearch;
 use crate::feature::lighting::bitmask::vbao::vbao_gathering::VbaoGathering;
 use crate::feature::lighting::bitmask::vbao::vbao_parameters::VbaoParameters;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline_into;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// The visibility-bitmask search at half the frame's size, for VBAO's occlusion, the indirect light or both:
 /// searched, accumulated over frames into the view's histories, then filtered into what combine reads.

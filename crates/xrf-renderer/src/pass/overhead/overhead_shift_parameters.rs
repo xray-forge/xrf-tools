@@ -1,6 +1,6 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
-use crate::pass::overhead_shift_uniform::OverheadShiftUniform;
+use crate::pass::overhead::overhead_shift_uniform::OverheadShiftUniform;
 
 /// What shifting an overhead map reads: its copy as it stood, and how far it moved.
 #[derive(Clone, Copy, PassParameters)]

@@ -2,11 +2,11 @@ use xrf_error::XrfResult;
 use xrf_material::XraySurfaceDraw;
 use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipelineDescription};
 
-use crate::feature::effects::particles::particle_blend::ParticleBlend;
 use crate::feature::effects::thunder::thunder_parameters::ThunderParameters;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
+use crate::scene::level::particle_blend::ParticleBlend;
 
 /// What draws a strike: its model, then its top glow, then its middle one, as `shaders/frame/thunder.wgsl` names them.
 const ENTRIES: [&str; 3] = ["vs_model", "vs_glow_top", "vs_glow_center"];
@@ -156,7 +156,7 @@ mod tests {
   use xrf_material::XraySurfaceDraw;
 
   use super::{BLENDS, ThunderPass};
-  use crate::feature::effects::particles::particle_blend::ParticleBlend;
+  use crate::scene::level::particle_blend::ParticleBlend;
 
   #[test]
   fn composites_each_draw_by_its_blend_and_adds_what_has_none_among_them() {

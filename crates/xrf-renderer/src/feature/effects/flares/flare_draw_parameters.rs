@@ -1,7 +1,7 @@
 use xrf_renderer_core::{PassParameters, StorageValue, UniformBinding};
 
 use crate::feature::effects::flares::flare_uniform::FlareUniform;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What drawing the flares reads: the lens flare, how much of the sun shows as measured, the sampler, and the frame's
 /// lighting, whose display the flares' pictures enter the scene through.

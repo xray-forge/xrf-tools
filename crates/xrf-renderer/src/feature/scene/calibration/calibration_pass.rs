@@ -4,8 +4,8 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipeli
 use crate::feature::scene::calibration::calibration_parameters::CalibrationParameters;
 use crate::feature::scene::calibration::calibration_uniform::CalibrationUniform;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Draws the calibration props into the G-buffer and its depth, each as a quad: a sphere ray-cast within its own,
 /// writing the depth it meets, and the chart flat.

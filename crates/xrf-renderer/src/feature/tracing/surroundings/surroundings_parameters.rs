@@ -2,7 +2,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, UniformBindi
 
 use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::feature::tracing::surroundings::surroundings_uniform::SurroundingsUniform;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What resolving one face of the surroundings cube reads and writes: the face's G-buffer as the static scene drew it,
 /// the material table, both keyframes' sky and irradiance cubes and clouds and their samplers, the lighting, the

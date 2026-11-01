@@ -1,4 +1,4 @@
-use crate::pass::backdrop_uniform::BackdropUniform;
+use crate::pass::window::backdrop_uniform::BackdropUniform;
 
 /// What one window's backdrop is painted with: its uniform, what it holds so an unchanged backdrop writes nothing, and
 /// the bind group the backdrop pass binds it through.

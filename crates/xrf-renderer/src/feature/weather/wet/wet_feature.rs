@@ -7,6 +7,8 @@ use xrf_renderer_core::{
 use crate::contract::render_rain_settings::RenderRainSettings;
 use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::effects::rain::rings::drop_rings::DropRings;
+use crate::feature::view::overhead_windows::OverheadWindows;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::water::enhanced::enhanced_water_maps::EnhancedWaterMaps;
 use crate::feature::weather::wet::wet_apply_parameters::WetApplyParameters;
 use crate::feature::weather::wet::wet_draw::WetDraw;
@@ -15,8 +17,6 @@ use crate::feature::weather::wet::wet_patch_parameters::WetPatchParameters;
 use crate::feature::weather::wet::wet_stage::WetStage;
 use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::feature::weather::wet::wet_uniform::WetUniform;
-use crate::scene::level::feature::overhead_windows::OverheadWindows;
-use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::level_wetness::LevelWetness;
 use crate::scene::level::rain_wetness::RainWetness;
 use crate::scene::level::shadows_recorded::ShadowsRecorded;

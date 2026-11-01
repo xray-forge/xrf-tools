@@ -1,5 +1,5 @@
 use crate::host::render_bundle::RenderBundle;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// What every stage's passes are built from: where they ask for their pipelines, the queue their tables are written
 /// by, the files bundled beside the code, and the layouts their draws share with every other pass, so each pipeline a

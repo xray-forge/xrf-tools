@@ -2,7 +2,7 @@ use glam::{Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::render_contact_shadow_settings::RenderContactShadowSettings;
-use crate::pass::noise_turn::NoiseTurn;
+use crate::pass::view::noise_turn::NoiseTurn;
 
 /// The share of the drawn height a ray spans at most, however near the surface it leaves.
 const MAX_REACH: f32 = 0.125;

@@ -3,8 +3,8 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::feature::image::resolve::upscale::upscale_parameters::UpscaleParameters;
 use crate::feature::image::resolve::upscale::upscale_stage::UpscaleStage;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// FSR 1 over a frame drawn smaller than its viewport: EASU upscales it, RCAS sharpens the upscaled frame.
 pub struct UpscalePass {

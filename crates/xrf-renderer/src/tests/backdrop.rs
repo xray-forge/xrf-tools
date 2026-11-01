@@ -5,7 +5,7 @@ use crate::contract::render_page_backdrop::RenderPageBackdrop;
 use crate::contract::render_page_plane::RenderPagePlane;
 use crate::contract::render_page_wash::RenderPageWash;
 use crate::contract::render_rect::RenderRect;
-use crate::pass::backdrop_uniform::BackdropUniform;
+use crate::pass::window::backdrop_uniform::BackdropUniform;
 
 fn plane(x: i32, width: u32) -> RenderPagePlane {
   RenderPagePlane {

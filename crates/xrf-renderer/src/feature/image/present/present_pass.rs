@@ -2,9 +2,9 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, PipelineMap, RasterContext};
 
 use crate::feature::image::present::present_parameters::PresentParameters;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Puts a viewport's finished scene into its rectangle of the window, moved where the water and the particles distort
 /// it and dithered to the window's eight bits; or, for a debug view, one of the targets the scene was built from.

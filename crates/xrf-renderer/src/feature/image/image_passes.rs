@@ -10,8 +10,8 @@ use crate::feature::image::resolve::temporal::temporal_pass::TemporalPass;
 use crate::feature::image::resolve::upscale::upscale_pass::UpscalePass;
 use crate::feature::image::smoothing::fxaa_pass::FxaaPass;
 use crate::feature::image::smoothing::smaa_pass::SmaaPass;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::stage::pass_build::PassBuild;
+use crate::pass::build::pass_build::PassBuild;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// The passes turning the lit frame into the image shown: the bloom, the smoothing, the temporal resolves and the
 /// upscale, the camera's effects, the exposure and the spot meter.

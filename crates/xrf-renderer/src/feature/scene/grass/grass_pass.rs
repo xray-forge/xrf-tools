@@ -16,9 +16,9 @@ use crate::feature::scene::grass::draw::grass_draws::GrassDraws;
 use crate::feature::scene::grass::draw::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::feature::scene::grass::level::grass_level_parameters::GrassLevelParameters;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::compute_grid::ComputeGrid;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::compute_grid::ComputeGrid;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// The planting's entry points, in the order a frame dispatches them: the ring's stale cells ranked and the nearest
 /// planted, before the frame's depth; then, against that depth, every current cell culled and what it keeps sorted.

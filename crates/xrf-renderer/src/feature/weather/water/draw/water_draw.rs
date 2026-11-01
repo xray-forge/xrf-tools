@@ -7,7 +7,7 @@ use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::feature::weather::water::water_feature::WaterFeature;
 use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::static_scene::static_layout::StaticLayout;
 

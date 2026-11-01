@@ -2,7 +2,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
 use crate::feature::weather::water::enhanced::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::feature::weather::water::water_uniform::WaterUniform;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What the enhanced water's surface reads beside the scene: what the engine's reads, the scene before the water, its
 /// reflection blurred and as drawn, how much of the sun reaches the scene, its maps, and the enhanced drops' rings.

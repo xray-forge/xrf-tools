@@ -3,8 +3,8 @@ use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription
 
 use crate::feature::image::bloom::enhanced::enhanced_bloom_parameters::EnhancedBloomParameters;
 use crate::feature::image::bloom::enhanced::enhanced_bloom_stage::EnhancedBloomStage;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// The enhanced bloom, in place of the engine's: the finished scene blurred to half its size, its bright parts and
 /// self-lit surfaces built from that, halved six times and doubled back with each halving added, then tonemapped into

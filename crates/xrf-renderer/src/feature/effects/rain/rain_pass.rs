@@ -13,9 +13,9 @@ use crate::feature::effects::rain::rings::rain_rings::RainRings;
 use crate::feature::effects::rain::rings::rain_rings_reduce_parameters::RainRingsReduceParameters;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_bundle::RenderBundle;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Draws the rain over a viewport's finished scene as `RenderLast` does after the forward surfaces: the streaks, then
 /// the splashes, blended by their alpha and tested against the G-buffer's depth without writing it. The enhanced

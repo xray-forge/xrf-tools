@@ -2,6 +2,7 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipelineDescription};
 
 use crate::feature::effects::composited::composited_pass::CompositedPass;
+use crate::feature::page::pick_glass::PickGlass;
 use crate::feature::scene::statics::draw::static_draw_bindings::StaticDrawBindings;
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::feature::scene::statics::draw::static_draw_permutation::StaticDrawPermutation;
@@ -10,8 +11,7 @@ use crate::feature::scene::statics::draw::static_mark_draw::StaticMarkDraw;
 use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::StaticGbufferDraw;
 use crate::frame::pick_target::PickTarget;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::pick_glass::PickGlass;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::pipeline_source::PipelineSource;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;

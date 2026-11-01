@@ -1,5 +1,5 @@
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// What the G-buffer's static draws bind besides their arguments: the view, the static scene's draws, and the texture
 /// cache's group.

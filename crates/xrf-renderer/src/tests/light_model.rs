@@ -26,10 +26,10 @@ use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
 use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::{anchored_light, authored_colour, authored_light, srgb_decoded, srgb_encoded};
-use crate::pass::camera_uniform::CameraUniform;
-use crate::pass::lighting_frame::LightingFrame;
-use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::picture_shares::PictureShares;
+use crate::pass::frame_lighting::lighting_frame::LightingFrame;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::picture_shares::PictureShares;
+use crate::pass::view::camera_uniform::CameraUniform;
 
 fn physical() -> RenderViewOptions {
   let mut options: RenderViewOptions = RenderViewOptions::default();

@@ -23,10 +23,10 @@ use crate::feature::lighting::lights::visibility::light_binning_parameters::Ligh
 use crate::feature::lighting::lights::visibility::light_shadowing_parameters::LightShadowingParameters;
 use crate::feature::lighting::lights::visibility::light_visibility_parameters::LightVisibilityParameters;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::stats_readback::StatsReadback;
 use crate::pass::level_passes::LevelPasses;
-use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::light_record::LightRecord;
 use crate::scene::level::light_volume_record::LightVolumeRecord;
 use crate::scene::level::light_volumes_uniform::LightVolumesUniform;

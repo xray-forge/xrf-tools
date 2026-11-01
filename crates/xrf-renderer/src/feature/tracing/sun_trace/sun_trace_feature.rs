@@ -6,11 +6,11 @@ use crate::feature::tracing::sun_trace::sun_trace_parameters::SunTraceParameters
 use crate::feature::tracing::sun_trace::sun_trace_pass::SunTracePass;
 use crate::feature::tracing::sun_trace::sun_trace_uniform::SunTraceUniform;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::pass::level_passes::LevelPasses;
-use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// The sun's shadow traced, where DLSS ray reconstruction resolves a lit, solid frame and the scene's trace is built:
 /// one ray a pixel towards the sun's disc, raw, which the sun's pass takes in its cascades' place.

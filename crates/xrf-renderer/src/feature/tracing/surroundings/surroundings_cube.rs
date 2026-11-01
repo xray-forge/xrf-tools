@@ -20,6 +20,7 @@ use crate::feature::tracing::surroundings::surroundings_faces::SurroundingsFaces
 use crate::feature::tracing::surroundings::surroundings_parameters::SurroundingsParameters;
 use crate::feature::tracing::surroundings::surroundings_pass::SurroundingsPass;
 use crate::feature::tracing::surroundings::surroundings_uniform::SurroundingsUniform;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_job::PeriodicJob;
@@ -27,8 +28,7 @@ use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::camera_uniform::CameraUniform;
-use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::pass::view::camera_uniform::CameraUniform;
 use crate::scene::level::shadow_frame::ShadowFrame;
 use crate::scene::level::view_record::ViewRecord;
 use crate::scene::static_scene::static_layout::StaticLayout;

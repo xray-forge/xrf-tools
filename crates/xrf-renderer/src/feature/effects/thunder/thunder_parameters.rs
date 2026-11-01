@@ -2,7 +2,7 @@ use glam::Vec4;
 use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, UniformBinding};
 
 use crate::feature::effects::thunder::thunder_uniform::ThunderUniform;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What one of a strike's draws reads: the strike, its texture, the bolt's model, empty for a glow, and the frame's
 /// lighting, whose display the bolt's pictures enter the scene through.

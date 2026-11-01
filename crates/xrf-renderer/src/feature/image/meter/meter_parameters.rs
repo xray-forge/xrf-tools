@@ -2,7 +2,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, StorageValue
 
 use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::feature::image::meter::meter_sample::MeterSample;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What the spot meter reads and writes: the finished scene, the G-buffer's albedo, the light the sun and the lamps
 /// gathered, the depth, the frame's lighting and exposure, and the sample it writes.

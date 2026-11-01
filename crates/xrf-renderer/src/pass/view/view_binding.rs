@@ -1,5 +1,5 @@
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::pass::camera_uniform::CameraUniform;
+use crate::pass::view::camera_uniform::CameraUniform;
 
 /// One viewport's camera on the GPU: its uniform buffer and the bind group passes read it through.
 pub struct ViewBinding {

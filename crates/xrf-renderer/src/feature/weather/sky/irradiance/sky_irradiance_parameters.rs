@@ -2,7 +2,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, StorageValue
 
 use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What projecting the sky's irradiance reads and writes: both keyframes' sky cubes, irradiance cubes and clouds and
 /// their samplers, the lighting that blends and tints them, the exposure whose scale the sky is drawn on, and the

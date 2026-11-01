@@ -4,15 +4,15 @@ use xrf_particles::ParticleEffectInstance;
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphDepthAttachment, StorageArray, UniformBinding};
 
 use crate::feature::effects::particles::particle_batch::ParticleBatch;
-use crate::feature::effects::particles::particle_blend::ParticleBlend;
 use crate::feature::effects::particles::particle_parameters::ParticleParameters;
 use crate::feature::effects::particles::particle_pass::ParticlePass;
-use crate::feature::effects::particles::particle_vertex::ParticleVertex;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::pass::lighting_uniform::LightingUniform;
-use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
+use crate::scene::level::particle_blend::ParticleBlend;
 use crate::scene::level::particle_sprite::ParticleSprite;
 use crate::scene::level::particle_surface::ParticleSurface;
+use crate::scene::level::particle_vertex::ParticleVertex;
 use crate::scene::level::view_record::ViewRecord;
 
 /// Quads the vertex buffer holds at first; it doubles past them.

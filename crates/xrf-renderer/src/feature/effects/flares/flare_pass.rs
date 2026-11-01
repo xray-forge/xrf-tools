@@ -8,8 +8,8 @@ use crate::feature::effects::flares::flare_measure_parameters::FlareMeasureParam
 use crate::feature::effects::flares::flare_texture_parameters::FlareTextureParameters;
 use crate::feature::effects::flares::flare_uniform::FlareUniform;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Measures how much of the sun shows and draws the lens flares and the gradient over a viewport's finished frame, as
 /// `CEnvironment::RenderFlares` does after combine: each a quad added by its alpha, `srcalpha, one`, with no depth.

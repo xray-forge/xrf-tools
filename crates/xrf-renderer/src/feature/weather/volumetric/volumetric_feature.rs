@@ -6,6 +6,8 @@ use xrf_renderer_core::{
 
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::feature::lighting::lights::lights_feature::LightsFeature;
+use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_frame_end::ViewFrameEnd;
 use crate::feature::weather::volumetric::froxels::froxel_inject_parameters::FroxelInjectParameters;
 use crate::feature::weather::volumetric::froxels::froxel_integrate_parameters::FroxelIntegrateParameters;
 use crate::feature::weather::volumetric::froxels::froxel_uniform::FroxelUniform;
@@ -15,9 +17,7 @@ use crate::feature::weather::volumetric::light_volumes::light_volume_parameters:
 use crate::feature::weather::volumetric::light_volumes::light_volume_pass::LightVolumePass;
 use crate::feature::weather::volumetric::volumetric_shafts::VolumetricShafts;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::lighting_uniform::LightingUniform;
-use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::view_record::ViewRecord;
 

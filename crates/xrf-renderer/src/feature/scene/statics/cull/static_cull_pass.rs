@@ -5,9 +5,9 @@ use crate::feature::scene::statics::cull::shadow_cull::ShadowCull;
 use crate::feature::scene::statics::cull::static_cull_parameters::StaticCullParameters;
 use crate::feature::scene::statics::cull::static_cull_permutation::StaticCullPermutation;
 use crate::feature::scene::statics::cull::static_cull_uniform::StaticCullUniform;
-use crate::pass::compute_grid::ComputeGrid;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::compute_grid::ComputeGrid;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 

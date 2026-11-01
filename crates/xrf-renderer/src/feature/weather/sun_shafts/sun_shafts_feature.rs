@@ -2,6 +2,7 @@ use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, Gr
 
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::sun_shafts::sun_shafts_parameters::SunShaftsParameters;
 use crate::feature::weather::sun_shafts::sun_shafts_pass::{SunShaftsDraw, SunShaftsPass};
 use crate::feature::weather::volumetric::froxels::froxel_uniform::FroxelUniform;
@@ -10,7 +11,6 @@ use crate::feature::weather::volumetric::volumetric_shafts::VolumetricShafts;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_targets::ViewTargets;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::view_record::ViewRecord;
 
 /// The sun's shafts, marched at half size through its shadow while the weather shafts it, and the composite that adds

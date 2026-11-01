@@ -9,8 +9,8 @@ use crate::feature::lighting::shadows::static_shadow_pass::StaticShadowPass;
 use crate::feature::lighting::sun::sun_pass::SunPass;
 use crate::feature::lighting::tables::brdf_table::BrdfTable;
 use crate::feature::lighting::tables::material_table::MaterialTable;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::stage::pass_build::PassBuild;
+use crate::pass::build::pass_build::PassBuild;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// The passes lighting the G-buffer and shadowing it: the static scene's shadow draws, the sun and its contact
 /// shadows, the local lights, the screen's occlusion and the bitmask search, the combine, and the tables every lit pass

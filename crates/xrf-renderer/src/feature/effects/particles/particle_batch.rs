@@ -1,4 +1,4 @@
-use crate::feature::effects::particles::particle_blend::ParticleBlend;
+use crate::scene::level::particle_blend::ParticleBlend;
 
 /// A run of particle quads drawn with one equation, in the order the frame draws them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

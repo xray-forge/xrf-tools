@@ -6,8 +6,8 @@ use crate::feature::scene::grass::grass_pass::GrassPass;
 use crate::feature::scene::pyramid::depth_pyramid_pass::DepthPyramidPass;
 use crate::feature::scene::statics::cull::static_cull_pass::StaticCullPass;
 use crate::feature::scene::statics::gbuffer::static_gbuffer_pass::StaticGBufferPass;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::stage::pass_build::PassBuild;
+use crate::pass::build::pass_build::PassBuild;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// The passes drawing the scene into the G-buffer: the static scene's cull, its depth pyramid and its draws, the grass
 /// and its colours, and the calibration props.

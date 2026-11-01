@@ -2,7 +2,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, StorageArray
 
 use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::feature::tracing::scene_trace::requests::trace_request::TraceRequest;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What the reflections' scene pass reads and writes: the lighting and the material table a hit is lit by, and the
 /// exposure a water's is tonemapped at; the rays a pass left to it and their head, whose wait it keeps; and the target

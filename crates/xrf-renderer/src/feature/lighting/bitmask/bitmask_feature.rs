@@ -19,14 +19,14 @@ use crate::feature::lighting::bitmask::vbao::vbao_parameters::VbaoParameters;
 use crate::feature::lighting::bitmask::vbao::vbao_pass::VbaoPass;
 use crate::feature::lighting::bitmask::vbao::vbao_uniform::VbaoUniform;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
+use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::view::view_frame_end::ViewFrameEnd;
 use crate::frame::frame_texture::FrameTexture;
 use crate::frame::history::History;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::level_passes::LevelPasses;
-use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
+use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::view_prepare::ViewPrepare;
 
 /// The visibility-bitmask search at half the frame's size, for VBAO's occlusion, the indirect light or both, RTAO

@@ -14,11 +14,11 @@ use crate::feature::effects::flares::flare_texture_parameters::FlareTextureParam
 use crate::feature::effects::flares::flare_uniform::FlareUniform;
 use crate::feature::effects::flares::lens_flare_fade::LensFlareFade;
 use crate::feature::effects::flares::sun_sprite::SunSprite;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_lens_flare::RenderLensFlare;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::view_prepare::ViewPrepare;
 use crate::scene::level::view_record::ViewRecord;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;

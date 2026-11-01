@@ -4,9 +4,9 @@ use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::feature::image::camera::camera_feature::CameraFeature;
 use crate::feature::image::image_chain::ImageChain;
 use crate::feature::image::smoothing::smoothing_feature::SmoothingFeature;
+use crate::feature::view::view_units::view_units;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
-use crate::scene::level::feature::view_units::view_units;
 use crate::scene::level::view_prepare::ViewPrepare;
 
 /// The units turning a view's frame into the image it shows, each alone in that part of it: the smoothing before the

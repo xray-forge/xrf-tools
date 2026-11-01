@@ -29,9 +29,9 @@ use crate::lighting::light_shadow_size::{
   LIGHT_SHADOW_MIN_SIZE, LIGHT_SHADOW_POINT_CONE, LIGHT_SHADOW_POINT_FACES, LIGHT_SHADOW_WIDENING,
   to_light_shadow_size, to_light_shadow_tile_size,
 };
-use crate::pass::camera_uniform::CameraUniform;
-use crate::pass::indirect_args::IndirectArgs;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::indirect_args::IndirectArgs;
+use crate::pass::view::camera_uniform::CameraUniform;
+use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::light_shadow_ask::LightShadowAsk;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::light_shadow_entry::LightShadowEntry;

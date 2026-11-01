@@ -2,8 +2,8 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
 
 use crate::feature::image::meter::meter_parameters::MeterParameters;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Reads a spot of the finished scene at a view's centre, and what the G-buffer holds there, into a sample a report
 /// reads back.

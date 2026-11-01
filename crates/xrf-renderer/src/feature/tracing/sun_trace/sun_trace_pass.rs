@@ -4,9 +4,9 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 use crate::context::gpu_requirements::can_trace;
 use crate::feature::tracing::sun_trace::sun_trace_parameters::SunTraceParameters;
 use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// The sun's shadow traced at the frame's size: one ray a pixel towards a point of the sun's disc, traced against the
 /// level's geometry by hardware ray query (`frame/sun_trace`), its visibility written for the sun's pass, where DLSS

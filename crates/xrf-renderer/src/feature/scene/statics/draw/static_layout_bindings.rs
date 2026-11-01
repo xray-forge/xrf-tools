@@ -1,5 +1,5 @@
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// What a pass drawing the static scene's surfaces binds besides its own: the view, each vertex layout's draw

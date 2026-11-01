@@ -1,7 +1,7 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
 use crate::feature::tracing::indirect_trace::indirect_trace_uniform::IndirectTraceUniform;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What the traced indirect light reads: the G-buffer's normals, depth and marks, the lighting and the material table a
 /// hit is lit by, and its own noise, reach and intensity.

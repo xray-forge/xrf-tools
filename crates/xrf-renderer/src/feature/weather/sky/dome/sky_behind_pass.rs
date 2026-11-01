@@ -3,9 +3,9 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::feature::weather::sky::dome::sky_behind_parameters::SkyBehindParameters;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline_into;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Draws the sky the distance fog fades into along each pixel's view, at half the frame's size, for combine to mix in.
 pub struct SkyBehindPass {

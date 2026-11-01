@@ -1,7 +1,7 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
 use crate::feature::weather::fog::fog_scattering_uniform::FogScatteringUniform;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What a stage of the fog scattering reads: the image it blurs or scatters into, the blur a stage before it left, the
 /// depth the fog is measured by, the lighting and the stage's own uniform.

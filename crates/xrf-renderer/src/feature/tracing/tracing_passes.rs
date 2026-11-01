@@ -8,8 +8,8 @@ use crate::feature::tracing::scene_trace::scene_trace_pass::SceneTracePass;
 use crate::feature::tracing::sun_trace::sun_trace_pass::SunTracePass;
 use crate::feature::tracing::surroundings::surroundings_pass::SurroundingsPass;
 use crate::feature::tracing::view_trace::sway::trace_sway_pass::TraceSwayPass;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::stage::pass_build::PassBuild;
+use crate::pass::build::pass_build::PassBuild;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// The passes reflecting and tracing the scene: the screen reflections and the surroundings cube below them, the
 /// scene's trace and its sway, the traced sun, indirect light and occlusion, and the guides DLSS reconstructs the rays

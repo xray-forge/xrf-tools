@@ -4,7 +4,7 @@ use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParamete
 
 use crate::feature::weather::sky::prefilter::sky_prefilter::SkyPrefilter;
 use crate::feature::weather::sky::prefilter::sky_prefilter_parameters::SkyPrefilterParameters;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// Fills the prefiltered sky cube, a mip a dispatch: the first from the sky's own cubes as the sky is drawn, each after
 /// it by sampling the mips before it over the GGX lobe of its roughness.

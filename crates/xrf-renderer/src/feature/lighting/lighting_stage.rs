@@ -18,8 +18,8 @@ use crate::feature::tracing::indirect_trace::indirect_trace_feature::IndirectTra
 use crate::feature::tracing::indirect_trace::indirect_traced::IndirectTraced;
 use crate::feature::tracing::sun_trace::sun_trace_feature::SunTraceFeature;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
+use crate::feature::view::view_units::view_units;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
-use crate::scene::level::feature::view_units::view_units;
 use crate::scene::level::view_frame::ViewFrame;
 use crate::scene::level::view_prepare::ViewPrepare;
 use crate::scene::level::view_record::ViewRecord;

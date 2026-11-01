@@ -2,9 +2,9 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, PipelineMap, RasterContext, RenderPipelineDescription, VertexLayout};
 
 use crate::host::render_bundle::RenderBundle;
-use crate::pass::overlay_draw::OverlayDraw;
-use crate::pass::overlay_parameters::OverlayParameters;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::window::overlay_draw::OverlayDraw;
+use crate::pass::window::overlay_parameters::OverlayParameters;
 use crate::scene::level::helpers::gpu::helper_icon_atlas::HelperIconAtlas;
 use crate::scene::level::helpers::gpu::helper_icon_instance::HelperIconInstance;
 use crate::scene::level::helpers::gpu::helper_vertex::HelperVertex;

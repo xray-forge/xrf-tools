@@ -31,7 +31,7 @@ use crate::feature::weather::water::water_uniform::WaterUniform;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_bundle::RenderBundle;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::pipeline_source::PipelineSource;
 use crate::scene::static_scene::static_batch::StaticBatch;
 
 /// What the frame's water passes share once declared: the uniforms, both skies, the nearest water, the cull's argument

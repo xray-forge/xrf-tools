@@ -2,7 +2,7 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
 
 use crate::feature::weather::sky::irradiance::sky_irradiance_parameters::SkyIrradianceParameters;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// Projects the sky's irradiance into spherical harmonics for the physical light, one workgroup a frame.
 pub struct SkyIrradiancePass {

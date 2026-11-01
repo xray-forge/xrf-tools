@@ -1,7 +1,7 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, UniformBinding};
 
 use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What the enhanced drops and splashes read beside the rain: the scene blurred at an eighth of its size, which they
 /// bend, the drop's and the splash's maps and their sampler, the depth the bend is checked against, the light their

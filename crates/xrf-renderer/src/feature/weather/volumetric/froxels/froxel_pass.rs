@@ -4,8 +4,8 @@ use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParamete
 use crate::feature::weather::volumetric::froxels::froxel_inject_parameters::FroxelInjectParameters;
 use crate::feature::weather::volumetric::froxels::froxel_integrate_parameters::FroxelIntegrateParameters;
 use crate::feature::weather::volumetric::froxels::froxel_volume::FroxelVolume;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Draws the enhanced volumetric lighting's froxels: fills each with what the sun and the local lights scatter in it
 /// and how thick it is, over its history, then integrates them along the view into what reaches the camera up to each,

@@ -1,5 +1,5 @@
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// What the G-buffer pass marks the helped spawned models with: the view's camera, the scene's draws and textures, the
 /// marked models' places and colours (`HelpersFeature::get_marks`), and the argument buffers listing the visible

@@ -4,7 +4,7 @@ use xrf_renderer_core::{
 
 use crate::feature::scene::grass::cards::grass_card_shadow_parameters::GrassCardShadowParameters;
 use crate::feature::scene::grass::grass_pass::GrassPass;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// The grass's cards a frame draws into its near sun cascades, where those shadow it: the pass, what their draw reads
 /// and the textures it cuts them by, and their indirect draw as the graph knows it.

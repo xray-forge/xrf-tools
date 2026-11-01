@@ -2,7 +2,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, UniformBindi
 
 use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::feature::weather::sky::prefilter::sky_prefilter_uniform::SkyPrefilterUniform;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What filling one mip of the prefiltered sky cube reads and writes: both keyframes' sky cubes and clouds and their
 /// samplers, the mips filled before it (a texel of nothing for the first), the lighting that blends and tints the sky,

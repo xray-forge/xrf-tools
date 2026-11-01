@@ -13,9 +13,9 @@ use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTra
 use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::{anchored_light, authored_light};
-use crate::pass::light_encoding::LightEncoding;
-use crate::pass::lighting_frame::LightingFrame;
-use crate::pass::picture_shares::PictureShares;
+use crate::pass::frame_lighting::light_encoding::LightEncoding;
+use crate::pass::frame_lighting::lighting_frame::LightingFrame;
+use crate::pass::frame_lighting::picture_shares::PictureShares;
 
 /// The lighting the shaders read as their `Lighting`: one viewport's, since the sun is given in its view space.
 #[repr(C)]

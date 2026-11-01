@@ -9,8 +9,8 @@ use crate::contract::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
 use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::image::present::present_frame::PresentFrame;
-use crate::feature::image::present::present_marks::PresentMarks;
-use crate::pass::light_encoding::LightEncoding;
+use crate::feature::page::present_marks::PresentMarks;
+use crate::pass::frame_lighting::light_encoding::LightEncoding;
 
 /// What the present pass shows and the overlays drawn over it read, as WGSL's `Present`.
 #[repr(C)]

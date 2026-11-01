@@ -5,9 +5,9 @@ use crate::context::gpu_requirements::can_trace;
 use crate::feature::lighting::bitmask::vbao::vbao_parameters::VbaoParameters;
 use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline_into;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// RTAO at half the frame's size: a few short rays from each point, cosine-weighted about its normal, traced against
 /// the level's geometry by hardware ray query (`frame/rtao`), their unblocked share written as the bitmask search

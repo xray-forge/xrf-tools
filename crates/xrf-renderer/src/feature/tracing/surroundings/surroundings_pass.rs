@@ -2,8 +2,8 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
 
 use crate::feature::tracing::surroundings::surroundings_parameters::SurroundingsParameters;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Lights one face of the surroundings cube from the G-buffer the static scene drew into it, the sky behind, into the
 /// prefiltered cube's first mip, which the mips after it blur.

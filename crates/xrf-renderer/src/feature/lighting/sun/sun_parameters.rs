@@ -1,7 +1,7 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
 use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What the sun's pass reads: the G-buffer's albedo, normals, material and depth, the material table and the BRDF's
 /// split-sum table, the frame's lighting, the sun's shadow cascades and what they were drawn with, the contact shadows

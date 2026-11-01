@@ -11,10 +11,10 @@ use crate::feature::image::camera::camera_effects_pass::CameraEffectsPass;
 use crate::feature::image::camera::camera_effects_stage::CameraEffectsStage;
 use crate::feature::image::camera::camera_effects_uniform::CameraEffectsUniform;
 use crate::feature::image::image_chain::ImageChain;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
-use crate::scene::level::feature::view_feature::ViewFeature;
 
 /// The camera the resolved frame is shown through (`RenderCameraSettings`): its depth of field, then its motion blur,
 /// then its lens, each over the image before it; the film's grain is the present's. Drawn where the view is lit, shows

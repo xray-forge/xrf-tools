@@ -4,7 +4,7 @@ use xrf_renderer_core::{
 
 use crate::feature::image::exposure::exposure_state::ExposureState;
 use crate::feature::image::exposure::histogram::exposure_histogram_uniform::ExposureHistogramUniform;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What the physical light's exposure reads and writes: the scene as drawn and its depth, the exposure's state, the
 /// histogram's bins and how it meters, and the lighting, whose light unit and display the authored levels' engine meter

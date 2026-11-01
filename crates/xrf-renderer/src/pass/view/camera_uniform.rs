@@ -8,7 +8,7 @@ use crate::contract::render_rect::RenderRect;
 use crate::contract::render_surface_color::RenderSurfaceColor;
 use crate::contract::render_terrain_settings::RenderTerrainSettings;
 use crate::contract::render_view_options::RenderViewOptions;
-use crate::pass::light_view::LightView;
+use crate::pass::view::light_view::LightView;
 use crate::scene::static_scene::static_selection::StaticSelection;
 
 /// What every pass drawing a viewport knows of its camera and the frame's switches: WGSL's `Camera`, which

@@ -25,7 +25,7 @@ use crate::frame::frame_texture::FrameTexture;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_target_uses::ViewTargetUses;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::pipeline_source::PipelineSource;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::test_context::create_test_context;
 

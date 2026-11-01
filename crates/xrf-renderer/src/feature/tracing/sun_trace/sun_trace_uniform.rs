@@ -1,7 +1,7 @@
 use glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
-use crate::pass::noise_turn::NoiseTurn;
+use crate::pass::view::noise_turn::NoiseTurn;
 
 /// The sun's angular radius, which a traced shadow's rays are drawn within: the real sun's, about half a degree across,
 /// so a shadow's penumbra widens with its caster's distance as daylight's does.

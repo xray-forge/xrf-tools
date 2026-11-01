@@ -1,4 +1,4 @@
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 
 /// One cull and draw of a shadow's map, or of a region of it: the visible lists and draw arguments its cull fills, and

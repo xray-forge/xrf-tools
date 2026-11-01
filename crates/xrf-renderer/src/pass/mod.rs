@@ -1,24 +1,10 @@
-pub(crate) mod backdrop_pass;
-pub(crate) mod backdrop_uniform;
-pub(crate) mod camera_uniform;
-pub(crate) mod compute_grid;
-pub(crate) mod fullscreen_pipeline;
-pub(crate) mod grid_pass;
-pub(crate) mod indirect_args;
-pub(crate) mod layout_entries;
+//! What every feature's passes share: how they are built, what they bind of a view, the frame's lighting uniform, the
+//! overhead maps' shift, the window's own passes, and `LevelPasses`, which borrows every group's passes for a view. A
+//! feature's own passes live in its folder under `feature/`.
+
+pub(crate) mod build;
+pub(crate) mod frame_lighting;
 pub(crate) mod level_passes;
-pub(crate) mod light_encoding;
-pub(crate) mod light_view;
-pub(crate) mod lighting_frame;
-pub(crate) mod lighting_uniform;
-pub(crate) mod noise_turn;
-pub(crate) mod overhead_shift_parameters;
-pub(crate) mod overhead_shift_uniform;
-pub(crate) mod overlay_draw;
-pub(crate) mod overlay_parameters;
-pub(crate) mod overlay_pass;
-pub(crate) mod pick_glass;
-pub(crate) mod picture_shares;
-pub(crate) mod pipeline_source;
-pub(crate) mod stage;
-pub(crate) mod view_binding;
+pub(crate) mod overhead;
+pub(crate) mod view;
+pub(crate) mod window;

@@ -13,8 +13,6 @@ use crate::feature::effects::flares::flare_measure_parameters::FlareMeasureParam
 use crate::feature::effects::flares::flare_texture_parameters::FlareTextureParameters;
 use crate::feature::effects::flares::flare_uniform::FlareUniform;
 use crate::feature::effects::particles::particle_parameters::ParticleParameters;
-use crate::feature::effects::particles::particle_surface_record::ParticleSurfaceRecord;
-use crate::feature::effects::particles::particle_vertex::ParticleVertex;
 use crate::feature::effects::rain::enhanced::rain_blur_parameters::RainBlurParameters;
 use crate::feature::effects::rain::enhanced::rain_look_parameters::RainLookParameters;
 use crate::feature::effects::rain::rain_parameters::RainParameters;
@@ -132,15 +130,17 @@ use crate::feature::weather::wet::puddles::puddle_sites_uniform::PuddleSitesUnif
 use crate::feature::weather::wet::wet_apply_parameters::WetApplyParameters;
 use crate::feature::weather::wet::wet_patch_parameters::WetPatchParameters;
 use crate::feature::weather::wet::wet_uniform::WetUniform;
-use crate::pass::backdrop_uniform::BackdropUniform;
-use crate::pass::camera_uniform::CameraUniform;
-use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::overhead_shift_parameters::OverheadShiftParameters;
-use crate::pass::overhead_shift_uniform::OverheadShiftUniform;
-use crate::pass::overlay_parameters::OverlayParameters;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
+use crate::pass::overhead::overhead_shift_parameters::OverheadShiftParameters;
+use crate::pass::overhead::overhead_shift_uniform::OverheadShiftUniform;
+use crate::pass::view::camera_uniform::CameraUniform;
+use crate::pass::window::backdrop_uniform::BackdropUniform;
+use crate::pass::window::overlay_parameters::OverlayParameters;
 use crate::scene::level::light_record::LightRecord;
 use crate::scene::level::light_volume_record::LightVolumeRecord;
 use crate::scene::level::light_volumes_uniform::LightVolumesUniform;
+use crate::scene::level::particle_surface_record::ParticleSurfaceRecord;
+use crate::scene::level::particle_vertex::ParticleVertex;
 
 /// What each module of bindings opens with, for the structs its uniforms hold.
 const STRUCTS_IMPORT: &str = "#import \"generated/structs\"\n\n";

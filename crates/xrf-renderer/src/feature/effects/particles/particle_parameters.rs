@@ -1,8 +1,8 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, UniformBinding};
 
-use crate::feature::effects::particles::particle_surface_record::ParticleSurfaceRecord;
-use crate::feature::effects::particles::particle_vertex::ParticleVertex;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
+use crate::scene::level::particle_surface_record::ParticleSurfaceRecord;
+use crate::scene::level::particle_vertex::ParticleVertex;
 
 /// What the particle draws read: the quads' corners, the effects' surfaces, the frame's lighting and the scene's depth,
 /// which they fade against.

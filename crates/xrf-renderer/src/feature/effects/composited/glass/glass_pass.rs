@@ -11,7 +11,7 @@ use crate::feature::effects::composited::glass::glass_parameters::GlassParameter
 use crate::feature::scene::statics::draw::static_layout_bindings::StaticLayoutBindings;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::pipeline_source::PipelineSource;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_surface_pass::StaticSurfacePass;

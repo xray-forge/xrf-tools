@@ -4,7 +4,7 @@ use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParamete
 use crate::feature::weather::wet::puddles::lowest_heights_parameters::LowestHeightsParameters;
 use crate::feature::weather::wet::puddles::puddle_keep_parameters::PuddleKeepParameters;
 use crate::feature::weather::wet::puddles::puddle_sites_parameters::PuddleSitesParameters;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// Places the puddles on the level's surface seen from overhead: its lowest heights, then a site a cell, a dispatch
 /// each, where it is drawn; and each frame, which sites hold a puddle and how big.

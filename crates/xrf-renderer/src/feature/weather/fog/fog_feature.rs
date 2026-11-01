@@ -3,13 +3,13 @@ use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, Gr
 use crate::contract::render_applied_height_fog::RenderAppliedHeightFog;
 use crate::contract::render_fog_settings::RenderFogSettings;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::fog::fog_scattering_parameters::FogScatteringParameters;
 use crate::feature::weather::fog::fog_scattering_pass::FogScatteringPass;
 use crate::feature::weather::fog::fog_scattering_uniform::FogScatteringUniform;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_targets::ViewTargets;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::view_record::ViewRecord;
 
 /// The camera hemi under which the enhanced fog's height fog is gone and over which it is whole, about the engine's

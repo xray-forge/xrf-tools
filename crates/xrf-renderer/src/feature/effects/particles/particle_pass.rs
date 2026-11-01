@@ -4,11 +4,11 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipelineDescription};
 
 use crate::feature::effects::particles::particle_batch::ParticleBatch;
-use crate::feature::effects::particles::particle_blend::ParticleBlend;
 use crate::feature::effects::particles::particle_parameters::ParticleParameters;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
+use crate::scene::level::particle_blend::ParticleBlend;
 
 /// Draws a level's particle sprites over its finished scene after the composited surfaces, as `render_forward` draws
 /// them after combine: each run of quads with its effect's equation, tested against the scene's depth without writing

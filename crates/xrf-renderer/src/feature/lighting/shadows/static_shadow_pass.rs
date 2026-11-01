@@ -6,9 +6,9 @@ use crate::feature::lighting::shadows::shadow_casters::ShadowCasters;
 use crate::feature::lighting::shadows::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::feature::scene::statics::draw::static_draw_permutation::StaticDrawPermutation;
 use crate::feature::scene::statics::draw::static_layout_bindings::StaticLayoutBindings;
-use crate::pass::indirect_args::IndirectArgs;
-use crate::pass::overhead_shift_parameters::OverheadShiftParameters;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::indirect_args::IndirectArgs;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::overhead::overhead_shift_parameters::OverheadShiftParameters;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_class::StaticClass;
 

@@ -12,8 +12,8 @@ use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
 use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_fog::RenderFog;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::pass::lighting_frame::LightingFrame;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_frame::LightingFrame;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 // The enhanced fog, scattering as the pack ships it.
 fn enhanced() -> RenderFogSettings {

@@ -1,5 +1,5 @@
-use crate::pass::overlay_parameters::OverlayParameters;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::view::view_binding::ViewBinding;
+use crate::pass::window::overlay_parameters::OverlayParameters;
 use crate::scene::level::helpers::view::helper_draws::HelperDraws;
 use crate::scene::level::level_overlays::LevelOverlays;
 

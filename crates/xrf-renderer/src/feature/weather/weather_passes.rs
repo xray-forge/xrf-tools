@@ -12,8 +12,8 @@ use crate::feature::weather::volumetric::light_volumes::light_volume_pass::Light
 use crate::feature::weather::water::water_pass::WaterPass;
 use crate::feature::weather::wet::puddles::puddle_sites_pass::PuddleSitesPass;
 use crate::feature::weather::wet::wet_pass::WetPass;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::stage::pass_build::PassBuild;
+use crate::pass::build::pass_build::PassBuild;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// The passes drawing the weather: the sky, its haze, motion and light, the sun's shafts, the fog and the volumetric
 /// light, the water, and the wet surfaces with their puddles.

@@ -1,10 +1,10 @@
 use glam::Vec3;
 
 use crate::feature::effects::rain::cover::rain_cover::RainCover;
+use crate::feature::view::scene_features::SceneFeatures;
 use crate::feature::weather::wet::puddles::level_surface::LevelSurface;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
-use crate::scene::level::feature::scene_features::SceneFeatures;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::scene_view::SceneView;
 use crate::scene::level::shadow_frame::ShadowFrame;

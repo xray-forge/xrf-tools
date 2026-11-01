@@ -3,8 +3,8 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipeli
 
 use crate::feature::weather::volumetric::light_volumes::light_volume_parameters::LightVolumeParameters;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Draws the shadowed local lights' shafts (`accum_volumetric`) into a target of their own at half the frame's size,
 /// slices added where the scene stands behind them, tested against its depth taken at that size without writing it,

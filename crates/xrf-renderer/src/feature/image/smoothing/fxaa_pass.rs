@@ -3,8 +3,8 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::feature::image::smoothing::fxaa_parameters::FxaaParameters;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// FXAA over a viewport's scene as drawn, into a target of its own, which the frame goes on from.
 pub struct FxaaPass {

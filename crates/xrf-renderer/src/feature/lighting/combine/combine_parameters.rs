@@ -1,7 +1,7 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, UniformBinding};
 
 use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What the combine reads: the G-buffer and the light gathered over it, its specular split at the anchored levels, the
 /// material table, the frame's lighting and exposure, the ambient occlusion, the sky behind the fog, the indirect light,

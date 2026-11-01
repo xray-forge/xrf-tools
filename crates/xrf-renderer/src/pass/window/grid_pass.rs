@@ -1,8 +1,8 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PipelineSet, RenderPipelineDescription};
 
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Draws the ground grid and a plain sky over a whole viewport.
 pub struct GridPass {

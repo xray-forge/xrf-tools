@@ -6,7 +6,7 @@ use crate::feature::image::exposure::histogram::exposure_histogram_uniform::Expo
 use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
 use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::pass::lighting_frame::LightingFrame;
+use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 
 /// The share of the frame's exposure the game's pictures (the sky, the clouds, the fog's colour) are shown at, so they
 /// show as the engine's curve shows them at the authored levels whatever lifts the frame's light.

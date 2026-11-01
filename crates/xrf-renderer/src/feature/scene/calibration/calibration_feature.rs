@@ -4,10 +4,10 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::feature::scene::calibration::calibration_parameters::CalibrationParameters;
 use crate::feature::scene::calibration::calibration_uniform::CalibrationUniform;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
-use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// A view's calibration props while it shows them: stood ahead of the camera in the frame they are first shown, and
 /// kept there, so the camera can move about them.

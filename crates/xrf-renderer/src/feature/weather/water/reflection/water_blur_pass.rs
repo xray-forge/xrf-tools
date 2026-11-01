@@ -8,8 +8,8 @@ use crate::feature::weather::water::enhanced::enhanced_water_uniform::EnhancedWa
 use crate::feature::weather::water::reflection::water_blur_parameters::WaterBlurParameters;
 use crate::feature::weather::water::reflection::water_blur_uniform::WaterBlurUniform;
 use crate::feature::weather::water::reflection::water_reflection::WaterReflection;
-use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// Blurs the enhanced water's reflection one way at a time into half-size targets. Its owner, the water pass, refreshes
 /// it.

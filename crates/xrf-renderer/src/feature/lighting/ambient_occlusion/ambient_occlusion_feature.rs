@@ -6,10 +6,10 @@ use crate::contract::render_view_options::RenderViewOptions;
 use crate::feature::lighting::ambient_occlusion::ambient_occlusion_parameters::AmbientOcclusionParameters;
 use crate::feature::lighting::ambient_occlusion::ambient_occlusion_stage::AmbientOcclusionStage;
 use crate::feature::lighting::ambient_occlusion::ambient_occlusion_uniform::AmbientOcclusionUniform;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
-use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::feature::view_feature::ViewFeature;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// The ambient occlusion at half the frame's size, which combine multiplies the hemisphere and ambient light by: GTAO's
 /// own search and denoise here, or VBAO's or RTAO's in the bitmask search's place.

@@ -1,6 +1,6 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 /// What DLSS ray reconstruction's guides are worked out from: the G-buffer, the wet surface and reach, the lighting, the
 /// reflections' trace, whose alpha holds how far each traced ray went, and how far the indirect light's rays went.

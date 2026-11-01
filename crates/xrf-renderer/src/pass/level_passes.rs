@@ -5,7 +5,7 @@ use crate::feature::scene::scene_passes::ScenePasses;
 use crate::feature::tracing::tracing_passes::TracingPasses;
 use crate::feature::weather::sky::sky_bindings::SkyBindings;
 use crate::feature::weather::weather_passes::WeatherPasses;
-use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::build::pipeline_source::PipelineSource;
 
 /// The passes a level's frame runs, borrowed from the GPU state together, by the part of the frame they draw.
 #[derive(Clone, Copy)]

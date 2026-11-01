@@ -16,8 +16,8 @@ use crate::feature::lighting::bitmask::vbao::vbao_uniform::VbaoUniform;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
 use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::pass::lighting_frame::LightingFrame;
-use crate::pass::lighting_uniform::LightingUniform;
+use crate::pass::frame_lighting::lighting_frame::LightingFrame;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
 fn vbao(accumulation: u32) -> RenderAmbientOcclusionSettings {
   RenderAmbientOcclusionSettings {

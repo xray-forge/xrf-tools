@@ -2,10 +2,10 @@ use crate::contract::render_foliage_settings::RenderFoliageSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::feature::scene::wind::foliage_wind_values::FoliageWindValues;
 use crate::feature::scene::wind::wind_uniform::WindUniform;
+use crate::feature::view::view_feature::ViewFeature;
 use crate::lighting::foliage_motion::FoliageMotion;
 use crate::lighting::foliage_wind::FoliageWind;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::scene::level::feature::view_feature::ViewFeature;
 
 /// The sway amplitude the shadows are redrawn at while the enhanced foliage motion blows: its largest move a metre of
 /// reach, a tall crown's trunk swing over its height.

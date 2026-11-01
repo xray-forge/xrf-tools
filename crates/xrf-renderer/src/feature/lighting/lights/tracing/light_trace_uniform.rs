@@ -1,7 +1,7 @@
 use glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
-use crate::pass::noise_turn::NoiseTurn;
+use crate::pass::view::noise_turn::NoiseTurn;
 
 /// What the lamps' traced shadows read, as `shaders/frame/light_tracing.wgsl` takes it.
 #[repr(C)]

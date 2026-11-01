@@ -16,8 +16,8 @@ use crate::feature::lighting::lights::visibility::light_shadowing_parameters::Li
 use crate::feature::lighting::lights::visibility::light_visibility_parameters::LightVisibilityParameters;
 use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::view_binding::ViewBinding;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
 
 /// Bins the local lights in view into clusters of the view, marches the contact shadows towards the strongest at half
 /// the frame's size, finds how much of each shadowed light every pixel sees, from the shadow atlas or traced, then adds
