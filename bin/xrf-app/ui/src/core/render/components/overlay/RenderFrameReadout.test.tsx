@@ -3,7 +3,10 @@ import { render } from "@testing-library/react";
 import { ERenderAntialiasing, ERenderBackend, RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
 
 import { RenderFrameReadout } from "@/core/render/components/overlay/RenderFrameReadout";
-import { EMPTY_RENDER_FRAME_REPORT, EMPTY_RENDER_STATIC_REPORT } from "@/core/render/lib/native/native-frame-report";
+import {
+  EMPTY_RENDER_FRAME_REPORT,
+  EMPTY_RENDER_STATIC_REPORT,
+} from "@/core/render/lib/native/contract/native-frame-report";
 
 const REPORT: RenderFrameReport = {
   ...EMPTY_RENDER_FRAME_REPORT,

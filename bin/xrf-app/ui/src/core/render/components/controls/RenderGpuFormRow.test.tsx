@@ -4,7 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 import { ERenderBackend, RenderBackendAvailability, RenderGpu } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 
-import { RENDER_BACKEND_AUTO } from "@/core/render/lib/settings/render-backend-choice";
+import { RENDER_BACKEND_AUTO } from "@/core/render/lib/settings/device/render-backend-choice";
 
 import { RenderGpuFormRow } from "./RenderGpuFormRow";
 

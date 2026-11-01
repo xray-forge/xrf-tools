@@ -4,7 +4,7 @@ import { Nullable } from "@xrf/types";
 
 import { ILevelHelperOptions, isLevelHelperOn } from "@/core/level/lib/objects/level-helper-options";
 import { getLevelSpawnIndex, toLevelObjectKey } from "@/core/level/lib/objects/level-object-kinds";
-import { NO_NATIVE_HELPERS } from "@/core/render/lib/native/native-view-options";
+import { NO_NATIVE_HELPERS } from "@/core/render/lib/native/contract/native-view-options";
 
 /** Ascending, as the renderer and the world search the lists they are given. */
 function toAscending(values: Array<number>): Array<number> {

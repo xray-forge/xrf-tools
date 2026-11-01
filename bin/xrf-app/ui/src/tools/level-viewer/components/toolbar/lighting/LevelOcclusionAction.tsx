@@ -33,14 +33,14 @@ import {
   RENDER_AMBIENT_OCCLUSION_METHOD_OPTIONS,
   RENDER_AMBIENT_OCCLUSION_METHOD_UNTRACED_OPTIONS,
   RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS,
-} from "@/core/render/lib/features/render-ambient-occlusion-choices";
+} from "@/core/render/lib/features/tracing/render-ambient-occlusion-choices";
 import {
   TRenderAmbientOcclusionGtaoSettings,
   TRenderAmbientOcclusionRtaoSettings,
   TRenderAmbientOcclusionSettings,
   TRenderAmbientOcclusionVbaoSettings,
   TRenderIndirectLightSettings,
-} from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
  * What darkens creases and corners and what lights them back: the ambient occlusion, GTAO (XeGTAO), VBAO, whose

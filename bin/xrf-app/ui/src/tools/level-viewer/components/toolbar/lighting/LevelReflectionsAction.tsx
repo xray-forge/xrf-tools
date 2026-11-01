@@ -31,9 +31,9 @@ import {
   formatReflectionTraceRoughness,
   RENDER_REFLECTION_LIMITS,
   RENDER_REFLECTION_PROBE_OPTIONS,
-} from "@/core/render/lib/features/render-reflection-choices";
-import { RENDER_TRACE_SIZE_OPTIONS } from "@/core/render/lib/features/render-trace-size-choices";
-import { TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/tracing/render-reflection-choices";
+import { RENDER_TRACE_SIZE_OPTIONS } from "@/core/render/lib/features/tracing/render-trace-size-choices";
+import { TRenderReflectionSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
  * What the view reflects, in three sections: the surfaces (the ground, puddles, wet and glossy surfaces), the

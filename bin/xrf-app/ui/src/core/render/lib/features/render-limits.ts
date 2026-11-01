@@ -1,6 +1,6 @@
-import { listRenderNumberFieldPaths, TRenderFeaturePath } from "@/core/render/lib/settings/render-feature-path";
-import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
-import { IRenderNumberField } from "@/core/render/lib/settings/render-setting-field";
+import { listRenderNumberFieldPaths, TRenderFeaturePath } from "@/core/render/lib/settings/schema/render-feature-path";
+import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/schema/render-feature-schema";
+import { IRenderNumberField } from "@/core/render/lib/settings/schema/render-setting-field";
 
 /**
  * The bounds a value is offered between, the step it moves by, and what a slider measures it by: its place among the

@@ -20,7 +20,7 @@ import {
   formatContactShadowThickness,
   RENDER_CONTACT_SHADOW_LIMITS,
   RENDER_CONTACT_SHADOW_MODE_OPTIONS,
-} from "@/core/render/lib/features/render-contact-shadow-choices";
+} from "@/core/render/lib/features/lighting/render-contact-shadow-choices";
 import {
   formatCascadeBlend,
   formatShadowBias,
@@ -30,9 +30,9 @@ import {
   RENDER_SHADOW_CASCADE_OPTIONS,
   RENDER_SHADOW_LIMITS,
   RENDER_SHADOW_RESOLUTION_OPTIONS,
-} from "@/core/render/lib/features/render-shadow-choices";
-import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/render-feature-defaults";
-import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/lighting/render-shadow-choices";
+import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/choice/render-feature-defaults";
+import { TRenderShadowSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
  * Whether the sun casts shadows in this view, in how many cascades, how fine and how soft, how often and how far out

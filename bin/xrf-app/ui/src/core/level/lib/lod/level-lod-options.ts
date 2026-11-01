@@ -1,6 +1,6 @@
 import { formatNumber } from "@xrf/format";
 
-import { TRenderLodSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { TRenderLodSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
  * How far the viewer draws a clump of trees in full before its impostor takes over.

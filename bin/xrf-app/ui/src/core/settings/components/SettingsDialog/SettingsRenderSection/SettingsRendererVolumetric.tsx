@@ -11,8 +11,8 @@ import {
   formatVolumetricStrength,
   RENDER_VOLUMETRIC_LIMITS,
   RENDER_VOLUMETRIC_MODE_OPTIONS,
-} from "@/core/render/lib/features/render-volumetric-choices";
-import { TRenderVolumetricSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/lighting/render-volumetric-choices";
+import { TRenderVolumetricSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";

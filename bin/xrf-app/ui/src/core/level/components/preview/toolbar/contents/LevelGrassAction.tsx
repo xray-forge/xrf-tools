@@ -25,8 +25,11 @@ import {
   RENDER_FOLIAGE_LIMITS,
   RENDER_GRASS_LIMITS,
   toGrassDensityScale,
-} from "@/core/render/lib/features/render-grass-choices";
-import { TRenderFoliageSettings, TRenderGrassSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/world/render-grass-choices";
+import {
+  TRenderFoliageSettings,
+  TRenderGrassSettings,
+} from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /** The light the enhanced foliage passes through leaves and grass, each a slider; its motion is the Wind popover's. */
 const FOLIAGE_LIGHT: ReadonlyArray<[keyof typeof RENDER_FOLIAGE_LIMITS, string]> = [

@@ -13,8 +13,8 @@ import {
 import {
   DEFAULT_RENDER_REFLECTION_SETTINGS,
   DEFAULT_RENDER_WATER_SETTINGS,
-} from "@/core/render/lib/settings/render-feature-defaults";
-import { TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/settings/choice/render-feature-defaults";
+import { TRenderReflectionSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { clearLocalStorage } from "@/core/storage";
 import { LevelReflectionsAction } from "@/tools/level-viewer/components/toolbar/lighting/LevelReflectionsAction";
 

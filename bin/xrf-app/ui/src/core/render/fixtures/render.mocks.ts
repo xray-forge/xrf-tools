@@ -1,7 +1,10 @@
 import { ERenderAntialiasing, ERenderScale, RenderAppliedReport, RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
 
-import { DEFAULT_RENDER_FEATURE_CHOICE, resolveRenderFeatures } from "@/core/render/lib/settings/render-feature-choice";
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
+import {
+  DEFAULT_RENDER_FEATURE_CHOICE,
+  resolveRenderFeatures,
+} from "@/core/render/lib/settings/choice/render-feature-choice";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /** What the tool sets every viewport's features to: the default preset's, unless told. */
 export function mockRenderFeatures(overrides: Partial<IRenderFeatureSettings> = {}): IRenderFeatureSettings {

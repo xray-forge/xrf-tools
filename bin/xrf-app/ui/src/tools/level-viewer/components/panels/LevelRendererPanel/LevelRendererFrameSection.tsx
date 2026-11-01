@@ -4,7 +4,7 @@ import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
-import { describeRenderBackend } from "@/core/render/lib/settings/render-backend-choice";
+import { describeRenderBackend } from "@/core/render/lib/settings/device/render-backend-choice";
 
 interface ILevelRendererFrameSectionProps extends BaseComponentProps {
   frame: RenderFrameReport;

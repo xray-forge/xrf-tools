@@ -14,8 +14,8 @@ import {
   formatParallaxStrength,
   RENDER_PARALLAX_LIMITS,
   RENDER_PARALLAX_MODE_OPTIONS,
-} from "@/core/render/lib/features/render-parallax-choices";
-import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/world/render-parallax-choices";
+import { TRenderParallaxSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";

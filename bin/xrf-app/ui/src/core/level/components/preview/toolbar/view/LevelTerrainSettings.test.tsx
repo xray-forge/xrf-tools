@@ -4,7 +4,7 @@ import { ERenderTerrainTiling } from "@xrf/ipc/types/xrf-renderer";
 
 import { LevelTerrainSettings } from "@/core/level/components/preview/toolbar/view/LevelTerrainSettings";
 import { mockLevelViewContainer } from "@/core/level/fixtures/level-container";
-import { DEFAULT_RENDER_TERRAIN_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { DEFAULT_RENDER_TERRAIN_SETTINGS } from "@/core/render/lib/settings/choice/render-feature-defaults";
 import { clearLocalStorage } from "@/core/storage";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

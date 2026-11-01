@@ -17,7 +17,7 @@ import {
   toLevelLookChoice,
 } from "@/core/level/lib/look/level-look-choice";
 import { LevelLoadService } from "@/core/level/services/level-load";
-import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { TRenderExposureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { jsonCodec, LEVEL_LOOK_STORAGE_KEY, StoredValue } from "@/core/storage";
 

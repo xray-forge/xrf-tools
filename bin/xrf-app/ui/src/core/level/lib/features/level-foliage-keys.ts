@@ -1,5 +1,5 @@
 import { TLevelGrassOptions } from "@/core/level/lib/features/level-feature-options";
-import { TRenderFoliageSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { TRenderFoliageSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /** The foliage settings the Wind popover sets: how the trees and the grass move. */
 export const LEVEL_FOLIAGE_MOTION_KEYS: ReadonlyArray<keyof TRenderFoliageSettings> = [

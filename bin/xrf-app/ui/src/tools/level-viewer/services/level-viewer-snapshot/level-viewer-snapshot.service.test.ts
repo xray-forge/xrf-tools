@@ -6,7 +6,7 @@ import { ERenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
 
 import { ILevelViewContainerDescriptor, mockLevelViewContainer } from "@/core/level/fixtures/level-container";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { EToolId } from "@/core/routing/tool";
 import { clearLocalStorage } from "@/core/storage";
 import { mockToolScope } from "@/fixtures/utils/container";

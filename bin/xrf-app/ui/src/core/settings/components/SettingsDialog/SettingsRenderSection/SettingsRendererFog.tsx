@@ -15,8 +15,8 @@ import {
   RENDER_FOG_COLOUR_OPTIONS,
   RENDER_FOG_LIMITS,
   RENDER_FOG_MODE_OPTIONS,
-} from "@/core/render/lib/features/render-fog-choices";
-import { TRenderFogSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/world/render-fog-choices";
+import { TRenderFogSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";

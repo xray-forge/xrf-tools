@@ -10,8 +10,8 @@ import {
   formatOcclusionStrength,
   RENDER_AMBIENT_OCCLUSION_LIMITS,
   RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS,
-} from "@/core/render/lib/features/render-ambient-occlusion-choices";
-import { TRenderAmbientOcclusionSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/tracing/render-ambient-occlusion-choices";
+import { TRenderAmbientOcclusionSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";

@@ -35,12 +35,12 @@ import {
   describeRenderAntialiasing,
   isTemporalAntialiasing,
   toDrawnAntialiasing,
-} from "@/core/render/lib/features/render-antialiasing-choices";
+} from "@/core/render/lib/features/image/render-antialiasing-choices";
 import {
   formatOutputScale,
   RENDER_OUTPUT_SCALE_LIMITS,
   RENDER_RESOLUTION_OPTIONS,
-} from "@/core/render/lib/features/render-display-choices";
+} from "@/core/render/lib/features/image/render-display-choices";
 import {
   describeDlssPreset,
   describeDlssUnavailability,
@@ -51,8 +51,8 @@ import {
   RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS,
   RENDER_SCALE_OPTIONS,
   RENDER_SHARPENING_LIMITS,
-} from "@/core/render/lib/features/render-upscaling-choices";
-import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
+} from "@/core/render/lib/features/image/render-upscaling-choices";
+import { ERenderResolution } from "@/core/render/lib/settings/device/render-resolution";
 
 const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderAntialiasing>> = LEVEL_ANTIALIASING_MODES.map(
   (value: RenderAntialiasing) => ({ label: describeRenderAntialiasing(value), value })

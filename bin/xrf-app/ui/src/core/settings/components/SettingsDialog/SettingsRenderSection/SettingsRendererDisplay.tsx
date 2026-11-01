@@ -6,7 +6,7 @@ import { ReactElement, useEffect } from "react";
 import { RenderBackendFormRow } from "@/core/render/components/controls/RenderBackendFormRow";
 import { RenderGpuFormRow } from "@/core/render/components/controls/RenderGpuFormRow";
 import { RenderPassTimingFormRow } from "@/core/render/components/controls/RenderPassTimingFormRow";
-import { RENDER_FRAME_RATE_OPTIONS } from "@/core/render/lib/features/render-display-choices";
+import { RENDER_FRAME_RATE_OPTIONS } from "@/core/render/lib/features/image/render-display-choices";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 /**

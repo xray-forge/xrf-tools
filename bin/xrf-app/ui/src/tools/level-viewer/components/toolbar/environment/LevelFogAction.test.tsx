@@ -9,7 +9,7 @@ import {
   renderLevelView,
   TLevelViewRenderResult,
 } from "@/core/level/fixtures/level-container";
-import { DEFAULT_RENDER_FOG_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { DEFAULT_RENDER_FOG_SETTINGS } from "@/core/render/lib/settings/choice/render-feature-defaults";
 import { clearLocalStorage } from "@/core/storage";
 import { LevelFogAction } from "@/tools/level-viewer/components/toolbar/environment/LevelFogAction";
 

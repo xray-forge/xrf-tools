@@ -5,8 +5,8 @@ import { SliderFormRow } from "@xrf/ui/form/slider-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
-import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
-import { TRenderLodSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { TRenderLodSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/schema/render-feature-schema";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 /** One threshold, and the console variable it is. */

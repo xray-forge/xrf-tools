@@ -24,7 +24,7 @@ import {
   TLevelViewRenderResult,
 } from "@/core/level/fixtures/level-container";
 import { ILevelFeatureOptions } from "@/core/level/lib/features/level-feature-options";
-import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
+import { ERenderResolution } from "@/core/render/lib/settings/device/render-resolution";
 import { clearLocalStorage } from "@/core/storage";
 import { LevelImageQualityAction } from "@/tools/level-viewer/components/toolbar/image/LevelImageQualityAction";
 

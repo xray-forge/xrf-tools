@@ -4,7 +4,7 @@ import { Tab, Tabs } from "@xrf/ui/material/tabs";
 import { ComponentType, ReactElement, RefObject, useRef, useState } from "react";
 
 import { RenderSliderReference } from "@/core/render/components/controls/RenderSliderReference";
-import { ERenderSliderReferenceSource } from "@/core/render/lib/settings/render-slider-reference-source";
+import { ERenderSliderReferenceSource } from "@/core/render/lib/settings/choice/render-slider-reference-source";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import {

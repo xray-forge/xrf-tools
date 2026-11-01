@@ -21,7 +21,7 @@ import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-opt
 import {
   DEFAULT_RENDER_PARALLAX_SETTINGS,
   DEFAULT_RENDER_TERRAIN_SETTINGS,
-} from "@/core/render/lib/settings/render-feature-defaults";
+} from "@/core/render/lib/settings/choice/render-feature-defaults";
 import { clearLocalStorage } from "@/core/storage";
 
 /**

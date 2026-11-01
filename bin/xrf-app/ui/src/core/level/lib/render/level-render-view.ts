@@ -9,9 +9,9 @@ import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config"
 import { ELevelShading, getLevelShading, ILevelShadingChoice } from "@/core/level/lib/view/level-shading";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelSunShaftsOptions } from "@/core/level/lib/weather/level-sun-shafts-options";
-import { TNativeLook, toNativeViewOptions } from "@/core/render/lib/native/native-view-options";
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { TRenderOutput } from "@/core/render/lib/settings/render-resolution";
+import { TNativeLook, toNativeViewOptions } from "@/core/render/lib/native/contract/native-view-options";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import { TRenderOutput } from "@/core/render/lib/settings/device/render-resolution";
 
 /**
  * @param viewpoint - Where the camera stands and what it looks at.

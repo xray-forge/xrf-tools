@@ -17,8 +17,8 @@ import {
   formatParallaxStrength,
   RENDER_PARALLAX_LIMITS,
   RENDER_PARALLAX_MODE_OPTIONS,
-} from "@/core/render/lib/features/render-parallax-choices";
-import { TRenderParallaxSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/world/render-parallax-choices";
+import { TRenderParallaxSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /** How this view's surfaces are displaced by their height: the engine's steep parallax, or the enhanced terrain march. */
 export function LevelParallaxSettings({

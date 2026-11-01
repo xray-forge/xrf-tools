@@ -3,7 +3,7 @@ import { render } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ERenderBackend, RenderBackendAvailability } from "@xrf/ipc/types/xrf-renderer";
 
-import { RENDER_BACKEND_AUTO, TRenderBackendChoice } from "@/core/render/lib/settings/render-backend-choice";
+import { RENDER_BACKEND_AUTO, TRenderBackendChoice } from "@/core/render/lib/settings/device/render-backend-choice";
 
 import { RenderBackendFormRow } from "./RenderBackendFormRow";
 

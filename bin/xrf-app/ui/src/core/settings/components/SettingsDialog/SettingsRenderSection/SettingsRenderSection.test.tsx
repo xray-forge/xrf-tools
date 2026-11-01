@@ -12,9 +12,9 @@ import {
   ERenderVolumetricMode,
 } from "@xrf/ipc/types/xrf-renderer";
 
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
-import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import { ERenderPreset } from "@/core/render/lib/settings/choice/render-preset";
+import { ERenderResolution } from "@/core/render/lib/settings/device/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { clearLocalStorage } from "@/core/storage";
 import { mockContainer } from "@/fixtures/utils/container";

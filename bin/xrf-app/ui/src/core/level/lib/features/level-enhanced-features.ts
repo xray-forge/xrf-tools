@@ -1,30 +1,30 @@
 import { formatCount } from "@xrf/format";
 
-import { formatOcclusionRadius } from "@/core/render/lib/features/render-ambient-occlusion-choices";
 import {
   explainRenderDebandingMode,
   formatDebandingPasses,
   formatDebandingRadius,
   RENDER_DEBANDING_LIMITS,
-} from "@/core/render/lib/features/render-debanding-choices";
-import {
-  explainRenderGlassMode,
-  formatGlassStrength,
-  RENDER_GLASS_LIMITS,
-} from "@/core/render/lib/features/render-glass-choices";
-import {
-  explainRenderIndirectLightMode,
-  formatIndirectLightIntensity,
-  RENDER_INDIRECT_LIGHT_LIMITS,
-} from "@/core/render/lib/features/render-indirect-light-choices";
-import { IRenderLimits } from "@/core/render/lib/features/render-limits";
+} from "@/core/render/lib/features/image/render-debanding-choices";
 import {
   explainRenderVolumetricMode,
   formatVolumetricDistance,
   formatVolumetricStrength,
   RENDER_VOLUMETRIC_LIMITS,
-} from "@/core/render/lib/features/render-volumetric-choices";
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/lighting/render-volumetric-choices";
+import { IRenderLimits } from "@/core/render/lib/features/render-limits";
+import { formatOcclusionRadius } from "@/core/render/lib/features/tracing/render-ambient-occlusion-choices";
+import {
+  explainRenderIndirectLightMode,
+  formatIndirectLightIntensity,
+  RENDER_INDIRECT_LIGHT_LIMITS,
+} from "@/core/render/lib/features/tracing/render-indirect-light-choices";
+import {
+  explainRenderGlassMode,
+  formatGlassStrength,
+  RENDER_GLASS_LIMITS,
+} from "@/core/render/lib/features/world/render-glass-choices";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /** The view overrides drawn either as the engine draws them or enhanced, whose every value tunes the enhanced. */
 export type TLevelEnhancedFeatureKey = "debanding" | "glass" | "indirectLight" | "volumetric";

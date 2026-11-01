@@ -8,9 +8,8 @@ import {
 import { isRecord, Nullable } from "@xrf/types";
 
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { toRenderFeatureChoice } from "@/core/render/lib/settings/render-feature-choice";
-import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";
-import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
+import { toRenderFeatureChoice } from "@/core/render/lib/settings/choice/render-feature-choice";
+import { IRenderFeatureOverrides } from "@/core/render/lib/settings/choice/render-feature-overrides";
 import {
   IRenderFeatureSettings,
   TRenderAmbientOcclusionSettings,
@@ -31,12 +30,13 @@ import {
   TRenderUpscalingSettings,
   TRenderVolumetricSettings,
   TRenderWaterSettings,
-} from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/settings/choice/render-feature-settings";
 import {
   ERenderResolution,
   RENDER_OUTPUT_SCALES,
   RENDER_RESOLUTIONS,
-} from "@/core/render/lib/settings/render-resolution";
+} from "@/core/render/lib/settings/device/render-resolution";
+import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/schema/render-feature-schema";
 
 /** The shadow settings a level view may set for itself. */
 export type TLevelShadowOptions = Pick<

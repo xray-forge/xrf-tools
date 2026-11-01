@@ -10,8 +10,8 @@ import {
   formatDebandingPasses,
   formatDebandingRadius,
   RENDER_DEBANDING_LIMITS,
-} from "@/core/render/lib/features/render-debanding-choices";
-import { TRenderDebandingSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/image/render-debanding-choices";
+import { TRenderDebandingSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";

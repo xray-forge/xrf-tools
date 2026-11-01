@@ -11,7 +11,7 @@ import {
   toLevelHelperOptions,
 } from "@/core/level/lib/objects/level-helper-options";
 import { toWeatherTimeOfDay } from "@/core/level/lib/weather/weather-day";
-import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { TRenderExposureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { flattenDottedRecord } from "@/lib/object/dotted-record";
 
 /** What a snapshot file says it is, so a JSON file of anything else is refused. */

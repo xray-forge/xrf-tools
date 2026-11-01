@@ -69,14 +69,14 @@ import { LevelViewService } from "@/core/level/services/level-view";
 import { ELevelSelectionMode, LevelViewportService } from "@/core/level/services/level-viewport";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { CommandOperation } from "@/core/operations/lib/command-operation";
-import { toDrawnAntialiasing } from "@/core/render/lib/features/render-antialiasing-choices";
-import { toDrawnRenderLightLevel } from "@/core/render/lib/features/render-light-level-choices";
+import { toDrawnAntialiasing } from "@/core/render/lib/features/image/render-antialiasing-choices";
+import { toDrawnRenderLightLevel } from "@/core/render/lib/features/tone/render-light-level-choices";
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
-import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
-import { toNativeWorldToggles } from "@/core/render/lib/native/native-view-options";
-import { NativeViewport } from "@/core/render/lib/native/native-viewport";
-import { INativeViewportClick } from "@/core/render/lib/native/native-viewport-target";
-import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";
+import { toNativeWorldToggles } from "@/core/render/lib/native/contract/native-view-options";
+import { NativeRenderSurfaceService } from "@/core/render/lib/native/viewport/native-render-surface-service";
+import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
+import { INativeViewportClick } from "@/core/render/lib/native/viewport/native-viewport-target";
+import { toRenderOutput } from "@/core/render/lib/settings/device/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 /** A pick asked of the viewport: where, whether glass is passed by, and how what it picks changes the selection. */

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
 import { ERenderAntialiasing } from "@xrf/ipc/types/xrf-renderer";
 
-import { resolveRenderFeatures } from "@/core/render/lib/settings/render-feature-choice";
-import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/render-feature-schema";
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
+import { resolveRenderFeatures } from "@/core/render/lib/settings/choice/render-feature-choice";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import { ERenderPreset } from "@/core/render/lib/settings/choice/render-preset";
+import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/schema/render-feature-schema";
 
 import {
   ERenderSettingsTab,

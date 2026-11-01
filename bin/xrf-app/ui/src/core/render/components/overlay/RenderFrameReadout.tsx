@@ -8,10 +8,10 @@ import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/compo
 import {
   describeRenderAntialiasing,
   isTemporalAntialiasing,
-} from "@/core/render/lib/features/render-antialiasing-choices";
+} from "@/core/render/lib/features/image/render-antialiasing-choices";
 import { toRenderMeterLines } from "@/core/render/lib/frame/render-meter-lines";
 import { groupRenderPassCosts, IRenderPassGroup } from "@/core/render/lib/frame/render-pass-groups";
-import { abbreviateRenderBackend } from "@/core/render/lib/settings/render-backend-choice";
+import { abbreviateRenderBackend } from "@/core/render/lib/settings/device/render-backend-choice";
 
 /**
  * Where the scene is drawn or resolved at another size than the viewport's: what takes it from there and to which

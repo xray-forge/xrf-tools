@@ -20,9 +20,12 @@ import {
   formatReflectionTraceRoughness,
   RENDER_REFLECTION_LIMITS,
   RENDER_REFLECTION_PROBE_OPTIONS,
-} from "@/core/render/lib/features/render-reflection-choices";
-import { RENDER_TRACE_SIZE_OPTIONS } from "@/core/render/lib/features/render-trace-size-choices";
-import { IRenderFeatureSettings, TRenderReflectionSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/tracing/render-reflection-choices";
+import { RENDER_TRACE_SIZE_OPTIONS } from "@/core/render/lib/features/tracing/render-trace-size-choices";
+import {
+  IRenderFeatureSettings,
+  TRenderReflectionSettings,
+} from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";

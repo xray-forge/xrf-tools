@@ -13,7 +13,7 @@ import {
 } from "@/core/level/lib/features/level-enhanced-features";
 import { ILevelFeatureOptions, toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 export interface ILevelEnhancedFeatureSectionProps<K extends TLevelEnhancedFeatureKey> extends BaseComponentProps {
   feature: K;

@@ -11,7 +11,7 @@ import {
   DEFAULT_RENDER_GRAPH_SETTINGS,
   isRenderGraphBisected,
   SERIAL_RENDER_GRAPH_SETTINGS,
-} from "@/core/render/lib/settings/render-graph-settings";
+} from "@/core/render/lib/settings/device/render-graph-settings";
 
 interface ILevelRendererGraphSectionProps extends BaseComponentProps {
   /** What the frame graph made of the latest described frame, null before the first. */

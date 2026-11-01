@@ -12,35 +12,35 @@ import { Logger } from "@xrf/logging";
 import { clamp } from "@xrf/math";
 import { Nullable } from "@xrf/types";
 
-import { toDrawnRenderLightLevel } from "@/core/render/lib/features/render-light-level-choices";
-import {
-  toRenderBackend,
-  toRenderBackendChoice,
-  TRenderBackendChoice,
-} from "@/core/render/lib/settings/render-backend-choice";
+import { toDrawnRenderLightLevel } from "@/core/render/lib/features/tone/render-light-level-choices";
 import {
   IRenderFeatureChoice,
   listUnkeptRenderSettings,
   mergeRenderFeatureOverrides,
   resolveRenderFeatures,
   toRenderFeatureChoice,
-} from "@/core/render/lib/settings/render-feature-choice";
-import { IRenderFeatureOverrides } from "@/core/render/lib/settings/render-feature-overrides";
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/settings/choice/render-feature-choice";
+import { IRenderFeatureOverrides } from "@/core/render/lib/settings/choice/render-feature-overrides";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import { ERenderPreset } from "@/core/render/lib/settings/choice/render-preset";
+import {
+  toRenderBackend,
+  toRenderBackendChoice,
+  TRenderBackendChoice,
+} from "@/core/render/lib/settings/device/render-backend-choice";
 import {
   TFrameRateLimit,
   toFrameRateLimit,
   toRenderFrameRate,
-} from "@/core/render/lib/settings/render-frame-rate-limit";
-import { toRenderGpuChoice } from "@/core/render/lib/settings/render-gpu-choice";
-import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/render-graph-settings";
-import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
+} from "@/core/render/lib/settings/device/render-frame-rate-limit";
+import { toRenderGpuChoice } from "@/core/render/lib/settings/device/render-gpu-choice";
+import { DEFAULT_RENDER_GRAPH_SETTINGS } from "@/core/render/lib/settings/device/render-graph-settings";
 import {
   ERenderResolution,
   RENDER_OUTPUT_SCALES,
   toRenderOutputScale,
   toRenderResolution,
-} from "@/core/render/lib/settings/render-resolution";
+} from "@/core/render/lib/settings/device/render-resolution";
 import { SettingsService } from "@/core/settings/services/settings";
 import {
   booleanCodec,

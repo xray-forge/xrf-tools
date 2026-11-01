@@ -10,19 +10,22 @@ import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
+import { describeRenderAntialiasing } from "@/core/render/lib/features/image/render-antialiasing-choices";
+import { formatDebandingPasses } from "@/core/render/lib/features/image/render-debanding-choices";
+import { describeRenderScale } from "@/core/render/lib/features/image/render-upscaling-choices";
+import {
+  describeRenderLightShadowFilter,
+  formatShadowFilter,
+} from "@/core/render/lib/features/lighting/render-shadow-choices";
 import {
   describeRenderAmbientOcclusionMethod,
   describeRenderAmbientOcclusionSearch,
-} from "@/core/render/lib/features/render-ambient-occlusion-choices";
-import { describeRenderAntialiasing } from "@/core/render/lib/features/render-antialiasing-choices";
-import { formatDebandingPasses } from "@/core/render/lib/features/render-debanding-choices";
-import { formatFogDensity, formatFogHeight, formatFogShare } from "@/core/render/lib/features/render-fog-choices";
-import { formatGrassDensity, formatGrassRadius } from "@/core/render/lib/features/render-grass-choices";
-import { formatIndirectLightIntensity } from "@/core/render/lib/features/render-indirect-light-choices";
-import { formatReflectionIntensity } from "@/core/render/lib/features/render-reflection-choices";
-import { describeRenderLightShadowFilter, formatShadowFilter } from "@/core/render/lib/features/render-shadow-choices";
-import { describeRenderTraceSize } from "@/core/render/lib/features/render-trace-size-choices";
-import { describeRenderScale } from "@/core/render/lib/features/render-upscaling-choices";
+} from "@/core/render/lib/features/tracing/render-ambient-occlusion-choices";
+import { formatIndirectLightIntensity } from "@/core/render/lib/features/tracing/render-indirect-light-choices";
+import { formatReflectionIntensity } from "@/core/render/lib/features/tracing/render-reflection-choices";
+import { describeRenderTraceSize } from "@/core/render/lib/features/tracing/render-trace-size-choices";
+import { formatFogDensity, formatFogHeight, formatFogShare } from "@/core/render/lib/features/world/render-fog-choices";
+import { formatGrassDensity, formatGrassRadius } from "@/core/render/lib/features/world/render-grass-choices";
 
 /** Three channels as the panel reads them. */
 function formatTriple(values: ReadonlyArray<Nullable<number>>): string {

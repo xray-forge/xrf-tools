@@ -5,13 +5,13 @@ import { SliderFormRow } from "@xrf/ui/form/slider-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
-import { formatGrassRadius } from "@/core/render/lib/features/render-grass-choices";
+import { formatGrassRadius } from "@/core/render/lib/features/world/render-grass-choices";
 import {
   explainRenderRainDropsMode,
   formatRainShare,
   RENDER_RAIN_LIMITS,
-} from "@/core/render/lib/features/render-rain-choices";
-import { TRenderRainSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/world/render-rain-choices";
+import { TRenderRainSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";

@@ -9,8 +9,8 @@ import {
   toLevelRendererFeatures,
 } from "@/core/level/lib/features/level-feature-options";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import { ERenderResolution } from "@/core/render/lib/settings/device/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 /** What a view's features resolve from, and what they resolve to. */

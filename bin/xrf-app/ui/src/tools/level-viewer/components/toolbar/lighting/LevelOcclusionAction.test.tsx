@@ -12,7 +12,7 @@ import {
 import {
   DEFAULT_RENDER_AMBIENT_OCCLUSION_SETTINGS,
   DEFAULT_RENDER_INDIRECT_LIGHT_SETTINGS,
-} from "@/core/render/lib/settings/render-feature-defaults";
+} from "@/core/render/lib/settings/choice/render-feature-defaults";
 import { clearLocalStorage } from "@/core/storage";
 import { LevelOcclusionAction } from "@/tools/level-viewer/components/toolbar/lighting/LevelOcclusionAction";
 

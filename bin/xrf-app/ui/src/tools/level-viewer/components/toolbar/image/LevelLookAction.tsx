@@ -33,28 +33,28 @@ import {
   formatBloomStrength,
   RENDER_BLOOM_MODE_OPTIONS,
   RENDER_ENHANCED_BLOOM_LIMITS,
-} from "@/core/render/lib/features/render-bloom-choices";
+} from "@/core/render/lib/features/tone/render-bloom-choices";
 import {
   explainRenderDisplayTransform,
   RENDER_DISPLAY_TRANSFORM_OPTIONS,
-} from "@/core/render/lib/features/render-display-transform-choices";
-import { formatStops, RENDER_EXPOSURE_LIMITS } from "@/core/render/lib/features/render-exposure-choices";
-import { formatGrading, RENDER_GRADING_LIMITS } from "@/core/render/lib/features/render-grading-choices";
+} from "@/core/render/lib/features/tone/render-display-transform-choices";
+import { formatStops, RENDER_EXPOSURE_LIMITS } from "@/core/render/lib/features/tone/render-exposure-choices";
+import { formatGrading, RENDER_GRADING_LIMITS } from "@/core/render/lib/features/tone/render-grading-choices";
 import {
   explainRenderLightLevel,
   formatSunTint,
   getRenderLightLevelOptions,
   RENDER_SUN_TINT_LIMITS,
   toDrawnRenderLightLevel,
-} from "@/core/render/lib/features/render-light-level-choices";
+} from "@/core/render/lib/features/tone/render-light-level-choices";
 import {
   explainRenderLightModel,
   RENDER_LIGHT_MODEL_OPTIONS,
-} from "@/core/render/lib/features/render-light-model-choices";
+} from "@/core/render/lib/features/tone/render-light-model-choices";
 import {
   TRenderEnhancedBloomSettings,
   TRenderGradingSettings,
-} from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { LevelLookSection } from "@/tools/level-viewer/components/toolbar/image/LevelLookSection";
 import { LevelLookSliders } from "@/tools/level-viewer/components/toolbar/image/LevelLookSliders";

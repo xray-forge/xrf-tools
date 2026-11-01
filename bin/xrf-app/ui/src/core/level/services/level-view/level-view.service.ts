@@ -19,7 +19,7 @@ import {
   DEFAULT_LEVEL_VIEW_OPTIONS,
   ILevelViewOptions,
 } from "@/core/level/lib/view/level-view-options";
-import { listUnkeptRenderSettings } from "@/core/render/lib/settings/render-feature-choice";
+import { listUnkeptRenderSettings } from "@/core/render/lib/settings/choice/render-feature-choice";
 import {
   jsonCodec,
   LEVEL_CAMERA_STORAGE_KEY,

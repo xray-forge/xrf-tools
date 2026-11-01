@@ -13,7 +13,7 @@ import {
   TLevelViewRenderResult,
 } from "@/core/level/fixtures/level-container";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
-import { DEFAULT_RENDER_RAIN_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { DEFAULT_RENDER_RAIN_SETTINGS } from "@/core/render/lib/settings/choice/render-feature-defaults";
 import { clearLocalStorage } from "@/core/storage";
 import { LevelRainAction } from "@/tools/level-viewer/components/toolbar/environment/LevelRainAction";
 

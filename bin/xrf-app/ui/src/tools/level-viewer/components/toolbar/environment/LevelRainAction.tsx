@@ -20,15 +20,15 @@ import { LEVEL_MANUAL_WEATHER_RAIN_KEYS } from "@/core/level/lib/weather/level-m
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { formatGrassRadius } from "@/core/render/lib/features/render-grass-choices";
+import { formatGrassRadius } from "@/core/render/lib/features/world/render-grass-choices";
 import {
   explainRenderRainDropsMode,
   explainRenderRainMode,
   formatRainPace,
   formatRainShare,
   RENDER_RAIN_LIMITS,
-} from "@/core/render/lib/features/render-rain-choices";
-import { TRenderRainSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/world/render-rain-choices";
+import { TRenderRainSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { LevelWeatherCollectionSelect } from "@/tools/level-viewer/components/weather/LevelWeatherCollectionSelect";
 
 /** What the thunder's list offers before the level's weather is read. */

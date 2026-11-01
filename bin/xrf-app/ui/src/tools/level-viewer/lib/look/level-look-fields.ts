@@ -1,6 +1,6 @@
 import { ILevelLook } from "@/core/level/lib/look/level-look";
-import { RENDER_EXPOSURE_LIMITS } from "@/core/render/lib/features/render-exposure-choices";
-import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { RENDER_EXPOSURE_LIMITS } from "@/core/render/lib/features/tone/render-exposure-choices";
+import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { ELevelLookFieldOff } from "@/tools/level-viewer/lib/look/level-look-field-off";
 
 /** One number of the look a slider sets. */

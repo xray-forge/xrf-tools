@@ -1,6 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 
-import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/choice/render-feature-defaults";
 import {
   compareLevelViewerSnapshot,
   ELevelViewerSnapshotStatus,

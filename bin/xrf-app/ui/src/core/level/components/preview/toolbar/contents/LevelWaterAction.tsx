@@ -31,12 +31,12 @@ import {
   RENDER_ENHANCED_WATER_LIMITS,
   RENDER_WATER_LIMITS,
   RENDER_WATER_MODE_OPTIONS,
-} from "@/core/render/lib/features/render-water-choices";
+} from "@/core/render/lib/features/world/render-water-choices";
 import {
   TRenderEnhancedWaterSettings,
   TRenderReflectionSettings,
   TRenderWaterSettings,
-} from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
  * Whether this view draws the water, how strongly the weather has it reflect, and how it moves, reflects and

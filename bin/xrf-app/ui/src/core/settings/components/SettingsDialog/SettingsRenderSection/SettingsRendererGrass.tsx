@@ -13,8 +13,8 @@ import {
   fromGrassDensityScale,
   RENDER_GRASS_LIMITS,
   toGrassDensityScale,
-} from "@/core/render/lib/features/render-grass-choices";
-import { TRenderGrassSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/world/render-grass-choices";
+import { TRenderGrassSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";

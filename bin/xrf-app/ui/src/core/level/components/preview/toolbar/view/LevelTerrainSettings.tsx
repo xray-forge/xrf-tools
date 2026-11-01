@@ -12,8 +12,8 @@ import {
   formatTerrainScale,
   formatTerrainSharpness,
   RENDER_TERRAIN_LIMITS,
-} from "@/core/render/lib/features/render-terrain-choices";
-import { TRenderTerrainSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/world/render-terrain-choices";
+import { TRenderTerrainSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /** How this view's varied terrain tiling lays its hexagons: how small, how far their copies turn, how sharply they meet. */
 export function LevelTerrainSettings({

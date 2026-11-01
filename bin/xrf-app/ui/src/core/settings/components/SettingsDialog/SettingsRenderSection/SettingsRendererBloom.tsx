@@ -10,8 +10,8 @@ import {
   formatBloomStrength,
   RENDER_BLOOM_MODE_OPTIONS,
   RENDER_ENHANCED_BLOOM_LIMITS,
-} from "@/core/render/lib/features/render-bloom-choices";
-import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/tone/render-bloom-choices";
+import { TRenderEnhancedBloomSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";

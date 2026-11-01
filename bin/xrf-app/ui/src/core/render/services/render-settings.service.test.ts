@@ -10,8 +10,8 @@ import {
   RENDER_DEFAULT_PERIODIC_BUDGET,
 } from "@xrf/ipc/types/xrf-renderer";
 
-import { DEFAULT_RENDER_FEATURE_CHOICE } from "@/core/render/lib/settings/render-feature-choice";
-import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
+import { DEFAULT_RENDER_FEATURE_CHOICE } from "@/core/render/lib/settings/choice/render-feature-choice";
+import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/choice/render-preset";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { SettingsService } from "@/core/settings/services/settings";
 import { clearLocalStorage, getLocalStorageValue, setLocalStorageValue } from "@/core/storage";

@@ -13,8 +13,8 @@ import {
   formatCameraShutter,
   formatCameraStrength,
   RENDER_CAMERA_LIMITS,
-} from "@/core/render/lib/features/render-camera-choices";
-import { TRenderCameraSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/image/render-camera-choices";
+import { TRenderCameraSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";

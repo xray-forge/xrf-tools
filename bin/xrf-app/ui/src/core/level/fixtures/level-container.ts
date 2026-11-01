@@ -18,7 +18,7 @@ import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { mockRenderAppliedReport, mockRenderLoadReport } from "@/core/render/fixtures/render.mocks";
-import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/native-frame-report";
+import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/contract/native-frame-report";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer } from "@/fixtures/utils/container";

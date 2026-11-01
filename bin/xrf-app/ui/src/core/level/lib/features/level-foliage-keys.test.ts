@@ -6,8 +6,8 @@ import {
   LEVEL_FOLIAGE_MOTION_KEYS,
   resetLevelFoliageKeys,
 } from "@/core/level/lib/features/level-foliage-keys";
-import { DEFAULT_RENDER_GRASS_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
-import { TRenderFoliageSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { DEFAULT_RENDER_GRASS_SETTINGS } from "@/core/render/lib/settings/choice/render-feature-defaults";
+import { TRenderFoliageSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 const SETTINGS: TRenderFoliageSettings = DEFAULT_RENDER_GRASS_SETTINGS.foliage;
 

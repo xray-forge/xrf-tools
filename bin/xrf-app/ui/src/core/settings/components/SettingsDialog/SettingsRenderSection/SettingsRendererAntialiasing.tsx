@@ -21,12 +21,12 @@ import {
   RENDER_ANTIALIASING_OPTIONS,
   RENDER_TEXTURE_FILTERING_OPTIONS,
   RENDER_TEXTURE_LOD_OPTIONS,
-} from "@/core/render/lib/features/render-antialiasing-choices";
+} from "@/core/render/lib/features/image/render-antialiasing-choices";
 import {
   formatOutputScale,
   RENDER_OUTPUT_SCALE_LIMITS,
   RENDER_RESOLUTION_OPTIONS,
-} from "@/core/render/lib/features/render-display-choices";
+} from "@/core/render/lib/features/image/render-display-choices";
 import {
   describeDlssPreset,
   describeRayReconstructionPreset,
@@ -35,9 +35,9 @@ import {
   RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS,
   RENDER_SCALE_OPTIONS,
   RENDER_SHARPENING_LIMITS,
-} from "@/core/render/lib/features/render-upscaling-choices";
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
+} from "@/core/render/lib/features/image/render-upscaling-choices";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import { ERenderResolution } from "@/core/render/lib/settings/device/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 /**

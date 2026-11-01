@@ -5,7 +5,7 @@ import { RenderGraphSettings } from "@xrf/ipc/types/xrf-renderer";
 import {
   DEFAULT_RENDER_GRAPH_SETTINGS,
   SERIAL_RENDER_GRAPH_SETTINGS,
-} from "@/core/render/lib/settings/render-graph-settings";
+} from "@/core/render/lib/settings/device/render-graph-settings";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { LevelRendererGraphSection } from "@/tools/level-viewer/components/panels/LevelRendererPanel/LevelRendererGraphSection";
 

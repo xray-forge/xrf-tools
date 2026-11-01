@@ -4,7 +4,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ReactElement } from "react";
 
-import { resolveRenderBackend, TRenderBackendChoice } from "@/core/render/lib/settings/render-backend-choice";
+import { resolveRenderBackend, TRenderBackendChoice } from "@/core/render/lib/settings/device/render-backend-choice";
 import {
   describeRenderGpu,
   fromRenderGpuKey,
@@ -12,7 +12,7 @@ import {
   resolveRenderGpu,
   toRenderGpuKey,
   TRenderGpuKey,
-} from "@/core/render/lib/settings/render-gpu-choice";
+} from "@/core/render/lib/settings/device/render-gpu-choice";
 
 /**
  * @param gpu - The GPU the settings ask for, or null for the automatic one.

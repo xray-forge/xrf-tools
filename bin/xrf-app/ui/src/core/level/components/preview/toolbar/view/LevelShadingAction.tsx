@@ -20,8 +20,11 @@ import {
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { explainRenderTerrainTiling } from "@/core/render/lib/features/render-terrain-choices";
-import { TRenderParallaxSettings, TRenderTerrainSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { explainRenderTerrainTiling } from "@/core/render/lib/features/world/render-terrain-choices";
+import {
+  TRenderParallaxSettings,
+  TRenderTerrainSettings,
+} from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
  * How the level is shaded: the frame as dressed, as clay or by shader, or one of the targets it is built from, listed

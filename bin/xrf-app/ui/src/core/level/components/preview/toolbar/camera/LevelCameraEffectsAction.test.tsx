@@ -5,7 +5,7 @@ import { LevelCameraEffectsAction } from "@/core/level/components/preview/toolba
 import { mockLevelViewContainer } from "@/core/level/fixtures/level-container";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelViewportService } from "@/core/level/services/level-viewport";
-import { DEFAULT_RENDER_CAMERA_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { DEFAULT_RENDER_CAMERA_SETTINGS } from "@/core/render/lib/settings/choice/render-feature-defaults";
 import { clearLocalStorage } from "@/core/storage";
 import { renderWithProviders } from "@/fixtures/utils/render";
 

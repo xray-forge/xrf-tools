@@ -7,7 +7,7 @@ import {
   mockLevelViewContainer,
   renderLevelView,
 } from "@/core/level/fixtures/level-container";
-import { TRenderFoliageSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { TRenderFoliageSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { clearLocalStorage } from "@/core/storage";
 import { LevelWindAction } from "@/tools/level-viewer/components/toolbar/environment/LevelWindAction";
 

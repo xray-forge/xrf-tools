@@ -3,7 +3,7 @@ import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
-import { TRenderWaterSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { TRenderWaterSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";

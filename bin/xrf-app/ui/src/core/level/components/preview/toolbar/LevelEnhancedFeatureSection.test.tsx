@@ -8,8 +8,8 @@ import {
   mockLevelViewContainer,
   renderLevelView,
 } from "@/core/level/fixtures/level-container";
-import { explainRenderVolumetricMode } from "@/core/render/lib/features/render-volumetric-choices";
-import { DEFAULT_RENDER_DEBANDING_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { explainRenderVolumetricMode } from "@/core/render/lib/features/lighting/render-volumetric-choices";
+import { DEFAULT_RENDER_DEBANDING_SETTINGS } from "@/core/render/lib/settings/choice/render-feature-defaults";
 import { clearLocalStorage } from "@/core/storage";
 
 beforeEach(() => {

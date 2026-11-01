@@ -8,8 +8,8 @@ import {
   renderLevelView,
   TLevelViewRenderResult,
 } from "@/core/level/fixtures/level-container";
-import { DEFAULT_RENDER_SHADOW_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
-import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { DEFAULT_RENDER_SHADOW_SETTINGS } from "@/core/render/lib/settings/choice/render-feature-defaults";
+import { TRenderShadowSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { clearLocalStorage } from "@/core/storage";
 import { LevelShadowAction } from "@/tools/level-viewer/components/toolbar/lighting/LevelShadowAction";
 

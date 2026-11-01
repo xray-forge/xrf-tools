@@ -15,9 +15,9 @@ import {
   RENDER_SHADOW_CASCADE_OPTIONS,
   RENDER_SHADOW_LIMITS,
   RENDER_SHADOW_RESOLUTION_OPTIONS,
-} from "@/core/render/lib/features/render-shadow-choices";
-import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/render-feature-defaults";
-import { TRenderShadowSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/lighting/render-shadow-choices";
+import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/choice/render-feature-defaults";
+import { TRenderShadowSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";

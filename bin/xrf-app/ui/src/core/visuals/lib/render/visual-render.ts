@@ -4,11 +4,11 @@ import { addVectors, normalise, scaleVector, toRadians, toRawColor, toSphereFitD
 import { Nullable } from "@xrf/types";
 
 import { IRenderLighting, toNativeAssetLighting } from "@/core/render/lib/lighting/render-lighting";
-import { toNativeLines } from "@/core/render/lib/native/native-overlay";
-import { toNativeAssetViewOptions } from "@/core/render/lib/native/native-view-options";
+import { toNativeLines } from "@/core/render/lib/native/contract/native-overlay";
+import { toNativeAssetViewOptions } from "@/core/render/lib/native/contract/native-view-options";
 import { toRenderAxesLines, toRenderGridLines } from "@/core/render/lib/scene/render-grid-lines";
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { NATIVE_RENDER_OUTPUT, TRenderOutput } from "@/core/render/lib/settings/render-resolution";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import { NATIVE_RENDER_OUTPUT, TRenderOutput } from "@/core/render/lib/settings/device/render-resolution";
 import { IVisualPreviewSceneConfig } from "@/core/visuals/lib/scene/scene-config";
 import { IVisualPreviewViewOptions } from "@/core/visuals/lib/scene/visual-view-options";
 import { IVisualCameraFit } from "@/core/visuals/lib/visual-views";

@@ -14,8 +14,8 @@ import {
   RENDER_BACKEND_AUTO,
   resolveRenderDrawing,
   TRenderBackendChoice,
-} from "@/core/render/lib/settings/render-backend-choice";
-import { describeRenderGpu } from "@/core/render/lib/settings/render-gpu-choice";
+} from "@/core/render/lib/settings/device/render-backend-choice";
+import { describeRenderGpu } from "@/core/render/lib/settings/device/render-gpu-choice";
 
 import { IAboutRow } from "./about-row";
 

@@ -15,15 +15,15 @@ import { RenderValueSlider } from "@/core/render/components/controls/RenderValue
 import {
   explainRenderLightFalloff,
   RENDER_LIGHT_FALLOFF_OPTIONS,
-} from "@/core/render/lib/features/render-light-falloff-choices";
+} from "@/core/render/lib/features/lighting/render-light-falloff-choices";
 import {
   explainRenderLightShafts,
   formatShaftStrength,
   RENDER_LIGHT_SHAFTS_OPTIONS,
   RENDER_SHAFT_STRENGTH_LIMITS,
-} from "@/core/render/lib/features/render-light-shafts-choices";
-import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features/render-shadow-choices";
-import { TRenderLightsSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/lighting/render-light-shafts-choices";
+import { RENDER_LIGHT_SHADOW_FILTER_OPTIONS } from "@/core/render/lib/features/lighting/render-shadow-choices";
+import { TRenderLightsSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
  * Whether this view lights the level with its lamps, and with the level file's own lights too; which lamps draw shafts

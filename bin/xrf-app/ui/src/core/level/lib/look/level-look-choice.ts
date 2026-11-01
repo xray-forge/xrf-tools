@@ -13,7 +13,7 @@ import {
   toSettingsLevelLook,
   XRF_LEVEL_LOOK,
 } from "@/core/level/lib/look/level-look";
-import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { TRenderExposureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /** Where a level's look comes from. */
 export enum ELevelLookSource {

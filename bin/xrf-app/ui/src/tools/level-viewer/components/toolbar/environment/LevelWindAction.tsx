@@ -26,8 +26,8 @@ import {
   formatFoliageStrength,
   RENDER_FOLIAGE_LIMITS,
   RENDER_FOLIAGE_MODE_OPTIONS,
-} from "@/core/render/lib/features/render-grass-choices";
-import { TRenderFoliageSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/world/render-grass-choices";
+import { TRenderFoliageSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /** The enhanced foliage motion's strengths, each a slider. */
 const FOLIAGE_MOTION: ReadonlyArray<[keyof typeof RENDER_FOLIAGE_LIMITS, string]> = [

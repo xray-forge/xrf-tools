@@ -14,7 +14,7 @@ import {
   RENDER_BACKEND_AUTO,
   resolveRenderDrawing,
   TRenderBackendChoice,
-} from "@/core/render/lib/settings/render-backend-choice";
+} from "@/core/render/lib/settings/device/render-backend-choice";
 
 /**
  * @param value - The graphics API the settings ask for.

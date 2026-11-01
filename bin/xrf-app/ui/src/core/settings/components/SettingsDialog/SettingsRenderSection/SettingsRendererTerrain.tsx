@@ -12,8 +12,8 @@ import {
   formatTerrainSharpness,
   RENDER_TERRAIN_LIMITS,
   RENDER_TERRAIN_TILING_OPTIONS,
-} from "@/core/render/lib/features/render-terrain-choices";
-import { TRenderTerrainSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/world/render-terrain-choices";
+import { TRenderTerrainSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";

@@ -18,8 +18,8 @@ import {
   formatCameraShutter,
   formatCameraStrength,
   RENDER_CAMERA_LIMITS,
-} from "@/core/render/lib/features/render-camera-choices";
-import { TRenderCameraSettings } from "@/core/render/lib/settings/render-feature-settings";
+} from "@/core/render/lib/features/image/render-camera-choices";
+import { TRenderCameraSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
  * The camera this view's frame is shown through: its motion blur, its depth of field focused by a value or by a click

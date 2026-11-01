@@ -11,7 +11,7 @@ import { MONOLITH_LEVEL_BLOOM, OPENXRAY_LEVEL_BLOOM } from "@/core/level/lib/loo
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelLookService } from "@/core/level/services/level-look/level-look.service";
-import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
+import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/choice/render-feature-defaults";
 import { clearLocalStorage, getLocalStorageValue, LEVEL_LOOK_STORAGE_KEY } from "@/core/storage";
 import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
 import { mockContainer, mockInjectedService } from "@/fixtures/utils/container";

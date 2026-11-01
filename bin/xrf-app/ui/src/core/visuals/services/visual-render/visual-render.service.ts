@@ -11,9 +11,9 @@ import { EWorldCameraCommand, WorldModelPose } from "@xrf/ipc/types/xrf-world";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
-import { NativeRenderSurfaceService } from "@/core/render/lib/native/native-render-surface-service";
-import { NativeViewport } from "@/core/render/lib/native/native-viewport";
-import { toRenderOutput } from "@/core/render/lib/settings/render-resolution";
+import { NativeRenderSurfaceService } from "@/core/render/lib/native/viewport/native-render-surface-service";
+import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
+import { toRenderOutput } from "@/core/render/lib/settings/device/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { BIND_POSE, IVisualRenderSource, NO_HIDDEN_BONES, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { toVisualCamera, toVisualOverlays, toVisualViewOptions } from "@/core/visuals/lib/render/visual-render";

@@ -19,8 +19,8 @@ import {
   resolveLevelLook,
   toLevelLookChoice,
 } from "@/core/level/lib/look/level-look-choice";
-import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/render-feature-defaults";
-import { TRenderExposureSettings } from "@/core/render/lib/settings/render-feature-settings";
+import { DEFAULT_RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/settings/choice/render-feature-defaults";
+import { TRenderExposureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /** What Anomaly's `default_controls.ltx` sets. */
 const ANOMALY: LevelConsoleDefaults = {

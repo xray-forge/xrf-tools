@@ -1,8 +1,8 @@
 import { ComponentType } from "react";
 
-import { isRenderFeatureCustom } from "@/core/render/lib/settings/render-feature-choice";
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { ERenderPreset } from "@/core/render/lib/settings/render-preset";
+import { isRenderFeatureCustom } from "@/core/render/lib/settings/choice/render-feature-choice";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import { ERenderPreset } from "@/core/render/lib/settings/choice/render-preset";
 
 import { SettingsRendererAmbientOcclusion } from "./SettingsRendererAmbientOcclusion";
 import { SettingsRendererAntialiasing } from "./SettingsRendererAntialiasing";

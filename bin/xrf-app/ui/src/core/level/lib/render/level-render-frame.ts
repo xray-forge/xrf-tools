@@ -5,7 +5,7 @@ import { Nullable } from "@xrf/types";
 import { ILevelBox, toBoxFloor, toBoxReach, toOriginReach } from "@/core/level/lib/extent/level-extent";
 import { ILevelRenderConfig } from "@/core/level/lib/render/level-render-config";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
-import { toNativeLines } from "@/core/render/lib/native/native-overlay";
+import { toNativeLines } from "@/core/render/lib/native/contract/native-overlay";
 import { toRenderAxesLines, toRenderBoxLines, toRenderGridLines } from "@/core/render/lib/scene/render-grid-lines";
 import { toRenderGridStep } from "@/core/render/lib/scene/render-grid-step";
 

@@ -31,9 +31,9 @@ import {
   toLevelRendererFeatures,
 } from "@/core/level/lib/features/level-feature-options";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
-import { IRenderFeatureSettings } from "@/core/render/lib/settings/render-feature-settings";
-import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/render-preset";
-import { ERenderResolution } from "@/core/render/lib/settings/render-resolution";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import { ERenderPreset, RENDER_PRESETS } from "@/core/render/lib/settings/choice/render-preset";
+import { ERenderResolution } from "@/core/render/lib/settings/device/render-resolution";
 
 const SETTINGS: IRenderFeatureSettings = RENDER_PRESETS[ERenderPreset.BASE];
 
