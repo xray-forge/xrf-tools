@@ -50,7 +50,8 @@ fn cs_froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
   let g: f32 = froxels.params.y;
   let fog: f32 = 1.0 + height_fog_share(lighting, world.y) * lighting.height_fog.y * FROXEL_FOG;
 
-  // The sun, scattered as thickly as the weather's shafts, through one tap of its cascades. At the authored levels the
+  // The sun, scattered as thickly as the weather's shafts, through one tap of its cascades; none while no cascade is
+  // drawn, as the engine marches no shafts without them, rather than through every wall. At the authored levels the
   // light the air scatters is gathered as the engine gathers its shafts, the authored colours by the densities as
   // display values in the engine's units, which the composite adds to the frame's display values
   // (`fs_sun_shafts_over`); elsewhere as light.
@@ -58,7 +59,7 @@ fn cs_froxel_inject(@builtin(global_invocation_id) id: vec3<u32>) {
   let sun_density: f32 = lighting.shafts.x * FROXEL_SUN * fog * intensity;
   var scattered: vec3<f32> = vec3<f32>(0.0);
 
-  if (sun_density > 0.0) {
+  if (sun_density > 0.0 && shadows.count > 0u) {
     let sunlit: f32 = sun_shadow_tap(shadow_maps, shadows, world);
     let sun: vec3<f32> = select(lighting.sun.rgb * authored_amount(sun_density),
       lighting.summed_light.yzw * sun_density, is_display);
