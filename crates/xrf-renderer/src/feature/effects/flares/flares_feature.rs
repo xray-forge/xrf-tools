@@ -265,8 +265,11 @@ impl ViewFeature for FlaresFeature {
     self.state.as_ref().map_or(0, wgpu::Buffer::size)
   }
 
+  /// Lets go of its views of the weather's textures too, which would hold them past the weather textures' own
+  /// eviction.
   fn release(&mut self) {
     self.state = None;
+    self.textures.clear();
     self.is_drawn = false;
   }
 }
