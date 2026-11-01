@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::contract::render_shadow_settings::{RENDER_MAX_SHADOW_CASCADES, RENDER_MAX_SHADOW_FILTER};
 use crate::frame::view_targets::ViewTargets;
@@ -25,8 +25,7 @@ pub struct SunPass {
   /// Shadowed by the cascades, then by the traced shadow, each by the engine's light and then split into the anchored
   /// levels' diffuse and coloured specular, for each width the cascades' filter reaches (`MAX_REACH` apart), so its
   /// loops compile to their count.
-  pipelines: [[wgpu::RenderPipeline; 4]; Self::REACHES],
-  generation: u64,
+  pipelines: PipelineSet<[[wgpu::RenderPipeline; 4]; Self::REACHES]>,
 }
 
 impl SunPass {
@@ -95,23 +94,19 @@ impl SunPass {
           dimension: Some(wgpu::TextureViewDimension::D2Array),
           ..Default::default()
         }),
-      pipelines: Self::create_pipelines(source, view_layout, &layout)?,
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, view_layout, &layout)?),
       view_layout: view_layout.clone(),
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.view_layout, &self.layout) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("Sun rejected, lighting with the last one: {error}"),
-      }
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.view_layout, &self.layout)
+    }) {
+      log::error!("Sun rejected, lighting with the last one: {error}");
     }
   }
 

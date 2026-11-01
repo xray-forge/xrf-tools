@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
 
 use crate::pass::exposure_histogram_parameters::ExposureHistogramParameters;
 use crate::pass::exposure_parameters::ExposureParameters;
@@ -12,10 +12,9 @@ pub struct ExposurePass {
   layout: wgpu::BindGroupLayout,
   histogram_layout: wgpu::BindGroupLayout,
   /// Measuring, then adapting.
-  pipelines: [wgpu::ComputePipeline; 2],
+  pipelines: PipelineSet<[wgpu::ComputePipeline; 2]>,
   /// Counting the histogram, then settling the scale.
-  histogram: [wgpu::ComputePipeline; 2],
-  generation: u64,
+  histogram: PipelineSet<[wgpu::ComputePipeline; 2]>,
 }
 
 impl ExposurePass {
@@ -36,27 +35,28 @@ impl ExposurePass {
     let histogram_layout: wgpu::BindGroupLayout = ExposureHistogramParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, &layout)?,
-      histogram: Self::create_histogram_pipelines(source, &histogram_layout)?,
-      generation: source.get_generation(),
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, &layout)?),
+      histogram: PipelineSet::new(
+        source.cache,
+        Self::create_histogram_pipelines(source, &histogram_layout)?,
+      ),
       layout,
       histogram_layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
+    let measured: XrfResult = self
+      .pipelines
+      .refresh(source.cache, || Self::create_pipelines(source, &self.layout));
+    let counted: XrfResult = self.histogram.refresh(source.cache, || {
+      Self::create_histogram_pipelines(source, &self.histogram_layout)
+    });
 
-      match (
-        Self::create_pipelines(source, &self.layout),
-        Self::create_histogram_pipelines(source, &self.histogram_layout),
-      ) {
-        (Ok(pipelines), Ok(histogram)) => (self.pipelines, self.histogram) = (pipelines, histogram),
-        (Err(error), _) | (_, Err(error)) => log::error!("Exposure rejected, adapting with the last one: {error}"),
-      }
+    if let Err(error) = measured.and(counted) {
+      log::error!("Exposure rejected, adapting with the last one: {error}");
     }
   }
 

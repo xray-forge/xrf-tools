@@ -1,5 +1,7 @@
 use xrf_engine_target::XrayEngine;
-use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding};
+use xrf_renderer_core::{
+  GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, PipelineSet, UniformBinding,
+};
 
 use crate::contract::render_bloom_settings::RenderBloomSettings;
 use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
@@ -15,7 +17,6 @@ use crate::pass::enhanced_bloom_stage::EnhancedBloomStage;
 use crate::pass::enhanced_bloom_uniform::EnhancedBloomUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::pipeline_source::PipelineSource;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::view_record::ViewRecord;
 
@@ -30,9 +31,8 @@ pub struct BloomFeature {
   is_engine_shown: bool,
   /// What the enhanced bloom draws with, where it draws in the engine's place.
   enhanced: Option<RenderEnhancedBloomSettings>,
-  /// The enhanced bloom's pipelines, one a stage, with the cache's generation they were asked for in; the last made
-  /// are kept while a reloaded shader is refused.
-  pipelines: Option<(u64, [wgpu::RenderPipeline; 5])>,
+  /// The enhanced bloom's pipelines, one a stage, asked for once it draws.
+  pipelines: Option<PipelineSet<[wgpu::RenderPipeline; 5]>>,
 }
 
 impl BloomFeature {
@@ -51,7 +51,14 @@ impl BloomFeature {
     self.enhanced = EnhancedBloomUniform::for_view(options).filter(|_| size.is_some());
 
     if self.enhanced.is_some() {
-      self.ask_pipelines(&passes.image.enhanced_bloom, passes.pipelines);
+      let pass: &EnhancedBloomPass = &passes.image.enhanced_bloom;
+
+      if let Err(error) = PipelineSet::ask(&mut self.pipelines, passes.pipelines.cache, || {
+        pass.get_pipelines(passes.pipelines)
+      }) {
+        log::error!("Enhanced bloom rejected, blooming with the last one: {error}");
+      }
+
       self.enhanced = self.enhanced.filter(|_| self.pipelines.is_some());
     }
 
@@ -83,27 +90,6 @@ impl BloomFeature {
   pub fn keep_for_distortion(&mut self, is_distorting: bool) {
     if !self.is_engine_shown && !is_distorting {
       self.engine = None;
-    }
-  }
-
-  /// Asks the cache for the enhanced bloom's pipelines where it changed since they were last asked for; a refusal
-  /// keeps the last made, and is not asked again before the cache changes.
-  fn ask_pipelines(&mut self, pass: &EnhancedBloomPass, source: PipelineSource<'_>) {
-    let generation: u64 = source.get_generation();
-
-    if self.pipelines.as_ref().is_some_and(|(asked, _)| *asked == generation) {
-      return;
-    }
-
-    match pass.get_pipelines(source) {
-      Ok(pipelines) => self.pipelines = Some((generation, pipelines)),
-      Err(error) => {
-        log::error!("Enhanced bloom rejected, blooming with the last one: {error}");
-
-        if let Some((asked, _)) = &mut self.pipelines {
-          *asked = generation;
-        }
-      }
     }
   }
 
@@ -146,7 +132,7 @@ impl BloomFeature {
     let frame: (u32, u32) = targets.size;
     let lighting: UniformBinding<LightingUniform> = lit.lighting;
     let settings: &RenderEnhancedBloomSettings = self.enhanced.as_ref()?;
-    let (_, pipelines) = self.pipelines.as_ref()?;
+    let pipelines: &[wgpu::RenderPipeline; 5] = self.pipelines.as_deref()?;
     let pass: &'a EnhancedBloomPass = &passes.image.enhanced_bloom;
     let empty: GraphTexture = bindings.import_view(
       &mut *graph,

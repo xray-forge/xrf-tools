@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipelineDescription};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::calibration_parameters::CalibrationParameters;
@@ -12,8 +12,7 @@ use crate::pass::view_binding::ViewBinding;
 pub struct CalibrationPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
-  pipeline: wgpu::RenderPipeline,
-  generation: u64,
+  pipeline: PipelineSet<wgpu::RenderPipeline>,
 }
 
 impl CalibrationPass {
@@ -24,23 +23,19 @@ impl CalibrationPass {
     let layout: wgpu::BindGroupLayout = CalibrationParameters::create_layout(source.device);
 
     Ok(Self {
-      pipeline: Self::create_pipeline(source, view_layout, &layout)?,
+      pipeline: PipelineSet::new(source.cache, Self::create_pipeline(source, view_layout, &layout)?),
       view_layout: view_layout.clone(),
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipeline again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipeline again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last one where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipeline(source, &self.view_layout, &self.layout) {
-        Ok(pipeline) => self.pipeline = pipeline,
-        Err(error) => log::error!("Calibration props rejected, drawing with the last ones: {error}"),
-      }
+    if let Err(error) = self.pipeline.refresh(source.cache, || {
+      Self::create_pipeline(source, &self.view_layout, &self.layout)
+    }) {
+      log::error!("Calibration props rejected, drawing with the last ones: {error}");
     }
   }
 

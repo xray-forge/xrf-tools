@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
 
 use crate::pass::meter_parameters::MeterParameters;
 use crate::pass::pipeline_source::PipelineSource;
@@ -10,8 +10,7 @@ use crate::pass::view_binding::ViewBinding;
 pub struct MeterPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
-  pipeline: wgpu::ComputePipeline,
-  generation: u64,
+  pipeline: PipelineSet<wgpu::ComputePipeline>,
 }
 
 impl MeterPass {
@@ -22,23 +21,19 @@ impl MeterPass {
     let layout: wgpu::BindGroupLayout = MeterParameters::create_layout(source.device);
 
     Ok(Self {
-      pipeline: Self::create_pipeline(source, view_layout, &layout)?,
+      pipeline: PipelineSet::new(source.cache, Self::create_pipeline(source, view_layout, &layout)?),
       view_layout: view_layout.clone(),
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipeline again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipeline again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last one where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipeline(source, &self.view_layout, &self.layout) {
-        Ok(pipeline) => self.pipeline = pipeline,
-        Err(error) => log::error!("Spot meter rejected, metering with the last one: {error}"),
-      }
+    if let Err(error) = self.pipeline.refresh(source.cache, || {
+      Self::create_pipeline(source, &self.view_layout, &self.layout)
+    }) {
+      log::error!("Spot meter rejected, metering with the last one: {error}");
     }
   }
 

@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
 
 use crate::pass::froxel_inject_parameters::FroxelInjectParameters;
 use crate::pass::froxel_integrate_parameters::FroxelIntegrateParameters;
@@ -13,12 +13,11 @@ use crate::scene::level::feature::froxel_volume::FroxelVolume;
 pub struct FroxelPass {
   layouts: [wgpu::BindGroupLayout; 3],
   /// The fill, then the integration.
-  pipelines: [wgpu::ComputePipeline; 2],
+  pipelines: PipelineSet<[wgpu::ComputePipeline; 2]>,
   /// Reads the history between its froxels, clamped at its edges.
   sampler: wgpu::Sampler,
   /// A volume of one froxel, scattering nothing, for the composite where none is drawn.
   empty: wgpu::TextureView,
-  generation: u64,
 }
 
 impl FroxelPass {
@@ -38,7 +37,7 @@ impl FroxelPass {
     ];
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, &layouts)?,
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, &layouts)?),
       layouts,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("froxels"),
@@ -62,7 +61,6 @@ impl FroxelPass {
           view_formats: &[],
         })
         .create_view(&Default::default()),
-      generation: source.get_generation(),
     })
   }
 
@@ -74,16 +72,14 @@ impl FroxelPass {
     &self.empty
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.layouts) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("Froxels rejected, drawing with the last ones: {error}"),
-      }
+    if let Err(error) = self
+      .pipelines
+      .refresh(source.cache, || Self::create_pipelines(source, &self.layouts))
+    {
+      log::error!("Froxels rejected, drawing with the last ones: {error}");
     }
   }
 

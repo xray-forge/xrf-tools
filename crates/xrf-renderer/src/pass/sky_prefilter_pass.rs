@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
 
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
@@ -10,10 +10,9 @@ use crate::scene::level::feature::sky_prefilter::SkyPrefilter;
 /// it by sampling the mips before it over the GGX lobe of its roughness.
 pub struct SkyPrefilterPass {
   layout: wgpu::BindGroupLayout,
-  pipeline: wgpu::ComputePipeline,
+  pipeline: PipelineSet<wgpu::ComputePipeline>,
   /// What the first mip binds in place of the mips before it: one texel of nothing, a cube.
   empty: wgpu::TextureView,
-  generation: u64,
 }
 
 impl SkyPrefilterPass {
@@ -68,23 +67,20 @@ impl SkyPrefilterPass {
       });
 
     Ok(Self {
-      pipeline: Self::create_pipeline(source, &layout)?,
+      pipeline: PipelineSet::new(source.cache, Self::create_pipeline(source, &layout)?),
       empty,
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipeline(source, &self.layout) {
-        Ok(pipeline) => self.pipeline = pipeline,
-        Err(error) => log::error!("Sky prefilter rejected, filling with the last one: {error}"),
-      }
+    if let Err(error) = self
+      .pipeline
+      .refresh(source.cache, || Self::create_pipeline(source, &self.layout))
+    {
+      log::error!("Sky prefilter rejected, filling with the last one: {error}");
     }
   }
 

@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::ambient_occlusion_parameters::AmbientOcclusionParameters;
@@ -13,11 +13,7 @@ use crate::pass::view_binding::ViewBinding;
 pub struct AmbientOcclusionPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
-  /// The search, its slices and steps the uniform's.
-  search: wgpu::RenderPipeline,
-  /// The denoise across, then down.
-  denoises: [wgpu::RenderPipeline; 2],
-  generation: u64,
+  pipelines: PipelineSet<AmbientOcclusionPipelines>,
 }
 
 impl AmbientOcclusionPass {
@@ -31,30 +27,21 @@ impl AmbientOcclusionPass {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = AmbientOcclusionParameters::create_layout(device);
-    let (search, denoises) = Self::create_pipelines(source, view_layout, &layout)?;
 
     Ok(Self {
-      search,
-      denoises,
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, view_layout, &layout)?),
       view_layout: view_layout.clone(),
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.view_layout, &self.layout) {
-        Ok((search, denoises)) => {
-          self.search = search;
-          self.denoises = denoises;
-        }
-        Err(error) => log::error!("Ambient occlusion rejected, occluding with the last one: {error}"),
-      }
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.view_layout, &self.layout)
+    }) {
+      log::error!("Ambient occlusion rejected, occluding with the last one: {error}");
     }
   }
 
@@ -67,9 +54,9 @@ impl AmbientOcclusionPass {
     parameters: &AmbientOcclusionParameters,
   ) {
     let pipeline: &wgpu::RenderPipeline = match stage {
-      AmbientOcclusionStage::Search => &self.search,
-      AmbientOcclusionStage::DenoiseAcross => &self.denoises[0],
-      AmbientOcclusionStage::DenoiseBack => &self.denoises[1],
+      AmbientOcclusionStage::Search => &self.pipelines.search,
+      AmbientOcclusionStage::DenoiseAcross => &self.pipelines.denoises[0],
+      AmbientOcclusionStage::DenoiseBack => &self.pipelines.denoises[1],
     };
 
     context.bind(parameters);
@@ -81,17 +68,25 @@ impl AmbientOcclusionPass {
     pass.draw(0..3, 0..1);
   }
 
-  #[allow(clippy::type_complexity)]
   fn create_pipelines(
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<(wgpu::RenderPipeline, [wgpu::RenderPipeline; 2])> {
+  ) -> XrfResult<AmbientOcclusionPipelines> {
     let layouts: [Option<&wgpu::BindGroupLayout>; 2] = [Some(view_layout), Some(layout)];
     let create = |fragment: &'static str| -> XrfResult<wgpu::RenderPipeline> {
       create_fullscreen_pipeline(source, Self::MODULE, fragment, &layouts, ViewTargets::OCCLUSION)
     };
 
-    Ok((create("fs_search")?, [create("fs_denoise_x")?, create("fs_denoise_y")?]))
+    Ok(AmbientOcclusionPipelines {
+      search: create("fs_search")?,
+      denoises: [create("fs_denoise_x")?, create("fs_denoise_y")?],
+    })
   }
+}
+
+/// The occlusion's pipelines: the search, its slices and steps the uniform's, and the denoise across, then down.
+struct AmbientOcclusionPipelines {
+  search: wgpu::RenderPipeline,
+  denoises: [wgpu::RenderPipeline; 2],
 }

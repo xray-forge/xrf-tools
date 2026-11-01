@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
   ComputePipelineDescription, FrameGraph, GraphColorAttachment, GraphTexture, GraphTextureDescriptor, PassParameters,
-  RasterContext, RenderPipelineDescription,
+  PipelineSet, RasterContext, RenderPipelineDescription,
 };
 
 use crate::frame::view_targets::ViewTargets;
@@ -33,15 +33,14 @@ pub struct RainPass {
   map_sampler: wgpu::Sampler,
   /// The engine's streaks and splashes and the enhanced splashes, in the scene; the enhanced streaks over the shown
   /// image; and the enhanced drops' rings.
-  pipelines: [wgpu::RenderPipeline; 5],
+  pipelines: PipelineSet<[wgpu::RenderPipeline; 5]>,
   /// The rings' first level reduced into the rest.
-  reduce: wgpu::ComputePipeline,
+  reduce: PipelineSet<wgpu::ComputePipeline>,
   /// The image's blocks at an eighth of its size, then their blur, then the image copied whole.
-  blur: [wgpu::RenderPipeline; 3],
+  blur: PipelineSet<[wgpu::RenderPipeline; 3]>,
   maps: EnhancedRainMaps,
   /// A texel covering nothing, bound where the scene's enhanced passes read no blurred image.
   nothing: wgpu::TextureView,
-  generation: u64,
 }
 
 impl RainPass {
@@ -84,9 +83,12 @@ impl RainPass {
       .create_view(&Default::default());
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, view_layout, &layout, &look_layout)?,
-      blur: Self::create_blur(source, &blur_layout)?,
-      reduce: Self::create_reduce(source, &reduce_layout)?,
+      pipelines: PipelineSet::new(
+        source.cache,
+        Self::create_pipelines(source, view_layout, &layout, &look_layout)?,
+      ),
+      blur: PipelineSet::new(source.cache, Self::create_blur(source, &blur_layout)?),
+      reduce: PipelineSet::new(source.cache, Self::create_reduce(source, &reduce_layout)?),
       maps: EnhancedRainMaps::new(device, queue, bundle, &nothing),
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("rain"),
@@ -108,7 +110,6 @@ impl RainPass {
       }),
       nothing,
       view_layout: view_layout.clone(),
-      generation: source.get_generation(),
       layout,
       look_layout,
       blur_layout,
@@ -116,26 +117,21 @@ impl RainPass {
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
+    let drawn: XrfResult = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.view_layout, &self.layout, &self.look_layout)
+    });
+    let blurred: XrfResult = self
+      .blur
+      .refresh(source.cache, || Self::create_blur(source, &self.blur_layout));
+    let reduced: XrfResult = self
+      .reduce
+      .refresh(source.cache, || Self::create_reduce(source, &self.reduce_layout));
 
-      match Self::create_pipelines(source, &self.view_layout, &self.layout, &self.look_layout).and_then(|pipelines| {
-        Ok((
-          pipelines,
-          Self::create_blur(source, &self.blur_layout)?,
-          Self::create_reduce(source, &self.reduce_layout)?,
-        ))
-      }) {
-        Ok((pipelines, blur, reduce)) => {
-          self.pipelines = pipelines;
-          self.blur = blur;
-          self.reduce = reduce;
-        }
-        Err(error) => log::error!("Rain rejected, falling with the last one: {error}"),
-      }
+    if let Err(error) = drawn.and(blurred).and(reduced) {
+      log::error!("Rain rejected, falling with the last one: {error}");
     }
   }
 

@@ -1,6 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
-  FrameGraph, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, PassParameters, UniformBinding,
+  FrameGraph, GraphColorAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, PassParameters, PipelineSet,
+  UniformBinding,
 };
 
 use crate::pass::enhanced_water_uniform::EnhancedWaterUniform;
@@ -10,12 +11,12 @@ use crate::pass::water_blur_parameters::WaterBlurParameters;
 use crate::pass::water_blur_uniform::WaterBlurUniform;
 use crate::scene::level::feature::water_reflection::WaterReflection;
 
-/// Blurs the enhanced water's reflection one way at a time into half-size targets. Its owner, the water pass, makes it
-/// again on a shader reload.
+/// Blurs the enhanced water's reflection one way at a time into half-size targets. Its owner, the water pass, refreshes
+/// it.
 pub struct WaterBlurPass {
   /// Its parameters' layout, made once, so a pipeline made again keys the cache as the last did.
   layout: wgpu::BindGroupLayout,
-  pipeline: wgpu::RenderPipeline,
+  pipeline: PipelineSet<wgpu::RenderPipeline>,
   sampler: wgpu::Sampler,
 }
 
@@ -28,7 +29,7 @@ impl WaterBlurPass {
     let layout: wgpu::BindGroupLayout = WaterBlurParameters::create_layout(device);
 
     Ok(Self {
-      pipeline: Self::create_pipeline(source, &layout)?,
+      pipeline: PipelineSet::new(source.cache, Self::create_pipeline(source, &layout)?),
       layout,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("water blur"),
@@ -39,13 +40,15 @@ impl WaterBlurPass {
     })
   }
 
+  /// Makes its pipeline again where the shader library was reloaded since (`PipelineSet::refresh`).
+  ///
   /// # Errors
   ///
   /// Returns an error when the shader does not compose or compile, keeping the last pipeline.
   pub fn refresh(&mut self, source: PipelineSource<'_>) -> XrfResult {
-    self.pipeline = Self::create_pipeline(source, &self.layout)?;
-
-    Ok(())
+    self
+      .pipeline
+      .refresh(source.cache, || Self::create_pipeline(source, &self.layout))
   }
 
   /// Declares one way of the blur, from `source` into a transient of `size`, and answers that transient.

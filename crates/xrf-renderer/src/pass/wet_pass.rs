@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
@@ -23,8 +23,7 @@ pub struct WetPass {
   /// The level's surface where none is made: no lowest heights, no puddles and no water, a texel each.
   dry: [wgpu::TextureView; 3],
   /// The patch, then the normal written back with the albedo and gloss wetted; the engine's, then the enhanced.
-  pipelines: [[wgpu::RenderPipeline; 2]; 2],
-  generation: u64,
+  pipelines: PipelineSet<[[wgpu::RenderPipeline; 2]; 2]>,
 }
 
 impl WetPass {
@@ -78,7 +77,7 @@ impl WetPass {
         texel("puddles none", LevelSurface::SITES_FORMAT),
         texel("level water none", SunShadowMaps::FORMAT),
       ],
-      pipelines: Self::create_pipelines(source, view_layout, &layouts)?,
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, view_layout, &layouts)?),
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("wet"),
         address_mode_u: wgpu::AddressMode::Repeat,
@@ -89,21 +88,17 @@ impl WetPass {
         ..Default::default()
       }),
       view_layout: view_layout.clone(),
-      generation: source.get_generation(),
       layouts,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.view_layout, &self.layouts) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("Wet surfaces rejected, wetting with the last ones: {error}"),
-      }
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.view_layout, &self.layouts)
+    }) {
+      log::error!("Wet surfaces rejected, wetting with the last ones: {error}");
     }
   }
 

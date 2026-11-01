@@ -13,11 +13,6 @@ pub struct PipelineSource<'a> {
 }
 
 impl<'a> PipelineSource<'a> {
-  /// How many invalidations the cache has had, which a unit keeping its pipelines compares to ask again.
-  pub fn get_generation(&self) -> u64 {
-    self.cache.get_generation()
-  }
-
   /// The render pipeline `description` describes, made once.
   ///
   /// # Errors

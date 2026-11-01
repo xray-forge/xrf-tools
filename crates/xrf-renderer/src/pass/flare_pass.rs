@@ -1,6 +1,6 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
-  ComputeContext, ComputePipelineDescription, PassParameters, RasterContext, RenderPipelineDescription,
+  ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet, RasterContext, RenderPipelineDescription,
 };
 
 use crate::frame::view_targets::ViewTargets;
@@ -19,9 +19,7 @@ pub struct FlarePass {
   texture_layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   sampler: wgpu::Sampler,
-  measure: wgpu::ComputePipeline,
-  draw: wgpu::RenderPipeline,
-  generation: u64,
+  pipelines: PipelineSet<FlarePipelines>,
 }
 
 impl FlarePass {
@@ -37,7 +35,7 @@ impl FlarePass {
     let measure_layout: wgpu::BindGroupLayout = FlareMeasureParameters::create_layout(device);
     let draw_layout: wgpu::BindGroupLayout = FlareDrawParameters::create_layout(device);
     let texture_layout: wgpu::BindGroupLayout = FlareTextureParameters::create_layout(device);
-    let (measure, draw) =
+    let pipelines: FlarePipelines =
       Self::create_pipelines(source, view_layout, [&measure_layout, &draw_layout, &texture_layout])?;
 
     Ok(Self {
@@ -49,29 +47,24 @@ impl FlarePass {
         ..Default::default()
       }),
       view_layout: view_layout.clone(),
-      generation: source.get_generation(),
+      pipelines: PipelineSet::new(source.cache, pipelines),
       measure_layout,
       draw_layout,
       texture_layout,
-      measure,
-      draw,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(
         source,
         &self.view_layout,
         [&self.measure_layout, &self.draw_layout, &self.texture_layout],
-      ) {
-        Ok((measure, draw)) => (self.measure, self.draw) = (measure, draw),
-        Err(error) => log::error!("Lens flares rejected, drawing with the last ones: {error}"),
-      }
+      )
+    }) {
+      log::error!("Lens flares rejected, drawing with the last ones: {error}");
     }
   }
 
@@ -91,7 +84,7 @@ impl FlarePass {
 
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
-    pass.set_pipeline(&self.measure);
+    pass.set_pipeline(&self.pipelines.measure);
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.dispatch_workgroups(1, 1, 1);
   }
@@ -105,7 +98,7 @@ impl FlarePass {
     draws: &[(u32, FlareTextureParameters)],
   ) {
     context.bind(parameters);
-    context.get_pass().set_pipeline(&self.draw);
+    context.get_pass().set_pipeline(&self.pipelines.draw);
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
 
     for (instance, texture) in draws {
@@ -118,7 +111,7 @@ impl FlarePass {
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     [measure_layout, draw_layout, texture_layout]: [&wgpu::BindGroupLayout; 3],
-  ) -> XrfResult<(wgpu::ComputePipeline, wgpu::RenderPipeline)> {
+  ) -> XrfResult<FlarePipelines> {
     let added: wgpu::BlendComponent = wgpu::BlendComponent {
       src_factor: wgpu::BlendFactor::SrcAlpha,
       dst_factor: wgpu::BlendFactor::One,
@@ -142,6 +135,12 @@ impl FlarePass {
         }),
     )?;
 
-    Ok((measure, draw))
+    Ok(FlarePipelines { measure, draw })
   }
+}
+
+/// The flares' pipelines: the measure of how much of the sun shows, and the draw.
+struct FlarePipelines {
+  measure: wgpu::ComputePipeline,
+  draw: wgpu::RenderPipeline,
 }

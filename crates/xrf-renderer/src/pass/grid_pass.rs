@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::RenderPipelineDescription;
+use xrf_renderer_core::{PipelineSet, RenderPipelineDescription};
 
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::view_binding::ViewBinding;
@@ -8,9 +8,7 @@ use crate::pass::view_binding::ViewBinding;
 pub struct GridPass {
   format: wgpu::TextureFormat,
   view_layout: wgpu::BindGroupLayout,
-  pipeline: wgpu::RenderPipeline,
-  /// The shader library generation the pipeline was built from.
-  generation: u64,
+  pipeline: PipelineSet<wgpu::RenderPipeline>,
 }
 
 impl GridPass {
@@ -23,24 +21,18 @@ impl GridPass {
     format: wgpu::TextureFormat,
   ) -> XrfResult<Self> {
     Ok(Self {
-      pipeline: Self::create_pipeline(source, view_layout, format)?,
+      pipeline: PipelineSet::new(source.cache, Self::create_pipeline(source, view_layout, format)?),
       view_layout: view_layout.clone(),
-      generation: source.get_generation(),
       format,
     })
   }
 
   /// Builds the pipeline again from a library reloaded since it was built; a broken edit keeps the last good one.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() == self.generation {
-      return;
-    }
-
-    self.generation = source.get_generation();
-
-    match Self::create_pipeline(source, &self.view_layout, self.format) {
-      Ok(pipeline) => self.pipeline = pipeline,
-      Err(error) => log::error!("Grid shader rejected, drawing with the last one: {error}"),
+    if let Err(error) = self.pipeline.refresh(source.cache, || {
+      Self::create_pipeline(source, &self.view_layout, self.format)
+    }) {
+      log::error!("Grid shader rejected, drawing with the last one: {error}");
     }
   }
 

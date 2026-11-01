@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
-  ComputeContext, ComputePipelineDescription, PassParameters, RasterContext, RenderPipelineDescription, StorageField,
-  VertexLayout,
+  ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet, RasterContext, RenderPipelineDescription,
+  StorageField, VertexLayout,
 };
 
 use crate::frame::view_targets::ViewTargets;
@@ -47,16 +47,11 @@ pub struct GrassPass {
   card_shadow_layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
-  planting: Vec<wgpu::ComputePipeline>,
-  /// Clearing the counts and culling, then arranging the draws and sorting the items into them.
-  culling: Vec<wgpu::ComputePipeline>,
-  arrange: wgpu::ComputePipeline,
-  sort: wgpu::ComputePipeline,
-  cards: Vec<wgpu::ComputePipeline>,
-  draw: wgpu::RenderPipeline,
-  card_shadow: wgpu::RenderPipeline,
+  /// Planting, culling, arranging the draws and sorting the items into them, and standing the cards.
+  compute: PipelineSet<GrassComputePipelines>,
+  draw: PipelineSet<wgpu::RenderPipeline>,
+  card_shadow: PipelineSet<wgpu::RenderPipeline>,
   grid: ComputeGrid,
-  generation: u64,
 }
 
 impl GrassPass {
@@ -83,13 +78,7 @@ impl GrassPass {
     let sort_layout: wgpu::BindGroupLayout = GrassSortParameters::create_layout(device);
     let cards_layout: wgpu::BindGroupLayout = GrassCardsParameters::create_layout(device);
     let card_shadow_layout: wgpu::BindGroupLayout = GrassCardShadowParameters::create_layout(device);
-    let GrassComputePipelines {
-      planting,
-      culling,
-      arrange,
-      sort,
-      cards,
-    } = Self::create_planting(
+    let compute: GrassComputePipelines = Self::create_planting(
       source,
       [
         &level_layout,
@@ -101,15 +90,16 @@ impl GrassPass {
     )?;
 
     Ok(Self {
-      planting,
-      culling,
-      arrange,
-      sort,
-      cards,
-      draw: Self::create_draw(source, [view_layout, texture_layout, &draw_layout])?,
-      card_shadow: Self::create_card_shadow(source, [view_layout, texture_layout, &card_shadow_layout])?,
+      compute: PipelineSet::new(source.cache, compute),
+      draw: PipelineSet::new(
+        source.cache,
+        Self::create_draw(source, [view_layout, texture_layout, &draw_layout])?,
+      ),
+      card_shadow: PipelineSet::new(
+        source.cache,
+        Self::create_card_shadow(source, [view_layout, texture_layout, &card_shadow_layout])?,
+      ),
       grid: ComputeGrid::new(device),
-      generation: source.get_generation(),
       view_layout: view_layout.clone(),
       texture_layout: texture_layout.clone(),
       level_layout,
@@ -122,42 +112,33 @@ impl GrassPass {
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() == self.generation {
-      return;
-    }
+    let planted: XrfResult = self.compute.refresh(source.cache, || {
+      Self::create_planting(
+        source,
+        [
+          &self.level_layout,
+          &self.build_layout,
+          &self.occlusion_layout,
+          &self.sort_layout,
+          &self.cards_layout,
+        ],
+      )
+    });
+    let drawn: XrfResult = self.draw.refresh(source.cache, || {
+      Self::create_draw(source, [&self.view_layout, &self.texture_layout, &self.draw_layout])
+    });
+    let cast: XrfResult = self.card_shadow.refresh(source.cache, || {
+      Self::create_card_shadow(
+        source,
+        [&self.view_layout, &self.texture_layout, &self.card_shadow_layout],
+      )
+    });
 
-    self.generation = source.get_generation();
-
-    let planting = Self::create_planting(
-      source,
-      [
-        &self.level_layout,
-        &self.build_layout,
-        &self.occlusion_layout,
-        &self.sort_layout,
-        &self.cards_layout,
-      ],
-    );
-    let draw = Self::create_draw(source, [&self.view_layout, &self.texture_layout, &self.draw_layout]);
-    let card_shadow = Self::create_card_shadow(
-      source,
-      [&self.view_layout, &self.texture_layout, &self.card_shadow_layout],
-    );
-
-    match (planting, draw.and_then(|draw| Ok((draw, card_shadow?)))) {
-      (Ok(pipelines), Ok((draw, card_shadow))) => {
-        self.planting = pipelines.planting;
-        self.culling = pipelines.culling;
-        self.arrange = pipelines.arrange;
-        self.sort = pipelines.sort;
-        self.cards = pipelines.cards;
-        self.draw = draw;
-        self.card_shadow = card_shadow;
-      }
-      (Err(error), _) | (_, Err(error)) => log::error!("Grass rejected, drawing with the last: {error}"),
+    if let Err(error) = planted.and(drawn).and(cast) {
+      log::error!("Grass rejected, drawing with the last: {error}");
     }
   }
 
@@ -200,7 +181,7 @@ impl GrassPass {
 
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
-    for (pipeline, size) in self.cards.iter().zip([groups(triangles), groups(tufts), 1]) {
+    for (pipeline, size) in self.compute.cards.iter().zip([groups(triangles), groups(tufts), 1]) {
       pass.set_pipeline(pipeline);
       self.grid.dispatch(pass, size);
     }
@@ -227,7 +208,7 @@ impl GrassPass {
 
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
-    for (pipeline, size) in self.planting.iter().zip(sizes) {
+    for (pipeline, size) in self.compute.planting.iter().zip(sizes) {
       pass.set_pipeline(pipeline);
       self.grid.dispatch(pass, size);
     }
@@ -251,17 +232,17 @@ impl GrassPass {
     context.bind(build);
     context.bind(occlusion);
 
-    for (pipeline, size) in self.culling.iter().zip(sizes) {
+    for (pipeline, size) in self.compute.culling.iter().zip(sizes) {
       let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
       pass.set_pipeline(pipeline);
       self.grid.dispatch(pass, size);
     }
 
-    context.get_pass().set_pipeline(&self.arrange);
+    context.get_pass().set_pipeline(&self.compute.arrange);
     context.bind(sort);
     context.get_pass().dispatch_workgroups(1, 1, 1);
-    context.get_pass().set_pipeline(&self.sort);
+    context.get_pass().set_pipeline(&self.compute.sort);
 
     // Wide lists sort over the items kept, at a wide radius a hundredth of what they hold; narrow ones over all of
     // them.

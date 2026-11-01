@@ -1,6 +1,6 @@
 use xrf_error::XrfResult;
 use xrf_material::XraySurfaceDraw;
-use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipelineDescription};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::particle_blend::ParticleBlend;
@@ -27,8 +27,7 @@ pub struct ThunderPass {
   view_layout: wgpu::BindGroupLayout,
   sampler: wgpu::Sampler,
   /// By `ENTRIES`, then by `BLENDS`.
-  pipelines: Vec<wgpu::RenderPipeline>,
-  generation: u64,
+  pipelines: PipelineSet<Vec<wgpu::RenderPipeline>>,
 }
 
 impl ThunderPass {
@@ -41,7 +40,7 @@ impl ThunderPass {
     let layout: wgpu::BindGroupLayout = ThunderParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, view_layout, &layout)?,
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, view_layout, &layout)?),
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("thunder"),
         mag_filter: wgpu::FilterMode::Linear,
@@ -50,21 +49,17 @@ impl ThunderPass {
         ..Default::default()
       }),
       view_layout: view_layout.clone(),
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.view_layout, &self.layout) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("Thunder rejected, striking with the last one: {error}"),
-      }
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.view_layout, &self.layout)
+    }) {
+      log::error!("Thunder rejected, striking with the last one: {error}");
     }
   }
 

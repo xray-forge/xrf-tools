@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::bloom_parameters::BloomParameters;
@@ -13,9 +13,7 @@ pub struct BloomPass {
   layout: wgpu::BindGroupLayout,
   /// `smp_rtlinear`: filtered, clamped to the edge.
   sampler: wgpu::Sampler,
-  build: wgpu::RenderPipeline,
-  filter: wgpu::RenderPipeline,
-  generation: u64,
+  pipelines: PipelineSet<BloomPipelines>,
 }
 
 impl BloomPass {
@@ -26,32 +24,27 @@ impl BloomPass {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = BloomParameters::create_layout(device);
-    let (build, filter) = Self::create_pipelines(source, &layout)?;
 
     Ok(Self {
-      build,
-      filter,
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, &layout)?),
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("bloom"),
         mag_filter: wgpu::FilterMode::Linear,
         min_filter: wgpu::FilterMode::Linear,
         ..Default::default()
       }),
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.layout) {
-        Ok((build, filter)) => (self.build, self.filter) = (build, filter),
-        Err(error) => log::error!("Bloom rejected, blooming with the last one: {error}"),
-      }
+    if let Err(error) = self
+      .pipelines
+      .refresh(source.cache, || Self::create_pipelines(source, &self.layout))
+    {
+      log::error!("Bloom rejected, blooming with the last one: {error}");
     }
   }
 
@@ -63,21 +56,27 @@ impl BloomPass {
   /// Draws one of its stages into the target the pass draws into.
   pub fn record(&self, context: &mut RasterContext<'_>, stage: BloomStage, parameters: &BloomParameters<'_>) {
     context.get_pass().set_pipeline(match stage {
-      BloomStage::Build => &self.build,
-      BloomStage::Across | BloomStage::Down => &self.filter,
+      BloomStage::Build => &self.pipelines.build,
+      BloomStage::Across | BloomStage::Down => &self.pipelines.filter,
     });
     context.bind(parameters);
     context.get_pass().draw(0..3, 0..1);
   }
 
-  fn create_pipelines(
-    source: PipelineSource<'_>,
-    layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<(wgpu::RenderPipeline, wgpu::RenderPipeline)> {
+  fn create_pipelines(source: PipelineSource<'_>, layout: &wgpu::BindGroupLayout) -> XrfResult<BloomPipelines> {
     let create = |fragment: &'static str| {
       create_fullscreen_pipeline(source, "frame/bloom", fragment, &[Some(layout)], ViewTargets::BLOOM)
     };
 
-    Ok((create("fs_bloom_build")?, create("fs_bloom_filter")?))
+    Ok(BloomPipelines {
+      build: create("fs_bloom_build")?,
+      filter: create("fs_bloom_filter")?,
+    })
   }
+}
+
+/// The engine bloom's pipelines: the build of the high part, and the blur across or down.
+struct BloomPipelines {
+  build: wgpu::RenderPipeline,
+  filter: wgpu::RenderPipeline,
 }

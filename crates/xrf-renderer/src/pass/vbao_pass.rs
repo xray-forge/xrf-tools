@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::bitmask_search::BitmaskSearch;
@@ -15,12 +15,11 @@ use crate::pass::view_binding::ViewBinding;
 pub struct VbaoPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
-  pipelines: VbaoPipelines,
+  pipelines: PipelineSet<VbaoPipelines>,
   /// What a stage reads in place of a history where there is none: one texel, all visible and nothing drawn.
   empty: wgpu::TextureView,
   /// What reads in place of light where none is gathered: one texel of none.
   dark: wgpu::TextureView,
-  generation: u64,
 }
 
 /// The search, unlit and gathering light, its slices and steps the uniform's; the accumulations; the filters by what
@@ -81,25 +80,21 @@ impl VbaoPass {
     };
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, view_layout, &layout)?,
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, view_layout, &layout)?),
       view_layout: view_layout.clone(),
       empty: texel("vbao history empty", [u8::MAX, 0, 0, 0]),
       dark: texel("indirect light none", [0; 4]),
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.view_layout, &self.layout) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("VBAO rejected, searching with the last one: {error}"),
-      }
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.view_layout, &self.layout)
+    }) {
+      log::error!("VBAO rejected, searching with the last one: {error}");
     }
   }
 

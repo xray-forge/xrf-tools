@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
 
 use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::pipeline_source::PipelineSource;
@@ -10,8 +10,7 @@ use crate::pass::pipeline_source::PipelineSource;
 pub struct GrassColourPass {
   layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
-  pipeline: wgpu::ComputePipeline,
-  generation: u64,
+  pipeline: PipelineSet<wgpu::ComputePipeline>,
 }
 
 impl GrassColourPass {
@@ -24,23 +23,19 @@ impl GrassColourPass {
     let layout: wgpu::BindGroupLayout = GrassColourParameters::create_layout(device);
 
     Ok(Self {
-      pipeline: Self::create_pipeline(source, &layout, texture_layout)?,
+      pipeline: PipelineSet::new(source.cache, Self::create_pipeline(source, &layout, texture_layout)?),
       layout,
       texture_layout: texture_layout.clone(),
-      generation: source.get_generation(),
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipeline(source, &self.layout, &self.texture_layout) {
-        Ok(pipeline) => self.pipeline = pipeline,
-        Err(error) => log::error!("Grass colours rejected, averaging with the last: {error}"),
-      }
+    if let Err(error) = self.pipeline.refresh(source.cache, || {
+      Self::create_pipeline(source, &self.layout, &self.texture_layout)
+    }) {
+      log::error!("Grass colours rejected, averaging with the last: {error}");
     }
   }
 

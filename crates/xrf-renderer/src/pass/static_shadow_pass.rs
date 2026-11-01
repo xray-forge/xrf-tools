@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipelineDescription};
 
 use crate::pass::indirect_args::IndirectArgs;
 use crate::pass::overhead_shift_parameters::OverheadShiftParameters;
@@ -24,15 +24,8 @@ pub struct StaticShadowPass {
   view_layout: wgpu::BindGroupLayout,
   layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
-  /// One a batch, by its index.
-  pipelines: Vec<wgpu::RenderPipeline>,
-  /// Clears a tile of an atlas to the far plane, leaving the rest of it.
-  clear: wgpu::RenderPipeline,
-  /// Restores a tile of the light atlas from the static atlas, leaving the rest of it; and shifts an overhead map that
-  /// moved, from its copy.
-  writers: [wgpu::RenderPipeline; 2],
+  pipelines: PipelineSet<StaticShadowPipelines>,
   writer_layouts: [wgpu::BindGroupLayout; 2],
-  generation: u64,
 }
 
 impl StaticShadowPass {
@@ -51,41 +44,31 @@ impl StaticShadowPass {
       ShadowTileRestoreParameters::create_layout(device),
       OverheadShiftParameters::create_layout(device),
     ];
-    let (pipelines, clear, writers) =
+    let pipelines: StaticShadowPipelines =
       Self::create_pipelines(source, view_layout, layout, texture_layout, &writer_layouts)?;
 
     Ok(Self {
-      pipelines,
-      clear,
-      writers,
+      pipelines: PipelineSet::new(source.cache, pipelines),
       writer_layouts,
       view_layout: view_layout.clone(),
       layout: layout.clone(),
       texture_layout: texture_layout.clone(),
-      generation: source.get_generation(),
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(
         source,
         &self.view_layout,
         &self.layout,
         &self.texture_layout,
         &self.writer_layouts,
-      ) {
-        Ok((pipelines, clear, writers)) => {
-          self.pipelines = pipelines;
-          self.clear = clear;
-          self.writers = writers;
-        }
-        Err(error) => log::error!("Static shadow rejected, casting with the last one: {error}"),
-      }
+      )
+    }) {
+      log::error!("Static shadow rejected, casting with the last one: {error}");
     }
   }
 
@@ -116,10 +99,10 @@ impl StaticShadowPass {
 
     match restore {
       Some(restore) => {
-        context.get_pass().set_pipeline(&self.writers[0]);
+        context.get_pass().set_pipeline(&self.pipelines.writers[0]);
         context.bind(restore);
       }
-      None => context.get_pass().set_pipeline(&self.clear),
+      None => context.get_pass().set_pipeline(&self.pipelines.clear),
     }
 
     context.get_pass().draw(0..3, 0..1);
@@ -129,7 +112,7 @@ impl StaticShadowPass {
   /// Shifts the whole of an overhead map that moved from its copy, each texel taking its old self's depth where the map
   /// covered it before.
   pub fn record_shift(&self, context: &mut RasterContext<'_>, shift: &OverheadShiftParameters) {
-    context.get_pass().set_pipeline(&self.writers[1]);
+    context.get_pass().set_pipeline(&self.pipelines.writers[1]);
     context.bind(shift);
     context.get_pass().draw(0..3, 0..1);
   }
@@ -162,7 +145,7 @@ impl StaticShadowPass {
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
     context.get_pass().set_bind_group(1, textures, &[]);
 
-    for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pipelines) {
+    for (batch, pipeline) in StaticBatch::list_deferred().zip(&self.pipelines.batches) {
       if !casters.has(batch.layout) {
         continue;
       }
@@ -181,12 +164,8 @@ impl StaticShadowPass {
     layout: &wgpu::BindGroupLayout,
     texture_layout: &wgpu::BindGroupLayout,
     writer_layouts: &[wgpu::BindGroupLayout; 2],
-  ) -> XrfResult<(
-    Vec<wgpu::RenderPipeline>,
-    wgpu::RenderPipeline,
-    [wgpu::RenderPipeline; 2],
-  )> {
-    let pipelines: Vec<wgpu::RenderPipeline> = StaticBatch::list_deferred()
+  ) -> XrfResult<StaticShadowPipelines> {
+    let batches: Vec<wgpu::RenderPipeline> = StaticBatch::list_deferred()
       .map(|batch| {
         let description: RenderPipelineDescription = RenderPipelineDescription::new(
           "static shadow",
@@ -235,7 +214,11 @@ impl StaticShadowPass {
       )?,
     ];
 
-    Ok((pipelines, clear, writers))
+    Ok(StaticShadowPipelines {
+      batches,
+      clear,
+      writers,
+    })
   }
 
   /// Draws into a region of the map a pass draws into alone: its texels across and down, its width and its height.
@@ -273,4 +256,15 @@ impl StaticShadowPass {
       bias: Default::default(),
     }
   }
+}
+
+/// The shadow pass's pipelines.
+struct StaticShadowPipelines {
+  /// One a batch, by its index.
+  batches: Vec<wgpu::RenderPipeline>,
+  /// Clears a tile of an atlas to the far plane, leaving the rest of it.
+  clear: wgpu::RenderPipeline,
+  /// Restores a tile of the light atlas from the static atlas, leaving the rest of it; and shifts an overhead map that
+  /// moved, from its copy.
+  writers: [wgpu::RenderPipeline; 2],
 }

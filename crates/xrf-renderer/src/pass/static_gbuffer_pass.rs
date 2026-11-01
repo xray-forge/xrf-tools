@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipelineDescription};
 
 use crate::frame::pick_target::PickTarget;
 use crate::frame::view_targets::ViewTargets;
@@ -33,10 +33,9 @@ pub struct StaticGBufferPass {
   marks_layout: wgpu::BindGroupLayout,
   /// The texel the present reads where no model is marked: nothing, in alpha too.
   unmarked: wgpu::TextureView,
-  pipelines: GBufferPipelines,
+  pipelines: PipelineSet<GBufferPipelines>,
   /// The impostors' draw, then their pick.
-  impostor_pipelines: [wgpu::RenderPipeline; 2],
-  generation: u64,
+  impostor_pipelines: PipelineSet<[wgpu::RenderPipeline; 2]>,
 }
 
 impl StaticGBufferPass {
@@ -75,14 +74,13 @@ impl StaticGBufferPass {
       .create_view(&wgpu::TextureViewDescriptor::default());
 
     Ok(Self {
-      pipelines,
-      impostor_pipelines,
+      pipelines: PipelineSet::new(source.cache, pipelines),
+      impostor_pipelines: PipelineSet::new(source.cache, impostor_pipelines),
       impostor_layout,
       view_layout: view_layout.clone(),
       texture_layout: texture_layout.clone(),
       marks_layout,
       unmarked,
-      generation: source.get_generation(),
       layout,
     })
   }
@@ -114,13 +112,11 @@ impl StaticGBufferPass {
     &self.unmarked
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(
+    let drawn: XrfResult = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(
         source,
         GBufferLayouts {
           view: &self.view_layout,
@@ -129,18 +125,13 @@ impl StaticGBufferPass {
           marks: &self.marks_layout,
         },
       )
-      .and_then(|pipelines| {
-        let impostors =
-          Self::create_impostor_pipelines(source, &self.view_layout, &self.impostor_layout, &self.texture_layout)?;
+    });
+    let impostors: XrfResult = self.impostor_pipelines.refresh(source.cache, || {
+      Self::create_impostor_pipelines(source, &self.view_layout, &self.impostor_layout, &self.texture_layout)
+    });
 
-        Ok((pipelines, impostors))
-      }) {
-        Ok((pipelines, impostor_pipelines)) => {
-          self.pipelines = pipelines;
-          self.impostor_pipelines = impostor_pipelines;
-        }
-        Err(error) => log::error!("Static G-buffer rejected, drawing with the last one: {error}"),
-      }
+    if let Err(error) = drawn.and(impostors) {
+      log::error!("Static G-buffer rejected, drawing with the last one: {error}");
     }
   }
 

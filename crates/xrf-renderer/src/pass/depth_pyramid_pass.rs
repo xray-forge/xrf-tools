@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
 
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::pass::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
@@ -17,8 +17,7 @@ pub struct DepthPyramidPass {
   layouts: [wgpu::BindGroupLayout; 4],
   /// Reducing the depth into the first level, then a level into the next: the farthest's pair, the nearest's, then the
   /// cover's.
-  pipelines: [wgpu::ComputePipeline; 6],
-  generation: u64,
+  pipelines: PipelineSet<[wgpu::ComputePipeline; 6]>,
 }
 
 impl DepthPyramidPass {
@@ -36,22 +35,19 @@ impl DepthPyramidPass {
     ];
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, &layouts)?,
-      generation: source.get_generation(),
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, &layouts)?),
       layouts,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.layouts) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("Depth pyramid rejected, reducing with the last one: {error}"),
-      }
+    if let Err(error) = self
+      .pipelines
+      .refresh(source.cache, || Self::create_pipelines(source, &self.layouts))
+    {
+      log::error!("Depth pyramid rejected, reducing with the last one: {error}");
     }
   }
 

@@ -1,7 +1,5 @@
-use std::collections::HashMap;
-
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, PipelineMap, RasterContext};
 
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::pipeline_source::PipelineSource;
@@ -16,8 +14,7 @@ pub struct PresentPass {
   bloom_sampler: wgpu::Sampler,
   view_layout: wgpu::BindGroupLayout,
   /// One a window format, built on first use.
-  pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
-  generation: u64,
+  pipelines: PipelineMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
 }
 
 impl PresentPass {
@@ -35,29 +32,20 @@ impl PresentPass {
         ..Default::default()
       }),
       view_layout: view_layout.clone(),
-      pipelines: HashMap::new(),
-      generation: source.get_generation(),
+      pipelines: PipelineMap::new(source.cache),
     }
   }
 
   /// Builds the pipelines again from a library reloaded since they were built, one a window format each; a broken edit
   /// keeps the last good ones.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() == self.generation {
-      return;
-    }
+    let layouts: [&wgpu::BindGroupLayout; 2] = [&self.view_layout, &self.layout];
 
-    self.generation = source.get_generation();
-
-    let rebuilt: XrfResult<HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>> = self
+    if let Err(error) = self
       .pipelines
-      .keys()
-      .map(|format| Ok((*format, self.create_pipeline(source, *format)?)))
-      .collect();
-
-    match rebuilt {
-      Ok(pipelines) => self.pipelines = pipelines,
-      Err(error) => log::error!("Present shader rejected, drawing with the last one: {error}"),
+      .refresh(source.cache, |format| Self::create_pipeline(source, layouts, format))
+    {
+      log::error!("Present shader rejected, drawing with the last one: {error}");
     }
   }
 
@@ -67,25 +55,23 @@ impl PresentPass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn prepare(&mut self, source: PipelineSource<'_>, format: wgpu::TextureFormat) -> XrfResult {
-    if !self.pipelines.contains_key(&format) {
-      let pipeline: wgpu::RenderPipeline = self.create_pipeline(source, format)?;
+    let layouts: [&wgpu::BindGroupLayout; 2] = [&self.view_layout, &self.layout];
 
-      self.pipelines.insert(format, pipeline);
-    }
-
-    Ok(())
+    self
+      .pipelines
+      .prepare(format, |format| Self::create_pipeline(source, layouts, format))
   }
 
   fn create_pipeline(
-    &self,
     source: PipelineSource<'_>,
+    [view_layout, layout]: [&wgpu::BindGroupLayout; 2],
     format: wgpu::TextureFormat,
   ) -> XrfResult<wgpu::RenderPipeline> {
     create_fullscreen_pipeline(
       source,
       "frame/present",
       "fs_present",
-      &[Some(&self.view_layout), Some(&self.layout)],
+      &[Some(view_layout), Some(layout)],
       format,
     )
   }

@@ -1,5 +1,5 @@
 use xrf_error::{XrfError, XrfResult};
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_bundle::RenderBundle;
@@ -18,14 +18,13 @@ const SEARCH_TEXTURE: &str = "smaa/search.png";
 pub struct SmaaPass {
   layout: wgpu::BindGroupLayout,
   /// The edges', the weights' and the blend's.
-  pipelines: [wgpu::RenderPipeline; SmaaStage::COUNT],
+  pipelines: PipelineSet<[wgpu::RenderPipeline; SmaaStage::COUNT]>,
   area: wgpu::TextureView,
   search: wgpu::TextureView,
   /// What a stage binds in place of the target it writes.
   empty: wgpu::TextureView,
   linear: wgpu::Sampler,
   point: wgpu::Sampler,
-  generation: u64,
 }
 
 impl SmaaPass {
@@ -50,7 +49,7 @@ impl SmaaPass {
     let area_texels: Vec<u8> = area.pixels().flat_map(|it| [it.0[0], it.0[1]]).collect();
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, &layout)?,
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, &layout)?),
       area: Self::create_lookup(
         device,
         queue,
@@ -76,21 +75,18 @@ impl SmaaPass {
         label: Some("smaa point"),
         ..Default::default()
       }),
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.layout) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("SMAA rejected, smoothing with the last one: {error}"),
-      }
+    if let Err(error) = self
+      .pipelines
+      .refresh(source.cache, || Self::create_pipelines(source, &self.layout))
+    {
+      log::error!("SMAA rejected, smoothing with the last one: {error}");
     }
   }
 

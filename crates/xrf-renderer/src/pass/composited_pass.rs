@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipelineDescription};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::composited_parameters::CompositedParameters;
@@ -36,8 +36,7 @@ const COMPOSITED_BLEND: wgpu::BlendState = wgpu::BlendState {
 pub struct CompositedPass {
   layout: wgpu::BindGroupLayout,
   layouts: [wgpu::BindGroupLayout; 4],
-  pipelines: CompositedPipelines,
-  generation: u64,
+  pipelines: PipelineSet<CompositedPipelines>,
 }
 
 impl CompositedPass {
@@ -74,23 +73,19 @@ impl CompositedPass {
     ];
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, &layouts, &layout)?,
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, &layouts, &layout)?),
       layouts,
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.layouts, &self.layout) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("Composited surfaces rejected, drawing with the last ones: {error}"),
-      }
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.layouts, &self.layout)
+    }) {
+      log::error!("Composited surfaces rejected, drawing with the last ones: {error}");
     }
   }
 

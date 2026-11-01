@@ -1,6 +1,6 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
-  ComputeContext, ComputePipelineDescription, PassParameters, RasterContext, RenderPipelineDescription,
+  ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet, RasterContext, RenderPipelineDescription,
 };
 
 use crate::context::gpu_requirements::can_trace;
@@ -33,7 +33,7 @@ pub struct LightsPass {
   trace_layout: Option<wgpu::BindGroupLayout>,
   view_layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
-  pipelines: LightsPipelines,
+  pipelines: PipelineSet<LightsPipelines>,
   /// What the lights pass reads for the visibility while no light in view is shadowed: never read, as no light then
   /// takes a slot.
   unshadowed: wgpu::TextureView,
@@ -41,7 +41,6 @@ pub struct LightsPass {
   uncontacted: wgpu::TextureView,
   /// What the visibility and the lights read for the marched lights' weight while none are marched: never read.
   unthresholded: wgpu::TextureView,
-  generation: u64,
 }
 
 /// The binning, the contact shadows' march, then the visibility and the lights each without contact shadows and with
@@ -139,7 +138,7 @@ impl LightsPass {
     };
 
     Ok(Self {
-      pipelines,
+      pipelines: PipelineSet::new(source.cache, pipelines),
       binning_layout,
       layout,
       contact_layout,
@@ -156,27 +155,23 @@ impl LightsPass {
       ),
       uncontacted: stand_in("light contact none", Self::CONTACT_FORMAT, Some(1)),
       unthresholded: stand_in("light threshold none", Self::THRESHOLD_FORMAT, None),
-      generation: source.get_generation(),
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(
         source,
         &self.binning_layout,
         [&self.view_layout, &self.layout, &self.texture_layout],
         [&self.contact_layout, &self.shadowing_layout, &self.visibility_layout],
         &self.tracing_layout,
         self.trace_layout.as_ref(),
-      ) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("Lights rejected, lighting with the last one: {error}"),
-      }
+      )
+    }) {
+      log::error!("Lights rejected, lighting with the last one: {error}");
     }
   }
 

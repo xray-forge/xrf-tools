@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
 
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::sky_irradiance_parameters::SkyIrradianceParameters;
@@ -7,8 +7,7 @@ use crate::pass::sky_irradiance_parameters::SkyIrradianceParameters;
 /// Projects the sky's irradiance into spherical harmonics for the physical light, one workgroup a frame.
 pub struct SkyIrradiancePass {
   layout: wgpu::BindGroupLayout,
-  pipeline: wgpu::ComputePipeline,
-  generation: u64,
+  pipeline: PipelineSet<wgpu::ComputePipeline>,
 }
 
 impl SkyIrradiancePass {
@@ -22,22 +21,19 @@ impl SkyIrradiancePass {
     let layout: wgpu::BindGroupLayout = SkyIrradianceParameters::create_layout(source.device);
 
     Ok(Self {
-      pipeline: Self::create_pipeline(source, &layout)?,
-      generation: source.get_generation(),
+      pipeline: PipelineSet::new(source.cache, Self::create_pipeline(source, &layout)?),
       layout,
     })
   }
 
-  /// Makes its pipeline again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipeline again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last one where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipeline(source, &self.layout) {
-        Ok(pipeline) => self.pipeline = pipeline,
-        Err(error) => log::error!("Sky irradiance rejected, projecting with the last one: {error}"),
-      }
+    if let Err(error) = self
+      .pipeline
+      .refresh(source.cache, || Self::create_pipeline(source, &self.layout))
+    {
+      log::error!("Sky irradiance rejected, projecting with the last one: {error}");
     }
   }
 

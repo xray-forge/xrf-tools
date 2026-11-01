@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fog_scattering_parameters::FogScatteringParameters;
@@ -15,11 +15,9 @@ pub struct FogScatteringPass {
   view_layout: wgpu::BindGroupLayout,
   /// `smp_rtlinear`: filtered, clamped to the edge.
   sampler: wgpu::Sampler,
-  blur: wgpu::RenderPipeline,
-  scatter: wgpu::RenderPipeline,
+  pipelines: PipelineSet<FogScatteringPipelines>,
   /// What a blur reads in place of a blur before it: one texel of nothing.
   empty: wgpu::TextureView,
-  generation: u64,
 }
 
 impl FogScatteringPass {
@@ -43,7 +41,7 @@ impl FogScatteringPass {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = FogScatteringParameters::create_layout(device);
-    let (blur, scatter) = Self::create_pipelines(source, view_layout, &layout)?;
+    let pipelines: FogScatteringPipelines = Self::create_pipelines(source, view_layout, &layout)?;
     let empty: wgpu::TextureView = device
       .create_texture_with_data(
         queue,
@@ -67,8 +65,7 @@ impl FogScatteringPass {
       .create_view(&Default::default());
 
     Ok(Self {
-      blur,
-      scatter,
+      pipelines: PipelineSet::new(source.cache, pipelines),
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("fog scattering"),
         mag_filter: wgpu::FilterMode::Linear,
@@ -77,21 +74,17 @@ impl FogScatteringPass {
       }),
       view_layout: view_layout.clone(),
       empty,
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.view_layout, &self.layout) {
-        Ok((blur, scatter)) => (self.blur, self.scatter) = (blur, scatter),
-        Err(error) => log::error!("Fog scattering rejected, scattering with the last one: {error}"),
-      }
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.view_layout, &self.layout)
+    }) {
+      log::error!("Fog scattering rejected, scattering with the last one: {error}");
     }
   }
 
@@ -118,9 +111,9 @@ impl FogScatteringPass {
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
     pass.set_pipeline(if stage == Self::SCATTERING {
-      &self.scatter
+      &self.pipelines.scatter
     } else {
-      &self.blur
+      &self.pipelines.blur
     });
     pass.set_bind_group(0, &view.bind_group, &[]);
     pass.draw(0..3, 0..1);
@@ -130,15 +123,21 @@ impl FogScatteringPass {
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<(wgpu::RenderPipeline, wgpu::RenderPipeline)> {
+  ) -> XrfResult<FogScatteringPipelines> {
     let layouts: [Option<&wgpu::BindGroupLayout>; 2] = [Some(view_layout), Some(layout)];
     let create = |fragment: &'static str, format: wgpu::TextureFormat| {
       create_fullscreen_pipeline(source, "frame/fog_scattering", fragment, &layouts, format)
     };
 
-    Ok((
-      create("fs_scatter_blur", Self::BLURRED)?,
-      create("fs_scattering", ViewTargets::SCENE)?,
-    ))
+    Ok(FogScatteringPipelines {
+      blur: create("fs_scatter_blur", Self::BLURRED)?,
+      scatter: create("fs_scattering", ViewTargets::SCENE)?,
+    })
   }
+}
+
+/// The scattering's pipelines: the blurs, and the scattering over the scene.
+struct FogScatteringPipelines {
+  blur: wgpu::RenderPipeline,
+  scatter: wgpu::RenderPipeline,
 }

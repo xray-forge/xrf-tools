@@ -1,4 +1,6 @@
-use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, UniformBinding};
+use xrf_renderer_core::{
+  GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor, PipelineSet, UniformBinding,
+};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_camera_settings::RenderCameraSettings;
@@ -10,7 +12,6 @@ use crate::pass::camera_effects_pass::CameraEffectsPass;
 use crate::pass::camera_effects_stage::CameraEffectsStage;
 use crate::pass::camera_effects_uniform::CameraEffectsUniform;
 use crate::pass::level_passes::LevelPasses;
-use crate::pass::pipeline_source::PipelineSource;
 use crate::scene::level::feature::image_chain::ImageChain;
 use crate::scene::level::feature::view_feature::ViewFeature;
 
@@ -21,9 +22,8 @@ use crate::scene::level::feature::view_feature::ViewFeature;
 pub struct CameraFeature {
   /// What the camera draws this frame: its settings and the view it looks through.
   frame: Option<(RenderCameraSettings, CameraView)>,
-  /// The stages' pipelines, with the cache's generation they were asked for in; the last made are kept while a
-  /// reloaded shader is refused.
-  pipelines: Option<(u64, [wgpu::RenderPipeline; CameraEffectsStage::COUNT])>,
+  /// The stages' pipelines, asked for once it draws.
+  pipelines: Option<PipelineSet<[wgpu::RenderPipeline; CameraEffectsStage::COUNT]>>,
 }
 
 impl CameraFeature {
@@ -39,30 +39,16 @@ impl CameraFeature {
     self.frame = None;
 
     if is_drawn {
-      self.ask_pipelines(&passes.image.camera_effects, passes.pipelines);
-      self.frame = self.pipelines.as_ref().map(|_| (*settings, *view));
-    }
-  }
+      let pass: &CameraEffectsPass = &passes.image.camera_effects;
 
-  /// Asks the cache for the stages' pipelines where it changed since they were last asked for; a refusal keeps the
-  /// last made, and is not asked again before the cache changes.
-  fn ask_pipelines(&mut self, pass: &CameraEffectsPass, source: PipelineSource<'_>) {
-    let generation: u64 = source.get_generation();
-
-    if self.pipelines.as_ref().is_some_and(|(asked, _)| *asked == generation) {
-      return;
-    }
-
-    match pass.get_pipelines(source) {
-      Ok(pipelines) => self.pipelines = Some((generation, pipelines)),
-      Err(error) => {
+      if let Err(error) = PipelineSet::ask(&mut self.pipelines, passes.pipelines.cache, || {
+        pass.get_pipelines(passes.pipelines)
+      }) {
         log::error!("Camera effects rejected, showing with the last ones: {error}");
-
-        if let Some((asked, _)) = &mut self.pipelines {
-          *asked = generation;
-        }
       }
     }
+
+      self.frame = self.pipelines.as_ref().map(|_| (*settings, *view));
   }
 
   /// Adds the camera over the image the resolve shows (`chain`), answering the image it leaves, none where it draws
@@ -80,7 +66,7 @@ impl CameraFeature {
     }: ImageChain,
   ) -> Option<GraphTexture> {
     let (settings, view) = self.frame.as_ref()?;
-    let (_, pipelines) = self.pipelines.as_ref()?;
+    let pipelines: &[wgpu::RenderPipeline; CameraEffectsStage::COUNT] = self.pipelines.as_deref()?;
     let uniform: CameraEffectsUniform = CameraEffectsUniform::new(settings, view, (handles.size, size));
 
     // A switch on that draws nothing, the depth of field through a lens of parallel rays, leaves the image as it is.

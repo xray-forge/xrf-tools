@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use xrf_error::XrfResult;
+use xrf_renderer_core::PipelineMap;
 
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::pass::backdrop_uniform::BackdropUniform;
@@ -14,8 +13,7 @@ use crate::window::window_backdrop::WindowBackdrop;
 pub struct BackdropPass {
   layout: wgpu::BindGroupLayout,
   /// One a window format, built on first use.
-  pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
-  generation: u64,
+  pipelines: PipelineMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
 }
 
 impl BackdropPass {
@@ -29,29 +27,17 @@ impl BackdropPass {
 
     Self {
       layout,
-      pipelines: HashMap::new(),
-      generation: source.get_generation(),
+      pipelines: PipelineMap::new(source.cache),
     }
   }
 
   /// Builds the pipelines again from a library reloaded since they were built, one a window format each; a broken edit
   /// keeps the last good ones.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() == self.generation {
-      return;
-    }
-
-    self.generation = source.get_generation();
-
-    let rebuilt: XrfResult<HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>> = self
-      .pipelines
-      .keys()
-      .map(|format| Ok((*format, self.create_pipeline(source, *format)?)))
-      .collect();
-
-    match rebuilt {
-      Ok(pipelines) => self.pipelines = pipelines,
-      Err(error) => log::error!("Backdrop shader rejected, drawing with the last one: {error}"),
+    if let Err(error) = self.pipelines.refresh(source.cache, |format| {
+      Self::create_pipeline(source, &self.layout, format)
+    }) {
+      log::error!("Backdrop shader rejected, drawing with the last one: {error}");
     }
   }
 
@@ -98,21 +84,17 @@ impl BackdropPass {
       window.written = Some(*backdrop);
     }
 
-    if !self.pipelines.contains_key(&format) {
-      let pipeline: wgpu::RenderPipeline = self.create_pipeline(source, format)?;
-
-      self.pipelines.insert(format, pipeline);
-    }
-
-    Ok(())
+    self
+      .pipelines
+      .prepare(format, |format| Self::create_pipeline(source, &self.layout, format))
   }
 
   fn create_pipeline(
-    &self,
     source: PipelineSource<'_>,
+    layout: &wgpu::BindGroupLayout,
     format: wgpu::TextureFormat,
   ) -> XrfResult<wgpu::RenderPipeline> {
-    create_fullscreen_pipeline(source, "frame/backdrop", "fs_backdrop", &[Some(&self.layout)], format)
+    create_fullscreen_pipeline(source, "frame/backdrop", "fs_backdrop", &[Some(layout)], format)
   }
 
   /// Paints a window's backdrop over the whole window, before its viewports are drawn.

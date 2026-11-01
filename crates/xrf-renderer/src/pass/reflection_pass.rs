@@ -1,6 +1,6 @@
 use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, RasterContext};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet, RasterContext};
 
 use crate::pass::budgeted_trace_outputs::BudgetedTraceOutputs;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
@@ -26,7 +26,7 @@ pub struct ReflectionPass {
   request_layout: wgpu::BindGroupLayout,
   /// Where the trace writes under ray budgets.
   out_layout: wgpu::BindGroupLayout,
-  pipelines: ReflectionPipelines,
+  pipelines: PipelineSet<ReflectionPipelines>,
   /// What a stage reads in place of a history or a stage before it where there is none: one texel of nothing.
   empty: wgpu::TextureView,
   /// What combine and the debug view read where nothing is traced: one texel marked untraced.
@@ -35,7 +35,6 @@ pub struct ReflectionPass {
   no_ends: wgpu::TextureView,
   /// The history's bilinear reads.
   sampler: wgpu::Sampler,
-  generation: u64,
 }
 
 /// The trace, under ray budgets too, the denoiser's four stages (reproject, average, prefilter and resolve), the
@@ -107,7 +106,10 @@ impl ReflectionPass {
     };
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, view_layout, &layout, sky_layout, &request_layout, &out_layout)?,
+      pipelines: PipelineSet::new(
+        source.cache,
+        Self::create_pipelines(source, view_layout, &layout, sky_layout, &request_layout, &out_layout)?,
+      ),
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
       request_layout,
@@ -126,28 +128,24 @@ impl ReflectionPass {
         min_filter: wgpu::FilterMode::Linear,
         ..Default::default()
       }),
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(
         source,
         &self.view_layout,
         &self.layout,
         &self.sky_layout,
         &self.request_layout,
         &self.out_layout,
-      ) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("Reflections rejected, tracing with the last ones: {error}"),
-      }
+      )
+    }) {
+      log::error!("Reflections rejected, tracing with the last ones: {error}");
     }
   }
 

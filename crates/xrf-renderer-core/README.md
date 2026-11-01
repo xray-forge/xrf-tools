@@ -174,6 +174,11 @@ WGSL lays them out otherwise.
   `get_generation`, so a holder of a pipeline knows to ask again.
 - **Errors.** Every creation runs under a wgpu validation scope, so what wgpu refuses comes back as an error naming the
   module or pipeline. A shader compile error names lines of the composed text; `ShaderLines` maps each back to the
+- **Holding pipelines.** A pass holds what it draws with in a `PipelineSet<T>` (one pipeline, an array, or a struct
+  naming each), read through `Deref`, with the generation it was made in: `refresh` makes it again once the cache moved
+  past that generation and answers a refusal, keeping the last made and not trying again before the cache changes;
+  `PipelineSet::ask` makes one a pass asks for only once it draws. A pass drawing into targets of several formats holds
+  a `PipelineMap<K, T>`, one set a key made on first use (`prepare`) and all made again together.
   module and line it came from, using the markers a source writes with `ShaderLines::mark`.
 - **Trusted modules.** Modules are created with `create_shader_module_trusted`, with bounds checks and loop bounding
   off; division and ray queries stay guarded. This is sound only for the renderer's own WGSL: every loop must end,

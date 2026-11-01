@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
@@ -10,8 +10,7 @@ use crate::pass::pipeline_source::PipelineSource;
 pub struct FxaaPass {
   layout: wgpu::BindGroupLayout,
   sampler: wgpu::Sampler,
-  pipeline: wgpu::RenderPipeline,
-  generation: u64,
+  pipeline: PipelineSet<wgpu::RenderPipeline>,
 }
 
 impl FxaaPass {
@@ -24,28 +23,25 @@ impl FxaaPass {
     let layout: wgpu::BindGroupLayout = FxaaParameters::create_layout(device);
 
     Ok(Self {
-      pipeline: Self::create_pipeline(source, &layout)?,
+      pipeline: PipelineSet::new(source.cache, Self::create_pipeline(source, &layout)?),
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("fxaa"),
         mag_filter: wgpu::FilterMode::Linear,
         min_filter: wgpu::FilterMode::Linear,
         ..Default::default()
       }),
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipeline(source, &self.layout) {
-        Ok(pipeline) => self.pipeline = pipeline,
-        Err(error) => log::error!("FXAA rejected, smoothing with the last one: {error}"),
-      }
+    if let Err(error) = self
+      .pipeline
+      .refresh(source.cache, || Self::create_pipeline(source, &self.layout))
+    {
+      log::error!("FXAA rejected, smoothing with the last one: {error}");
     }
   }
 

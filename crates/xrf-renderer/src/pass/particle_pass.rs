@@ -1,7 +1,7 @@
 use std::ops::Range;
 
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipelineDescription};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::particle_batch::ParticleBatch;
@@ -19,8 +19,7 @@ pub struct ParticlePass {
   view_layout: wgpu::BindGroupLayout,
   texture_layout: wgpu::BindGroupLayout,
   clamped_sampler: wgpu::Sampler,
-  pipelines: ParticlePipelines,
-  generation: u64,
+  pipelines: PipelineSet<ParticlePipelines>,
 }
 
 /// The pass's pipelines, made again together whenever the source change.
@@ -45,7 +44,10 @@ impl ParticlePass {
     let layout: wgpu::BindGroupLayout = ParticleParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, view_layout, &layout, texture_layout)?,
+      pipelines: PipelineSet::new(
+        source.cache,
+        Self::create_pipelines(source, view_layout, &layout, texture_layout)?,
+      ),
       // As the textures' own sampler, clamped to the edge as `Texture clamp` addresses a sprite.
       clamped_sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("particles clamped"),
@@ -60,21 +62,17 @@ impl ParticlePass {
       }),
       view_layout: view_layout.clone(),
       texture_layout: texture_layout.clone(),
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.view_layout, &self.layout, &self.texture_layout) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("Particles rejected, drawing with the last ones: {error}"),
-      }
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.view_layout, &self.layout, &self.texture_layout)
+    }) {
+      log::error!("Particles rejected, drawing with the last ones: {error}");
     }
   }
 

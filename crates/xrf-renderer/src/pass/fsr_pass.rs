@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
   ComputePipelineDescription, FrameGraph, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDeclaration,
-  GraphTexture, PassParameters, StorageArray, StorageArrayMut, UniformBinding,
+  GraphTexture, PassParameters, PipelineSet, StorageArray, StorageArrayMut, UniformBinding,
 };
 
 use crate::contract::render_debug_view::RenderDebugView;
@@ -82,9 +82,8 @@ struct FsrDebugPipelines {
 /// size; each of FSR's stages a pass.
 pub struct FsrPass {
   layouts: FsrLayouts,
-  pipelines: FsrPipelines,
+  pipelines: PipelineSet<FsrPipelines>,
   sampler: wgpu::Sampler,
-  generation: u64,
 }
 
 impl FsrPass {
@@ -101,7 +100,7 @@ impl FsrPass {
     let layouts: FsrLayouts = FsrLayouts::new(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, &layouts)?,
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, &layouts)?),
       layouts,
       sampler: device.create_sampler(&wgpu::SamplerDescriptor {
         label: Some("fsr"),
@@ -109,20 +108,17 @@ impl FsrPass {
         min_filter: wgpu::FilterMode::Linear,
         ..Default::default()
       }),
-      generation: source.get_generation(),
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.layouts) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("FSR rejected, upscaling with the last one: {error}"),
-      }
+    if let Err(error) = self
+      .pipelines
+      .refresh(source.cache, || Self::create_pipelines(source, &self.layouts))
+    {
+      log::error!("FSR rejected, upscaling with the last one: {error}");
     }
   }
 

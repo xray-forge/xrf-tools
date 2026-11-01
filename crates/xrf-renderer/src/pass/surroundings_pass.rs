@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
 
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::surroundings_parameters::SurroundingsParameters;
@@ -10,8 +10,7 @@ use crate::pass::view_binding::ViewBinding;
 pub struct SurroundingsPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
-  pipeline: wgpu::ComputePipeline,
-  generation: u64,
+  pipeline: PipelineSet<wgpu::ComputePipeline>,
 }
 
 impl SurroundingsPass {
@@ -31,23 +30,19 @@ impl SurroundingsPass {
     let layout: wgpu::BindGroupLayout = SurroundingsParameters::create_layout(device);
 
     Ok(Self {
-      pipeline: Self::create_pipeline(source, view_layout, &layout)?,
+      pipeline: PipelineSet::new(source.cache, Self::create_pipeline(source, view_layout, &layout)?),
       view_layout: view_layout.clone(),
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipeline(source, &self.view_layout, &self.layout) {
-        Ok(pipeline) => self.pipeline = pipeline,
-        Err(error) => log::error!("Surroundings rejected, resolving with the last one: {error}"),
-      }
+    if let Err(error) = self.pipeline.refresh(source.cache, || {
+      Self::create_pipeline(source, &self.view_layout, &self.layout)
+    }) {
+      log::error!("Surroundings rejected, resolving with the last one: {error}");
     }
   }
 

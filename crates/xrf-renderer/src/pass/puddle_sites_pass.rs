@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
 
 use crate::pass::lowest_heights_parameters::LowestHeightsParameters;
 use crate::pass::pipeline_source::PipelineSource;
@@ -11,8 +11,7 @@ use crate::pass::puddle_sites_parameters::PuddleSitesParameters;
 pub struct PuddleSitesPass {
   layouts: [wgpu::BindGroupLayout; 3],
   /// The lowest heights, the sites, and the puddles.
-  pipelines: [wgpu::ComputePipeline; 3],
-  generation: u64,
+  pipelines: PipelineSet<[wgpu::ComputePipeline; 3]>,
 }
 
 impl PuddleSitesPass {
@@ -29,22 +28,19 @@ impl PuddleSitesPass {
     ];
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, &layouts)?,
-      generation: source.get_generation(),
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, &layouts)?),
       layouts,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.layouts) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("Puddle sites rejected, placing with the last ones: {error}"),
-      }
+    if let Err(error) = self
+      .pipelines
+      .refresh(source.cache, || Self::create_pipelines(source, &self.layouts))
+    {
+      log::error!("Puddle sites rejected, placing with the last ones: {error}");
     }
   }
 

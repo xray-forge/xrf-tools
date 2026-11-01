@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
@@ -13,8 +13,7 @@ pub struct SunShaftsPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   /// Each draw's pipeline, by `SunShaftsDraw`.
-  pipelines: [wgpu::RenderPipeline; 3],
-  generation: u64,
+  pipelines: PipelineSet<[wgpu::RenderPipeline; 3]>,
 }
 
 /// What a draw of the sun's shafts does: the half-size march; the composite adding its light to the frame; or, at the
@@ -40,23 +39,19 @@ impl SunShaftsPass {
     let layout: wgpu::BindGroupLayout = SunShaftsParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, view_layout, &layout)?,
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, view_layout, &layout)?),
       view_layout: view_layout.clone(),
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.view_layout, &self.layout) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("Sun shafts rejected, drawing with the last ones: {error}"),
-      }
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.view_layout, &self.layout)
+    }) {
+      log::error!("Sun shafts rejected, drawing with the last ones: {error}");
     }
   }
 

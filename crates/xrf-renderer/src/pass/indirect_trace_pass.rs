@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::context::gpu_requirements::can_trace;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
@@ -20,8 +20,7 @@ pub struct IndirectTracePass {
   sky_layout: wgpu::BindGroupLayout,
   /// Its own, the trace's and the texture cache's layouts, on a device with ray queries.
   layouts: Option<[wgpu::BindGroupLayout; 3]>,
-  pipeline: Option<wgpu::RenderPipeline>,
-  generation: u64,
+  pipeline: PipelineSet<Option<wgpu::RenderPipeline>>,
 }
 
 impl IndirectTracePass {
@@ -53,24 +52,23 @@ impl IndirectTracePass {
     });
 
     Ok(Self {
-      pipeline: Self::create_pipeline(source, view_layout, sky_layout, layouts.as_ref())?,
+      pipeline: PipelineSet::new(
+        source.cache,
+        Self::create_pipeline(source, view_layout, sky_layout, layouts.as_ref())?,
+      ),
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
       layouts,
-      generation: source.get_generation(),
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipeline(source, &self.view_layout, &self.sky_layout, self.layouts.as_ref()) {
-        Ok(pipeline) => self.pipeline = pipeline,
-        Err(error) => log::error!("Indirect trace rejected, tracing with the last one: {error}"),
-      }
+    if let Err(error) = self.pipeline.refresh(source.cache, || {
+      Self::create_pipeline(source, &self.view_layout, &self.sky_layout, self.layouts.as_ref())
+    }) {
+      log::error!("Indirect trace rejected, tracing with the last one: {error}");
     }
   }
 
@@ -89,7 +87,7 @@ impl IndirectTracePass {
     trace: &TraceParameters<'_>,
     textures: &wgpu::BindGroup,
   ) {
-    let Some(pipeline) = &self.pipeline else {
+    let Some(pipeline) = &*self.pipeline else {
       return;
     };
 

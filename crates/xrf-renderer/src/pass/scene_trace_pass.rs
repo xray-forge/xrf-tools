@@ -1,7 +1,7 @@
 use wgpu::util::DeviceExt;
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
-  ComputeContext, ComputePipelineDescription, FrameGraph, GraphBindings, GraphBufferAccess, PassParameters,
+  ComputeContext, ComputePipelineDescription, FrameGraph, GraphBindings, GraphBufferAccess, PassParameters, PipelineSet,
 };
 
 use crate::context::gpu_requirements::can_trace;
@@ -23,12 +23,11 @@ pub struct SceneTracePass {
   sky_layout: wgpu::BindGroupLayout,
   /// The pass's own, the trace's and the texture cache's layouts, on a device with ray queries.
   layouts: Option<[wgpu::BindGroupLayout; 3]>,
-  pipeline: Option<wgpu::ComputePipeline>,
+  pipeline: PipelineSet<Option<wgpu::ComputePipeline>>,
   /// What a list's head is set back to before the pass filling it, its wait kept: `TraceRequest::HEAD`.
   head_reset: wgpu::Buffer,
   /// What a list keeping no ends binds for them, which nothing writes.
   no_ends: wgpu::TextureView,
-  generation: u64,
 }
 
 impl SceneTracePass {
@@ -55,7 +54,10 @@ impl SceneTracePass {
     });
 
     Ok(Self {
-      pipeline: Self::create_pipeline(source, view_layout, sky_layout, layouts.as_ref())?,
+      pipeline: PipelineSet::new(
+        source.cache,
+        Self::create_pipeline(source, view_layout, sky_layout, layouts.as_ref())?,
+      ),
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
       layouts,
@@ -80,20 +82,16 @@ impl SceneTracePass {
           view_formats: &[],
         })
         .create_view(&Default::default()),
-      generation: source.get_generation(),
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipeline(source, &self.view_layout, &self.sky_layout, self.layouts.as_ref()) {
-        Ok(pipeline) => self.pipeline = pipeline,
-        Err(error) => log::error!("Scene trace rejected, tracing with the last one: {error}"),
-      }
+    if let Err(error) = self.pipeline.refresh(source.cache, || {
+      Self::create_pipeline(source, &self.view_layout, &self.sky_layout, self.layouts.as_ref())
+    }) {
+      log::error!("Scene trace rejected, tracing with the last one: {error}");
     }
   }
 
@@ -195,7 +193,7 @@ impl SceneTracePass {
   }
 
   fn record(&self, context: &mut ComputeContext<'_>, bindings: &SceneTraceBindings<'_>, dispatch: &wgpu::Buffer) {
-    let Some(pipeline) = &self.pipeline else {
+    let Some(pipeline) = &*self.pipeline else {
       return;
     };
 

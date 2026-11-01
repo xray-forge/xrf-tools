@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
@@ -12,10 +12,9 @@ pub struct SkyBehindPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
   sky_layout: wgpu::BindGroupLayout,
-  pipeline: wgpu::RenderPipeline,
+  pipeline: PipelineSet<wgpu::RenderPipeline>,
   /// What combine reads while no sky shows behind the fog: never read.
   unseen: wgpu::TextureView,
-  generation: u64,
 }
 
 impl SkyBehindPass {
@@ -35,7 +34,10 @@ impl SkyBehindPass {
     let layout: wgpu::BindGroupLayout = SkyBehindParameters::create_layout(device);
 
     Ok(Self {
-      pipeline: Self::create_pipeline(source, view_layout, &layout, sky_layout)?,
+      pipeline: PipelineSet::new(
+        source.cache,
+        Self::create_pipeline(source, view_layout, &layout, sky_layout)?,
+      ),
       view_layout: view_layout.clone(),
       sky_layout: sky_layout.clone(),
       unseen: device
@@ -54,21 +56,17 @@ impl SkyBehindPass {
           view_formats: &[],
         })
         .create_view(&Default::default()),
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipeline(source, &self.view_layout, &self.layout, &self.sky_layout) {
-        Ok(pipeline) => self.pipeline = pipeline,
-        Err(error) => log::error!("Sky behind rejected, drawing with the last one: {error}"),
-      }
+    if let Err(error) = self.pipeline.refresh(source.cache, || {
+      Self::create_pipeline(source, &self.view_layout, &self.layout, &self.sky_layout)
+    }) {
+      log::error!("Sky behind rejected, drawing with the last one: {error}");
     }
   }
 

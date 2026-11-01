@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext};
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::pipeline_source::PipelineSource;
@@ -10,8 +10,7 @@ use crate::pass::upscale_stage::UpscaleStage;
 pub struct UpscalePass {
   layout: wgpu::BindGroupLayout,
   /// One a stage, at its index.
-  pipelines: [wgpu::RenderPipeline; UpscaleStage::COUNT],
-  generation: u64,
+  pipelines: PipelineSet<[wgpu::RenderPipeline; UpscaleStage::COUNT]>,
 }
 
 impl UpscalePass {
@@ -27,22 +26,19 @@ impl UpscalePass {
     let layout: wgpu::BindGroupLayout = UpscaleParameters::create_layout(device);
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, &layout)?,
-      generation: source.get_generation(),
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, &layout)?),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.layout) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("Upscaling rejected, upscaling with the last one: {error}"),
-      }
+    if let Err(error) = self
+      .pipelines
+      .refresh(source.cache, || Self::create_pipelines(source, &self.layout))
+    {
+      log::error!("Upscaling rejected, upscaling with the last one: {error}");
     }
   }
 

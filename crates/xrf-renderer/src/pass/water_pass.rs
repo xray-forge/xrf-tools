@@ -1,7 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
   FrameGraph, GraphBindings, GraphBuffer, GraphBufferAccess, GraphColorAttachment, GraphDeclaration,
-  GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, PassParameters, RasterContext,
+  GraphDepthAttachment, GraphRuntime, GraphTexture, GraphTextureDescriptor, PassParameters, PipelineSet, RasterContext,
   RasterPassBuilder, RenderPipelineDescription, StorageValue, UniformBinding,
 };
 
@@ -57,12 +57,11 @@ pub struct WaterPass {
   request_layout: wgpu::BindGroupLayout,
   parameter_layouts: WaterParameterLayouts,
   /// What every batch draws with, its own static draws' group bound before it.
-  pipelines: WaterPipelines,
+  pipelines: PipelineSet<WaterPipelines>,
   blur: WaterBlurPass,
   maps: EnhancedWaterMaps,
   /// What a binding a pass does not read is given: a texel of nothing.
   nothing: wgpu::TextureView,
-  generation: u64,
 }
 
 impl WaterPass {
@@ -98,14 +97,16 @@ impl WaterPass {
       .create_view(&Default::default());
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, &layouts, &request_layout, &parameter_layouts)?,
+      pipelines: PipelineSet::new(
+        source.cache,
+        Self::create_pipelines(source, &layouts, &request_layout, &parameter_layouts)?,
+      ),
       blur: WaterBlurPass::new(source)?,
       maps: EnhancedWaterMaps::new(device, queue, bundle, &nothing),
       nothing,
       layouts,
       request_layout,
       parameter_layouts,
-      generation: source.get_generation(),
     })
   }
 
@@ -127,20 +128,17 @@ impl WaterPass {
     &self.maps
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.layouts, &self.request_layout, &self.parameter_layouts)
+    }) {
+      log::error!("Water rejected, drawing with the last one: {error}");
+    }
 
-      match Self::create_pipelines(source, &self.layouts, &self.request_layout, &self.parameter_layouts) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("Water rejected, drawing with the last one: {error}"),
-      }
-
-      if let Err(error) = self.blur.refresh(source) {
-        log::error!("Water blur rejected, blurring with the last one: {error}");
-      }
+    if let Err(error) = self.blur.refresh(source) {
+      log::error!("Water blur rejected, blurring with the last one: {error}");
     }
   }
 

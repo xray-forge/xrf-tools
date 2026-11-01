@@ -1,6 +1,6 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{
-  ComputeContext, ComputePipelineDescription, PassParameters, RasterContext, RenderPipelineDescription,
+  ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet, RasterContext, RenderPipelineDescription,
 };
 
 use crate::frame::view_targets::ViewTargets;
@@ -24,13 +24,12 @@ pub struct GlassPass {
   layout: wgpu::BindGroupLayout,
   layouts: [wgpu::BindGroupLayout; 4],
   /// One a layout, in `StaticLayout::ALL` order.
-  pipelines: Vec<wgpu::RenderPipeline>,
+  pipelines: PipelineSet<Vec<wgpu::RenderPipeline>>,
   /// The copy's dispatch worked out and the copy itself: their groups, then their pipelines.
   copy_layouts: [wgpu::BindGroupLayout; 2],
-  copy_pipelines: [wgpu::ComputePipeline; 2],
+  copy_pipelines: PipelineSet<[wgpu::ComputePipeline; 2]>,
   /// Reads the frame's copy between its texels, clamped at its edges.
   scene_sampler: wgpu::Sampler,
-  generation: u64,
 }
 
 impl GlassPass {
@@ -62,8 +61,8 @@ impl GlassPass {
     ];
 
     Ok(Self {
-      pipelines: Self::create_pipelines(source, &layouts, &layout)?,
-      copy_pipelines: Self::create_copy_pipelines(source, &copy_layouts)?,
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, &layouts, &layout)?),
+      copy_pipelines: PipelineSet::new(source.cache, Self::create_copy_pipelines(source, &copy_layouts)?),
       copy_layouts,
       layouts,
       scene_sampler: device.create_sampler(&wgpu::SamplerDescriptor {
@@ -72,7 +71,6 @@ impl GlassPass {
         min_filter: wgpu::FilterMode::Linear,
         ..Default::default()
       }),
-      generation: source.get_generation(),
       layout,
     })
   }
@@ -81,21 +79,20 @@ impl GlassPass {
     &self.scene_sampler
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.layouts, &self.layout)
+    }) {
+      log::error!("Glass rejected, drawing with the last one: {error}");
+    }
 
-      match Self::create_pipelines(source, &self.layouts, &self.layout) {
-        Ok(pipelines) => self.pipelines = pipelines,
-        Err(error) => log::error!("Glass rejected, drawing with the last one: {error}"),
-      }
-
-      match Self::create_copy_pipelines(source, &self.copy_layouts) {
-        Ok(pipelines) => self.copy_pipelines = pipelines,
-        Err(error) => log::error!("Glass copy rejected, copying with the last one: {error}"),
-      }
+    if let Err(error) = self
+      .copy_pipelines
+      .refresh(source.cache, || Self::create_copy_pipelines(source, &self.copy_layouts))
+    {
+      log::error!("Glass copy rejected, copying with the last one: {error}");
     }
   }
 
@@ -143,7 +140,7 @@ impl GlassPass {
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
     context.get_pass().set_bind_group(1, textures, &[]);
 
-    for (layout, pipeline) in StaticLayout::ALL.into_iter().zip(&self.pipelines) {
+    for (layout, pipeline) in StaticLayout::ALL.into_iter().zip(self.pipelines.iter()) {
       let list: u32 = StaticBatch::get_pass_list(layout, StaticSurfacePass::Glass);
 
       context.bind(&layouts[layout.get_index()]);

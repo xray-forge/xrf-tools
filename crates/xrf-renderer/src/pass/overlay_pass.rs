@@ -1,7 +1,5 @@
-use std::collections::HashMap;
-
 use xrf_error::XrfResult;
-use xrf_renderer_core::{PassParameters, RasterContext, RenderPipelineDescription, VertexLayout};
+use xrf_renderer_core::{PassParameters, PipelineMap, RasterContext, RenderPipelineDescription, VertexLayout};
 
 use crate::host::render_bundle::RenderBundle;
 use crate::pass::overlay_draw::OverlayDraw;
@@ -23,8 +21,7 @@ pub struct OverlayPass {
   /// None where the bundle holds no atlas it can read, and no icon is drawn.
   atlas: Option<wgpu::BindGroup>,
   /// The lines', the sun's, the points', the helpers' wires' and icons', one set a window format, built on first use.
-  pipelines: HashMap<wgpu::TextureFormat, OverlayPipelines>,
-  generation: u64,
+  pipelines: PipelineMap<wgpu::TextureFormat, OverlayPipelines>,
 }
 
 impl OverlayPass {
@@ -63,8 +60,7 @@ impl OverlayPass {
       view_layout: view_layout.clone(),
       atlas_layout,
       atlas,
-      pipelines: HashMap::new(),
-      generation: source.get_generation(),
+      pipelines: PipelineMap::new(source.cache),
     }
   }
 
@@ -96,21 +92,13 @@ impl OverlayPass {
   /// Builds the pipelines again from a library reloaded since they were built, one a window format each; a broken edit
   /// keeps the last good ones.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() == self.generation {
-      return;
-    }
+    let layouts: [&wgpu::BindGroupLayout; 3] = [&self.view_layout, &self.layout, &self.atlas_layout];
 
-    self.generation = source.get_generation();
-
-    let rebuilt: XrfResult<HashMap<wgpu::TextureFormat, OverlayPipelines>> = self
+    if let Err(error) = self
       .pipelines
-      .keys()
-      .map(|format| Ok((*format, self.create_pipeline(source, *format)?)))
-      .collect();
-
-    match rebuilt {
-      Ok(pipelines) => self.pipelines = pipelines,
-      Err(error) => log::error!("Overlay shader rejected, drawing with the last one: {error}"),
+      .refresh(source.cache, |format| Self::create_pipeline(source, layouts, format))
+    {
+      log::error!("Overlay shader rejected, drawing with the last one: {error}");
     }
   }
 
@@ -120,20 +108,23 @@ impl OverlayPass {
   ///
   /// Returns an error when the shader does not compose or compile.
   pub fn prepare(&mut self, source: PipelineSource<'_>, format: wgpu::TextureFormat) -> XrfResult {
-    if !self.pipelines.contains_key(&format) {
-      let pipelines: OverlayPipelines = self.create_pipeline(source, format)?;
+    let layouts: [&wgpu::BindGroupLayout; 3] = [&self.view_layout, &self.layout, &self.atlas_layout];
 
-      self.pipelines.insert(format, pipelines);
-    }
-
-    Ok(())
+    self
+      .pipelines
+      .prepare(format, |format| Self::create_pipeline(source, layouts, format))
   }
 
-  /// The lines', the sun's, the points', the helpers' wires' and icons' pipelines drawing into a window format.
-  fn create_pipeline(&self, source: PipelineSource<'_>, format: wgpu::TextureFormat) -> XrfResult<OverlayPipelines> {
+  /// The lines', the sun's, the points', the helpers' wires' and icons' pipelines drawing into a window format, bound
+  /// by the view's, the overlays' and the atlas's `layouts`.
+  fn create_pipeline(
+    source: PipelineSource<'_>,
+    [view_layout, layout, atlas_layout]: [&wgpu::BindGroupLayout; 3],
+    format: wgpu::TextureFormat,
+  ) -> XrfResult<OverlayPipelines> {
     // The camera and the overlays' parameters every pipeline binds; only the icons bind the atlas, as a third group.
-    let groups: [Option<&wgpu::BindGroupLayout>; 2] = [Some(&self.view_layout), Some(&self.layout)];
-    let iconed: [Option<&wgpu::BindGroupLayout>; 3] = [groups[0], groups[1], Some(&self.atlas_layout)];
+    let groups: [Option<&wgpu::BindGroupLayout>; 2] = [Some(view_layout), Some(layout)];
+    let iconed: [Option<&wgpu::BindGroupLayout>; 3] = [groups[0], groups[1], Some(atlas_layout)];
     let create = |kind: OverlayPipelineKind| -> XrfResult<wgpu::RenderPipeline> {
       source.get_render_pipeline(
         &RenderPipelineDescription::new(kind.vertex, "frame/overlay", kind.vertex)

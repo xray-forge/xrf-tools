@@ -1,5 +1,5 @@
 use xrf_error::XrfResult;
-use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters};
+use xrf_renderer_core::{ComputeContext, ComputePipelineDescription, PassParameters, PipelineSet};
 
 use crate::pass::compute_grid::ComputeGrid;
 use crate::pass::pipeline_source::PipelineSource;
@@ -26,11 +26,8 @@ const ENTRIES: [&str; 6] = [
 pub struct StaticCullPass {
   layout: wgpu::BindGroupLayout,
   view_layout: wgpu::BindGroupLayout,
-  pipelines: [wgpu::ComputePipeline; 6],
-  /// The singles, the rows and the clamp again, for a sun cascade's view, then for a light face's.
-  shadow_pipelines: [[wgpu::ComputePipeline; 3]; 4],
+  pipelines: PipelineSet<StaticCullPipelines>,
   grid: ComputeGrid,
-  generation: u64,
 }
 
 impl StaticCullPass {
@@ -41,31 +38,22 @@ impl StaticCullPass {
     let device: &wgpu::Device = source.device;
 
     let layout: wgpu::BindGroupLayout = StaticCullParameters::create_layout(device);
-    let (pipelines, shadow_pipelines) = Self::create_pipelines(source, view_layout, &layout)?;
 
     Ok(Self {
-      pipelines,
-      shadow_pipelines,
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, view_layout, &layout)?),
       grid: ComputeGrid::new(device),
       view_layout: view_layout.clone(),
-      generation: source.get_generation(),
       layout,
     })
   }
 
-  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSource::get_generation`), keeping
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
   /// the last ones where a reload is refused.
   pub fn refresh(&mut self, source: PipelineSource<'_>) {
-    if source.get_generation() != self.generation {
-      self.generation = source.get_generation();
-
-      match Self::create_pipelines(source, &self.view_layout, &self.layout) {
-        Ok((pipelines, shadow_pipelines)) => {
-          self.pipelines = pipelines;
-          self.shadow_pipelines = shadow_pipelines;
-        }
-        Err(error) => log::error!("Static cull rejected, culling with the last one: {error}"),
-      }
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.view_layout, &self.layout)
+    }) {
+      log::error!("Static cull rejected, culling with the last one: {error}");
     }
   }
 
@@ -85,10 +73,10 @@ impl StaticCullPass {
     pass.set_bind_group(0, &view.bind_group, &[]);
 
     for (pipeline, count) in [
-      (&self.pipelines[0], params.impostor_count),
-      (&self.pipelines[1], params.cluster_count),
-      (&self.pipelines[2], params.row_count),
-      (&self.pipelines[3], StaticBatch::LIST_COUNT as u32),
+      (&self.pipelines.camera[0], params.impostor_count),
+      (&self.pipelines.camera[1], params.cluster_count),
+      (&self.pipelines.camera[2], params.row_count),
+      (&self.pipelines.camera[3], StaticBatch::LIST_COUNT as u32),
     ] {
       if count > 0 {
         pass.set_pipeline(pipeline);
@@ -107,7 +95,7 @@ impl StaticCullPass {
     params: &StaticCullUniform,
     kind: ShadowCull,
   ) {
-    let pipelines: &[wgpu::ComputePipeline; 3] = &self.shadow_pipelines[kind.get_index()];
+    let pipelines: &[wgpu::ComputePipeline; 3] = &self.pipelines.shadows[kind.get_index()];
 
     context.bind(parameters);
 
@@ -152,9 +140,9 @@ impl StaticCullPass {
     let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
 
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.set_pipeline(&self.pipelines[4]);
+    pass.set_pipeline(&self.pipelines.camera[4]);
     pass.dispatch_workgroups_indirect(dispatch, 0);
-    pass.set_pipeline(&self.pipelines[5]);
+    pass.set_pipeline(&self.pipelines.camera[5]);
     pass.dispatch_workgroups((StaticBatch::LIST_COUNT as u32).div_ceil(Self::WORKGROUP), 1, 1);
   }
 
@@ -162,7 +150,7 @@ impl StaticCullPass {
     source: PipelineSource<'_>,
     view_layout: &wgpu::BindGroupLayout,
     layout: &wgpu::BindGroupLayout,
-  ) -> XrfResult<([wgpu::ComputePipeline; 6], [[wgpu::ComputePipeline; 3]; 4])> {
+  ) -> XrfResult<StaticCullPipelines> {
     let create = |entry: &'static str, permutation: StaticCullPermutation| -> XrfResult<wgpu::ComputePipeline> {
       source.get_compute_pipeline(
         &ComputePipelineDescription::new(entry, StaticCullPermutation::MODULE, entry)
@@ -183,8 +171,8 @@ impl StaticCullPass {
     };
     let camera: StaticCullPermutation = StaticCullPermutation::default();
 
-    Ok((
-      [
+    Ok(StaticCullPipelines {
+      camera: [
         create(impostors, camera)?,
         create(singles, camera)?,
         create(rows, camera)?,
@@ -192,12 +180,19 @@ impl StaticCullPass {
         create(late, camera)?,
         create(clamp_late, camera)?,
       ],
-      [
+      shadows: [
         create_shadow(ShadowCull::Cascade)?,
         create_shadow(ShadowCull::LightFace)?,
         create_shadow(ShadowCull::Water)?,
         create_shadow(ShadowCull::CascadeReceived)?,
       ],
-    ))
+    })
   }
+}
+
+/// The cull's pipelines: the camera's phases, then the singles, the rows and the clamp again for each shadow view's kind.
+struct StaticCullPipelines {
+  camera: [wgpu::ComputePipeline; 6],
+  /// For a sun cascade's view, a light face's, the water's and a received cascade's.
+  shadows: [[wgpu::ComputePipeline; 3]; 4],
 }
