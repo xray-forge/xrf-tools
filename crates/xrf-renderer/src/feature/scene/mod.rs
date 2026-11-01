@@ -1,4 +1,5 @@
 pub(crate) mod calibration;
+pub(crate) mod drawable;
 pub(crate) mod grass;
 pub(crate) mod pyramid;
 pub(crate) mod scene_passes;

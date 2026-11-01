@@ -98,6 +98,14 @@ impl RenderShadowSettings {
     }
   }
 
+  /// Metres the `cascades` nearest cascades drawn reach from the eye: the last such cascade's width; none for no
+  /// cascade.
+  pub fn get_reach(&self, cascades: u32) -> Option<f32> {
+    let count: usize = self.get_cascade_count().min(cascades as usize);
+
+    count.checked_sub(1).map(|last| self.get_cascade_width(last))
+  }
+
   /// Texels the filter reaches each way, at most `RENDER_MAX_SHADOW_FILTER`.
   pub fn get_filter(&self) -> u32 {
     self.filter.min(RENDER_MAX_SHADOW_FILTER)

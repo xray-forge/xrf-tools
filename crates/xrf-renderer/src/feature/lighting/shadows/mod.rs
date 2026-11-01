@@ -1,3 +1,4 @@
+pub(crate) mod cascade_target;
 pub(crate) mod cascades;
 pub(crate) mod level_shadows;
 pub(crate) mod shadow_casters;

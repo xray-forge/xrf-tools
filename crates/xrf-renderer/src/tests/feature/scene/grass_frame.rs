@@ -9,6 +9,7 @@ use xrf_visual::{DetailsDescription, DetailsModel, DetailsPackage, VisualSection
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
 use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;
+use crate::feature::lighting::shadows::cascade_target::CascadeTarget;
 use crate::feature::lighting::shadows::cascades::sun_shadow_maps::SunShadowMaps;
 use crate::feature::scene::grass::build::grass_planting::GrassPlanting;
 use crate::feature::scene::grass::cards::grass_card_handles::GrassCardHandles;
@@ -235,7 +236,15 @@ impl GrassFrames {
         .expect("the cards cast into the cascades");
       let cascades: GraphTexture = bindings.import_view(&mut graph, "grass test cascades", &self.maps.view);
 
-      casters.add_pass(&mut graph, "grass test cascade", cascades, 0, &self.view);
+      casters.add_pass(
+        &mut graph,
+        CascadeTarget {
+          name: "grass test cascade",
+          maps: cascades,
+          layer: 0,
+          view: &self.view,
+        },
+      );
 
       let compiled = graph.compile(&GraphCompileOptions::default()).unwrap();
 

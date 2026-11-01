@@ -13,7 +13,6 @@ use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::effects::rain::rings::drop_rings::DropRings;
 use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::image::present::present_inputs::PresentInputs;
-use crate::feature::lighting::shadows::level_shadows::LevelShadows;
 use crate::feature::scene::grass::grass_view_frame::GrassViewFrame;
 use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;
 use crate::feature::tracing::sun_trace::sun_trace_feature::SunTraceFeature;
@@ -149,7 +148,12 @@ impl SceneView {
       ),
       is_traced,
       cascade_reach: is_cascaded
-        .then(|| LevelShadows::get_grass_reach(&options.features.shadows, options.features.grass.shadow_cascades))
+        .then(|| {
+          options
+            .features
+            .shadows
+            .get_reach(options.features.grass.shadow_cascades)
+        })
         .flatten(),
     };
 

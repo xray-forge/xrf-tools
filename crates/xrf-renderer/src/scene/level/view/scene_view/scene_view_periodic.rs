@@ -1,6 +1,7 @@
 use glam::Vec3;
 
 use crate::feature::effects::rain::cover::rain_cover::RainCover;
+use crate::feature::scene::drawable::per_frame_casters::PerFrameCasters;
 use crate::feature::view::scene_features::SceneFeatures;
 use crate::feature::weather::wet::puddles::level_surface::LevelSurface;
 use crate::frame::frame_encoder::FrameEncoder;
@@ -35,6 +36,7 @@ impl SceneView {
       ..
     } = features;
     let statics: &StaticScene = &scene.statics;
+    let casters: Option<PerFrameCasters> = features.grass.get_sun_casters();
     let frame: ShadowFrame<'_> = ShadowFrame {
       scene: statics,
       camera: &shared.camera,
@@ -43,7 +45,7 @@ impl SceneView {
       is_sunlit: shared.lighting.sun.truncate() != Vec3::ZERO,
       switches: shared.switches,
       sway: Self::to_sway(statics, &features.wind),
-      grass_reach: features.grass.get_cascade_reach(),
+      casters: casters.as_slice(),
     };
 
     shadows.prepare_cascades(device, view_layout, &frame, scheduler);
@@ -96,6 +98,7 @@ impl SceneView {
       ..
     } = features;
     let statics: &StaticScene = &scene.statics;
+    let casters: Option<PerFrameCasters> = features.grass.get_sun_casters();
     let frame: ShadowFrame<'_> = ShadowFrame {
       scene: statics,
       camera: &shared.camera,
@@ -104,7 +107,7 @@ impl SceneView {
       is_sunlit: shared.lighting.sun.truncate() != Vec3::ZERO,
       switches: shared.switches,
       sway: Self::to_sway(statics, &features.wind),
-      grass_reach: features.grass.get_cascade_reach(),
+      casters: casters.as_slice(),
     };
 
     shadows.commit_cascades(device, encoder, &frame, scheduler);
@@ -135,6 +138,7 @@ impl SceneView {
     scheduler: &PeriodicScheduler,
   ) {
     let LevelScene { statics, lights, .. } = scene;
+    let casters: Option<PerFrameCasters> = self.features.grass.get_sun_casters();
     let frame: ShadowFrame<'_> = ShadowFrame {
       scene: statics,
       camera: &self.shared.camera,
@@ -143,7 +147,7 @@ impl SceneView {
       is_sunlit: self.shared.lighting.sun.truncate() != Vec3::ZERO,
       switches: self.shared.switches,
       sway: Self::to_sway(statics, &self.features.wind),
-      grass_reach: self.features.grass.get_cascade_reach(),
+      casters: casters.as_slice(),
     };
 
     lights.commit_shadows(device, encoder, &frame, scheduler);

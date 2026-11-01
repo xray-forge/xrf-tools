@@ -21,9 +21,9 @@ fn camera(position: Vec3, (heading, pitch): (f32, f32), fov: f32) -> CameraView 
 }
 
 #[test]
-fn samples_the_grass_a_narrow_view_sees() {
+fn samples_the_reach_a_narrow_view_sees() {
   let view: CameraView = camera(Vec3::new(64.0, -2.4, -232.8), (157.4, 5.9), 8.0);
-  let points: Vec<Vec3> = LevelShadows::sample_seen_grass(&view, 111.0);
+  let points: Vec<Vec3> = LevelShadows::sample_seen(&view, 111.0);
 
   let frustum: CameraFrustum = view.get_frustum();
 
@@ -34,9 +34,9 @@ fn samples_the_grass_a_narrow_view_sees() {
 }
 
 #[test]
-fn samples_the_grass_a_wide_view_sees_near_and_at_its_reach() {
+fn samples_the_reach_a_wide_view_sees_near_and_at_its_end() {
   let view: CameraView = camera(Vec3::ZERO, (0.0, 10.0), 67.5);
-  let points: Vec<Vec3> = LevelShadows::sample_seen_grass(&view, 50.0);
+  let points: Vec<Vec3> = LevelShadows::sample_seen(&view, 50.0);
   let frustum: CameraFrustum = view.get_frustum();
 
   assert!(points.iter().all(|point| frustum.reaches(point.extend(0.01))));
@@ -74,5 +74,5 @@ fn reads_the_cascades_and_the_filter_within_their_bounds() {
     [1.0, 1.0, 10_000.0, 20.0, 1.0]
   );
   assert_eq!(settings.get_filter(), RENDER_MAX_SHADOW_FILTER);
-  assert_eq!(LevelShadows::get_grass_reach(&settings, 2), Some(1.0));
+  assert_eq!(settings.get_reach(2), Some(1.0));
 }

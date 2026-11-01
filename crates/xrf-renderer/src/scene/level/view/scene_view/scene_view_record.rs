@@ -8,6 +8,7 @@ use crate::feature::lighting::lights::draw::light_buffers::LightBuffers;
 use crate::feature::lighting::lights::draw::light_draw_inputs::LightDrawInputs;
 use crate::feature::lighting::lights::lights_feature::LightsFeature;
 use crate::feature::lighting::sun::direct_light_inputs::DirectLightInputs;
+use crate::feature::scene::drawable::drawable_kind_ref::DrawableKindRef;
 use crate::feature::scene::grass::build::grass_planting::GrassPlanting;
 use crate::feature::scene::grass::cards::grass_card_handles::GrassCardHandles;
 use crate::feature::scene::grass::cards::grass_shadow_casters::GrassShadowCasters;
@@ -239,11 +240,13 @@ impl SceneView {
       textures,
       grass_cards,
     );
+    let kinds: Option<DrawableKindRef> = grass_casters.map(DrawableKindRef::Grass);
 
-    self
-      .features
-      .shadows
-      .add_passes(GraphDeclaration::new(graph, bindings, runtime), record, grass_casters);
+    self.features.shadows.add_passes(
+      GraphDeclaration::new(graph, bindings, runtime),
+      record,
+      kinds.as_slice(),
+    );
 
     // The rain's cover, which its passes draw and reduce and the rain and the wet surfaces read.
     let covers: Option<CoverTextures> = self
