@@ -137,7 +137,7 @@ place their credits live.
 
 ## Checks
 
-Run `cargo test --locked -p xrf-renderer`. Tests that draw open a device through `src/tests/test_context.rs`, skipping
+Run `cargo test --locked -p xrf-renderer`. Tests that draw open a device through `src/tests/support/test_context.rs`, skipping
 with a message on a machine with none, or failing where `XRF_TEST_REQUIRE_GPU` is set. Sources: the
 [host traits](src/host/), the [queue](src/thread/render_queue.rs) and [commands](src/thread/render_command.rs), the
 [contract](src/contract/), and the [shader library](src/shader/shader_library.rs).
