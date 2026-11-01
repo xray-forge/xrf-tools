@@ -1,9 +1,9 @@
 use xrf_renderer_core::{GraphBuffer, GraphTexture};
 
+use crate::feature::tracing::ray_guides::ray_guides::RayGuides;
+use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::feature::weather::sky::sky_views::SkyViews;
-use crate::scene::level::feature::ray_guides::RayGuides;
-use crate::scene::level::feature::traced_scene::TracedScene;
 
 /// What the water reads beside the view's record: the sky's views, none before the sky is prepared; the frame copied
 /// before it, which the enhanced water refracts and reflects; the cull's argument buffers; ray reconstruction's guides

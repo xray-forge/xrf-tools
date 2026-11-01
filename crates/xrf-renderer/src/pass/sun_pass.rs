@@ -3,13 +3,13 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::contract::render_shadow_settings::{RENDER_MAX_SHADOW_CASCADES, RENDER_MAX_SHADOW_FILTER};
+use crate::feature::tracing::sun_trace::sun_trace_pass::SunTracePass;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_with;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::sun_draw::SunDraw;
 use crate::pass::sun_filter_permutation::SunFilterPermutation;
 use crate::pass::sun_parameters::SunParameters;
-use crate::pass::sun_trace_pass::SunTracePass;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::sun_shadow_maps::SunShadowMaps;
 

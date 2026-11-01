@@ -1,4 +1,4 @@
-use crate::scene::level::feature::traced_scene::TracedScene;
+use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 
 /// How the bitmask search meets the frame's tracing: the scene's trace, where it is built, and whether the indirect
 /// light is traced in the search's place.

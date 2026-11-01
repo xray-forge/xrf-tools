@@ -1,7 +1,7 @@
+use crate::feature::tracing::scene_trace::requests::trace_request_list::TraceRequestList;
 use crate::frame::frame_texture::FrameTexture;
 use crate::frame::history::History;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::trace_request_list::TraceRequestList;
 
 /// The enhanced water's reflection: two histories at the drawn size, one written each frame over the other it reads,
 /// and the list its rays the screen does not answer are left to the scene pass in, an eighth of the drawn pixels while

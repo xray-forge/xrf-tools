@@ -2,6 +2,11 @@ use xrf_renderer_core::{GraphDeclaration, GraphTexture, UniformBinding};
 
 use crate::feature::effects::rain::cover::cover_textures::CoverTextures;
 use crate::feature::image::resolve::before_water_readers::BeforeWaterReaders;
+use crate::feature::tracing::indirect_trace::indirect_traced::IndirectTraced;
+use crate::feature::tracing::ray_guides::ray_guides::RayGuides;
+use crate::feature::tracing::reflections::reflection_source::ReflectionSource;
+use crate::feature::tracing::surroundings::surroundings_cube::SurroundingsCube;
+use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::feature::weather::sky::sky_views::SkyViews;
 use crate::feature::weather::water::water_inputs::WaterInputs;
@@ -14,13 +19,9 @@ use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::feature::combine_inputs::CombineInputs;
 use crate::scene::level::feature::direct_light_inputs::DirectLightInputs;
 use crate::scene::level::feature::direct_light_recorded::DirectLightRecorded;
-use crate::scene::level::feature::indirect_traced::IndirectTraced;
 use crate::scene::level::feature::light_buffers::LightBuffers;
 use crate::scene::level::feature::light_draw_inputs::LightDrawInputs;
 use crate::scene::level::feature::lights_feature::LightsFeature;
-use crate::scene::level::feature::ray_guides::RayGuides;
-use crate::scene::level::feature::reflection_source::ReflectionSource;
-use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::grass_card_handles::GrassCardHandles;
 use crate::scene::level::grass_planting::GrassPlanting;
 use crate::scene::level::grass_shadow_casters::GrassShadowCasters;
@@ -31,7 +32,6 @@ use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::lighting_recorded::LightingRecorded;
 use crate::scene::level::scene_view::SceneView;
 use crate::scene::level::shadows_recorded::ShadowsRecorded;
-use crate::scene::level::surroundings_cube::SurroundingsCube;
 use crate::scene::level::view_record::ViewRecord;
 
 impl SceneView {

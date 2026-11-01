@@ -4,4 +4,5 @@
 
 pub(crate) mod effects;
 pub(crate) mod image;
+pub(crate) mod tracing;
 pub(crate) mod weather;

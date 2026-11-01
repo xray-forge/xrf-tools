@@ -1,5 +1,5 @@
+use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::feature::weather::wet::wet_targets::WetTargets;
-use crate::scene::level::feature::traced_scene::TracedScene;
 
 /// What the sun's light reads of the units before it: the scene's trace, where it is built, what the wetting wrote, and
 /// how many texels each way the cascades' shadows are filtered.

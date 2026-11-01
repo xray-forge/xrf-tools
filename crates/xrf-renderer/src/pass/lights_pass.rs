@@ -4,6 +4,7 @@ use xrf_renderer_core::{
 };
 
 use crate::context::gpu_requirements::can_trace;
+use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::contact_march_permutation::ContactMarchPermutation;
 use crate::pass::light_binning_parameters::LightBinningParameters;
@@ -16,7 +17,6 @@ use crate::pass::light_visibility_parameters::LightVisibilityParameters;
 use crate::pass::lights_draw::LightsDraw;
 use crate::pass::lights_parameters::LightsParameters;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
 
 /// Bins the local lights in view into clusters of the view, marches the contact shadows towards the strongest at half

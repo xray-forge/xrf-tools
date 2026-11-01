@@ -1,9 +1,9 @@
 use xrf_renderer_core::UniformBinding;
 
+use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::scene::level::feature::light_buffers::LightBuffers;
-use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 
 /// What the lights' draw reads beside the view's record: the scene's shadow atlas, the binning's buffers, what the

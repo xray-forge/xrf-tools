@@ -1,8 +1,8 @@
 use xrf_renderer_core::GraphTexture;
 
+use crate::feature::tracing::ray_guides::ray_guides::RayGuides;
+use crate::feature::tracing::reflections::reflection_source::ReflectionSource;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
-use crate::scene::level::feature::ray_guides::RayGuides;
-use crate::scene::level::feature::reflection_source::ReflectionSource;
 
 /// What a view's lighting phase hands what blends over the frame and resolves it: the indirect light, the reflections
 /// traced and how their rays ended, the sky's group, the guides DLSS ray reconstruction reads, the frame as it stood

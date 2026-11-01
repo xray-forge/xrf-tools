@@ -6,6 +6,9 @@ use crate::feature::image::bloom::bloom_feature::BloomFeature;
 use crate::feature::image::exposure::exposure_feature::ExposureFeature;
 use crate::feature::image::present::present_feature::PresentFeature;
 use crate::feature::image::resolve::resolve_feature::ResolveFeature;
+use crate::feature::tracing::reflections::reflection_feature::ReflectionFeature;
+use crate::feature::tracing::surroundings::surroundings_cube::SurroundingsCube;
+use crate::feature::tracing::view_trace::view_trace_feature::ViewTraceFeature;
 use crate::feature::weather::sky::sky_feature::SkyFeature;
 use crate::feature::weather::water::water_feature::WaterFeature;
 use crate::feature::weather::wet::puddles::level_surface::LevelSurface;
@@ -14,14 +17,11 @@ use crate::scene::level::feature::helpers_feature::HelpersFeature;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::overlays_feature::OverlaysFeature;
 use crate::scene::level::feature::pick_feature::PickFeature;
-use crate::scene::level::feature::reflection_feature::ReflectionFeature;
 use crate::scene::level::feature::statics_feature::StaticsFeature;
-use crate::scene::level::feature::view_trace_feature::ViewTraceFeature;
 use crate::scene::level::feature::view_units::view_units;
 use crate::scene::level::feature::wind_feature::WindFeature;
 use crate::scene::level::grass_view::GrassView;
 use crate::scene::level::level_shadows::LevelShadows;
-use crate::scene::level::surroundings_cube::SurroundingsCube;
 
 /// A view's units shared across its frame's parts: those recording in more than one of its phases (the resolve, the
 /// statics, the grass, the lights, the sky, the water, the wet surfaces, the rain and the reflections), those every

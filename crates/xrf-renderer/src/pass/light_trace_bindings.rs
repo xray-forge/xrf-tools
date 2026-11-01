@@ -1,5 +1,5 @@
+use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
 use crate::pass::light_tracing_parameters::LightTracingParameters;
-use crate::pass::trace_parameters::TraceParameters;
 
 /// What tracing the lights' visibility binds besides the lights' own parameters: the tracing's targets, the level's
 /// geometry, and the texture cache's group.

@@ -8,6 +8,7 @@ use xrf_renderer_core::{
 use crate::context::gpu_tracing::GpuTracing;
 use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
 use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings;
+use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::frame::frame_texture::FrameTexture;
 use crate::frame::history::History;
 use crate::frame::view_target_handles::ViewTargetHandles;
@@ -24,7 +25,6 @@ use crate::pass::vbao_uniform::VbaoUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::bitmask_targets::BitmaskTargets;
 use crate::scene::level::feature::bitmask_tracing::BitmaskTracing;
-use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
 use crate::scene::level::view_prepare::ViewPrepare;

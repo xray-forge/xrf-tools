@@ -12,15 +12,15 @@ use crate::feature::image::exposure::reading::exposure_metering::ExposureMeterin
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::image::present::present_frame::PresentFrame;
 use crate::feature::image::present::present_uniform::PresentUniform;
+use crate::feature::tracing::reflections::history::reflection_history::ReflectionHistory;
+use crate::feature::tracing::reflections::reflection_uniform::ReflectionUniform;
+use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;
+use crate::feature::tracing::reflections::trace::reflection_trace_frame::ReflectionTraceFrame;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
 use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::reflection_trace::ReflectionTrace;
-use crate::pass::reflection_trace_frame::ReflectionTraceFrame;
-use crate::pass::reflection_uniform::ReflectionUniform;
-use crate::scene::level::feature::reflection_history::ReflectionHistory;
 
 fn enhanced() -> RenderReflectionSettings {
   RenderReflectionSettings {

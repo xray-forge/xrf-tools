@@ -1,13 +1,13 @@
 use xrf_renderer_core::{GraphBuffer, GraphTexture};
 
+use crate::feature::tracing::ray_guides::ray_guides::RayGuides;
+use crate::feature::tracing::scene_trace::scene_trace_pass::SceneTracePass;
+use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::feature::weather::water::water_feature::WaterFeature;
 use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::pass::scene_trace_pass::SceneTracePass;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
-use crate::pass::trace_parameters::TraceParameters;
 use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::feature::ray_guides::RayGuides;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
