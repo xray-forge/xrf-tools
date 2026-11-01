@@ -1,17 +1,7 @@
-mod ambient_effects;
-mod ambient_wind;
 mod cameras;
-mod campfire;
 pub(crate) mod fixtures;
-mod hidden_spawn_groups;
-mod level_animation;
-mod level_campfires;
-mod level_loader;
-mod level_object_motions;
-mod level_streaming;
-mod placed_emitter;
+pub(crate) mod level;
 mod scene_reload;
 mod scenes;
-mod surface_tally;
 pub(crate) mod test_workers;
 mod weather;
