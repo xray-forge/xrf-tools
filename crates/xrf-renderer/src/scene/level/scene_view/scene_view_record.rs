@@ -1,15 +1,16 @@
 use xrf_renderer_core::{GraphDeclaration, GraphTexture, UniformBinding};
 
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::wet_uniform::WetUniform;
 use crate::scene::level::cover_textures::CoverTextures;
 use crate::scene::level::feature::before_water_readers::BeforeWaterReaders;
-use crate::scene::level::feature::bitmask_tracing::BitmaskTracing;
 use crate::scene::level::feature::combine_inputs::CombineInputs;
+use crate::scene::level::feature::direct_light_inputs::DirectLightInputs;
+use crate::scene::level::feature::direct_light_recorded::DirectLightRecorded;
+use crate::scene::level::feature::indirect_traced::IndirectTraced;
 use crate::scene::level::feature::light_buffers::LightBuffers;
 use crate::scene::level::feature::light_draw_inputs::LightDrawInputs;
 use crate::scene::level::feature::lights_feature::LightsFeature;
@@ -34,11 +35,10 @@ use crate::scene::level::surroundings_cube::SurroundingsCube;
 use crate::scene::level::view_record::ViewRecord;
 
 impl SceneView {
-  /// Declares the lighting: the lights binned into the view's clusters, the contact shadows marched, the sun then every
-  /// light drawn into the light target, the binning's overflow read back, and the ambient occlusion and the indirect
-  /// light searched and filtered. Answers the indirect light filtered, none where it is not gathered, and how much of
-  /// the sun reaches each pixel.
-  fn add_lighting_passes<'a>(
+  /// Declares the direct light: the lights binned into the view's clusters, the sun with its contact shadows drawn into
+  /// the light target, every light drawn over it, and the binning's overflow read back. Answers how much of the sun
+  /// reaches each pixel.
+  fn add_direct_light<'a>(
     &'a self,
     scene: &'a LevelScene,
     GraphDeclaration {
@@ -49,36 +49,18 @@ impl SceneView {
     record: ViewRecord<'a>,
     traced: Option<TracedScene<'a>>,
     wet: WetTargets,
-  ) -> (Option<GraphTexture>, GraphTexture) {
-    let ViewRecord {
-      passes,
-      view,
-      handles: targets,
-      ..
-    } = record;
+  ) -> GraphTexture {
     let lights: &'a LightsFeature = &self.features.lights;
-    let buffers: LightBuffers = lights.add_binning_passes(GraphDeclaration::new(graph, bindings, runtime), passes);
-
-    // The contact shadows the sun multiplies its own by, and the uniform the lights march theirs by.
-    let (contact_shadows, contact): (GraphTexture, UniformBinding<ContactShadowUniform>) = self
-      .features
-      .contact_shadows
-      .add_passes(GraphDeclaration::new(graph, bindings, runtime), passes, view, targets);
-    // What the sun sees, traced where DLSS ray reconstruction denoises it; the cascades shadow it otherwise.
-    let sun_traced: Option<GraphTexture> = self.features.sun_trace.add_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      view,
-      targets,
-      traced,
-    );
-    let sun_seen: GraphTexture = self.features.sun.add_passes(
+    let buffers: LightBuffers =
+      lights.add_binning_passes(GraphDeclaration::new(graph, bindings, runtime), record.passes);
+    let direct: DirectLightRecorded = self.stages.lighting.add_direct(
       GraphDeclaration::new(graph, bindings, runtime),
       record,
-      wet,
-      contact_shadows,
-      sun_traced,
-      self.features.shadows.get_values().filter_reach,
+      DirectLightInputs {
+        traced,
+        wet,
+        filter_reach: self.features.shadows.get_values().filter_reach,
+      },
     );
 
     lights.add_draw_passes(
@@ -88,35 +70,16 @@ impl SceneView {
         atlas: scene.lights.get_shadow_atlas(),
         buffers,
         wet,
-        contact,
-        contact_lights: self.features.contact_shadows.get_light_count(),
+        contact: direct.contact,
+        contact_lights: direct.contact_lights,
         // The shadowed lights traced where DLSS ray reconstruction denoises them, their atlas faces otherwise.
         traced: traced.filter(|_| self.shared.resolve.is_ray_reconstructed),
         noise_frame: self.shared.resolve.noise_frame,
       },
     );
     lights.add_overflow_pass(&mut *graph, buffers);
-    // The occlusion and the indirect light recorded beside the lights, so neither group bounds the frame's encoding.
-    graph.begin_group("occlusion");
 
-    // GTAO searches on its own; VBAO, the indirect light or both share one bitmask search.
-    self
-      .features
-      .ambient_occlusion
-      .add_passes(GraphDeclaration::new(graph, bindings, runtime), passes, view, targets);
-
-    let indirect_light: Option<GraphTexture> = self.features.bitmask.add_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      view,
-      targets,
-      BitmaskTracing {
-        traced,
-        is_light_traced: self.features.indirect_trace.is_traced(traced.as_ref()),
-      },
-    );
-
-    (indirect_light, sun_seen)
+    direct.sun_seen
   }
 
   /// The lighting every lit pass binds: the view's lighting uniform, the exposure, the material table and the sun's
@@ -189,9 +152,9 @@ impl SceneView {
       .add_gbuffer_passes(GraphDeclaration::new(graph, bindings, runtime), record);
     if is_drawn {
       self
-        .features
-        .calibration
-        .add_passes(GraphDeclaration::new(graph, bindings, runtime), passes, view, handles);
+        .stages
+        .scene
+        .add_passes(GraphDeclaration::new(graph, bindings, runtime), record);
     }
 
     // The grass is culled once the static scene's depth is reduced, so a cell behind it plants nothing to draw.
@@ -339,13 +302,22 @@ impl SceneView {
       &self.features.lights,
       &self.features.grass,
     );
-    let (mut indirect_light, sun_seen): (Option<GraphTexture>, GraphTexture) = self.add_lighting_passes(
+    let sun_seen: GraphTexture = self.add_direct_light(
       scene,
       GraphDeclaration::new(graph, bindings, runtime),
       record,
       traced,
       wet,
     );
+
+    // The occlusion and the indirect light recorded beside the lights, so neither group bounds the frame's encoding.
+    graph.begin_group("occlusion");
+
+    let mut indirect_light: Option<GraphTexture> =
+      self
+        .stages
+        .lighting
+        .add_occlusion(GraphDeclaration::new(graph, bindings, runtime), record, traced);
 
     self
       .features
@@ -376,11 +348,11 @@ impl SceneView {
       // How far the traced indirect light's rays went, where it is traced.
       let mut indirect_hits: Option<GraphTexture> = None;
 
-      if let Some((light, hits)) =
+      if let Some(IndirectTraced { light, hits }) =
         self
-          .features
-          .indirect_trace
-          .add_passes(GraphDeclaration::new(graph, bindings, runtime), record, sky, traced)
+          .stages
+          .lighting
+          .add_indirect_trace(GraphDeclaration::new(graph, bindings, runtime), record, sky, traced)
       {
         indirect_light = Some(light);
         indirect_hits = Some(hits);
@@ -399,7 +371,7 @@ impl SceneView {
         traced_rays = Some(traced);
       }
 
-      self.features.combine.add_passes(
+      self.stages.lighting.add_combine(
         GraphDeclaration::new(graph, bindings, runtime),
         record,
         sky,

@@ -64,7 +64,7 @@ impl SceneView {
     self.features.grass.abandon_stats();
     self.features.lights.abandon_report();
     self.features.reflections.abandon_demand();
-    self.features.meter.abandon();
+    self.stages.effects.abandon_frame();
     self.features.exposure.abandon_readback();
     self.features.pick.abandon();
     // What the frame drew of the periodic work was never drawn.

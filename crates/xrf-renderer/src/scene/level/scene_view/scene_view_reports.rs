@@ -1,6 +1,4 @@
-use crate::contract::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
 use crate::contract::render_antialiasing::RenderAntialiasing;
-use crate::contract::render_applied_indirect_light::RenderAppliedIndirectLight;
 use crate::contract::render_applied_reflections::RenderAppliedReflections;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
@@ -26,7 +24,7 @@ impl SceneView {
 
   /// What the spot meter last read; none while the view does not meter.
   pub fn take_meter_reading(&mut self) -> Option<RenderMeterReading> {
-    self.features.meter.take_reading()
+    self.stages.effects.take_meter_reading()
   }
 
   /// The particles' report for this view: the scene's simulation since the last report and the quads this view drew.
@@ -45,7 +43,7 @@ impl SceneView {
       .features
       .resolve
       .get_temporal()
-      .or(self.features.smoothing.get_mode())
+      .or(self.stages.image.get_smoothing())
       .unwrap_or(RenderAntialiasing::None)
   }
 
@@ -70,7 +68,7 @@ impl SceneView {
     self.features.grass.request_stats();
     self.features.lights.request_report();
     self.features.reflections.request_demand();
-    self.features.meter.request();
+    self.stages.effects.request_readbacks();
     self.features.exposure.request_readback();
     self.features.sky.request_readback();
   }
@@ -80,8 +78,7 @@ impl SceneView {
   pub fn describe_applied(&self, options: &RenderViewOptions) -> RenderAppliedReport {
     let antialiasing: RenderAntialiasing = self.get_antialiasing();
     let cascades: usize = self.shared.shadow_settings.get_cascade_count();
-
-    RenderAppliedReport {
+    let mut applied: RenderAppliedReport = RenderAppliedReport {
       antialiasing,
       is_ray_reconstructed: self.is_ray_reconstructed(),
       render_scale: self.features.resolve.get_upscaling().scale,
@@ -90,27 +87,6 @@ impl SceneView {
         resolution: self.features.shadows.get_maps().map_or(0, |maps| maps.resolution),
         filter: self.shared.shadow_settings.filter,
       }),
-      ambient_occlusion: self
-        .features
-        .ambient_occlusion
-        .is_drawn()
-        .then_some(*self.features.ambient_occlusion.get_settings()),
-      ambient_occlusion_method: self.features.ambient_occlusion.is_drawn().then(|| {
-        match self.features.bitmask.get_search() {
-          Some(search) if search.is_occluding && search.is_traced => RenderAmbientOcclusionMethod::Rtao,
-          Some(search) if search.is_occluding => RenderAmbientOcclusionMethod::Vbao,
-          _ => RenderAmbientOcclusionMethod::Gtao,
-        }
-      }),
-      indirect_light: self
-        .features
-        .bitmask
-        .get_search()
-        .filter(|search| search.is_lit)
-        .map(|search| RenderAppliedIndirectLight {
-          intensity: self.features.bitmask.get_indirect_light().intensity,
-          is_shared: search.is_occluding,
-        }),
       reflections: self
         .features
         .reflections
@@ -124,7 +100,6 @@ impl SceneView {
           },
           steps: self.features.reflections.get_settings().get_steps(),
         }),
-      height_fog: self.features.fog.get_applied(),
       debanding: self.features.present.get_debanding(),
       bloom: if self.features.bloom.is_enhanced_drawn() {
         Some(RenderBloomMode::Enhanced)
@@ -139,9 +114,15 @@ impl SceneView {
         .features
         .sky
         .get_sun_sprite()
-        .and_then(|_| self.features.flares.get_shown())
+        .and_then(|_| self.stages.effects.get_shown_flare())
         .map(str::to_owned),
-    }
+      ..RenderAppliedReport::default()
+    };
+
+    self.stages.lighting.describe(&mut applied);
+    self.stages.effects.describe(&mut applied);
+
+    applied
   }
 
   /// The static draws' pools and what the latest counted frame's cull kept and hid, and its lights.

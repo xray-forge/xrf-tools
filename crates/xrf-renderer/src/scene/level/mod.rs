@@ -59,6 +59,7 @@ pub(crate) mod shadow_tile;
 pub(crate) mod shadow_tile_allocator;
 pub(crate) mod shadows_recorded;
 pub(crate) mod sky_views;
+pub(crate) mod stage;
 pub(crate) mod sun_shadow_maps;
 pub(crate) mod surroundings_cube;
 pub(crate) mod surroundings_faces;

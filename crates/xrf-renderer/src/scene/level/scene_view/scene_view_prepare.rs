@@ -17,7 +17,6 @@ use crate::scene::level::feature::drop_rings::DropRings;
 use crate::scene::level::feature::fog_feature::FogFeature;
 use crate::scene::level::feature::overhead_windows::OverheadWindows;
 use crate::scene::level::feature::present_inputs::PresentInputs;
-use crate::scene::level::feature::resolve_decisions::ResolveDecisions;
 use crate::scene::level::feature::scene_features::SceneFeatures;
 use crate::scene::level::feature::sun_sprite::SunSprite;
 use crate::scene::level::feature::sun_trace_feature::SunTraceFeature;
@@ -33,8 +32,8 @@ use crate::scene::level::view_prepare::ViewPrepare;
 use crate::scene::static_scene::static_sight::StaticSight;
 
 impl SceneView {
-  /// The units the weather drives: the shadows' maps, the flares and the sky, the water, the wind, the
-  /// falling rain and the wet surfaces following it, the thunder, and the post units reading the weather. Answers what
+  /// The units the weather drives: the shadows' maps, the effects laid over the lit frame (whose flares give the sky its
+  /// sun), the sky, the water, the wind, the falling rain and the wet surfaces following it, and the bloom. Answers what
   /// the lighting draws the sky with.
   pub(super) fn prepare_weather(
     &mut self,
@@ -52,7 +51,7 @@ impl SceneView {
       (options.features.shadows.get_cascade_count() > 0).then_some(options.features.shadows.resolution),
     );
 
-    let sun_sprite: Option<SunSprite> = self.features.flares.prepare(frame, now);
+    let sun_sprite: Option<SunSprite> = self.stages.effects.prepare(frame, now, time);
 
     self.features.sky.prepare(frame, sun_sprite, &scene.environments.1);
     self.features.water.prepare(
@@ -96,19 +95,16 @@ impl SceneView {
 
     self.features.water.follow_rings(rings);
     self.features.wet.follow_rings(rings);
-    self.features.thunder.prepare(frame);
 
     let lighting_frame: LightingFrame = self
       .features
       .sky
       .get_lighting_frame(frame, &self.features.exposure, time);
 
-    self.features.sun_shafts.prepare(options, lighting);
     self
       .features
       .bloom
       .prepare(frame.passes, options, lighting.engine, size);
-    self.features.fog.prepare(options, lighting, size, time);
 
     lighting_frame
   }
@@ -202,9 +198,8 @@ impl SceneView {
     self.shared.is_wireframe = options.mode.is_wireframe;
   }
 
-  /// The view's own units: the resolve and the smoothing, the screen's occlusion and the bitmask search at half the
-  /// frame's size, the reflections, the view's trace, the composited surfaces in `sight`, and the spot meter and the
-  /// calibration props.
+  /// The view's own units: the reflections, the view's trace, the composited surfaces in `sight`, the scene's stage and
+  /// the image's.
   pub(super) fn prepare_view(
     &mut self,
     scene: &LevelScene,
@@ -212,23 +207,10 @@ impl SceneView {
     frame: &ViewPrepare<'_>,
     sight: &StaticSight,
   ) {
-    let (device, options, view) = (frame.device, frame.options, frame.view);
-    let (width, height) = frame.drawn;
-    let half: (u32, u32) = (width.div_ceil(2), height.div_ceil(2));
-    let resolve: ResolveDecisions = self.shared.resolve;
-
-    self.features.smoothing.prepare(frame);
-    self.features.ambient_occlusion.prepare(options, view.projection, half);
-    self.features.bitmask.prepare(frame, half, resolve.reference_sample);
-    let is_light_traced: bool = frame.passes.tracing.indirect_trace.is_traced()
-      && resolve.is_ray_reconstructed
-      && self.features.bitmask.get_search().is_some_and(|search| search.is_lit);
-
-    self.features.indirect_trace.prepare(
-      is_light_traced.then(|| self.features.bitmask.get_indirect_light().intensity),
-      resolve.noise_frame,
-    );
-    self.features.reflections.prepare(frame, resolve, &self.features.wet);
+    self
+      .features
+      .reflections
+      .prepare(frame, self.shared.resolve, &self.features.wet);
     self.features.view_trace.prepare(
       frame,
       &mut *encoder,
@@ -236,13 +218,12 @@ impl SceneView {
       self.features.grass.get_cards_blas(),
     );
     self.features.composited.prepare(frame, scene, &mut *encoder, sight);
-    self.features.meter.prepare(device, options);
-    self.features.calibration.prepare(options, view);
-    self.features.camera.prepare(frame.passes, options, view);
+    self.stages.scene.prepare(frame.options, frame.view);
+    self.stages.image.prepare(frame);
   }
 
-  /// The lighting the passes read, the enhanced fog's height fog faded out indoors; the units reading it (the combine,
-  /// the contact shadows and the sun's trace); then the particles, the present and the volumetric light.
+  /// The lighting the passes read, the enhanced fog's height fog faded out indoors; the lighting's stage, which reads
+  /// it; then the particles and the present.
   pub(super) fn prepare_lighting(
     &mut self,
     scene: &mut LevelScene,
@@ -252,28 +233,15 @@ impl SceneView {
     time: f32,
   ) {
     let (device, options, view) = (frame.device, frame.options, frame.view);
-    let noise_frame: u32 = self.shared.resolve.noise_frame;
 
     self.shared.lighting = LightingUniform::new(frame.lighting, view.view, options, lighting_frame);
     self.shared.lighting.height_fog.w *= FogFeature::get_indoor_share(scene.camera_hemi);
-    self
-      .features
-      .combine
-      .prepare(&self.shared.lighting, view.get_depth_range().1);
-    self
-      .features
-      .contact_shadows
-      .prepare(options, &self.shared.lighting, frame.drawn.1, noise_frame);
-    self
-      .features
-      .sun_trace
-      .prepare(options, &self.shared.lighting, self.shared.resolve);
+    self.stages.lighting.prepare(frame, &self.shared);
 
     scene.particles.fill(view, options, &mut self.features.particles);
 
     self.features.particles.upload(device, &mut *encoder);
-    self.prepare_present(options, frame.output, time, noise_frame);
-    self.features.volumetric.prepare(device, options);
+    self.prepare_present(options, frame.output, time, self.shared.resolve.noise_frame);
   }
 
   /// Writes where the rain cover and the level's surface now stand into what reads them, once `commit_periodic` has
@@ -332,8 +300,8 @@ impl SceneView {
     let features: &SceneFeatures = &self.features;
     let inputs: PresentInputs = PresentInputs {
       is_upscaled: features.resolve.is_rescaled(),
-      is_occluded: features.ambient_occlusion.is_drawn(),
-      is_indirect: features.bitmask.get_search().is_some_and(|search| search.is_lit),
+      is_occluded: self.stages.lighting.is_occluded(),
+      is_indirect: self.stages.lighting.is_indirect(),
       reflection_ratio: features.reflections.get_trace().map(ReflectionTrace::get_ratio),
       is_distorting: !options.mode.is_wireframe
         && (is_water_distorting

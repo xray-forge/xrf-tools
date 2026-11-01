@@ -30,6 +30,7 @@ use crate::scene::level::lighting_recorded::LightingRecorded;
 use crate::scene::level::scene_output::SceneOutput;
 use crate::scene::level::shadow_sway::ShadowSway;
 use crate::scene::level::shadows_recorded::ShadowsRecorded;
+use crate::scene::level::stage::view_stages::ViewStages;
 use crate::scene::level::view_frame::ViewFrame;
 use crate::scene::level::view_pick::ViewPick;
 use crate::scene::level::view_prepare::ViewPrepare;
@@ -49,16 +50,19 @@ mod scene_view_prepare;
 mod scene_view_record;
 mod scene_view_reports;
 
-/// A scene as one viewport draws it: the values its units share this frame (`ViewFrame`), its targets, and its units
-/// (`SceneFeatures`), which each keep what they keep between frames. The scene (`LevelScene`) is shared by every view
-/// of it and passed in; this prepares the view's frame from it and records it into the frame's graph.
+/// A scene as one viewport draws it: the values its units share this frame (`ViewFrame`), its targets, its units shared
+/// across its frame's parts (`SceneFeatures`) and its stages (`ViewStages`), whose units draw in one part alone; each
+/// unit keeps what it keeps between frames. The scene (`LevelScene`) is shared by every view of it and passed in; this
+/// prepares the view's frame from it and records it into the frame's graph.
 pub struct SceneView {
   /// The values every unit reads this frame.
   shared: ViewFrame,
   /// The G-buffer, depth, light and scene it draws into, once its size is known.
   targets: Option<ViewTargets>,
-  /// Its feature units.
+  /// Its units shared across its frame's parts.
   features: SceneFeatures,
+  /// Its units drawing in one part of its frame alone, by part.
+  stages: ViewStages,
   /// The time its frames are drawn at: its scene's, or a step a frame of its own.
   clock: FrameClock,
 }
@@ -70,6 +74,7 @@ impl SceneView {
       shared: ViewFrame::default(),
       targets: None,
       features: SceneFeatures::new(device, queue, view_layout),
+      stages: ViewStages::new(),
       clock: FrameClock::default(),
     }
   }
@@ -119,9 +124,9 @@ impl SceneView {
 
     if options.mode.is_lit && options.show.is_sky_visible {
       self
-        .features
-        .flares
-        .request(lighting, weather, weather_textures, &assets);
+        .stages
+        .effects
+        .request_textures(lighting, weather, weather_textures, &assets);
       weather_textures.request_sky(&lighting.sky, options.show.is_clouded, &assets);
     } else {
       // The irradiance cubes light the hemisphere whether or not the sky is drawn.
@@ -181,7 +186,7 @@ impl SceneView {
       depth: self.targets.as_mut().map(|targets| &mut targets.depth),
     };
 
-    for feature in self.features.list_mut() {
+    for feature in self.features.list_mut().into_iter().chain(self.stages.list_mut()) {
       feature.end_frame(&mut end);
     }
   }
@@ -232,7 +237,7 @@ impl SceneView {
 
     let targets: &'a ViewTargets = self.targets.as_ref()?;
     let uses: ViewTargetUses = ViewTargetUses {
-      is_occluded: self.features.ambient_occlusion.is_drawn(),
+      is_occluded: self.stages.lighting.is_occluded(),
       is_hazed: self.features.sky.is_hazing(),
       is_engine_bloomed: self.features.bloom.is_engine_built(),
       is_specular_split: self.shared.lighting.is_light_anchored(),

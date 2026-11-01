@@ -11,6 +11,7 @@ use crate::pass::contact_shadow_uniform::ContactShadowUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::view_binding::ViewBinding;
+use crate::scene::level::feature::contact_shadows_recorded::ContactShadowsRecorded;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::grass_cards::GrassCards;
 
@@ -80,14 +81,14 @@ impl ContactShadowFeature {
     passes: LevelPasses<'a>,
     view: &'a ViewBinding,
     targets: ViewTargetHandles,
-  ) -> (GraphTexture, UniformBinding<ContactShadowUniform>) {
+  ) -> ContactShadowsRecorded {
     let contact: UniformBinding<ContactShadowUniform> = runtime.push_uniform(&self.uniform);
 
     if !self.is_sun {
-      return (
-        bindings.import_view(graph, "contact shadows lit", passes.lighting.contact_shadows.get_lit()),
-        contact,
-      );
+      return ContactShadowsRecorded {
+        sun: bindings.import_view(graph, "contact shadows lit", passes.lighting.contact_shadows.get_lit()),
+        uniform: contact,
+      };
     }
 
     let (width, height) = targets.size;
@@ -114,7 +115,10 @@ impl ContactShadowFeature {
       ))
       .record(move |context| passes.lighting.contact_shadows.record(context, view, &parameters));
 
-    (marched, contact)
+    ContactShadowsRecorded {
+      sun: marched,
+      uniform: contact,
+    }
   }
 }
 

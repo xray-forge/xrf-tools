@@ -5,6 +5,7 @@ use crate::pass::indirect_trace_pass::IndirectTracePass;
 use crate::pass::indirect_trace_uniform::IndirectTraceUniform;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::vbao_pass::VbaoPass;
+use crate::scene::level::feature::indirect_traced::IndirectTraced;
 use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::view_record::ViewRecord;
@@ -46,7 +47,7 @@ impl IndirectTraceFeature {
     }: ViewRecord<'a>,
     sky: SkyParameters<'a>,
     traced: Option<TracedScene<'a>>,
-  ) -> Option<(GraphTexture, GraphTexture)> {
+  ) -> Option<IndirectTraced> {
     let TracedScene { trace, textures } = traced.filter(|_| self.is_asked)?;
     let (width, height) = targets.size;
     let light: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
@@ -91,7 +92,7 @@ impl IndirectTraceFeature {
           .record(context, view, &parameters, &sky, &trace, textures)
       });
 
-    Some((light, hits))
+    Some(IndirectTraced { light, hits })
   }
 }
 

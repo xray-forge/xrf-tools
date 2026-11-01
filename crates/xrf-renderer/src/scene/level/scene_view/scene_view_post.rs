@@ -7,9 +7,8 @@ use crate::scene::level::feature::composited_draw::CompositedDraw;
 use crate::scene::level::feature::image_chain::ImageChain;
 use crate::scene::level::feature::rain_covers::RainCovers;
 use crate::scene::level::feature::resolve_feature::ResolveFeature;
-use crate::scene::level::feature::volumetric_shafts::VolumetricShafts;
+use crate::scene::level::feature::shaft_inputs::ShaftInputs;
 use crate::scene::level::level_scene::LevelScene;
-use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::lighting_recorded::LightingRecorded;
 use crate::scene::level::scene_output::SceneOutput;
 use crate::scene::level::scene_view::SceneView;
@@ -53,7 +52,6 @@ impl SceneView {
       ..
     } = lit_frame;
     let is_drawn: bool = !self.shared.is_wireframe;
-    let light_atlas: LightShadowAtlas<'a> = scene.lights.get_shadow_atlas();
     let composited_draw: Option<(CompositedDraw, SkyParameters)> = sky
       .filter(|_| is_drawn && self.features.sky.get_views().is_some())
       .map(|sky| {
@@ -95,18 +93,14 @@ impl SceneView {
     // The volumetrics, the flares and the bloom, then the resolve, recorded beside the forward passes.
     graph.begin_group("effects");
 
-    let shafts: VolumetricShafts = self.features.volumetric.add_passes(
+    self.stages.effects.add_shafts(
       GraphDeclaration::new(graph, bindings, runtime),
       record,
-      &self.features.lights,
-      light_atlas,
-    );
-
-    self.features.sun_shafts.add_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      record,
-      shafts,
-      source.map(|source| source.scene),
+      ShaftInputs {
+        lights: &self.features.lights,
+        atlas: scene.lights.get_shadow_atlas(),
+        reflected: source.map(|source| source.scene),
+      },
     );
     self.features.rain.add_passes(
       GraphDeclaration::new(graph, bindings, runtime),
@@ -114,26 +108,16 @@ impl SceneView {
       RainCovers::of(&shadowed),
     );
     self
-      .features
-      .thunder
-      .add_passes(GraphDeclaration::new(graph, bindings, runtime), record);
+      .stages
+      .effects
+      .add_thunder(GraphDeclaration::new(graph, bindings, runtime), record);
 
     ResolveFeature::add_transparency_guide(&mut *graph, handles, &mut ray_guides, before_water);
 
     self
-      .features
-      .flares
-      .add_passes(GraphDeclaration::new(graph, bindings, runtime), record);
-    self
-      .features
-      .fog
-      .add_passes(GraphDeclaration::new(graph, bindings, runtime), record);
-    self
-      .features
-      .meter
-      .add_passes(GraphDeclaration::new(graph, bindings, runtime), record);
-
-    let size: (u32, u32) = handles.size;
+      .stages
+      .effects
+      .add_over_lit(GraphDeclaration::new(graph, bindings, runtime), record);
 
     self
       .features
@@ -147,12 +131,11 @@ impl SceneView {
       .present
       .add_distortion_pass(GraphDeclaration::new(graph, bindings, runtime), passes, view, handles);
 
-    let smoothed: GraphTexture = self.features.smoothing.add_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      handles.scene,
-      size,
-    );
+    let smoothed: GraphTexture =
+      self
+        .stages
+        .image
+        .add_smoothing(GraphDeclaration::new(graph, bindings, runtime), passes, handles);
     // The water's pixels carried by its surface rather than by what lies under it.
     let surfaced: ViewTargetHandles = ViewTargetHandles {
       depth: depth_with_water.unwrap_or(handles.depth),
@@ -169,13 +152,10 @@ impl SceneView {
       ray_guides,
     );
 
-    // The camera over the resolved image, so no history carries its blurs.
-    chain = chain.lay(self.features.camera.add_passes(
-      GraphDeclaration::new(graph, bindings, runtime),
-      passes,
-      surfaced,
-      chain,
-    ));
+    chain = self
+      .stages
+      .image
+      .add_camera(GraphDeclaration::new(graph, bindings, runtime), passes, surfaced, chain);
 
     // The enhanced bloom from the resolved image the present shows, before the streaks laid over it.
     let enhanced_bloom: Option<GraphTexture> =
