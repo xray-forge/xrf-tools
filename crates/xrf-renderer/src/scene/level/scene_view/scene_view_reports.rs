@@ -3,10 +3,6 @@ use crate::contract::render_applied_reflections::RenderAppliedReflections;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_applied_shadows::RenderAppliedShadows;
 use crate::contract::render_bloom_mode::RenderBloomMode;
-use crate::contract::render_grass_report::RenderGrassReport;
-use crate::contract::render_lights_report::RenderLightsReport;
-use crate::contract::render_meter_reading::RenderMeterReading;
-use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_trace_size::RenderTraceSize;
@@ -14,55 +10,11 @@ use crate::contract::render_view_options::RenderViewOptions;
 use crate::pass::present_uniform::PresentUniform;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::scene_view::SceneView;
+use crate::scene::level::view_reports::ViewReports;
 use crate::scene::static_scene::static_batch::StaticBatch;
 
 impl SceneView {
-  /// What the grass came to on a recent frame.
-  pub fn take_grass_report(&mut self) -> RenderGrassReport {
-    self.features.grass.take_report()
-  }
-
-  /// What the spot meter last read; none while the view does not meter.
-  pub fn take_meter_reading(&mut self) -> Option<RenderMeterReading> {
-    self.stages.effects.take_meter_reading()
-  }
-
-  /// The particles' report for this view: the scene's simulation since the last report and the quads this view drew.
-  pub fn take_particles_report(&self, scene: &mut LevelScene) -> RenderParticlesReport {
-    scene.particles.take_report(self.features.particles.get_drawn())
-  }
-
-  /// The size its scene is rendered at, once its targets are made.
-  pub fn get_render_size(&self) -> Option<(u32, u32)> {
-    self.targets.as_ref().map(|it| (it.width, it.height))
-  }
-
-  /// What smooths its frame as drawn: the temporal resolve, else the smoothing, none where neither runs.
-  pub fn get_antialiasing(&self) -> RenderAntialiasing {
-    self
-      .features
-      .resolve
-      .get_temporal()
-      .or(self.stages.image.get_smoothing())
-      .unwrap_or(RenderAntialiasing::None)
-  }
-
-  /// Whether DLSS reconstructs rays as it resolves its frame.
-  pub fn is_ray_reconstructed(&self) -> bool {
-    self.shared.resolve.is_ray_reconstructed
-  }
-
-  /// What its window's present pass reads this frame.
-  pub fn get_present_uniform(&self) -> &PresentUniform {
-    self.features.present.get_uniform()
-  }
-
-  /// The size its frame is resolved at, none before its targets are made.
-  pub fn get_output_size(&self) -> Option<(u32, u32)> {
-    self.targets.as_ref().map(|_| self.features.resolve.get_resolved())
-  }
-
-  /// Asks for the counts recorded with the frame just submitted.
+  /// Asks for the counts recorded with the frame just submitted, which `take_reports` reads once they are back.
   pub fn request_stats(&self) {
     self.features.statics.request_stats();
     self.features.grass.request_stats();
@@ -73,14 +25,47 @@ impl SceneView {
     self.features.sky.request_readback();
   }
 
-  /// What its frames are drawn with, as resolved from what `options` asked; the weather's light is the viewport's to
-  /// add.
-  pub fn describe_applied(&self, options: &RenderViewOptions) -> RenderAppliedReport {
-    let antialiasing: RenderAntialiasing = self.get_antialiasing();
+  /// Takes what it reports of its recent frames: the counts read back since the last report, its scene's particles'
+  /// simulation, and what it draws with as resolved from `options`.
+  pub fn take_reports(&mut self, scene: &mut LevelScene, options: &RenderViewOptions) -> ViewReports {
+    let antialiasing: RenderAntialiasing = self
+      .features
+      .resolve
+      .get_temporal()
+      .or(self.stages.image.get_smoothing())
+      .unwrap_or(RenderAntialiasing::None);
+
+    ViewReports {
+      static_draws: self.take_static_report(scene),
+      lights: self.features.lights.take_report(),
+      particles: scene.particles.take_report(self.features.particles.get_drawn()),
+      grass: self.features.grass.take_report(),
+      meter: self.stages.effects.take_meter_reading(),
+      render_size: self.get_render_size(),
+      output_size: self.targets.as_ref().map(|_| self.features.resolve.get_resolved()),
+      antialiasing,
+      is_ray_reconstructed: self.shared.resolve.is_ray_reconstructed,
+      applied: self.describe_applied(options, antialiasing),
+    }
+  }
+
+  /// The size its scene is rendered at, once its targets are made.
+  pub fn get_render_size(&self) -> Option<(u32, u32)> {
+    self.targets.as_ref().map(|it| (it.width, it.height))
+  }
+
+  /// What its window's present pass reads this frame.
+  pub fn get_present_uniform(&self) -> &PresentUniform {
+    self.features.present.get_uniform()
+  }
+
+  /// What its frames are drawn with, smoothed by `antialiasing`, as resolved from what `options` asked; each stage
+  /// writes its own part.
+  fn describe_applied(&self, options: &RenderViewOptions, antialiasing: RenderAntialiasing) -> RenderAppliedReport {
     let cascades: usize = self.shared.shadow_settings.get_cascade_count();
     let mut applied: RenderAppliedReport = RenderAppliedReport {
       antialiasing,
-      is_ray_reconstructed: self.is_ray_reconstructed(),
+      is_ray_reconstructed: self.shared.resolve.is_ray_reconstructed,
       render_scale: self.features.resolve.get_upscaling().scale,
       shadows: (cascades > 0).then(|| RenderAppliedShadows {
         cascades: self.shared.shadow_settings.cascades[..cascades].to_vec(),
@@ -125,8 +110,8 @@ impl SceneView {
     applied
   }
 
-  /// The static draws' pools and what the latest counted frame's cull kept and hid, and its lights.
-  pub fn take_stats(&mut self, scene: &LevelScene) -> (RenderStaticReport, RenderLightsReport) {
+  /// The static draws' pools and what the latest counted frame's cull kept and hid.
+  fn take_static_report(&mut self, scene: &LevelScene) -> RenderStaticReport {
     let [kept_clusters, kept_triangles, occluded_clusters, occluded_triangles] = self.features.statics.take_stats();
     let pools: RenderStaticReport = scene.statics.get_pools();
     let phases: u32 = if self.features.statics.get_cull().is_occluding != 0 {
@@ -135,21 +120,18 @@ impl SceneView {
       1
     };
 
-    (
-      RenderStaticReport {
-        surface_list: RenderPoolUse {
-          used: kept_clusters,
-          ..pools.surface_list
-        },
-        commands: StaticBatch::list_deferred().count() as u32 * phases
-          + u32::from(self.features.statics.get_cull().is_impostors != 0),
-        kept_clusters,
-        kept_triangles,
-        occluded_clusters,
-        occluded_triangles,
-        ..pools
+    RenderStaticReport {
+      surface_list: RenderPoolUse {
+        used: kept_clusters,
+        ..pools.surface_list
       },
-      self.features.lights.take_report(),
-    )
+      commands: StaticBatch::list_deferred().count() as u32 * phases
+        + u32::from(self.features.statics.get_cull().is_impostors != 0),
+      kept_clusters,
+      kept_triangles,
+      occluded_clusters,
+      occluded_triangles,
+      ..pools
+    }
   }
 }

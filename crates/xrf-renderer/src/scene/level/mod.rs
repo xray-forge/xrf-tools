@@ -68,6 +68,7 @@ pub(crate) mod view_lens;
 pub(crate) mod view_pick;
 pub(crate) mod view_prepare;
 pub(crate) mod view_record;
+pub(crate) mod view_reports;
 pub(crate) mod water_flow;
 pub(crate) mod weather_model_buffers;
 pub(crate) mod zone_fast_mode;

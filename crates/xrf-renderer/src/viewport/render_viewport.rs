@@ -7,26 +7,20 @@ use xrf_renderer_core::{ExecutedGroup, GraphOwner, GraphPassTime};
 
 use crate::capture::burst::burst_job::BurstJob;
 use crate::capture::capture_job::CaptureJob;
-use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_applied_environment::RenderAppliedEnvironment;
 use crate::contract::render_applied_fog::RenderAppliedFog;
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_frame_report::RenderFrameReport;
 use crate::contract::render_graph_report::RenderGraphReport;
-use crate::contract::render_grass_report::RenderGrassReport;
 use crate::contract::render_level_hit::RenderLevelHit;
 use crate::contract::render_light_scales::RenderLightScales;
-use crate::contract::render_lights_report::RenderLightsReport;
 use crate::contract::render_load_report::RenderLoadReport;
 use crate::contract::render_memory_report::RenderMemoryReport;
-use crate::contract::render_meter_reading::RenderMeterReading;
 use crate::contract::render_overlay::RenderOverlay;
-use crate::contract::render_particles_report::RenderParticlesReport;
 use crate::contract::render_pass_cost::RenderPassCost;
 use crate::contract::render_pick::RenderPick;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_selection::RenderSelection;
-use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::contract::render_viewport_event::RenderViewportEvent;
 use crate::contract::render_viewport_id::RenderViewportId;
@@ -43,6 +37,7 @@ use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::scene_view::SceneView;
+use crate::scene::level::view_reports::ViewReports;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::pending_screenshot::PendingScreenshot;
 use crate::viewport::pick_in_flight::PickInFlight;
@@ -355,27 +350,9 @@ impl RenderViewport {
       .shown
       .as_mut()
       .and_then(|(id, view)| Some((scenes.get_mut(id)?, view)));
-    let (static_draws, lights, particles, grass, sector_time, meter): (
-      RenderStaticReport,
-      RenderLightsReport,
-      RenderParticlesReport,
-      RenderGrassReport,
-      f32,
-      Option<RenderMeterReading>,
-    ) = match shown {
-      Some((scene, view)) => {
-        let (static_draws, lights) = view.take_stats(scene);
-
-        (
-          static_draws,
-          lights,
-          view.take_particles_report(scene),
-          view.take_grass_report(),
-          scene.sector_time,
-          view.take_meter_reading(),
-        )
-      }
-      None => Default::default(),
+    let (reports, sector_time): (Option<ViewReports>, f32) = match shown {
+      Some((scene, view)) => (Some(view.take_reports(scene, &self.options)), scene.sector_time),
+      None => (None, 0.0),
     };
     let mut times: Vec<GraphPassTime> = timer.take(self.get_graph_owner());
 
@@ -402,15 +379,22 @@ impl RenderViewport {
       groups,
     } = summary;
     let rect: RenderRect = self.layout.as_ref().map(|layout| layout.rect).unwrap_or_default();
-    let shown: Option<&SceneView> = self.shown.as_ref().map(|(_, view)| view);
-    let (render_width, render_height): (u32, u32) = shown
-      .and_then(SceneView::get_render_size)
-      .unwrap_or((rect.width, rect.height));
-    let (output_width, output_height): (u32, u32) = shown
-      .and_then(SceneView::get_output_size)
-      .unwrap_or((rect.width, rect.height));
-    let antialiasing: RenderAntialiasing = shown.map_or(RenderAntialiasing::None, SceneView::get_antialiasing);
-    let is_ray_reconstructed: bool = shown.is_some_and(SceneView::is_ray_reconstructed);
+    // What its frames are drawn with is told the page only while a view is shown.
+    let is_shown: bool = reports.is_some();
+    let ViewReports {
+      static_draws,
+      lights,
+      particles,
+      grass,
+      meter,
+      render_size,
+      output_size,
+      antialiasing,
+      is_ray_reconstructed,
+      applied,
+    } = reports.unwrap_or_default();
+    let (render_width, render_height): (u32, u32) = render_size.unwrap_or((rect.width, rect.height));
+    let (output_width, output_height): (u32, u32) = output_size.unwrap_or((rect.width, rect.height));
     let report: RenderFrameReport = RenderFrameReport {
       frames_per_second,
       frame_time,
@@ -451,16 +435,15 @@ impl RenderViewport {
     self.send(RenderViewportEvent::Frame {
       report: Box::new(report),
     });
-    self.publish_applied();
+
+    if is_shown {
+      self.publish_applied(applied);
+    }
   }
 
-  /// Tells the page what its frames are drawn with, where that changed since it was last told.
-  fn publish_applied(&mut self) {
-    let Some((_, level)) = self.shown.as_ref() else {
-      return;
-    };
-    let mut applied: RenderAppliedReport = level.describe_applied(&self.options);
-
+  /// Tells the page what its frames are drawn with (`applied`, the weather's light added here), where that changed
+  /// since it was last told.
+  fn publish_applied(&mut self, mut applied: RenderAppliedReport) {
     if self.options.asset.lighting.is_none() {
       applied.environment = Some(Self::to_applied_environment(
         &self.world.lighting,
