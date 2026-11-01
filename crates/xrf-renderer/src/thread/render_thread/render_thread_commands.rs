@@ -19,7 +19,7 @@ use crate::contract::viewport::render_pick::RenderPick;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::host::world::render_scene_id::RenderSceneId;
 use crate::scene::level::level_scene::LevelScene;
-use crate::thread::render_command::RenderCommand;
+use crate::thread::queue::render_command::RenderCommand;
 use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::pending_screenshot::PendingScreenshot;

@@ -7,8 +7,8 @@ use crate::lighting::weather::render_sky::RenderSky;
 use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 use crate::scene::texture::weather_textures::WeatherTextures;
-use crate::thread::loader_receiver::LoaderReceiver;
-use crate::thread::render_workers::RenderWorkers;
+use crate::thread::queue::loader_receiver::LoaderReceiver;
+use crate::thread::queue::render_workers::RenderWorkers;
 
 /// Frames a texture no viewport asks for is kept, so the skies of a weather faded away a moment ago come back at once.
 const KEPT_FRAMES: u64 = 600;

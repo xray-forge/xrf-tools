@@ -233,8 +233,8 @@ pub use crate::scene::static_scene::item::model::static_model_proxy::StaticModel
 pub use crate::scene::static_scene::item::object::static_object_proxy::StaticObjectProxy;
 pub use crate::scene::static_scene::item::static_sector_proxy::StaticSectorProxy;
 pub use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
-pub use crate::thread::loader_receiver::LoaderReceiver;
-pub use crate::thread::render_command::RenderCommand;
-pub use crate::thread::render_queue::RenderQueue;
-pub use crate::thread::render_wait::RenderWait;
-pub use crate::thread::render_workers::RenderWorkers;
+pub use crate::thread::queue::loader_receiver::LoaderReceiver;
+pub use crate::thread::queue::render_command::RenderCommand;
+pub use crate::thread::queue::render_queue::RenderQueue;
+pub use crate::thread::queue::render_wait::RenderWait;
+pub use crate::thread::queue::render_workers::RenderWorkers;

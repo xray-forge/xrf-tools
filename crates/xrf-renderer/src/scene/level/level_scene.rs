@@ -38,7 +38,7 @@ use crate::scene::static_scene::trace::static_trace::StaticTrace;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
-use crate::thread::render_workers::RenderWorkers;
+use crate::thread::queue::render_workers::RenderWorkers;
 
 /// A level as the renderer holds it, whatever views draw it: its static geometry, grass, lights and the effects and
 /// motions living in it, and the models its weather draws. The world streams it in and owns the files and their

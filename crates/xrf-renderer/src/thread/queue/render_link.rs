@@ -2,7 +2,7 @@ use std::sync::mpsc::Sender;
 use std::thread::JoinHandle;
 
 use crate::contract::settings::render_settings::RenderSettings;
-use crate::thread::render_command::RenderCommand;
+use crate::thread::queue::render_command::RenderCommand;
 
 /// What the renderer's handle and its thread share, under one lock: commands are sent under it, and the thread only
 /// stops under it after finding none pending, so nothing sent is ever lost to a stopping thread.

@@ -31,7 +31,7 @@ use crate::scene::level::particles::placed::placed_objects::PlacedObjects;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
 use crate::thread::frame_task::FrameTask;
-use crate::thread::render_workers::RenderWorkers;
+use crate::thread::queue::render_workers::RenderWorkers;
 
 /// The sampler a distorting effect's `l_special` pass binds its distortion map to.
 const DISTORTION_SAMPLER: &str = "s_distort";

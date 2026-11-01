@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use rayon::{ThreadPool, ThreadPoolBuilder};
 
-use crate::thread::render_workers::RenderWorkers;
+use crate::thread::queue::render_workers::RenderWorkers;
 
 /// What a test's pool threads are named, so a test can tell its pool's work from the global pool's.
 pub const TEST_WORKER_NAME: &str = "xrf-render-test-worker";

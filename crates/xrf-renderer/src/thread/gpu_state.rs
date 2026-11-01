@@ -26,7 +26,7 @@ use crate::pass::window::overlay_pass::OverlayPass;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 use crate::shader::shader_library::ShaderLibrary;
-use crate::thread::render_workers::RenderWorkers;
+use crate::thread::queue::render_workers::RenderWorkers;
 use crate::window::render_window::RenderWindow;
 
 /// Everything made on the GPU, which goes as a whole when the GPU stops or is lost.

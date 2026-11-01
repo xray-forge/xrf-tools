@@ -1,6 +1,6 @@
 use std::sync::mpsc::TryRecvError;
 
-use crate::thread::loader_receiver::LoaderReceiver;
+use crate::thread::queue::loader_receiver::LoaderReceiver;
 
 /// Takes what a loader thread answered, once, leaving nothing pending afterwards; a loader gone without answering, as
 /// one that panicked is, also ends the wait, so the level still settles as loaded.
@@ -26,7 +26,7 @@ pub fn take_answer<T>(pending: &mut Option<LoaderReceiver<T>>, what: &str) -> Op
 #[cfg(test)]
 mod tests {
   use super::take_answer;
-  use crate::thread::loader_receiver::LoaderReceiver;
+  use crate::thread::queue::loader_receiver::LoaderReceiver;
 
   #[test]
   fn takes_an_answer_once_and_waits_for_none_after() {

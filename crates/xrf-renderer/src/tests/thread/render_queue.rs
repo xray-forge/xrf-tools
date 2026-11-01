@@ -16,9 +16,9 @@ use crate::host::world::render_view_input::RenderViewInput;
 use crate::host::world::render_world::RenderWorld;
 use crate::tests::support::test_bundle::TestBundle;
 use crate::tests::support::test_workers::create_workers;
-use crate::thread::render_command::RenderCommand;
-use crate::thread::render_queue::RenderQueue;
-use crate::thread::render_wait::RenderWait;
+use crate::thread::queue::render_command::RenderCommand;
+use crate::thread::queue::render_queue::RenderQueue;
+use crate::thread::queue::render_wait::RenderWait;
 
 /// Longer than any of these waits should take, so a broken contract fails rather than hangs.
 const WAIT: Duration = Duration::from_secs(10);

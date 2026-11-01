@@ -28,12 +28,12 @@ use crate::scene::level::level_scene::LevelScene;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::shader::shader_watcher::ShaderWatcher;
 use crate::thread::frame_failure_log::FrameFailureLog;
-use crate::thread::render_command::RenderCommand;
-use crate::thread::render_link::RenderLink;
-use crate::thread::render_workers::RenderWorkers;
-use crate::thread::reopening_scenes::ReopeningScenes;
+use crate::thread::queue::render_command::RenderCommand;
+use crate::thread::queue::render_link::RenderLink;
+use crate::thread::queue::render_workers::RenderWorkers;
 use crate::thread::retry_backoff::RetryBackoff;
 use crate::thread::running_gpu::RunningGpu;
+use crate::thread::views::reopening_scenes::ReopeningScenes;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::render_viewport::RenderViewport;
 

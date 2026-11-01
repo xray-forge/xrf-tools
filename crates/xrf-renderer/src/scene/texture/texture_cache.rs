@@ -16,8 +16,8 @@ use crate::host::render_asset_source::{RenderAssetSource, get_texture_name};
 use crate::scene::texture::decoded_texture::DecodedTexture;
 use crate::scene::texture::texture_role::TextureRole;
 use crate::scene::texture::texture_upload_pace::TextureUploadPace;
-use crate::thread::loader_receiver::LoaderReceiver;
-use crate::thread::render_workers::RenderWorkers;
+use crate::thread::queue::loader_receiver::LoaderReceiver;
+use crate::thread::queue::render_workers::RenderWorkers;
 
 /// Texels a side of the checker standing in for a base texture that cannot be had, and of each of its squares.
 const CHECKER_SIZE: u32 = 16;

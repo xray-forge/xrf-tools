@@ -9,11 +9,11 @@ use crate::contract::settings::render_settings::RenderSettings;
 use crate::host::render_bundle::RenderBundle;
 use crate::host::render_cache_store::RenderCacheStore;
 use crate::host::world::render_world::RenderWorld;
-use crate::thread::render_command::RenderCommand;
-use crate::thread::render_link::RenderLink;
+use crate::thread::queue::render_command::RenderCommand;
+use crate::thread::queue::render_link::RenderLink;
+use crate::thread::queue::render_wait::RenderWait;
+use crate::thread::queue::render_workers::RenderWorkers;
 use crate::thread::render_thread::RenderThread;
-use crate::thread::render_wait::RenderWait;
-use crate::thread::render_workers::RenderWorkers;
 
 /// The way to the render thread: cheap to make, and touching no GPU until a viewport is attached.
 ///
