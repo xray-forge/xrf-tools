@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 use crate::contract::feature::scene::render_foliage_settings::RenderFoliageSettings;
 
@@ -8,20 +9,27 @@ pub const RENDER_MAX_GRASS_RADIUS: f32 = 512.0;
 /// The grass (`CDetailManager`): planted on the GPU around the camera as the engine plants it, and drawn into the
 /// G-buffer. The engine's are 49 metres round at a density of 0.6 (`r__detail_radius`, `r__detail_density`).
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderGrassSettings {
   pub is_enabled: bool,
   /// How far apart a slot's candidates stand, from 0.1 (the densest) to 0.99 (the sparsest): `r__detail_density`.
+  // `r__detail_density`: a spacing. The console goes to 0.1, six times the game's; past three times it at the
+  // widest radius the grass's buffers outgrow what the GPU process holds and the renderer crashes.
+  #[setting(min = 0.2, max = 0.99)]
   pub density: f32,
   /// Whole metres around the camera grass is planted to: `r__detail_radius`.
+  #[setting(min = 49, max = 450, integer, wasted_above = 300)]
   pub radius: f32,
   /// What every planted tuft is scaled by: `r__detail_height`.
+  #[setting(min = 0.5, max = 2)]
   pub height: f32,
   /// How the trees and the grass move in the wind.
   pub foliage: RenderFoliageSettings,
   /// Degrees of slope past which a tuft is not planted, thinning over the last fifth: ninety for none, as the engine
   /// plants on any ground.
+  // The renderer's own: degrees of slope, ninety for none.
+  #[setting(min = 10, max = 90)]
   pub slope_limit: f32,
   /// Whether a tuft stands along its ground's normal rather than straight up.
   pub is_aligned: bool,
@@ -32,8 +40,12 @@ pub struct RenderGrassSettings {
   pub is_shadowed: bool,
   /// Metres from the camera the grass casts shadows to, 150 at most, fading over the last fifth of them: the cards' as
   /// far as their cascades reach, the contact shadows' past them.
+  #[setting(min = 5, max = 150)]
   pub shadow_radius: f32,
   /// How many of the sun's nearest cascades the cards are drawn into: none for the contact shadows alone.
+  // The renderer's own: the fourth cascade starts past the 150 m the grass casts to at most, so drawing into it
+  // buys nothing.
+  #[setting(min = 0, max = 4, recommended = [0, 3], wasted_above = 3)]
   pub shadow_cascades: u32,
 }
 

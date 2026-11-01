@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 /// How the light the air scatters towards the camera is drawn.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RenderVolumetricMode {
   /// The engine's own: the sun's shafts marched along each pixel's ray and the shadowed lamps' slices.

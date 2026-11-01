@@ -133,10 +133,29 @@ override CASCADE: u32;
 ");
 ```
 
+## `RenderSettingSchema`
+
+Describes one of the renderer contract's setting types for the page, which reads every setting's bounds from it
+(`render_feature_schema`, exported to the bindings as `RENDER_FEATURE_SCHEMA`). It expands to `xrf-renderer`'s own
+`crate::contract::settings::schema` and is derived there alone. A struct describes each field under its serialized name
+(as written, or under `rename_all = "camelCase"` or a field's `rename`), by its `#[setting(..)]`:
+
+- None: what its type describes, a `bool` a flag, another setting type its group or choice.
+- `min = .., max = ..`, optionally `integer`, `recommended = [.., ..]` and `wasted_above = ..`: a number between
+  bounds, whole where `integer` says so or its type is; each value any expression that casts to `f32`, a contract
+  constant included.
+- `widths, min = .., max = .., most = ..`: a run of widths, as the sun's cascades are.
+- `skip`: not a setting, as the look's, the weather's or the view's own values are not.
+
+A unit enum is a choice of its variants as serde writes them (a variant's `rename`, or the enum's `rename_all`). A
+generic type, a tuple struct and an enum with data are refused.
+
 ## Checks
 
 Run `cargo test --locked -p xrf-renderer-derive`. The trybuild cases in `tests/ui` are refused forms, each with the
 diagnostic it must produce in its `.stderr`: a misaligned member, a tuple struct, a storage array of mismatched stride,
 a taken binding index, a repeated group, a generic parameter struct, a contradicting texture word, a three-dimensional
 depth texture, and an argument to `#[uniform]`. The expansions are in [`shader_struct.rs`](src/shader_struct.rs),
-[`pass_parameters.rs`](src/pass_parameters.rs) and [`shader_permutation.rs`](src/shader_permutation.rs).
+[`pass_parameters.rs`](src/pass_parameters.rs), [`shader_permutation.rs`](src/shader_permutation.rs) and
+[`setting_schema.rs`](src/setting_schema.rs); the setting schema's expansion is tested in `xrf-renderer`, whose
+contract it names.

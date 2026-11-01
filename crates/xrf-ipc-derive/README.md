@@ -16,6 +16,22 @@ module beside it, `__xrf_ipc_constant_<NAME>`, that submits an `xrf_ipc::IpcCons
 | `value`       | A function serializing it through `IpcConstant::serialize_value`, so its type must `Serialize` |
 | `data_type`   | Its type's definition through `IpcConstant::define_type`, so its type must be a `specta::Type` |
 
+A value Rust cannot write as a `const`, one holding a `Vec` or a `String`, is a module-level function of no arguments
+computing it, not generic, async or unsafe; it is called as the bindings are generated and exported under its name in
+upper case (`render_feature_schema` as `RENDER_FEATURE_SCHEMA`).
+
+```rust
+/// The engine's cascade widths in metres.
+#[xrf_ipc::constant]
+fn render_shadow_cascade_widths() -> Vec<f32> {
+  vec![20.0, 40.0, 160.0]
+}
+
+fn main() {
+  assert_eq!(render_shadow_cascade_widths().len(), 3);
+}
+```
+
 Inner indentation of a doc line survives; `#[doc(hidden)]` and other list-form doc attributes are skipped.
 
 ```rust
@@ -33,7 +49,8 @@ fn main() {
 Each refusal is a compile error on the offending tokens:
 
 - Any argument: `#[constant]` takes none.
-- Anything but a non-generic `const` item: a `static`, a function, a generic `const`.
+- Anything but a non-generic `const` item or such a function: a `static`, a generic `const`, a function taking
+  arguments, generic, async, unsafe or returning nothing.
 - A doc comment it cannot read as `///` lines: a block comment spanning lines, or a computed `#[doc = ...]`.
 - An associated constant. Rust allows no module in an `impl` or a trait, so the error is Rust's own, on the item.
 

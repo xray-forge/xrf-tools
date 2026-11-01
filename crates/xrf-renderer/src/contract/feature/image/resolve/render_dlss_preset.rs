@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 use xrf_dlss::DlssPreset;
+use xrf_renderer_derive::RenderSettingSchema;
 
 /// Which of DLSS's models upscales: NVIDIA's pick for each quality, or one for every quality.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RenderDlssPreset {
   /// NVIDIA's pick, which a driver update may change: K for DLAA, Quality and Balanced, M for Performance, L for Ultra

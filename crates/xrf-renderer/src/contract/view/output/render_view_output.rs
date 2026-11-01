@@ -1,18 +1,22 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 use crate::contract::feature::image::resolve::render_upscaling_settings::RenderUpscalingSettings;
 
 /// What a view's frame is resolved at before it is put into its rectangle, and how it is upscaled to it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderViewOutput {
+  // The upscaling alone is a setting; the output's size is the view's own.
   /// What the scene is drawn at, a share of the output, and how its upscaled frame is sharpened.
   pub upscaling: RenderUpscalingSettings,
   /// Device pixels the frame is resolved tall at, as wide as the viewport's shape, or `None` for the viewport's own
   /// sides times `output_scale`.
+  #[setting(skip)]
   pub output_height: Option<u32>,
   /// The share of the viewport's sides the frame is resolved at while no height is asked.
+  #[setting(skip)]
   pub output_scale: f32,
 }
 

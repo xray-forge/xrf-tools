@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 /// What turns the physical light's scene-referred frame into the display's colours, before it is encoded for the
 /// display. The engine's light model always shows its frame by the engine's curve.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RenderDisplayTransform {
   /// The engine's curve, `x (1 + x / W²) / (1 + x)` a channel, white at 1.7, over the light encoded for the display as

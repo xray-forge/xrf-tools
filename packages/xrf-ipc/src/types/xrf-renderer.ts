@@ -12,6 +12,496 @@ export const RENDER_CUBE_MOST_SUPERSAMPLING: number = 4;
  */
 export const RENDER_DEFAULT_PERIODIC_BUDGET: number = 0.5;
 
+/** What every viewport draws with until the settings set it. */
+export const RENDER_DEFAULT_SETTINGS: RenderSettings = {
+  backend: null,
+  frameRate: { isVsync: true, limit: null },
+  gpu: null,
+  graph: { isCulling: true, isGrouping: true, isMerging: true, isPooling: true },
+  isGpuTimed: false,
+  periodicBudget: 0.5,
+  textureFiltering: "anisotropic8",
+  textureLod: 0,
+};
+
+/**
+ * Each feature as a view draws it until the settings set it: the engine's own, with the enhanced features' strengths
+ * for when each is drawn.
+ */
+export const RENDER_DEFAULT_VIEW_FEATURES: RenderViewFeatures = {
+  ambientOcclusion: {
+    gtao: { slices: 3, steps: 3 },
+    isEnabled: true,
+    method: "gtao",
+    radius: 1.0,
+    rtao: { rays: 4 },
+    strength: 1.0,
+    vbao: { accumulation: 8, bounce: 1.0, slices: 1, steps: 8, thickness: 0.25 },
+  },
+  antialiasing: "none",
+  bloom: { isEnabled: false, radius: 3.0, strength: 0.7, threshold: 0.00001 },
+  camera: {
+    aberrationStrength: 0.5,
+    fStop: 2.8,
+    focusDistance: 10.0,
+    grainSize: 1.6,
+    grainStrength: 0.3,
+    isAberrated: false,
+    isDefocused: false,
+    isGrained: false,
+    isMotionBlurred: false,
+    isVignetted: false,
+    motionLimit: 0.04,
+    sensorHeight: 24.0,
+    shutter: 0.5,
+    vignetteStrength: 0.5,
+  },
+  corrections: { exposure: 1.0, gamma: 1.0, grading: [0.0, 0.0, 0.0], saturation: 1.0 },
+  debanding: { mode: "engine", passes: 2, radius: 48.0 },
+  displayTransform: "engine",
+  enhancedBloom: { blur: 3.0, exposure: 3.0, mode: "engine", sky: 0.6, threshold: 5.0, vibrance: 1.0 },
+  exposure: { adaptation: 1.0, amount: 0.7, compensation: 0.0, isEnabled: true, lowLuminance: 0.0001, middleGray: 1.0 },
+  fog: { colour: "blend", density: 0.4, height: 8.0, mode: "engine", scattering: 0.0, skyFade: 0.75, sunColor: 0.1 },
+  glass: { mode: "engine", refraction: 1.0 },
+  grading: { contrast: 1.0, saturation: 1.0 },
+  grass: {
+    density: 0.6,
+    foliage: {
+      grassPush: 1.5,
+      grassSpeed: 9.5,
+      grassTurbulence: 1.4,
+      grassWave: 0.4,
+      minSpeed: 0.1,
+      mode: "engine",
+      sssColor: 0.75,
+      sssIntensity: 1.0,
+      treesBend: 0.5,
+      treesSpeed: 11.0,
+      treesTrunk: 0.15,
+    },
+    height: 1.0,
+    isAligned: false,
+    isEnabled: true,
+    isShadowed: false,
+    radius: 49.0,
+    shadowCascades: 0,
+    shadowRadius: 50.0,
+    slopeLimit: 90.0,
+  },
+  hemiStrength: 1.0,
+  indirectLight: { intensity: 1.0, mode: "engine", radius: 3.0, steps: 2 },
+  isDepthPrepassed: false,
+  isOcclusionCulled: true,
+  lightLevel: "authored",
+  lightModel: "engine",
+  lightScales: { ambient: 1.0, hemi: 1.0, sun: 1.0 },
+  lights: {
+    falloff: "physical",
+    isEnabled: true,
+    isLevelLights: false,
+    isShadowed: true,
+    isVolumetric: true,
+    shadowFilter: "engine",
+    shaftStrength: 1.0,
+    shafts: "engine",
+  },
+  lod: {
+    geometryLod: 0.75,
+    isImpostors: true,
+    ssaA: 64.0,
+    ssaB: 48.0,
+    ssaDiscard: 3.5,
+    ssaGlodEnd: 64.0,
+    ssaGlodStart: 256.0,
+  },
+  parallax: {
+    blending: 0.5,
+    cavity: 1.0,
+    height: 0.02,
+    isRefined: true,
+    isSteep: true,
+    mode: "engine",
+    range: 60.0,
+    shadow: 1.0,
+    steps: 8,
+    surfaceHeight: 0.02,
+    surfaceRange: 60.0,
+  },
+  rain: {
+    distance: 300.0,
+    dropSquare: 30.0,
+    drops: "engine",
+    isReliefFlooded: true,
+    mode: "engine",
+    pace: 1.0,
+    puddles: 0.5,
+    reflectivity: 0.4,
+    ringDistance: 75.0,
+    ringSize: 1.0,
+    ringStrength: 1.0,
+    ripples: 1.0,
+  },
+  reflections: {
+    distance: 150.0,
+    intensity: 1.0,
+    isDryTraced: false,
+    isGrassReflected: false,
+    isRayBudgeted: true,
+    isTraced: false,
+    isWaterReflected: true,
+    mode: "engine",
+    probe: "fine",
+    reach: 300.0,
+    skyGain: 1.25,
+    steps: 96,
+    traceInterval: 2,
+    traceRoughness: 0.6,
+    traceSize: "half",
+    waterSteps: 16,
+  },
+  shadows: {
+    bias: 1.5,
+    blend: 0.25,
+    cascades: [20.0, 40.0, 160.0, 480.0],
+    contact: {
+      intensity: 1.0,
+      isFullResolution: false,
+      length: 0.6,
+      lights: 4,
+      mode: "engine",
+      steps: 16,
+      thickness: 0.1,
+    },
+    filter: 2,
+    isEnabled: true,
+    isStaggered: true,
+    resolution: 2048,
+    swayCascades: 4,
+    swayRate: 60.0,
+  },
+  sunShafts: { minimum: 0.0, steps: 30 },
+  sunTint: 0.0,
+  terrain: { rotation: 0.0, scale: 2.0, sharpness: 7.0, tiling: "engine" },
+  tonemap: "engine",
+  volumetric: { anisotropy: 0.25, distance: 120.0, intensity: 1.0, mode: "engine" },
+  water: {
+    distortion: 0.05,
+    enhanced: {
+      blurNoise: 1.0,
+      calmFlow: 0.2,
+      caustics: 0.05,
+      flow: 1.0,
+      parallaxHeight: 0.05,
+      reflectionBlur: 0.8,
+      reflectivity: 0.8,
+      refraction: 0.6,
+      ripples: 0.5,
+      softBorder: 0.05,
+      specular: 6.0,
+      turbidity: 3.0,
+      variation: 0.75,
+      vibrance: 1.0,
+    },
+    isDistorted: true,
+    isEnabled: true,
+    isSoft: true,
+    mode: "engine",
+    reflection: 1.0,
+    ripple: 1.0,
+    waveHeight: 0.017,
+    waveSpeed: 25.0,
+  },
+};
+
+/** What a view's frame is resolved at and upscaled by until the settings set it. */
+export const RENDER_DEFAULT_VIEW_OUTPUT: RenderViewOutput = {
+  outputHeight: null,
+  outputScale: 1.0,
+  upscaling: {
+    dlssPreset: "default",
+    isRayReconstructed: false,
+    rayReconstructionPreset: "default",
+    scale: "native",
+    sharpening: 0.1,
+  },
+};
+
+/**
+ * Every setting a tool chooses its viewports' features by, what it takes and between which bounds: the view's
+ * features the settings set, the output's upscaling, and the textures' filtering and quality every viewport shares.
+ */
+export const RENDER_FEATURE_SCHEMA: RenderSettingNode = {
+  ambientOcclusion: {
+    gtao: {
+      slices: { isInteger: true, kind: "number", max: 9.0, min: 1.0, recommended: [2.0, 6.0], wastedAbove: 6.0 },
+      steps: { isInteger: true, kind: "number", max: 6.0, min: 1.0, recommended: [2.0, 4.0], wastedAbove: null },
+    },
+    isEnabled: { kind: "flag" },
+    method: { kind: "choice", values: ["gtao", "vbao", "rtao"] },
+    radius: { isInteger: false, kind: "number", max: 8.0, min: 0.1, recommended: null, wastedAbove: null },
+    rtao: { rays: { isInteger: true, kind: "number", max: 8.0, min: 1.0, recommended: [2.0, 8.0], wastedAbove: 4.0 } },
+    strength: { isInteger: false, kind: "number", max: 2.0, min: 0.0, recommended: null, wastedAbove: null },
+    vbao: {
+      accumulation: {
+        isInteger: true,
+        kind: "number",
+        max: 32.0,
+        min: 1.0,
+        recommended: [4.0, 16.0],
+        wastedAbove: null,
+      },
+      bounce: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+      slices: { isInteger: true, kind: "number", max: 4.0, min: 1.0, recommended: [1.0, 2.0], wastedAbove: 2.0 },
+      steps: { isInteger: true, kind: "number", max: 16.0, min: 2.0, recommended: [4.0, 12.0], wastedAbove: 12.0 },
+      thickness: { isInteger: false, kind: "number", max: 2.0, min: 0.01, recommended: null, wastedAbove: null },
+    },
+  },
+  antialiasing: { kind: "choice", values: ["none", "fxaa", "smaa", "taa", "fsr", "dlss"] },
+  camera: {
+    aberrationStrength: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+    fStop: { isInteger: false, kind: "number", max: 22.0, min: 1.0, recommended: null, wastedAbove: null },
+    focusDistance: { isInteger: false, kind: "number", max: 2000.0, min: 0.1, recommended: null, wastedAbove: null },
+    grainSize: { isInteger: false, kind: "number", max: 4.0, min: 1.0, recommended: null, wastedAbove: null },
+    grainStrength: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+    isAberrated: { kind: "flag" },
+    isDefocused: { kind: "flag" },
+    isGrained: { kind: "flag" },
+    isMotionBlurred: { kind: "flag" },
+    isVignetted: { kind: "flag" },
+    motionLimit: { isInteger: false, kind: "number", max: 0.2, min: 0.005, recommended: null, wastedAbove: null },
+    sensorHeight: { isInteger: false, kind: "number", max: 56.0, min: 4.0, recommended: null, wastedAbove: null },
+    shutter: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+    vignetteStrength: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+  },
+  debanding: {
+    mode: { kind: "choice", values: ["engine", "enhanced"] },
+    passes: { isInteger: true, kind: "number", max: 4.0, min: 1.0, recommended: null, wastedAbove: 2.0 },
+    radius: { isInteger: false, kind: "number", max: 128.0, min: 8.0, recommended: null, wastedAbove: null },
+  },
+  displayTransform: { kind: "choice", values: ["engine", "agx", "pbrNeutral"] },
+  enhancedBloom: {
+    blur: { isInteger: false, kind: "number", max: 5.0, min: 1.0, recommended: null, wastedAbove: null },
+    exposure: { isInteger: false, kind: "number", max: 100.0, min: 1.0, recommended: null, wastedAbove: null },
+    mode: { kind: "choice", values: ["engine", "enhanced"] },
+    sky: { isInteger: false, kind: "number", max: 10.0, min: 0.0, recommended: null, wastedAbove: null },
+    threshold: { isInteger: false, kind: "number", max: 10.0, min: 1.0, recommended: null, wastedAbove: null },
+    vibrance: { isInteger: false, kind: "number", max: 10.0, min: 0.0, recommended: null, wastedAbove: null },
+  },
+  exposure: {
+    adaptation: { isInteger: false, kind: "number", max: 10.0, min: 0.01, recommended: null, wastedAbove: null },
+    amount: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+    compensation: { isInteger: false, kind: "number", max: 6.0, min: -6.0, recommended: null, wastedAbove: null },
+    isEnabled: { kind: "flag" },
+    lowLuminance: { isInteger: false, kind: "number", max: 1.0, min: 0.0001, recommended: null, wastedAbove: null },
+    middleGray: { isInteger: false, kind: "number", max: 2.0, min: 0.0, recommended: null, wastedAbove: null },
+  },
+  fog: {
+    colour: { kind: "choice", values: ["weather", "blend", "sky"] },
+    density: { isInteger: false, kind: "number", max: 5.0, min: 0.0, recommended: null, wastedAbove: null },
+    height: { isInteger: false, kind: "number", max: 20.0, min: 1.0, recommended: null, wastedAbove: null },
+    mode: { kind: "choice", values: ["engine", "enhanced"] },
+    scattering: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+    skyFade: { isInteger: false, kind: "number", max: 0.95, min: 0.0, recommended: null, wastedAbove: null },
+    sunColor: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+  },
+  glass: {
+    mode: { kind: "choice", values: ["engine", "enhanced"] },
+    refraction: { isInteger: false, kind: "number", max: 2.0, min: 0.0, recommended: null, wastedAbove: null },
+  },
+  grading: {
+    contrast: { isInteger: false, kind: "number", max: 2.0, min: 0.5, recommended: null, wastedAbove: null },
+    saturation: { isInteger: false, kind: "number", max: 2.0, min: 0.0, recommended: null, wastedAbove: null },
+  },
+  grass: {
+    density: { isInteger: false, kind: "number", max: 0.99, min: 0.2, recommended: null, wastedAbove: null },
+    foliage: {
+      grassPush: { isInteger: false, kind: "number", max: 5.0, min: 0.0, recommended: null, wastedAbove: null },
+      grassSpeed: { isInteger: false, kind: "number", max: 20.0, min: 0.0, recommended: null, wastedAbove: null },
+      grassTurbulence: { isInteger: false, kind: "number", max: 5.0, min: 0.0, recommended: null, wastedAbove: null },
+      grassWave: { isInteger: false, kind: "number", max: 5.0, min: 0.0, recommended: null, wastedAbove: null },
+      minSpeed: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+      mode: { kind: "choice", values: ["engine", "enhanced"] },
+      sssColor: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+      sssIntensity: { isInteger: false, kind: "number", max: 5.0, min: 0.0, recommended: null, wastedAbove: null },
+      treesBend: { isInteger: false, kind: "number", max: 5.0, min: 0.0, recommended: null, wastedAbove: null },
+      treesSpeed: { isInteger: false, kind: "number", max: 20.0, min: 0.0, recommended: null, wastedAbove: null },
+      treesTrunk: { isInteger: false, kind: "number", max: 5.0, min: 0.0, recommended: null, wastedAbove: null },
+    },
+    height: { isInteger: false, kind: "number", max: 2.0, min: 0.5, recommended: null, wastedAbove: null },
+    isAligned: { kind: "flag" },
+    isEnabled: { kind: "flag" },
+    isShadowed: { kind: "flag" },
+    radius: { isInteger: true, kind: "number", max: 450.0, min: 49.0, recommended: null, wastedAbove: 300.0 },
+    shadowCascades: { isInteger: true, kind: "number", max: 4.0, min: 0.0, recommended: [0.0, 3.0], wastedAbove: 3.0 },
+    shadowRadius: { isInteger: false, kind: "number", max: 150.0, min: 5.0, recommended: null, wastedAbove: null },
+    slopeLimit: { isInteger: false, kind: "number", max: 90.0, min: 10.0, recommended: null, wastedAbove: null },
+  },
+  indirectLight: {
+    intensity: { isInteger: false, kind: "number", max: 4.0, min: 0.0, recommended: null, wastedAbove: null },
+    mode: { kind: "choice", values: ["engine", "enhanced"] },
+    radius: { isInteger: false, kind: "number", max: 8.0, min: 0.5, recommended: null, wastedAbove: null },
+    steps: { isInteger: true, kind: "number", max: 8.0, min: 1.0, recommended: [2.0, 4.0], wastedAbove: 4.0 },
+  },
+  isDepthPrepassed: { kind: "flag" },
+  isOcclusionCulled: { kind: "flag" },
+  lightLevel: { kind: "choice", values: ["authored", "anchored", "physical"] },
+  lightModel: { kind: "choice", values: ["engine", "physical"] },
+  lights: {
+    falloff: { kind: "choice", values: ["physical", "engine"] },
+    isEnabled: { kind: "flag" },
+    isLevelLights: { kind: "flag" },
+    isShadowed: { kind: "flag" },
+    isVolumetric: { kind: "flag" },
+    shadowFilter: { kind: "choice", values: ["engine", "soft"] },
+    shaftStrength: { isInteger: false, kind: "number", max: 4.0, min: 0.0, recommended: null, wastedAbove: null },
+    shafts: { kind: "choice", values: ["engine", "shadowed"] },
+  },
+  lod: {
+    geometryLod: { isInteger: false, kind: "number", max: 2.0, min: 0.1, recommended: null, wastedAbove: null },
+    isImpostors: { kind: "flag" },
+    ssaA: { isInteger: false, kind: "number", max: 96.0, min: 16.0, recommended: null, wastedAbove: null },
+    ssaB: { isInteger: false, kind: "number", max: 64.0, min: 16.0, recommended: null, wastedAbove: null },
+    ssaDiscard: { isInteger: false, kind: "number", max: 10.0, min: 1.0, recommended: null, wastedAbove: null },
+    ssaGlodEnd: { isInteger: false, kind: "number", max: 96.0, min: 16.0, recommended: null, wastedAbove: null },
+    ssaGlodStart: { isInteger: false, kind: "number", max: 512.0, min: 128.0, recommended: null, wastedAbove: null },
+  },
+  parallax: {
+    blending: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+    cavity: { isInteger: false, kind: "number", max: 2.0, min: 0.0, recommended: null, wastedAbove: null },
+    height: { isInteger: false, kind: "number", max: 0.2, min: 0.0, recommended: null, wastedAbove: null },
+    isRefined: { kind: "flag" },
+    isSteep: { kind: "flag" },
+    mode: { kind: "choice", values: ["engine", "enhanced"] },
+    range: { isInteger: false, kind: "number", max: 100.0, min: 0.0, recommended: null, wastedAbove: null },
+    shadow: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+    steps: { isInteger: true, kind: "number", max: 64.0, min: 1.0, recommended: [8.0, 32.0], wastedAbove: null },
+    surfaceHeight: { isInteger: false, kind: "number", max: 0.1, min: 0.0, recommended: null, wastedAbove: null },
+    surfaceRange: { isInteger: false, kind: "number", max: 100.0, min: 0.0, recommended: null, wastedAbove: null },
+  },
+  rain: {
+    distance: { isInteger: true, kind: "number", max: 450.0, min: 30.0, recommended: null, wastedAbove: null },
+    dropSquare: { isInteger: false, kind: "number", max: 150.0, min: 5.0, recommended: null, wastedAbove: null },
+    drops: { kind: "choice", values: ["engine", "enhanced"] },
+    isReliefFlooded: { kind: "flag" },
+    mode: { kind: "choice", values: ["engine", "enhanced"] },
+    pace: { isInteger: true, kind: "number", max: 100.0, min: 1.0, recommended: null, wastedAbove: null },
+    puddles: { isInteger: false, kind: "number", max: 2.0, min: 0.0, recommended: null, wastedAbove: null },
+    reflectivity: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+    ringDistance: { isInteger: false, kind: "number", max: 300.0, min: 0.0, recommended: null, wastedAbove: null },
+    ringSize: { isInteger: false, kind: "number", max: 2.0, min: 0.5, recommended: null, wastedAbove: null },
+    ringStrength: { isInteger: false, kind: "number", max: 3.0, min: 0.0, recommended: null, wastedAbove: null },
+    ripples: { isInteger: false, kind: "number", max: 2.0, min: 0.0, recommended: null, wastedAbove: null },
+  },
+  reflections: {
+    distance: { isInteger: false, kind: "number", max: 200.0, min: 5.0, recommended: null, wastedAbove: null },
+    intensity: { isInteger: false, kind: "number", max: 4.0, min: 0.0, recommended: null, wastedAbove: null },
+    isDryTraced: { kind: "flag" },
+    isGrassReflected: { kind: "flag" },
+    isRayBudgeted: { kind: "flag" },
+    isTraced: { kind: "flag" },
+    isWaterReflected: { kind: "flag" },
+    mode: { kind: "choice", values: ["engine", "enhanced"] },
+    probe: { kind: "choice", values: ["coarse", "fine", "finest"] },
+    reach: { isInteger: true, kind: "number", max: 1000.0, min: 25.0, recommended: null, wastedAbove: null },
+    skyGain: { isInteger: false, kind: "number", max: 3.0, min: 0.5, recommended: null, wastedAbove: null },
+    steps: { isInteger: true, kind: "number", max: 128.0, min: 16.0, recommended: [32.0, 128.0], wastedAbove: 96.0 },
+    traceInterval: { isInteger: true, kind: "number", max: 8.0, min: 1.0, recommended: [1.0, 4.0], wastedAbove: null },
+    traceRoughness: {
+      isInteger: false,
+      kind: "number",
+      max: 1.0,
+      min: 0.2,
+      recommended: [0.4, 0.7],
+      wastedAbove: null,
+    },
+    traceSize: { kind: "choice", values: ["half", "full"] },
+    waterSteps: { isInteger: true, kind: "number", max: 32.0, min: 8.0, recommended: [12.0, 24.0], wastedAbove: 24.0 },
+  },
+  shadows: {
+    bias: { isInteger: false, kind: "number", max: 5.0, min: 0.0, recommended: null, wastedAbove: null },
+    blend: { isInteger: false, kind: "number", max: 0.4, min: 0.0, recommended: null, wastedAbove: null },
+    cascades: { kind: "widths", max: 2000.0, min: 1.0, most: 4 },
+    contact: {
+      intensity: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+      isFullResolution: { kind: "flag" },
+      length: { isInteger: false, kind: "number", max: 4.0, min: 0.0, recommended: null, wastedAbove: null },
+      lights: { isInteger: true, kind: "number", max: 8.0, min: 0.0, recommended: null, wastedAbove: null },
+      mode: { kind: "choice", values: ["engine", "enhanced"] },
+      steps: { isInteger: true, kind: "number", max: 64.0, min: 4.0, recommended: [8.0, 32.0], wastedAbove: 32.0 },
+      thickness: { isInteger: false, kind: "number", max: 1.0, min: 0.01, recommended: null, wastedAbove: null },
+    },
+    filter: { isInteger: true, kind: "number", max: 3.0, min: 0.0, recommended: null, wastedAbove: null },
+    isEnabled: { kind: "flag" },
+    isStaggered: { kind: "flag" },
+    resolution: {
+      isInteger: true,
+      kind: "number",
+      max: 8192.0,
+      min: 256.0,
+      recommended: [1024.0, 4096.0],
+      wastedAbove: null,
+    },
+    swayCascades: { isInteger: true, kind: "number", max: 4.0, min: 0.0, recommended: null, wastedAbove: null },
+    swayRate: { isInteger: true, kind: "number", max: 60.0, min: 15.0, recommended: null, wastedAbove: null },
+  },
+  sunTint: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+  terrain: {
+    rotation: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+    scale: { isInteger: false, kind: "number", max: 8.0, min: 0.25, recommended: null, wastedAbove: null },
+    sharpness: { isInteger: false, kind: "number", max: 32.0, min: 1.0, recommended: null, wastedAbove: null },
+    tiling: { kind: "choice", values: ["engine", "varied"] },
+  },
+  textureFiltering: {
+    kind: "choice",
+    values: ["trilinear", "anisotropic2", "anisotropic4", "anisotropic8", "anisotropic16"],
+  },
+  textureLod: { isInteger: true, kind: "number", max: 4.0, min: 0.0, recommended: null, wastedAbove: null },
+  tonemap: { kind: "choice", values: ["engine", "enhanced"] },
+  upscaling: {
+    dlssPreset: { kind: "choice", values: ["default", "j", "k", "l", "m"] },
+    isRayReconstructed: { kind: "flag" },
+    rayReconstructionPreset: { kind: "choice", values: ["default", "d", "e", "f"] },
+    scale: {
+      kind: "choice",
+      values: ["native", "ultraQuality", "quality", "balanced", "performance", "ultraPerformance"],
+    },
+    sharpening: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: [0.0, 0.5], wastedAbove: null },
+  },
+  volumetric: {
+    anisotropy: { isInteger: false, kind: "number", max: 0.9, min: 0.0, recommended: null, wastedAbove: null },
+    distance: { isInteger: false, kind: "number", max: 300.0, min: 25.0, recommended: null, wastedAbove: null },
+    intensity: { isInteger: false, kind: "number", max: 4.0, min: 0.0, recommended: null, wastedAbove: null },
+    mode: { kind: "choice", values: ["engine", "enhanced"] },
+  },
+  water: {
+    distortion: { isInteger: false, kind: "number", max: 0.2, min: 0.0, recommended: null, wastedAbove: null },
+    enhanced: {
+      blurNoise: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+      calmFlow: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+      caustics: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+      flow: { isInteger: false, kind: "number", max: 2.0, min: 0.0, recommended: null, wastedAbove: null },
+      parallaxHeight: { isInteger: false, kind: "number", max: 0.1, min: 0.0, recommended: null, wastedAbove: null },
+      reflectionBlur: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+      reflectivity: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+      refraction: { isInteger: false, kind: "number", max: 2.0, min: 0.0, recommended: null, wastedAbove: null },
+      ripples: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+      softBorder: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+      specular: { isInteger: false, kind: "number", max: 10.0, min: 0.0, recommended: null, wastedAbove: null },
+      turbidity: { isInteger: false, kind: "number", max: 10.0, min: 0.0, recommended: null, wastedAbove: null },
+      variation: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+      vibrance: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
+    },
+    isDistorted: { kind: "flag" },
+    isEnabled: { kind: "flag" },
+    isSoft: { kind: "flag" },
+    mode: { kind: "choice", values: ["engine", "enhanced"] },
+    reflection: { isInteger: false, kind: "number", max: 4.0, min: 0.0, recommended: null, wastedAbove: null },
+    ripple: { isInteger: false, kind: "number", max: 4.0, min: 0.0, recommended: null, wastedAbove: null },
+    waveHeight: { isInteger: false, kind: "number", max: 0.2, min: 0.0, recommended: null, wastedAbove: null },
+    waveSpeed: { isInteger: false, kind: "number", max: 100.0, min: 0.0, recommended: null, wastedAbove: null },
+  },
+};
+
 /**
  * Every helper icon in the atlas's order, row by row and left to right, with the Material icon each is drawn from,
  * which the page's kind rows show too.
@@ -1976,6 +2466,48 @@ export type RenderSelectionTarget =
    * table entry.
    */
   | { kind: "surface"; sector: number; shaderId: number; mesh: number | null; place: number | null };
+
+/** What one of the settings takes, which the page offers and holds a stored value to. */
+export type RenderSettingField =
+  /** On or off. */
+  | ({ kind: "flag" } & { max?: never; min?: never; most?: never; values?: never })
+  /** A number between bounds. */
+  | ({
+      kind: "number";
+    } & RenderSettingNumber)
+  /** One of a set of values, as each serializes. */
+  | ({ kind: "choice"; values: Array<string> } & { max?: never; min?: never; most?: never })
+  /** A run of positive widths, each between bounds, as many as the most given, as the sun's cascades are. */
+  | ({
+      kind: "widths";
+      /** The least each width may be. */
+      min: number | null;
+      /** The most each width may be. */
+      max: number | null;
+      /** The most widths the run holds. */
+      most: number;
+    } & { values?: never });
+
+/** One node of the settings' description: a setting's field, or a group of nodes by each one's serialized name. */
+export type RenderSettingNode = RenderSettingField | { [key in string]: RenderSettingNode };
+
+/**
+ * A number the settings take between bounds, held to them: the engine console's own where the engine has the
+ * setting (`xrRender_console.cpp`), the renderer's where it does not.
+ */
+export type RenderSettingNumber = {
+  min: number | null;
+  max: number | null;
+  /** Whether it is whole, as an engine's `CCC_Integer` is. */
+  isInteger: boolean;
+  /**
+   * The range xrf recommends within the bounds, Base's and Enhanced's values within it: below it the effect shows
+   * misses or artefacts, past it it costs more for little visible gain; none where it is not rated.
+   */
+  recommended: [number | null, number | null] | null;
+  /** The value past which a higher one was measured to look the same and only cost more; none where it was not. */
+  wastedAbove: number | null;
+};
 
 /** What every viewport of the renderer draws with. */
 export type RenderSettings = {

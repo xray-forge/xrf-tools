@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 /// Which bloom glows over the frame's bright parts: the engine's, as the look sets it, or the enhanced one.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RenderBloomMode {
   /// The engine's own (`phase_bloom`), drawn as the look's bloom settings say.

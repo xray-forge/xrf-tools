@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 use crate::contract::feature::lighting::render_contact_shadow_settings::RenderContactShadowSettings;
 
@@ -20,27 +21,35 @@ pub const RENDER_MAX_SHADOW_CASCADE_WIDTH: f32 = 10_000.0;
 /// and sampled by the sun's light. The engine's are three, 20, 40 and 160 metres across, at 2048 texels
 /// (`render_phase_sun.cpp`, `r2_smap_size`).
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderShadowSettings {
   pub is_enabled: bool,
   /// Each cascade's width in metres, nearest first; as many cascades as widths, at most four.
+  #[setting(widths, min = 1, max = 2000, most = RENDER_MAX_SHADOW_CASCADES)]
   pub cascades: Vec<f32>,
   /// Texels each cascade's map is across.
+  #[setting(min = 256, max = 8192, recommended = [1024, 4096])]
   pub resolution: u32,
   /// Texels the filter reaches from the one sampled, each way: zero for one comparison, one for a three by three.
+  #[setting(min = 0, max = RENDER_MAX_SHADOW_FILTER)]
   pub filter: u32,
   /// How far a point is moved along its normal before it is compared, in texels of its cascade.
+  #[setting(min = 0, max = 5)]
   pub bias: f32,
   /// How far in from a cascade's edge, as a share of its width, the next cascade is mixed in.
+  // Kept short of the map's middle, where every point would blend.
+  #[setting(min = 0, max = 0.4)]
   pub blend: f32,
   /// Whether cascade `n` is drawn at most every `2^n` frames, the far ones sharing frames the near one does not.
   pub is_staggered: bool,
   /// Times a second the cascades redraw their swaying trees at most: 60 by default, fewer to redraw them less, their
   /// shadows then stepping between the sway's poses.
+  #[setting(min = 15, max = 60, integer)]
   pub sway_rate: f32,
   /// How many of the nearest cascades redraw their trees as they sway: all four by default, fewer to keep the farther
   /// ones' trees as they were last drawn, as engines stop animating distant foliage's shadows.
+  #[setting(min = 0, max = RENDER_MAX_SHADOW_CASCADES)]
   pub sway_cascades: u32,
   /// The contact shadows: the sun's under the cascades, drawn only while the cascades are, and the local lights',
   /// drawn whether the cascades are or not.

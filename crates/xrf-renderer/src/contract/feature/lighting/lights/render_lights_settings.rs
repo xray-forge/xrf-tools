@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 use crate::contract::feature::lighting::lights::render_light_shadow_filter::RenderLightShadowFilter;
 use crate::contract::feature::lighting::model::render_light_falloff::RenderLightFalloff;
@@ -6,7 +7,7 @@ use crate::contract::feature::weather::render_light_shafts::RenderLightShafts;
 
 /// The level's local lights: binned into clusters of the view, and accumulated after the sun in one pass.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderLightsSettings {
   pub is_enabled: bool,
@@ -20,13 +21,16 @@ pub struct RenderLightsSettings {
   /// Which shadowed lights draw shafts.
   pub shafts: RenderLightShafts,
   /// What every lamp's shafts are scaled by, the engine's slices and the enhanced volumetric light's scattering alike.
+  // The renderer's own: from none to four times the game's.
+  #[setting(min = 0, max = 4)]
   pub shaft_strength: f32,
   /// How the lamps fall off at the anchored light level (`RenderViewOptions::is_falloff_inverse_square`).
   pub falloff: RenderLightFalloff,
 }
 
 impl Default for RenderLightsSettings {
-  /// The engine's own: every spawned light with its shafts as the engine gives them, and none of the level file's.
+  /// The engine's own: every spawned light with its shafts as the engine gives them, at its strength, and none of the
+  /// level file's; at the anchored light level falling off as light does in the world.
   fn default() -> Self {
     Self {
       is_enabled: true,

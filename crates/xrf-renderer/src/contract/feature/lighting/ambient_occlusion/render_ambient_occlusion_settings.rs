@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_gtao_settings::RenderAmbientOcclusionGtaoSettings;
 use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
@@ -9,7 +10,7 @@ use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlus
 /// the baked hemisphere occlusion, as the engine's SSAO does. The radius and strength are every method's; each method
 /// has its own search.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderAmbientOcclusionSettings {
   pub is_enabled: bool,
@@ -17,8 +18,10 @@ pub struct RenderAmbientOcclusionSettings {
   /// as VBAO's search is.
   pub method: RenderAmbientOcclusionMethod,
   /// Metres around a point that what stands there occludes it from.
+  #[setting(min = 0.1, max = 8)]
   pub radius: f32,
   /// How dark the occlusion goes: one the method's own curve, zero none, two its square.
+  #[setting(min = 0, max = 2)]
   pub strength: f32,
   pub gtao: RenderAmbientOcclusionGtaoSettings,
   pub vbao: RenderAmbientOcclusionVbaoSettings,

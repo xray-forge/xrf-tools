@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 /// How fine the surroundings cube is, the level around the camera a reflection reads where it meets nothing on the
 /// screen: texels a side of each of its six faces. Finer is sharper far reflections for more memory and a larger face
 /// drawn and resolved each frame.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, Hash, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RenderReflectionProbe {
   /// 256 texels a side: 12 MB, a soft probe.

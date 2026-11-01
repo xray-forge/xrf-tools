@@ -1,14 +1,17 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 use crate::contract::feature::effects::render_glass_mode::RenderGlassMode;
 
 /// How glass is drawn, and the enhanced glass's strengths.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderGlassSettings {
   pub mode: RenderGlassMode,
   /// How far the enhanced glass bends what is behind it, one as designed; none draws it flat.
+  // The renderer's own: from flat to twice the designed bend.
+  #[setting(min = 0, max = 2)]
   pub refraction: f32,
 }
 

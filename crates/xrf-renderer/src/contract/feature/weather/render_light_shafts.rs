@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 /// Which shadowed lamps draw shafts: those the view's engine gives them, as the game does, or every one, as Monolith
 /// forces them on, so a level whose data asks for none can be seen with them.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RenderLightShafts {
   /// The engine's choice: under vanilla the lamps whose spawn or zone asks, under the extended engine every described

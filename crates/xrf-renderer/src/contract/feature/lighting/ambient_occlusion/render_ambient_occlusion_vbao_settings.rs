@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 /// Frames VBAO accumulates over at most.
 #[cfg_attr(feature = "typescript-bindings", xrf_ipc::constant)]
@@ -8,16 +9,22 @@ pub const RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION: u32 = 32;
 /// taken to be, how much light bounces back off a surface into its own creases, and over how many frames it is
 /// gathered.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderAmbientOcclusionVbaoSettings {
+  #[setting(min = 1, max = 4, recommended = [1, 2], wasted_above = 2)]
   pub slices: u32,
+  #[setting(min = 2, max = 16, recommended = [4, 12], wasted_above = 12)]
   pub steps: u32,
   /// Metres behind what the depth shows that it is taken to be solid: light passes behind anything thinner.
+  // The renderer's own: past two metres a thickness lets nothing through that a horizon would not.
+  #[setting(min = 0.01, max = 2)]
   pub thickness: f32,
   /// How much of the light a surface's colour bounces between the sides of its creases comes back, one all of it.
+  #[setting(min = 0, max = 1)]
   pub bounce: f32,
   /// Frames each pixel's occlusion is averaged over at most; one gathers none, its noise then holding still.
+  #[setting(min = 1, max = RENDER_MAX_AMBIENT_OCCLUSION_ACCUMULATION, recommended = [4, 16])]
   pub accumulation: u32,
 }
 

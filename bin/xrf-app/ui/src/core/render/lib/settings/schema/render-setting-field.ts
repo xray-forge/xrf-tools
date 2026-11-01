@@ -1,6 +1,9 @@
+import { RenderSettingField } from "@xrf/ipc/types/xrf-renderer";
 import { clamp } from "@xrf/math";
 
-/** What kind of value a setting takes. */
+import { TSettled } from "@/core/render/lib/settings/schema/render-settled";
+
+/** What kind of value a setting takes, as the renderer's contract names it (`RenderSettingField.kind`). */
 export enum ERenderSettingKind {
   FLAG = "flag",
   NUMBER = "number",
@@ -9,51 +12,32 @@ export enum ERenderSettingKind {
   WIDTHS = "widths",
 }
 
-/** A setting on or off. */
-export interface IRenderFlagField {
-  readonly kind: ERenderSettingKind.FLAG;
-}
+/** Any one setting's field, as the renderer's contract describes it beside the setting. */
+export type TRenderSettingField = TSettled<RenderSettingField>;
 
-/** A number the engine takes between bounds, clamped to them. */
-export interface IRenderNumberField {
-  readonly kind: ERenderSettingKind.NUMBER;
-  readonly min: number;
-  readonly max: number;
-  /** Whether it is whole, as an engine's `CCC_Integer` is. */
-  readonly isInteger?: boolean;
-  /** The range xrf recommends within the bounds, which a slider draws; none where it rates nothing. */
-  readonly recommended?: readonly [number, number];
-  /** Past it a higher value looks the same and only costs more, as measured; a slider draws that end red. */
-  readonly wastedAbove?: number;
-}
+/** A setting on or off. */
+export type IRenderFlagField = Extract<TRenderSettingField, { kind: "flag" }>;
+
+/** A number the engine takes between bounds, clamped to them, with the range xrf recommends and past which it wastes. */
+export type IRenderNumberField = Extract<TRenderSettingField, { kind: "number" }>;
 
 /** One of a set of values. */
-export interface IRenderChoiceField<T extends string> {
-  readonly kind: ERenderSettingKind.CHOICE;
+export type IRenderChoiceField<T extends string> = Omit<Extract<TRenderSettingField, { kind: "choice" }>, "values"> & {
   readonly values: ReadonlyArray<T>;
-}
+};
 
 /** A run of positive widths, each between bounds, as many as the most given. */
-export interface IRenderWidthsField {
-  readonly kind: ERenderSettingKind.WIDTHS;
-  /** The least each width may be. */
-  readonly min: number;
-  /** The most each width may be. */
-  readonly max: number;
-  /** The most widths the run holds. */
-  readonly most: number;
-}
-
-/** Any one setting's field. */
-export type TRenderSettingField =
-  IRenderFlagField | IRenderNumberField | IRenderChoiceField<string> | IRenderWidthsField;
+export type IRenderWidthsField = Extract<TRenderSettingField, { kind: "widths" }>;
 
 /**
  * @param node - A schema's node.
  * @returns Whether it is one setting's field, rather than a group of them.
  */
 export function isRenderSettingField(node: object): node is TRenderSettingField {
-  return "kind" in node && Object.values(ERenderSettingKind).includes((node as TRenderSettingField).kind);
+  return (
+    "kind" in node &&
+    Object.values(ERenderSettingKind).includes((node as TRenderSettingField).kind as ERenderSettingKind)
+  );
 }
 
 /**

@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 /// What colour the fog takes at the anchored light levels: the weather's own, the sky's as drawn along each view (as
 /// HDRP's fog in Sky Color mode and Godot's aerial perspective take theirs under an authored sky), or half of each.
 /// The authored levels and the engine's light keep the weather's.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RenderFogColour {
   /// The weather's fog colour, as the game draws it.

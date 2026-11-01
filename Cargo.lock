@@ -8472,6 +8472,7 @@ dependencies = [
  "xrf-math",
  "xrf-particles",
  "xrf-renderer-core",
+ "xrf-renderer-derive",
  "xrf-test-utils",
  "xrf-utils",
  "xrf-vfs",

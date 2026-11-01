@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 use crate::contract::feature::effects::render_glass_settings::RenderGlassSettings;
 use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
@@ -31,7 +32,7 @@ use crate::contract::feature::weather::water::render_water_settings::RenderWater
 
 /// Each of the renderer's features as a view sets it, a full set a view: one struct a feature, owned by its module.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderViewFeatures {
   pub exposure: RenderExposureSettings,
@@ -43,11 +44,14 @@ pub struct RenderViewFeatures {
   pub light_level: RenderLightLevel,
   /// How much of the weather's own sun colour the physical light levels keep in the sun's hue: nought the atmosphere's
   /// alone, one the weather's.
+  #[setting(min = 0, max = 1)]
   pub sun_tint: f32,
   /// What shows the physical light's frame on the display.
   pub display_transform: RenderDisplayTransform,
   /// How the physical light's frame is graded before its display transform.
   pub grading: RenderGradingSettings,
+  // The look's, not a setting.
+  #[setting(skip)]
   pub bloom: RenderBloomSettings,
   /// Which bloom is drawn, and the enhanced bloom's strengths.
   pub enhanced_bloom: RenderEnhancedBloomSettings,
@@ -70,6 +74,8 @@ pub struct RenderViewFeatures {
   pub glass: RenderGlassSettings,
   pub grass: RenderGrassSettings,
   /// How finely the sun's shafts step, and Monolith's floor under their density.
+  // The weather's, not a setting.
+  #[setting(skip)]
   pub sun_shafts: RenderSunShafts,
   /// How the light the air scatters is drawn: the engine's shafts, or a froxel volume.
   pub volumetric: RenderVolumetricSettings,
@@ -84,10 +90,16 @@ pub struct RenderViewFeatures {
   /// The camera the resolved frame is shown through: its motion blur, depth of field, vignette, grain and aberration.
   pub camera: RenderCameraSettings,
   /// What the finished frame is corrected by.
+  // The look's, not a setting.
+  #[setting(skip)]
   pub corrections: RenderImageCorrections,
   /// How the game's console scales the sun, the hemisphere and the ambient.
+  // The look's, not a setting.
+  #[setting(skip)]
   pub light_scales: RenderLightScales,
   /// How far the baked hemisphere darkens the ambient: zero for not at all.
+  // The view's own, not a setting.
+  #[setting(skip)]
   pub hemi_strength: f32,
   /// Whether what the last frame's depth hides is left undrawn.
   pub is_occlusion_culled: bool,

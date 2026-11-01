@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 use crate::contract::feature::tracing::render_reflection_mode::RenderReflectionMode;
 use crate::contract::feature::tracing::render_reflection_probe::RenderReflectionProbe;
@@ -8,32 +9,42 @@ use crate::contract::feature::tracing::render_trace_size::RenderTraceSize;
 /// surfaces), the enhanced water's own reflection of the screen (rivers and lakes), and the ray trace both take what the
 /// screen misses from.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderReflectionSettings {
+  // The renderer's own bounds: a surface's specular share of what it reflects is its material's by the intensity,
+  // one as a dielectric reflects, so four shows a wet road's trees four times as strong; past two hundred metres a ray
+  // leaves the frame long before its steps reach; the rain wets the ground for them out to the reach, a kilometre at
+  // most.
   /// The surfaces' reflections: the engine's sky cube alone, or traced over the screen.
   pub mode: RenderReflectionMode,
   /// What scales the specular's share of what a surface reflects, one as its material reflects.
+  #[setting(min = 0, max = 4)]
   pub intensity: f32,
   /// Metres a reflection ray goes at most, the surfaces' and the water's traces alike.
+  #[setting(min = 5, max = 200)]
   pub distance: f32,
   /// Metres out to which the rain wets the ground's gloss for the rays to trace, fading over the last fifth; the
   /// engine alone wets it over 25 m.
+  #[setting(min = 25, max = 1000, integer)]
   pub reach: f32,
   /// The size the surfaces' rays are traced at.
   pub trace_size: RenderTraceSize,
   /// Cells of the depth pyramid a surface's ray crosses at most, half of them for a rough one.
+  #[setting(min = 16, max = 128, recommended = [32, 128], wasted_above = 96)]
   pub steps: u32,
   /// How fine the surroundings cube a ray meeting nothing on the screen reads is.
   pub probe: RenderReflectionProbe,
   /// How far the sky's highlights are scaled at its white as light for the traced reflections, one as the engine's sky
   /// picture shows them.
+  #[setting(min = 0.5, max = 3)]
   pub sky_gain: f32,
   /// Whether the rays meet the grass: walked over the depth as the grass left it, rather than as it stood before the
   /// grass drew, so blades and tufts stand in the reflections as solid as they draw, and stop rays behind them.
   pub is_grass_reflected: bool,
   /// The roughness past which a surface is not traced and reflects the prefiltered sky alone, the traced reflection
   /// fading into it over the last third: 0.6 by default, 0.4 as Unreal's Lumen traces.
+  #[setting(min = 0.2, max = 1, recommended = [0.4, 0.7])]
   pub trace_roughness: f32,
   /// Whether a dry level's surfaces are traced where they show little of what they reflect, a dielectric's 4%; off,
   /// they reflect the prefiltered sky alone until the rain wets them, and only metal and glass-like surfaces trace.
@@ -45,17 +56,22 @@ pub struct RenderReflectionSettings {
   /// Whether the enhanced water reflects the screen; off, it reflects the sky cube alone and keeps the rest of its look.
   pub is_water_reflected: bool,
   /// Steps the water's reflection marches over the screen.
+  #[setting(min = 8, max = 32, recommended = [12, 24], wasted_above = 24)]
   pub water_steps: u32,
   /// Whether a ray the screen does not answer is traced against the level's static geometry by hardware ray query,
   /// its hit lit, in place of the sky: the surfaces' while they are drawn, the water's while it reflects; a device
   /// without ray queries reflects the sky.
   pub is_traced: bool,
   /// Frames a pixel the screen does not answer waits between its traced rays, the last answer held between.
+  #[setting(min = 1, max = 8, recommended = [1, 4])]
   pub trace_interval: u32,
 }
 
 impl Default for RenderReflectionSettings {
-  /// The engine's: the surfaces reflect the cube alone; the water reflects the screen; nothing is ray traced.
+  /// The engine's own: the surfaces reflect the cube alone and the water the screen. For when the surfaces are traced,
+  /// rays of 150 metres at half size over 96 cells at full strength over ground wet to 300 metres, budgeted, the sky's
+  /// highlights a quarter brighter as their light; the water marches 16 steps; a missed pixel is traced every other
+  /// frame.
   fn default() -> Self {
     Self {
       mode: RenderReflectionMode::Engine,

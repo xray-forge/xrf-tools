@@ -1,10 +1,11 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 use crate::contract::feature::scene::render_terrain_tiling::RenderTerrainTiling;
 
 /// How a level's terrain lays its detail textures over its ground.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderTerrainSettings {
   /// Whether the details repeat as the engines lay them or are varied by hex tiling, whose hexagons the rest shape.
@@ -12,17 +13,22 @@ pub struct RenderTerrainSettings {
   /// How small the varied tiling's hexagons are, its grid's rate: at two its corners stand about a seventh of a
   /// detail's repeat apart, small enough that the copies' shifts scatter a fine repeated feature rather than move whole
   /// rows of it.
+  #[setting(min = 0.25, max = 8)]
   pub scale: f32,
   /// How far each copy turns, from not at all to up to a half turn either way. The details carry light and shade
   /// painted in, which a turned copy turns with it: even a fifth mottled Zaton's crater with hexagons lit from
   /// different sides (2026-10-30), so none by default.
+  #[setting(min = 0, max = 1)]
   pub rotation: f32,
   /// How sharply the copies meet, the corners' nearness raised to it: lower blends them over wider seams, softer and
   /// blurrier; higher keeps each copy whole to a crisp seam. Seven is the hex tiling demo's.
+  #[setting(min = 1, max = 32)]
   pub sharpness: f32,
 }
 
 impl Default for RenderTerrainSettings {
+  /// The engines' own: the terrain's details repeating as a grid; and for when they are varied, hexagons about a
+  /// seventh of a detail's repeat across, upright, meeting as the hex tiling demo blends them.
   fn default() -> Self {
     Self {
       tiling: RenderTerrainTiling::Engine,

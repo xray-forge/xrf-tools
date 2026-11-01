@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 /// How a level's surfaces sample their textures: trilinear, or anisotropic at up to a number of samples along the
 /// direction a texture is seen squashed, which keeps ground and walls seen at grazing angles sharp.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RenderTextureFiltering {
   Trilinear,

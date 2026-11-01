@@ -28,9 +28,9 @@ export function toRenderLimits(field: IRenderNumberField, step: number): IRender
   return {
     max: field.max,
     min: field.min,
-    recommended: field.recommended,
+    recommended: field.recommended ?? undefined,
     referencePath: FIELD_PATHS.get(field),
     step,
-    wastedAbove: field.wastedAbove,
+    wastedAbove: field.wastedAbove ?? undefined,
   };
 }

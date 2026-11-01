@@ -1,16 +1,20 @@
 use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
 
 use crate::contract::feature::image::display::render_debanding_mode::RenderDebandingMode;
 
 /// Whether and how the sky's colour bands are smoothed.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, RenderSettingSchema, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RenderDebandingSettings {
   pub mode: RenderDebandingMode,
   /// Times a sky pixel is averaged with its neighbours, each time further out.
+  #[setting(min = 1, max = 4, wasted_above = 2)]
   pub passes: u32,
   /// Pixels around a sky pixel its neighbours are read from at most.
+  // The renderer's own: from a few pixels to well past the shipped 48, where neighbours stop sharing a band.
+  #[setting(min = 8, max = 128)]
   pub radius: f32,
 }
 

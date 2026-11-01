@@ -4,3 +4,4 @@ mod ray_reconstruction_preset;
 mod render_backend;
 mod render_scale;
 mod render_view_output;
+mod setting_schema;

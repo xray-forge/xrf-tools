@@ -7,8 +7,8 @@ use syn::Error;
 
 use crate::constant_attribute::ConstantAttribute;
 
-/// Exports a `const` item to the frontend's generated bindings, registering its name, doc comment and value; see the
-/// crate's README.
+/// Exports a `const` item, or a function of no arguments computing one, to the frontend's generated bindings,
+/// registering its name, doc comment and value; see the crate's README.
 #[proc_macro_attribute]
 pub fn constant(arguments: TokenStream, item: TokenStream) -> TokenStream {
   ConstantAttribute::expand(arguments.into(), item.into())
