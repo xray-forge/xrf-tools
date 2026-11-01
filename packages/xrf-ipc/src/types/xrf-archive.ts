@@ -69,7 +69,10 @@ export type ArchiveFileDescriptor = {
   crc: number;
   /** Whether the entry names a directory rather than a file with bytes. */
   isDirectory: boolean;
-  /** Entry name as authored, which the engine registers verbatim. */
+  /**
+   * Entry name within its project: the authored name behind the part of its volume's entry point the project's other
+   * volumes do not share. A set mounted at one directory, as nearly every set is, names each entry as authored.
+   */
   name: string;
   /** Byte offset of the payload inside its volume. */
   offset: number;
@@ -81,14 +84,23 @@ export type ArchiveFileDescriptor = {
   volume: number;
 };
 
-/** One volume set at a path the caller names, merged into a single name table. */
+/**
+ * One volume set at a path the caller names, merged into a single name table.
+ *
+ * Entries merge by where the engine mounts them, which is their volume's entry point and their authored name: two
+ * volumes holding `common.ltx` under different entry points hold two files, and both stay in the table, each named
+ * behind the part of its entry point the set does not share.
+ */
 export type ArchiveProject = {
   /**
    * Volumes in merge order: a later one wins the name table, so a caller searching them as separate sources must
    * search them in reverse to resolve an entry to the bytes this project's table names.
    */
   archives: Array<ArchiveDescriptor>;
-  /** Entries keyed by their authored name, which is the same allocation each descriptor carries as its `name`. */
+  /**
+   * Entries keyed by their name within the project, which is the same allocation each descriptor carries as its
+   * `name`.
+   */
   files: { [key in string]: ArchiveFileDescriptor };
   /** Entries a later volume overwrote in the merge, in the order they were displaced. */
   shadowed: Array<ArchiveFileDescriptor>;

@@ -44,23 +44,12 @@ export type JobProgress = {
   detail: string | null;
 };
 
-/**
- * One level of an active job's progress, as reported.
- *
- * A level counts whatever it is made of: a parent counts its finished children, a leaf counts its own units. That is
- * what lets a run reporting `["verify" 2/7, "textures" 400/40000]` and one reporting
- * `["unpack" 1/2, "write" 45000/100000]` use one mechanism instead of a phase concept and a unit concept.
- */
+/** One level of an active job's progress, as reported. */
 export type ProgressLevel = {
   /** Stable machine identity, declared as a constant beside the operation that enters it, and what a reader shows. */
   id: string;
   completed: number;
-  /**
-   * Absent where the work cannot be counted before it is done.
-   *
-   * Honest rather than convenient: a reader shows an indeterminate state and the active phase, which is true, instead
-   * of a percentage derived from a total nobody knows.
-   */
+  /** Absent where the work cannot be counted before it is done. */
   total: number | null;
   unit: ProgressUnit;
 };
