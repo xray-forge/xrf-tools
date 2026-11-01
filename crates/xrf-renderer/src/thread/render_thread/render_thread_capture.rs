@@ -11,6 +11,7 @@ use crate::capture::burst::burst_shot::BurstShot;
 use crate::capture::capture_job::CaptureJob;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
+use crate::frame::jitter_guard::JitterGuard;
 use crate::pass::overlay_draw::OverlayDraw;
 use crate::pass::overlay_parameters::OverlayParameters;
 use crate::pass::overlay_pass::OverlayPass;
@@ -240,8 +241,10 @@ impl RenderThread {
     );
     let depth: GraphTexture = output.targets.depth;
 
+    // The depth is taken as drawn for a tool.
     graph
       .add_encoder_pass("capture shot copy")
+      .tag(JitterGuard::READS_DEPTH)
       .texture(texture, GraphTextureAccess::CopySource)
       .texture(depth, GraphTextureAccess::CopySource)
       .keep()
@@ -287,8 +290,10 @@ impl RenderThread {
     );
     let material: GraphTexture = output.targets.material;
 
+    // The marks are taken as drawn for a tool.
     graph
       .add_encoder_pass("burst frame copy")
+      .tag(JitterGuard::READS_MATERIAL)
       .texture(texture, GraphTextureAccess::CopySource)
       .texture(material, GraphTextureAccess::CopySource)
       .keep()
@@ -339,7 +344,10 @@ impl RenderThread {
     let (width, height) = size;
     let texture: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(label, width, height, format));
     let (present, overlay): (&'a PresentPass, &'a OverlayPass) = (&gpu.present, &gpu.overlay);
-    let builder = graph.add_raster_pass(label).parameters(&parameters);
+    let builder = JitterGuard::PRESENT_READS
+      .into_iter()
+      .fold(graph.add_raster_pass(label), |builder, tag| builder.tag(tag))
+      .parameters(&parameters);
     let builder = match &overlay_parameters {
       Some(overlay_parameters) => builder.parameters(overlay_parameters),
       None => builder,

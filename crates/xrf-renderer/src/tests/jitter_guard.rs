@@ -11,6 +11,14 @@ fn pass(name: &str, owner: GraphOwner, reads: &[usize], writes: &[usize]) -> Gra
     render_pass: None,
     reads: reads.to_vec(),
     writes: writes.to_vec(),
+    tags: Vec::new(),
+  }
+}
+
+fn tagged(pass: GraphPassReport, tags: &[&'static str]) -> GraphPassReport {
+  GraphPassReport {
+    tags: tags.to_vec(),
+    ..pass
   }
 }
 
@@ -36,8 +44,8 @@ fn read(pass: &str, texture: &str) -> JitteredRead {
 }
 
 /// After a view's resolve, its own passes and the window's reading what it drew before the resolve are found; those
-/// reading the resolved image or a target drawn anew after it are not, nor an allowed read such as the exposure
-/// meter's, nor anything of a view that resolves nothing.
+/// reading the resolved image or a target drawn anew after it are not, nor a read the pass is tagged with such as the
+/// exposure meter's, nor anything of a view that resolves nothing.
 #[test]
 fn finds_the_reads_of_the_jittered_frame_after_a_resolve() {
   let (view, unresolved): (GraphOwner, GraphOwner) = (GraphOwner::Part(1), GraphOwner::Part(2));
@@ -46,13 +54,16 @@ fn finds_the_reads_of_the_jittered_frame_after_a_resolve() {
     vec![
       pass("opaque", view, &[], &[0, 2, 4]),
       pass("unresolved opaque", unresolved, &[], &[3]),
-      pass(JitterGuard::RESOLVES[0], view, &[0], &[1]),
+      tagged(pass("temporal", view, &[0], &[1]), &[JitterGuard::RESOLVES]),
       pass("sharpen", view, &[1], &[]),
       pass("bloom from the frame", view, &[0], &[]),
-      pass("exposure histogram", view, &[4], &[]),
+      tagged(pass("exposure", view, &[4], &[]), &[JitterGuard::READS_HIGH]),
       pass("streaks cleared", view, &[], &[2]),
       pass("streaks read", view, &[2], &[]),
-      pass("window", GraphOwner::Frame, &[0, 1, 3], &[]),
+      tagged(
+        pass("window", GraphOwner::Frame, &[0, 1, 3], &[]),
+        &JitterGuard::PRESENT_READS,
+      ),
     ],
   );
 
@@ -71,8 +82,14 @@ fn allows_the_present_the_raw_traced_targets_of_ray_reconstruction() {
     &["frame", "indirect traced", "reflections traced", "resolved"],
     vec![
       pass("opaque", view, &[], &[0, 1, 2]),
-      pass(JitterGuard::RESOLVES[2], view, &[0, 1, 2], &[3]),
-      pass("window", GraphOwner::Frame, &[0, 1, 2, 3], &[]),
+      tagged(
+        pass("dlss ray reconstruction", view, &[0, 1, 2], &[3]),
+        &[JitterGuard::RESOLVES],
+      ),
+      tagged(
+        pass("window", GraphOwner::Frame, &[0, 1, 2, 3], &[]),
+        &JitterGuard::PRESENT_READS,
+      ),
     ],
   );
 

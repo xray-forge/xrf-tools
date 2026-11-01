@@ -5,6 +5,7 @@ use xrf_renderer_core::{
 };
 
 use crate::contract::render_debug_view::RenderDebugView;
+use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::fsr_accumulate_parameters::FsrAccumulateParameters;
 use crate::pass::fsr_debug_view_parameters::FsrDebugViewParameters;
@@ -396,17 +397,21 @@ impl FsrPass {
     pipeline: &'a wgpu::RenderPipeline,
     parameters: P,
   ) {
+    let mut stage = graph.add_raster_pass(name).parameters(&parameters);
+
+    // The accumulation resolves the frame; the stages before it prepare what it accumulates.
+    if name == Self::ACCUMULATE {
+      stage = stage.tag(JitterGuard::RESOLVES);
+    }
+
     targets
       .iter()
-      .fold(
-        graph.add_raster_pass(name).parameters(&parameters),
-        |builder, target| {
-          builder.color(GraphColorAttachment::new(
-            *target,
-            wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-          ))
-        },
-      )
+      .fold(stage, |builder, target| {
+        builder.color(GraphColorAttachment::new(
+          *target,
+          wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
+        ))
+      })
       .record(move |context| {
         context.bind(&parameters);
 

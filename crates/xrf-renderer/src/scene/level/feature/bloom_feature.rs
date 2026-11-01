@@ -6,6 +6,7 @@ use xrf_renderer_core::{
 use crate::contract::render_bloom_settings::RenderBloomSettings;
 use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::bloom_filter::BloomFilter;
 use crate::pass::bloom_parameters::BloomParameters;
@@ -180,8 +181,12 @@ impl BloomFeature {
         lighting,
       };
 
+      // The build reads the fog's depth and the self-lit marks over the four drawn texels under each of its half-size
+      // texels; the other stages share its layout and read neither.
       graph
         .add_raster_pass(name)
+        .tag(JitterGuard::READS_DEPTH)
+        .tag(JitterGuard::READS_MATERIAL)
         .parameters(&parameters)
         .color(GraphColorAttachment::new(
           written,

@@ -13,6 +13,8 @@ pub(crate) struct GraphPass<'a> {
   pub buffers: Vec<(GraphBuffer, GraphBufferAccess)>,
   /// Kept whatever reads its outputs: it has an effect the graph cannot see, as a readback or a timer has.
   pub is_kept: bool,
+  /// What its declaration says of it for the graph report's readers; the graph reads none.
+  pub tags: Vec<&'static str>,
   pub work: GraphPassWork<'a>,
 }
 

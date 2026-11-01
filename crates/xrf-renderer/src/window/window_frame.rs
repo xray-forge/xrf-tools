@@ -5,6 +5,7 @@ use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, Gr
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_viewport_id::RenderViewportId;
 use crate::frame::frame_capture::{CaptureReply, FrameCapture};
+use crate::frame::jitter_guard::JitterGuard;
 use crate::pass::overlay_draw::OverlayDraw;
 use crate::pass::view_binding::ViewBinding;
 use crate::window::composed_overlays::ComposedOverlays;
@@ -66,8 +67,11 @@ impl WindowFrame {
     graph.begin_group("window");
 
     let window_texture: GraphTexture = bindings.import_view(graph, "window", target);
+    let window = JitterGuard::PRESENT_READS
+      .into_iter()
+      .fold(graph.add_raster_pass("window"), |builder, tag| builder.tag(tag));
     let declared = composed.iter().fold(
-      graph.add_raster_pass("window").color(GraphColorAttachment::new(
+      window.color(GraphColorAttachment::new(
         window_texture,
         wgpu::LoadOp::Clear(self.clear),
       )),

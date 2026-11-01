@@ -4,12 +4,13 @@ use crate::graph::graph_owner::GraphOwner;
 use crate::graph::record::{GraphPass, GraphPassWork};
 use crate::graph::resource::{GraphBuffer, GraphTexture};
 
-/// What every pass builder gathers before the pass is recorded: its name and the accesses it declares.
+/// What every pass builder gathers before the pass is recorded: its name, the accesses it declares and its tags.
 pub(crate) struct GraphPassDeclaration {
   pub name: &'static str,
   pub textures: Vec<(GraphTexture, GraphTextureAccess)>,
   pub buffers: Vec<(GraphBuffer, GraphBufferAccess)>,
   pub is_kept: bool,
+  pub tags: Vec<&'static str>,
 }
 
 impl GraphPassDeclaration {
@@ -19,6 +20,7 @@ impl GraphPassDeclaration {
       textures: Vec::new(),
       buffers: Vec::new(),
       is_kept: false,
+      tags: Vec::new(),
     }
   }
 
@@ -34,6 +36,7 @@ impl GraphPassDeclaration {
       textures: self.textures,
       buffers: self.buffers,
       is_kept: self.is_kept,
+      tags: self.tags,
       work,
     });
   }

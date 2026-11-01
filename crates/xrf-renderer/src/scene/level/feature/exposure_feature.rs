@@ -7,6 +7,7 @@ use crate::contract::render_exposure_settings::RenderExposureSettings;
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::gpu_readback::GpuReadback;
+use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::exposure_head::ExposureHead;
 use crate::pass::exposure_histogram_parameters::ExposureHistogramParameters;
@@ -349,8 +350,11 @@ impl ExposureFeature {
         lighting: lit.lighting,
       };
 
+      // The meter averages the whole frame into one exposure.
       graph
         .add_compute_pass("exposure histogram")
+        .tag(JitterGuard::READS_DEPTH)
+        .tag(JitterGuard::READS_SCENE)
         .parameters(&parameters)
         .record(move |context| passes.image.exposure.record_histogram(context, &parameters, size));
       graph
@@ -372,8 +376,10 @@ impl ExposureFeature {
       params: runtime.push_uniform(&self.params),
     };
 
+    // The meter averages the whole frame into one exposure.
     graph
       .add_compute_pass("exposure")
+      .tag(JitterGuard::READS_HIGH)
       .parameters(&parameters)
       .record(move |context| passes.image.exposure.record(context, &parameters));
   }

@@ -1,4 +1,4 @@
-use crate::graph::tests::fixtures::{color_texture, draw, present};
+use crate::graph::tests::fixtures::{clear, color_texture, draw, present};
 use crate::graph::{FrameGraph, GraphCompileOptions, GraphPassKind};
 
 #[test]
@@ -36,4 +36,23 @@ fn describes_the_passes_the_culled_and_the_transients() {
 
   assert!(json.contains("\"renderPassCount\":1"), "{json}");
   assert!(json.contains("\"kind\":\"encoder\""), "{json}");
+}
+
+#[test]
+fn carries_each_pass_tags_into_the_report() {
+  let mut graph: FrameGraph<'_> = FrameGraph::new();
+  let scene = graph.create_texture(color_texture("scene"));
+
+  graph
+    .add_raster_pass("tagged")
+    .color(clear(scene))
+    .tag("first")
+    .tag("second")
+    .record(|_| {});
+  present(&mut graph, scene);
+
+  let report = graph.compile(&GraphCompileOptions::default()).unwrap().describe();
+
+  assert_eq!(report.passes[0].tags, ["first", "second"]);
+  assert!(report.passes[1].tags.is_empty());
 }

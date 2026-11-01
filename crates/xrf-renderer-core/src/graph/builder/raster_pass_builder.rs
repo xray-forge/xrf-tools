@@ -62,6 +62,12 @@ impl<'g, 'a> RasterPassBuilder<'g, 'a> {
     self
   }
 
+  /// Tags the pass for whoever reads the graph's report, which carries each tag beside it; the graph reads none.
+  pub fn tag(mut self, tag: &'static str) -> Self {
+    self.declaration.tags.push(tag);
+    self
+  }
+
   /// Adds the pass, drawing with `record` inside the render pass the graph opens on its attachments.
   pub fn record(self, record: impl for<'c> FnOnce(&mut RasterContext<'c>) + Send + 'a) {
     self.declaration.declare(

@@ -46,7 +46,7 @@ impl CameraEffectsStage {
     self as usize
   }
 
-  /// The pass it is added as, every one starting with `camera` (`JitterGuard::ALLOWED`).
+  /// The pass it is added as.
   pub const fn get_pass(self) -> &'static str {
     match self {
       Self::Inputs => "camera inputs",

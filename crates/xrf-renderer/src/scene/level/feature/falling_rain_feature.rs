@@ -5,6 +5,7 @@ use glam::{Vec2, Vec3, Vec4};
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, StorageArray, StorageValue};
 
 use crate::contract::render_rain_settings::RenderRainSettings;
+use crate::frame::jitter_guard::JitterGuard;
 
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::host::render_rain::RenderRain;
@@ -275,8 +276,11 @@ impl FallingRainFeature {
     let look: RainLookParameters<'a> =
       self.get_look(GraphDeclaration::new(graph, bindings, runtime), record, refracted);
 
+    // The streaks read the depth behind them and the light about them bilinearly over four drawn texels.
     graph
       .add_raster_pass("rain")
+      .tag(JitterGuard::READS_DEPTH)
+      .tag(JitterGuard::READS_LIGHT)
       .color(GraphColorAttachment::new(layer, wgpu::LoadOp::Load))
       .parameters(&parameters)
       .parameters(&look)

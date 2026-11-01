@@ -6,6 +6,7 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::render_camera_settings::RenderCameraSettings;
 use crate::contract::render_debug_view::RenderDebugView;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::camera_effects_parameters::CameraEffectsParameters;
 use crate::pass::camera_effects_pass::CameraEffectsPass;
@@ -46,9 +47,9 @@ impl CameraFeature {
       }) {
         log::error!("Camera effects rejected, showing with the last ones: {error}");
       }
-    }
 
       self.frame = self.pipelines.as_ref().map(|_| (*settings, *view));
+    }
   }
 
   /// Adds the camera over the image the resolve shows (`chain`), answering the image it leaves, none where it draws
@@ -100,8 +101,13 @@ impl CameraFeature {
         motion_target: handles.motion,
       };
 
+      // The inputs stage reads the depth, the water's where it draws, and the motion over the drawn texels about each
+      // shown pixel, the nearest and the longest among them; the other stages share its layout and read neither.
       graph
         .add_raster_pass(stage.get_pass())
+        .tag(JitterGuard::READS_DEPTH)
+        .tag(JitterGuard::READS_DEPTH_WITH_WATER)
+        .tag(JitterGuard::READS_MOTION)
         .parameters(&parameters)
         .color(GraphColorAttachment::new(
           written,

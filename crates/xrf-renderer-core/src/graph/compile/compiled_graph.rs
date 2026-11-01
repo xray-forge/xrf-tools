@@ -88,6 +88,7 @@ impl<'a> CompiledGraph<'a> {
         render_pass: pass.render_pass,
         reads: pass.pass.list_texture_reads().map(GraphTexture::get_index).collect(),
         writes: pass.pass.list_texture_writes().map(GraphTexture::get_index).collect(),
+        tags: pass.pass.tags.clone(),
       })
       .collect();
     let textures = self.texture_slots.iter().enumerate().filter_map(|(index, slot)| {

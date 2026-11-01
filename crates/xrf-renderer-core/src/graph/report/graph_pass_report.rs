@@ -17,4 +17,6 @@ pub struct GraphPassReport {
   /// The textures it reads and those it writes, attachments among them, as places in the report's `textures`.
   pub reads: Vec<usize>,
   pub writes: Vec<usize>,
+  /// What its declaration tagged it with (`RasterPassBuilder::tag`).
+  pub tags: Vec<&'static str>,
 }

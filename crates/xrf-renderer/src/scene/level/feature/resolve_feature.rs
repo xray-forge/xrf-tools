@@ -14,6 +14,7 @@ use crate::contract::render_upscaling_settings::RenderUpscalingSettings;
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::frame::frame_texture::FrameTexture;
 use crate::frame::history::History;
+use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
@@ -915,6 +916,7 @@ impl ResolveFeature {
 
         graph
           .add_raster_pass(Self::TEMPORAL)
+          .tag(JitterGuard::RESOLVES)
           .parameters(&parameters)
           .color(GraphColorAttachment::new(
             target,
@@ -997,6 +999,7 @@ impl ResolveFeature {
 
     graph
       .add_encoder_pass(Self::DLSS)
+      .tag(JitterGuard::RESOLVES)
       .texture(frame, GraphTextureAccess::Sampled)
       .texture(handles.depth, GraphTextureAccess::Sampled)
       .texture(handles.motion, GraphTextureAccess::Sampled)
@@ -1046,6 +1049,7 @@ impl ResolveFeature {
 
     let mut pass = graph
       .add_encoder_pass(Self::RAY_RECONSTRUCTION)
+      .tag(JitterGuard::RESOLVES)
       .texture(frame, GraphTextureAccess::Sampled)
       .texture(handles.depth, GraphTextureAccess::Sampled)
       .texture(handles.motion, GraphTextureAccess::Sampled)

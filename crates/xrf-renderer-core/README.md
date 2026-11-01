@@ -62,6 +62,8 @@ assert_eq!(compiled.get_render_pass_count(), 1);
 - **What survives.** Walking back from the last pass, a pass lives when it is kept (`keep`, for an effect the graph
   cannot see, as a readback has), is a bridge, writes an import, or writes something a living pass after it reads. An
   attachment the pass loads rather than clears counts as a read.
+- **Tags.** `tag` adds a `&'static str` the report carries beside the pass (`GraphPassReport::tags`) for whoever reads
+  it, as a renderer's checks over the declared frame do; the graph itself reads none.
 - **What compile refuses.** A transient read before anything writes it; a raster pass with no attachment, with
   attachments of different sizes (measured at their mip), drawing into a mip or layer the texture lacks, or naming an
   attachment twice; and a raster pass that also accesses its own attachment, except to sample a read-only depth.
@@ -172,13 +174,13 @@ WGSL lays them out otherwise.
   imports resolved. `warm` makes a level's pipelines ahead of the frames that draw with them. `invalidate_module` drops
   a module hot reload changed and every pipeline made from it, `invalidate_all` drops everything, and each bumps
   `get_generation`, so a holder of a pipeline knows to ask again.
-- **Errors.** Every creation runs under a wgpu validation scope, so what wgpu refuses comes back as an error naming the
-  module or pipeline. A shader compile error names lines of the composed text; `ShaderLines` maps each back to the
 - **Holding pipelines.** A pass holds what it draws with in a `PipelineSet<T>` (one pipeline, an array, or a struct
   naming each), read through `Deref`, with the generation it was made in: `refresh` makes it again once the cache moved
   past that generation and answers a refusal, keeping the last made and not trying again before the cache changes;
   `PipelineSet::ask` makes one a pass asks for only once it draws. A pass drawing into targets of several formats holds
   a `PipelineMap<K, T>`, one set a key made on first use (`prepare`) and all made again together.
+- **Errors.** Every creation runs under a wgpu validation scope, so what wgpu refuses comes back as an error naming the
+  module or pipeline. A shader compile error names lines of the composed text; `ShaderLines` maps each back to the
   module and line it came from, using the markers a source writes with `ShaderLines::mark`.
 - **Trusted modules.** Modules are created with `create_shader_module_trusted`, with bounds checks and loop bounding
   off; division and ray queries stay guarded. This is sound only for the renderer's own WGSL: every loop must end,

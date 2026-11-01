@@ -1,9 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use xrf_renderer_core::{GraphOwner, GraphReport};
-
-use crate::pass::fsr_pass::FsrPass;
-use crate::scene::level::feature::resolve_feature::ResolveFeature;
+use xrf_renderer_core::{GraphOwner, GraphPassReport, GraphReport};
 
 /// A pass after a view's temporal resolve that reads a texture the view drew before it, by their labels.
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -15,7 +12,8 @@ pub struct JitteredRead {
 /// Watches each frame's graph for what undoes a temporal resolve: a pass after it reading per pixel what the view drew
 /// before it, at the drawn size and jittered a little differently each frame, which the resolve exists to average away.
 /// Such a read puts the jitter back on screen as shimmer, so whatever reads the frame after the resolve reads what it
-/// resolved; the few reads that average or only show the drawn targets are allowed by name (`ALLOWED`).
+/// resolved. It reads the passes' tags: the resolves carry `RESOLVES`, and a pass whose read of a drawn texture averages
+/// it or only shows it carries that texture's `READS_*` tag, beside the reason it gives.
 #[derive(Default)]
 pub struct JitterGuard {
   /// What was last warned of, warned again only once it changes.
@@ -23,53 +21,45 @@ pub struct JitterGuard {
 }
 
 impl JitterGuard {
-  /// The passes that resolve a view's frame: TAA, DLSS, its ray reconstruction, and FSR's accumulation, after its
+  /// The tag of a pass resolving a view's frame: TAA, DLSS, its ray reconstruction, or FSR's accumulation, after its
   /// stages preparing what it accumulates.
-  pub const RESOLVES: [&str; 4] = [
-    ResolveFeature::TEMPORAL,
-    ResolveFeature::DLSS,
-    ResolveFeature::RAY_RECONSTRUCTION,
-    FsrPass::ACCUMULATE,
-  ];
+  pub const RESOLVES: &'static str = "jitter resolves";
+  /// What the tag of a drawn texture a pass after the resolve reads on purpose starts with, the texture's label after.
+  const READS: &'static str = "jitter reads ";
+  pub const READS_ALBEDO: &'static str = "jitter reads albedo";
+  pub const READS_AMBIENT_OCCLUSION: &'static str = "jitter reads ambient occlusion";
+  pub const READS_DEPTH: &'static str = "jitter reads depth";
+  pub const READS_DEPTH_WITH_WATER: &'static str = "jitter reads depth with water";
+  pub const READS_HIGH: &'static str = "jitter reads high";
+  pub const READS_INDIRECT_LIGHT: &'static str = "jitter reads indirect light";
+  pub const READS_INDIRECT_TRACED: &'static str = "jitter reads indirect traced";
+  pub const READS_LIGHT: &'static str = "jitter reads light";
+  pub const READS_MATERIAL: &'static str = "jitter reads material";
+  pub const READS_MOTION: &'static str = "jitter reads motion";
+  pub const READS_NORMAL: &'static str = "jitter reads normal";
+  pub const READS_REFLECTION_HISTORY_FULL: &'static str = "jitter reads reflection history full";
+  pub const READS_REFLECTIONS_ENDS: &'static str = "jitter reads reflections ends";
+  pub const READS_REFLECTIONS_TRACED: &'static str = "jitter reads reflections traced";
+  pub const READS_SCENE: &'static str = "jitter reads scene";
 
-  /// The passes after the resolve allowed to read what was drawn before it, by the start of their names, with the
-  /// textures they read; each says why none of its reads shows the jitter.
-  const ALLOWED: [(&[&str], &[&str]); 6] = [
-    // The camera's inputs stage reads the depth, the water's where it draws, and the motion over the drawn texels about
-    // each shown pixel, the nearest and the longest among them; its other stages share its layout and read neither.
-    (&["camera "], &["depth", "depth with water", "motion"]),
-    // The build reads the fog's depth and the self-lit marks over the four drawn texels under each of its half-size
-    // texels; the other stages share its layout and read neither.
-    (&["enhanced bloom "], &["depth", "material"]),
-    // The selected glass marked for the present's outline: an editor overlay, no light.
-    (&["composited selection"], &["depth", "material"]),
-    // The streaks over the resolved image read the depth behind them and the light about them bilinearly over four
-    // drawn texels.
-    (&["rain"], &["depth", "light"]),
-    // The meter averages the whole frame into one exposure.
-    (&["exposure"], &["depth", "high", "scene"]),
-    // The present, the window's or a capture's: the debug views show the drawn targets as they are, the indirect light
-    // and the reflections traced raw for ray reconstruction among them; the sky's debanding reads the depth over four
-    // drawn texels; the drawn scene is bound beside the upscaled image the frame shows, read only by the luminance view.
-    // A capture's copy takes the depth or the marks for a tool.
-    (
-      &["window", "screenshot", "capture shot", "burst frame"],
-      &[
-        "albedo",
-        "ambient occlusion",
-        "depth",
-        "indirect light",
-        "indirect traced",
-        "light",
-        "material",
-        "motion",
-        "normal",
-        "reflection history full",
-        "reflections ends",
-        "reflections traced",
-        "scene",
-      ],
-    ),
+  /// What the present reads of the drawn targets, the window's or a capture's: the debug views show them as they are,
+  /// the indirect light and the reflections traced raw for ray reconstruction among them; the sky's debanding reads
+  /// the depth over four drawn texels; the drawn scene is bound beside the upscaled image the frame shows, read only by
+  /// the luminance view. A capture's copy takes the depth or the marks for a tool.
+  pub const PRESENT_READS: [&'static str; 13] = [
+    Self::READS_ALBEDO,
+    Self::READS_AMBIENT_OCCLUSION,
+    Self::READS_DEPTH,
+    Self::READS_INDIRECT_LIGHT,
+    Self::READS_INDIRECT_TRACED,
+    Self::READS_LIGHT,
+    Self::READS_MATERIAL,
+    Self::READS_MOTION,
+    Self::READS_NORMAL,
+    Self::READS_REFLECTION_HISTORY_FULL,
+    Self::READS_REFLECTIONS_ENDS,
+    Self::READS_REFLECTIONS_TRACED,
+    Self::READS_SCENE,
   ];
 
   /// Warns of the frame's reads after a resolve that are not allowed, once each time they change.
@@ -86,8 +76,8 @@ impl JitterGuard {
   }
 
   /// The reads after each view's resolve of what the view drew before it, its own passes' and the window's, but those
-  /// `ALLOWED`; sorted, each once. A texture a pass after the resolve draws anew, reading none of it, is no longer the
-  /// jittered one.
+  /// a pass's tags allow; sorted, each once. A texture a pass after the resolve draws anew, reading none of it, is no
+  /// longer the jittered one.
   pub fn list_jittered_reads(report: &GraphReport) -> Vec<JitteredRead> {
     // What each view drew before its resolve, and whether it has resolved.
     let mut views: HashMap<GraphOwner, (HashSet<usize>, bool)> = HashMap::new();
@@ -107,7 +97,7 @@ impl JitterGuard {
         let (drawn, is_resolved) = views.entry(pass.owner).or_default();
 
         if !*is_resolved {
-          if Self::RESOLVES.contains(&pass.name.as_str()) {
+          if pass.tags.contains(&Self::RESOLVES) {
             *is_resolved = true;
 
             for texture in &pass.writes {
@@ -131,7 +121,7 @@ impl JitterGuard {
         jittered
           .into_iter()
           .map(|texture| report.textures[texture].as_str())
-          .filter(|texture| !Self::is_allowed(&pass.name, texture))
+          .filter(|texture| !Self::is_allowed(pass, texture))
           .map(|texture| JitteredRead {
             pass: pass.name.clone(),
             texture: texture.to_string(),
@@ -144,9 +134,11 @@ impl JitterGuard {
     reads
   }
 
-  fn is_allowed(pass: &str, texture: &str) -> bool {
-    Self::ALLOWED
+  /// Whether `pass` is tagged as reading the drawn `texture` on purpose.
+  fn is_allowed(pass: &GraphPassReport, texture: &str) -> bool {
+    pass
+      .tags
       .iter()
-      .any(|(passes, textures)| passes.iter().any(|allowed| pass.starts_with(allowed)) && textures.contains(&texture))
+      .any(|tag| tag.strip_prefix(Self::READS) == Some(texture))
   }
 }

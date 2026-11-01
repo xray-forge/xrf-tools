@@ -6,6 +6,7 @@ use xrf_renderer_core::{
 use crate::camera::camera_frustum::CameraFrustum;
 use crate::camera::camera_view::CameraView;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::glass_copy_dispatch_parameters::GlassCopyDispatchParameters;
 use crate::pass::glass_copy_parameters::GlassCopyParameters;
@@ -337,8 +338,11 @@ impl CompositedFeature {
       ..
     } = *draw;
     let args: Vec<GraphBuffer> = draw.args.clone();
+    // The selected glass marked for the present's outline: an editor overlay, no light.
     let pass = graph
       .add_raster_pass("composited selection")
+      .tag(JitterGuard::READS_DEPTH)
+      .tag(JitterGuard::READS_MATERIAL)
       .color(GraphColorAttachment::new(handles.material, wgpu::LoadOp::Load))
       .depth(GraphDepthAttachment::new_read_only(handles.depth));
     let builder = args
