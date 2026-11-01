@@ -1,5 +1,7 @@
 import { ILevelLook } from "@/core/level/lib/look/level-look";
-import { RENDER_EXPOSURE_LIMITS } from "@/core/render/lib/features/tone/render-exposure-choices";
+import { IRenderSliderSetting } from "@/core/render/lib/features/render-setting";
+import { RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/features/tone/render-exposure-choices";
+import { TRenderExposureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { ELevelLookFieldOff } from "@/tools/level-viewer/lib/look/level-look-field-off";
 
 /** One number of the look a slider sets. */
@@ -10,40 +12,37 @@ export interface ILevelLookField {
   min: number;
   max: number;
   step: number;
+  /** How it reads, in hundredths where it says nothing. */
+  format?: (value: number) => string;
   read: (look: ILevelLook) => number;
   write: (look: ILevelLook, value: number) => ILevelLook;
 }
 
+/**
+ * @param key - One of the engine meter's values, a setting the settings declare too.
+ * @returns Its slider over the look, worded, bounded and read as the setting's declaration says.
+ */
+function toMeterField(key: "adaptation" | "amount" | "lowLuminance" | "middleGray"): ILevelLookField {
+  const setting = RENDER_EXPOSURE_SETTINGS[key] as IRenderSliderSetting<TRenderExposureSettings>;
+
+  return {
+    format: setting.format,
+    label: setting.label,
+    max: setting.limits.max,
+    min: setting.limits.min,
+    offUnder: ELevelLookFieldOff.PHYSICAL_LIGHT,
+    read: (look) => look.exposure[key],
+    step: setting.limits.step,
+    write: (look, value) => ({ ...look, exposure: { ...look.exposure, [key]: value } }),
+  };
+}
+
 /** The engine meter's sliders, which only the engine light model reads: the physical light meters by histogram. */
 export const LEVEL_LOOK_TONEMAP_FIELDS: ReadonlyArray<ILevelLookField> = [
-  {
-    label: "Strength",
-    offUnder: ELevelLookFieldOff.PHYSICAL_LIGHT,
-    ...RENDER_EXPOSURE_LIMITS.amount,
-    read: (look) => look.exposure.amount,
-    write: (look, amount) => ({ ...look, exposure: { ...look.exposure, amount } }),
-  },
-  {
-    label: "Middle gray",
-    offUnder: ELevelLookFieldOff.PHYSICAL_LIGHT,
-    ...RENDER_EXPOSURE_LIMITS.middleGray,
-    read: (look) => look.exposure.middleGray,
-    write: (look, middleGray) => ({ ...look, exposure: { ...look.exposure, middleGray } }),
-  },
-  {
-    label: "Luminance floor",
-    offUnder: ELevelLookFieldOff.PHYSICAL_LIGHT,
-    ...RENDER_EXPOSURE_LIMITS.lowLuminance,
-    read: (look) => look.exposure.lowLuminance,
-    write: (look, lowLuminance) => ({ ...look, exposure: { ...look.exposure, lowLuminance } }),
-  },
-  {
-    label: "Adaptation speed",
-    offUnder: ELevelLookFieldOff.PHYSICAL_LIGHT,
-    ...RENDER_EXPOSURE_LIMITS.adaptation,
-    read: (look) => look.exposure.adaptation,
-    write: (look, adaptation) => ({ ...look, exposure: { ...look.exposure, adaptation } }),
-  },
+  toMeterField("amount"),
+  toMeterField("middleGray"),
+  toMeterField("lowLuminance"),
+  toMeterField("adaptation"),
 ];
 
 /**

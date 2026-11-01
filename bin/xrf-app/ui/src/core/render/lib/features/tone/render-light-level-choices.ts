@@ -2,9 +2,6 @@ import { formatNumber } from "@xrf/format";
 import { ERenderLightLevel, RenderLightLevel } from "@xrf/ipc/types/xrf-renderer";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
-import { IRenderLimits, toRenderLimits } from "@/core/render/lib/features/render-limits";
-import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/schema/render-feature-schema";
-
 const RENDER_LIGHT_LEVEL_DESCRIPTIONS: Readonly<Record<RenderLightLevel, string>> = {
   [ERenderLightLevel.AUTHORED]:
     "The weathers' and the lamps' own light, balanced against each other as the game authors it.",
@@ -46,9 +43,6 @@ export function getRenderLightLevelOptions(
 export function toDrawnRenderLightLevel(level: RenderLightLevel, isDevAvailable: boolean): RenderLightLevel {
   return level !== ERenderLightLevel.AUTHORED && !isDevAvailable ? ERenderLightLevel.AUTHORED : level;
 }
-
-/** The sun tint slider's bounds and step. */
-export const RENDER_SUN_TINT_LIMITS: IRenderLimits = toRenderLimits(RENDER_FEATURE_SCHEMA.sunTint, 0.05);
 
 /** @returns A sun tint in hundredths. */
 export function formatSunTint(value: number): string {

@@ -1,5 +1,6 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
+import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ReactElement, useCallback } from "react";
 
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
@@ -23,6 +24,8 @@ export interface IRenderSettingEntryProps<G, K extends keyof G> extends BaseComp
   features: IRenderFeatureSettings;
   /** Whether it shows disabled whatever its rule says, where something outside the features turns it off. */
   isDisabled?: boolean;
+  /** The values a choice offers, where something outside the features narrows the declared ones, as dev mode does. */
+  options?: ReadonlyArray<IChoiceFormRowOption<string>>;
   /** Sets part of the group, the rest as it was. */
   onSet: (part: Partial<G>) => void;
 }
@@ -40,6 +43,7 @@ export function RenderSettingEntry<G, K extends keyof G>({
   group,
   features,
   isDisabled = false,
+  options,
   onSet,
 }: IRenderSettingEntryProps<G, K>): ReactElement {
   const setting = settings[name];
@@ -74,7 +78,7 @@ export function RenderSettingEntry<G, K extends keyof G>({
             id={id}
             className={className}
             label={label}
-            options={setting.options}
+            options={options ?? setting.options}
             value={value as string}
             isStacked={setting.isStacked}
             isDisabled={isOff}

@@ -15,6 +15,11 @@ import {
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { describeRenderSetting } from "@/core/render/lib/features/render-setting";
+import { RENDER_CULLING_SETTINGS, RENDER_LOD_SETTINGS } from "@/core/render/lib/features/world/render-culling-choices";
+
+/** What a section says of a culling the settings keep off, which this view cannot turn on. */
+const OFF_IN_SETTINGS: string = "Off in Settings, under Rendering";
 
 /**
  * What is spared drawing: static draws the depth hides, opaque pixels shaded more than once, and distant trees drawn as
@@ -56,9 +61,11 @@ export function LevelCullingAction({
       isActive={isOccluding || isPrepassed || isImpostors}
     >
       <EditorPopoverGroupSection
-        label={"Occlusion culling"}
+        label={RENDER_CULLING_SETTINGS.isOcclusionCulled.label}
         description={
-          isOcclusionAvailable ? "Culls what the depth hides before it draws" : "Off in Settings, under Rendering"
+          isOcclusionAvailable
+            ? describeRenderSetting(RENDER_CULLING_SETTINGS.isOcclusionCulled, settings, settings)
+            : OFF_IN_SETTINGS
         }
         isOn={isOccluding}
         isDisabled={!isOcclusionAvailable}
@@ -66,11 +73,11 @@ export function LevelCullingAction({
       />
 
       <EditorPopoverGroupSection
-        label={"Opaque depth pass"}
+        label={RENDER_CULLING_SETTINGS.isDepthPrepassed.label}
         description={
           isPrepassAvailable
-            ? "Draws the opaque depth first, so each pixel is shaded once"
-            : "Off in Settings, under Rendering"
+            ? describeRenderSetting(RENDER_CULLING_SETTINGS.isDepthPrepassed, settings, settings)
+            : OFF_IN_SETTINGS
         }
         isOn={isPrepassed}
         isDisabled={!isPrepassAvailable}
@@ -78,8 +85,12 @@ export function LevelCullingAction({
       />
 
       <EditorPopoverGroupSection
-        label={"Impostors"}
-        description={isImpostorsAvailable ? "Draws distant trees as impostors" : "Off in Settings, under Rendering"}
+        label={RENDER_LOD_SETTINGS.isImpostors.label}
+        description={
+          isImpostorsAvailable
+            ? describeRenderSetting(RENDER_LOD_SETTINGS.isImpostors, settings.lod, settings)
+            : OFF_IN_SETTINGS
+        }
         isOn={isImpostors}
         isDisabled={!isImpostorsAvailable}
         onToggle={() => viewService.toggleOption("isImpostors")}

@@ -1,6 +1,6 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
+import { ChoiceFormRow, IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { SliderFormRow } from "@xrf/ui/form/slider-row";
 import { ReactElement, useCallback } from "react";
 
@@ -23,6 +23,8 @@ export interface IRenderSettingRowProps<G, K extends keyof G> extends BaseCompon
   features: IRenderFeatureSettings;
   /** Whether it shows disabled whatever its rule says, where something outside the features turns it off. */
   isDisabled?: boolean;
+  /** The values a choice offers, where something outside the features narrows the declared ones, as dev mode does. */
+  options?: ReadonlyArray<IChoiceFormRowOption<string>>;
   /** Sets part of the group, the rest as it was. */
   onSet: (part: Partial<G>) => void;
 }
@@ -40,6 +42,7 @@ export function RenderSettingRow<G, K extends keyof G>({
   group,
   features,
   isDisabled = false,
+  options,
   onSet,
 }: IRenderSettingRowProps<G, K>): ReactElement {
   const setting = settings[name];
@@ -71,7 +74,7 @@ export function RenderSettingRow<G, K extends keyof G>({
           className={className}
           label={setting.label}
           description={setting.explain?.(value as never) ?? description}
-          options={setting.options}
+          options={options ?? setting.options}
           value={value as string}
           isDisabled={isOff}
           onChange={(chosen: string) => onChange(chosen as G[K])}

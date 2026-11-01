@@ -123,3 +123,12 @@ export type TRenderUpscalingSettings = TSettled<RenderUpscalingSettings>;
 export type TRenderVolumetricSettings = TSettled<RenderVolumetricSettings>;
 
 export type TRenderWaterSettings = TSettled<RenderWaterSettings>;
+
+/** What the frame is lit in and how it is shown: the light model, its levels and sun tint, its display and tonemap. */
+export type TRenderLightSettings = Pick<
+  IRenderFeatureSettings,
+  "displayTransform" | "lightLevel" | "lightModel" | "sunTint" | "tonemap"
+>;
+
+/** What the renderer leaves out of a frame because none of it would show. */
+export type TRenderCullingSettings = Pick<IRenderFeatureSettings, "isDepthPrepassed" | "isOcclusionCulled">;

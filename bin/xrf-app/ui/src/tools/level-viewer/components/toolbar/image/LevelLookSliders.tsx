@@ -57,7 +57,7 @@ export function LevelLookSliders({
           max={field.max}
           step={field.step}
           isDisabled={isDisabled || isOff(field)}
-          format={onFormat}
+          format={field.format ?? onFormat}
           onChange={(value: number) => onEdit(field.write(look, value))}
         />
       ))}

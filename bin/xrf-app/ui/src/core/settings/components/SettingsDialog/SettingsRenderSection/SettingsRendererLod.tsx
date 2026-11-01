@@ -1,74 +1,19 @@
 import { useInjection } from "@wirestate/react";
-import { formatNumber } from "@xrf/format";
-import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { SliderFormRow } from "@xrf/ui/form/slider-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
-import { TRenderLodSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
-import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/schema/render-feature-schema";
+import { RenderSettingRows } from "@/core/render/components/settings/RenderSettingRows";
+import { RENDER_LOD_SETTINGS } from "@/core/render/lib/features/world/render-culling-choices";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
-/** One threshold, and the console variable it is. */
-interface ILodThreshold {
-  key: Exclude<keyof TRenderLodSettings, "isImpostors">;
-  label: string;
-  description: string;
-  step: number;
-  digits: number;
-}
-
-/** In the order the engine's console lists them (`xrRender_console.cpp`); its ranges are the renderer's schema's. */
-const LOD_THRESHOLDS: ReadonlyArray<ILodThreshold> = [
-  {
-    description: "Scales every threshold below. Game setting: r__geometry_lod.",
-    digits: 2,
-    key: "geometryLod",
-    label: "Detail scale",
-    step: 0.05,
-  },
-  {
-    description: "Clusters smaller on screen draw as impostors. Game setting: r2_ssa_lod_a.",
-    digits: 0,
-    key: "ssaA",
-    label: "Impostor below",
-    step: 1,
-  },
-  {
-    description: "Clusters larger draw as trees; in between, both. Game setting: r2_ssa_lod_b.",
-    digits: 0,
-    key: "ssaB",
-    label: "Trees above",
-    step: 1,
-  },
-  {
-    description: "Clusters smaller are not drawn. Game setting: r__ssa_discard.",
-    digits: 1,
-    key: "ssaDiscard",
-    label: "Cull below",
-    step: 0.5,
-  },
-  {
-    description: "Progressive trees larger draw at full detail. Game setting: r__ssa_glod_start.",
-    digits: 0,
-    key: "ssaGlodStart",
-    label: "Full detail above",
-    step: 8,
-  },
-  {
-    description: "Progressive trees smaller draw at the lowest detail. Game setting: r__ssa_glod_end.",
-    digits: 0,
-    key: "ssaGlodEnd",
-    label: "Lowest detail below",
-    step: 1,
-  },
-];
+import { useRendererOverride } from "./use-renderer-override";
 
 /** When a clump of trees draws as its impostor, and a progressive tree at less than its whole detail. */
 export function SettingsRendererLod(): ReactElement {
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
-
-  const lod: TRenderLodSettings = renderSettingsService.rendererFeatures.lod;
+  const onSet = useRendererOverride("lod");
+  const features: IRenderFeatureSettings = renderSettingsService.rendererFeatures;
 
   return (
     <DetailSection
@@ -76,28 +21,13 @@ export function SettingsRendererLod(): ReactElement {
       description={"Engine thresholds by screen coverage. The level toolbar can offset impostor distance per view."}
     >
       <div className={"mt-4 flex flex-col gap-6"}>
-        <CheckboxFormRow
-          label={"Impostors"}
-          description={"Draws distant tree clusters as impostors. Off, every tree renders at full detail."}
-          isChecked={lod.isImpostors}
-          onChange={(isImpostors: boolean) => renderSettingsService.setRendererOverrides({ lod: { isImpostors } })}
+        <RenderSettingRows
+          settings={RENDER_LOD_SETTINGS}
+          names={["isImpostors", "geometryLod", "ssaA", "ssaB", "ssaDiscard", "ssaGlodStart", "ssaGlodEnd"]}
+          group={features.lod}
+          features={features}
+          onSet={onSet}
         />
-
-        {LOD_THRESHOLDS.map((threshold: ILodThreshold) => (
-          <SliderFormRow
-            key={threshold.key}
-            label={threshold.label}
-            description={threshold.description}
-            value={lod[threshold.key]}
-            min={RENDER_FEATURE_SCHEMA.lod[threshold.key].min}
-            max={RENDER_FEATURE_SCHEMA.lod[threshold.key].max}
-            step={threshold.step}
-            format={(value: number) => formatNumber(value, threshold.digits)}
-            onChange={(value: number) =>
-              renderSettingsService.setRendererOverrides({ lod: { [threshold.key]: value } })
-            }
-          />
-        ))}
       </div>
     </DetailSection>
   );

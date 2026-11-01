@@ -27,32 +27,29 @@ import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
 import { LevelLookService } from "@/core/level/services/level-look";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
+import { RenderSettingEntry } from "@/core/render/components/settings/RenderSettingEntry";
 import {
   explainRenderBloomMode,
   RENDER_BLOOM_MODE_OPTIONS,
   RENDER_ENHANCED_BLOOM_SETTINGS,
 } from "@/core/render/lib/features/tone/render-bloom-choices";
-import {
-  explainRenderDisplayTransform,
-  RENDER_DISPLAY_TRANSFORM_OPTIONS,
-} from "@/core/render/lib/features/tone/render-display-transform-choices";
-import { formatStops, RENDER_EXPOSURE_LIMITS } from "@/core/render/lib/features/tone/render-exposure-choices";
-import { formatGrading, RENDER_GRADING_LIMITS } from "@/core/render/lib/features/tone/render-grading-choices";
+import { explainRenderDisplayTransform } from "@/core/render/lib/features/tone/render-display-transform-choices";
+import { RENDER_EXPOSURE_SETTINGS } from "@/core/render/lib/features/tone/render-exposure-choices";
+import { RENDER_GRADING_SETTINGS } from "@/core/render/lib/features/tone/render-grading-choices";
 import {
   explainRenderLightLevel,
-  formatSunTint,
   getRenderLightLevelOptions,
-  RENDER_SUN_TINT_LIMITS,
 } from "@/core/render/lib/features/tone/render-light-level-choices";
 import {
   explainRenderLightModel,
-  RENDER_LIGHT_MODEL_OPTIONS,
+  RENDER_LIGHT_SETTINGS,
 } from "@/core/render/lib/features/tone/render-light-model-choices";
 import {
   TRenderEnhancedBloomSettings,
+  TRenderExposureSettings,
   TRenderGradingSettings,
+  TRenderLightSettings,
 } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { LevelLookSection } from "@/tools/level-viewer/components/toolbar/image/LevelLookSection";
@@ -159,33 +156,15 @@ export function LevelLookAction({
 
   const onEdit = useCallback((edited: ILevelLook): void => lookService.edit(edited), [lookService]);
 
-  const onLightModel = useCallback(
-    (lightModel: RenderLightModel): void => viewService.setFeatures({ ...features, lightModel }),
+  const onSetLight = useCallback(
+    (part: Partial<TRenderLightSettings>): void => viewService.setFeatures({ ...features, ...part }),
     [viewService, features]
   );
 
-  const onLightLevel = useCallback(
-    (lightLevel: RenderLightLevel): void => viewService.setFeatures({ ...features, lightLevel }),
-    [viewService, features]
-  );
-
-  const onSunTint = useCallback(
-    (sunTint: number): void => viewService.setFeatures({ ...features, sunTint }),
-    [viewService, features]
-  );
-
-  const onDisplayTransform = useCallback(
-    (displayTransform: RenderDisplayTransform): void => viewService.setFeatures({ ...features, displayTransform }),
-    [viewService, features]
-  );
-
-  const onAutoExposure = useCallback(
-    (isEnabled: boolean): void => lookService.edit({ ...look, exposure: { ...look.exposure, isEnabled } }),
-    [lookService, look]
-  );
-
-  const onCompensation = useCallback(
-    (compensation: number): void => lookService.edit({ ...look, exposure: { ...look.exposure, compensation } }),
+  // The look's own exposure, which its source presets, edited as the setting it is declares.
+  const onSetExposure = useCallback(
+    (part: Partial<TRenderExposureSettings>): void =>
+      lookService.edit({ ...look, exposure: { ...look.exposure, ...part } }),
     [lookService, look]
   );
 
@@ -193,10 +172,6 @@ export function LevelLookAction({
     (isEnabled: boolean): void => lookService.edit({ ...look, bloom: { ...look.bloom, isEnabled } }),
     [lookService, look]
   );
-
-  const onContrast = useCallback((contrast: number): void => setGrading({ contrast }), [setGrading]);
-
-  const onSaturation = useCallback((saturation: number): void => setGrading({ saturation }), [setGrading]);
 
   const onBloomMode = useCallback((mode: RenderBloomMode): void => setBloom({ mode }), [setBloom]);
 
@@ -224,30 +199,31 @@ export function LevelLookAction({
         </LevelLookSection>
 
         <LevelLookSection title={"Light"} note={explainRenderLightModel(lightModel)}>
-          <RenderValueChoice
-            label={"Model"}
-            options={RENDER_LIGHT_MODEL_OPTIONS}
-            value={lightModel}
-            onChange={onLightModel}
+          <RenderSettingEntry
+            settings={RENDER_LIGHT_SETTINGS}
+            name={"lightModel"}
+            group={drawn}
+            features={drawn}
+            onSet={onSetLight}
           />
 
-          <RenderValueChoice
-            label={"Levels"}
+          <RenderSettingEntry
+            settings={RENDER_LIGHT_SETTINGS}
+            name={"lightLevel"}
+            group={drawn}
+            features={drawn}
             options={getRenderLightLevelOptions(isDevLevelAvailable)}
-            value={lightLevel}
-            isDisabled={!isPhysical}
-            onChange={onLightLevel}
+            onSet={onSetLight}
           />
 
           {isPhysical ? <p className={"text-xs text-text-secondary"}>{explainRenderLightLevel(lightLevel)}</p> : null}
 
-          <RenderValueSlider
-            label={"Sun tint"}
-            value={drawn.sunTint}
-            {...RENDER_SUN_TINT_LIMITS}
-            isDisabled={!isPhysicalLevels}
-            format={formatSunTint}
-            onChange={onSunTint}
+          <RenderSettingEntry
+            settings={RENDER_LIGHT_SETTINGS}
+            name={"sunTint"}
+            group={drawn}
+            features={drawn}
+            onSet={onSetLight}
           />
 
           <LevelLookSliders
@@ -260,22 +236,12 @@ export function LevelLookAction({
         </LevelLookSection>
 
         <LevelLookSection title={"Exposure"}>
-          <CheckboxFormRow
-            label={"Auto exposure"}
-            description={
-              "Adapts the exposure to how bright the frame is; off, a fixed scale. Game setting: r2_tonemap."
-            }
-            isChecked={look.exposure.isEnabled}
-            onChange={onAutoExposure}
-          />
-
-          <RenderValueSlider
-            label={"Compensation"}
-            value={look.exposure.compensation}
-            {...RENDER_EXPOSURE_LIMITS.compensation}
-            isDisabled={!isPhysical}
-            format={formatStops}
-            onChange={onCompensation}
+          <RenderSettingEntries
+            settings={RENDER_EXPOSURE_SETTINGS}
+            names={["isEnabled", "compensation"]}
+            group={look.exposure}
+            features={drawn}
+            onSet={onSetExposure}
           />
 
           <LevelLookSliders
@@ -291,30 +257,20 @@ export function LevelLookAction({
           title={"Display"}
           note={isPhysical ? explainRenderDisplayTransform(displayTransform) : "Under the physical light only."}
         >
-          <RenderValueChoice
-            label={"Transform"}
-            options={RENDER_DISPLAY_TRANSFORM_OPTIONS}
-            value={displayTransform}
-            isDisabled={!isPhysical}
-            onChange={onDisplayTransform}
+          <RenderSettingEntry
+            settings={RENDER_LIGHT_SETTINGS}
+            name={"displayTransform"}
+            group={drawn}
+            features={drawn}
+            onSet={onSetLight}
           />
 
-          <RenderValueSlider
-            label={"Contrast"}
-            value={grading.contrast}
-            {...RENDER_GRADING_LIMITS.contrast}
-            isDisabled={!isPhysical}
-            format={formatGrading}
-            onChange={onContrast}
-          />
-
-          <RenderValueSlider
-            label={"Saturation"}
-            value={grading.saturation}
-            {...RENDER_GRADING_LIMITS.saturation}
-            isDisabled={!isPhysical}
-            format={formatGrading}
-            onChange={onSaturation}
+          <RenderSettingEntries
+            settings={RENDER_GRADING_SETTINGS}
+            names={["contrast", "saturation"]}
+            group={grading}
+            features={drawn}
+            onSet={setGrading}
           />
         </LevelLookSection>
 
