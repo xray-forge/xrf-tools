@@ -13,7 +13,7 @@ use xrf_visual::{HemiEstimator, VisualSphere, VisualTransform};
 
 use crate::level::{LevelSource, SelectedLevel};
 use crate::parts::{LevelCollisionPart, LevelSpawnPart};
-use crate::parts::{LevelSpawn, LevelSpawnObjectHemi, LevelSpawnVisual};
+use crate::parts::{LevelSpawn, LevelSpawnObjectHemi, NamedSpawnVisual};
 use crate::report::LevelReport;
 use crate::spawn::LevelSpawnCategory;
 
@@ -79,14 +79,14 @@ impl LevelHemiPart {
     current: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
     estimator: &HemiEstimator,
-    read: &[(&str, Arc<LevelSpawnVisual>)],
+    read: &[NamedSpawnVisual<'_>],
   ) -> Vec<LevelSpawnObjectHemi> {
     let Ok(spawn) = LevelSpawnPart::get(current, search) else {
       return Vec::new();
     };
     let spheres: HashMap<&str, &VisualSphere> = read
       .iter()
-      .map(|(name, visual)| (*name, &visual.package.description.declared_bounds.bounding_sphere))
+      .map(|NamedSpawnVisual { name, visual }| (*name, &visual.package.description.declared_bounds.bounding_sphere))
       .collect();
 
     Self::estimate_spawn(estimator, &spawn, &spheres)

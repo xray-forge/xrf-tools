@@ -24,8 +24,8 @@ use crate::level::SelectedLevel;
 use crate::objects::LevelObjectsDescription;
 use crate::parts::{
   LevelCollisionPart, LevelDetailsPart, LevelEnvironment, LevelEnvironmentPart, LevelGeometryPart, LevelHemiPart,
-  LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelSpawnVisual,
-  LevelSurfacesPart, LevelTextureReference, LevelTexturesPart, LevelWeatherPart, PackedLevelDetails, PackedLevelLights,
+  LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelSurfacesPart,
+  LevelTextureReference, LevelTexturesPart, LevelWeatherPart, NamedSpawnVisual, PackedLevelDetails, PackedLevelLights,
   PackedLevelParticles, SpawnVisualReader,
 };
 use crate::render::{LevelParticleCollider, LevelRenderParts};
@@ -306,11 +306,14 @@ impl WorldLevelSource for LevelRenderSource {
     let search: XraySearch = self.search()?;
     let mut failures: Vec<RenderLoadFailure> = Vec::new();
     // A visual that cannot be read is reported by the reader, and left out.
-    let read: Vec<(&str, Arc<LevelSpawnVisual>)> = SpawnVisualReader::with(level, &search, |visuals| {
+    let read: Vec<NamedSpawnVisual<'_>> = SpawnVisualReader::with(level, &search, |visuals| {
       names
         .iter()
         .filter_map(|name| match visuals.get(name) {
-          Ok(visual) => Some((name.as_str(), visual)),
+          Ok(visual) => Some(NamedSpawnVisual {
+            name: name.as_str(),
+            visual,
+          }),
           Err(error) => {
             failures.push(RenderLoadFailure {
               name: name.clone(),
@@ -329,13 +332,13 @@ impl WorldLevelSource for LevelRenderSource {
     self.textures.extend(
       read
         .iter()
-        .flat_map(|(_, visual)| visual.textures.iter().map(ResolvedTexture::from)),
+        .flat_map(|NamedSpawnVisual { visual, .. }| visual.textures.iter().map(ResolvedTexture::from)),
     );
 
     Ok(RenderSpawnModels {
       models: read
         .iter()
-        .map(|(name, visual)| RenderSpawnModel {
+        .map(|NamedSpawnVisual { name, visual }| RenderSpawnModel {
           name: (*name).to_owned(),
           package: VisualPoser::pose(&visual.package, visual.rest.as_deref()),
           surfaces: visual.surfaces.clone(),

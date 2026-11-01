@@ -10,6 +10,7 @@ mod level_spawn_visuals_part;
 mod level_start;
 mod level_start_origin;
 mod level_start_part;
+mod named_spawn_visual;
 mod spawn_visual_reader;
 
 pub(crate) use level_graph_part::LevelGraphPart;
@@ -24,4 +25,5 @@ pub(crate) use level_spawn_visuals_part::LevelSpawnVisualsPart;
 pub use level_start::LevelStart;
 pub use level_start_origin::LevelStartOrigin;
 pub(crate) use level_start_part::LevelStartPart;
+pub(crate) use named_spawn_visual::NamedSpawnVisual;
 pub use spawn_visual_reader::SpawnVisualReader;
