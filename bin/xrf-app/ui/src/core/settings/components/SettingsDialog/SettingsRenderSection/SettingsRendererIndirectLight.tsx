@@ -1,18 +1,18 @@
 import { useInjection } from "@wirestate/react";
-import { formatCount } from "@xrf/format";
 import { ERenderIndirectLightMode } from "@xrf/ipc/types/xrf-renderer";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { SliderFormRow } from "@xrf/ui/form/slider-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
-import { formatOcclusionRadius } from "@/core/render/lib/features/tracing/render-ambient-occlusion-choices";
+import { RenderSettingRows } from "@/core/render/components/settings/RenderSettingRows";
 import {
   explainRenderIndirectLightMode,
-  formatIndirectLightIntensity,
-  RENDER_INDIRECT_LIGHT_LIMITS,
+  RENDER_INDIRECT_LIGHT_SETTINGS,
 } from "@/core/render/lib/features/tracing/render-indirect-light-choices";
-import { TRenderIndirectLightSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import {
+  IRenderFeatureSettings,
+  TRenderIndirectLightSettings,
+} from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";
@@ -21,8 +21,8 @@ import { useRendererOverride } from "./use-renderer-override";
 export function SettingsRendererIndirectLight(): ReactElement {
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const indirectLight: TRenderIndirectLightSettings = renderSettingsService.rendererFeatures.indirectLight;
-  const isEnhanced: boolean = indirectLight.mode === ERenderIndirectLightMode.ENHANCED;
+  const features: IRenderFeatureSettings = renderSettingsService.rendererFeatures;
+  const indirectLight: TRenderIndirectLightSettings = features.indirectLight;
 
   const onSet = useRendererOverride("indirectLight");
 
@@ -30,42 +30,20 @@ export function SettingsRendererIndirectLight(): ReactElement {
     <DetailSection title={"Indirect light"} description={"Light the surfaces bounce onto each other."}>
       <div className={"mt-4 flex flex-col gap-6"}>
         <CheckboxFormRow
-          label={"Indirect light"}
+          label={RENDER_INDIRECT_LIGHT_SETTINGS.mode.label}
           description={explainRenderIndirectLightMode(indirectLight.mode)}
-          isChecked={isEnhanced}
+          isChecked={indirectLight.mode === ERenderIndirectLightMode.ENHANCED}
           onChange={(isOn: boolean) =>
             onSet({ mode: isOn ? ERenderIndirectLightMode.ENHANCED : ERenderIndirectLightMode.ENGINE })
           }
         />
 
-        <SliderFormRow
-          label={"Intensity"}
-          description={"How much of the bounced light is added: 1 is all of it."}
-          value={indirectLight.intensity}
-          {...RENDER_INDIRECT_LIGHT_LIMITS.intensity}
-          isDisabled={!isEnhanced}
-          format={formatIndirectLightIntensity}
-          onChange={(intensity: number) => onSet({ intensity })}
-        />
-
-        <SliderFormRow
-          label={"Bounce radius"}
-          description={"Metres around a point the bounced light is gathered from."}
-          value={indirectLight.radius}
-          {...RENDER_INDIRECT_LIGHT_LIMITS.radius}
-          isDisabled={!isEnhanced}
-          format={formatOcclusionRadius}
-          onChange={(radius: number) => onSet({ radius })}
-        />
-
-        <SliderFormRow
-          label={"Bounce steps"}
-          description={"Steps the search takes past the occlusion's radius out to the bounce radius."}
-          value={indirectLight.steps}
-          {...RENDER_INDIRECT_LIGHT_LIMITS.steps}
-          isDisabled={!isEnhanced}
-          format={formatCount}
-          onChange={(steps: number) => onSet({ steps })}
+        <RenderSettingRows
+          settings={RENDER_INDIRECT_LIGHT_SETTINGS}
+          names={["intensity", "radius", "steps"]}
+          group={indirectLight}
+          features={features}
+          onSet={onSet}
         />
       </div>
     </DetailSection>

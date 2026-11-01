@@ -1,9 +1,9 @@
 import { ERenderParallaxMode, RenderParallaxMode } from "@xrf/ipc/types/xrf-renderer";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { Button } from "@xrf/ui/material/button";
 import { ReactElement } from "react";
 
+import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
@@ -129,9 +129,7 @@ export function LevelParallaxSettings({
         onChange={(cavity: number) => set({ cavity })}
       />
 
-      <Button size={"small"} onClick={reset}>
-        Reset to the preset
-      </Button>
+      <LevelSettingsResetButton onReset={reset} />
     </div>
   );
 }

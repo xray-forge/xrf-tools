@@ -4,9 +4,9 @@ import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { GrassIcon } from "@xrf/ui/icons/grass";
-import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback } from "react";
 
+import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
@@ -169,9 +169,7 @@ export function LevelGrassAction({
         />
       ))}
 
-      <Button size={"small"} onClick={reset}>
-        Reset to the preset
-      </Button>
+      <LevelSettingsResetButton onReset={reset} />
     </EditorPopoverToggle>
   );
 }

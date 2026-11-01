@@ -98,7 +98,7 @@ describe("LevelFogAction", () => {
     expect(getByRole("slider", { name: "Density" })).toHaveAttribute("aria-valuetext", "+40%");
     expect(getByRole("slider", { name: "Scattering" })).toHaveAttribute("aria-valuetext", "0%");
 
-    await userEvent.click(getByRole("button", { name: "Reset to the preset" }));
+    await userEvent.click(getByRole("button", { name: "Back to the settings" }));
 
     expect(view.features.fog).toEqual({});
   });

@@ -1,29 +1,17 @@
-import { formatCount } from "@xrf/format";
-
 import {
   explainRenderDebandingMode,
-  formatDebandingPasses,
-  formatDebandingRadius,
-  RENDER_DEBANDING_LIMITS,
+  RENDER_DEBANDING_SETTINGS,
 } from "@/core/render/lib/features/image/render-debanding-choices";
 import {
   explainRenderVolumetricMode,
-  formatVolumetricDistance,
-  formatVolumetricStrength,
-  RENDER_VOLUMETRIC_LIMITS,
+  RENDER_VOLUMETRIC_SETTINGS,
 } from "@/core/render/lib/features/lighting/render-volumetric-choices";
-import { IRenderLimits } from "@/core/render/lib/features/render-limits";
-import { formatOcclusionRadius } from "@/core/render/lib/features/tracing/render-ambient-occlusion-choices";
+import { TRenderSettings } from "@/core/render/lib/features/render-setting";
 import {
   explainRenderIndirectLightMode,
-  formatIndirectLightIntensity,
-  RENDER_INDIRECT_LIGHT_LIMITS,
+  RENDER_INDIRECT_LIGHT_SETTINGS,
 } from "@/core/render/lib/features/tracing/render-indirect-light-choices";
-import {
-  explainRenderGlassMode,
-  formatGlassStrength,
-  RENDER_GLASS_LIMITS,
-} from "@/core/render/lib/features/world/render-glass-choices";
+import { explainRenderGlassMode, RENDER_GLASS_SETTINGS } from "@/core/render/lib/features/world/render-glass-choices";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /** The view overrides drawn either as the engine draws them or enhanced, whose every value tunes the enhanced. */
@@ -32,15 +20,7 @@ export type TLevelEnhancedFeatureKey = "debanding" | "glass" | "indirectLight" |
 /** How one of them is drawn: `engine` or `enhanced`. */
 export type TLevelEnhancedFeatureMode<K extends TLevelEnhancedFeatureKey> = IRenderFeatureSettings[K]["mode"];
 
-/** One of an enhanced feature's values, as a slider sets it. */
-export interface ILevelEnhancedFeatureSlider<K extends TLevelEnhancedFeatureKey> {
-  key: Exclude<keyof IRenderFeatureSettings[K], "mode">;
-  label: string;
-  limits: IRenderLimits;
-  format: (value: number) => string;
-}
-
-/** How a popover offers one of them. */
+/** How a popover offers one of them: a toggle for the enhanced mode over the values tuning it. */
 export interface ILevelEnhancedFeature<K extends TLevelEnhancedFeatureKey> {
   /** Names the toggle that draws it enhanced. */
   label: string;
@@ -48,7 +28,10 @@ export interface ILevelEnhancedFeature<K extends TLevelEnhancedFeatureKey> {
   subject: string;
   /** What a mode draws, said under the toggle. */
   explain: (mode: TLevelEnhancedFeatureMode<K>) => string;
-  sliders: ReadonlyArray<ILevelEnhancedFeatureSlider<K>>;
+  /** How each of its settings is set. */
+  settings: TRenderSettings<IRenderFeatureSettings[K]>;
+  /** The values tuning the enhanced, as the popover lists them. */
+  names: ReadonlyArray<Exclude<keyof IRenderFeatureSettings[K], "mode">>;
 }
 
 /** Each feature drawn as the engine does or enhanced, as its popover offers it. */
@@ -56,73 +39,29 @@ export const LEVEL_ENHANCED_FEATURES: { readonly [K in TLevelEnhancedFeatureKey]
   debanding: {
     explain: explainRenderDebandingMode,
     label: "Debanding",
-    sliders: [
-      {
-        format: formatDebandingPasses,
-        key: "passes",
-        label: "Debanding passes",
-        limits: RENDER_DEBANDING_LIMITS.passes,
-      },
-      {
-        format: formatDebandingRadius,
-        key: "radius",
-        label: "Debanding radius",
-        limits: RENDER_DEBANDING_LIMITS.radius,
-      },
-    ],
+    names: ["passes", "radius"],
+    settings: RENDER_DEBANDING_SETTINGS,
     subject: "debanding",
   },
   glass: {
     explain: explainRenderGlassMode,
     label: "Enhanced glass",
-    sliders: [
-      { format: formatGlassStrength, key: "refraction", label: "Refraction", limits: RENDER_GLASS_LIMITS.refraction },
-    ],
+    names: ["refraction"],
+    settings: RENDER_GLASS_SETTINGS,
     subject: "glass",
   },
   indirectLight: {
     explain: explainRenderIndirectLightMode,
     label: "Indirect light",
-    sliders: [
-      {
-        format: formatIndirectLightIntensity,
-        key: "intensity",
-        label: "Intensity",
-        limits: RENDER_INDIRECT_LIGHT_LIMITS.intensity,
-      },
-      {
-        format: formatOcclusionRadius,
-        key: "radius",
-        label: "Bounce radius",
-        limits: RENDER_INDIRECT_LIGHT_LIMITS.radius,
-      },
-      { format: formatCount, key: "steps", label: "Bounce steps", limits: RENDER_INDIRECT_LIGHT_LIMITS.steps },
-    ],
+    names: ["intensity", "radius", "steps"],
+    settings: RENDER_INDIRECT_LIGHT_SETTINGS,
     subject: "indirect light",
   },
   volumetric: {
     explain: explainRenderVolumetricMode,
     label: "Enhanced volumetric light",
-    sliders: [
-      {
-        format: formatVolumetricStrength,
-        key: "intensity",
-        label: "Intensity",
-        limits: RENDER_VOLUMETRIC_LIMITS.intensity,
-      },
-      {
-        format: formatVolumetricStrength,
-        key: "anisotropy",
-        label: "Anisotropy",
-        limits: RENDER_VOLUMETRIC_LIMITS.anisotropy,
-      },
-      {
-        format: formatVolumetricDistance,
-        key: "distance",
-        label: "Distance",
-        limits: RENDER_VOLUMETRIC_LIMITS.distance,
-      },
-    ],
+    names: ["intensity", "anisotropy", "distance"],
+    settings: RENDER_VOLUMETRIC_SETTINGS,
     subject: "volumetric light",
   },
 };

@@ -4,10 +4,10 @@ import { ERenderFoliageMode, RenderFoliageMode } from "@xrf/ipc/types/xrf-render
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { AirIcon } from "@xrf/ui/icons/air";
-import { Button } from "@xrf/ui/material/button";
 import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback } from "react";
 
+import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
@@ -160,9 +160,7 @@ export function LevelWindAction({
         />
       ))}
 
-      <Button size={"small"} aria-label={"Reset the foliage motion to the preset"} onClick={resetFoliage}>
-        Reset to the preset
-      </Button>
+      <LevelSettingsResetButton subject={"foliage motion"} onReset={resetFoliage} />
     </EditorPopoverToggle>
   );
 }

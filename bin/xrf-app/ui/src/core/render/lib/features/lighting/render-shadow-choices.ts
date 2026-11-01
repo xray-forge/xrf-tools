@@ -1,5 +1,4 @@
 import { formatNumber, formatPercent } from "@xrf/format";
-import { ERenderLightShadowFilter, RenderLightShadowFilter } from "@xrf/ipc/types/xrf-renderer";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
@@ -63,23 +62,3 @@ export function formatShadowSwayCascades(count: number): string {
 export function formatShadowSwayRate(rate: number): string {
   return `${formatNumber(rate, 0)} Hz`;
 }
-
-const RENDER_LIGHT_SHADOW_FILTER_NAMES: Readonly<Record<RenderLightShadowFilter, string>> = {
-  [ERenderLightShadowFilter.ENGINE]: "Engine",
-  [ERenderLightShadowFilter.SOFT]: "Soft",
-};
-
-/**
- * @param filter - How a light's shadow is filtered.
- * @returns Its name as the settings say it.
- */
-export function describeRenderLightShadowFilter(filter: RenderLightShadowFilter): string {
-  return RENDER_LIGHT_SHADOW_FILTER_NAMES[filter];
-}
-
-/** The filters a light's shadow is offered in, in the order they are offered. */
-export const RENDER_LIGHT_SHADOW_FILTER_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderLightShadowFilter>> =
-  Object.values(ERenderLightShadowFilter).map((value: RenderLightShadowFilter) => ({
-    label: describeRenderLightShadowFilter(value),
-    value,
-  }));

@@ -40,7 +40,7 @@ describe("LevelEnhancedFeatureSection", () => {
     // The Base preset's own reach, which the settings keep.
     expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "80 m");
 
-    await userEvent.click(getByRole("button", { name: "Reset the volumetric light to the preset" }));
+    await userEvent.click(getByRole("button", { name: "Set the volumetric light back to the settings" }));
 
     expect(view.features.volumetric).toEqual({});
     expect(getByRole("slider", { name: "Intensity" })).toBeDisabled();

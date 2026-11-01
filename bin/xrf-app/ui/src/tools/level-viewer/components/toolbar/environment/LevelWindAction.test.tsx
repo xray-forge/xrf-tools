@@ -58,7 +58,7 @@ describe("LevelWindAction", () => {
 
     await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Wind" }) });
     await findByRole("dialog", { name: "Wind" });
-    await userEvent.click(getByRole("button", { name: "Reset the foliage motion to the preset" }));
+    await userEvent.click(getByRole("button", { name: "Set the foliage motion back to the settings" }));
 
     expect(view.features.grass).toEqual({
       density: 0.5,

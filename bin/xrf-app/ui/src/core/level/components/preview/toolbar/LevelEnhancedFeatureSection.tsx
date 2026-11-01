@@ -1,18 +1,17 @@
 import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Button } from "@xrf/ui/material/button";
 import { ReactElement } from "react";
 
+import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import {
   ILevelEnhancedFeature,
-  ILevelEnhancedFeatureSlider,
   LEVEL_ENHANCED_FEATURES,
   TLevelEnhancedFeatureKey,
 } from "@/core/level/lib/features/level-enhanced-features";
 import { ILevelFeatureOptions, toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 export interface ILevelEnhancedFeatureSectionProps<K extends TLevelEnhancedFeatureKey> extends BaseComponentProps {
@@ -21,7 +20,8 @@ export interface ILevelEnhancedFeatureSectionProps<K extends TLevelEnhancedFeatu
 
 /**
  * A feature the view draws as the engine does or enhanced (`LEVEL_ENHANCED_FEATURES`): a toggle for the enhanced one
- * with what the mode drawn does, and the values tuning it, shown but disabled while the engine's is drawn.
+ * with what the mode drawn does, and the values tuning it as their declarations say, disabled while the engine's is
+ * drawn.
  */
 export function LevelEnhancedFeatureSection<K extends TLevelEnhancedFeatureKey>({
   "data-testid": dataTestId = "level-enhanced-feature-section",
@@ -29,10 +29,10 @@ export function LevelEnhancedFeatureSection<K extends TLevelEnhancedFeatureKey>(
   className,
   feature,
 }: ILevelEnhancedFeatureSectionProps<K>): ReactElement {
-  const { settings, features } = useLevelRenderFeatures();
+  const { settings, features, drawn } = useLevelRenderFeatures();
   const { set, reset } = useLevelFeatureOverride(feature);
 
-  const { label, subject, explain, sliders }: ILevelEnhancedFeature<K> = LEVEL_ENHANCED_FEATURES[feature];
+  const enhanced: ILevelEnhancedFeature<K> = LEVEL_ENHANCED_FEATURES[feature];
   const value: IRenderFeatureSettings[K] = toLevelModeFeature(feature, settings, features);
   // Every mode of these is the engine's or the enhanced, alike by name.
   const isEnhanced: boolean = value.mode === "enhanced";
@@ -42,26 +42,20 @@ export function LevelEnhancedFeatureSection<K extends TLevelEnhancedFeatureKey>(
       data-testid={dataTestId}
       id={id}
       className={className}
-      label={label}
-      description={explain(value.mode)}
+      label={enhanced.label}
+      description={enhanced.explain(value.mode)}
       isOn={isEnhanced}
       onToggle={() => set({ mode: isEnhanced ? "engine" : "enhanced" } as ILevelFeatureOptions[K])}
     >
-      {sliders.map((slider: ILevelEnhancedFeatureSlider<K>) => (
-        <RenderValueSlider
-          key={String(slider.key)}
-          label={slider.label}
-          value={value[slider.key] as number}
-          {...slider.limits}
-          isDisabled={!isEnhanced}
-          format={slider.format}
-          onChange={(it: number) => set({ [slider.key]: it } as ILevelFeatureOptions[K])}
-        />
-      ))}
+      <RenderSettingEntries
+        settings={enhanced.settings}
+        names={enhanced.names}
+        group={value}
+        features={drawn}
+        onSet={(part: Partial<IRenderFeatureSettings[K]>) => set(part as ILevelFeatureOptions[K])}
+      />
 
-      <Button size={"small"} aria-label={`Reset the ${subject} to the preset`} onClick={reset}>
-        Reset to the preset
-      </Button>
+      <LevelSettingsResetButton subject={enhanced.subject} onReset={reset} />
     </EditorPopoverGroupSection>
   );
 }

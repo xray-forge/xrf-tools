@@ -3,9 +3,9 @@ import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { TonalityIcon } from "@xrf/ui/icons/tonality";
-import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback } from "react";
 
+import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
@@ -196,9 +196,7 @@ export function LevelShadowAction({
         onChange={(lights: number) => onSetContact({ lights })}
       />
 
-      <Button size={"small"} onClick={reset}>
-        Reset to the preset
-      </Button>
+      <LevelSettingsResetButton onReset={reset} />
     </EditorPopoverToggle>
   );
 }

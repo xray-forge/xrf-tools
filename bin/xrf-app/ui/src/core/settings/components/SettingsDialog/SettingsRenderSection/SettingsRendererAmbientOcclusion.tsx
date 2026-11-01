@@ -1,17 +1,21 @@
 import { useInjection } from "@wirestate/react";
-import { formatCount } from "@xrf/format";
-import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { SliderFormRow } from "@xrf/ui/form/slider-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
+import { RenderSettingRows } from "@/core/render/components/settings/RenderSettingRows";
 import {
-  formatOcclusionRadius,
-  formatOcclusionStrength,
-  RENDER_AMBIENT_OCCLUSION_LIMITS,
-  RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS,
+  RENDER_AMBIENT_OCCLUSION_GTAO_SETTINGS,
+  RENDER_AMBIENT_OCCLUSION_RTAO_SETTINGS,
+  RENDER_AMBIENT_OCCLUSION_SETTINGS,
+  RENDER_AMBIENT_OCCLUSION_VBAO_SETTINGS,
 } from "@/core/render/lib/features/tracing/render-ambient-occlusion-choices";
-import { TRenderAmbientOcclusionSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import {
+  IRenderFeatureSettings,
+  TRenderAmbientOcclusionGtaoSettings,
+  TRenderAmbientOcclusionRtaoSettings,
+  TRenderAmbientOcclusionSettings,
+  TRenderAmbientOcclusionVbaoSettings,
+} from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";
@@ -20,7 +24,8 @@ import { useRendererOverride } from "./use-renderer-override";
 export function SettingsRendererAmbientOcclusion(): ReactElement {
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const occlusion: TRenderAmbientOcclusionSettings = renderSettingsService.rendererFeatures.ambientOcclusion;
+  const features: IRenderFeatureSettings = renderSettingsService.rendererFeatures;
+  const occlusion: TRenderAmbientOcclusionSettings = features.ambientOcclusion;
 
   const onSet = useRendererOverride("ambientOcclusion");
 
@@ -32,74 +37,36 @@ export function SettingsRendererAmbientOcclusion(): ReactElement {
       }
     >
       <div className={"mt-4 flex flex-col gap-6"}>
-        <CheckboxFormRow
-          label={"Ambient occlusion"}
-          description={"Off, only baked occlusion remains."}
-          isChecked={occlusion.isEnabled}
-          onChange={(isEnabled: boolean) => onSet({ isEnabled })}
+        <RenderSettingRows
+          settings={RENDER_AMBIENT_OCCLUSION_SETTINGS}
+          names={["isEnabled", "radius", "strength"]}
+          group={occlusion}
+          features={features}
+          onSet={onSet}
         />
 
-        <SliderFormRow
-          label={"Radius"}
-          description={"Occlusion radius in metres."}
-          value={occlusion.radius}
-          {...RENDER_AMBIENT_OCCLUSION_LIMITS.radius}
-          format={formatOcclusionRadius}
-          onChange={(radius: number) => onSet({ radius })}
+        <RenderSettingRows
+          settings={RENDER_AMBIENT_OCCLUSION_GTAO_SETTINGS}
+          names={["slices", "steps"]}
+          group={occlusion.gtao}
+          features={features}
+          onSet={(gtao: Partial<TRenderAmbientOcclusionGtaoSettings>) => onSet({ gtao })}
         />
 
-        <SliderFormRow
-          label={"Strength"}
-          description={"Occlusion intensity. 1 is each method's own curve."}
-          value={occlusion.strength}
-          {...RENDER_AMBIENT_OCCLUSION_LIMITS.strength}
-          format={formatOcclusionStrength}
-          onChange={(strength: number) => onSet({ strength })}
+        <RenderSettingRows
+          settings={RENDER_AMBIENT_OCCLUSION_VBAO_SETTINGS}
+          names={["slices", "steps"]}
+          group={occlusion.vbao}
+          features={features}
+          onSet={(vbao: Partial<TRenderAmbientOcclusionVbaoSettings>) => onSet({ vbao })}
         />
 
-        <SliderFormRow
-          label={"GTAO slices"}
-          description={"Directions GTAO searches about a pixel for its horizons."}
-          value={occlusion.gtao.slices}
-          {...RENDER_AMBIENT_OCCLUSION_LIMITS.gtaoSlices}
-          format={formatCount}
-          onChange={(slices: number) => onSet({ gtao: { ...occlusion.gtao, slices } })}
-        />
-
-        <SliderFormRow
-          label={"GTAO steps"}
-          description={"Steps each way along each of GTAO's slices."}
-          value={occlusion.gtao.steps}
-          {...RENDER_AMBIENT_OCCLUSION_LIMITS.gtaoSteps}
-          format={formatCount}
-          onChange={(steps: number) => onSet({ gtao: { ...occlusion.gtao, steps } })}
-        />
-
-        <SliderFormRow
-          label={"VBAO slices"}
-          description={"Directions VBAO searches about a pixel, its visibility bitmask's."}
-          value={occlusion.vbao.slices}
-          {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.slices}
-          format={formatCount}
-          onChange={(slices: number) => onSet({ vbao: { ...occlusion.vbao, slices } })}
-        />
-
-        <SliderFormRow
-          label={"VBAO steps"}
-          description={"Steps along each of VBAO's slices."}
-          value={occlusion.vbao.steps}
-          {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.steps}
-          format={formatCount}
-          onChange={(steps: number) => onSet({ vbao: { ...occlusion.vbao, steps } })}
-        />
-
-        <SliderFormRow
-          label={"RTAO rays"}
-          description={"Rays RTAO traces from each point a frame, on a GPU that traces rays."}
-          value={occlusion.rtao.rays}
-          {...RENDER_AMBIENT_OCCLUSION_LIMITS.rays}
-          format={formatCount}
-          onChange={(rays: number) => onSet({ rtao: { rays } })}
+        <RenderSettingRows
+          settings={RENDER_AMBIENT_OCCLUSION_RTAO_SETTINGS}
+          names={["rays"]}
+          group={occlusion.rtao}
+          features={features}
+          onSet={(rtao: Partial<TRenderAmbientOcclusionRtaoSettings>) => onSet({ rtao })}
         />
       </div>
     </DetailSection>

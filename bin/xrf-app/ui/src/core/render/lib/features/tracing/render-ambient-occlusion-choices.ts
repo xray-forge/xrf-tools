@@ -7,16 +7,14 @@ import {
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
+import { ERenderSettingControl, TRenderSettings } from "@/core/render/lib/features/render-setting";
+import {
+  TRenderAmbientOcclusionGtaoSettings,
+  TRenderAmbientOcclusionRtaoSettings,
+  TRenderAmbientOcclusionSettings,
+  TRenderAmbientOcclusionVbaoSettings,
+} from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/schema/render-feature-schema";
-
-/** The bounds each ambient occlusion value is offered between. */
-export const RENDER_AMBIENT_OCCLUSION_LIMITS = {
-  gtaoSlices: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.gtao.slices, 1),
-  gtaoSteps: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.gtao.steps, 1),
-  radius: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.radius, 0.1),
-  rays: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.rtao.rays, 1),
-  strength: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.strength, 0.1),
-} as const;
 
 const RENDER_AMBIENT_OCCLUSION_METHOD_NAMES: Readonly<Record<RenderAmbientOcclusionMethod, string>> = {
   [ERenderAmbientOcclusionMethod.GTAO]: "GTAO",
@@ -64,15 +62,6 @@ export const RENDER_AMBIENT_OCCLUSION_METHOD_UNTRACED_OPTIONS: ReadonlyArray<
   option.value === ERenderAmbientOcclusionMethod.RTAO ? { ...option, isDisabled: true } : option
 );
 
-/** The bounds each VBAO value is offered between. */
-export const RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS = {
-  accumulation: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.vbao.accumulation, 1),
-  bounce: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.vbao.bounce, 0.05),
-  slices: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.vbao.slices, 1),
-  steps: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.vbao.steps, 1),
-  thickness: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.vbao.thickness, 0.01),
-} as const;
-
 /** @returns How deep an occluder is taken to be, in metres. */
 export function formatOcclusionThickness(thickness: number): string {
   return `${formatNumber(thickness, 2)} m`;
@@ -114,3 +103,108 @@ export function describeRenderAmbientOcclusionSearch(
 
   return `${formatCount(search.slices)} × ${formatCount(search.steps)} steps`;
 }
+
+/**
+ * How each ambient occlusion setting is set, in the settings and the Ambient light popover alike. Which method's
+ * values apply turns on the method and on whether the GPU traces rays, which the popover tells its entries itself.
+ */
+export const RENDER_AMBIENT_OCCLUSION_SETTINGS: TRenderSettings<TRenderAmbientOcclusionSettings> = {
+  gtao: { control: ERenderSettingControl.CUSTOM, label: "GTAO" },
+  isEnabled: {
+    control: ERenderSettingControl.CHECKBOX,
+    description: "Off, only baked occlusion remains.",
+    label: "Ambient occlusion",
+  },
+  method: {
+    control: ERenderSettingControl.CHOICE,
+    explain: explainRenderAmbientOcclusionMethod,
+    label: "Method",
+    options: RENDER_AMBIENT_OCCLUSION_METHOD_OPTIONS,
+  },
+  radius: {
+    control: ERenderSettingControl.SLIDER,
+    description: "Occlusion radius in metres.",
+    format: formatOcclusionRadius,
+    label: "Radius",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.radius, 0.1),
+  },
+  rtao: { control: ERenderSettingControl.CUSTOM, label: "RTAO" },
+  strength: {
+    control: ERenderSettingControl.SLIDER,
+    description: "Occlusion intensity. 1 is each method's own curve.",
+    format: formatOcclusionStrength,
+    label: "Strength",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.strength, 0.1),
+  },
+  vbao: { control: ERenderSettingControl.CUSTOM, label: "VBAO" },
+};
+
+/** How each of GTAO's search values is set; the popover's one pair of search values names no method. */
+export const RENDER_AMBIENT_OCCLUSION_GTAO_SETTINGS: TRenderSettings<TRenderAmbientOcclusionGtaoSettings> = {
+  slices: {
+    control: ERenderSettingControl.SLIDER,
+    description: "Directions GTAO searches about a pixel for its horizons.",
+    entryLabel: "Slices",
+    format: formatCount,
+    label: "GTAO slices",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.gtao.slices, 1),
+  },
+  steps: {
+    control: ERenderSettingControl.SLIDER,
+    description: "Steps each way along each of GTAO's slices.",
+    entryLabel: "Steps",
+    format: formatCount,
+    label: "GTAO steps",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.gtao.steps, 1),
+  },
+};
+
+/** How each of VBAO's values is set: its search, and what it and RTAO gather over frames. */
+export const RENDER_AMBIENT_OCCLUSION_VBAO_SETTINGS: TRenderSettings<TRenderAmbientOcclusionVbaoSettings> = {
+  accumulation: {
+    control: ERenderSettingControl.SLIDER,
+    format: formatOcclusionAccumulation,
+    label: "Accumulation",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.vbao.accumulation, 1),
+  },
+  bounce: {
+    control: ERenderSettingControl.SLIDER,
+    format: formatOcclusionBounce,
+    label: "Bounce",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.vbao.bounce, 0.05),
+  },
+  slices: {
+    control: ERenderSettingControl.SLIDER,
+    description: "Directions VBAO searches about a pixel, its visibility bitmask's.",
+    entryLabel: "Slices",
+    format: formatCount,
+    label: "VBAO slices",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.vbao.slices, 1),
+  },
+  steps: {
+    control: ERenderSettingControl.SLIDER,
+    description: "Steps along each of VBAO's slices.",
+    entryLabel: "Steps",
+    format: formatCount,
+    label: "VBAO steps",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.vbao.steps, 1),
+  },
+  thickness: {
+    control: ERenderSettingControl.SLIDER,
+    format: formatOcclusionThickness,
+    label: "Thickness",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.vbao.thickness, 0.01),
+  },
+};
+
+/** How RTAO's rays are set. */
+export const RENDER_AMBIENT_OCCLUSION_RTAO_SETTINGS: TRenderSettings<TRenderAmbientOcclusionRtaoSettings> = {
+  rays: {
+    control: ERenderSettingControl.SLIDER,
+    description: "Rays RTAO traces from each point a frame, on a GPU that traces rays.",
+    entryLabel: "Rays",
+    format: formatCount,
+    label: "RTAO rays",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.ambientOcclusion.rtao.rays, 1),
+  },
+};

@@ -13,10 +13,8 @@ import { ReactElement } from "react";
 import { describeRenderAntialiasing } from "@/core/render/lib/features/image/render-antialiasing-choices";
 import { formatDebandingPasses } from "@/core/render/lib/features/image/render-debanding-choices";
 import { describeRenderScale } from "@/core/render/lib/features/image/render-upscaling-choices";
-import {
-  describeRenderLightShadowFilter,
-  formatShadowFilter,
-} from "@/core/render/lib/features/lighting/render-shadow-choices";
+import { describeRenderLightShadowFilter } from "@/core/render/lib/features/lighting/render-lights-choices";
+import { formatShadowFilter } from "@/core/render/lib/features/lighting/render-shadow-choices";
 import {
   describeRenderAmbientOcclusionMethod,
   describeRenderAmbientOcclusionSearch,

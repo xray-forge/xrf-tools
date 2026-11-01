@@ -104,7 +104,7 @@ describe("LevelImageQualityAction", () => {
 
     expect(rendered.view.features).toEqual({ ...before, antialiasing: ERenderAntialiasing.FXAA });
 
-    await userEvent.click(rendered.getByRole("button", { name: "Reset to the preset" }));
+    await userEvent.click(rendered.getByRole("button", { name: "Back to the settings" }));
 
     expect(rendered.view.features).toEqual(before);
   });

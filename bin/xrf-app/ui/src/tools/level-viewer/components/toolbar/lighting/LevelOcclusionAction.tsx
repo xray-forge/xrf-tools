@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { formatCount, formatPercent } from "@xrf/format";
+import { formatPercent } from "@xrf/format";
 import {
   ERenderAmbientOcclusionMethod,
   ERenderIndirectLightMode,
@@ -12,6 +12,7 @@ import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback } from "react";
 
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
+import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
@@ -20,19 +21,19 @@ import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
+import { RenderSettingEntry } from "@/core/render/components/settings/RenderSettingEntry";
 import {
   describeRenderAmbientOcclusionMethod,
   describeRenderAmbientOcclusionSearch,
   explainRenderAmbientOcclusionMethod,
-  formatOcclusionAccumulation,
-  formatOcclusionBounce,
   formatOcclusionRadius,
-  formatOcclusionStrength,
-  formatOcclusionThickness,
-  RENDER_AMBIENT_OCCLUSION_LIMITS,
+  RENDER_AMBIENT_OCCLUSION_GTAO_SETTINGS,
   RENDER_AMBIENT_OCCLUSION_METHOD_OPTIONS,
   RENDER_AMBIENT_OCCLUSION_METHOD_UNTRACED_OPTIONS,
-  RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS,
+  RENDER_AMBIENT_OCCLUSION_RTAO_SETTINGS,
+  RENDER_AMBIENT_OCCLUSION_SETTINGS,
+  RENDER_AMBIENT_OCCLUSION_VBAO_SETTINGS,
 } from "@/core/render/lib/features/tracing/render-ambient-occlusion-choices";
 import {
   TRenderAmbientOcclusionGtaoSettings,
@@ -54,7 +55,7 @@ export function LevelOcclusionAction({
 }: BaseComponentProps): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
-  const { settings, features } = useLevelRenderFeatures();
+  const { settings, features, drawn } = useLevelRenderFeatures();
   const { state, set, setNested, reset } = useLevelFeature("ambientOcclusion");
 
   const options: ILevelViewOptions = viewService.options;
@@ -115,7 +116,7 @@ export function LevelOcclusionAction({
         onToggle={() => viewService.toggleOption("isOccluded")}
       >
         <RenderValueChoice
-          label={"Method"}
+          label={RENDER_AMBIENT_OCCLUSION_SETTINGS.method.label}
           options={
             isTraceable ? RENDER_AMBIENT_OCCLUSION_METHOD_OPTIONS : RENDER_AMBIENT_OCCLUSION_METHOD_UNTRACED_OPTIONS
           }
@@ -130,101 +131,61 @@ export function LevelOcclusionAction({
         </p>
 
         {isGtao ? (
-          <>
-            <RenderValueSlider
-              label={"Slices"}
-              value={occlusion.gtao.slices}
-              {...RENDER_AMBIENT_OCCLUSION_LIMITS.gtaoSlices}
-              format={formatCount}
-              onChange={(slices: number) => onSetGtao({ slices })}
-            />
-
-            <RenderValueSlider
-              label={"Steps"}
-              value={occlusion.gtao.steps}
-              {...RENDER_AMBIENT_OCCLUSION_LIMITS.gtaoSteps}
-              format={formatCount}
-              onChange={(steps: number) => onSetGtao({ steps })}
-            />
-          </>
+          <RenderSettingEntries
+            settings={RENDER_AMBIENT_OCCLUSION_GTAO_SETTINGS}
+            names={["slices", "steps"]}
+            group={occlusion.gtao}
+            features={drawn}
+            onSet={onSetGtao}
+          />
         ) : (
           // VBAO's search, which RTAO traces in place of and falls back to on a GPU that traces no rays.
-          <>
-            <RenderValueSlider
-              label={"Slices"}
-              value={vbao.slices}
-              {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.slices}
-              isDisabled={!isVbaoSearched}
-              format={formatCount}
-              onChange={(slices: number) => onSetVbao({ slices })}
-            />
-
-            <RenderValueSlider
-              label={"Steps"}
-              value={vbao.steps}
-              {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.steps}
-              isDisabled={!isVbaoSearched}
-              format={formatCount}
-              onChange={(steps: number) => onSetVbao({ steps })}
-            />
-          </>
+          <RenderSettingEntries
+            settings={RENDER_AMBIENT_OCCLUSION_VBAO_SETTINGS}
+            names={["slices", "steps"]}
+            group={vbao}
+            features={drawn}
+            isDisabled={!isVbaoSearched}
+            onSet={onSetVbao}
+          />
         )}
 
-        <RenderValueSlider
-          label={"Rays"}
-          value={occlusion.rtao.rays}
-          {...RENDER_AMBIENT_OCCLUSION_LIMITS.rays}
+        <RenderSettingEntry
+          settings={RENDER_AMBIENT_OCCLUSION_RTAO_SETTINGS}
+          name={"rays"}
+          group={occlusion.rtao}
+          features={drawn}
           isDisabled={!isRtao || isUntraced}
-          format={formatCount}
-          onChange={(rays: number) => onSetRtao({ rays })}
+          onSet={onSetRtao}
         />
 
-        <RenderValueSlider
-          label={"Radius"}
-          value={occlusion.radius}
-          {...RENDER_AMBIENT_OCCLUSION_LIMITS.radius}
-          format={formatOcclusionRadius}
-          onChange={(radius: number) => set({ radius })}
+        <RenderSettingEntries
+          settings={RENDER_AMBIENT_OCCLUSION_SETTINGS}
+          names={["radius", "strength"]}
+          group={occlusion}
+          features={drawn}
+          onSet={set}
         />
 
-        <RenderValueSlider
-          label={"Strength"}
-          value={occlusion.strength}
-          {...RENDER_AMBIENT_OCCLUSION_LIMITS.strength}
-          format={formatOcclusionStrength}
-          onChange={(strength: number) => set({ strength })}
-        />
-
-        <RenderValueSlider
-          label={"Thickness"}
-          value={vbao.thickness}
-          {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.thickness}
+        <RenderSettingEntry
+          settings={RENDER_AMBIENT_OCCLUSION_VBAO_SETTINGS}
+          name={"thickness"}
+          group={vbao}
+          features={drawn}
           isDisabled={!isVbaoSearched}
-          format={formatOcclusionThickness}
-          onChange={(thickness: number) => onSetVbao({ thickness })}
+          onSet={onSetVbao}
         />
 
-        <RenderValueSlider
-          label={"Bounce"}
-          value={vbao.bounce}
-          {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.bounce}
+        <RenderSettingEntries
+          settings={RENDER_AMBIENT_OCCLUSION_VBAO_SETTINGS}
+          names={["bounce", "accumulation"]}
+          group={vbao}
+          features={drawn}
           isDisabled={!isGathered}
-          format={formatOcclusionBounce}
-          onChange={(bounce: number) => onSetVbao({ bounce })}
+          onSet={onSetVbao}
         />
 
-        <RenderValueSlider
-          label={"Accumulation"}
-          value={vbao.accumulation}
-          {...RENDER_AMBIENT_OCCLUSION_VBAO_LIMITS.accumulation}
-          isDisabled={!isGathered}
-          format={formatOcclusionAccumulation}
-          onChange={(accumulation: number) => onSetVbao({ accumulation })}
-        />
-
-        <Button size={"small"} aria-label={"Reset the ambient occlusion to the preset"} onClick={reset}>
-          Reset to the preset
-        </Button>
+        <LevelSettingsResetButton subject={"ambient occlusion"} onReset={reset} />
       </EditorPopoverGroupSection>
 
       <LevelEnhancedFeatureSection feature={"indirectLight"} />

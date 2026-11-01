@@ -3,12 +3,9 @@ import { ERenderGlassMode, RenderGlassMode } from "@xrf/ipc/types/xrf-renderer";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
+import { ERenderSettingControl, TRenderSettings } from "@/core/render/lib/features/render-setting";
+import { TRenderGlassSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/schema/render-feature-schema";
-
-/** The bounds the enhanced glass's refraction is offered between. */
-export const RENDER_GLASS_LIMITS = {
-  refraction: toRenderLimits(RENDER_FEATURE_SCHEMA.glass.refraction, 0.05),
-} as const;
 
 const RENDER_GLASS_MODE_DESCRIPTIONS: Readonly<Record<RenderGlassMode, string>> = {
   [ERenderGlassMode.ENGINE]: "Blends glass over what is behind it, mixed toward the sky's cube, as the game does.",
@@ -34,3 +31,21 @@ export const RENDER_GLASS_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<Rende
 export function formatGlassStrength(strength: number): string {
   return formatNumber(strength, 2);
 }
+
+/** How each glass setting is set, in the settings and the Reflections popover alike. */
+export const RENDER_GLASS_SETTINGS: TRenderSettings<TRenderGlassSettings> = {
+  mode: {
+    control: ERenderSettingControl.CHOICE,
+    explain: explainRenderGlassMode,
+    label: "Mode",
+    options: RENDER_GLASS_MODE_OPTIONS,
+  },
+  refraction: {
+    control: ERenderSettingControl.SLIDER,
+    description: "How far the glass bends what is behind it: 1 as designed, 0 flat.",
+    format: formatGlassStrength,
+    isInert: (glass: TRenderGlassSettings) => glass.mode === ERenderGlassMode.ENGINE,
+    label: "Refraction",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.glass.refraction, 0.05),
+  },
+};

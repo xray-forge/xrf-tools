@@ -77,21 +77,21 @@ describe("LevelRainAction", () => {
     await userEvent.click(getByRole("button", { name: "Rain" }));
     await findByRole("dialog", { name: "Rain" });
 
-    expect(getByRole("slider", { name: "Puddles" })).toBeDisabled();
+    expect(getByRole("slider", { name: "Amount" })).toBeDisabled();
 
     await userEvent.click(getByRole("checkbox", { name: "Puddles" }));
 
     expect(view.features.rain).toEqual({ mode: ERenderRainMode.ENHANCED });
     expect(getByRole("checkbox", { name: "Puddles" })).toBeChecked();
-    expect(getByRole("slider", { name: "Puddles" })).toBeEnabled();
-    expect(getByRole("slider", { name: "Puddles" })).toHaveAttribute("aria-valuetext", "50%");
+    expect(getByRole("slider", { name: "Amount" })).toBeEnabled();
+    expect(getByRole("slider", { name: "Amount" })).toHaveAttribute("aria-valuetext", "50%");
     expect(getByRole("slider", { name: "Reflectivity" })).toHaveAttribute("aria-valuetext", "40%");
     expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "300 m");
     expect(getByRole("button", { hidden: true, name: "Rain" })).toHaveAccessibleDescription(
       "No rain, no thunder, puddles at 50% of the sites"
     );
 
-    await userEvent.click(getByRole("button", { name: "Reset to the preset" }));
+    await userEvent.click(getByRole("button", { name: "Back to the settings" }));
 
     expect(view.features.rain).toEqual({});
   });

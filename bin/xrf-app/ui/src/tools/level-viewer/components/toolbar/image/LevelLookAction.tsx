@@ -16,10 +16,10 @@ import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ChoiceListFormRow } from "@xrf/ui/form/choice-list-row";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ExposureIcon } from "@xrf/ui/icons/exposure";
-import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback } from "react";
 
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
+import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { ILevelLook } from "@/core/level/lib/look/level-look";
@@ -365,9 +365,7 @@ export function LevelLookAction({
             onEdit={onEdit}
           />
 
-          <Button size={"small"} aria-label={"Reset the bloom to the preset"} onClick={resetBloom}>
-            Reset to the preset
-          </Button>
+          <LevelSettingsResetButton subject={"bloom"} onReset={resetBloom} />
         </LevelLookSection>
 
         <LevelLookSection

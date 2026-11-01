@@ -6,9 +6,9 @@ import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/po
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { WaterDropIcon } from "@xrf/ui/icons/water-drop";
-import { Button } from "@xrf/ui/material/button";
 import { ReactElement } from "react";
 
+import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
@@ -19,14 +19,12 @@ import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weath
 import { LEVEL_MANUAL_WEATHER_RAIN_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import { formatGrassRadius } from "@/core/render/lib/features/world/render-grass-choices";
+import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
 import {
   explainRenderRainDropsMode,
   explainRenderRainMode,
-  formatRainPace,
   formatRainShare,
-  RENDER_RAIN_LIMITS,
+  RENDER_RAIN_SETTINGS,
 } from "@/core/render/lib/features/world/render-rain-choices";
 import { TRenderRainSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { LevelWeatherCollectionSelect } from "@/tools/level-viewer/components/weather/LevelWeatherCollectionSelect";
@@ -46,7 +44,7 @@ export function LevelRainAction({
 }: BaseComponentProps): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
-  const { settings, features } = useLevelRenderFeatures();
+  const { settings, features, drawn } = useLevelRenderFeatures();
   const { set: setPuddles, reset: resetPuddles } = useLevelFeatureOverride("rain");
 
   const { isRainy, isThundering } = viewService.options;
@@ -87,7 +85,7 @@ export function LevelRainAction({
         <LevelManualWeatherVectorField field={"rainColor"} isColor manual={manual} onEdit={weatherService.editManual} />
 
         <CheckboxFormRow
-          label={"Refracting drops"}
+          label={RENDER_RAIN_SETTINGS.drops.label}
           description={explainRenderRainDropsMode(puddles.drops)}
           isChecked={isRefracted}
           onChange={(isOn: boolean) =>
@@ -95,48 +93,12 @@ export function LevelRainAction({
           }
         />
 
-        <RenderValueSlider
-          label={"Drop area"}
-          value={puddles.dropSquare}
-          {...RENDER_RAIN_LIMITS.dropSquare}
-          isDisabled={!isRefracted}
-          format={formatGrassRadius}
-          onChange={(dropSquare: number) => setPuddles({ dropSquare })}
-        />
-
-        <RenderValueSlider
-          label={"Ring distance"}
-          value={puddles.ringDistance}
-          {...RENDER_RAIN_LIMITS.ringDistance}
-          isDisabled={!isRefracted}
-          format={formatGrassRadius}
-          onChange={(ringDistance: number) => setPuddles({ ringDistance })}
-        />
-
-        <RenderValueSlider
-          label={"Ring strength"}
-          value={puddles.ringStrength}
-          {...RENDER_RAIN_LIMITS.ringStrength}
-          isDisabled={!isRefracted}
-          format={formatRainShare}
-          onChange={(ringStrength: number) => setPuddles({ ringStrength })}
-        />
-
-        <RenderValueSlider
-          label={"Ring size"}
-          value={puddles.ringSize}
-          {...RENDER_RAIN_LIMITS.ringSize}
-          isDisabled={!isRefracted}
-          format={formatRainShare}
-          onChange={(ringSize: number) => setPuddles({ ringSize })}
-        />
-
-        <RenderValueSlider
-          label={"Wetting pace"}
-          value={puddles.pace}
-          {...RENDER_RAIN_LIMITS.pace}
-          format={formatRainPace}
-          onChange={(pace: number) => setPuddles({ pace })}
+        <RenderSettingEntries
+          settings={RENDER_RAIN_SETTINGS}
+          names={["dropSquare", "ringDistance", "ringStrength", "ringSize", "pace"]}
+          group={puddles}
+          features={drawn}
+          onSet={setPuddles}
         />
       </EditorPopoverGroupSection>
 
@@ -174,53 +136,15 @@ export function LevelRainAction({
         isOn={isPuddled}
         onToggle={() => setPuddles({ mode: isPuddled ? ERenderRainMode.ENGINE : ERenderRainMode.ENHANCED })}
       >
-        <RenderValueSlider
-          label={"Puddles"}
-          value={puddles.puddles}
-          {...RENDER_RAIN_LIMITS.puddles}
-          isDisabled={!isPuddled}
-          format={formatRainShare}
-          onChange={(share: number) => setPuddles({ puddles: share })}
+        <RenderSettingEntries
+          settings={RENDER_RAIN_SETTINGS}
+          names={["puddles", "reflectivity", "distance", "ripples", "isReliefFlooded"]}
+          group={puddles}
+          features={drawn}
+          onSet={setPuddles}
         />
 
-        <RenderValueSlider
-          label={"Reflectivity"}
-          value={puddles.reflectivity}
-          {...RENDER_RAIN_LIMITS.reflectivity}
-          isDisabled={!isPuddled}
-          format={formatRainShare}
-          onChange={(reflectivity: number) => setPuddles({ reflectivity })}
-        />
-
-        <RenderValueSlider
-          label={"Distance"}
-          value={puddles.distance}
-          {...RENDER_RAIN_LIMITS.distance}
-          isDisabled={!isPuddled}
-          format={formatGrassRadius}
-          onChange={(distance: number) => setPuddles({ distance })}
-        />
-
-        <RenderValueSlider
-          label={"Ripples"}
-          value={puddles.ripples}
-          {...RENDER_RAIN_LIMITS.ripples}
-          isDisabled={!isPuddled}
-          format={formatRainShare}
-          onChange={(ripples: number) => setPuddles({ ripples })}
-        />
-
-        <CheckboxFormRow
-          label={"Fill the relief"}
-          description={"Water fills the ground's hollows first where the enhanced parallax marches it."}
-          isChecked={puddles.isReliefFlooded}
-          isDisabled={!isPuddled}
-          onChange={(isReliefFlooded: boolean) => setPuddles({ isReliefFlooded })}
-        />
-
-        <Button size={"small"} onClick={resetPuddles}>
-          Reset to the preset
-        </Button>
+        <LevelSettingsResetButton onReset={resetPuddles} />
       </EditorPopoverGroupSection>
     </EditorPopoverGroup>
   );

@@ -75,7 +75,7 @@ describe("LevelReflectionsAction", () => {
       traceSize: ERenderTraceSize.FULL,
     });
 
-    await userEvent.click(getByRole("button", { name: "Reset the reflections to the preset" }));
+    await userEvent.click(getByRole("button", { name: "Set the reflections back to the settings" }));
 
     expect(view.features.reflections).toEqual({});
   });

@@ -1,17 +1,18 @@
 import { useInjection } from "@wirestate/react";
 import { ERenderDebandingMode } from "@xrf/ipc/types/xrf-renderer";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { SliderFormRow } from "@xrf/ui/form/slider-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
+import { RenderSettingRows } from "@/core/render/components/settings/RenderSettingRows";
 import {
   explainRenderDebandingMode,
-  formatDebandingPasses,
-  formatDebandingRadius,
-  RENDER_DEBANDING_LIMITS,
+  RENDER_DEBANDING_SETTINGS,
 } from "@/core/render/lib/features/image/render-debanding-choices";
-import { TRenderDebandingSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import {
+  IRenderFeatureSettings,
+  TRenderDebandingSettings,
+} from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";
@@ -20,8 +21,8 @@ import { useRendererOverride } from "./use-renderer-override";
 export function SettingsRendererDebanding(): ReactElement {
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const debanding: TRenderDebandingSettings = renderSettingsService.rendererFeatures.debanding;
-  const isEnhanced: boolean = debanding.mode === ERenderDebandingMode.ENHANCED;
+  const features: IRenderFeatureSettings = renderSettingsService.rendererFeatures;
+  const debanding: TRenderDebandingSettings = features.debanding;
 
   const onSet = useRendererOverride("debanding");
 
@@ -29,32 +30,20 @@ export function SettingsRendererDebanding(): ReactElement {
     <DetailSection title={"Debanding"} description={"Smooths the colour bands in the sky's gradients."}>
       <div className={"mt-4 flex flex-col gap-6"}>
         <CheckboxFormRow
-          label={"Debanding"}
+          label={RENDER_DEBANDING_SETTINGS.mode.label}
           description={explainRenderDebandingMode(debanding.mode)}
-          isChecked={isEnhanced}
+          isChecked={debanding.mode === ERenderDebandingMode.ENHANCED}
           onChange={(isOn: boolean) =>
             onSet({ mode: isOn ? ERenderDebandingMode.ENHANCED : ERenderDebandingMode.ENGINE })
           }
         />
 
-        <SliderFormRow
-          label={"Passes"}
-          description={"Times a sky pixel is averaged with its neighbours, each time further out."}
-          value={debanding.passes}
-          {...RENDER_DEBANDING_LIMITS.passes}
-          isDisabled={!isEnhanced}
-          format={formatDebandingPasses}
-          onChange={(passes: number) => onSet({ passes })}
-        />
-
-        <SliderFormRow
-          label={"Radius"}
-          description={"Pixels around a sky pixel its neighbours are read from at most."}
-          value={debanding.radius}
-          {...RENDER_DEBANDING_LIMITS.radius}
-          isDisabled={!isEnhanced}
-          format={formatDebandingRadius}
-          onChange={(radius: number) => onSet({ radius })}
+        <RenderSettingRows
+          settings={RENDER_DEBANDING_SETTINGS}
+          names={["passes", "radius"]}
+          group={debanding}
+          features={features}
+          onSet={onSet}
         />
       </div>
     </DetailSection>

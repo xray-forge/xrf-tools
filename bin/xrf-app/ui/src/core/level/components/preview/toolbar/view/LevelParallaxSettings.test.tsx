@@ -29,7 +29,7 @@ describe("LevelParallaxSettings", () => {
     expect(getByRole("slider", { name: "Steps" })).toHaveAttribute("aria-valuetext", "8");
     expect(getByRole("slider", { name: "Range" })).toHaveAttribute("aria-valuetext", "60 m");
 
-    await userEvent.click(getByRole("button", { name: "Reset to the preset" }));
+    await userEvent.click(getByRole("button", { name: "Back to the settings" }));
 
     expect(view.features.parallax).toEqual({});
     expect(getByRole("slider", { name: "Steps" })).toBeDisabled();

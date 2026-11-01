@@ -15,10 +15,10 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { HighQualityIcon } from "@xrf/ui/icons/high-quality";
-import { Button } from "@xrf/ui/material/button";
 import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback } from "react";
 
+import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
@@ -221,9 +221,7 @@ export function LevelImageQualityAction({
           onChange={(next: number) => setOutput({ scale: next })}
         />
 
-        <Button size={"small"} onClick={reset}>
-          Reset to the preset
-        </Button>
+        <LevelSettingsResetButton onReset={reset} />
       </div>
     </EditorPopoverAction>
   );

@@ -5,9 +5,9 @@ import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { FoggyIcon } from "@xrf/ui/icons/foggy";
-import { Button } from "@xrf/ui/material/button";
 import { ReactElement } from "react";
 
+import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
@@ -173,9 +173,7 @@ export function LevelFogAction({
         onChange={(skyFade: number) => set({ skyFade })}
       />
 
-      <Button size={"small"} onClick={reset}>
-        Reset to the preset
-      </Button>
+      <LevelSettingsResetButton onReset={reset} />
     </EditorPopoverToggle>
   );
 }

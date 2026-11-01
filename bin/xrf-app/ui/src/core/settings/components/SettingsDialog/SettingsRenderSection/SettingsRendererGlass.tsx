@@ -1,17 +1,10 @@
 import { useInjection } from "@wirestate/react";
-import { ERenderGlassMode, RenderGlassMode } from "@xrf/ipc/types/xrf-renderer";
-import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
-import { SliderFormRow } from "@xrf/ui/form/slider-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
-import {
-  explainRenderGlassMode,
-  formatGlassStrength,
-  RENDER_GLASS_LIMITS,
-  RENDER_GLASS_MODE_OPTIONS,
-} from "@/core/render/lib/features/world/render-glass-choices";
-import { TRenderGlassSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import { RenderSettingRows } from "@/core/render/components/settings/RenderSettingRows";
+import { RENDER_GLASS_SETTINGS } from "@/core/render/lib/features/world/render-glass-choices";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";
@@ -20,29 +13,19 @@ import { useRendererOverride } from "./use-renderer-override";
 export function SettingsRendererGlass(): ReactElement {
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const glass: TRenderGlassSettings = renderSettingsService.rendererFeatures.glass;
+  const features: IRenderFeatureSettings = renderSettingsService.rendererFeatures;
 
   const onSet = useRendererOverride("glass");
 
   return (
     <DetailSection title={"Glass"} description={"How windows and other glass are drawn over what is behind them."}>
       <div className={"mt-4 flex flex-col gap-6"}>
-        <ChoiceFormRow
-          label={"Mode"}
-          description={explainRenderGlassMode(glass.mode)}
-          options={RENDER_GLASS_MODE_OPTIONS}
-          value={glass.mode}
-          onChange={(mode: RenderGlassMode) => onSet({ mode })}
-        />
-
-        <SliderFormRow
-          label={"Refraction"}
-          description={"How far the glass bends what is behind it: 1 as designed, 0 flat."}
-          value={glass.refraction}
-          {...RENDER_GLASS_LIMITS.refraction}
-          isDisabled={glass.mode === ERenderGlassMode.ENGINE}
-          format={formatGlassStrength}
-          onChange={(refraction: number) => onSet({ refraction })}
+        <RenderSettingRows
+          settings={RENDER_GLASS_SETTINGS}
+          names={["mode", "refraction"]}
+          group={features.glass}
+          features={features}
+          onSet={onSet}
         />
       </div>
     </DetailSection>
