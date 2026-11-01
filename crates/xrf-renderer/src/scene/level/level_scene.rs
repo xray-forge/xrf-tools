@@ -29,6 +29,7 @@ use crate::host::world::render_scene_update::RenderSceneUpdate;
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::lighting::wind::ambient_gust::AmbientGust;
 use crate::scene::level::level_grass::LevelGrass;
+use crate::scene::level::lights::asks::light_asks::LightAsks;
 use crate::scene::level::lights::level_lights::LevelLights;
 use crate::scene::level::load::level_load::LevelLoad;
 use crate::scene::level::page::helpers::level_helpers::LevelHelpers;
@@ -252,9 +253,9 @@ impl LevelScene {
   /// before any finishes it: the lights' faces every view wants, and the effects' step, which each view then fills its
   /// quads from.
   pub fn settle<'a>(&mut self, views: impl IntoIterator<Item = &'a SceneAsks>) {
-    self
-      .lights
-      .settle(views.into_iter().map(|asks| &asks.lights), &self.statics);
+    let lights: Vec<&LightAsks> = views.into_iter().map(|asks| &asks.lights).collect();
+
+    self.lights.settle(&lights, &self.statics);
     self.particles.settle();
   }
 

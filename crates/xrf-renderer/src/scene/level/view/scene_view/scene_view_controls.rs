@@ -3,7 +3,9 @@ use std::time::Duration;
 use glam::{Mat4, Vec2};
 use xrf_dlss::Dlss;
 
+use crate::camera::camera_view::CameraView;
 use crate::contract::view::render_view_options::RenderViewOptions;
+use crate::pass::view::view_motion::ViewMotion;
 use crate::scene::level::view::scene_view::SceneView;
 
 impl SceneView {
@@ -34,14 +36,10 @@ impl SceneView {
     self.features.resolve.set_reference(reference);
   }
 
-  /// This frame's unjittered view projection and the last one's, which the surfaces' motion is measured between.
-  pub fn next_motion(&mut self, current: Mat4) -> (Mat4, Mat4) {
-    self.features.resolve.next_motion(current)
-  }
-
-  /// The last frame's jittered view projection, this frame's taking its place.
-  pub fn next_jittered(&mut self, current: Mat4) -> Mat4 {
-    self.features.resolve.next_jittered(current)
+  /// What this frame, seen through `view` and drawn by the `jittered` view projection, measures its motion and
+  /// reprojects by; none moved across a cut.
+  pub fn next_motion(&mut self, view: &CameraView, jittered: Mat4) -> ViewMotion {
+    self.features.resolve.next_motion(view, jittered)
   }
 
   /// Where the next frame's samples sit within their pixels, in drawn pixels, `y` down, on a GPU that has DLSS where

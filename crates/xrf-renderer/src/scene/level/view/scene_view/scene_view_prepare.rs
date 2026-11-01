@@ -280,10 +280,10 @@ impl SceneView {
   /// through the frame, once every unit knows what it draws.
   pub(super) fn is_distorting(&self, options: &RenderViewOptions) -> bool {
     let water: &RenderWaterSettings = &options.features.water;
-    // The enhanced water refracts what is behind it itself and writes no distortion.
-    let is_water_distorting: bool =
-      water.is_enabled && water.is_distorted && water.mode != RenderWaterMode::Enhanced && options.mode.is_lit;
     let features: &SceneFeatures = &self.features;
+    // Where water draws this frame; the enhanced water refracts what is behind it itself and writes no distortion.
+    let is_water_distorting: bool =
+      features.water.is_drawn() && water.is_distorted && water.mode != RenderWaterMode::Enhanced && options.mode.is_lit;
 
     !options.mode.is_wireframe
       && (is_water_distorting

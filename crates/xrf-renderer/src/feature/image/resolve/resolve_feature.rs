@@ -17,6 +17,7 @@ use crate::feature::image::resolve::upscale::upscale_uniform::UpscaleUniform;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
 use crate::frame::targets::frame_texture::FrameTexture;
+use crate::pass::view::view_motion::ViewMotion;
 
 mod resolve_feature_prepare;
 mod resolve_feature_record;
@@ -75,6 +76,8 @@ pub struct ResolveFeature {
   reference: Option<(u32, u32)>,
   /// The last frame's camera, its place and the way it looked, which a cut is told from (`is_cut`).
   last_camera: Option<(Vec3, Vec3)>,
+  /// Whether the camera cut away this frame, as its motion was taken (`next_motion`).
+  is_camera_cut: bool,
   /// The scale this frame's light is written at and the last frame's, which each resolve is told so a history kept at
   /// the last frame's scale matches this one's while the exposure adapts.
   pre_exposure: PreExposure,
@@ -106,6 +109,7 @@ impl Default for ResolveFeature {
       refused_rays: None,
       reference: None,
       last_camera: None,
+      is_camera_cut: false,
       pre_exposure: PreExposure::NONE,
     }
   }
@@ -212,6 +216,7 @@ impl ResolveFeature {
     self.prepared_at = None;
     self.noise_frame = 0;
     self.last_camera = None;
+    self.is_camera_cut = false;
   }
 
   /// Draws the next frames as a reference's `sample` of `samples`, unresolved; none resolves them again.
@@ -219,15 +224,27 @@ impl ResolveFeature {
     self.reference = reference;
   }
 
-  /// This frame's unjittered view projection and the last one's, which the surfaces' motion is measured between; the
-  /// same twice for a first frame.
-  pub fn next_motion(&mut self, current: Mat4) -> (Mat4, Mat4) {
-    (current, self.motion_previous.replace(current).unwrap_or(current))
-  }
+  /// What this frame, seen through `view` and drawn by the `jittered` view projection, measures its motion and
+  /// reprojects by, each last frame's taking this one's place: this frame's own on a first frame and where the camera
+  /// cut away (`is_cut`), so nothing moves across a teleport. The cut is kept for the prepare, which resets the history.
+  pub fn next_motion(&mut self, view: &CameraView, jittered: Mat4) -> ViewMotion {
+    let current: Mat4 = view.get_view_projection();
 
-  /// The last frame's jittered view projection, this frame's taking its place; this frame's own on the first.
-  pub fn next_jittered(&mut self, current: Mat4) -> Mat4 {
-    self.view_projection_previous.replace(current).unwrap_or(current)
+    self.is_camera_cut = self.is_cut(view);
+
+    let still: ViewMotion = ViewMotion::still(current, jittered);
+    let previous: Option<Mat4> = self.motion_previous.replace(current);
+    let jittered_previous: Option<Mat4> = self.view_projection_previous.replace(jittered);
+
+    if self.is_camera_cut {
+      return still;
+    }
+
+    ViewMotion {
+      previous: previous.unwrap_or(current),
+      jittered_previous: jittered_previous.unwrap_or(jittered),
+      ..still
+    }
   }
 
   /// Frames a temporal resolve gathered, or a reference's sample, which the screen-space effects turn their noise by.

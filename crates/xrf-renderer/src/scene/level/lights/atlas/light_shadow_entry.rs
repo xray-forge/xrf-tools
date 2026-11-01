@@ -7,8 +7,10 @@ use crate::scene::level::lights::atlas::light_shadow_set::LightShadowSet;
 pub struct LightShadowEntry {
   pub shown: Option<LightShadowSet>,
   pub next: Option<LightShadowSet>,
-  /// The frame the light was last in view, which room is made from the oldest of.
+  /// The frame the light was last in view in any view, which room is made from the oldest of.
   pub seen: u64,
+  /// The frame a view last asked faces for it in view, whose size a farther view's ask that frame does not shrink.
+  pub asked: u64,
   /// The frame the light was last kept ready out of view, standing near the camera.
   pub warmed: u64,
   /// What the scene held when the swaying places in its range were last looked for, none before they were.

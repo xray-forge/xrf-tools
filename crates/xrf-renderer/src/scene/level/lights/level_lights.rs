@@ -182,10 +182,19 @@ impl LevelLights {
   }
 
   /// Settles what every view of the scene asked of its lights this frame, the driving view's first, whose casters the
-  /// faces are drawn with: each casting view's nearest lights its records hold ask for faces, then the nearest it keeps
-  /// ready out of view, over the `statics` they cast from.
-  pub fn settle<'a>(&mut self, views: impl IntoIterator<Item = &'a LightAsks>, statics: &StaticScene) {
-    for (index, asks) in views.into_iter().enumerate() {
+  /// faces are drawn with: every casting view's shadowed lights in view marked seen first, so a full atlas makes room
+  /// from none of them; then each casting view's nearest lights its records hold ask for faces, then the nearest it
+  /// keeps ready out of view, over the `statics` they cast from.
+  pub fn settle(&mut self, views: &[&LightAsks], statics: &StaticScene) {
+    for asks in views.iter().filter(|asks| asks.frame.is_shadowing()) {
+      for it in &asks.in_view {
+        if self.lights.get(it.handle).is_some_and(|light| light.is_shadowed) {
+          self.shadows.see(it.handle);
+        }
+      }
+    }
+
+    for (index, asks) in views.iter().enumerate() {
       let frame: &LightsFrame = &asks.frame;
 
       if !frame.is_shadowing() {

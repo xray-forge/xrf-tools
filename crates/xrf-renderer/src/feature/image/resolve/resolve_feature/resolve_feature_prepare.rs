@@ -71,7 +71,7 @@ impl ResolveFeature {
 
     self.resolved = display;
 
-    if self.is_cut(view)
+    if std::mem::take(&mut self.is_camera_cut)
       && let Some(resolve) = &mut self.resolve
     {
       resolve.reset();

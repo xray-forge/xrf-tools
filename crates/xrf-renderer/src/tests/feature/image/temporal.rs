@@ -173,6 +173,42 @@ fn a_jump_or_a_sharp_turn_is_a_cut() {
   assert!(!resolve.is_cut(&at(Vec3::new(-100.0, 0.0, 0.0), 0.0)));
 }
 
+// The frame's motion is measured from the last frame's cameras, but across a cut from its own, so a teleport smears
+// nothing; the frame after it is measured from where the camera landed.
+#[test]
+fn nothing_moves_across_a_cut() {
+  let mut resolve: ResolveFeature = ResolveFeature::default();
+  let at = |x: f32| {
+    CameraView::new(
+      Vec3::new(x, 0.0, 0.0),
+      Mat4::from_translation(Vec3::new(-x, 0.0, 0.0)),
+      60.0,
+      1.0,
+      0.1,
+      100.0,
+    )
+  };
+  let jittered = |view: &CameraView| Mat4::from_translation(Vec3::new(0.001, 0.0, 0.0)) * view.get_view_projection();
+  let (start, step, landed, after): (CameraView, CameraView, CameraView, CameraView) =
+    (at(0.0), at(0.5), at(40.0), at(40.5));
+
+  resolve.next_motion(&start, jittered(&start));
+
+  let moved = resolve.next_motion(&step, jittered(&step));
+
+  assert_eq!(moved.previous, start.get_view_projection());
+  assert_eq!(moved.jittered_previous, jittered(&start));
+
+  let cut = resolve.next_motion(&landed, jittered(&landed));
+
+  assert_eq!(cut.previous, cut.current);
+  assert_eq!(cut.jittered_previous, jittered(&landed));
+
+  let next = resolve.next_motion(&after, jittered(&after));
+
+  assert_eq!(next.previous, landed.get_view_projection());
+}
+
 // A history kept at the last frame's pre-exposure is brought to this one's: twice the scale, twice the history; one
 // where the scale is unknown, and for the engine's light, which is written as it is.
 #[test]

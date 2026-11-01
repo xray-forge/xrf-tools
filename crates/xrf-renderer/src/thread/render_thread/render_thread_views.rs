@@ -23,6 +23,7 @@ use crate::host::world::render_view_frame::RenderViewFrame;
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::pass::view::camera_uniform::CameraUniform;
 use crate::pass::view::view_binding::ViewBinding;
+use crate::pass::view::view_motion::ViewMotion;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::page::helpers::view::helper_sources::HelperSources;
 use crate::scene::level::view::record::readied_frame::ReadiedFrame;
@@ -422,7 +423,7 @@ impl RenderThread {
         &CameraUniform::new(&view, drawn_rect, switches)
           .with_wireframe(options.mode.is_wireframe)
           .with_surface_color(options.mode.surface_color)
-          .with_motion((unjittered, unjittered))
+          .with_motion(ViewMotion::still(unjittered, unjittered))
           .with_asset_view(&options, drawn_rect.height as f32 / rect.height.max(1) as f32),
       );
 
@@ -589,9 +590,7 @@ impl RenderThread {
       gpu.context.dlss.as_ref(),
     );
     let drawn: CameraView = view.jittered(jitter, Vec2::new(drawn_rect.width as f32, drawn_rect.height as f32));
-    let unjittered: Mat4 = view.get_view_projection();
-    let motion: (Mat4, Mat4) = view_state.next_motion(unjittered);
-    let previous: Mat4 = view_state.next_jittered(drawn.get_view_projection());
+    let motion: ViewMotion = view_state.next_motion(&view, drawn.get_view_projection());
     let selected: Option<StaticSelection> = view_state.resolve_selection(scene, selection).cloned();
     // The enhanced parallax shadows its relief towards the sun, as the view sees it.
     let to_sun: Vec3 = drawn.view.transform_vector3(-lighting.get_sun_direction());
@@ -609,7 +608,6 @@ impl RenderThread {
         .with_light_view(options.mode.debug_view)
         .with_texture_bias(view_state.get_texture_bias())
         .with_motion(motion)
-        .with_previous(previous)
         .with_asset_view(options, drawn_rect.height as f32 / rect.height.max(1) as f32),
     );
 

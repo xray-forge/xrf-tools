@@ -227,6 +227,11 @@ impl LevelLightShadows {
     self.is_cast = true;
   }
 
+  /// Marks a light in view this frame before any view asks for faces, so no ask makes room from a light some view sees.
+  pub fn see(&mut self, handle: ProxyHandle<LightDescription>) {
+    self.entries.entry(handle).or_default().seen = self.frame;
+  }
+
   /// Starts a frame's asks.
   pub fn begin(&mut self) {
     self.frame += 1;

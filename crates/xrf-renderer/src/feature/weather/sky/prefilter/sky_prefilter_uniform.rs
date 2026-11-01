@@ -17,7 +17,7 @@ impl SkyPrefilterUniform {
     Self {
       level: Vec4::new(
         level as f32,
-        level as f32 / (levels - 1).max(1) as f32,
+        level as f32 / levels.saturating_sub(1).max(1) as f32,
         samples as f32,
         size as f32,
       ),

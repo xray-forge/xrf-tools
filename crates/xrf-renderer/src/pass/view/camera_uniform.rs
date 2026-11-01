@@ -9,6 +9,7 @@ use crate::contract::view::render_surface_color::RenderSurfaceColor;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::pass::view::light_view::LightView;
+use crate::pass::view::view_motion::ViewMotion;
 use crate::scene::static_scene::draw::static_selection::StaticSelection;
 
 /// What every pass drawing a viewport knows of its camera and the frame's switches: WGSL's `Camera`, which
@@ -166,16 +167,12 @@ impl CameraUniform {
     self
   }
 
-  /// The same camera measuring motion between two unjittered view projections, the last frame's and this one's.
-  pub fn with_motion(mut self, (current, previous): (Mat4, Mat4)) -> Self {
-    self.motion_current = current;
-    self.motion_previous = previous;
-    self
-  }
-
-  /// The same camera remembering the jittered view projection the last frame drew by.
-  pub fn with_previous(mut self, previous: Mat4) -> Self {
-    self.view_projection_previous = previous;
+  /// The same camera measuring motion between the last frame's unjittered view projection and this one's, and
+  /// remembering the jittered one the last frame drew by.
+  pub fn with_motion(mut self, motion: ViewMotion) -> Self {
+    self.motion_current = motion.current;
+    self.motion_previous = motion.previous;
+    self.view_projection_previous = motion.jittered_previous;
     self
   }
 

@@ -23,7 +23,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// A view's water as it lasts between frames: its settings and what they make its uniforms this frame, how far the
-/// enhanced water's maps have scrolled, and its reflection histories, kept only while it reflects.
+/// enhanced water's maps have scrolled, and its reflection histories, kept only while it is asked to reflect.
 #[derive(Default)]
 pub struct WaterFeature {
   settings: RenderWaterSettings,
@@ -110,7 +110,9 @@ impl WaterFeature {
     // Advanced while the engine's water draws too, so switching back does not lurch the maps by the time between.
     self.flow.advance(frame.time, &settings.enhanced, frame.wind);
 
-    if !self.is_enhanced() {
+    // Kept while the enhanced water is asked for, though none is in sight, so water coming back into view takes no new
+    // histories; a frame drawing none forgets the history in them (`end_frame`).
+    if !settings.is_enabled || settings.mode != RenderWaterMode::Enhanced || options.mode.is_wireframe {
       self.reflection = None;
 
       return;

@@ -68,7 +68,7 @@ impl LevelLightShadows {
       entry.warmed = frame;
     }
 
-    let is_asked: bool = ask.is_in_view && entry.seen == frame;
+    let is_asked: bool = ask.is_in_view && entry.asked == frame;
     let current: Option<u32> = entry.next.as_ref().or(entry.shown.as_ref()).map(|set| set.size);
     let asked: u32 = match current {
       Some(size) if !ask.is_in_view || (wanted <= size as f32 * GROW && wanted >= size as f32 * SHRINK) => size,
@@ -82,6 +82,7 @@ impl LevelLightShadows {
 
     if ask.is_in_view {
       entry.seen = frame;
+      entry.asked = frame;
     }
 
     Some(asked)
