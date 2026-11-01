@@ -4,6 +4,7 @@ use std::time::Instant;
 use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::feature::effects::rain::cover::rain_covers::RainCovers;
 use crate::frame::frame_clock::FrameClock;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::pick_pass::PickPass;
@@ -17,7 +18,6 @@ use crate::lighting::render_lighting::RenderLighting;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::feature::rain_covers::RainCovers;
 use crate::scene::level::feature::scene_features::SceneFeatures;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
 use crate::scene::level::feature::wet_targets::WetTargets;

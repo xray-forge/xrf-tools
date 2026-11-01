@@ -1,12 +1,12 @@
 use xrf_renderer_core::{GraphDeclaration, GraphTexture, UniformBinding};
 
+use crate::feature::effects::rain::cover::cover_textures::CoverTextures;
 use crate::feature::image::resolve::before_water_readers::BeforeWaterReaders;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::sky_parameters::SkyParameters;
 use crate::pass::wet_uniform::WetUniform;
-use crate::scene::level::cover_textures::CoverTextures;
 use crate::scene::level::feature::combine_inputs::CombineInputs;
 use crate::scene::level::feature::direct_light_inputs::DirectLightInputs;
 use crate::scene::level::feature::direct_light_recorded::DirectLightRecorded;

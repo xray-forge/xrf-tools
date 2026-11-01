@@ -5,6 +5,7 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, PipelineCache};
 
 use crate::context::gpu_context::GpuContext;
+use crate::feature::effects::effect_passes::EffectPasses;
 use crate::feature::image::image_passes::ImagePasses;
 use crate::feature::image::present::present_pass::PresentPass;
 use crate::host::render_bundle::RenderBundle;
@@ -15,7 +16,6 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::overlay_pass::OverlayPass;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::sky_bindings::SkyBindings;
-use crate::pass::stage::effect_passes::EffectPasses;
 use crate::pass::stage::lighting_passes::LightingPasses;
 use crate::pass::stage::pass_build::PassBuild;
 use crate::pass::stage::scene_passes::ScenePasses;

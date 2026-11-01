@@ -1,7 +1,7 @@
+use crate::feature::effects::effect_passes::EffectPasses;
 use crate::feature::image::image_passes::ImagePasses;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::sky_bindings::SkyBindings;
-use crate::pass::stage::effect_passes::EffectPasses;
 use crate::pass::stage::lighting_passes::LightingPasses;
 use crate::pass::stage::scene_passes::ScenePasses;
 use crate::pass::stage::tracing_passes::TracingPasses;

@@ -3,7 +3,6 @@
 //! stage reads the view's frame, the view-level units and what earlier stages answered, never another stage's unit,
 //! which its fields keep private.
 
-pub(crate) mod effect_stage;
 pub(crate) mod lighting_stage;
 pub(crate) mod scene_stage;
 pub(crate) mod view_stages;

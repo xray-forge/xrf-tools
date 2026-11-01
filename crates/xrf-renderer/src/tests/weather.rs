@@ -1,14 +1,14 @@
 use glam::{Vec2, Vec3, Vec4};
 
 use crate::contract::render_rain_drops_mode::RenderRainDropsMode;
+use crate::feature::effects::rain::rain_frame::RainFrame;
+use crate::feature::effects::rain::rain_uniform::RainUniform;
+use crate::feature::effects::rain::rings::rain_rings::RainRings;
 use crate::lighting::render_fog::RenderFog;
 use crate::lighting::render_rainfall::RenderRainfall;
 use crate::lighting::render_tree_wind::RenderTreeWind;
 use crate::lighting::render_wind::RenderWind;
-use crate::pass::rain_frame::RainFrame;
-use crate::pass::rain_uniform::RainUniform;
 use crate::pass::wind_uniform::WindUniform;
-use crate::scene::level::rain_rings::RainRings;
 use crate::scene::level::shadow_sway::ShadowSway;
 
 #[test]

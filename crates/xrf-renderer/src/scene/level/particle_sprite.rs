@@ -5,7 +5,7 @@ use xrf_math::EPS_S;
 use xrf_particles::{Particle, ParticleEffectFlags, ParticleEffectInstance};
 
 use crate::camera::engine_space::EngineSpace;
-use crate::pass::particle_vertex::ParticleVertex;
+use crate::feature::effects::particles::particle_vertex::ParticleVertex;
 
 /// `CParticleEffect::ParticleRenderStream`: an effect's particles as quads, each filled as `FillSprite` fills it in
 /// engine space, facing the camera or aligned to its path, then mirrored into renderer space.

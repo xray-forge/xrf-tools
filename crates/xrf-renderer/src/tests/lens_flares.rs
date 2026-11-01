@@ -2,11 +2,11 @@ use std::time::{Duration, Instant};
 
 use glam::Vec3;
 
+use crate::feature::effects::flares::flare_frame::FlareFrame;
+use crate::feature::effects::flares::flare_uniform::FlareUniform;
+use crate::feature::effects::flares::lens_flare_fade::LensFlareFade;
 use crate::host::render_flare::RenderFlare;
 use crate::host::render_lens_flare::RenderLensFlare;
-use crate::pass::flare_frame::FlareFrame;
-use crate::pass::flare_uniform::FlareUniform;
-use crate::scene::level::lens_flare_fade::LensFlareFade;
 
 fn new_flare(rise_time: f32, down_time: f32, flares: usize) -> RenderLensFlare {
   RenderLensFlare {

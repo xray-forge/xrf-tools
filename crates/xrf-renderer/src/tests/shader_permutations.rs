@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 
 use xrf_renderer_core::ShaderPermutation;
 
+use crate::feature::effects::composited::glass::glass_copy_permutation::GlassCopyPermutation;
 use crate::pass::contact_march_permutation::ContactMarchPermutation;
-use crate::pass::glass_copy_permutation::GlassCopyPermutation;
 use crate::pass::static_cull_permutation::StaticCullPermutation;
 use crate::pass::static_draw_permutation::StaticDrawPermutation;
 use crate::pass::sun_filter_permutation::SunFilterPermutation;

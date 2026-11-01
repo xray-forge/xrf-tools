@@ -1,9 +1,11 @@
+use crate::feature::effects::composited::composited_feature::CompositedFeature;
+use crate::feature::effects::particles::particles_view::ParticlesView;
+use crate::feature::effects::rain::cover::rain_cover::RainCover;
+use crate::feature::effects::rain::falling_rain_feature::FallingRainFeature;
 use crate::feature::image::bloom::bloom_feature::BloomFeature;
 use crate::feature::image::exposure::exposure_feature::ExposureFeature;
 use crate::feature::image::present::present_feature::PresentFeature;
 use crate::feature::image::resolve::resolve_feature::ResolveFeature;
-use crate::scene::level::feature::composited_feature::CompositedFeature;
-use crate::scene::level::feature::falling_rain_feature::FallingRainFeature;
 use crate::scene::level::feature::helpers_feature::HelpersFeature;
 use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::overlays_feature::OverlaysFeature;
@@ -19,8 +21,6 @@ use crate::scene::level::feature::wind_feature::WindFeature;
 use crate::scene::level::grass_view::GrassView;
 use crate::scene::level::level_shadows::LevelShadows;
 use crate::scene::level::level_surface::LevelSurface;
-use crate::scene::level::particles_view::ParticlesView;
-use crate::scene::level::rain_cover::RainCover;
 use crate::scene::level::surroundings_cube::SurroundingsCube;
 
 /// A view's units shared across its frame's parts: those recording in more than one of its phases (the resolve, the

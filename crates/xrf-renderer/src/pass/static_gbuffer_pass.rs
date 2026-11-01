@@ -1,9 +1,9 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipelineDescription};
 
+use crate::feature::effects::composited::composited_pass::CompositedPass;
 use crate::frame::pick_target::PickTarget;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::composited_pass::CompositedPass;
 use crate::pass::pick_glass::PickGlass;
 use crate::pass::pipeline_source::PipelineSource;
 use crate::pass::static_draw_bindings::StaticDrawBindings;

@@ -1,6 +1,6 @@
+use crate::feature::effects::effect_stage::EffectStage;
 use crate::feature::image::image_stage::ImageStage;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::stage::effect_stage::EffectStage;
 use crate::scene::level::stage::lighting_stage::LightingStage;
 use crate::scene::level::stage::scene_stage::SceneStage;
 

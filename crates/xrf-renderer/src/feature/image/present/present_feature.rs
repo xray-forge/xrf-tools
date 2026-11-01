@@ -2,6 +2,8 @@ use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, Gr
 
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::feature::effects::distort::distort_parameters::DistortParameters;
+use crate::feature::effects::distort::distort_uniform::DistortUniform;
 use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::image::present::present_frame::PresentFrame;
 use crate::feature::image::present::present_inputs::PresentInputs;
@@ -9,8 +11,6 @@ use crate::feature::image::present::present_uniform::PresentUniform;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
-use crate::pass::distort_parameters::DistortParameters;
-use crate::pass::distort_uniform::DistortUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
