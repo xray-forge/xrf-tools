@@ -39,7 +39,7 @@ impl SceneView {
       static_draws: self.take_static_report(scene),
       lights: self.features.lights.take_report(),
       particles: scene.particles.take_report(self.features.particles.get_drawn()),
-      grass: self.features.grass.take_report(),
+      drawables: vec![self.features.grass.take_report()],
       meter: self.stages.effects.take_meter_reading(),
       render_size: self.get_render_size(),
       output_size: self.targets.as_ref().map(|_| self.features.resolve.get_resolved()),

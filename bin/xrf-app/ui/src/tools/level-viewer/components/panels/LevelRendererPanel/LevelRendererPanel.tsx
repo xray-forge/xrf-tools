@@ -12,9 +12,9 @@ import { LevelViewportService } from "@/core/level/services/level-viewport";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { LevelRendererAppliedSection } from "@/tools/level-viewer/components/panels/LevelRendererPanel/LevelRendererAppliedSection";
+import { LevelRendererDrawablesSection } from "@/tools/level-viewer/components/panels/LevelRendererPanel/LevelRendererDrawablesSection";
 import { LevelRendererFrameSection } from "@/tools/level-viewer/components/panels/LevelRendererPanel/LevelRendererFrameSection";
 import { LevelRendererGraphSection } from "@/tools/level-viewer/components/panels/LevelRendererPanel/LevelRendererGraphSection";
-import { LevelRendererGrassSection } from "@/tools/level-viewer/components/panels/LevelRendererPanel/LevelRendererGrassSection";
 import { LevelRendererLightsSection } from "@/tools/level-viewer/components/panels/LevelRendererPanel/LevelRendererLightsSection";
 import { LevelRendererMemorySection } from "@/tools/level-viewer/components/panels/LevelRendererPanel/LevelRendererMemorySection";
 import { LevelRendererParticlesSection } from "@/tools/level-viewer/components/panels/LevelRendererPanel/LevelRendererParticlesSection";
@@ -61,7 +61,7 @@ export function LevelRendererPanel({
       <LevelRendererStaticDrawsSection staticDraws={frame.staticDraws} />
       <LevelRendererLightsSection lights={frame.lights} />
       <LevelRendererParticlesSection particles={frame.particles} />
-      <LevelRendererGrassSection grass={frame.grass} />
+      <LevelRendererDrawablesSection drawables={frame.drawables} />
 
       <LevelRendererTexturesSection textures={textures} />
     </EditorPanel>

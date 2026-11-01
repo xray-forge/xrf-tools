@@ -663,6 +663,27 @@ export enum ERenderDlssPreset {
 /** Every `ERenderDlssPreset` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderDlssPreset = `${ERenderDlssPreset}`;
 
+/** A drawable kind beside the static scene, as a report names it. */
+export enum ERenderDrawableKind {
+  /** The grass's tufts. */
+  GRASS = "grass",
+}
+
+/** Every `ERenderDrawableKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderDrawableKind = `${ERenderDrawableKind}`;
+
+/**
+ * What a drawable kind beside the static scene came to in a view on a recent frame: what its cull kept and the most
+ * its lists hold.
+ */
+export type RenderDrawableReport = {
+  kind: RenderDrawableKind;
+  /** What the cull kept, read back a frame or more late; past `capacity` the rest went undrawn. */
+  drawn: number;
+  /** What the lists hold at most, none while the kind draws nothing. */
+  capacity: number;
+};
+
 /** Which bloom the frame draws, and the enhanced bloom's strengths; the engine bloom's own come with the look. */
 export type RenderEnhancedBloomSettings = {
   mode: RenderBloomMode;
@@ -934,8 +955,8 @@ export type RenderFrameReport = {
   lights: RenderLightsReport;
   /** The level's particle systems, empty without a level. */
   particles: RenderParticlesReport;
-  /** The view's grass, empty without a level or grass. */
-  grass: RenderGrassReport;
+  /** Each drawable kind beside the static scene the view holds, the grass among them; none without a level. */
+  drawables: Array<RenderDrawableReport>;
   /** Milliseconds the last sector taken in took to put into the scene, on the render thread. */
   sectorTime: number | null;
   /** What the renderer holds on the GPU. */
@@ -1061,14 +1082,6 @@ export type RenderGraphTransient = {
   first: number;
   last: number;
   bytes: number;
-};
-
-/** What a view's grass came to on a recent frame: the tufts its cull kept and the most its lists hold. */
-export type RenderGrassReport = {
-  /** Tufts the cull kept, read back a frame or more late; past `capacity` the rest went undrawn. */
-  drawn: number;
-  /** Tufts the lists hold at most, none while no grass is drawn. */
-  capacity: number;
 };
 
 /**

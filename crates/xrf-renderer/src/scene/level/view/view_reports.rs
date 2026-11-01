@@ -1,6 +1,6 @@
 use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;
 use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
-use crate::contract::report::scene::render_grass_report::RenderGrassReport;
+use crate::contract::report::scene::render_drawable_report::RenderDrawableReport;
 use crate::contract::report::scene::render_lights_report::RenderLightsReport;
 use crate::contract::report::scene::render_meter_reading::RenderMeterReading;
 use crate::contract::report::scene::render_particles_report::RenderParticlesReport;
@@ -15,7 +15,8 @@ pub struct ViewReports {
   pub lights: RenderLightsReport,
   /// The scene's particle simulation since the last report and the quads this view drew.
   pub particles: RenderParticlesReport,
-  pub grass: RenderGrassReport,
+  /// What each drawable kind beside the static scene came to, read back as the static draws' counts are.
+  pub drawables: Vec<RenderDrawableReport>,
   /// What the spot meter last read; none while the view does not meter.
   pub meter: Option<RenderMeterReading>,
   /// The size its scene is drawn at, none before its targets are made.

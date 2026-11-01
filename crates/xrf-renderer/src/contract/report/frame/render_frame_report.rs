@@ -6,7 +6,7 @@ use crate::contract::report::frame::render_group_cost::RenderGroupCost;
 use crate::contract::report::frame::render_memory_report::RenderMemoryReport;
 use crate::contract::report::frame::render_pass_cost::RenderPassCost;
 use crate::contract::report::graph::render_graph_report::RenderGraphReport;
-use crate::contract::report::scene::render_grass_report::RenderGrassReport;
+use crate::contract::report::scene::render_drawable_report::RenderDrawableReport;
 use crate::contract::report::scene::render_lights_report::RenderLightsReport;
 use crate::contract::report::scene::render_meter_reading::RenderMeterReading;
 use crate::contract::report::scene::render_particles_report::RenderParticlesReport;
@@ -77,8 +77,8 @@ pub struct RenderFrameReport {
   pub lights: RenderLightsReport,
   /// The level's particle systems, empty without a level.
   pub particles: RenderParticlesReport,
-  /// The view's grass, empty without a level or grass.
-  pub grass: RenderGrassReport,
+  /// Each drawable kind beside the static scene the view holds, the grass among them; none without a level.
+  pub drawables: Vec<RenderDrawableReport>,
   /// Milliseconds the last sector taken in took to put into the scene, on the render thread.
   pub sector_time: f32,
   /// What the renderer holds on the GPU.

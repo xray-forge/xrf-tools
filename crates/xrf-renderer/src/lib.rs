@@ -126,7 +126,8 @@ pub use crate::contract::report::graph::render_graph_transient::RenderGraphTrans
 pub use crate::contract::report::load::render_load_durations::RenderLoadDurations;
 pub use crate::contract::report::load::render_load_failure::RenderLoadFailure;
 pub use crate::contract::report::load::render_load_report::RenderLoadReport;
-pub use crate::contract::report::scene::render_grass_report::RenderGrassReport;
+pub use crate::contract::report::scene::render_drawable_kind::RenderDrawableKind;
+pub use crate::contract::report::scene::render_drawable_report::RenderDrawableReport;
 pub use crate::contract::report::scene::render_lights_report::RenderLightsReport;
 pub use crate::contract::report::scene::render_meter_reading::RenderMeterReading;
 pub use crate::contract::report::scene::render_particles_report::RenderParticlesReport;

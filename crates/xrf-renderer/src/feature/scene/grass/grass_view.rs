@@ -6,7 +6,8 @@ use xrf_renderer_core::{
 
 use crate::contract::feature::scene::render_grass_settings::RenderGrassSettings;
 use crate::contract::report::applied::render_applied_grass::RenderAppliedGrass;
-use crate::contract::report::scene::render_grass_report::RenderGrassReport;
+use crate::contract::report::scene::render_drawable_kind::RenderDrawableKind;
+use crate::contract::report::scene::render_drawable_report::RenderDrawableReport;
 use crate::feature::scene::drawable::casters::light_casters::LightCasters;
 use crate::feature::scene::drawable::casters::per_frame_casters::PerFrameCasters;
 use crate::feature::scene::drawable::drawable_trace_instance::DrawableTraceInstance;
@@ -499,10 +500,11 @@ impl GrassView {
   }
 
   /// What a recent frame drew: the cull's latest total read back, and the most the lists hold.
-  pub fn take_report(&mut self) -> RenderGrassReport {
+  pub fn take_report(&mut self) -> RenderDrawableReport {
     let [drawn, ..] = self.stats.take();
 
-    RenderGrassReport {
+    RenderDrawableReport {
+      kind: RenderDrawableKind::Grass,
       drawn,
       capacity: self
         .build
