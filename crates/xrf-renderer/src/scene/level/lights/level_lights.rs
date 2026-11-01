@@ -21,6 +21,9 @@ use crate::lighting::lamp::light_bulb::get_bulb_radius;
 use crate::lighting::lamp::light_shadow_size::{LIGHT_SHADOW_POINT_FACES, to_light_shadow_scale};
 use crate::lighting::lamp::light_specular::to_light_specular;
 use crate::lighting::srgb::{anchored_light, authored_light};
+use crate::scene::level::lights::asks::light_asks::LightAsks;
+use crate::scene::level::lights::asks::light_in_view::{LightFades, LightInView};
+use crate::scene::level::lights::asks::lights_frame::LightsFrame;
 use crate::scene::level::lights::atlas::level_light_shadows::LevelLightShadows;
 use crate::scene::level::lights::atlas::light_shadow_ask::LightShadowAsk;
 use crate::scene::level::lights::atlas::light_shadow_atlas::LightShadowAtlas;
@@ -28,10 +31,11 @@ use crate::scene::level::lights::atlas::light_shadow_set::LightShadowSet;
 use crate::scene::level::lights::light_record::LightRecord;
 use crate::scene::level::lights::light_volume_record::LightVolumeRecord;
 use crate::scene::level::lights::light_volumes_uniform::LightVolumesUniform;
-use crate::scene::level::lights::lights_frame::LightsFrame;
 use crate::scene::level::lights::zone_fast_mode::ZONE_FAST_DISTANCE;
 use crate::scene::level::shadow::shadow_frame::ShadowFrame;
+use crate::scene::level::shadow::shadow_sway::ShadowSway;
 use crate::scene::level::view::record::view_record::ViewRecord;
+use crate::scene::static_scene::static_scene::StaticScene;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::scene::texture::texture_role::TextureRole;
 
@@ -160,17 +164,86 @@ impl LevelLights {
     }
   }
 
-  /// Writes out the lights standing in a view this frame into its own, nearest first, animated and faded as the engine
-  /// would, in the camera's view space; a shadowed one only once its faces are drawn, with their squares of the atlas.
-  pub fn prepare(&mut self, encoder: &mut FrameEncoder, into: &mut LightsFeature, frame: LightsFrame<'_>) {
+  /// Picks the lights a view sees this frame by its camera and settings, nearest first, as many as its records hold, and
+  /// the shadowed ones out of view the eye stands near, kept ready, each faded as far as its campfire's share in
+  /// `campfire_shares` lets it show: what the view asks of them, which the scene settles with every other view's
+  /// (`settle`) before the view writes its lights (`write`).
+  pub fn pick(&self, frame: LightsFrame, campfire_shares: &HashMap<u16, f32>) -> LightAsks {
+    let (mut in_view, mut ready): (Vec<LightInView>, Vec<LightInView>) = if frame.settings.is_enabled {
+      let mut in_view: Vec<LightInView> = self.collect_in_view(&frame, campfire_shares);
+
+      in_view.sort_by(|a, b| a.distance.total_cmp(&b.distance));
+      in_view.into_iter().partition(|it| it.is_seen)
+    } else {
+      (Vec::new(), Vec::new())
+    };
+    let excess: u32 = in_view.len().saturating_sub(LightsFeature::MAX_LIGHTS) as u32;
+
+    in_view.truncate(LightsFeature::MAX_LIGHTS);
+    ready.truncate(WARM_MOST);
+
+    LightAsks {
+      frame,
+      forward: -frame.camera.view.inverse().z_axis.truncate(),
+      in_view,
+      ready,
+      excess,
+    }
+  }
+
+  /// Settles what every view of the scene asked of its lights this frame, the driving view's first, whose casters the
+  /// faces are drawn with: each casting view's nearest lights its records hold ask for faces, then the nearest it keeps
+  /// ready out of view, over the `statics` they cast from.
+  pub fn settle<'a>(&mut self, views: impl IntoIterator<Item = &'a LightAsks>, statics: &StaticScene) {
+    for (index, asks) in views.into_iter().enumerate() {
+      let frame: &LightsFrame = &asks.frame;
+
+      if !frame.is_shadowing() {
+        continue;
+      }
+
+      self.shadows.cast();
+
+      let sway: ShadowSway<'_> = ShadowSway {
+        amplitude: frame.sway_amplitude,
+        reach: statics.get_sway_reach(),
+        time: frame.sway_time,
+        places: statics.list_swaying(),
+      };
+
+      for (it, is_in_view) in asks
+        .in_view
+        .iter()
+        .map(|it| (it, true))
+        .chain(asks.ready.iter().map(|it| (it, false)))
+      {
+        let Some(light) = self.lights.get(it.handle).filter(|light| light.is_shadowed) else {
+          continue;
+        };
+
+        self.shadows.ask(&LightShadowAsk {
+          handle: it.handle,
+          light,
+          basis: &it.basis,
+          eye: frame.camera.position,
+          forward: asks.forward,
+          is_in_view,
+          is_driving: index == 0,
+          statics,
+          sway: &sway,
+          casters: frame.casters.as_slice(),
+        });
+      }
+    }
+  }
+
+  /// Writes out the lights a view picked into its own, nearest first, animated and faded as the engine would, in the
+  /// camera's view space; a shadowed one only once its faces are drawn, with their squares of the atlas.
+  pub fn write(&self, encoder: &mut FrameEncoder, into: &mut LightsFeature, asks: &LightAsks) {
     let LightsFrame {
       camera,
       settings,
       engine,
-      statics,
-      sway,
-      casters,
-      is_scene_first,
       is_physical,
       is_specular_linear,
       anchor,
@@ -178,10 +251,10 @@ impl LevelLights {
       light_scale,
       time,
       ..
-    } = frame;
+    } = asks.frame;
 
     into.begin(
-      *settings,
+      settings,
       // `timers.z * 0.1`: the engine's global seconds over a hundred.
       LightVolumesUniform {
         noise: self.volume_textures.0,
@@ -189,55 +262,15 @@ impl LevelLights {
       },
     );
 
-    let is_shadowing: bool = settings.is_enabled && settings.is_shadowed;
-
-    if is_shadowing {
-      self.shadows.cast();
-    }
+    let is_shadowing: bool = asks.frame.is_shadowing();
 
     if settings.is_enabled {
       let lights: &ProxyStore<LightDescription> = &self.lights;
       let eye: Vec3 = camera.position;
-      let forward: Vec3 = -camera.view.inverse().z_axis.truncate();
-      let mut in_view: Vec<InView> = self.collect_in_view(&frame);
 
-      in_view.sort_by(|a, b| a.distance.total_cmp(&b.distance));
+      into.set_excess(asks.excess);
 
-      let (mut in_view, mut ready): (Vec<InView>, Vec<InView>) = in_view.into_iter().partition(|it| it.is_seen);
-
-      into.set_excess(in_view.len().saturating_sub(LightsFeature::MAX_LIGHTS) as u32);
-      in_view.truncate(LightsFeature::MAX_LIGHTS);
-      ready.truncate(WARM_MOST);
-
-      if is_shadowing {
-        // Only the nearest the records could hold ask for faces, then the nearest kept ready out of view.
-        for (it, is_in_view) in in_view
-          .iter()
-          .map(|it| (it, true))
-          .chain(ready.iter().map(|it| (it, false)))
-        {
-          let Some(light) = lights.get(it.handle).filter(|light| light.is_shadowed) else {
-            continue;
-          };
-
-          let ask: LightShadowAsk<'_> = LightShadowAsk {
-            handle: it.handle,
-            light,
-            basis: &it.basis,
-            eye,
-            forward,
-            is_in_view,
-            is_scene_first,
-            statics,
-            sway,
-            casters,
-          };
-
-          self.shadows.ask(&ask);
-        }
-      }
-
-      for it in in_view {
+      for it in &asks.in_view {
         let Some(light) = lights.get(it.handle) else {
           continue;
         };
@@ -277,7 +310,7 @@ impl LevelLights {
         let mut record: LightRecord = Self::to_record(
           &self.projectors,
           light,
-          &it,
+          it,
           color * held,
           specular * held,
           range,
@@ -288,7 +321,7 @@ impl LevelLights {
         // the light itself (`to_light_specular`), so it is taken before the scale.
         record.color *= light_scale;
 
-        let shafts: Option<LightShafts> = set.and_then(|_| Self::to_shafts(light, &it.basis, eye, engine, settings));
+        let shafts: Option<LightShafts> = set.and_then(|_| Self::to_shafts(light, &it.basis, eye, engine, &settings));
 
         if let Some(set) = set {
           let atlas: f32 = LevelLightShadows::ATLAS_SIZE as f32;
@@ -333,23 +366,17 @@ impl LevelLights {
       }
     }
 
-    into.write(encoder, camera, settings.shadow_filter, self.shadows.get_atlas_use());
+    into.write(encoder, &camera, settings.shadow_filter, self.shadows.get_atlas_use());
   }
 
   /// The lights a view sees this frame, by its camera and settings: in its frustum, or, out of it, a shadowed one the
   /// eye stands near, its faces kept ready for a turn; each with its fades by the cull's levels of detail and its
   /// campfire's share; none a campfire or a torrid zone has put out.
-  fn collect_in_view(
-    &self,
-    &LightsFrame {
-      camera,
-      settings,
-      lod,
-      campfire_shares,
-      ..
-    }: &LightsFrame<'_>,
-  ) -> Vec<InView> {
-    let is_shadowing: bool = settings.is_enabled && settings.is_shadowed;
+  fn collect_in_view(&self, frame: &LightsFrame, campfire_shares: &HashMap<u16, f32>) -> Vec<LightInView> {
+    let LightsFrame {
+      camera, settings, lod, ..
+    } = *frame;
+    let is_shadowing: bool = frame.is_shadowing();
     let frustum: CameraFrustum = camera.get_frustum();
     let eye: Vec3 = camera.position;
 
@@ -387,14 +414,14 @@ impl LevelLights {
           return None;
         }
 
-        let fades: Fades = if is_shadowing && light.is_shadowed {
+        let fades: LightFades = if is_shadowing && light.is_shadowed {
           Self::to_shadow_fades(light, &basis, eye, lod)
         } else {
-          Fades::WHOLE
+          LightFades::WHOLE
         };
 
         // `light::get_LOD`: a shadowed light is drawn at all only past `EPS_L`.
-        (fades.shown > EPS_L).then_some(InView {
+        (fades.shown > EPS_L).then_some(LightInView {
           distance,
           is_seen: is_visible,
           handle,
@@ -470,11 +497,11 @@ impl LevelLights {
   }
 
   /// How far a shadowed light has faded from `eye` over the cull's levels of detail, `start` to `end` metres.
-  fn to_shadow_fades(light: &LightDescription, basis: &LightBasis, eye: Vec3, (start, end): (f32, f32)) -> Fades {
+  fn to_shadow_fades(light: &LightDescription, basis: &LightBasis, eye: Vec3, (start, end): (f32, f32)) -> LightFades {
     if matches!(light.kind, LightKind::Spot) {
       let fade: f32 = LightBasis::to_light_lod(basis.get_spatial_sphere(light), eye, start, end);
 
-      return Fades {
+      return LightFades {
         whole: fade,
         faces: [1.0; 6],
         shown: fade,
@@ -484,7 +511,7 @@ impl LevelLights {
     let faces: [f32; 6] = LIGHT_SHADOW_POINT_FACES
       .map(|(direction, _)| LightBasis::to_light_lod(basis.get_face_sphere(light, direction), eye, start, end));
 
-    Fades {
+    LightFades {
       whole: 1.0,
       faces,
       shown: faces.into_iter().fold(0.0, f32::max),
@@ -495,7 +522,7 @@ impl LevelLights {
   fn to_record(
     projectors: &[u32],
     light: &LightDescription,
-    it: &InView,
+    it: &LightInView,
     color: Vec3,
     specular: f32,
     range: f32,
@@ -723,35 +750,4 @@ impl LightShafts {
   pub(crate) fn get_density(&self) -> f32 {
     (VOLUME_SLICES - 1) as f32 * self.quality * VOLUME_DENSITY * self.intensity / (2.0 * self.sphere.w).max(EPS_L)
   }
-}
-
-/// A light standing in view this frame.
-struct InView {
-  /// Metres from the eye to its bound's edge, which the nearest are kept by.
-  distance: f32,
-  /// Whether the view sees its bound; a shadowed light out of view near the eye is only kept ready.
-  is_seen: bool,
-  handle: ProxyHandle<LightDescription>,
-  basis: LightBasis,
-  bound: Vec4,
-  fades: Fades,
-  /// How much of it its campfire lets show, all of it for any other light.
-  share: f32,
-}
-
-/// How far a light has faded: whole, as a shadowed spot fades, and each face, as a shadowed point's omni parts each
-/// fade on their own, the most any of it shows.
-struct Fades {
-  whole: f32,
-  faces: [f32; 6],
-  shown: f32,
-}
-
-impl Fades {
-  /// Not faded at all, as an unshadowed light is.
-  const WHOLE: Self = Self {
-    whole: 1.0,
-    faces: [1.0; 6],
-    shown: 1.0,
-  };
 }

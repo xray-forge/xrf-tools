@@ -4,6 +4,7 @@ use std::time::Instant;
 use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
 use crate::contract::view::render_view_options::RenderViewOptions;
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::effects::rain::cover::rain_covers::RainCovers;
 use crate::feature::scene::drawable::draw::drawable_kind_readied::DrawableKindReadied;
 use crate::feature::scene::wind::wind_feature::WindFeature;
@@ -27,11 +28,13 @@ use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_prepare::LevelPrepare;
 use crate::scene::level::level_scene::LevelScene;
+use crate::scene::level::lights::asks::light_asks::LightAsks;
 use crate::scene::level::page::helpers::view::helper_marks_pass::HelperMarksPass;
 use crate::scene::level::shadow::shadow_sway::ShadowSway;
 use crate::scene::level::view::record::lighting_recorded::LightingRecorded;
 use crate::scene::level::view::record::shadows_recorded::ShadowsRecorded;
 use crate::scene::level::view::record::view_record::ViewRecord;
+use crate::scene::level::view::scene_asks::SceneAsks;
 use crate::scene::level::view::scene_output::SceneOutput;
 use crate::scene::level::view::view_frame::ViewFrame;
 use crate::scene::level::view::view_pick::ViewPick;
@@ -138,7 +141,9 @@ impl SceneView {
 
   /// Sizes the targets to the viewport and readies every unit's frame, in the order each reads what an earlier one
   /// decided: the resolve's decisions, the weather and the sky, the scene, the view's own units, then the lighting.
-  pub fn prepare(&mut self, scene: &mut LevelScene, encoder: &mut FrameEncoder, frame: &ViewPrepare<'_>) {
+  /// Answers what it asks of the scene, which settles every view's asks before each finishes its frame
+  /// (`finish_prepare`).
+  pub fn prepare(&mut self, scene: &LevelScene, encoder: &mut FrameEncoder, frame: &ViewPrepare<'_>) -> SceneAsks {
     profiling::scope!("prepare view");
 
     let (width, height) = frame.drawn;
@@ -160,9 +165,41 @@ impl SceneView {
       .overlays
       .follow_skeletons(scene, frame.device, &mut *encoder);
 
-    self.prepare_scene(scene, encoder, frame, &lighting_frame, &level);
+    let lights: LightAsks = self.prepare_scene(scene, frame, &lighting_frame, &level);
+
     self.prepare_view(scene, encoder, frame, &level);
-    self.prepare_lighting(scene, encoder, frame, &lighting_frame, &level);
+    self.prepare_lighting(frame, &lighting_frame, &level);
+
+    SceneAsks { lights }
+  }
+
+  /// Finishes readying its frame once its scene settled every view's asks (`LevelScene::settle`): writes its lights as
+  /// it asked for them, the faces now settled, and fills its effects' quads from the step the scene joined; then notes
+  /// what the window pass reads, with `options` and over `output` as its frame was prepared.
+  pub fn finish_prepare(
+    &mut self,
+    scene: &LevelScene,
+    device: &wgpu::Device,
+    encoder: &mut FrameEncoder,
+    options: &RenderViewOptions,
+    output: RenderRect,
+    asks: &SceneAsks,
+  ) {
+    profiling::scope!("finish view");
+
+    scene
+      .lights
+      .write(&mut *encoder, &mut self.features.lights, &asks.lights);
+    scene
+      .particles
+      .fill(&self.shared.camera, options, &mut self.features.particles);
+    self.features.particles.upload(device, &mut *encoder);
+    self.prepare_present(
+      options,
+      output,
+      scene.get_time().as_secs_f32(),
+      self.shared.resolve.noise_frame,
+    );
   }
 
   /// What every other unit reads of the frame's resolve, prepared before any of them: the exposure, whose scale the
@@ -208,7 +245,7 @@ impl SceneView {
     Some(LevelFrame {
       pick_slot,
       is_pick_through: pick.is_some_and(|pick| pick.is_through),
-      is_scene_first: false,
+      is_scene_recorder: false,
     })
   }
 

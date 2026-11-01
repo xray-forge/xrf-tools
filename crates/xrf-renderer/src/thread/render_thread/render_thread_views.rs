@@ -18,7 +18,6 @@ use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_owner::PeriodicOwner;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::timing::frame_phases::FramePhases;
-use crate::host::level::render_level_source::RenderLevelSource;
 use crate::host::weather::render_level_weather::RenderLevelWeather;
 use crate::host::world::render_scene_id::RenderSceneId;
 use crate::host::world::render_view_frame::RenderViewFrame;
@@ -28,6 +27,7 @@ use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::page::helpers::view::helper_sources::HelperSources;
+use crate::scene::level::view::scene_asks::SceneAsks;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::level::view::view_lens::ViewLens;
 use crate::scene::level::view::view_pick::ViewPick;
@@ -36,8 +36,8 @@ use crate::scene::static_scene::draw::static_selection::StaticSelection;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::thread::gpu_state::GpuState;
+use crate::thread::views::prepared_view::PreparedView;
 use crate::thread::views::scene_view_framing::SceneViewFraming;
-use crate::thread::views::shown_scene::ShownScene;
 use crate::thread::views::view_work::ViewWork;
 use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::render_viewport::RenderViewport;
@@ -46,9 +46,11 @@ use crate::window::window_frame::WindowFrame;
 use super::{RenderThread, ViewFrame};
 
 impl RenderThread {
-  /// Readies each drawn viewport's frame, with the pick it draws and what unprojects that pick's depth: its scene's
-  /// driving viewport first, which simulates the scene and declares its work, or the first drawn where that one is not.
-  /// Answers the frames and each scene's first view, which draws the scene's own work.
+  /// Readies each drawn viewport's frame, with the pick it draws and what unprojects that pick's depth, in three phases:
+  /// each view prepares from its scene and answers what it asks of it, its scene's driving viewport first, which
+  /// simulates the scene, or the first drawn where that one is not; each scene settles what its views asked; then each
+  /// view finishes its frame. Answers the frames and each scene's first view to ready one, which records the scene's
+  /// own work.
   pub(super) fn ready_views(
     &mut self,
     gpu: &mut GpuState,
@@ -107,19 +109,17 @@ impl RenderThread {
       }
     }
 
-    let mut firsts: Vec<(RenderSceneId, RenderViewportId)> = Vec::new();
+    let mut prepared: Vec<PreparedView> = Vec::new();
 
     for (id, rect, scene_id) in &drawn {
-      let scene_id: Option<RenderSceneId> = *scene_id;
       let Some(viewport) = self.viewports.get_mut(id) else {
         continue;
       };
-      let is_first: bool = scene_id.is_some_and(|scene| firsts.iter().all(|(seen, _)| *seen != scene));
-      let scene: Option<&mut LevelScene> = scene_id.and_then(|scene| self.scenes.get_mut(&scene));
+      let scene: Option<&LevelScene> = scene_id.and_then(|scene| self.scenes.get(&scene));
 
       self.periodic.set_owner(PeriodicOwner::View(*id));
 
-      let readied: Option<ViewFrame> = Self::ready_view(
+      let view: Option<PreparedView> = Self::ready_view(
         &mut ViewWork {
           gpu: &mut *gpu,
           shaders: &self.shaders,
@@ -128,25 +128,75 @@ impl RenderThread {
           phases: &mut *phases,
         },
         viewport,
-        scene.map(|scene| ShownScene { scene, is_first }),
+        scene,
         rect,
       );
 
-      match readied {
-        Some(mut frame) => {
-          if let (true, Some(scene)) = (is_first, scene_id) {
-            frame.1.is_scene_first = true;
-            firsts.push((scene, *id));
-          }
-
-          frames.push(frame);
-        }
-        // A view that draws nothing this frame draws none of what it offered.
-        None => self.periodic.withdraw(PeriodicOwner::View(*id)),
+      // A view that draws nothing this frame draws none of what it offered.
+      if view.as_ref().is_none_or(|view| view.frame.is_none()) {
+        self.periodic.withdraw(PeriodicOwner::View(*id));
       }
+
+      prepared.extend(view);
     }
 
+    let finishing: Instant = Instant::now();
+    let mut firsts: Vec<(RenderSceneId, RenderViewportId)> = Vec::new();
+
+    self.settle_scenes(&prepared);
+
+    for PreparedView {
+      id,
+      scene: scene_id,
+      asks,
+      options,
+      output,
+      frame,
+    } in prepared
+    {
+      let view: Option<&mut SceneView> = self.viewports.get_mut(&id).and_then(RenderViewport::get_drawn_view_mut);
+
+      if let (Some(view), Some(scene)) = (view, self.scenes.get(&scene_id)) {
+        view.finish_prepare(scene, &gpu.context.device, &mut *encoder, &options, output, &asks);
+      }
+
+      let Some(mut frame) = frame else {
+        continue;
+      };
+
+      if firsts.iter().all(|(seen, _)| *seen != scene_id) {
+        frame.1.is_scene_recorder = true;
+        firsts.push((scene_id, id));
+      }
+
+      frames.push(frame);
+    }
+
+    phases.prepare += finishing.elapsed();
+
     (frames, firsts)
+  }
+
+  /// Settles what each scene's views asked of it this frame, in the order they prepared: its driving viewport's first.
+  fn settle_scenes(&mut self, prepared: &[PreparedView]) {
+    let mut settled: Vec<RenderSceneId> = Vec::new();
+
+    for view in prepared {
+      if settled.contains(&view.scene) {
+        continue;
+      }
+
+      settled.push(view.scene);
+
+      if let Some(scene) = self.scenes.get_mut(&view.scene) {
+        scene.settle(
+          prepared
+            .iter()
+            .filter(|asking| asking.scene == view.scene)
+            .map(|asking| &asking.asks),
+        );
+      }
+    }
   }
 
   /// The sizes a viewport's frame showing a scene is resolved at and drawn at over its rectangle `rect`: the settings'
@@ -248,12 +298,13 @@ impl RenderThread {
   }
 
   /// What a viewport's camera sees over `rect`, its whole rectangle: a lit and fogged level ends where its fog is
-  /// total, or at the weather's far plane, as the engine's does.
+  /// total, or at the weather's far plane, as the engine's does. A capture laid out nowhere has no rectangle, and its
+  /// camera sees as wide as high.
   fn get_camera_view(viewport: &RenderViewport, rect: &RenderRect) -> CameraView {
-    viewport
-      .world
-      .camera
-      .to_view(rect.width as f32 / rect.height as f32, Self::get_far_limit(viewport))
+    viewport.world.camera.to_view(
+      rect.width.max(1) as f32 / rect.height.max(1) as f32,
+      Self::get_far_limit(viewport),
+    )
   }
 
   /// How far a viewport's camera sees at most: where a lit and fogged level's fog is total, else without end.
@@ -267,14 +318,14 @@ impl RenderThread {
   }
 
   /// Readies one viewport's frame of the scene it shows: writes its camera, asks for the textures its weather draws
-  /// with, prepares its frame, and readies its graph's frame with a pick when one waits; none where it shows no scene.
-  /// `rect` is its whole rectangle.
+  /// with, prepares its frame, and readies its graph's frame with a pick when one waits; none where it shows no scene or
+  /// draws nothing this frame. `rect` is its whole rectangle.
   fn ready_view(
     work: &mut ViewWork<'_>,
     viewport: &mut RenderViewport,
-    scene: Option<ShownScene<'_>>,
+    scene: Option<&LevelScene>,
     rect: &RenderRect,
-  ) -> Option<ViewFrame> {
+  ) -> Option<PreparedView> {
     if viewport.is_capturing() {
       return Self::ready_capture_view(work, viewport, scene);
     }
@@ -318,8 +369,7 @@ impl RenderThread {
       picks,
       ..
     } = viewport;
-    let shown: Option<&mut SceneView> = shown.as_mut().map(|(_, view)| view);
-    let (Some(scene), Some(view_state)) = (scene, shown) else {
+    let (Some(scene), Some((scene_id, view_state))) = (scene, shown.as_mut()) else {
       // Nothing to draw but its grid: its camera alone.
       let unjittered: Mat4 = view.get_view_projection();
 
@@ -356,8 +406,17 @@ impl RenderThread {
       weather_rate: world.clock_rate,
     };
 
-    Self::prepare_scene_view(work, scene, &mut *view_state, binding, &framing);
-    Self::ready_pick(work, id, view_state, picks, &framing, scale)
+    let asks: SceneAsks = Self::prepare_scene_view(work, scene, &mut *view_state, binding, &framing);
+    let frame: Option<ViewFrame> = Self::ready_pick(work, id, view_state, picks, &framing, scale);
+
+    Some(PreparedView {
+      id,
+      scene: *scene_id,
+      asks,
+      options,
+      output: *rect,
+      frame,
+    })
   }
 
   /// Readies the frame of a viewport capturing: its capture's view drawn through the shot it stands at, with the
@@ -365,16 +424,18 @@ impl RenderThread {
   fn ready_capture_view(
     work: &mut ViewWork<'_>,
     viewport: &mut RenderViewport,
-    scene: Option<ShownScene<'_>>,
-  ) -> Option<ViewFrame> {
+    scene: Option<&LevelScene>,
+  ) -> Option<PreparedView> {
     let id: RenderViewportId = viewport.id;
-    let scene: ShownScene = scene?;
+    let scene: &LevelScene = scene?;
     let RenderViewport {
       capture,
       world,
       options,
+      shown,
       ..
     } = viewport;
+    let scene_id: RenderSceneId = shown.as_ref()?.0;
     let capture: &mut CaptureJob = capture.as_mut()?;
     let shot: CaptureShot = capture.get_drawn_shot()?;
     let view: CameraView = shot.get_view();
@@ -406,7 +467,7 @@ impl RenderThread {
       Self::get_view_lighting(&options, world);
     let lighting: Cow<'_, RenderLighting> = shot.apply_lighting(lighting);
 
-    Self::prepare_scene_view(
+    let asks: SceneAsks = Self::prepare_scene_view(
       work,
       scene,
       &mut *view_state,
@@ -424,25 +485,30 @@ impl RenderThread {
         weather_rate: world.clock_rate,
       },
     );
+    let frame: Option<ViewFrame> = view_state
+      .begin_frame(&work.gpu.context.device, work.encoder, None)
+      .map(|frame| (id, frame, None));
 
-    let frame: LevelFrame = view_state.begin_frame(&work.gpu.context.device, work.encoder, None)?;
-
-    Some((id, frame, None))
+    Some(PreparedView {
+      id,
+      scene: scene_id,
+      asks,
+      options,
+      output: rect,
+      frame,
+    })
   }
 
   /// Prepares one view of a scene for its frame: writes its camera, its jitter and motion with it, asks for the
   /// textures its weather draws with and its overlays where it has them, prepares its features and offers its periodic
-  /// work; what loading and preparing take is added to the frame's phases.
+  /// work; what loading and preparing take is added to the frame's phases. Answers what it asks of the scene.
   fn prepare_scene_view(
     work: &mut ViewWork<'_>,
-    ShownScene {
-      scene,
-      is_first: is_scene_first,
-    }: ShownScene<'_>,
+    scene: &LevelScene,
     view_state: &mut SceneView,
     binding: &ViewBinding,
     framing: &SceneViewFraming<'_>,
-  ) {
+  ) -> SceneAsks {
     let gpu: &mut GpuState = &mut *work.gpu;
     let shaders: &ShaderLibrary = work.shaders;
     let encoder: &mut FrameEncoder = &mut *work.encoder;
@@ -519,14 +585,10 @@ impl RenderThread {
     phases.load += loading.elapsed();
 
     let preparing: Instant = Instant::now();
-
-    {
+    let asks: SceneAsks = {
       profiling::scope!("prepare");
 
-      // Held apart from the scene, which preparing changes, for the weather textures to be read in its scope.
-      let source: Arc<dyn RenderLevelSource> = Arc::clone(&scene.source);
-
-      view_state.prepare(
+      let asks: SceneAsks = view_state.prepare(
         scene,
         encoder,
         &ViewPrepare {
@@ -541,14 +603,18 @@ impl RenderThread {
           options,
           lighting,
           weather,
-          weather_textures: gpu.weather_textures.scoped(source.get_texture_scope()),
+          weather_textures: gpu.weather_textures.scoped(scene.source.get_texture_scope()),
           weather_rate,
-          is_scene_first,
         },
       );
       view_state.offer_periodic(scene, device, periodic, &gpu.view_layout);
-    }
+
+      asks
+    };
+
     phases.prepare += preparing.elapsed();
+
+    asks
   }
 
   /// What a view is lit by and the weather it plays: an asset viewer's rig and none, else its world's frame's.

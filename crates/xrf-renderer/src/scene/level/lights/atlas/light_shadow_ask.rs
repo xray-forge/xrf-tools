@@ -8,8 +8,8 @@ use crate::scene::level::shadow::shadow_sway::ShadowSway;
 use crate::scene::static_scene::static_scene::StaticScene;
 
 /// A shadowed light asking for its faces this frame: the light, how it stands, where the camera stands and looks,
-/// whether a view sees it or it is only kept ready, and whether the asking view is its scene's first; and what its
-/// faces are drawn of: the static scene, the sway, and what the drawable kinds cast into them.
+/// whether a view sees it or it is only kept ready, and whether the asking view drives its scene; and what its faces are
+/// drawn of: the static scene, the sway, and what the drawable kinds cast into them.
 #[derive(Clone, Copy)]
 pub struct LightShadowAsk<'a> {
   pub handle: ProxyHandle<LightDescription>,
@@ -18,7 +18,8 @@ pub struct LightShadowAsk<'a> {
   pub eye: Vec3,
   pub forward: Vec3,
   pub is_in_view: bool,
-  pub is_scene_first: bool,
+  /// Whether the asking view is its scene's driving one, whose casters the faces are drawn with.
+  pub is_driving: bool,
   pub statics: &'a StaticScene,
   pub sway: &'a ShadowSway<'a>,
   pub casters: &'a [LightCasters],

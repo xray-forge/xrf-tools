@@ -344,8 +344,9 @@ impl LevelParticles {
     }));
   }
 
-  /// Joins the step offered to the workers, if one was, and takes back its emitters and what stopped.
-  fn settle(&mut self) {
+  /// Joins the step offered to the workers, if one was, and takes back its emitters and what stopped: before any view
+  /// fills its quads from them.
+  pub fn settle(&mut self) {
     let Some(step) = self.step.take() else {
       return;
     };
@@ -371,11 +372,10 @@ impl LevelParticles {
     self.report.frames += 1;
   }
 
-  /// Fills a view's quads with the effects in its camera, far to near, once the frame's step is in; none while
-  /// particles are not drawn in it.
-  pub fn fill(&mut self, view: &CameraView, options: &RenderViewOptions, into: &mut ParticlesView) {
+  /// Fills a view's quads with the effects in its camera, far to near, once the frame's step is in (`settle`); none
+  /// while particles are not drawn in it.
+  pub fn fill(&self, view: &CameraView, options: &RenderViewOptions, into: &mut ParticlesView) {
     into.clear();
-    self.settle();
 
     let Some(level) = self.systems.as_ref() else {
       return;
@@ -436,9 +436,10 @@ impl LevelParticles {
       .map_or(&[], |systems| systems.texture_slots.as_slice())
   }
 
-  /// What the last frame's simulation came to, with its mean cost since the last report; `drawn` is what a view drew
-  /// of it.
-  pub fn take_report(&mut self, drawn: u32) -> RenderParticlesReport {
+  /// What the last frame's simulation came to, with its mean cost since the driving view last reported; `drawn` is what
+  /// a view drew of it. Only the driving view's report starts the mean again, so another view reporting in the same
+  /// round reads the same mean rather than none.
+  pub fn take_report(&mut self, drawn: u32, is_driving: bool) -> RenderParticlesReport {
     self.settle();
 
     let report: RenderParticlesReport = RenderParticlesReport {
@@ -447,8 +448,10 @@ impl LevelParticles {
       ..self.report.last
     };
 
-    self.report.simulation_time = 0.0;
-    self.report.frames = 0;
+    if is_driving {
+      self.report.simulation_time = 0.0;
+      self.report.frames = 0;
+    }
 
     report
   }

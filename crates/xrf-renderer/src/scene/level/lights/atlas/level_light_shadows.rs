@@ -358,7 +358,7 @@ impl LevelLightShadows {
       basis,
       eye,
       is_in_view,
-      is_scene_first,
+      is_driving,
       statics,
       sway,
       casters,
@@ -386,10 +386,10 @@ impl LevelLightShadows {
       entry.swaying = Self::measure_swaying(basis.position, spatial, near, sway.places);
     }
 
-    // A kind's casters stand about the eye: a light near it whose reach meets them casts their shadow. The scene's first
-    // view draws the faces with its own casters, so only its asks say which lights cast them; another view's leave that
-    // be.
-    if is_scene_first {
+    // A kind's casters stand about the eye: a light near it whose reach meets them casts their shadow. The faces are
+    // drawn with the scene's driving view's casters, so only its asks say which lights cast them; another view's leave
+    // that be.
+    if is_driving {
       let is_cast = |casters: &&LightCasters| {
         distance < casters.light_distance && eye.distance(spatial.truncate()) < spatial.w + casters.reach
       };

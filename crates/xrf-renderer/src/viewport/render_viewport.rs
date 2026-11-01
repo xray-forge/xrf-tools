@@ -351,7 +351,14 @@ impl RenderViewport {
       .as_mut()
       .and_then(|(id, view)| Some((scenes.get_mut(id)?, view)));
     let (reports, sector_time): (Option<ViewReports>, f32) = match shown {
-      Some((scene, view)) => (Some(view.take_reports(scene, &self.options)), scene.sector_time),
+      Some((scene, view)) => {
+        let is_driving: bool = scene.driver == Some(self.id);
+
+        (
+          Some(view.take_reports(scene, &self.options, is_driving)),
+          scene.sector_time,
+        )
+      }
       None => (None, 0.0),
     };
     let mut times: Vec<GraphPassTime> = timer.take(self.get_graph_owner());

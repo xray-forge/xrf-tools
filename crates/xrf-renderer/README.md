@@ -58,9 +58,11 @@ flowchart TB
   sceneNode --> viewNode["SceneView, one a viewport"]
   subgraph viewFrame["A view's frame"]
     decideNode["decide: exposure, then resolve, into ViewFrame"] --> prepareNode["prepare: SceneFeatures, then ViewStages"]
-    prepareNode --> recordNode["record: scene, shadows, lighting, post"]
+    finishNode["finish: lights, particle quads, present"] --> recordNode["record: scene, shadows, lighting, post"]
   end
   viewNode --> decideNode
+  prepareNode -- "SceneAsks" --> settleNode["LevelScene::settle: every view's asks, once"]
+  settleNode --> finishNode
   recordNode --> frameGraph["FrameGraph: compile, execute (xrf-renderer-core)"]
   frameGraph --> windowPass["Window pass: present, overlays"]
 ```
@@ -70,8 +72,12 @@ through a view (`SceneView`), once a frame:
 
 1. **Decide.** The view prepares its exposure and its temporal resolve first and stores what the resolve decided for
    the frame (the noise frame, whether DLSS reconstructs rays) in `ViewFrame`, which every other unit reads.
-2. **Prepare.** Every unit takes its frame from its settings, the scene, the weather and `ViewFrame`.
-3. **Record.** The view declares its passes into the core's frame graph in the order they run: the scene into the
+2. **Prepare.** Every unit takes its frame from its settings, the scene, the weather and `ViewFrame`, and the view
+   answers what it asks of the scene (`SceneAsks`: the lights it sees).
+3. **Settle.** Once every view of a scene has prepared, the scene settles their asks at once: the lights' shadow faces
+   every view wants, the scene's driving view's casters casting, and the particles' step joined.
+4. **Finish.** Each view writes its lights, fills its particle quads and readies its present from the settled scene.
+5. **Record.** The view declares its passes into the core's frame graph in the order they run: the scene into the
    G-buffer, the shadows, the lighting, then what is laid over the lit frame and the resolve. The resolve answers an
    `ImageChain`, the image the layers after it are laid over.
 

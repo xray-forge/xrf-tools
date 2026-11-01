@@ -13,7 +13,6 @@ use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::effects::rain::rings::drop_rings::DropRings;
 use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::image::present::present_inputs::PresentInputs;
-use crate::feature::scene::drawable::casters::light_casters::LightCasters;
 use crate::feature::scene::drawable::drawable_trace_instance::DrawableTraceInstance;
 use crate::feature::scene::grass::grass_view_frame::GrassViewFrame;
 use crate::feature::tracing::reflections::trace::reflection_trace::ReflectionTrace;
@@ -28,7 +27,8 @@ use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::scene::level::level_prepare::LevelPrepare;
 use crate::scene::level::level_scene::LevelScene;
-use crate::scene::level::lights::lights_frame::LightsFrame;
+use crate::scene::level::lights::asks::light_asks::LightAsks;
+use crate::scene::level::lights::asks::lights_frame::LightsFrame;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::level::view::view_prepare::ViewPrepare;
 
@@ -111,16 +111,15 @@ impl SceneView {
   }
 
   /// The scene's units: the static cull; the grass, which reads its discard, plants around last frame's puddles and
-  /// casts by the trace or the cascades; the lights, which read the cull's levels of detail; then what the views off
-  /// the viewport draw the scene with.
+  /// casts by the trace or the cascades; then what the views off the viewport draw the scene with. Answers the lights it
+  /// sees by the cull's levels of detail, which the scene settles with every other view's.
   pub(super) fn prepare_scene(
     &mut self,
-    scene: &mut LevelScene,
-    encoder: &mut FrameEncoder,
+    scene: &LevelScene,
     frame: &ViewPrepare<'_>,
     lighting_frame: &LightingFrame,
     level: &LevelPrepare,
-  ) {
+  ) -> LightAsks {
     let (device, options, lighting, view) = (frame.device, frame.options, frame.lighting, frame.view);
     let time: f32 = level.time;
 
@@ -165,35 +164,30 @@ impl SceneView {
       .grass
       .prepare(device, scene.grass.get_level(), &options.features.grass, &grass);
 
-    let light_casters: Option<LightCasters> = self.features.grass.get_light_casters();
+    let (sway_amplitude, sway_time): (f32, f32) = self.features.wind.get_sway();
+    let frame_lights: LightsFrame = LightsFrame {
+      camera: *view,
+      settings: options.features.lights,
+      engine: lighting.engine,
+      lod: (
+        self.features.statics.get_cull().glod_start,
+        self.features.statics.get_cull().glod_end,
+      ),
+      sway_amplitude,
+      sway_time,
+      casters: self.features.grass.get_light_casters(),
+      is_physical: options.is_light_physical(),
+      is_specular_linear: options.is_specular_linear(),
+      anchor: (options.get_physical_light_level() == Some(RenderLightLevel::Anchored))
+        .then(|| lighting.get_ambient(&options.features.light_scales)),
+      is_falloff_inverse_square: options.is_falloff_inverse_square(),
+      light_scale: lighting_frame.light_units.local
+        * lighting_frame.light_units.light_gain
+        * lighting_frame.pre_exposure.current,
+      time,
+    };
+    let lights: LightAsks = scene.lights.pick(frame_lights, &scene.campfire_shares);
 
-    scene.lights.prepare(
-      &mut *encoder,
-      &mut self.features.lights,
-      LightsFrame {
-        camera: view,
-        settings: &options.features.lights,
-        engine: lighting.engine,
-        lod: (
-          self.features.statics.get_cull().glod_start,
-          self.features.statics.get_cull().glod_end,
-        ),
-        statics: &scene.statics,
-        sway: &Self::to_sway(&scene.statics, &self.features.wind),
-        casters: light_casters.as_slice(),
-        campfire_shares: &scene.campfire_shares,
-        is_scene_first: frame.is_scene_first,
-        is_physical: options.is_light_physical(),
-        is_specular_linear: options.is_specular_linear(),
-        anchor: (options.get_physical_light_level() == Some(RenderLightLevel::Anchored))
-          .then(|| lighting.get_ambient(&options.features.light_scales)),
-        is_falloff_inverse_square: options.is_falloff_inverse_square(),
-        light_scale: lighting_frame.light_units.local
-          * lighting_frame.light_units.light_gain
-          * lighting_frame.pre_exposure.current,
-        time,
-      },
-    );
     self.shared.camera = *view;
     self.shared.sun_direction = lighting.get_sun_direction();
     // A view off the viewport draws the static scene textured, bumped as the view is, by the hemisphere's strength, and
@@ -206,6 +200,8 @@ impl SceneView {
     );
     self.shared.shadow_settings = options.features.shadows.clone();
     self.shared.is_wireframe = options.mode.is_wireframe;
+
+    lights
   }
 
   /// The view's own units: the reflections, the view's trace, the composited surfaces in the `level`'s sight, the
@@ -235,26 +231,19 @@ impl SceneView {
     self.stages.image.prepare(frame);
   }
 
-  /// The lighting the passes read, the enhanced fog's height fog faded out indoors; the lighting's stage, which reads
-  /// it; then the particles and the present.
+  /// The lighting the passes read, the enhanced fog's height fog faded out indoors, and the lighting's stage, which
+  /// reads it.
   pub(super) fn prepare_lighting(
     &mut self,
-    scene: &mut LevelScene,
-    encoder: &mut FrameEncoder,
     frame: &ViewPrepare<'_>,
     lighting_frame: &LightingFrame,
     level: &LevelPrepare,
   ) {
-    let (device, options, view) = (frame.device, frame.options, frame.view);
+    let (options, view) = (frame.options, frame.view);
 
     self.shared.lighting = LightingUniform::new(frame.lighting, view.view, options, lighting_frame);
     self.shared.lighting.height_fog.w *= FogFeature::get_indoor_share(level.camera_hemi);
     self.stages.lighting.prepare(frame, &self.shared);
-
-    scene.particles.fill(view, options, &mut self.features.particles);
-
-    self.features.particles.upload(device, &mut *encoder);
-    self.prepare_present(options, frame.output, level.time, self.shared.resolve.noise_frame);
   }
 
   /// Writes where the rain cover and the level's surface now stand into what reads them, once `commit_periodic` has
@@ -301,7 +290,13 @@ impl SceneView {
   /// Notes what the window pass reads, once every other unit knows what it draws: whether the water, a particle, the
   /// enhanced rain's splashes or a distorting surface of the scene moves what is seen through it, which bloom it lays
   /// over the frame, the sky debanding, its noise turning with `time`, and the film's grain, drawn for `noise_frame`.
-  fn prepare_present(&mut self, options: &RenderViewOptions, output: RenderRect, time: f32, noise_frame: u32) {
+  pub(super) fn prepare_present(
+    &mut self,
+    options: &RenderViewOptions,
+    output: RenderRect,
+    time: f32,
+    noise_frame: u32,
+  ) {
     if self.targets.is_none() {
       return;
     }

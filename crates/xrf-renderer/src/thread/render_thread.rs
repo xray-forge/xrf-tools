@@ -64,7 +64,7 @@ const TEXTURE_SWEEP: Duration = Duration::from_secs(2);
 const ALLOCATOR_REPORT_EVERY: Duration = Duration::from_millis(500);
 
 /// A viewport's readied frame, with the pick it draws and what unprojects that pick's depth.
-type ViewFrame = (RenderViewportId, LevelFrame, Option<(PendingPick, (CameraView, Vec2))>);
+pub(crate) type ViewFrame = (RenderViewportId, LevelFrame, Option<(PendingPick, (CameraView, Vec2))>);
 
 /// A capture or screenshot copied out of a viewport's frame, on its way back, and where its answer goes.
 type CaptureCopy = (RenderViewportId, FrameCapture, CaptureReply);

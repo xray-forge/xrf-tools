@@ -26,8 +26,9 @@ impl SceneView {
   }
 
   /// Takes what it reports of its recent frames: the counts read back since the last report, its scene's particles'
-  /// simulation, and what it draws with as resolved from `options`.
-  pub fn take_reports(&mut self, scene: &mut LevelScene, options: &RenderViewOptions) -> ViewReports {
+  /// simulation, whose mean only the scene's driving view starts again (`is_driving`), and what it draws with as
+  /// resolved from `options`.
+  pub fn take_reports(&mut self, scene: &mut LevelScene, options: &RenderViewOptions, is_driving: bool) -> ViewReports {
     let antialiasing: RenderAntialiasing = self
       .features
       .resolve
@@ -38,7 +39,9 @@ impl SceneView {
     ViewReports {
       static_draws: self.take_static_report(scene),
       lights: self.features.lights.take_report(),
-      particles: scene.particles.take_report(self.features.particles.get_drawn()),
+      particles: scene
+        .particles
+        .take_report(self.features.particles.get_drawn(), is_driving),
       drawables: vec![self.features.grass.take_report()],
       meter: self.stages.effects.take_meter_reading(),
       render_size: self.get_render_size(),

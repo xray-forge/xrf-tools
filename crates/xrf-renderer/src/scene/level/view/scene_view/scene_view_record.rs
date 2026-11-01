@@ -264,7 +264,7 @@ impl SceneView {
       self.features.water.get_uniform(),
     );
 
-    if frame.is_scene_first {
+    if frame.is_scene_recorder {
       scene
         .lights
         .add_shadow_passes(GraphDeclaration::new(graph, bindings, runtime), record, &casters);

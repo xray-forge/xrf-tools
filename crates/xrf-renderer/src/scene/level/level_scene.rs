@@ -30,6 +30,7 @@ use crate::scene::level::load::level_load::LevelLoad;
 use crate::scene::level::page::helpers::level_helpers::LevelHelpers;
 use crate::scene::level::particles::level_particles::LevelParticles;
 use crate::scene::level::particles::placed::particle_stop::ParticleStop;
+use crate::scene::level::view::scene_asks::SceneAsks;
 use crate::scene::level::wetness::level_wetness::LevelWetness;
 use crate::scene::static_scene::item::static_item_context::StaticItemContext;
 use crate::scene::static_scene::item::static_sector_proxy::StaticSectorProxy;
@@ -218,6 +219,16 @@ impl LevelScene {
     self.camera_hemi = camera_hemi;
     self.lights.begin_frame(&motions);
     self.statics.prepare_draws(device, queue, encoder);
+  }
+
+  /// Settles what its views asked of it this frame, its driving view's first, once every one has readied its frame and
+  /// before any finishes it: the lights' faces every view wants, and the effects' step, which each view then fills its
+  /// quads from.
+  pub fn settle<'a>(&mut self, views: impl IntoIterator<Item = &'a SceneAsks>) {
+    self
+      .lights
+      .settle(views.into_iter().map(|asks| &asks.lights), &self.statics);
+    self.particles.settle();
   }
 
   /// Makes its acceleration structures where a view of it traces rays and its static scene is traced, and brings them
