@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 
 use crate::camera::camera_view::CameraView;
-use crate::capture::cube_capture_look::CubeCaptureLook;
-use crate::capture::cube_face::CubeFace;
-use crate::capture::map_capture_look::MapCaptureLook;
-use crate::capture::map_tile::MapTile;
+use crate::capture::cube::cube_capture_look::CubeCaptureLook;
+use crate::capture::cube::cube_face::CubeFace;
+use crate::capture::map::map_capture_look::MapCaptureLook;
+use crate::capture::map::map_tile::MapTile;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::lighting::weather::render_lighting::RenderLighting;
 

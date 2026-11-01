@@ -1,4 +1,4 @@
-use crate::capture::map_tile::MapTile;
+use crate::capture::map::map_tile::MapTile;
 use crate::contract::feature::image::bloom::render_bloom_mode::RenderBloomMode;
 use crate::contract::view::output::render_scale::RenderScale;
 use crate::contract::view::render_show_flags::RenderShowFlags;

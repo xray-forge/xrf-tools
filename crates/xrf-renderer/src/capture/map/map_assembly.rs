@@ -2,7 +2,7 @@ use image::imageops::FilterType;
 use image::{RgbaImage, imageops};
 use xrf_error::{XrfError, XrfResult};
 
-use crate::capture::map_tile::MapTile;
+use crate::capture::map::map_tile::MapTile;
 use crate::contract::capture::render_capture::RenderCapture;
 
 /// A level map put together from its tiles as each comes back, reduced by Lanczos as `CDemoRecord` resamples.

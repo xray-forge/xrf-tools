@@ -3,10 +3,10 @@ use xrf_error::XrfResult;
 
 use crate::camera::camera_view::CameraView;
 use crate::camera::engine_space::EngineSpace;
-use crate::capture::map_assembly::MapAssembly;
-use crate::capture::map_capture_look::MapCaptureLook;
-use crate::capture::map_tile::MapTile;
-use crate::capture::map_tile_plan::MapTilePlan;
+use crate::capture::map::map_assembly::MapAssembly;
+use crate::capture::map::map_capture_look::MapCaptureLook;
+use crate::capture::map::map_tile::MapTile;
+use crate::capture::map::map_tile_plan::MapTilePlan;
 use crate::contract::capture::render_capture::RenderCapture;
 use crate::contract::capture::render_map_capture::{RENDER_MAP_TILE_MARGIN, RenderMapCapture};
 use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;

@@ -2,8 +2,8 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::camera::camera_frame::CameraFrame;
 use crate::capture::capture_shot::CaptureShot;
-use crate::capture::cube_face::CubeFace;
-use crate::capture::map_tile_plan::MapTilePlan;
+use crate::capture::cube::cube_face::CubeFace;
+use crate::capture::map::map_tile_plan::MapTilePlan;
 use crate::contract::capture::render_cube_capture::{
   RENDER_CUBE_MOST_PIXELS, RENDER_CUBE_MOST_SUPERSAMPLING, RenderCubeCapture,
 };

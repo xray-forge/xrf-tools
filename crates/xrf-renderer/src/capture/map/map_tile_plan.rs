@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::capture::map_tile::MapTile;
+use crate::capture::map::map_tile::MapTile;
 use crate::contract::capture::render_map_capture::{
   RENDER_MAP_MOST_PIXELS, RENDER_MAP_MOST_SUPERSAMPLING, RENDER_MAP_TILE, RENDER_MAP_TILE_MARGIN, RenderMapCapture,
 };
