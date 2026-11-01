@@ -7594,6 +7594,7 @@ dependencies = [
  "tauri-specta",
  "tokio",
  "uuid",
+ "windows",
  "xrf-dds",
  "xrf-engine-target",
  "xrf-env-flags",

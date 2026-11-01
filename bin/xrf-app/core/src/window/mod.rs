@@ -6,6 +6,7 @@ mod invoking_window;
 mod window_close_approvals;
 mod window_handles;
 mod window_reveals;
+mod window_transitions;
 
 #[cfg(test)]
 mod tests;
