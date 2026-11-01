@@ -105,20 +105,21 @@ impl RenderPlugin {
         }
 
         let window: Option<WebviewWindow<R>> = application.get_webview_window(label);
+        let released: Option<WebviewWindow<R>> = window.clone();
         let is_held: bool = viewports.close_window(label, move || {
-          if let Some(window) = window {
-            match window.destroy() {
-              Ok(()) => log::info!("Window '{}' destroyed once the renderer let go of it", window.label()),
-              Err(error) => log::error!("Window '{}' cannot be closed: {error}", window.label()),
-            }
-          }
+          Self::destroy(released.as_ref(), "once the renderer let go of it");
         });
+
+        // An approved window goes by its destroy alone, never by the close Tauri would finish: the page that approved may
+        // still be heard listening for close requests, and Tauri holds every close while it is.
+        api.prevent_close();
 
         if is_held {
           log::info!("Window '{label}' held open until the renderer lets go of it");
-          api.prevent_close();
         } else {
           log::info!("Window '{label}' closes now: no viewport drew in it");
+
+          Self::destroy(window.as_ref(), "as its page approved");
         }
       }
       RunEvent::WindowEvent {
@@ -134,6 +135,16 @@ impl RenderPlugin {
       }
       RunEvent::Exit => viewports.shut_down(),
       _ => {}
+    }
+  }
+
+  /// Destroys a closing window, which Tauri does after the current event rather than inside it, saying why it went.
+  fn destroy<R: Runtime>(window: Option<&WebviewWindow<R>>, reason: &str) {
+    if let Some(window) = window {
+      match window.destroy() {
+        Ok(()) => log::info!("Window '{}' destroyed {reason}", window.label()),
+        Err(error) => log::error!("Window '{}' cannot be closed: {error}", window.label()),
+      }
     }
   }
 }

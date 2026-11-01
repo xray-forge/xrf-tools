@@ -47,8 +47,9 @@ export function useWindowCloseGuard(): void {
     }
 
     // Approved first, so a refused approval leaves the window guarded and the next close asks again. Listening still,
-    // the page would be asked once more and hold its own close, so it stops just before closing, and guards it again
-    // where the close then fails.
+    // the page would be asked about its own close once more, so it stops just before closing, and guards it again where
+    // the close then fails. The backend finishes an approved close itself, so the close need not wait for the backend to
+    // hear that the page stopped.
     function exit(): void {
       log.info("Approving window close:", target.label);
 
