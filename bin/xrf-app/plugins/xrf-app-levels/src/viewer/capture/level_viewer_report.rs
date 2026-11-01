@@ -9,10 +9,9 @@ impl LevelViewerReport {
   /// That a level map capture has begun.
   pub fn capturing_map(capture: &RenderMapCapture, viewport: RenderViewportId, path: &Path) {
     log::info!(
-      "Capturing a {} by {} level map in viewport {} to '{}'",
+      "Capturing a {} by {} level map in viewport {viewport} to '{}'",
       capture.width,
       capture.height,
-      viewport.0,
       path.display()
     );
   }
@@ -20,9 +19,8 @@ impl LevelViewerReport {
   /// That a cubemap capture has begun.
   pub fn capturing_cube(capture: &RenderCubeCapture, viewport: RenderViewportId, path: &Path) {
     log::info!(
-      "Capturing a cubemap of {} pixel faces in viewport {} to '{}'",
+      "Capturing a cubemap of {} pixel faces in viewport {viewport} to '{}'",
       capture.size,
-      viewport.0,
       path.display()
     );
   }

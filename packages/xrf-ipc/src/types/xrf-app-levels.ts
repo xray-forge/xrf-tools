@@ -977,6 +977,12 @@ export type MapExportFormat =
       kind: "dds";
     } & ViewerDdsExport);
 
+/** A level map exported: its pixels across and down, the capture's own for its annotations alone as an SVG. */
+export type MapExportOutcome = {
+  width: number;
+  height: number;
+};
+
 /** A level map's capture written again in another shape. */
 export type MapExportRequest = {
   /** The capture's PNG in the screenshots folder, its coverage in alpha. */

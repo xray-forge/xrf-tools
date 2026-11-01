@@ -7,7 +7,7 @@ use xrf_renderer::{LevelParts, RenderSceneId};
 use xrf_world::{World, WorldLevelSource};
 
 use crate::level::{SelectedLevel, SelectedLevels};
-use crate::render::{LevelRenderSource, ShownLevels};
+use crate::render::{LevelRenderParts, LevelRenderSource, ShownLevels};
 use crate::report::LevelReport;
 
 /// Moves the scene of each level shown along with its session through every commit, in the backend: a kept value's
@@ -27,8 +27,11 @@ impl LevelSceneFollower {
       return;
     };
     // A kept level whose geometry or surfaces moved streams afresh as a derived one does: its sectors are packed anew.
-    let is_afresh: bool = match &change.root {
-      SessionRootChange::Kept | SessionRootChange::Derived => change.is_view_renewed,
+    let step: SceneStep = match &change.root {
+      SessionRootChange::Kept | SessionRootChange::Derived if change.is_view_renewed => SceneStep::Afresh,
+      SessionRootChange::Kept | SessionRootChange::Derived => {
+        SceneStep::Reload(LevelRenderParts::to_reload(&change.stale_parts))
+      }
       SessionRootChange::Deriving => {
         LevelReport::follow_deriving(&shown.get_level().source);
 
@@ -49,17 +52,16 @@ impl LevelSceneFollower {
     else {
       return;
     };
-    let key: String = LevelRenderSource::to_scene_key(change.session_id);
-    let source: Arc<LevelRenderSource> = match is_afresh {
-      true => Arc::new(LevelRenderSource::new(next, AssetMountState::clone(assets))),
-      false => Arc::new(shown.follow(next)),
+    let key: String = LevelRenderParts::to_scene_key(change.session_id);
+    let source: Arc<LevelRenderSource> = match step {
+      SceneStep::Afresh => Arc::new(LevelRenderSource::new(next, AssetMountState::clone(assets))),
+      SceneStep::Reload(_) => Arc::new(shown.follow(next)),
     };
     let drawn: Arc<dyn WorldLevelSource> = Arc::clone(&source) as Arc<dyn WorldLevelSource>;
-    let reload: LevelParts = LevelRenderSource::to_reload(&change.stale_parts);
     let mut world: MutexGuard<'_, World> = self.world.lock();
-    let scene: Option<RenderSceneId> = match is_afresh {
-      true => world.reopen_scene(&key, drawn),
-      false => world.reload_scene(&key, drawn, reload),
+    let scene: Option<RenderSceneId> = match step {
+      SceneStep::Afresh => world.reopen_scene(&key, drawn),
+      SceneStep::Reload(reload) => world.reload_scene(&key, drawn, reload),
     };
 
     drop(world);
@@ -73,8 +75,27 @@ impl LevelSceneFollower {
       &source.get_level().source,
       change.revision.get(),
       scene,
-      (!is_afresh).then_some(reload),
+      step.get_reload(),
     );
+  }
+}
+
+/// How a shown session's scene moves to its next snapshot.
+#[derive(Clone, Copy)]
+enum SceneStep {
+  /// Streamed afresh from a new source, its sectors packed anew.
+  Afresh,
+  /// Gone on from the next snapshot, reading again these parts alone.
+  Reload(LevelParts),
+}
+
+impl SceneStep {
+  /// The parts read again, none for a scene streamed afresh.
+  fn get_reload(self) -> Option<LevelParts> {
+    match self {
+      Self::Afresh => None,
+      Self::Reload(reload) => Some(reload),
+    }
   }
 }
 

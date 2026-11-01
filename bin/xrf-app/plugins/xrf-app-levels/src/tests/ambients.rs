@@ -7,8 +7,8 @@ use xrf_environment::{
 };
 use xrf_world::{WorldAmbient, WorldAmbientEffect, WorldWindBlast};
 
-use crate::render::LevelWorldAmbients;
 use crate::tests::fixtures;
+use crate::weather::LevelWorldAmbients;
 
 fn new_ambient(name: &str, effects: &[&str], period: [f32; 2]) -> Ambient {
   let mut ambient: Ambient = Ambient::new(name, "environment\\ambients.ltx");

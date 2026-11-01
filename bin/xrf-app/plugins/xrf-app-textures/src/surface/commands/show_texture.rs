@@ -27,9 +27,8 @@ pub async fn textures_show_texture(
   let source: Option<Arc<dyn WorldLevelSource>> = match request {
     Some(request) => {
       log::info!(
-        "Showing texture '{}' in native viewport {} on a {:?}",
+        "Showing texture '{}' in native viewport {viewport} on a {:?}",
         request.source.label(),
-        viewport.0,
         request.shape
       );
 

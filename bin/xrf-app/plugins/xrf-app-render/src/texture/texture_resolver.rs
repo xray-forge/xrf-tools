@@ -7,6 +7,8 @@ use xrf_material::XrayTextureScope;
 use xrf_renderer::get_texture_name;
 use xrf_vfs::{XrayAssetContainer, XrayRoots, XraySearch};
 
+use crate::texture::ResolvedTexture;
+
 /// Where one texture reference resolved: the file name the renderer reloads it by, and its logical path, `None` for
 /// one resolving to nothing.
 struct LocatedTexture {
@@ -35,11 +37,7 @@ pub struct TextureResolver {
 
 impl TextureResolver {
   /// A resolver over `roots` and `scope`, the references in `known` already resolved to their logical paths.
-  pub fn new(
-    roots: XrayRoots,
-    scope: XrayTextureScope,
-    known: impl IntoIterator<Item = (String, Option<String>)>,
-  ) -> Self {
+  pub fn new(roots: XrayRoots, scope: XrayTextureScope, known: impl IntoIterator<Item = ResolvedTexture>) -> Self {
     Self {
       scope_key: Self::to_scope_key(&roots, &scope),
       roots,
@@ -54,7 +52,7 @@ impl TextureResolver {
   }
 
   /// Takes references resolved elsewhere, as a level's lights, details, particles and spawned models resolve theirs.
-  pub fn extend(&self, known: impl IntoIterator<Item = (String, Option<String>)>) {
+  pub fn extend(&self, known: impl IntoIterator<Item = ResolvedTexture>) {
     self.write_located().extend(Self::locate_known(known));
   }
 
@@ -137,14 +135,17 @@ impl TextureResolver {
     key
   }
 
-  fn locate_known(
-    known: impl IntoIterator<Item = (String, Option<String>)>,
-  ) -> impl Iterator<Item = (String, LocatedTexture)> {
-    known.into_iter().map(|(reference, logical_path)| {
-      let located: LocatedTexture = LocatedTexture::new(&reference, logical_path);
+  fn locate_known(known: impl IntoIterator<Item = ResolvedTexture>) -> impl Iterator<Item = (String, LocatedTexture)> {
+    known.into_iter().map(
+      |ResolvedTexture {
+         reference,
+         logical_path,
+       }| {
+        let located: LocatedTexture = LocatedTexture::new(&reference, logical_path);
 
-      (reference, located)
-    })
+        (reference, located)
+      },
+    )
   }
 
   // The map changes only whole entry by whole entry, so one a panic left behind is still whole.

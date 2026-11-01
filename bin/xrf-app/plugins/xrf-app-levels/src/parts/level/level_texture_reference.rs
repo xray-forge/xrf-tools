@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::Serialize;
+use xrf_app_render::ResolvedTexture;
 use xrf_material::{XraySurfaceDescriptor, XrayTextureScope};
 use xrf_vfs::{XrayResolution, XraySearch};
 
@@ -74,5 +75,15 @@ impl LevelTextureReference {
     resolution
       .get_asset()
       .map(|asset| asset.get_logical_path().as_str().to_owned())
+  }
+}
+
+impl From<&LevelTextureReference> for ResolvedTexture {
+  /// The reference as the renderer's texture resolver takes it, resolved already.
+  fn from(texture: &LevelTextureReference) -> Self {
+    Self {
+      reference: texture.reference.clone(),
+      logical_path: texture.logical_path.clone(),
+    }
   }
 }

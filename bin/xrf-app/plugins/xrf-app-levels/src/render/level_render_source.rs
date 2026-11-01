@@ -3,8 +3,8 @@ use std::time::Instant;
 
 use xrf_anm::AnmFile;
 use xrf_app_core::assets::AssetMountState;
-use xrf_app_core::session::{SessionId, SessionPart, SessionSnapshot};
-use xrf_app_render::TextureResolver;
+use xrf_app_core::session::SessionSnapshot;
+use xrf_app_render::{ResolvedTexture, TextureResolver};
 use xrf_chunk::{InMemoryChunkDataSource, XRayByteOrder};
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
@@ -13,8 +13,8 @@ use xrf_ltx::Ltx;
 use xrf_material::{XrayReducedTextures, XraySurfaceDescriptor};
 use xrf_particles::{ParticleCollider, ParticleEngineRules};
 use xrf_renderer::{
-  LevelPart, LevelParts, RenderAssetSource, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles,
-  RenderLevelSource, RenderLevelSpawn, RenderLoadFailure, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
+  RenderAssetSource, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
+  RenderLoadFailure, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
 };
 use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, SectorAttributes, SectorPackage, SectorPacker, VisualPoser};
@@ -25,15 +25,21 @@ use crate::objects::LevelObjectsDescription;
 use crate::parts::{
   LevelCollisionPart, LevelDetailsPart, LevelEnvironment, LevelEnvironmentPart, LevelGeometryPart, LevelHemiPart,
   LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelSpawnVisual,
-  LevelSpawnVisualsPart, LevelSurfacesPart, LevelTextureReference, LevelTexturesPart, LevelWeatherPart,
-  PackedLevelDetails, PackedLevelLights, PackedLevelParticles, SpawnVisualReader,
+  LevelSurfacesPart, LevelTextureReference, LevelTexturesPart, LevelWeatherPart, PackedLevelDetails, PackedLevelLights,
+  PackedLevelParticles, SpawnVisualReader,
 };
-use crate::render::LevelParticleCollider;
+use crate::render::{LevelParticleCollider, LevelRenderParts};
 use crate::report::LevelReport;
 use crate::weather::LevelWorldWeather;
 
+/// A level's shader table as it is drawn, and the textures its surfaces bind.
+struct DrawnSurfaces {
+  surfaces: Arc<Vec<XraySurfaceDescriptor>>,
+  textures: Arc<Vec<LevelTextureReference>>,
+}
+
 /// The open level as the world plays it and the native renderer draws it: sectors packed when its loader asks, textures
-/// read from the roots the level was opened in.
+/// read from the roots the level was opened in. How its session parts feed the scene is `LevelRenderParts`'.
 pub struct LevelRenderSource {
   level: Arc<SessionSnapshot<SelectedLevel>>,
   assets: AssetMountState,
@@ -61,14 +67,11 @@ impl LevelRenderSource {
 
   /// The level `level` holds as the renderer draws it, its surfaces and textures as its parts hold them.
   pub fn new(level: Arc<SessionSnapshot<SelectedLevel>>, assets: AssetMountState) -> Self {
-    let (surfaces, textures): (Arc<Vec<XraySurfaceDescriptor>>, Arc<Vec<LevelTextureReference>>) =
-      Self::find_surfaces(&level, &assets);
+    let DrawnSurfaces { surfaces, textures } = Self::find_surfaces(&level, &assets);
     let resolver: TextureResolver = TextureResolver::new(
       level.roots.clone(),
       level.source.get_texture_scope(),
-      textures
-        .iter()
-        .map(|texture| (texture.reference.clone(), texture.logical_path.clone())),
+      textures.iter().map(ResolvedTexture::from),
     );
 
     Self {
@@ -82,23 +85,23 @@ impl LevelRenderSource {
 
   /// The level's surfaces and their textures as its parts hold them, resolved where a commit let them go; none where
   /// its roots cannot be searched, which draws every surface flat.
-  fn find_surfaces(
-    level: &SessionSnapshot<SelectedLevel>,
-    assets: &AssetMountState,
-  ) -> (Arc<Vec<XraySurfaceDescriptor>>, Arc<Vec<LevelTextureReference>>) {
+  fn find_surfaces(level: &SessionSnapshot<SelectedLevel>, assets: &AssetMountState) -> DrawnSurfaces {
     if let (Some(surfaces), Some(textures)) = (LevelSurfacesPart::find(level), LevelTexturesPart::find(level)) {
-      return (surfaces, textures);
+      return DrawnSurfaces { surfaces, textures };
     }
 
     match assets.search(&level.roots) {
-      Ok(search) => (
-        LevelSurfacesPart::get(level, &search),
-        LevelTexturesPart::get(level, &search),
-      ),
+      Ok(search) => DrawnSurfaces {
+        surfaces: LevelSurfacesPart::get(level, &search),
+        textures: LevelTexturesPart::get(level, &search),
+      },
       Err(error) => {
         LevelReport::unresolved_surfaces(&level.source, &error);
 
-        (Arc::default(), Arc::default())
+        DrawnSurfaces {
+          surfaces: Arc::default(),
+          textures: Arc::default(),
+        }
       }
     }
   }
@@ -133,63 +136,6 @@ impl LevelRenderSource {
   #[cfg(test)]
   pub fn shares_textures_with(&self, other: &Self) -> bool {
     Arc::ptr_eq(&self.textures, &other.textures)
-  }
-
-  /// What every source of a session's level shares its scene by, whichever of its snapshots it draws.
-  pub(crate) fn to_scene_key(session_id: SessionId) -> String {
-    format!("level {session_id}")
-  }
-
-  /// The parts a level's scene is built from, whose going stale streams it afresh rather than reloading packages
-  /// (`SessionChange::is_view_renewed`): its sectors are packed from its geometry and drawn with its surfaces, which no
-  /// package reload replaces. Textures alone keep the scene, a file come or gone being loaded afresh by the texture
-  /// watcher.
-  pub const VIEW_PARTS: &'static [&'static str] = &[LevelGeometryPart::NAME, LevelSurfacesPart::NAME];
-
-  /// What the renderer reads again of a level whose next snapshot let `stale_parts` go: each package whose read asks
-  /// for any of them, or recorded what it read as one of them. The sectors stream afresh instead, on their geometry or
-  /// surfaces (`VIEW_PARTS`); the graph feeds nothing drawn, the map and the textures' list are the page's, and
-  /// the start only matters where a viewer first stands.
-  pub fn to_reload(stale_parts: &[&str]) -> LevelParts {
-    LevelPart::ALL
-      .into_iter()
-      .filter(|part| {
-        Self::list_read_from(*part)
-          .iter()
-          .any(|read| stale_parts.contains(read))
-      })
-      .collect()
-  }
-
-  /// The session parts the renderer's read of `part` is built from. The sectors stream afresh on theirs instead
-  /// (`VIEW_PARTS`), and the helpers are read again with the spawn.
-  fn list_read_from(part: LevelPart) -> &'static [&'static str] {
-    match part {
-      LevelPart::Spawn => &[
-        LevelSpawnPart::NAME,
-        LevelSpawnVisualsPart::NAME,
-        LevelCollisionPart::NAME,
-        LevelHemiPart::NAME,
-      ],
-      LevelPart::Lights => &[
-        LevelSpawnPart::NAME,
-        LevelSpawnVisualsPart::NAME,
-        LevelSectionsPart::NAME,
-        LevelLightsPart::NAME,
-      ],
-      LevelPart::Particles => &[
-        LevelSpawnPart::NAME,
-        LevelSectionsPart::NAME,
-        LevelEnvironmentPart::NAME,
-        LevelCollisionPart::NAME,
-        LevelHemiPart::NAME,
-        LevelParticlesPart::NAME,
-      ],
-      LevelPart::Weather => &[LevelEnvironmentPart::NAME, LevelWeatherPart::NAME],
-      LevelPart::Motions => &[LevelObjectMotionsPart::NAME],
-      LevelPart::Grass => &[LevelDetailsPart::NAME],
-      LevelPart::Sectors | LevelPart::Helpers => &[],
-    }
   }
 
   /// A search over the roots the level opened with, which every read the renderer asks for goes through.
@@ -241,7 +187,7 @@ impl WorldLevelSource for LevelRenderSource {
   /// The level's session: every source of one opening shares a scene, its next snapshots' included, and a level opened
   /// again streams afresh.
   fn get_scene_key(&self) -> Option<String> {
-    Some(Self::to_scene_key(self.level.session_id))
+    Some(LevelRenderParts::to_scene_key(self.level.session_id))
   }
 
   fn pack_sector(&self, sector: u32) -> XrfResult<SectorPackage> {
@@ -268,12 +214,9 @@ impl WorldLevelSource for LevelRenderSource {
     let packed: PackedLevelLights =
       LevelLightsPart::pack(level, &search, Self::read_sections(level, &search).as_deref());
 
-    self.textures.extend(
-      packed
-        .projectors
-        .into_iter()
-        .map(|projector| (projector.reference, projector.logical_path)),
-    );
+    self
+      .textures
+      .extend(packed.projectors.iter().map(ResolvedTexture::from));
 
     Ok(packed.lights)
   }
@@ -307,12 +250,7 @@ impl WorldLevelSource for LevelRenderSource {
       return Ok(None);
     };
 
-    self.textures.extend(
-      packed
-        .textures
-        .iter()
-        .map(|texture| (texture.reference.clone(), texture.logical_path.clone())),
-    );
+    self.textures.extend(packed.textures.iter().map(ResolvedTexture::from));
 
     Ok(Some(RenderLevelDetails {
       package: packed.package,
@@ -343,12 +281,7 @@ impl WorldLevelSource for LevelRenderSource {
     let collision = LevelCollisionPart::get(level, &search);
     let hemi = LevelHemiPart::get(level, &search);
 
-    self.textures.extend(
-      packed
-        .textures
-        .iter()
-        .map(|texture| (texture.reference.clone(), texture.logical_path.clone())),
-    );
+    self.textures.extend(packed.textures.iter().map(ResolvedTexture::from));
 
     Ok(Some(RenderLevelParticles {
       library: Arc::new(packed.library),
@@ -393,12 +326,11 @@ impl WorldLevelSource for LevelRenderSource {
       .map(|estimator| LevelHemiPart::estimate_visuals(level, &search, &estimator, &read))
       .unwrap_or_default();
 
-    self.textures.extend(read.iter().flat_map(|(_, visual)| {
-      visual
-        .textures
+    self.textures.extend(
+      read
         .iter()
-        .map(|texture| (texture.reference.clone(), texture.logical_path.clone()))
-    }));
+        .flat_map(|(_, visual)| visual.textures.iter().map(ResolvedTexture::from)),
+    );
 
     Ok(RenderSpawnModels {
       models: read

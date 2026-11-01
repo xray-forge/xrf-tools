@@ -6,7 +6,7 @@ use xrf_app_core::session::SessionScopes;
 use xrf_app_render::WorldState;
 
 use crate::level::{OpenedLevel, SelectedLevels};
-use crate::render::{LevelRenderSource, LevelSceneFollower, ShownLevels};
+use crate::render::{LevelRenderParts, LevelSceneFollower, ShownLevels};
 
 /// The `levels` plugin: compiled levels opened as documents whose parts follow commits, shown in a viewport, and
 /// captured or exported through the viewer.
@@ -31,7 +31,7 @@ impl LevelsPlugin {
             application.state::<ExecutionState>().get_pool(),
             OpenedLevel::derive,
           )
-          .with_view_parts(LevelRenderSource::VIEW_PARTS);
+          .with_view_parts(LevelRenderParts::VIEW_PARTS);
         let shown: ShownLevels = ShownLevels::default();
 
         // A shown level's scene follows its session.

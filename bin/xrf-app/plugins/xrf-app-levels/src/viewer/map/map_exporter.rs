@@ -8,7 +8,7 @@ use xrf_dds::{DdsFile, DdsMipChain};
 use xrf_utils::StagedFile;
 
 use crate::viewer::map::annotations::AnnotationCanvas;
-use crate::viewer::map::{MapExportAnnotations, MapExportFormat, MapExportRequest};
+use crate::viewer::map::{MapExportAnnotations, MapExportFormat, MapExportOutcome, MapExportRequest};
 use crate::viewer::{LevelViewerFolder, ViewerImage};
 
 /// A level map's capture written again: resized, flattened or not, as a PNG, an uncompressed TGA or a DDS, or its
@@ -21,7 +21,7 @@ impl MapExporter {
   /// # Errors
   ///
   /// Returns an error when the capture cannot be read, or the export cannot be encoded or written.
-  pub fn export(request: &MapExportRequest) -> TauriResult<(u32, u32)> {
+  pub fn export(request: &MapExportRequest) -> TauriResult<MapExportOutcome> {
     let MapExportRequest {
       path: source,
       target,
@@ -50,7 +50,7 @@ impl MapExporter {
       StagedFile::write(target, svg.as_bytes())
         .map_err(|error| format!("Failed to write annotations '{}': {error}", target.display()))?;
 
-      return Ok((width, height));
+      return Ok(MapExportOutcome { width, height });
     }
 
     let capture: RgbaImage = ViewerImage::read_capture(source)?;
@@ -83,9 +83,8 @@ impl MapExporter {
       MapExportFormat::Tga => ViewerImage::encode_tga(&image, target)?,
       MapExportFormat::Svg => return Err(Self::refuse_svg()),
       MapExportFormat::Dds(export) => {
-        let (encoding, mipmaps) = export.to_encoding();
-        let dds: DdsFile = DdsMipChain::build(&image, mipmaps)
-          .and_then(|chain| encoding.encode(&chain))
+        let dds: DdsFile = DdsMipChain::build(&image, export.to_mipmaps())
+          .and_then(|chain| export.to_encoding().encode(&chain))
           .map_err(|error| format!("Failed to encode map '{}': {error}", target.display()))?;
 
         dds
@@ -98,7 +97,7 @@ impl MapExporter {
     StagedFile::write(target, &encoded)
       .map_err(|error| format!("Failed to write map '{}': {error}", target.display()))?;
 
-    Ok((width, height))
+    Ok(MapExportOutcome { width, height })
   }
 
   /// Why an export other than the annotations alone is refused as an SVG.

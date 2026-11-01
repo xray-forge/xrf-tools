@@ -36,9 +36,8 @@ pub async fn visuals_show_model(
       reloads.watch(&visual.description.roots);
 
       log::info!(
-        "Showing model '{}' in native viewport {} at detail {detail}",
-        visual.description.source.label(),
-        viewport.0
+        "Showing model '{}' in native viewport {viewport} at detail {detail}",
+        visual.description.source.label()
       );
 
       Some(Arc::new(VisualRenderSource::new(

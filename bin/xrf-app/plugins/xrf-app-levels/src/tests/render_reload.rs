@@ -8,7 +8,7 @@ use crate::parts::{
   LevelMapPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelSpawnVisualsPart,
   LevelStartPart, LevelTexturesPart, LevelWeatherPart,
 };
-use crate::render::LevelRenderSource;
+use crate::render::LevelRenderParts;
 
 /// The set of `parts`.
 fn parts(parts: &[LevelPart]) -> LevelParts {
@@ -17,21 +17,21 @@ fn parts(parts: &[LevelPart]) -> LevelParts {
 
 #[test]
 fn a_commit_leaving_every_part_reloads_nothing() {
-  assert!(LevelRenderSource::to_reload(&[]).is_empty());
+  assert!(LevelRenderParts::to_reload(&[]).is_empty());
   assert!(
-    LevelRenderSource::to_reload(&[LevelGraphPart::NAME]).is_empty(),
+    LevelRenderParts::to_reload(&[LevelGraphPart::NAME]).is_empty(),
     "nothing drawn is built from the graph"
   );
   assert!(
-    LevelRenderSource::to_reload(&[LevelStartPart::NAME]).is_empty(),
+    LevelRenderParts::to_reload(&[LevelStartPart::NAME]).is_empty(),
     "where a viewer first stands draws nothing"
   );
   assert!(
-    LevelRenderSource::to_reload(&[LevelMapPart::NAME]).is_empty(),
+    LevelRenderParts::to_reload(&[LevelMapPart::NAME]).is_empty(),
     "the map is the page's"
   );
   assert!(
-    LevelRenderSource::to_reload(&[LevelTexturesPart::NAME]).is_empty(),
+    LevelRenderParts::to_reload(&[LevelTexturesPart::NAME]).is_empty(),
     "a texture come or gone is loaded afresh by the texture watcher"
   );
 }
@@ -45,30 +45,30 @@ fn what_a_render_read_recorded_reloads_that_package_alone() {
     (LevelObjectMotionsPart::NAME, LevelPart::Motions),
     (LevelDetailsPart::NAME, LevelPart::Grass),
   ] {
-    assert_eq!(LevelRenderSource::to_reload(&[part]), parts(&[reload]), "{part}");
+    assert_eq!(LevelRenderParts::to_reload(&[part]), parts(&[reload]), "{part}");
   }
 }
 
 #[test]
 fn a_stale_part_reloads_only_the_packages_built_from_it() {
   assert_eq!(
-    LevelRenderSource::to_reload(&[LevelEnvironmentPart::NAME]),
+    LevelRenderParts::to_reload(&[LevelEnvironmentPart::NAME]),
     parts(&[LevelPart::Particles, LevelPart::Weather])
   );
   assert_eq!(
-    LevelRenderSource::to_reload(&[LevelSectionsPart::NAME]),
+    LevelRenderParts::to_reload(&[LevelSectionsPart::NAME]),
     parts(&[LevelPart::Lights, LevelPart::Particles])
   );
   assert_eq!(
-    LevelRenderSource::to_reload(&[LevelSpawnVisualsPart::NAME]),
+    LevelRenderParts::to_reload(&[LevelSpawnVisualsPart::NAME]),
     parts(&[LevelPart::Spawn, LevelPart::Lights])
   );
   assert_eq!(
-    LevelRenderSource::to_reload(&[LevelCollisionPart::NAME, LevelHemiPart::NAME]),
+    LevelRenderParts::to_reload(&[LevelCollisionPart::NAME, LevelHemiPart::NAME]),
     parts(&[LevelPart::Spawn, LevelPart::Particles])
   );
   assert_eq!(
-    LevelRenderSource::to_reload(&[LevelSpawnPart::NAME]),
+    LevelRenderParts::to_reload(&[LevelSpawnPart::NAME]),
     parts(&[LevelPart::Spawn, LevelPart::Lights, LevelPart::Particles])
   );
 }
@@ -78,11 +78,11 @@ fn a_levels_scene_is_named_by_its_session_alone() {
   let (session, other) = (SessionId::generate(), SessionId::generate());
 
   assert_eq!(
-    LevelRenderSource::to_scene_key(session),
-    LevelRenderSource::to_scene_key(session)
+    LevelRenderParts::to_scene_key(session),
+    LevelRenderParts::to_scene_key(session)
   );
   assert_ne!(
-    LevelRenderSource::to_scene_key(session),
-    LevelRenderSource::to_scene_key(other)
+    LevelRenderParts::to_scene_key(session),
+    LevelRenderParts::to_scene_key(other)
   );
 }

@@ -22,6 +22,7 @@ import {
   LevelWeatherDescription,
   MapAnnotationsWriteRequest,
   MapCaptureRequest,
+  MapExportOutcome,
   MapExportRequest,
   ScreenshotSaveRequest,
   SelectedLevelDescription,
@@ -132,9 +133,9 @@ export const levelsCommands = {
   exportCube: (request: CubeExportRequest) => __TAURI_INVOKE<Array<string>>(ELevelsCommand.EXPORT_CUBE, { request }),
   /**
    * Write a level map of the screenshots folder again as a PNG, a TGA or a DDS, or its annotations alone as an SVG;
-   * answers its pixels across and down.
+   * answers its size.
    */
-  exportMap: (request: MapExportRequest) => __TAURI_INVOKE<[number, number]>(ELevelsCommand.EXPORT_MAP, { request }),
+  exportMap: (request: MapExportRequest) => __TAURI_INVOKE<MapExportOutcome>(ELevelsCommand.EXPORT_MAP, { request }),
   /**
    * The first free path for a screenshot named `name` in the screenshots folder, `-2`, `-3` and on added for one taken
    * within the same second.

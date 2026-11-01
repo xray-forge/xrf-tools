@@ -7,7 +7,7 @@ use xrf_dds::DdsFile;
 use xrf_test_utils::GeneratedResources;
 use xrf_texture::{TextureEncodingFormat, TextureEncodingQuality};
 
-use crate::viewer::map::{MapExportAnnotations, MapExportFormat, MapExportRequest, MapExporter};
+use crate::viewer::map::{MapExportAnnotations, MapExportFormat, MapExportOutcome, MapExportRequest, MapExporter};
 use crate::viewer::{ViewerDdsExport, ViewerImage};
 
 /// A 30 by 20 map, its left half covered in red and its right clear, and beside it annotations drawing a white square
@@ -88,7 +88,7 @@ fn writes_a_dds_of_whole_blocks_still_covering_the_map() -> TauriResult<()> {
   // 30 pixels across are seven blocks and a half, resampled to eight rather than padded.
   assert_eq!(
     MapExporter::export(&new_request(path, target.clone(), format))?,
-    (32, 20)
+    MapExportOutcome { width: 32, height: 20 }
   );
 
   let metadata = DdsFile::read_from_path(&target)
@@ -141,7 +141,7 @@ fn writes_an_svg_only_of_the_annotations_alone() -> TauriResult<()> {
       annotations: Some(MapExportAnnotations::Alone),
       ..new_request(path.clone(), target.clone(), MapExportFormat::Svg)
     })?,
-    (30, 20)
+    MapExportOutcome { width: 30, height: 20 }
   );
   assert_eq!(
     fs::read_to_string(&target).map_err(|error| error.to_string())?,

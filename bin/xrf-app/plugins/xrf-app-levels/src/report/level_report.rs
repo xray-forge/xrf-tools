@@ -48,7 +48,7 @@ impl LevelReport {
 
   /// That a level is shown in a viewport.
   pub fn showing(source: &LevelSource, viewport: RenderViewportId) {
-    log::info!("Showing level {} in native viewport {}", source.get_label(), viewport.0);
+    log::info!("Showing level {} in native viewport {viewport}", source.get_label());
   }
 
   /// What one open came to, its surfaces and their textures as the open resolved them, and what about it is worth a

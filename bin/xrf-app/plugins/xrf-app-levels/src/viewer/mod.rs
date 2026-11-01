@@ -7,9 +7,9 @@ pub(crate) mod commands;
 pub(crate) mod cube;
 mod folder;
 pub(crate) mod map;
-mod report;
 pub(crate) mod routes;
 
-pub use capture::{ScreenshotSaveRequest, ViewerAssembly, ViewerCaptureJob, ViewerDdsExport, ViewerImage};
+pub use capture::{
+  LevelViewerReport, ScreenshotSaveRequest, ViewerAssembly, ViewerCaptureJob, ViewerDdsExport, ViewerImage,
+};
 pub use folder::LevelViewerFolder;
-pub use report::LevelViewerReport;

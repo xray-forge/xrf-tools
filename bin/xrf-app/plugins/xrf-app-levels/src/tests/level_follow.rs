@@ -27,7 +27,7 @@ use crate::parts::{
   LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelStartPart, LevelSurfacesPart,
   LevelTexturesPart, LevelWeatherPart,
 };
-use crate::render::{LevelRenderSource, LevelSceneFollower, ShownLevels};
+use crate::render::{LevelRenderParts, LevelRenderSource, LevelSceneFollower, ShownLevels};
 
 /// Longer than a synthetic level takes to read on the test pool.
 const WAIT: Duration = Duration::from_secs(10);
@@ -99,7 +99,7 @@ fn new_levels(assets: &AssetMountState, pool: Option<Arc<ThreadPool>>) -> Select
     None => levels.with_derivation(assets, OpenedLevel::derive),
   };
 
-  levels.with_view_parts(LevelRenderSource::VIEW_PARTS)
+  levels.with_view_parts(LevelRenderParts::VIEW_PARTS)
 }
 
 /// Opens the tree's level as one more handle of `levels`, as `levels|open_level` does.

@@ -76,13 +76,12 @@ impl CubeExporter {
 
     match format {
       CubeExportFormat::Dds(export) => {
-        let (encoding, mipmaps) = export.to_encoding();
         let target: &Path = &paths[0];
         let dds: DdsFile = faces
           .iter()
-          .map(|face| DdsMipChain::build(face, mipmaps))
+          .map(|face| DdsMipChain::build(face, export.to_mipmaps()))
           .collect::<Result<Vec<DdsMipChain>, _>>()
-          .and_then(|chains| encoding.encode_cube(&chains))
+          .and_then(|chains| export.to_encoding().encode_cube(&chains))
           .map_err(|error| format!("Failed to encode cubemap '{}': {error}", target.display()))?;
         let encoded: Vec<u8> = dds
           .write_to_bytes()

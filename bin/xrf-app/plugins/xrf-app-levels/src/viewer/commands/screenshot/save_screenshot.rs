@@ -29,7 +29,7 @@ pub async fn levels_save_screenshot(
     &execution,
     renderer.screenshot_viewport(viewport, screenshot),
     path,
-    format!("Viewport {} drew no frame to take a screenshot of", viewport.0),
+    format!("Viewport {viewport} drew no frame to take a screenshot of"),
   )
   .await
 }

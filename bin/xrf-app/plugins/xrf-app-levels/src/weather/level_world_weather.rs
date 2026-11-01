@@ -11,8 +11,8 @@ use xrf_world::WorldLevelWeather;
 
 use crate::level::SelectedLevel;
 use crate::parts::LevelEnvironment;
-use crate::render::{LevelLensFlares, LevelWorldAmbients};
-use crate::weather::render::{LevelRain, LevelThunderbolts, LevelWetSurfaces};
+use crate::weather::LevelWorldAmbients;
+use crate::weather::render::{LevelLensFlares, LevelRain, LevelThunderbolts, LevelWetSurfaces};
 
 /// What a level's weathers play with as the world takes them, what the renderer draws them with among it.
 pub struct LevelWorldWeather;

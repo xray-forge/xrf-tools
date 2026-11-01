@@ -14,11 +14,25 @@ use crate::viewer::burst::BurstOutcome;
 struct BurstSum {
   index: u32,
   time: f32,
-  size: (u32, u32),
+  size: BurstSize,
   colour: Vec<u32>,
-  marks_size: (u32, u32),
+  marks_size: BurstSize,
   marks: Vec<[u16; 3]>,
   samples: u32,
+}
+
+/// A picture's pixels across and down.
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct BurstSize {
+  width: u32,
+  height: u32,
+}
+
+/// One sample of one frame, as the renderer numbers them.
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct BurstSample {
+  index: u32,
+  sample: u32,
 }
 
 /// A burst's frames written into its folder as they come back: `frame-NNN.png` each frame read back, or for a
@@ -90,29 +104,43 @@ impl BurstWriter {
   /// Adds sample `sample` of frame `index`, drawn at the scene's `time` in seconds, to the frame's sum, the first
   /// starting it, and writes the frame once its last is in.
   fn take(&mut self, index: u32, sample: u32, time: f32, picture: &RenderCapture, marks: &BurstMarks) -> TauriResult {
-    let expected: (u32, u32) = self
-      .sum
-      .as_ref()
-      .map_or_else(|| (self.outcome.times.len() as u32, 0), |sum| (sum.index, sum.samples));
+    let due: BurstSample = self.sum.as_ref().map_or_else(
+      || BurstSample {
+        index: self.outcome.times.len() as u32,
+        sample: 0,
+      },
+      |sum| BurstSample {
+        index: sum.index,
+        sample: sum.samples,
+      },
+    );
 
-    if (index, sample) != expected {
+    if (BurstSample { index, sample }) != due {
       return Err(format!(
         "The burst's frame {index} sample {sample} came back where frame {} sample {} was due",
-        expected.0, expected.1
+        due.index, due.sample
       ));
     }
 
+    let size: BurstSize = BurstSize {
+      width: picture.width,
+      height: picture.height,
+    };
+    let marks_size: BurstSize = BurstSize {
+      width: marks.width,
+      height: marks.height,
+    };
     let sum: &mut BurstSum = self.sum.get_or_insert_with(|| BurstSum {
       index,
       time,
-      size: (picture.width, picture.height),
+      size,
       colour: vec![0; picture.pixels.len()],
-      marks_size: (marks.width, marks.height),
+      marks_size,
       marks: vec![[0; 3]; marks.marks.len()],
       samples: 0,
     });
 
-    if sum.size != (picture.width, picture.height) || sum.marks_size != (marks.width, marks.height) {
+    if sum.size != size || sum.marks_size != marks_size {
       return Err(format!("The burst's frame {index} changed size between its samples"));
     }
 
@@ -139,9 +167,12 @@ impl BurstWriter {
     let BurstSum {
       index,
       time,
-      size: (width, height),
+      size: BurstSize { width, height },
       colour,
-      marks_size: (marks_width, marks_height),
+      marks_size: BurstSize {
+        width: marks_width,
+        height: marks_height,
+      },
       marks,
       samples,
     } = sum;

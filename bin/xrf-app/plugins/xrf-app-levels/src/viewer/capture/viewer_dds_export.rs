@@ -14,18 +14,17 @@ pub struct ViewerDdsExport {
 }
 
 impl ViewerDdsExport {
-  /// The encoder it writes with, and its mipmaps: the whole chain, reduced with the X-Ray converter's Kaiser kernel,
-  /// or none.
-  pub fn to_encoding(self) -> (DdsEncoding, DdsMipmaps) {
-    let mipmaps: DdsMipmaps = if self.is_mipmapped {
+  /// The encoder it writes with.
+  pub fn to_encoding(self) -> DdsEncoding {
+    DdsEncoding::new(self.format.to_candidate().to_image_format(), self.quality.to_quality())
+  }
+
+  /// Its mipmaps: the whole chain, reduced with the X-Ray converter's Kaiser kernel, or none.
+  pub fn to_mipmaps(self) -> DdsMipmaps {
+    if self.is_mipmapped {
       DdsMipmaps::Filtered(DdsMipFilter::Kaiser)
     } else {
       DdsMipmaps::Disabled
-    };
-
-    (
-      DdsEncoding::new(self.format.to_candidate().to_image_format(), self.quality.to_quality()),
-      mipmaps,
-    )
+    }
   }
 }

@@ -13,6 +13,6 @@ mod world;
 
 pub use capture::{CaptureFile, CaptureNames, CaptureOutcome};
 pub use renderer::{RenderAnswer, RenderPickRequest, Renderer};
-pub use texture::{TextureReloads, TextureResolver};
+pub use texture::{ResolvedTexture, TextureReloads, TextureResolver};
 pub use viewport::{RenderViewports, ViewportEvent, ViewportShows};
 pub use world::WorldState;
