@@ -3,12 +3,14 @@ import { ERenderTerrainTiling, RenderTerrainTiling } from "@xrf/ipc/types/xrf-re
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 import { IRenderLimits } from "@/core/render/lib/features/render-limits";
+import { ERenderSettingControl, TRenderSettings } from "@/core/render/lib/features/render-setting";
+import { TRenderTerrainSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
  * The bounds each varied tiling value is offered between: narrower than the renderer takes, where the tiling reads.
  * Past four its hexagons shrink to a blur of copies; past sixteen their seams show as hard edges.
  */
-export const RENDER_TERRAIN_LIMITS = {
+const RENDER_TERRAIN_LIMITS = {
   rotation: { max: 1, min: 0, step: 0.05 },
   scale: { max: 4, min: 0.5, step: 0.25 },
   sharpness: { max: 16, min: 1, step: 0.5 },
@@ -50,3 +52,46 @@ export function formatTerrainRotation(rotation: number): string {
 export function formatTerrainSharpness(sharpness: number): string {
   return formatNumber(sharpness, 1);
 }
+
+/** Whether the details repeat as the game's grid, which none of the varied tiling's values tune. */
+function isEngineTiling(terrain: TRenderTerrainSettings): boolean {
+  return terrain.tiling === ERenderTerrainTiling.ENGINE;
+}
+
+/** How each terrain setting is set, in the settings and the Shading popover alike. */
+export const RENDER_TERRAIN_SETTINGS: TRenderSettings<TRenderTerrainSettings> = {
+  rotation: {
+    control: ERenderSettingControl.SLIDER,
+    description:
+      "How far each hexagon's copy turns. The details carry painted light and shade, which turns with them and " +
+      "mottles the ground, so none by default.",
+    format: formatTerrainRotation,
+    isInert: isEngineTiling,
+    label: "Rotation",
+    limits: RENDER_TERRAIN_LIMITS.rotation,
+  },
+  scale: {
+    control: ERenderSettingControl.SLIDER,
+    description:
+      "How small the hexagons are: larger scatters fine repeated features such as rows of pebbles, smaller " +
+      "keeps more of each detail whole.",
+    format: formatTerrainScale,
+    isInert: isEngineTiling,
+    label: "Scale",
+    limits: RENDER_TERRAIN_LIMITS.scale,
+  },
+  sharpness: {
+    control: ERenderSettingControl.SLIDER,
+    description: "How sharply the copies meet: lower blends wider, softer seams; higher keeps each copy whole.",
+    format: formatTerrainSharpness,
+    isInert: isEngineTiling,
+    label: "Blend sharpness",
+    limits: RENDER_TERRAIN_LIMITS.sharpness,
+  },
+  tiling: {
+    control: ERenderSettingControl.CHOICE,
+    explain: explainRenderTerrainTiling,
+    label: "Tiling",
+    options: RENDER_TERRAIN_TILING_OPTIONS,
+  },
+};

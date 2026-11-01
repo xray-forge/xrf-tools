@@ -3,16 +3,9 @@ import { ERenderContactShadowMode, RenderContactShadowMode } from "@xrf/ipc/type
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
+import { ERenderSettingControl, TRenderSettings } from "@/core/render/lib/features/render-setting";
+import { TRenderContactShadowSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/schema/render-feature-schema";
-
-/** The bounds each contact shadow value is offered between. */
-export const RENDER_CONTACT_SHADOW_LIMITS = {
-  intensity: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.contact.intensity, 0.05),
-  length: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.contact.length, 0.05),
-  lights: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.contact.lights, 1),
-  steps: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.contact.steps, 1),
-  thickness: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.contact.thickness, 0.01),
-} as const;
 
 /** @returns How far a contact shadow's ray reaches towards the sun or a light, in metres. */
 export function formatContactShadowLength(length: number): string {
@@ -61,3 +54,76 @@ export const RENDER_CONTACT_SHADOW_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOpt
   { label: "Engine", value: ERenderContactShadowMode.ENGINE },
   { label: "Enhanced", value: ERenderContactShadowMode.ENHANCED },
 ];
+
+/** Whether the maps alone shadow the sun, which none of the contact shadows' values tune. */
+function isEngineContactShadow(contact: TRenderContactShadowSettings): boolean {
+  return contact.mode !== ERenderContactShadowMode.ENHANCED;
+}
+
+/**
+ * How each contact shadow setting is set, in the settings' Shadows tab and the Sun shadows popover alike, whose
+ * entries name the contact shadows beside the cascades' values.
+ */
+export const RENDER_CONTACT_SHADOW_SETTINGS: TRenderSettings<TRenderContactShadowSettings> = {
+  intensity: {
+    control: ERenderSettingControl.SLIDER,
+    description: "How much of the light a contact shadow takes away.",
+    entryLabel: "Contact intensity",
+    format: formatContactShadowIntensity,
+    isInert: isEngineContactShadow,
+    label: "Intensity",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.contact.intensity, 0.05),
+  },
+  isFullResolution: {
+    control: ERenderSettingControl.CHECKBOX,
+    description: "Marches every pixel rather than one in four: thin foliage stops flickering, at four times the cost.",
+    entryLabel: "Full resolution contact",
+    isEntryDescribed: true,
+    isInert: isEngineContactShadow,
+    label: "Full resolution",
+  },
+  length: {
+    control: ERenderSettingControl.SLIDER,
+    description: "Metres a pixel's ray reaches towards the sun or a lamp over the frame's depth.",
+    entryLabel: "Contact length",
+    format: formatContactShadowLength,
+    isInert: isEngineContactShadow,
+    label: "Length",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.contact.length, 0.05),
+  },
+  lights: {
+    control: ERenderSettingControl.SLIDER,
+    description: "Lamps each pixel marches towards too, the strongest there; none marches towards the sun alone.",
+    entryLabel: "Contact lights",
+    format: formatContactShadowLights,
+    isInert: isEngineContactShadow,
+    label: "Lamps",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.contact.lights, 1),
+  },
+  mode: {
+    control: ERenderSettingControl.CHOICE,
+    entryLabel: "Contact shadow mode",
+    explain: explainRenderContactShadowMode,
+    isEntryDescribed: true,
+    label: "Mode",
+    options: RENDER_CONTACT_SHADOW_MODE_OPTIONS,
+  },
+  steps: {
+    control: ERenderSettingControl.SLIDER,
+    description: "Depth reads along each ray: more finds smaller shadows and costs more.",
+    entryLabel: "Contact steps",
+    format: formatContactShadowSteps,
+    isInert: isEngineContactShadow,
+    label: "Steps",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.contact.steps, 1),
+  },
+  thickness: {
+    control: ERenderSettingControl.SLIDER,
+    description: "How deep what the frame's depth shows is taken to be: light passes behind anything thinner.",
+    entryLabel: "Contact thickness",
+    format: formatContactShadowThickness,
+    isInert: isEngineContactShadow,
+    label: "Thickness",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.contact.thickness, 0.01),
+  },
+};

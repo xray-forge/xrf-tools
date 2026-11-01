@@ -1,20 +1,20 @@
 import { useInjection } from "@wirestate/react";
-import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { SliderFormRow } from "@xrf/ui/form/slider-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
+import { RenderSettingRows } from "@/core/render/components/settings/RenderSettingRows";
 import {
   formatGrassDensity,
-  formatGrassHeight,
-  formatGrassRadius,
-  formatGrassShadowCascades,
-  formatGrassSlopeLimit,
   fromGrassDensityScale,
-  RENDER_GRASS_LIMITS,
+  RENDER_GRASS_DENSITY_LIMITS,
+  RENDER_GRASS_SETTINGS,
   toGrassDensityScale,
 } from "@/core/render/lib/features/world/render-grass-choices";
-import { TRenderGrassSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import {
+  IRenderFeatureSettings,
+  TRenderGrassSettings,
+} from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";
@@ -23,94 +23,37 @@ import { useRendererOverride } from "./use-renderer-override";
 export function SettingsRendererGrass(): ReactElement {
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const grass: TRenderGrassSettings = renderSettingsService.rendererFeatures.grass;
+  const features: IRenderFeatureSettings = renderSettingsService.rendererFeatures;
+  const grass: TRenderGrassSettings = features.grass;
 
   const onSet = useRendererOverride("grass");
 
   return (
     <DetailSection title={"Grass"} description={"Detail objects around the camera. The game draws them within 49 m."}>
       <div className={"mt-4 flex flex-col gap-6"}>
-        <CheckboxFormRow
-          label={"Grass"}
-          description={"Off, terrain is drawn bare."}
-          isChecked={grass.isEnabled}
-          onChange={(isEnabled: boolean) => onSet({ isEnabled })}
+        <RenderSettingRows
+          settings={RENDER_GRASS_SETTINGS}
+          names={["isEnabled"]}
+          group={grass}
+          features={features}
+          onSet={onSet}
         />
 
         <SliderFormRow
-          label={"Density"}
-          description={"Multiplier over the game's density. Higher costs more to generate and draw."}
+          label={RENDER_GRASS_SETTINGS.density.label}
+          description={RENDER_GRASS_SETTINGS.density.description as string}
           value={toGrassDensityScale(grass.density)}
-          {...RENDER_GRASS_LIMITS.density}
+          {...RENDER_GRASS_DENSITY_LIMITS}
           format={(scale: number) => formatGrassDensity(fromGrassDensityScale(scale))}
           onChange={(scale: number) => onSet({ density: fromGrassDensityScale(scale) })}
         />
 
-        <SliderFormRow
-          label={"Radius"}
-          description={"Draw distance in metres, fading at the edge."}
-          value={grass.radius}
-          {...RENDER_GRASS_LIMITS.radius}
-          format={formatGrassRadius}
-          onChange={(radius: number) => onSet({ radius })}
-        />
-
-        <SliderFormRow
-          label={"Height"}
-          description={"Height multiplier."}
-          value={grass.height}
-          {...RENDER_GRASS_LIMITS.height}
-          format={formatGrassHeight}
-          onChange={(height: number) => onSet({ height })}
-        />
-
-        <SliderFormRow
-          label={"Slope limit"}
-          description={"Degrees of slope past which no grass grows, thinning out over the last fifth; 90 for none."}
-          value={grass.slopeLimit}
-          {...RENDER_GRASS_LIMITS.slopeLimit}
-          format={formatGrassSlopeLimit}
-          onChange={(slopeLimit: number) => onSet({ slopeLimit })}
-        />
-
-        <CheckboxFormRow
-          label={"Aligned to the ground"}
-          description={"Stands each tuft along its ground's slope rather than straight up."}
-          isChecked={grass.isAligned}
-          onChange={(isAligned: boolean) => onSet({ isAligned })}
-        />
-
-        <CheckboxFormRow
-          label={"Shadows"}
-          description={
-            "Casts shadows from the grass: by the contact shadows, and as cards traced under ray reconstruction or in the " +
-            "sun's nearest cascades."
-          }
-          isChecked={grass.isShadowed}
-          onChange={(isShadowed: boolean) => onSet({ isShadowed })}
-        />
-
-        <SliderFormRow
-          label={"Shadow radius"}
-          description={"How far from the camera the grass casts shadows, fading out over the last fifth."}
-          value={grass.shadowRadius}
-          {...RENDER_GRASS_LIMITS.shadowRadius}
-          isDisabled={!grass.isShadowed}
-          format={formatGrassRadius}
-          onChange={(shadowRadius: number) => onSet({ shadowRadius })}
-        />
-
-        <SliderFormRow
-          label={"Shadow cascades"}
-          description={
-            "How many of the sun's nearest cascades draw the grass's own shadows, as far as the radius; the contact " +
-            "shadows shade the rest."
-          }
-          value={grass.shadowCascades}
-          {...RENDER_GRASS_LIMITS.shadowCascades}
-          isDisabled={!grass.isShadowed}
-          format={formatGrassShadowCascades}
-          onChange={(shadowCascades: number) => onSet({ shadowCascades })}
+        <RenderSettingRows
+          settings={RENDER_GRASS_SETTINGS}
+          names={["radius", "height", "slopeLimit", "isAligned", "isShadowed", "shadowRadius", "shadowCascades"]}
+          group={grass}
+          features={features}
+          onSet={onSet}
         />
       </div>
     </DetailSection>

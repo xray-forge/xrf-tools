@@ -1,6 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { formatDegrees, formatNumber, formatPercent } from "@xrf/format";
-import { ERenderFoliageMode, RenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
+import { formatDegrees, formatNumber } from "@xrf/format";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { AirIcon } from "@xrf/ui/icons/air";
@@ -19,26 +18,9 @@ import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weath
 import { LEVEL_MANUAL_WEATHER_WIND_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import {
-  explainRenderFoliageMode,
-  formatFoliageStrength,
-  RENDER_FOLIAGE_LIMITS,
-  RENDER_FOLIAGE_MODE_OPTIONS,
-} from "@/core/render/lib/features/world/render-grass-choices";
+import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
+import { RENDER_FOLIAGE_SETTINGS } from "@/core/render/lib/features/world/render-grass-choices";
 import { TRenderFoliageSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
-
-/** The enhanced foliage motion's strengths, each a slider. */
-const FOLIAGE_MOTION: ReadonlyArray<[keyof typeof RENDER_FOLIAGE_LIMITS, string]> = [
-  ["grassSpeed", "Grass speed"],
-  ["grassTurbulence", "Grass turbulence"],
-  ["grassPush", "Grass push"],
-  ["grassWave", "Grass wave"],
-  ["treesSpeed", "Branches speed"],
-  ["treesTrunk", "Trunk speed"],
-  ["treesBend", "Trunk bend"],
-];
 
 /**
  * The wind the rain drifts on and the trees' sway; whether the trees and the grass sway at all, and how they move.
@@ -50,13 +32,12 @@ export function LevelWindAction({
 }: BaseComponentProps): ReactElement {
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
   const viewService: LevelViewService = useInjection(LevelViewService);
-  const { settings } = useLevelRenderFeatures();
+  const { settings, drawn } = useLevelRenderFeatures();
   const { isOn, toggle } = useLevelViewToggle("isWindy");
   const { state, setNested } = useLevelFeature("grass");
 
   const manual: ILevelManualWeather = weatherService.shown;
   const foliage: TRenderFoliageSettings = state.value.foliage;
-  const isEnhancedFoliage: boolean = foliage.mode === ERenderFoliageMode.ENHANCED;
 
   const setFoliage = useCallback(
     (part: Partial<TRenderFoliageSettings>): void => setNested("foliage", part),
@@ -130,35 +111,13 @@ export function LevelWindAction({
         Foliage motion
       </Typography>
 
-      <RenderValueChoice
-        label={"Mode"}
-        options={RENDER_FOLIAGE_MODE_OPTIONS}
-        value={foliage.mode}
-        onChange={(mode: RenderFoliageMode) => setFoliage({ mode })}
+      <RenderSettingEntries
+        settings={RENDER_FOLIAGE_SETTINGS}
+        names={LEVEL_FOLIAGE_MOTION_KEYS}
+        group={foliage}
+        features={drawn}
+        onSet={setFoliage}
       />
-
-      <p className={"text-xs text-text-secondary"}>{explainRenderFoliageMode(foliage.mode)}</p>
-
-      <RenderValueSlider
-        label={"Least wind"}
-        value={foliage.minSpeed}
-        {...RENDER_FOLIAGE_LIMITS.minSpeed}
-        isDisabled={!isEnhancedFoliage}
-        format={formatPercent}
-        onChange={(minSpeed: number) => setFoliage({ minSpeed })}
-      />
-
-      {FOLIAGE_MOTION.map(([key, label]) => (
-        <RenderValueSlider
-          key={key}
-          label={label}
-          value={foliage[key]}
-          {...RENDER_FOLIAGE_LIMITS[key]}
-          isDisabled={!isEnhancedFoliage}
-          format={formatFoliageStrength}
-          onChange={(value: number) => setFoliage({ [key]: value })}
-        />
-      ))}
 
       <LevelSettingsResetButton subject={"foliage motion"} onReset={resetFoliage} />
     </EditorPopoverToggle>

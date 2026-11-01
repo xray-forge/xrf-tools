@@ -2,7 +2,6 @@ import { useInjection } from "@wirestate/react";
 import { ERenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { GrassIcon } from "@xrf/ui/icons/grass";
 import { ReactElement, useCallback } from "react";
 
@@ -14,16 +13,14 @@ import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feat
 import { LEVEL_FOLIAGE_LIGHT_KEYS, resetLevelFoliageKeys } from "@/core/level/lib/features/level-foliage-keys";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
 import {
-  formatFoliageStrength,
   formatGrassDensity,
-  formatGrassHeight,
   formatGrassRadius,
-  formatGrassShadowCascades,
-  formatGrassSlopeLimit,
   fromGrassDensityScale,
-  RENDER_FOLIAGE_LIMITS,
-  RENDER_GRASS_LIMITS,
+  RENDER_FOLIAGE_SETTINGS,
+  RENDER_GRASS_DENSITY_LIMITS,
+  RENDER_GRASS_SETTINGS,
   toGrassDensityScale,
 } from "@/core/render/lib/features/world/render-grass-choices";
 import {
@@ -31,15 +28,9 @@ import {
   TRenderGrassSettings,
 } from "@/core/render/lib/settings/choice/render-feature-settings";
 
-/** The light the enhanced foliage passes through leaves and grass, each a slider; its motion is the Wind popover's. */
-const FOLIAGE_LIGHT: ReadonlyArray<[keyof typeof RENDER_FOLIAGE_LIMITS, string]> = [
-  ["sssIntensity", "Light through leaves"],
-  ["sssColor", "Sun colour through leaves"],
-];
-
 /**
  * Whether this view plants the level's grass, how dense, how far and how tall, whether it casts shadows, and the light
- * passing through leaves and grass.
+ * passing through leaves and grass; the foliage's motion is the Wind popover's.
  */
 export function LevelGrassAction({
   "data-testid": dataTestId = "level-grass-action",
@@ -47,13 +38,12 @@ export function LevelGrassAction({
   className,
 }: BaseComponentProps): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);
-  const { settings } = useLevelRenderFeatures();
+  const { settings, drawn } = useLevelRenderFeatures();
   const { isOn, toggle } = useLevelViewToggle("isGrassy");
   const { state, set, setNested } = useLevelFeature("grass");
 
   const grass: TRenderGrassSettings = state.value;
-  const foliage: TRenderFoliageSettings = grass.foliage;
-  const isEnhancedFoliage: boolean = foliage.mode === ERenderFoliageMode.ENHANCED;
+  const isEnhancedFoliage: boolean = grass.foliage.mode === ERenderFoliageMode.ENHANCED;
 
   const setFoliage = useCallback(
     (part: Partial<TRenderFoliageSettings>): void => setNested("foliage", part),
@@ -90,65 +80,19 @@ export function LevelGrassAction({
       onToggle={toggle}
     >
       <RenderValueSlider
-        label={"Density"}
+        label={RENDER_GRASS_SETTINGS.density.label}
         value={toGrassDensityScale(grass.density)}
-        {...RENDER_GRASS_LIMITS.density}
+        {...RENDER_GRASS_DENSITY_LIMITS}
         format={(scale: number) => formatGrassDensity(fromGrassDensityScale(scale))}
         onChange={(scale: number) => set({ density: fromGrassDensityScale(scale) })}
       />
 
-      <RenderValueSlider
-        label={"Radius"}
-        value={grass.radius}
-        {...RENDER_GRASS_LIMITS.radius}
-        format={formatGrassRadius}
-        onChange={(radius: number) => set({ radius })}
-      />
-
-      <RenderValueSlider
-        label={"Height"}
-        value={grass.height}
-        {...RENDER_GRASS_LIMITS.height}
-        format={formatGrassHeight}
-        onChange={(height: number) => set({ height })}
-      />
-
-      <RenderValueSlider
-        label={"Slope limit"}
-        value={grass.slopeLimit}
-        {...RENDER_GRASS_LIMITS.slopeLimit}
-        format={formatGrassSlopeLimit}
-        onChange={(slopeLimit: number) => set({ slopeLimit })}
-      />
-
-      <CheckboxFormRow
-        label={"Aligned to the ground"}
-        isChecked={grass.isAligned}
-        onChange={(isAligned: boolean) => set({ isAligned })}
-      />
-
-      <CheckboxFormRow
-        label={"Shadows"}
-        isChecked={grass.isShadowed}
-        onChange={(isShadowed: boolean) => set({ isShadowed })}
-      />
-
-      <RenderValueSlider
-        label={"Shadow radius"}
-        value={grass.shadowRadius}
-        {...RENDER_GRASS_LIMITS.shadowRadius}
-        isDisabled={!grass.isShadowed}
-        format={formatGrassRadius}
-        onChange={(shadowRadius: number) => set({ shadowRadius })}
-      />
-
-      <RenderValueSlider
-        label={"Shadow cascades"}
-        value={grass.shadowCascades}
-        {...RENDER_GRASS_LIMITS.shadowCascades}
-        isDisabled={!grass.isShadowed}
-        format={formatGrassShadowCascades}
-        onChange={(shadowCascades: number) => set({ shadowCascades })}
+      <RenderSettingEntries
+        settings={RENDER_GRASS_SETTINGS}
+        names={["radius", "height", "slopeLimit", "isAligned", "isShadowed", "shadowRadius", "shadowCascades"]}
+        group={grass}
+        features={drawn}
+        onSet={set}
       />
 
       {isEnhancedFoliage ? null : (
@@ -157,17 +101,13 @@ export function LevelGrassAction({
         </p>
       )}
 
-      {FOLIAGE_LIGHT.map(([key, label]) => (
-        <RenderValueSlider
-          key={key}
-          label={label}
-          value={foliage[key]}
-          {...RENDER_FOLIAGE_LIMITS[key]}
-          isDisabled={!isEnhancedFoliage}
-          format={formatFoliageStrength}
-          onChange={(value: number) => setFoliage({ [key]: value })}
-        />
-      ))}
+      <RenderSettingEntries
+        settings={RENDER_FOLIAGE_SETTINGS}
+        names={LEVEL_FOLIAGE_LIGHT_KEYS}
+        group={grass.foliage}
+        features={drawn}
+        onSet={setFoliage}
+      />
 
       <LevelSettingsResetButton onReset={reset} />
     </EditorPopoverToggle>

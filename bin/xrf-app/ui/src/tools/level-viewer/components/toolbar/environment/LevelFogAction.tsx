@@ -1,6 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { formatNumber, formatPercent } from "@xrf/format";
-import { ERenderFogMode, RenderFogColour, RenderFogMode } from "@xrf/ipc/types/xrf-renderer";
+import { ERenderFogMode } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
@@ -20,18 +20,8 @@ import { LEVEL_MANUAL_WEATHER_FOG_KEYS } from "@/core/level/lib/weather/level-ma
 import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
-import {
-  explainRenderFogColour,
-  explainRenderFogMode,
-  formatFogDensity,
-  formatFogHeight,
-  formatFogShare,
-  formatFogSkyFade,
-  RENDER_FOG_COLOUR_OPTIONS,
-  RENDER_FOG_LIMITS,
-  RENDER_FOG_MODE_OPTIONS,
-} from "@/core/render/lib/features/world/render-fog-choices";
+import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
+import { RENDER_FOG_SETTINGS } from "@/core/render/lib/features/world/render-fog-choices";
 import { TRenderFogSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /** What the distance fades into: the sky as the engine fades it, or its haze. */
@@ -51,7 +41,7 @@ export function LevelFogAction({
 }: BaseComponentProps): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
-  const { settings, features } = useLevelRenderFeatures();
+  const { settings, features, drawn } = useLevelRenderFeatures();
   const { set, reset } = useLevelFeatureOverride("fog");
   const { isOn, toggle } = useLevelViewToggle("isFogged");
 
@@ -110,67 +100,12 @@ export function LevelFogAction({
 
       <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_FOG_KEYS} onReset={weatherService.resetManual} />
 
-      <RenderValueChoice
-        label={"Colour"}
-        options={RENDER_FOG_COLOUR_OPTIONS}
-        value={value.colour}
-        onChange={(colour: RenderFogColour) => set({ colour })}
-      />
-
-      <p className={"text-xs text-text-secondary"}>{explainRenderFogColour(value.colour)}</p>
-
-      <RenderValueChoice
-        label={"Mode"}
-        options={RENDER_FOG_MODE_OPTIONS}
-        value={value.mode}
-        onChange={(mode: RenderFogMode) => set({ mode })}
-      />
-
-      <p className={"text-xs text-text-secondary"}>{explainRenderFogMode(value.mode)}</p>
-
-      <RenderValueSlider
-        label={"Height"}
-        value={value.height}
-        {...RENDER_FOG_LIMITS.height}
-        isDisabled={!isEnhanced}
-        format={formatFogHeight}
-        onChange={(height: number) => set({ height })}
-      />
-
-      <RenderValueSlider
-        label={"Density"}
-        value={value.density}
-        {...RENDER_FOG_LIMITS.density}
-        isDisabled={!isEnhanced}
-        format={formatFogDensity}
-        onChange={(density: number) => set({ density })}
-      />
-
-      <RenderValueSlider
-        label={"Sun colour"}
-        value={value.sunColor}
-        {...RENDER_FOG_LIMITS.sunColor}
-        isDisabled={!isEnhanced}
-        format={formatFogShare}
-        onChange={(sunColor: number) => set({ sunColor })}
-      />
-
-      <RenderValueSlider
-        label={"Scattering"}
-        value={value.scattering}
-        {...RENDER_FOG_LIMITS.scattering}
-        isDisabled={!isEnhanced}
-        format={formatFogShare}
-        onChange={(scattering: number) => set({ scattering })}
-      />
-
-      <RenderValueSlider
-        label={"Sky fade from"}
-        value={value.skyFade}
-        {...RENDER_FOG_LIMITS.skyFade}
-        isDisabled={!isEnhanced}
-        format={formatFogSkyFade}
-        onChange={(skyFade: number) => set({ skyFade })}
+      <RenderSettingEntries
+        settings={RENDER_FOG_SETTINGS}
+        names={["colour", "mode", "height", "density", "sunColor", "scattering", "skyFade"]}
+        group={value}
+        features={drawn}
+        onSet={set}
       />
 
       <LevelSettingsResetButton onReset={reset} />

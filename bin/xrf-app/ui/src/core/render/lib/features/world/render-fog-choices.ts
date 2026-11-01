@@ -3,16 +3,9 @@ import { ERenderFogColour, ERenderFogMode, RenderFogColour, RenderFogMode } from
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
 import { toRenderLimits } from "@/core/render/lib/features/render-limits";
+import { ERenderSettingControl, TRenderSettings } from "@/core/render/lib/features/render-setting";
+import { TRenderFogSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/schema/render-feature-schema";
-
-/** The bounds each enhanced fog value is offered between. */
-export const RENDER_FOG_LIMITS = {
-  density: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.density, 0.1),
-  height: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.height, 0.5),
-  skyFade: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.skyFade, 0.05),
-  scattering: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.scattering, 0.05),
-  sunColor: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.sunColor, 0.05),
-} as const;
 
 const RENDER_FOG_MODE_DESCRIPTIONS: Readonly<Record<RenderFogMode, string>> = {
   [ERenderFogMode.ENGINE]: "Draws the weather's distance fog, as the game does.",
@@ -76,3 +69,66 @@ export function formatFogSkyFade(share: number): string {
 export function formatFogShare(share: number): string {
   return formatPercent(share);
 }
+
+/** Whether the fog is the weather's distance fog alone, which none of the enhanced fog's values tune. */
+function isEngineFog(fog: TRenderFogSettings): boolean {
+  return fog.mode === ERenderFogMode.ENGINE;
+}
+
+/** How each fog setting is set, in the settings and the Fog popover alike. */
+export const RENDER_FOG_SETTINGS: TRenderSettings<TRenderFogSettings> = {
+  colour: {
+    control: ERenderSettingControl.CHOICE,
+    explain: explainRenderFogColour,
+    isEntryDescribed: true,
+    label: "Colour",
+    options: RENDER_FOG_COLOUR_OPTIONS,
+  },
+  density: {
+    control: ERenderSettingControl.SLIDER,
+    description: "How much thicker the distance fog grows where the height fog is whole.",
+    format: formatFogDensity,
+    isInert: isEngineFog,
+    label: "Density",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.density, 0.1),
+  },
+  height: {
+    control: ERenderSettingControl.SLIDER,
+    description: "Metres either side of the world's zero height over which the height fog rises.",
+    format: formatFogHeight,
+    isInert: isEngineFog,
+    label: "Height",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.height, 0.5),
+  },
+  mode: {
+    control: ERenderSettingControl.CHOICE,
+    explain: explainRenderFogMode,
+    isEntryDescribed: true,
+    label: "Mode",
+    options: RENDER_FOG_MODE_OPTIONS,
+  },
+  scattering: {
+    control: ERenderSettingControl.SLIDER,
+    description: "How readily the frame's bright parts blur into the fog.",
+    format: formatFogShare,
+    isInert: isEngineFog,
+    label: "Scattering",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.scattering, 0.05),
+  },
+  skyFade: {
+    control: ERenderSettingControl.SLIDER,
+    description: "The fog's share past which fogged surfaces fade into the sky; Engine fades them from the first.",
+    format: formatFogSkyFade,
+    isInert: isEngineFog,
+    label: "Sky fade from",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.skyFade, 0.05),
+  },
+  sunColor: {
+    control: ERenderSettingControl.SLIDER,
+    description: "How far the height fog takes the sun's colour, looking towards the sun.",
+    format: formatFogShare,
+    isInert: isEngineFog,
+    label: "Sun colour",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.fog.sunColor, 0.05),
+  },
+};

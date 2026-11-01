@@ -1,9 +1,10 @@
 import { useInjection } from "@wirestate/react";
-import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
-import { TRenderWaterSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import { RenderSettingRows } from "@/core/render/components/settings/RenderSettingRows";
+import { RENDER_WATER_SETTINGS } from "@/core/render/lib/features/world/render-water-choices";
+import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";
@@ -12,34 +13,19 @@ import { useRendererOverride } from "./use-renderer-override";
 export function SettingsRendererWater(): ReactElement {
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const water: TRenderWaterSettings = renderSettingsService.rendererFeatures.water;
+  const features: IRenderFeatureSettings = renderSettingsService.rendererFeatures;
 
   const onSet = useRendererOverride("water");
 
   return (
     <DetailSection title={"Water"} description={"Water surfaces as the engine renders them."}>
       <div className={"mt-4 flex flex-col gap-6"}>
-        <CheckboxFormRow
-          label={"Water"}
-          description={"Ripples and sky reflection."}
-          isChecked={water.isEnabled}
-          onChange={(isEnabled: boolean) => onSet({ isEnabled })}
-        />
-
-        <CheckboxFormRow
-          label={"Soft water"}
-          description={"Fades the water by its depth and lays foam in the shallows. Game setting: r2_soft_water."}
-          isChecked={water.isSoft}
-          isDisabled={!water.isEnabled}
-          onChange={(isSoft: boolean) => onSet({ isSoft })}
-        />
-
-        <CheckboxFormRow
-          label={"Distortion"}
-          description={"Refracts what is seen through the surface."}
-          isChecked={water.isDistorted}
-          isDisabled={!water.isEnabled}
-          onChange={(isDistorted: boolean) => onSet({ isDistorted })}
+        <RenderSettingRows
+          settings={RENDER_WATER_SETTINGS}
+          names={["isEnabled", "isSoft", "isDistorted"]}
+          group={features.water}
+          features={features}
+          onSet={onSet}
         />
       </div>
     </DetailSection>

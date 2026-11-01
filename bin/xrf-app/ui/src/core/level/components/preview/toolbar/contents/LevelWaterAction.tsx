@@ -1,9 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { formatPercent } from "@xrf/format";
-import { ERenderWaterMode, RenderWaterMode } from "@xrf/ipc/types/xrf-renderer";
+import { ERenderWaterMode } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { WaterIcon } from "@xrf/ui/icons/water";
 import { ReactElement, useCallback } from "react";
 
@@ -18,19 +17,10 @@ import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weath
 import { LEVEL_MANUAL_WEATHER_WATER_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
-import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
 import {
-  explainRenderWaterMode,
-  formatWaterBorder,
-  formatWaterDistortion,
-  formatWaterMultiple,
-  formatWaterStrength,
-  formatWaveHeight,
-  formatWaveSpeed,
-  RENDER_ENHANCED_WATER_LIMITS,
-  RENDER_WATER_LIMITS,
-  RENDER_WATER_MODE_OPTIONS,
+  RENDER_ENHANCED_WATER_SETTINGS,
+  RENDER_WATER_SETTINGS,
 } from "@/core/render/lib/features/world/render-water-choices";
 import {
   TRenderEnhancedWaterSettings,
@@ -49,20 +39,15 @@ export function LevelWaterAction({
 }: BaseComponentProps): ReactElement {
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
-  const renderFeatures = useLevelRenderFeatures();
+  const { settings, features, drawn } = useLevelRenderFeatures();
   const { isOn, toggle } = useLevelViewToggle("isWaterVisible");
   const { state, set, setNested, reset } = useLevelFeature("water");
   // The keyframe on screen, whose `water_intensity` scales what the water reflects.
   const manual: ILevelManualWeather = weatherService.shown;
   const water: TRenderWaterSettings = state.value;
-  const enhanced: TRenderEnhancedWaterSettings = water.enhanced;
   const isEnhanced: boolean = water.mode === ERenderWaterMode.ENHANCED;
   // The water's reflection is set in the Reflections group, beside the surfaces' and the ray trace both share.
-  const reflections: TRenderReflectionSettings = toLevelModeFeature(
-    "reflections",
-    renderFeatures.settings,
-    renderFeatures.features
-  );
+  const reflections: TRenderReflectionSettings = toLevelModeFeature("reflections", settings, features);
   const isReflectionTraced: boolean = renderService.isTraceable && reflections.isTraced;
 
   const onSetEnhanced = useCallback(
@@ -100,49 +85,20 @@ export function LevelWaterAction({
 
       <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_WATER_KEYS} onReset={weatherService.resetManual} />
 
-      <RenderValueChoice
-        label={"Mode"}
-        options={RENDER_WATER_MODE_OPTIONS}
-        value={water.mode}
-        onChange={(mode: RenderWaterMode) => set({ mode })}
+      <RenderSettingEntries
+        settings={RENDER_WATER_SETTINGS}
+        names={["mode"]}
+        group={water}
+        features={drawn}
+        onSet={set}
       />
 
-      <p className={"text-xs text-text-secondary"}>{explainRenderWaterMode(water.mode)}</p>
-
-      <RenderValueSlider
-        label={"Refraction"}
-        value={enhanced.refraction}
-        {...RENDER_ENHANCED_WATER_LIMITS.refraction}
-        isDisabled={!isEnhanced}
-        format={formatWaterStrength}
-        onChange={(refraction: number) => onSetEnhanced({ refraction })}
-      />
-
-      <RenderValueSlider
-        label={"Turbidity"}
-        value={enhanced.turbidity}
-        {...RENDER_ENHANCED_WATER_LIMITS.turbidity}
-        isDisabled={!isEnhanced}
-        format={formatWaterStrength}
-        onChange={(turbidity: number) => onSetEnhanced({ turbidity })}
-      />
-
-      <RenderValueSlider
-        label={"Soft border"}
-        value={enhanced.softBorder}
-        {...RENDER_ENHANCED_WATER_LIMITS.softBorder}
-        isDisabled={!isEnhanced}
-        format={formatWaterBorder}
-        onChange={(softBorder: number) => onSetEnhanced({ softBorder })}
-      />
-
-      <RenderValueSlider
-        label={"Reflectivity"}
-        value={enhanced.reflectivity}
-        {...RENDER_ENHANCED_WATER_LIMITS.reflectivity}
-        isDisabled={!isEnhanced}
-        format={formatWaterStrength}
-        onChange={(reflectivity: number) => onSetEnhanced({ reflectivity })}
+      <RenderSettingEntries
+        settings={RENDER_ENHANCED_WATER_SETTINGS}
+        names={["refraction", "turbidity", "softBorder", "reflectivity"]}
+        group={water.enhanced}
+        features={drawn}
+        onSet={onSetEnhanced}
       />
 
       {isEnhanced ? (
@@ -155,148 +111,31 @@ export function LevelWaterAction({
         </p>
       ) : null}
 
-      <RenderValueSlider
-        label={"Reflection blur"}
-        value={enhanced.reflectionBlur}
-        {...RENDER_ENHANCED_WATER_LIMITS.reflectionBlur}
-        isDisabled={!isEnhanced}
-        format={formatWaterStrength}
-        onChange={(reflectionBlur: number) => onSetEnhanced({ reflectionBlur })}
+      <RenderSettingEntries
+        settings={RENDER_ENHANCED_WATER_SETTINGS}
+        names={[
+          "reflectionBlur",
+          "blurNoise",
+          "vibrance",
+          "specular",
+          "caustics",
+          "parallaxHeight",
+          "flow",
+          "calmFlow",
+          "variation",
+          "ripples",
+        ]}
+        group={water.enhanced}
+        features={drawn}
+        onSet={onSetEnhanced}
       />
 
-      <RenderValueSlider
-        label={"Blur noise"}
-        value={enhanced.blurNoise}
-        {...RENDER_ENHANCED_WATER_LIMITS.blurNoise}
-        isDisabled={!isEnhanced}
-        format={formatWaterStrength}
-        onChange={(blurNoise: number) => onSetEnhanced({ blurNoise })}
-      />
-
-      <RenderValueSlider
-        label={"Vibrance"}
-        value={enhanced.vibrance}
-        {...RENDER_ENHANCED_WATER_LIMITS.vibrance}
-        isDisabled={!isEnhanced}
-        format={formatPercent}
-        onChange={(vibrance: number) => onSetEnhanced({ vibrance })}
-      />
-
-      <RenderValueSlider
-        label={"Specular"}
-        value={enhanced.specular}
-        {...RENDER_ENHANCED_WATER_LIMITS.specular}
-        isDisabled={!isEnhanced}
-        format={formatWaterStrength}
-        onChange={(specular: number) => onSetEnhanced({ specular })}
-      />
-
-      <RenderValueSlider
-        label={"Caustics"}
-        value={enhanced.caustics}
-        {...RENDER_ENHANCED_WATER_LIMITS.caustics}
-        isDisabled={!isEnhanced}
-        format={formatWaterStrength}
-        onChange={(caustics: number) => onSetEnhanced({ caustics })}
-      />
-
-      <RenderValueSlider
-        label={"Parallax height"}
-        value={enhanced.parallaxHeight}
-        {...RENDER_ENHANCED_WATER_LIMITS.parallaxHeight}
-        isDisabled={!isEnhanced}
-        format={formatWaveHeight}
-        onChange={(parallaxHeight: number) => onSetEnhanced({ parallaxHeight })}
-      />
-
-      <RenderValueSlider
-        label={"Flow"}
-        value={enhanced.flow}
-        {...RENDER_ENHANCED_WATER_LIMITS.flow}
-        isDisabled={!isEnhanced}
-        format={formatWaterMultiple}
-        onChange={(flow: number) => onSetEnhanced({ flow })}
-      />
-
-      <RenderValueSlider
-        label={"Calm flow"}
-        value={enhanced.calmFlow}
-        {...RENDER_ENHANCED_WATER_LIMITS.calmFlow}
-        isDisabled={!isEnhanced}
-        format={formatPercent}
-        onChange={(calmFlow: number) => onSetEnhanced({ calmFlow })}
-      />
-
-      <RenderValueSlider
-        label={"Variation"}
-        value={enhanced.variation}
-        {...RENDER_ENHANCED_WATER_LIMITS.variation}
-        isDisabled={!isEnhanced}
-        format={formatWaterStrength}
-        onChange={(variation: number) => onSetEnhanced({ variation })}
-      />
-
-      <RenderValueSlider
-        label={"Rain ripples"}
-        value={enhanced.ripples}
-        {...RENDER_ENHANCED_WATER_LIMITS.ripples}
-        isDisabled={!isEnhanced}
-        format={formatWaterStrength}
-        onChange={(ripples: number) => onSetEnhanced({ ripples })}
-      />
-
-      <CheckboxFormRow
-        label={"Soft water"}
-        description={"Fades the water by its depth and lays foam in the shallows. Game setting: r2_soft_water."}
-        isChecked={water.isSoft}
-        onChange={(isSoft: boolean) => set({ isSoft })}
-      />
-
-      <CheckboxFormRow
-        label={"Distortion"}
-        description={"Moves what is seen through it."}
-        isChecked={water.isDistorted}
-        onChange={(isDistorted: boolean) => set({ isDistorted })}
-      />
-
-      <RenderValueSlider
-        label={"Wave height"}
-        value={water.waveHeight}
-        {...RENDER_WATER_LIMITS.waveHeight}
-        format={formatWaveHeight}
-        onChange={(waveHeight: number) => set({ waveHeight })}
-      />
-
-      <RenderValueSlider
-        label={"Wave speed"}
-        value={water.waveSpeed}
-        {...RENDER_WATER_LIMITS.waveSpeed}
-        format={formatWaveSpeed}
-        onChange={(waveSpeed: number) => set({ waveSpeed })}
-      />
-
-      <RenderValueSlider
-        label={"Ripple"}
-        value={water.ripple}
-        {...RENDER_WATER_LIMITS.ripple}
-        format={formatWaterMultiple}
-        onChange={(ripple: number) => set({ ripple })}
-      />
-
-      <RenderValueSlider
-        label={"Reflection"}
-        value={water.reflection}
-        {...RENDER_WATER_LIMITS.reflection}
-        format={formatWaterMultiple}
-        onChange={(reflection: number) => set({ reflection })}
-      />
-
-      <RenderValueSlider
-        label={"Distortion strength"}
-        value={water.distortion}
-        {...RENDER_WATER_LIMITS.distortion}
-        format={formatWaterDistortion}
-        onChange={(distortion: number) => set({ distortion })}
+      <RenderSettingEntries
+        settings={RENDER_WATER_SETTINGS}
+        names={["isSoft", "isDistorted", "waveHeight", "waveSpeed", "ripple", "reflection", "distortion"]}
+        group={water}
+        features={drawn}
+        onSet={set}
       />
 
       <LevelSettingsResetButton onReset={reset} />

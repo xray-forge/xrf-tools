@@ -2,7 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 
 import {
   fromGrassDensityScale,
-  RENDER_GRASS_LIMITS,
+  RENDER_GRASS_DENSITY_LIMITS,
   toGrassDensityScale,
 } from "@/core/render/lib/features/world/render-grass-choices";
 import { DEFAULT_RENDER_GRASS_SETTINGS } from "@/core/render/lib/settings/choice/render-feature-defaults";
@@ -12,9 +12,9 @@ describe("grass density scale", () => {
   it("offers the engine's density as how many times the game's the grass stands, higher denser", () => {
     expect(toGrassDensityScale(DEFAULT_RENDER_GRASS_SETTINGS.density)).toBe(1);
     expect(toGrassDensityScale(0.3)).toBeCloseTo(2, 10);
-    expect(RENDER_GRASS_LIMITS.density.max).toBeCloseTo(3, 10);
-    expect(fromGrassDensityScale(RENDER_GRASS_LIMITS.density.max)).toBeCloseTo(0.2, 10);
-    expect(fromGrassDensityScale(RENDER_GRASS_LIMITS.density.min)).toBeCloseTo(0.99, 10);
+    expect(RENDER_GRASS_DENSITY_LIMITS.max).toBeCloseTo(3, 10);
+    expect(fromGrassDensityScale(RENDER_GRASS_DENSITY_LIMITS.max)).toBeCloseTo(0.2, 10);
+    expect(fromGrassDensityScale(RENDER_GRASS_DENSITY_LIMITS.min)).toBeCloseTo(0.99, 10);
     expect(fromGrassDensityScale(toGrassDensityScale(0.45))).toBeCloseTo(0.45, 10);
   });
 });

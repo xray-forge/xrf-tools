@@ -1,38 +1,27 @@
-import { ERenderContactShadowMode, RenderContactShadowMode } from "@xrf/ipc/types/xrf-renderer";
+import { ERenderContactShadowMode } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { TonalityIcon } from "@xrf/ui/icons/tonality";
 import { ReactElement, useCallback } from "react";
 
 import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
+import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { RenderSettingEntries } from "@/core/render/components/settings/RenderSettingEntries";
+import { RENDER_CONTACT_SHADOW_SETTINGS } from "@/core/render/lib/features/lighting/render-contact-shadow-choices";
 import {
-  explainRenderContactShadowMode,
-  formatContactShadowIntensity,
-  formatContactShadowLength,
-  formatContactShadowLights,
-  formatContactShadowSteps,
-  formatContactShadowThickness,
-  RENDER_CONTACT_SHADOW_LIMITS,
-  RENDER_CONTACT_SHADOW_MODE_OPTIONS,
-} from "@/core/render/lib/features/lighting/render-contact-shadow-choices";
-import {
-  formatCascadeBlend,
-  formatShadowBias,
-  formatShadowFilter,
-  formatShadowSwayCascades,
-  formatShadowSwayRate,
   RENDER_SHADOW_CASCADE_OPTIONS,
-  RENDER_SHADOW_LIMITS,
   RENDER_SHADOW_RESOLUTION_OPTIONS,
+  RENDER_SHADOW_SETTINGS,
 } from "@/core/render/lib/features/lighting/render-shadow-choices";
 import { RENDER_SHADOW_CASCADE_WIDTHS } from "@/core/render/lib/settings/choice/render-feature-defaults";
-import { TRenderShadowSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
+import {
+  TRenderContactShadowSettings,
+  TRenderShadowSettings,
+} from "@/core/render/lib/settings/choice/render-feature-settings";
 
 /**
  * Whether the sun casts shadows in this view, in how many cascades, how fine and how soft, how often and how far out
@@ -46,13 +35,13 @@ export function LevelShadowAction({
 }: BaseComponentProps): ReactElement {
   const { isOn, toggle } = useLevelViewToggle("isShadowed");
   const { state, set, setNested, reset } = useLevelFeature("shadows");
+  const { drawn } = useLevelRenderFeatures();
   const shadows: TRenderShadowSettings = state.value;
-  const contact: TRenderShadowSettings["contact"] = shadows.contact;
   const widest: number = shadows.cascades.at(-1) ?? 0;
-  const isContactShadowed: boolean = contact.mode === ERenderContactShadowMode.ENHANCED;
+  const isContactShadowed: boolean = shadows.contact.mode === ERenderContactShadowMode.ENHANCED;
 
   const onSetContact = useCallback(
-    (part: Partial<TRenderShadowSettings["contact"]>): void => setNested("contact", part),
+    (part: Partial<TRenderContactShadowSettings>): void => setNested("contact", part),
     [setNested]
   );
 
@@ -79,121 +68,33 @@ export function LevelShadowAction({
       onToggle={toggle}
     >
       <RenderValueChoice
-        label={"Cascades"}
+        label={RENDER_SHADOW_SETTINGS.cascades.label}
         options={RENDER_SHADOW_CASCADE_OPTIONS}
         value={String(shadows.cascades.length)}
         onChange={(count: string) => set({ cascades: RENDER_SHADOW_CASCADE_WIDTHS.slice(0, Number(count)) })}
       />
 
       <RenderValueChoice
-        label={"Map resolution (texels)"}
+        label={RENDER_SHADOW_SETTINGS.resolution.label}
         options={RENDER_SHADOW_RESOLUTION_OPTIONS}
         value={String(shadows.resolution)}
         onChange={(resolution: string) => set({ resolution: Number(resolution) })}
       />
 
-      <RenderValueSlider
-        label={"Filter"}
-        value={shadows.filter}
-        {...RENDER_SHADOW_LIMITS.filter}
-        format={formatShadowFilter}
-        onChange={(filter: number) => set({ filter })}
+      <RenderSettingEntries
+        settings={RENDER_SHADOW_SETTINGS}
+        names={["filter", "bias", "blend", "swayRate", "swayCascades"]}
+        group={shadows}
+        features={drawn}
+        onSet={set}
       />
 
-      <RenderValueSlider
-        label={"Normal offset"}
-        value={shadows.bias}
-        {...RENDER_SHADOW_LIMITS.bias}
-        format={formatShadowBias}
-        onChange={(bias: number) => set({ bias })}
-      />
-
-      <RenderValueSlider
-        label={"Cascade blend"}
-        value={shadows.blend}
-        {...RENDER_SHADOW_LIMITS.blend}
-        format={formatCascadeBlend}
-        onChange={(blend: number) => set({ blend })}
-      />
-
-      <RenderValueSlider
-        label={"Sway updates"}
-        value={shadows.swayRate}
-        {...RENDER_SHADOW_LIMITS.swayRate}
-        format={formatShadowSwayRate}
-        onChange={(swayRate: number) => set({ swayRate })}
-      />
-
-      <RenderValueSlider
-        label={"Swaying cascades"}
-        value={shadows.swayCascades}
-        {...RENDER_SHADOW_LIMITS.swayCascades}
-        format={formatShadowSwayCascades}
-        onChange={(swayCascades: number) => set({ swayCascades })}
-      />
-
-      <RenderValueChoice
-        label={"Contact shadow mode"}
-        options={RENDER_CONTACT_SHADOW_MODE_OPTIONS}
-        value={contact.mode}
-        onChange={(mode: RenderContactShadowMode) => onSetContact({ mode })}
-      />
-
-      <p className={"text-xs text-text-secondary"}>{explainRenderContactShadowMode(contact.mode)}</p>
-
-      <RenderValueSlider
-        label={"Contact length"}
-        value={contact.length}
-        {...RENDER_CONTACT_SHADOW_LIMITS.length}
-        isDisabled={!isContactShadowed}
-        format={formatContactShadowLength}
-        onChange={(length: number) => onSetContact({ length })}
-      />
-
-      <RenderValueSlider
-        label={"Contact intensity"}
-        value={contact.intensity}
-        {...RENDER_CONTACT_SHADOW_LIMITS.intensity}
-        isDisabled={!isContactShadowed}
-        format={formatContactShadowIntensity}
-        onChange={(intensity: number) => onSetContact({ intensity })}
-      />
-
-      <RenderValueSlider
-        label={"Contact thickness"}
-        value={contact.thickness}
-        {...RENDER_CONTACT_SHADOW_LIMITS.thickness}
-        isDisabled={!isContactShadowed}
-        format={formatContactShadowThickness}
-        onChange={(thickness: number) => onSetContact({ thickness })}
-      />
-
-      <RenderValueSlider
-        label={"Contact steps"}
-        value={contact.steps}
-        {...RENDER_CONTACT_SHADOW_LIMITS.steps}
-        isDisabled={!isContactShadowed}
-        format={formatContactShadowSteps}
-        onChange={(steps: number) => onSetContact({ steps })}
-      />
-
-      <CheckboxFormRow
-        label={"Full resolution contact"}
-        description={
-          "Marches every pixel rather than one in four: thin foliage stops flickering, at four times the cost."
-        }
-        isChecked={contact.isFullResolution}
-        isDisabled={!isContactShadowed}
-        onChange={(isFullResolution: boolean) => onSetContact({ isFullResolution })}
-      />
-
-      <RenderValueSlider
-        label={"Contact lights"}
-        value={contact.lights}
-        {...RENDER_CONTACT_SHADOW_LIMITS.lights}
-        isDisabled={!isContactShadowed}
-        format={formatContactShadowLights}
-        onChange={(lights: number) => onSetContact({ lights })}
+      <RenderSettingEntries
+        settings={RENDER_CONTACT_SHADOW_SETTINGS}
+        names={["mode", "length", "intensity", "thickness", "steps", "isFullResolution", "lights"]}
+        group={shadows.contact}
+        features={drawn}
+        onSet={onSetContact}
       />
 
       <LevelSettingsResetButton onReset={reset} />

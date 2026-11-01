@@ -8,6 +8,7 @@ import { SettingsRendererAmbientOcclusion } from "./SettingsRendererAmbientOcclu
 import { SettingsRendererAntialiasing } from "./SettingsRendererAntialiasing";
 import { SettingsRendererBloom } from "./SettingsRendererBloom";
 import { SettingsRendererCamera } from "./SettingsRendererCamera";
+import { SettingsRendererContactShadows } from "./SettingsRendererContactShadows";
 import { SettingsRendererCulling } from "./SettingsRendererCulling";
 import { SettingsRendererDebanding } from "./SettingsRendererDebanding";
 import { SettingsRendererDisplay } from "./SettingsRendererDisplay";
@@ -104,7 +105,7 @@ export const RENDER_SETTINGS_TABS: ReadonlyArray<IRenderSettingsTab> = [
     features: ["shadows"],
     id: ERenderSettingsTab.SHADOWS,
     label: "Shadows",
-    sections: [SettingsRendererShadows],
+    sections: [SettingsRendererShadows, SettingsRendererContactShadows],
   },
   {
     features: ["water", "glass", "grass", "fog", "parallax", "terrain"],

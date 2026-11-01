@@ -1,36 +1,19 @@
-import { formatNumber } from "@xrf/format";
+import { formatNumber, formatPercent } from "@xrf/format";
 import { ERenderWaterMode, RenderWaterMode } from "@xrf/ipc/types/xrf-renderer";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 
-import { toRenderLimits } from "@/core/render/lib/features/render-limits";
+import { IRenderLimits, toRenderLimits } from "@/core/render/lib/features/render-limits";
+import {
+  ERenderSettingControl,
+  IRenderSliderSetting,
+  TRenderSettings,
+} from "@/core/render/lib/features/render-setting";
+import {
+  IRenderFeatureSettings,
+  TRenderEnhancedWaterSettings,
+  TRenderWaterSettings,
+} from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RENDER_FEATURE_SCHEMA } from "@/core/render/lib/settings/schema/render-feature-schema";
-
-/** The bounds each water value is offered between. */
-export const RENDER_WATER_LIMITS = {
-  distortion: toRenderLimits(RENDER_FEATURE_SCHEMA.water.distortion, 0.005),
-  reflection: toRenderLimits(RENDER_FEATURE_SCHEMA.water.reflection, 0.05),
-  ripple: toRenderLimits(RENDER_FEATURE_SCHEMA.water.ripple, 0.05),
-  waveHeight: toRenderLimits(RENDER_FEATURE_SCHEMA.water.waveHeight, 0.001),
-  waveSpeed: toRenderLimits(RENDER_FEATURE_SCHEMA.water.waveSpeed, 1),
-} as const;
-
-/** The bounds each enhanced water value is offered between. */
-export const RENDER_ENHANCED_WATER_LIMITS = {
-  blurNoise: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.blurNoise, 0.05),
-  calmFlow: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.calmFlow, 0.05),
-  caustics: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.caustics, 0.01),
-  flow: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.flow, 0.05),
-  parallaxHeight: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.parallaxHeight, 0.005),
-  reflectionBlur: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.reflectionBlur, 0.05),
-  reflectivity: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.reflectivity, 0.05),
-  refraction: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.refraction, 0.05),
-  ripples: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.ripples, 0.05),
-  softBorder: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.softBorder, 0.05),
-  specular: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.specular, 0.1),
-  turbidity: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.turbidity, 0.1),
-  variation: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.variation, 0.05),
-  vibrance: toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.vibrance, 0.05),
-} as const;
 
 /** @returns A wave's height, in centimetres, which is the size the engine's are. */
 export function formatWaveHeight(height: number): string {
@@ -81,3 +64,164 @@ export const RENDER_WATER_MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<Rende
   { label: "Engine", value: ERenderWaterMode.ENGINE },
   { label: "Enhanced", value: ERenderWaterMode.ENHANCED },
 ];
+
+/** Whether no water is drawn, which none of its values tune. */
+function isUndrawnWater(water: TRenderWaterSettings): boolean {
+  return !water.isEnabled;
+}
+
+/** How each water setting is set, in the settings and the Water popover alike. */
+export const RENDER_WATER_SETTINGS: TRenderSettings<TRenderWaterSettings> = {
+  distortion: {
+    control: ERenderSettingControl.SLIDER,
+    format: formatWaterDistortion,
+    label: "Distortion strength",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.water.distortion, 0.005),
+  },
+  enhanced: { control: ERenderSettingControl.CUSTOM, label: "Enhanced water" },
+  isDistorted: {
+    control: ERenderSettingControl.CHECKBOX,
+    description: "Refracts what is seen through the surface.",
+    isEntryDescribed: true,
+    isInert: isUndrawnWater,
+    label: "Distortion",
+  },
+  isEnabled: {
+    control: ERenderSettingControl.CHECKBOX,
+    description: "Ripples and sky reflection.",
+    label: "Water",
+  },
+  isSoft: {
+    control: ERenderSettingControl.CHECKBOX,
+    description: "Fades the water by its depth and lays foam in the shallows. Game setting: r2_soft_water.",
+    isEntryDescribed: true,
+    isInert: isUndrawnWater,
+    label: "Soft water",
+  },
+  mode: {
+    control: ERenderSettingControl.CHOICE,
+    explain: explainRenderWaterMode,
+    isEntryDescribed: true,
+    label: "Mode",
+    options: RENDER_WATER_MODE_OPTIONS,
+  },
+  reflection: {
+    control: ERenderSettingControl.SLIDER,
+    format: formatWaterMultiple,
+    label: "Reflection",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.water.reflection, 0.05),
+  },
+  ripple: {
+    control: ERenderSettingControl.SLIDER,
+    format: formatWaterMultiple,
+    label: "Ripple",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.water.ripple, 0.05),
+  },
+  waveHeight: {
+    control: ERenderSettingControl.SLIDER,
+    format: formatWaveHeight,
+    label: "Wave height",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.water.waveHeight, 0.001),
+  },
+  waveSpeed: {
+    control: ERenderSettingControl.SLIDER,
+    format: formatWaveSpeed,
+    label: "Wave speed",
+    limits: toRenderLimits(RENDER_FEATURE_SCHEMA.water.waveSpeed, 1),
+  },
+};
+
+/**
+ * @param label - What it is called.
+ * @param limits - Between what it is offered.
+ * @param format - How it reads.
+ * @returns One of the enhanced water's values, which tune nothing of the game's water.
+ */
+function toEnhancedWaterSlider(
+  label: string,
+  limits: IRenderLimits,
+  format: (value: number) => string
+): IRenderSliderSetting<TRenderEnhancedWaterSettings> {
+  return {
+    control: ERenderSettingControl.SLIDER,
+    format,
+    isInert: (_: TRenderEnhancedWaterSettings, features: IRenderFeatureSettings) =>
+      features.water.mode !== ERenderWaterMode.ENHANCED,
+    label,
+    limits,
+  };
+}
+
+/** How each of the enhanced water's values is set, in the Water popover. */
+export const RENDER_ENHANCED_WATER_SETTINGS: TRenderSettings<TRenderEnhancedWaterSettings> = {
+  blurNoise: toEnhancedWaterSlider(
+    "Blur noise",
+    toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.blurNoise, 0.05),
+    formatWaterStrength
+  ),
+  calmFlow: toEnhancedWaterSlider(
+    "Calm flow",
+    toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.calmFlow, 0.05),
+    formatPercent
+  ),
+  caustics: toEnhancedWaterSlider(
+    "Caustics",
+    toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.caustics, 0.01),
+    formatWaterStrength
+  ),
+  flow: toEnhancedWaterSlider(
+    "Flow",
+    toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.flow, 0.05),
+    formatWaterMultiple
+  ),
+  parallaxHeight: toEnhancedWaterSlider(
+    "Parallax height",
+    toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.parallaxHeight, 0.005),
+    formatWaveHeight
+  ),
+  reflectionBlur: toEnhancedWaterSlider(
+    "Reflection blur",
+    toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.reflectionBlur, 0.05),
+    formatWaterStrength
+  ),
+  reflectivity: toEnhancedWaterSlider(
+    "Reflectivity",
+    toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.reflectivity, 0.05),
+    formatWaterStrength
+  ),
+  refraction: toEnhancedWaterSlider(
+    "Refraction",
+    toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.refraction, 0.05),
+    formatWaterStrength
+  ),
+  ripples: toEnhancedWaterSlider(
+    "Rain ripples",
+    toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.ripples, 0.05),
+    formatWaterStrength
+  ),
+  softBorder: toEnhancedWaterSlider(
+    "Soft border",
+    toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.softBorder, 0.05),
+    formatWaterBorder
+  ),
+  specular: toEnhancedWaterSlider(
+    "Specular",
+    toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.specular, 0.1),
+    formatWaterStrength
+  ),
+  turbidity: toEnhancedWaterSlider(
+    "Turbidity",
+    toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.turbidity, 0.1),
+    formatWaterStrength
+  ),
+  variation: toEnhancedWaterSlider(
+    "Variation",
+    toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.variation, 0.05),
+    formatWaterStrength
+  ),
+  vibrance: toEnhancedWaterSlider(
+    "Vibrance",
+    toRenderLimits(RENDER_FEATURE_SCHEMA.water.enhanced.vibrance, 0.05),
+    formatPercent
+  ),
+};
