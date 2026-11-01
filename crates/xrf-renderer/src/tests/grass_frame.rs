@@ -9,6 +9,7 @@ use xrf_visual::{DetailsDescription, DetailsModel, DetailsPackage, VisualSection
 use crate::camera::camera_view::CameraView;
 use crate::context::gpu_context::GpuContext;
 use crate::contract::render_grass_settings::RenderGrassSettings;
+use crate::feature::lighting::shadows::cascades::sun_shadow_maps::SunShadowMaps;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_target_uses::ViewTargetUses;
@@ -30,7 +31,6 @@ use crate::scene::level::grass_source::GrassSource;
 use crate::scene::level::grass_view::GrassView;
 use crate::scene::level::grass_view_frame::GrassViewFrame;
 use crate::scene::level::level_grass::LevelGrass;
-use crate::scene::level::sun_shadow_maps::SunShadowMaps;
 use crate::scene::texture::texture_cache::TextureCache;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::test_context::create_test_context;

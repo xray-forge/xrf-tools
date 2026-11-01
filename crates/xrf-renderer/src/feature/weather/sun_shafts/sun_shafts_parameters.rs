@@ -1,9 +1,9 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, UniformBinding};
 
 use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
+use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
 use crate::feature::weather::volumetric::froxels::froxel_uniform::FroxelUniform;
 use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::shadow_uniform::ShadowUniform;
 
 /// What the sun's shafts read: the depth, the sun's shadow cascades, the frame's lighting and exposure, the half-size
 /// march the composite brings up, nothing while it is marched or where the sun's shafts are not drawn, and the local

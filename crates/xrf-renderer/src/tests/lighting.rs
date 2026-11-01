@@ -1,12 +1,12 @@
 use glam::Vec3;
 
 use crate::contract::render_light_scales::RenderLightScales;
+use crate::feature::lighting::tables::material_table::MaterialTable;
 use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::material_slice::material_slice;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::{authored_light, srgb_decoded, srgb_encoded};
 use crate::lighting::sun_direction::to_renderer_sun_direction;
-use crate::pass::material_table::MaterialTable;
 
 fn texel(data: &[u8], slice: u32, y: u32, x: u32) -> [u8; 2] {
   let at: usize = (((slice * MaterialTable::LUT_HEIGHT + y) * MaterialTable::LUT_WIDTH + x) * 2) as usize;

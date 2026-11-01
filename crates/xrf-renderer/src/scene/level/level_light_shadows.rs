@@ -11,6 +11,8 @@ use xrf_visual::{LightDescription, LightKind};
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_rect::RenderRect;
+use crate::feature::lighting::shadows::shadow_casters::ShadowCasters;
+use crate::feature::lighting::shadows::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
@@ -23,9 +25,7 @@ use crate::lighting::light_shadow_size::{
 };
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::indirect_args::IndirectArgs;
-use crate::pass::shadow_casters::ShadowCasters;
 use crate::pass::shadow_cull::ShadowCull;
-use crate::pass::shadow_tile_restore_parameters::ShadowTileRestoreParameters;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;

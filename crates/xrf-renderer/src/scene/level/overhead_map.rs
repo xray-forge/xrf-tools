@@ -6,6 +6,10 @@ use xrf_renderer_core::{
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_rect::RenderRect;
+use crate::feature::lighting::shadows::cascades::sun_shadow_maps::SunShadowMaps;
+use crate::feature::lighting::shadows::shadow_casters::ShadowCasters;
+use crate::feature::lighting::shadows::shadow_cut::ShadowCut;
+use crate::feature::lighting::shadows::static_shadow_pass::StaticShadowPass;
 use crate::feature::weather::water::draw::water_depth_parameters::WaterDepthParameters;
 use crate::feature::weather::water::draw::water_groups::WaterGroups;
 use crate::feature::weather::water::water_uniform::WaterUniform;
@@ -18,17 +22,13 @@ use crate::frame::texture_copy::add_texture_copy;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::overhead_shift_parameters::OverheadShiftParameters;
 use crate::pass::overhead_shift_uniform::OverheadShiftUniform;
-use crate::pass::shadow_casters::ShadowCasters;
 use crate::pass::shadow_cull::ShadowCull;
 use crate::pass::static_cull_parameters::StaticCullParameters;
 use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::static_draws::StaticDraws;
 use crate::pass::static_layout_bindings::StaticLayoutBindings;
-use crate::pass::static_shadow_pass::StaticShadowPass;
 use crate::scene::level::overhead_shape::OverheadShape;
-use crate::scene::level::shadow_cut::ShadowCut;
 use crate::scene::level::shadow_frame::ShadowFrame;
-use crate::scene::level::sun_shadow_maps::SunShadowMaps;
 use crate::scene::level::view_record::ViewRecord;
 use crate::scene::static_scene::static_layout::StaticLayout;
 

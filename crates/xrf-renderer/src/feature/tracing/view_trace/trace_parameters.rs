@@ -1,11 +1,11 @@
 use glam::Vec4;
 use xrf_renderer_core::{AccelerationStructureBinding, GraphTexture, PassParameters, StorageArray, UniformBinding};
 
+use crate::feature::lighting::lights::lights_uniform::LightsUniform;
+use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
 use crate::pass::grass_model_record::GrassModelRecord;
-use crate::pass::light_record::LightRecord;
-use crate::pass::lights_uniform::LightsUniform;
-use crate::pass::shadow_uniform::ShadowUniform;
 use crate::pass::trace_grass_uniform::TraceGrassUniform;
+use crate::scene::level::light_record::LightRecord;
 use crate::scene::static_scene::static_place::StaticPlace;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_trace_instance::StaticTraceInstance;

@@ -1,10 +1,10 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, UniformBinding};
 
+use crate::feature::lighting::lights::lights_uniform::LightsUniform;
+use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
 use crate::feature::weather::volumetric::froxels::froxel_uniform::FroxelUniform;
-use crate::pass::light_record::LightRecord;
 use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::lights_uniform::LightsUniform;
-use crate::pass::shadow_uniform::ShadowUniform;
+use crate::scene::level::light_record::LightRecord;
 
 /// What filling the froxels reads and writes: the frame's lighting, the sun's cascades, the local lights binned into
 /// the view's clusters and their shadow atlas, the grid, the history the last frame wrote and this frame's.

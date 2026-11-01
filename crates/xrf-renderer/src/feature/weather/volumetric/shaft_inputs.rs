@@ -1,6 +1,6 @@
 use xrf_renderer_core::GraphTexture;
 
-use crate::scene::level::feature::lights_feature::LightsFeature;
+use crate::feature::lighting::lights::lights_feature::LightsFeature;
 use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
 
 /// What the light shafts read of the units before them: the view's lights and the scene's light shadow atlas their

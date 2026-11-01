@@ -1,7 +1,7 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, UniformBinding};
 
-use crate::pass::light_record::LightRecord;
 use crate::pass::lighting_uniform::LightingUniform;
+use crate::scene::level::light_record::LightRecord;
 use crate::scene::level::light_volume_record::LightVolumeRecord;
 use crate::scene::level::light_volumes_uniform::LightVolumesUniform;
 

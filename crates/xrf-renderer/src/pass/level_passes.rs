@@ -1,10 +1,10 @@
 use crate::feature::effects::effect_passes::EffectPasses;
 use crate::feature::image::image_passes::ImagePasses;
+use crate::feature::lighting::lighting_passes::LightingPasses;
 use crate::feature::tracing::tracing_passes::TracingPasses;
 use crate::feature::weather::sky::sky_bindings::SkyBindings;
 use crate::feature::weather::weather_passes::WeatherPasses;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::stage::lighting_passes::LightingPasses;
 use crate::pass::stage::scene_passes::ScenePasses;
 
 /// The passes a level's frame runs, borrowed from the GPU state together, by the part of the frame they draw.

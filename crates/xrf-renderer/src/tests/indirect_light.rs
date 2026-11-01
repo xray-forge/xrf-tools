@@ -8,15 +8,15 @@ use crate::contract::render_indirect_light_settings::RenderIndirectLightSettings
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
+use crate::feature::lighting::bitmask::bitmask_search::BitmaskSearch;
+use crate::feature::lighting::bitmask::vbao::vbao_frame::VbaoFrame;
+use crate::feature::lighting::bitmask::vbao::vbao_light::VbaoLight;
+use crate::feature::lighting::bitmask::vbao::vbao_uniform::VbaoUniform;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
 use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::pass::bitmask_search::BitmaskSearch;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::vbao_frame::VbaoFrame;
-use crate::pass::vbao_light::VbaoLight;
-use crate::pass::vbao_uniform::VbaoUniform;
 
 fn enhanced() -> RenderIndirectLightSettings {
   RenderIndirectLightSettings {

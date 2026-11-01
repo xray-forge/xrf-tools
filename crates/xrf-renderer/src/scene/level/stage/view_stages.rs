@@ -1,7 +1,7 @@
 use crate::feature::effects::effect_stage::EffectStage;
 use crate::feature::image::image_stage::ImageStage;
+use crate::feature::lighting::lighting_stage::LightingStage;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::stage::lighting_stage::LightingStage;
 use crate::scene::level::stage::scene_stage::SceneStage;
 
 /// A view's stages in the order its frame draws them: the scene, the lighting, the effects over the lit frame and the

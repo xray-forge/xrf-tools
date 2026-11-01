@@ -1,7 +1,7 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, StorageValueMut, UniformBinding};
 
 use crate::feature::effects::flares::flare_uniform::FlareUniform;
-use crate::pass::shadow_uniform::ShadowUniform;
+use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
 
 /// What measuring how much of the sun shows reads and writes: the lens flare, its eased visibility, the frame's depth
 /// for the rays on screen and the sun's shadow for those off it.

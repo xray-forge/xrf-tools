@@ -3,7 +3,7 @@ use glam::Vec3;
 use crate::camera::camera_frustum::CameraFrustum;
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_shadow_settings::{RENDER_MAX_SHADOW_FILTER, RenderShadowSettings};
-use crate::scene::level::level_shadows::LevelShadows;
+use crate::feature::lighting::shadows::level_shadows::LevelShadows;
 
 /// A camera at `position` looking along `heading` degrees about the up axis and `pitch` degrees down, through `fov`.
 fn camera(position: Vec3, (heading, pitch): (f32, f32), fov: f32) -> CameraView {

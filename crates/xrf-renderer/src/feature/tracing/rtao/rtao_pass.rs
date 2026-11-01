@@ -2,11 +2,11 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::context::gpu_requirements::can_trace;
+use crate::feature::lighting::bitmask::vbao::vbao_parameters::VbaoParameters;
 use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::vbao_parameters::VbaoParameters;
 use crate::pass::view_binding::ViewBinding;
 
 /// RTAO at half the frame's size: a few short rays from each point, cosine-weighted about its normal, traced against

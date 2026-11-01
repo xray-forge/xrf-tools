@@ -1,0 +1,212 @@
+use wgpu::util::DeviceExt;
+use xrf_error::XrfResult;
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
+
+use crate::feature::lighting::bitmask::bitmask_search::BitmaskSearch;
+use crate::feature::lighting::bitmask::vbao::vbao_gathering::VbaoGathering;
+use crate::feature::lighting::bitmask::vbao::vbao_parameters::VbaoParameters;
+use crate::frame::view_targets::ViewTargets;
+use crate::pass::fullscreen_pipeline::create_fullscreen_pipeline_into;
+use crate::pass::pipeline_source::PipelineSource;
+use crate::pass::view_binding::ViewBinding;
+
+/// The visibility-bitmask search at half the frame's size, for VBAO's occlusion, the indirect light or both:
+/// searched, accumulated over frames into the view's histories, then filtered into what combine reads.
+pub struct VbaoPass {
+  layout: wgpu::BindGroupLayout,
+  view_layout: wgpu::BindGroupLayout,
+  pipelines: PipelineSet<VbaoPipelines>,
+  /// What a stage reads in place of a history where there is none: one texel, all visible and nothing drawn.
+  empty: wgpu::TextureView,
+  /// What reads in place of light where none is gathered: one texel of none.
+  dark: wgpu::TextureView,
+}
+
+/// The search, unlit and gathering light, its slices and steps the uniform's; the accumulations; the filters by what
+/// they yield; and the light copied for the search.
+struct VbaoPipelines {
+  search: wgpu::RenderPipeline,
+  lit_search: wgpu::RenderPipeline,
+  accumulate: wgpu::RenderPipeline,
+  lit_accumulate: wgpu::RenderPipeline,
+  filter: wgpu::RenderPipeline,
+  lit_filter: wgpu::RenderPipeline,
+  light_filter: wgpu::RenderPipeline,
+  light_source: wgpu::RenderPipeline,
+  points: wgpu::RenderPipeline,
+}
+
+impl VbaoPass {
+  /// The module its pipelines are made from.
+  const MODULE: &'static str = "frame/vbao";
+
+  /// The accumulations, the occlusion's and the light's: half floats.
+  pub const HISTORY: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  /// The light copied for the search, gathered and filtered: colour, then distance along the view where it says.
+  pub const LIGHT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
+  /// The frame's points under the search's pixels: their view depth.
+  pub const POINTS: wgpu::TextureFormat = wgpu::TextureFormat::R32Float;
+  pub const POINTS_PASS: &'static str = "vbao points";
+
+  /// # Errors
+  ///
+  /// Returns an error when the shader does not compose or compile.
+  pub fn new(queue: &wgpu::Queue, source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
+    let layout: wgpu::BindGroupLayout = VbaoParameters::create_layout(device);
+    let texel = |label: &str, value: [u8; 4]| -> wgpu::TextureView {
+      device
+        .create_texture_with_data(
+          queue,
+          &wgpu::TextureDescriptor {
+            label: Some(label),
+            size: wgpu::Extent3d {
+              width: 1,
+              height: 1,
+              depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+          },
+          Default::default(),
+          &value,
+        )
+        .create_view(&Default::default())
+    };
+
+    Ok(Self {
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, view_layout, &layout)?),
+      view_layout: view_layout.clone(),
+      empty: texel("vbao history empty", [u8::MAX, 0, 0, 0]),
+      dark: texel("indirect light none", [0; 4]),
+      layout,
+    })
+  }
+
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
+  /// the last ones where a reload is refused.
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.view_layout, &self.layout)
+    }) {
+      log::error!("VBAO rejected, searching with the last one: {error}");
+    }
+  }
+
+  /// The texel a stage reads where no history is bound.
+  pub fn get_empty(&self) -> &wgpu::TextureView {
+    &self.empty
+  }
+
+  /// The texel read in place of light where none is gathered.
+  pub fn get_dark(&self) -> &wgpu::TextureView {
+    &self.dark
+  }
+
+  /// Lays out the frame's points under the search's pixels, once for every sample that reads them.
+  pub fn record_points(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &VbaoParameters) {
+    Self::draw(context, &self.pipelines.points, view, parameters);
+  }
+
+  /// Copies the light the frame's surfaces leave, at the search's size.
+  pub fn record_light_source(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &VbaoParameters) {
+    Self::draw(context, &self.pipelines.light_source, view, parameters);
+  }
+
+  /// Searches the frame's pixels into the targets the pass draws into, gathering the light too where asked.
+  pub fn record_search(
+    &self,
+    context: &mut RasterContext<'_>,
+    gathering: VbaoGathering,
+    view: &ViewBinding,
+    parameters: &VbaoParameters,
+  ) {
+    let pipeline: &wgpu::RenderPipeline = match gathering {
+      VbaoGathering::Light => &self.pipelines.lit_search,
+      VbaoGathering::Occlusion => &self.pipelines.search,
+    };
+
+    Self::draw(context, pipeline, view, parameters);
+  }
+
+  /// Blends the search with the last frame's accumulation into this frame's, the light's too where asked.
+  pub fn record_accumulate(
+    &self,
+    context: &mut RasterContext<'_>,
+    gathering: VbaoGathering,
+    view: &ViewBinding,
+    parameters: &VbaoParameters,
+  ) {
+    let pipeline: &wgpu::RenderPipeline = match gathering {
+      VbaoGathering::Light => &self.pipelines.lit_accumulate,
+      VbaoGathering::Occlusion => &self.pipelines.accumulate,
+    };
+
+    Self::draw(context, pipeline, view, parameters);
+  }
+
+  /// Filters the accumulation, or the search alone, into what combine reads: the occlusion, the light, or both.
+  pub fn record_filter(
+    &self,
+    context: &mut RasterContext<'_>,
+    search: BitmaskSearch,
+    view: &ViewBinding,
+    parameters: &VbaoParameters,
+  ) {
+    let pipeline: &wgpu::RenderPipeline = match (search.is_occluding, search.is_lit) {
+      (true, true) => &self.pipelines.lit_filter,
+      (false, true) => &self.pipelines.light_filter,
+      _ => &self.pipelines.filter,
+    };
+
+    Self::draw(context, pipeline, view, parameters);
+  }
+
+  fn draw(
+    context: &mut RasterContext<'_>,
+    pipeline: &wgpu::RenderPipeline,
+    view: &ViewBinding,
+    parameters: &VbaoParameters,
+  ) {
+    context.bind(parameters);
+
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
+    pass.set_pipeline(pipeline);
+    pass.set_bind_group(0, &view.bind_group, &[]);
+    pass.draw(0..3, 0..1);
+  }
+
+  fn create_pipelines(
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+    layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<VbaoPipelines> {
+    let module: &'static str = Self::MODULE;
+    let layouts: [Option<&wgpu::BindGroupLayout>; 2] = [Some(view_layout), Some(layout)];
+    let targets = |formats: &[wgpu::TextureFormat]| -> Vec<Option<wgpu::ColorTargetState>> {
+      formats.iter().map(|it| Some((*it).into())).collect()
+    };
+    let create = |fragment: &'static str, formats: &[wgpu::TextureFormat]| -> XrfResult<wgpu::RenderPipeline> {
+      create_fullscreen_pipeline_into(source, module, fragment, &layouts, &targets(formats))
+    };
+    let occluded: &[wgpu::TextureFormat] = &[ViewTargets::OCCLUSION];
+    let lit: &[wgpu::TextureFormat] = &[ViewTargets::OCCLUSION, Self::LIGHT];
+    Ok(VbaoPipelines {
+      search: create("fs_search", occluded)?,
+      lit_search: create("fs_search_lit", lit)?,
+      accumulate: create("fs_accumulate", &[Self::HISTORY])?,
+      lit_accumulate: create("fs_accumulate_lit", &[Self::HISTORY, Self::HISTORY])?,
+      filter: create("fs_filter", occluded)?,
+      lit_filter: create("fs_filter_lit", lit)?,
+      light_filter: create("fs_filter_light", &[Self::LIGHT])?,
+      light_source: create("fs_light_source", &[Self::LIGHT])?,
+      points: create("fs_points", &[Self::POINTS])?,
+    })
+  }
+}

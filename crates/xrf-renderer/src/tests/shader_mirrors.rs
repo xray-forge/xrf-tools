@@ -13,6 +13,7 @@ use crate::feature::image::exposure::histogram::exposure_histogram_uniform::Expo
 use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::feature::image::present::present_uniform::PresentUniform;
 use crate::feature::image::resolve::fsr::fsr_pass::FsrPass;
+use crate::feature::lighting::lights::lights_pass::LightsPass;
 use crate::feature::tracing::scene_trace::requests::trace_request::TraceRequest;
 use crate::feature::tracing::surroundings::surroundings_pass::SurroundingsPass;
 use crate::feature::tracing::view_trace::sway::trace_sway_pass::TraceSwayPass;
@@ -29,7 +30,6 @@ use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::depth_pyramid_pass::DepthPyramidPass;
 use crate::pass::grass_pass::GrassPass;
 use crate::pass::light_view::LightView;
-use crate::pass::lights_pass::LightsPass;
 use crate::pass::noise_turn::NoiseTurn;
 use crate::pass::static_cull_pass::StaticCullPass;
 use crate::scene::level::level_light_shadows::LevelLightShadows;

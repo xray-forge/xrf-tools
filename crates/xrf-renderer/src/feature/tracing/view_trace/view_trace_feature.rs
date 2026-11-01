@@ -5,6 +5,7 @@ use xrf_renderer_core::{
   AccelerationStructureBinding, GraphBuffer, GraphBufferAccess, GraphDeclaration, StorageArray, StorageArrayMut,
 };
 
+use crate::feature::lighting::lights::lights_feature::LightsFeature;
 use crate::feature::tracing::view_trace::sway::trace_sway_parameters::TraceSwayParameters;
 use crate::feature::tracing::view_trace::sway::trace_sway_slot::TraceSwaySlot;
 use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
@@ -13,7 +14,6 @@ use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::pass::grass_colour_parameters::GrassColourParameters;
 use crate::pass::level_passes::LevelPasses;
-use crate::scene::level::feature::lights_feature::LightsFeature;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::grass_card_handles::GrassCardHandles;
 use crate::scene::level::grass_cards::GrassCards;

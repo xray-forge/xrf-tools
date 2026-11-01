@@ -6,7 +6,7 @@ use std::f32::consts::PI;
 
 use glam::{Vec2, Vec3, Vec4};
 
-use crate::pass::brdf_table::BrdfTable;
+use crate::feature::lighting::tables::brdf_table::BrdfTable;
 use crate::tests::gpu_probe::run_gpu_probe;
 
 /// The probe's view, about +z at the cosine `first.x`, and its direct light from `second.xyz` at roughness `first.y`,

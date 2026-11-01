@@ -1,12 +1,12 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor};
 
+use crate::feature::lighting::bitmask::vbao::vbao_pass::VbaoPass;
 use crate::feature::tracing::indirect_trace::indirect_trace_parameters::IndirectTraceParameters;
 use crate::feature::tracing::indirect_trace::indirect_trace_pass::IndirectTracePass;
 use crate::feature::tracing::indirect_trace::indirect_trace_uniform::IndirectTraceUniform;
 use crate::feature::tracing::indirect_trace::indirect_traced::IndirectTraced;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
-use crate::pass::vbao_pass::VbaoPass;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::view_record::ViewRecord;
 
