@@ -3,9 +3,9 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_renderer::{
-  LoaderReceiver, RenderLevelDetails, RenderLevelHelpers, RenderLoadFailure, RenderModelFailure, RenderModelSkeleton,
+  RenderLevelDetails, RenderLevelHelpers, RenderLoadFailure, RenderModelFailure, RenderModelSkeleton,
   RenderSceneUpdate, RenderSectorFailure, RenderStreamingProgress, RenderWorkers, StaticModelPlace, StaticModelProxy,
-  StaticObjectProxy, StaticSectorProxy, take_answer,
+  StaticObjectProxy, StaticSectorProxy,
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::LightsDescription;
@@ -17,6 +17,7 @@ use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::animation::level_animation::LevelAnimation;
 use crate::level::loading::level_loader::LevelLoader;
+use crate::level::loading::loader_once::LoaderOnce;
 use crate::level::loading::sector_load::SectorLoad;
 use crate::level::streaming::hidden_spawn_groups::HiddenSpawnGroups;
 use crate::level::streaming::spawn_filter::SpawnFilter;
@@ -38,9 +39,9 @@ pub struct LevelStreaming {
   source: Arc<dyn WorldLevelSource>,
   sectors: LevelLoader,
   spawn: SpawnLoader,
-  lights: Option<LoaderReceiver<Result<LightsDescription, String>>>,
-  grass: Option<LoaderReceiver<Result<Option<RenderLevelDetails>, String>>>,
-  helpers: Option<LoaderReceiver<Result<RenderLevelHelpers, String>>>,
+  lights: LoaderOnce<LightsDescription>,
+  grass: LoaderOnce<Option<RenderLevelDetails>>,
+  helpers: LoaderOnce<RenderLevelHelpers>,
   /// The campfires and the object motions the lights follow, by the campfires' ids and the motions' names.
   light_campfires: Vec<u16>,
   light_motions: Vec<String>,
@@ -70,9 +71,9 @@ impl LevelStreaming {
     Self {
       sectors: LevelLoader::start(Arc::clone(&source), workers),
       spawn: SpawnLoader::start(Arc::clone(&source), workers),
-      lights: Some(Self::read_lights(&source, workers)),
-      grass: Some(Self::read_grass(&source, workers)),
-      helpers: Some(Self::read_helpers(&source, workers)),
+      lights: Self::read_lights(&source, workers),
+      grass: Self::read_grass(&source, workers),
+      helpers: Self::read_helpers(&source, workers),
       light_campfires: Vec::new(),
       light_motions: Vec::new(),
       sector_handles: ProxyAllocator::new(),
@@ -92,66 +93,39 @@ impl LevelStreaming {
   }
 
   /// Reads the level's lights on the workers.
-  fn read_lights(
-    source: &Arc<dyn WorldLevelSource>,
-    workers: &RenderWorkers,
-  ) -> LoaderReceiver<Result<LightsDescription, String>> {
-    let (sender, receiver) = LoaderReceiver::channel();
+  fn read_lights(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> LoaderOnce<LightsDescription> {
     let source: Arc<dyn WorldLevelSource> = Arc::clone(source);
 
-    workers.spawn(move || {
-      let lights: Result<LightsDescription, String> = source.read_lights().map_err(|error| error.to_string());
-
-      if let Err(error) = &lights {
-        log::error!("The level's lights cannot be drawn: {error}");
-      }
-
-      let _ = sender.send(lights);
-    });
-
-    receiver
+    LoaderOnce::spawn(workers, "lights", move || {
+      source
+        .read_lights()
+        .inspect_err(|error| log::error!("The level's lights cannot be drawn: {error}"))
+        .ok()
+    })
   }
 
   /// Reads the level's grass on the workers.
-  fn read_grass(
-    source: &Arc<dyn WorldLevelSource>,
-    workers: &RenderWorkers,
-  ) -> LoaderReceiver<Result<Option<RenderLevelDetails>, String>> {
-    let (sender, receiver) = LoaderReceiver::channel();
+  fn read_grass(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> LoaderOnce<Option<RenderLevelDetails>> {
     let source: Arc<dyn WorldLevelSource> = Arc::clone(source);
 
-    workers.spawn(move || {
-      let grass: Result<Option<RenderLevelDetails>, String> = source.read_details().map_err(|error| error.to_string());
-
-      if let Err(error) = &grass {
-        log::warn!("The level's grass cannot be drawn: {error}");
-      }
-
-      let _ = sender.send(grass);
-    });
-
-    receiver
+    LoaderOnce::spawn(workers, "grass", move || {
+      source
+        .read_details()
+        .inspect_err(|error| log::warn!("The level's grass cannot be drawn: {error}"))
+        .ok()
+    })
   }
 
   /// Reads the level objects the viewer draws helpers for on the workers.
-  fn read_helpers(
-    source: &Arc<dyn WorldLevelSource>,
-    workers: &RenderWorkers,
-  ) -> LoaderReceiver<Result<RenderLevelHelpers, String>> {
-    let (sender, receiver) = LoaderReceiver::channel();
+  fn read_helpers(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> LoaderOnce<RenderLevelHelpers> {
     let source: Arc<dyn WorldLevelSource> = Arc::clone(source);
 
-    workers.spawn(move || {
-      let helpers: Result<RenderLevelHelpers, String> = source.read_helpers().map_err(|error| error.to_string());
-
-      if let Err(error) = &helpers {
-        log::warn!("The level's helpers cannot be drawn: {error}");
-      }
-
-      let _ = sender.send(helpers);
-    });
-
-    receiver
+    LoaderOnce::spawn(workers, "helpers", move || {
+      source
+        .read_helpers()
+        .inspect_err(|error| log::warn!("The level's helpers cannot be drawn: {error}"))
+        .ok()
+    })
   }
 
   pub fn get_source(&self) -> &Arc<dyn WorldLevelSource> {
@@ -180,15 +154,15 @@ impl LevelStreaming {
 
       self.failed_models.clear();
       self.spawn = SpawnLoader::start(Arc::clone(&self.source), workers);
-      self.helpers = Some(Self::read_helpers(&self.source, workers));
+      self.helpers = Self::read_helpers(&self.source, workers);
     }
 
     if reload.is_lights {
-      self.lights = Some(Self::read_lights(&self.source, workers));
+      self.lights = Self::read_lights(&self.source, workers);
     }
 
     if reload.is_grass {
-      self.grass = Some(Self::read_grass(&self.source, workers));
+      self.grass = Self::read_grass(&self.source, workers);
     }
   }
 
@@ -222,22 +196,22 @@ impl LevelStreaming {
   ) {
     self.filter_spawn(updates, animation, hidden);
 
-    if let Some(Ok(grass)) = take_answer(&mut self.grass, "grass") {
-      updates.push(RenderSceneUpdate::AddGrass(grass));
+    if let Some(grass) = self.grass.take() {
+      updates.push(RenderSceneUpdate::SetGrass(grass));
     }
 
-    if let Some(Ok(helpers)) = take_answer(&mut self.helpers, "helpers") {
+    if let Some(helpers) = self.helpers.take() {
       updates.push(RenderSceneUpdate::SetHelpers(helpers));
     }
 
-    if let Some(Ok(lights)) = take_answer(&mut self.lights, "lights") {
+    if let Some(lights) = self.lights.take() {
       self.light_campfires = lights.lights.iter().filter_map(|light| light.campfire).collect();
       self.light_motions = lights
         .lights
         .iter()
         .filter_map(|light| light.motion.as_ref().map(|motion| motion.name.clone()))
         .collect();
-      updates.push(RenderSceneUpdate::AddLights(lights));
+      updates.push(RenderSceneUpdate::SetLights(lights));
     }
 
     for SectorLoad { sector, pack } in self.sectors.take(SECTORS_PER_FRAME) {
@@ -304,8 +278,8 @@ impl LevelStreaming {
       sectors_total,
       is_sectors_done: sectors + self.failed_sectors.len() as u32 == sectors_total,
       is_spawn_done: self.spawn.is_done(),
-      is_lights_done: self.lights.is_none(),
-      is_grass_done: self.grass.is_none(),
+      is_lights_done: !self.lights.is_pending(),
+      is_grass_done: !self.grass.is_pending(),
       bytes: self.posted.values().map(|(_, bytes)| bytes).sum(),
       ..RenderStreamingProgress::default()
     }

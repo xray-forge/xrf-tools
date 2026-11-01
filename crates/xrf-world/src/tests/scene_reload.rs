@@ -65,7 +65,7 @@ fn advance_until_read(
 fn is_grass_posted(updates: &[RenderSceneUpdate]) -> bool {
   updates
     .iter()
-    .any(|update| matches!(update, RenderSceneUpdate::AddGrass(_)))
+    .any(|update| matches!(update, RenderSceneUpdate::SetGrass(_)))
 }
 
 /// A world with one viewport showing the level, its first reads done: lights, weather, spawn, particles and grass once
@@ -181,7 +181,7 @@ fn a_grass_reload_reads_the_grass_alone_and_replaces_it() {
   assert_eq!(world.get_asked_scene(viewport), Some(scene));
   // The grass alone is posted again, nothing else taken out or read.
   assert!(
-    matches!(posted.as_slice(), [RenderSceneUpdate::AddGrass(None)]),
+    matches!(posted.as_slice(), [RenderSceneUpdate::SetGrass(None)]),
     "posted {} updates",
     posted.len()
   );

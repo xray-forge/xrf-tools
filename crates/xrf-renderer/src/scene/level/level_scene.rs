@@ -441,15 +441,6 @@ impl LevelScene {
     for update in updates {
       match update {
         RenderSceneUpdate::AddSector { handle, package } => self.pending.push_back((handle, package)),
-        // One still waiting is never taken in.
-        RenderSceneUpdate::RemoveSector(handle) => match self.pending.iter().position(|(it, _)| *it == handle) {
-          Some(index) => {
-            self.pending.remove(index);
-          }
-          None => {
-            self.statics.remove_sector(handle);
-          }
-        },
         RenderSceneUpdate::AddModel { handle, model } => {
           if let Err(error) = self.statics.add_model(
             &mut StaticItemContext {
@@ -487,12 +478,12 @@ impl LevelScene {
         RenderSceneUpdate::RemoveObject(handle) => {
           self.statics.remove_object(handle);
         }
-        RenderSceneUpdate::AddLights(lights) => self.lights.add_lights(lights, textures, assets),
-        RenderSceneUpdate::AddGrass(details) => self.grass.replace(device, details, &mut *textures, assets),
+        RenderSceneUpdate::SetLights(lights) => self.lights.add_lights(lights, textures, assets),
+        RenderSceneUpdate::SetGrass(details) => self.grass.replace(device, details, &mut *textures, assets),
         RenderSceneUpdate::SetHelpers(helpers) => {
           self.helpers = LevelHelpers::new(helpers, self.helpers.version + 1);
         }
-        RenderSceneUpdate::AddParticles(definitions) => {
+        RenderSceneUpdate::SetParticles(definitions) => {
           self
             .particles
             .add_definitions(device, &mut *textures, assets, definitions);

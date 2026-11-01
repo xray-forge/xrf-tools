@@ -6,8 +6,8 @@ use glam::{Mat4, Vec3};
 use xrf_engine_target::XrayEngine;
 use xrf_particles::ParticleLibrary;
 use xrf_renderer::{
-  AmbientGust, LoaderReceiver, ParticleEmitterProxy, PlacedEffect, RenderLevelParticles, RenderParticleDefinitions,
-  RenderParticleSource, RenderSceneUpdate, RenderWorkers, ZONE_FAST_DISTANCE, take_answer,
+  AmbientGust, ParticleEmitterProxy, PlacedEffect, RenderLevelParticles, RenderParticleDefinitions,
+  RenderParticleSource, RenderSceneUpdate, RenderWorkers, ZONE_FAST_DISTANCE,
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
@@ -24,13 +24,14 @@ use crate::level::effects::level_campfires::LevelCampfires;
 use crate::level::effects::level_object_motions::LevelObjectMotions;
 use crate::level::effects::placed_emitter::PlacedEmitter;
 use crate::level::level_drive::LevelDrive;
+use crate::level::loading::loader_once::LoaderOnce;
 
 /// A level's effects as the world plays them: its particle systems, read on a loader thread and each placed at an
 /// emitter of the scene's; the weather's ambient effects and the wind they bring; its campfires' switching; and the
 /// object motions its moving zones follow. Its posts tell the scene what plays where; the scene simulates and draws it,
 /// and tells which effects finished.
 pub struct LevelEffects {
-  pending: Option<LoaderReceiver<Result<Option<RenderLevelParticles>, String>>>,
+  pending: LoaderOnce<Option<RenderLevelParticles>>,
   systems: Option<EffectSystems>,
   emitters: ProxyAllocator<ParticleEmitterProxy>,
   /// The emitters whose effects finished and that the ambient effects have not yet been told of.
@@ -55,7 +56,7 @@ struct EffectSystems {
 impl LevelEffects {
   pub fn start(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     Self {
-      pending: Some(Self::read_particles(source, workers)),
+      pending: Self::read_particles(source, workers),
       systems: None,
       emitters: ProxyAllocator::new(),
       finished: Vec::new(),
@@ -71,21 +72,15 @@ impl LevelEffects {
   fn read_particles(
     source: &Arc<dyn WorldLevelSource>,
     workers: &RenderWorkers,
-  ) -> LoaderReceiver<Result<Option<RenderLevelParticles>, String>> {
-    let (sender, receiver) = LoaderReceiver::channel();
+  ) -> LoaderOnce<Option<RenderLevelParticles>> {
     let reader: Arc<dyn WorldLevelSource> = Arc::clone(source);
 
-    workers.spawn(move || {
-      let particles = reader.read_particles().map_err(|error| error.to_string());
-
-      if let Err(error) = &particles {
-        log::error!("The level's particles cannot be played: {error}");
-      }
-
-      let _ = sender.send(particles);
-    });
-
-    receiver
+    LoaderOnce::spawn(workers, "particles", move || {
+      reader
+        .read_particles()
+        .inspect_err(|error| log::error!("The level's particles cannot be played: {error}"))
+        .ok()
+    })
   }
 
   /// Reads the particles again from `source`: every placement's emitter and the ambient effect playing leave the scene
@@ -105,7 +100,7 @@ impl LevelEffects {
     }
 
     self.finished.clear();
-    self.pending = Some(Self::read_particles(source, workers));
+    self.pending = Self::read_particles(source, workers);
   }
 
   /// Reads its object motions from `source`, a next source of the same level, from now on, every one read again where
@@ -116,7 +111,7 @@ impl LevelEffects {
 
   /// Whether its loader has answered, whatever it answered.
   pub fn is_read(&self) -> bool {
-    self.pending.is_none()
+    !self.pending.is_pending()
   }
 
   /// Plays an ambient effect on the next frame, ending the one playing, without waiting.
@@ -236,10 +231,7 @@ impl LevelEffects {
 
   /// Takes the particles once their loader read them: posts what they are made from and an emitter for each placement.
   fn take_read(&mut self, updates: &mut Vec<RenderSceneUpdate>) {
-    let Some(read) = take_answer(&mut self.pending, "particles") else {
-      return;
-    };
-    let Ok(Some(read)) = read else {
+    let Some(Some(read)) = self.pending.take() else {
       return;
     };
     let RenderLevelParticles {
@@ -251,7 +243,7 @@ impl LevelEffects {
       hemi,
     } = read;
 
-    updates.push(RenderSceneUpdate::AddParticles(RenderParticleDefinitions {
+    updates.push(RenderSceneUpdate::SetParticles(RenderParticleDefinitions {
       library: Arc::clone(&library),
       rules,
       surfaces,

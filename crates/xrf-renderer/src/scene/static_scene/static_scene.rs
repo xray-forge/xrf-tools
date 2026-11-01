@@ -11,6 +11,7 @@ use crate::contract::overlay::render_selection_target::RenderSelectionTarget;
 use crate::contract::report::frame::render_pool_use::RenderPoolUse;
 use crate::contract::report::scene::render_static_report::RenderStaticReport;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::host::level::spawn::model::static_model_place::StaticModelPlace;
 use crate::scene::section_bytes::read_pods;
 use crate::scene::static_scene::draw::slot::static_row::StaticRow;
 use crate::scene::static_scene::draw::slot::static_slot::StaticSlot;
@@ -29,7 +30,6 @@ use crate::scene::static_scene::geometry::static_spans::StaticSpans;
 use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::geometry::vertex::static_vertex_words::StaticVertexWords;
 use crate::scene::static_scene::item::model::static_model::StaticModel;
-use crate::scene::static_scene::item::model::static_model_place::StaticModelPlace;
 use crate::scene::static_scene::item::model::static_model_proxy::StaticModelProxy;
 use crate::scene::static_scene::item::object::static_object_box::StaticObjectBox;
 use crate::scene::static_scene::item::object::static_object_proxy::StaticObjectProxy;
@@ -379,30 +379,6 @@ impl StaticScene {
           .is_some_and(|model| !model.trace_geometries.is_empty())
       })
       .map(|(_, object)| (object.model, object.place.get_offset(), &object.transform))
-  }
-
-  /// Takes a sector out of the scene, its ranges cleared and freed; false for one already gone.
-  pub fn remove_sector(&mut self, handle: ProxyHandle<StaticSectorProxy>) -> bool {
-    let Some(sector) = self.sectors.remove(handle) else {
-      return false;
-    };
-
-    for row in sector.rows {
-      self.geometry.remove_row(row);
-    }
-
-    self.cull.remove_capacities(&sector.capacities);
-    self.geometry.release(sector.spans);
-    self.swaying = self
-      .sectors
-      .as_slice()
-      .iter()
-      .flat_map(|sector| sector.swaying.iter().copied())
-      .collect();
-    self.sway_reach = self.swaying.iter().map(|(_, reach)| *reach).fold(0.0, f32::max);
-    self.note_change(sector.sphere);
-
-    true
   }
 
   /// Puts a spawned model into the scene at the handle its poster allocated: its geometry once and a slot a part, which

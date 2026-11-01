@@ -3,24 +3,24 @@ use xrf_renderer_core::ProxyHandle;
 use xrf_visual::{LightsDescription, SectorPackage};
 
 use crate::host::level::helpers::render_level_helpers::RenderLevelHelpers;
+use crate::host::level::particles::placed_effect::PlacedEffect;
 use crate::host::level::particles::render_particle_definitions::RenderParticleDefinitions;
 use crate::host::level::render_level_details::RenderLevelDetails;
+use crate::host::level::spawn::model::static_model_place::StaticModelPlace;
 use crate::scene::level::particles::placed::particle_emitter_proxy::ParticleEmitterProxy;
-use crate::scene::level::particles::placed::placed_effect::PlacedEffect;
 use crate::scene::static_scene::item::model::static_model::StaticModel;
-use crate::scene::static_scene::item::model::static_model_place::StaticModelPlace;
 use crate::scene::static_scene::item::model::static_model_proxy::StaticModelProxy;
 use crate::scene::static_scene::item::object::static_object_proxy::StaticObjectProxy;
 use crate::scene::static_scene::item::static_sector_proxy::StaticSectorProxy;
 
-/// One change the world posts to a level's scene, applied at the start of the frame it arrives with; an add carries
-/// the handle the world allocated for it, which its later updates and its remove name.
+/// One change the world posts to a level's scene, applied at the start of the frame it arrives with: an add carries
+/// the handle the world allocated for it, which its later updates and its remove name; a set replaces the one part of
+/// the level it names.
 pub enum RenderSceneUpdate {
   AddSector {
     handle: ProxyHandle<StaticSectorProxy>,
     package: SectorPackage,
   },
-  RemoveSector(ProxyHandle<StaticSectorProxy>),
   AddModel {
     handle: ProxyHandle<StaticModelProxy>,
     model: StaticModel,
@@ -34,13 +34,13 @@ pub enum RenderSceneUpdate {
   },
   RemoveObject(ProxyHandle<StaticObjectProxy>),
   /// The level's lights, once read, in place of any read before.
-  AddLights(LightsDescription),
+  SetLights(LightsDescription),
   /// The level's grass, once read, in place of any read before; none for a level without a detail library.
-  AddGrass(Option<RenderLevelDetails>),
+  SetGrass(Option<RenderLevelDetails>),
   /// The level objects the viewer draws helpers for, once read, in place of any read before.
   SetHelpers(RenderLevelHelpers),
   /// What the level's particles are made from, once read, in place of any read before.
-  AddParticles(RenderParticleDefinitions),
+  SetParticles(RenderParticleDefinitions),
   /// A particle emitter, where it stands and the seed its effects' runs start from, nothing playing at it yet.
   AddEmitter {
     handle: ProxyHandle<ParticleEmitterProxy>,

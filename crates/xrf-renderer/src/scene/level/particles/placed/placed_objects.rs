@@ -1,8 +1,8 @@
 use glam::{Mat4, Vec3};
 use xrf_particles::{ParticleObject, ParticleUpdateContext};
 
+use crate::host::level::particles::placed_effect::PlacedEffect;
 use crate::scene::level::particles::placed::particle_stop::ParticleStop;
-use crate::scene::level::particles::placed::placed_effect::PlacedEffect;
 
 /// What plays at an emitter, an object a [`PlacedEffect`], each with whether its end was told to the world.
 #[derive(Default)]

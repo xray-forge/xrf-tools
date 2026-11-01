@@ -6,11 +6,11 @@ use xrf_visual::SectorSurface;
 
 use crate::contract::overlay::render_selection_target::RenderSelectionTarget;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::host::level::spawn::model::static_model_place::StaticModelPlace;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::item::model::static_model::StaticModel;
 use crate::scene::static_scene::item::model::static_model_part::StaticModelPart;
-use crate::scene::static_scene::item::model::static_model_place::StaticModelPlace;
 use crate::scene::static_scene::item::model::static_model_proxy::StaticModelProxy;
 use crate::scene::static_scene::item::object::static_object_proxy::StaticObjectProxy;
 use crate::scene::static_scene::item::static_item_context::StaticItemContext;
