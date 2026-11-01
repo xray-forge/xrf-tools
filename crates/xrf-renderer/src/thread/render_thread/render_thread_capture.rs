@@ -14,7 +14,7 @@ use crate::feature::image::present::present_parameters::PresentParameters;
 use crate::feature::image::present::present_pass::PresentPass;
 use crate::feature::image::present::present_uniform::PresentUniform;
 use crate::frame::jitter_guard::JitterGuard;
-use crate::frame::readback::frame_capture::{CaptureReply, FrameCapture};
+use crate::frame::readback::frame_capture::FrameCapture;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::pass::window::overlay_draw::OverlayDraw;
 use crate::pass::window::overlay_parameters::OverlayParameters;
@@ -22,47 +22,53 @@ use crate::pass::window::overlay_pass::OverlayPass;
 use crate::scene::level::page::helpers::view::helper_draws::HelperDraws;
 use crate::scene::level::view::scene_output::SceneOutput;
 use crate::scene::level::view::scene_view::SceneView;
+use crate::thread::copies::burst_copy::BurstCopy;
+use crate::thread::copies::capture_copy::CaptureCopy;
+use crate::thread::copies::capture_retry::CaptureRetry;
+use crate::thread::copies::shot_copy::ShotCopy;
 use crate::thread::gpu_state::GpuState;
-use crate::viewport::pending_screenshot::PendingScreenshot;
+use crate::thread::views::readied_view::ReadiedView;
+use crate::viewport::capture::pending_screenshot::PendingScreenshot;
 use crate::viewport::render_viewport::RenderViewport;
 use crate::window::window_frame::WindowFrame;
+use crate::window::window_viewport::WindowViewport;
 
-use super::{BurstCopy, RenderThread, ShotCopy, ViewFrame};
+use super::RenderThread;
 
 impl RenderThread {
   /// The captures this frame copies out of their window's image once it is composed, before it is presented, and the
   /// screenshots it draws apart, each read once back. A viewport gives one of each a frame, the first asked, so those
   /// asked together land on consecutive frames.
-  pub(super) fn take_captures(
-    &mut self,
-    device: &wgpu::Device,
-    windows: &[WindowFrame],
-  ) -> Vec<(RenderViewportId, FrameCapture, CaptureReply)> {
-    let mut captures: Vec<(RenderViewportId, FrameCapture, CaptureReply)> = Vec::new();
+  pub(super) fn take_captures(&mut self, device: &wgpu::Device, windows: &[WindowFrame]) -> Vec<CaptureCopy> {
+    let mut captures: Vec<CaptureCopy> = Vec::new();
 
     for window in windows {
-      for (id, rect, shown) in &window.drawn {
+      for WindowViewport { id, rect, shown } in &window.drawn {
         // A viewport capturing draws no frame of its own to capture; what it was asked waits.
         let Some(viewport) = self.viewports.get_mut(id).filter(|viewport| !viewport.is_capturing()) else {
           continue;
         };
 
-        if !viewport.captures.is_empty() {
-          let reply: CaptureReply = viewport.captures.remove(0);
-
-          match FrameCapture::new(device, window.format, *shown, viewport.frame) {
-            Ok(capture) => captures.push((*id, capture, reply)),
+        if let Some(reply) = viewport.take_capture() {
+          match FrameCapture::new(device, window.format, *shown, viewport.get_frame()) {
+            Ok(capture) => captures.push(CaptureCopy {
+              viewport: *id,
+              capture,
+              reply,
+            }),
             Err(error) => {
               let _ = reply.send(Err(error));
             }
           }
         }
 
-        if !viewport.screenshots.is_empty() {
-          let PendingScreenshot { screenshot, reply } = viewport.screenshots.remove(0);
-
-          match FrameCapture::new_screenshot(device, window.format, (rect.width, rect.height), viewport.frame) {
-            Ok(capture) => captures.push((*id, capture.with_screenshot(screenshot), reply)),
+        if let Some(PendingScreenshot { screenshot, reply }) = viewport.take_screenshot() {
+          match FrameCapture::new_screenshot(device, window.format, (rect.width, rect.height), viewport.get_frame()) {
+            Ok(capture) => captures.push(CaptureCopy {
+              viewport: *id,
+              capture: capture.with_screenshot(screenshot),
+              reply,
+            }),
             Err(error) => {
               let _ = reply.send(Err(error));
             }
@@ -80,23 +86,27 @@ impl RenderThread {
     let mut shots: Vec<ShotCopy> = Vec::new();
 
     for window in windows {
-      for (id, ..) in &window.drawn {
+      for WindowViewport { id, .. } in &window.drawn {
         let Some(viewport) = self.viewports.get_mut(id) else {
           continue;
         };
         let Some(shot) = viewport
-          .capture
-          .as_ref()
-          .filter(|capture| !capture.is_ended() && capture.is_kept_frame())
+          .get_capture()
+          .filter(|capture| capture.is_kept_frame())
           .and_then(CaptureJob::get_drawn_shot)
         else {
           continue;
         };
 
         // A capture's shot is copied out as a screenshot is, a map's tile with its depth's coverage.
-        match FrameCapture::new_screenshot(device, window.format, shot.get_drawn_size(), viewport.frame) {
-          Ok(capture) if shot.is_covered() => shots.push((*id, capture.with_coverage(device, shot.get_drawn_size()))),
-          Ok(capture) => shots.push((*id, capture)),
+        match FrameCapture::new_screenshot(device, window.format, shot.get_drawn_size(), viewport.get_frame()) {
+          Ok(capture) => shots.push(ShotCopy {
+            viewport: *id,
+            capture: match shot.is_covered() {
+              true => capture.with_coverage(device, shot.get_drawn_size()),
+              false => capture,
+            },
+          }),
           Err(error) => viewport.stop_capture(&error.to_string()),
         }
       }
@@ -111,26 +121,25 @@ impl RenderThread {
     &mut self,
     device: &wgpu::Device,
     windows: &[WindowFrame],
-    frames: &[ViewFrame],
+    frames: &[ReadiedView],
   ) -> Vec<BurstCopy> {
     let mut shots: Vec<BurstCopy> = Vec::new();
 
     for window in windows {
-      for (id, rect, _) in &window.drawn {
+      for WindowViewport { id, rect, .. } in &window.drawn {
         let Some(viewport) = self
           .viewports
           .get_mut(id)
-          .filter(|_| frames.iter().any(|(drawn, ..)| drawn == id))
+          .filter(|_| frames.iter().any(|frame| frame.viewport == *id))
         else {
           continue;
         };
         let (Some(frame), Some(material)) = (
           viewport
-            .burst
-            .as_ref()
+            .get_burst()
             .filter(|burst| burst.is_drawing())
             .and_then(BurstJob::get_kept_frame),
-          viewport.shown.as_ref().and_then(|(_, view)| view.get_render_size()),
+          viewport.get_shown_view().and_then(SceneView::get_render_size),
         ) else {
           continue;
         };
@@ -139,11 +148,11 @@ impl RenderThread {
           device,
           window.format,
           (rect.width, rect.height),
-          viewport.frame,
+          viewport.get_frame(),
           material,
           frame,
         ) {
-          Ok(shot) => shots.push((*id, shot)),
+          Ok(shot) => shots.push(BurstCopy { viewport: *id, shot }),
           Err(error) => viewport.stop_burst(&error.to_string()),
         }
       }
@@ -154,10 +163,10 @@ impl RenderThread {
 
   /// Puts captures a window gave no image for back at the front of their viewport's, for its next presented frame;
   /// answers one whose viewport is gone.
-  pub(super) fn retry_captures(&mut self, retried: Vec<(RenderViewportId, CaptureReply)>) {
-    for (id, reply) in retried.into_iter().rev() {
+  pub(super) fn retry_captures(&mut self, retried: Vec<CaptureRetry>) {
+    for CaptureRetry { viewport: id, reply } in retried.into_iter().rev() {
       match self.viewports.get_mut(&id) {
-        Some(viewport) => viewport.captures.insert(0, reply),
+        Some(viewport) => viewport.return_capture(reply),
         None => {
           let _ = reply.send(Err(XrfError::new_invalid_error(format!(
             "Viewport {} is no longer drawn",
@@ -182,8 +191,7 @@ impl RenderThread {
     let Some(viewport) = viewports.get(&id) else {
       return;
     };
-    let (Some(output), Some(binding), Some((_, view))) = (output, viewport.binding.as_ref(), viewport.shown.as_ref())
-    else {
+    let (Some(output), Some(binding), Some(view)) = (output, viewport.get_binding(), viewport.get_shown_view()) else {
       return;
     };
     let texture: GraphTexture = Self::declare_finished_frame(
@@ -271,8 +279,7 @@ impl RenderThread {
     let Some(viewport) = viewports.get(&id) else {
       return;
     };
-    let (Some(output), Some(binding), Some((_, view))) = (output, viewport.binding.as_ref(), viewport.shown.as_ref())
-    else {
+    let (Some(output), Some(binding), Some(view)) = (output, viewport.get_binding(), viewport.get_shown_view()) else {
       return;
     };
     let texture: GraphTexture = Self::declare_finished_frame(

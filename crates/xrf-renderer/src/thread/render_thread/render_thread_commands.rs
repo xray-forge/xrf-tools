@@ -21,8 +21,8 @@ use crate::host::world::render_scene_id::RenderSceneId;
 use crate::scene::level::level_scene::LevelScene;
 use crate::thread::queue::render_command::RenderCommand;
 use crate::thread::running_gpu::RunningGpu;
-use crate::viewport::pending_pick::PendingPick;
-use crate::viewport::pending_screenshot::PendingScreenshot;
+use crate::viewport::capture::pending_screenshot::PendingScreenshot;
+use crate::viewport::pick::pending_pick::PendingPick;
 use crate::viewport::render_viewport::RenderViewport;
 
 use super::RenderThread;
@@ -55,7 +55,7 @@ impl RenderThread {
       }
       RenderCommand::Layout { id, layout } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.layout = Some(layout);
+          viewport.lay_out(layout);
         }
       }
       RenderCommand::ReloadTextures { names } => {
@@ -90,18 +90,17 @@ impl RenderThread {
       }
       RenderCommand::Options { id, options } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.options = *options;
+          viewport.set_options(*options);
         }
       }
       RenderCommand::Overlays { id, overlays } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.overlays = overlays;
-          viewport.overlays_version += 1;
+          viewport.set_overlays(overlays);
         }
       }
       RenderCommand::Selection { id, selection } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.selection = selection;
+          viewport.select(selection);
         }
       }
       RenderCommand::Pick {
@@ -119,14 +118,7 @@ impl RenderThread {
         };
 
         match self.viewports.get_mut(&id) {
-          Some(viewport) if viewport.shown.is_some() => viewport.picks.push(pick),
-          // Nothing is drawn there to pick.
-          Some(viewport) => {
-            let _ = pick.reply.send(Ok(RenderPick {
-              frame: viewport.frame,
-              hit: None,
-            }));
-          }
+          Some(viewport) => viewport.ask_pick(pick),
           None => {
             let _ = pick.reply.send(Ok(RenderPick { frame: 0, hit: None }));
           }
@@ -188,12 +180,12 @@ impl RenderThread {
       }
       RenderCommand::Capture { id, reply } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.captures.push(reply);
+          viewport.ask_capture(reply);
         }
       }
       RenderCommand::Screenshot { id, screenshot, reply } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.screenshots.push(PendingScreenshot { screenshot, reply });
+          viewport.ask_screenshot(PendingScreenshot { screenshot, reply });
         }
       }
       RenderCommand::CaptureMap { id, capture, events } => {
@@ -205,7 +197,12 @@ impl RenderThread {
         let most: u32 = self.get_most_texture();
 
         self.begin_capture(id, events, |viewport| {
-          CapturePlan::new_cube(capture, &viewport.world.camera, Self::get_far_limit(viewport), most)
+          CapturePlan::new_cube(
+            capture,
+            &viewport.get_world().camera,
+            Self::get_far_limit(viewport),
+            most,
+          )
         });
       }
       RenderCommand::CaptureBurst { id, burst, events } => self.begin_burst(id, burst, events),
@@ -218,7 +215,9 @@ impl RenderThread {
   fn begin_burst(&mut self, id: RenderViewportId, burst: RenderBurst, events: Sender<BurstEvent>) {
     let refusal: Option<String> = match self.viewports.get(&id) {
       None => Some(format!("Viewport {} is no longer drawn", id.0)),
-      Some(viewport) if viewport.shown.is_none() => Some(format!("Viewport {} shows no level to burst", id.0)),
+      Some(viewport) if viewport.get_shown_scene().is_none() => {
+        Some(format!("Viewport {} shows no level to burst", id.0))
+      }
       Some(viewport) if viewport.is_capturing() => Some(format!("Viewport {} captures already", id.0)),
       Some(_) if self.viewports.values().any(RenderViewport::is_bursting) => {
         Some(String::from("Another burst paces the frames' clock"))
@@ -235,7 +234,7 @@ impl RenderThread {
     }
 
     match (BurstJob::new(burst, events.clone()), self.viewports.get_mut(&id)) {
-      (Ok(job), Some(viewport)) => viewport.burst = Some(job),
+      (Ok(job), Some(viewport)) => viewport.start_burst(job),
       (Err(error), _) => {
         let _ = events.send(BurstEvent::Stopped { error });
       }
@@ -266,7 +265,7 @@ impl RenderThread {
         "Viewport {} is no longer drawn",
         id.0
       ))),
-      Some(viewport) if viewport.shown.is_none() => Err(XrfError::new_invalid_error(format!(
+      Some(viewport) if viewport.get_shown_scene().is_none() => Err(XrfError::new_invalid_error(format!(
         "Viewport {} shows no level to capture",
         id.0
       ))),
@@ -278,7 +277,7 @@ impl RenderThread {
     };
 
     match (planned, self.viewports.get_mut(&id)) {
-      (Ok(plan), Some(viewport)) => viewport.capture = Some(CaptureJob::new(plan, events)),
+      (Ok(plan), Some(viewport)) => viewport.start_capture(CaptureJob::new(plan, events)),
       (Err(error), _) => {
         let _ = events.send(CaptureEvent::Stopped { error });
       }
@@ -298,6 +297,6 @@ impl RenderThread {
 
   /// The scene a viewport shows, none where it shows none.
   fn get_shown_scene(&self, viewport: RenderViewportId) -> Option<&LevelScene> {
-    self.scenes.get(&self.viewports.get(&viewport)?.shown.as_ref()?.0)
+    self.scenes.get(&self.viewports.get(&viewport)?.get_shown_scene()?)
   }
 }

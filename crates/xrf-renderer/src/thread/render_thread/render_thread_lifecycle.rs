@@ -11,6 +11,7 @@ use crate::contract::settings::gpu::render_backend::RenderBackend;
 use crate::thread::gpu_state::GpuState;
 use crate::thread::retry_backoff::RetryBackoff;
 use crate::thread::running_gpu::RunningGpu;
+use crate::viewport::render_viewport::RenderViewport;
 
 use super::RenderThread;
 
@@ -28,7 +29,7 @@ impl RenderThread {
 
   /// Lets go of windows no viewport is drawn into, and starts the idle clock when none is left.
   pub(super) fn forget_unused_windows(&mut self) {
-    let used: Vec<u64> = self.viewports.values().map(|viewport| viewport.window).collect();
+    let used: Vec<u64> = self.viewports.values().map(RenderViewport::get_window).collect();
 
     self.hosts.retain(|key, _| used.contains(key));
     self.last_present.retain(|key, _| used.contains(key));
@@ -86,12 +87,9 @@ impl RenderThread {
     // Its scenes went with it; the world streams each in again, from the start, into scenes made again, which the
     // viewports showing them wait for whole.
     self.scenes.clear();
-    self.reopening.hold(
-      self
-        .viewports
-        .values()
-        .filter_map(|viewport| viewport.shown.as_ref().map(|(id, _)| *id)),
-    );
+    self
+      .reopening
+      .hold(self.viewports.values().filter_map(RenderViewport::get_shown_scene));
     self
       .world
       .lock()
@@ -99,8 +97,8 @@ impl RenderThread {
       .restart_scenes();
 
     for viewport in self.viewports.values_mut() {
-      viewport.binding = None;
-      viewport.show(None);
+      viewport.forget_binding();
+      viewport.hide();
       viewport.release_captures();
     }
   }

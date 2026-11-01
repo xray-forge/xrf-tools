@@ -38,47 +38,52 @@ use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::level::view::view_reports::ViewReports;
-use crate::viewport::pending_pick::PendingPick;
-use crate::viewport::pending_screenshot::PendingScreenshot;
-use crate::viewport::pick_in_flight::PickInFlight;
+use crate::viewport::capture::capture_in_flight::CaptureInFlight;
+use crate::viewport::capture::pending_screenshot::PendingScreenshot;
+use crate::viewport::pick::drawn_pick::DrawnPick;
+use crate::viewport::pick::pending_pick::PendingPick;
+use crate::viewport::pick::pick_in_flight::PickInFlight;
+use crate::viewport::pick::pick_unprojection::PickUnprojection;
 use crate::viewport::reported_graph::ReportedGraph;
 use crate::viewport::viewport_device::ViewportDevice;
+use crate::viewport::viewport_overlays::ViewportOverlays;
+use crate::viewport::viewport_parts::ViewportParts;
 
-/// One rectangle of a window drawn by the renderer, with what its world gave this frame and its page's channel.
+/// One rectangle of a window drawn by the renderer, with what its world gave this frame and its page's channel. It owns
+/// what its page asked of it: the captures, screenshots and picks waiting for a frame and on their way back, each taken
+/// for a frame and put back where the frame could not draw it.
 pub struct RenderViewport {
-  pub id: RenderViewportId,
+  id: RenderViewportId,
   /// The window it is drawn into.
-  pub window: u64,
+  window: u64,
   /// Where the page last laid it out, or `None` before it has.
-  pub layout: Option<RenderViewportLayout>,
-  pub options: RenderViewOptions,
-  /// What it draws over its frame, and how many sets it has been given, which its level's vertices follow.
-  pub overlays: Vec<RenderOverlay>,
-  pub overlays_version: u64,
+  layout: Option<RenderViewportLayout>,
+  options: RenderViewOptions,
+  overlays: ViewportOverlays,
   /// What of its level is selected, marked as it draws.
-  pub selection: Option<RenderSelection>,
+  selection: Option<RenderSelection>,
   /// The scene it shows and its view of it, made once a GPU is there; a scene of models alone keeps showing the one it
   /// replaces while its successor loads.
-  pub shown: Option<(RenderSceneId, SceneView)>,
+  shown: Option<ShownView>,
   /// The scene it asks to show, where its camera stands and what lights it this frame, as its world answered.
-  pub world: RenderViewFrame,
+  world: RenderViewFrame,
   /// Captures asked for, copied out of the next frames presented, one a frame in the order asked, and those copied,
   /// answered once they are back.
-  pub captures: Vec<CaptureReply>,
+  captures: Vec<CaptureReply>,
   /// Screenshots asked for, drawn from the next frames, one a frame in the order asked; in flight with the captures.
-  pub screenshots: Vec<PendingScreenshot>,
-  pub captures_in_flight: Vec<(FrameCapture, CaptureReply)>,
+  screenshots: Vec<PendingScreenshot>,
+  captures_in_flight: Vec<CaptureInFlight>,
   /// The level map or cubemap it captures, drawn in place of its own frames until it ends.
-  pub capture: Option<CaptureJob>,
+  capture: Option<CaptureJob>,
   /// The burst its own view draws, pacing the frames' clock until it ends.
-  pub burst: Option<BurstJob>,
+  burst: Option<BurstJob>,
   /// Picks asked for, drawn one a frame while a readback is free, and those drawn, answered once they are back.
-  pub picks: Vec<PendingPick>,
-  pub picks_in_flight: Vec<PickInFlight>,
+  picks: Vec<PendingPick>,
+  picks_in_flight: Vec<PickInFlight>,
   /// Frames drawn, which a pick's or capture's answer names its own by.
-  pub frame: u64,
+  frame: u64,
   /// Its camera on the GPU, made once a GPU is there.
-  pub binding: Option<ViewBinding>,
+  binding: Option<ViewBinding>,
   sink: Box<dyn RenderEventSink>,
   statistics: FrameStatistics,
   /// What it was last told its frames cost, answered to a caller polling rather than listening.
@@ -92,14 +97,208 @@ pub struct RenderViewport {
   is_failed: bool,
 }
 
+/// The scene a viewport shows, and its own view of it.
+struct ShownView {
+  scene: RenderSceneId,
+  view: SceneView,
+}
+
 impl RenderViewport {
+  pub fn get_id(&self) -> RenderViewportId {
+    self.id
+  }
+
+  /// The window it is drawn into.
+  pub fn get_window(&self) -> u64 {
+    self.window
+  }
+
+  /// Where the page last laid it out, none before it has.
+  pub fn get_layout(&self) -> Option<&RenderViewportLayout> {
+    self.layout.as_ref()
+  }
+
+  pub fn lay_out(&mut self, layout: RenderViewportLayout) {
+    self.layout = Some(layout);
+  }
+
+  pub fn get_options(&self) -> &RenderViewOptions {
+    &self.options
+  }
+
+  pub fn set_options(&mut self, options: RenderViewOptions) {
+    self.options = options;
+  }
+
+  /// Takes what it draws over its frame from now on.
+  pub fn set_overlays(&mut self, overlays: Vec<RenderOverlay>) {
+    self.overlays.replace(overlays);
+  }
+
+  /// Takes what of its level is selected from now on, none for nothing.
+  pub fn select(&mut self, selection: Option<RenderSelection>) {
+    self.selection = selection;
+  }
+
+  /// The scene it asks to show, where its camera stands and what lights it this frame, as its world answered.
+  pub fn get_world(&self) -> &RenderViewFrame {
+    &self.world
+  }
+
+  /// Takes what its world answered for this frame.
+  pub fn follow_world(&mut self, world: RenderViewFrame) {
+    self.world = world;
+  }
+
+  /// The scene it shows, none where it shows none.
+  pub fn get_shown_scene(&self) -> Option<RenderSceneId> {
+    self.shown.as_ref().map(|shown| shown.scene)
+  }
+
+  /// Its own view of the scene it shows, whether or not it captures.
+  pub fn get_shown_view(&self) -> Option<&SceneView> {
+    self.shown.as_ref().map(|shown| &shown.view)
+  }
+
+  pub fn get_shown_view_mut(&mut self) -> Option<&mut SceneView> {
+    self.shown.as_mut().map(|shown| &mut shown.view)
+  }
+
+  /// Its camera on the GPU, once a frame made it.
+  pub fn get_binding(&self) -> Option<&ViewBinding> {
+    self.binding.as_ref()
+  }
+
+  /// Lets its camera on the GPU go with the GPU, made again by the next GPU's first frame.
+  pub fn forget_binding(&mut self) {
+    self.binding = None;
+  }
+
+  /// Takes it apart for readying its frame: what it is drawn with, and its own view, binding and capture to write.
+  pub fn split(&mut self) -> ViewportParts<'_> {
+    let (scene, view): (Option<RenderSceneId>, Option<&mut SceneView>) = match self.shown.as_mut() {
+      Some(shown) => (Some(shown.scene), Some(&mut shown.view)),
+      None => (None, None),
+    };
+
+    ViewportParts {
+      options: &self.options,
+      world: &self.world,
+      overlays: &self.overlays,
+      selection: self.selection.as_ref(),
+      scene,
+      view,
+      binding: &mut self.binding,
+      capture: self.capture.as_mut().filter(|capture| !capture.is_ended()),
+    }
+  }
+
+  /// Frames drawn, which a pick's or capture's answer names its own by.
+  pub fn get_frame(&self) -> u64 {
+    self.frame
+  }
+
+  /// Asks for a capture of its next presented frame.
+  pub fn ask_capture(&mut self, reply: CaptureReply) {
+    self.captures.push(reply);
+  }
+
+  /// Takes the first capture asked for, for this frame.
+  pub fn take_capture(&mut self) -> Option<CaptureReply> {
+    (!self.captures.is_empty()).then(|| self.captures.remove(0))
+  }
+
+  /// Puts a capture taken for a frame that could not copy it back first, for its next presented frame.
+  pub fn return_capture(&mut self, reply: CaptureReply) {
+    self.captures.insert(0, reply);
+  }
+
+  /// Asks for a screenshot drawn from its next frame.
+  pub fn ask_screenshot(&mut self, screenshot: PendingScreenshot) {
+    self.screenshots.push(screenshot);
+  }
+
+  /// Takes the first screenshot asked for, for this frame.
+  pub fn take_screenshot(&mut self) -> Option<PendingScreenshot> {
+    (!self.screenshots.is_empty()).then(|| self.screenshots.remove(0))
+  }
+
+  /// Keeps a capture or screenshot copied out of this frame until it is back.
+  pub fn await_capture(&mut self, capture: FrameCapture, reply: CaptureReply) {
+    self.captures_in_flight.push(CaptureInFlight { capture, reply });
+  }
+
+  /// Asks for a pick of its next drawn frame; one asked while it shows no scene meets nothing at once.
+  pub fn ask_pick(&mut self, pick: PendingPick) {
+    if self.shown.is_some() {
+      self.picks.push(pick);
+    } else {
+      let _ = pick.reply.send(Ok(RenderPick {
+        frame: self.frame,
+        hit: None,
+      }));
+    }
+  }
+
+  /// Takes the first pick asked for, for this frame to draw.
+  pub fn take_pick(&mut self) -> Option<PendingPick> {
+    (!self.picks.is_empty()).then(|| self.picks.remove(0))
+  }
+
+  /// Puts a pick taken for a frame that did not draw it back first, for the next frame.
+  pub fn return_pick(&mut self, pick: PendingPick) {
+    self.picks.insert(0, pick);
+  }
+
+  /// Keeps a pick this frame drew into the readback `slot` until it is back.
+  pub fn await_pick(&mut self, slot: usize, DrawnPick { pick, unprojection }: DrawnPick) {
+    self.picks_in_flight.push(PickInFlight {
+      pick,
+      slot,
+      unprojection,
+      frame: self.frame,
+    });
+  }
+
+  /// The burst its own view draws, while one runs.
+  pub fn get_burst(&self) -> Option<&BurstJob> {
+    self.burst.as_ref().filter(|burst| !burst.is_ended())
+  }
+
+  pub fn get_burst_mut(&mut self) -> Option<&mut BurstJob> {
+    self.burst.as_mut().filter(|burst| !burst.is_ended())
+  }
+
+  /// Starts a burst its own view draws.
+  pub fn start_burst(&mut self, burst: BurstJob) {
+    self.burst = Some(burst);
+  }
+
+  /// The level map or cubemap it captures, while one runs.
+  pub fn get_capture(&self) -> Option<&CaptureJob> {
+    self.capture.as_ref().filter(|capture| !capture.is_ended())
+  }
+
+  pub fn get_capture_mut(&mut self) -> Option<&mut CaptureJob> {
+    self.capture.as_mut().filter(|capture| !capture.is_ended())
+  }
+
+  /// Starts a capture drawn in place of its own frames.
+  pub fn start_capture(&mut self, capture: CaptureJob) {
+    self.capture = Some(capture);
+  }
+
   /// Answers the picks and captures whose readbacks a poll found back, keeping those still on their way; a pick names
   /// what it hit in the scene it shows, among `scenes`.
   pub fn answer_readbacks(&mut self, scenes: &HashMap<RenderSceneId, LevelScene>) {
     let in_flight: Vec<PickInFlight> = std::mem::take(&mut self.picks_in_flight);
 
     for entry in in_flight {
-      let Some((scene, level)) = self.shown.as_ref().and_then(|(id, view)| Some((scenes.get(id)?, view))) else {
+      let Some((scene, level)) = self
+        .shown
+        .as_ref()
+        .and_then(|shown| Some((scenes.get(&shown.scene)?, &shown.view)))
+      else {
         let _ = entry.pick.reply.send(Ok(RenderPick {
           frame: entry.frame,
           hit: None,
@@ -110,7 +309,7 @@ impl RenderViewport {
 
       match level.take_pick(entry.slot) {
         Some(Ok(texel)) => {
-          let (view, ndc) = entry.unprojection;
+          let PickUnprojection { view, ndc } = entry.unprojection;
           let inverse: Mat4 = view.get_view_projection().inverse();
           let hit: Option<RenderLevelHit> = level.resolve_pick(scene, texel, |stored: f32| -> (Vec3, f32) {
             let point: Vec3 = inverse.project_point3(ndc.extend(stored));
@@ -130,14 +329,14 @@ impl RenderViewport {
       }
     }
 
-    let captures: Vec<(FrameCapture, CaptureReply)> = std::mem::take(&mut self.captures_in_flight);
+    let captures: Vec<CaptureInFlight> = std::mem::take(&mut self.captures_in_flight);
 
-    for (capture, reply) in captures {
-      match capture.take() {
+    for entry in captures {
+      match entry.capture.take() {
         Some(result) => {
-          let _ = reply.send(result);
+          let _ = entry.reply.send(result);
         }
-        None => self.captures_in_flight.push((capture, reply)),
+        None => self.captures_in_flight.push(entry),
       }
     }
 
@@ -160,18 +359,18 @@ impl RenderViewport {
 
   /// The view it draws and its camera's binding: its capture's while it captures, else its own.
   pub fn get_drawn_view(&self) -> Option<(RenderSceneId, &SceneView, &ViewBinding)> {
-    let (scene, own) = self.shown.as_ref()?;
+    let shown: &ShownView = self.shown.as_ref()?;
 
-    match self.capture.as_ref().filter(|capture| !capture.is_ended()) {
-      Some(capture) => capture.get_view().map(|(view, binding)| (*scene, view, binding)),
-      None => Some((*scene, own, self.binding.as_ref()?)),
+    match self.get_capture() {
+      Some(capture) => capture.get_view().map(|(view, binding)| (shown.scene, view, binding)),
+      None => Some((shown.scene, &shown.view, self.binding.as_ref()?)),
     }
   }
 
   /// The view it draws: its capture's while it captures, else its own.
   pub fn get_drawn_view_mut(&mut self) -> Option<&mut SceneView> {
     let RenderViewport { shown, capture, .. } = self;
-    let (_, own) = shown.as_mut()?;
+    let own: &mut SceneView = &mut shown.as_mut()?.view;
 
     match capture.as_mut().filter(|capture| !capture.is_ended()) {
       Some(capture) => capture.get_scene_view_mut(),
@@ -181,7 +380,7 @@ impl RenderViewport {
 
   /// Whether it captures a level map or cubemap, drawn in place of its own frames.
   pub fn is_capturing(&self) -> bool {
-    self.capture.as_ref().is_some_and(|capture| !capture.is_ended())
+    self.get_capture().is_some()
   }
 
   /// Stops what it captures, telling its caller why.
@@ -193,7 +392,7 @@ impl RenderViewport {
 
   /// Whether its own view draws a burst, whose frames are drawn whatever its window shows.
   pub fn is_bursting(&self) -> bool {
-    self.burst.as_ref().is_some_and(|burst| !burst.is_ended())
+    self.get_burst().is_some()
   }
 
   /// Stops the burst it draws, telling its caller why.
@@ -209,7 +408,7 @@ impl RenderViewport {
     self.stop_capture("The GPU went before the capture was read back");
     self.stop_burst("The GPU went before the burst was read back");
 
-    for (capture, reply) in std::mem::take(&mut self.captures_in_flight) {
+    for CaptureInFlight { capture, reply } in std::mem::take(&mut self.captures_in_flight) {
       let _ = reply.send(capture.take().unwrap_or_else(|| {
         Err(XrfError::new_unexpected_error(
           "The GPU went before the capture was read back",
@@ -218,9 +417,21 @@ impl RenderViewport {
     }
   }
 
-  /// Shows another view of a scene, or none: the picks asked of the one it replaces, drawn or still waiting, meet
-  /// nothing, since what they were asked of is drawn no more, and what it captures stops.
-  pub fn show(&mut self, shown: Option<(RenderSceneId, SceneView)>) {
+  /// Shows the scene `scene` through `view`, a view of it of its own.
+  pub fn show(&mut self, scene: RenderSceneId, view: SceneView) {
+    self.leave_shown();
+    self.shown = Some(ShownView { scene, view });
+  }
+
+  /// Shows no scene.
+  pub fn hide(&mut self) {
+    self.leave_shown();
+    self.shown = None;
+  }
+
+  /// Leaves the view it showed: the picks asked of it, drawn or still waiting, meet nothing, since what they were
+  /// asked of is drawn no more, and what it captures stops.
+  fn leave_shown(&mut self) {
     self.stop_capture("The viewport shows another scene than the capture was asked of");
     self.stop_burst("The viewport shows another scene than the burst was asked of");
 
@@ -232,7 +443,6 @@ impl RenderViewport {
     }
 
     self.answer_picks_unseen();
-    self.shown = shown;
   }
 
   /// Answers the picks waiting to be drawn as meeting nothing, for a frame in which it was not drawn.
@@ -251,8 +461,7 @@ impl RenderViewport {
       window,
       layout: None,
       options: RenderViewOptions::default(),
-      overlays: Vec::new(),
-      overlays_version: 0,
+      overlays: ViewportOverlays::default(),
       selection: None,
       shown: None,
       world: RenderViewFrame::default(),
@@ -307,9 +516,9 @@ impl RenderViewport {
     GraphOwner::Part(self.id.0)
   }
 
-  /// Notes a frame for the next report: its `interval`, its time on the render thread (`cpu`), the GPU's latest span,
-  /// phases and encode groups.
-  pub fn record_frame(
+  /// Counts a frame presented and notes it for the next report: its `interval`, its time on the render thread (`cpu`),
+  /// the GPU's latest span, phases and encode groups.
+  pub fn count_frame(
     &mut self,
     interval: Duration,
     cpu: Duration,
@@ -317,6 +526,7 @@ impl RenderViewport {
     phases: &FramePhases,
     groups: &[ExecutedGroup],
   ) {
+    self.frame += 1;
     self.statistics.record(interval, cpu, gpu, phases, groups);
   }
 
@@ -349,14 +559,14 @@ impl RenderViewport {
     let shown: Option<(&mut LevelScene, &mut SceneView)> = self
       .shown
       .as_mut()
-      .and_then(|(id, view)| Some((scenes.get_mut(id)?, view)));
+      .and_then(|shown| Some((scenes.get_mut(&shown.scene)?, &mut shown.view)));
     let (reports, sector_time): (Option<ViewReports>, f32) = match shown {
       Some((scene, view)) => {
-        let is_driving: bool = scene.driver == Some(self.id);
+        let is_driving: bool = scene.get_driver() == Some(self.id);
 
         (
           Some(view.take_reports(scene, &self.options, is_driving)),
-          scene.sector_time,
+          scene.get_sector_time(),
         )
       }
       None => (None, 0.0),

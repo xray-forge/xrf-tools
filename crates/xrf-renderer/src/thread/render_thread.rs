@@ -3,18 +3,14 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::sync::{Arc, Mutex, Weak};
 use std::time::{Duration, Instant};
 
-use glam::Vec2;
 use xrf_renderer_core::GraphReport;
 
-use crate::camera::camera_view::CameraView;
-use crate::capture::burst::burst_shot::BurstShot;
 use crate::contract::settings::render_settings::RenderSettings;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
 #[cfg(debug_assertions)]
 use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::periodic::periodic_budget::PeriodicBudget;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
-use crate::frame::readback::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::readback::gpu_memory::GpuMemory;
 use crate::frame::timing::frame_clock::FrameClock;
 use crate::frame::timing::frame_pacer::FramePacer;
@@ -23,21 +19,19 @@ use crate::host::render_cache_store::RenderCacheStore;
 use crate::host::render_window_host::RenderWindowHost;
 use crate::host::world::render_scene_id::RenderSceneId;
 use crate::host::world::render_world::RenderWorld;
-use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_scene::LevelScene;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::shader::shader_watcher::ShaderWatcher;
 use crate::thread::frame_failure_log::FrameFailureLog;
 use crate::thread::queue::render_command::RenderCommand;
+use crate::thread::queue::render_hosts::RenderHosts;
 use crate::thread::queue::render_link::RenderLink;
 use crate::thread::queue::render_workers::RenderWorkers;
 use crate::thread::retry_backoff::RetryBackoff;
 use crate::thread::running_gpu::RunningGpu;
 use crate::thread::views::reopening_scenes::ReopeningScenes;
-use crate::viewport::pending_pick::PendingPick;
 use crate::viewport::render_viewport::RenderViewport;
 
-mod frame_copies;
 mod render_thread_capture;
 mod render_thread_commands;
 mod render_thread_draw;
@@ -62,26 +56,6 @@ const TEXTURE_SWEEP: Duration = Duration::from_secs(2);
 
 /// How often the GPU allocator is asked what it holds, for the viewports' and the application's memory reports.
 const ALLOCATOR_REPORT_EVERY: Duration = Duration::from_millis(500);
-
-/// A viewport's readied frame, with the pick it draws and what unprojects that pick's depth.
-pub(crate) type ViewFrame = (RenderViewportId, LevelFrame, Option<(PendingPick, (CameraView, Vec2))>);
-
-/// A capture or screenshot copied out of a viewport's frame, on its way back, and where its answer goes.
-type CaptureCopy = (RenderViewportId, FrameCapture, CaptureReply);
-
-/// A capture's shot copied out of a viewport's frame, on its way back.
-type ShotCopy = (RenderViewportId, FrameCapture);
-
-/// A burst's frame copied out of a viewport's frame, on its way back.
-type BurstCopy = (RenderViewportId, BurstShot);
-
-/// What the application hands the render thread beside its commands: the files it ships with, the world it draws, and
-/// where it keeps the driver's compiled pipelines between runs.
-pub(crate) type RenderHosts = (
-  Arc<dyn RenderBundle>,
-  Arc<Mutex<dyn RenderWorld>>,
-  Option<Arc<dyn RenderCacheStore>>,
-);
 
 /// The render thread: owns the GPU and every viewport, and is the only place GPU work happens.
 pub struct RenderThread {
@@ -152,7 +126,7 @@ impl RenderThread {
     link: Weak<Mutex<RenderLink>>,
     settings: RenderSettings,
     workers: RenderWorkers,
-    (bundle, world, store): RenderHosts,
+    RenderHosts { bundle, world, store }: RenderHosts,
   ) -> Self {
     let now: Instant = Instant::now();
 
@@ -269,7 +243,7 @@ impl RenderThread {
   /// not its window shows anything: a frame is due each turn, rather than a wait.
   fn is_drawing(&self) -> bool {
     self.viewports.values().any(|viewport| {
-      let host: Option<&Arc<dyn RenderWindowHost>> = self.hosts.get(&viewport.window);
+      let host: Option<&Arc<dyn RenderWindowHost>> = self.hosts.get(&viewport.get_window());
 
       viewport.is_capturing()
         || host.is_some_and(|host| {

@@ -7,9 +7,12 @@ use xrf_error::XrfResult;
 use xrf_renderer_core::ProxyHandle;
 use xrf_visual::SectorPackage;
 
+use crate::camera::camera_view::CameraView;
+use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
 use crate::contract::report::load::render_load_report::RenderLoadReport;
 use crate::contract::report::texture::render_texture_group::RenderTextureGroup;
 use crate::contract::report::texture::render_texture_report::RenderTextureReport;
+use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::frame::frame_upload::FrameUpload;
 use crate::frame::periodic::periodic_job::PeriodicJob;
@@ -23,6 +26,7 @@ use crate::host::world::feedback::render_sector_failure::RenderSectorFailure;
 use crate::host::world::render_scene_frame::RenderSceneFrame;
 use crate::host::world::render_scene_id::RenderSceneId;
 use crate::host::world::render_scene_update::RenderSceneUpdate;
+use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::lighting::wind::ambient_gust::AmbientGust;
 use crate::scene::level::level_grass::LevelGrass;
 use crate::scene::level::lights::level_lights::LevelLights;
@@ -60,15 +64,15 @@ pub struct LevelScene {
   started: Instant,
   now: Instant,
   pub lights: LevelLights,
-  pub particles: LevelParticles,
+  pub(super) particles: LevelParticles,
   /// Milliseconds the last sector taken in took to put into the scene.
-  pub sector_time: f32,
+  sector_time: f32,
   /// What its load reports, from how far the world streamed it.
   load: LevelLoad,
   /// Every texture slot it samples, each once, as the last frame left them.
   texture_slots: Vec<u32>,
   /// The viewport driving what it simulates by its camera, as the world named it.
-  pub driver: Option<RenderViewportId>,
+  driver: Option<RenderViewportId>,
   /// Every skinned object's bones as segments, which the skeleton overlay draws.
   pub skeleton_segments: Arc<[(Vec3, Vec3)]>,
   /// The level objects' helpers as wires, which every view draws as its options ask.
@@ -79,7 +83,7 @@ pub struct LevelScene {
   /// The driving camera's smoothed hemi, none where it is not estimated.
   pub camera_hemi: Option<f32>,
   /// How wet the level is and how full its puddles, which every view of it wets its surfaces by.
-  pub wetness: LevelWetness,
+  pub(super) wetness: LevelWetness,
   /// The sectors and the spawned models it could not take in since the world was last told.
   sector_failures: Vec<RenderSectorFailure>,
   model_failures: Vec<RenderModelFailure>,
@@ -221,6 +225,31 @@ impl LevelScene {
     self.statics.prepare_draws(device, queue, encoder);
   }
 
+  /// The viewport driving what it simulates by its camera, as the world named it; none while no viewport shows it.
+  pub fn get_driver(&self) -> Option<RenderViewportId> {
+    self.driver
+  }
+
+  /// Milliseconds the last sector taken in took to put into the scene.
+  pub fn get_sector_time(&self) -> f32 {
+    self.sector_time
+  }
+
+  /// Starts this frame's step of its effects on the workers, by the camera of the `view` standing for the actor and
+  /// the `options` it draws them with; its settle (`settle`) joins it.
+  pub fn start_simulation(&mut self, view: &CameraView, options: &RenderViewOptions) {
+    let time: Duration = self.get_time();
+
+    self.particles.start_simulation(view, options, time);
+  }
+
+  /// Moves its wetness on by the rain in `lighting` and the driving view's `settings`, on its own clock.
+  pub fn advance_wetness(&mut self, lighting: &RenderLighting, settings: &RenderRainSettings) {
+    let time: f32 = self.get_time().as_secs_f32();
+
+    self.wetness.advance(lighting, settings, time);
+  }
+
   /// Settles what its views asked of it this frame, its driving view's first, once every one has readied its frame and
   /// before any finishes it: the lights' faces every view wants, and the effects' step, which each view then fills its
   /// quads from.
@@ -229,6 +258,16 @@ impl LevelScene {
       .lights
       .settle(views.into_iter().map(|asks| &asks.lights), &self.statics);
     self.particles.settle();
+  }
+
+  /// Offers `scheduler` the lights' faces its views' asks left wanting a draw this frame.
+  pub fn offer_shadows(&mut self, scheduler: &mut PeriodicScheduler) {
+    self.lights.offer_shadows(scheduler);
+  }
+
+  /// Forgets the lights' faces this frame drew, where its frame was not submitted.
+  pub fn abandon_shadows(&mut self) {
+    self.lights.abandon_shadows();
   }
 
   /// Makes its acceleration structures where a view of it traces rays and its static scene is traced, and brings them

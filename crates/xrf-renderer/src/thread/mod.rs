@@ -1,3 +1,4 @@
+pub(crate) mod copies;
 pub(crate) mod frame_failure_log;
 pub(crate) mod frame_task;
 pub(crate) mod gpu_state;

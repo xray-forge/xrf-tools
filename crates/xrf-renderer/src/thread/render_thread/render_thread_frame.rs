@@ -14,6 +14,7 @@ use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::world::feedback::render_scene_feedback::RenderSceneFeedback;
 use crate::host::world::render_scene_frame::RenderSceneFrame;
 use crate::host::world::render_scene_id::RenderSceneId;
+use crate::host::world::render_view_frame::RenderViewFrame;
 use crate::host::world::render_view_input::RenderViewInput;
 use crate::host::world::render_world::RenderWorld;
 use crate::scene::level::level_scene::LevelScene;
@@ -21,6 +22,7 @@ use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::texture::sky_texture_requests::SkyTextureRequests;
 use crate::scene::texture::texture_upload_pace::TextureUploadPace;
 use crate::thread::running_gpu::RunningGpu;
+use crate::viewport::render_viewport::RenderViewport;
 use crate::viewport::reported_graph::ReportedGraph;
 use crate::viewport::viewport_device::ViewportDevice;
 
@@ -70,8 +72,8 @@ impl RenderThread {
   fn tick_clock(&mut self, wall: Instant) -> (Instant, Duration) {
     let own: Instant = self.clock.tick(wall);
     let paced: Option<Instant> = self.viewports.values().find_map(|viewport| {
-      let time: Duration = viewport.burst.as_ref().filter(|burst| !burst.is_ended())?.get_time()?;
-      let scene: &LevelScene = self.scenes.get(&viewport.shown.as_ref()?.0)?;
+      let time: Duration = viewport.get_burst()?.get_time()?;
+      let scene: &LevelScene = self.scenes.get(&viewport.get_shown_scene()?)?;
 
       Some(scene.get_instant(time))
     });
@@ -113,23 +115,24 @@ impl RenderThread {
       let mut skies: SkyTextureRequests<'_> = SkyTextureRequests {
         cache: self.running.as_mut().map(|running| &mut running.gpu.weather_textures),
         source: viewport
-          .world
+          .get_world()
           .scene
           .and_then(|scene| self.scenes.get(&scene))
           .map(|scene| Arc::clone(&scene.source) as Arc<dyn RenderAssetSource>),
-        is_clouded: viewport.options.show.is_clouded,
+        is_clouded: viewport.get_options().show.is_clouded,
       };
-
-      viewport.world = world.advance_view(
-        viewport.id,
+      let frame: RenderViewFrame = world.advance_view(
+        viewport.get_id(),
         RenderViewInput {
           now,
           delta,
           height: viewport.get_css_height(),
-          options: &viewport.options,
+          options: viewport.get_options(),
           skies: &mut skies,
         },
       );
+
+      viewport.follow_world(frame);
     }
 
     if self.running.is_none() {
@@ -177,8 +180,8 @@ impl RenderThread {
     let traced: HashSet<RenderSceneId> = self
       .viewports
       .values()
-      .filter(|viewport| viewport.options.is_scene_traced())
-      .filter_map(|viewport| viewport.world.scene)
+      .filter(|viewport| viewport.get_options().is_scene_traced())
+      .filter_map(|viewport| viewport.get_world().scene)
       .collect();
     let Some(RunningGpu { gpu, .. }) = &mut self.running else {
       return live;
@@ -228,15 +231,15 @@ impl RenderThread {
     };
 
     for viewport in self.viewports.values_mut() {
-      let asked: Option<RenderSceneId> = viewport.world.scene;
-      let shown: Option<RenderSceneId> = viewport.shown.as_ref().map(|(id, _)| *id);
+      let asked: Option<RenderSceneId> = viewport.get_world().scene;
+      let shown: Option<RenderSceneId> = viewport.get_shown_scene();
 
       if asked == shown {
         continue;
       }
 
       let Some(asked) = asked else {
-        viewport.show(None);
+        viewport.hide();
 
         continue;
       };
@@ -253,16 +256,16 @@ impl RenderThread {
       // until it is configured again; the restarted level is the frame that does.
       if is_held
         && is_shown
-        && let Some(window) = gpu.windows.get(&viewport.window)
+        && let Some(window) = gpu.windows.get(&viewport.get_window())
       {
         window.configure_again();
       }
 
       if is_shown {
-        viewport.show(Some((
+        viewport.show(
           asked,
           SceneView::new(&gpu.context.device, &gpu.context.queue, &gpu.view_layout),
-        )));
+        );
       }
     }
   }
@@ -272,7 +275,7 @@ impl RenderThread {
     let shown: HashSet<RenderSceneId> = self
       .viewports
       .values()
-      .filter_map(|viewport| viewport.shown.as_ref().map(|(id, _)| *id))
+      .filter_map(RenderViewport::get_shown_scene)
       .collect();
 
     self.scenes.retain(|id, _| live.contains(id) || shown.contains(id));
@@ -376,10 +379,8 @@ impl RenderThread {
         },
       );
 
-      if let Some((id, scene)) = viewport
-        .shown
-        .as_ref()
-        .and_then(|(id, _)| Some((*id, self.scenes.get(id)?)))
+      if let Some(id) = viewport.get_shown_scene()
+        && let Some(scene) = self.scenes.get(&id)
       {
         viewport.report_load(scene.describe_load(id, &gpu.textures));
       }

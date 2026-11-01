@@ -6,17 +6,17 @@ use xrf_renderer_core::{ExecutedGraph, ExecutedGroup};
 use wgpu::util::StagingBelt;
 
 use crate::capture::burst::burst_shot::BurstShot;
-use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::frame::readback::frame_capture::{CaptureReply, FrameCapture};
+use crate::frame::readback::frame_capture::FrameCapture;
 use crate::frame::timing::frame_phases::FramePhases;
-use crate::host::world::render_scene_id::RenderSceneId;
+use crate::thread::copies::capture_copy::CaptureCopy;
+use crate::thread::copies::frame_copies::FrameCopies;
 use crate::thread::running_gpu::RunningGpu;
-use crate::viewport::pick_in_flight::PickInFlight;
+use crate::thread::views::readied_view::ReadiedView;
+use crate::thread::views::scene_recorder::SceneRecorder;
 use crate::window::window_frame::WindowFrame;
 
-use super::frame_copies::FrameCopies;
-use super::{RenderThread, ViewFrame};
+use super::RenderThread;
 
 impl RenderThread {
   /// Gives up a frame its graph could not draw: what the frame's own encoder holds is not of the frame (the uploads and
@@ -27,9 +27,9 @@ impl RenderThread {
     &mut self,
     running: &mut RunningGpu,
     encoder: FrameEncoder,
-    frames: Vec<ViewFrame>,
-    firsts: &[(RenderSceneId, RenderViewportId)],
-    captures: Vec<(RenderViewportId, FrameCapture, CaptureReply)>,
+    frames: Vec<ReadiedView>,
+    recorders: &[SceneRecorder],
+    captures: Vec<CaptureCopy>,
     error: &XrfError,
   ) {
     log::error!("The frame cannot be drawn: {error}");
@@ -48,8 +48,8 @@ impl RenderThread {
 
     let message: String = error.to_string();
 
-    for (id, _, pick) in frames {
-      let Some(viewport) = self.viewports.get_mut(&id) else {
+    for frame in frames {
+      let Some(viewport) = self.viewports.get_mut(&frame.viewport) else {
         continue;
       };
 
@@ -57,21 +57,21 @@ impl RenderThread {
         level.abandon_frame();
       }
 
-      if let Some((pick, _)) = pick {
-        viewport.picks.insert(0, pick);
+      if let Some(drawn) = frame.pick {
+        viewport.return_pick(drawn.pick);
       }
 
       viewport.stop_burst(&message);
     }
 
-    for (scene_id, _) in firsts {
-      if let Some(scene) = self.scenes.get_mut(scene_id) {
-        scene.lights.abandon_shadows();
+    for recorder in recorders {
+      if let Some(scene) = self.scenes.get_mut(&recorder.scene) {
+        scene.abandon_shadows();
       }
     }
 
-    for (_, _, reply) in captures {
-      let _ = reply.send(Err(XrfError::new_invalid_error(message.clone())));
+    for copy in captures {
+      let _ = copy.reply.send(Err(XrfError::new_invalid_error(message.clone())));
     }
   }
 
@@ -131,62 +131,67 @@ impl RenderThread {
   /// the frame copied out of it; and each capture asked for back.
   pub(super) fn end_view_frames(
     &mut self,
-    frames: Vec<ViewFrame>,
+    frames: Vec<ReadiedView>,
     FrameCopies {
       captures,
       mut shots,
       mut bursts,
     }: FrameCopies,
   ) {
-    for (id, frame, pick) in frames {
+    for ReadiedView {
+      viewport: id,
+      frame,
+      pick,
+    } in frames
+    {
       let Some(viewport) = self.viewports.get_mut(&id) else {
         continue;
       };
 
-      if let Some(burst) = viewport.burst.as_mut().filter(|burst| burst.is_drawing()) {
+      if let Some(burst) = viewport.get_burst_mut().filter(|burst| burst.is_drawing()) {
         let kept: Option<BurstShot> = bursts
           .iter()
-          .position(|(shot, _)| *shot == id)
-          .map(|index| bursts.swap_remove(index).1);
+          .position(|copy| copy.viewport == id)
+          .map(|index| bursts.swap_remove(index).shot);
 
         burst.advance(kept);
       }
 
       // A capture's frame moves it on, with the shot copied out of it, if any.
-      if let Some(capture) = viewport.capture.as_mut().filter(|capture| !capture.is_ended()) {
+      if let Some(capture) = viewport.get_capture_mut() {
         let kept: Option<FrameCapture> = shots
           .iter()
-          .position(|(shot, _)| *shot == id)
-          .map(|index| shots.swap_remove(index).1);
+          .position(|copy| copy.viewport == id)
+          .map(|index| shots.swap_remove(index).capture);
 
         capture.advance(kept);
 
         continue;
       }
 
-      let Some((_, level)) = viewport.shown.as_mut() else {
+      let Some(level) = viewport.get_shown_view_mut() else {
         continue;
       };
 
       level.end_frame();
       level.request_stats();
 
-      if let (Some(slot), Some((pick, unprojection))) = (frame.pick_slot, pick) {
+      if let (Some(slot), Some(pick)) = (frame.pick_slot, pick) {
         level.request_pick(slot);
-        viewport.picks_in_flight.push(PickInFlight {
-          pick,
-          slot,
-          unprojection,
-          frame: viewport.frame,
-        });
+        viewport.await_pick(slot, pick);
       }
     }
 
-    for (id, capture, reply) in captures {
+    for CaptureCopy {
+      viewport: id,
+      capture,
+      reply,
+    } in captures
+    {
       capture.request();
 
       if let Some(viewport) = self.viewports.get_mut(&id) {
-        viewport.captures_in_flight.push((capture, reply));
+        viewport.await_capture(capture, reply);
       }
     }
   }
@@ -232,10 +237,9 @@ impl RenderThread {
         .insert(window.key, presenting)
         .map_or(Duration::ZERO, |last| presenting.duration_since(last));
 
-      for (id, _, _) in &window.drawn {
-        if let Some(viewport) = self.viewports.get_mut(id) {
-          viewport.frame += 1;
-          viewport.record_frame(interval, cpu, span, &window_phases, groups);
+      for drawn in &window.drawn {
+        if let Some(viewport) = self.viewports.get_mut(&drawn.id) {
+          viewport.count_frame(interval, cpu, span, &window_phases, groups);
         }
       }
     }

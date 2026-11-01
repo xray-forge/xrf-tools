@@ -5,7 +5,7 @@ use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, Gr
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::frame::jitter_guard::JitterGuard;
-use crate::frame::readback::frame_capture::{CaptureReply, FrameCapture};
+use crate::frame::readback::frame_capture::FrameCapture;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::pass::window::overlay_draw::OverlayDraw;
 use crate::window::composed_overlays::ComposedOverlays;
@@ -13,18 +13,18 @@ use crate::window::composed_view::ComposedView;
 use crate::window::render_window::RenderWindow;
 use crate::window::window_backdrop::WindowBackdrop;
 use crate::window::window_passes::WindowPasses;
+use crate::window::window_viewport::WindowViewport;
 
-/// A window this frame draws: its format, each viewport drawn into it with its whole rectangle and the part the window
-/// shows, what the page is cleared to around them and whether its backdrop is painted over that; and the image it draws
-/// into, taken only once every view's work is recorded, so the render thread readies the frame while the GPU still draws
-/// the last.
+/// A window this frame draws: its format, each viewport drawn into it, what the page is cleared to around them and
+/// whether its backdrop is painted over that; and the image it draws into, taken only once every view's work is
+/// recorded, so the render thread readies the frame while the GPU still draws the last.
 pub struct WindowFrame {
   pub key: u64,
   pub format: wgpu::TextureFormat,
   /// Whether it shows anything this frame: one minimised or sized to nothing draws only its viewports' captures, which
   /// draw into textures of their own, and takes no image.
   pub is_shown: bool,
-  pub drawn: Vec<(RenderViewportId, RenderRect, RenderRect)>,
+  pub drawn: Vec<WindowViewport>,
   pub clear: wgpu::Color,
   pub is_backdrop_painted: bool,
   /// The image, once acquired; none before, or where the surface gave none.
@@ -34,6 +34,11 @@ pub struct WindowFrame {
 }
 
 impl WindowFrame {
+  /// Whether it draws the viewport `id` this frame.
+  pub fn is_drawn(&self, id: RenderViewportId) -> bool {
+    self.drawn.iter().any(|drawn| drawn.id == id)
+  }
+
   /// Takes the window's next image, timing the wait.
   pub fn acquire(&mut self, window: &RenderWindow) {
     let acquiring: Instant = Instant::now();
@@ -47,7 +52,7 @@ impl WindowFrame {
   }
 
   /// Declares the window's composition into `target`: the page's backdrop, each viewport's picture or its grid cropped
-  /// to what the window shows, its overlays, then the captures copied out of it.
+  /// to what the window shows, its overlays, then the `captures` of its viewports copied out of it.
   pub fn declare<'a>(
     &self,
     GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
@@ -60,7 +65,7 @@ impl WindowFrame {
       overlay,
       grid,
     }: WindowPasses<'a>,
-    captures: &'a [(RenderViewportId, FrameCapture, CaptureReply)],
+    captures: impl IntoIterator<Item = &'a FrameCapture>,
   ) {
     let format: wgpu::TextureFormat = self.format;
 
@@ -128,11 +133,7 @@ impl WindowFrame {
       }
     });
 
-    for (id, capture, _) in captures {
-      if capture.is_screenshot() || !self.drawn.iter().any(|(drawn, ..)| drawn == id) {
-        continue;
-      }
-
+    for capture in captures {
       graph
         .add_encoder_pass("capture")
         .texture(window_texture, GraphTextureAccess::CopySource)

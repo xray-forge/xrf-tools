@@ -10,6 +10,7 @@ use crate::host::render_bundle::RenderBundle;
 use crate::host::render_cache_store::RenderCacheStore;
 use crate::host::world::render_world::RenderWorld;
 use crate::thread::queue::render_command::RenderCommand;
+use crate::thread::queue::render_hosts::RenderHosts;
 use crate::thread::queue::render_link::RenderLink;
 use crate::thread::queue::render_wait::RenderWait;
 use crate::thread::queue::render_workers::RenderWorkers;
@@ -148,7 +149,14 @@ impl RenderQueue {
           let _ = previous.join();
         }
 
-        RenderThread::new(receiver, shared, settings, workers, (bundle, world, store)).run();
+        RenderThread::new(
+          receiver,
+          shared,
+          settings,
+          workers,
+          RenderHosts { bundle, world, store },
+        )
+        .run();
       });
 
     match started {

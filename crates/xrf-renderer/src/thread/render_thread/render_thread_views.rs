@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use glam::{Mat4, Vec2, Vec3, Vec4};
 
@@ -37,13 +37,26 @@ use crate::scene::texture::texture_cache::TextureCache;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::thread::gpu_state::GpuState;
 use crate::thread::views::prepared_view::PreparedView;
+use crate::thread::views::readied_view::ReadiedView;
+use crate::thread::views::readied_views::ReadiedViews;
+use crate::thread::views::scene_recorder::SceneRecorder;
 use crate::thread::views::scene_view_framing::SceneViewFraming;
 use crate::thread::views::view_work::ViewWork;
-use crate::viewport::pending_pick::PendingPick;
+use crate::viewport::pick::drawn_pick::DrawnPick;
+use crate::viewport::pick::pending_pick::PendingPick;
+use crate::viewport::pick::pick_unprojection::PickUnprojection;
 use crate::viewport::render_viewport::RenderViewport;
+use crate::viewport::viewport_parts::ViewportParts;
 use crate::window::window_frame::WindowFrame;
 
-use super::{RenderThread, ViewFrame};
+use super::RenderThread;
+
+/// A viewport a window draws this frame, by its whole rectangle, and the scene it shows, none where it shows none.
+struct DrawnView {
+  id: RenderViewportId,
+  rect: RenderRect,
+  scene: Option<RenderSceneId>,
+}
 
 impl RenderThread {
   /// Readies each drawn viewport's frame, with the pick it draws and what unprojects that pick's depth, in three phases:
@@ -57,9 +70,7 @@ impl RenderThread {
     windows: &[WindowFrame],
     encoder: &mut FrameEncoder,
     phases: &mut FramePhases,
-  ) -> (Vec<ViewFrame>, Vec<(RenderSceneId, RenderViewportId)>) {
-    let mut frames: Vec<ViewFrame> = Vec::new();
-
+  ) -> ReadiedViews {
     // Every view samples the one texture cache, so it is filtered and loaded by the renderer's settings, never a
     // view's.
     gpu
@@ -67,31 +78,34 @@ impl RenderThread {
       .set_anisotropy(&gpu.context.device, self.settings.texture_filtering.get_anisotropy());
     gpu.textures.set_lod(self.settings.texture_lod);
 
-    let mut drawn: Vec<(RenderViewportId, RenderRect, Option<RenderSceneId>)> = windows
+    let mut drawn: Vec<DrawnView> = windows
       .iter()
       .flat_map(|window| window.drawn.iter())
-      .map(|(id, rect, _)| {
-        let scene: Option<RenderSceneId> = self
-          .viewports
-          .get(id)
-          .and_then(|viewport| viewport.shown.as_ref().map(|(scene, _)| *scene));
-
-        (*id, *rect, scene)
+      .map(|drawn| DrawnView {
+        id: drawn.id,
+        rect: drawn.rect,
+        scene: self.viewports.get(&drawn.id).and_then(RenderViewport::get_shown_scene),
       })
       .collect();
 
-    drawn.sort_by_key(|(id, _, scene)| {
-      !scene
+    drawn.sort_by_key(|view| {
+      !view
+        .scene
         .and_then(|scene| self.scenes.get(&scene))
-        .is_some_and(|scene| scene.driver == Some(*id))
+        .is_some_and(|scene| scene.get_driver() == Some(view.id))
     });
 
     // Each scene's effects step once a frame by the camera of its first view, which stands for the actor, on the
-    // workers while the views are readied; the first fill of them waits for the step. Its wetness moves on once too,
-    // before any view reads it.
+    // workers while the views are readied; the scene's settle waits for the step. Its wetness moves on once too, before
+    // any view reads it.
     let mut simulated: Vec<RenderSceneId> = Vec::new();
 
-    for (id, rect, scene_id) in &drawn {
+    for DrawnView {
+      id,
+      rect,
+      scene: scene_id,
+    } in &drawn
+    {
       let (Some(scene_id), Some(viewport)) = (*scene_id, self.viewports.get(id)) else {
         continue;
       };
@@ -99,11 +113,7 @@ impl RenderThread {
       if !simulated.contains(&scene_id)
         && let Some(scene) = self.scenes.get_mut(&scene_id)
       {
-        let time: Duration = scene.get_time();
-
-        scene
-          .particles
-          .start_simulation(&Self::get_camera_view(viewport, rect), &viewport.options, time);
+        scene.start_simulation(&Self::get_camera_view(viewport, rect), viewport.get_options());
         Self::advance_wetness(scene, &self.viewports);
         simulated.push(scene_id);
       }
@@ -111,7 +121,12 @@ impl RenderThread {
 
     let mut prepared: Vec<PreparedView> = Vec::new();
 
-    for (id, rect, scene_id) in &drawn {
+    for DrawnView {
+      id,
+      rect,
+      scene: scene_id,
+    } in &drawn
+    {
       let Some(viewport) = self.viewports.get_mut(id) else {
         continue;
       };
@@ -141,7 +156,10 @@ impl RenderThread {
     }
 
     let finishing: Instant = Instant::now();
-    let mut firsts: Vec<(RenderSceneId, RenderViewportId)> = Vec::new();
+    let mut readied: ReadiedViews = ReadiedViews {
+      frames: Vec::new(),
+      recorders: Vec::new(),
+    };
 
     self.settle_scenes(&prepared);
 
@@ -164,17 +182,20 @@ impl RenderThread {
         continue;
       };
 
-      if firsts.iter().all(|(seen, _)| *seen != scene_id) {
-        frame.1.is_scene_recorder = true;
-        firsts.push((scene_id, id));
+      if readied.recorders.iter().all(|recorder| recorder.scene != scene_id) {
+        frame.frame.is_scene_recorder = true;
+        readied.recorders.push(SceneRecorder {
+          scene: scene_id,
+          viewport: id,
+        });
       }
 
-      frames.push(frame);
+      readied.frames.push(frame);
     }
 
     phases.prepare += finishing.elapsed();
 
-    (frames, firsts)
+    readied
   }
 
   /// Settles what each scene's views asked of it this frame, in the order they prepared: its driving viewport's first.
@@ -245,27 +266,37 @@ impl RenderThread {
 
   /// Readies a view's graph frame, with one pick a frame drawn from this frame's culled clusters while a readback is
   /// free for it: the camera narrowed to the pick's texel of the viewport's rectangle as the view is framed, at the
-  /// viewport's `scale`. A pick no readback is free for waits for the next frame.
+  /// viewport's `scale`. The `pick` taken for this frame is left there where no readback is free for it, to wait for the
+  /// next frame.
   fn ready_pick(
     work: &mut ViewWork<'_>,
     id: RenderViewportId,
     view_state: &mut SceneView,
-    picks: &mut Vec<PendingPick>,
+    pick: &mut Option<PendingPick>,
     framing: &SceneViewFraming<'_>,
     scale: f32,
-  ) -> Option<ViewFrame> {
+  ) -> Option<ReadiedView> {
     let (view, rect): (&CameraView, &RenderRect) = (&framing.view, &framing.rect);
     let switches: Vec4 = CameraUniform::get_switches(framing.options);
     let (device, view_layout): (&wgpu::Device, &wgpu::BindGroupLayout) =
       (&work.gpu.context.device, &work.gpu.view_layout);
     let encoder: &mut FrameEncoder = &mut *work.encoder;
-    let pick: Option<(PendingPick, Vec2, CameraUniform)> = (!picks.is_empty()).then(|| {
-      let pick: PendingPick = picks.remove(0);
+    let drawn: Option<DrawnPick> = pick.take().map(|pick| {
       let ndc: Vec2 = Vec2::new(
         (pick.x * scale + 0.5) / rect.width as f32 * 2.0 - 1.0,
         1.0 - (pick.y * scale + 0.5) / rect.height as f32 * 2.0,
       );
-      let narrowed: CameraView = view.narrow_to(ndc, Vec2::new(2.0 / rect.width as f32, 2.0 / rect.height as f32));
+
+      DrawnPick {
+        pick,
+        unprojection: PickUnprojection { view: *view, ndc },
+      }
+    });
+    let camera: Option<CameraUniform> = drawn.as_ref().map(|drawn| {
+      let narrowed: CameraView = view.narrow_to(
+        drawn.unprojection.ndc,
+        Vec2::new(2.0 / rect.width as f32, 2.0 / rect.height as f32),
+      );
       let pixel: RenderRect = RenderRect {
         x: 0,
         y: 0,
@@ -273,26 +304,32 @@ impl RenderThread {
         height: 1,
       };
 
-      (pick, ndc, CameraUniform::new(&narrowed, pixel, switches))
+      CameraUniform::new(&narrowed, pixel, switches)
     });
     let readied: Option<LevelFrame> = view_state.begin_frame(
       device,
       encoder,
-      pick.as_ref().map(|(pick, _, camera)| ViewPick {
+      drawn.as_ref().zip(camera.as_ref()).map(|(drawn, camera)| ViewPick {
         camera,
         view_layout,
-        is_through: pick.is_through,
+        is_through: drawn.pick.is_through,
       }),
     );
 
-    match (readied, pick) {
-      (Some(frame), Some((pick, ndc, _))) if frame.pick_slot.is_some() => Some((id, frame, Some((pick, (*view, ndc))))),
-      (readied, pick) => {
-        if let Some((pick, ..)) = pick {
-          picks.insert(0, pick);
-        }
+    match (readied, drawn) {
+      (Some(frame), Some(drawn)) if frame.pick_slot.is_some() => Some(ReadiedView {
+        viewport: id,
+        frame,
+        pick: Some(drawn),
+      }),
+      (readied, drawn) => {
+        *pick = drawn.map(|drawn| drawn.pick);
 
-        readied.map(|frame| (id, frame, None))
+        readied.map(|frame| ReadiedView {
+          viewport: id,
+          frame,
+          pick: None,
+        })
       }
     }
   }
@@ -301,7 +338,7 @@ impl RenderThread {
   /// total, or at the weather's far plane, as the engine's does. A capture laid out nowhere has no rectangle, and its
   /// camera sees as wide as high.
   fn get_camera_view(viewport: &RenderViewport, rect: &RenderRect) -> CameraView {
-    viewport.world.camera.to_view(
+    viewport.get_world().camera.to_view(
       rect.width.max(1) as f32 / rect.height.max(1) as f32,
       Self::get_far_limit(viewport),
     )
@@ -309,11 +346,13 @@ impl RenderThread {
 
   /// How far a viewport's camera sees at most: where a lit and fogged level's fog is total, else without end.
   pub(super) fn get_far_limit(viewport: &RenderViewport) -> f32 {
+    let options: &RenderViewOptions = viewport.get_options();
+
     viewport
-      .world
+      .get_world()
       .lighting
       .fog
-      .filter(|_| viewport.options.mode.is_lit && viewport.options.show.is_fogged)
+      .filter(|_| options.mode.is_lit && options.show.is_fogged)
       .map_or(f32::INFINITY, |fog| fog.get_total_distance())
   }
 
@@ -330,7 +369,7 @@ impl RenderThread {
       return Self::ready_capture_view(work, viewport, scene);
     }
 
-    let burst: Option<&BurstJob> = viewport.burst.as_ref().filter(|burst| !burst.is_ended());
+    let burst: Option<&BurstJob> = viewport.get_burst();
 
     // A burst waiting for its frames back draws nothing, its time held.
     if burst.is_some_and(|burst| !burst.is_drawing()) {
@@ -339,15 +378,11 @@ impl RenderThread {
 
     let reference: Option<(u32, u32)> = burst.and_then(BurstJob::get_reference);
     let is_restarted: bool = burst.is_some_and(BurstJob::is_starting);
-    let id: RenderViewportId = viewport.id;
+    let id: RenderViewportId = viewport.get_id();
     let device: &wgpu::Device = &work.gpu.context.device;
     let scale: f32 = viewport.get_scale();
     let view: CameraView = Self::get_camera_view(viewport, rect);
-    let binding: &ViewBinding = viewport
-      .binding
-      .get_or_insert_with(|| ViewBinding::new(device, &work.gpu.view_layout));
-
-    let mut options: RenderViewOptions = ViewLens::fit(&viewport.options, &view).into_owned();
+    let mut options: RenderViewOptions = ViewLens::fit(viewport.get_options(), &view).into_owned();
 
     // A reference is drawn at the size its frame is resolved at, as a resolve converges to.
     if reference.is_some() {
@@ -360,16 +395,21 @@ impl RenderThread {
       Some(_) => Self::get_scene_sizes(&options, rect, most),
       None => Self::get_grid_sizes(rect, most),
     };
-    let RenderViewport {
-      shown,
+    // One pick a frame, taken while it draws a scene for the pick to land in, and put back where it is not drawn.
+    let mut pick: Option<PendingPick> = scene
+      .filter(|_| viewport.get_shown_view().is_some())
+      .and_then(|_| viewport.take_pick());
+    let ViewportParts {
       world,
-      selection,
       overlays,
-      overlays_version,
-      picks,
+      selection,
+      scene: scene_id,
+      view: view_state,
+      binding,
       ..
-    } = viewport;
-    let (Some(scene), Some((scene_id, view_state))) = (scene, shown.as_mut()) else {
+    } = viewport.split();
+    let binding: &ViewBinding = binding.get_or_insert_with(|| ViewBinding::new(device, &work.gpu.view_layout));
+    let (Some(scene), Some(scene_id), Some(view_state)) = (scene, scene_id, view_state) else {
       // Nothing to draw but its grid: its camera alone.
       let unjittered: Mat4 = view.get_view_projection();
 
@@ -401,22 +441,27 @@ impl RenderThread {
       options: &options,
       lighting: &lighting,
       weather,
-      overlays: Some((overlays, *overlays_version)),
-      selection: selection.as_ref(),
+      overlays: Some(overlays),
+      selection,
       weather_rate: world.clock_rate,
     };
 
     let asks: SceneAsks = Self::prepare_scene_view(work, scene, &mut *view_state, binding, &framing);
-    let frame: Option<ViewFrame> = Self::ready_pick(work, id, view_state, picks, &framing, scale);
-
-    Some(PreparedView {
+    let frame: Option<ReadiedView> = Self::ready_pick(work, id, view_state, &mut pick, &framing, scale);
+    let prepared: PreparedView = PreparedView {
       id,
-      scene: *scene_id,
+      scene: scene_id,
       asks,
       options,
       output: *rect,
       frame,
-    })
+    };
+
+    if let Some(pick) = pick {
+      viewport.return_pick(pick);
+    }
+
+    Some(prepared)
   }
 
   /// Readies the frame of a viewport capturing: its capture's view drawn through the shot it stands at, with the
@@ -426,17 +471,17 @@ impl RenderThread {
     viewport: &mut RenderViewport,
     scene: Option<&LevelScene>,
   ) -> Option<PreparedView> {
-    let id: RenderViewportId = viewport.id;
+    let id: RenderViewportId = viewport.get_id();
     let scene: &LevelScene = scene?;
-    let RenderViewport {
+    let ViewportParts {
       capture,
       world,
       options,
-      shown,
+      scene: scene_id,
       ..
-    } = viewport;
-    let scene_id: RenderSceneId = shown.as_ref()?.0;
-    let capture: &mut CaptureJob = capture.as_mut()?;
+    } = viewport.split();
+    let scene_id: RenderSceneId = scene_id?;
+    let capture: &mut CaptureJob = capture?;
     let shot: CaptureShot = capture.get_drawn_shot()?;
     let view: CameraView = shot.get_view();
     let look: RenderViewOptions = if capture.is_metering() {
@@ -485,9 +530,13 @@ impl RenderThread {
         weather_rate: world.clock_rate,
       },
     );
-    let frame: Option<ViewFrame> = view_state
+    let frame: Option<ReadiedView> = view_state
       .begin_frame(&work.gpu.context.device, work.encoder, None)
-      .map(|frame| (id, frame, None));
+      .map(|frame| ReadiedView {
+        viewport: id,
+        frame,
+        pick: None,
+      });
 
     Some(PreparedView {
       id,
@@ -565,8 +614,8 @@ impl RenderThread {
     {
       profiling::scope!("load");
 
-      if let Some((overlays, version)) = overlays {
-        view_state.set_overlays(scene, device, overlays, version, selection);
+      if let Some(overlays) = overlays {
+        view_state.set_overlays(scene, device, &overlays.overlays, overlays.version, selection);
       }
 
       view_state.set_helpers(
@@ -631,14 +680,12 @@ impl RenderThread {
   /// Moves a scene's wetness on, once a frame, by its driving viewport's rain on the scene's clock; every view of the
   /// scene wets its surfaces by it.
   fn advance_wetness(scene: &mut LevelScene, viewports: &BTreeMap<RenderViewportId, RenderViewport>) {
-    let Some(driver) = scene.driver.and_then(|driver| viewports.get(&driver)) else {
+    let Some(driver) = scene.get_driver().and_then(|driver| viewports.get(&driver)) else {
       return;
     };
     let (lighting, _): (Cow<'_, RenderLighting>, Option<&Arc<RenderLevelWeather>>) =
-      Self::get_view_lighting(&driver.options, &driver.world);
+      Self::get_view_lighting(driver.get_options(), driver.get_world());
 
-    scene
-      .wetness
-      .advance(&lighting, &driver.options.features.rain, scene.get_time().as_secs_f32());
+    scene.advance_wetness(&lighting, &driver.get_options().features.rain);
   }
 }

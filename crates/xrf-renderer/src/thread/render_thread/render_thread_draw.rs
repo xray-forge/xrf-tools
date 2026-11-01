@@ -17,18 +17,22 @@ use crate::frame::frame_encoder::FrameEncoder;
 #[cfg(debug_assertions)]
 use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::periodic::periodic_owner::PeriodicOwner;
-use crate::frame::readback::frame_capture::CaptureReply;
 use crate::frame::timing::frame_phases::FramePhases;
 use crate::frame::timing::frame_statistics::FrameStatistics;
-use crate::host::world::render_scene_id::RenderSceneId;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::window::backdrop_uniform::BackdropUniform;
 use crate::pass::window::overlay_parameters::OverlayParameters;
 use crate::scene::level::view::scene_output::SceneOutput;
 use crate::scene::level::view::scene_view::SceneView;
+use crate::thread::copies::capture_copy::CaptureCopy;
+use crate::thread::copies::capture_retry::CaptureRetry;
+use crate::thread::copies::frame_copies::FrameCopies;
 use crate::thread::gpu_state::GpuState;
 use crate::thread::retry_backoff::RetryBackoff;
 use crate::thread::running_gpu::RunningGpu;
+use crate::thread::views::readied_view::ReadiedView;
+use crate::thread::views::readied_views::ReadiedViews;
+use crate::thread::views::scene_recorder::SceneRecorder;
 use crate::viewport::render_viewport::RenderViewport;
 use crate::window::composed_overlays::ComposedOverlays;
 use crate::window::composed_view::ComposedView;
@@ -36,9 +40,9 @@ use crate::window::render_window::RenderWindow;
 use crate::window::window_backdrop::WindowBackdrop;
 use crate::window::window_frame::WindowFrame;
 use crate::window::window_passes::WindowPasses;
+use crate::window::window_viewport::WindowViewport;
 
-use super::frame_copies::FrameCopies;
-use super::{RenderThread, ViewFrame};
+use super::RenderThread;
 
 impl RenderThread {
   /// Readies each window this frame draws: its swapchain configured for its size now, made where it is new or was
@@ -81,7 +85,7 @@ impl RenderThread {
               log::error!("A window cannot be drawn into: {message}");
             }
 
-            for viewport in self.viewports.values_mut().filter(|it| it.window == *key) {
+            for viewport in self.viewports.values_mut().filter(|it| it.get_window() == *key) {
               viewport.fail(&message);
             }
 
@@ -104,23 +108,28 @@ impl RenderThread {
         continue;
       };
       let size: Option<(u32, u32)> = window.ready(&gpu.context, &frame_rate);
-      // Each viewport's whole rectangle, which its camera and targets are sized by, and the part of it the window
-      // shows, which its picture is cropped to. A capture draws into a texture of its own, so its viewport is drawn
-      // however it is laid out and whether or not the window shows anything.
-      let drawn: Vec<(RenderViewportId, RenderRect, RenderRect)> = self
+      // A capture draws into a texture of its own, so its viewport is drawn however it is laid out and whether or not
+      // the window shows anything.
+      let drawn: Vec<WindowViewport> = self
         .viewports
         .values()
-        .filter(|viewport| viewport.window == *key)
+        .filter(|viewport| viewport.get_window() == *key)
         .filter_map(|viewport| {
-          let shown: Option<(RenderRect, RenderRect)> = size.and_then(|(width, height)| {
-            Some((viewport.layout.as_ref()?.rect, viewport.get_drawn_rect(width, height)?))
+          let shown: Option<WindowViewport> = size.and_then(|(width, height)| {
+            Some(WindowViewport {
+              id: viewport.get_id(),
+              rect: viewport.get_layout()?.rect,
+              shown: viewport.get_drawn_rect(width, height)?,
+            })
           });
 
-          match shown {
-            Some((rect, clipped)) => Some((viewport.id, rect, clipped)),
-            None if viewport.is_capturing() => Some((viewport.id, RenderRect::default(), RenderRect::default())),
-            None => None,
-          }
+          shown.or_else(|| {
+            viewport.is_capturing().then(|| WindowViewport {
+              id: viewport.get_id(),
+              rect: RenderRect::default(),
+              shown: RenderRect::default(),
+            })
+          })
         })
         .collect();
       let Some((width, height)) = size else {
@@ -143,8 +152,8 @@ impl RenderThread {
       let backdrop: BackdropUniform = self
         .viewports
         .values()
-        .find(|viewport| viewport.window == *key)
-        .and_then(|viewport| viewport.layout.as_ref())
+        .find(|viewport| viewport.get_window() == *key)
+        .and_then(RenderViewport::get_layout)
         .map(|layout| BackdropUniform::new(&layout.backdrop))
         .unwrap_or_default();
 
@@ -155,7 +164,7 @@ impl RenderThread {
         width,
         height,
       };
-      let is_covered: bool = drawn.iter().any(|(_, _, shown)| *shown == window_rect);
+      let is_covered: bool = drawn.iter().any(|drawn| drawn.shown == window_rect);
       let is_backdrop_painted: bool = !is_covered
         && !backdrop.is_flat()
         && gpu
@@ -225,11 +234,11 @@ impl RenderThread {
   fn answer_unseen_picks(&mut self, windows: &[WindowFrame]) {
     let seen: HashSet<RenderViewportId> = windows
       .iter()
-      .flat_map(|window| window.drawn.iter().map(|(id, _, _)| *id))
+      .flat_map(|window| window.drawn.iter().map(|drawn| drawn.id))
       .collect();
 
     for viewport in self.viewports.values_mut() {
-      if !seen.contains(&viewport.id) {
+      if !seen.contains(&viewport.get_id()) {
         viewport.answer_picks_unseen();
       }
     }
@@ -251,10 +260,10 @@ impl RenderThread {
       update,
       ..FramePhases::default()
     };
-    let (frames, firsts): (Vec<ViewFrame>, Vec<(RenderSceneId, RenderViewportId)>) =
+    let ReadiedViews { frames, recorders }: ReadiedViews =
       self.ready_views(&mut running.gpu, &windows, &mut encoder, &mut phases);
 
-    self.commit_periodic(&running.gpu, &frames, &firsts, &mut encoder);
+    self.commit_periodic(&running.gpu, &frames, &recorders, &mut encoder);
 
     let composing: Instant = Instant::now();
 
@@ -275,7 +284,7 @@ impl RenderThread {
     running.runtime.timer.set_tag(self.periodic.get_frame());
 
     let recording: Instant = Instant::now();
-    let mut retried: Vec<(RenderViewportId, CaptureReply)> = Vec::new();
+    let mut retried: Vec<CaptureRetry> = Vec::new();
     let recorded: XrfResult<ExecutedGraph> =
       self.record_frame(running, &mut windows, &frames, &mut copies, &mut retried, started);
 
@@ -284,7 +293,7 @@ impl RenderThread {
     let executed: ExecutedGraph = match recorded {
       Ok(executed) => executed,
       Err(error) => {
-        self.abandon_frame(running, encoder, frames, &firsts, copies.captures, &error);
+        self.abandon_frame(running, encoder, frames, &recorders, copies.captures, &error);
 
         return;
       }
@@ -301,32 +310,32 @@ impl RenderThread {
     profiling::finish_frame!();
   }
 
-  /// Grants the frame's periodic work: each scene's light faces offered as every view of it asked for them, then what
-  /// was granted readied by each view, and each scene's light faces from its first view's culling.
+  /// Grants the frame's periodic work: each scene's light faces offered as every view of it asked for them, under the
+  /// view recording them, then what was granted readied by each view, and each scene's light faces from its recording
+  /// view's culling.
   fn commit_periodic(
     &mut self,
     gpu: &GpuState,
-    frames: &[ViewFrame],
-    firsts: &[(RenderSceneId, RenderViewportId)],
+    frames: &[ReadiedView],
+    recorders: &[SceneRecorder],
     encoder: &mut FrameEncoder,
   ) {
-    for (scene_id, id) in firsts {
-      if let Some(scene) = self.scenes.get_mut(scene_id) {
-        self.periodic.set_owner(PeriodicOwner::View(*id));
-        scene.lights.offer_shadows(&mut self.periodic);
+    for recorder in recorders {
+      if let Some(scene) = self.scenes.get_mut(&recorder.scene) {
+        self.periodic.set_owner(PeriodicOwner::View(recorder.viewport));
+        scene.offer_shadows(&mut self.periodic);
       }
     }
 
     self.periodic.grant();
 
-    for (id, ..) in frames {
-      let Some(viewport) = self.viewports.get_mut(id) else {
+    for frame in frames {
+      let Some(viewport) = self.viewports.get_mut(&frame.viewport) else {
         continue;
       };
       let Some(scene) = viewport
-        .shown
-        .as_ref()
-        .and_then(|(scene_id, _)| self.scenes.get(scene_id))
+        .get_shown_scene()
+        .and_then(|scene_id| self.scenes.get(&scene_id))
       else {
         continue;
       };
@@ -337,10 +346,13 @@ impl RenderThread {
       view.commit_periodic(scene, &gpu.context.device, encoder, &self.periodic);
     }
 
-    for (scene_id, id) in firsts {
+    for recorder in recorders {
       let (Some(scene), Some((_, view, _))) = (
-        self.scenes.get_mut(scene_id),
-        self.viewports.get(id).and_then(RenderViewport::get_drawn_view),
+        self.scenes.get_mut(&recorder.scene),
+        self
+          .viewports
+          .get(&recorder.viewport)
+          .and_then(RenderViewport::get_drawn_view),
       ) else {
         continue;
       };
@@ -388,9 +400,9 @@ impl RenderThread {
     &mut self,
     running: &mut RunningGpu,
     windows: &mut [WindowFrame],
-    frames: &[ViewFrame],
+    frames: &[ReadiedView],
     copies: &mut FrameCopies,
-    retried: &mut Vec<(RenderViewportId, CaptureReply)>,
+    retried: &mut Vec<CaptureRetry>,
     started: Instant,
   ) -> XrfResult<ExecutedGraph> {
     profiling::scope!("record");
@@ -409,7 +421,10 @@ impl RenderThread {
     let mut bindings: GraphBindings<'_> = GraphBindings::new();
     let mut outputs: HashMap<RenderViewportId, SceneOutput> = HashMap::with_capacity(frames.len());
 
-    for (id, frame, _) in frames {
+    for ReadiedView {
+      viewport: id, frame, ..
+    } in frames
+    {
       let Some(viewport) = self.viewports.get(id) else {
         continue;
       };
@@ -448,25 +463,29 @@ impl RenderThread {
       );
     }
     // A screenshot is drawn apart from its window, so it needs no image of it, only a scene drawn.
-    let (kept, refused): (Vec<_>, Vec<_>) = std::mem::take(captures).into_iter().partition(|(id, capture, _)| {
-      capture.is_screenshot()
-        || windows
-          .iter()
-          .any(|window| window.image.is_some() && window.drawn.iter().any(|(drawn, ..)| drawn == id))
-    });
-    let (kept, undrawn): (Vec<_>, Vec<_>) = kept
+    let (kept, refused): (Vec<CaptureCopy>, Vec<CaptureCopy>) =
+      std::mem::take(captures).into_iter().partition(|copy| {
+        copy.capture.is_screenshot()
+          || windows
+            .iter()
+            .any(|window| window.image.is_some() && window.is_drawn(copy.viewport))
+      });
+    let (kept, undrawn): (Vec<CaptureCopy>, Vec<CaptureCopy>) = kept
       .into_iter()
-      .partition(|(id, capture, _)| !capture.is_screenshot() || outputs.contains_key(id));
+      .partition(|copy| !copy.capture.is_screenshot() || outputs.contains_key(&copy.viewport));
 
     *captures = kept;
 
     // A window that gave no image this frame, minimised or out of time, is captured on the next frame it presents.
-    retried.extend(refused.into_iter().map(|(id, _, reply)| (id, reply)));
+    retried.extend(refused.into_iter().map(|copy| CaptureRetry {
+      viewport: copy.viewport,
+      reply: copy.reply,
+    }));
 
-    for (id, _, reply) in undrawn {
-      let _ = reply.send(Err(XrfError::new_invalid_error(format!(
+    for copy in undrawn {
+      let _ = copy.reply.send(Err(XrfError::new_invalid_error(format!(
         "Viewport {} draws no scene to take a screenshot of",
-        id.0
+        copy.viewport.0
       ))));
     }
 
@@ -480,8 +499,8 @@ impl RenderThread {
       let composed: Vec<ComposedView<'_>> = window
         .drawn
         .iter()
-        .filter(|(id, ..)| !self.viewports.get(id).is_some_and(RenderViewport::is_capturing))
-        .filter_map(|(id, rect, shown)| Self::compose_view(&self.viewports, gpu, *id, *rect, *shown, outputs.get(id)))
+        .filter(|drawn| !self.viewports.get(&drawn.id).is_some_and(RenderViewport::is_capturing))
+        .filter_map(|drawn| Self::compose_view(&self.viewports, gpu, *drawn, outputs.get(&drawn.id)))
         .collect();
       let backdrop: Option<&WindowBackdrop> = gpu
         .windows
@@ -500,40 +519,43 @@ impl RenderThread {
           overlay: &gpu.overlay,
           grid,
         },
-        captures,
+        captures
+          .iter()
+          .filter(|copy| !copy.capture.is_screenshot() && window.is_drawn(copy.viewport))
+          .map(|copy| &copy.capture),
       );
     }
 
-    for (id, capture, _) in captures.iter().filter(|(_, capture, _)| capture.is_screenshot()) {
+    for copy in captures.iter().filter(|copy| copy.capture.is_screenshot()) {
       Self::declare_screenshot(
         GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
         gpu,
         &self.viewports,
-        *id,
-        capture,
-        outputs.get(id),
+        copy.viewport,
+        &copy.capture,
+        outputs.get(&copy.viewport),
       );
     }
 
-    for (id, capture) in shots.iter() {
+    for copy in shots.iter() {
       Self::declare_capture_shot(
         GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
         gpu,
         &self.viewports,
-        *id,
-        capture,
-        outputs.get(id),
+        copy.viewport,
+        &copy.capture,
+        outputs.get(&copy.viewport),
       );
     }
 
-    for (id, shot) in bursts.iter() {
+    for copy in bursts.iter() {
       Self::declare_burst_shot(
         GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
         gpu,
         &self.viewports,
-        *id,
-        shot,
-        outputs.get(id),
+        copy.viewport,
+        &copy.shot,
+        outputs.get(&copy.viewport),
       );
     }
 
@@ -558,20 +580,18 @@ impl RenderThread {
   }
 
   /// A viewport as its window composes it: its picture from the frame it left (`output`) and its overlays over it, or
-  /// its grid where it drew none; its whole rectangle and the part the window shows.
+  /// its grid where it drew none; over its whole rectangle, cropped to the part the window shows.
   fn compose_view<'a>(
     viewports: &'a BTreeMap<RenderViewportId, RenderViewport>,
     gpu: &'a GpuState,
-    id: RenderViewportId,
-    rect: RenderRect,
-    shown: RenderRect,
+    WindowViewport { id, rect, shown }: WindowViewport,
     output: Option<&SceneOutput>,
   ) -> Option<ComposedView<'a>> {
     let viewport: &RenderViewport = viewports.get(&id)?;
-    let level: Option<&SceneView> = viewport.shown.as_ref().map(|(_, view)| view);
+    let level: Option<&SceneView> = viewport.get_shown_view();
 
     Some(ComposedView {
-      binding: viewport.binding.as_ref()?,
+      binding: viewport.get_binding()?,
       present: output.map(|output| Self::to_present_parameters(gpu, output)),
       overlays: output
         .zip(level.and_then(SceneView::get_overlays))
