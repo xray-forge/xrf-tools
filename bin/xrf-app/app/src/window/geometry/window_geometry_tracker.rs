@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use tauri::utils::config::WindowConfig;
 use tauri::webview::WebviewWindow;
-use tauri::{PhysicalPosition, PhysicalSize, Runtime, WindowEvent};
+use tauri::{AppHandle, Runtime, WindowEvent};
 
 use crate::preferences::{PreferenceKey, Preferences};
 use crate::window::geometry::monitor_work_area::MonitorWorkArea;
@@ -21,40 +21,21 @@ impl<R: Runtime> WindowGeometryTracker<R> {
   /// How long a move or a resize settles before it is written.
   const SETTLE_DELAY: Duration = Duration::from_secs(1);
 
-  /// Open the window where the last run left it, when the monitors attached now still have room for it.
+  /// Where the last run left the window, fitted to the monitors attached now, when they still have room for it.
   pub fn restore(
-    window: &WebviewWindow<R>,
+    application: &AppHandle<R>,
     preferences: &Preferences<R>,
     config: &WindowConfig,
   ) -> Option<WindowGeometry> {
     let saved: WindowGeometry = preferences.read(PreferenceKey::WindowGeometry)?;
     let fitted: WindowGeometry = saved.fit(
-      &MonitorWorkArea::list(window),
+      &MonitorWorkArea::list(application),
       config.min_width.unwrap_or_default(),
       config.min_height.unwrap_or_default(),
     )?;
 
-    if let Err(error) = window.set_size(PhysicalSize::new(fitted.width, fitted.height)) {
-      log::error!("Failed to open the main window at its saved size: {error}");
-
-      return None;
-    }
-
-    if let Err(error) = window.set_position(PhysicalPosition::new(fitted.x, fitted.y)) {
-      log::error!("Failed to open the main window at its saved position: {error}");
-
-      return None;
-    }
-
-    // After the rectangle rather than before it: this is what the window restores down to.
-    if fitted.maximized
-      && let Err(error) = window.maximize()
-    {
-      log::error!("Failed to open the main window maximized: {error}");
-    }
-
     log::info!(
-      "Restored main window geometry: {}x{} at {},{}{}",
+      "Restoring main window geometry: {}x{} at {},{}{}",
       fitted.width,
       fitted.height,
       fitted.x,

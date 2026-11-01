@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use tauri::webview::WebviewWindow;
-use tauri::{PhysicalPosition, PhysicalSize, Runtime};
+use tauri::webview::{WebviewWindow, WebviewWindowBuilder};
+use tauri::{Manager, PhysicalPosition, PhysicalSize, Runtime};
 
 use crate::window::geometry::monitor_work_area::MonitorWorkArea;
 
@@ -74,6 +74,49 @@ impl WindowGeometry {
       scale: target.scale,
       maximized: self.maximized,
     })
+  }
+
+  /// Build the window at this rectangle, a fitted one, and in its state.
+  pub fn open<'a, R: Runtime, M: Manager<R>>(
+    &self,
+    builder: WebviewWindowBuilder<'a, R, M>,
+  ) -> WebviewWindowBuilder<'a, R, M> {
+    builder
+      .inner_size(f64::from(self.width) / self.scale, f64::from(self.height) / self.scale)
+      .position(f64::from(self.x) / self.scale, f64::from(self.y) / self.scale)
+      .maximized(self.maximized)
+  }
+
+  /// Move a window [`Self::open`] built onto this rectangle when it was built elsewhere. The builder's logical position
+  /// is placed on the first monitor that reads it as one of its own pixels, so a monitor scaled otherwise than the one
+  /// the rectangle was fitted to can claim it, and only such a monitor, which the window's own scale then tells.
+  pub fn confirm<R: Runtime>(&self, window: &WebviewWindow<R>) {
+    let scale: f64 = match window.scale_factor() {
+      Ok(scale) => scale,
+      Err(error) => {
+        log::error!("Failed to read the scale the main window opened at: {error}");
+
+        return;
+      }
+    };
+
+    if (scale - self.scale).abs() <= f64::EPSILON {
+      return;
+    }
+
+    log::warn!(
+      "Main window opened on a monitor scaled {scale} rather than the {} its geometry was fitted to, moving it there",
+      self.scale
+    );
+
+    // A move restores a maximized window down first, so it is maximized again on the monitor it moved to.
+    if let Err(error) = window.set_position(PhysicalPosition::new(self.x, self.y)) {
+      log::error!("Failed to move the main window to its saved position: {error}");
+    } else if self.maximized
+      && let Err(error) = window.maximize()
+    {
+      log::error!("Failed to maximize the main window where it was moved: {error}");
+    }
   }
 
   /// Read the window's own rectangle, keeping `previous` for what a window in that state cannot report.

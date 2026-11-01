@@ -1,5 +1,4 @@
-use tauri::webview::WebviewWindow;
-use tauri::{Monitor, PhysicalRect, Runtime};
+use tauri::{AppHandle, Monitor, PhysicalRect, Runtime};
 
 /// The part of one monitor a window may occupy, with the taskbar and its kind already excluded.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -12,9 +11,9 @@ pub struct MonitorWorkArea {
 }
 
 impl MonitorWorkArea {
-  /// The work areas of every monitor attached to the desktop `window` is on, none where they cannot be read.
-  pub fn list<R: Runtime>(window: &WebviewWindow<R>) -> Vec<Self> {
-    match window.available_monitors() {
+  /// The work areas of every monitor attached to the desktop, none where they cannot be read.
+  pub fn list<R: Runtime>(application: &AppHandle<R>) -> Vec<Self> {
+    match application.available_monitors() {
       Ok(monitors) => monitors.iter().map(Self::from).collect(),
       Err(error) => {
         log::error!("Failed to read the attached monitors: {error}");

@@ -39,20 +39,30 @@ impl MainWindow {
       }
     };
 
+    let opened: Option<WindowGeometry> = preferences
+      .as_ref()
+      .and_then(|preferences| WindowGeometryTracker::restore(application.handle(), preferences, config));
+
     let builder: WebviewWindowBuilder<'_, R, AppHandle<R>> =
       WebviewWindowBuilder::from_config(application.handle(), config)?
         .background_color(Self::to_see_through(config.background_color));
+    let builder: WebviewWindowBuilder<'_, R, AppHandle<R>> = match &opened {
+      Some(geometry) => geometry.open(builder),
+      None => builder,
+    };
     let window: WebviewWindow<R> =
       WindowBuildKind::apply(WebviewExtensions::apply(builder), application.state::<BuildInfo>().kind)?.build()?;
 
     log::info!("Built main window");
 
+    if let Some(geometry) = &opened {
+      geometry.confirm(&window);
+    }
+
     // Recorded for the native viewports the window's pages attach, which name it by label.
     application.state::<WindowHandles>().register(&window);
 
     if let Some(preferences) = preferences {
-      let opened: Option<WindowGeometry> = WindowGeometryTracker::restore(&window, &preferences, config);
-
       WindowGeometryTracker::track(&window, preferences, opened);
     }
 
