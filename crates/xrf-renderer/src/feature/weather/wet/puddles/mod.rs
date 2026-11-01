@@ -1,3 +1,4 @@
+pub(crate) mod grass_puddles_uniform;
 pub(crate) mod level_surface;
 pub(crate) mod lowest_heights_parameters;
 pub(crate) mod puddle_keep_inputs;

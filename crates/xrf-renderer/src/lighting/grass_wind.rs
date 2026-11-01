@@ -2,9 +2,9 @@ use std::f32::consts::TAU;
 
 use glam::Vec4;
 
+use crate::feature::scene::grass::draw::grass_wind_uniform::GrassWindUniform;
 use crate::lighting::foliage_motion::FoliageMotion;
 use crate::lighting::grass_swing::GrassSwing;
-use crate::pass::grass_wind_uniform::GrassWindUniform;
 
 /// What a frame's step is taken as where the time ran back or leapt past a second, as `hw_Render` takes it.
 const STEP_FALLBACK: f32 = 0.03;

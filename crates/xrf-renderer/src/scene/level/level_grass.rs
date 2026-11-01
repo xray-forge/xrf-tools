@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
+use crate::feature::scene::grass::level::grass_level::GrassLevel;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_details::RenderLevelDetails;
-use crate::scene::level::grass_level::GrassLevel;
 use crate::scene::texture::texture_cache::TextureCache;
 
 /// A level's grass (`CDetailManager`): its slots and models as the world last posted them; each view plants and draws

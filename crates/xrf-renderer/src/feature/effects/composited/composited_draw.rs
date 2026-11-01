@@ -1,9 +1,9 @@
 use xrf_renderer_core::{GraphBuffer, StorageValue};
 
 use crate::feature::effects::composited::composited_parameters::CompositedParameters;
+use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::pass::static_draw_parameters::StaticDrawParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::lighting_handles::LightingHandles;
 use crate::scene::level::view_record::ViewRecord;

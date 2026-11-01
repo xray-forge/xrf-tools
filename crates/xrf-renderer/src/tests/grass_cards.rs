@@ -1,7 +1,7 @@
 use crate::contract::render_grass_settings::RenderGrassSettings;
 use crate::contract::render_shadow_settings::RenderShadowSettings;
 use crate::feature::lighting::shadows::level_shadows::LevelShadows;
-use crate::scene::level::grass_cards::GrassCards;
+use crate::feature::scene::grass::cards::grass_cards::GrassCards;
 
 // The cards hold more than their tufts asked, as a power of two: grown at once, kept while what is asked moves a
 // little, and shrunk back once it falls to half the room.

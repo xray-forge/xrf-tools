@@ -3,13 +3,13 @@ use xrf_renderer_core::{
   GraphBuffer, GraphDeclaration, GraphTexture, ShaderAtomicU32, StorageArray, StorageArrayMut, UniformBinding,
 };
 
-use crate::pass::static_cull_parameters::StaticCullParameters;
-use crate::pass::static_cull_uniform::StaticCullUniform;
-use crate::pass::static_draw_parameters::StaticDrawParameters;
-use crate::pass::static_draws::StaticDraws;
-use crate::pass::static_impostor_parameters::StaticImpostorParameters;
-use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
-use crate::pass::wind_uniform::WindUniform;
+use crate::feature::scene::statics::cull::static_cull_parameters::StaticCullParameters;
+use crate::feature::scene::statics::cull::static_cull_uniform::StaticCullUniform;
+use crate::feature::scene::statics::cull::static_occlusion_uniform::StaticOcclusionUniform;
+use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
+use crate::feature::scene::statics::draw::static_draws::StaticDraws;
+use crate::feature::scene::statics::draw::static_impostor_parameters::StaticImpostorParameters;
+use crate::feature::scene::wind::wind_uniform::WindUniform;
 use crate::scene::static_scene::static_geometry::StaticGeometry;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;

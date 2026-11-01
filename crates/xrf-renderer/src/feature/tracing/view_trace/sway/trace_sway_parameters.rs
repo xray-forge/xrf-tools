@@ -1,7 +1,7 @@
 use xrf_renderer_core::{PassParameters, StorageArray, StorageArrayMut, UniformBinding};
 
+use crate::feature::scene::wind::wind_uniform::WindUniform;
 use crate::feature::tracing::view_trace::sway::trace_sway_slot::TraceSwaySlot;
-use crate::pass::wind_uniform::WindUniform;
 use crate::scene::static_scene::static_place::StaticPlace;
 use crate::scene::static_scene::static_surface::StaticSurface;
 

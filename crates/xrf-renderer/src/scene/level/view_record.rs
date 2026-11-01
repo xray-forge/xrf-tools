@@ -1,9 +1,9 @@
 use xrf_renderer_core::GraphTexture;
 
+use crate::feature::scene::statics::cull::static_cull_uniform::StaticCullUniform;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
-use crate::pass::static_cull_uniform::StaticCullUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::lighting_handles::LightingHandles;
 

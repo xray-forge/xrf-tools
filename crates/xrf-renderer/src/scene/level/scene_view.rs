@@ -5,6 +5,8 @@ use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
 use crate::contract::render_view_options::RenderViewOptions;
 use crate::feature::effects::rain::cover::rain_covers::RainCovers;
+use crate::feature::scene::grass::cards::grass_card_handles::GrassCardHandles;
+use crate::feature::scene::wind::wind_feature::WindFeature;
 use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::frame::frame_clock::FrameClock;
 use crate::frame::frame_encoder::FrameEncoder;
@@ -21,8 +23,6 @@ use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::scene_features::SceneFeatures;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;
-use crate::scene::level::feature::wind_feature::WindFeature;
-use crate::scene::level::grass_card_handles::GrassCardHandles;
 use crate::scene::level::helpers::view::helper_marks_pass::HelperMarksPass;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_scene::LevelScene;

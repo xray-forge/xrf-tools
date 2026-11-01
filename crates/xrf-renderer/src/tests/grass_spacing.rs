@@ -1,6 +1,6 @@
-use crate::scene::level::grass_build_size::GrassBuildSize;
-use crate::scene::level::grass_ring::GrassRing;
-use crate::scene::level::grass_view::GrassView;
+use crate::feature::scene::grass::build::grass_build_size::GrassBuildSize;
+use crate::feature::scene::grass::build::grass_ring::GrassRing;
+use crate::feature::scene::grass::grass_view::GrassView;
 
 /// wgpu's default storage binding: 128 MiB.
 const BINDING: u64 = 128 << 20;

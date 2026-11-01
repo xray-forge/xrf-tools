@@ -2,6 +2,7 @@ use glam::{Vec2, Vec4};
 use xrf_renderer_core::{GraphDeclaration, GraphTexture, UniformBinding};
 
 use crate::feature::weather::water::water_uniform::WaterUniform;
+use crate::feature::weather::wet::puddles::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::feature::weather::wet::puddles::lowest_heights_parameters::LowestHeightsParameters;
 use crate::feature::weather::wet::puddles::puddle_keep_inputs::PuddleKeepInputs;
 use crate::feature::weather::wet::puddles::puddle_keep_parameters::PuddleKeepParameters;
@@ -11,7 +12,6 @@ use crate::feature::weather::wet::wet_feature::WetFeature;
 use crate::feature::weather::wet::wet_uniform::WetUniform;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
-use crate::pass::grass_puddles_uniform::GrassPuddlesUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::overhead_map::OverheadMap;
 use crate::scene::level::overhead_shape::OverheadShape;

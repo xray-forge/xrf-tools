@@ -1,4 +1,4 @@
-use crate::pass::static_draw_parameters::StaticDrawParameters;
+use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::static_scene::static_layout::StaticLayout;
 

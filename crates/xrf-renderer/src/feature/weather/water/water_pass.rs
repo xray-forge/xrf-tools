@@ -5,6 +5,7 @@ use xrf_renderer_core::{
   RasterPassBuilder, RenderPipelineDescription, StorageValue, UniformBinding,
 };
 
+use crate::feature::scene::statics::draw::static_draws::StaticDraws;
 use crate::feature::tracing::ray_guides::ray_guides_pass::RayGuidesPass;
 use crate::feature::tracing::scene_trace::reflection_scene_parameters::ReflectionSceneParameters;
 use crate::feature::tracing::scene_trace::requests::trace_request_handles::TraceRequestHandles;
@@ -31,7 +32,6 @@ use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_targets::ViewTargets;
 use crate::host::render_bundle::RenderBundle;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::static_draws::StaticDraws;
 use crate::scene::static_scene::static_batch::StaticBatch;
 
 /// What the frame's water passes share once declared: the uniforms, both skies, the nearest water, the cull's argument

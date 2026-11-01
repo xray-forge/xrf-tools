@@ -2,11 +2,11 @@ use glam::Vec4;
 use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
 use crate::feature::effects::rain::cover::cover_textures::CoverTextures;
+use crate::feature::scene::pyramid::cover_pyramid::CoverPyramid;
+use crate::feature::scene::pyramid::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
+use crate::feature::scene::pyramid::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
-use crate::pass::cover_pyramid_depth_parameters::CoverPyramidDepthParameters;
-use crate::pass::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
-use crate::scene::level::cover_pyramid::CoverPyramid;
 use crate::scene::level::overhead_map::OverheadMap;
 use crate::scene::level::overhead_shape::OverheadShape;
 use crate::scene::level::shadow_frame::ShadowFrame;

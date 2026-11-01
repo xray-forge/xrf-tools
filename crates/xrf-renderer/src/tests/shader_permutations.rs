@@ -5,8 +5,8 @@ use xrf_renderer_core::ShaderPermutation;
 use crate::feature::effects::composited::glass::glass_copy_permutation::GlassCopyPermutation;
 use crate::feature::lighting::lights::contact::contact_march_permutation::ContactMarchPermutation;
 use crate::feature::lighting::sun::sun_filter_permutation::SunFilterPermutation;
-use crate::pass::static_cull_permutation::StaticCullPermutation;
-use crate::pass::static_draw_permutation::StaticDrawPermutation;
+use crate::feature::scene::statics::cull::static_cull_permutation::StaticCullPermutation;
+use crate::feature::scene::statics::draw::static_draw_permutation::StaticDrawPermutation;
 use crate::shader::shader_library::ShaderLibrary;
 
 /// Every permutation names override constants the modules it makes pipelines of declare, of the types its fields give

@@ -11,14 +11,14 @@ use crate::feature::effects::composited::glass::glass_copy_parameters::GlassCopy
 use crate::feature::effects::composited::glass::glass_parameters::GlassParameters;
 use crate::feature::effects::composited::glass::glass_uniform::GlassUniform;
 use crate::feature::effects::over_scene::add_over_scene;
+use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
+use crate::feature::scene::statics::draw::static_draws::StaticDraws;
+use crate::feature::scene::statics::draw::static_layout_bindings::StaticLayoutBindings;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::level_passes::LevelPasses;
-use crate::pass::static_draw_parameters::StaticDrawParameters;
-use crate::pass::static_draws::StaticDraws;
-use crate::pass::static_layout_bindings::StaticLayoutBindings;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::lighting_handles::LightingHandles;

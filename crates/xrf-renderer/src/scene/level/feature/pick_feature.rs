@@ -4,14 +4,14 @@ use xrf_renderer_core::{
   GraphTextureAccess, RenderPipelineDescription, VertexLayout,
 };
 
+use crate::feature::scene::statics::draw::static_draw_bindings::StaticDrawBindings;
+use crate::feature::scene::statics::draw::static_draws::StaticDraws;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::pick_pass::PickPass;
 use crate::frame::pick_target::PickTarget;
 use crate::pass::camera_uniform::CameraUniform;
 use crate::pass::pick_glass::PickGlass;
 use crate::pass::pipeline_source::PipelineSource;
-use crate::pass::static_draw_bindings::StaticDrawBindings;
-use crate::pass::static_draws::StaticDraws;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::helpers::gpu::helper_buffer::HelperBuffer;

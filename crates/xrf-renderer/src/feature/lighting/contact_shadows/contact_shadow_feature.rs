@@ -8,12 +8,12 @@ use crate::feature::lighting::contact_shadows::contact_shadow_parameters::Contac
 use crate::feature::lighting::contact_shadows::contact_shadow_pass::ContactShadowPass;
 use crate::feature::lighting::contact_shadows::contact_shadow_uniform::ContactShadowUniform;
 use crate::feature::lighting::contact_shadows::contact_shadows_recorded::ContactShadowsRecorded;
+use crate::feature::scene::grass::cards::grass_cards::GrassCards;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::view_binding::ViewBinding;
 use crate::scene::level::feature::view_feature::ViewFeature;
-use crate::scene::level::grass_cards::GrassCards;
 
 /// The contact shadows, marched over the frame's depth where the view is lit and solid: the sun's under its cascades,
 /// at the frame's size or half of it into a target the sun brings up and multiplies its own by, none while the sun
