@@ -1,19 +1,51 @@
 use xrf_error::XrfResult;
 
+use crate::feature::weather::fog::fog_scattering_parameters::FogScatteringParameters;
 use crate::feature::weather::fog::fog_scattering_pass::FogScatteringPass;
+use crate::feature::weather::fog::fog_scattering_uniform::FogScatteringUniform;
+use crate::feature::weather::sky::dome::sky_behind_parameters::SkyBehindParameters;
 use crate::feature::weather::sky::dome::sky_behind_pass::SkyBehindPass;
+use crate::feature::weather::sky::dome::sky_haze_parameters::SkyHazeParameters;
 use crate::feature::weather::sky::dome::sky_haze_pass::SkyHazePass;
+use crate::feature::weather::sky::dome::sky_motion_parameters::SkyMotionParameters;
 use crate::feature::weather::sky::dome::sky_motion_pass::SkyMotionPass;
+use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
+use crate::feature::weather::sky::irradiance::sky_irradiance_parameters::SkyIrradianceParameters;
 use crate::feature::weather::sky::irradiance::sky_irradiance_pass::SkyIrradiancePass;
+use crate::feature::weather::sky::prefilter::sky_prefilter_parameters::SkyPrefilterParameters;
 use crate::feature::weather::sky::prefilter::sky_prefilter_pass::SkyPrefilterPass;
+use crate::feature::weather::sky::prefilter::sky_prefilter_uniform::SkyPrefilterUniform;
+use crate::feature::weather::sky::sky_parameters::SkyParameters;
+use crate::feature::weather::sun_shafts::sun_shafts_parameters::SunShaftsParameters;
 use crate::feature::weather::sun_shafts::sun_shafts_pass::SunShaftsPass;
+use crate::feature::weather::volumetric::froxels::froxel_inject_parameters::FroxelInjectParameters;
+use crate::feature::weather::volumetric::froxels::froxel_integrate_parameters::FroxelIntegrateParameters;
 use crate::feature::weather::volumetric::froxels::froxel_pass::FroxelPass;
+use crate::feature::weather::volumetric::froxels::froxel_uniform::FroxelUniform;
+use crate::feature::weather::volumetric::light_volumes::light_volume_parameters::LightVolumeParameters;
 use crate::feature::weather::volumetric::light_volumes::light_volume_pass::LightVolumePass;
+use crate::feature::weather::water::draw::water_depth_parameters::WaterDepthParameters;
+use crate::feature::weather::water::draw::water_surface_parameters::WaterSurfaceParameters;
+use crate::feature::weather::water::enhanced::enhanced_water_parameters::EnhancedWaterParameters;
+use crate::feature::weather::water::enhanced::enhanced_water_uniform::EnhancedWaterUniform;
+use crate::feature::weather::water::reflection::water_blur_parameters::WaterBlurParameters;
+use crate::feature::weather::water::reflection::water_blur_uniform::WaterBlurUniform;
+use crate::feature::weather::water::reflection::water_reflection_parameters::WaterReflectionParameters;
 use crate::feature::weather::water::water_pass::WaterPass;
+use crate::feature::weather::water::water_uniform::WaterUniform;
+use crate::feature::weather::wet::puddles::grass_puddles_uniform::GrassPuddlesUniform;
+use crate::feature::weather::wet::puddles::lowest_heights_parameters::LowestHeightsParameters;
+use crate::feature::weather::wet::puddles::puddle_keep_parameters::PuddleKeepParameters;
+use crate::feature::weather::wet::puddles::puddle_sites_parameters::PuddleSitesParameters;
 use crate::feature::weather::wet::puddles::puddle_sites_pass::PuddleSitesPass;
+use crate::feature::weather::wet::puddles::puddle_sites_uniform::PuddleSitesUniform;
+use crate::feature::weather::wet::wet_apply_parameters::WetApplyParameters;
 use crate::feature::weather::wet::wet_pass::WetPass;
+use crate::feature::weather::wet::wet_patch_parameters::WetPatchParameters;
+use crate::feature::weather::wet::wet_uniform::WetUniform;
 use crate::pass::build::pass_build::PassBuild;
 use crate::pass::build::pipeline_source::PipelineSource;
+use crate::shader::generated_modules::GeneratedModules;
 
 /// The passes drawing the weather: the sky, its haze, motion and light, the sun's shafts, the fog and the volumetric
 /// light, the water, and the wet surfaces with their puddles.
@@ -94,5 +126,49 @@ impl WeatherPasses {
     self.water.refresh(source);
     self.wet.refresh(source);
     self.puddle_sites.refresh(source);
+  }
+
+  /// Declares the generated WGSL its passes draw with: the structs their uniforms share and each module's bindings, the
+  /// sky's among them, which every pass reading the sky binds.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when passes sharing a module declare one of its bindings otherwise.
+  pub fn declare_shaders(modules: &mut GeneratedModules) -> XrfResult<()> {
+    modules
+      .declare::<FroxelUniform>()
+      .declare::<GrassPuddlesUniform>()
+      .declare::<WaterUniform>()
+      .declare::<EnhancedWaterUniform>()
+      .declare::<WaterBlurUniform>()
+      .declare::<FogScatteringUniform>()
+      .declare::<PuddleSitesUniform>()
+      .declare::<SkyPrefilterUniform>()
+      .declare::<SkyHarmonics>()
+      .declare::<WetUniform>();
+    modules
+      .add::<WaterDepthParameters>("generated/static/water")?
+      .add::<WaterSurfaceParameters<'_>>("generated/static/water")?
+      .add::<EnhancedWaterParameters<'_>>("generated/static/water_enhanced")?
+      .add::<WaterReflectionParameters<'_>>("generated/static/water_reflection")?
+      .add::<WaterBlurParameters<'_>>("generated/frame/water_blur")?
+      .add::<FogScatteringParameters<'_>>("generated/frame/fog_scattering")?
+      .add::<SkyParameters<'_>>("generated/common/sky")?
+      .add::<SkyMotionParameters>("generated/frame/sky_motion")?
+      .add::<SkyBehindParameters>("generated/frame/sky_behind")?
+      .add::<SkyHazeParameters>("generated/frame/sky_haze")?
+      .add::<SunShaftsParameters>("generated/frame/sun_shafts")?
+      .add::<LightVolumeParameters>("generated/frame/light_volumes")?
+      .add::<FroxelInjectParameters<'_>>("generated/frame/froxel_inject")?
+      .add::<FroxelIntegrateParameters>("generated/frame/froxel_integrate")?
+      .add::<WetPatchParameters<'_>>("generated/frame/wet_patch")?
+      .add::<WetApplyParameters>("generated/frame/wet_apply")?
+      .add::<LowestHeightsParameters>("generated/frame/puddle_sites")?
+      .add::<PuddleSitesParameters>("generated/frame/puddle_sites")?
+      .add::<PuddleKeepParameters<'_>>("generated/frame/puddle_sites")?
+      .add::<SkyIrradianceParameters<'_>>("generated/frame/sky_irradiance")?
+      .add::<SkyPrefilterParameters<'_>>("generated/frame/sky_prefilter")?;
+
+    Ok(())
   }
 }

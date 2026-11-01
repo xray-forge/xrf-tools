@@ -90,7 +90,8 @@ assembles, is in `src/pass/`; the scene's own state and its views are in `src/sc
 
 - **An effect drawn in one part of the frame**, such as a post effect after the resolve: add its folder under its
   group (`feature/image/<name>/`: its unit, pass, parameters and uniform) and its shader under `shaders/`. Add the pass
-  to the group's passes (a field, a build and a refresh line), and the unit to its stage (a field, a `prepare` line, a
+  to the group's passes (a field, a build and a refresh line, and its parameters and uniform in `declare_shaders`),
+  and the unit to its stage (a field, a `prepare` line, a
   record line and a `view_units!` entry). A pass after the resolve that reads a drawn target on purpose tags the read
   (`JitterGuard::READS_*`), with the reason beside the tag. The setting goes in `contract/`; an applied readout goes in
   the stage's `describe`.
@@ -119,7 +120,8 @@ A debug build also reads them from the checkout and watches them, so an edited m
 reload.
 
 `shaders/generated/` is written from Rust: the structs shaders share with Rust (`ShaderStruct`), and each module's
-bindings gathered from the parameters of every pass drawing with it (`PassParameters`). The test
+bindings gathered from the parameters of every pass drawing with it (`PassParameters`). Each group of passes declares
+the structs and modules its passes draw with (`declare_shaders`). The test
 `every_generated_module_is_up_to_date` rewrites a stale file and fails once; commit the rewritten file.
 
 ## Features
