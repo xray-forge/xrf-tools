@@ -3,18 +3,16 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_renderer::{
-  RenderLevelSource, RenderSceneFeedback, RenderSceneFrame, RenderSceneId, RenderSceneUpdate, RenderViewFrame,
-  RenderViewInput, RenderViewportId, RenderWorkers, RenderWorld,
+  LevelParts, RenderLevelSource, RenderSceneFeedback, RenderSceneFrame, RenderSceneId, RenderSceneUpdate,
+  RenderViewFrame, RenderViewInput, RenderViewportId, RenderWorkers, RenderWorld,
 };
 
 use crate::contract::camera::world_camera::WorldCamera;
 use crate::contract::camera::world_camera_command::WorldCameraCommand;
 use crate::contract::camera::world_input_event::WorldInputEvent;
 use crate::contract::level::world_level_problems::WorldLevelProblems;
-use crate::contract::level::world_level_reload::WorldLevelReload;
 use crate::contract::level::world_model_pose::WorldModelPose;
 use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
-use crate::contract::weather::world_ambient_report::WorldAmbientReport;
 use crate::contract::weather::world_weather_control::WorldWeatherControl;
 use crate::contract::weather::world_weather_play::WorldWeatherPlay;
 use crate::contract::weather::world_weather_transition::WorldWeatherTransition;
@@ -149,7 +147,7 @@ impl World {
     &mut self,
     key: &str,
     source: Arc<dyn WorldLevelSource>,
-    reload: WorldLevelReload,
+    reload: LevelParts,
   ) -> Option<RenderSceneId> {
     let id: RenderSceneId = self.find_scene(key)?;
     let scene: &mut WorldScene = self.scenes.get_mut(&id)?;
@@ -158,7 +156,7 @@ impl World {
 
     for viewer in &scene.viewers {
       if let Some(world) = self.viewports.get_mut(viewer) {
-        world.weather.follow(Arc::clone(&source), reload);
+        world.weather.follow(Arc::clone(&source));
       }
     }
 
@@ -320,13 +318,21 @@ impl RenderWorld for World {
   }
 
   fn advance_view(&mut self, viewport: RenderViewportId, input: RenderViewInput<'_>) -> RenderViewFrame {
-    let ambient: Option<WorldAmbientReport> = self.get_scene(viewport).and_then(|scene| scene.level.report_ambient());
+    let scene: Option<&mut WorldScene> = self
+      .viewports
+      .get(&viewport)
+      .and_then(|world| world.scene)
+      .and_then(|id| self.scenes.get_mut(&id));
+    let (ambient, level) = match scene {
+      Some(scene) => (scene.level.report_ambient(), scene.level.get_weather()),
+      None => (None, None),
+    };
 
     // A frame drawn before the world's attach, or after its detach, rests: it starts no world.
     self
       .viewports
       .get_mut(&viewport)
-      .map_or_else(RenderViewFrame::default, |world| world.advance(input, ambient))
+      .map_or_else(RenderViewFrame::default, |world| world.advance(input, ambient, level))
   }
 
   fn advance_scenes(

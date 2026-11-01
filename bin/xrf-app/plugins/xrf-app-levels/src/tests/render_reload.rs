@@ -1,7 +1,7 @@
 //! What the renderer reads again of a shown level whose next snapshot let parts go, and what its scene is shared by.
 
 use xrf_app_core::session::{SessionId, SessionPart};
-use xrf_world::WorldLevelReload;
+use xrf_renderer::{LevelPart, LevelParts};
 
 use crate::parts::{
   LevelCollisionPart, LevelDetailsPart, LevelEnvironmentPart, LevelGraphPart, LevelHemiPart, LevelLightsPart,
@@ -10,14 +10,10 @@ use crate::parts::{
 };
 use crate::render::LevelRenderSource;
 
-const NONE: WorldLevelReload = WorldLevelReload {
-  is_spawn: false,
-  is_lights: false,
-  is_particles: false,
-  is_weather: false,
-  is_motions: false,
-  is_grass: false,
-};
+/// The set of `parts`.
+fn parts(parts: &[LevelPart]) -> LevelParts {
+  parts.iter().copied().collect()
+}
 
 #[test]
 fn a_commit_leaving_every_part_reloads_nothing() {
@@ -43,37 +39,13 @@ fn a_commit_leaving_every_part_reloads_nothing() {
 #[test]
 fn what_a_render_read_recorded_reloads_that_package_alone() {
   for (part, reload) in [
-    (
-      LevelLightsPart::NAME,
-      WorldLevelReload {
-        is_lights: true,
-        ..NONE
-      },
-    ),
-    (
-      LevelParticlesPart::NAME,
-      WorldLevelReload {
-        is_particles: true,
-        ..NONE
-      },
-    ),
-    (
-      LevelWeatherPart::NAME,
-      WorldLevelReload {
-        is_weather: true,
-        ..NONE
-      },
-    ),
-    (
-      LevelObjectMotionsPart::NAME,
-      WorldLevelReload {
-        is_motions: true,
-        ..NONE
-      },
-    ),
-    (LevelDetailsPart::NAME, WorldLevelReload { is_grass: true, ..NONE }),
+    (LevelLightsPart::NAME, LevelPart::Lights),
+    (LevelParticlesPart::NAME, LevelPart::Particles),
+    (LevelWeatherPart::NAME, LevelPart::Weather),
+    (LevelObjectMotionsPart::NAME, LevelPart::Motions),
+    (LevelDetailsPart::NAME, LevelPart::Grass),
   ] {
-    assert_eq!(LevelRenderSource::to_reload(&[part]), reload, "{part}");
+    assert_eq!(LevelRenderSource::to_reload(&[part]), parts(&[reload]), "{part}");
   }
 }
 
@@ -81,44 +53,23 @@ fn what_a_render_read_recorded_reloads_that_package_alone() {
 fn a_stale_part_reloads_only_the_packages_built_from_it() {
   assert_eq!(
     LevelRenderSource::to_reload(&[LevelEnvironmentPart::NAME]),
-    WorldLevelReload {
-      is_particles: true,
-      is_weather: true,
-      ..NONE
-    }
+    parts(&[LevelPart::Particles, LevelPart::Weather])
   );
   assert_eq!(
     LevelRenderSource::to_reload(&[LevelSectionsPart::NAME]),
-    WorldLevelReload {
-      is_lights: true,
-      is_particles: true,
-      ..NONE
-    }
+    parts(&[LevelPart::Lights, LevelPart::Particles])
   );
   assert_eq!(
     LevelRenderSource::to_reload(&[LevelSpawnVisualsPart::NAME]),
-    WorldLevelReload {
-      is_spawn: true,
-      is_lights: true,
-      ..NONE
-    }
+    parts(&[LevelPart::Spawn, LevelPart::Lights])
   );
   assert_eq!(
     LevelRenderSource::to_reload(&[LevelCollisionPart::NAME, LevelHemiPart::NAME]),
-    WorldLevelReload {
-      is_spawn: true,
-      is_particles: true,
-      ..NONE
-    }
+    parts(&[LevelPart::Spawn, LevelPart::Particles])
   );
   assert_eq!(
     LevelRenderSource::to_reload(&[LevelSpawnPart::NAME]),
-    WorldLevelReload {
-      is_spawn: true,
-      is_lights: true,
-      is_particles: true,
-      ..NONE
-    }
+    parts(&[LevelPart::Spawn, LevelPart::Lights, LevelPart::Particles])
   );
 }
 

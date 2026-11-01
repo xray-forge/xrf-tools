@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use xrf_renderer::{RenderSceneFrame, RenderSceneId, RenderViewportId, RenderWorld};
+use xrf_renderer::{LevelPart, RenderSceneFrame, RenderSceneId, RenderViewportId, RenderWorld};
 
 use crate::tests::fixtures::{SilentSink, TestLevelSource};
 use crate::tests::test_workers::create_workers;
@@ -47,7 +47,7 @@ fn finishes_streaming_a_level_whose_sectors_all_fail_counting_each_once() {
   );
 
   let done: RenderSceneFrame =
-    advance_until(&mut world, |frame| frame.streaming.is_sectors_done).expect("the sectors done");
+    advance_until(&mut world, |frame| frame.streaming.done.contains(LevelPart::Sectors)).expect("the sectors done");
 
   assert_eq!((done.streaming.sectors, done.streaming.sectors_total), (0, 3));
 

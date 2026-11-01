@@ -8,7 +8,6 @@ use xrf_renderer_core::ProxyHandle;
 use xrf_visual::SectorPackage;
 
 use crate::camera::camera_view::CameraView;
-use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
 use crate::contract::report::load::render_load_report::RenderLoadReport;
 use crate::contract::report::texture::render_texture_group::RenderTextureGroup;
 use crate::contract::report::texture::render_texture_report::RenderTextureReport;
@@ -18,6 +17,7 @@ use crate::frame::frame_upload::FrameUpload;
 use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
+use crate::host::level::part::render_level_part::RenderLevelPart;
 use crate::host::level::render_level_source::RenderLevelSource;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::world::feedback::render_model_failure::RenderModelFailure;
@@ -235,19 +235,17 @@ impl LevelScene {
     self.sector_time
   }
 
-  /// Starts this frame's step of its effects on the workers, by the camera of the `view` standing for the actor and
-  /// the `options` it draws them with; its settle (`settle`) joins it.
-  pub fn start_simulation(&mut self, view: &CameraView, options: &RenderViewOptions) {
+  /// Begins this frame's step, once before any of its views readies, by the view standing for the actor: its camera
+  /// `actor`, the `options` it draws with and the `lighting` it plays. The effects start stepping on the workers, which
+  /// its settle (`settle`) joins, and the wetness every view wets its surfaces by moves on by that view's rain, both on
+  /// the scene's clock.
+  pub fn begin_frame(&mut self, actor: &CameraView, options: &RenderViewOptions, lighting: &RenderLighting) {
     let time: Duration = self.get_time();
 
-    self.particles.start_simulation(view, options, time);
-  }
-
-  /// Moves its wetness on by the rain in `lighting` and the driving view's `settings`, on its own clock.
-  pub fn advance_wetness(&mut self, lighting: &RenderLighting, settings: &RenderRainSettings) {
-    let time: f32 = self.get_time().as_secs_f32();
-
-    self.wetness.advance(lighting, settings, time);
+    self.particles.start_simulation(actor, options, time);
+    self
+      .wetness
+      .advance(lighting, &options.features.rain, time.as_secs_f32());
   }
 
   /// Settles what its views asked of it this frame, its driving view's first, once every one has readied its frame and
@@ -478,16 +476,18 @@ impl LevelScene {
         RenderSceneUpdate::RemoveObject(handle) => {
           self.statics.remove_object(handle);
         }
-        RenderSceneUpdate::SetLights(lights) => self.lights.add_lights(lights, textures, assets),
-        RenderSceneUpdate::SetGrass(details) => self.grass.replace(device, details, &mut *textures, assets),
-        RenderSceneUpdate::SetHelpers(helpers) => {
-          self.helpers = LevelHelpers::new(helpers, self.helpers.version + 1);
-        }
-        RenderSceneUpdate::SetParticles(definitions) => {
-          self
-            .particles
-            .add_definitions(device, &mut *textures, assets, definitions);
-        }
+        RenderSceneUpdate::SetPart(part) => match part {
+          RenderLevelPart::Lights(lights) => self.lights.add_lights(lights, textures, assets),
+          RenderLevelPart::Grass(details) => self.grass.replace(device, details, &mut *textures, assets),
+          RenderLevelPart::Helpers(helpers) => {
+            self.helpers = LevelHelpers::new(helpers, self.helpers.version + 1);
+          }
+          RenderLevelPart::Particles(definitions) => {
+            self
+              .particles
+              .add_definitions(device, &mut *textures, assets, definitions);
+          }
+        },
         RenderSceneUpdate::AddEmitter {
           handle,
           transform,

@@ -3,15 +3,14 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_renderer::{
-  RenderLevelDetails, RenderLevelHelpers, RenderLoadFailure, RenderModelFailure, RenderModelSkeleton,
-  RenderSceneUpdate, RenderSectorFailure, RenderStreamingProgress, RenderWorkers, StaticModelPlace, StaticModelProxy,
-  StaticObjectProxy, StaticSectorProxy,
+  LevelPart, LevelParts, RenderLevelDetails, RenderLevelHelpers, RenderLevelPart, RenderLoadFailure,
+  RenderModelFailure, RenderModelSkeleton, RenderSceneUpdate, RenderSectorFailure, RenderStreamingProgress,
+  RenderWorkers, StaticModelPlace, StaticModelProxy, StaticObjectProxy, StaticSectorProxy,
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 use xrf_visual::LightsDescription;
 
 use crate::contract::level::world_level_problems::WorldLevelProblems;
-use crate::contract::level::world_level_reload::WorldLevelReload;
 use crate::contract::level::world_sector_skip::WorldSectorSkip;
 use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
 use crate::host::world_level_source::WorldLevelSource;
@@ -141,12 +140,13 @@ impl LevelStreaming {
     updates: &mut Vec<RenderSceneUpdate>,
     animation: &mut LevelAnimation,
     source: Arc<dyn WorldLevelSource>,
-    reload: WorldLevelReload,
+    reload: LevelParts,
     workers: &RenderWorkers,
   ) {
     self.source = source;
 
-    if reload.is_spawn {
+    // The helpers are the spawned objects', so they are read again with the spawn.
+    if reload.contains(LevelPart::Spawn) {
       for model in std::mem::take(&mut self.models) {
         self.release_model(animation, &model);
         updates.push(RenderSceneUpdate::RemoveModel(model.handle));
@@ -157,11 +157,11 @@ impl LevelStreaming {
       self.helpers = Self::read_helpers(&self.source, workers);
     }
 
-    if reload.is_lights {
+    if reload.contains(LevelPart::Lights) {
       self.lights = Self::read_lights(&self.source, workers);
     }
 
-    if reload.is_grass {
+    if reload.contains(LevelPart::Grass) {
       self.grass = Self::read_grass(&self.source, workers);
     }
   }
@@ -197,11 +197,11 @@ impl LevelStreaming {
     self.filter_spawn(updates, animation, hidden);
 
     if let Some(grass) = self.grass.take() {
-      updates.push(RenderSceneUpdate::SetGrass(grass));
+      updates.push(RenderSceneUpdate::SetPart(RenderLevelPart::Grass(grass)));
     }
 
     if let Some(helpers) = self.helpers.take() {
-      updates.push(RenderSceneUpdate::SetHelpers(helpers));
+      updates.push(RenderSceneUpdate::SetPart(RenderLevelPart::Helpers(helpers)));
     }
 
     if let Some(lights) = self.lights.take() {
@@ -211,7 +211,7 @@ impl LevelStreaming {
         .iter()
         .filter_map(|light| light.motion.as_ref().map(|motion| motion.name.clone()))
         .collect();
-      updates.push(RenderSceneUpdate::SetLights(lights));
+      updates.push(RenderSceneUpdate::SetPart(RenderLevelPart::Lights(lights)));
     }
 
     for SectorLoad { sector, pack } in self.sectors.take(SECTORS_PER_FRAME) {
@@ -276,12 +276,15 @@ impl LevelStreaming {
       started: Some(self.started),
       sectors,
       sectors_total,
-      is_sectors_done: sectors + self.failed_sectors.len() as u32 == sectors_total,
-      is_spawn_done: self.spawn.is_done(),
-      is_lights_done: !self.lights.is_pending(),
-      is_grass_done: !self.grass.is_pending(),
+      done: LevelParts::NONE
+        .with_if(
+          LevelPart::Sectors,
+          sectors + self.failed_sectors.len() as u32 == sectors_total,
+        )
+        .with_if(LevelPart::Spawn, self.spawn.is_done())
+        .with_if(LevelPart::Lights, !self.lights.is_pending())
+        .with_if(LevelPart::Grass, !self.grass.is_pending()),
       bytes: self.posted.values().map(|(_, bytes)| bytes).sum(),
-      ..RenderStreamingProgress::default()
     }
   }
 

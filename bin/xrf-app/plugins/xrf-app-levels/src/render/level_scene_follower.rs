@@ -3,8 +3,8 @@ use std::sync::{Arc, MutexGuard};
 use xrf_app_core::assets::{AssetChangeEvent, AssetChangeSubscriber, AssetMountState};
 use xrf_app_core::session::{SessionChange, SessionRootChange, SessionSnapshot};
 use xrf_app_render::WorldState;
-use xrf_renderer::RenderSceneId;
-use xrf_world::{World, WorldLevelReload, WorldLevelSource};
+use xrf_renderer::{LevelParts, RenderSceneId};
+use xrf_world::{World, WorldLevelSource};
 
 use crate::level::{SelectedLevel, SelectedLevels};
 use crate::render::{LevelRenderSource, ShownLevels};
@@ -55,7 +55,7 @@ impl LevelSceneFollower {
       false => Arc::new(shown.follow(next)),
     };
     let drawn: Arc<dyn WorldLevelSource> = Arc::clone(&source) as Arc<dyn WorldLevelSource>;
-    let reload: WorldLevelReload = LevelRenderSource::to_reload(&change.stale_parts);
+    let reload: LevelParts = LevelRenderSource::to_reload(&change.stale_parts);
     let mut world: MutexGuard<'_, World> = self.world.lock();
     let scene: Option<RenderSceneId> = match is_afresh {
       true => world.reopen_scene(&key, drawn),
@@ -73,7 +73,7 @@ impl LevelSceneFollower {
       &source.get_level().source,
       change.revision.get(),
       scene,
-      (!is_afresh).then_some(&reload),
+      (!is_afresh).then_some(reload),
     );
   }
 }

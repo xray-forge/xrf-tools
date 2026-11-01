@@ -34,12 +34,14 @@ side. It answers the `RenderSceneId` that load reports name:
   objects as that viewport asks (`pose_model`). When the driver leaves, the next viewer drives; when the last leaves,
   the scene goes.
 - `reload_scene(key, source, reload)` moves a shared scene onto a next source of the same level, keeping its id and
-  viewers: only what `WorldLevelReload` names is read again and replaces what was drawn once read.
+  viewers: only the parts `reload` names (the renderer's `LevelParts`) are read again, each replacing what was drawn
+  once read.
 - `reopen_scene(key, source)` streams the level afresh as a new scene, which every viewer of the old one then shows.
 - `measure_surfaces` and `describe_problems` report on the level a viewport shows: how much each shader table entry
   draws, and what could not be drawn as asked.
 
-Weather plays per viewport: `play_weather`, `set_weather_control`, `seek_weather`, `play_weather_effect`, and
+A scene reads its level's weather once, every viewer playing it from that read. Weather plays per viewport:
+`play_weather`, `set_weather_control`, `seek_weather`, `play_weather_effect`, and
 `play_ambient_effect` near the driving camera (never indoors).
 
 ## Each frame

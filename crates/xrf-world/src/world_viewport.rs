@@ -11,6 +11,7 @@ use crate::contract::weather::world_ambient_report::WorldAmbientReport;
 use crate::contract::world_toggles::WorldToggles;
 use crate::contract::world_viewport_event::WorldViewportEvent;
 use crate::host::world_event_sink::WorldEventSink;
+use crate::host::world_level_weather::WorldLevelWeather;
 use crate::level::ambient::ambient_frame::AmbientFrame;
 use crate::weather::thunder::thunder_play::ThunderPlay;
 use crate::weather::viewport_weather::ViewportWeather;
@@ -62,8 +63,14 @@ impl WorldViewport {
   }
 
   /// Moves the camera and the weather on a frame, publishes what changed, and answers the frame's input; `ambient` is
-  /// where its scene's ambient effects stand, which its weather report carries.
-  pub fn advance(&mut self, input: RenderViewInput<'_>, ambient: Option<WorldAmbientReport>) -> RenderViewFrame {
+  /// where its scene's ambient effects stand, which its weather report carries, and `level` what its scene read every
+  /// weather of the level plays with.
+  pub fn advance(
+    &mut self,
+    input: RenderViewInput<'_>,
+    ambient: Option<WorldAmbientReport>,
+    level: Option<&Arc<WorldLevelWeather>>,
+  ) -> RenderViewFrame {
     let RenderViewInput {
       now,
       delta,
@@ -83,7 +90,7 @@ impl WorldViewport {
     self.eye = eye;
     self.options.clone_from(options);
 
-    self.weather.advance(now, eye.to_array(), thunder, |lighting| {
+    self.weather.advance(now, eye.to_array(), thunder, level, |lighting| {
       skies.request_sky(&lighting.sky)
     });
 

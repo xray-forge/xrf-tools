@@ -5,8 +5,8 @@ use std::time::{Duration, Instant};
 use glam::{Mat4, Vec3};
 use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationShape};
 use xrf_anm::AnmFile;
+use xrf_renderer::{LevelPart, LevelParts};
 
-use crate::contract::level::world_level_reload::WorldLevelReload;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::effects::level_object_motions::LevelObjectMotions;
 use crate::tests::fixtures::TestLevelSource;
@@ -122,19 +122,13 @@ fn reads_its_motions_again_from_a_next_source_only_when_told() {
   motions.prepare(Duration::from_millis(1000));
   read(&mut motions, "line.anm").expect("the motion to be read");
 
-  motions.follow(&create_still_source(), WorldLevelReload::default());
+  motions.follow(&create_still_source(), LevelParts::NONE);
 
   let (kept, _) = read(&mut motions, "line.anm").expect("the motion read before");
 
   assert!(kept.w_axis.truncate().abs_diff_eq(Vec3::new(3.0, 0.0, 0.0), 1e-4));
 
-  motions.follow(
-    &create_still_source(),
-    WorldLevelReload {
-      is_motions: true,
-      ..WorldLevelReload::default()
-    },
-  );
+  motions.follow(&create_still_source(), LevelParts::NONE.with(LevelPart::Motions));
 
   let (reread, _) = read(&mut motions, "line.anm").expect("the motion read again");
 

@@ -2,26 +2,31 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use glam::Vec3;
-use xrf_renderer::{RenderSceneFeedback, RenderSceneUpdate, RenderStreamingProgress, RenderWorkers};
+use xrf_renderer::{
+  LevelPart, LevelParts, RenderSceneFeedback, RenderSceneUpdate, RenderStreamingProgress, RenderWorkers,
+};
 
 use crate::contract::level::world_level_problems::WorldLevelProblems;
-use crate::contract::level::world_level_reload::WorldLevelReload;
 use crate::contract::level::world_model_pose::WorldModelPose;
 use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
 use crate::contract::weather::world_ambient_report::WorldAmbientReport;
 use crate::host::world_level_source::WorldLevelSource;
+use crate::host::world_level_weather::WorldLevelWeather;
 use crate::level::animation::level_animation::LevelAnimation;
 use crate::level::effects::effects_frame::EffectsFrame;
 use crate::level::effects::level_effects::LevelEffects;
 use crate::level::level_drive::LevelDrive;
+use crate::level::loading::loader_slot::LoaderSlot;
 use crate::level::streaming::level_streaming::LevelStreaming;
 
-/// A level as a viewport's world plays it: what streams it into its scene, how its skinned objects are posed, and what
-/// its effects play, by one clock running from when it began opening.
+/// A level as a viewport's world plays it: what streams it into its scene, how its skinned objects are posed, what its
+/// effects play, by one clock running from when it began opening, and what every weather of it plays with, read once
+/// for every viewport showing it.
 pub struct WorldLevel {
   streaming: LevelStreaming,
   animation: LevelAnimation,
   effects: LevelEffects,
+  weather: LoaderSlot<Arc<WorldLevelWeather>>,
   opened: Instant,
   /// What a reload took out of the scene, posted ahead of the next frame's own.
   queued: Vec<RenderSceneUpdate>,
@@ -31,6 +36,7 @@ impl WorldLevel {
   pub fn start(source: Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     Self {
       effects: LevelEffects::start(&source, workers),
+      weather: Self::read_weather(&source, workers),
       streaming: LevelStreaming::start(source, workers),
       animation: LevelAnimation::new(workers),
       opened: Instant::now(),
@@ -38,15 +44,38 @@ impl WorldLevel {
     }
   }
 
+  /// Reads what every weather of the level plays with on the workers.
+  fn read_weather(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> LoaderSlot<Arc<WorldLevelWeather>> {
+    let source: Arc<dyn WorldLevelSource> = Arc::clone(source);
+
+    LoaderSlot::spawn(workers, "weather", move || {
+      source
+        .read_weather()
+        .map(Arc::new)
+        .inspect_err(|error| log::warn!("The level's weather cannot be played: {error}"))
+        .ok()
+    })
+  }
+
   pub fn get_source(&self) -> &Arc<dyn WorldLevelSource> {
     self.streaming.get_source()
   }
 
+  /// What every weather of the level plays with, once read; none while it is read, again on a reload too, or where it
+  /// cannot be.
+  pub fn get_weather(&mut self) -> Option<&Arc<WorldLevelWeather>> {
+    self.weather.poll()
+  }
+
   /// Plays on from `source`, a next source of the same level, reading again what `reload` names from it: what that
   /// replaces leaves the scene with the next frame's posts, and everything else stays as it is drawn. The clock runs on.
-  pub fn reload(&mut self, source: Arc<dyn WorldLevelSource>, reload: WorldLevelReload, workers: &RenderWorkers) {
-    if reload.is_particles {
+  pub fn reload(&mut self, source: Arc<dyn WorldLevelSource>, reload: LevelParts, workers: &RenderWorkers) {
+    if reload.contains(LevelPart::Particles) {
       self.effects.reload(&mut self.queued, &source, workers);
+    }
+
+    if reload.contains(LevelPart::Weather) {
+      self.weather = Self::read_weather(&source, workers);
     }
 
     self.effects.follow_motions(&source, reload);
@@ -109,9 +138,11 @@ impl WorldLevel {
   }
 
   pub fn get_progress(&self) -> RenderStreamingProgress {
+    let streamed: RenderStreamingProgress = self.streaming.get_progress();
+
     RenderStreamingProgress {
-      is_particles_done: self.effects.is_read(),
-      ..self.streaming.get_progress()
+      done: streamed.done.with_if(LevelPart::Particles, self.effects.is_read()),
+      ..streamed
     }
   }
 

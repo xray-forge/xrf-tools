@@ -16,9 +16,7 @@ use xrf_app_render::WorldState;
 use xrf_dltx::DltxDialect;
 use xrf_engine_target::{XrayEngine, XrayEngineResolution};
 use xrf_level::{LevelGeomFile, LevelHeaderChunk, LevelShadersChunk, LevelVisualsChunk};
-use xrf_renderer::{
-  RenderSceneFrame, RenderSceneId, RenderStreamingProgress, RenderViewportId, RenderWorkers, RenderWorld,
-};
+use xrf_renderer::{LevelPart, RenderSceneFrame, RenderSceneId, RenderViewportId, RenderWorkers, RenderWorld};
 use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRevision, XrayRoots, XraySearch, XrayTransaction};
 use xrf_world::{WorldEventSink, WorldLevelSource, WorldViewportEvent};
@@ -181,15 +179,9 @@ fn settle(world: &WorldState, snapshot: &SessionSnapshot<SelectedLevel>) {
   let is_settled = || {
     let frames: HashMap<RenderSceneId, RenderSceneFrame> = world.lock().advance_scenes(Instant::now(), HashMap::new());
     let is_streamed: bool = !frames.is_empty()
-      && frames.values().all(|frame| {
-        let progress: &RenderStreamingProgress = &frame.streaming;
-
-        progress.is_sectors_done
-          && progress.is_spawn_done
-          && progress.is_lights_done
-          && progress.is_grass_done
-          && progress.is_particles_done
-      });
+      && frames
+        .values()
+        .all(|frame| frame.streaming.done.contains_all(&LevelPart::LOADED));
 
     is_streamed
       && snapshot.parts.get::<LevelEnvironmentPart>().is_some()

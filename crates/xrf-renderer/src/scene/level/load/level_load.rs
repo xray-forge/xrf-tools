@@ -3,6 +3,7 @@ use std::time::{Duration, Instant};
 
 use crate::contract::report::load::render_load_durations::RenderLoadDurations;
 use crate::contract::report::load::render_load_report::RenderLoadReport;
+use crate::host::level::part::level_part::LevelPart;
 use crate::host::world::feedback::render_streaming_progress::RenderStreamingProgress;
 use crate::host::world::render_scene_id::RenderSceneId;
 use crate::scene::texture::texture_cache::TextureCache;
@@ -36,30 +37,30 @@ impl LevelLoad {
     }
 
     let elapsed: Duration = progress.started.unwrap_or(self.started).elapsed();
-    let finished: [bool; 6] = [
-      progress.is_sectors_done,
-      progress.is_spawn_done,
-      progress.is_grass_done,
-      progress.is_lights_done,
-      progress.is_particles_done,
-      self.is_ready(slots, textures),
-    ];
-    let RenderLoadDurations {
-      sectors,
-      spawn,
-      grass,
-      lights,
-      particles,
-      ready,
-    } = &mut self.durations;
 
-    for (duration, is_finished) in [sectors, spawn, grass, lights, particles, ready]
+    for part in LevelPart::LOADED
       .into_iter()
-      .zip(finished)
+      .filter(|part| progress.done.contains(*part))
     {
-      if is_finished {
+      if let Some(duration) = Self::get_duration(&mut self.durations, part) {
         duration.get_or_insert(elapsed);
       }
+    }
+
+    if self.is_ready(slots, textures) {
+      self.durations.ready.get_or_insert(elapsed);
+    }
+  }
+
+  /// Where the report times a part the load waits for; none for one it does not.
+  fn get_duration(durations: &mut RenderLoadDurations, part: LevelPart) -> Option<&mut Option<Duration>> {
+    match part {
+      LevelPart::Sectors => Some(&mut durations.sectors),
+      LevelPart::Spawn => Some(&mut durations.spawn),
+      LevelPart::Lights => Some(&mut durations.lights),
+      LevelPart::Grass => Some(&mut durations.grass),
+      LevelPart::Particles => Some(&mut durations.particles),
+      LevelPart::Helpers | LevelPart::Weather | LevelPart::Motions => None,
     }
   }
 
@@ -90,11 +91,10 @@ impl LevelLoad {
   /// What the level still waits for, said for a log: the parts not finished and the textures not settled.
   pub fn describe_pending(&self, slots: &[u32], textures: &TextureCache) -> String {
     let settled: u32 = textures.count_settled(slots.iter().copied());
-    let mut pending: Vec<String> = self
-      .list_parts()
-      .iter()
-      .filter(|(_, is_done)| !is_done)
-      .map(|(part, _)| (*part).to_string())
+    let mut pending: Vec<String> = LevelPart::LOADED
+      .into_iter()
+      .filter(|part| !self.progress.done.contains(*part))
+      .map(|part| part.get_name().to_string())
       .collect();
 
     if settled < slots.len() as u32 {
@@ -104,22 +104,8 @@ impl LevelLoad {
     pending.join(", ")
   }
 
-  /// Whether every sector is taken in and the spawn, grass, lights and particles read: done once every texture settles
-  /// too.
+  /// Whether every part the load waits for has finished (`LevelPart::LOADED`): done once every texture settles too.
   fn are_parts_done(&self) -> bool {
-    self.list_parts().iter().all(|(_, is_done)| *is_done)
-  }
-
-  /// The parts the level opens with beside its textures, by name, and whether each has finished.
-  fn list_parts(&self) -> [(&'static str, bool); 5] {
-    let progress: &RenderStreamingProgress = &self.progress;
-
-    [
-      ("sectors", progress.is_sectors_done),
-      ("spawn", progress.is_spawn_done),
-      ("lights", progress.is_lights_done),
-      ("particles", progress.is_particles_done),
-      ("grass", progress.is_grass_done),
-    ]
+    self.progress.done.contains_all(&LevelPart::LOADED)
   }
 }

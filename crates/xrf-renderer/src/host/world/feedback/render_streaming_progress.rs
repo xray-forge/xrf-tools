@@ -1,5 +1,7 @@
 use std::time::Instant;
 
+use crate::host::level::part::level_parts::LevelParts;
+
 /// How far the world has streamed a level into its scene, which its load report is made from with what the renderer
 /// knows of its textures.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -9,14 +11,9 @@ pub struct RenderStreamingProgress {
   /// Sectors taken in, of all the level has.
   pub sectors: u32,
   pub sectors_total: u32,
-  /// Whether every sector was taken in or failed.
-  pub is_sectors_done: bool,
-  pub is_spawn_done: bool,
-  pub is_lights_done: bool,
-  /// Whether the level's grass was read, whatever the read answered.
-  pub is_grass_done: bool,
-  /// Whether the level's particles were read, whatever the read answered.
-  pub is_particles_done: bool,
+  /// The parts finished: every sector taken in or failed, the spawn streamed, and each part read whole, whatever the
+  /// read answered.
+  pub done: LevelParts,
   /// Bytes of every sector's pack taken in.
   pub bytes: u64,
 }

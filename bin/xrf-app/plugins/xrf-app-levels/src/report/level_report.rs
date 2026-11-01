@@ -7,10 +7,9 @@ use xrf_engine_target::XrayEngineResolution;
 use xrf_level::LevelShaderEntry;
 use xrf_material::{XraySurfaceDeclaration, XraySurfaceDescriptor, XraySurfaceDraw};
 use xrf_particles::ParticleLibrary;
-use xrf_renderer::{RenderSceneId, RenderViewportId};
+use xrf_renderer::{LevelParts, RenderSceneId, RenderViewportId};
 use xrf_spawn::SpawnLevelObjects;
 use xrf_visual::{LightsDescription, SectorDescription, SectorInstanceGroup, SectorOutline, SectorPackage};
-use xrf_world::WorldLevelReload;
 
 use crate::level::{LevelEntry, LevelSource, SelectedLevel};
 use crate::objects::LevelObjectsDescription;
@@ -474,12 +473,15 @@ impl LevelReport {
     source: &LevelSource,
     revision: impl Display,
     scene: Option<RenderSceneId>,
-    reload: Option<&WorldLevelReload>,
+    reload: Option<LevelParts>,
   ) {
     log::info!(
       "Level {} follows revision {revision} in scene {scene:?}: {}",
       source.get_label(),
-      reload.map_or_else(|| String::from("streamed afresh"), |reload| format!("{reload:?}"))
+      reload.map_or_else(
+        || String::from("streamed afresh"),
+        |reload| format!("reloading {reload:?}")
+      )
     );
   }
 

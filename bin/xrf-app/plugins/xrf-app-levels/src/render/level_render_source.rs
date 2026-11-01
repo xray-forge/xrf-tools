@@ -13,12 +13,12 @@ use xrf_ltx::Ltx;
 use xrf_material::{XrayReducedTextures, XraySurfaceDescriptor};
 use xrf_particles::{ParticleCollider, ParticleEngineRules};
 use xrf_renderer::{
-  RenderAssetSource, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn,
-  RenderLoadFailure, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
+  LevelPart, LevelParts, RenderAssetSource, RenderLevelDetails, RenderLevelHelpers, RenderLevelParticles,
+  RenderLevelSource, RenderLevelSpawn, RenderLoadFailure, RenderSpawnLighting, RenderSpawnModel, RenderSpawnModels,
 };
 use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, SectorAttributes, SectorPackage, SectorPacker, VisualPoser};
-use xrf_world::{WorldLevelReload, WorldLevelSource, WorldLevelWeather};
+use xrf_world::{WorldLevelSource, WorldLevelWeather};
 
 use crate::level::SelectedLevel;
 use crate::objects::LevelObjectsDescription;
@@ -150,33 +150,45 @@ impl LevelRenderSource {
   /// for any of them, or recorded what it read as one of them. The sectors stream afresh instead, on their geometry or
   /// surfaces (`VIEW_PARTS`); the graph feeds nothing drawn, the map and the textures' list are the page's, and
   /// the start only matters where a viewer first stands.
-  pub fn to_reload(stale_parts: &[&str]) -> WorldLevelReload {
-    let is_stale = |parts: &[&str]| stale_parts.iter().any(|part| parts.contains(part));
+  pub fn to_reload(stale_parts: &[&str]) -> LevelParts {
+    LevelPart::ALL
+      .into_iter()
+      .filter(|part| {
+        Self::list_read_from(*part)
+          .iter()
+          .any(|read| stale_parts.contains(read))
+      })
+      .collect()
+  }
 
-    WorldLevelReload {
-      is_spawn: is_stale(&[
+  /// The session parts the renderer's read of `part` is built from. The sectors stream afresh on theirs instead
+  /// (`VIEW_PARTS`), and the helpers are read again with the spawn.
+  fn list_read_from(part: LevelPart) -> &'static [&'static str] {
+    match part {
+      LevelPart::Spawn => &[
         LevelSpawnPart::NAME,
         LevelSpawnVisualsPart::NAME,
         LevelCollisionPart::NAME,
         LevelHemiPart::NAME,
-      ]),
-      is_lights: is_stale(&[
+      ],
+      LevelPart::Lights => &[
         LevelSpawnPart::NAME,
         LevelSpawnVisualsPart::NAME,
         LevelSectionsPart::NAME,
         LevelLightsPart::NAME,
-      ]),
-      is_particles: is_stale(&[
+      ],
+      LevelPart::Particles => &[
         LevelSpawnPart::NAME,
         LevelSectionsPart::NAME,
         LevelEnvironmentPart::NAME,
         LevelCollisionPart::NAME,
         LevelHemiPart::NAME,
         LevelParticlesPart::NAME,
-      ]),
-      is_weather: is_stale(&[LevelEnvironmentPart::NAME, LevelWeatherPart::NAME]),
-      is_motions: is_stale(&[LevelObjectMotionsPart::NAME]),
-      is_grass: is_stale(&[LevelDetailsPart::NAME]),
+      ],
+      LevelPart::Weather => &[LevelEnvironmentPart::NAME, LevelWeatherPart::NAME],
+      LevelPart::Motions => &[LevelObjectMotionsPart::NAME],
+      LevelPart::Grass => &[LevelDetailsPart::NAME],
+      LevelPart::Sectors | LevelPart::Helpers => &[],
     }
   }
 

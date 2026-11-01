@@ -6,12 +6,11 @@ use glam::{Mat4, Vec3};
 use xrf_engine_target::XrayEngine;
 use xrf_particles::ParticleLibrary;
 use xrf_renderer::{
-  AmbientGust, ParticleEmitterProxy, PlacedEffect, RenderLevelParticles, RenderParticleDefinitions,
-  RenderParticleSource, RenderSceneUpdate, RenderWorkers, ZONE_FAST_DISTANCE,
+  AmbientGust, LevelParts, ParticleEmitterProxy, PlacedEffect, RenderLevelPart, RenderLevelParticles,
+  RenderParticleDefinitions, RenderParticleSource, RenderSceneUpdate, RenderWorkers, ZONE_FAST_DISTANCE,
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
 
-use crate::contract::level::world_level_reload::WorldLevelReload;
 use crate::contract::weather::world_ambient_report::WorldAmbientReport;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::ambient::ambient_systems::AmbientSystems;
@@ -105,7 +104,7 @@ impl LevelEffects {
 
   /// Reads its object motions from `source`, a next source of the same level, from now on, every one read again where
   /// `reload` names them.
-  pub fn follow_motions(&mut self, source: &Arc<dyn WorldLevelSource>, reload: WorldLevelReload) {
+  pub fn follow_motions(&mut self, source: &Arc<dyn WorldLevelSource>, reload: LevelParts) {
     self.motions.follow(source, reload);
   }
 
@@ -243,12 +242,14 @@ impl LevelEffects {
       hemi,
     } = read;
 
-    updates.push(RenderSceneUpdate::SetParticles(RenderParticleDefinitions {
-      library: Arc::clone(&library),
-      rules,
-      surfaces,
-      collider,
-    }));
+    updates.push(RenderSceneUpdate::SetPart(RenderLevelPart::Particles(
+      RenderParticleDefinitions {
+        library: Arc::clone(&library),
+        rules,
+        surfaces,
+        collider,
+      },
+    )));
 
     let placed: Vec<PlacedEmitter> = placements
       .into_iter()

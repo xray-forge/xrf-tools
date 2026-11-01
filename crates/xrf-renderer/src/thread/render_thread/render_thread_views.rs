@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -61,7 +60,7 @@ struct DrawnView {
 impl RenderThread {
   /// Readies each drawn viewport's frame, with the pick it draws and what unprojects that pick's depth, in three phases:
   /// each view prepares from its scene and answers what it asks of it, its scene's driving viewport first, which
-  /// simulates the scene, or the first drawn where that one is not; each scene settles what its views asked; then each
+  /// steps the scene, or the first drawn where that one is not; each scene settles what its views asked; then each
   /// view finishes its frame. Answers the frames and each scene's first view to ready one, which records the scene's
   /// own work.
   pub(super) fn ready_views(
@@ -95,9 +94,8 @@ impl RenderThread {
         .is_some_and(|scene| scene.get_driver() == Some(view.id))
     });
 
-    // Each scene's effects step once a frame by the camera of its first view, which stands for the actor, on the
-    // workers while the views are readied; the scene's settle waits for the step. Its wetness moves on once too, before
-    // any view reads it.
+    // Each scene steps once a frame by its first view, which stands for the actor, before any view reads it; its
+    // effects step on the workers while the views are readied, and its settle waits for them.
     let mut simulated: Vec<RenderSceneId> = Vec::new();
 
     for DrawnView {
@@ -113,8 +111,14 @@ impl RenderThread {
       if !simulated.contains(&scene_id)
         && let Some(scene) = self.scenes.get_mut(&scene_id)
       {
-        scene.start_simulation(&Self::get_camera_view(viewport, rect), viewport.get_options());
-        Self::advance_wetness(scene, &self.viewports);
+        let (lighting, _): (Cow<'_, RenderLighting>, Option<&Arc<RenderLevelWeather>>) =
+          Self::get_view_lighting(viewport.get_options(), viewport.get_world());
+
+        scene.begin_frame(
+          &Self::get_camera_view(viewport, rect),
+          viewport.get_options(),
+          &lighting,
+        );
         simulated.push(scene_id);
       }
     }
@@ -675,17 +679,5 @@ impl RenderThread {
       Some(rig) => (Cow::Owned(RenderLighting::for_asset(rig)), None),
       None => (Cow::Borrowed(&world.lighting), world.weather.as_ref()),
     }
-  }
-
-  /// Moves a scene's wetness on, once a frame, by its driving viewport's rain on the scene's clock; every view of the
-  /// scene wets its surfaces by it.
-  fn advance_wetness(scene: &mut LevelScene, viewports: &BTreeMap<RenderViewportId, RenderViewport>) {
-    let Some(driver) = scene.get_driver().and_then(|driver| viewports.get(&driver)) else {
-      return;
-    };
-    let (lighting, _): (Cow<'_, RenderLighting>, Option<&Arc<RenderLevelWeather>>) =
-      Self::get_view_lighting(driver.get_options(), driver.get_world());
-
-    scene.advance_wetness(&lighting, &driver.get_options().features.rain);
   }
 }
