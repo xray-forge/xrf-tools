@@ -11,5 +11,5 @@ pub fn render_set_viewport_layout(
   viewport: RenderViewportId,
   layout: RenderViewportLayout,
 ) {
-  renderer.set_layout(viewport, layout);
+  renderer.set_viewport_layout(viewport, layout);
 }

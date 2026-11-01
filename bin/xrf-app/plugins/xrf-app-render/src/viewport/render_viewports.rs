@@ -3,7 +3,8 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use tauri::ipc::Channel;
-use xrf_renderer::{RenderQueue, RenderViewportId, RenderWait, RenderWindowHost};
+use xrf_app_core::TauriResult;
+use xrf_renderer::{RenderViewportId, RenderWait, RenderWindowHost};
 
 use crate::viewport::channel_event_sink::ChannelEventSink;
 use crate::viewport::viewport_windows::ViewportWindows;
@@ -42,20 +43,26 @@ impl RenderViewports {
   }
 
   /// Starts drawing a viewport into a window, named by its label, telling its page through `events` what the renderer
-  /// and the world say of it; none once every viewport number was handed.
+  /// and the world say of it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error once every viewport number was handed.
   pub fn attach(
     &self,
     window: &str,
     host: Arc<dyn RenderWindowHost>,
     events: Channel<ViewportEvent>,
-  ) -> Option<RenderViewportId> {
+  ) -> TauriResult<RenderViewportId> {
     let Some(viewport) = self
       .renderer
       .attach_viewport(host, Box::new(ChannelEventSink::new(events.clone())))
     else {
-      log::error!("No native viewport number is left to attach one to window '{window}'");
+      let error: String = format!("No native viewport number is left to attach one to window '{window}'");
 
-      return None;
+      log::error!("{error}");
+
+      return Err(error);
     };
 
     self
@@ -65,9 +72,9 @@ impl RenderViewports {
 
     self.lock_windows().insert(viewport, window);
 
-    log::info!("Attached native viewport {} to window '{window}'", viewport.0);
+    log::info!("Attached native viewport {viewport} to window '{window}'");
 
-    Some(viewport)
+    Ok(viewport)
   }
 
   /// Stops drawing a viewport its page let go.
@@ -75,8 +82,8 @@ impl RenderViewports {
     let window: Option<String> = self.lock_windows().remove(viewport);
 
     match window {
-      Some(window) => log::info!("Detached native viewport {} from window '{window}'", viewport.0),
-      None => log::info!("Detached native viewport {}, which no window held", viewport.0),
+      Some(window) => log::info!("Detached native viewport {viewport} from window '{window}'"),
+      None => log::info!("Detached native viewport {viewport}, which no window held"),
     }
 
     self.release(viewport);
@@ -88,10 +95,7 @@ impl RenderViewports {
     let viewports: Vec<RenderViewportId> = self.lock_windows().take_window(window);
 
     for viewport in &viewports {
-      log::info!(
-        "Detached native viewport {} from window '{window}', whose page went",
-        viewport.0
-      );
+      log::info!("Detached native viewport {viewport} from window '{window}', whose page went");
 
       self.release(*viewport);
     }
@@ -119,13 +123,13 @@ impl RenderViewports {
       closing.insert(window.to_owned());
     }
 
-    let queue: RenderQueue = self.renderer.get_queue();
+    let renderer: Renderer = self.renderer.clone();
     let closing: Arc<Mutex<HashSet<String>>> = Arc::clone(&self.closing);
     let label: String = window.to_owned();
     let held = std::thread::Builder::new()
       .name("xrf-window-close".into())
       .spawn(move || {
-        Self::await_release(&queue, &label, Duration::MAX);
+        Self::await_release(&renderer, &label, Duration::MAX);
         closing.lock().unwrap_or_else(PoisonError::into_inner).remove(&label);
         destroy();
       });
@@ -136,7 +140,7 @@ impl RenderViewports {
         log::error!("Window '{window}' cannot wait for the renderer off the event loop, so waits on it: {error}");
         self.lock_closing().remove(window);
         // Bounded, since the event loop is what waits: past it the window goes whether the renderer let go or not.
-        Self::await_release(&self.renderer.get_queue(), window, Self::CLOSE_WARNING);
+        Self::await_release(&self.renderer, window, Self::CLOSE_WARNING);
 
         false
       }
@@ -179,15 +183,15 @@ impl RenderViewports {
 
   /// Waits until the render thread handled every detach sent before, `CLOSE_WARNING` and then `limit` more, saying so
   /// once it takes longer than a frame should.
-  fn await_release(queue: &RenderQueue, window: &str, limit: Duration) {
-    let mut wait: RenderWait = queue.wait_handled(Self::CLOSE_WARNING);
+  fn await_release(renderer: &Renderer, window: &str, limit: Duration) {
+    let mut wait: RenderWait = renderer.wait_handled(Self::CLOSE_WARNING);
 
     if wait == RenderWait::TimedOut {
       log::warn!(
         "Window '{window}' is held open until the renderer lets go of it, which takes over {} ms",
         Self::CLOSE_WARNING.as_millis()
       );
-      wait = queue.wait_handled(limit);
+      wait = renderer.wait_handled(limit);
     }
 
     match wait {

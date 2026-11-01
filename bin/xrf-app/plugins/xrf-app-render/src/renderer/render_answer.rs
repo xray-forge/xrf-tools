@@ -37,16 +37,11 @@ impl RenderAnswer {
   /// # Errors
   ///
   /// Returns an error naming the viewport and `what` when nothing is answered in time or the reply was let go.
-  pub async fn await_viewport<T: Send + 'static>(
+  pub(super) async fn await_viewport<T: Send + 'static>(
     answer: Receiver<T>,
     viewport: RenderViewportId,
     what: &str,
   ) -> TauriResult<T> {
-    Self::await_answer(
-      answer,
-      Self::TIMEOUT,
-      format!("Viewport {} answered no {what}", viewport.0),
-    )
-    .await
+    Self::await_answer(answer, Self::TIMEOUT, format!("Viewport {viewport} answered no {what}")).await
   }
 }

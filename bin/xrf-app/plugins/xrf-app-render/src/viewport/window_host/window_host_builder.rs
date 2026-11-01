@@ -1,12 +1,13 @@
 use std::num::NonZeroIsize;
 use std::sync::Arc;
 
+use xrf_app_core::TauriResult;
 use xrf_renderer::RenderWindowHost;
 
 #[cfg(target_os = "macos")]
-use crate::window_host::macos_window_host::MacosWindowHost;
+use crate::viewport::window_host::macos_window_host::MacosWindowHost;
 #[cfg(windows)]
-use crate::window_host::win32_window_host::Win32WindowHost;
+use crate::viewport::window_host::win32_window_host::Win32WindowHost;
 
 /// Builds the host viewports draw into from a window's native handle, as `WindowHandles` recorded it: one host for each
 /// platform the renderer presents on.
@@ -26,7 +27,7 @@ impl WindowHostBuilder {
   ///
   /// Never on Windows; the signature is every platform's.
   #[cfg(windows)]
-  pub fn build(self) -> Result<Arc<dyn RenderWindowHost>, String> {
+  pub fn build(self) -> TauriResult<Arc<dyn RenderWindowHost>> {
     Ok(Arc::new(Win32WindowHost::new(self.handle)))
   }
 
@@ -36,7 +37,7 @@ impl WindowHostBuilder {
   ///
   /// Returns why the window cannot be drawn in, as `MacosWindowHost::attach` does.
   #[cfg(target_os = "macos")]
-  pub fn build(self) -> Result<Arc<dyn RenderWindowHost>, String> {
+  pub fn build(self) -> TauriResult<Arc<dyn RenderWindowHost>> {
     Ok(Arc::new(MacosWindowHost::attach(self.handle)?))
   }
 
@@ -46,7 +47,7 @@ impl WindowHostBuilder {
   ///
   /// Always.
   #[cfg(not(any(windows, target_os = "macos")))]
-  pub fn build(self) -> Result<Arc<dyn RenderWindowHost>, String> {
+  pub fn build(self) -> TauriResult<Arc<dyn RenderWindowHost>> {
     // todo: Host native viewports on Linux, where the webview's window composes differently.
     Err("Native viewports are drawn on Windows and macOS only".to_string())
   }

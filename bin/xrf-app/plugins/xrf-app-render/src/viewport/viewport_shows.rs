@@ -45,7 +45,7 @@ impl ViewportShows {
     if tickets.get(&viewport) == Some(&ticket) {
       self.world.lock().show_level(viewport, source)
     } else {
-      log::info!("Native viewport {} was asked to show something newer", viewport.0);
+      log::info!("Native viewport {viewport} was asked to show something newer");
 
       None
     }

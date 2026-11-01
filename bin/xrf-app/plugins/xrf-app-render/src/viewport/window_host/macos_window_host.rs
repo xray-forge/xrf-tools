@@ -6,6 +6,7 @@ use objc2::runtime::NSObjectProtocol;
 use objc2::{ClassType, MainThreadMarker, MainThreadOnly, define_class, msg_send};
 use objc2_app_kit::{NSAutoresizingMaskOptions, NSView, NSWindow, NSWindowOcclusionState, NSWindowOrderingMode};
 use objc2_quartz_core::{CALayer, CAMetalLayer};
+use xrf_app_core::TauriResult;
 use xrf_renderer::{RenderWindowHost, SurfaceTargetUnsafe};
 
 define_class!(
@@ -65,7 +66,7 @@ impl MacosWindowHost {
   ///
   /// Returns an error off the main thread, where AppKit cannot be touched (Tauri runs a synchronous command on it), and
   /// for a window with no content view.
-  pub fn attach(window: NonZeroIsize) -> Result<Self, String> {
+  pub fn attach(window: NonZeroIsize) -> TauriResult<Self> {
     let marker: MainThreadMarker =
       MainThreadMarker::new().ok_or_else(|| "A native viewport attaches on the main thread only".to_string())?;
     // SAFETY: the handle is the `NSWindow` the window registered when built and forgets when destroyed, read on the main

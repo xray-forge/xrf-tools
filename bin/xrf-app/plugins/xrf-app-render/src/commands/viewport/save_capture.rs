@@ -20,7 +20,7 @@ pub async fn render_save_capture(
     &execution,
     renderer.capture_viewport(viewport),
     path,
-    format!("Viewport {} drew no frame to capture", viewport.0),
+    format!("Viewport {viewport} drew no frame to capture"),
   )
   .await
 }

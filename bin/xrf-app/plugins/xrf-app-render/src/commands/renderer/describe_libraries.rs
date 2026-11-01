@@ -7,5 +7,5 @@ use crate::Renderer;
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "describe_libraries")]
 pub fn render_describe_libraries(renderer: State<'_, Renderer>) -> RenderLibraries {
-  renderer.get_queue().describe_libraries()
+  renderer.describe_libraries()
 }

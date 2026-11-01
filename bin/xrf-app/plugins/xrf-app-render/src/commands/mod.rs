@@ -1,29 +1,9 @@
-pub(crate) mod attach_viewport;
-pub(crate) mod command_camera;
-pub(crate) mod configure;
-pub(crate) mod describe_frame;
-pub(crate) mod describe_libraries;
-pub(crate) mod describe_load;
-pub(crate) mod describe_problems;
-pub(crate) mod describe_texture_loads;
-pub(crate) mod detach_viewport;
-pub(crate) mod list_backends;
-pub(crate) mod locate_spawn_object;
-pub(crate) mod mark_profile;
-pub(crate) mod measure_surfaces;
-pub(crate) mod pick;
-pub(crate) mod play_ambient_effect;
-pub(crate) mod play_weather;
-pub(crate) mod play_weather_effect;
-pub(crate) mod pose_model;
-pub(crate) mod save_capture;
-pub(crate) mod seek_weather;
-pub(crate) mod send_input;
-pub(crate) mod set_camera;
-pub(crate) mod set_overlays;
-pub(crate) mod set_selection;
-pub(crate) mod set_view_options;
-pub(crate) mod set_viewport_layout;
-pub(crate) mod set_weather_control;
-pub(crate) mod set_world_toggles;
-pub(crate) mod step_clock;
+//! The `render` domain's commands, by what they address: a viewport's place, how it draws, the renderer as a whole,
+//! what is asked of it, its camera and the world it draws.
+
+pub(crate) mod camera;
+pub(crate) mod queries;
+pub(crate) mod renderer;
+pub(crate) mod view;
+pub(crate) mod viewport;
+pub(crate) mod world;

@@ -3,16 +3,20 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::Duration;
 
+use xrf_app_core::TauriResult;
 use xrf_error::XrfResult;
 use xrf_renderer::{
   BurstEvent, CaptureEvent, RenderBurst, RenderCapture, RenderCommand, RenderCubeCapture, RenderEventSink,
-  RenderFrameReport, RenderLoadReport, RenderMapCapture, RenderMemoryReport, RenderOverlay, RenderPick, RenderQueue,
-  RenderScreenshot, RenderSelection, RenderSettings, RenderTextureReport, RenderViewOptions, RenderViewportId,
-  RenderViewportLayout, RenderWait, RenderWindowHost,
+  RenderFrameReport, RenderLevelHit, RenderLibraries, RenderLoadReport, RenderMapCapture, RenderMemoryReport,
+  RenderOverlay, RenderPick, RenderQueue, RenderScreenshot, RenderSelection, RenderSettings, RenderTextureReport,
+  RenderViewOptions, RenderViewportId, RenderViewportLayout, RenderWait, RenderWindowHost,
 };
 
+use crate::renderer::{RenderAnswer, RenderPickRequest};
+
 /// The renderer as the application calls it: each call a command on the render thread's queue, numbering the
-/// viewports it attaches and answering a question through a channel of its own. A clone calls the same renderer.
+/// viewports it attaches and answering a question through a channel of its own, a viewport's waited on for
+/// `RenderAnswer::TIMEOUT`. A clone calls the same renderer.
 #[derive(Clone)]
 pub struct Renderer {
   queue: RenderQueue,
@@ -30,8 +34,8 @@ impl Renderer {
   }
 
   /// Starts drawing a viewport into a window, answering the number every later call names it by; none once every
-  /// number was handed, since a number is never handed twice.
-  pub fn attach_viewport(
+  /// number was handed, since a number is never handed twice. `RenderViewports` attaches the world with it.
+  pub(crate) fn attach_viewport(
     &self,
     host: Arc<dyn RenderWindowHost>,
     sink: Box<dyn RenderEventSink>,
@@ -47,13 +51,14 @@ impl Renderer {
     Some(id)
   }
 
-  /// Stops drawing a viewport, letting go of its swapchain on the render thread.
-  pub fn detach_viewport(&self, id: RenderViewportId) {
+  /// Stops drawing a viewport, letting go of its swapchain on the render thread. `RenderViewports` detaches the world
+  /// and its shows with it.
+  pub(crate) fn detach_viewport(&self, id: RenderViewportId) {
     self.queue.send(RenderCommand::Detach { id });
   }
 
   /// Waits up to `wait` until the render thread handled every command sent before.
-  pub fn wait_handled(&self, wait: Duration) -> RenderWait {
+  pub(crate) fn wait_handled(&self, wait: Duration) -> RenderWait {
     self.queue.wait_handled(wait)
   }
 
@@ -63,38 +68,66 @@ impl Renderer {
   }
 
   /// Places a viewport within its window and sizes it.
-  pub fn set_layout(&self, id: RenderViewportId, layout: RenderViewportLayout) {
+  pub fn set_viewport_layout(&self, id: RenderViewportId, layout: RenderViewportLayout) {
     self.queue.send(RenderCommand::Layout { id, layout });
   }
 
-  /// What a viewport's level draws under a point, css pixels from its corner, answered after its next frame; a viewport
-  /// the renderer does not draw, or one showing nothing, answers no hit at once. `is_through` passes glass by.
-  pub fn pick(&self, id: RenderViewportId, x: f32, y: f32, is_through: bool) -> Receiver<XrfResult<RenderPick>> {
-    self.ask(|reply| RenderCommand::Pick {
+  /// What a viewport's level draws under the point `request` names, answered after its next frame; a viewport the
+  /// renderer does not draw, or one showing nothing, answers no hit at once.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the viewport answers no pick in time, or the pick failed.
+  pub async fn pick(&self, id: RenderViewportId, request: RenderPickRequest) -> TauriResult<Option<RenderLevelHit>> {
+    let RenderPickRequest { x, y, is_through } = request;
+    let answer: Receiver<XrfResult<RenderPick>> = self.ask(|reply| RenderCommand::Pick {
       id,
       x,
       y,
       is_through,
       reply,
-    })
+    });
+
+    RenderAnswer::await_viewport(answer, id, "pick")
+      .await?
+      .map(|pick| pick.hit)
+      .map_err(|error| error.to_string())
   }
 
   /// What became of every texture a viewport's level samples, answered at once.
-  pub fn describe_texture_loads(&self, id: RenderViewportId) -> Receiver<Vec<RenderTextureReport>> {
-    self.ask(|reply| RenderCommand::DescribeTextures { id, reply })
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the viewport answers nothing in time.
+  pub async fn describe_texture_loads(&self, id: RenderViewportId) -> TauriResult<Vec<RenderTextureReport>> {
+    let answer: Receiver<Vec<RenderTextureReport>> = self.ask(|reply| RenderCommand::DescribeTextures { id, reply });
+
+    RenderAnswer::await_viewport(answer, id, "texture loads").await
   }
 
   /// How far the level a viewport was last asked to show has loaded, answered at once, for a caller polling rather than
   /// listening: its `Load` events report the level drawn, which is still the one before while another loads. None
   /// before that level's view is made, or where it shows no level.
-  pub fn describe_load(&self, id: RenderViewportId) -> Receiver<Option<RenderLoadReport>> {
-    self.ask(|reply| RenderCommand::DescribeLoad { id, reply })
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the viewport answers nothing in time.
+  pub async fn describe_load(&self, id: RenderViewportId) -> TauriResult<Option<RenderLoadReport>> {
+    let answer: Receiver<Option<RenderLoadReport>> = self.ask(|reply| RenderCommand::DescribeLoad { id, reply });
+
+    RenderAnswer::await_viewport(answer, id, "load").await
   }
 
   /// What a viewport's frames cost when it last reported them, answered at once: what its `Frame` events report, for a
   /// caller polling rather than listening. None before its first report.
-  pub fn describe_frame(&self, id: RenderViewportId) -> Receiver<Option<RenderFrameReport>> {
-    self.ask(|reply| RenderCommand::DescribeFrame { id, reply })
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the viewport answers nothing in time.
+  pub async fn describe_frame(&self, id: RenderViewportId) -> TauriResult<Option<RenderFrameReport>> {
+    let answer: Receiver<Option<RenderFrameReport>> = self.ask(|reply| RenderCommand::DescribeFrame { id, reply });
+
+    RenderAnswer::await_viewport(answer, id, "frame").await
   }
 
   /// What the renderer holds on the GPU and what the GPU's own memory holds of the process, answered at once; the reply
@@ -103,10 +136,21 @@ impl Renderer {
     self.ask(|reply| RenderCommand::DescribeMemory { reply })
   }
 
+  /// The graphics libraries the renderer ships with.
+  pub fn describe_libraries(&self) -> RenderLibraries {
+    self.queue.describe_libraries()
+  }
+
   /// A spawned object's bounding sphere in renderer space, centre then radius, answered at once; none until its model
   /// is in the scene.
-  pub fn locate_spawn_object(&self, id: RenderViewportId, object: u32) -> Receiver<Option<[f32; 4]>> {
-    self.ask(|reply| RenderCommand::LocateSpawnObject { id, object, reply })
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the viewport answers nothing in time.
+  pub async fn locate_spawn_object(&self, id: RenderViewportId, object: u32) -> TauriResult<Option<[f32; 4]>> {
+    let answer: Receiver<Option<[f32; 4]>> = self.ask(|reply| RenderCommand::LocateSpawnObject { id, object, reply });
+
+    RenderAnswer::await_viewport(answer, id, "location").await
   }
 
   /// A viewport's next presented frame, read back; the reply is let go unanswered for a viewport the renderer does not
@@ -127,30 +171,18 @@ impl Renderer {
 
   /// Captures a level map in a viewport, answering what it tells as it goes; dropping the answer stops it.
   pub fn capture_map(&self, id: RenderViewportId, capture: RenderMapCapture) -> Receiver<CaptureEvent> {
-    let (events, receiver): (Sender<CaptureEvent>, Receiver<CaptureEvent>) = channel();
-
-    self.queue.send(RenderCommand::CaptureMap { id, capture, events });
-
-    receiver
+    self.ask(|events| RenderCommand::CaptureMap { id, capture, events })
   }
 
   /// Captures a cubemap around a viewport's camera, answering what it tells as it goes; dropping the answer stops it.
   pub fn capture_cube(&self, id: RenderViewportId, capture: RenderCubeCapture) -> Receiver<CaptureEvent> {
-    let (events, receiver): (Sender<CaptureEvent>, Receiver<CaptureEvent>) = channel();
-
-    self.queue.send(RenderCommand::CaptureCube { id, capture, events });
-
-    receiver
+    self.ask(|events| RenderCommand::CaptureCube { id, capture, events })
   }
 
   /// Draws a burst of frames in a viewport through its own view, answering each frame as it comes back; dropping the
   /// answer stops it.
   pub fn capture_burst(&self, id: RenderViewportId, burst: RenderBurst) -> Receiver<BurstEvent> {
-    let (events, receiver): (Sender<BurstEvent>, Receiver<BurstEvent>) = channel();
-
-    self.queue.send(RenderCommand::CaptureBurst { id, burst, events });
-
-    receiver
+    self.ask(|events| RenderCommand::CaptureBurst { id, burst, events })
   }
 
   /// Draws every scene's frames `step` apart on its clock from the next on; none at the time each is drawn.
@@ -185,7 +217,7 @@ impl Renderer {
   }
 
   /// The way to the render thread, for what tells it things from a thread of its own.
-  pub fn get_queue(&self) -> RenderQueue {
+  pub(crate) fn get_queue(&self) -> RenderQueue {
     self.queue.clone()
   }
 

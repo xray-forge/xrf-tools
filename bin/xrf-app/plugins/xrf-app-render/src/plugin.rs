@@ -9,7 +9,7 @@ use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::window::{WindowCloseApprovals, WindowHandles};
 use xrf_renderer::{RenderQueue, RenderWorkers};
 
-use crate::bundle::{DiskCacheStore, PackagedBundle};
+use crate::renderer::{DiskCacheStore, PackagedBundle};
 use crate::{RenderViewports, Renderer, TextureReloads, ViewportShows, WorldState};
 
 /// The `render` plugin: the native renderer (`Renderer`, its loaders on the application's pool, its bundle and the
