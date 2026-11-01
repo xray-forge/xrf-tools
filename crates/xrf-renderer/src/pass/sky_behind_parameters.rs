@@ -1,6 +1,6 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, UniformBinding};
 
-use crate::pass::exposure_head::ExposureHead;
+use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::pass::lighting_uniform::LightingUniform;
 
 /// What the sky behind the fog is drawn from: the frame's lighting and exposure, the haze map, and the frame's depth,

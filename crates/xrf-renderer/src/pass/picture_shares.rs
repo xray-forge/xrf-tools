@@ -2,10 +2,10 @@ use glam::Vec4;
 
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::feature::image::exposure::histogram::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
 use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::pass::lighting_frame::LightingFrame;
 
 /// The share of the frame's exposure the game's pictures (the sky, the clouds, the fog's colour) are shown at, so they

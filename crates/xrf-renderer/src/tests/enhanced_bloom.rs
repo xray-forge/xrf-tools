@@ -6,10 +6,10 @@ use crate::contract::render_bloom_mode::RenderBloomMode;
 use crate::contract::render_enhanced_bloom_settings::RenderEnhancedBloomSettings;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_view_options::RenderViewOptions;
-use crate::pass::enhanced_bloom_pass::EnhancedBloomPass;
-use crate::pass::enhanced_bloom_uniform::EnhancedBloomUniform;
-use crate::pass::present_frame::PresentFrame;
-use crate::pass::present_uniform::PresentUniform;
+use crate::feature::image::bloom::enhanced::enhanced_bloom_pass::EnhancedBloomPass;
+use crate::feature::image::bloom::enhanced::enhanced_bloom_uniform::EnhancedBloomUniform;
+use crate::feature::image::present::present_frame::PresentFrame;
+use crate::feature::image::present::present_uniform::PresentUniform;
 
 fn enhanced() -> RenderEnhancedBloomSettings {
   RenderEnhancedBloomSettings {

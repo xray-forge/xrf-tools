@@ -6,8 +6,8 @@ use crate::contract::render_debanding_mode::RenderDebandingMode;
 use crate::contract::render_debanding_settings::RenderDebandingSettings;
 use crate::contract::render_image_corrections::RenderImageCorrections;
 use crate::contract::render_view_options::RenderViewOptions;
-use crate::pass::present_frame::PresentFrame;
-use crate::pass::present_uniform::PresentUniform;
+use crate::feature::image::present::present_frame::PresentFrame;
+use crate::feature::image::present::present_uniform::PresentUniform;
 
 fn enhanced() -> RenderDebandingSettings {
   RenderDebandingSettings {

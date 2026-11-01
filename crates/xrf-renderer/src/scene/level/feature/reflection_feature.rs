@@ -5,6 +5,7 @@ use xrf_renderer_core::{
 
 use crate::context::gpu_requirements::can_trace;
 use crate::contract::render_reflection_settings::RenderReflectionSettings;
+use crate::feature::image::resolve::resolve_decisions::ResolveDecisions;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::frame_texture::FrameTexture;
 use crate::frame::stats_readback::StatsReadback;
@@ -31,7 +32,6 @@ use crate::scene::level::feature::reflection_frame::ReflectionFrame;
 use crate::scene::level::feature::reflection_frame_handles::ReflectionFrameHandles;
 use crate::scene::level::feature::reflection_history::ReflectionHistory;
 use crate::scene::level::feature::reflection_source::ReflectionSource;
-use crate::scene::level::feature::resolve_decisions::ResolveDecisions;
 use crate::scene::level::feature::traced_scene::TracedScene;
 use crate::scene::level::feature::view_feature::ViewFeature;
 use crate::scene::level::feature::view_frame_end::ViewFrameEnd;

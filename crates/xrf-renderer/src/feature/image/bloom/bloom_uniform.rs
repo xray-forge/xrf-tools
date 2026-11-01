@@ -1,0 +1,67 @@
+use glam::Vec4;
+use xrf_renderer_core::ShaderStruct;
+
+use crate::feature::image::bloom::bloom_filter::BloomFilter;
+use crate::frame::view_targets::ViewTargets;
+
+/// Taps each way of `bloom_filter.ps`, beside its centre.
+const TAPS: usize = 7;
+
+/// What the bloom reads, as WGSL's `Bloom`: one for the build and one for each way the bloom is blurred.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "Bloom")]
+pub struct BloomUniform {
+  /// The build: the threshold in `z`. A filter: one texel of the target along its way, then one where only the side
+  /// behind is read.
+  pub params: Vec4,
+  /// `CalcGauss_wave`'s weights: the taps one to four out, then five to seven out and the centre.
+  pub weights: [Vec4; 2],
+}
+
+impl BloomUniform {
+  /// `bloom_build.ps`, losing `threshold` of the summed brightness.
+  pub fn build(threshold: f32) -> Self {
+    Self {
+      params: Vec4::new(0.0, 0.0, threshold, 0.0),
+      weights: [Vec4::ZERO; 2],
+    }
+  }
+
+  /// `bloom_filter.ps` across the target, its radius `kernel_g` texels: the same radius down, by the frame's height
+  /// over its width, as the engine blurs it.
+  pub fn filter(filter: BloomFilter) -> Self {
+    let (width, height) = ViewTargets::BLOOM_SIZE;
+    let (along, radius): ([f32; 2], f32) = if filter.is_across {
+      ([1.0 / width as f32, 0.0], filter.radius)
+    } else {
+      ([0.0, 1.0 / height as f32], filter.radius * filter.aspect)
+    };
+
+    Self {
+      params: Vec4::new(along[0], along[1], f32::from(u8::from(filter.is_one_sided)), 0.0),
+      weights: Self::get_wave(radius, filter.strength),
+    }
+  }
+
+  /// `CalcGauss_wave`: two kernels added, one of the radius and one of a third of it, each of the strength.
+  pub fn get_wave(radius: f32, strength: f32) -> [Vec4; 2] {
+    let [base, detail] = [radius, radius / 3.0].map(|it| Self::get_kernel(it, strength));
+    let weights: Vec<f32> = (0..=TAPS).map(|tap| base[tap] + detail[tap]).collect();
+
+    [
+      Vec4::new(weights[1], weights[2], weights[3], weights[4]),
+      Vec4::new(weights[5], weights[6], weights[7], weights[0]),
+    ]
+  }
+
+  /// `CalcGauss_k7`: the centre and seven taps out of a Gaussian of a radius, all fifteen summing to the strength.
+  fn get_kernel(radius: f32, strength: f32) -> [f32; TAPS + 1] {
+    // The console holds the radius at one or more; nothing below a hundredth reaches the division.
+    let radius: f32 = radius.max(0.01);
+    let weights: [f32; TAPS + 1] = std::array::from_fn(|tap| (-((tap * tap) as f32) / (2.0 * radius * radius)).exp());
+    let total: f32 = weights[0] + 2.0 * weights[1..].iter().sum::<f32>();
+
+    weights.map(|weight| strength * weight / total)
+  }
+}

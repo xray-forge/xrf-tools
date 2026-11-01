@@ -1,6 +1,6 @@
 use xrf_renderer_core::{PassParameters, StorageValue, UniformBinding};
 
-use crate::pass::exposure_head::ExposureHead;
+use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::pass::lighting_uniform::LightingUniform;
 
 /// What the haze map's sky reads beside the sky: the frame's lighting and exposure.

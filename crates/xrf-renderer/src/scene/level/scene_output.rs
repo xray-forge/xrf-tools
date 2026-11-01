@@ -1,8 +1,8 @@
 use xrf_renderer_core::{GraphTexture, UniformBinding};
 
+use crate::feature::image::present::present_uniform::PresentUniform;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::present_uniform::PresentUniform;
 
 /// What a view's frame leaves for its window's composition: its targets as the frame's graph imported them, its
 /// finished frame and the image it shows, and its present and lighting uniforms as the frame pushed them.

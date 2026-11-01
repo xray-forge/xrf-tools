@@ -13,6 +13,12 @@ use crate::contract::render_light_scales::RenderLightScales;
 use crate::contract::render_rect::RenderRect;
 use crate::contract::render_tonemap_mode::RenderTonemapMode;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::feature::image::exposure::exposure_step::ExposureStep;
+use crate::feature::image::exposure::exposure_uniform::ExposureUniform;
+use crate::feature::image::exposure::histogram::exposure_histogram_uniform::ExposureHistogramUniform;
+use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
+use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
+use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::lighting::daylight::Daylight;
 use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
@@ -20,15 +26,9 @@ use crate::lighting::light_units::LightUnits;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::{anchored_light, authored_colour, authored_light, srgb_decoded, srgb_encoded};
 use crate::pass::camera_uniform::CameraUniform;
-use crate::pass::display_mode::DisplayMode;
-use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
-use crate::pass::exposure_metering::ExposureMetering;
-use crate::pass::exposure_step::ExposureStep;
-use crate::pass::exposure_uniform::ExposureUniform;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::picture_shares::PictureShares;
-use crate::pass::pre_exposure::PreExposure;
 use crate::pass::sky_harmonics::SkyHarmonics;
 
 fn physical() -> RenderViewOptions {

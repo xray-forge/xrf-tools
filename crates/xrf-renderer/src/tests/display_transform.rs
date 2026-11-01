@@ -1,14 +1,14 @@
 //! The physical light's display transforms and grading run on the GPU as the present runs them, held to their published
-//! definitions (`pass/display_curves.rs`): Khronos PBR Neutral's reference, three.js's AgX, and the engine's curve; and
+//! definitions (`display_curves`): Khronos PBR Neutral's reference, three.js's AgX, and the engine's curve; and
 //! the transforms' anchors solved from them.
 
 use glam::{Vec3, Vec4};
 
+use crate::feature::image::exposure::histogram::exposure_histogram_uniform::ExposureHistogramUniform;
+use crate::feature::image::present::display::display_curves::{agx, engine_display, get_least_shown, pbr_neutral};
+use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::lighting::luminance::luminance;
 use crate::lighting::srgb::srgb_encoded;
-use crate::pass::display_curves::{agx, engine_display, get_least_shown, pbr_neutral};
-use crate::pass::display_mode::DisplayMode;
-use crate::pass::exposure_histogram_uniform::ExposureHistogramUniform;
 use crate::tests::wgsl_probe::run_wgsl_probe;
 
 /// The grading before a physical transform: luminance to `contrast` in stops about middle grey, colour mixed from it by

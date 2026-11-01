@@ -4,6 +4,7 @@ pub(crate) mod camera;
 pub(crate) mod capture;
 pub(crate) mod context;
 pub(crate) mod contract;
+pub(crate) mod feature;
 pub(crate) mod frame;
 pub(crate) mod host;
 pub(crate) mod lighting;

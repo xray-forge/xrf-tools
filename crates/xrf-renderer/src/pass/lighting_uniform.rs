@@ -7,11 +7,11 @@ use crate::contract::render_ambient_occlusion_settings::RenderAmbientOcclusionSe
 use crate::contract::render_fog_settings::RenderFogSettings;
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_view_options::RenderViewOptions;
+use crate::feature::image::present::display::display_mode::DisplayMode;
 use crate::lighting::light_specular::to_light_specular;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::lighting::srgb::{anchored_light, authored_light};
 use crate::pass::bitmask_search::BitmaskSearch;
-use crate::pass::display_mode::DisplayMode;
 use crate::pass::light_encoding::LightEncoding;
 use crate::pass::lighting_frame::LightingFrame;
 use crate::pass::picture_shares::PictureShares;

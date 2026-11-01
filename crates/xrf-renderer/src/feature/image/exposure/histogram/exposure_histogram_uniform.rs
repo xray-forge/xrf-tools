@@ -1,0 +1,154 @@
+use xrf_renderer_core::ShaderStruct;
+
+use crate::contract::render_exposure_settings::RenderExposureSettings;
+use crate::contract::render_light_level::RenderLightLevel;
+use crate::feature::image::exposure::exposure_step::ExposureStep;
+use crate::feature::image::exposure::exposure_uniform::ExposureUniform;
+use crate::lighting::light_unit::PHYSICAL_LIGHT_UNIT;
+use crate::lighting::srgb::SRGB_DISPLAY_POWER;
+
+/// How the physical light's exposure meters and adapts, as `shaders/frame/exposure_histogram.wgsl` reads it: the log2
+/// luminance the histogram's bins span, the luminance a daylit exterior's average is brought to, how much of a scene's
+/// distance from a daylit exterior it keeps, how far it may move this frame each way, the share of the darkest and the
+/// brightest light the average leaves out, and the scale's bounds; then whether the scale is the engine's own, as at
+/// the authored levels, and the engine's adaptation.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable, ShaderStruct)]
+#[shader(name = "ExposureHistogram")]
+pub struct ExposureHistogramUniform {
+  pub least_log: f32,
+  pub span_log: f32,
+  pub aim: f32,
+  pub reference_log: f32,
+  pub kept_share: f32,
+  /// The log2 luminance the frame's average is never shown under: the dark's limit.
+  pub darkest_log: f32,
+  pub delta: f32,
+  pub brightening: f32,
+  pub darkening: f32,
+  pub low_share: f32,
+  pub high_share: f32,
+  pub least_scale_log: f32,
+  pub most_scale_log: f32,
+  /// One where the scale goes straight to its target, as on the first frame metered.
+  pub snap: f32,
+  /// One where the scale is the engine's own (the authored and anchored levels): the frame read as the engine's meter reads its high
+  /// part, the sky with the land, as the authored levels show the game as the engine model does; an open frame's
+  /// bright sky darkening its ground as the engine's does, which the land's histogram alone left half a stop bright.
+  pub is_engine_metered: f32,
+  /// The engine's adaptation (`ExposureUniform`): its middle gray, the measured luminance's weight, its floor and how
+  /// far this frame moves.
+  pub engine_target: f32,
+  pub engine_weight: f32,
+  pub engine_floor: f32,
+  pub engine_blend: f32,
+  /// The compensation as a factor of the scale, which the engine's step is taken without.
+  pub compensation_scale: f32,
+}
+
+impl ExposureHistogramUniform {
+  /// Bins the frame's log2 luminance is counted in.
+  pub const BINS: u32 = 128;
+  /// The bins' slots after the histogram's: the engine meter's sum and its count.
+  pub const ENGINE_SLOTS: u32 = 2;
+  /// The share of the frame under its bright end, which the display transforms never show brighter than the engine's
+  /// curve does (`DisplayMode::get_lift`): the brightest few of what is lit, a night's moonlit metal over its dark land.
+  pub const BRIGHT_SHARE: f32 = 0.99;
+  /// The luminance the bins span, log2: about 1/16 000 cd/m², under starlight, to 65 000, sunlit snow and past it.
+  pub const LEAST_LOG: f32 = -14.0;
+  pub const MOST_LOG: f32 = 16.0;
+  /// The luminance the compensation's aim stands at: middle grey.
+  pub const MIDDLE_GREY: f32 = 0.18;
+  /// The log2 luminance of a daylit exterior's average as the level meters it, the sky left out (about 510 cd/m²).
+  pub const DAYLIT_LOG: f32 = 9.0;
+  /// The stops under the aim a daylit exterior's average is shown at, as the engine's display shows the game's noon.
+  pub const DAYLIT_STOPS: f32 = -1.21;
+  /// The share of a scene's distance from a daylit exterior it keeps, as the engine's own exposure adapts only a
+  /// little of the way.
+  pub const KEPT_SHARE: f32 = 0.81;
+  /// Stops under the aim the physical light levels show the darkest scene at most, so a moonlit night shows dark but
+  /// readable; the authored levels' dark never reaches it.
+  pub const PHYSICAL_DARKEST_STOPS: f32 = 4.0;
+  /// Stops a second the scale moves: faster darkening a brighter frame than brightening a darker one, as the eye does,
+  /// and quick enough that a night under the physical levels, eleven stops under noon, settles in about three seconds.
+  pub const DARKENING: f32 = 12.0;
+  pub const BRIGHTENING: f32 = 4.0;
+  /// The darkest and the brightest shares of the frame the average leaves out.
+  pub const LOW_SHARE: f32 = 0.1;
+  pub const HIGH_SHARE: f32 = 0.9;
+  /// The scale's bounds, log2: middle grey shown at about 47 000 cd/m², or at about 1/1 400.
+  pub const LEAST_SCALE_LOG: f32 = -18.0;
+  pub const MOST_SCALE_LOG: f32 = 8.0;
+
+  /// The scale a daylit exterior is shown at, raised by `compensation` stops: the physical light's first, the one it
+  /// holds while it does not adapt.
+  pub fn get_daylight_scale(compensation: f32) -> f32 {
+    (Self::MIDDLE_GREY.log2() + compensation + Self::DAYLIT_STOPS - Self::DAYLIT_LOG).exp2()
+  }
+
+  /// A daylit exterior's average as `scale` exposes it, the key the display transforms' anchors stand at where nothing
+  /// is metered: at `get_daylight_scale`, middle grey `DAYLIT_STOPS` under, raised by the compensation.
+  pub fn get_daylit_key(scale: f32) -> f32 {
+    scale * Self::DAYLIT_LOG.exp2()
+  }
+
+  /// The scale the law exposes a frame whose `land` averages so much (log2 at a scale of one) at, raised by
+  /// `compensation`, as `cs_settle` settles it with no dark's limit: a daylit exterior's average brought `DAYLIT_STOPS`
+  /// under the aim, the frame keeping `KEPT_SHARE` of its distance from it, within the scale's bounds.
+  pub fn get_law_scale(compensation: f32, land: f32) -> f32 {
+    let aim: f32 = Self::MIDDLE_GREY.log2() + compensation + Self::DAYLIT_STOPS;
+    let shown: f32 = aim + Self::KEPT_SHARE * (land - Self::DAYLIT_LOG);
+
+    (shown - land).clamp(Self::LEAST_SCALE_LOG, Self::MOST_SCALE_LOG).exp2()
+  }
+
+  /// The authored levels' scale for the engine's scale `engine`, raised by `compensation`: the authored frame is the
+  /// engine's display values decoded at the light's unit, so the engine's scale is raised to the display's power and
+  /// taken over the unit, as `engine_scale` in `frame/exposure_histogram` brings it back. The unit is the authored
+  /// levels' weather unit (`LightUnits::of`), which the shader reads from the lighting.
+  pub fn get_engine_scale(engine: f32, compensation: f32) -> f32 {
+    engine.powf(SRGB_DISPLAY_POWER) * compensation.exp2() / PHYSICAL_LIGHT_UNIT
+  }
+
+  /// The scale the light's `level` holds where its exposure does not adapt, raised by `compensation`: at the authored
+  /// and anchored levels the engine's, one; at the physical levels a daylit exterior's.
+  pub fn get_held_scale(level: RenderLightLevel, compensation: f32) -> f32 {
+    match level {
+      RenderLightLevel::Authored | RenderLightLevel::Anchored => Self::get_engine_scale(1.0, compensation),
+      RenderLightLevel::Physical => Self::get_daylight_scale(compensation),
+    }
+  }
+
+  /// The metering for a frame at the light's `level`, moved one `step` on: straight to its target where it snaps; at
+  /// the authored and anchored levels the engine's adaptation, moving its blend of the way.
+  pub fn new(settings: &RenderExposureSettings, level: RenderLightLevel, step: ExposureStep) -> Self {
+    let aim: f32 = Self::MIDDLE_GREY.log2() + settings.compensation;
+    let engine: ExposureUniform = ExposureUniform::new(settings, step.engine_blend);
+
+    Self {
+      least_log: Self::LEAST_LOG,
+      span_log: Self::MOST_LOG - Self::LEAST_LOG,
+      aim: (aim + Self::DAYLIT_STOPS).exp2(),
+      reference_log: Self::DAYLIT_LOG,
+      kept_share: Self::KEPT_SHARE,
+      darkest_log: match level {
+        RenderLightLevel::Authored | RenderLightLevel::Anchored => Self::LEAST_LOG,
+        RenderLightLevel::Physical => aim - Self::PHYSICAL_DARKEST_STOPS,
+      },
+      delta: step.delta,
+      brightening: Self::BRIGHTENING,
+      darkening: Self::DARKENING,
+      low_share: Self::LOW_SHARE,
+      high_share: Self::HIGH_SHARE,
+      least_scale_log: Self::LEAST_SCALE_LOG,
+      most_scale_log: Self::MOST_SCALE_LOG,
+      snap: f32::from(u8::from(step.is_snapped)),
+      is_engine_metered: f32::from(u8::from(level != RenderLightLevel::Physical)),
+      engine_target: engine.target_gray,
+      engine_weight: engine.weight,
+      engine_floor: engine.floor_luminance,
+      engine_blend: engine.blend,
+      compensation_scale: settings.compensation.exp2(),
+    }
+  }
+}

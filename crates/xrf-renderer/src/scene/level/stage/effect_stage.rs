@@ -5,12 +5,12 @@ use xrf_renderer_core::GraphDeclaration;
 
 use crate::contract::render_applied_report::RenderAppliedReport;
 use crate::contract::render_meter_reading::RenderMeterReading;
+use crate::feature::image::meter::meter_feature::MeterFeature;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::lighting::render_lighting::RenderLighting;
 use crate::scene::level::feature::flares_feature::FlaresFeature;
 use crate::scene::level::feature::fog_feature::FogFeature;
-use crate::scene::level::feature::meter_feature::MeterFeature;
 use crate::scene::level::feature::shaft_inputs::ShaftInputs;
 use crate::scene::level::feature::sun_shafts_feature::SunShaftsFeature;
 use crate::scene::level::feature::sun_sprite::SunSprite;

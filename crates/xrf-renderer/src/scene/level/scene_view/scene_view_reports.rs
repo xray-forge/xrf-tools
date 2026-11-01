@@ -7,7 +7,7 @@ use crate::contract::render_pool_use::RenderPoolUse;
 use crate::contract::render_static_report::RenderStaticReport;
 use crate::contract::render_trace_size::RenderTraceSize;
 use crate::contract::render_view_options::RenderViewOptions;
-use crate::pass::present_uniform::PresentUniform;
+use crate::feature::image::present::present_uniform::PresentUniform;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::scene_view::SceneView;
 use crate::scene::level::view_reports::ViewReports;

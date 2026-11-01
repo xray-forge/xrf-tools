@@ -5,7 +5,7 @@ use glam::{Mat4, Vec2, Vec4};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_camera_settings::RenderCameraSettings;
-use crate::pass::camera_effects_uniform::CameraEffectsUniform;
+use crate::feature::image::camera::camera_effects_uniform::CameraEffectsUniform;
 use crate::tests::wgsl_probe::run_wgsl_probe;
 
 fn run(answer: &str, cases: &[(Vec4, Vec4)]) -> Option<Vec<Vec4>> {

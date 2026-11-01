@@ -1,6 +1,6 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, StorageValue, StorageValueMut, UniformBinding};
 
-use crate::pass::exposure_head::ExposureHead;
+use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::pass::lighting_uniform::LightingUniform;
 use crate::pass::sky_harmonics::SkyHarmonics;
 

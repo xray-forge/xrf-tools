@@ -5,6 +5,7 @@ use xrf_renderer_core::{
 
 use crate::contract::render_light_level::RenderLightLevel;
 use crate::contract::render_reflection_probe::RenderReflectionProbe;
+use crate::feature::image::exposure::exposure_feature::ExposureFeature;
 use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
@@ -23,7 +24,6 @@ use crate::pass::sky_prefilter_parameters::SkyPrefilterParameters;
 use crate::pass::sky_prefilter_pass::SkyPrefilterPass;
 use crate::pass::sky_prefilter_uniform::SkyPrefilterUniform;
 use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::feature::exposure_feature::ExposureFeature;
 use crate::scene::level::feature::sky_irradiance::SkyIrradiance;
 use crate::scene::level::feature::sky_prefilter::SkyPrefilter;
 use crate::scene::level::feature::sun_sprite::SunSprite;

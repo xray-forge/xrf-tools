@@ -2,8 +2,8 @@ use std::time::Instant;
 
 use crate::contract::render_light_model::RenderLightModel;
 use crate::contract::render_view_options::RenderViewOptions;
-use crate::pass::exposure_head::ExposureHead;
-use crate::scene::level::feature::exposure_feature::ExposureFeature;
+use crate::feature::image::exposure::exposure_feature::ExposureFeature;
+use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::tests::test_context::create_test_context;
 
 /// Puts a head metering `adapted` into the exposure's state and copies it out as a frame does, asking for it back.

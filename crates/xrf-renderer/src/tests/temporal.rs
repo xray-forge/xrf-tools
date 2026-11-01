@@ -3,13 +3,13 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 use crate::camera::camera_view::CameraView;
 use crate::contract::render_antialiasing::RenderAntialiasing;
 use crate::contract::render_view_options::RenderViewOptions;
-use crate::pass::fsr_frame::FsrFrame;
-use crate::pass::fsr_uniform::FsrUniform;
-use crate::pass::pre_exposure::PreExposure;
-use crate::pass::temporal_frame::TemporalFrame;
-use crate::pass::temporal_uniform::TemporalUniform;
-use crate::scene::level::feature::resolve_feature::ResolveFeature;
-use crate::scene::level::feature::temporal_jitter::TemporalJitter;
+use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
+use crate::feature::image::resolve::fsr::fsr_frame::FsrFrame;
+use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
+use crate::feature::image::resolve::resolve_feature::ResolveFeature;
+use crate::feature::image::resolve::temporal::temporal_frame::TemporalFrame;
+use crate::feature::image::resolve::temporal::temporal_uniform::TemporalUniform;
+use crate::feature::image::resolve::temporal_jitter::TemporalJitter;
 
 #[test]
 fn halton_places_samples_as_the_radical_inverse_of_their_index() {

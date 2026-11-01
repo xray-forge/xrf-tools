@@ -2,8 +2,8 @@
 
 use glam::Vec4;
 
-use crate::pass::bloom_filter::BloomFilter;
-use crate::pass::bloom_uniform::BloomUniform;
+use crate::feature::image::bloom::bloom_filter::BloomFilter;
+use crate::feature::image::bloom::bloom_uniform::BloomUniform;
 
 /// All fifteen taps a filter reads: the centre once, every other weight on either side.
 fn get_total(weights: &[Vec4; 2]) -> f32 {

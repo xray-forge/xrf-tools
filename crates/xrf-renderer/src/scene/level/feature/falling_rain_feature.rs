@@ -7,6 +7,7 @@ use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, St
 use crate::contract::render_rain_settings::RenderRainSettings;
 use crate::frame::jitter_guard::JitterGuard;
 
+use crate::feature::image::image_chain::ImageChain;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::host::render_rain::RenderRain;
 use crate::lighting::ambient_gust::AmbientGust;
@@ -17,7 +18,6 @@ use crate::pass::rain_frame::RainFrame;
 use crate::pass::rain_look_parameters::RainLookParameters;
 use crate::pass::rain_parameters::RainParameters;
 use crate::pass::rain_uniform::RainUniform;
-use crate::scene::level::feature::image_chain::ImageChain;
 use crate::scene::level::feature::over_scene::add_over_scene;
 use crate::scene::level::feature::overhead_windows::OverheadWindows;
 use crate::scene::level::feature::rain_covers::RainCovers;

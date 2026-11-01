@@ -4,7 +4,6 @@
 //! which its fields keep private.
 
 pub(crate) mod effect_stage;
-pub(crate) mod image_stage;
 pub(crate) mod lighting_stage;
 pub(crate) mod scene_stage;
 pub(crate) mod view_stages;

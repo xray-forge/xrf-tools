@@ -1,7 +1,7 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
+use crate::feature::image::present::present_uniform::PresentUniform;
 use crate::pass::lighting_uniform::LightingUniform;
-use crate::pass::present_uniform::PresentUniform;
 
 /// What the overlays read of a viewport's frame: its depth, which hides them behind what is drawn, where it stands in
 /// the window, and its lighting, which places the sun.
