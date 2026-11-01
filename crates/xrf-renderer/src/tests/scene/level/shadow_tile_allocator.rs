@@ -1,5 +1,5 @@
-use crate::scene::level::shadow_tile::ShadowTile;
-use crate::scene::level::shadow_tile_allocator::ShadowTileAllocator;
+use crate::scene::level::lights::atlas::shadow_tile::ShadowTile;
+use crate::scene::level::lights::atlas::shadow_tile_allocator::ShadowTileAllocator;
 
 #[test]
 fn shadow_tile_allocator_fills_the_atlas_with_squares_that_never_overlap() {

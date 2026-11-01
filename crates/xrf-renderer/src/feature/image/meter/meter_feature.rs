@@ -6,7 +6,7 @@ use crate::feature::image::meter::meter_parameters::MeterParameters;
 use crate::feature::image::meter::meter_sample::MeterSample;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::gpu_readback::GpuReadback;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// A view's spot meter, while it meters a lit view: the sample its pass writes, the readback the sample is copied into
 /// without waiting, and the last reading that came back.

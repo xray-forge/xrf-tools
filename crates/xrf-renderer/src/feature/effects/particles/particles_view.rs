@@ -9,11 +9,11 @@ use crate::feature::effects::particles::particle_pass::ParticlePass;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
-use crate::scene::level::particle_blend::ParticleBlend;
-use crate::scene::level::particle_sprite::ParticleSprite;
-use crate::scene::level::particle_surface::ParticleSurface;
-use crate::scene::level::particle_vertex::ParticleVertex;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::particles::particle_blend::ParticleBlend;
+use crate::scene::level::particles::particle_sprite::ParticleSprite;
+use crate::scene::level::particles::particle_surface::ParticleSurface;
+use crate::scene::level::particles::particle_vertex::ParticleVertex;
+use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// Quads the vertex buffer holds at first; it doubles past them.
 const INITIAL_QUADS: u64 = 4096;

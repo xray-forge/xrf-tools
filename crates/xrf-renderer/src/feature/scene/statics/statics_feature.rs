@@ -24,7 +24,7 @@ use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::depth_pyramid::DepthPyramid;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::stats_readback::StatsReadback;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::static_scene::static_batch::StaticBatch;
 use crate::scene::static_scene::static_cull_scratch::StaticCullScratch;
 use crate::scene::static_scene::static_layout::StaticLayout;

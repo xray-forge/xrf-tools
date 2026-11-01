@@ -37,8 +37,8 @@ use crate::frame::frame_texture::FrameTexture;
 use crate::frame::stats_readback::StatsReadback;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
-use crate::scene::level::view_prepare::ViewPrepare;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::view_record::ViewRecord;
+use crate::scene::level::view::view_prepare::ViewPrepare;
 
 /// The screen-space reflections, while they are traced: their settings and trace this frame, what their passes read,
 /// and what they keep from frame to frame.

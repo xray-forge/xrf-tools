@@ -17,7 +17,7 @@ use crate::host::render_scene_id::RenderSceneId;
 use crate::host::render_view_input::RenderViewInput;
 use crate::host::render_world::RenderWorld;
 use crate::scene::level::level_scene::LevelScene;
-use crate::scene::level::scene_view::SceneView;
+use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::texture::sky_texture_requests::SkyTextureRequests;
 use crate::scene::texture::texture_upload_pace::TextureUploadPace;
 use crate::thread::running_gpu::RunningGpu;

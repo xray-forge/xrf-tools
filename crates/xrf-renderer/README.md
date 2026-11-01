@@ -96,7 +96,7 @@ assembles, is in `src/pass/`; the scene's own state and its views are in `src/sc
   (`JitterGuard::READS_*`), with the reason beside the tag. The setting goes in `contract/`; an applied readout goes in
   the stage's `describe`.
 - **A feature recording in several phases**: a unit in `SceneFeatures`, called from the view's aspects
-  (`scene/level/scene_view/`) in frame order.
+  (`scene/level/view/scene_view/`) in frame order.
 - **New level data**: read by the host through `xrf-world`'s `WorldLevelSource`, handed over as a `RenderSceneUpdate`
   that `LevelScene` applies, and read from the scene by the unit that draws it.
 - **A new drawable kind** beside the static scene: there is no seam yet; the grass is the one such kind

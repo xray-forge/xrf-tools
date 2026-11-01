@@ -1,7 +1,7 @@
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::image::present::present_parameters::PresentParameters;
 use crate::pass::view::view_binding::ViewBinding;
-use crate::scene::level::helpers::view::helper_draws::HelperDraws;
+use crate::scene::level::page::helpers::view::helper_draws::HelperDraws;
 use crate::window::composed_overlays::ComposedOverlays;
 
 /// What a window's composition draws of one viewport: its camera, its picture or none for its grid, its overlays and

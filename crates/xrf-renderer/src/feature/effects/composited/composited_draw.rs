@@ -5,8 +5,8 @@ use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawPara
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::view::view_binding::ViewBinding;
-use crate::scene::level::lighting_handles::LightingHandles;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::lighting_handles::LightingHandles;
+use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// What the composited surfaces' passes draw with in a frame: the view and the bindless textures, the targets, the

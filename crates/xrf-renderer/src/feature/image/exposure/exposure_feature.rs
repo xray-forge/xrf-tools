@@ -19,7 +19,7 @@ use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::gpu_readback::GpuReadback;
 use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// The longest step between frames the adaptation takes, so a stall does not snap it to what one frame measured.
 const LONGEST_STEP: Duration = Duration::from_millis(250);

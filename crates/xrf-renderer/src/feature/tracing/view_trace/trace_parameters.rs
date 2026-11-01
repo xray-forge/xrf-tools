@@ -5,7 +5,7 @@ use crate::feature::lighting::lights::lights_uniform::LightsUniform;
 use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
 use crate::feature::scene::grass::level::grass_model_record::GrassModelRecord;
 use crate::feature::scene::grass::trace_grass_uniform::TraceGrassUniform;
-use crate::scene::level::light_record::LightRecord;
+use crate::scene::level::lights::light_record::LightRecord;
 use crate::scene::static_scene::static_place::StaticPlace;
 use crate::scene::static_scene::static_surface::StaticSurface;
 use crate::scene::static_scene::static_trace_instance::StaticTraceInstance;

@@ -11,7 +11,7 @@ use crate::contract::feature::weather::render_light_shafts::RenderLightShafts;
 use crate::lighting::light_animation::{to_animated_color, to_interpolated_color};
 use crate::lighting::light_basis::LightBasis;
 use crate::lighting::light_shadow_size::to_light_shadow_tile_size;
-use crate::scene::level::level_lights::LevelLights;
+use crate::scene::level::lights::level_lights::LevelLights;
 
 // Under the inverse square a light gives a point `r²/d²` of its colour, so an idle light whose range strays each frame
 // would flash its whole pool; held by the ratio of its own range's square to the stray's, it gives every point inside

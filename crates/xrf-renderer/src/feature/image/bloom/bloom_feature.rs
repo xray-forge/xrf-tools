@@ -19,7 +19,7 @@ use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::pass::level_passes::LevelPasses;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// The bloom, the engine's or the enhanced one in its place: the engine's build and blurs at its fixed size, read by
 /// the present; or the enhanced chain from the resolved image, its finish handed to the present.

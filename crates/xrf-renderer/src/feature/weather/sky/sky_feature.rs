@@ -30,8 +30,8 @@ use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
-use crate::scene::level::view_prepare::ViewPrepare;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::view_record::ViewRecord;
+use crate::scene::level::view::view_prepare::ViewPrepare;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
 /// The sky a view draws and reflects: its textures as the weather holds them this frame, with the sun's sprite, the

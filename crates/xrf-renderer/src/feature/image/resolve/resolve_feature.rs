@@ -44,8 +44,8 @@ use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::texture_copy::add_texture_copy;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
-use crate::scene::level::view_prepare::ViewPrepare;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::view_record::ViewRecord;
+use crate::scene::level::view::view_prepare::ViewPrepare;
 
 /// What a DLSS upscaler is made for: its output, quality and preset, and whether the colour is linear light.
 type DlssKey = ((u32, u32), (DlssQuality, DlssPreset), bool);

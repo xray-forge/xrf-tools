@@ -27,7 +27,7 @@ use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
-use crate::scene::level::view_prepare::ViewPrepare;
+use crate::scene::level::view::view_prepare::ViewPrepare;
 
 /// The visibility-bitmask search at half the frame's size, for VBAO's occlusion, the indirect light or both, RTAO
 /// tracing the occlusion in its place where asked: what it searches for this frame, what its passes read, and its

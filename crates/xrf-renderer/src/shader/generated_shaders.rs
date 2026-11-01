@@ -14,11 +14,11 @@ use crate::pass::overhead::overhead_shift_uniform::OverheadShiftUniform;
 use crate::pass::view::camera_uniform::CameraUniform;
 use crate::pass::window::backdrop_uniform::BackdropUniform;
 use crate::pass::window::overlay_parameters::OverlayParameters;
-use crate::scene::level::light_record::LightRecord;
-use crate::scene::level::light_volume_record::LightVolumeRecord;
-use crate::scene::level::light_volumes_uniform::LightVolumesUniform;
-use crate::scene::level::particle_surface_record::ParticleSurfaceRecord;
-use crate::scene::level::particle_vertex::ParticleVertex;
+use crate::scene::level::lights::light_record::LightRecord;
+use crate::scene::level::lights::light_volume_record::LightVolumeRecord;
+use crate::scene::level::lights::light_volumes_uniform::LightVolumesUniform;
+use crate::scene::level::particles::particle_surface_record::ParticleSurfaceRecord;
+use crate::scene::level::particles::particle_vertex::ParticleVertex;
 use crate::shader::generated_modules::GeneratedModules;
 
 /// The modules under `shaders/generated/`, written from Rust declarations, by name: the structs shaders share with

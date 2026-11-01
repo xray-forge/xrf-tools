@@ -1,7 +1,7 @@
 use xrf_renderer_core::{PassParameters, ShaderAtomicU32, StorageArray, StorageArrayMut, UniformBinding};
 
 use crate::feature::lighting::lights::lights_uniform::LightsUniform;
-use crate::scene::level::light_record::LightRecord;
+use crate::scene::level::lights::light_record::LightRecord;
 
 /// What the light binning reads and writes: the lights' records, each cluster's count and its lights, and how the view
 /// is cut.

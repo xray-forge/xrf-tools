@@ -11,17 +11,17 @@ use crate::feature::scene::statics::draw::static_draws::StaticDraws;
 use crate::feature::scene::statics::draw::static_mark_draw::StaticMarkDraw;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::view_targets::ViewTargets;
-use crate::scene::level::helpers::gpu::helper_buffer::HelperBuffer;
-use crate::scene::level::helpers::gpu::helper_icon_instance::HelperIconInstance;
-use crate::scene::level::helpers::gpu::helper_vertex::HelperVertex;
-use crate::scene::level::helpers::level_helper_icon::LevelHelperIcon;
-use crate::scene::level::helpers::level_helper_object::LevelHelperObject;
-use crate::scene::level::helpers::level_helpers::LevelHelpers;
-use crate::scene::level::helpers::view::helper_draws::HelperDraws;
-use crate::scene::level::helpers::view::helper_marks_pass::HelperMarksPass;
-use crate::scene::level::helpers::view::helper_part::HelperPart;
-use crate::scene::level::helpers::view::helper_part_draws::HelperPartDraws;
-use crate::scene::level::helpers::view::helper_sources::HelperSources;
+use crate::scene::level::page::helpers::gpu::helper_buffer::HelperBuffer;
+use crate::scene::level::page::helpers::gpu::helper_icon_instance::HelperIconInstance;
+use crate::scene::level::page::helpers::gpu::helper_vertex::HelperVertex;
+use crate::scene::level::page::helpers::level_helper_icon::LevelHelperIcon;
+use crate::scene::level::page::helpers::level_helper_object::LevelHelperObject;
+use crate::scene::level::page::helpers::level_helpers::LevelHelpers;
+use crate::scene::level::page::helpers::view::helper_draws::HelperDraws;
+use crate::scene::level::page::helpers::view::helper_marks_pass::HelperMarksPass;
+use crate::scene::level::page::helpers::view::helper_part::HelperPart;
+use crate::scene::level::page::helpers::view::helper_part_draws::HelperPartDraws;
+use crate::scene::level::page::helpers::view::helper_sources::HelperSources;
 use crate::scene::static_scene::static_object_box::StaticObjectBox;
 
 /// What a view draws of its scene's helpers: the wires and icons its options keep, which the window pass draws and a

@@ -32,8 +32,8 @@ use crate::lighting::sun_view_rays::SunViewRays;
 use crate::pass::build::indirect_args::IndirectArgs;
 use crate::pass::view::camera_uniform::CameraUniform;
 use crate::pass::view::view_binding::ViewBinding;
-use crate::scene::level::shadow_frame::ShadowFrame;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::shadow::shadow_frame::ShadowFrame;
+use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// Each cascade's passes, as the frame's timings name them, in the order a job lists them: a whole draw; its static

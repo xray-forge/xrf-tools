@@ -11,8 +11,8 @@ use crate::feature::effects::weather_model_buffers::WeatherModelBuffers;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
-use crate::scene::level::view_prepare::ViewPrepare;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::view_record::ViewRecord;
+use crate::scene::level::view::view_prepare::ViewPrepare;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
 /// The strike, while a bolt strikes and the view shows it: every bolt model built for the level's weather, the uniform

@@ -1,6 +1,6 @@
 use xrf_renderer_core::GraphTexture;
 
-use crate::scene::level::shadows_recorded::ShadowsRecorded;
+use crate::scene::level::view::record::shadows_recorded::ShadowsRecorded;
 
 /// What the rain falls onto as the frame's graph holds it: the rain cover's depth, none where no cover is drawn, and
 /// the level surface's water and lowest heights.

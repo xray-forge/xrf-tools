@@ -15,7 +15,7 @@ use crate::feature::scene::grass::trace_grass_uniform::TraceGrassUniform;
 use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::host::render_asset_source::RenderAssetSource;
-use crate::scene::level::light_record::LightRecord;
+use crate::scene::level::lights::light_record::LightRecord;
 use crate::scene::static_scene::static_item_context::StaticItemContext;
 use crate::scene::static_scene::static_layout::StaticLayout;
 use crate::scene::static_scene::static_model::StaticModel;

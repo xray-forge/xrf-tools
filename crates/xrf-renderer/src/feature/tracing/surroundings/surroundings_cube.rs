@@ -29,8 +29,8 @@ use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::view::camera_uniform::CameraUniform;
-use crate::scene::level::shadow_frame::ShadowFrame;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::shadow::shadow_frame::ShadowFrame;
+use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::static_scene::static_layout::StaticLayout;
 
 /// The level around the camera as a cube, a face a frame, lit into the prefiltered sky cube's first mip, so a

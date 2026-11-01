@@ -1,4 +1,4 @@
-use crate::scene::level::rain_wetness::RainWetness;
+use crate::scene::level::wetness::rain_wetness::RainWetness;
 
 // Every rain starts on dry ground: the level builds up towards the rain's density while it rains, settles there, and
 // dries towards a lighter rain or none after.

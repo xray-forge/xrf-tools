@@ -1,4 +1,4 @@
-use crate::scene::level::overhead_map::OverheadMap;
+use crate::scene::level::shadow::overhead_map::OverheadMap;
 
 #[test]
 fn draws_the_columns_a_map_moved_into() {

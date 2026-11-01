@@ -22,7 +22,7 @@ use crate::feature::weather::water::water_frame::WaterFrame;
 use crate::feature::weather::water::water_inputs::WaterInputs;
 use crate::feature::weather::water::water_uniform::WaterUniform;
 use crate::pass::level_passes::LevelPasses;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// A view's water as it lasts between frames: its settings and what they make its uniforms this frame, how far the
 /// enhanced water's maps have scrolled, and its reflection histories, kept only while it reflects.

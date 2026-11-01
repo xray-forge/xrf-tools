@@ -4,7 +4,7 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::scene::calibration::calibration_feature::CalibrationFeature;
 use crate::feature::view::view_units::view_units;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// The units of a view's scene that draw in it alone: the calibration props drawn into the G-buffer. The statics, the
 /// grass, the reflections' depth and the sky's motion record around them.

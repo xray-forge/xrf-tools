@@ -20,9 +20,9 @@ use crate::feature::tracing::sun_trace::sun_trace_feature::SunTraceFeature;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::feature::view::view_units::view_units;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
-use crate::scene::level::view_frame::ViewFrame;
-use crate::scene::level::view_prepare::ViewPrepare;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::view_record::ViewRecord;
+use crate::scene::level::view::view_frame::ViewFrame;
+use crate::scene::level::view::view_prepare::ViewPrepare;
 
 /// The units of a view's lighting that draw in it alone: the sun with its contact shadows and its trace, the screen's
 /// occlusion and the bitmask search, the traced indirect light and the combine. The lights, the sky, the reflections,

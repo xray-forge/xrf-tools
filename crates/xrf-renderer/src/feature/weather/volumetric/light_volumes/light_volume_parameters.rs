@@ -1,9 +1,9 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, UniformBinding};
 
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
-use crate::scene::level::light_record::LightRecord;
-use crate::scene::level::light_volume_record::LightVolumeRecord;
-use crate::scene::level::light_volumes_uniform::LightVolumesUniform;
+use crate::scene::level::lights::light_record::LightRecord;
+use crate::scene::level::lights::light_volume_record::LightVolumeRecord;
+use crate::scene::level::lights::light_volumes_uniform::LightVolumesUniform;
 
 /// What the light volume pass reads: the shafts to draw, the lights they belong to, the scene's light shadow atlas and
 /// the sampler comparing it, the noise breaking them, the frame's depth its half-size depth is taken from, and the

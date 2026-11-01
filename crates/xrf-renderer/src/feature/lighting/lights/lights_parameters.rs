@@ -2,7 +2,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, UniformBindi
 
 use crate::feature::lighting::contact_shadows::contact_shadow_uniform::ContactShadowUniform;
 use crate::feature::lighting::lights::lights_uniform::LightsUniform;
-use crate::scene::level::light_record::LightRecord;
+use crate::scene::level::lights::light_record::LightRecord;
 
 /// What the lights' pass and the light visibility pass before it read: the G-buffer's albedo, normals, material and
 /// depth, the material table and the BRDF's split-sum table, the lights binned into the view's clusters, and what the

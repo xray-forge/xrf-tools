@@ -6,8 +6,8 @@ use crate::contract::overlay::render_selection::RenderSelection;
 use crate::contract::overlay::render_selection_target::RenderSelectionTarget;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::scene::level::level_overlays::LevelOverlays;
 use crate::scene::level::level_scene::LevelScene;
+use crate::scene::level::page::level_overlays::LevelOverlays;
 use crate::scene::static_scene::static_object_box::StaticObjectBox;
 use crate::scene::static_scene::static_selection::StaticSelection;
 

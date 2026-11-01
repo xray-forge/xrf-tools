@@ -8,7 +8,7 @@ use crate::feature::tracing::indirect_trace::indirect_traced::IndirectTraced;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// The indirect light traced in the screen-space bounce's place, where DLSS ray reconstruction denoises the frame and
 /// the bitmask search gathers light: one ray a pixel at the frame's size, as ray reconstruction takes its noise, lit

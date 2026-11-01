@@ -9,7 +9,7 @@ use crate::lighting::render_fog::RenderFog;
 use crate::lighting::render_rainfall::RenderRainfall;
 use crate::lighting::render_tree_wind::RenderTreeWind;
 use crate::lighting::render_wind::RenderWind;
-use crate::scene::level::shadow_sway::ShadowSway;
+use crate::scene::level::shadow::shadow_sway::ShadowSway;
 
 #[test]
 fn fogs_by_the_engine_ramp_and_ends_the_view_where_it_is_total() {

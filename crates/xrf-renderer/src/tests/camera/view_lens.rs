@@ -6,7 +6,7 @@ use crate::camera::camera_view::CameraView;
 use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;
 use crate::contract::view::output::render_scale::RenderScale;
 use crate::contract::view::render_view_options::RenderViewOptions;
-use crate::scene::level::view_lens::ViewLens;
+use crate::scene::level::view::view_lens::ViewLens;
 
 /// Options asking for everything a parallel lens cannot draw.
 fn asking_everything() -> RenderViewOptions {

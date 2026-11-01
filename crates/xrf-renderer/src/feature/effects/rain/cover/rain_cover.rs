@@ -7,10 +7,10 @@ use crate::feature::scene::pyramid::cover_pyramid_depth_parameters::CoverPyramid
 use crate::feature::scene::pyramid::cover_pyramid_level_parameters::CoverPyramidLevelParameters;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
-use crate::scene::level::overhead_map::OverheadMap;
-use crate::scene::level::overhead_shape::OverheadShape;
-use crate::scene::level::shadow_frame::ShadowFrame;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::shadow::overhead_map::OverheadMap;
+use crate::scene::level::shadow::overhead_shape::OverheadShape;
+use crate::scene::level::shadow::shadow_frame::ShadowFrame;
+use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// What stands over the rain around the camera, drawn straight down as both engines draw their rain shadow map, which
 /// stops the streaks and keeps what is under it dry: one overhead map, fitted to the wet reach where the wetting

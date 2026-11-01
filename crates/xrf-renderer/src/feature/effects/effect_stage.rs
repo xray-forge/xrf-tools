@@ -18,8 +18,8 @@ use crate::feature::weather::volumetric::volumetric_shafts::VolumetricShafts;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::render_level_weather::RenderLevelWeather;
 use crate::lighting::render_lighting::RenderLighting;
-use crate::scene::level::view_prepare::ViewPrepare;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::view_record::ViewRecord;
+use crate::scene::level::view::view_prepare::ViewPrepare;
 use crate::scene::texture::weather_texture_cache::WeatherTextureCache;
 
 /// The units laid over a view's lit frame before it is resolved, each alone in that part of it: the light volumes and

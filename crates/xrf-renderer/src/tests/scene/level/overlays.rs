@@ -1,6 +1,6 @@
 use crate::contract::overlay::render_overlay::RenderOverlay;
 use crate::contract::overlay::render_overlay_segment::RenderOverlaySegment;
-use crate::scene::level::level_overlays::LevelOverlays;
+use crate::scene::level::page::level_overlays::LevelOverlays;
 use crate::tests::support::test_context::create_test_context;
 
 fn segments(count: usize) -> Vec<RenderOverlaySegment> {

@@ -1,7 +1,7 @@
 use crate::feature::scene::statics::gbuffer::static_gbuffer_pass::StaticGBufferPass;
 use crate::frame::static_scene_handles::StaticSceneHandles;
 use crate::pass::build::pipeline_source::PipelineSource;
-use crate::scene::level::helpers::view::helper_draws::HelperDraws;
+use crate::scene::level::page::helpers::view::helper_draws::HelperDraws;
 
 /// What a view's pick is drawn with: the G-buffer pass and the pipelines its helpers' pick is made from, the scene's
 /// textures and draws, the helpers' wires and icons, the readback slot it is copied into, and whether it passes the

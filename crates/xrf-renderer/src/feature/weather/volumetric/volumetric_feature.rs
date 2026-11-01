@@ -18,8 +18,8 @@ use crate::feature::weather::volumetric::light_volumes::light_volume_pass::Light
 use crate::feature::weather::volumetric::volumetric_shafts::VolumetricShafts;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
-use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::lights::atlas::light_shadow_atlas::LightShadowAtlas;
+use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// The volumetric lighting: the enhanced froxels, a grid along the view filled over its history and integrated, in
 /// place of the sun's and the lights' shafts; or the shadowed lights' shafts (`accum_volumetric`) the sun shafts'

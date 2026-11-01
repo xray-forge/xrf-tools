@@ -10,7 +10,7 @@ use crate::feature::image::smoothing::smoothing_uniform::SmoothingUniform;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::view_targets::ViewTargets;
 use crate::pass::level_passes::LevelPasses;
-use crate::scene::level::view_prepare::ViewPrepare;
+use crate::scene::level::view::view_prepare::ViewPrepare;
 
 /// The smoothing pass over the frame as drawn, FXAA or SMAA, while one smooths it.
 #[derive(Default)]

@@ -14,9 +14,9 @@ use crate::frame::pick_target::PickTarget;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::camera_uniform::CameraUniform;
 use crate::pass::view::view_binding::ViewBinding;
-use crate::scene::level::helpers::gpu::helper_buffer::HelperBuffer;
-use crate::scene::level::helpers::gpu::helper_icon_instance::HelperIconInstance;
-use crate::scene::level::helpers::gpu::helper_vertex::HelperVertex;
+use crate::scene::level::page::helpers::gpu::helper_buffer::HelperBuffer;
+use crate::scene::level::page::helpers::gpu::helper_icon_instance::HelperIconInstance;
+use crate::scene::level::page::helpers::gpu::helper_vertex::HelperVertex;
 
 /// What a view's picks are drawn into and read back from: the one-texel target with its readbacks, and the narrowed
 /// camera the frame's visible clusters and its helpers' wires and icons are drawn again through, both made on the first

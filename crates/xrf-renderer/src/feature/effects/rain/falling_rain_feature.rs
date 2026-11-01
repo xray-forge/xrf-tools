@@ -24,8 +24,8 @@ use crate::host::render_rain::RenderRain;
 use crate::lighting::ambient_gust::AmbientGust;
 use crate::lighting::render_rainfall::RenderRainfall;
 use crate::pass::level_passes::LevelPasses;
-use crate::scene::level::view_prepare::ViewPrepare;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::view_record::ViewRecord;
+use crate::scene::level::view::view_prepare::ViewPrepare;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
 /// The falling rain, while the weather rains and the view shows it: the splash's model built for the level's weather,

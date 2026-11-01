@@ -8,7 +8,7 @@ use crate::feature::weather::sky::dome::sky_behind_pass::SkyBehindPass;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// The fog's square below which the sky behind changes no pixel by half an eight-bit step, as `frame/combine.wgsl`
 /// declares it.

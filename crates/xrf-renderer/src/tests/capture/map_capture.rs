@@ -13,7 +13,7 @@ use crate::contract::feature::image::resolve::render_antialiasing::RenderAntiali
 use crate::contract::view::output::render_scale::RenderScale;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_rect::RenderRect;
-use crate::scene::level::view_lens::ViewLens;
+use crate::scene::level::view::view_lens::ViewLens;
 
 /// Zaton's `bound_rect`, 1200 metres a side, drawn between its lowest and highest ground.
 fn zaton(width: u32, height: u32, supersampling: u32) -> RenderMapCapture {

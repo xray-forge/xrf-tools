@@ -13,10 +13,10 @@ use crate::feature::weather::wet::wet_uniform::WetUniform;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::pass::level_passes::LevelPasses;
-use crate::scene::level::overhead_map::OverheadMap;
-use crate::scene::level::overhead_shape::OverheadShape;
-use crate::scene::level::shadow_frame::ShadowFrame;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::shadow::overhead_map::OverheadMap;
+use crate::scene::level::shadow::overhead_shape::OverheadShape;
+use crate::scene::level::shadow::shadow_frame::ShadowFrame;
+use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// The level's surface around the camera, which the enhanced rain places its puddles on: its overhead map without its
 /// trees, its water over the same square, and what is placed from them each time they are drawn, kept until they are

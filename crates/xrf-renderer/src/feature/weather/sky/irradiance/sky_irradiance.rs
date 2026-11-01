@@ -5,7 +5,7 @@ use crate::feature::weather::sky::irradiance::sky_irradiance_parameters::SkyIrra
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::frame::gpu_readback::GpuReadback;
 use crate::pass::level_passes::LevelPasses;
-use crate::scene::level::lighting_handles::LightingHandles;
+use crate::scene::level::view::record::lighting_handles::LightingHandles;
 
 /// The physical light's sky irradiance: the harmonics the GPU projects the sky into each frame, copied out without
 /// waiting, and the last that came back, which the lighting uniform carries to every pass lighting by the hemisphere.

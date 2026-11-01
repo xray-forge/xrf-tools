@@ -1,7 +1,7 @@
 use xrf_renderer_core::GraphTexture;
 
 use crate::feature::lighting::lights::lights_feature::LightsFeature;
-use crate::scene::level::light_shadow_atlas::LightShadowAtlas;
+use crate::scene::level::lights::atlas::light_shadow_atlas::LightShadowAtlas;
 
 /// What the light shafts read of the units before them: the view's lights and the scene's light shadow atlas their
 /// volumes march through, and the scene the reflections keep, none where they keep none.

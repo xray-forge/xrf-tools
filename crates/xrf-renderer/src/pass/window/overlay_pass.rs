@@ -5,10 +5,10 @@ use crate::host::render_bundle::RenderBundle;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::window::overlay_draw::OverlayDraw;
 use crate::pass::window::overlay_parameters::OverlayParameters;
-use crate::scene::level::helpers::gpu::helper_icon_atlas::HelperIconAtlas;
-use crate::scene::level::helpers::gpu::helper_icon_instance::HelperIconInstance;
-use crate::scene::level::helpers::gpu::helper_vertex::HelperVertex;
-use crate::scene::level::level_overlays::LevelOverlays;
+use crate::scene::level::page::helpers::gpu::helper_icon_atlas::HelperIconAtlas;
+use crate::scene::level::page::helpers::gpu::helper_icon_instance::HelperIconInstance;
+use crate::scene::level::page::helpers::gpu::helper_vertex::HelperVertex;
+use crate::scene::level::page::level_overlays::LevelOverlays;
 
 /// Draws a viewport's overlays into the window's pass after its frame: line segments and points, depth tested against
 /// the scene by the shader since the window's pass holds no depth, the sun's disc, and the helpers' wires and icons,

@@ -27,10 +27,10 @@ use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::stats_readback::StatsReadback;
 use crate::pass::level_passes::LevelPasses;
-use crate::scene::level::light_record::LightRecord;
-use crate::scene::level::light_volume_record::LightVolumeRecord;
-use crate::scene::level::light_volumes_uniform::LightVolumesUniform;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::lights::light_record::LightRecord;
+use crate::scene::level::lights::light_volume_record::LightVolumeRecord;
+use crate::scene::level::lights::light_volumes_uniform::LightVolumesUniform;
+use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// Clusters the view is cut into, and lights one holds at most.
 const LIGHT_CLUSTERS: u64 = LightsPass::LIGHT_CLUSTERS as u64;

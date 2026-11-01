@@ -17,11 +17,11 @@ use crate::feature::weather::wet::wet_patch_parameters::WetPatchParameters;
 use crate::feature::weather::wet::wet_stage::WetStage;
 use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::feature::weather::wet::wet_uniform::WetUniform;
-use crate::scene::level::level_wetness::LevelWetness;
-use crate::scene::level::rain_wetness::RainWetness;
-use crate::scene::level::shadows_recorded::ShadowsRecorded;
-use crate::scene::level::view_prepare::ViewPrepare;
-use crate::scene::level::view_record::ViewRecord;
+use crate::scene::level::view::record::shadows_recorded::ShadowsRecorded;
+use crate::scene::level::view::record::view_record::ViewRecord;
+use crate::scene::level::view::view_prepare::ViewPrepare;
+use crate::scene::level::wetness::level_wetness::LevelWetness;
+use crate::scene::level::wetness::rain_wetness::RainWetness;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
 /// The wet surfaces: the G-buffer wetted by the level's wetness and its puddles' fill (`LevelWetness`, the scene's)

@@ -4,7 +4,7 @@ use crate::feature::lighting::lights::lights_uniform::LightsUniform;
 use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
 use crate::feature::weather::volumetric::froxels::froxel_uniform::FroxelUniform;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
-use crate::scene::level::light_record::LightRecord;
+use crate::scene::level::lights::light_record::LightRecord;
 
 /// What filling the froxels reads and writes: the frame's lighting, the sun's cascades, the local lights binned into
 /// the view's clusters and their shadow atlas, the grid, the history the last frame wrote and this frame's.

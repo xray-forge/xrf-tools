@@ -7,7 +7,7 @@ use crate::feature::image::smoothing::smoothing_feature::SmoothingFeature;
 use crate::feature::view::view_units::view_units;
 use crate::frame::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
-use crate::scene::level::view_prepare::ViewPrepare;
+use crate::scene::level::view::view_prepare::ViewPrepare;
 
 /// The units turning a view's frame into the image it shows, each alone in that part of it: the smoothing before the
 /// resolve, and the camera laid over the resolved image. The present's distortion, the resolve, the enhanced bloom,
