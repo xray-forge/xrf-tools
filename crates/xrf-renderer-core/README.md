@@ -13,8 +13,11 @@ A frame is a `FrameGraph` of passes, declared in the order they run, each saying
 `add_raster_pass` draws into attachments the graph opens a render pass on, `add_compute_pass` dispatches, and
 `add_encoder_pass` records on the command encoder itself (copies, clears). Compiling culls the passes whose effects
 nothing reads, gives every transient a slot in a pool shared with transients whose lifetimes do not overlap, draws
-consecutive raster passes into the same attachments in one render pass, and cuts the frame into encode groups. Compiling
-needs no device:
+consecutive raster passes into the same attachments in one render pass, and cuts the frame into encode groups.
+
+The graph is declared, not discovered: passes run in the order they are declared, the compile never reorders them, and
+what it culled, merged and pooled is in its report (`CompiledGraph::describe`) with each pass's reads, writes and tags,
+so a renderer can check the frame it declared. Compiling needs no device:
 
 ```rust
 use xrf_renderer_core::{

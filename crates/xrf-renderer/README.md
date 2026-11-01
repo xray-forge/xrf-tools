@@ -48,6 +48,56 @@ asked for cannot start, and Metal alone on Apple platforms (experimental: no CI 
 `XRF_RENDER_BACKEND` overrides the settings' choice; [ENVIRONMENT.md](../../ENVIRONMENT.md) lists it and wgpu's
 switches, which the renderer reads as its own.
 
+## A frame
+
+```mermaid
+flowchart LR
+  hostNode["Host: commands, windows, level and asset sources"] --> threadNode["Render thread"]
+  worldNode["xrf-world: what moves and plays"] --> threadNode
+  threadNode --> sceneNode["LevelScene: statics, lights, grass, particles, weather"]
+  sceneNode --> viewNode["SceneView, one a viewport"]
+  subgraph viewFrame["A view's frame"]
+    decideNode["decide: exposure, then resolve, into ViewFrame"] --> prepareNode["prepare: SceneFeatures, then ViewStages"]
+    prepareNode --> recordNode["record: scene, shadows, lighting, post"]
+  end
+  viewNode --> decideNode
+  recordNode --> frameGraph["FrameGraph: compile, execute (xrf-renderer-core)"]
+  frameGraph --> windowPass["Window pass: present, overlays"]
+```
+
+A scene (`LevelScene`) holds a level's content and is shared by every view of it. Each viewport draws the scene
+through a view (`SceneView`), once a frame:
+
+1. **Decide.** The view prepares its exposure and its temporal resolve first and stores what the resolve decided for
+   the frame (the noise frame, whether DLSS reconstructs rays) in `ViewFrame`, which every other unit reads.
+2. **Prepare.** Every unit takes its frame from its settings, the scene, the weather and `ViewFrame`.
+3. **Record.** The view declares its passes into the core's frame graph in the order they run: the scene into the
+   G-buffer, the shadows, the lighting, then what is laid over the lit frame and the resolve. The resolve answers an
+   `ImageChain`, the image the layers after it are laid over.
+
+The window pass then presents each view's image. A view's units are split by how much of the frame they draw in. Those
+recording in several phases, or read by every phase, are view-level (`SceneFeatures`). Those drawing in one part of the
+frame alone belong to that part's stage (`scene/level/stage/`), which keeps them private from the other stages. The
+passes they record with are built once for every view and grouped the same way (`pass/stage/`); each pass holds its
+pipelines in a `PipelineSet`.
+
+### Where a technique plugs in
+
+- **An effect drawn in one part of the frame**, such as a post effect after the resolve: add its unit under
+  `scene/level/feature/`, its pass under `pass/` and its shader under `shaders/`. Add the pass to its group in
+  `pass/stage/` (a field, a build and a refresh line), and the unit to its stage (a field, a `prepare` line, a record
+  line and a `view_units!` entry). A pass after the resolve that reads a drawn target on purpose tags the read
+  (`JitterGuard::READS_*`), with the reason beside the tag. The setting goes in `contract/`; an applied readout goes in
+  the stage's `describe`.
+- **A technique recording in several phases**: a unit in `SceneFeatures`, called from the view's aspects
+  (`scene/level/scene_view/`) in frame order.
+- **New level data**: read by the host through `xrf-world`'s `WorldLevelSource`, handed over as a `RenderSceneUpdate`
+  that `LevelScene` applies, and read from the scene by the unit that draws it.
+- **A new drawable kind** beside the static scene: there is no seam yet; the grass is the one such kind
+  (`scene/level/grass_view.rs`), named through the scene, the shadows (`scene/level/level_shadows.rs`) and the traces.
+- **Another output**, such as HDR: the window's format and the present (`window/render_window.rs`,
+  `pass/present_pass.rs`), whose pipelines are kept one set a format (`PipelineMap`).
+
 ## The contract
 
 The `Render*` types under `src/contract/` cross IPC to the page: settings, view options, reports and events. Values the
@@ -59,9 +109,9 @@ are declared ([xrf-ipc](../xrf-ipc/README.md)). After changing either, regenerat
 
 The renderer's WGSL lives in `shaders/`. A module is named by its path under `shaders/` without the extension, and
 `#import` inlines another; an import needing a feature the device lacks is composed as its fallback (the scene trace
-without ray queries). Every module is embedded from the list in `src/shader/shader_library.rs`, so a new file must be
-added there. A debug build also reads them from the checkout and watches them, so an edited module is drawn with on
-the next reload.
+without ray queries). Every file under `shaders/` is embedded, listed by `build.rs`, so a new module is its file alone.
+A debug build also reads them from the checkout and watches them, so an edited module is drawn with on the next
+reload.
 
 `shaders/generated/` is written from Rust: the structs shaders share with Rust (`ShaderStruct`), and each module's
 bindings gathered from the parameters of every pass drawing with it (`PassParameters`). The test
