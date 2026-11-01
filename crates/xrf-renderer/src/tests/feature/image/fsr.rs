@@ -21,10 +21,10 @@ use crate::feature::image::resolve::fsr::inputs::fsr_shading_change_parameters::
 use crate::feature::image::resolve::fsr::inputs::fsr_shading_pyramid_parameters::FsrShadingPyramidParameters;
 use crate::feature::image::resolve::fsr::targets::fsr_targets::FsrTargets;
 use crate::feature::image::resolve::temporal_jitter::TemporalJitter;
-use crate::frame::frame_texture::FrameTexture;
-use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::frame::view_target_uses::ViewTargetUses;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::frame_texture::FrameTexture;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
+use crate::frame::targets::view_target_uses::ViewTargetUses;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::support::test_context::create_test_context;

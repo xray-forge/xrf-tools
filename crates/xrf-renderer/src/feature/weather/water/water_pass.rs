@@ -28,8 +28,8 @@ use crate::feature::weather::water::reflection::water_reflection_inputs::WaterRe
 use crate::feature::weather::water::reflection::water_reflection_parameters::WaterReflectionParameters;
 use crate::feature::weather::water::water_feature::WaterFeature;
 use crate::feature::weather::water::water_uniform::WaterUniform;
-use crate::frame::texture_copy::add_texture_copy;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::texture_copy::add_texture_copy;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::host::render_bundle::RenderBundle;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::scene::static_scene::draw::static_batch::StaticBatch;

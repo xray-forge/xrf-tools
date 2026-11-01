@@ -1,4 +1,4 @@
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::lighting::wind::render_wind::RenderWind;
 
 /// What a level view's water reads of its frame beside its own state: the targets, the weather's

@@ -23,7 +23,7 @@ use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
 use crate::frame::static_scene_handles::StaticSceneHandles;
-use crate::frame::texture_copy::add_texture_copy;
+use crate::frame::targets::texture_copy::add_texture_copy;
 use crate::pass::overhead::overhead_shift_parameters::OverheadShiftParameters;
 use crate::pass::overhead::overhead_shift_uniform::OverheadShiftUniform;
 use crate::pass::view::camera_uniform::CameraUniform;

@@ -25,7 +25,7 @@ use crate::feature::weather::sky::prefilter::sky_prefilter_pass::SkyPrefilterPas
 use crate::feature::weather::volumetric::froxels::froxel_pass::FroxelPass;
 use crate::feature::weather::wet::puddles::puddle_sites_pass::PuddleSitesPass;
 use crate::feature::weather::wet::puddles::puddle_sites_uniform::PuddleSitesUniform;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::lighting::material_slice::material_slice;
 use crate::pass::view::camera_uniform::CameraUniform;
 use crate::pass::view::light_view::LightView;

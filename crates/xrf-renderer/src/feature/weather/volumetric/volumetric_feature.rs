@@ -16,7 +16,7 @@ use crate::feature::weather::volumetric::froxels::froxels::Froxels;
 use crate::feature::weather::volumetric::light_volumes::light_volume_parameters::LightVolumeParameters;
 use crate::feature::weather::volumetric::light_volumes::light_volume_pass::LightVolumePass;
 use crate::feature::weather::volumetric::volumetric_shafts::VolumetricShafts;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::scene::level::lights::atlas::light_shadow_atlas::LightShadowAtlas;
 use crate::scene::level::view::record::view_record::ViewRecord;

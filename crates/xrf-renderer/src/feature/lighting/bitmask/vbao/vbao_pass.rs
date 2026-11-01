@@ -5,7 +5,7 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 use crate::feature::lighting::bitmask::bitmask_search::BitmaskSearch;
 use crate::feature::lighting::bitmask::vbao::vbao_gathering::VbaoGathering;
 use crate::feature::lighting::bitmask::vbao::vbao_parameters::VbaoParameters;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;

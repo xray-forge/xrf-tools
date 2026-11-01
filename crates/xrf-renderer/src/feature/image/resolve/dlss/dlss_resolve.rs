@@ -1,6 +1,6 @@
 use xrf_dlss::DlssUpscaler;
 
-use crate::frame::frame_texture::FrameTexture;
+use crate::frame::targets::frame_texture::FrameTexture;
 
 /// DLSS's state: its upscaler, the frame it writes at the viewport's size, and whether the next frame forgets the ones
 /// before.

@@ -1,4 +1,4 @@
-use crate::frame::gpu_readback::GpuReadback;
+use crate::frame::readback::gpu_readback::GpuReadback;
 
 /// Reads a few words the GPU counted back without ever waiting on it: a copy goes out with a frame, is mapped once that
 /// frame's work is done, and is read a frame or more later, while the next copy waits its turn.

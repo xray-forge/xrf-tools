@@ -9,8 +9,8 @@ use crate::feature::scene::statics::draw::static_draw_permutation::StaticDrawPer
 use crate::feature::scene::statics::draw::static_impostor_parameters::StaticImpostorParameters;
 use crate::feature::scene::statics::draw::static_mark_draw::StaticMarkDraw;
 use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::StaticGbufferDraw;
-use crate::frame::pick_target::PickTarget;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::readback::pick_target::PickTarget;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::scene::static_scene::draw::static_batch::StaticBatch;
 use crate::scene::static_scene::draw::static_class::StaticClass;

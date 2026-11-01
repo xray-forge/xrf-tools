@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use crate::frame::frame_pacer::FramePacer;
+use crate::frame::timing::frame_pacer::FramePacer;
 
 const INTERVAL: Option<Duration> = Some(Duration::from_millis(8));
 

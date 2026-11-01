@@ -1,7 +1,7 @@
 use crate::feature::image::resolve::fsr::fsr_uniform::FsrUniform;
 use crate::feature::image::resolve::fsr::targets::fsr_frame::FsrFrame;
-use crate::frame::frame_texture::FrameTexture;
-use crate::frame::history::History;
+use crate::frame::targets::frame_texture::FrameTexture;
+use crate::frame::targets::history::History;
 
 /// What FSR keeps for one viewport: its working targets at the drawn size and at half of it, the reconstructed depth,
 /// and two frames of its own targets, one written while the other is read, swapped every frame.

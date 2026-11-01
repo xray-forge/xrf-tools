@@ -1,4 +1,4 @@
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 
 /// The surroundings cube's faces as last drawn: each face's G-buffer kept at the size it is drawn at, so a face whose
 /// geometry still stands is lit again from it rather than culled and drawn again; and a spare, which a face drawn

@@ -3,8 +3,8 @@ use std::time::{Duration, Instant};
 use xrf_renderer_core::ExecutedGroup;
 
 use crate::contract::report::frame::render_group_cost::RenderGroupCost;
-use crate::frame::frame_phases::FramePhases;
-use crate::frame::frame_summary::FrameSummary;
+use crate::frame::timing::frame_phases::FramePhases;
+use crate::frame::timing::frame_summary::FrameSummary;
 
 /// A viewport's frames since its last report.
 #[derive(Clone, Debug)]

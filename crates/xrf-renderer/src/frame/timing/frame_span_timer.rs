@@ -1,4 +1,4 @@
-use crate::frame::gpu_readback::GpuReadback;
+use crate::frame::readback::gpu_readback::GpuReadback;
 
 /// How long the GPU spends on each frame from its first command to its last, whether or not its passes are timed: a
 /// stamp at the start of the frame's own encoder and one in a buffer submitted after every other, read back without

@@ -4,8 +4,8 @@ use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, Gr
 
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
-use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::jitter_guard::JitterGuard;
+use crate::frame::readback::frame_capture::{CaptureReply, FrameCapture};
 use crate::pass::view::view_binding::ViewBinding;
 use crate::pass::window::overlay_draw::OverlayDraw;
 use crate::window::composed_overlays::ComposedOverlays;

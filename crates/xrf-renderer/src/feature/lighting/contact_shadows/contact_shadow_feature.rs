@@ -10,7 +10,7 @@ use crate::feature::lighting::contact_shadows::contact_shadow_uniform::ContactSh
 use crate::feature::lighting::contact_shadows::contact_shadows_recorded::ContactShadowsRecorded;
 use crate::feature::scene::grass::cards::grass_cards::GrassCards;
 use crate::feature::view::view_feature::ViewFeature;
-use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;

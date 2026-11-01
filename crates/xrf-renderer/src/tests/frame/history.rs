@@ -1,4 +1,4 @@
-use crate::frame::history::History;
+use crate::frame::targets::history::History;
 
 #[test]
 fn reads_what_the_last_frame_wrote() {

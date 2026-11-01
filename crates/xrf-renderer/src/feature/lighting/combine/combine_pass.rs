@@ -3,7 +3,7 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::feature::lighting::combine::combine_parameters::CombineParameters;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;

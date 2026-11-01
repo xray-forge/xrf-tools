@@ -3,8 +3,8 @@ use xrf_error::XrfResult;
 use crate::capture::burst::burst_event::BurstEvent;
 use crate::capture::burst::burst_marks::BurstMarks;
 use crate::contract::capture::render_capture::RenderCapture;
-use crate::frame::frame_capture::FrameCapture;
-use crate::frame::gpu_readback::GpuReadback;
+use crate::frame::readback::frame_capture::FrameCapture;
+use crate::frame::readback::gpu_readback::GpuReadback;
 
 /// A burst's frame on its way back: the finished frame as a screenshot draws it, and the G-buffer's material target
 /// beside it, whose alpha holds the marks.

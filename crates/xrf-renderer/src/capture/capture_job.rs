@@ -6,7 +6,7 @@ use xrf_error::XrfError;
 use crate::capture::capture_event::CaptureEvent;
 use crate::capture::capture_plan::CapturePlan;
 use crate::capture::capture_shot::CaptureShot;
-use crate::frame::frame_capture::FrameCapture;
+use crate::frame::readback::frame_capture::FrameCapture;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::view::scene_view::SceneView;
 

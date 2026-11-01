@@ -1,6 +1,6 @@
 use xrf_renderer_core::{FrameGraph, GraphColorAttachment, GraphDepthAttachment, RasterPassBuilder};
 
-use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
 
 /// Adds a raster pass blending over the scene, tested against its depth without writing it.
 pub fn add_over_scene<'g, 'a>(

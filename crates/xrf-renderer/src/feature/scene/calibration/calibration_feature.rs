@@ -5,7 +5,7 @@ use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::feature::scene::calibration::calibration_parameters::CalibrationParameters;
 use crate::feature::scene::calibration::calibration_uniform::CalibrationUniform;
 use crate::feature::view::view_feature::ViewFeature;
-use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
 

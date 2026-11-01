@@ -3,7 +3,7 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::feature::image::smoothing::smaa_parameters::SmaaParameters;
 use crate::feature::image::smoothing::smaa_stage::SmaaStage;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::host::render_bundle::RenderBundle;
 use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::build::pipeline_source::PipelineSource;

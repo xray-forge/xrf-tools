@@ -18,7 +18,7 @@ use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::jitter_guard::JitterGuard;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::level_scene::LevelScene;
 use crate::scene::level::view::record::lighting_handles::LightingHandles;

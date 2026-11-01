@@ -19,7 +19,7 @@ use crate::feature::image::resolve::fsr::inputs::fsr_shading_pyramid_parameters:
 use crate::feature::image::resolve::fsr::targets::fsr_graph_textures::FsrGraphTextures;
 use crate::feature::image::resolve::fsr::targets::fsr_targets::FsrTargets;
 use crate::frame::jitter_guard::JitterGuard;
-use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::build::pipeline_source::PipelineSource;
 

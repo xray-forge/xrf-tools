@@ -1,4 +1,4 @@
-use crate::frame::history::History;
+use crate::frame::targets::history::History;
 
 /// The enhanced volumetric lighting's froxels, a grid along the view: what each scatters and how thick it is, kept over
 /// frames in a history, and what is scattered towards the camera up to each, integrated from them.

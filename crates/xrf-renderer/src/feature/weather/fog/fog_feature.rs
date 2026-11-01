@@ -7,8 +7,8 @@ use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::fog::fog_scattering_parameters::FogScatteringParameters;
 use crate::feature::weather::fog::fog_scattering_pass::FogScatteringPass;
 use crate::feature::weather::fog::fog_scattering_uniform::FogScatteringUniform;
-use crate::frame::texture_copy::add_texture_copy;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::texture_copy::add_texture_copy;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::scene::level::view::record::view_record::ViewRecord;
 

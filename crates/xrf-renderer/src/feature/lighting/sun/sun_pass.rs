@@ -10,7 +10,7 @@ use crate::feature::lighting::sun::sun_draw::SunDraw;
 use crate::feature::lighting::sun::sun_filter_permutation::SunFilterPermutation;
 use crate::feature::lighting::sun::sun_parameters::SunParameters;
 use crate::feature::tracing::sun_trace::sun_trace_pass::SunTracePass;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline_with;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;

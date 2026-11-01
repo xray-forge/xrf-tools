@@ -15,7 +15,7 @@ use crate::feature::lighting::lights::visibility::light_binning_parameters::Ligh
 use crate::feature::lighting::lights::visibility::light_shadowing_parameters::LightShadowingParameters;
 use crate::feature::lighting::lights::visibility::light_visibility_parameters::LightVisibilityParameters;
 use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;
 

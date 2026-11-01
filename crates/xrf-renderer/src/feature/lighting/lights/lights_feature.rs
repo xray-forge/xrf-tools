@@ -25,7 +25,7 @@ use crate::feature::lighting::lights::visibility::light_visibility_parameters::L
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::frame::stats_readback::StatsReadback;
+use crate::frame::readback::stats_readback::StatsReadback;
 use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::lights::light_record::LightRecord;
 use crate::scene::level::lights::light_volume_record::LightVolumeRecord;

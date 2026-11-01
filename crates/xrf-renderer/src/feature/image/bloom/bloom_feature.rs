@@ -16,7 +16,7 @@ use crate::feature::image::bloom::enhanced::enhanced_bloom_stage::EnhancedBloomS
 use crate::feature::image::bloom::enhanced::enhanced_bloom_uniform::EnhancedBloomUniform;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::jitter_guard::JitterGuard;
-use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::view::record::view_record::ViewRecord;

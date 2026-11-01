@@ -9,8 +9,8 @@ use crate::feature::scene::statics::draw::static_draw_bindings::StaticDrawBindin
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::frame::pick_pass::PickPass;
-use crate::frame::pick_target::PickTarget;
+use crate::frame::readback::pick_pass::PickPass;
+use crate::frame::readback::pick_target::PickTarget;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::camera_uniform::CameraUniform;
 use crate::pass::view::view_binding::ViewBinding;

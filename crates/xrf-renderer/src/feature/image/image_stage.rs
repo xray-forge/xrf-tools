@@ -5,7 +5,7 @@ use crate::feature::image::camera::camera_feature::CameraFeature;
 use crate::feature::image::image_chain::ImageChain;
 use crate::feature::image::smoothing::smoothing_feature::SmoothingFeature;
 use crate::feature::view::view_units::view_units;
-use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::view::view_prepare::ViewPrepare;
 

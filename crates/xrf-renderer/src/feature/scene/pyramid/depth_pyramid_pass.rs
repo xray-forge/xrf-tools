@@ -7,7 +7,7 @@ use crate::feature::scene::pyramid::cover_pyramid_level_parameters::CoverPyramid
 use crate::feature::scene::pyramid::pyramid_depth_parameters::PyramidDepthParameters;
 use crate::feature::scene::pyramid::pyramid_level_parameters::PyramidLevelParameters;
 use crate::feature::scene::pyramid::pyramid_reduction::PyramidReduction;
-use crate::frame::depth_pyramid::DepthPyramid;
+use crate::frame::targets::depth_pyramid::DepthPyramid;
 use crate::pass::build::pipeline_source::PipelineSource;
 
 /// Reduces a viewport's depth into a pyramid, a dispatch a level: to the farthest under each texel, or the nearest; and

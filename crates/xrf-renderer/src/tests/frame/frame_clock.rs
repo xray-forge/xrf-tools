@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use crate::frame::frame_clock::FrameClock;
+use crate::frame::timing::frame_clock::FrameClock;
 
 #[test]
 fn frames_draw_at_the_wall_clock_until_stepped_then_a_step_a_frame() {

@@ -38,12 +38,12 @@ use crate::feature::tracing::ray_guides::ray_guides_pass::RayGuidesPass;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::view::view_frame_end::ViewFrameEnd;
 use crate::feature::weather::wet::wet_targets::WetTargets;
-use crate::frame::frame_texture::FrameTexture;
-use crate::frame::history::History;
 use crate::frame::jitter_guard::JitterGuard;
-use crate::frame::texture_copy::add_texture_copy;
-use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::frame_texture::FrameTexture;
+use crate::frame::targets::history::History;
+use crate::frame::targets::texture_copy::add_texture_copy;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::level::view::view_prepare::ViewPrepare;
 

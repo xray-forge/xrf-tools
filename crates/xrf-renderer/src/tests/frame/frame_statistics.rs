@@ -3,8 +3,8 @@ use std::time::{Duration, Instant};
 use xrf_renderer_core::ExecutedGroup;
 
 use crate::contract::viewport::render_rect::RenderRect;
-use crate::frame::frame_phases::FramePhases;
-use crate::frame::frame_statistics::FrameStatistics;
+use crate::frame::timing::frame_phases::FramePhases;
+use crate::frame::timing::frame_statistics::FrameStatistics;
 
 #[test]
 fn reports_only_once_due_and_drawn() {

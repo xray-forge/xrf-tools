@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::context::gpu_memory_budget::GpuMemoryBudget;
 use crate::contract::report::frame::render_memory_section::RenderMemorySection;
-use crate::frame::gpu_memory::GpuMemory;
+use crate::frame::readback::gpu_memory::GpuMemory;
 
 /// What the renderer holds on the GPU, and what the GPU's own memory holds and allows.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]

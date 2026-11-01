@@ -7,9 +7,9 @@ use wgpu::util::StagingBelt;
 
 use crate::capture::burst::burst_shot::BurstShot;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
-use crate::frame::frame_capture::{CaptureReply, FrameCapture};
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::frame::frame_phases::FramePhases;
+use crate::frame::readback::frame_capture::{CaptureReply, FrameCapture};
+use crate::frame::timing::frame_phases::FramePhases;
 use crate::host::world::render_scene_id::RenderSceneId;
 use crate::thread::running_gpu::RunningGpu;
 use crate::viewport::pick_in_flight::PickInFlight;

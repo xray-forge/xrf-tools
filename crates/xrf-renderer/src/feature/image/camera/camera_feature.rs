@@ -13,7 +13,7 @@ use crate::feature::image::camera::camera_effects_uniform::CameraEffectsUniform;
 use crate::feature::image::image_chain::ImageChain;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::jitter_guard::JitterGuard;
-use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
 
 /// The camera the resolved frame is shown through (`RenderCameraSettings`): its depth of field, then its motion blur,

@@ -8,7 +8,7 @@ use crate::feature::image::smoothing::smaa_pass::SmaaPass;
 use crate::feature::image::smoothing::smaa_stage::SmaaStage;
 use crate::feature::image::smoothing::smoothing_uniform::SmoothingUniform;
 use crate::feature::view::view_feature::ViewFeature;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::view::view_prepare::ViewPrepare;
 

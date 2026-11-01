@@ -1,7 +1,7 @@
 use xrf_renderer_core::{FrameGraph, GraphBindings, GraphTexture, GraphTextureDescriptor};
 
-use crate::frame::view_target_uses::ViewTargetUses;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_target_uses::ViewTargetUses;
+use crate::frame::targets::view_targets::ViewTargets;
 
 /// A view's targets as its frame graph knows them, once a frame, for every pass drawing into or reading them: the
 /// G-buffer, depth, light and scene the view keeps, imported; and the targets each frame writes afresh, made in the

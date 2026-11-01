@@ -9,7 +9,7 @@ use crate::context::gpu_requirements::can_trace;
 use crate::contract::settings::gpu::render_dlss_availability::RenderDlssAvailability;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::frame_upload::FrameUpload;
-use crate::frame::gpu_memory::GpuMemory;
+use crate::frame::readback::gpu_memory::GpuMemory;
 use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::world::feedback::render_scene_feedback::RenderSceneFeedback;
 use crate::host::world::render_scene_frame::RenderSceneFrame;

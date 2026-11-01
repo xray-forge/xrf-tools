@@ -24,7 +24,7 @@ use crate::feature::weather::water::water_inputs::WaterInputs;
 use crate::feature::weather::wet::puddles::level_surface::LevelSurface;
 use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::feature::weather::wet::wet_uniform::WetUniform;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::level_frame::LevelFrame;
 use crate::scene::level::level_scene::LevelScene;

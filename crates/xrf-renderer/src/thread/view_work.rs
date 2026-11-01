@@ -1,6 +1,6 @@
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::frame::frame_phases::FramePhases;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
+use crate::frame::timing::frame_phases::FramePhases;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::thread::gpu_state::GpuState;
 

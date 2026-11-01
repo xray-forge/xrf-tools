@@ -2,7 +2,7 @@ use glam::Vec4;
 use xrf_renderer_core::ShaderStruct;
 
 use crate::feature::image::bloom::bloom_filter::BloomFilter;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 
 /// Taps each way of `bloom_filter.ps`, beside its centre.
 const TAPS: usize = 7;

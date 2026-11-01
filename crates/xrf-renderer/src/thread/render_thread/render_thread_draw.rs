@@ -13,13 +13,13 @@ use crate::contract::settings::render_frame_rate::RenderFrameRate;
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::feature::image::present::present_parameters::PresentParameters;
-use crate::frame::frame_capture::CaptureReply;
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::frame::frame_phases::FramePhases;
-use crate::frame::frame_statistics::FrameStatistics;
 #[cfg(debug_assertions)]
 use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::periodic::periodic_owner::PeriodicOwner;
+use crate::frame::readback::frame_capture::CaptureReply;
+use crate::frame::timing::frame_phases::FramePhases;
+use crate::frame::timing::frame_statistics::FrameStatistics;
 use crate::host::world::render_scene_id::RenderSceneId;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::window::backdrop_uniform::BackdropUniform;

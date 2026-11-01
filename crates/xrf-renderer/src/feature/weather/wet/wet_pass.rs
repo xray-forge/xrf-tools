@@ -6,7 +6,7 @@ use crate::feature::weather::wet::puddles::level_surface::LevelSurface;
 use crate::feature::weather::wet::wet_apply_parameters::WetApplyParameters;
 use crate::feature::weather::wet::wet_draw::WetDraw;
 use crate::feature::weather::wet::wet_patch_parameters::WetPatchParameters;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline_into;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;

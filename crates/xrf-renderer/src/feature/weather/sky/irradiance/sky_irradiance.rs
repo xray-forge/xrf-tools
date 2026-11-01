@@ -3,7 +3,7 @@ use xrf_renderer_core::{GraphBuffer, GraphBufferAccess, GraphDeclaration, Storag
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
 use crate::feature::weather::sky::irradiance::sky_irradiance_parameters::SkyIrradianceParameters;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
-use crate::frame::gpu_readback::GpuReadback;
+use crate::frame::readback::gpu_readback::GpuReadback;
 use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::view::record::lighting_handles::LightingHandles;
 

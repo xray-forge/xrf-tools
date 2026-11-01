@@ -1,6 +1,6 @@
 use xrf_renderer_core::{FrameGraph, GraphColorAttachment};
 
-use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
 
 /// One viewport's G-buffer, depth, light and scene, sized to its rectangle and made again when that changes; the
 /// targets each frame writes afresh (the ambient occlusion, the haze, the distortion, the high part and the bloom) are

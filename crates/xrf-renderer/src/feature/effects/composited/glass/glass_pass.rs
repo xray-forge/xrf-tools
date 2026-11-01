@@ -10,7 +10,7 @@ use crate::feature::effects::composited::glass::glass_copy_permutation::GlassCop
 use crate::feature::effects::composited::glass::glass_parameters::GlassParameters;
 use crate::feature::scene::statics::draw::static_layout_bindings::StaticLayoutBindings;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::scene::static_scene::draw::static_batch::StaticBatch;
 use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;

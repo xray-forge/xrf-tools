@@ -7,7 +7,7 @@ use crate::feature::effects::flares::flare_draw_parameters::FlareDrawParameters;
 use crate::feature::effects::flares::flare_measure_parameters::FlareMeasureParameters;
 use crate::feature::effects::flares::flare_texture_parameters::FlareTextureParameters;
 use crate::feature::effects::flares::flare_uniform::FlareUniform;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;
 

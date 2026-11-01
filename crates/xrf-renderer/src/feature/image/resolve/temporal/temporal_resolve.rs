@@ -1,8 +1,8 @@
 use glam::Mat4;
 
 use crate::feature::image::resolve::temporal::temporal_uniform::TemporalUniform;
-use crate::frame::frame_texture::FrameTexture;
-use crate::frame::history::History;
+use crate::frame::targets::frame_texture::FrameTexture;
+use crate::frame::targets::history::History;
 
 /// TAA's state: its colour and distance history at the viewport's size and how much each pixel flickers beside it, made
 /// for the drawn size `render`, the last resolved frame's view projection without its jitter and its view, and what it

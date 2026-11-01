@@ -7,7 +7,7 @@ use crate::feature::tracing::sun_trace::sun_trace_pass::SunTracePass;
 use crate::feature::tracing::sun_trace::sun_trace_uniform::SunTraceUniform;
 use crate::feature::tracing::view_trace::traced_scene::TracedScene;
 use crate::feature::view::view_feature::ViewFeature;
-use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;

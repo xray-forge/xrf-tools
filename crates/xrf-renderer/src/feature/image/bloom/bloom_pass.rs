@@ -3,7 +3,7 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
 use crate::feature::image::bloom::bloom_parameters::BloomParameters;
 use crate::feature::image::bloom::bloom_stage::BloomStage;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::build::pipeline_source::PipelineSource;
 

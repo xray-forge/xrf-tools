@@ -5,7 +5,7 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipeli
 
 use crate::feature::effects::particles::particle_batch::ParticleBatch;
 use crate::feature::effects::particles::particle_parameters::ParticleParameters;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::particles::particle_blend::ParticleBlend;

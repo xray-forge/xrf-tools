@@ -1,6 +1,6 @@
 use xrf_error::XrfResult;
 
-use crate::frame::gpu_readback::GpuReadback;
+use crate::frame::readback::gpu_readback::GpuReadback;
 
 /// A pick's one texel and its depth, and the buffers it is read back through: a few, so a pick asked while another is
 /// on its way is drawn without waiting for it.

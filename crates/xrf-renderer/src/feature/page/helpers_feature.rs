@@ -10,7 +10,7 @@ use crate::feature::page::present_marks::PresentMarks;
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
 use crate::feature::scene::statics::draw::static_mark_draw::StaticMarkDraw;
 use crate::feature::view::view_feature::ViewFeature;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::scene::level::page::helpers::gpu::helper_buffer::HelperBuffer;
 use crate::scene::level::page::helpers::gpu::helper_icon_instance::HelperIconInstance;
 use crate::scene::level::page::helpers::gpu::helper_vertex::HelperVertex;

@@ -22,7 +22,7 @@ use crate::feature::weather::sky::sky_views::SkyViews;
 use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
-use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::lighting::unit::daylight::Daylight;
 use crate::lighting::unit::light_units::LightUnits;
 use crate::lighting::weather::render_sky::RenderSky;

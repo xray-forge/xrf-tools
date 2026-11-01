@@ -7,7 +7,7 @@ use crate::feature::lighting::ambient_occlusion::ambient_occlusion_parameters::A
 use crate::feature::lighting::ambient_occlusion::ambient_occlusion_stage::AmbientOcclusionStage;
 use crate::feature::lighting::ambient_occlusion::ambient_occlusion_uniform::AmbientOcclusionUniform;
 use crate::feature::view::view_feature::ViewFeature;
-use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
 

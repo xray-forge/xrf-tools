@@ -15,7 +15,7 @@ use crate::feature::scene::grass::draw::grass_draw_parameters::GrassDrawParamete
 use crate::feature::scene::grass::draw::grass_draws::GrassDraws;
 use crate::feature::scene::grass::draw::grass_occlusion_parameters::GrassOcclusionParameters;
 use crate::feature::scene::grass::level::grass_level_parameters::GrassLevelParameters;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::compute_grid::ComputeGrid;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;

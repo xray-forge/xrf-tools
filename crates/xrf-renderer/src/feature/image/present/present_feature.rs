@@ -9,9 +9,9 @@ use crate::feature::image::present::present_frame::PresentFrame;
 use crate::feature::image::present::present_inputs::PresentInputs;
 use crate::feature::image::present::present_uniform::PresentUniform;
 use crate::feature::view::view_feature::ViewFeature;
-use crate::frame::texture_copy::add_texture_copy;
-use crate::frame::view_target_handles::ViewTargetHandles;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::texture_copy::add_texture_copy;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
 

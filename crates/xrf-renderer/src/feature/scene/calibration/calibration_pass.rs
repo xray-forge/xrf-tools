@@ -3,7 +3,7 @@ use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipeli
 
 use crate::feature::scene::calibration::calibration_parameters::CalibrationParameters;
 use crate::feature::scene::calibration::calibration_uniform::CalibrationUniform;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;
 

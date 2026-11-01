@@ -1,5 +1,5 @@
 use crate::contract::report::frame::render_memory_section::RenderMemorySection;
-use crate::frame::gpu_memory::GpuMemory;
+use crate::frame::readback::gpu_memory::GpuMemory;
 
 // Allocations sum by their name, the sides of a history as one, the largest first.
 #[test]

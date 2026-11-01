@@ -10,14 +10,14 @@ use crate::camera::camera_view::CameraView;
 use crate::capture::burst::burst_shot::BurstShot;
 use crate::contract::settings::render_settings::RenderSettings;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
-use crate::frame::frame_capture::{CaptureReply, FrameCapture};
-use crate::frame::frame_clock::FrameClock;
-use crate::frame::frame_pacer::FramePacer;
-use crate::frame::gpu_memory::GpuMemory;
 #[cfg(debug_assertions)]
 use crate::frame::jitter_guard::JitterGuard;
 use crate::frame::periodic::periodic_budget::PeriodicBudget;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
+use crate::frame::readback::frame_capture::{CaptureReply, FrameCapture};
+use crate::frame::readback::gpu_memory::GpuMemory;
+use crate::frame::timing::frame_clock::FrameClock;
+use crate::frame::timing::frame_pacer::FramePacer;
 use crate::host::render_bundle::RenderBundle;
 use crate::host::render_cache_store::RenderCacheStore;
 use crate::host::render_window_host::RenderWindowHost;

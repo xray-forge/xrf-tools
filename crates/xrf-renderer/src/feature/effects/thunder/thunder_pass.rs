@@ -3,7 +3,7 @@ use xrf_material::XraySurfaceDraw;
 use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext, RenderPipelineDescription};
 
 use crate::feature::effects::thunder::thunder_parameters::ThunderParameters;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::particles::particle_blend::ParticleBlend;

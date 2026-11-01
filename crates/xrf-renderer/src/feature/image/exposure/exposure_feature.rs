@@ -16,9 +16,9 @@ use crate::feature::image::exposure::reading::exposure_head::ExposureHead;
 use crate::feature::image::exposure::reading::exposure_metering::ExposureMetering;
 use crate::feature::image::exposure::reading::pre_exposure::PreExposure;
 use crate::feature::view::view_feature::ViewFeature;
-use crate::frame::gpu_readback::GpuReadback;
 use crate::frame::jitter_guard::JitterGuard;
-use crate::frame::view_target_handles::ViewTargetHandles;
+use crate::frame::readback::gpu_readback::GpuReadback;
+use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// The longest step between frames the adaptation takes, so a stall does not snap it to what one frame measured.

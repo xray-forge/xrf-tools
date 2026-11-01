@@ -11,7 +11,7 @@ use crate::feature::effects::rain::rain_counts::RainCounts;
 use crate::feature::effects::rain::rain_parameters::RainParameters;
 use crate::feature::effects::rain::rings::rain_rings::RainRings;
 use crate::feature::effects::rain::rings::rain_rings_reduce_parameters::RainRingsReduceParameters;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::host::render_bundle::RenderBundle;
 use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
 use crate::pass::build::pipeline_source::PipelineSource;

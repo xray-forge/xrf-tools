@@ -8,8 +8,8 @@ use crate::feature::weather::sun_shafts::sun_shafts_pass::{SunShaftsDraw, SunSha
 use crate::feature::weather::volumetric::froxels::froxel_uniform::FroxelUniform;
 use crate::feature::weather::volumetric::froxels::froxels::Froxels;
 use crate::feature::weather::volumetric::volumetric_shafts::VolumetricShafts;
-use crate::frame::texture_copy::add_texture_copy;
-use crate::frame::view_targets::ViewTargets;
+use crate::frame::targets::texture_copy::add_texture_copy;
+use crate::frame::targets::view_targets::ViewTargets;
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::scene::level::view::record::view_record::ViewRecord;
 

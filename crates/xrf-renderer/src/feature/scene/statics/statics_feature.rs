@@ -21,9 +21,9 @@ use crate::feature::scene::statics::draw::static_layout_bindings::StaticLayoutBi
 use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::StaticGbufferDraw;
 use crate::feature::scene::wind::wind_uniform::WindUniform;
 use crate::feature::view::view_feature::ViewFeature;
-use crate::frame::depth_pyramid::DepthPyramid;
+use crate::frame::readback::stats_readback::StatsReadback;
 use crate::frame::static_scene_handles::StaticSceneHandles;
-use crate::frame::stats_readback::StatsReadback;
+use crate::frame::targets::depth_pyramid::DepthPyramid;
 use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::static_scene::draw::static_batch::StaticBatch;
 use crate::scene::static_scene::draw::static_cull_scratch::StaticCullScratch;
