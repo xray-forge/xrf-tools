@@ -1,4 +1,4 @@
-use glam::Mat4;
+use glam::{Mat4, Vec4};
 
 use crate::scene::static_scene::trace::static_trace_geometry::StaticTraceGeometry;
 
@@ -18,5 +18,15 @@ impl StaticTraceGroup {
     let rows: [glam::Vec4; 3] = [matrix.row(0), matrix.row(1), matrix.row(2)];
 
     std::array::from_fn(|at| rows[at / 4][at % 4])
+  }
+
+  /// An instance's transform as the matrix it was made from (`to_transform`).
+  pub fn to_matrix(transform: &[f32; 12]) -> Mat4 {
+    Mat4::from_cols(
+      Vec4::new(transform[0], transform[4], transform[8], 0.0),
+      Vec4::new(transform[1], transform[5], transform[9], 0.0),
+      Vec4::new(transform[2], transform[6], transform[10], 0.0),
+      Vec4::new(transform[3], transform[7], transform[11], 1.0),
+    )
   }
 }

@@ -25,12 +25,14 @@ use crate::scene::level::view::view_prepare::ViewPrepare;
 use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::trace::static_trace::StaticTrace;
 use crate::scene::static_scene::trace::static_trace_geometry::StaticTraceGeometry;
+use crate::scene::static_scene::trace::static_trace_group::StaticTraceGroup;
 use crate::scene::static_scene::trace::static_trace_swaying::StaticTraceSwaying;
 
 /// A view's own top level, where what its trace meets moves with the view: the nearest instances of trees' geometry
-/// within `REACH` metres, `MOST` of them and `MOST_VERTICES` vertices at most, swayed by the view's wind each frame and
-/// their structures built over them again, standing in their unswayed instances' place; and the grass's cards the view
-/// stands (`GrassCards`), one more instance after the scene's. The scene's top level where neither stands.
+/// within `REACH` metres, `MOST` of them and `MOST_VERTICES` vertices at most, swayed by the view's wind each frame in
+/// their trees' own space and their structures built over them again, standing in their unswayed instances' place and
+/// at their transforms; and the grass's cards the view stands (`GrassCards`), one more instance after the scene's. The
+/// scene's top level where neither stands.
 #[derive(Default)]
 pub struct ViewTraceFeature {
   trace: Option<ViewTrace>,
@@ -117,11 +119,13 @@ impl ViewTraceFeature {
       .iter()
       .map(|swaying| {
         let slot: TraceSwaySlot = TraceSwaySlot {
+          to_local: StaticTraceGroup::to_matrix(&swaying.transform).inverse(),
           vertex_start: swaying.geometry.vertex_start,
           vertex_count: swaying.geometry.vertex_count,
           place: swaying.place,
           surface: swaying.geometry.surface,
           first_out,
+          _pad: [0; 3],
         };
 
         first_out += swaying.geometry.vertex_count;

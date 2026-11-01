@@ -4,8 +4,9 @@
 #import "static/vertex"
 
 // The trace's swaying trees: each vertex of the instances a view sways, placed in the world and swayed by the view's
-// wind as the G-buffer's tree draws sway it (`static/sway`), written for their acceleration structures to be built
-// over, so the trace's trees stand where the frame draws them.
+// wind as the G-buffer's tree draws sway it (`static/sway`), then turned back into its tree's own space, written for
+// their acceleration structures to be built over, so the trace's trees stand where the frame draws them while their
+// instances keep their transforms, which a hit's normals and crown are turned to the renderer's space by.
 
 // The tree arena's words, the places and surfaces, the wind, the swaying instances, and what is written.
 #import "generated/static/trace_sway"
@@ -56,8 +57,9 @@ fn cs_trace_sway(@builtin(global_invocation_id) id: vec3<u32>, @builtin(num_work
   let placed: vec3<f32> = (place.transform * vec4<f32>(position, 1.0)).xyz;
   let foliage: vec2<f32> = vec2<f32>(tree_foliage_kind(is_still, (flags & SURFACE_IS_CUT_OUT) != 0u), v);
   let swayed: vec3<f32> = tree_swayed(wind, placed, place.transform[3].y, rigidity, foliage);
+  let own: vec3<f32> = (slot.to_local * vec4<f32>(swayed, 1.0)).xyz;
 
-  swayed_vertices[vertex * 3u] = swayed.x;
-  swayed_vertices[vertex * 3u + 1u] = swayed.y;
-  swayed_vertices[vertex * 3u + 2u] = swayed.z;
+  swayed_vertices[vertex * 3u] = own.x;
+  swayed_vertices[vertex * 3u + 1u] = own.y;
+  swayed_vertices[vertex * 3u + 2u] = own.z;
 }

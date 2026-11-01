@@ -370,6 +370,7 @@ struct Vbao {
 }
 
 struct TraceSwaySlot {
+  to_local: mat4x4<f32>,
   vertex_start: u32,
   vertex_count: u32,
   place: u32,

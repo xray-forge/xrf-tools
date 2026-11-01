@@ -185,21 +185,17 @@ impl StaticTrace {
   }
 
   /// Fills a view's own top level with every instance as last built, those `swayed` names standing as the structure
-  /// given beside each, its geometry in renderer space already.
+  /// given beside each, swayed in its tree's own space, so a hit on it is turned to the renderer's as a still one is.
   pub fn fill_view_tlas(&self, tlas: &mut wgpu::Tlas, swayed: &HashMap<u32, &wgpu::Blas>) {
     for index in 0..tlas.get().len() {
-      tlas[index] = self
-        .built_instances
-        .get(index)
-        .map(|(structure, transform)| match swayed.get(&(index as u32)) {
-          Some(blas) => wgpu::TlasInstance::new(blas, Self::IDENTITY, index as u32, Self::MASK),
-          None => wgpu::TlasInstance::new(
-            Self::find_blas(&self.sectors, &self.models, *structure),
-            *transform,
-            index as u32,
-            Self::MASK,
-          ),
-        });
+      tlas[index] = self.built_instances.get(index).map(|(structure, transform)| {
+        let blas: &wgpu::Blas = swayed
+          .get(&(index as u32))
+          .copied()
+          .unwrap_or_else(|| Self::find_blas(&self.sectors, &self.models, *structure));
+
+        wgpu::TlasInstance::new(blas, *transform, index as u32, Self::MASK)
+      });
     }
   }
 
@@ -476,6 +472,7 @@ impl StaticTrace {
               index: instances.len() as u32,
               place,
               position: Vec3::new(transform[3], transform[7], transform[11]),
+              transform: *transform,
               geometry: group.geometry,
             });
           }
