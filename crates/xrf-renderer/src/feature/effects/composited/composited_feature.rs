@@ -1,3 +1,4 @@
+use glam::Mat4;
 use xrf_renderer_core::{
   FrameGraph, GraphBuffer, GraphBufferAccess, GraphBufferDescriptor, GraphColorAttachment, GraphDeclaration,
   GraphDepthAttachment, GraphTexture, GraphTextureDescriptor, StorageArray, StorageArrayMut, StorageValue,
@@ -10,6 +11,7 @@ use crate::feature::effects::composited::glass::glass_copy_dispatch_parameters::
 use crate::feature::effects::composited::glass::glass_copy_parameters::GlassCopyParameters;
 use crate::feature::effects::composited::glass::glass_parameters::GlassParameters;
 use crate::feature::effects::composited::glass::glass_uniform::GlassUniform;
+use crate::feature::effects::distort::distortion_tiles::DistortionTiles;
 use crate::feature::effects::over_scene::add_over_scene;
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
@@ -39,13 +41,13 @@ pub struct CompositedFeature {
   sorted_runs: Vec<(StaticLayout, u32, u32)>,
   /// What the enhanced glass draws with, where it draws.
   glass: Option<GlassUniform>,
-  /// Whether a distorting surface of the scene is in sight of a lit view.
-  is_distorting: bool,
+  /// The tiles of the frame the distorting surfaces in sight of a lit view may touch, by the spheres about them.
+  distortion_tiles: DistortionTiles,
 }
 
 impl CompositedFeature {
   /// Takes this frame's composited surfaces through the camera, with what of the `scene` is in `sight`: the sorted list
-  /// written through `encoder`, whether the enhanced glass draws, and whether a distorting surface may.
+  /// written through `encoder`, whether the enhanced glass draws, and where on the frame a distorting surface may.
   pub fn prepare(
     &mut self,
     &ViewPrepare {
@@ -56,8 +58,16 @@ impl CompositedFeature {
     sight: &StaticSight,
   ) {
     self.prepare_sorted(scene, device, encoder, view);
-    self.is_distorting =
-      options.mode.is_lit && !options.mode.is_wireframe && sight.has_pass(StaticSurfacePass::Distortion);
+    self.distortion_tiles = DistortionTiles::default();
+
+    if options.mode.is_lit && !options.mode.is_wireframe && sight.has_pass(StaticSurfacePass::Distortion) {
+      let (frustum, view_projection): (CameraFrustum, Mat4) = (view.get_frustum(), view.get_view_projection());
+
+      for sphere in scene.statics.list_seen_spheres(&frustum, StaticSurfacePass::Distortion) {
+        self.distortion_tiles.cover_sphere(view_projection, sphere);
+      }
+    }
+
     self.glass = (options.features.glass.is_enhanced()
       && options.mode.is_lit
       && !options.mode.is_wireframe
@@ -137,9 +147,9 @@ impl CompositedFeature {
     encoder.write_buffer(buffer, 0, bytes);
   }
 
-  /// Whether a distorting surface of the scene is in sight of a lit, solid view.
-  pub fn is_distorting(&self) -> bool {
-    self.is_distorting
+  /// The tiles of the frame a distorting surface of the scene in sight of a lit, solid view may touch.
+  pub fn get_distortion_tiles(&self) -> &DistortionTiles {
+    &self.distortion_tiles
   }
 
   /// Adds the blended, added and multiplied surfaces in the cull's order, over the lit scene.
@@ -297,7 +307,7 @@ impl CompositedFeature {
       });
     }
 
-    if self.is_distorting {
+    if !self.distortion_tiles.is_empty() {
       let args: Vec<GraphBuffer> = draw.args.clone();
       let pass = graph
         .add_raster_pass("composited distortion")

@@ -5,11 +5,12 @@ use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::effects::distort::distort_parameters::DistortParameters;
 use crate::feature::effects::distort::distort_uniform::DistortUniform;
+use crate::feature::effects::distort::distortion_tiles::DistortionTiles;
 use crate::feature::image::present::present_frame::PresentFrame;
 use crate::feature::image::present::present_inputs::PresentInputs;
 use crate::feature::image::present::present_uniform::PresentUniform;
 use crate::feature::view::view_feature::ViewFeature;
-use crate::frame::targets::texture_copy::add_texture_copy;
+use crate::frame::targets::texture_copy::add_texture_rects_copy;
 use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::level_passes::LevelPasses;
@@ -23,9 +24,9 @@ pub struct PresentFeature {
   uniform: PresentUniform,
   /// How many times the sky is averaged this frame, none where it is drawn as it is.
   debanding: Option<u32>,
-  /// How far the distortion target moves the frame before the resolve and whether it blurs it; none where nothing
-  /// wrote the target this frame.
-  distortion: Option<DistortUniform>,
+  /// How far the distortion target moves the frame before the resolve and whether it blurs it, and the tiles of the
+  /// frame it was written in; none where nothing wrote it this frame.
+  distortion: Option<(DistortUniform, DistortionTiles)>,
 }
 
 impl PresentFeature {
@@ -36,9 +37,14 @@ impl PresentFeature {
 
     self.debanding = PresentUniform::get_debanding(options);
     // `combine_2` blurs towards the engine's bloom, which is built under the enhanced one for it.
-    self.distortion = (inputs.is_distorting && water.distortion > 0.0).then(|| DistortUniform {
-      strength: water.distortion,
-      is_blurred: u32::from(inputs.is_engine_bloomed || inputs.is_enhanced_bloomed),
+    self.distortion = (!inputs.distortion.is_empty() && water.distortion > 0.0).then(|| {
+      (
+        DistortUniform {
+          strength: water.distortion,
+          is_blurred: u32::from(inputs.is_engine_bloomed || inputs.is_enhanced_bloomed),
+        },
+        inputs.distortion,
+      )
     });
 
     let present: PresentUniform = PresentUniform::new(
@@ -79,7 +85,7 @@ impl PresentFeature {
   /// Moves the frame (`handles.scene`, at the drawn size) where the water, the particles, the rain and the distorting
   /// surfaces wrote the distortion target, and blurs it towards the engine's bloom by its `z` where a bloom draws,
   /// before the resolve, so the resolve smooths it as it smooths the rest: a copy of the frame read where the target
-  /// says, drawn back into it. Nothing where nothing distorts.
+  /// says, drawn back into it, both only about the tiles the target was written in. Nothing where nothing distorts.
   pub fn add_distortion_pass<'a>(
     &self,
     GraphDeclaration { graph, runtime, .. }: GraphDeclaration<'_, 'a>,
@@ -87,11 +93,22 @@ impl PresentFeature {
     view: &'a ViewBinding,
     handles: ViewTargetHandles,
   ) {
-    let Some(distortion) = self.distortion else {
+    let Some((distortion, tiles)) = self.distortion else {
       return;
     };
 
     let (width, height) = handles.size;
+    // A texel reads at most this share of the screen away, and a pixel more for the truncation to a texel: the copy
+    // reaches that many tiles past those the target was written in.
+    let farthest: f32 = (1.0 - ViewTargets::NEUTRAL_DISTORTION as f32) * distortion.strength;
+    let reach = |size: u32, tiles: u32| ((farthest * size as f32 + 1.0) * tiles as f32 / size as f32).ceil() as u32;
+    let copied: Vec<RenderRect> = tiles
+      .grown(
+        reach(width, DistortionTiles::COLUMNS),
+        reach(height, DistortionTiles::ROWS),
+      )
+      .get_rects(handles.size);
+    let moved: Vec<RenderRect> = tiles.get_rects(handles.size);
     let before: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(
       "scene before distortion",
       width,
@@ -99,7 +116,7 @@ impl PresentFeature {
       ViewTargets::SCENE,
     ));
 
-    add_texture_copy(&mut *graph, "scene before distortion", handles.scene, before);
+    add_texture_rects_copy(&mut *graph, "scene before distortion", handles.scene, before, copied);
 
     let parameters: DistortParameters<'a> = DistortParameters {
       frame: before,
@@ -113,11 +130,8 @@ impl PresentFeature {
     graph
       .add_raster_pass("distortion")
       .parameters(&parameters)
-      .color(GraphColorAttachment::new(
-        handles.scene,
-        wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT),
-      ))
-      .record(move |context| passes.effects.distort.record(context, view, &parameters));
+      .color(GraphColorAttachment::new(handles.scene, wgpu::LoadOp::Load))
+      .record(move |context| passes.effects.distort.record(context, view, &parameters, &moved));
   }
 
   /// Writes into `applied` how many times the sky is averaged this frame.

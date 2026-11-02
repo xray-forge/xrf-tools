@@ -5,6 +5,7 @@ use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_rect::RenderRect;
+use crate::feature::effects::distort::distortion_tiles::DistortionTiles;
 use crate::feature::effects::rain::cover::rain_covers::RainCovers;
 use crate::feature::image::exposure::reading::exposure_decisions::ExposureDecisions;
 use crate::feature::image::present::display::display_mode::DisplayMode;
@@ -198,15 +199,15 @@ impl SceneView {
       .fill(&self.shared.camera, options, &mut self.features.particles);
     self.features.particles.upload(device, &mut *encoder);
 
-    let is_distorting: bool = self.is_distorting(options);
+    let distortion: DistortionTiles = self.get_distortion_tiles(options);
 
-    self.features.bloom.keep_for_distortion(is_distorting);
+    self.features.bloom.keep_for_distortion(!distortion.is_empty());
     self.prepare_present(
       options,
       output,
       scene.get_time().as_secs_f32(),
       self.shared.resolve.noise_frame,
-      is_distorting,
+      distortion,
     );
   }
 

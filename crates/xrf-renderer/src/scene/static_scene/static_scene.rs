@@ -16,6 +16,7 @@ use crate::scene::static_scene::item::object::static_object_proxy::StaticObjectP
 use crate::scene::static_scene::item::object::static_objects::StaticObjects;
 use crate::scene::static_scene::item::static_sector_proxy::StaticSectorProxy;
 use crate::scene::static_scene::item::static_sorted_place::StaticSortedPlace;
+use crate::scene::static_scene::surface::static_surface_pass::StaticSurfacePass;
 use crate::scene::static_scene::surface::static_surfaces::StaticSurfaces;
 use crate::scene::static_scene::trace::static_trace_geometry::StaticTraceGeometry;
 use crate::scene::static_scene::trace::static_trace_group::StaticTraceGroup;
@@ -212,7 +213,36 @@ impl StaticScene {
 
   /// What of the scene drawn by passes of its own may be seen through a view's `frustum`.
   pub fn get_sight(&self, frustum: &CameraFrustum) -> StaticSight {
-    let is_in_view = |sphere: &Vec4| frustum.reaches(*sphere);
+    let mut seen: StaticSight = StaticSight::default();
+
+    for (sphere, sight) in self.list_sights() {
+      if (seen | sight) != seen && frustum.reaches(*sphere) {
+        seen |= sight;
+
+        if seen == StaticSight::ALL {
+          break;
+        }
+      }
+    }
+
+    seen
+  }
+
+  /// The spheres about the sectors' slots and the objects with a surface of `pass` that stand within a view's
+  /// `frustum`.
+  pub fn list_seen_spheres<'s>(
+    &'s self,
+    frustum: &'s CameraFrustum,
+    pass: StaticSurfacePass,
+  ) -> impl Iterator<Item = Vec4> + 's {
+    self
+      .list_sights()
+      .filter(move |(sphere, sight)| sight.has_pass(pass) && frustum.reaches(**sphere))
+      .map(|(sphere, _)| *sphere)
+  }
+
+  /// The sectors' slots and the objects drawn by passes of their own, each with the sphere about it.
+  fn list_sights(&self) -> impl Iterator<Item = (&Vec4, StaticSight)> {
     let sectors = self
       .sectors
       .as_slice()
@@ -224,19 +254,8 @@ impl StaticScene {
 
       (!model.sight.is_empty()).then_some((&object.sphere, model.sight))
     });
-    let mut seen: StaticSight = StaticSight::default();
 
-    for (sphere, sight) in sectors.chain(objects) {
-      if (seen | sight) != seen && is_in_view(sphere) {
-        seen |= sight;
-
-        if seen == StaticSight::ALL {
-          break;
-        }
-      }
-    }
-
-    seen
+    sectors.chain(objects)
   }
 
   /// The spawned objects with composited surfaces and the level's strictly sorted composited runs, which a view draws
