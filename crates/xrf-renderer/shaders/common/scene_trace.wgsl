@@ -667,9 +667,19 @@ fn scene_grass_passed(origin: vec3<f32>, toward: vec3<f32>, length: f32, is_met:
       grass = scene_grass_slot(slot, vec2<f32>(0.5), 1.0);
     }
 
+    // A slot no layer is walked in stops nothing anywhere along the ray: on to the first step past it.
+    if (!grass.is_planted || grass.top - grass.base > grass.height) {
+      let exit: f32 = scene_grass_slot_exit(origin, toward, slot);
+      let past: f32 = SCENE_GRASS_STEP * (ceil(exit / SCENE_GRASS_STEP - 0.5) + 0.5);
+
+      along = max(along, past - SCENE_GRASS_STEP);
+
+      continue;
+    }
+
     let above: f32 = point.y - (grass.base + grass.top) * 0.5;
 
-    if (!grass.is_planted || grass.top - grass.base > grass.height || above < 0.0 || above > grass.height) {
+    if (above < 0.0 || above > grass.height) {
       continue;
     }
 
@@ -690,6 +700,17 @@ fn scene_grass_passed(origin: vec3<f32>, toward: vec3<f32>, length: f32, is_met:
   out.hemi /= max(out.opacity, 1e-4);
 
   return out;
+}
+
+// Metres along a ray from `origin` along `toward` at which it leaves the grass slot `slot` (in the engine's space, slots
+// across), or past any walk where it never does, rising or falling straight.
+fn scene_grass_slot_exit(origin: vec3<f32>, toward: vec3<f32>, slot: vec2<i32>) -> f32 {
+  let start: vec2<f32> = vec2<f32>(origin.x, -origin.z) / GRASS_SLOT_METERS;
+  let way: vec2<f32> = vec2<f32>(toward.x, -toward.z) / GRASS_SLOT_METERS;
+  let edge: vec2<f32> = vec2<f32>(slot) + select(vec2<f32>(0.0), vec2<f32>(1.0), way > vec2<f32>(0.0));
+  let exits: vec2<f32> = select(vec2<f32>(SCENE_GRASS_WALK * 2.0), (edge - start) / way, abs(way) > vec2<f32>(1e-6));
+
+  return min(exits.x, exits.y);
 }
 
 // A triangle's corners, read from its layout's arena through its record: its outline, then each corner's normal and,
