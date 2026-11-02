@@ -49,19 +49,32 @@ describe("LevelEnhancedFeatureSection", () => {
   it("sets one value of the enhanced feature for the view, the rest left to the settings", async () => {
     const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
 
+    descriptor.renderSettings.setRendererOverrides({ volumetric: { mode: ERenderVolumetricMode.ENGINE } });
+
+    const { getByRole, view } = renderLevelView(<LevelEnhancedFeatureSection feature={"volumetric"} />, descriptor);
+
+    await userEvent.click(getByRole("checkbox", { name: "Enhanced volumetric light" }));
+
+    getByRole("slider", { name: "Distance" }).focus();
+    await userEvent.keyboard("{ArrowRight}");
+
+    expect(view.features.volumetric).toEqual({ distance: 85, mode: ERenderVolumetricMode.ENHANCED });
+  });
+
+  it("offers the sky's debanding as its toggle alone", async () => {
+    const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
+
     descriptor.renderSettings.setRendererOverrides({ debanding: DEFAULT_RENDER_DEBANDING_SETTINGS });
 
-    const { getByRole, view } = renderLevelView(<LevelEnhancedFeatureSection feature={"debanding"} />, descriptor);
+    const { getByRole, queryAllByRole, view } = renderLevelView(
+      <LevelEnhancedFeatureSection feature={"debanding"} />,
+      descriptor
+    );
 
     await userEvent.click(getByRole("checkbox", { name: "Debanding" }));
 
-    expect(getByRole("slider", { name: "Debanding radius" })).toHaveAttribute("aria-valuetext", "48 px");
-    expect(getByRole("slider", { name: "Debanding passes" })).toHaveAttribute("aria-valuetext", "2 times");
-
-    getByRole("slider", { name: "Debanding passes" }).focus();
-    await userEvent.keyboard("{ArrowRight}");
-
-    expect(view.features.debanding).toEqual({ mode: ERenderDebandingMode.ENHANCED, passes: 3 });
+    expect(view.features.debanding).toEqual({ mode: ERenderDebandingMode.ENHANCED });
+    expect(queryAllByRole("slider")).toHaveLength(0);
   });
 
   it("names a feature by its own toggle and values", async () => {

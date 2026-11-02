@@ -1,6 +1,5 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor};
 
-use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::effects::distort::distort_parameters::DistortParameters;
@@ -17,25 +16,20 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
 
 /// What the window pass puts the view's finished frame into its rectangle by: the debug view shown, the distortion,
-/// the corrections, the bloom laid over it, the selection's outline, the sky debanding and the tonemap where the scene
-/// holds linear light.
+/// the corrections, the bloom laid over it, the selection's outline and the tonemap where the scene holds linear light.
 #[derive(Default)]
 pub struct PresentFeature {
   uniform: PresentUniform,
-  /// How many times the sky is averaged this frame, none where it is drawn as it is.
-  debanding: Option<u32>,
   /// How far the distortion target moves the frame before the resolve and whether it blurs it, and the tiles of the
   /// frame it was written in; none where nothing wrote it this frame.
   distortion: Option<(DistortUniform, ScreenTiles)>,
 }
 
 impl PresentFeature {
-  /// Takes this frame's present into `output`, once every other unit has decided what it reads (`inputs`), the
-  /// debanding's noise turning with `time`.
-  pub fn prepare(&mut self, options: &RenderViewOptions, output: RenderRect, inputs: PresentInputs, time: f32) {
+  /// Takes this frame's present into `output`, once every other unit has decided what it reads (`inputs`).
+  pub fn prepare(&mut self, options: &RenderViewOptions, output: RenderRect, inputs: PresentInputs) {
     let water = &options.features.water;
 
-    self.debanding = PresentUniform::get_debanding(options);
     // `combine_2` blurs towards the engine's bloom, which is built under the enhanced one for it.
     self.distortion = (!inputs.distortion.is_empty() && water.distortion > 0.0).then(|| {
       (
@@ -60,7 +54,7 @@ impl PresentFeature {
       },
       &options.features.corrections,
     );
-    let present: PresentUniform = if inputs.is_enhanced_bloomed {
+    self.uniform = if inputs.is_enhanced_bloomed {
       present.with_enhanced_bloom()
     } else {
       present
@@ -70,11 +64,6 @@ impl PresentFeature {
     .with_grass_reach(inputs.grass_reach)
     .with_reflection_light(inputs.light)
     .with_grain(&options.features.camera, inputs.grain_frame);
-
-    self.uniform = match self.debanding {
-      Some(passes) => present.with_debanding(passes, options.features.debanding.radius, time),
-      None => present,
-    };
   }
 
   /// What the window pass reads this frame.
@@ -129,11 +118,6 @@ impl PresentFeature {
       .parameters(&parameters)
       .color(GraphColorAttachment::new(handles.scene, wgpu::LoadOp::Load))
       .record(move |context| passes.effects.distort.record(context, view, &parameters, &moved));
-  }
-
-  /// Writes into `applied` how many times the sky is averaged this frame.
-  pub fn describe(&self, applied: &mut RenderAppliedReport) {
-    applied.debanding = self.debanding;
   }
 }
 

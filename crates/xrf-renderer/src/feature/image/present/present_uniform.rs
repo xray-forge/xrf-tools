@@ -3,7 +3,6 @@ use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::feature::image::display::render_image_corrections::RenderImageCorrections;
 use crate::contract::feature::image::render_camera_settings::RenderCameraSettings;
-use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::image::present::present_frame::PresentFrame;
 use crate::feature::page::present_marks::PresentMarks;
@@ -40,9 +39,6 @@ pub struct PresentUniform {
   /// One where the reflections were traced this frame, then the frame's pixels a traced pixel stands for each way.
   pub is_reflected: u32,
   pub reflection_ratio: f32,
-  /// The sky debanding's passes, the pixels it reads out to at most and the clock its noise turns with; no passes where
-  /// the sky is drawn as it is.
-  pub deband: Vec4,
   /// How the scene is shown before the rest is laid over it (`DisplayMode`), as `common/display_transform` numbers it,
   /// then the physical light's grading before its transform: its contrast, its saturation, and
   /// the transform's lift at the frame's key and bright end (`DisplayMode::get_lift`).
@@ -83,20 +79,10 @@ impl PresentUniform {
       is_indirect: u32::from(frame.is_indirect),
       is_reflected: u32::from(frame.reflection_ratio.is_some()),
       reflection_ratio: frame.reflection_ratio.unwrap_or(1) as f32,
-      deband: Vec4::ZERO,
       display: Vec4::ZERO,
       inspect: Vec4::ZERO,
       grain: Vec4::ZERO,
     }
-  }
-
-  /// How many times a view averages its sky's pixels, or none: the engine's sky asked for, no sky shown, unlit or
-  /// wireframe.
-  pub fn get_debanding(options: &RenderViewOptions) -> Option<u32> {
-    let debanding = &options.features.debanding;
-    let is_shown: bool = options.mode.is_lit && !options.mode.is_wireframe && options.show.is_sky_visible;
-
-    (is_shown && debanding.is_drawn()).then(|| debanding.get_passes())
   }
 
   /// The same showing its scene as `display` says (`DisplayMode::get_display`).
@@ -140,14 +126,6 @@ impl PresentUniform {
   pub fn with_enhanced_bloom(self) -> Self {
     Self {
       is_bloomed: Self::BLOOM_ENHANCED,
-      ..self
-    }
-  }
-
-  /// The same, the sky debanded over `passes` passes out to `radius` pixels, its noise turning with `time` seconds.
-  pub fn with_debanding(self, passes: u32, radius: f32, time: f32) -> Self {
-    Self {
-      deband: Vec4::new(passes as f32, radius, time, 0.0),
       ..self
     }
   }

@@ -5,7 +5,6 @@
 #import "common/occlusion"
 #import "common/octahedral"
 #import "common/present"
-#import "common/debanding"
 #import "common/reflection_end"
 #import "common/debug_colours"
 #import "common/luminance"
@@ -17,7 +16,7 @@
 // scene was built from.
 
 // The scene, the targets a debug view shows, what
-// the frame shows, the frame upscaled or the scene again (filtered for the debanding's reads), the bloom, finished in
+// the frame shows, the frame upscaled or the scene again, the bloom, finished in
 // the engine's 256-square target or at half the frame's size for the enhanced bloom, the indirect light gathered at
 // half the frame's size or traced at its size, and the reflections and how their rays ended, at the size they are
 // traced at.
@@ -342,24 +341,6 @@ fn engine_bloomed(color: vec3<f32>, pixel: vec2<f32>) -> vec3<f32> {
   return color + bloom.rgb * bloom.a;
 }
 
-// One where nothing was drawn at a drawn texel, held to the frame's edges.
-fn sky_at(texel: vec2<i32>) -> f32 {
-  let last: vec2<i32> = vec2<i32>(camera.viewport.xy) - 1;
-
-  return select(0.0, 1.0, textureLoad(depth_target, clamp(texel, vec2<i32>(0), last), 0) <= 0.0);
-}
-
-// How much of the drawn frame about a pixel is the sky, the bilinear share of the four drawn texels around its
-// centre: the frame is drawn jittered, and one texel would flip a skyline's pixels in and out of the debanding.
-fn sky_share(pixel: vec2<f32>) -> f32 {
-  let position: vec2<f32> = (pixel + 0.5) / present.size * camera.viewport.xy - 0.5;
-  let corner: vec2<i32> = vec2<i32>(floor(position));
-  let f: vec2<f32> = position - floor(position);
-
-  return mix(mix(sky_at(corner), sky_at(corner + vec2<i32>(1, 0)), f.x),
-    mix(sky_at(corner + vec2<i32>(0, 1)), sky_at(corner + vec2<i32>(1, 1)), f.x), f.y);
-}
-
 @fragment
 fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let pixel: vec2<f32> = floor(in.clip.xy - present.origin);
@@ -385,27 +366,15 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
   // The physical light's engine bloom is light, built from its linear scene, so it joins the scene as light before the
   // display transform; the engine's joins its shown frame after, as `combine_2` adds it.
   let is_bloom_light: bool = present.is_bloomed == BLOOM_ENGINE && u32(display.x) >= DISPLAY_ENGINE_ENCODED;
-  // A scene of linear light at its exposure is shown here, by the engine's curve or the physical light's display
-  // transform and encoding, before everything the engine lays over its displayed frame.
-  let unbloomed: vec3<f32> = shown_for_display(drawn, display);
-  var color: vec3<f32> = unbloomed;
+  var light: vec3<f32> = drawn;
 
   if (is_bloom_light) {
-    color = shown_for_display(engine_bloomed(drawn, pixel), display);
+    light = engine_bloomed(drawn, pixel);
   }
 
-  // The sky debanding, by how much of the drawn frame about the pixel is the sky, over the shown steps it bands in:
-  // its neighbours read about the pixel. They are read without the bloom, so where the bloom joined as light the
-  // frame is debanded as it shows without it and the bloom's share kept, as the engine debands before its bloom: a
-  // bloomed pixel against its unbloomed neighbours would blend the bloom's faint edge away and leave a ring.
-  let sky: f32 = select(0.0, sky_share(pixel), present.deband.x > 0.0);
-
-  if (sky > 0.0) {
-    let blended: vec3<f32> = debanded(upscaled, bloom_sampler, unbloomed, (pixel + 0.5) / present.size,
-      1.0 / present.size, u32(present.deband.x), present.deband.y, present.deband.z, display);
-
-    color = select(mix(color, blended, sky), color + (blended - unbloomed) * sky, is_bloom_light);
-  }
+  // A scene of linear light at its exposure is shown here, by the engine's curve or the physical light's display
+  // transform and encoding, before everything the engine lays over its displayed frame.
+  var color: vec3<f32> = shown_for_display(light, display);
 
   // The enhanced bloom screened over the frame, `1 - (1 - img)(1 - bloom)`, before its corrections.
   if (present.is_bloomed == BLOOM_ENHANCED) {

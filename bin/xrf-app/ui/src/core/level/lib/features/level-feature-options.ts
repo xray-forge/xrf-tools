@@ -262,7 +262,7 @@ const LEVEL_GROUP_KEYS: {
     shutter: true,
     vignetteStrength: true,
   },
-  debanding: { mode: true, passes: true, radius: true },
+  debanding: { mode: true },
   enhancedBloom: { blur: true, exposure: true, mode: true, sky: true, threshold: true, vibrance: true },
   fog: { colour: true, density: true, height: true, mode: true, scattering: true, skyFade: true, sunColor: true },
   glass: { mode: true, refraction: true },

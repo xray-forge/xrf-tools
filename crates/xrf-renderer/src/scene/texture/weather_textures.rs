@@ -24,6 +24,11 @@ impl<'a> WeatherTextures<'a> {
     self.cache.is_up(self.scope, reference)
   }
 
+  /// A texture's size, a face's for a cube, once up.
+  pub fn get_size(&self, reference: &str) -> Option<(u32, u32)> {
+    self.cache.get_size(self.scope, reference)
+  }
+
   /// What samples a texture: its own once up, its kind's placeholder before, or for none.
   pub fn get_view(&self, reference: Option<&str>, kind: WeatherTextureKind) -> &'a wgpu::TextureView {
     self.cache.get_view(self.scope, reference, kind)

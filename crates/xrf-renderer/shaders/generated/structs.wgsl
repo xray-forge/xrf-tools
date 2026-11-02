@@ -82,7 +82,6 @@ struct Present {
   is_indirect: u32,
   is_reflected: u32,
   reflection_ratio: f32,
-  deband: vec4<f32>,
   display: vec4<f32>,
   inspect: vec4<f32>,
   grain: vec4<f32>,

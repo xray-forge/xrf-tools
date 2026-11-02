@@ -1,3 +1,4 @@
+pub(crate) mod deband;
 pub(crate) mod dome;
 pub(crate) mod irradiance;
 pub(crate) mod prefilter;

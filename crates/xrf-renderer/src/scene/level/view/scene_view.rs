@@ -202,13 +202,7 @@ impl SceneView {
     let distortion: ScreenTiles = self.get_distortion_tiles(options);
 
     self.features.bloom.keep_for_distortion(!distortion.is_empty());
-    self.prepare_present(
-      options,
-      output,
-      scene.get_time().as_secs_f32(),
-      self.shared.resolve.noise_frame,
-      distortion,
-    );
+    self.prepare_present(options, output, self.shared.resolve.noise_frame, distortion);
   }
 
   /// What every other unit reads of the frame's exposure and resolve, prepared before any of them, which the view's frame

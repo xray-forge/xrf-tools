@@ -220,7 +220,7 @@ describe("level feature options", () => {
 
   it("keeps the fog's, the sky debanding's, the glass's and the bloom's own modes and strengths, held to their bounds", () => {
     const view: ILevelFeatureOptions = toLevelFeatureOptions({
-      debanding: { mode: ERenderDebandingMode.ENGINE, passes: 9, radius: 400 },
+      debanding: { mode: ERenderDebandingMode.ENGINE, passes: 9 },
       enhancedBloom: { lens: 2, mode: ERenderBloomMode.ENHANCED, threshold: 0.5 },
       fog: { density: 9, height: 6, mode: ERenderFogMode.ENGINE, steps: 3 },
       glass: { blur: 1, mode: ERenderGlassMode.ENGINE, refraction: 5 },
@@ -229,11 +229,8 @@ describe("level feature options", () => {
     expect(view.fog).toEqual({ density: 5, height: 6, mode: ERenderFogMode.ENGINE });
     expect(view.glass).toEqual({ mode: ERenderGlassMode.ENGINE, refraction: 2 });
     expect(toLevelModeFeature("glass", SETTINGS, view)).toEqual({ mode: ERenderGlassMode.ENGINE, refraction: 2 });
-    expect(view.debanding).toEqual({
-      mode: ERenderDebandingMode.ENGINE,
-      passes: 4,
-      radius: 128,
-    });
+    // A value the settings do not take is dropped.
+    expect(view.debanding).toEqual({ mode: ERenderDebandingMode.ENGINE });
     expect(view.enhancedBloom).toEqual({ mode: ERenderBloomMode.ENHANCED, threshold: 1 });
     expect(toLevelModeFeature("fog", SETTINGS, mockLevelFeatureOptions())).toEqual(SETTINGS.fog);
     expect(toLevelModeFeature("fog", SETTINGS, view)).toEqual({

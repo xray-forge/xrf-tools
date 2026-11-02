@@ -9,7 +9,6 @@ import {
 import { Nullable } from "@xrf/types";
 
 import { describeRenderAntialiasing } from "@/core/render/lib/features/image/render-antialiasing-choices";
-import { formatDebandingPasses } from "@/core/render/lib/features/image/render-debanding-choices";
 import {
   describeRenderScale,
   RENDER_UPSCALING_SETTINGS,
@@ -124,7 +123,7 @@ export const LEVEL_APPLIED_SECTIONS: ReadonlyArray<ILevelAppliedSection> = [
       },
       {
         label: "Sky debanding",
-        read: (applied) => (applied.debanding ? formatDebandingPasses(applied.debanding) : "The sky as drawn"),
+        read: (applied) => (applied.isSkyDebanded ? "Smoothed" : "The sky as drawn"),
       },
     ],
     title: "Applied image",

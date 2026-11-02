@@ -327,13 +327,11 @@ impl SceneView {
   }
 
   /// Notes what the window pass reads, once every other unit knows what it draws: where the frame distorts
-  /// (`distortion`), which bloom it lays over the frame, the sky debanding, its noise turning with `time`, and the
-  /// film's grain, drawn for `noise_frame`.
+  /// (`distortion`), which bloom it lays over the frame, and the film's grain, drawn for `noise_frame`.
   pub(super) fn prepare_present(
     &mut self,
     options: &RenderViewOptions,
     output: RenderRect,
-    time: f32,
     noise_frame: u32,
     distortion: ScreenTiles,
   ) {
@@ -358,6 +356,6 @@ impl SceneView {
       grain_frame: noise_frame,
     };
 
-    self.features.present.prepare(options, output, inputs, time);
+    self.features.present.prepare(options, output, inputs);
   }
 }

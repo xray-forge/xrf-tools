@@ -78,12 +78,8 @@ const BASE_PRESET: IRenderFeatureSettings = {
   antialiasing: ERenderAntialiasing.TAA,
   // No camera effect: each is a look a person chooses (P7).
   camera: DEFAULT_RENDER_CAMERA_SETTINGS,
-  // The sky's bands smoothed, which reads the sky's own pixels alone and leaves the rest of the frame as drawn.
-  debanding: {
-    ...DEFAULT_RENDER_DEBANDING_SETTINGS,
-    mode: ERenderDebandingMode.ENHANCED,
-    passes: 1,
-  },
+  // The sky's bands smoothed in its own textures, which leaves the rest of the frame as drawn.
+  debanding: { ...DEFAULT_RENDER_DEBANDING_SETTINGS, mode: ERenderDebandingMode.ENHANCED },
   // What shows the physical light's frame, where a view lights by it.
   displayTransform: ERenderDisplayTransform.ENGINE,
   enhancedBloom: { ...DEFAULT_RENDER_ENHANCED_BLOOM_SETTINGS, mode: ERenderBloomMode.ENHANCED },
@@ -172,7 +168,6 @@ const ENHANCED_PRESET: IRenderFeatureSettings = {
     rtao: { rays: 2 },
     vbao: { ...BASE_PRESET.ambientOcclusion.vbao, steps: 8 },
   },
-  debanding: { ...BASE_PRESET.debanding, passes: 2 },
   indirectLight: { ...BASE_PRESET.indirectLight, steps: 2 },
   // Grass planted to 300 m, casting its own shadows in the sun's three nearest cascades out to 75 m.
   grass: { ...BASE_PRESET.grass, radius: 300, shadowCascades: 3 },

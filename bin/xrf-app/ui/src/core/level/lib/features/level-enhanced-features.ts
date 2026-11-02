@@ -39,7 +39,7 @@ export const LEVEL_ENHANCED_FEATURES: { readonly [K in TLevelEnhancedFeatureKey]
   debanding: {
     explain: explainRenderDebandingMode,
     label: "Debanding",
-    names: ["passes", "radius"],
+    names: [],
     settings: RENDER_DEBANDING_SETTINGS,
     subject: "debanding",
   },

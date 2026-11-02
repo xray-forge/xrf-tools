@@ -22,11 +22,11 @@ const PLACEHOLDER_SKY: [u8; 4] = [128, 130, 140, 255];
 /// What a texture load came to, by its source's scope and its reference, sent from a loader thread.
 type SkyTextureLoad = (String, String, Result<Option<DecodedTexture>, String>);
 
-/// One weather texture: its view once up, whether its load settled, and the source it was read from.
+/// One weather texture: its view and its size once up, whether its load settled, and the source it was read from.
 struct SkyTextureEntry {
   kind: WeatherTextureKind,
   source: Arc<dyn RenderAssetSource>,
-  view: Option<wgpu::TextureView>,
+  view: Option<(wgpu::TextureView, (u32, u32))>,
   /// Whether it is up, or given up on for good.
   is_settled: bool,
   /// The frame it was last asked for.
@@ -189,11 +189,20 @@ impl WeatherTextureCache {
     reference
       .and_then(|reference| self.get_entry(scope, reference))
       .and_then(|entry| entry.view.as_ref())
+      .map(|(view, _)| view)
       .unwrap_or(match kind {
         WeatherTextureKind::Cube => &self.placeholder_cube,
         WeatherTextureKind::Flat => &self.placeholder_flat,
         WeatherTextureKind::Volume => &self.placeholder_volume,
       })
+  }
+
+  /// A texture of a scope's size, a face's for a cube, once up.
+  pub fn get_size(&self, scope: &str, reference: &str) -> Option<(u32, u32)> {
+    self
+      .get_entry(scope, reference)
+      .and_then(|entry| entry.view.as_ref())
+      .map(|(_, size)| *size)
   }
 
   /// Takes what the loaders finished and uploads it, and lets go of what nobody asked for in a while.
@@ -216,7 +225,10 @@ impl WeatherTextureCache {
           log::warn!("Weather texture '{reference}' is larger than the device holds");
         }
         Ok(Some(texture)) if Self::is_kind(&texture, entry.kind) => {
-          entry.view = Some(texture.upload(device, queue, &reference));
+          entry.view = Some((
+            texture.upload(device, queue, &reference),
+            (texture.width, texture.height),
+          ));
         }
         Ok(Some(_)) => log::warn!("Weather texture '{reference}' is not the kind it is drawn as"),
         _ => {}
