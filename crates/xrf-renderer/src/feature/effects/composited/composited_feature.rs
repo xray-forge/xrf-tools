@@ -11,7 +11,6 @@ use crate::feature::effects::composited::glass::glass_copy_dispatch_parameters::
 use crate::feature::effects::composited::glass::glass_copy_parameters::GlassCopyParameters;
 use crate::feature::effects::composited::glass::glass_parameters::GlassParameters;
 use crate::feature::effects::composited::glass::glass_uniform::GlassUniform;
-use crate::feature::effects::distort::distortion_tiles::DistortionTiles;
 use crate::feature::effects::over_scene::add_over_scene;
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
@@ -20,6 +19,7 @@ use crate::feature::view::view_feature::ViewFeature;
 use crate::feature::weather::sky::sky_parameters::SkyParameters;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::jitter_guard::JitterGuard;
+use crate::frame::targets::screen_tiles::ScreenTiles;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::level_scene::LevelScene;
@@ -42,7 +42,7 @@ pub struct CompositedFeature {
   /// What the enhanced glass draws with, where it draws.
   glass: Option<GlassUniform>,
   /// The tiles of the frame the distorting surfaces in sight of a lit view may touch, by the spheres about them.
-  distortion_tiles: DistortionTiles,
+  distortion_tiles: ScreenTiles,
 }
 
 impl CompositedFeature {
@@ -58,12 +58,15 @@ impl CompositedFeature {
     sight: &StaticSight,
   ) {
     self.prepare_sorted(scene, device, encoder, view);
-    self.distortion_tiles = DistortionTiles::default();
+    self.distortion_tiles = ScreenTiles::default();
 
     if options.mode.is_lit && !options.mode.is_wireframe && sight.has_pass(StaticSurfacePass::Distortion) {
       let (frustum, view_projection): (CameraFrustum, Mat4) = (view.get_frustum(), view.get_view_projection());
 
-      for sphere in scene.statics.list_seen_spheres(&frustum, StaticSurfacePass::Distortion) {
+      for sphere in scene
+        .statics
+        .list_seen_spheres(&frustum, |sight| sight.has_pass(StaticSurfacePass::Distortion))
+      {
         self.distortion_tiles.cover_sphere(view_projection, sphere);
       }
     }
@@ -148,7 +151,7 @@ impl CompositedFeature {
   }
 
   /// The tiles of the frame a distorting surface of the scene in sight of a lit, solid view may touch.
-  pub fn get_distortion_tiles(&self) -> &DistortionTiles {
+  pub fn get_distortion_tiles(&self) -> &ScreenTiles {
     &self.distortion_tiles
   }
 

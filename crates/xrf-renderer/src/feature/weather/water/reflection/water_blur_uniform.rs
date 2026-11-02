@@ -11,6 +11,10 @@ pub struct WaterBlurUniform {
 }
 
 impl WaterBlurUniform {
+  /// Half-size texels a blurred texel reads at most away, either way: `frame/water_blur.wgsl`'s six taps, at most two
+  /// texels apart, and one more for the filter.
+  pub const REACH: u32 = 13;
+
   /// Across, from the reflection into a target half its size.
   pub const ACROSS: Self = Self {
     direction: Vec4::new(1.0, 0.0, 2.0, 0.0),

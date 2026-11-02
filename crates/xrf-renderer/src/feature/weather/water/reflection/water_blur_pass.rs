@@ -51,7 +51,8 @@ impl WaterBlurPass {
       .refresh(source.cache, || Self::create_pipeline(source, &self.layout))
   }
 
-  /// Declares one way of the blur, from its source into a transient of its size, and answers that transient.
+  /// Declares one way of the blur, from its source into a transient of its size within its rectangles, and answers that
+  /// transient, cleared outside them.
   pub fn add<'a>(
     &'a self,
     graph: &mut FrameGraph<'a>,
@@ -61,6 +62,7 @@ impl WaterBlurPass {
       source,
       size: (width, height),
       way,
+      rects,
     }: WaterBlurWay,
     enhanced: UniformBinding<EnhancedWaterUniform>,
   ) -> GraphTexture {
@@ -86,8 +88,15 @@ impl WaterBlurPass {
       .parameters(&parameters)
       .record(move |context| {
         context.bind(&parameters);
-        context.get_pass().set_pipeline(&self.pipeline);
-        context.get_pass().draw(0..3, 0..1);
+
+        let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+
+        pass.set_pipeline(&self.pipeline);
+
+        for rect in &rects {
+          pass.set_scissor_rect(rect.x as u32, rect.y as u32, rect.width, rect.height);
+          pass.draw(0..3, 0..1);
+        }
       });
 
     target

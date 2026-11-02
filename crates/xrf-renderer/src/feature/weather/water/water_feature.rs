@@ -19,6 +19,7 @@ use crate::feature::weather::water::reflection::water_reflection_trace::WaterRef
 use crate::feature::weather::water::water_frame::WaterFrame;
 use crate::feature::weather::water::water_inputs::WaterInputs;
 use crate::feature::weather::water::water_uniform::WaterUniform;
+use crate::frame::targets::screen_tiles::ScreenTiles;
 use crate::pass::level_passes::LevelPasses;
 use crate::scene::level::view::record::view_record::ViewRecord;
 
@@ -29,6 +30,8 @@ pub struct WaterFeature {
   settings: RenderWaterSettings,
   /// Whether this frame draws the water at all: it is on, some is in sight, and the view is not wireframe.
   is_drawn: bool,
+  /// The tiles of the frame the water in sight may touch, which its reflection's blur keeps to.
+  tiles: ScreenTiles,
   uniform: WaterUniform,
   enhanced: EnhancedWaterUniform,
   reflection: Option<WaterReflection>,
@@ -102,7 +105,8 @@ impl WaterFeature {
     let settings: RenderWaterSettings = options.features.water;
 
     self.settings = settings;
-    self.is_drawn = settings.is_enabled && frame.is_in_view && !options.mode.is_wireframe;
+    self.is_drawn = settings.is_enabled && !frame.tiles.is_empty() && !options.mode.is_wireframe;
+    self.tiles = frame.tiles;
     // The wave's motion runs from where it stood the last frame; still on a first frame.
     let previous_time: f32 = self.last_time.replace(frame.time).unwrap_or(frame.time);
 
@@ -183,6 +187,11 @@ impl WaterFeature {
   /// Whether the enhanced water draws, reading the scene before it to refract.
   pub fn is_enhanced(&self) -> bool {
     self.is_drawn && self.settings.mode == RenderWaterMode::Enhanced
+  }
+
+  /// The tiles of the frame the water in sight may touch.
+  pub fn get_tiles(&self) -> &ScreenTiles {
+    &self.tiles
   }
 
   pub fn get_uniform(&self) -> &WaterUniform {

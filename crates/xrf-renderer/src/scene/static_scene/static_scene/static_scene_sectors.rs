@@ -169,7 +169,8 @@ impl StaticScene {
           class,
         };
         let cut: Vec<(u32, u32, Vec4)> = clusters.cut(section.draw.start, section.draw.count);
-        let sphere: Vec4 = Self::bound_spheres(&cut.iter().map(|(_, _, sphere)| *sphere).collect::<Vec<Vec4>>());
+        let cluster_spheres: Vec<Vec4> = cut.iter().map(|(_, _, sphere)| *sphere).collect();
+        let sphere: Vec4 = Self::bound_spheres(&cluster_spheres);
 
         sections.push(sphere);
         let (slot, clusters): (u32, u32) = writer.put_slot(
@@ -204,8 +205,11 @@ impl StaticScene {
 
         let sight: StaticSight = StaticSight::of(class, passes);
 
+        // By its clusters' spheres, which bound a wide lake or a building's windows far closer than the section's.
         if !sight.is_empty() {
-          writer.sights.push((sphere, sight));
+          writer
+            .sights
+            .extend(cluster_spheres.into_iter().map(|cluster| (cluster, sight)));
         }
 
         if class.is_deferred() {

@@ -2,24 +2,22 @@ use glam::{Mat4, Vec2, Vec3, Vec4};
 
 use crate::contract::viewport::render_rect::RenderRect;
 
-/// Where on the frame this frame's writers draw into the distortion target, as tiles of a fixed grid over the frame:
-/// what the distortion copies the frame for and moves it in, nothing where no tile is marked. A writer marks the tiles
-/// its screen bounds touch, clipped at the eye, or every tile where it cannot say.
+/// Where on the frame a pass's inputs may draw, as tiles of a fixed grid over the frame, which bound the pass to the
+/// rectangles they make: where the distortion target is written, where the water may draw. Each input marks the tiles
+/// its screen bounds touch, clipped at the near plane, or every tile where it cannot say.
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub struct DistortionTiles {
+pub struct ScreenTiles {
   /// A row's marked tiles a bit each, the lowest bit the left column, the first row the top.
   rows: [u32; Self::ROWS as usize],
 }
 
-impl DistortionTiles {
+impl ScreenTiles {
   /// Columns and rows the frame is cut into, near square at a wide frame.
   pub const COLUMNS: u32 = 32;
   pub const ROWS: u32 = 18;
 
   /// A row with every column marked.
   const ALL_COLUMNS: u32 = u32::MAX >> (32 - Self::COLUMNS);
-  /// Clip-space depth (`w`) a bound is clipped at: just before the eye, the near plane standing beyond it.
-  const EYE_W: f32 = 1e-4;
   /// The screen share a bound is grown by, a few pixels at any size, against the jittered lens and the raster's rounding.
   const MARGIN: f32 = 0.002;
 
@@ -42,8 +40,8 @@ impl DistortionTiles {
     }
   }
 
-  /// Marks the tiles the convex hull of `points` touches on the screen of `view_projection`, clipped at the eye:
-  /// none where it stands wholly behind it.
+  /// Marks the tiles the convex hull of `points` touches on the screen of `view_projection`, a lens of reversed depth,
+  /// clipped at its near plane: none where it stands wholly before it.
   pub fn cover_hull(&mut self, view_projection: Mat4, points: &[Vec3]) {
     let mut low: Vec2 = Vec2::splat(f32::MAX);
     let mut high: Vec2 = Vec2::splat(f32::MIN);
@@ -53,17 +51,19 @@ impl DistortionTiles {
       low = low.min(ndc);
       high = high.max(ndc);
     };
+    // Reversed depth is one at the near plane: past it where `w - z` is not below zero, and `w` stands above it there.
+    let past_near = |clip: Vec4| clip.w - clip.z;
     let clips = points.iter().map(|point| view_projection * point.extend(1.0));
 
-    // The hull's part before the eye lies within the points before it and where any two of them across it cross.
+    // The hull's part past the near plane lies within the points past it and where any two of them across it cross.
     for (index, a) in clips.clone().enumerate() {
-      if a.w >= Self::EYE_W {
+      if past_near(a) >= 0.0 {
         take(a);
       }
 
       for b in clips.clone().skip(index + 1) {
-        if (a.w >= Self::EYE_W) != (b.w >= Self::EYE_W) {
-          take(a.lerp(b, (Self::EYE_W - a.w) / (b.w - a.w)));
+        if (past_near(a) >= 0.0) != (past_near(b) >= 0.0) {
+          take(a.lerp(b, past_near(a) / (past_near(a) - past_near(b))));
         }
       }
     }

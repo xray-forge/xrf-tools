@@ -4,7 +4,7 @@
 // One way of the enhanced water's reflection blurred into a target half the reflection's size, thirteen taps spaced by
 // half-size texels, mixed with the reflection as it was by the blur's share.
 
-// Taps either side of the centre.
+// Taps either side of the centre, which `WaterBlurUniform::REACH` counts to keep each way's rectangles.
 const TAPS: i32 = 6;
 
 @fragment

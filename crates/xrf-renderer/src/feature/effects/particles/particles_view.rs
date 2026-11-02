@@ -4,13 +4,13 @@ use glam::{Mat4, Vec3};
 use xrf_particles::ParticleEffectInstance;
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphDepthAttachment, StorageArray, UniformBinding};
 
-use crate::feature::effects::distort::distortion_tiles::DistortionTiles;
 use crate::feature::effects::over_scene::add_over_scene;
 use crate::feature::effects::particles::particle_batch::ParticleBatch;
 use crate::feature::effects::particles::particle_parameters::ParticleParameters;
 use crate::feature::effects::particles::particle_pass::ParticlePass;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::targets::screen_tiles::ScreenTiles;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::scene::level::particles::particle_blend::ParticleBlend;
 use crate::scene::level::particles::particle_sprite::ParticleSprite;
@@ -31,7 +31,7 @@ pub struct ParticlesView {
   /// The quads of the distorting effects with one on the screen, far to near.
   distortion_runs: Vec<Range<u32>>,
   /// The tiles of the frame those quads touch.
-  distortion_tiles: DistortionTiles,
+  distortion_tiles: ScreenTiles,
   /// How many effects it draws this frame.
   drawn: u32,
   vertex_buffer: wgpu::Buffer,
@@ -43,7 +43,7 @@ impl ParticlesView {
       vertices: Vec::new(),
       batches: Vec::new(),
       distortion_runs: Vec::new(),
-      distortion_tiles: DistortionTiles::default(),
+      distortion_tiles: ScreenTiles::default(),
       drawn: 0,
       vertex_buffer: Self::create_storage(
         device,
@@ -57,7 +57,7 @@ impl ParticlesView {
     self.vertices.clear();
     self.batches.clear();
     self.distortion_runs.clear();
-    self.distortion_tiles = DistortionTiles::default();
+    self.distortion_tiles = ScreenTiles::default();
     self.drawn = 0;
   }
 
@@ -103,7 +103,7 @@ impl ParticlesView {
   /// Marks the tiles `quads` touch on the screen of `view_projection`; whether one does.
   fn cover_distortion(&mut self, view_projection: Mat4, quads: Range<u32>) -> bool {
     let corners: usize = ParticleVertex::CORNERS as usize;
-    let mut tiles: DistortionTiles = DistortionTiles::default();
+    let mut tiles: ScreenTiles = ScreenTiles::default();
 
     for quad in self.vertices[quads.start as usize * corners..quads.end as usize * corners].chunks_exact(corners) {
       let points: [Vec3; 4] = std::array::from_fn(|corner| quad[corner].position);
@@ -188,7 +188,7 @@ impl ParticlesView {
   }
 
   /// The tiles of the frame this frame's particles draw into the distortion target in.
-  pub fn get_distortion_tiles(&self) -> &DistortionTiles {
+  pub fn get_distortion_tiles(&self) -> &ScreenTiles {
     &self.distortion_tiles
   }
 

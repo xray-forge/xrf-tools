@@ -32,6 +32,7 @@ use crate::feature::weather::water::reflection::water_reflection_inputs::WaterRe
 use crate::feature::weather::water::reflection::water_reflection_parameters::WaterReflectionParameters;
 use crate::feature::weather::water::water_feature::WaterFeature;
 use crate::feature::weather::water::water_uniform::WaterUniform;
+use crate::frame::targets::screen_tiles::ScreenTiles;
 use crate::frame::targets::texture_copy::add_texture_copy;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::host::render_bundle::RenderBundle;
@@ -428,7 +429,10 @@ impl WaterPass {
       |it| &it.reflection_resolve,
     );
 
+    // Blurred only about the tiles the water may touch: down within them, across within the rows down reads.
     let half: (u32, u32) = (width.div_ceil(2), height.div_ceil(2));
+    let tiles: &ScreenTiles = draw.water.get_tiles();
+    let reach: u32 = (WaterBlurUniform::REACH * ScreenTiles::ROWS).div_ceil(half.1);
     let across: GraphTexture = self.blur.add(
       graph,
       runtime,
@@ -437,6 +441,7 @@ impl WaterPass {
         source: written,
         size: half,
         way: WaterBlurUniform::ACROSS,
+        rects: tiles.grown(0, reach).get_rects(half),
       },
       enhanced,
     );
@@ -448,6 +453,7 @@ impl WaterPass {
         source: across,
         size: half,
         way: WaterBlurUniform::DOWN,
+        rects: tiles.get_rects(half),
       },
       enhanced,
     );
