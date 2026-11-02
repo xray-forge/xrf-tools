@@ -171,12 +171,6 @@ impl LevelShadows {
     self.per_frame.iter().any(|landed| landed.cascades[index])
   }
 
-  /// Whether a cascade due this frame draws its trees into its kept layer: what moves every frame lands in it and the
-  /// kept layers are held.
-  fn is_kept_draw(&self, index: usize) -> bool {
-    self.kept.is_some() && self.has_moving(index)
-  }
-
   /// How many of the nearest cascades casters standing `reach` metres from the eye are drawn into: the nearest whose
   /// width covers the reach and every nearer one.
   fn get_reached_count(settings: &RenderShadowSettings, reach: f32) -> usize {

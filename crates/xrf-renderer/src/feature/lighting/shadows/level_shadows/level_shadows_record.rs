@@ -96,13 +96,13 @@ impl LevelShadows {
       .iter()
       .filter_map(|&(index, band, layer)| Some((index, band, layer, import(self.cascades[index].band.as_ref()?))))
       .collect();
-    // A kept layer's copy draws no caster, so its cascade needs no lists; one whose trees go into its kept layer keeps
-    // them only where their shadows can fall in the camera's view, the layer drawn again once the camera turns away.
+    // A kept layer's copy draws no caster, so its cascade needs no lists; one whose trees were drawn for where the camera
+    // stands (`received_at`) keeps them only where their shadows can fall in its view, drawn again once it turns away.
     let culls: Vec<(&'a ViewBinding, StaticCullParameters, ShadowCull)> = due
       .iter()
       .filter(|(_, draw, _)| *draw != CascadeDraw::Kept)
       .map(|(index, _, handles)| {
-        let kind: ShadowCull = if self.is_kept_draw(*index) {
+        let kind: ShadowCull = if self.cascades[*index].received_at.is_some() {
           ShadowCull::CascadeReceived
         } else {
           ShadowCull::Cascade
