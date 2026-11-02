@@ -56,6 +56,8 @@ pub struct TextureCache {
   references: Vec<String>,
   /// What each slot is sampled as, which decides what stands in for it.
   roles: Vec<TextureRole>,
+  /// Whether each slot's texture is a distortion map uploaded without any blue (`is_blue_free`).
+  blue_free: Vec<bool>,
   /// What stands in for a texture of each role while it loads, by `TextureRole as usize`.
   neutral: Vec<wgpu::TextureView>,
   /// What stands in for a base texture that cannot be had.
@@ -150,6 +152,7 @@ impl TextureCache {
       states: vec![RenderTextureState::Missing],
       references: vec![String::new()],
       roles: vec![TextureRole::Detail],
+      blue_free: vec![false],
       neutral,
       checker,
       by_reference: HashMap::new(),
@@ -211,6 +214,7 @@ impl TextureCache {
         self.states[index] = RenderTextureState::Loading;
         self.references[index] = reference.to_owned();
         self.roles[index] = role;
+        self.blue_free[index] = false;
         self.keys[index] = Some((scope.to_owned(), reference.to_owned()));
         self.sources[index] = Some(Arc::clone(source));
         self.stamps[index] = None;
@@ -222,6 +226,7 @@ impl TextureCache {
         self.states.push(RenderTextureState::Loading);
         self.references.push(reference.to_owned());
         self.roles.push(role);
+        self.blue_free.push(false);
         self.keys.push(Some((scope.to_owned(), reference.to_owned())));
         self.generations.push(0);
         self.sources.push(Some(Arc::clone(source)));
@@ -356,6 +361,12 @@ impl TextureCache {
     })
   }
 
+  /// Whether a slot holds a distortion map uploaded without any blue, which never blurs the frame where it is drawn into
+  /// the distortion target; not while it loads, stands in, or was asked for as anything else.
+  pub fn is_blue_free(&self, slot: u32) -> bool {
+    self.blue_free.get(slot as usize).copied().unwrap_or(false)
+  }
+
   /// Of some slots, how many are uploaded or given up on.
   pub fn count_settled(&self, slots: impl IntoIterator<Item = impl Borrow<u32>>) -> u32 {
     slots
@@ -409,6 +420,7 @@ impl TextureCache {
 
       self.views[slot] = self.views[Self::MISSING_SLOT as usize].clone();
       self.states[slot] = RenderTextureState::Missing;
+      self.blue_free[slot] = false;
       self.references[slot].clear();
       self.generations[slot] = self.generations[slot].wrapping_add(1);
       self.free.push(slot as u32);

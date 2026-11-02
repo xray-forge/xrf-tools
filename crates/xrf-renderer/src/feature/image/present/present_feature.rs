@@ -30,12 +30,12 @@ impl PresentFeature {
   pub fn prepare(&mut self, options: &RenderViewOptions, output: RenderRect, inputs: PresentInputs) {
     let water = &options.features.water;
 
-    // `combine_2` blurs towards the engine's bloom, which is built under the enhanced one for it.
+    // `combine_2` blurs towards the engine's bloom, which is built under the enhanced one where a writer may blur.
     self.distortion = (!inputs.distortion.is_empty() && water.distortion > 0.0).then(|| {
       (
         DistortUniform {
           strength: water.distortion,
-          is_blurred: u32::from(inputs.is_engine_bloomed || inputs.is_enhanced_bloomed),
+          is_blurred: u32::from(inputs.is_engine_built),
         },
         inputs.distortion,
       )

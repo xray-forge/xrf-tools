@@ -101,6 +101,63 @@ impl RenderAssetSource for CubeSource {
   }
 }
 
+/// A source answering `blue` with a flat 4x4 DXT1 texture whose colour endpoints hold some blue, and any other with one
+/// of none.
+struct DistortionSource;
+
+impl RenderAssetSource for DistortionSource {
+  fn get_texture_scope(&self) -> &str {
+    "test"
+  }
+
+  fn read_texture(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
+    let mut flat: Dds = Dds::new_d3d(NewD3dParams {
+      width: 4,
+      height: 4,
+      depth: None,
+      format: D3DFormat::DXT1,
+      mipmap_levels: Some(1),
+      caps2: None,
+    })
+    .expect("a DXT1 texture");
+    let mut bytes: Vec<u8> = Vec::new();
+    let first: u16 = if reference == "blue" { 0x001f } else { 0xf800 };
+
+    flat.data = [first.to_le_bytes().as_slice(), &[0; 6]].concat();
+    flat.write(&mut bytes).expect("a written texture");
+
+    Ok(Some(bytes))
+  }
+}
+
+// A distortion map is blue-free once uploaded without any blue: never while it loads, never with some, and never as a
+// texture asked for as anything else.
+#[test]
+fn tells_a_distortion_map_without_blue_once_it_is_up() {
+  let Some(context) = create_test_context("to upload to") else {
+    return;
+  };
+  let source: Arc<dyn RenderAssetSource> = Arc::new(DistortionSource);
+  let mut cache: TextureCache = TextureCache::new(&context.device, &context.queue, &create_workers());
+  let plain: u32 = cache.request("plain", TextureRole::Distortion, &source);
+  let blue: u32 = cache.request("blue", TextureRole::Distortion, &source);
+  let detail: u32 = cache.request("detail", TextureRole::Detail, &source);
+
+  assert!(!cache.is_blue_free(plain));
+
+  for slot in [plain, blue, detail] {
+    assert!(matches!(
+      settle(&mut cache, &context, slot),
+      RenderTextureState::Loaded { .. }
+    ));
+  }
+
+  assert!(cache.is_blue_free(plain));
+  assert!(!cache.is_blue_free(blue));
+  assert!(!cache.is_blue_free(detail));
+  assert!(!cache.is_blue_free(TextureCache::MISSING_SLOT));
+}
+
 // The bindless array holds flat textures alone: a cube named as a level texture is refused, not drawn by its first face.
 #[test]
 fn refuses_a_cube_named_as_a_level_texture() {

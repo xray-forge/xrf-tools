@@ -264,6 +264,7 @@ impl TextureCache {
     }
 
     self.views[slot as usize] = texture.upload(device, queue, "level texture");
+    self.blue_free[slot as usize] = self.roles[slot as usize] == TextureRole::Distortion && !texture.has_blue();
     self.states[slot as usize] = RenderTextureState::Loaded {
       width: texture.width,
       height: texture.height,
@@ -276,6 +277,8 @@ impl TextureCache {
 
   /// Stands something in for a texture that cannot be had: a checker for a base, so the gap is seen, else neutral.
   fn stand_in(&mut self, slot: u32, state: RenderTextureState) {
+    self.blue_free[slot as usize] = false;
+
     if self.roles[slot as usize] == TextureRole::Base {
       self.views[slot as usize] = self.checker.clone();
       self.is_dirty = true;

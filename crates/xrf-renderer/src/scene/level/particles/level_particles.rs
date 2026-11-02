@@ -151,7 +151,7 @@ impl LevelParticles {
             _ => 0.0,
           },
           // As the water's own distortion map, neutral at mid grey while it loads.
-          distortion: request(distortion, TextureRole::Detail),
+          distortion: request(distortion, TextureRole::Distortion),
         },
         is_distorting: distortion.is_some(),
         blend,

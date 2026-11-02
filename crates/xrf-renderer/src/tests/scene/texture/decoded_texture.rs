@@ -104,3 +104,56 @@ fn reads_a_cube_as_six_faces_and_a_volume_as_a_layer_a_slice() {
   assert_eq!(volume.layers, 3);
   assert!(volume.is_volume);
 }
+
+/// A one level texture of a format holding these bytes, as many texels as they make.
+fn create_flat(format: wgpu::TextureFormat, bytes: Vec<u8>) -> DecodedTexture {
+  DecodedTexture {
+    format,
+    width: 4,
+    height: 4,
+    layers: 1,
+    is_volume: false,
+    levels: vec![bytes],
+    layout: String::from("test"),
+    is_expanded: false,
+  }
+}
+
+/// A BC3 block whose colour endpoints are these 5:6:5 colours, its alpha and indices all set.
+fn create_bc3_block(first: u16, second: u16) -> Vec<u8> {
+  [
+    [0xff; 8].as_slice(),
+    &first.to_le_bytes(),
+    &second.to_le_bytes(),
+    &[0xff; 4],
+  ]
+  .concat()
+}
+
+// A block compressed texture holds blue where a block's colour endpoints do, whatever its alpha and indices; an eight bit
+// one where a texel does, in its own channel order; any other layout is taken to.
+#[test]
+fn finds_blue_by_a_blocks_endpoints_or_a_texels_channel() {
+  let (red, green, blue): (u16, u16, u16) = (0xf800, 0x07e0, 0x0001);
+  let bc3 = |blocks: Vec<Vec<u8>>| create_flat(wgpu::TextureFormat::Bc3RgbaUnorm, blocks.concat());
+
+  assert!(!bc3(vec![create_bc3_block(red, green), create_bc3_block(green | red, 0)]).has_blue());
+  assert!(bc3(vec![create_bc3_block(red, green), create_bc3_block(red, blue)]).has_blue());
+  assert!(bc3(vec![create_bc3_block(blue | red, green)]).has_blue());
+
+  let bc1 = |first: u16| {
+    create_flat(
+      wgpu::TextureFormat::Bc1RgbaUnorm,
+      [first.to_le_bytes().as_slice(), &red.to_le_bytes(), &[0xff; 4]].concat(),
+    )
+  };
+
+  assert!(!bc1(green).has_blue());
+  assert!(bc1(blue).has_blue());
+
+  let opaque_red: Vec<u8> = [255, 0, 0, 255].repeat(16);
+
+  assert!(!create_flat(wgpu::TextureFormat::Rgba8Unorm, opaque_red.clone()).has_blue());
+  assert!(create_flat(wgpu::TextureFormat::Bgra8Unorm, opaque_red).has_blue());
+  assert!(create_flat(wgpu::TextureFormat::R8Unorm, vec![0; 16]).has_blue());
+}

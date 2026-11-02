@@ -96,9 +96,9 @@ impl StaticSurfaceBuilder {
       texture_slots[StaticSurface::LIGHTMAP] = textures.request(lightmap, TextureRole::Hemi, source);
     }
 
-    let distortion: u32 = plan
-      .distortion
-      .map_or(0, |reference| textures.request(reference, TextureRole::Detail, source));
+    let distortion: u32 = plan.distortion.map_or(0, |reference| {
+      textures.request(reference, TextureRole::Distortion, source)
+    });
 
     Some((
       StaticSurface {

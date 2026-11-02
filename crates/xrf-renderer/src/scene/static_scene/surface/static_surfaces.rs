@@ -22,6 +22,8 @@ pub struct StaticSurfaces {
   pub texture_slots: BTreeSet<u32>,
   /// Every environment slot its environment-mapped surfaces sample.
   pub environment_slots: BTreeSet<u32>,
+  /// The slots its distorting surfaces draw into the distortion target.
+  pub distortion_slots: BTreeSet<u32>,
   /// Each surface's row and class, once asked for; `None` for one no static draw draws.
   rows: HashMap<StaticSurfaceKey, Option<StaticSurfaceUse>>,
   /// Each impostor surface's row, by its shader table entry.
@@ -36,6 +38,7 @@ impl StaticSurfaces {
       buffer: GrowableBuffer::new(device, "static surfaces", wgpu::BufferUsages::STORAGE),
       texture_slots: BTreeSet::new(),
       environment_slots: BTreeSet::new(),
+      distortion_slots: BTreeSet::new(),
       rows: HashMap::new(),
       impostor_rows: HashMap::new(),
       count: 1,
@@ -124,6 +127,13 @@ impl StaticSurfaces {
     row
   }
 
+  /// Whether a distorting surface may blur the frame: one whose map holds some blue or is not yet up
+  /// (`TextureCache::is_blue_free`). Asked of every distorting surface the scene holds, which are few, rather than of
+  /// those in sight.
+  pub fn is_distortion_blurring(&self, textures: &TextureCache) -> bool {
+    self.distortion_slots.iter().any(|slot| !textures.is_blue_free(*slot))
+  }
+
   /// Adds a row to `writer`, noting the slots it samples; answers its index.
   fn push(&mut self, writer: &mut StaticSceneWriter, surface: StaticSurface) -> u32 {
     self.note_slots(&surface);
@@ -155,6 +165,7 @@ impl StaticSurfaces {
 
     if surface.flags & StaticSurface::IS_DISTORTING != 0 {
       self.texture_slots.insert(surface.distortion);
+      self.distortion_slots.insert(surface.distortion);
     }
   }
 }
