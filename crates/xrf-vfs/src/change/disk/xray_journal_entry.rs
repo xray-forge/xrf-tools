@@ -57,15 +57,23 @@ impl XrayJournalEntry {
   pub(crate) fn roll_back(entries: &[Self]) {
     for entry in entries.iter().rev() {
       match &entry.backup {
-        Some(backup) if backup.exists() => {
-          if let Err(error) = fs::rename(backup, &entry.target) {
+        Some(backup) if backup.exists() => match fs::rename(backup, &entry.target) {
+          // POSIX `rename` does nothing when both names link one file, as they do where the swap kept the target as a
+          // hard link and failed before replacing it: the target is then already as it was, and only the kept name goes.
+          Ok(()) if backup.exists() => {
+            if let Err(error) = fs::remove_file(backup) {
+              log::warn!("Could not remove {} after a rollback: {error}", format_path(backup));
+            }
+          }
+          Ok(()) => {}
+          Err(error) => {
             log::error!(
               "Could not restore {} from {}: {error}",
               format_path(&entry.target),
               format_path(backup)
             );
           }
-        }
+        },
         // Kept nothing: the target was not touched.
         Some(_) => {}
         // Nothing was there before, so a target there now is the commit's, once its staged file has moved.
