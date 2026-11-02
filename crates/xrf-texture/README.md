@@ -30,8 +30,9 @@ such as a height map or gloss mask as BMP, DDS, JPEG, PNG or TGA, chosen by its 
 
 ## Build from a THM recipe
 
-```rust
-use xrf_texture::BuildTextureRecipe;
+```rust,no_run
+use xrf_dds::{Quality, Rgba, RgbaImage};
+use xrf_texture::{BuildTextureOptions, BuildTextureProcessor, BuildTextureRecipe};
 use xrf_thm::{ThmFile, ThmFormat};
 
 fn main() -> xrf_error::XrfResult {
@@ -46,24 +47,19 @@ fn main() -> xrf_error::XrfResult {
 
   println!("{:?} {:?}, {:?}, omitting {:?}", recipe.layout, recipe.format, recipe.mipmaps, recipe.omissions);
 
+  let built = BuildTextureProcessor::build(&BuildTextureOptions {
+    destination: "output/example.dds".into(),
+    source: RgbaImage::from_pixel(64, 64, Rgba([128, 128, 255, 255])),
+    descriptor,
+    normal_map: None,
+    quality: Quality::Normal,
+  })?;
+
+  println!("{} levels written to {}", built.mipmap_levels, built.destination.display());
+
   Ok(())
 }
 ```
-
-`BuildTextureProcessor::build` then writes the texture the recipe describes:
-
-```rust,ignore
-let built = BuildTextureProcessor::build(&BuildTextureOptions {
-  destination: "output/example.dds".into(),
-  source: RgbaImage::from_pixel(64, 64, Rgba([128, 128, 255, 255])),
-  descriptor,
-  normal_map: None,
-  quality: Quality::Normal,
-})?;
-```
-
-Not compiled as a doc test, as `xrf-dds`'s encoding example is not: the encoder's C++ helper does not link into a Linux
-doc test.
 
 The descriptor decides everything: the layout, whether there is a mip chain and who reduces it, and whether the
 source's alpha means anything; nothing is taken from the file being replaced. DXT1, DXT3, DXT5 and RGBA map to BC1,

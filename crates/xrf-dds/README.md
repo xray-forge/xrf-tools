@@ -52,13 +52,20 @@ reads a coarser level instead of decoding the base.
 
 ## Encode pixels and mipmaps
 
-```rust,ignore
-let chain = DdsMipChain::build(&pixels, DdsMipmaps::Disabled)?;
-let texture = DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Normal).encode(&chain)?;
-```
+```rust
+use xrf_dds::{DdsEncoding, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
 
-Not compiled as a doc test: the encoder's C++ helper does not link into a Linux doc test. The encoder's own tests in
-[`dds_encoding.rs`](src/encode/dds_encoding.rs) cover it.
+fn main() -> xrf_error::XrfResult {
+  let pixels = RgbaImage::from_pixel(4, 4, Rgba([255, 0, 0, 255]));
+  let chain = DdsMipChain::build(&pixels, DdsMipmaps::Disabled)?;
+  let texture = DdsEncoding::new(ImageFormat::BC3RgbaUnorm, Quality::Normal).encode(&chain)?;
+
+  assert_eq!(texture.metadata().mipmap_levels, 1);
+  assert_eq!(texture.decode_rgba(0)?.dimensions(), (4, 4));
+
+  Ok(())
+}
+```
 
 `DdsMipmaps::Disabled` writes the base level alone; `DdsMipmaps::Filtered(DdsMipFilter::Box)` or another kernel writes
 a full chain down to one pixel. Every level is reduced from the base rather than from the level above, channels are
