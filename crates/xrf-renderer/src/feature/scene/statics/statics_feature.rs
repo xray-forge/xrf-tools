@@ -18,7 +18,7 @@ use crate::feature::scene::statics::draw::static_draw_bindings::StaticDrawBindin
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
 use crate::feature::scene::statics::draw::static_layout_bindings::StaticLayoutBindings;
-use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::StaticGbufferDraw;
+use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::{StaticGbufferDraw, StaticGbufferPart};
 use crate::feature::scene::wind::wind_uniform::WindUniform;
 use crate::feature::view::view_feature::ViewFeature;
 use crate::frame::readback::stats_readback::StatsReadback;
@@ -33,6 +33,10 @@ use crate::scene::static_scene::static_scene::StaticScene;
 /// What the camera's lens is scaled by for the frustum a sun cascade's trees are kept for: a third or so wider each way
 /// at the usual lenses, so a camera turning between the trees' redraws still finds their shadows drawn.
 const RECEIVER_WIDEN: f32 = 0.6;
+/// The first G-buffer draw's passes, a part each (`StaticGbufferPart`): the depth drawn ahead, which clears the G-buffer,
+/// the shading and the impostors; and the late draw's, which no impostor waits for.
+const GBUFFER_PASSES: [&str; 3] = ["g-buffer depth", "g-buffer", "impostors"];
+const LATE_GBUFFER_PASSES: [&str; 2] = ["late g-buffer depth", "late g-buffer"];
 
 /// The static scene as the view culls and draws it: the cull's parameters this frame, the depth pyramid the next
 /// frame's occlusion is tested against and the camera it was reduced through, the counts the cull read back, whether
@@ -289,13 +293,17 @@ impl StaticsFeature {
     let depth: GraphTexture = targets.depth;
     let is_inspected: bool = self.is_inspected;
     let is_prepassed: bool = self.is_prepassed;
-    let add_draw = |graph: &mut FrameGraph<'a>, name: &'static str, draw_args: GraphBuffer, is_first: bool| {
-      let color_load: wgpu::LoadOp<wgpu::Color> = if is_first {
+    // A pass a part of a draw, so the frame times them apart, the frame's first clearing the G-buffer.
+    let add_part = |graph: &mut FrameGraph<'a>,
+                    name: &'static str,
+                    draw_args: GraphBuffer,
+                    (part, is_clearing): (StaticGbufferPart, bool)| {
+      let color_load: wgpu::LoadOp<wgpu::Color> = if is_clearing {
         wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT)
       } else {
         wgpu::LoadOp::Load
       };
-      let depth_load: wgpu::LoadOp<f32> = if is_first {
+      let depth_load: wgpu::LoadOp<f32> = if is_clearing {
         wgpu::LoadOp::Clear(0.0)
       } else {
         wgpu::LoadOp::Load
@@ -307,9 +315,7 @@ impl StaticsFeature {
         })
         .depth(GraphDepthAttachment::new(depth, depth_load))
         .buffer(draw_args, GraphBufferAccess::Indirect);
-
-      // The first pass draws the impostors too.
-      let builder = if is_first {
+      let builder = if part == StaticGbufferPart::Impostors {
         draws.declare_impostored(builder)
       } else {
         draws.declare(builder)
@@ -323,19 +329,32 @@ impl StaticsFeature {
           StaticDrawBindings::new(view, &draws, textures),
           draw_args,
           StaticGbufferDraw {
-            is_first,
             is_inspected,
             is_prepassed,
+            part,
           },
         );
       });
+    };
+    // A draw's parts in order, as many as it names passes: the first draw draws the impostors too, as no occlusion sets
+    // one aside, and its depth clears the G-buffer.
+    let add_draw = |graph: &mut FrameGraph<'a>, names: &[&'static str], draw_args: GraphBuffer, is_first: bool| {
+      let parts = [
+        StaticGbufferPart::Depth,
+        StaticGbufferPart::Shading,
+        StaticGbufferPart::Impostors,
+      ];
+
+      for (index, (name, part)) in names.iter().zip(parts).enumerate() {
+        add_part(&mut *graph, name, draw_args, (part, is_first && index == 0));
+      }
     };
 
     graph
       .add_compute_pass("cull")
       .parameters(&cull)
       .record(move |context| passes.scene.cull.record_early(context, view, &cull, params));
-    add_draw(graph, "g-buffer", scene.args, true);
+    add_draw(graph, &GBUFFER_PASSES, scene.args, true);
 
     if self.cull.is_occluding == 0 {
       return;
@@ -393,7 +412,7 @@ impl StaticsFeature {
 
         passes.scene.cull.record_late(context, view, &cull, dispatch);
       });
-    add_draw(graph, "late g-buffer", late, false);
+    add_draw(graph, &LATE_GBUFFER_PASSES, late, false);
   }
 
   /// Adds the cull's counts read back, for a report a frame or more later: an effect the graph cannot see.
