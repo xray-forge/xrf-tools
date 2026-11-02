@@ -8,7 +8,7 @@ use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawPara
 use crate::feature::scene::statics::draw::static_draw_permutation::StaticDrawPermutation;
 use crate::feature::scene::statics::draw::static_impostor_parameters::StaticImpostorParameters;
 use crate::feature::scene::statics::draw::static_mark_draw::StaticMarkDraw;
-use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::StaticGbufferDraw;
+use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::{StaticGbufferDraw, StaticGbufferPart};
 use crate::frame::readback::pick_target::PickTarget;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::pipeline_source::PipelineSource;
@@ -134,9 +134,9 @@ impl StaticGBufferPass {
     }
   }
 
-  /// Draws the visible clusters an argument buffer lists into the G-buffer the pass draws into, as `draw` says: the
-  /// opaque surfaces' depth ahead of their shading where it prepasses, and with the frame's first draw the impostors
-  /// too.
+  /// Draws the visible clusters an argument buffer lists into the G-buffer the pass draws into, the part of the draw
+  /// `draw` names: the cut-out surfaces' depth and the opaque ones' where it prepasses, every surface's shading, or the
+  /// impostors.
   pub fn record(
     &self,
     context: &mut RasterContext<'_>,
@@ -145,44 +145,49 @@ impl StaticGBufferPass {
     draw: StaticGbufferDraw,
   ) {
     let StaticGbufferDraw {
-      is_first,
       is_inspected,
       is_prepassed,
+      part,
     } = draw;
     let drawing: &FrameDrawPipelines = if is_inspected {
       &self.pipelines.inspected
     } else {
       &self.pipelines.plain
     };
-    let shading: &[wgpu::RenderPipeline] = if is_prepassed {
-      &drawing.prepassed_draws
-    } else {
-      &drawing.draws
-    };
 
     context.get_pass().set_bind_group(0, &view.bind_group, &[]);
     context.get_pass().set_bind_group(1, textures, &[]);
 
-    for (batch, prepass) in StaticBatch::list_deferred().zip(&drawing.prepasses) {
-      if batch.class == StaticClass::CutOut || is_prepassed {
-        context.bind(&draws.layouts[batch.layout.get_index()]);
-        context.get_pass().set_pipeline(prepass);
-        context.get_pass().draw_indirect(args, batch.get_args_offset());
+    match part {
+      StaticGbufferPart::Depth => {
+        for (batch, prepass) in StaticBatch::list_deferred().zip(&drawing.prepasses) {
+          if batch.class == StaticClass::CutOut || is_prepassed {
+            context.bind(&draws.layouts[batch.layout.get_index()]);
+            context.get_pass().set_pipeline(prepass);
+            context.get_pass().draw_indirect(args, batch.get_args_offset());
+          }
+        }
       }
-    }
+      StaticGbufferPart::Shading => {
+        let shading: &[wgpu::RenderPipeline] = if is_prepassed {
+          &drawing.prepassed_draws
+        } else {
+          &drawing.draws
+        };
 
-    for (batch, pipeline) in StaticBatch::list_deferred().zip(shading) {
-      context.bind(&draws.layouts[batch.layout.get_index()]);
-      context.get_pass().set_pipeline(pipeline);
-      context.get_pass().draw_indirect(args, batch.get_args_offset());
-    }
-
-    if is_first {
-      context.bind(&draws.impostors);
-      context.get_pass().set_pipeline(&self.impostor_pipelines.draw);
-      context
-        .get_pass()
-        .draw_indirect(args, StaticCullScratch::IMPOSTOR_ARGS_OFFSET);
+        for (batch, pipeline) in StaticBatch::list_deferred().zip(shading) {
+          context.bind(&draws.layouts[batch.layout.get_index()]);
+          context.get_pass().set_pipeline(pipeline);
+          context.get_pass().draw_indirect(args, batch.get_args_offset());
+        }
+      }
+      StaticGbufferPart::Impostors => {
+        context.bind(&draws.impostors);
+        context.get_pass().set_pipeline(&self.impostor_pipelines.draw);
+        context
+          .get_pass()
+          .draw_indirect(args, StaticCullScratch::IMPOSTOR_ARGS_OFFSET);
+      }
     }
   }
 

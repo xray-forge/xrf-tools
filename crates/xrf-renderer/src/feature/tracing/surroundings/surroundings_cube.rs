@@ -15,7 +15,7 @@ use crate::feature::scene::statics::cull::static_cull_parameters::StaticCullPara
 use crate::feature::scene::statics::draw::static_draw_bindings::StaticDrawBindings;
 use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
 use crate::feature::scene::statics::draw::static_draws::StaticDraws;
-use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::StaticGbufferDraw;
+use crate::feature::scene::statics::gbuffer::static_gbuffer_draw::{StaticGbufferDraw, StaticGbufferPart};
 use crate::feature::tracing::surroundings::surroundings_faces::SurroundingsFaces;
 use crate::feature::tracing::surroundings::surroundings_parameters::SurroundingsParameters;
 use crate::feature::tracing::surroundings::surroundings_pass::SurroundingsPass;
@@ -628,12 +628,19 @@ impl SurroundingsCube {
       let args: &wgpu::Buffer = context.get_buffer(args);
 
       StaticShadowPass::set_region(context, region);
-      passes.scene.gbuffer.record(
-        context,
-        StaticDrawBindings::new(&cut.view, &draws, textures),
-        args,
-        StaticGbufferDraw::default(),
-      );
+
+      // The cut-outs' depth, then every surface's shading, in the one pass.
+      for part in [StaticGbufferPart::Depth, StaticGbufferPart::Shading] {
+        passes.scene.gbuffer.record(
+          context,
+          StaticDrawBindings::new(&cut.view, &draws, textures),
+          args,
+          StaticGbufferDraw {
+            part,
+            ..StaticGbufferDraw::default()
+          },
+        );
+      }
     });
   }
 
