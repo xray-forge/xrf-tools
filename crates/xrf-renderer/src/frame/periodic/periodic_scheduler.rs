@@ -15,9 +15,11 @@ type FrameGrants = Vec<(&'static [&'static str], f32, f32)>;
 /// does what it was granted. A frame decides in rounds sharing its budget: what streams in as the scenes take their
 /// updates, then what is drawn once every view prepared. A job that must be done this frame is granted whatever it
 /// costs, and spends the budget like any other, so what may wait fills only what it leaves; then the one waited longest
-/// past its deadline, whatever the budget, one a frame; then the rest by how near their deadline they stand, while they
-/// fit. A job's cost is its units at the milliseconds a unit last cost: as the timer measured its passes where they are
-/// timed, else as the frames' GPU times show it, fitted over the jobs each frame was granted; its seed before either.
+/// past its deadline, whatever the budget, one a frame, though where what must draw already spent the budget a job just
+/// at its deadline waits one frame more, so two large draws do not land on one frame; then the rest by how near their
+/// deadline they stand, while they fit. A job's cost is its units at the milliseconds a unit last cost: as the timer
+/// measured its passes where they are timed, else as the frames' GPU times show it, fitted over the jobs each frame was
+/// granted; its seed before either.
 pub struct PeriodicScheduler {
   /// Milliseconds of GPU time a frame's work that may wait fills.
   budget: f32,
@@ -135,7 +137,8 @@ impl PeriodicScheduler {
   }
 
   /// Decides the offers since the last round: every one that must be done, then the one most overdue unless the frame
-  /// took one already, then the rest most urgent first while they fit what is left of the budget.
+  /// took one already (one only just at its deadline waits a frame where what must draw spent the budget), then the rest
+  /// most urgent first while they fit what is left of the budget.
   pub fn grant(&mut self) {
     let costs: Vec<f32> = self.offers.iter().map(|offer| self.get_cost(&offer.job)).collect();
     let open: Vec<usize> = (self.decided..self.offers.len())
@@ -154,10 +157,17 @@ impl PeriodicScheduler {
       self.now_spent += costs[index];
     }
 
+    // A frame whose must-draw work spent the budget already carries a large draw: a job just at its deadline waits for
+    // the next, which no frame defers further.
+    let is_heavy: bool = self.now_spent > self.budget;
     let overdue: Option<usize> = open
       .iter()
       .copied()
-      .filter(|index| !self.is_forced && self.offers[*index].job.is_overdue())
+      .filter(|index| {
+        let job: &PeriodicJob = &self.offers[*index].job;
+
+        !self.is_forced && job.is_overdue() && (!is_heavy || job.is_late())
+      })
       .fold(None, |most: Option<usize>, index| {
         let past = |index: usize| {
           let job: &PeriodicJob = &self.offers[index].job;

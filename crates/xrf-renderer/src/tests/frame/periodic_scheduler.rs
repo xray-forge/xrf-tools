@@ -64,6 +64,65 @@ fn takes_one_overdue_job_past_the_budget() {
 }
 
 #[test]
+fn defers_a_job_just_at_its_deadline_off_a_frame_what_must_draw_spent() {
+  let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
+
+  scheduler.begin(0.5, &[], &[]);
+  scheduler.offer(PeriodicJob::new_now(&OTHER, 0.8, 1.0));
+
+  let due: PeriodicTicket = scheduler.offer(waiting(0.8, 2, 2));
+
+  scheduler.grant();
+
+  assert!(!scheduler.is_granted(due));
+}
+
+#[test]
+fn forces_a_job_a_frame_past_its_deadline_whatever_the_frame_carries() {
+  let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
+
+  scheduler.begin(0.5, &[], &[]);
+  scheduler.offer(PeriodicJob::new_now(&OTHER, 0.8, 1.0));
+
+  let late: PeriodicTicket = scheduler.offer(waiting(0.8, 3, 2));
+
+  scheduler.grant();
+
+  assert!(scheduler.is_granted(late));
+}
+
+#[test]
+fn steps_a_late_job_off_the_large_draw_it_met() {
+  let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
+  let mut waited: u32 = 0;
+  let mut drawn: Vec<u32> = Vec::new();
+
+  // A large draw that must land every fourth frame, and one that may wait two frames and never fits the budget: the
+  // second is granted as it falls due unless the first lands then, a frame later otherwise.
+  for frame in 0..24 {
+    scheduler.begin(0.5, &[], &[]);
+
+    if frame % 4 == 0 {
+      scheduler.offer(PeriodicJob::new_now(&OTHER, 0.8, 1.0));
+    }
+
+    let ticket: PeriodicTicket = scheduler.offer(waiting(0.8, waited, 2));
+
+    scheduler.grant();
+
+    if scheduler.is_granted(ticket) {
+      drawn.push(frame);
+      waited = 0;
+    } else {
+      waited += 1;
+    }
+  }
+
+  assert!(drawn.iter().all(|frame| frame % 4 != 0), "{drawn:?}");
+  assert!(drawn.windows(2).all(|pair| pair[1] - pair[0] <= 4), "{drawn:?}");
+}
+
+#[test]
 fn withdraws_what_a_view_offered() {
   let mut scheduler: PeriodicScheduler = PeriodicScheduler::new();
 

@@ -46,6 +46,11 @@ impl PeriodicJob {
     !self.is_now() && self.waited >= self.wait_most
   }
 
+  /// Whether it waited a frame past as long as it may, which no frame defers further.
+  pub fn is_late(&self) -> bool {
+    !self.is_now() && self.waited > self.wait_most
+  }
+
   /// How near its deadline it stands: the share of its wait it will have used by this frame's end.
   pub fn get_urgency(&self) -> f32 {
     (self.waited + 1) as f32 / self.wait_most.max(1) as f32
