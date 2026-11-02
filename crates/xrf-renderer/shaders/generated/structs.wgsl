@@ -326,6 +326,7 @@ struct ContactShadows {
   lights: u32,
   stride: u32,
   grass: vec4<f32>,
+  phase: vec2<u32>,
 }
 
 struct LightTrace {

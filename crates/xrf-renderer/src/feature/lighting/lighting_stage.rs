@@ -136,7 +136,7 @@ impl LightingStage {
         GraphDeclaration::new(graph, bindings, runtime),
         record,
         wet,
-        contact.sun,
+        contact,
         sun_traced,
         filter_reach,
       ),
