@@ -2,8 +2,8 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use xrf_error::XrfResult;
-use xrf_utils::{decode_w1251_bytes_to_string, read_as_string_from_w1251_encoded};
+use xrf_error::{XrfError, XrfResult};
+use xrf_utils::{decode_w1251_bytes_to_string, format_path, read_as_string_from_w1251_encoded};
 use xrf_vfs::{XrayLogicalPath, XraySearch};
 
 use crate::dialect::{LtxDialect, LtxResolveRequest, LtxStandardDialect};
@@ -84,15 +84,22 @@ impl Ltx {
   ///
   /// # Errors
   ///
-  /// Returns an error when the config cannot be read, or when the dialect refuses it.
+  /// Returns an error when the config's name is not valid Unicode, when it cannot be read, or when the dialect refuses
+  /// it.
   pub fn read_from_file_with_dialect<P: AsRef<Path>>(path: P, dialect: &dyn LtxDialect) -> XrfResult<Self> {
+    let path: &Path = path.as_ref();
+    // A source addresses configs by text, as `LtxFilesystemSource` refuses an include whose name is not valid Unicode:
+    // a lossy name would read a different file or none, silently.
+    let Some(root) = path.to_str() else {
+      return Err(XrfError::new_convert_error(format!(
+        "Failed to read ltx file '{}', its name is not valid Unicode",
+        format_path(path)
+      )));
+    };
+
     Ok(
       dialect
-        .resolve(
-          &path.as_ref().to_string_lossy(),
-          &LtxFilesystemSource,
-          LtxResolveRequest::plain(),
-        )?
+        .resolve(root, &LtxFilesystemSource, LtxResolveRequest::plain())?
         .ltx,
     )
   }
@@ -144,6 +151,33 @@ mod test {
 
     let ltx: Ltx = Ltx::read_from_path(&file_name).unwrap();
     assert_eq!(ltx.get_from("test", "Key"), Some("Value"));
+  }
+
+  /// Linux filenames are bytes, not text, and a dialect addresses configs by text, so a root whose name is not valid
+  /// Unicode is refused by name rather than read under its lossy spelling, which names a different file or none.
+  #[test]
+  #[cfg(target_os = "linux")]
+  fn refuses_a_root_whose_file_name_is_not_valid_unicode() -> xrf_error::XrfResult {
+    use std::ffi::OsStr;
+    use std::fs;
+    use std::os::unix::ffi::OsStrExt;
+
+    let root: PathBuf = GeneratedResources::create_dir("read/non_utf8_root")?;
+    let path: PathBuf = root.join(OsStr::from_bytes(b"\xffbroken.ltx"));
+
+    fs::write(&path, "[section]\n")?;
+
+    let error: String = Ltx::read_from_file_standard(&path)
+      .expect_err("a root whose name is not valid Unicode to be refused")
+      .to_string();
+
+    // Not left behind: the CI cache archives `target/` with tar, which cannot read a name that is not valid Unicode.
+    fs::remove_dir_all(root)?;
+
+    assert!(error.contains("not valid Unicode"), "{error}");
+    assert!(error.contains("\u{fffd}broken.ltx"), "{error}");
+
+    Ok(())
   }
 
   /// Format `input` through a file on disk and compare the result to `expected`, line by line.
