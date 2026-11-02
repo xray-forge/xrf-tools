@@ -23,9 +23,9 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.4",
-    "@tauri-apps/plugin-dialog": "^2.8.3",
+    "@tauri-apps/plugin-dialog": "^2.8.4",
     "@tauri-apps/plugin-fs": "^2.7.1",
-    "@tauri-apps/plugin-shell": "^2.5.0",
+    "@tauri-apps/plugin-shell": "^2.6.0",
     "@wirestate/core": "1.0.0",
     "@wirestate/mobx": "1.0.0",
     "@wirestate/react": "1.0.0",
@@ -53,7 +53,7 @@
     "preset": "./cli/test/jest.config.cjs"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.7",
+    "@babel/core": "^8.0.9",
     "@jest/globals": "catalog:",
     "@swc/core": "catalog:",
     "@swc/jest": "catalog:",
@@ -78,7 +78,7 @@
     "prettier-plugin-tailwindcss": "catalog:",
     "tailwindcss": "catalog:",
     "typescript": "catalog:",
-    "vite": "^8.3.4",
+    "vite": "^8.3.5",
     "vite-plugin-inline-source": "^5.0.0"
   }
 }
