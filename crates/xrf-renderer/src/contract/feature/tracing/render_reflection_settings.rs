@@ -62,8 +62,9 @@ pub struct RenderReflectionSettings {
   /// its hit lit, in place of the sky: the surfaces' while they are drawn, the water's while it reflects; a device
   /// without ray queries reflects the sky.
   pub is_traced: bool,
-  /// Frames a pixel the screen does not answer waits between its traced rays, the last answer held between.
-  #[setting(min = 1, max = 8, recommended = [1, 4])]
+  /// Frames a pixel the screen does not answer waits between its traced rays, the last answer held between. Every
+  /// interval trades how soon a reflection refreshes against the rays traced a frame, none advised over another.
+  #[setting(min = 1, max = 8)]
   pub trace_interval: u32,
 }
 

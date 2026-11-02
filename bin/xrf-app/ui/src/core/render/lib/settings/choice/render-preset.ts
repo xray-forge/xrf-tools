@@ -128,11 +128,13 @@ const BASE_PRESET: IRenderFeatureSettings = {
   // Wet surfaces that build up and dry, and puddles, under the engine's streaks.
   rain: { ...DEFAULT_RENDER_RAIN_SETTINGS, mode: ERenderRainMode.ENHANCED },
   // What the frame shows reflected where a ray meets it, the cube elsewhere, over half the walk; traced only below a
-  // roughness of 0.4, as Lumen traces, the rougher reflecting the prefiltered sky.
+  // roughness of 0.4, as Lumen traces, the rougher reflecting the prefiltered sky. Once traced, a missed pixel traces
+  // every eighth frame, its reflection refreshing slower for fewer rays a frame.
   reflections: {
     ...DEFAULT_RENDER_REFLECTION_SETTINGS,
     mode: ERenderReflectionMode.ENHANCED,
     steps: 48,
+    traceInterval: 8,
     traceRoughness: 0.4,
   },
   // Contact shadows under the cascades at half the frame's size, which flickered no more than the full size; the trees

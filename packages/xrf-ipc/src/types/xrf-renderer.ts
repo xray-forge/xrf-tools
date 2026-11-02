@@ -405,7 +405,7 @@ export const RENDER_FEATURE_SCHEMA: RenderSettingNode = {
     reach: { isInteger: true, kind: "number", max: 1000.0, min: 25.0, recommended: null, wastedAbove: null },
     skyGain: { isInteger: false, kind: "number", max: 3.0, min: 0.5, recommended: null, wastedAbove: null },
     steps: { isInteger: true, kind: "number", max: 128.0, min: 16.0, recommended: [32.0, 128.0], wastedAbove: 96.0 },
-    traceInterval: { isInteger: true, kind: "number", max: 8.0, min: 1.0, recommended: [1.0, 4.0], wastedAbove: null },
+    traceInterval: { isInteger: true, kind: "number", max: 8.0, min: 1.0, recommended: null, wastedAbove: null },
     traceRoughness: {
       isInteger: false,
       kind: "number",
@@ -2403,7 +2403,10 @@ export type RenderReflectionSettings = {
    * without ray queries reflects the sky.
    */
   isTraced: boolean;
-  /** Frames a pixel the screen does not answer waits between its traced rays, the last answer held between. */
+  /**
+   * Frames a pixel the screen does not answer waits between its traced rays, the last answer held between. Every
+   * interval trades how soon a reflection refreshes against the rays traced a frame, none advised over another.
+   */
   traceInterval: number;
 };
 
