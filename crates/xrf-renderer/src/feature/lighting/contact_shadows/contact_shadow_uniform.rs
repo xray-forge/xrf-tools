@@ -1,4 +1,4 @@
-use glam::{Vec2, Vec4};
+use glam::{UVec2, Vec2, Vec4};
 use xrf_renderer_core::ShaderStruct;
 
 use crate::contract::feature::lighting::render_contact_shadow_settings::RenderContactShadowSettings;
@@ -29,12 +29,18 @@ pub struct ContactShadowUniform {
   pub stride: u32,
   /// Metres from the eye grass hides a ray to, none where the grass casts none, and from where it fades out; unused.
   pub grass: Vec4,
+  /// The texel of each two by two a half-size march starts from, turning through all four with the noise's frames, so
+  /// a temporal resolve sees every texel of a block as it sees the jitter; one texel where the noise holds still.
+  pub phase: UVec2,
+  pub _pad: [u32; 2],
 }
 
 impl ContactShadowUniform {
   /// The settings towards the sun and as many local lights as they march towards, over a drawing `height` pixels tall,
   /// on the noise's `frame`, grass hiding a ray within `grass` metres (`ContactShadowUniform::grass`).
   pub fn new(settings: &RenderContactShadowSettings, to_sun: Vec4, height: u32, frame: u32, grass: Vec2) -> Self {
+    let turn: u32 = frame % 4;
+
     Self {
       to_sun,
       length: settings.length,
@@ -46,6 +52,12 @@ impl ContactShadowUniform {
       lights: settings.get_light_count(),
       stride: if settings.is_full_resolution { 1 } else { 2 },
       grass: grass.extend(0.0).extend(0.0),
+      phase: if settings.is_full_resolution {
+        UVec2::ZERO
+      } else {
+        UVec2::new(turn & 1, turn >> 1)
+      },
+      _pad: [0; 2],
     }
   }
 }

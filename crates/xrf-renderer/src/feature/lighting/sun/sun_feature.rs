@@ -1,5 +1,6 @@
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphTexture, GraphTextureDescriptor};
 
+use crate::feature::lighting::contact_shadows::contact_shadows_recorded::ContactShadowsRecorded;
 use crate::feature::lighting::sun::sun_draw::SunDraw;
 use crate::feature::lighting::sun::sun_parameters::SunParameters;
 use crate::feature::lighting::sun::sun_pass::SunPass;
@@ -14,7 +15,7 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 pub struct SunFeature;
 
 impl SunFeature {
-  /// Draws the sun shadowed by the `contact_shadows` and what its trace saw (`sun_traced`), its cascades where none is
+  /// Draws the sun shadowed by the `contact` shadows and what its trace saw (`sun_traced`), its cascades where none is
   /// traced, filtered `filter_reach` texels each way, over the surface the wetting gives a water film at the anchored
   /// levels. Answers how much of the sun each pixel sees.
   pub fn add_passes<'a>(
@@ -28,7 +29,7 @@ impl SunFeature {
       ..
     }: ViewRecord<'a>,
     wet: WetTargets,
-    contact_shadows: GraphTexture,
+    contact: ContactShadowsRecorded,
     sun_traced: Option<GraphTexture>,
     filter_reach: u32,
   ) -> GraphTexture {
@@ -44,7 +45,8 @@ impl SunFeature {
       lighting: lit.lighting,
       shadow_maps: lit.shadow_maps,
       shadows: lit.shadows,
-      contact_shadows,
+      contact_shadows: contact.sun,
+      contact: contact.uniform,
       sun_traced: sun_traced
         .unwrap_or_else(|| bindings.import_view(&mut *graph, "sun untraced", passes.lighting.sun.get_untraced())),
       wet_surface: wet.surface,

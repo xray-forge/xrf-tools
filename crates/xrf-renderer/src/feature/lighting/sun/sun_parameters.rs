@@ -1,5 +1,6 @@
 use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 
+use crate::feature::lighting::contact_shadows::contact_shadow_uniform::ContactShadowUniform;
 use crate::feature::lighting::shadows::shadow_uniform::ShadowUniform;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 
@@ -31,6 +32,9 @@ pub struct SunParameters<'a> {
   pub shadows: UniformBinding<ShadowUniform>,
   #[texture(d2, unfilterable)]
   pub contact_shadows: GraphTexture,
+  /// How the contact shadows were marched: at what size, and from which texel of each two by two at half of it.
+  #[uniform]
+  pub contact: UniformBinding<ContactShadowUniform>,
   #[texture(d2, unfilterable)]
   pub sun_traced: GraphTexture,
   /// The wet surface and the gloss the wet reach added, which the anchored levels' surface takes its water film from.
