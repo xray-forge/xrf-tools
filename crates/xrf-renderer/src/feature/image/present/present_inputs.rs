@@ -1,7 +1,7 @@
 use glam::Vec4;
 
-use crate::feature::effects::distort::distortion_tiles::DistortionTiles;
 use crate::feature::page::present_marks::PresentMarks;
+use crate::frame::targets::screen_tiles::ScreenTiles;
 use crate::pass::frame_lighting::light_encoding::LightEncoding;
 
 /// What the other units decided this frame that the window pass reads: whether the scene was upscaled into the
@@ -16,7 +16,7 @@ pub struct PresentInputs {
   pub is_occluded: bool,
   pub is_indirect: bool,
   pub reflection_ratio: Option<u32>,
-  pub distortion: DistortionTiles,
+  pub distortion: ScreenTiles,
   pub selection_color: Option<[f32; 3]>,
   pub marks: PresentMarks,
   pub is_engine_bloomed: bool,

@@ -16,7 +16,6 @@ use crate::scene::static_scene::item::object::static_object_proxy::StaticObjectP
 use crate::scene::static_scene::item::object::static_objects::StaticObjects;
 use crate::scene::static_scene::item::static_sector_proxy::StaticSectorProxy;
 use crate::scene::static_scene::item::static_sorted_place::StaticSortedPlace;
-use crate::scene::static_scene::surface::static_surface_pass::StaticSurfacePass;
 use crate::scene::static_scene::surface::static_surfaces::StaticSurfaces;
 use crate::scene::static_scene::trace::static_trace_geometry::StaticTraceGeometry;
 use crate::scene::static_scene::trace::static_trace_group::StaticTraceGroup;
@@ -228,16 +227,16 @@ impl StaticScene {
     seen
   }
 
-  /// The spheres about the sectors' slots and the objects with a surface of `pass` that stand within a view's
-  /// `frustum`.
+  /// The spheres about the sectors' slots and the objects that bring what `is_wanted` asks for into sight, of those that
+  /// stand within a view's `frustum`.
   pub fn list_seen_spheres<'s>(
     &'s self,
     frustum: &'s CameraFrustum,
-    pass: StaticSurfacePass,
+    is_wanted: impl Fn(StaticSight) -> bool + 's,
   ) -> impl Iterator<Item = Vec4> + 's {
     self
       .list_sights()
-      .filter(move |(sphere, sight)| sight.has_pass(pass) && frustum.reaches(**sphere))
+      .filter(move |(sphere, sight)| is_wanted(*sight) && frustum.reaches(**sphere))
       .map(|(sphere, _)| *sphere)
   }
 

@@ -5,11 +5,11 @@ use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::effects::distort::distort_parameters::DistortParameters;
 use crate::feature::effects::distort::distort_uniform::DistortUniform;
-use crate::feature::effects::distort::distortion_tiles::DistortionTiles;
 use crate::feature::image::present::present_frame::PresentFrame;
 use crate::feature::image::present::present_inputs::PresentInputs;
 use crate::feature::image::present::present_uniform::PresentUniform;
 use crate::feature::view::view_feature::ViewFeature;
+use crate::frame::targets::screen_tiles::ScreenTiles;
 use crate::frame::targets::texture_copy::add_texture_rects_copy;
 use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::frame::targets::view_targets::ViewTargets;
@@ -26,7 +26,7 @@ pub struct PresentFeature {
   debanding: Option<u32>,
   /// How far the distortion target moves the frame before the resolve and whether it blurs it, and the tiles of the
   /// frame it was written in; none where nothing wrote it this frame.
-  distortion: Option<(DistortUniform, DistortionTiles)>,
+  distortion: Option<(DistortUniform, ScreenTiles)>,
 }
 
 impl PresentFeature {
@@ -103,10 +103,7 @@ impl PresentFeature {
     let farthest: f32 = (1.0 - ViewTargets::NEUTRAL_DISTORTION as f32) * distortion.strength;
     let reach = |size: u32, tiles: u32| ((farthest * size as f32 + 1.0) * tiles as f32 / size as f32).ceil() as u32;
     let copied: Vec<RenderRect> = tiles
-      .grown(
-        reach(width, DistortionTiles::COLUMNS),
-        reach(height, DistortionTiles::ROWS),
-      )
+      .grown(reach(width, ScreenTiles::COLUMNS), reach(height, ScreenTiles::ROWS))
       .get_rects(handles.size);
     let moved: Vec<RenderRect> = tiles.get_rects(handles.size);
     let before: GraphTexture = graph.create_texture(GraphTextureDescriptor::new_2d(

@@ -5,7 +5,6 @@ use xrf_renderer_core::{GraphDeclaration, GraphTexture};
 
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_rect::RenderRect;
-use crate::feature::effects::distort::distortion_tiles::DistortionTiles;
 use crate::feature::effects::rain::cover::rain_covers::RainCovers;
 use crate::feature::image::exposure::reading::exposure_decisions::ExposureDecisions;
 use crate::feature::image::present::display::display_mode::DisplayMode;
@@ -18,6 +17,7 @@ use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::readback::pick_pass::PickPass;
 use crate::frame::static_scene_handles::StaticSceneHandles;
+use crate::frame::targets::screen_tiles::ScreenTiles;
 use crate::frame::targets::view_target_handles::ViewTargetHandles;
 use crate::frame::targets::view_target_uses::ViewTargetUses;
 use crate::frame::targets::view_targets::ViewTargets;
@@ -199,7 +199,7 @@ impl SceneView {
       .fill(&self.shared.camera, options, &mut self.features.particles);
     self.features.particles.upload(device, &mut *encoder);
 
-    let distortion: DistortionTiles = self.get_distortion_tiles(options);
+    let distortion: ScreenTiles = self.get_distortion_tiles(options);
 
     self.features.bloom.keep_for_distortion(!distortion.is_empty());
     self.prepare_present(

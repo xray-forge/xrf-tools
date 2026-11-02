@@ -2,7 +2,7 @@ use glam::{Mat4, Vec3, Vec4};
 
 use crate::camera::camera_view::CameraView;
 use crate::contract::viewport::render_rect::RenderRect;
-use crate::feature::effects::distort::distortion_tiles::DistortionTiles;
+use crate::frame::targets::screen_tiles::ScreenTiles;
 
 const SIZE: (u32, u32) = (3730, 1930);
 
@@ -23,8 +23,8 @@ fn new_quad(center: Vec3, half: f32) -> [Vec3; 4] {
   ]
 }
 
-fn cover_quad(quad: &[Vec3]) -> DistortionTiles {
-  let mut tiles: DistortionTiles = DistortionTiles::default();
+fn cover_quad(quad: &[Vec3]) -> ScreenTiles {
+  let mut tiles: ScreenTiles = ScreenTiles::default();
 
   tiles.cover_hull(new_view_projection(), quad);
 
@@ -33,14 +33,14 @@ fn cover_quad(quad: &[Vec3]) -> DistortionTiles {
 
 #[test]
 fn marks_nothing_until_a_writer_covers_a_tile() {
-  assert!(DistortionTiles::default().is_empty());
-  assert!(DistortionTiles::default().get_rects(SIZE).is_empty());
+  assert!(ScreenTiles::default().is_empty());
+  assert!(ScreenTiles::default().get_rects(SIZE).is_empty());
 }
 
 #[test]
 fn lays_every_tile_over_the_frame_as_one_rect() {
   assert_eq!(
-    DistortionTiles::new_whole().get_rects(SIZE),
+    ScreenTiles::new_whole().get_rects(SIZE),
     vec![RenderRect {
       x: 0,
       y: 0,
@@ -91,28 +91,28 @@ fn bounds_a_quad_across_the_eye_by_its_part_before_it() {
 
 #[test]
 fn takes_a_sphere_about_the_eye_as_the_whole_frame() {
-  let mut tiles: DistortionTiles = DistortionTiles::default();
+  let mut tiles: ScreenTiles = ScreenTiles::default();
 
   tiles.cover_sphere(new_view_projection(), Vec4::new(0.0, 0.0, -1.0, 3.0));
 
-  assert_eq!(tiles, DistortionTiles::new_whole());
+  assert_eq!(tiles, ScreenTiles::new_whole());
 }
 
 #[test]
 fn grows_a_tile_into_its_neighbours_within_the_frame() {
-  let tile: DistortionTiles = cover_quad(&new_quad(Vec3::new(0.0, 0.0, -10.0), 0.01));
+  let tile: ScreenTiles = cover_quad(&new_quad(Vec3::new(0.0, 0.0, -10.0), 0.01));
   let rect: RenderRect = tile.get_rects(SIZE)[0];
   let grown: RenderRect = tile.grown(1, 1).get_rects(SIZE)[0];
-  let (tile_width, tile_height) = (SIZE.0 / DistortionTiles::COLUMNS, SIZE.1 / DistortionTiles::ROWS);
+  let (tile_width, tile_height) = (SIZE.0 / ScreenTiles::COLUMNS, SIZE.1 / ScreenTiles::ROWS);
 
   assert!(grown.x <= rect.x - tile_width as i32 && grown.y <= rect.y - tile_height as i32);
   assert!(grown.width >= rect.width + 2 * tile_width && grown.height >= rect.height + 2 * tile_height);
-  assert_eq!(DistortionTiles::new_whole().grown(3, 3), DistortionTiles::new_whole());
+  assert_eq!(ScreenTiles::new_whole().grown(3, 3), ScreenTiles::new_whole());
 }
 
 #[test]
 fn keeps_apart_quads_apart_as_rects_of_their_own() {
-  let mut tiles: DistortionTiles = cover_quad(&new_quad(Vec3::new(-6.0, 3.0, -10.0), 0.05));
+  let mut tiles: ScreenTiles = cover_quad(&new_quad(Vec3::new(-6.0, 3.0, -10.0), 0.05));
 
   tiles.cover_tiles(&cover_quad(&new_quad(Vec3::new(6.0, -3.0, -10.0), 0.05)));
 

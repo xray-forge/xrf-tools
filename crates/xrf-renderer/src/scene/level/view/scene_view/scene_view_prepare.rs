@@ -1,13 +1,13 @@
 use std::time::Instant;
 
-use glam::Vec4;
+use glam::{Mat4, Vec4};
 
+use crate::camera::camera_frustum::CameraFrustum;
 use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
 use crate::contract::feature::weather::water::render_water_mode::RenderWaterMode;
 use crate::contract::feature::weather::water::render_water_settings::RenderWaterSettings;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_rect::RenderRect;
-use crate::feature::effects::distort::distortion_tiles::DistortionTiles;
 use crate::feature::effects::flares::sun_sprite::SunSprite;
 use crate::feature::effects::rain::cover::rain_cover::RainCover;
 use crate::feature::effects::rain::rain_uniform::RainUniform;
@@ -25,6 +25,7 @@ use crate::feature::weather::water::water_frame::WaterFrame;
 use crate::feature::weather::wet::puddles::level_surface::LevelSurface;
 use crate::feature::weather::wet::puddles::surface_window::SurfaceWindow;
 use crate::frame::frame_encoder::FrameEncoder;
+use crate::frame::targets::screen_tiles::ScreenTiles;
 use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::scene::level::level_prepare::LevelPrepare;
@@ -33,6 +34,7 @@ use crate::scene::level::lights::asks::light_asks::LightAsks;
 use crate::scene::level::lights::asks::lights_frame::LightsFrame;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::level::view::view_prepare::ViewPrepare;
+use crate::scene::static_scene::draw::static_sight::StaticSight;
 
 impl SceneView {
   /// The units the weather drives: the shadows' maps, the effects laid over the lit frame (whose flares give the sky its
@@ -62,7 +64,7 @@ impl SceneView {
       options,
       WaterFrame {
         targets: self.targets.as_ref(),
-        is_in_view: level.sight.is_water(),
+        tiles: Self::get_water_tiles(scene, frame, level),
         intensity: lighting.water_intensity,
         wind: lighting.wind,
         rain: lighting.rain.map_or(0.0, |rain| rain.density),
@@ -282,10 +284,27 @@ impl SceneView {
     }
   }
 
+  /// The tiles of the frame the level's water in sight may touch, by the spheres about its slots; none where the view
+  /// sees none.
+  fn get_water_tiles(scene: &LevelScene, frame: &ViewPrepare<'_>, level: &LevelPrepare) -> ScreenTiles {
+    let mut tiles: ScreenTiles = ScreenTiles::default();
+
+    if level.sight.is_water() {
+      let (frustum, view_projection): (CameraFrustum, Mat4) =
+        (frame.view.get_frustum(), frame.view.get_view_projection());
+
+      for sphere in scene.statics.list_seen_spheres(&frustum, StaticSight::is_water) {
+        tiles.cover_sphere(view_projection, sphere);
+      }
+    }
+
+    tiles
+  }
+
   /// Where on the frame the water, the particles, the enhanced rain's splashes and the distorting surfaces of the scene
   /// move what is seen through it, once every unit knows what it draws: every tile where the water or the splashes do,
   /// which keep no bound; none where nothing does.
-  pub(super) fn get_distortion_tiles(&self, options: &RenderViewOptions) -> DistortionTiles {
+  pub(super) fn get_distortion_tiles(&self, options: &RenderViewOptions) -> ScreenTiles {
     let water: &RenderWaterSettings = &options.features.water;
     let features: &SceneFeatures = &self.features;
     // Where water draws this frame; the enhanced water refracts what is behind it itself and writes no distortion.
@@ -293,14 +312,14 @@ impl SceneView {
       features.water.is_drawn() && water.is_distorted && water.mode != RenderWaterMode::Enhanced && options.mode.is_lit;
 
     if options.mode.is_wireframe {
-      return DistortionTiles::default();
+      return ScreenTiles::default();
     }
 
     if is_water_distorting || features.rain.is_distorting() {
-      return DistortionTiles::new_whole();
+      return ScreenTiles::new_whole();
     }
 
-    let mut tiles: DistortionTiles = *features.particles.get_distortion_tiles();
+    let mut tiles: ScreenTiles = *features.particles.get_distortion_tiles();
 
     tiles.cover_tiles(features.composited.get_distortion_tiles());
 
@@ -316,7 +335,7 @@ impl SceneView {
     output: RenderRect,
     time: f32,
     noise_frame: u32,
-    distortion: DistortionTiles,
+    distortion: ScreenTiles,
   ) {
     if self.targets.is_none() {
       return;
