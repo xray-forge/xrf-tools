@@ -74,7 +74,7 @@ impl SceneView {
     features.resolve.describe(&mut applied);
     features.shadows.describe(&mut applied, &self.shared.shadow_settings);
     features.reflections.describe(&mut applied);
-    features.present.describe(&mut applied);
+    features.sky.describe(&mut applied);
     features.bloom.describe(&mut applied);
     features.lights.describe(&mut applied);
     features.grass.describe(&mut applied, &options.features.grass);

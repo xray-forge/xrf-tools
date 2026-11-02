@@ -57,7 +57,7 @@ export const RENDER_DEFAULT_VIEW_FEATURES: RenderViewFeatures = {
     vignetteStrength: 0.5,
   },
   corrections: { exposure: 1.0, gamma: 1.0, grading: [0.0, 0.0, 0.0], saturation: 1.0 },
-  debanding: { mode: "engine", passes: 2, radius: 48.0 },
+  debanding: { mode: "engine" },
   displayTransform: "engine",
   enhancedBloom: { blur: 3.0, exposure: 3.0, mode: "engine", sky: 0.6, threshold: 5.0, vibrance: 1.0 },
   exposure: { adaptation: 1.0, amount: 0.7, compensation: 0.0, isEnabled: true, lowLuminance: 0.0001, middleGray: 1.0 },
@@ -273,11 +273,7 @@ export const RENDER_FEATURE_SCHEMA: RenderSettingNode = {
     shutter: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
     vignetteStrength: { isInteger: false, kind: "number", max: 1.0, min: 0.0, recommended: null, wastedAbove: null },
   },
-  debanding: {
-    mode: { kind: "choice", values: ["engine", "enhanced"] },
-    passes: { isInteger: true, kind: "number", max: 4.0, min: 1.0, recommended: null, wastedAbove: 2.0 },
-    radius: { isInteger: false, kind: "number", max: 128.0, min: 8.0, recommended: null, wastedAbove: null },
-  },
+  debanding: { mode: { kind: "choice", values: ["engine", "enhanced"] } },
   displayTransform: { kind: "choice", values: ["engine", "agx", "pbrNeutral"] },
   enhancedBloom: {
     blur: { isInteger: false, kind: "number", max: 5.0, min: 1.0, recommended: null, wastedAbove: null },
@@ -727,8 +723,8 @@ export type RenderAppliedReport = {
   reflections: RenderAppliedReflections | null;
   /** The enhanced height fog, or none where the engine's fog alone is drawn or none at all. */
   heightFog: RenderAppliedHeightFog | null;
-  /** How hard the sky is debanded, or none where it is drawn as it is. */
-  debanding: number | null;
+  /** Whether the sky is drawn with its textures smoothed where they band. */
+  isSkyDebanded: boolean;
   /** Which bloom is drawn, or none where the frame blooms nothing. */
   bloom: RenderBloomMode | null;
   /** The local lights, or none where they are off. */
@@ -977,8 +973,8 @@ export enum ERenderDebandingMode {
   /** The engine's own: the sky as drawn. */
   ENGINE = "engine",
   /**
-   * Sky debanding: each sky pixel averaged with neighbours scattered around it wherever they differ from it by less
-   * than a band's step.
+   * Sky debanding: the sky's cubes and clouds smoothed where their stored steps band, each texel averaged with
+   * neighbours less than a step apart, before the sky is drawn with them.
    */
   ENHANCED = "enhanced",
 }
@@ -986,13 +982,9 @@ export enum ERenderDebandingMode {
 /** Every `ERenderDebandingMode` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type RenderDebandingMode = `${ERenderDebandingMode}`;
 
-/** Whether and how the sky's colour bands are smoothed. */
+/** Whether the sky's colour bands are smoothed. */
 export type RenderDebandingSettings = {
   mode: RenderDebandingMode;
-  /** Times a sky pixel is averaged with its neighbours, each time further out. */
-  passes: number;
-  /** Pixels around a sky pixel its neighbours are read from at most. */
-  radius: number | null;
 };
 
 /** Which picture a viewport shows: its finished frame, or one of the targets the frame was built from. */

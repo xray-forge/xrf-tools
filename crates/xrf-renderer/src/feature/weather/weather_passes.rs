@@ -3,6 +3,8 @@ use xrf_error::XrfResult;
 use crate::feature::weather::fog::fog_scattering_parameters::FogScatteringParameters;
 use crate::feature::weather::fog::fog_scattering_pass::FogScatteringPass;
 use crate::feature::weather::fog::fog_scattering_uniform::FogScatteringUniform;
+use crate::feature::weather::sky::deband::sky_deband_parameters::{SkyDebandCubeParameters, SkyDebandFlatParameters};
+use crate::feature::weather::sky::deband::sky_deband_pass::SkyDebandPass;
 use crate::feature::weather::sky::dome::sky_behind_parameters::SkyBehindParameters;
 use crate::feature::weather::sky::dome::sky_behind_pass::SkyBehindPass;
 use crate::feature::weather::sky::dome::sky_haze_parameters::SkyHazeParameters;
@@ -47,14 +49,15 @@ use crate::pass::build::pass_build::PassBuild;
 use crate::pass::build::pipeline_source::PipelineSource;
 use crate::shader::generated_modules::GeneratedModules;
 
-/// The passes drawing the weather: the sky, its haze, motion and light, the sun's shafts, the fog and the volumetric
-/// light, the water, and the wet surfaces with their puddles.
+/// The passes drawing the weather: the sky, its haze, motion, light and debanding, the sun's shafts, the fog and the
+/// volumetric light, the water, and the wet surfaces with their puddles.
 pub struct WeatherPasses {
   pub sky_haze: SkyHazePass,
   pub sky_motion: SkyMotionPass,
   pub sky_irradiance: SkyIrradiancePass,
   pub sky_prefilter: SkyPrefilterPass,
   pub sky_behind: SkyBehindPass,
+  pub sky_deband: SkyDebandPass,
   pub sun_shafts: SunShaftsPass,
   pub fog_scattering: FogScatteringPass,
   pub light_volumes: LightVolumePass,
@@ -87,6 +90,7 @@ impl WeatherPasses {
       let sky_irradiance = threads.spawn(move || SkyIrradiancePass::new(source));
       let sky_prefilter = threads.spawn(move || SkyPrefilterPass::new(queue, source));
       let sky_behind = threads.spawn(move || SkyBehindPass::new(source, view, sky));
+      let sky_deband = threads.spawn(move || SkyDebandPass::new(source));
       let sun_shafts = threads.spawn(move || SunShaftsPass::new(source, view));
       let fog_scattering = threads.spawn(move || FogScatteringPass::new(queue, source, view));
       let light_volumes = threads.spawn(move || LightVolumePass::new(source, view, texture));
@@ -101,6 +105,7 @@ impl WeatherPasses {
         sky_irradiance: PassBuild::join(sky_irradiance)?,
         sky_prefilter: PassBuild::join(sky_prefilter)?,
         sky_behind: PassBuild::join(sky_behind)?,
+        sky_deband: PassBuild::join(sky_deband)?,
         sun_shafts: PassBuild::join(sun_shafts)?,
         fog_scattering: PassBuild::join(fog_scattering)?,
         light_volumes: PassBuild::join(light_volumes)?,
@@ -119,6 +124,7 @@ impl WeatherPasses {
     self.sky_irradiance.refresh(source);
     self.sky_prefilter.refresh(source);
     self.sky_behind.refresh(source);
+    self.sky_deband.refresh(source);
     self.sun_shafts.refresh(source);
     self.fog_scattering.refresh(source);
     self.light_volumes.refresh(source);
@@ -167,7 +173,9 @@ impl WeatherPasses {
       .add::<PuddleSitesParameters>("generated/frame/puddle_sites")?
       .add::<PuddleKeepParameters<'_>>("generated/frame/puddle_sites")?
       .add::<SkyIrradianceParameters<'_>>("generated/frame/sky_irradiance")?
-      .add::<SkyPrefilterParameters<'_>>("generated/frame/sky_prefilter")?;
+      .add::<SkyPrefilterParameters<'_>>("generated/frame/sky_prefilter")?
+      .add::<SkyDebandCubeParameters<'_>>("generated/frame/sky_deband_cube")?
+      .add::<SkyDebandFlatParameters<'_>>("generated/frame/sky_deband_flat")?;
 
     Ok(())
   }

@@ -5,9 +5,11 @@ use xrf_renderer_core::{
 
 use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
 use crate::contract::feature::tracing::render_reflection_probe::RenderReflectionProbe;
+use crate::contract::report::applied::render_applied_report::RenderAppliedReport;
 use crate::feature::effects::flares::sun_sprite::SunSprite;
 use crate::feature::tracing::surroundings::surroundings_cube::SurroundingsCube;
 use crate::feature::view::view_feature::ViewFeature;
+use crate::feature::weather::sky::deband::sky_deband::SkyDeband;
 use crate::feature::weather::sky::dome::sky_haze_parameters::SkyHazeParameters;
 use crate::feature::weather::sky::dome::sky_motion_parameters::SkyMotionParameters;
 use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
@@ -43,6 +45,8 @@ pub struct SkyFeature {
   views: Option<SkyViews>,
   /// The sun's sprite as the sky draws it, where one is drawn.
   sun_sprite: Option<SunSprite>,
+  /// The sky's textures smoothed where they band, which the combine draws the sky with while the debanding is enhanced.
+  deband: Option<SkyDeband>,
   /// The prefiltered cube, while the enhanced reflections and specular read it.
   prefilter: Option<SkyPrefilter>,
   /// What the sky group binds in the prefiltered cube's place while none is kept: the weather's placeholder cube.
@@ -97,6 +101,17 @@ impl SkyFeature {
     ));
     self.sun_sprite = sun_sprite;
     self.is_hazing = options.mode.is_lit && options.show.is_sky_visible && options.show.is_sky_hazed;
+
+    if SkyDeband::is_asked(options) {
+      self.deband.get_or_insert_with(SkyDeband::default).prepare(
+        device,
+        weather_textures,
+        sky,
+        options.show.is_clouded,
+      );
+    } else {
+      self.deband = None;
+    }
 
     // The physical light lights the hemisphere by the sky's irradiance; the engine's by its cubes.
     if options.is_light_physical() {
@@ -186,6 +201,10 @@ impl SkyFeature {
     if let Some(irradiance) = &self.irradiance {
       irradiance.abandon();
     }
+
+    if let Some(deband) = &mut self.deband {
+      deband.abandon_frame();
+    }
   }
 
   /// Asks for the harmonics copied out with the frame just submitted.
@@ -193,6 +212,11 @@ impl SkyFeature {
     if let Some(irradiance) = &self.irradiance {
       irradiance.request();
     }
+  }
+
+  /// Writes into `applied` whether the sky is drawn with its textures smoothed where they band.
+  pub fn describe(&self, applied: &mut RenderAppliedReport) {
+    applied.is_sky_debanded = self.deband.is_some();
   }
 
   /// The sun's sprite as the sky draws it, where one is drawn.
@@ -339,6 +363,21 @@ impl SkyFeature {
     Some(sky)
   }
 
+  /// The sky's parameters as the combine draws the sky, from those `add_passes` answered (`sky`): with the enhanced
+  /// debanding, its textures' smoothed copies in their place, each smoothed first where this frame copies it; every
+  /// other reader of the sky keeps the textures as they are.
+  pub fn add_drawn_sky<'a>(
+    &'a self,
+    GraphDeclaration { graph, bindings, .. }: GraphDeclaration<'_, 'a>,
+    passes: LevelPasses<'a>,
+    sky: SkyParameters<'a>,
+  ) -> SkyParameters<'a> {
+    match &self.deband {
+      Some(deband) => deband.add_passes(graph, bindings, passes, sky),
+      None => sky,
+    }
+  }
+
   /// Adds the passes filling the prefiltered sky cube this frame, a mip each: the first the surroundings cube's face
   /// drawn this frame, the level around the camera lit with the sky behind, or the sky's cubes alone as the sky is
   /// drawn where none is; each after it from the mips before it over its roughness's lobe.
@@ -418,11 +457,14 @@ impl ViewFeature for SkyFeature {
         .sum()
     });
 
-    prefilter + self.irradiance.as_ref().map_or(0, SkyIrradiance::get_memory)
+    prefilter
+      + self.irradiance.as_ref().map_or(0, SkyIrradiance::get_memory)
+      + self.deband.as_ref().map_or(0, SkyDeband::get_memory)
   }
 
   fn release(&mut self) {
     self.prefilter = None;
     self.irradiance = None;
+    self.deband = None;
   }
 }

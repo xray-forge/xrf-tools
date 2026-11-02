@@ -1,18 +1,13 @@
-//! The sky debanding the present runs.
-
-use glam::Vec4;
+//! The sky debanding: the sky's textures smoothed at their source, which the combine draws the sky with.
 
 use crate::contract::feature::image::display::render_debanding_mode::RenderDebandingMode;
 use crate::contract::feature::image::display::render_debanding_settings::RenderDebandingSettings;
-use crate::contract::feature::image::display::render_image_corrections::RenderImageCorrections;
 use crate::contract::view::render_view_options::RenderViewOptions;
-use crate::feature::image::present::present_frame::PresentFrame;
-use crate::feature::image::present::present_uniform::PresentUniform;
+use crate::feature::weather::sky::deband::sky_deband::SkyDeband;
 
 fn enhanced() -> RenderDebandingSettings {
   RenderDebandingSettings {
     mode: RenderDebandingMode::Enhanced,
-    ..RenderDebandingSettings::default()
   }
 }
 
@@ -26,40 +21,20 @@ fn options_with(debanding: RenderDebandingSettings) -> RenderViewOptions {
   options
 }
 
-fn present() -> PresentUniform {
-  PresentUniform::new(PresentFrame::default(), &RenderImageCorrections::default())
-}
-
 #[test]
-fn ships_the_sky_as_drawn_with_two_passes_out_to_48_pixels() {
+fn ships_the_sky_as_drawn() {
   let defaults: RenderDebandingSettings = RenderDebandingSettings::default();
 
   assert_eq!(defaults.mode, RenderDebandingMode::Engine);
-  assert_eq!(defaults.passes, 2);
-  assert_eq!(defaults.radius, 48.0);
   assert!(!defaults.is_drawn());
   assert!(enhanced().is_drawn());
-  assert!(
-    !RenderDebandingSettings {
-      radius: 0.0,
-      ..enhanced()
-    }
-    .is_drawn()
-  );
-  assert_eq!(
-    [0, 3, 9].map(|passes| RenderDebandingSettings { passes, ..enhanced() }.get_passes()),
-    [1, 3, 4]
-  );
 }
 
 // Nothing is debanded while the engine's sky is asked for, no sky is shown, unlit or in wireframe.
 #[test]
 fn debands_only_a_sky_shown_lit_and_solid() {
-  assert_eq!(PresentUniform::get_debanding(&options_with(enhanced())), Some(2));
-  assert_eq!(
-    PresentUniform::get_debanding(&options_with(RenderDebandingSettings::default())),
-    None
-  );
+  assert!(SkyDeband::is_asked(&options_with(enhanced())));
+  assert!(!SkyDeband::is_asked(&options_with(RenderDebandingSettings::default())));
 
   for change in [
     |options: &mut RenderViewOptions| options.show.is_sky_visible = false,
@@ -70,15 +45,6 @@ fn debands_only_a_sky_shown_lit_and_solid() {
 
     change(&mut options);
 
-    assert_eq!(PresentUniform::get_debanding(&options), None);
+    assert!(!SkyDeband::is_asked(&options));
   }
-}
-
-#[test]
-fn hands_the_present_its_passes_radius_and_clock() {
-  assert_eq!(present().deband, Vec4::ZERO);
-  assert_eq!(
-    present().with_debanding(3, 32.0, 1.5).deband,
-    Vec4::new(3.0, 32.0, 1.5, 0.0)
-  );
 }

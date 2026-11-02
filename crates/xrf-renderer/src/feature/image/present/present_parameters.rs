@@ -3,7 +3,7 @@ use xrf_renderer_core::{GraphTexture, PassParameters, UniformBinding};
 use crate::feature::image::present::present_uniform::PresentUniform;
 
 /// What the present pass reads of a viewport's frame: its finished scene and the targets a debug view shows, the frame
-/// upscaled or the scene again, which the sky debanding samples, its bloom, the engine's or the enhanced one, what it
+/// upscaled or the scene again, its bloom, the engine's or the enhanced one, what it
 /// shows, the indirect light, the reflections and how their rays ended, which the debug views show, and the models its
 /// helpers mark.
 #[derive(PassParameters)]

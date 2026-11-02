@@ -357,10 +357,17 @@ impl SceneView {
         traced,
       );
 
+      // The sky as drawn: its textures smoothed where they band, while the debanding is enhanced.
+      let drawn: SkyParameters =
+        self
+          .features
+          .sky
+          .add_drawn_sky(GraphDeclaration::new(graph, bindings, runtime), record.passes, sky);
+
       self.stages.lighting.add_combine(
         GraphDeclaration::new(graph, bindings, runtime),
         record,
-        sky,
+        drawn,
         CombineInputs {
           indirect_light,
           reflections: reflections.map(|reflections| reflections.radiance),

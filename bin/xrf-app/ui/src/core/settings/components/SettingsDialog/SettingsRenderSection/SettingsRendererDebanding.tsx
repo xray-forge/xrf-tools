@@ -4,25 +4,20 @@ import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { DetailSection } from "@xrf/ui/layout/detail-section";
 import { ReactElement } from "react";
 
-import { RenderSettingRows } from "@/core/render/components/settings/RenderSettingRows";
 import {
   explainRenderDebandingMode,
   RENDER_DEBANDING_SETTINGS,
 } from "@/core/render/lib/features/image/render-debanding-choices";
-import {
-  IRenderFeatureSettings,
-  TRenderDebandingSettings,
-} from "@/core/render/lib/settings/choice/render-feature-settings";
+import { TRenderDebandingSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 import { useRendererOverride } from "./use-renderer-override";
 
-/** Whether the sky's colour bands are smoothed, at what quality and over how many pixels. */
+/** Whether the sky's colour bands are smoothed. */
 export function SettingsRendererDebanding(): ReactElement {
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
 
-  const features: IRenderFeatureSettings = renderSettingsService.rendererFeatures;
-  const debanding: TRenderDebandingSettings = features.debanding;
+  const debanding: TRenderDebandingSettings = renderSettingsService.rendererFeatures.debanding;
 
   const onSet = useRendererOverride("debanding");
 
@@ -36,14 +31,6 @@ export function SettingsRendererDebanding(): ReactElement {
           onChange={(isOn: boolean) =>
             onSet({ mode: isOn ? ERenderDebandingMode.ENHANCED : ERenderDebandingMode.ENGINE })
           }
-        />
-
-        <RenderSettingRows
-          settings={RENDER_DEBANDING_SETTINGS}
-          names={["passes", "radius"]}
-          group={debanding}
-          features={features}
-          onSet={onSet}
         />
       </div>
     </DetailSection>

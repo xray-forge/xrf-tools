@@ -47,9 +47,9 @@ impl JitterGuard {
   pub const READS_SCENE: &'static str = "jitter reads scene";
 
   /// What the present reads of the drawn targets, the window's or a capture's: the debug views show them as they are,
-  /// the indirect light and the reflections traced raw for ray reconstruction among them; the sky's debanding reads
-  /// the depth over four drawn texels; the drawn scene is bound beside the upscaled image the frame shows, read only by
-  /// the luminance view. A capture's copy takes the depth or the marks for a tool.
+  /// the indirect light and the reflections traced raw for ray reconstruction among them; the drawn scene is bound
+  /// beside the upscaled image the frame shows, read only by the luminance view. A capture's copy takes the depth or
+  /// the marks for a tool.
   pub const PRESENT_READS: [&'static str; 13] = [
     Self::READS_ALBEDO,
     Self::READS_AMBIENT_OCCLUSION,
