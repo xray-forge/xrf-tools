@@ -228,9 +228,10 @@ impl LevelShadows {
       *is_trees_taken = true;
     }
 
-    // A far cascade redraws its trees for the sway alone band by band, a sweep at a time, unless what moves every frame
-    // lands in it, which draws over its kept layer every frame.
-    if index >= BANDED_FROM && !has_moving && !is_stale && (cascade.sway_sweep.is_some() || is_swayed) {
+    // A cascade redraws its trees for the sway alone band by band, a sweep at a time, unless what moves every frame lands
+    // in it, which draws over its kept layer every frame. A near cascade's bands are drawn on the frame they are due,
+    // so its sweep keeps the sway's rate and its rows a frame apart rather than one frame carrying the whole redraw.
+    if !has_moving && !is_stale && (cascade.sway_sweep.is_some() || is_swayed) {
       let band: u32 = cascade.sway_sweep.map_or(0, |(_, band)| band);
 
       return Some(Self::offer(
@@ -241,7 +242,7 @@ impl LevelShadows {
         CascadeRequest {
           draw: CascadeDraw::Banded(band),
           fit: static_fit,
-          is_urgent: false,
+          is_urgent: index < BANDED_FROM,
         },
       ));
     }
