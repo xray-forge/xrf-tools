@@ -1,7 +1,5 @@
-error: `#[constant]` marks a module-level `const` item, whose value the frontend's bindings export
+error: `#[constant]` marks a function of no arguments, not generic, async or unsafe, returning the value exported
  --> tests/ui/fail/function_item.rs:2:1
   |
-2 | / fn render_max_shadow_filter() -> u32 {
-3 | |   3
-4 | | }
-  | |_^
+2 | fn render_max_shadow_filter(limit: u32) -> u32 {
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

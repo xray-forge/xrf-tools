@@ -1,9 +1,9 @@
 #import "common/camera"
+#import "common/display_transform"
 #import "common/lighting"
-#import "common/scene_light"
 #import "common/fullscreen"
 
-// The enhanced bloom, from the finished scene rather than the engine's high part: the scene blurred to half its size by
+// The enhanced bloom, from the resolved image rather than the engine's high part: the image blurred to half its size by
 // a Gaussian across and down; its bright parts raised to the threshold's power, the sky's scaled, self-lit surfaces
 // added whole; halved six times and doubled back, each doubling adding the halving of its size; then split into its
 // colours a few pixels apart, lifted, tonemapped and saturated. The present screens it over the frame. Alpha carries
@@ -24,14 +24,16 @@ const BLUE_SHIFT: vec2<f32> = vec2<f32>(-3.2, -4.1);
 // The luminance the vibrance pulls towards, `LUMINANCE_VECTOR`.
 const LUMINANCE: vec3<f32> = vec3<f32>(0.3, 0.38, 0.22);
 
-// The source's texel under a point, unfiltered.
+// The source's texel under a point, unfiltered. The scene's is taken as the display shows it, so the bloom grows from
+// the picture on the screen under every display, not from the scene's own round trip (`scene_shown`), which encodes
+// after the tonemap where the authored levels' display encodes before it.
 fn read_nearest(at: vec2<f32>) -> vec3<f32> {
   let size: vec2<i32> = vec2<i32>(textureDimensions(source));
   let texel: vec2<i32> = clamp(vec2<i32>(floor(at * vec2<f32>(size))), vec2<i32>(0), size - 1);
 
   let held: vec3<f32> = textureLoad(source, texel, 0).rgb;
 
-  return select(held, scene_shown(held), bloom.spread.w > 0.5);
+  return select(held, shown_for_display(held, lighting.display), bloom.spread.w > 0.5);
 }
 
 fn sample_at(image: texture_2d<f32>, at: vec2<f32>) -> vec4<f32> {
@@ -62,22 +64,30 @@ fn fs_bloom_blur(in: FullscreenVarying) -> @location(0) vec4<f32> {
   return vec4<f32>(sum / total, 1.0);
 }
 
+// How much fog lies before a texel of the frame, held to its edges: all of it where nothing was drawn.
+fn fogged_at(texel: vec2<i32>) -> f32 {
+  let last: vec2<i32> = vec2<i32>(bloom.size.zw) - 1;
+  let at: vec2<i32> = clamp(texel, vec2<i32>(0), last);
+  let depth: f32 = textureLoad(depth_target, at, 0);
+
+  return select(fog_amount(lighting, camera_view_position(vec2<f32>(at) + 0.5, depth)), 1.0, depth <= 0.0);
+}
+
 // The build: the blurred scene, the sky's times its share, raised to the threshold's power; self-lit surfaces added by
 // how much of the four frame texels under the texel they cover, and that share kept in alpha. Fogged light counts as
 // the sky's by how much fog lies before it, so far ground fading into the sky blooms as the sky does, not brighter.
+// The bloom is built from the resolved image while the depth and the marks are the frame's as drawn, jittered: both are
+// read over the four frame texels under the texel, so the share does not flip with the jitter at an edge.
 @fragment
 fn fs_bloom_build(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let uv: vec2<f32> = in.clip.xy / bloom.size.xy;
-  let frame: vec2<f32> = bloom.size.zw;
-  let last: vec2<i32> = vec2<i32>(frame) - 1;
-  let at: vec2<i32> = clamp(vec2<i32>(uv * frame), vec2<i32>(0), last);
-  let depth: f32 = textureLoad(depth_target, at, 0);
-  let fogged: f32 = select(fog_amount(lighting, camera_view_position(vec2<f32>(at) + 0.5, depth)), 1.0, depth <= 0.0);
+  let corner: vec2<i32> = vec2<i32>(floor(uv * bloom.size.zw - 0.5));
+  let fogged: f32 = (fogged_at(corner) + fogged_at(corner + vec2<i32>(1, 0)) + fogged_at(corner + vec2<i32>(0, 1)) +
+    fogged_at(corner + vec2<i32>(1, 1))) / 4.0;
   var result: vec3<f32> = sample_at(source, uv).rgb * mix(1.0, bloom.strengths.z, fogged);
 
   result = pow(abs(result), vec3<f32>(bloom.strengths.x));
 
-  let corner: vec2<i32> = vec2<i32>(floor(uv * frame - 0.5));
   let covered: f32 = (self_lit(corner) + self_lit(corner + vec2<i32>(1, 0)) + self_lit(corner + vec2<i32>(0, 1)) +
     self_lit(corner + vec2<i32>(1, 1))) / 4.0;
   let added: f32 = covered * SELF_LIT;

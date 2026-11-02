@@ -2,11 +2,13 @@
 #import "common/scene_light"
 #import "common/octahedral"
 #import "common/lighting"
+#import "common/fog_colour"
 #import "common/hmodel"
 #import "common/sky"
 #import "common/fullscreen"
 #import "common/occlusion"
 #import "common/reflection_trace"
+#import "common/display_transform"
 
 // `hmodel` and `combine_1` over the light the frame accumulated, then the fog and tonemap of `combine_2`, faded into
 // the weather's sky, into the viewport's scene; and `combine_1`'s and the sky's high part beside it, which the bloom is
@@ -14,7 +16,7 @@
 
 // The G-buffer and its light, the material table, the lighting and exposure, the ambient occlusion (visibility, then
 // distance along the view, at half the frame's size), the sky behind the fog (at half the frame's size), the indirect
-// light (colour, then distance along the view, at half the frame's size) and the
+// light (colour, then distance along the view, gathered at half the frame's size or traced at its size) and the
 // reflections (what each surface reflects, then one, at the size they are traced at).
 #import "generated/frame/combine"
 
@@ -118,8 +120,8 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let is_empty: bool = depth <= 0.0 || fog >= 1.0;
 
   if (is_empty) {
-    // `sky2.ps`: the sky's high part is the sky as drawn, within `def_hdr`; where the enhanced fog fades only past a
-    // share, the sky the far ground fades into, so where the fog ends it meets the faded ground.
+    // `sky2.ps`: the sky's high part is the sky as drawn, within `def_hdr` (`sky_high`); where the enhanced fog fades
+    // only past a share, the sky the far ground fades into, so where the fog ends it meets the faded ground.
     if (is_sky_drawn) {
       var sky: vec3<f32> = sky_drawn(lighting, direction, toward, exposed);
 
@@ -127,11 +129,17 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
         sky = sky_over_ground(lighting, haze_map, direction, toward, exposed, lighting.fog.z > 0.5);
       }
 
-      return combined(scene_from_shown(sky), sky / DEF_HDR);
+      // The scene takes the picture as the frame's display shows it as the engine's curve does; the high part is the
+      // engine's own, the picture as drawn, or under the physical light the light the scene holds, as the land's is.
+      let scene_sky: vec3<f32> = scene_from_shown(picture_for_display(sky, lighting.display));
+
+      return combined(scene_sky, sky_high(sky, scene_sky));
     }
 
     if (is_fogged) {
-      return combined(scene_from_light(fog_light(lighting), scale), tonemap_high(fog_light(lighting), scale));
+      let fog_seen: vec3<f32> = fog_light(lighting, direction);
+
+      return combined(scene_from_light(fog_seen, scale), tonemap_high(fog_seen, scale));
     }
 
     return combined(scene_from_shown(backdrop_at(in.clip.xy)), vec3<f32>(0.0));
@@ -161,12 +169,25 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   // Fresnel, by the coat's share of the puddle). The reflection gives the water its sky and the sun's glint; all of the
   // mirror gloss would spread the engine's lobe over the puddle, brighter than the sky it reflects, and none of it would
   // lose a lamp's glint, which water shows towards grazing.
-  let reach: vec2<f32> = load_frame_target(wet_reach, texel).rg;
+  let reach: vec4<f32> = load_frame_target(wet_reach, texel);
   let wet: vec4<f32> = load_frame_target(wet_surface, texel);
   let facing: f32 = saturate(dot(normal, -camera_view_ray(position)));
   let water_seen: f32 = environment_brdf(vec3<f32>(COAT_F0), 0.0, facing).x * saturate(wet.r / max(wet.g, 1e-3));
   let lit_gloss: f32 = max(albedo.a - reach.x - reach.y * (1.0 - saturate(water_seen)), 0.0);
-  let terms: HmodelTerms = shaded_terms(vec4<f32>(albedo.rgb, lit_gloss), light, normal, position, material.z,
+  var lit_light: vec4<f32> = light;
+
+  // The sun's and the moon's own share of that specular takes none of the water's gloss: a distant light's broad lobe
+  // across the water lays a grey sheet over a moonlit puddle, where water shows the sun or the moon only as the glint
+  // below. Its share is the sun pass's own term (`light_sun`), as much of it as reached the pixel.
+  if (reach.y > 0.0 && lit_gloss > 0.0) {
+    let sun_lit: f32 = lighting.sun.w * light_terms(material_lut, lut_sampler, lighting.to_sun.xyz, normal,
+      camera_view_ray(position), material.z).y * textureLoad(sun_seen, texel, 0).x;
+    let water_kept: f32 = min(reach.y * saturate(water_seen), lit_gloss);
+
+    lit_light.a = max(light.a - sun_lit * water_kept / lit_gloss, 0.0);
+  }
+
+  let terms: HmodelTerms = shaded_terms(vec4<f32>(albedo.rgb, lit_gloss), lit_light, normal, position, material.z,
     occlusion, bounced);
   var shaded: vec3<f32> = terms.base;
   // What the surface shows of the light it scatters, which the enhanced specular takes its share from.
@@ -187,9 +208,11 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   // intensity, over the traced reflection where there is one and the prefiltered sky, seen as the hemisphere lets it,
   // where there is none.
   if (lighting.reflections.x > 0.5) {
-    let roughness: f32 = traced_roughness(albedo.a, wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
-    let head_on: vec3<f32> = reflectance_head_on(albedo.rgb, albedo.a, wet.r, material.z);
-    let brdf: vec3<f32> = environment_brdf(head_on, roughness, facing) * lighting.reflections.z;
+    let surface: SurfaceMaterial = surface_material(albedo, material.z, water_film(wet, reach),
+      wet.a + surface_variance(normal_target, depth_target, texel, wet.g), is_light_anchored(lighting));
+    let roughness: f32 = surface.roughness;
+    let head_on: vec3<f32> = surface.head_on;
+    let brdf: vec3<f32> = environment_brdf(head_on, roughness, facing) * surface.shadowing * lighting.reflections.z;
     // The full-size history the reflections were resolved into; a texel of nothing where none is traced.
     let traced: vec4<f32> = load_frame_target(reflections, texel);
     // The traced reflection where there is one, faded into the prefiltered sky towards the trace's roughness cut.
@@ -222,10 +245,10 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
 
     // The sun on a wet surface's water film, which the engine's specular leaves out with the gloss the wetness added:
     // its disc in the film's lobe, as far as a puddle's coat or the wet reach covers the surface, shadowed as the sun's
-    // pass found it.
+    // pass found it. The anchored levels' sun reflects off the wet gloss itself (below).
     let film: f32 = saturate(wet.r + reach.x);
 
-    if (film > 0.0) {
+    if (film > 0.0 && !is_light_anchored(lighting)) {
       let seen: f32 = textureLoad(sun_seen, texel, 0).x;
 
       shaded += lighting.sun.rgb * sun_glint(normal, -camera_view_ray(position), lighting.to_sun.xyz, roughness, head_on) *
@@ -235,13 +258,20 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
     shaded += terms.environment * terms.weight;
   }
 
+  // At the anchored levels the sun and the lamps reflect by the one BRDF, the wet gloss in it, their coloured specular
+  // split into a target of its own beside the diffuse light.
+  if (is_light_anchored(lighting)) {
+    shaded += textureLoad(specular_target, texel, 0).rgb;
+  }
+
   // The engine fogs towards `fog_color` before the tonemap, then fades into the sky itself by the fog squared, both
   // parts alike (`skyblend` in either's alpha). The enhanced fog thickens the first and tints it below its height;
   // the sky's fade stays the distance fog's, by its square or, where the enhanced fog asks, only past a share of it, so
   // the middle distance is veiled rather than shown through to the sky.
   let height: f32 = camera.position.y + (transpose(camera.view) * vec4<f32>(position, 0.0)).y;
   let thickened: f32 = select(0.0, fog_amount_at(lighting, position, height), is_fogged);
-  let fogged: vec3<f32> = fog_mixed(lighting, shaded, fog_color_at(lighting, position, height), thickened);
+  let fogged: vec3<f32> = fog_mixed(lighting, shaded, fog_color_at(lighting, position, direction, height),
+    thickened);
 
   let finished: vec3<f32> = scene_from_light(fogged, scale);
   let high: vec3<f32> = tonemap_high(fogged, scale);
@@ -259,5 +289,18 @@ fn fs_combine(in: FullscreenVarying) -> CombineOutput {
   let behind: vec4<f32> = textureSampleLevel(sky_behind_map, sky_clamp, in.clip.xy / camera.viewport.xy, 0.0);
   let sky: vec3<f32> = behind.rgb / max(behind.a, 1e-4);
 
-  return combined(mix(finished, scene_from_shown(sky), behind_share), mix(high, sky / DEF_HDR, behind_share));
+  let behind_scene: vec3<f32> = scene_from_shown(picture_for_display(sky, lighting.display));
+
+  return combined(mix(finished, behind_scene, behind_share), mix(high, sky_high(sky, behind_scene), behind_share));
+}
+
+// The sky's high part, which the engine's bloom grows from: the engine's own, its picture as drawn within `def_hdr`;
+// under the physical light the light the scene holds of it (`held`), as the land's high part is its light, so the
+// bloom weighs the sky as it weighs the land rather than by its display values over the land's light.
+fn sky_high(sky: vec3<f32>, held: vec3<f32>) -> vec3<f32> {
+  if (is_light_physical()) {
+    return held / DEF_HDR;
+  }
+
+  return sky / DEF_HDR;
 }

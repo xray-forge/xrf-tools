@@ -146,10 +146,10 @@ fn fs_temporal(in: FullscreenVarying) -> TemporalTargets {
     }
   }
 
-  let depth: f32 = load_depth(nearest, input_size);
-  let is_drawn: bool = depth > 0.0;
-  let world: vec3<f32> = world_at(nearest, depth);
-  let distance: f32 = -camera_view_position(nearest + 0.5, depth).z;
+  // The surface is told by the nearest of the texels around, as its motion is: the nearest texel alone flips between a
+  // blade and what is behind it as the jitter turns, and the history would be thrown away at every thin edge.
+  let is_drawn: bool = closest_depth > 0.0;
+  let distance: f32 = -camera_view_position(closest + 0.5, closest_depth).z;
   let moving: vec3<f32> = world_at(closest, closest_depth);
   let surface_motion: vec2<f32> = textureLoad(motion_target, vec2<i32>(clamp(closest, vec2<f32>(0.0),
     input_size - 1.0)), 0).xy;
@@ -161,11 +161,12 @@ fn fs_temporal(in: FullscreenVarying) -> TemporalTargets {
   let is_inside: bool = all(before >= vec2<f32>(0.0)) && all(before <= vec2<f32>(1.0));
   let history_texel: vec2<i32> = vec2<i32>(clamp(floor(before * output_size), vec2<f32>(0.0), output_size - 1.0));
   let history_distance: f32 = textureLoad(history, history_texel, 0).a;
-  let expected: f32 = -(temporal.previous_view * vec4<f32>(world, 1.0)).z;
+  let expected: f32 = -(temporal.previous_view * vec4<f32>(moving, 1.0)).z;
   let is_same_surface: bool = select(history_distance <= 0.0,
     abs(history_distance - expected) <= expected * DISTANCE_TOLERANCE, is_drawn);
-  // A history that is not a number would keep its pixel for ever, so it stands only where it is one.
-  let history_color: vec3<f32> = catmull_rom(before, output_size);
+  // A history that is not a number would keep its pixel for ever, so it stands only where it is one. Kept at the last
+  // frame's pre-exposure, it is brought to this one's, so an adapting exposure does not lag behind the light.
+  let history_color: vec3<f32> = catmull_rom(before, output_size) * temporal.exposure.x;
   let is_valid: bool = temporal.params.z > 0.5 && is_inside && is_same_surface && all(history_color == history_color);
 
   // This frame's colour where the pixel's centre is, and the spread of colours around it.

@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 
 # Git runs hooks from the working tree root, which is also the TypeScript workspace root.
-members="bin/xrf-ui cli packages"
+members="bin/xrf-app/ui cli packages"
 
 # Most commits here are Rust only, and they must not need an installed frontend to land.
 # shellcheck disable=SC2086

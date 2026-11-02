@@ -3,14 +3,14 @@ use std::path::{Path, PathBuf};
 
 use indexmap::IndexMap;
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayMountMode, XrayRoots, XrayVfs};
+use xrf_test_utils::GeneratedResources;
+use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch};
 
 use crate::partner::dialog_character::DialogCharacter;
 use crate::partner::dialog_offer::DialogOffer;
 use crate::partner::dialog_partners::DialogPartners;
 use crate::partner::dialog_profile::DialogProfile;
-use crate::project::mode::DialogProjectMode;
+use crate::project::dialog_project_mode::DialogProjectMode;
 
 /// The shared include shipped characters take their dialogs from, which declares a start dialog of its own.
 const CHARACTER_DIALOGS: &str =
@@ -54,12 +54,8 @@ const INFO_PORTIONS: &str = r#"<game_information_portions>
 
 /// Lay out a gameplay folder and read its partners.
 fn read_partners(name: &str, files: &[(&str, &str)]) -> XrfResult<DialogPartners> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("partner/{name}"));
+  let root: PathBuf = GeneratedResources::create_dir(&format!("partner/{name}"))?;
   let gameplay: PathBuf = root.join("configs").join("gameplay");
-
-  if root.exists() {
-    fs::remove_dir_all(&root)?;
-  }
 
   fs::create_dir_all(&gameplay)?;
   fs::write(gameplay.join("character_dialogs.xml"), CHARACTER_DIALOGS)?;
@@ -68,15 +64,17 @@ fn read_partners(name: &str, files: &[(&str, &str)]) -> XrfResult<DialogPartners
     fs::write(gameplay.join(file), content)?;
   }
 
-  let partners: DialogPartners = DialogPartners::from_vfs(&open(&root)?, DialogProjectMode::DIALOGS_PREFIX)?;
+  let partners: DialogPartners = DialogPartners::from_search(&open(&root)?, DialogProjectMode::DIALOGS_PREFIX)?;
 
   fs::remove_dir_all(root)?;
 
   Ok(partners)
 }
 
-fn open(root: &Path) -> XrfResult<XrayVfs> {
-  XrayRoots::one(root.to_path_buf(), XrayMountMode::Directory).open()
+fn open(root: &Path) -> XrfResult<XraySearch> {
+  XrayRoots::one(root.to_path_buf(), XrayMountMode::Directory)
+    .to_search_plan()?
+    .open()
 }
 
 /// Read the shipped-shaped tree under a root of its own, since tests run in parallel.

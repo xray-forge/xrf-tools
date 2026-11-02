@@ -1,57 +1,84 @@
 # xrf-test-utils
 
-Shared fixture paths, file helpers, and assertions for XRF Rust tests. Add it as a dev-dependency.
+Shared support for XRF Rust tests: where generated test files live, writing and reading them, checking what a refused
+publication left, filesystem links and non-UTF-8 names for path tests, and skipping GPU tests on hosts without a device.
+Add it as a dev-dependency.
 
 ## Write a generated fixture
 
 ```rust
-use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, write_generated_test_resource};
+use std::path::PathBuf;
+
+use xrf_test_utils::GeneratedResources;
 
 fn main() -> std::io::Result<()> {
-  let path = write_generated_test_resource("readme/example.ltx", "[actor]\nhealth = 100\n")?;
+  let path: PathBuf = GeneratedResources::write("readme/example.ltx", "[actor]\nhealth = 100\n")?;
 
-  assert_eq!(path, build_absolute_generated_test_resource_path("readme/example.ltx"));
+  assert_eq!(path, GeneratedResources::path("readme/example.ltx"));
   assert_eq!(std::fs::read_to_string(path)?, "[actor]\nhealth = 100\n");
 
   Ok(())
 }
 ```
 
-The writer creates parent directories, replaces an existing generated file, and returns its path. Use a unique relative
-name for tests that may run concurrently; the same name within one test process addresses the same file.
-
-## Resource helpers
-
-Use `utils::build_absolute_generated_test_resource_path` for a generated file or tree, or
-`utils::write_generated_test_resource` to write one resource. The sample helpers derive a resource subdirectory from
-the test source filename. `assertions` contains shared comparisons; `file` contains file-reading helpers.
-
-| Need                                     | Helper                                           |
-| ---------------------------------------- | ------------------------------------------------ |
-| Reserve a path without writing           | `build_absolute_generated_test_resource_path`    |
-| Write bytes or text                      | `write_generated_test_resource`                  |
-| Group a fixture by test source filename  | `build_absolute_generated_test_sample_file_path` |
-| Read a generated fixture through a slice | `open_generated_test_resource_as_slice`          |
-| Open a generated fixture as a file       | `open_generated_test_resource_as_file`           |
-
-`FileSlice` is re-exported for binary-format tests. The path helpers do not determine the fixture's encoding or validate
-its format; write the bytes the test is intended to exercise.
+`GeneratedResources::write` takes text or bytes, creates the parent directories, truncates any earlier file, closes it,
+and returns its path. Every test in one process shares one root, so give each test its own relative name.
 
 ## Location and lifetime
 
-Generated resources live under the workspace's `target/test-resources/<target>-<pid>-<nanos>` directory. Later runs
-attempt to collect generated run directories older than one hour. The path helper allocates a name; callers creating
-a tree must create its directories. Keep committed fixtures separate from generated output.
+Generated files live under the workspace's `target/test-resources/<target>-<pid>-<nanos>/`, chosen once per test
+process: `<target>` is the test binary's name without Cargo's hash, `<nanos>` the start time. The first call in a
+process also deletes run directories of that shape started more than an hour earlier; anything else under
+`target/test-resources` is left alone. Cleanup is best effort and never immediate, so do not keep anything there a
+later run needs. Never use `std::env::temp_dir()` for test output: nothing collects it and process ids are recycled.
 
-The generated root is chosen once per test process. Cleanup is best effort and applies only to run directories with
-the expected naming shape; it is not immediate cleanup after each test. Fixtures needed beyond a test run should not
-use this storage.
+Committed fixtures stay in their crates; this storage is for output a test generates. A fixture that describes a whole
+tree should clear its root first, so a rerun does not see files from the last one. The root is derived from this
+crate's manifest location, so it assumes the XRF workspace layout.
 
-## Errors and checks
+## Types
 
-File helpers return `std::io::Result`, preserving the failure kind with path context where applicable. This crate is
-for the XRF workspace layout: its generated root is derived from its own manifest location.
+Every type is a unit struct exported at the crate root. A `GeneratedResources` resource is a name relative to the run's
+directory; operations ending in `path` or `root` answer absolute paths.
 
-Run `cargo test --locked -p xrf-test-utils` from the repository root.
+| Operation                                     | Use                                                              |
+| --------------------------------------------- | ---------------------------------------------------------------- |
+| `GeneratedResources::path`                    | A path in this run's directory; creates nothing                  |
+| `GeneratedResources::write`                   | Write one file and get its path                                  |
+| `GeneratedResources::create_dir`              | An empty directory, cleared of an earlier run's files            |
+| `GeneratedResources::overwrite`               | Create or truncate a generated file, with its parents            |
+| `GeneratedResources::overwrite_path`          | The same for an already resolved path                            |
+| `GeneratedResources::open`                    | Open a generated file                                            |
+| `GeneratedResources::open_slice`              | Open a generated file as a `FileSlice`                           |
+| `GeneratedResources::sample_name`             | A resource name grouped under the test source's file stem        |
+| `GeneratedResources::sample_path`             | That grouped name made absolute                                  |
+| `GeneratedResources::sample_root`             | The absolute directory a test source's names are grouped in      |
+| `HostFilesystem::link_directory`, `link_file` | Create a link for a containment test                             |
+| `HostFilesystem::non_unicode_file_name`       | A file name the host accepts and `Path::to_str` refuses          |
+| `RefusedPublication::assert_left_previous`    | Assert a refused staged write left the previous file and no more |
+| `GpuRequirement::skip_without_device`         | Skip a GPU test that found no device                             |
 
-See the [resource helpers](src/utils.rs) and [assertions](src/assertions.rs).
+`FileSlice` from the `fileslice` crate is re-exported for binary-format tests. The operations write the bytes they are
+given and validate no format. File operations return `std::io::Result`, keeping the error kind and naming the path. Read
+an open file to the end with `std::io::read_to_string`.
+
+`sample_name(file!(), "x.chunk")` gives `<stem>/x.chunk`, joined with the host's separator, so the tests of one source
+file share a directory.
+
+`HostFilesystem::non_unicode_file_name` is invalid UTF-8 on Unix and an unpaired surrogate on Windows. NTFS refuses to
+create the Windows form, so a test that writes the file gates itself on `cfg(unix)`; a test about paths alone runs
+everywhere.
+
+`link_directory` and `link_file` return `false`, after printing why, when the host cannot create the link; the test
+then skips. On Windows, `link_directory` falls back to a junction when symlinks need a privilege the account lacks,
+while `link_file` has no fallback.
+
+`GpuRequirement::skip_without_device(reason)` prints the reason and returns, so the test can return early. When the
+test-only variable `GpuRequirement::VARIABLE` (`XRF_TEST_REQUIRE_GPU`) is set to anything but `0`, as Windows CI does
+with WARP, it panics instead, so a missing device fails the run.
+
+## Checks
+
+Run `cargo test --locked -p xrf-test-utils` from the repository root. See the
+[generated resources](src/generated_resources.rs), [host filesystem](src/host_filesystem.rs),
+[refused publication](src/refused_publication.rs) and [GPU requirement](src/gpu_requirement.rs).

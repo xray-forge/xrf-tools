@@ -2,27 +2,20 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayLogicalPath, XrayMountMode, XrayRoots};
 
-use crate::project::descriptor::{DialogDescriptor, DialogProjectDescriptor};
+use crate::project::descriptor::dialog_descriptor::DialogDescriptor;
+use crate::project::descriptor::dialog_project_descriptor::DialogProjectDescriptor;
+use crate::project::descriptor::dialog_reference_descriptor::DialogReferenceDescriptor;
 use crate::project::dialog_project::DialogProject;
-use crate::project::layout::{DialogProjectLayout, detect_mode};
-use crate::project::mode::DialogProjectMode;
-use crate::project::reference_descriptor::DialogReferenceDescriptor;
+use crate::project::dialog_project_layout::DialogProjectLayout;
+use crate::project::dialog_project_mode::DialogProjectMode;
 
 const DIALOG: &str = r#"<game_dialogs><dialog id="d" priority="-5"><phrase_list><phrase id="0"><text>key</text></phrase></phrase_list></dialog></game_dialogs>"#;
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("project/{name}"));
-
-  if root.exists() {
-    fs::remove_dir_all(&root)?;
-  }
-
-  fs::create_dir_all(&root)?;
-
-  Ok(root)
+  Ok(GeneratedResources::create_dir(&format!("project/{name}"))?)
 }
 
 /// Lay out a gamedata-shaped tree: dialogs and text both under `configs`.
@@ -114,7 +107,7 @@ fn recognises_a_dialog_logical_path_by_its_file_name() -> XrfResult {
 fn detects_source_from_a_translations_prefix_holding_json() -> XrfResult {
   let root: PathBuf = create_source("detect-source")?;
 
-  assert_eq!(detect_mode(&roots(&root))?, DialogProjectMode::Source);
+  assert_eq!(DialogProjectMode::detect(&roots(&root))?, DialogProjectMode::Source);
 
   fs::remove_dir_all(root)?;
 
@@ -126,9 +119,12 @@ fn detects_gamedata_for_anything_else() -> XrfResult {
   let gamedata: PathBuf = create_gamedata("detect-gamedata")?;
   let empty: PathBuf = create_root("detect-empty")?;
 
-  assert_eq!(detect_mode(&roots(&gamedata))?, DialogProjectMode::Gamedata);
+  assert_eq!(
+    DialogProjectMode::detect(&roots(&gamedata))?,
+    DialogProjectMode::Gamedata
+  );
   // A roots the heuristic cannot make sense of reads as the mode the tooling targets.
-  assert_eq!(detect_mode(&roots(&empty))?, DialogProjectMode::Gamedata);
+  assert_eq!(DialogProjectMode::detect(&roots(&empty))?, DialogProjectMode::Gamedata);
 
   fs::remove_dir_all(gamedata)?;
   fs::remove_dir_all(empty)?;

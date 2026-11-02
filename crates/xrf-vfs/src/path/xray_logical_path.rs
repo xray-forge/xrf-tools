@@ -78,6 +78,23 @@ impl XrayLogicalPath {
     Ok(is_component_prefix(&self.0, &normalize(prefix)?))
   }
 
+  /// Whether this path ends with `suffix`, matching on component boundaries so `myparticles.xr` does not end with
+  /// `particles.xr`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `suffix` is not a valid logical path.
+  pub fn ends_with(&self, suffix: &str) -> XrfResult<bool> {
+    let suffix: Cow<'_, str> = normalize(suffix)?;
+
+    Ok(
+      self
+        .0
+        .strip_suffix(suffix.as_ref())
+        .is_some_and(|rest| rest.is_empty() || rest.ends_with('\\')),
+    )
+  }
+
   /// This path relative to `prefix`, or `None` when it does not sit under it.
   ///
   /// # Errors
@@ -101,7 +118,7 @@ impl XrayLogicalPath {
   ///
   /// Returns an error when the path contains an empty, `.` or `..` component or a colon.
   pub fn normalize(path: &str) -> XrfResult<String> {
-    normalize_logical(path)
+    Ok(normalize(path)?.into_owned())
   }
 
   /// Whether a logical path sits under a prefix, matching on component boundaries so `configs_backup` does not match
@@ -115,15 +132,6 @@ impl Display for XrayLogicalPath {
   fn fmt(&self, formatter: &mut Formatter<'_>) -> FormatResult {
     formatter.write_str(&self.0)
   }
-}
-
-/// Normalizes a path into the canonical X-Ray logical form, behind [`XrayLogicalPath::normalize`].
-///
-/// # Errors
-///
-/// Returns an error when the path contains an empty, `.` or `..` component or a colon.
-pub(crate) fn normalize_logical(path: &str) -> XrfResult<String> {
-  Ok(normalize(path)?.into_owned())
 }
 
 /// Whether a logical path sits under a prefix, matching on component boundaries so `configs_backup` does not match
@@ -317,6 +325,20 @@ mod tests {
     assert!(path.has_extension(XrayExtension::Ltx));
     assert!(path.is_under("configs").expect("valid prefix"));
     assert!(!path.is_under("configs_backup").expect("valid prefix"));
+  }
+
+  #[test]
+  fn matches_a_suffix_only_on_a_component_boundary() {
+    let path: XrayLogicalPath = XrayLogicalPath::new("particles\\particles.xr").expect("valid");
+
+    assert!(path.ends_with("particles.xr").expect("valid suffix"));
+    assert!(path.ends_with("Particles\\Particles.XR").expect("valid suffix"));
+    assert!(
+      !XrayLogicalPath::new("myparticles.xr")
+        .expect("valid")
+        .ends_with("particles.xr")
+        .expect("valid suffix")
+    );
   }
 
   #[test]

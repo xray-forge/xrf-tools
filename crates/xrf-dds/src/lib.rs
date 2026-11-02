@@ -1,5 +1,4 @@
-//! DDS textures as this workspace reads, writes and weighs them: the header facts a surface reports, the pixels behind
-//! them, the X-Ray converter's mip kernels, and which renderer path will load what.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod encode;
 pub(crate) mod file;
@@ -10,7 +9,7 @@ pub use ddsfile::{D3DFormat, DxgiFormat};
 pub use image::{Rgba, RgbaImage};
 pub use image_dds::{ImageFormat, Quality};
 
-pub use crate::encode::{DDS_BLOCK_SIZE, DdsEncodeAttempt, DdsEncodeCandidate, DdsEncoding, DdsImageDifference};
+pub use crate::encode::{DdsEncodeAttempt, DdsEncodeCandidate, DdsEncoding, DdsImageDifference};
 pub use crate::file::{DdsFile, DdsFormat, DdsMetadata, DdsPng};
 pub use crate::mip::{DdsMipChain, DdsMipFilter, DdsMipmaps};
 pub use crate::renderer::{DdsFormatSupport, DdsRenderer};

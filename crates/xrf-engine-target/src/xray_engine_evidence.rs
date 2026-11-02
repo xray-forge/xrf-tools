@@ -9,7 +9,7 @@ pub enum XrayEngineEvidence {
   Named,
   /// `AnomalyLauncher.exe`, `bin/AnomalyDX*.exe` or `bin/VerifiedDX11.exe` beside `fsgame.ltx`.
   AnomalyExecutables,
-  /// `fsgame.ltx` declares `$warfare_presets$`.
+  /// The installation's fsgame file declares `$warfare_presets$`.
   AnomalyFsgame,
   /// `configs/environment/dynamic_weather_graphs.ltx` has a `[weather_cycles]` section.
   AtmosfearCycles,

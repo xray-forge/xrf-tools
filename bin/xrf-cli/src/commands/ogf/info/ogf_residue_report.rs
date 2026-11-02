@@ -1,7 +1,8 @@
 use serde::Serialize;
 use xrf_ogf::OgfResidue;
 
-/// Bytes a visual ends with that the engine's loader never reads.
+/// Where a visual departs from a well-formed chunk tree without the engine's loader noticing: bytes it never reads, or
+/// a size its payload contradicts, which counts no ignored bytes.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OgfResidueReport {

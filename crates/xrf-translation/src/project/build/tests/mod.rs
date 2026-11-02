@@ -1,2 +1,2 @@
-mod compile;
-mod targets;
+mod translation_build_targets;
+mod translation_table_compiler;

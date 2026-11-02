@@ -81,7 +81,7 @@ pub fn read_engine_floats(value: &str, most: usize) -> Vec<f32> {
 
 #[cfg(test)]
 mod tests {
-  use crate::syntax::ltx_value::{read_engine_bool, read_engine_float, read_engine_floats};
+  use crate::syntax::{read_engine_bool, read_engine_float, read_engine_floats};
 
   #[test]
   fn reads_a_flag_as_r_bool_does() {

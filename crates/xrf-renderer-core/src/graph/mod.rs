@@ -5,6 +5,7 @@ mod builder;
 mod compile;
 mod execute;
 mod frame_graph;
+mod graph_declaration;
 mod graph_owner;
 mod pool;
 mod record;
@@ -23,6 +24,7 @@ pub use execute::{
   PassMarker, RasterContext,
 };
 pub use frame_graph::FrameGraph;
+pub use graph_declaration::GraphDeclaration;
 pub use graph_owner::GraphOwner;
 pub use pool::{TransientBufferKey, TransientPool, TransientTextureKey};
 pub use report::{GraphPassKind, GraphPassReport, GraphReport, GraphTransientReport};

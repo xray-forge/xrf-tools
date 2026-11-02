@@ -1,4 +1,4 @@
-// The frame's lighting, as `pass/lighting_uniform.rs` writes it, and the engine's own lighting functions.
+// The frame's lighting, as `pass/frame_lighting/lighting_uniform.rs` writes it, and the engine's own lighting functions.
 
 #import "generated/structs"
 #import "common/luminance"
@@ -46,21 +46,27 @@ fn frame_exposure(state: Lighting, exposure: Exposure) -> f32 {
   return select(1.0, exposure.adapted, state.params.z > 0.5);
 }
 
-// The share of the frame's exposure the game's pictures (the sky, the clouds) are shown at (`PictureShares`), so they
-// show as the engine's curve shows them at the authored levels: one there under the engine's curve.
+// The share of the frame's exposure the game's pictures (the sky, the clouds, the fog's colour) are shown at
+// (`PictureShares`), so they show as the engine's curve shows them at the authored levels: one there.
 fn picture_share(state: Lighting) -> f32 {
   return state.pictures.x;
 }
 
-// The share the fog's colour is shown at: the pictures' at the physical levels, but keeping the land's anchor under a
-// transform, as it veils the land.
-fn fog_share(state: Lighting) -> f32 {
-  return state.pictures.y;
+// The exposure a picture the engine exposes as it is (the sky's), in the engine's units, is shown at: the pictures'
+// share of the frame's exposure, or, where the share is of the pre-exposure (`are_pictures_pre_exposed`), of that,
+// which the CPU set it against, so an exposure snapping ahead of its read-back copy shows the sky where it was set.
+fn picture_exposure(state: Lighting, exposure: Exposure) -> f32 {
+  if (are_pictures_pre_exposed(state)) {
+    return light_scale(state) * picture_share(state);
+  }
+
+  return light_unit(state) * frame_exposure(state, exposure) * picture_share(state);
 }
 
-// The exposure a picture the engine exposes as it is (the sky's), in the engine's units, is shown at.
-fn picture_exposure(state: Lighting, exposure: Exposure) -> f32 {
-  return light_unit(state) * frame_exposure(state, exposure) * picture_share(state);
+// Whether the pictures' share is of the pre-exposure rather than of the frame's exposure
+// (`PictureShares::is_pre_exposed`): at the physical levels, whose sky has an exposure of its own.
+fn are_pictures_pre_exposed(state: Lighting) -> bool {
+  return state.pictures.y > 0.5;
 }
 
 // The scale the frame's light, written at the pre-exposure, is brought to the frame's exposure by.
@@ -95,6 +101,25 @@ const DEF_HDR: f32 = 9.0;
 // `tonemap`'s high part: the scaled colour within `def_hdr`, which an eight-bit target clamps to one.
 fn tonemap_high(color: vec3<f32>, scale: f32) -> vec3<f32> {
   return color * scale / DEF_HDR;
+}
+
+// `LUMINANCE_VECTOR` (`common_defines.h`), the weights the engine's exposure measures by.
+const ENGINE_LUMINANCE: vec3<f32> = vec3<f32>(0.3, 0.38, 0.22);
+
+// `bloom_luminance_1`'s reading of a texel of the high part, `high`: twice it, held to one by its eight bits, by the
+// engine's weights, back over `def_hdr`.
+fn engine_metered(high: vec3<f32>) -> f32 {
+  return dot(min(high * 2.0, vec3<f32>(1.0)), ENGINE_LUMINANCE) * DEF_HDR;
+}
+
+// The levels of the engine's eight-bit high part (`ViewTargets::HIGH`), which its meter reads.
+const HIGH_LEVELS: f32 = 255.0;
+
+// A texel the engine's meter reads off its high part (`frame/exposure`), from what its high part holds there, `shown`:
+// the land's exposed colour, which at the authored levels is their scene encoded, the authored light being the engine's
+// display values decoded; the sky as the display shows it. Within `def_hdr` and its eight bits.
+fn engine_metered_shown(shown: vec3<f32>) -> f32 {
+  return engine_metered(round(saturate(shown / DEF_HDR) * HIGH_LEVELS) / HIGH_LEVELS);
 }
 
 // The tonemap undone: from the colour a frame showed back to the light it was given at the scale it used, each
@@ -170,6 +195,12 @@ fn authored_local_scale(state: Lighting) -> f32 {
   return local_light_scale(state) * state.summed_light.x;
 }
 
+// Whether the light stands at the anchored levels (`LightingUniform::environment.w`): every light additive, shaded by
+// the one BRDF (`common/brdf`), its specular coloured in a target of its own.
+fn is_light_anchored(state: Lighting) -> bool {
+  return state.environment.w > 0.5;
+}
+
 // Whether the light is physical (`RenderLightModel::Physical`): `engine.w`, written from the view's one rule as the
 // camera's `output.w` is, for the shared functions that take the lighting rather than read the camera.
 fn is_lighting_physical(state: Lighting) -> bool {
@@ -177,8 +208,13 @@ fn is_lighting_physical(state: Lighting) -> bool {
 }
 
 // The sun's colour as the engine binds it, for a pass mixing it into a shown colour: as it stands, or, where the light
-// is physical, its units and pre-exposure taken off and encoded back.
+// is physical, its units and pre-exposure taken off and encoded back; at the anchored levels, whose sun is anchored over
+// the hemisphere and the ambient, the weather's own (`summed_light.yzw`).
 fn sun_shown(state: Lighting) -> vec3<f32> {
+  if (is_light_anchored(state)) {
+    return state.summed_light.yzw;
+  }
+
   let sun: vec3<f32> = state.sun.rgb / light_scale(state);
 
   if (is_lighting_physical(state)) {
@@ -186,21 +222,6 @@ fn sun_shown(state: Lighting) -> vec3<f32> {
   }
 
   return sun;
-}
-
-// The fog's colour as light at the light's scale: the weather's display value, decoded where the light is physical.
-fn fog_colour_light(state: Lighting) -> vec3<f32> {
-  if (is_lighting_physical(state)) {
-    return srgb_decoded(state.fog_color.rgb) * light_scale(state);
-  }
-
-  return state.fog_color.rgb * light_scale(state);
-}
-
-// The fog's colour as the frame shows it: a picture, at the fog's share of the exposure. The passes mixing it into a
-// shown colour take `fog_color` as it stands.
-fn fog_light(state: Lighting) -> vec3<f32> {
-  return fog_colour_light(state) * fog_share(state);
 }
 
 // Light fogged towards the fog's light by `amount`: blended as the engine blends it, in display values, so its tuned
@@ -214,17 +235,4 @@ fn fog_mixed(state: Lighting, light: vec3<f32>, fog: vec3<f32>, amount: f32) -> 
   let scale: f32 = light_scale(state);
 
   return srgb_decoded(mix(srgb_encoded(light / scale), srgb_encoded(fog / scale), amount)) * scale;
-}
-
-// The colour the fog takes towards a view space point at a world height: the weather's, taking the sun's colour where
-// the enhanced fog's height fog lies and the view faces the sun. Mixed as the engine mixes it, in display values: under
-// the physical light both are encoded for the mix and the result decoded back, as `fog_mixed` blends, else a sun lit at
-// its full linear strength would outweigh the fog's colour several times over and veil the frame in it.
-fn fog_color_at(state: Lighting, position: vec3<f32>, height: f32) -> vec3<f32> {
-  let facing: f32 = saturate(dot(state.to_sun.xyz, normalize(position)));
-  let share: f32 = facing * height_fog_share(state, height) * state.height_fog.z;
-  let fog: vec3<f32> = fog_colour_light(state);
-
-  // The turn is the fog's picture too, shown at the fog's share as the rest of it.
-  return fog_mixed(state, fog, state.sun.rgb, share) * fog_share(state);
 }

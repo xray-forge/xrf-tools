@@ -1,5 +1,7 @@
 #import "common/sky_box"
+#import "common/fog_colour"
 #import "common/scene_light"
+#import "common/display_transform"
 #import "common/water_surface"
 #import "generated/static/water"
 
@@ -81,12 +83,17 @@ fn fs_water(in: WaterVarying) -> WaterOutput {
   let seen: f32 = 1.0 - fragment.fog;
   // Plain `water` is written whole, `blend(false)`; soft water is faded by the fog twice over, as its alpha is.
   let alpha: f32 = select(1.0, soft_alpha * seen * seen, is_soft);
-  let finished: vec3<f32> = mix(color, lighting.fog_color.rgb, fragment.fog);
+  let finished: vec3<f32> =
+    mix(color, fog_shown_toward(lighting, normalize(in.world - camera.position.xyz)), fragment.fog);
   var out: WaterOutput;
 
-  out.color = vec4<f32>(scene_from_shown(select(base.rgb, finished, lighting.params.y > 0.5)), alpha);
+  // A picture painted for the engine's display, lit the forward way, entering the scene through the frame's display.
+  out.color = vec4<f32>(
+    scene_from_shown(picture_for_display(select(base.rgb, finished, lighting.params.y > 0.5), lighting.display)),
+    alpha,
+  );
   out.distortion = write_distortion(fragment, water);
-  out.motion = camera_motion(in.world, in.world);
+  out.motion = camera_motion(in.world, in.previous);
 
   return out;
 }

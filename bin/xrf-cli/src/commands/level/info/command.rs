@@ -1,64 +1,51 @@
 use clap::{ArgMatches, Command};
+use xrf_chunk::{ChunkReader, InMemoryChunkDataSource};
 use xrf_level::{LevelFile, LevelGeomFile, LevelVisualsChunk};
 use xrf_output::OutputOptions;
 use xrf_spawn::XRayByteOrder;
-use xrf_vfs::{XrayLookupScope, XrayVfs};
 
 use super::level_visuals_report::LevelVisualsReport;
 use super::report::LevelInfoReport;
 use crate::commands::level::level_assets::LevelAssets;
 use crate::commands::level::level_selection::LevelSelection;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct InfoCommand;
-
-impl InfoCommand {
-  /// The render bundle, which every compiled level has.
-  const LEVEL_FILE: &'static str = "level";
-
-  /// Render geometry, which a level built by a compiler that emitted none may lack.
-  const GEOMETRY_FILE: &'static str = "level.geom";
-
-  /// The fast-path twin of the geometry, absent for a level with no fast geometry.
-  const DETAIL_GEOMETRY_FILE: &'static str = "level.geomx";
-}
 
 impl GenericCommand for InfoCommand {
   fn operation(&self) -> &'static str {
     "info"
   }
 
-  /// Create command for printing compiled level info.
-  fn init(&self) -> Command {
-    LevelSelection::declare(Command::new(self.operation()).about("Command to print information about a compiled level"))
+  fn declare(&self, command: Command) -> Command {
+    LevelSelection::declare(command.about("Print what a compiled level holds"))
   }
 
-  /// Print information about a compiled level.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let selection: LevelSelection = LevelSelection::of(matches)?;
     let output: OutputOptions = context.get_output().clone();
 
     // The mount outlives the assets that borrow from it, so it is taken before the level is opened.
-    let vfs: Option<XrayVfs> = selection.mount()?;
-    let scope: XrayLookupScope = XrayLookupScope::all();
-    let assets: LevelAssets = selection.open(vfs.as_ref(), &scope)?;
+    let assets: LevelAssets = selection.open()?;
 
     xrf_output::info!(output, "Read compiled level {}", assets.describe());
 
-    let bundle: Vec<u8> = assets.read(Self::LEVEL_FILE)?.ok_or_else(|| {
+    let bundle: Vec<u8> = assets.read(LevelFile::FILE_NAME)?.ok_or_else(|| {
       xrf_error::XrfError::new_not_found_error(format!(
         "Level bundle was not found: {}",
-        assets.describe_file(Self::LEVEL_FILE)
+        assets.describe_file(LevelFile::FILE_NAME)
       ))
     })?;
 
-    let level: LevelFile = LevelFile::read_from_bytes::<XRayByteOrder>(bundle.clone())?;
-    let visuals: Option<LevelVisualsChunk> = LevelFile::read_visuals_from_bytes::<XRayByteOrder>(bundle)?;
+    // Split once and read twice: an archived bundle is the largest file a level ships.
+    let chunks: Vec<ChunkReader<InMemoryChunkDataSource>> = ChunkReader::from_vec(bundle)?.read_children()?;
+    let level: LevelFile = LevelFile::read_from_chunks::<XRayByteOrder, _>(&chunks)?;
+    let visuals: Option<LevelVisualsChunk> = LevelFile::read_visuals_from_chunks::<XRayByteOrder, _>(&chunks)?;
 
-    let geometry: Option<LevelGeomFile> = Self::read_geometry(&assets, Self::GEOMETRY_FILE, &output)?;
-    let detail_geometry: Option<LevelGeomFile> = Self::read_geometry(&assets, Self::DETAIL_GEOMETRY_FILE, &output)?;
+    let geometry: Option<LevelGeomFile> = Self::read_geometry(&assets, LevelGeomFile::FILE_NAME, &output)?;
+    let detail_geometry: Option<LevelGeomFile> =
+      Self::read_geometry(&assets, LevelGeomFile::DETAIL_FILE_NAME, &output)?;
 
     xrf_output::info!(
       output,
@@ -70,8 +57,8 @@ impl GenericCommand for InfoCommand {
     xrf_output::info!(
       output,
       "{} sectors, {} portals, {} static lights{}",
-      level.sectors.as_ref().map_or(0, |it| it.sectors.len()),
-      level.portals.as_ref().map_or(0, |it| it.portals.len()),
+      level.get_sectors().len(),
+      level.get_portals().len(),
       level.lights.as_ref().map_or(0, |it| it.lights.len()),
       match level.lights.as_ref().and_then(|it| it.get_sun()) {
         Some(_) => ", one of them the sun",
@@ -102,7 +89,10 @@ impl GenericCommand for InfoCommand {
       None => xrf_output::warning!(output, "Visuals chunk is absent, the level draws nothing"),
     }
 
-    for (label, file) in [("level.geom", &geometry), ("level.geomx", &detail_geometry)] {
+    for (label, file) in [
+      (LevelGeomFile::FILE_NAME, &geometry),
+      (LevelGeomFile::DETAIL_FILE_NAME, &detail_geometry),
+    ] {
       let Some(file) = file else {
         continue;
       };

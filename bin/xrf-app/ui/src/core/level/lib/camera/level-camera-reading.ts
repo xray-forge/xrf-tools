@@ -1,0 +1,17 @@
+import { WorldCameraPose } from "@xrf/ipc/types/xrf-world";
+import { toXrayHeading, toXraySpace } from "@xrf/math";
+
+import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
+
+/**
+ * Reads where the renderer's camera is the way the engine would state it.
+ *
+ * @param pose - Where the camera is and the point it looks at, in renderer space.
+ * @returns Where it is and where it faces, in the level's own coordinates.
+ */
+export function toLevelCameraReading(pose: WorldCameraPose): ILevelCamera {
+  const [x = 0, y = 0, z = 0] = pose.position.map((value) => value ?? 0);
+  const [tx = 0, ty = 0, tz = 0] = pose.target.map((value) => value ?? 0);
+
+  return { ...toXrayHeading({ x: tx - x, y: ty - y, z: tz - z }), position: toXraySpace({ x, y, z }) };
+}

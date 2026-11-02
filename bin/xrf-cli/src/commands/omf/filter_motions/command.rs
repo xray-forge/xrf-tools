@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use clap::{Arg, ArgAction, ArgMatches, Command, value_parser};
+use clap::{Arg, ArgAction, ArgGroup, ArgMatches, Command, value_parser};
 use xrf_error::XrfError;
 use xrf_omf::{OmfFile, OmfMotionsProcessor};
 use xrf_output::OutputOptions;
@@ -8,8 +8,7 @@ use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use super::report::OmfFilterMotionsReport;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct FilterMotionsCommand;
@@ -19,10 +18,9 @@ impl GenericCommand for FilterMotionsCommand {
     "filter-motions"
   }
 
-  /// Create command for filtering omf motions.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to keep only selected motions of provided omf file")
+  fn declare(&self, command: Command) -> Command {
+    command
+      .about("Keep only the selected motions of an OMF file")
       .arg(
         Arg::new("path")
           .help("Path to omf file")
@@ -44,7 +42,6 @@ impl GenericCommand for FilterMotionsCommand {
           .help("Exact motion names to keep")
           .short('k')
           .long("keep")
-          .required(false)
           .num_args(1..)
           .value_parser(value_parser!(String)),
       )
@@ -52,9 +49,15 @@ impl GenericCommand for FilterMotionsCommand {
         Arg::new("keep-prefix")
           .help("Keep motions whose name starts with provided prefix")
           .long("keep-prefix")
-          .required(false)
           .num_args(1..)
           .value_parser(value_parser!(String)),
+      )
+      // Either filter alone selects, and both together keep what either matches.
+      .group(
+        ArgGroup::new("filter")
+          .args(["keep", "keep-prefix"])
+          .required(true)
+          .multiple(true),
       )
       .arg(
         Arg::new("dry-run")
@@ -64,7 +67,6 @@ impl GenericCommand for FilterMotionsCommand {
       )
   }
 
-  /// Keep only selected motions of provided omf file.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
@@ -107,15 +109,9 @@ impl FilterMotionsCommand {
     prefixes: &[String],
     is_dry_run: bool,
   ) -> CommandResult {
-    if names.is_empty() && prefixes.is_empty() {
-      return Err(
-        XrfError::new_invalid_error("Expected at least one of --keep or --keep-prefix to be provided").into(),
-      );
-    }
-
     let output: OutputOptions = context.get_output().clone();
 
-    let mut omf_file: Box<OmfFile> = Box::new(OmfFile::read_from_path::<XRayByteOrder, _>(&path)?);
+    let mut omf_file: OmfFile = OmfFile::read_from_path::<XRayByteOrder, _>(&path)?;
     let original_count: usize = omf_file.motions.motions.len();
 
     let removed_count: usize = OmfMotionsProcessor::retain_motions(&mut omf_file, |name| {
@@ -159,7 +155,7 @@ impl FilterMotionsCommand {
 
     omf_file.write_to_path::<XRayByteOrder, _>(&destination)?;
 
-    xrf_output::info!(output, "Filtered omf file written into {}", format_path(destination));
+    xrf_output::success!(output, "Filtered omf file written into {}", format_path(destination));
 
     Ok(())
   }

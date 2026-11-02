@@ -5,6 +5,7 @@ use serde::Serialize;
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LightAnimatorKey {
-  pub frame: u32,
+  /// The engine's signed frame, which can stand before zero.
+  pub frame: i32,
   pub color: [f32; 3],
 }

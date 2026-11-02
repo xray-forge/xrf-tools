@@ -127,10 +127,10 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            bin/xrf-ui/target/jest-cache
-            bin/xrf-ui/target/eslint
-            bin/xrf-ui/target/tsconfig.tsbuildinfo
-            bin/xrf-ui/target/tsconfig.node.tsbuildinfo
+            bin/xrf-app/ui/target/jest-cache
+            bin/xrf-app/ui/target/eslint
+            bin/xrf-app/ui/target/tsconfig.tsbuildinfo
+            bin/xrf-app/ui/target/tsconfig.node.tsbuildinfo
             cli/target/eslint
             packages/*/target/jest-cache
             packages/*/target/eslint
@@ -164,10 +164,10 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: |
-            bin/xrf-ui/target/jest-cache
-            bin/xrf-ui/target/eslint
-            bin/xrf-ui/target/tsconfig.tsbuildinfo
-            bin/xrf-ui/target/tsconfig.node.tsbuildinfo
+            bin/xrf-app/ui/target/jest-cache
+            bin/xrf-app/ui/target/eslint
+            bin/xrf-app/ui/target/tsconfig.tsbuildinfo
+            bin/xrf-app/ui/target/tsconfig.node.tsbuildinfo
             cli/target/eslint
             packages/*/target/jest-cache
             packages/*/target/eslint
@@ -260,9 +260,8 @@ jobs:
           cache-workspace-crates: true
           save-if: ${{ github.ref == 'refs/heads/main' }}
 
-      # Plain commands instead of the Makefile tasks, because Linux builds without DLSS and the frontend bindings.
       - name: Run workspace tests on default features
-        run: cargo test --verbose --workspace --lib --locked --exclude xrf-ipc-typescript
+        run: cargo test --verbose --workspace --lib --locked --exclude xrf-ipc-typescript --exclude 'xrf-app*'
 
       - name: Run CLI tests
         run: cargo test --verbose -p xrf-cli --bins --locked
@@ -271,7 +270,7 @@ jobs:
         run: cargo test --verbose --workspace --test ui --locked
 
       - name: Run documentation examples
-        run: cargo test --verbose --workspace --doc --locked --exclude xrf-ipc-typescript
+        run: cargo test --verbose --workspace --doc --locked --exclude xrf-ipc-typescript --exclude 'xrf-app*'
 
       - name: Discard trybuild scratch crates
         run: rm -rf target/tests

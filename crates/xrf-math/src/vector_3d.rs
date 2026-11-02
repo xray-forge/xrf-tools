@@ -8,7 +8,7 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Eq, Display)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Display)]
 #[serde(rename_all = "camelCase")]
 #[display("{x},{y},{z}")]
 pub struct Vector3d<T = f32> {
@@ -21,6 +21,7 @@ impl Vector3d<f32> {
   pub const ZERO: Self = Self::new(0.0, 0.0, 0.0);
   pub const X: Self = Self::new(1.0, 0.0, 0.0);
   pub const Y: Self = Self::new(0.0, 1.0, 0.0);
+  pub const Z: Self = Self::new(0.0, 0.0, 1.0);
 
   pub const fn new(x: f32, y: f32, z: f32) -> Self {
     Self { x, y, z }
@@ -61,8 +62,48 @@ impl Vector3d<f32> {
     if length > 0.0 { self / length } else { Self::ZERO }
   }
 
+  /// The smaller of each pair of components, which is how a box's lower corner grows to take in a point.
+  pub fn min(&self, other: &Self) -> Self {
+    Self::new(self.x.min(other.x), self.y.min(other.y), self.z.min(other.z))
+  }
+
+  /// The larger of each pair of components, which is how a box's upper corner grows to take in a point.
+  pub fn max(&self, other: &Self) -> Self {
+    Self::new(self.x.max(other.x), self.y.max(other.y), self.z.max(other.z))
+  }
+
+  /// The point halfway to `other`.
+  pub fn midpoint(&self, other: &Self) -> Self {
+    &(self + other) * 0.5
+  }
+
   pub fn to_array(&self) -> [f32; 3] {
     [self.x, self.y, self.z]
+  }
+
+  /// The unit direction a 16-bit compressed normal names, `pvDecompress` (`xrCore/_compressed_normal.cpp`).
+  ///
+  /// The top three bits are the signs of x, y and z; the remaining thirteen are a point on the triangle
+  /// (0,0)-(0,126)-(126,0) folded into a rectangle, six bits of x above seven of y. A level AI node packs its plane
+  /// normal this way. Computed in `f32` as the engine's lookup table is, so a decoded normal matches what it uses.
+  pub fn from_compressed_normal(packed: u16) -> Self {
+    let mut x: i32 = i32::from((packed & 0x1F80) >> 7);
+    let mut y: i32 = i32::from(packed & 0x007F);
+
+    if x + y >= 127 {
+      x = 127 - x;
+      y = 127 - y;
+    }
+
+    let z: i32 = 126 - x - y;
+    let (x, y, z): (f32, f32, f32) = (x as f32, y as f32, z as f32);
+    let adjustment: f32 = 1.0 / (x * x + y * y + z * z).sqrt();
+
+    Self::new(
+      if packed & 0x8000 == 0 { x } else { -x } * adjustment,
+      if packed & 0x4000 == 0 { y } else { -y } * adjustment,
+      if packed & 0x2000 == 0 { z } else { -z } * adjustment,
+    )
   }
 }
 
@@ -190,18 +231,13 @@ impl Vector3d {
 #[cfg(test)]
 mod tests {
   use std::fs::File;
-  use std::io::{Seek, SeekFrom, Write};
+  use std::io::{Seek, SeekFrom, Write, read_to_string};
   use std::str::FromStr;
 
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::file::read_file_as_string;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::vector_3d::Vector3d;
 
@@ -217,14 +253,13 @@ mod tests {
     assert_eq!(writer.bytes_written(), 12);
 
     let bytes_written: usize = writer.flush_chunk_into::<XRayByteOrder>(
-      &mut overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(file!(), &filename))?,
+      &mut GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?,
       0,
     )?;
 
     assert_eq!(bytes_written, 12);
 
-    let file: FileSlice =
-      open_generated_test_resource_as_slice(&build_relative_test_sample_file_path(file!(), &filename))?;
+    let file: FileSlice = GeneratedResources::open_slice(&GeneratedResources::sample_name(file!(), &filename))?;
 
     assert_eq!(file.bytes_remaining(), 12 + 8);
 
@@ -264,6 +299,37 @@ mod tests {
     sum += &b;
 
     assert_eq!(sum, &a + &b);
+    assert_eq!(Vector3d::Y.cross(&Vector3d::Z), Vector3d::X);
+  }
+
+  #[test]
+  fn takes_each_component_on_its_own_for_bounds() {
+    let a: Vector3d = Vector3d::new(1.0, -2.0, 3.0);
+    let b: Vector3d = Vector3d::new(-1.0, 5.0, 3.0);
+
+    assert_eq!(a.min(&b), Vector3d::new(-1.0, -2.0, 3.0));
+    assert_eq!(a.max(&b), Vector3d::new(1.0, 5.0, 3.0));
+    assert_eq!(a.midpoint(&b), Vector3d::new(0.0, 1.5, 3.0));
+  }
+
+  #[test]
+  fn decompresses_a_packed_normal_as_the_engine_does() {
+    let is_near = |packed: u16, expected: Vector3d| Vector3d::from_compressed_normal(packed).distance(&expected) < 1e-6;
+
+    // Zero bits name the triangle's (0,0) corner, which is straight along z.
+    assert!(is_near(0, Vector3d::new(0.0, 0.0, 1.0)));
+    // 126 in the y bits is the (0,126) corner, straight along y, and the y sign bit flips it.
+    assert!(is_near(126, Vector3d::new(0.0, 1.0, 0.0)));
+    assert!(is_near(0x4000 | 126, Vector3d::new(0.0, -1.0, 0.0)));
+    // A point past the fold maps back: x 63 and y 127 become 64 and 0, leaving (64, 0, 62) before normalising.
+    let folded: Vector3d = Vector3d::from_compressed_normal((63 << 7) | 127);
+
+    assert!((folded.length() - 1.0).abs() < 1e-6, "Unexpected length of {folded}");
+    assert!(
+      (folded.x / folded.z - 64.0 / 62.0).abs() < 1e-6,
+      "Unexpected normal {folded}"
+    );
+    assert_eq!(folded.y, 0.0);
   }
 
   #[test]
@@ -288,15 +354,13 @@ mod tests {
       z: 30.2,
     };
 
-    let mut file: File = overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(
-      file!(),
-      "serialize_deserialize.json",
-    ))?;
+    let mut file: File =
+      GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
 
     file.write_all(to_string_pretty(&original)?.as_bytes())?;
     file.seek(SeekFrom::Start(0))?;
 
-    let serialized: String = read_file_as_string(&mut file)?;
+    let serialized: String = read_to_string(&mut file)?;
 
     assert_eq!(serialized.to_string(), serialized);
     assert_eq!(original, serde_json::from_str::<Vector3d>(&serialized)?);

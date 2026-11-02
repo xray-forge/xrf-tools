@@ -153,7 +153,7 @@ const ARCHIVED_TOOLS = [
   },
   {
     // DXC 1.9.2609 (September 2026), which the renderer's D3D12 compiles shader model 6 with, ray queries among it; the
-    // application ships it beside its executable, as `bin/xrf-app/tauri.windows.conf.json` maps it, with its licences.
+    // application ships it beside its executable, as `bin/xrf-app/app/tauri.windows.conf.json` maps it, with its licences.
     name: "dxc",
     url: "https://github.com/microsoft/DirectXShaderCompiler/releases/download/v1.9.2609/dxc_2026_09_29.zip",
     hash: "ad31b1fc8443175d204f77a611fdb3ef2ec42759bdc2f1167368de24a4a7e7f1",

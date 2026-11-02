@@ -7,9 +7,9 @@ use xrf_vfs::XrayLogicalPath;
 
 use crate::catalog::environment_catalog::EnvironmentCatalog;
 use crate::catalog::environment_read_options::EnvironmentReadOptions;
-use crate::catalog::environment_read_pass::EnvironmentReadPass;
-use crate::finding::EnvironmentFinding;
+use crate::catalog::read::environment_read_pass::EnvironmentReadPass;
 use crate::level::LevelWeather;
+use crate::section::finding::EnvironmentFinding;
 use crate::weather::{WeatherCycle, WeatherCycleId};
 
 /// Reads a game's environment configs as one engine reads them.
@@ -64,7 +64,7 @@ impl EnvironmentReader {
     level: &str,
   ) -> XrfResult<LevelWeather> {
     let path: XrayLogicalPath = project.config_path(Self::GAME)?;
-    let is_present: bool = project.vfs().scoped(project.scope()).find(path.as_str())?.is_some();
+    let is_present: bool = project.search().find(path.as_str())?.is_some();
     let game: Option<Arc<LtxResolution>> = if is_present {
       Some(project.read_resolution(&path)?)
     } else {

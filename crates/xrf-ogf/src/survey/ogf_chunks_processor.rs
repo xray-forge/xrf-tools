@@ -1,23 +1,27 @@
-use std::fs::File;
-use std::path::Path;
-
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkDataSource, ChunkReader, InMemoryChunkDataSource};
-use xrf_error::{XrfError, XrfResult};
+use xrf_chunk::{ChunkDataSource, ChunkReader};
+use xrf_error::XrfResult;
 use xrf_skeleton::{SkeletonMotionParametersChunk, SkeletonMotionsChunk};
-use xrf_utils::format_path;
 
-use crate::chunks::ogf_bones_chunk::OgfBonesChunk;
-use crate::chunks::ogf_children_chunk::OgfChildrenChunk;
-use crate::chunks::ogf_description_chunk::OgfDescriptionChunk;
-use crate::chunks::ogf_header_chunk::OgfHeaderChunk;
-use crate::chunks::ogf_ik_data_chunk::OgfIkDataChunk;
-use crate::chunks::ogf_kinematics_chunk::OgfKinematicsChunk;
-use crate::chunks::ogf_lods_chunk::OgfLodsChunk;
-use crate::chunks::ogf_swi_data_chunk::OgfSwiDataChunk;
-use crate::chunks::ogf_texture_chunk::OgfTextureChunk;
-use crate::chunks::ogf_user_data_chunk::OgfUserDataChunk;
-use crate::data::ogf_geometry::OgfGeometry;
+use crate::chunks::level::ogf_children_link_chunk::OgfChildrenLinkChunk;
+use crate::chunks::level::ogf_fastpath_chunk::OgfFastpathChunk;
+use crate::chunks::level::ogf_geometry_container_chunk::OgfGeometryContainerChunk;
+use crate::chunks::level::ogf_lod_definition_chunk::OgfLodDefinitionChunk;
+use crate::chunks::level::ogf_swi_container_chunk::OgfSwiContainerChunk;
+use crate::chunks::level::ogf_tree_definition_chunk::OgfTreeDefinitionChunk;
+use crate::chunks::mesh::ogf_children_chunk::OgfChildrenChunk;
+use crate::chunks::mesh::ogf_collision_indices_chunk::OgfCollisionIndicesChunk;
+use crate::chunks::mesh::ogf_collision_vertices_chunk::OgfCollisionVerticesChunk;
+use crate::chunks::mesh::ogf_swi_data_chunk::OgfSwiDataChunk;
+use crate::chunks::skeleton::ogf_bones_chunk::OgfBonesChunk;
+use crate::chunks::skeleton::ogf_ik_data_chunk::OgfIkDataChunk;
+use crate::chunks::skeleton::ogf_kinematics_chunk::OgfKinematicsChunk;
+use crate::chunks::skeleton::ogf_lods_chunk::OgfLodsChunk;
+use crate::chunks::skeleton::ogf_user_data_chunk::OgfUserDataChunk;
+use crate::chunks::visual::ogf_description_chunk::OgfDescriptionChunk;
+use crate::chunks::visual::ogf_header_chunk::OgfHeaderChunk;
+use crate::chunks::visual::ogf_texture_chunk::OgfTextureChunk;
+use crate::data::geometry::ogf_geometry::OgfGeometry;
 use crate::residue::OgfResidue;
 use crate::survey::ogf_chunk_entry::OgfChunkEntry;
 use crate::survey::ogf_chunk_survey::OgfChunkSurvey;
@@ -43,21 +47,24 @@ impl OgfChunksProcessor {
     OgfSwiDataChunk::CHUNK_ID,
     SkeletonMotionsChunk::CHUNK_ID,
     SkeletonMotionParametersChunk::CHUNK_ID,
+    OgfChildrenLinkChunk::CHUNK_ID,
+    OgfLodDefinitionChunk::CHUNK_ID,
+    OgfTreeDefinitionChunk::CHUNK_ID,
+    OgfSwiContainerChunk::CHUNK_ID,
+    OgfGeometryContainerChunk::CHUNK_ID,
+    OgfFastpathChunk::CHUNK_ID,
+    OgfCollisionVerticesChunk::CHUNK_ID,
+    OgfCollisionIndicesChunk::CHUNK_ID,
   ];
 
-  pub fn collect_chunks_from_path<T: ByteOrder, P: AsRef<Path>>(path: P) -> XrfResult<OgfChunkSurvey> {
-    Self::collect_chunks::<T>(File::open(path.as_ref()).map_err(|error| {
-      XrfError::new_not_found_error(format!(
-        "OGF file was not read: {}, error: {}",
-        format_path(path.as_ref()),
-        error
-      ))
-    })?)
-  }
+  /// The chunk tree of the visual `reader` opens, read from its start.
+  ///
+  /// Rewinds `reader` first, so a caller that has just read the visual through [`crate::OgfFile::read_from_chunk`]
+  /// surveys the same bytes without reading or copying them again.
+  pub fn collect_chunks<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<OgfChunkSurvey> {
+    reader.reset_pos()?;
 
-  pub fn collect_chunks<T: ByteOrder>(file: File) -> XrfResult<OgfChunkSurvey> {
-    let (mut chunks, residue) =
-      OgfResidue::read_root_chunks::<T, _>(&mut ChunkReader::<InMemoryChunkDataSource>::from_file(file)?)?;
+    let (mut chunks, residue) = OgfResidue::read_root_chunks::<T, _>(reader)?;
     let mut entries: Vec<OgfChunkEntry> = Vec::new();
 
     Self::walk(&mut chunks, 0, &mut entries)?;
@@ -65,9 +72,9 @@ impl OgfChunksProcessor {
     Ok(OgfChunkSurvey { entries, residue })
   }
 
-  /// Chunk ids present in the file that the reader does not understand, deduplicated and sorted.
-  pub fn find_unknown_chunk_ids<T: ByteOrder, P: AsRef<Path>>(path: P) -> XrfResult<Vec<u32>> {
-    let mut unknown: Vec<u32> = Self::collect_chunks_from_path::<T, _>(path)?
+  /// Chunk ids present in the visual `reader` opens that the reader does not understand, deduplicated and sorted.
+  pub fn find_unknown_chunk_ids<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Vec<u32>> {
+    let mut unknown: Vec<u32> = Self::collect_chunks::<T, D>(reader)?
       .entries
       .into_iter()
       .map(|it| it.id)

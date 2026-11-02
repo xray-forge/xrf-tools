@@ -9,7 +9,7 @@ use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
 use xrf_error::XrfError;
 
 use crate::pack::ArchivePacker;
-use crate::pack::config::{ArchivePackMode, VOLUME_SIZE_MAX};
+use crate::pack::config::{ArchivePackConfig, ArchivePackMode};
 use crate::pack::tests::fixtures::{
   CONFIG, assert_one_payload, assert_volumes_within, borrow_files, create_config, descriptor, distinct_files, open,
   pack, read,
@@ -129,7 +129,10 @@ fn rejects_a_zero_volume_size_before_writing() {
 
 #[test]
 fn rejects_an_oversized_volume_before_writing() {
-  assert_pack_rejects_invalid_volume_size("rejects_an_oversized_volume_before_writing", VOLUME_SIZE_MAX + 1);
+  assert_pack_rejects_invalid_volume_size(
+    "rejects_an_oversized_volume_before_writing",
+    ArchivePackConfig::VOLUME_SIZE_MAX + 1,
+  );
 }
 
 #[test]

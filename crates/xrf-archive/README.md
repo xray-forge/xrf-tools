@@ -26,25 +26,35 @@ fn main() -> xrf_error::XrfResult {
 Opening reads the volume headers and name tables. File payloads are read on demand, so a successful open does not prove
 that every file can be decompressed.
 
-| Method                                   | Input and discovery                                                        |
-| ---------------------------------------- | -------------------------------------------------------------------------- |
-| `ArchiveProject::new(path)`              | One file, or archive volumes recursively beneath a directory               |
-| `ArchiveProject::new_shallow(path)`      | One file, or archive volumes directly inside a directory                   |
-| `ArchiveProject::discover_volumes(path)` | The paths `new` would open, in merge order, without parsing their contents |
+| Method                                       | Input and discovery                                              |
+| -------------------------------------------- | ---------------------------------------------------------------- |
+| `ArchiveProject::new(path)`                  | One file, or archive volumes recursively beneath a directory     |
+| `ArchiveProject::new_shallow(path)`          | One file, or archive volumes directly inside a directory         |
+| `ArchiveProject::get_discover_volumes(path)` | The paths `new` would open, in merge order, without reading them |
 
 Directory discovery recognizes extensions beginning with `db` or `xdb`, ignoring case, including `.db0` and `.xdb1`. A
 directly named file is opened as a volume regardless of its extension. Opening fails when no volume is found, a volume
-cannot be parsed, or the directory walk fails. Discovery alone may return an empty list.
+cannot be parsed or holds no file-descriptor chunk, or any entry below the directory cannot be walked; an unreadable
+subdirectory is an error rather than a set quietly missing its volumes. Discovery alone may return an empty list.
+
+`project.root` is the tightest path holding exactly these volumes: the volume itself when one file was named, otherwise
+the volumes' common parent directory.
 
 ### Names and precedence
 
-Volumes merge in path order. When two volumes contain the same entry name, the later volume wins. A directory named
-`patches` has no special priority here. To apply the archive-directory declaration order from `fsgame.ltx`, open the
-installation through `xrf-vfs`.
+Volumes merge in path order. When two volumes mount the same entry at the same place, the later volume wins. A
+directory named `patches` has no special priority here. To apply the archive-directory declaration order from
+`fsgame.ltx`, open the installation through `xrf-vfs`.
 
-Entry names are decoded from Windows-1251 and kept as authored. Reads by name use an exact lookup: they do not fold
-case, replace separators, or add a volume's unpack root. Use a name from `project.files` when its spelling is unknown;
-use `xrf-vfs` when the input is an engine logical path that needs normalization and resolution.
+The engine registers an entry under its volume's entry point, so two volumes holding `common.ltx` under
+`$fs_root$\gamedata\configs\` and `$fs_root$\gamedata\scripts\` hold two files. An entry's `name` within the project is
+its authored name behind the directories of its volume's entry point that the set's other volumes do not share:
+`configs\common.ltx` and `scripts\common.ltx` there. A set mounted at one directory, as nearly every set is, names each
+entry exactly as authored. `entry.authored_name` keeps the row as the volume records it.
+
+Entry names are decoded from Windows-1251. Reads by name use an exact lookup: they do not fold case, replace
+separators, or add a volume's unpack root. Use a name from `project.files` when its spelling is unknown; use `xrf-vfs`
+when the input is an engine logical path that needs normalization and resolution.
 
 ## Inspect entries and volumes
 
@@ -64,7 +74,13 @@ Use `entry.is_directory` to distinguish directory rows from files. Directory nam
 without one is an empty file. Thus `project.files.len()` counts entries, including directories.
 
 `ArchiveDescriptor::output_root_path` comes from the volume metadata's `[header] entry_point`, with the leading alias
-removed. It describes an unpack root, not an additional prefix to pass to `read_file_bytes`.
+removed as the engine removes it, everything up to its first `\` whatever it spells (`$fs_root$\gamedata\` becomes
+`gamedata\`). `ArchiveMetadata::read_header` reads the metadata as the engine's
+INI loader does: `;` and `//` comments outside quotes are dropped, a section is named up to its first `]` without case,
+and a value loses all whitespace outside quotes. It is empty for a volume with no metadata chunk, and a metadata
+chunk without an `entry_point` fails the open. It describes an unpack root, not an additional prefix to pass to
+`read_file_bytes`. `ArchiveDescriptor::mount_root` is where the engine registers the volume under `$fs_root$`: the same
+directories, or `gamedata` for a volume without metadata, which `output_root_path` cannot tell from `$fs_root$\`.
 
 ### Understand size totals
 
@@ -83,32 +99,35 @@ names sorted within each group. This identifies shared storage; it does not reve
 `read_file_bytes(name)` returns the complete unpacked payload as a `Vec<u8>`. It applies no preview size limit or
 extension filter. A caller choosing this method must decide how large a file it is willing to hold in memory.
 
-For display text, use `read_file_as_string(name)`. It checks `project.read_policy` before reading the payload and
+For display text, use `read_file_as_string(name, policy)`. It checks the policy before reading the payload and
 returns `ArchiveReadResult` with the name, Windows-1251-decoded content, and unpacked byte size. It does not detect
 UTF-8 or parse formats such as LTX or XML.
 
 ```rust,no_run
-use xrf_archive::ArchiveProject;
+use xrf_archive::{ARCHIVE_READ_POLICY, ArchiveProject, ArchiveReadPolicy};
 
 fn main() -> xrf_error::XrfResult {
-  let mut project = ArchiveProject::new("game/db")?;
-  project.read_policy.maximum_size = 2 * 1024 * 1024;
+  let project = ArchiveProject::new("game/db")?;
+  let policy = ArchiveReadPolicy {
+    maximum_text_size: 2 * 1024 * 1024,
+    ..ARCHIVE_READ_POLICY
+  };
 
-  let text = project.read_file_as_string(r"configs\system.ltx")?;
+  let text = project.read_file_as_string(r"configs\system.ltx", &policy)?;
   println!("{} ({} bytes)\n{}", text.name, text.size, text.content);
 
   Ok(())
 }
 ```
 
-The default text limit is 10 MiB. Allowed extensions include LTX, XML, INI, JSON, scripts, and shader sources; extension
-checks ignore case. `ArchiveReadPolicy::supports_file` checks only the extension, while `assert_can_read_as_text` also
+`ARCHIVE_READ_POLICY` is the archive viewers' policy, and it is also generated into the frontend's bindings as their
+preview rules. Its text limit is 10 MiB. Allowed extensions include LTX, XML, INI, JSON, scripts, and shader sources;
+extension checks ignore case. `ArchiveReadPolicy::is_text_file` checks only the extension, while `assert_can_read_as_text` also
 checks the unpacked size. A size exactly equal to the limit is allowed.
 
 The policy also carries texture, image, audio, format-description, and chunk-tree preview limits for consumers. Those
-fields do not automatically constrain byte reads or copies; consumers must apply the relevant limits themselves. See
-the [policy](src/archive_read_policy.rs) and
-[default limits and extensions](src/archive_read_policy_constants.rs).
+fields do not automatically constrain byte reads or copies; consumers must apply the relevant limits themselves. See the
+[policy and its limits and extensions](src/archive_read_policy.rs).
 
 ## Reuse open volumes for multiple reads
 
@@ -147,7 +166,8 @@ copy can leave a partially written target.
 
 ## Validation and checks
 
-Header reads check chunk bounds and descriptor row sizes. Payload reads and copies check that the stored byte range fits
+Header reads check chunk bounds, descriptor row sizes, and that each entry name fits the engine's 520-byte buffer with
+its terminator. Payload reads and copies check that the stored byte range fits
 its volume. When stored and unpacked sizes differ, the payload is LZO-decompressed, and both the resulting size and
 CRC32 are checked. When the sizes are equal, the payload is treated as uncompressed and its CRC is not checked.
 

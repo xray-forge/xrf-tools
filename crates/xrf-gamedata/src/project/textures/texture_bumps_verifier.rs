@@ -5,9 +5,10 @@ use xrf_error::XrfResult;
 use xrf_material::{XrayMaterialBumpInput, XrayMaterialDeclaration, XrayMaterialDescriptor, XrayMaterialResolver};
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_thm::{ThmFile, ThmTrailingBytes};
-use xrf_vfs::{XrayAsset, XrayAssetType as AssetType, XrayProbe, XrayResolution};
+use xrf_vfs::{XrayAsset, XrayAssetType as AssetType, XrayResolution, XraySearch};
 
-use crate::project::textures::texture_bump_verification::{TextureBumpVerdict, TextureBumpVerification};
+use crate::project::textures::texture_bump_verdict::TextureBumpVerdict;
+use crate::project::textures::texture_bump_verification::TextureBumpVerification;
 use crate::project::textures::texture_bumps_verification_result::GamedataTextureBumpsVerificationResult;
 use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
@@ -40,11 +41,7 @@ impl<'a> TextureBumpsVerifier<'a> {
 
   pub(crate) fn verify(&self) -> GamedataTextureBumpsVerificationResult {
     let descriptors: Vec<XrayAsset> = self.project.entries_of_type(AssetType::Thm);
-    let probe: XrayProbe = self
-      .project
-      .vfs()
-      .probe()
-      .with_step("project", self.project.scope.clone());
+    let search: &XraySearch = self.project.search();
 
     // Descriptors are read in parallel; the sequence releases what each one says in path order.
     let sequence: OutputSequence = OutputSequence::new(&self.options.output, descriptors.len());
@@ -59,11 +56,11 @@ impl<'a> TextureBumpsVerifier<'a> {
         let path: &str = descriptor.get_logical_path().as_str();
 
         // Read once for both: what the material comes to, and what the file holds past its chunks' fields.
-        let file: XrfResult<Arc<ThmFile>> = XrayMaterialResolver::read_descriptor(&probe, descriptor);
+        let file: XrfResult<Arc<ThmFile>> = XrayMaterialResolver::read_descriptor(search, descriptor);
         let verification: TextureBumpVerification = Self::verify_descriptor(
           output,
           path,
-          &XrayMaterialResolver::describe_read_descriptor(&probe, descriptor, &file),
+          &XrayMaterialResolver::describe_read_descriptor(search, descriptor, &file),
         );
 
         match &file {

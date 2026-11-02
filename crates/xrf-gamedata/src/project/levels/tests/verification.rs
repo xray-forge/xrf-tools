@@ -3,11 +3,14 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::atomic::Ordering;
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
+use crate::project::gamedata_check::GamedataCheck;
 use crate::project::levels::level_engine_constants::{AI_CURRENT_VERSION, LEVEL_PRODUCTION_VERSION};
+use crate::project::levels::levels_verifier::LevelsVerifier;
 use crate::project::levels::tests::fixtures::*;
 use crate::project::levels::verify_levels_result::GamedataLevelsVerificationResult;
+use crate::project::tests::fixtures::engine_game_materials;
 use crate::{
   GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions,
   GamedataVerificationStatus,
@@ -30,9 +33,44 @@ fn passes_on_a_consistent_level_tree() {
   assert_eq!(result.roster_levels_count, 1);
   assert_eq!(result.checked_levels_count, 1);
   assert_eq!(
-    result.get_failure_message(),
+    result.get_summary(),
     "1/1 level bundles valid; 2/2 level shader references valid"
   );
+}
+
+#[test]
+fn accepts_collision_faces_of_static_materials_the_library_defines() {
+  let result: GamedataLevelsVerificationResult = GamedataFixture::new()
+    .with_game_materials(engine_game_materials())
+    .with_bundles(vec![
+      LevelBundleFixture::valid("zaton").with("level.cform", cform_faces_bytes(&[0, 5])),
+    ])
+    .verify();
+
+  assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
+}
+
+#[test]
+fn reports_collision_faces_of_undefined_or_dynamic_materials() {
+  let result: GamedataLevelsVerificationResult = GamedataFixture::new()
+    .with_game_materials(engine_game_materials())
+    .with_bundles(vec![
+      LevelBundleFixture::valid("zaton").with("level.cform", cform_faces_bytes(&[5, 6, 42, 5])),
+    ])
+    .verify();
+
+  assert_only_rule(&result, "levels.game-material");
+  assert_eq!(result.get_findings().len(), 2);
+  assert!(result.get_findings()[0].message().contains("'objects\\barrel' (6)"));
+  assert!(result.get_findings()[1].message().contains("game material 42,"));
+}
+
+#[test]
+fn reads_only_the_collision_form_header_without_a_library() {
+  // The face payload is absent, which only matters once faces are read for their materials.
+  let result: GamedataLevelsVerificationResult = GamedataFixture::new().verify();
+
+  assert_eq!(result.get_status(), GamedataVerificationStatus::Passed);
 }
 
 #[test]
@@ -363,9 +401,7 @@ fn skips_empty_shader_table_entries_like_the_renderer() {
 #[test]
 fn fails_the_check_when_the_game_graph_cannot_be_read() {
   let unique: u64 = NEXT_TEST_DIRECTORY_ID.fetch_add(1, Ordering::Relaxed);
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("levels/unreadable-graph-{unique}"));
-
-  let _ = fs::remove_dir_all(&root);
+  let root: PathBuf = GeneratedResources::create_dir(&format!("levels/unreadable-graph-{unique}")).unwrap();
 
   fs::create_dir_all(root.join("configs").join("$scheme")).unwrap();
   fs::write(root.join("configs").join("system.ltx"), "").unwrap();
@@ -380,7 +416,9 @@ fn fails_the_check_when_the_game_graph_cannot_be_read() {
   .unwrap();
 
   assert!(
-    project.verify_levels(&GamedataProjectVerifyOptions::default()).is_err(),
+    LevelsVerifier::new(&project, &GamedataProjectVerifyOptions::default())
+      .verify()
+      .is_err(),
     "Expected an unreadable game graph to fail the check instead of passing it"
   );
 }

@@ -2,7 +2,7 @@ use std::f32::consts::{FRAC_PI_2, PI};
 
 use xrf_math::EPS_S;
 
-use crate::sun::SunPosition;
+use crate::definition::sun::SunPosition;
 use crate::weather::{WeatherDescriptor, WeatherTime};
 
 /// Where a mix stands the sun.

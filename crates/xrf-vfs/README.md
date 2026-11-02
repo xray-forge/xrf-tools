@@ -2,170 +2,273 @@
 
 Indexes X-Ray assets and layers their physical sources in a virtual file system.
 
-Use `XrayVfs::open` to turn a mode and path into mounted sources. Lookups span loose files and archive entries in
-priority order. Installation plans read that order from `fsgame.ltx`, so an override resolves to the file the engine
-would load.
+The engine never opens a game file by its host path. It asks for an engine path such as `configs\system.ltx`, and its
+file system answers from whichever mounted source holds it first: a loose `gamedata` tree, an archive volume set, or a
+mod tree in front of both. This crate reproduces that lookup. Plan a search over the places to read, open it, and read
+through it. Installation plans read the mount order from `fsgame.ltx`, so an override resolves to the file the engine
+would load. Format crates such as `xrf-ltx` and `xrf-gamedata` read through a search; the binaries own mounting.
 
 ## Quickstart
 
 ```rust,no_run
-use xrf_vfs::{XrayMountMode, XrayVfs};
+use xrf_vfs::{XrayMountMode, XraySearch, XraySearchPlan};
 
 # fn main() -> xrf_error::XrfResult {
-let vfs: XrayVfs = XrayVfs::open(XrayMountMode::Auto, "C:\\Games\\Anomaly")?;
-let bytes: Vec<u8> = vfs.read_bytes("configs\\system.ltx")?;
+let search: XraySearch = XraySearchPlan::new()
+  .with_root_mode("game", "C:\\Games\\Anomaly", XrayMountMode::Auto)?
+  .open()?;
+let bytes: Vec<u8> = search.read("configs\\system.ltx")?;
 # Ok(())
 # }
 ```
 
 ## Concepts
 
-- **Logical path** — an engine identity: lower case, `\`-separated, no `.` or `..`. `XrayLogicalPath` is the typed form;
-  every lookup accepts a raw `&str` and normalizes it, so `Configs/System.LTX` names the same asset.
-- **Mount** — one source (a loose directory or a `.db` volume set) at a logical base. `XrayVfs` searches its mounts in
-  order; the first mount holding a path wins and shadows the rest.
-- **Mode** — `XrayMountMode` says how a caller's path becomes mounts: `Auto` detects an installation at exactly the
-  given path, `Directory` forces a loose root, `Volumes` mounts every `.db` volume beneath the path rather than only
-  the ones directly under it, `Installation` requires an fsgame file, and `ContainingInstallation` searches upward for
-  one, falling back to a loose root when none exists.
+- **Logical path** — an engine identity: lower case, `\`-separated, with no empty, `.` or `..` component and no colon.
+  `XrayLogicalPath` is the typed form; every lookup accepts a raw `&str` and normalizes it, so `Configs/System.LTX`
+  names the same asset.
+- **VFS snapshot** — `XrayVfs` holds mounted sources (a loose directory or a `.db` volume set at a logical base) in
+  priority order, the revisions of what they hold, and what it retains after parsing. It is read only through a search,
+  which shares it behind an `Arc`, so a snapshot in use does not change: `commit` and `apply` answer the next snapshot,
+  and a host mounts into a fork (`XrayVfs::fork`, which shares sources and cache).
+- **Search** — `XraySearch` is an ordered list of steps over one snapshot it owns, first hit winning: what PhysicsFS and
+  Source's file system call a search path. Each step is a label and an `XrayLookupScope` (which mounts, in the order it
+  names them, and which logical subtree). A search has no lifetime, is cheap to clone, and can record every input it
+  reads.
+- **Mode** — `XrayMountMode` says how a caller's path becomes mounts. `Auto` (the default) reads the path as an
+  installation when it holds an fsgame file, as one volume when it is one, as a volume set when it holds volumes
+  directly, and as a loose root otherwise; it never searches upward. `Directory` forces a loose root, `Volumes` mounts
+  every `.db`/`.xdb` volume beneath the path recursively, `Installation` requires an fsgame file, and
+  `ContainingInstallation` searches upward for one, falling back to a loose root when none exists.
 - **fsgame file** — the layout file that declares an installation, found by `FsgameFile::find`. Every OpenXRay-family
   engine reads `fsgame.ltx`; each Enhanced Edition's engine reads only its own game's name instead (`fsgame_soc.ltx`,
   `fsgame_cs.ltx`, `fsgame_cop.ltx`) and supplies `$fs_root$` and `$app_data_root$` itself. A directory is searched in
-  `FsgameFile::FILE_NAMES` order, `fsgame.ltx` first.
-- **Plan** — `XrayMountPlan` is the inspectable list of sources a mode decided to mount, before anything is opened.
-  Reach for it only to inspect or chain plans; `XrayVfs::open` plans and mounts in one call.
-- **Scope** — `XrayLookupScope` narrows where one lookup may look: which mounts, and which logical subtree. Lookups on
-  `XrayVfs` span everything; state a scope once with `vfs.scoped(&scope)` and the view exposes the same operations,
-  narrowed.
+  `FsgameFile::FILE_NAMES` order, `fsgame.ltx` first. This crate anchors `$fs_root$` at the file's directory, takes a
+  root column naming an absolute directory as that directory, as the engine does, and leaves aliases under
+  `$app_data_root$` unresolved.
+- **Search plan** — `XraySearchPlan` is the ordered search declared before anything is opened: `open` mounts it into a
+  VFS of its own, `open_in` into a snapshot built with a cache policy or a read trace, `mount_into` into one someone
+  else holds. `XrayRoots::to_search_plan` plans what a request names. A root that is not there is an empty step reported
+  as skipped.
 
-## Open an installation or a loose tree
+## Layer roots and read
 
 ```rust,no_run
-use xrf_vfs::{XrayMountMode, XrayVfs};
+use xrf_vfs::{XrayMountMode, XraySearch, XraySearchPlan};
 
 # fn main() -> xrf_error::XrfResult {
-// An installation: fsgame.ltx declares the layout, archives and gamedata both mount.
-let installation: XrayVfs = XrayVfs::open(XrayMountMode::Installation, "C:\\Games\\Anomaly")?;
+// A mod tree in front of the installation it modifies: the mod wins every collision, the game answers the rest.
+let search: XraySearch = XraySearchPlan::new()
+  .with_root_mode("mod", "C:\\work\\my_mod", XrayMountMode::Directory)?
+  .with_root_mode("game", "C:\\Games\\Anomaly", XrayMountMode::Installation)?
+  .ignoring(&[String::from("textures\\wip")])?
+  .open()?;
 
-// A loose gamedata tree, ignoring any fsgame.ltx beside it.
-let tree: XrayVfs = XrayVfs::open(XrayMountMode::Directory, "C:\\work\\gamedata")?;
+if let Some(asset) = search.find("configs\\system.ltx")? {
+  // Prefer read_asset once a lookup produced the asset: it reads the copy found instead of looking the path up again.
+  let bytes: Vec<u8> = search.read_asset(&asset)?;
 
-println!("{} + {} mounts", installation.get_mounts().len(), tree.get_mounts().len());
+  // to_physical_path is None for an archived asset — reading must go through the search.
+  println!("{} bytes from {:?}", bytes.len(), asset.to_physical_path());
+}
 
 // Report sources that could not be opened.
-for skipped in installation.get_skipped_mounts() {
+for skipped in search.list_skipped_sources() {
   eprintln!("skipped {}: {}", skipped.path.display(), skipped.reason);
 }
 # Ok(())
 # }
 ```
 
-## Read bytes, check existence
-
-Absence is not an error for a lookup, and is a `NotFound` error for a read — see [Errors](#errors).
-
-```rust,no_run
-use xrf_vfs::{XrayMountMode, XrayVfs};
-
-# fn main() -> xrf_error::XrfResult {
-let vfs: XrayVfs = XrayVfs::open(XrayMountMode::Auto, "C:\\Games\\Anomaly")?;
-
-if let Some(asset) = vfs.find("configs\\system.ltx")? {
-  // Prefer read_asset once a lookup produced the asset: it reads from the mount that answered.
-  let bytes: Vec<u8> = vfs.read_asset_bytes(&asset)?;
-
-  // to_physical_path is None for an archived asset — reading must go through the VFS.
-  println!("{} bytes from {:?}", bytes.len(), asset.to_physical_path());
-}
-# Ok(())
-# }
-```
+`ignoring` hides logical prefixes in every loose directory the plan mounts; archive volumes are unaffected. A source
+that fails to open is logged, recorded on the snapshot and reported by its step, so a partly readable installation
+still resolves what it can. A recorded failure is settled: mounting the same plan again does not retry it until
+`XraySearchPlan::forget_skipped_in` forgets it.
 
 ## Enumerate assets
 
 ```rust,no_run
-use xrf_vfs::{XrayAssetType, XrayMountMode, XrayVfs};
+use xrf_vfs::{XrayAssetType, XrayMountMode, XraySearch, XraySearchPlan};
 
 # fn main() -> xrf_error::XrfResult {
-let vfs: XrayVfs = XrayVfs::open(XrayMountMode::Auto, "C:\\Games\\Anomaly")?;
+let search: XraySearch = XraySearchPlan::new()
+  .with_root_mode("game", "C:\\Games\\Anomaly", XrayMountMode::Auto)?
+  .open()?;
 
-let textures = vfs.list_entries_of_type(XrayAssetType::Dds); // every .dds, wherever it lives
-let particle_packs = vfs.list_entries_with_suffix("particles.xr")?; // named by convention, not extension
-let top_level = vfs.list_children("")?; // one directory level, for a tree view
+let textures = search.list_assets(XrayAssetType::Dds); // every .dds, wherever it lives
+let top_level = search.list_children("")?; // one directory level, for a tree view
+let configs = search.clone().with_prefix("configs")?.list_files(); // one subtree, no sizes
 
 println!(
-  "{} textures, {} particle packs, {} top-level folders",
+  "{} textures, {} configs, {} top-level folders",
   textures.len(),
-  particle_packs.len(),
+  configs.len(),
   top_level.directories.len()
 );
 # Ok(())
 # }
 ```
 
-Listings are ordered by logical path. `list_entries` returns winners; `list_entries_all` includes shadowed copies;
-`list_mounted_entries` groups each winner with its size and hidden copies. `list_collisions` reports conflicting names
-within mounts. `XrayProbe` offers the same listing shapes across ordered lookup steps.
+Every listing holds one entry per logical path, the copy the earliest step answers with. From cheapest to heaviest:
+`list_files` returns winners without sizes; `list_entries` pairs each winner with its size, which costs a metadata
+lookup per loose file; `list_shadowing_entries` adds the copies each winner hides, each with its own size. These three
+and `list_children` are ordered by logical path; `list_assets` keeps step order. `list_collisions` reports names that
+fold to one logical path within a single source, `list_sources` the mounts a search reaches and the step that reaches
+each, `list_roots` and `list_containers` the same sources named by root path or by individual volume.
 
 ## Resolve engine references
 
 A reference out of a config or a mesh header is not a path: the kind's directory and extension are implied, and it may
-carry an authoring extension the engine swaps. `resolve` applies the kind's rules; a `*` mask names a set.
+carry an authoring extension the engine swaps. `resolve` applies the kind's rules, reports what the lookup came to, and
+treats a `*` mask as one reference with several answers.
 
 ```rust,no_run
-use xrf_vfs::{XrayAssetType, XrayMountMode, XrayVfs};
+use xrf_vfs::{XrayAssetType, XrayMountMode, XrayResolution, XraySearch, XraySearchPlan};
 
 # fn main() -> xrf_error::XrfResult {
-let vfs: XrayVfs = XrayVfs::open(XrayMountMode::Auto, "C:\\Games\\Anomaly")?;
+let search: XraySearch = XraySearchPlan::new()
+  .with_root_mode("game", "C:\\Games\\Anomaly", XrayMountMode::Auto)?
+  .open()?;
 
-let texture = vfs.resolve_dds_texture("wpn\\wpn_ak74")?; // textures\wpn\wpn_ak74.dds
-let visual = vfs.resolve_ogf("weapons\\ak74\\wpn_ak74_hud")?; // meshes\weapons\ak74\wpn_ak74_hud.ogf
-let motions = vfs.resolve_all(XrayAssetType::Omf, "wpn\\wpn_ak74_*")?; // every matching animation set
+let texture: XrayResolution = search.resolve(XrayAssetType::Dds, "wpn\\wpn_ak74")?; // textures\wpn\wpn_ak74.dds
+let motions = search.resolve(XrayAssetType::Omf, "wpn\\wpn_ak74_*")?.into_assets(); // every matching animation set
 
-println!("{:?} {:?} {}", texture.is_some(), visual.is_some(), motions.len());
+println!("{:?} answered, {} motions", texture.get_step(), motions.len());
 # Ok(())
 # }
 ```
 
-## Narrow with a scope
+Only kinds with one home resolve: `Ogf` and `Omf` under `meshes`, `Dds` and `Thm` under `textures`, `Ogg` under
+`sounds`, `Ltx` under `configs`, `Script` under `scripts`, and `Ppe` under `anims` (`XrayAssetType::get_rules`). A `Dds`
+reference naming `.tga`, `.bmp` or `.ogm` resolves to the `.dds` beside it. A mask holds exactly one `*`.
+`resolve_with_fallback` tries a second reference and reports `Substituted` when only that one answered; `find_beside`
+and `locate_beside` look for a reference under a level directory instead of the kind's home, as the engine's `$level$`
+does.
 
-State the scope once; the view exposes the same operations.
+## Change files
+
+A change goes through a transaction made from a search and is addressed through that search's steps. Committing
+writes to disk and answers the next snapshot with an `XrayChangeSet`; the snapshot committed against stays as it was.
 
 ```rust,no_run
-use xrf_vfs::{XrayLookupScope, XrayMountMode, XrayVfs};
+use xrf_vfs::{XrayChangeSet, XrayInputRecord, XrayMountMode, XraySearch, XraySearchPlan, XrayTransaction, XrayVfs};
 
 # fn main() -> xrf_error::XrfResult {
-let vfs: XrayVfs = XrayVfs::open(XrayMountMode::Auto, "C:\\Games\\Anomaly")?;
+let search: XraySearch = XraySearchPlan::new()
+  .with_root_mode("mod", "C:\\work\\my_mod", XrayMountMode::Directory)?
+  .with_root_mode("game", "C:\\Games\\Anomaly", XrayMountMode::Installation)?
+  .open()?;
 
-// Only the configs subtree — a config project and an asset lookup share one VFS and differ only in scope.
-let configs: XrayLookupScope = XrayLookupScope::all().with_prefix("configs")?;
-let system: Vec<u8> = vfs.scoped(&configs).read_bytes("configs\\system.ltx")?;
+// Record what the edit is based on, so the commit is refused if any of it changed in the meantime.
+let record: XrayInputRecord = XrayInputRecord::new();
+let original: Vec<u8> = search.clone().with_recording(&record).read("configs\\system.ltx")?;
+let mut edited: Vec<u8> = original;
 
-// Other narrowings: only writable mounts, only named mounts, only one storage kind.
-let writable: XrayLookupScope = XrayLookupScope::writable();
-println!("{} bytes, {} writable entries", system.len(), vfs.scoped(&writable).list_entries().len());
+edited.extend_from_slice(b"\n; edited\n");
+
+let transaction: XrayTransaction = XrayTransaction::new(&search)
+  .with_write("configs\\system.ltx", edited)?
+  .with_expected(&record);
+let (next, changes): (XrayVfs, XrayChangeSet) = search.get_vfs().commit(&transaction)?;
+
+// Later reads go through a search over the new snapshot; the mounts and steps carry over unchanged.
+let search: XraySearch = XraySearch::new(next).with_steps(search.get_steps().to_vec());
+
+println!("revision {}: {} change(s)", changes.get_revision().get(), changes.get_changes().len());
+println!("{:?}", search.read_size("configs\\system.ltx"));
 # Ok(())
 # }
 ```
 
-Advanced flows are documented on their types: layering a mod tree over an installation on `XrayMountPlan` (`behind`,
-`ignoring`), write-back on `XrayVfs::write` and `XrayVfs::write_override`, and out-of-crate sources on
+- A path a writable loose mount answers for is written in place. A path only archived, or not present, is created in
+  the first writable loose mount the search reaches ahead of the copy that answers, and refused where none is ahead of
+  it. `with_write_in_place` refuses anything but a writable loose winner. A delete needs a loose winner.
+  `with_file_write` names a file on disk instead, written in every writable loose mount whose root holds it.
+- Every file is staged beside its target and synced, a journal naming them is written beside the first target, then
+  each is swapped in, a replaced or deleted file kept first as a hard link so its target is never missing; a failed
+  swap puts every file back. A crash leaves the journal, which the next mount of the directory holding it rolls back,
+  or forward once every swap was done; staged and kept siblings (`.<name>.xrf-…`) are never indexed. A crash while
+  staging leaves hidden staged siblings that nothing removes.
+- Each changed file takes the change's project revision, issued by the snapshot's lineage so two changes branched from
+  one snapshot never share one, and so does every directory above a created or deleted file. A snapshot's retained
+  values for untouched files survive the change. A snapshot pins its index and revisions, not loose bytes: an older one
+  reads a changed file's new bytes.
+- `XrayVfs::apply` takes changes already on disk (from a file watcher, say) and writes nothing. An archive mount refuses
+  a change with `NotImplemented`.
+- A loose asset's host path is `XrayAsset::to_writable_path`, which refuses an archived winner by name.
+
+## Share one snapshot
+
+`XrayVfsHost` owns the current snapshot for a long-running process such as the desktop app. `search(&roots)` plans an
+`XrayRoots` once, mounts only what the newest snapshot lacks, and answers a search; `search_fresh` plans again and
+retries sources that failed to open, for an open a person makes. Mounts and changes (`commit`, `apply`, and
+`apply_changed_on_disk`, which applies each retained loose file changed behind every reader) are serialized on one lock
+and publish the next snapshot whole, so a search never waits for either and keeps reading the snapshot it was given;
+`search_writable` searches every writable loose mount, for a writer naming files on disk. The snapshot's cache policy
+and read trace, set on the first `XrayVfs` passed to `XrayVfsHost::new`, carry to every later snapshot.
+
+Further flows are documented on their types: recording what a search reads on `XraySearch::with_recording` and
+`XrayVfs::answer_input`, retention on `XrayCachePolicy` and `XraySearch::read_parsed`, and out-of-crate sources on
 `XrayAssetSource`.
 
 ## Errors
 
-| Operation            | Absent asset               | Failure                                                                                              |
-| -------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `find`, `resolve`    | `Ok(None)`                 | `Err` — invalid path or kind                                                                         |
-| `read`, `read_asset` | `Err` (`NotFound` variant) | `Err` — the source's own read error                                                                  |
-| `read_size`          | `None`                     | `None` — a size gate discards the difference                                                         |
-| `open`, `mount_plan` | n/a                        | `Err` only when planning fails; an unopenable source is skipped and recorded on `get_skipped_mounts` |
+| Operation                           | Absent asset                  | Failure                                        |
+| ----------------------------------- | ----------------------------- | ---------------------------------------------- |
+| `find`, `find_beside`               | `Ok(None)`                    | `Err` — invalid path, or a kind with no home   |
+| `locate`, `resolve`                 | `Ok(XrayResolution::Missing)` | `Err` — invalid path or reference              |
+| `read`, `read_asset`                | `Err` (`NotFound` variant)    | `Err` — the source's own read error            |
+| `read_size`, `read_recorded_crc`    | `None`                        | `None` — a gate discards the difference        |
+| `XraySearchPlan::with_root_mode`    | Empty step, reported skipped  | `Err` — an existing root cannot be planned     |
+| `XraySearchPlan::open`              | n/a                           | `Err` only when a plan cannot be mounted       |
+| `XrayVfs::commit`, `XrayVfs::apply` | n/a                           | `Err`, with nothing changed                    |
 
-`NotFound` is reserved for absence, so a consumer can tell "the asset is not here" from "the source holding it failed"
-without parsing messages.
+`locate` and `resolve` answer `NoScope` instead of `Missing` when no step selects a mounted source; `resolve` also fails
+for a kind with no home and a mask with more than one `*`. `with_root_mode` fails for `Installation` on a path holding
+no fsgame file or for an fsgame file that cannot be read; `open` reports an unopenable source as skipped instead. A
+commit fails for a stale expectation, a path no writable mount can take, or a failed swap. `NotFound` is reserved for
+absence, so a consumer can tell "the asset is not here" from "the source holding it failed" without parsing messages.
+`XraySearch::open` and `read_shared` are declared but always answer `NotImplemented`: every read is whole.
+
+## Module map
+
+The crate is grouped by the question each part answers; every module is private and its supported names are
+re-exported from the crate root:
+
+- `path` — what an engine identity is, and the only place separators and case are decided.
+- `asset` — what a resolved asset is, plus the per-kind rules that turn a reference into one.
+- `source` — the mountable surface, and the two sources the engine itself has (`directory/` holds the loose one).
+- `mount` — composing sources into a mounted order and planning one from a path: `plan/` what a step means before
+  anything opens, `root/` the places a caller names and what they turn out to be, `fsgame/` the declaration file an
+  installation describes its own layout with.
+- `search` — how a VFS snapshot is read: the ordered search, its `step/`s and scopes, and what its `listing/`s answer.
+- `vfs` — the VFS snapshot itself (mounts, revisions) and the host owning the current one; `cache/` what a snapshot
+  keeps after parsing an asset, the policy deciding what is kept and the coordination that keeps two readers from
+  parsing one asset twice; `trace/` what a snapshot actually read, when a caller asked to be told.
+- `change` — changing what a snapshot holds: a `transaction/` committed to disk through the `disk/` swap, or changes
+  already there applied.
+- `input` — which inputs a recording search resolved, and the revision each had then.
+
+An aspect of `XrayVfs` that belongs to one of these questions lives in that module as `xray_vfs_<aspect>.rs`: plan
+mounting in `mount/plan/`, committing and the on-disk check in `change/`, input answers in `input/`.
+
+## Checks
+
+From the repository root:
+
+```sh
+cargo test --locked -p xrf-vfs
+cargo test --locked --doc -p xrf-vfs
+```
+
+See the [search](src/search/xray_search.rs), [search plan](src/search/xray_search_plan.rs),
+[snapshot](src/vfs/xray_vfs.rs), [host](src/vfs/xray_vfs_host.rs), [commit](src/change/xray_vfs_commit.rs), and
+[public exports](src/lib.rs).
 
 ## Related crates
 
-- [xrf-archive](../xrf-archive/README.md) — the `.db` volume format.
+- [xrf-archive](../xrf-archive/README.md) — the `.db` volume format, which the archive source reads; it lives below
+  this crate.
 - [xrf-pack](../xrf-pack/README.md) — packing and extraction.
-- [xrf-ltx](../xrf-ltx/README.md), [xrf-gamedata](../xrf-gamedata/README.md) — config and gamedata projects over the VFS.
+- [xrf-ltx](../xrf-ltx/README.md), [xrf-gamedata](../xrf-gamedata/README.md) — config and gamedata projects over a
+  search.

@@ -1,0 +1,37 @@
+import { LevelSource } from "@xrf/ipc/types/xrf-app-levels";
+import { getPathName } from "@xrf/path";
+import { Maybe, Nullable } from "@xrf/types";
+
+import { describeLevelSource } from "@/core/level/lib/source/level-source";
+
+/**
+ * @param source - The level open, or none.
+ * @returns The level as a snapshot and the viewer's files name it, its engine path with forward slashes; null for none.
+ */
+export function toLevelViewerLevelName(source: Maybe<LevelSource>): Nullable<string> {
+  return source ? describeLevelSource(source).replaceAll("\\", "/") : null;
+}
+
+/**
+ * @param level - The level a file is of, as a snapshot names it, or null for none.
+ * @param at - When it is taken.
+ * @returns A file name without its extension naming the level and the moment, which sorts by time within a level.
+ */
+export function toLevelViewerFileStem(level: Nullable<string>, at: Date): string {
+  const date: string = `${at.getFullYear()}${pad(at.getMonth() + 1)}${pad(at.getDate())}`;
+  const time: string = `${pad(at.getHours())}${pad(at.getMinutes())}${pad(at.getSeconds())}`;
+
+  return `${toLevelViewerFileName(level)}-${date}-${time}`;
+}
+
+/**
+ * @param level - The level a file is of, as a snapshot names it, or null for none.
+ * @returns What the viewer's files are named after: the level's own name, its directories left off.
+ */
+export function toLevelViewerFileName(level: Nullable<string>): string {
+  return level ? getPathName(level) : "view";
+}
+
+function pad(value: number): string {
+  return String(value).padStart(2, "0");
+}

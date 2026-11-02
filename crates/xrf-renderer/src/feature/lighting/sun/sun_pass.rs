@@ -1,0 +1,170 @@
+use wgpu::util::DeviceExt;
+use xrf_error::XrfResult;
+use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
+
+use crate::contract::feature::lighting::render_shadow_settings::{
+  RENDER_MAX_SHADOW_CASCADES, RENDER_MAX_SHADOW_FILTER,
+};
+use crate::feature::lighting::shadows::cascades::sun_shadow_maps::SunShadowMaps;
+use crate::feature::lighting::sun::sun_draw::SunDraw;
+use crate::feature::lighting::sun::sun_filter_permutation::SunFilterPermutation;
+use crate::feature::lighting::sun::sun_parameters::SunParameters;
+use crate::feature::tracing::sun_trace::sun_trace_pass::SunTracePass;
+use crate::frame::targets::view_targets::ViewTargets;
+use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline_with;
+use crate::pass::build::pipeline_source::PipelineSource;
+use crate::pass::view::view_binding::ViewBinding;
+
+/// Lights a viewport's G-buffer with the sun through its shadow's cascades, or what its traced shadow saw, into the
+/// light its frame accumulates, which it clears first, and writes beside it how much of the sun reaches each pixel.
+pub struct SunPass {
+  layout: wgpu::BindGroupLayout,
+  /// A texel a layer of the sun's maps, all at the far plane, which the frame binds while no cascade is drawn.
+  unshadowed: wgpu::TextureView,
+  /// A lit texel, which the frame binds where the sun's shadow is not traced.
+  untraced: wgpu::TextureView,
+  view_layout: wgpu::BindGroupLayout,
+  /// Shadowed by the cascades, then by the traced shadow, each by the engine's light and then split into the anchored
+  /// levels' diffuse and coloured specular, for each width the cascades' filter reaches (`MAX_REACH` apart), so its
+  /// loops compile to their count.
+  pipelines: PipelineSet<[[wgpu::RenderPipeline; 4]; Self::REACHES]>,
+}
+
+impl SunPass {
+  /// How much of the sun reaches a pixel, past its shadow, its contact shadow and its relief.
+  pub const SEEN_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::R8Unorm;
+
+  /// The filter's widths there are pipelines for: none to the settings' widest each way.
+  const REACHES: usize = RENDER_MAX_SHADOW_FILTER as usize + 1;
+
+  /// The sun's maps with nothing in them, which the frame binds while no cascade is drawn.
+  pub fn get_unshadowed(&self) -> &wgpu::TextureView {
+    &self.unshadowed
+  }
+
+  /// A lit texel, which the frame binds where the sun's shadow is not traced.
+  pub fn get_untraced(&self) -> &wgpu::TextureView {
+    &self.untraced
+  }
+
+  /// # Errors
+  ///
+  /// Returns an error when the shader does not compose or compile.
+  pub fn new(queue: &wgpu::Queue, source: PipelineSource<'_>, view_layout: &wgpu::BindGroupLayout) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
+    let layout: wgpu::BindGroupLayout = SunParameters::create_layout(device);
+
+    Ok(Self {
+      untraced: device
+        .create_texture_with_data(
+          queue,
+          &wgpu::TextureDescriptor {
+            label: Some("sun untraced"),
+            size: wgpu::Extent3d {
+              width: 1,
+              height: 1,
+              depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: SunTracePass::FORMAT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+          },
+          Default::default(),
+          &[u8::MAX],
+        )
+        .create_view(&Default::default()),
+      unshadowed: device
+        .create_texture(&wgpu::TextureDescriptor {
+          label: Some("sun unshadowed"),
+          size: wgpu::Extent3d {
+            width: 1,
+            height: 1,
+            depth_or_array_layers: RENDER_MAX_SHADOW_CASCADES as u32,
+          },
+          mip_level_count: 1,
+          sample_count: 1,
+          dimension: wgpu::TextureDimension::D2,
+          format: SunShadowMaps::FORMAT,
+          usage: wgpu::TextureUsages::TEXTURE_BINDING,
+          view_formats: &[],
+        })
+        .create_view(&wgpu::TextureViewDescriptor {
+          dimension: Some(wgpu::TextureViewDimension::D2Array),
+          ..Default::default()
+        }),
+      pipelines: PipelineSet::new(source.cache, Self::create_pipelines(source, view_layout, &layout)?),
+      view_layout: view_layout.clone(),
+      layout,
+    })
+  }
+
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
+  /// the last ones where a reload is refused.
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+    if let Err(error) = self.pipelines.refresh(source.cache, || {
+      Self::create_pipelines(source, &self.view_layout, &self.layout)
+    }) {
+      log::error!("Sun rejected, lighting with the last one: {error}");
+    }
+  }
+
+  /// Lights the G-buffer by the sun into the light target the pass draws into, as `draw` says: shadowed by its traced
+  /// shadow or its cascades filtered, and its specular split into the specular target the pass draws into third.
+  pub fn record(
+    &self,
+    context: &mut RasterContext<'_>,
+    view: &ViewBinding,
+    parameters: &SunParameters<'_>,
+    draw: SunDraw,
+  ) {
+    context.bind(parameters);
+
+    let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
+    let variant: usize = usize::from(draw.is_traced) + 2 * usize::from(draw.is_split);
+
+    pass.set_pipeline(&self.pipelines[(draw.filter_reach as usize).min(Self::REACHES - 1)][variant]);
+    pass.set_bind_group(0, &view.bind_group, &[]);
+    pass.draw(0..3, 0..1);
+  }
+
+  fn create_pipelines(
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+    layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<[[wgpu::RenderPipeline; 4]; Self::REACHES]> {
+    // The light and how much of the sun is seen, then the specular where it is split.
+    let targets: [Option<wgpu::ColorTargetState>; 3] = [
+      Some(ViewTargets::LIGHT.into()),
+      Some(Self::SEEN_FORMAT.into()),
+      Some(ViewTargets::LIGHT.into()),
+    ];
+    let create = |entry: &'static str, is_split: bool, reach: usize| {
+      let permutation: SunFilterPermutation = SunFilterPermutation {
+        sun_filter_reach: reach as i32,
+      };
+
+      create_fullscreen_pipeline_with(
+        source,
+        SunFilterPermutation::MODULE,
+        entry,
+        &permutation,
+        &[Some(view_layout), Some(layout)],
+        &targets[..if is_split { 3 } else { 2 }],
+      )
+    };
+    let variants = |reach: usize| -> XrfResult<[wgpu::RenderPipeline; 4]> {
+      Ok([
+        create("fs_sun", false, reach)?,
+        create("fs_sun_traced", false, reach)?,
+        create("fs_sun_split", true, reach)?,
+        create("fs_sun_split_traced", true, reach)?,
+      ])
+    };
+
+    Ok([variants(0)?, variants(1)?, variants(2)?, variants(3)?])
+  }
+}

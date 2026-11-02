@@ -4,11 +4,11 @@ use glam::Vec3;
 
 use crate::camera::fly_camera_controller::FlyCameraController;
 use crate::camera::orbit_camera_controller::OrbitCameraController;
-use crate::contract::world_camera::WorldCamera;
-use crate::contract::world_camera_command::WorldCameraCommand;
-use crate::contract::world_drag_end_reason::WorldDragEndReason;
-use crate::contract::world_input_event::WorldInputEvent;
-use crate::contract::world_input_modifiers::WorldInputModifiers;
+use crate::contract::camera::world_camera::WorldCamera;
+use crate::contract::camera::world_camera_command::WorldCameraCommand;
+use crate::contract::camera::world_drag_end_reason::WorldDragEndReason;
+use crate::contract::camera::world_input_event::WorldInputEvent;
+use crate::contract::camera::world_input_modifiers::WorldInputModifiers;
 
 fn fly(position: [f32; 3], target: [f32; 3]) -> WorldCamera {
   WorldCamera::Fly {

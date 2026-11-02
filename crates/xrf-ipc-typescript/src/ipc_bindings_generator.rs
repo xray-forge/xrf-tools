@@ -1,51 +1,60 @@
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
-use specta::Types;
 use tauri::Runtime;
 
-use crate::bindings_surface::{Surface, SurfaceDrift};
-use crate::command_module_writer::CommandModuleWriter;
-use crate::command_typescript::CommandTypescript;
-use crate::constants::{COMMANDS_DIRECTORY, TYPES_DIRECTORY};
+use crate::collected::{CollectedCommands, CollectedConstants, CommandTypescript};
 use crate::enumerations::Enumerations;
-use crate::generated_output::reset_directory;
-use crate::ipc_command_surface::IpcCommandSurface;
-use crate::type_module_writer::TypeModuleWriter;
-use crate::type_ownership::TypeOwnership;
+use crate::input::{IpcCommandSurface, MirrorImports, TypeModules};
+use crate::verify::{Surface, SurfaceDrift};
+use crate::write::{CommandModuleWriter, GeneratedOutput, PluginModules, TypeModuleWriter, TypeOwnership};
 
 /// Writes the frontend's TypeScript mirror of an IPC command surface.
-///
-/// The order below is the whole contract and it is not a caller's to reproduce: every plugin's commands are exported
-/// first, because that is what collects the types they reference; the type modules are written next, because only then
-/// is it known which module declares what; and each command module is finalized last, because it is the type modules
-/// that say which imports replace the copies Specta inlined.
 pub struct IpcBindingsGenerator;
 
 impl IpcBindingsGenerator {
-  /// Writes the mirror of `surfaces` into `output`, replacing the `types/` and `commands/` it already held.
+  /// Name of the module merging every plugin's signatures, beside the command modules.
+  const SIGNATURES_MODULE: &'static str = "signatures.ts";
+
+  /// Writes the mirror of `surfaces` into `output`, replacing the `types/` and `commands/` it already held, each type
+  /// in the module `type_modules` gives its crate, every module addressing the others and the runtime as `imports`
+  /// says.
   ///
   /// # Panics
   ///
   /// Panics when the output cannot be written, or when a generated module no longer satisfies an invariant the
   /// mirrors rest on — a type owned by two modules, a type module importing another, a foreign declaration with
-  /// nowhere to live, or an `invoke` that would bypass the counted wrapper.
-  pub fn generate<R: Runtime>(output: &Path, surfaces: &[IpcCommandSurface<R>]) {
-    let types: PathBuf = output.join(TYPES_DIRECTORY);
-    let commands: PathBuf = output.join(COMMANDS_DIRECTORY);
+  /// nowhere to live, two surfaces or declarations of one name, or a builder configured otherwise than its wrappers
+  /// are rendered for.
+  pub fn generate<R: Runtime>(
+    output: &Path,
+    surfaces: &[IpcCommandSurface<R>],
+    type_modules: &TypeModules,
+    imports: &MirrorImports,
+  ) {
+    Self::assert_distinct_names(surfaces);
 
-    reset_directory(&types);
-    reset_directory(&commands);
+    let types: PathBuf = output.join(GeneratedOutput::TYPES_DIRECTORY);
+    let commands: PathBuf = output.join(GeneratedOutput::COMMANDS_DIRECTORY);
 
-    let collected: Types = Self::export_commands(&commands, surfaces);
-    let (ownership, enumerations): (TypeOwnership, Enumerations) = TypeModuleWriter::write_all(&types, &collected);
+    GeneratedOutput::reset_directory(&types);
+    GeneratedOutput::reset_directory(&commands);
+
+    let mut collected: CollectedCommands = Self::export_commands(&commands, surfaces);
+    let constants: CollectedConstants = CollectedConstants::collect(type_modules, &mut collected.types);
+    let (ownership, enumerations): (TypeOwnership, Enumerations) =
+      TypeModuleWriter::write_all(&types, &collected.types, &constants, type_modules, imports);
+    let mut plugins: Vec<PluginModules> = Vec::with_capacity(surfaces.len());
 
     for surface in surfaces {
-      CommandModuleWriter::finalize(
+      CommandModuleWriter::write(
         &Self::module_path(&commands, surface.name),
         surface.name,
+        collected.of(surface.name),
         &ownership,
         &enumerations,
+        imports,
       );
 
       if !surface.raw.is_empty() {
@@ -55,6 +64,7 @@ impl IpcBindingsGenerator {
           surface.raw,
           &ownership,
           &enumerations,
+          imports,
         );
       }
 
@@ -65,9 +75,18 @@ impl IpcBindingsGenerator {
           surface.bulk,
           &ownership,
           &enumerations,
+          imports,
         );
       }
+
+      plugins.push(PluginModules {
+        name: surface.name,
+        has_raw: !surface.raw.is_empty(),
+        has_bulk: !surface.bulk.is_empty(),
+      });
     }
+
+    CommandModuleWriter::write_signatures(&commands.join(Self::SIGNATURES_MODULE), &plugins, imports);
   }
 
   /// Generates into `scratch` and reports how the mirrors committed at `committed` differ from it.
@@ -75,18 +94,24 @@ impl IpcBindingsGenerator {
   /// # Panics
   ///
   /// Panics on anything [`Self::generate`] panics on, and when either tree cannot be read back as TypeScript.
-  pub fn verify<R: Runtime>(committed: &Path, scratch: &Path, surfaces: &[IpcCommandSurface<R>]) -> SurfaceDrift {
-    Self::generate(scratch, surfaces);
+  pub fn verify<R: Runtime>(
+    committed: &Path,
+    scratch: &Path,
+    surfaces: &[IpcCommandSurface<R>],
+    type_modules: &TypeModules,
+    imports: &MirrorImports,
+  ) -> SurfaceDrift {
+    Self::generate(scratch, surfaces, type_modules, imports);
 
     Surface::read(committed).compare_to(&Surface::read(scratch))
   }
 
-  /// Exports every plugin's commands, answering with the types those commands referenced.
+  /// Exports every plugin's commands, answering with the commands and the types those commands referenced.
   ///
-  /// Specta inlines the full transitive closure of a plugin's signatures and cannot reference a declaration living in
-  /// another file, so the closure is collected here to be written once and imported afterwards.
-  fn export_commands<R: Runtime>(commands: &Path, surfaces: &[IpcCommandSurface<R>]) -> Types {
-    let collected: Arc<Mutex<Types>> = Arc::new(Mutex::new(Types::default()));
+  /// The exporter writes nothing: each command module is written once the type modules say what it imports, and
+  /// every type exactly once, into the module of the crate declaring it.
+  fn export_commands<R: Runtime>(commands: &Path, surfaces: &[IpcCommandSurface<R>]) -> CollectedCommands {
+    let collected: Arc<Mutex<CollectedCommands>> = Arc::new(Mutex::new(CollectedCommands::default()));
 
     for surface in surfaces {
       surface
@@ -99,12 +124,26 @@ impl IpcBindingsGenerator {
     }
 
     Arc::try_unwrap(collected)
-      .unwrap_or_else(|_| panic!("An exporter still holds the collected types"))
+      .unwrap_or_else(|_| panic!("An exporter still holds the collected commands"))
       .into_inner()
-      .expect("Collected types lock is poisoned")
+      .expect("Collected commands lock is poisoned")
   }
 
-  /// Where one plugin's command module is written, which is also where it is read back to be finalized.
+  /// Fails when two surfaces carry one name: both would write one command module, and the commands exported second
+  /// would be the only ones collected for it.
+  fn assert_distinct_names<R: Runtime>(surfaces: &[IpcCommandSurface<R>]) {
+    let mut names: BTreeSet<&str> = BTreeSet::new();
+
+    for surface in surfaces {
+      assert!(
+        names.insert(surface.name),
+        "Two command surfaces are named `{}`",
+        surface.name
+      );
+    }
+  }
+
+  /// Where one plugin's command module is written.
   fn module_path(commands: &Path, plugin: &str) -> PathBuf {
     commands.join(format!("{plugin}.ts"))
   }

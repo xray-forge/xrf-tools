@@ -4,15 +4,15 @@ use std::path::PathBuf;
 
 use serde_json::Value;
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat, Quality, Rgba, RgbaImage};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::commands::dds::convert::command::ConvertCommand;
-use crate::core::command_testing::run_command_for_result;
-use crate::core::generic_command::CommandResult;
+use crate::core::command::CommandResult;
+use crate::core::command::command_testing::run_command_for_result;
 
 /// A source texture with detail in every channel, so a lossy candidate has something to lose.
 fn source(case: &str) -> CommandResult<PathBuf> {
-  let path: PathBuf = build_absolute_generated_test_resource_path(&format!("dds_convert/{case}/source.dds"));
+  let path: PathBuf = GeneratedResources::path(&format!("dds_convert/{case}/source.dds"));
 
   std::fs::create_dir_all(path.parent().expect("case directory"))?;
 
@@ -33,7 +33,9 @@ fn run(case: &str, arguments: &[&str]) -> CommandResult<(PathBuf, Value)> {
 
   let mut command: Vec<String> = vec![
     String::from("convert"),
+    String::from("-p"),
     source.display().to_string(),
+    String::from("-d"),
     destination.display().to_string(),
   ];
 
@@ -132,7 +134,9 @@ fn refuses_a_format_it_has_no_encoder_for() -> CommandResult {
       &ConvertCommand,
       &[
         String::from("convert"),
+        String::from("-p"),
         source.display().to_string(),
+        String::from("-d"),
         source.with_file_name("out.dds").display().to_string(),
         String::from("--format"),
         String::from("bc4"),

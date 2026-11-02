@@ -1,0 +1,67 @@
+import { useInjection } from "@wirestate/react";
+import { renderCommands } from "@xrf/ipc/commands/render";
+import { RenderLibraries } from "@xrf/ipc/types/xrf-renderer";
+import { Logger } from "@xrf/logging";
+import { useLogger } from "@xrf/logging/react";
+import { Nullable } from "@xrf/types";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
+import { Stack } from "@xrf/ui/material/stack";
+import { Typography } from "@xrf/ui/material/typography";
+import { ReactElement, useState } from "react";
+
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
+import { useMountEffect } from "@/lib/react/use-mount-effect";
+
+import { IAboutRow } from "./about-row";
+import { SettingsAboutRow } from "./SettingsAboutRow";
+import { describeGraphics, DLSS_ATTRIBUTION } from "./SettingsGraphicsSection.utils";
+
+/**
+ * The GPU each graphics API would use, the API in use, and the DLSS version with the attribution NVIDIA's licence
+ * requires.
+ */
+export function SettingsGraphicsSection(): ReactElement {
+  const log: Logger = useLogger(__MODULE_NAME__);
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
+
+  const [libraries, setLibraries] = useState<Nullable<RenderLibraries>>(null);
+
+  const rows: Array<IAboutRow> = describeGraphics(
+    renderSettingsService.renderBackend,
+    renderSettingsService.renderGpu,
+    renderSettingsService.renderBackends,
+    libraries
+  );
+
+  // The DLSS version cannot change while the application runs; the backends are probed again, as in Display.
+  useMountEffect(() => {
+    void renderSettingsService.refreshRenderBackends();
+
+    renderCommands
+      .describeLibraries()
+      .then((it: RenderLibraries) => setLibraries(it))
+      .catch((error: unknown) => log.error("Failed to read the graphics libraries:", error));
+  });
+
+  return (
+    <DetailSection
+      data-testid={"settings-graphics-section"}
+      title={"Graphics"}
+      description={"The GPU and driver each graphics API would use, and the DLSS version."}
+    >
+      <Stack className={"mt-2"} spacing={0.5}>
+        {rows.length === 0 ? (
+          <Typography variant={"caption"}>Reading graphics details...</Typography>
+        ) : (
+          rows.map((it: IAboutRow) => <SettingsAboutRow key={it.label} label={it.label} value={it.value} />)
+        )}
+
+        {libraries?.dlss ? (
+          <Typography className={"pt-2 opacity-70"} variant={"caption"}>
+            {DLSS_ATTRIBUTION}
+          </Typography>
+        ) : null}
+      </Stack>
+    </DetailSection>
+  );
+}

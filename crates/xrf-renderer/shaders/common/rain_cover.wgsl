@@ -1,6 +1,6 @@
 #import "common/noise"
 
-// Overhead maps of the level around the camera, as `scene/level/overhead_map.rs` draws them straight down: for each
+// Overhead maps of the level around the camera, as `scene/level/shadow/overhead_map.rs` draws them straight down: for each
 // column, how high the first thing over it stands. The rain's cover is one; the level's surface without its trees is
 // another.
 
@@ -78,7 +78,7 @@ fn overhead_open(
 }
 
 // How much reaches a point of what falls straight down, from none to one, by an overhead map and its pyramid
-// (`scene/level/cover_pyramid.rs`), `shape` its texels across and the metres it reaches down, the point's surface
+// (`feature/scene/pyramid/cover_pyramid.rs`), `shape` its texels across and the metres it reaches down, the point's surface
 // facing `normal`. Where the point stands open, all of it, weighed over the four texels about it as `overhead_open`
 // weighs them. Where something stands over a surface facing up, twice the share of the sky within `creep` metres of it
 // open down to no more than `COVER_CREEP_DROP` under it, at most all: under a cover's edge as wet as the open ground

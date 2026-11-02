@@ -1,23 +1,22 @@
 //! Patching a visual the engine loads but the format does not describe.
 
 use std::fs;
-use std::fs::File;
 use std::path::PathBuf;
 
 use xrf_chunk::XRayByteOrder;
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::{build_relative_test_sample_file_path, write_generated_test_resource};
+use xrf_test_utils::GeneratedResources;
 
 use crate::ogf_file::OgfFile;
-use crate::ogf_motion_refs_processor::OgfMotionRefsProcessor;
-use crate::ogf_refs_patch_report::OgfRefsPatchReport;
-use crate::ogf_texture_refs_processor::OgfTextureRefsProcessor;
+use crate::patch::ogf_motion_refs_processor::OgfMotionRefsProcessor;
+use crate::patch::ogf_refs_patch_report::OgfRefsPatchReport;
+use crate::patch::ogf_texture_refs_processor::OgfTextureRefsProcessor;
 use crate::residue::OgfNormalization;
 use crate::tests::fixtures;
 
 fn write_fixture(name: &str, bytes: Vec<u8>) -> XrfResult<PathBuf> {
-  Ok(write_generated_test_resource(
-    &build_relative_test_sample_file_path(file!(), name),
+  Ok(GeneratedResources::write(
+    &GeneratedResources::sample_name(file!(), name),
     bytes,
   )?)
 }
@@ -29,7 +28,7 @@ fn rewriting_existing_refs_lands_on_the_normalized_source() -> XrfResult {
   let existing: Vec<String> = fixtures::DECLARED_REFS.map(String::from).to_vec();
 
   let rewritten: Vec<u8> =
-    OgfMotionRefsProcessor::write_motion_refs_to_buffer::<XRayByteOrder>(File::open(&path)?, &existing)?;
+    OgfMotionRefsProcessor::write_motion_refs_to_buffer::<XRayByteOrder>(fs::read(&path)?, &existing)?;
 
   assert_ne!(
     rewritten, source,
@@ -79,7 +78,7 @@ fn patching_a_well_formed_visual_still_reproduces_it_exactly() -> XrfResult {
   let existing: Vec<String> = fixtures::DECLARED_REFS.map(String::from).to_vec();
 
   let rewritten: Vec<u8> =
-    OgfMotionRefsProcessor::write_motion_refs_to_buffer::<XRayByteOrder>(File::open(&path)?, &existing)?;
+    OgfMotionRefsProcessor::write_motion_refs_to_buffer::<XRayByteOrder>(fs::read(&path)?, &existing)?;
 
   assert_eq!(rewritten, source, "Expect an unchanged rewrite to reproduce the source");
 
@@ -87,6 +86,10 @@ fn patching_a_well_formed_visual_still_reproduces_it_exactly() -> XrfResult {
     OgfMotionRefsProcessor::patch_motion_refs_to_path::<XRayByteOrder>(&path, &path, &existing, true)?;
 
   assert_eq!(report.discarded_size, 0);
+  assert_eq!(
+    report.previous_refs, existing,
+    "Expect the report to name what the source held"
+  );
 
   Ok(())
 }
@@ -118,7 +121,7 @@ fn renaming_a_texture_also_normalizes_the_motion_refs_chunk() -> XrfResult {
   let path: PathBuf = write_fixture("texture_rename.ogf", source.clone())?;
 
   let (rewritten, patched_count) =
-    OgfTextureRefsProcessor::write_texture_refs_to_buffer::<XRayByteOrder>(File::open(&path)?, "any", "any")?;
+    OgfTextureRefsProcessor::write_texture_refs_to_buffer::<XRayByteOrder>(fs::read(&path)?, "any", "any")?;
 
   assert_eq!(patched_count, 0, "Expect no texture reference in this fixture");
   assert_eq!(

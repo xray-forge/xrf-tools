@@ -4,10 +4,10 @@ use xrf_renderer::CameraFrame;
 
 use crate::camera::fly_camera_controller::FlyCameraController;
 use crate::camera::orbit_camera_controller::OrbitCameraController;
-use crate::contract::world_camera::WorldCamera;
-use crate::contract::world_camera_command::WorldCameraCommand;
-use crate::contract::world_camera_pose::WorldCameraPose;
-use crate::contract::world_input_event::WorldInputEvent;
+use crate::contract::camera::world_camera::WorldCamera;
+use crate::contract::camera::world_camera_command::WorldCameraCommand;
+use crate::contract::camera::world_camera_pose::WorldCameraPose;
+use crate::contract::camera::world_input_event::WorldInputEvent;
 
 /// Drives a viewport's camera from what its consumer described and what the person does over it.
 #[derive(Clone, Debug)]

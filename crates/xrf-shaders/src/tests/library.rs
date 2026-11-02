@@ -3,14 +3,21 @@
 use xrf_chunk::ChunkReader;
 use xrf_error::XrfResult;
 
-use crate::shader_blender::ShaderBlender;
-use crate::shader_blender_class::ShaderBlenderClass;
-use crate::shader_blender_property_value::ShaderBlenderPropertyValue;
-use crate::shader_library_file::ShaderLibraryFile;
+use crate::library::{ShaderBlender, ShaderBlenderClass, ShaderBlenderPropertyValue, ShaderLibraryFile};
 use crate::tests::fixtures;
 
 fn read(bytes: &[u8]) -> XrfResult<ShaderLibraryFile> {
   ShaderLibraryFile::read_from_chunk(&mut ChunkReader::from_bytes(bytes)?)
+}
+
+/// A library whose blender chunks carry these ids, in this file order, each a model blender of that name.
+fn library_of_chunks(chunks: &[(u32, &str)]) -> Vec<u8> {
+  let children: Vec<u8> = chunks
+    .iter()
+    .flat_map(|(id, name)| fixtures::raw_chunk(*id, &fixtures::model_blender(name, false, 32)))
+    .collect();
+
+  fixtures::raw_chunk(ShaderLibraryFile::BLENDERS_CHUNK_ID, &children)
 }
 
 #[test]
@@ -97,6 +104,37 @@ fn refuses_a_library_defining_one_name_twice() -> XrfResult {
   assert_eq!(
     read(&bytes).unwrap_err().to_string(),
     "Invalid error: Shader library contains duplicate blender 'models\\model'"
+  );
+
+  Ok(())
+}
+
+#[test]
+fn reads_blender_chunks_by_id_whatever_order_the_file_holds_them_in() -> XrfResult {
+  // The engine opens chunk 0, then 1, by id, so a file storing them the other way round loads the same blenders.
+  let library: ShaderLibraryFile = read(&library_of_chunks(&[(1, "models\\second"), (0, "models\\first")]))?;
+
+  assert!(library.contains_blender("models\\first"));
+  assert!(library.contains_blender("models\\second"));
+
+  Ok(())
+}
+
+#[test]
+fn refuses_a_blender_chunk_the_engine_never_reaches() -> XrfResult {
+  // The engine stops at the first id it cannot open and finds only the first chunk of an id, so either blender here
+  // is one no surface in the game resolves to.
+  assert_eq!(
+    read(&library_of_chunks(&[(0, "models\\first"), (2, "models\\third")]))
+      .unwrap_err()
+      .to_string(),
+    "Invalid error: Shader library has no blender chunk 1, so the engine never loads chunk 2"
+  );
+  assert_eq!(
+    read(&library_of_chunks(&[(0, "models\\first"), (0, "models\\again")]))
+      .unwrap_err()
+      .to_string(),
+    "Invalid error: Shader library repeats blender chunk 0, which the engine never loads"
   );
 
   Ok(())

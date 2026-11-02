@@ -1,0 +1,235 @@
+use wgpu::util::DeviceExt;
+use xrf_error::XrfResult;
+use xrf_renderer_core::{
+  ComputeContext, ComputePipelineDescription, FrameGraph, GraphBindings, GraphBufferAccess, PassParameters, PipelineSet,
+};
+
+use crate::context::gpu_requirements::can_trace;
+use crate::feature::tracing::scene_trace::reflection_scene_parameters::ReflectionSceneParameters;
+use crate::feature::tracing::scene_trace::requests::trace_request::TraceRequest;
+use crate::feature::tracing::scene_trace::requests::trace_request_handles::TraceRequestHandles;
+use crate::feature::tracing::scene_trace::requests::trace_request_list::TraceRequestList;
+use crate::feature::tracing::scene_trace::scene_trace_bindings::SceneTraceBindings;
+use crate::feature::tracing::scene_trace::scene_trace_request::SceneTraceRequest;
+use crate::feature::tracing::view_trace::trace_parameters::TraceParameters;
+use crate::pass::build::pipeline_source::PipelineSource;
+
+/// The reflections' scene pass, the surfaces' and the water's alike: a pass listing the rays it leaves unanswered
+/// (`TraceRequestList`) has its list emptied before it, then the scene pass traces exactly the rays listed against the
+/// level's static geometry by hardware ray query (`frame/reflection_scene`), as many workgroups as were counted, and
+/// writes each that meets something into the list's target. Nothing traces on a device without ray queries.
+pub struct SceneTracePass {
+  view_layout: wgpu::BindGroupLayout,
+  sky_layout: wgpu::BindGroupLayout,
+  /// The pass's own, the trace's and the texture cache's layouts, on a device with ray queries.
+  layouts: Option<[wgpu::BindGroupLayout; 3]>,
+  pipeline: PipelineSet<Option<wgpu::ComputePipeline>>,
+  /// What a list's head is set back to before the pass filling it, its wait kept: `TraceRequest::HEAD`.
+  head_reset: wgpu::Buffer,
+  /// What a list keeping no ends binds for them, which nothing writes.
+  no_ends: wgpu::TextureView,
+}
+
+impl SceneTracePass {
+  /// Where the pass binds the texture cache's group, after `TraceParameters`.
+  const TEXTURE_GROUP: u32 = 4;
+
+  /// # Errors
+  ///
+  /// Returns an error when the shader does not compose or compile.
+  pub fn new(
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+    sky_layout: &wgpu::BindGroupLayout,
+    texture_layout: &wgpu::BindGroupLayout,
+  ) -> XrfResult<Self> {
+    let device: &wgpu::Device = source.device;
+
+    let layouts: Option<[wgpu::BindGroupLayout; 3]> = can_trace(device).then(|| {
+      [
+        ReflectionSceneParameters::create_layout(device),
+        TraceParameters::create_layout(device),
+        texture_layout.clone(),
+      ]
+    });
+
+    Ok(Self {
+      pipeline: PipelineSet::new(
+        source.cache,
+        Self::create_pipeline(source, view_layout, sky_layout, layouts.as_ref())?,
+      ),
+      view_layout: view_layout.clone(),
+      sky_layout: sky_layout.clone(),
+      layouts,
+      head_reset: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: Some("scene trace request head reset"),
+        contents: bytemuck::cast_slice(&TraceRequest::HEAD),
+        usage: wgpu::BufferUsages::COPY_SRC,
+      }),
+      no_ends: device
+        .create_texture(&wgpu::TextureDescriptor {
+          label: Some("scene trace no ends"),
+          size: wgpu::Extent3d {
+            width: 1,
+            height: 1,
+            depth_or_array_layers: 1,
+          },
+          mip_level_count: 1,
+          sample_count: 1,
+          dimension: wgpu::TextureDimension::D2,
+          format: wgpu::TextureFormat::R32Float,
+          usage: wgpu::TextureUsages::STORAGE_BINDING,
+          view_formats: &[],
+        })
+        .create_view(&Default::default()),
+    })
+  }
+
+  /// Makes its pipelines again where the shader library was reloaded since (`PipelineSet::refresh`), keeping
+  /// the last ones where a reload is refused.
+  pub fn refresh(&mut self, source: PipelineSource<'_>) {
+    if let Err(error) = self.pipeline.refresh(source.cache, || {
+      Self::create_pipeline(source, &self.view_layout, &self.sky_layout, self.layouts.as_ref())
+    }) {
+      log::error!("Scene trace rejected, tracing with the last one: {error}");
+    }
+  }
+
+  /// Whether it traces rays: a device with ray queries.
+  pub fn is_traced(&self) -> bool {
+    self.layouts.is_some()
+  }
+
+  /// What a list keeping no ends binds for them.
+  pub fn get_no_ends(&self) -> &wgpu::TextureView {
+    &self.no_ends
+  }
+
+  /// Imports a list into the frame's graph and empties it for the pass that fills it, which binds what this answers.
+  pub fn add_reset<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    bindings: &mut GraphBindings<'a>,
+    label: &'static str,
+    list: &'a TraceRequestList,
+  ) -> TraceRequestHandles {
+    let handles: TraceRequestHandles = TraceRequestHandles {
+      requests: bindings.import_buffer(graph, label, &list.requests),
+      head: bindings.import_buffer(graph, label, &list.head),
+      dispatch: bindings.import_buffer(graph, label, &list.dispatch),
+      wait: bindings.import_buffer(graph, label, &list.wait),
+    };
+    let reset = bindings.import_buffer(graph, "scene trace request head reset", &self.head_reset);
+    let (head, wait) = (handles.head, handles.wait);
+
+    // The wait the last frame's scene pass left, read plainly by this frame's listing pass.
+    graph
+      .add_encoder_pass("scene trace request wait")
+      .buffer(head, GraphBufferAccess::CopySource)
+      .buffer(wait, GraphBufferAccess::CopyDestination)
+      .record(move |context| {
+        let (head, wait) = (context.get_buffer(head), context.get_buffer(wait));
+
+        context.get_encoder().copy_buffer_to_buffer(
+          head,
+          TraceRequest::HEAD_WAIT_OFFSET,
+          wait,
+          0,
+          size_of::<u32>() as u64,
+        );
+      });
+
+    graph
+      .add_encoder_pass(label)
+      .buffer(reset, GraphBufferAccess::CopySource)
+      .buffer(head, GraphBufferAccess::CopyDestination)
+      .record(move |context| {
+        let (reset, head) = (context.get_buffer(reset), context.get_buffer(head));
+
+        context
+          .get_encoder()
+          .copy_buffer_to_buffer(reset, 0, head, 0, size_of_val(&TraceRequest::HEAD) as u64);
+      });
+
+    handles
+  }
+
+  /// Traces the rays a `request`'s list holds once the pass filling it has run: its dispatch copied out of its head,
+  /// then the scene pass over the `bindings`, whose parameters name the list and the targets its hits write.
+  pub fn add_trace<'a>(
+    &'a self,
+    graph: &mut FrameGraph<'a>,
+    request: SceneTraceRequest,
+    bindings: SceneTraceBindings<'a>,
+  ) {
+    let (head, dispatch) = (request.handles.head, request.handles.dispatch);
+
+    graph
+      .add_encoder_pass(request.dispatch_label)
+      .buffer(head, GraphBufferAccess::CopySource)
+      .buffer(dispatch, GraphBufferAccess::CopyDestination)
+      .record(move |context| {
+        let (head, copied) = (context.get_buffer(head), context.get_buffer(dispatch));
+
+        context.get_encoder().copy_buffer_to_buffer(
+          head,
+          TraceRequest::HEAD_DISPATCH_OFFSET,
+          copied,
+          0,
+          TraceRequest::DISPATCH_BYTES,
+        );
+      });
+    graph
+      .add_compute_pass(request.trace_label)
+      .parameters(&bindings.parameters)
+      .parameters(&bindings.sky)
+      .parameters(&bindings.trace)
+      .buffer(dispatch, GraphBufferAccess::Indirect)
+      .record(move |context| {
+        let copied: &wgpu::Buffer = context.get_buffer(dispatch);
+
+        self.record(context, &bindings, copied);
+      });
+  }
+
+  fn record(&self, context: &mut ComputeContext<'_>, bindings: &SceneTraceBindings<'_>, dispatch: &wgpu::Buffer) {
+    let Some(pipeline) = &*self.pipeline else {
+      return;
+    };
+
+    context.bind(&bindings.parameters);
+    context.bind(&bindings.sky);
+    context.bind(&bindings.trace);
+
+    let pass: &mut wgpu::ComputePass<'static> = context.get_pass();
+
+    pass.set_pipeline(pipeline);
+    pass.set_bind_group(0, &bindings.view.bind_group, &[]);
+    pass.set_bind_group(Self::TEXTURE_GROUP, bindings.textures, &[]);
+    pass.dispatch_workgroups_indirect(dispatch, 0);
+  }
+
+  fn create_pipeline(
+    source: PipelineSource<'_>,
+    view_layout: &wgpu::BindGroupLayout,
+    sky_layout: &wgpu::BindGroupLayout,
+    layouts: Option<&[wgpu::BindGroupLayout; 3]>,
+  ) -> XrfResult<Option<wgpu::ComputePipeline>> {
+    let Some([scene_layout, trace_layout, texture_layout]) = layouts else {
+      return Ok(None);
+    };
+    source
+      .get_compute_pipeline(
+        &ComputePipelineDescription::new("scene trace", "frame/reflection_scene", "cs_scene").with_bind_group_layouts(
+          &[
+            Some(view_layout),
+            Some(scene_layout),
+            Some(sky_layout),
+            Some(trace_layout),
+            Some(texture_layout),
+          ],
+        ),
+      )
+      .map(Some)
+  }
+}

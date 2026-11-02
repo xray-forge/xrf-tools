@@ -1,23 +1,11 @@
 use std::fmt::Debug;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use serde::Serialize;
 use xrf_archive::ArchiveDescriptor;
-use xrf_error::XrfResult;
+use xrf_error::{XrfError, XrfResult};
 
-use crate::source::XrayDeclaredRoot;
+use crate::source::{XrayDeclaredRoot, XrayFileStamp, XraySourceKind};
 use crate::{XrayAssetContainer, XrayPathCollision, XrayShadowedCopy};
-
-/// The storage kind backing a mount.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum XraySourceKind {
-  /// Loose files under a directory.
-  Directory,
-  /// Entries inside a set of `.db` archive volumes.
-  Archive,
-}
 
 /// Names a source after the directory or volume set it was opened from, for [`XrayAssetSource::get_label`].
 pub fn label_from_path(path: &Path) -> String {
@@ -34,7 +22,7 @@ pub trait XrayAssetSource: Debug + Send + Sync {
   /// Classifies the source's physical storage.
   fn get_kind(&self) -> XraySourceKind;
 
-  /// Whether existing entries can be overwritten through [`Self::write`].
+  /// Whether a commit may write, create and delete files in this source, each at [`Self::get_writable_path`].
   fn is_writable(&self) -> bool;
 
   /// Returns the directory root or the directory containing the archive volumes.
@@ -51,11 +39,37 @@ pub trait XrayAssetSource: Debug + Send + Sync {
   /// Reads an existing entry.
   fn read(&self, path: &str) -> XrfResult<Vec<u8>>;
 
-  /// Overwrites an existing entry when [`Self::is_writable`] is true.
-  fn write(&self, path: &str, bytes: &[u8]) -> XrfResult<()>;
+  /// Where a writable source keeps a source-relative path on disk: the file it holds for it, or where a new one goes.
+  /// `None` for a source nothing writes to.
+  fn get_writable_path(&self, path: &str) -> Option<PathBuf> {
+    let _ = path;
 
-  /// Creates an entry the source does not currently expose, when writable.
-  fn create(&self, path: &str, bytes: &[u8]) -> XrfResult<()>;
+    None
+  }
+
+  /// The prefix this source leaves out that a source-relative path lies under, so a file written there is never answered
+  /// for; `None` for a path the source takes.
+  fn find_ignored_prefix(&self, path: &str) -> Option<&str> {
+    let _ = path;
+
+    None
+  }
+
+  /// This source once the `created` paths were added on disk and the `deleted` ones removed, without reading anything
+  /// it holds again.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a path is not a valid X-Ray logical path, or when the source cannot take changes in place,
+  /// as a set of archive volumes cannot.
+  fn with_changes(&self, created: &[&str], deleted: &[&str]) -> XrfResult<Box<dyn XrayAssetSource>> {
+    let _ = (created, deleted);
+
+    Err(XrfError::new_not_implemented_error(format!(
+      "source '{}' cannot take changes in place",
+      self.get_label()
+    )))
+  }
 
   /// Enumerates source-relative logical paths, optionally restricted to a component prefix.
   fn list_entries<'a>(&'a self, prefix: Option<&'a str>) -> Box<dyn Iterator<Item = String> + 'a>;
@@ -72,6 +86,14 @@ pub trait XrayAssetSource: Debug + Send + Sync {
 
   /// Size in bytes of an entry this source holds, without reading it.
   fn get_size(&self, path: &str) -> Option<u64>;
+
+  /// How an entry's file looks on disk now, for a source whose files can change behind it; `None` where entries never
+  /// change in place, or where the file cannot be looked at.
+  fn get_stamp(&self, path: &str) -> Option<XrayFileStamp> {
+    let _ = path;
+
+    None
+  }
 
   /// CRC32 of an entry's unpacked payload, when the source already knows it without reading anything.
   fn get_recorded_crc(&self, path: &str) -> Option<u32> {

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 use xrf_ltx::{FileImportExport, Ltx};
-use xrf_utils::{assert_length, open_export_file, to_format_size};
+use xrf_utils::{assert_length, to_format_size};
 
 use crate::data::patrols::patrol::Patrol;
 
@@ -107,9 +107,9 @@ impl FileImportExport for SpawnPatrolsChunk {
       )?;
     }
 
-    patrols_ltx.write_to(&mut open_export_file(path.as_ref().join("patrols.ltx"))?)?;
-    patrol_points_ltx.write_to(&mut open_export_file(path.as_ref().join("patrol_points.ltx"))?)?;
-    patrol_links_ltx.write_to(&mut open_export_file(path.as_ref().join("patrol_links.ltx"))?)?;
+    patrols_ltx.write_to_path(path.as_ref().join("patrols.ltx"))?;
+    patrol_points_ltx.write_to_path(path.as_ref().join("patrol_points.ltx"))?;
+    patrol_links_ltx.write_to_path(path.as_ref().join("patrol_links.ltx"))?;
 
     log::info!("Exported patrols chunk");
 
@@ -128,11 +128,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::chunks::spawn_patrols_chunk::SpawnPatrolsChunk;
   use crate::data::patrols::patrol::Patrol;
@@ -141,7 +137,7 @@ mod tests {
 
   #[test]
   fn test_read_write() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
 
     let original: SpawnPatrolsChunk = SpawnPatrolsChunk {
       patrols: vec![
@@ -165,7 +161,7 @@ mod tests {
           ],
           links: vec![PatrolLink {
             index: 0,
-            links: vec![(10, 50.5), (15, 60.25)],
+            links: vec![(1, 50.5), (0, 60.25)],
           }],
         },
         Patrol {
@@ -188,7 +184,7 @@ mod tests {
           ],
           links: vec![PatrolLink {
             index: 0,
-            links: vec![(10, 50.5), (15, 60.25)],
+            links: vec![(1, 50.5), (0, 60.25)],
           }],
         },
       ],
@@ -201,11 +197,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 450);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 450);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 450 + 8);
 

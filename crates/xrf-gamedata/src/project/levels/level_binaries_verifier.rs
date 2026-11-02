@@ -1,32 +1,28 @@
 use std::sync::Arc;
 
-use xrf_level::{LevelAiFile, LevelAiHeader, LevelCformFile, LevelCformHeader, LevelFile, LevelShadersChunk};
+use xrf_gamemtl::GameMtlFile;
+use xrf_level::{LevelAiFile, LevelAiHeader, LevelCformFile, LevelCformHeader, LevelCformMaterials, LevelFile};
 use xrf_spawn::XRayByteOrder;
-use xrf_vfs::XrayAssetType as AssetType;
 
+use crate::project::levels::level_binaries_outcome::LevelBinariesOutcome;
 use crate::project::levels::level_bundle::LevelBundle;
 use crate::project::levels::level_engine_constants::{
   AI_CURRENT_VERSION, AI_VERSION_ALLOWED, CFORM_CURRENT_VERSION, LEVEL_AI_FILE, LEVEL_CFORM_FILE, LEVEL_FILE,
   LEVEL_PRODUCTION_VERSION,
 };
-use crate::project::levels::level_roster::RosterLevel;
+use crate::project::levels::roster_level::RosterLevel;
 use crate::{Finding, GamedataFindingFactory, GamedataVerificationRule};
-
-/// Findings from the binary level files, plus the shader table left for reference closure.
-#[derive(Default)]
-pub(crate) struct LevelBinariesOutcome {
-  pub(crate) findings: Vec<Finding>,
-  pub(crate) shaders: Option<LevelShadersChunk>,
-}
 
 /// Reproduces the engine assertions raised while loading a level bundle.
 pub(crate) struct LevelBinariesVerifier<'a> {
   bundle: &'a LevelBundle<'a>,
+  /// The library collision faces are checked against; where it does not read, the materials check reports it.
+  game_materials: Option<&'a GameMtlFile>,
 }
 
 impl<'a> LevelBinariesVerifier<'a> {
-  pub(crate) fn new(bundle: &'a LevelBundle<'a>) -> Self {
-    Self { bundle }
+  pub(crate) fn new(bundle: &'a LevelBundle<'a>, game_materials: Option<&'a GameMtlFile>) -> Self {
+    Self { bundle, game_materials }
   }
 
   pub(crate) fn verify(&self, level: Option<&RosterLevel>) -> LevelBinariesOutcome {
@@ -55,9 +51,11 @@ impl<'a> LevelBinariesVerifier<'a> {
 
     let asset_path: String = self.bundle.file_path(LEVEL_FILE);
 
-    let level_file: Arc<LevelFile> = match self.bundle.project().read_parsed(AssetType::Level, &path, |chunk| {
-      LevelFile::read_from_chunk::<XRayByteOrder, _>(chunk)
-    }) {
+    let level_file: Arc<LevelFile> = match self
+      .bundle
+      .project()
+      .read_parsed(&path, LevelFile::read_from_chunk::<XRayByteOrder, _>)
+    {
       Ok(level_file) => level_file,
       Err(error) => {
         return LevelBinariesOutcome {
@@ -98,7 +96,7 @@ impl<'a> LevelBinariesVerifier<'a> {
     }
   }
 
-  /// `R_ASSERT(CFORM_CURRENT_VERSION == H.version)`.
+  /// `R_ASSERT(CFORM_CURRENT_VERSION == H.version)`, and the faces' materials where the material library reads.
   fn verify_cform(&self) -> Vec<Finding> {
     if self.bundle.job().is_cancelled() {
       return Default::default();
@@ -119,19 +117,39 @@ impl<'a> LevelBinariesVerifier<'a> {
       )];
     }
 
-    let cform: Arc<LevelCformFile> = match self.bundle.project().read_parsed(AssetType::CForm, &path, |chunks| {
-      LevelCformFile::read_from_chunk::<XRayByteOrder, _>(chunks)
-    }) {
-      Ok(cform) => cform,
-      Err(error) => {
-        return vec![GamedataFindingFactory::for_asset(
+    let Some(library) = self.game_materials else {
+      return match self.bundle.project().read_parsed(&path, |chunks| {
+        LevelCformFile::read_from_chunk::<XRayByteOrder, _>(chunks)
+      }) {
+        Ok(cform) => self.verify_cform_version(&cform),
+        Err(error) => vec![GamedataFindingFactory::for_asset(
           GamedataVerificationRule::LevelsFileTruncated,
           self.bundle.file_path(LEVEL_CFORM_FILE),
           format!("Failed to read level collision form header: {error}"),
-        )];
-      }
+        )],
+      };
     };
 
+    match self.bundle.project().read_parsed(&path, |chunks| {
+      LevelCformFile::read_with_materials_from_chunk::<XRayByteOrder, _>(chunks)
+    }) {
+      Ok(read) => {
+        let (cform, materials): &(LevelCformFile, LevelCformMaterials) = &read;
+        let mut findings: Vec<Finding> = self.verify_cform_version(cform);
+
+        findings.extend(self.verify_cform_materials(library, materials));
+
+        findings
+      }
+      Err(error) => vec![GamedataFindingFactory::for_asset(
+        GamedataVerificationRule::LevelsFileTruncated,
+        self.bundle.file_path(LEVEL_CFORM_FILE),
+        format!("Failed to read level collision form faces: {error}"),
+      )],
+    }
+  }
+
+  fn verify_cform_version(&self, cform: &LevelCformFile) -> Vec<Finding> {
     if cform.header.version == CFORM_CURRENT_VERSION {
       return Vec::new();
     }
@@ -144,6 +162,35 @@ impl<'a> LevelBinariesVerifier<'a> {
         cform.header.version
       ),
     )]
+  }
+
+  /// `CLevel::Load_GameSpecific_CFORM` resolves each face's material among the static ones alone and stops the game with
+  /// "Game material not found" on any other.
+  fn verify_cform_materials(&self, library: &GameMtlFile, materials: &LevelCformMaterials) -> Vec<Finding> {
+    materials
+      .get_ids()
+      .iter()
+      .filter_map(|id| {
+        let message: String = match library.find_material(u32::from(*id)) {
+          None => format!(
+            "Level collision faces are made of game material {id}, which gamemtl.xr does not define, and the engine \
+             stops loading the level"
+          ),
+          Some(material) if material.is_dynamic() => format!(
+            "Level collision faces are made of dynamic game material '{}' ({id}), which the engine does not resolve for \
+             level geometry and stops loading the level",
+            material.name
+          ),
+          Some(_) => return None,
+        };
+
+        Some(GamedataFindingFactory::for_asset(
+          GamedataVerificationRule::LevelsGameMaterial,
+          self.bundle.file_path(LEVEL_CFORM_FILE),
+          message,
+        ))
+      })
+      .collect()
   }
 
   /// `ASSERT_XRAI_VERSION_MATCH` plus the three guid assertions raised by `AISpaceBase::Load`.
@@ -164,9 +211,11 @@ impl<'a> LevelBinariesVerifier<'a> {
       )];
     }
 
-    let ai: Arc<LevelAiFile> = match self.bundle.project().read_parsed(AssetType::Ai, &path, |chunks| {
-      LevelAiFile::read_from_chunk::<XRayByteOrder, _>(chunks)
-    }) {
+    let ai: Arc<LevelAiFile> = match self
+      .bundle
+      .project()
+      .read_parsed(&path, LevelAiFile::read_from_chunk::<XRayByteOrder, _>)
+    {
       Ok(ai) => ai,
       Err(error) => {
         return vec![GamedataFindingFactory::for_asset(

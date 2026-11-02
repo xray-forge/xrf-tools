@@ -14,7 +14,7 @@
 @group(3) @binding(9) var reflection_blurred: texture_2d<f32>;
 @group(3) @binding(10) var reflection_clear: texture_2d<f32>;
 @group(3) @binding(11) var perlin_map: texture_2d<f32>;
-@group(3) @binding(12) var light_target: texture_2d<f32>;
+@group(3) @binding(12) var sun_seen: texture_2d<f32>;
 @group(3) @binding(13) var wave_map: texture_2d<f32>;
 @group(3) @binding(14) var wind_map: texture_2d<f32>;
 @group(3) @binding(15) var caustics_map: texture_2d<f32>;

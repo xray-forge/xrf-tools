@@ -1,0 +1,166 @@
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
+import { EditorToolbarSeparator } from "@xrf/ui/editor/toolbar";
+import { EditorViewToggle } from "@xrf/ui/editor/view-toggle";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { AccountTreeIcon } from "@xrf/ui/icons/account-tree";
+import { GrainIcon } from "@xrf/ui/icons/grain";
+import { GridOnIcon } from "@xrf/ui/icons/grid-on";
+import { HexagonIcon } from "@xrf/ui/icons/hexagon";
+import { OpacityIcon } from "@xrf/ui/icons/opacity";
+import { PolylineIcon } from "@xrf/ui/icons/polyline";
+import { TextureIcon } from "@xrf/ui/icons/texture";
+import { ThreeDRotationIcon } from "@xrf/ui/icons/three-d-rotation";
+import { ReactElement, ReactNode, useCallback } from "react";
+
+import { RenderLightingAction } from "@/core/render/components/lighting/RenderLightingAction";
+import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
+import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
+import { DEFAULT_VISUAL_LIGHTING, IVisualPreviewViewOptions } from "@/core/visuals/lib/scene";
+
+import { VisualMeshDetail } from "./VisualMeshDetail";
+
+interface IVisualPreviewToolbarProps extends BaseComponentProps {
+  subtitle?: ReactNode;
+  options: IVisualPreviewViewOptions;
+  /** What the model is lit by, which nothing in the file states. */
+  lighting: IRenderLighting;
+  /** How far down each submesh's collapse chain the viewport is drawing: 0 is full detail, 1 is coarsest. */
+  detail: number;
+  /** Whether the open model carries a bind pose to draw. */
+  hasSkeleton: boolean;
+  /** Whether any of the open model's materials bound a bump pair to shade with. */
+  hasBump: boolean;
+  /** Whether any of the open model's surfaces reads its texture's alpha channel. */
+  hasAlpha: boolean;
+  /** Whether the open model has anything to decimate. */
+  hasDetailLevels: boolean;
+  onChangeOptions: (options: IVisualPreviewViewOptions) => void;
+  onChangeLighting: (lighting: IRenderLighting) => void;
+  onChangeDetail: (detail: number) => void;
+  onBack?: () => void;
+  onBrowse?: () => void;
+}
+
+/**
+ * Composes scene commands, mesh detail, and view toggles in the editor toolbar.
+ */
+export function VisualPreviewToolbar({
+  "data-testid": dataTestId,
+  id,
+  className,
+  subtitle,
+  options,
+  lighting,
+  detail,
+  hasDetailLevels,
+  hasSkeleton,
+  hasBump,
+  hasAlpha,
+  onChangeOptions,
+  onChangeLighting,
+  onChangeDetail,
+  onBack,
+  onBrowse,
+}: IVisualPreviewToolbarProps): ReactElement {
+  /**
+   * Flips one view option, which is the only thing any of these toggles does.
+   *
+   * Keyed rather than one callback per option, because every option in this set is a boolean the toolbar owns: a
+   * callback each restated the same line five times and was five places to forget a new one.
+   */
+  const onToggle = useCallback(
+    (option: keyof IVisualPreviewViewOptions) => {
+      onChangeOptions({ ...options, [option]: !options[option] });
+    },
+    [options, onChangeOptions]
+  );
+
+  return (
+    <EditorToolbar
+      data-testid={dataTestId}
+      id={id}
+      className={className}
+      subtitle={subtitle}
+      onBack={onBack}
+      actions={
+        <>
+          {onBrowse ? (
+            <>
+              <EditorIconAction
+                label={"Browse folder"}
+                description={"Browse the folder this model sits in"}
+                icon={<AccountTreeIcon />}
+                onClick={onBrowse}
+              />
+
+              <EditorToolbarSeparator />
+            </>
+          ) : null}
+
+          <EditorViewToggle
+            label={"Wireframe"}
+            icon={<HexagonIcon />}
+            isOn={options.isWireframe}
+            onToggle={() => onToggle("isWireframe")}
+          />
+
+          <EditorViewToggle
+            label={"Uv checkerboard"}
+            icon={<TextureIcon />}
+            isOn={options.isCheckerVisible}
+            onToggle={() => onToggle("isCheckerVisible")}
+          />
+
+          <EditorViewToggle
+            label={"Alpha"}
+            icon={<OpacityIcon />}
+            isOn={options.isAlphaVisible}
+            isDisabled={!hasAlpha}
+            unavailableTitle={"No surface of this model reads alpha"}
+            onToggle={() => onToggle("isAlphaVisible")}
+          />
+
+          <EditorViewToggle
+            label={"Bump"}
+            icon={<GrainIcon />}
+            isOn={options.isBumpVisible}
+            isDisabled={!hasBump}
+            unavailableTitle={"No bump material in this model"}
+            onToggle={() => onToggle("isBumpVisible")}
+          />
+
+          <EditorToolbarSeparator />
+
+          <EditorViewToggle
+            label={"Skeleton"}
+            icon={<PolylineIcon />}
+            isOn={options.isSkeletonVisible}
+            isDisabled={!hasSkeleton}
+            unavailableTitle={"No skeleton in this model"}
+            onToggle={() => onToggle("isSkeletonVisible")}
+          />
+
+          <EditorViewToggle
+            label={"Grid"}
+            icon={<GridOnIcon />}
+            isOn={options.isGridVisible}
+            onToggle={() => onToggle("isGridVisible")}
+          />
+
+          <EditorViewToggle
+            label={"Axes"}
+            icon={<ThreeDRotationIcon />}
+            isOn={options.isAxesVisible}
+            onToggle={() => onToggle("isAxesVisible")}
+          />
+
+          <EditorToolbarSeparator />
+
+          <VisualMeshDetail detail={detail} hasDetailLevels={hasDetailLevels} onChange={onChangeDetail} />
+
+          <RenderLightingAction lighting={lighting} fallback={DEFAULT_VISUAL_LIGHTING} onChange={onChangeLighting} />
+        </>
+      }
+    />
+  );
+}

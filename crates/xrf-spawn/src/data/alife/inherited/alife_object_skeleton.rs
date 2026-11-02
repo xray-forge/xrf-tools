@@ -1,25 +1,27 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
-
-use crate::constants::FLAG_SKELETON_SAVED_DATA;
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AlifeObjectSkeleton {
+  /// The visual's startup animation (`CSE_Visual::startup_animation`), which `CSE_PHSkeleton::STATE_Read` reads first.
   pub name: String,
   pub flags: u8,
   pub source_id: u16,
 }
 
 impl AlifeObjectSkeleton {
+  /// `CSE_PHSkeleton::flSavedData`: saved bone data follows the source id.
+  pub const FLAG_SAVED_DATA: u8 = 4;
+
   /// Reject a skeleton that promises saved bone data.
   // todo: Read and write the saved bone payload described by `CSE_PHSkeleton::data_load`.
   fn assert_no_saved_bone_data(&self) -> XrfResult {
-    if self.flags & FLAG_SKELETON_SAVED_DATA == 0 {
+    if self.flags & Self::FLAG_SAVED_DATA == 0 {
       return Ok(());
     }
 
@@ -36,7 +38,7 @@ impl ChunkReadWrite for AlifeObjectSkeleton {
     let object = Self {
       name: reader.read_w1251_string()?,
       flags: reader.read_u8()?,
-      source_id: reader.read_u16::<XRayByteOrder>()?,
+      source_id: reader.read_u16::<T>()?,
     };
 
     object.assert_no_saved_bone_data()?;
@@ -50,7 +52,7 @@ impl ChunkReadWrite for AlifeObjectSkeleton {
 
     writer.write_w1251_string(&self.name)?;
     writer.write_u8(self.flags)?;
-    writer.write_u16::<XRayByteOrder>(self.source_id)?;
+    writer.write_u16::<T>(self.source_id)?;
 
     Ok(())
   }
@@ -68,9 +70,9 @@ impl LtxImportExport for AlifeObjectSkeleton {
     })?;
 
     let object = Self {
-      name: read_ltx_field("skeleton.name", section)?,
-      flags: read_ltx_field("skeleton.flags", section)?,
-      source_id: read_ltx_field("skeleton.source_id", section)?,
+      name: section.read_field("skeleton.name")?,
+      flags: section.read_field("skeleton.flags")?,
+      source_id: section.read_field("skeleton.source_id")?,
     };
 
     object.assert_no_saved_bone_data()?;
@@ -93,27 +95,21 @@ impl LtxImportExport for AlifeObjectSkeleton {
 #[cfg(test)]
 mod tests {
   use std::fs::File;
-  use std::io::{Seek, SeekFrom, Write};
+  use std::io::{Seek, SeekFrom, Write, read_to_string};
 
   use byteorder::WriteBytesExt;
   use serde_json::to_string_pretty;
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::{XrfError, XrfResult};
   use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::file::read_file_as_string;
-  use xrf_test_utils::utils::{
-    build_absolute_generated_test_resource_path, build_relative_test_sample_file_path,
-    open_generated_test_resource_as_slice, overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
-  use crate::constants::FLAG_SKELETON_SAVED_DATA;
   use crate::data::alife::inherited::alife_object_skeleton::AlifeObjectSkeleton;
 
   #[test]
   fn test_read_write() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
 
     let original: AlifeObjectSkeleton = AlifeObjectSkeleton {
       name: String::from("test-name"),
@@ -126,11 +122,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 13);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 13);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 13 + 8);
 
@@ -144,7 +140,7 @@ mod tests {
 
   #[test]
   fn test_import_export() -> XrfResult {
-    let ltx_filename: String = build_relative_test_sample_file_path(file!(), "import_export.ltx");
+    let ltx_filename: String = GeneratedResources::sample_name(file!(), "import_export.ltx");
     let mut ltx: Ltx = Ltx::new();
 
     let first: AlifeObjectSkeleton = AlifeObjectSkeleton {
@@ -162,9 +158,9 @@ mod tests {
     first.export("first", &mut ltx)?;
     second.export("second", &mut ltx)?;
 
-    ltx.write_to(&mut overwrite_generated_test_resource_as_file(&ltx_filename)?)?;
+    ltx.write_to(&mut GeneratedResources::overwrite(&ltx_filename)?)?;
 
-    let source: Ltx = Ltx::read_from_path(build_absolute_generated_test_resource_path(&ltx_filename))?;
+    let source: Ltx = Ltx::read_from_path(GeneratedResources::path(&ltx_filename))?;
 
     assert_eq!(AlifeObjectSkeleton::import("first", &source)?, first);
     assert_eq!(AlifeObjectSkeleton::import("second", &source)?, second);
@@ -175,16 +171,16 @@ mod tests {
   #[test]
   fn test_read_rejects_saved_bone_data() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_saved_bone_data.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_saved_bone_data.chunk");
 
     writer.write_w1251_string("test-name")?;
-    writer.write_u8(FLAG_SKELETON_SAVED_DATA)?;
+    writer.write_u8(AlifeObjectSkeleton::FLAG_SAVED_DATA)?;
     writer.write_u16::<XRayByteOrder>(753)?;
 
-    writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+    writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     let mut reader: ChunkReader =
-      ChunkReader::from_slice(open_generated_test_resource_as_slice(&filename)?)?.read_child_by_index(0)?;
+      ChunkReader::from_slice(GeneratedResources::open_slice(&filename)?)?.read_child_by_index(0)?;
 
     assert!(matches!(
       AlifeObjectSkeleton::read::<XRayByteOrder, _>(&mut reader),
@@ -198,7 +194,7 @@ mod tests {
   fn test_write_rejects_saved_bone_data() -> XrfResult {
     let original: AlifeObjectSkeleton = AlifeObjectSkeleton {
       name: String::from("test-name"),
-      flags: FLAG_SKELETON_SAVED_DATA,
+      flags: AlifeObjectSkeleton::FLAG_SAVED_DATA,
       source_id: 753,
     };
 
@@ -226,7 +222,7 @@ mod tests {
 
     ltx
       .with_section("object")
-      .set("skeleton.flags", FLAG_SKELETON_SAVED_DATA.to_string());
+      .set("skeleton.flags", AlifeObjectSkeleton::FLAG_SAVED_DATA.to_string());
 
     assert!(matches!(
       AlifeObjectSkeleton::import("object", &ltx),
@@ -244,15 +240,13 @@ mod tests {
       source_id: 34,
     };
 
-    let mut file: File = overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(
-      file!(),
-      "serialize_deserialize.json",
-    ))?;
+    let mut file: File =
+      GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
 
     file.write_all(to_string_pretty(&original)?.as_bytes())?;
     file.seek(SeekFrom::Start(0))?;
 
-    let serialized: String = read_file_as_string(&mut file)?;
+    let serialized: String = read_to_string(&mut file)?;
 
     assert_eq!(serialized.to_string(), serialized);
     assert_eq!(original, serde_json::from_str::<AlifeObjectSkeleton>(&serialized)?);

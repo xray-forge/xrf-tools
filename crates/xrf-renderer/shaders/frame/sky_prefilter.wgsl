@@ -87,9 +87,11 @@ fn cs_prefilter(@builtin(global_invocation_id) id: vec3<u32>) {
   var colour: vec3<f32>;
 
   if (level == 0u) {
-    // At the pictures' share, as the frame shows its sky, so a reflection of it shows what the sky does.
+    // At the pictures' share, as the frame shows its sky, so a reflection of it shows what the sky does; at the
+    // anchored levels at the hemisphere the sky lights the diffuse by (`Lighting::sky_reflected`), a mirror of the
+    // seen sky reading the screen's own.
     colour = sky_light(direction, lighting, sky_cube_0, sky_cube_1, sky_clamp, sky_clouds_0, sky_clouds_1, sky_repeat,
-      picture_exposure(lighting, exposure)) * picture_share(lighting);
+      picture_exposure(lighting, exposure)) * picture_share(lighting) * lighting.sky_reflected.rgb;
   } else {
     colour = blurred_sky(direction, settings.level.y, u32(settings.level.z), f32(level));
   }

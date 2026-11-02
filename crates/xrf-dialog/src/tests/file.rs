@@ -1,11 +1,11 @@
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::write_generated_test_resource;
+use xrf_test_utils::GeneratedResources;
 use xrf_utils::new_windows1251_encoder;
 
-use crate::dialog::Dialog;
-use crate::element::DialogElementKind;
-use crate::file::DialogFile;
-use crate::phrase::DialogPhrase;
+use crate::conversation::dialog::Dialog;
+use crate::conversation::dialog_element_kind::DialogElementKind;
+use crate::conversation::dialog_phrase::DialogPhrase;
+use crate::dialog_file::DialogFile;
 
 /// Parse decoded text, which is what most of these tests need.
 fn parse(source: &str) -> XrfResult<DialogFile> {
@@ -212,7 +212,7 @@ fn ranges_address_the_source_it_kept() -> XrfResult {
 
 #[test]
 fn opens_a_file_declaring_windows_1251() -> XrfResult {
-  let path = write_generated_test_resource(
+  let path = GeneratedResources::write(
     "dialog_file/declared.xml",
     // `Привет` in windows-1251, which is not valid UTF-8 and proves the declaration was honoured.
     [

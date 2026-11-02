@@ -1,0 +1,11 @@
+pub(crate) mod build_project;
+pub(crate) mod check_project_format;
+pub(crate) mod close_project;
+pub(crate) mod detect_mode;
+pub(crate) mod format_project;
+pub(crate) mod open_project;
+pub(crate) mod parse_project;
+pub(crate) mod restore_project;
+pub(crate) mod save_file;
+pub(crate) mod validate_text;
+pub(crate) mod verify_project;

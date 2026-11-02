@@ -1,26 +1,22 @@
 use std::path::Path;
 
 use serde::Serialize;
-use xrf_report::Status;
-use xrf_texture::EquipmentGridOverlap;
+use xrf_report::Report;
 
-use crate::commands::sprite::verify_equipment::sprite_equipment_overlap_report::SpriteEquipmentOverlapReport;
-
-/// The verdict `sprite verify-equipment` reached over an inventory icon grid.
+/// What `sprite verify-equipment` found in the icon grid, beside the system ltx it read the grid from.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SpriteEquipmentVerifyReport {
-  findings: Vec<SpriteEquipmentOverlapReport>,
-  status: Status,
-  subject: String,
+pub struct SpriteVerifyEquipmentReport {
+  system_ltx: String,
+  #[serde(flatten)]
+  report: Report,
 }
 
-impl SpriteEquipmentVerifyReport {
-  pub fn new(subject: &Path, overlaps: &[EquipmentGridOverlap]) -> Self {
+impl SpriteVerifyEquipmentReport {
+  pub fn new(system_ltx: &Path, report: Report) -> Self {
     Self {
-      status: Status::from_is_valid(overlaps.is_empty()),
-      findings: overlaps.iter().map(SpriteEquipmentOverlapReport::new).collect(),
-      subject: xrf_utils::to_portable_path_string(subject),
+      system_ltx: xrf_utils::to_portable_path_string(system_ltx),
+      report,
     }
   }
 }

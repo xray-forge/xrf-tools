@@ -5,13 +5,13 @@ use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::json::read::read_json;
-use crate::json::write::write_canonical_document;
-use crate::language::TranslationLanguage;
+use crate::json::translation_json_reader::TranslationJsonReader;
+use crate::json::translation_json_render::TranslationJsonRender;
+use crate::json::translation_source_name::TranslationSourceName;
+use crate::language::translation_language::TranslationLanguage;
 use crate::project::initialize::translation_initialize_options::TranslationInitializeOptions;
 use crate::project::initialize::translation_initialize_result::TranslationInitializeResult;
-use crate::source_file_name::is_json_source;
-use crate::types::TranslationJson;
+use crate::text::translation_json::TranslationJson;
 
 /// Gives every id an explicit `null` for each language the project ships but the record has no text for.
 pub struct TranslationInitializer;
@@ -87,8 +87,8 @@ impl TranslationInitializer {
   /// Initialize one source, passing over anything that is not a multi-language JSON.
   fn initialize_file(path: &Path, options: &TranslationInitializeOptions) -> XrfResult<TranslationInitializeResult> {
     // Through the shared name parser rather than comparing an extension, so this recognises the same names the reader
-    // does; see `source_file_name` for the case that made them drift.
-    if !is_json_source(path) {
+    // does; see `TranslationSourceName` for the case that made them drift.
+    if !TranslationSourceName::is_path(path) {
       log::info!("Skip file {}", format_path(path));
       xrf_output::info!(options.output, "Skip file {}", format_path(path));
 
@@ -98,18 +98,20 @@ impl TranslationInitializer {
       });
     }
 
-    let mut parsed: TranslationJson = read_json(path)?;
+    let mut parsed: TranslationJson = TranslationJsonReader::read(path)?;
     let mut keys_added: u32 = 0;
 
     for (id, entry) in &mut parsed {
-      for language in TranslationLanguage::get_all_strings() {
-        if !entry.contains_key(&language) {
+      for language in TranslationLanguage::LANGUAGES {
+        let code: String = language.to_string();
+
+        if !entry.contains_key(&code) {
           keys_added += 1;
 
-          log::info!("Initializing missing key: {id} - {language}");
-          xrf_output::info!(options.output, "Initializing missing key: {id} - {language}");
+          log::info!("Initializing missing key: {id} - {code}");
+          xrf_output::info!(options.output, "Initializing missing key: {id} - {code}");
 
-          entry.insert(language, None);
+          entry.insert(code, None);
         }
       }
     }
@@ -117,7 +119,7 @@ impl TranslationInitializer {
     // Through the canonical writer, which is also how the trailing newline this used to drop survives: it serialized
     // with `to_vec_pretty` and appended nothing, so every file it touched lost the one it came with.
     if keys_added > 0 {
-      write_canonical_document(path, &parsed, None)?;
+      TranslationJsonRender::write_document(path, &parsed, None)?;
     }
 
     Ok(TranslationInitializeResult {

@@ -1,11 +1,9 @@
 use std::io::Write;
 
-use xrf_chunk::{ChunkReadWrite, ChunkWriter, XRayByteOrder};
+use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 use xrf_math::Vector3d;
-use xrf_test_utils::utils::{
-  build_relative_test_sample_file_path, open_generated_test_resource_as_file, overwrite_generated_test_resource_as_file,
-};
+use xrf_test_utils::GeneratedResources;
 
 use crate::cform::level_cform_face::LevelCformFace;
 use crate::cform::level_cform_file::{LevelCformFile, LevelCformHeader};
@@ -30,12 +28,13 @@ fn test_read_write() -> XrfResult {
 
   assert_eq!(writer.bytes_written() as u64, LevelCformHeader::SIZE);
 
-  writer.flush_raw_into(&mut overwrite_generated_test_resource_as_file(
-    &build_relative_test_sample_file_path(file!(), &filename),
-  )?)?;
+  writer.flush_raw_into(&mut GeneratedResources::overwrite(&GeneratedResources::sample_name(
+    file!(),
+    &filename,
+  ))?)?;
 
-  let read: LevelCformFile = LevelCformFile::read_from_file::<XRayByteOrder>(open_generated_test_resource_as_file(
-    &build_relative_test_sample_file_path(file!(), &filename),
+  let read: LevelCformFile = LevelCformFile::read_from_file::<XRayByteOrder>(GeneratedResources::open(
+    &GeneratedResources::sample_name(file!(), &filename),
   )?)?;
 
   assert_eq!(read.header, original);
@@ -172,6 +171,54 @@ fn tells_which_points_have_nothing_straight_above_them() -> XrfResult {
 }
 
 #[test]
+fn reads_each_material_the_faces_name_once() -> XrfResult {
+  let mut writer: ChunkWriter = ChunkWriter::new();
+
+  LevelCformHeader {
+    version: 4,
+    vertex_count: 3,
+    face_count: 3,
+    aabb_min: Vector3d::new(0.0, 0.0, 0.0),
+    aabb_max: Vector3d::new(1.0, 0.0, 1.0),
+  }
+  .write::<XRayByteOrder>(&mut writer)?;
+
+  let mut bytes: Vec<u8> = writer.flush_raw_into_buffer()?;
+
+  bytes.extend_from_slice(&[0; 36]);
+
+  // The flag and sector bits beside the material must not leak into it.
+  for packed in [9_u32 | (1 << 15), 5 | (3 << 16), 9] {
+    for index in [0_u32, 1, 2] {
+      bytes.extend_from_slice(&index.to_le_bytes());
+    }
+
+    bytes.extend_from_slice(&packed.to_le_bytes());
+  }
+
+  let (file, materials) =
+    LevelCformFile::read_with_materials_from_chunk::<XRayByteOrder, _>(&mut ChunkReader::from_vec(bytes)?)?;
+
+  assert_eq!(file.header.face_count, 3);
+  assert_eq!(materials.get_ids().iter().copied().collect::<Vec<u16>>(), [5, 9]);
+
+  Ok(())
+}
+
+#[test]
+fn a_form_holding_fewer_faces_than_it_counts_is_an_error_when_reading_materials() -> XrfResult {
+  let mut bytes: Vec<u8> = new_form(&[[0.0, 0.0, 0.0]], &[[0, 0, 0]])?;
+
+  bytes.truncate(bytes.len() - 4);
+
+  assert!(
+    LevelCformFile::read_with_materials_from_chunk::<XRayByteOrder, _>(&mut ChunkReader::from_vec(bytes)?).is_err()
+  );
+
+  Ok(())
+}
+
+#[test]
 fn a_face_naming_a_vertex_past_the_count_is_an_error_when_testing_the_sky() -> XrfResult {
   let bytes: Vec<u8> = new_form(&[[0.0, 0.0, 0.0]], &[[0, 0, 3]])?;
 
@@ -191,13 +238,13 @@ fn truncated_header_is_an_error_and_not_a_panic() -> XrfResult {
 
   bytes.truncate(LevelCformHeader::SIZE as usize - 1);
 
-  overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(file!(), &filename))?
-    .write_all(&bytes)?;
+  GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), &filename))?.write_all(&bytes)?;
 
   assert!(
-    LevelCformFile::read_from_file::<XRayByteOrder>(open_generated_test_resource_as_file(
-      &build_relative_test_sample_file_path(file!(), &filename)
-    )?)
+    LevelCformFile::read_from_file::<XRayByteOrder>(GeneratedResources::open(&GeneratedResources::sample_name(
+      file!(),
+      &filename
+    ))?)
     .is_err(),
     "Expected truncated collision form header to fail reading"
   );

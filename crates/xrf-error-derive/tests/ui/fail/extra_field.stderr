@@ -1,0 +1,5 @@
+error: #[constructor] requires exactly one named `message` field
+ --> tests/ui/fail/extra_field.rs:6:11
+  |
+6 |   Invalid { message: String, line: usize },
+  |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

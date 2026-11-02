@@ -6,29 +6,21 @@ use xrf_archive::{ArchiveFileDescriptor, ArchiveProject, ArchiveSharedPayload};
 use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
+use super::archive_entry_selection::ArchiveEntrySelection;
 use super::archive_shared_payload_index::ArchiveSharedPayloadIndex;
 use super::report::ArchiveListReport;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct ListCommand;
-
-/// The name-table records to include in a listing.
-#[derive(Clone, Copy)]
-pub(crate) enum ArchiveEntrySelection {
-  All,
-  Files,
-  Directories,
-}
 
 impl GenericCommand for ListCommand {
   fn operation(&self) -> &'static str {
     "list"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
+  fn declare(&self, command: Command) -> Command {
+    command
       .about("List the merged entries in an X-Ray archive volume or volume set")
       .arg(
         Arg::new("path")
@@ -61,7 +53,7 @@ impl GenericCommand for ListCommand {
     let output: OutputOptions = context.get_output().clone();
 
     let project: ArchiveProject = ArchiveProject::new(path)?;
-    let entries: Vec<&ArchiveFileDescriptor> = Self::entries(&project, Self::selection(matches));
+    let entries: Vec<&ArchiveFileDescriptor> = ArchiveEntrySelection::of(matches).select(&project);
 
     // Derived over the whole table once, whatever the selection: a filtered listing still says what each of its
     // entries shares with entries it left out.
@@ -69,7 +61,7 @@ impl GenericCommand for ListCommand {
     let shared: ArchiveSharedPayloadIndex = ArchiveSharedPayloadIndex::new(&shared);
 
     for entry in &entries {
-      if matches.get_flag("verbose") {
+      if context.is_verbose() {
         let (compressed, unpacked): (String, String) =
           xrf_utils::format_bytes_pair(u64::from(entry.size_compressed), u64::from(entry.size_real));
 
@@ -99,37 +91,10 @@ impl GenericCommand for ListCommand {
   }
 }
 
-impl ListCommand {
-  pub(crate) fn selection(matches: &ArgMatches) -> ArchiveEntrySelection {
-    if matches.get_flag("files") {
-      ArchiveEntrySelection::Files
-    } else if matches.get_flag("directories") {
-      ArchiveEntrySelection::Directories
-    } else {
-      ArchiveEntrySelection::All
-    }
-  }
-
-  pub(crate) fn entries(project: &ArchiveProject, selection: ArchiveEntrySelection) -> Vec<&ArchiveFileDescriptor> {
-    let mut entries: Vec<&ArchiveFileDescriptor> = project
-      .files
-      .values()
-      .filter(|entry| match selection {
-        ArchiveEntrySelection::All => true,
-        ArchiveEntrySelection::Files => !entry.is_directory,
-        ArchiveEntrySelection::Directories => entry.is_directory,
-      })
-      .collect();
-
-    entries.sort_unstable_by(|left, right| left.name.cmp(&right.name));
-    entries
-  }
-}
-
 #[cfg(test)]
 mod tests {
   use super::ListCommand;
-  use crate::core::generic_command::GenericCommand;
+  use crate::core::command::GenericCommand;
 
   #[test]
   fn rejects_conflicting_entry_kind_filters() {

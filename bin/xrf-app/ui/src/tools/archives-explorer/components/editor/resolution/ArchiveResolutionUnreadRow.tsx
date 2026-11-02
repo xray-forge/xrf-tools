@@ -1,0 +1,35 @@
+import { ArchiveUnreadSource } from "@xrf/ipc/types/xrf-app-archives";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material/typography";
+import { cn } from "@xrf/ui/theme";
+import { ReactElement } from "react";
+
+export interface IArchiveResolutionUnreadRowProps extends BaseComponentProps {
+  source: ArchiveUnreadSource;
+}
+
+/**
+ * One source the open subject declared and could not open.
+ */
+export function ArchiveResolutionUnreadRow({
+  "data-testid": dataTestId = "archive-resolution-unread-row",
+  id,
+  className,
+  source,
+}: IArchiveResolutionUnreadRowProps): ReactElement {
+  return (
+    <div data-testid={dataTestId} id={id} className={cn("border-t border-divider py-2", className)}>
+      <Typography className={"monospace wrap-anywhere"} variant={"body2"}>
+        {source.origin}
+      </Typography>
+
+      <Typography className={"monospace wrap-anywhere text-text-secondary"} variant={"body2"}>
+        {source.path}
+      </Typography>
+
+      <Typography className={"block wrap-anywhere text-warning"} variant={"caption"}>
+        {source.reason}
+      </Typography>
+    </div>
+  );
+}

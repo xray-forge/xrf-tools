@@ -1,9 +1,11 @@
 #import "common/depth_plane"
 #import "common/camera"
 #import "common/scene_light"
+#import "common/display_transform"
 #import "common/octahedral"
 #import "common/fullscreen"
 #import "common/lighting"
+#import "common/fog_colour"
 #import "common/hmodel"
 #import "common/occlusion"
 #import "common/reflection_trace"
@@ -354,12 +356,14 @@ fn remembered_radiance(texel: vec2<i32>, hit: vec3<f32>) -> vec4<f32> {
 
   let scale: f32 = previous_scale(lighting, exposure);
   let shown: vec3<f32> = scene_light(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb, scale);
-  return vec4<f32>(source_unfogged(shown, fog, fog_color_at(lighting, hit, world.y)), 1.0);
+  return vec4<f32>(source_unfogged(shown, fog, fog_color_at(lighting, hit, world_direction(hit), world.y)), 1.0);
 }
 
 // What the last frame showed of the sky in a world direction, as light, and in `w` one where it did: the direction
-// through that frame's camera, read where that frame's depth shows sky or ground lost in its fog, the tonemap undone
-// at the scale that frame used. None off that screen, where it showed something nearer, or where no frame is kept.
+// through that frame's camera, read where that frame's depth shows sky or ground lost in its fog, the picture taken
+// back out of the display it entered by, as the cube's sky is light under every display (`sky_light`), and the
+// tonemap undone at the scale that frame used. None off that screen, where it showed something nearer, or where no
+// frame is kept.
 fn remembered_sky(direction: vec3<f32>) -> vec4<f32> {
   if (reflection.has_source < 0.5) {
     return vec4<f32>(0.0);
@@ -386,9 +390,10 @@ fn remembered_sky(direction: vec3<f32>) -> vec4<f32> {
   }
 
   let scale: f32 = previous_scale(lighting, exposure);
+  let entered: vec3<f32> = scene_shown(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb);
 
-  return vec4<f32>(sky_as_light(scene_shown(textureSampleLevel(source_scene, history_sampler, kept_uv, 0.0).rgb), scale,
-    lighting.reflections.w, is_light_physical()), 1.0);
+  return vec4<f32>(sky_as_light(picture_from_display(entered, lighting.display), scale, lighting.reflections.w,
+    is_light_physical()), 1.0);
 }
 
 // What a ray met looks like as light from the surface it was reflected off: what the last frame showed there, or where
@@ -405,7 +410,8 @@ fn met_radiance(texel: vec2<i32>, hit: vec3<f32>, origin: vec3<f32>) -> vec4<f32
     lit = relit_radiance(texel);
   }
 
-  let fogged: vec3<f32> = fog_mixed(lighting, lit, fog_light(lighting), path_fog(lighting, length(hit - origin)));
+  let fogged: vec3<f32> = fog_mixed(lighting, lit, fog_light(lighting, world_direction(hit - origin)),
+    path_fog(lighting, length(hit - origin)));
 
   return vec4<f32>(fogged * min(1.0, RADIANCE_LIMIT / traced_luminance(fogged)), remembered.w);
 }
@@ -537,9 +543,9 @@ fn trace_start(pixel: vec2<f32>) -> TraceStart {
     return untraced_start(END_UNTRACED);
   }
 
-  let albedo: vec4<f32> = textureLoad(albedo_target, texel, 0);
   let wet: vec4<f32> = load_frame_target(wet_surface, texel);
-  let roughness: f32 = traced_roughness(albedo.a, wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
+  let surface: SurfaceMaterial = material_at(texel);
+  let roughness: f32 = surface.roughness;
 
   // Past the limit the surface reflects the prefiltered sky alone, which combine reads for it.
   if (roughness > lighting.reflection_cut.y) {
@@ -559,8 +565,7 @@ fn trace_start(pixel: vec2<f32>) -> TraceStart {
   let position: vec3<f32> = camera_view_position(vec2<f32>(texel) + 0.5, depth) + normal * wet.b;
   let toward: vec3<f32> = normalize(position);
   let facing: f32 = dot(normal, -toward);
-  let brdf: vec3<f32> = environment_brdf(reflectance_head_on(albedo.rgb, albedo.a, wet.r, material.z), roughness, facing) *
-    reflection.intensity;
+  let brdf: vec3<f32> = environment_brdf(surface.head_on, roughness, facing) * surface.shadowing * reflection.intensity;
 
   let shown: f32 = max(max(brdf.r, brdf.g), brdf.b);
 
@@ -880,12 +885,20 @@ struct TracedSurface {
 // The surface at the frame's texel a traced pixel stands for, its roughness with it, which the guide keeps.
 fn traced_surface_at(texel: vec2<i32>) -> TracedSurface {
   var surface: TracedSurface = traced_geometry(texel);
-  let wet: vec4<f32> = load_frame_target(wet_surface, texel);
 
-  surface.roughness = traced_roughness(textureLoad(albedo_target, texel, 0).a,
-    wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
+  surface.roughness = material_at(texel).roughness;
 
   return surface;
+}
+
+// The surface's material at a texel of the frame, as every path shading it takes it (`surface_material`).
+fn material_at(texel: vec2<i32>) -> SurfaceMaterial {
+  let stored: vec4<f32> = textureLoad(albedo_target, texel, 0);
+  let wet: vec4<f32> = load_frame_target(wet_surface, texel);
+
+  return surface_material(vec4<f32>(authored_colour(stored.rgb), stored.a), textureLoad(material_target, texel, 0).z,
+    water_film(wet, load_frame_target(wet_reach, texel)),
+    wet.a + surface_variance(normal_target, depth_target, texel, wet.g), is_light_anchored(lighting));
 }
 
 // The surface at the frame's texel a traced pixel stands for, its roughness left at none: its normal, distance and
@@ -1372,11 +1385,7 @@ fn fs_upscale(in: FullscreenVarying) -> @location(0) vec4<f32> {
   } else if (!is_any_traced(pixel)) {
     return UNTRACED;
   } else {
-    let wet: vec4<f32> = load_frame_target(wet_surface, texel);
-    let roughness: f32 = traced_roughness(textureLoad(albedo_target, texel, 0).a,
-      wet.a + surface_variance(normal_target, depth_target, texel, wet.g));
-
-    current = guided_upsample(pixel, traced_geometry(texel).normal, distance, roughness);
+    current = guided_upsample(pixel, traced_geometry(texel).normal, distance, material_at(texel).roughness);
   }
 
   if (current.a < 0.0) {

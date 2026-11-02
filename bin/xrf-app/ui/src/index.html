@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <link rel="icon" type="image/png" href="/icon.png" />
+    <!-- Roboto is a fallback for platforms without Segoe, so it is declared but never preloaded. -->
+    <link rel="stylesheet" href="/fonts/roboto/roboto.css" />
+
+    <script inline-source src="/main-init.ts"></script>
+
+    <!--
+      The window paints before react mounts, and until it does the only styles that exist are these.
+      Without them the webview shows its own white default for as long as the bundle takes to boot,
+      which on an otherwise dark application reads as a flash.
+    -->
+    <style>
+      html {
+        background-color: var(--mui-palette-background-default);
+      }
+
+      body {
+        margin: 0;
+      }
+    </style>
+
+    <style>
+      .preload {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+        background-color: var(--mui-palette-background-frame);
+        background-image: var(--xrf-wash);
+        background-attachment: fixed;
+      }
+
+      .preload-title-bar,
+      .preload-status-bar,
+      .preload-rail {
+        box-sizing: border-box;
+        flex-shrink: 0;
+      }
+
+      .preload-title-bar {
+        height: var(--xrf-title-bar-height);
+      }
+
+      .preload-middle {
+        display: flex;
+        flex-grow: 1;
+        min-height: 0;
+      }
+
+      .preload-rail {
+        width: var(--xrf-rail-width);
+      }
+
+      .preload-canvas {
+        box-sizing: border-box;
+        flex-grow: 1;
+        border: 1px solid var(--mui-palette-divider);
+        border-radius: var(--xrf-radius-surface);
+        background-color: var(--mui-palette-background-default);
+        background-image: var(--xrf-wash);
+        background-attachment: fixed;
+      }
+
+      .preload-status-bar {
+        height: var(--xrf-status-bar-height);
+      }
+    </style>
+
+    <title>XRF tools</title>
+  </head>
+
+  <body>
+    <div id="root">
+      <div class="preload">
+        <div class="preload-title-bar"></div>
+
+        <div class="preload-middle">
+          <div class="preload-rail"></div>
+          <div class="preload-canvas"></div>
+          <div class="preload-rail"></div>
+        </div>
+
+        <div class="preload-status-bar"></div>
+      </div>
+    </div>
+
+    <!--
+      Inlined after the skeleton and before the module bundle, which is deferred: the window is revealed here rather
+      than from the bundle so it appears as soon as there is something themed to show.
+    -->
+    <script inline-source src="/main-reveal.ts"></script>
+
+    <script type="module" src="/main.tsx"></script>
+  </body>
+</html>

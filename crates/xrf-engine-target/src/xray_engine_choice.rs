@@ -65,7 +65,11 @@ impl FromStr for XrayEngineChoice {
       .iter()
       .copied()
       .find(|choice| choice.as_str() == value)
-      .ok_or_else(|| format!("Unknown engine '{value}', expected one of: auto, vanilla, extended"))
+      .ok_or_else(|| {
+        let expected: Vec<&str> = Self::ALL.iter().map(|choice| choice.as_str()).collect();
+
+        format!("Unknown engine '{value}', expected one of: {}", expected.join(", "))
+      })
   }
 }
 
@@ -88,7 +92,16 @@ mod tests {
   #[test]
   fn defaults_to_detection() {
     assert_eq!(XrayEngineChoice::default(), XrayEngineChoice::Auto);
-    assert!("anomaly".parse::<XrayEngineChoice>().is_err());
+  }
+
+  #[test]
+  fn refuses_a_choice_it_does_not_name() {
+    assert_eq!(
+      "anomaly".parse::<XrayEngineChoice>(),
+      Err(String::from(
+        "Unknown engine 'anomaly', expected one of: auto, vanilla, extended"
+      ))
+    );
   }
 
   #[test]

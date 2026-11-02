@@ -1,6 +1,6 @@
 #import "generated/structs"
 
-// The enhanced volumetric lighting's froxels, as `pass/froxel_uniform.rs` describes their grid: froxels across and down
+// The enhanced volumetric lighting's froxels, as `feature/weather/volumetric/froxels/froxel_uniform.rs` describes their grid: froxels across and down
 // the screen and along the view, their slices thin near the eye and thickening away from it, a share `t` of the grid
 // standing at `distance × t²` along the view.
 

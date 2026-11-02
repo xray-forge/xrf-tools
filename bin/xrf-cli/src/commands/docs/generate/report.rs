@@ -1,7 +1,6 @@
 use std::path::Path;
 
 use serde::Serialize;
-use xrf_report::Status;
 
 /// What `docs generate` did to a reference tree, in either of its modes.
 ///
@@ -13,7 +12,8 @@ use xrf_report::Status;
 /// `stale` and `removed` are the same drift seen from the two modes: a check names what it found, a
 /// write deletes the pages that no longer belong and names those. Each is empty in the other mode.
 /// `stale` is deposited before the verdict becomes an outcome, since a failing check is exactly when
-/// the drift explaining it is worth reporting.
+/// the drift explaining it is worth reporting. The verdict itself is the envelope's exit code, which a
+/// status here would only repeat.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DocsGenerateReport {
@@ -22,7 +22,6 @@ pub struct DocsGenerateReport {
   pages: usize,
   removed: Vec<String>,
   stale: Vec<String>,
-  status: Status,
 }
 
 impl DocsGenerateReport {
@@ -36,7 +35,6 @@ impl DocsGenerateReport {
       is_check: true,
       pages,
       removed: Vec::new(),
-      status: Status::from_is_valid(stale.is_empty()),
       stale,
     }
   }
@@ -44,7 +42,7 @@ impl DocsGenerateReport {
   /// What a writing run produced, and the pages it deleted on the way.
   ///
   /// `removed` is what a group rename leaves behind, reported because the write is the only moment
-  /// anyone learns those pages existed. The status is passed because the tree is current afterwards.
+  /// anyone learns those pages existed.
   pub fn written(directory: &Path, pages: usize, removed: Vec<String>) -> Self {
     Self {
       directory: xrf_utils::to_portable_path_string(directory),
@@ -52,7 +50,6 @@ impl DocsGenerateReport {
       pages,
       removed,
       stale: Vec::new(),
-      status: Status::Passed,
     }
   }
 }

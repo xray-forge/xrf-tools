@@ -3,7 +3,7 @@ use std::path::Path;
 
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter, find_optional_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
@@ -19,6 +19,9 @@ pub struct LevelGameFile {
 }
 
 impl LevelGameFile {
+  /// The file a level's patrol paths and respawn points are shipped as, in its directory.
+  pub const FILE_NAME: &'static str = "level.game";
+
   /// `RPOINT_CHUNK`, which is `POINT_BASE + ptRPoint`.
   pub const RPOINTS_CHUNK_ID: u32 = 0x2000;
 
@@ -70,14 +73,14 @@ impl LevelGameFile {
     let mut rpoints: Vec<LevelGameRPoint> = Vec::new();
     let mut ways: Vec<LevelGameWay> = Vec::new();
 
-    if let Some(mut table) = find_optional_chunk_by_id(&chunks, Self::RPOINTS_CHUNK_ID) {
+    if let Some(mut table) = ChunkReader::find_optional_by_id(&chunks, Self::RPOINTS_CHUNK_ID) {
       for mut chunk in table.read_children()? {
         rpoints.push(LevelGameRPoint::read::<T, D>(&mut chunk)?);
         chunk.assert_read("Expect all data to be read from level respawn point chunk")?;
       }
     }
 
-    if let Some(mut table) = find_optional_chunk_by_id(&chunks, Self::WAYS_CHUNK_ID) {
+    if let Some(mut table) = ChunkReader::find_optional_by_id(&chunks, Self::WAYS_CHUNK_ID) {
       for mut chunk in table.read_children()? {
         ways.push(LevelGameWay::read::<T, D>(&mut chunk)?);
       }

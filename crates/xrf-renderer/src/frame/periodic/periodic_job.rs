@@ -27,7 +27,7 @@ impl PeriodicJob {
   }
 
   /// A job that may wait up to `wait_most` frames, having waited `waited`.
-  pub fn new_waiting(passes: &'static [&'static str], seed: f32, units: f32, (waited, wait_most): (u32, u32)) -> Self {
+  pub fn new_waiting(passes: &'static [&'static str], seed: f32, units: f32, waited: u32, wait_most: u32) -> Self {
     Self {
       passes,
       seed,

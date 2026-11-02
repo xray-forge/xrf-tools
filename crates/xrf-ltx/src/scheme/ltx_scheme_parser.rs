@@ -1,10 +1,10 @@
 use indexmap::map::Entry;
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path_or;
-use xrf_vfs::{XrayLogicalPath, XrayLookupScope, XrayVfs};
+use xrf_vfs::{XrayLogicalPath, XraySearch};
 
-use crate::ltx::{Ltx, LtxSectionSchemes, Section};
-use crate::scheme::{LtxFieldDataType, LtxFieldScheme, LtxSectionScheme};
+use crate::ltx::{Ltx, Section};
+use crate::scheme::{LtxFieldDataType, LtxFieldScheme, LtxSectionScheme, LtxSectionSchemes};
 use crate::syntax::{LTX_SCHEME_FIELD, LTX_SCHEME_STRICT_FIELD, LTX_SYMBOL_SCHEME, VIRTUAL_LTX_PATH};
 
 /// Parser of LTX scheme definitions.
@@ -12,29 +12,22 @@ use crate::syntax::{LTX_SCHEME_FIELD, LTX_SCHEME_STRICT_FIELD, LTX_SYMBOL_SCHEME
 pub struct LtxSchemeParser {}
 
 impl LtxSchemeParser {
-  /// Parses LTX section schemes from logical paths in a mounted VFS.
+  /// Parses LTX section schemes from logical paths a search reaches.
   ///
   /// # Errors
   ///
   /// Returns an error when a scheme cannot be read or contains invalid, duplicate, or malformed declarations.
-  pub fn parse_from_vfs(
-    vfs: &XrayVfs,
-    scope: &XrayLookupScope,
-    files: &[XrayLogicalPath],
-  ) -> XrfResult<LtxSectionSchemes> {
+  pub fn parse_from_search(search: &XraySearch, files: &[XrayLogicalPath]) -> XrfResult<LtxSectionSchemes> {
     let mut schemes: LtxSectionSchemes = Default::default();
 
     for file in files {
-      Self::absorb(&mut schemes, &Ltx::read_from_vfs_standard(vfs, scope, file.as_str())?)?;
+      Self::absorb(&mut schemes, &Ltx::read_from_search_standard(search, file.as_str())?)?;
     }
 
     Ok(schemes)
   }
 
   /// Parses the section schemes one already-read scheme document declares.
-  ///
-  /// The door for a caller holding the document rather than a path to it: a test over configs in memory, or anything
-  /// reading a scheme file it already parsed for another reason.
   ///
   /// # Errors
   ///
@@ -48,9 +41,6 @@ impl LtxSchemeParser {
   }
 
   /// Folds one scheme document's declarations into what has been collected so far.
-  ///
-  /// Collected across files rather than per file, because a duplicate declaration is a defect whichever file repeats
-  /// it and only the collection can see one.
   fn absorb(schemes: &mut LtxSectionSchemes, ltx: &Ltx) -> XrfResult {
     for (name, section) in ltx {
       if !name.starts_with(LTX_SYMBOL_SCHEME) {

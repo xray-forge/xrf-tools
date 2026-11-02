@@ -1,6 +1,5 @@
 use std::collections::HashMap;
-use std::ffi::OsString;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Components, Path, PathBuf};
 use std::sync::Arc;
 
 use serde::Serialize;
@@ -14,6 +13,10 @@ use crate::payload::{ArchiveOpenVolumes, ArchiveSharedPayload};
 use crate::volume::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveReader};
 
 /// One volume set at a path the caller names, merged into a single name table.
+///
+/// Entries merge by where the engine mounts them, which is their volume's entry point and their authored name: two
+/// volumes holding `common.ltx` under different entry points hold two files, and both stay in the table, each named
+/// behind the part of its entry point the set does not share.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -21,16 +24,17 @@ pub struct ArchiveProject {
   /// Volumes in merge order: a later one wins the name table, so a caller searching them as separate sources must
   /// search them in reverse to resolve an entry to the bytes this project's table names.
   pub archives: Vec<ArchiveDescriptor>,
-  /// Entries keyed by their authored name, which is the same allocation each descriptor carries as its `name`.
+  /// Entries keyed by their name within the project, which is the same allocation each descriptor carries as its
+  /// `name`.
   #[cfg_attr(feature = "typescript-bindings", specta(type = HashMap<String, ArchiveFileDescriptor>))]
   pub files: HashMap<Arc<str>, ArchiveFileDescriptor>,
   /// Entries a later volume overwrote in the merge, in the order they were displaced.
   pub shadowed: Vec<ArchiveFileDescriptor>,
-  pub read_policy: ArchiveReadPolicy,
   /// The tightest path holding exactly these volumes: the volume itself when one file was read, the volumes' common
   /// parent when a directory was walked. Mounting it reaches this project's entries and no others, which is what a
   /// caller reading an entry's bytes back out of the filesystem needs.
   pub root: PathBuf,
+  /// Bytes the merged name table's entries occupy once unpacked, summed when the set was read.
   pub size_real: u64,
 }
 
@@ -63,31 +67,43 @@ impl ArchiveProject {
     }
 
     let volumes: Vec<PathBuf> = ArchiveVolumeDiscovery::discover(path, depth)?;
+    // Every volume is read before any is merged: an entry is named by the part of its volume's mount the others do not
+    // share, which only the whole set can tell.
+    let mut tables: Vec<HashMap<Arc<str>, ArchiveFileDescriptor>> = Vec::with_capacity(volumes.len());
     let mut archives: Vec<ArchiveDescriptor> = Vec::with_capacity(volumes.len());
 
     for volume in &volumes {
       log::info!("Reading archive file: {}", format_path(volume));
 
       let (descriptor, entries) = ArchiveReader::from_path(volume)?.read_archive()?;
+
+      archives.push(descriptor);
+      tables.push(entries);
+    }
+
+    let shared_mount: usize = Self::count_shared_mount_directories(&archives);
+
+    for (index, (archive, entries)) in archives.iter().zip(tables).enumerate() {
       // A set of more than `u32::MAX` volumes cannot be described by the format, and a silent narrowing here would
       // attribute entries to the wrong file rather than refusing the set.
-      let index: u32 = to_format_size(archives.len(), "archive volume count")?;
+      let index: u32 = to_format_size(index, "archive volume count")?;
+      let prefix: String = archive.to_mount_prefix_below(shared_mount);
 
-      // Volumes are read in merge order, so a later one overwrites the name an earlier one claimed. The displaced
-      // entry is kept rather than dropped: it is the copy a patch volume replaced, and nothing downstream can
+      // Volumes merge in order, so a later one overwrites an entry an earlier one mounted at the same place. The
+      // displaced entry is kept rather than dropped: it is the copy a patch volume replaced, and nothing downstream can
       // reconstruct it once the table has folded. Attributing each entry here is the only point that knows both the
       // entry and which volume of the set it arrived from.
-      for (name, entry) in entries {
+      for entry in entries.into_values() {
+        let entry: ArchiveFileDescriptor = entry.in_volume(index).under(&prefix);
+
         // A displaced directory row is not a hidden copy of anything: every volume records the directories it
         // contains, so keeping those would retain one per shared directory per volume and say nothing.
-        if let Some(displaced) = files.insert(name, entry.in_volume(index))
+        if let Some(displaced) = files.insert(Arc::clone(&entry.name), entry)
           && !displaced.is_directory
         {
           shadowed.push(displaced);
         }
       }
-
-      archives.push(descriptor);
     }
 
     if archives.is_empty() {
@@ -109,7 +125,6 @@ impl ArchiveProject {
     Ok(Self {
       archives,
       files,
-      read_policy: ArchiveReadPolicy::default(),
       root,
       shadowed,
       size_real,
@@ -151,34 +166,56 @@ impl ArchiveProject {
     self.files.values().map(|file| u64::from(file.size_compressed)).sum()
   }
 
+  /// Entries of the merged name table that are files, leaving out the directory records a volume also lists.
+  pub fn count_files(&self) -> usize {
+    self.files.values().filter(|entry| !entry.is_directory).count()
+  }
+
+  /// Directory records of the merged name table, which name a folder rather than hold bytes.
+  pub fn count_directories(&self) -> usize {
+    self.files.len() - self.count_files()
+  }
+
+  /// How many leading directories every volume's mount shares, compared without case as the engine's paths are.
+  fn count_shared_mount_directories(archives: &[ArchiveDescriptor]) -> usize {
+    let Some((first, rest)) = archives.split_first() else {
+      return 0;
+    };
+
+    rest
+      .iter()
+      .fold(first.list_mount_directories().count(), |shared, archive| {
+        first
+          .list_mount_directories()
+          .zip(archive.list_mount_directories())
+          .take(shared)
+          .take_while(|(left, right)| left.eq_ignore_ascii_case(right))
+          .count()
+      })
+  }
+
+  /// The deepest directory every volume sits under.
   fn root_from_volumes(volumes: &[PathBuf]) -> PathBuf {
-    let Some(first) = volumes.first() else {
+    let Some((first, rest)) = volumes.split_first() else {
       return PathBuf::new();
     };
-    let mut common: Vec<OsString> = first
-      .parent()
-      .unwrap_or_else(|| Path::new(""))
-      .components()
-      .map(|component| component.as_os_str().to_owned())
-      .collect();
+    let mut common: Vec<Component<'_>> = Self::parent_components(first).collect();
 
-    for volume in &volumes[1..] {
-      let components: Vec<OsString> = volume
-        .parent()
-        .unwrap_or_else(|| Path::new(""))
-        .components()
-        .map(|component| component.as_os_str().to_owned())
-        .collect();
+    for volume in rest {
       let common_length: usize = common
         .iter()
-        .zip(&components)
-        .take_while(|(left, right)| left == right)
+        .zip(Self::parent_components(volume))
+        .take_while(|(left, right)| **left == *right)
         .count();
 
       common.truncate(common_length);
     }
 
     common.into_iter().collect()
+  }
+
+  fn parent_components(volume: &Path) -> Components<'_> {
+    volume.parent().unwrap_or_else(|| Path::new("")).components()
   }
 
   /// Opens every volume of the set, once, for as long as the returned value lives.
@@ -190,34 +227,40 @@ impl ArchiveProject {
     ArchiveOpenVolumes::open(self)
   }
 
-  /// Read one archived file into memory, decompressing it when it is stored compressed.
+  /// Reads one archived file into memory, decompressing it when it is stored compressed.
+  ///
+  /// # Errors
+  ///
+  /// Returns a not-found error when the merged name table holds no such entry, and an error when a volume cannot be
+  /// opened or the payload cannot be read or verified.
   pub fn read_file_bytes(&self, name: &str) -> XrfResult<Vec<u8>> {
-    let descriptor: &ArchiveFileDescriptor = self
-      .files
-      .get(name)
-      .ok_or_else(|| XrfError::new_not_found_error(format!("Cannot read '{name}' - no such file in the archive.")))?;
-
-    self.open_volumes()?.read_bytes(descriptor)
+    self.open_volumes()?.read_bytes(self.get_file(name)?)
   }
 
-  /// Read one archived file as text, subject to the project's read policy.
+  /// Reads one archived file as text, if `policy` admits it.
   ///
   /// # Errors
   ///
   /// Returns an error when the entry is absent, the policy refuses it, or its bytes cannot be read or decoded.
-  pub fn read_file_as_string(&self, filename: &str) -> XrfResult<ArchiveReadResult> {
-    log::info!("Trying to read file from archive: {filename}");
+  pub fn read_file_as_string(&self, name: &str, policy: &ArchiveReadPolicy) -> XrfResult<ArchiveReadResult> {
+    log::info!("Trying to read file from archive: {name}");
 
-    let descriptor: &ArchiveFileDescriptor = self
-      .files
-      .get(filename)
-      .ok_or_else(|| XrfError::new_not_found_error(format!("File '{filename}' is not found in the archive project")))?;
+    let descriptor: &ArchiveFileDescriptor = self.get_file(name)?;
 
+    policy.assert_can_read_as_text(name, descriptor.size_real)?;
+
+    ArchiveReadResult::decode(
+      name,
+      &self.open_volumes()?.read_bytes(descriptor)?,
+      descriptor.size_real,
+    )
+  }
+
+  fn get_file(&self, name: &str) -> XrfResult<&ArchiveFileDescriptor> {
     self
-      .read_policy
-      .assert_can_read_as_text(filename, descriptor.size_real)?;
-
-    ArchiveReadResult::decode(filename, &self.read_file_bytes(filename)?, descriptor.size_real)
+      .files
+      .get(name)
+      .ok_or_else(|| XrfError::new_not_found_error(format!("Cannot read '{name}' - no such file in the archive.")))
   }
 
   /// The payloads more than one entry of this project locates, in volume and offset order.

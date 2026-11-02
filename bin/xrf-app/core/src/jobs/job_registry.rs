@@ -1,0 +1,448 @@
+use std::cmp::Reverse;
+use std::collections::{HashMap, VecDeque};
+use std::fmt::Display;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
+use std::thread;
+use std::time::{Duration, Instant};
+
+use serde::Serialize;
+use serde_json::Value;
+use tauri::ipc::Channel;
+use uuid::Uuid;
+use xrf_job::{JobHandle, JobOutcome, JobProgress, ProgressSink};
+use xrf_utils::{error_to_string, format_duration, wall_clock_millis};
+
+use crate::TauriResult;
+use crate::execution::ExecutionState;
+use crate::jobs::job_conclusion::JobConclusion;
+use crate::jobs::job_description::JobDescription;
+use crate::jobs::job_ending::JobEnding;
+use crate::jobs::job_leases::JobLeases;
+use crate::jobs::job_progress_sink::JobProgressSink;
+use crate::jobs::job_registration::JobRegistration;
+use crate::jobs::job_start::JobStart;
+use crate::jobs::{JobKind, JobResource};
+
+/// Finished jobs the listing keeps.
+const RETAINED_JOBS: usize = 20;
+
+/// Cancellations held for jobs that have not registered yet.
+const RETAINED_TOMBSTONES: usize = 32;
+
+/// A job while it is running.
+struct LiveJob {
+  kind: JobKind,
+  lease_keys: Vec<String>,
+  started_at: Instant,
+  /// The same moment on the wall clock, for a listing that has to say when rather than how long.
+  started_at_epoch: u64,
+  /// Kept so the registry can both stop the job and read its progress.
+  handle: JobHandle,
+  /// Where this job's snapshots go, kept so a page that reloaded onto a dead channel can point it at a live one.
+  sink: Arc<JobProgressSink>,
+  /// What the job was asked to do, as the command described it. Opaque here, and the only record of it once the page
+  /// that sent it is gone.
+  request: Option<Value>,
+  is_cancel_requested: bool,
+}
+
+impl LiveJob {
+  /// This job as the listing describes it: running where `ending` is absent, and finished where it is.
+  fn describe(&self, id: Uuid, ending: Option<JobEnding>) -> JobDescription {
+    let (conclusion, error, result) = match ending {
+      Some(ending) => (Some(ending.conclusion), ending.error, ending.result),
+      None => (None, None, None),
+    };
+
+    JobDescription {
+      id,
+      kind: self.kind,
+      lease_keys: self.lease_keys.clone(),
+      request: self.request.clone(),
+      is_cancel_requested: self.is_cancel_requested,
+      progress: self.handle.get_progress(),
+      conclusion,
+      error,
+      result,
+      duration: self.started_at.elapsed(),
+      started_at: self.started_at_epoch,
+    }
+  }
+}
+
+#[derive(Default)]
+struct RegistryState {
+  live: HashMap<Uuid, LiveJob>,
+  leases: JobLeases,
+  finished: VecDeque<JobDescription>,
+  /// Cancels that arrived before the job they name, newest last.
+  tombstones: VecDeque<Uuid>,
+}
+
+/// Why a job was not admitted.
+enum JobRefusal {
+  /// Its identity already started a job, running or retained as finished.
+  Repeated,
+  /// It cannot start now, for the reason given.
+  Refused(String),
+}
+
+impl From<String> for JobRefusal {
+  fn from(reason: String) -> Self {
+    Self::Refused(reason)
+  }
+}
+
+impl RegistryState {
+  /// Whether this identity already started a job, still running or retained as finished.
+  fn is_known(&self, id: Uuid) -> bool {
+    self.live.contains_key(&id) || self.has_finished(id)
+  }
+
+  /// Whether a job with this identity is already among the retained finished ones.
+  fn has_finished(&self, id: Uuid) -> bool {
+    self.finished.iter().any(|finished| finished.id == id)
+  }
+
+  /// Retain a finished job, dropping the oldest once the listing is full.
+  fn retain_finished(&mut self, description: JobDescription) {
+    self.finished.push_back(description);
+
+    while self.finished.len() > RETAINED_JOBS {
+      self.finished.pop_front();
+    }
+  }
+
+  /// Hold a cancel for a job that has not registered yet, dropping the oldest once full.
+  fn remember_cancel(&mut self, id: Uuid) {
+    if self.tombstones.contains(&id) {
+      return;
+    }
+
+    self.tombstones.push_back(id);
+
+    while self.tombstones.len() > RETAINED_TOMBSTONES {
+      self.tombstones.pop_front();
+    }
+  }
+
+  /// Whether a cancel was waiting for this job, taking it where it was.
+  fn take_tombstone(&mut self, id: Uuid) -> bool {
+    match self.tombstones.iter().position(|waiting| *waiting == id) {
+      Some(index) => {
+        self.tombstones.remove(index);
+
+        true
+      }
+      None => false,
+    }
+  }
+}
+
+/// Every job the backend is running, what each one holds exclusively, and what recently finished.
+pub struct JobRegistry {
+  state: Mutex<RegistryState>,
+  /// How often a running job is asked where it has got to, and the interval its handles report at.
+  interval: Duration,
+  /// Whether a thread is already asking, so a second request for reporting is not a second thread.
+  is_reporting: AtomicBool,
+}
+
+impl JobRegistry {
+  /// A registry whose jobs report at the interval `xrf-job` chose.
+  pub fn new() -> Self {
+    Self::with_interval(JobHandle::DEFAULT_PROGRESS_INTERVAL)
+  }
+
+  /// A registry whose jobs report at `interval`.
+  pub fn with_interval(interval: Duration) -> Self {
+    Self {
+      state: Mutex::new(RegistryState::default()),
+      interval,
+      is_reporting: AtomicBool::new(false),
+    }
+  }
+
+  /// Register the job, run `work` over its handle on the application's pool, and record how it ended, its answer
+  /// retained for the listing, before its leases are released. `get_outcome` reads whether the answer is a cancelled
+  /// run's.
+  ///
+  /// # Errors
+  ///
+  /// Returns why the job could not start, the work's error, or a failure of the blocking hop.
+  pub async fn run<T, E, F>(
+    self: &Arc<Self>,
+    execution: &ExecutionState,
+    start: JobStart,
+    work: F,
+    get_outcome: fn(&T) -> JobOutcome,
+  ) -> TauriResult<T>
+  where
+    T: Serialize + Send + 'static,
+    E: Display,
+    F: FnOnce(JobHandle) -> Result<T, E> + Send + 'static,
+  {
+    let kind: JobKind = start.kind;
+    let (job, mut registration): (JobHandle, JobRegistration) = self.register(start)?;
+
+    execution
+      .run_blocking(&format!("Job {kind}"), move || {
+        let result: TauriResult<T> = work(job).map_err(error_to_string);
+        let cancelled: bool = result
+          .as_ref()
+          .is_ok_and(|value| get_outcome(value) == JobOutcome::Cancelled);
+
+        registration.conclude_with(&result, cancelled);
+
+        result
+      })
+      .await?
+  }
+
+  /// Takes a job's leases as [`Self::run`] does before its work, for a test outside core that holds them while it
+  /// checks what another job is refused; dropping the second half concludes the job and releases them.
+  ///
+  /// # Errors
+  ///
+  /// Returns why the job could not start.
+  #[cfg(any(test, feature = "fixtures"))]
+  pub fn register_fixture(self: &Arc<Self>, start: JobStart) -> TauriResult<(JobHandle, impl Sized + use<>)> {
+    self.register(start)
+  }
+
+  /// Take the job's lease keys and start reporting it as running.
+  pub(crate) fn register(self: &Arc<Self>, start: JobStart) -> TauriResult<(JobHandle, JobRegistration)> {
+    let id: Uuid = start.id;
+    let kind: JobKind = start.kind;
+
+    match self.admit(start) {
+      Ok((handle, registration)) => {
+        match handle.is_cancelled() {
+          true => log::info!("Started job {kind} '{id}', already cancelled"),
+          false => log::info!("Started job {kind} '{id}'"),
+        }
+
+        Ok((handle, registration))
+      }
+      // Expected rather than a fault: Tauri sends every command whose custom-protocol request failed again over
+      // `postMessage`, and a page reload fails each one still in flight, so a job's start comes back once its page is
+      // gone. Running it again would repeat the work for nobody.
+      Err(JobRefusal::Repeated) => {
+        log::info!("Ignored a repeated start of job {kind} '{id}'");
+
+        Err(format!("Job '{id}' has already been started"))
+      }
+      Err(JobRefusal::Refused(reason)) => {
+        log::warn!("{reason}");
+
+        Err(reason)
+      }
+    }
+  }
+
+  /// Take the leases and start reporting the job as running, or answer why it cannot start.
+  fn admit(self: &Arc<Self>, start: JobStart) -> Result<(JobHandle, JobRegistration), JobRefusal> {
+    let JobStart {
+      id,
+      kind,
+      resources,
+      exclusion_group,
+      request,
+      progress,
+    } = start;
+
+    let resources: Vec<JobResource> = resources.iter().map(JobResource::resolve).collect::<TauriResult<_>>()?;
+    let mut lease_keys: Vec<String> = resources.iter().map(JobResource::describe).collect();
+
+    if let Some(group) = &exclusion_group {
+      lease_keys.push(group.clone());
+    }
+
+    let sink: Arc<JobProgressSink> = Arc::new(match progress {
+      Some(channel) => JobProgressSink::new(channel),
+      None => JobProgressSink::detached(),
+    });
+
+    let reporting: Arc<dyn ProgressSink> = Arc::clone(&sink) as Arc<dyn ProgressSink>;
+    let handle: JobHandle = JobHandle::with_interval(reporting, self.interval);
+    let mut state: MutexGuard<RegistryState> = self.lock();
+
+    if state.is_known(id) {
+      return Err(JobRefusal::Repeated);
+    }
+
+    if let Some((owner, taken)) = state.leases.find_conflict(exclusion_group.as_deref(), &resources) {
+      let holder: Option<&LiveJob> = state.live.get(&owner);
+
+      return Err(JobRefusal::Refused(format!(
+        "Cannot start {kind}: {} is already working on '{taken}'.",
+        holder.map_or("another job", |job| job.kind.as_str())
+      )));
+    }
+
+    // A cancel that arrived first still counts. Without this the frontend would have to know not to offer the control
+    // until the backend had acknowledged a job it cannot see.
+    if state.take_tombstone(id) {
+      handle.cancel();
+    }
+
+    state.leases.take(id, exclusion_group, resources);
+
+    let is_cancel_requested: bool = handle.is_cancelled();
+
+    state.live.insert(
+      id,
+      LiveJob {
+        kind,
+        lease_keys,
+        started_at: Instant::now(),
+        started_at_epoch: wall_clock_millis(),
+        handle: handle.clone(),
+        sink,
+        request,
+        is_cancel_requested,
+      },
+    );
+
+    Ok((handle, JobRegistration::new(Arc::clone(self), id)))
+  }
+
+  /// Report a running job's progress to `channel` from now on.
+  pub fn attach(&self, id: Uuid, channel: Channel<JobProgress>) -> bool {
+    let state: MutexGuard<RegistryState> = self.lock();
+
+    let Some(job) = state.live.get(&id) else {
+      return false;
+    };
+
+    job.sink.attach(channel);
+
+    true
+  }
+
+  /// Ask a job to stop, whether or not it has registered yet; answers whether one running was asked, a cancel held for
+  /// a job still on its way answering no.
+  pub fn cancel(&self, id: Uuid) -> bool {
+    let mut state: MutexGuard<RegistryState> = self.lock();
+
+    if let Some(job) = state.live.get_mut(&id) {
+      job.is_cancel_requested = true;
+      job.handle.cancel();
+
+      let kind: JobKind = job.kind;
+
+      drop(state);
+
+      log::info!("Cancelling job {kind} '{id}'");
+
+      return true;
+    }
+
+    // Already finished, or not started yet, and the registry cannot tell which. Recording it is right either way: a
+    // tombstone for a job that never comes is discarded, and one for a job still on its way is the whole point.
+    if state.has_finished(id) {
+      return false;
+    }
+
+    state.remember_cancel(id);
+
+    false
+  }
+
+  /// Starts asking running jobs where they have got to, and answers with the registry now doing it. Where no thread
+  /// can be started, jobs report only as they advance, and the next call tries again.
+  pub fn start_reporting(self: Arc<Self>) -> Arc<Self> {
+    if self.is_reporting.swap(true, Ordering::Relaxed) {
+      return self;
+    }
+
+    let registry: Weak<Self> = Arc::downgrade(&self);
+    let interval: Duration = self.interval;
+    let spawned = thread::Builder::new().name("xrf-job-reports".into()).spawn(move || {
+      // Held only while it asks, so the last owner letting the registry go ends the thread.
+      while let Some(live) = registry.upgrade() {
+        live.report_live();
+        drop(live);
+        thread::sleep(interval);
+      }
+    });
+
+    if let Err(error) = spawned {
+      log::error!("Running jobs will report only as they advance, as no thread asks them: {error}");
+      self.is_reporting.store(false, Ordering::Relaxed);
+    }
+
+    self
+  }
+
+  /// Asks every running job to say where it has got to.
+  pub(super) fn report_live(&self) {
+    let live: Vec<JobHandle> = {
+      let state: MutexGuard<RegistryState> = self.lock();
+
+      state.live.values().map(|job| job.handle.clone()).collect()
+    };
+
+    for handle in live {
+      handle.report_if_due();
+    }
+  }
+
+  /// Every job, running first and newest finished after them.
+  pub fn list(&self) -> Vec<JobDescription> {
+    let state: MutexGuard<RegistryState> = self.lock();
+    let mut running: Vec<JobDescription> = state.live.iter().map(|(id, job)| job.describe(*id, None)).collect();
+
+    // A map has no order of its own, and a listing that reshuffled itself on every read would be unreadable.
+    // Longest-running first, so the job somebody is most likely looking for does not move as shorter ones come and go.
+    running.sort_by_key(|job| Reverse(job.duration));
+    running.extend(state.finished.iter().rev().cloned());
+
+    running
+  }
+
+  /// Release a job's leases and move it into the retained listing.
+  pub(super) fn finish(&self, id: Uuid, ending: JobEnding) {
+    let mut state: MutexGuard<RegistryState> = self.lock();
+
+    let Some(job) = state.live.remove(&id) else {
+      return;
+    };
+
+    let kind: JobKind = job.kind;
+    let duration: Duration = job.started_at.elapsed();
+    let conclusion: JobConclusion = ending.conclusion;
+    let error: Option<String> = ending.error.clone();
+
+    state.leases.release(id);
+    state.retain_finished(job.describe(id, Some(ending)));
+
+    drop(state);
+
+    let elapsed: String = format_duration(duration);
+
+    // Every way a job can end passes through here, including a panic unwinding out of the command, so this is the one
+    // place a run's ending is reported. What it was asked to do was logged by the command that asked.
+    match conclusion {
+      JobConclusion::Completed => log::info!("Completed job {kind} '{id}' in {elapsed}"),
+      JobConclusion::Cancelled => log::info!("Cancelled job {kind} '{id}' after {elapsed}"),
+      JobConclusion::Failed => match error {
+        Some(error) => log::error!("Failed job {kind} '{id}' after {elapsed}: {error}"),
+        None => log::error!("Failed job {kind} '{id}' after {elapsed}, reporting no reason"),
+      },
+    }
+  }
+
+  /// A poisoned registry is still the only record of what is running and what it holds. Refusing to answer would turn
+  /// one panicking command into an application that can never start another job.
+  fn lock(&self) -> MutexGuard<'_, RegistryState> {
+    self.state.lock().unwrap_or_else(PoisonError::into_inner)
+  }
+}
+
+impl Default for JobRegistry {
+  fn default() -> Self {
+    Self::new()
+  }
+}

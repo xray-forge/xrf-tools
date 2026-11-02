@@ -1,13 +1,12 @@
 //! Source trees, packed sets, and the assertions the pack tests are written against.
-//!
-//! Everything is built under the per-process scratch tree, scoped per test, so two tests never share a destination.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_archive::{ArchiveFileDescriptor, ArchiveProject};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_utils::format_path;
+use xrf_vfs::{XrayAsset, XrayMountMode, XrayRoots, XraySearch, XraySearchStep, XrayVfs};
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
 use crate::pack::{ArchivePackResult, ArchivePacker};
@@ -21,9 +20,7 @@ pub(crate) const BINARY: &[u8] = &[0x44, 0x44, 0x53, 0x20, 0x01, 0x02, 0x03, 0xf
 
 /// Build a source tree under this test's scratch directory and return its root.
 pub(crate) fn create_source(scope: &str, files: &[(&str, &[u8])]) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/gamedata"));
-
-  let _ = fs::remove_dir_all(&root);
+  let root: PathBuf = GeneratedResources::create_dir(&format!("{scope}/gamedata")).expect("source directory");
 
   for (name, contents) in files {
     let path: PathBuf = root.join(name.replace('\\', "/"));
@@ -40,7 +37,7 @@ pub(crate) fn create_source(scope: &str, files: &[(&str, &[u8])]) -> PathBuf {
 /// Returned unpacked so a test can refuse it, which is what the checks that must leave no destination behind need.
 pub(crate) fn create_config(scope: &str, files: &[(&str, &[u8])]) -> (ArchivePackConfig, PathBuf) {
   let source: PathBuf = create_source(scope, files);
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
+  let destination: PathBuf = GeneratedResources::path(&format!("{scope}/db"));
 
   let _ = fs::remove_dir_all(&destination);
 
@@ -53,6 +50,48 @@ pub(crate) fn create_config(scope: &str, files: &[(&str, &[u8])]) -> (ArchivePac
   }];
 
   (config, destination)
+}
+
+/// The destination every volume of `scope` is packed into, emptied so a re-run reads only what that run packs.
+pub(crate) fn empty_destination(scope: &str) -> PathBuf {
+  let destination: PathBuf = GeneratedResources::path(&format!("{scope}/db"));
+
+  let _ = fs::remove_dir_all(&destination);
+
+  destination
+}
+
+/// Pack `files` into a volume of their own named `name`, beside the other volumes of `scope`, and return it.
+pub(crate) fn pack_volume(
+  scope: &str,
+  name: &str,
+  files: &[(&str, &[u8])],
+  configure: impl FnOnce(&mut ArchivePackConfig),
+) -> PathBuf {
+  let source: PathBuf = create_source(&format!("{scope}/{name}"), files);
+  let mut config: ArchivePackConfig =
+    ArchivePackConfig::new(&source, GeneratedResources::path(&format!("{scope}/db")), name);
+
+  configure(&mut config);
+
+  let result: ArchivePackResult = ArchivePacker::pack(&config).expect("source tree packs");
+
+  result.volumes.first().expect("one volume written").clone()
+}
+
+/// The bytes a search over the volumes under `root` answers an engine path with, as the explorer and the game tools
+/// read it, or `None` when nothing is mounted there.
+pub(crate) fn read_mounted(root: &Path, logical_path: &str) -> Option<Vec<u8>> {
+  let mut vfs: XrayVfs = XrayVfs::new();
+  let steps: Vec<XraySearchStep> = XrayRoots::one(root.to_path_buf(), XrayMountMode::Volumes)
+    .to_search_plan()
+    .expect("roots plan")
+    .mount_into(&mut vfs)
+    .expect("plan mounts");
+  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
+  let asset: XrayAsset = search.find(logical_path).expect("lookup succeeds")?;
+
+  Some(search.read_asset(&asset).expect("asset reads"))
 }
 
 /// Pack a freshly built source tree, returning what was written and where.
@@ -70,65 +109,6 @@ pub(crate) fn pack(
   (result, destination)
 }
 
-/// Make `directory` unreadable, answering whether the denial actually took effect.
-///
-/// Discovery failures are the point of the checks that use this, and the only portable way to produce one is to take
-/// away the right to list a directory. No account is bound by its own denial, though: `root` ignores a zero mode
-/// outright. A run that cannot deny says so and skips, rather than passing a check it never made.
-pub(crate) fn deny_directory(directory: &Path) -> bool {
-  set_directory_denied(directory, true);
-
-  if fs::read_dir(directory).is_ok() {
-    eprintln!(
-      "skipping: '{}' stays readable for the account running this",
-      format_path(directory)
-    );
-
-    allow_directory(directory);
-
-    return false;
-  }
-
-  true
-}
-
-/// Give back what [`deny_directory`] took, so the scratch tree can be removed again.
-pub(crate) fn allow_directory(directory: &Path) {
-  set_directory_denied(directory, false);
-}
-
-#[cfg(unix)]
-fn set_directory_denied(directory: &Path, is_denied: bool) {
-  use std::os::unix::fs::PermissionsExt;
-
-  let mode: u32 = if is_denied { 0o000 } else { 0o755 };
-
-  fs::set_permissions(directory, fs::Permissions::from_mode(mode)).expect("directory mode");
-}
-
-/// Windows has no mode bits, so a deny entry for the running account is what stops this process listing the directory.
-///
-/// A failure is left to the caller's own readability check, because a filesystem that carries no access list refuses
-/// the command and stays readable, which is exactly the case that should skip.
-#[cfg(windows)]
-fn set_directory_denied(directory: &Path, is_denied: bool) {
-  use std::process::{Command, Stdio};
-
-  let user: String = std::env::var("USERNAME").expect("the running account");
-  let rule: [String; 2] = if is_denied {
-    [String::from("/deny"), format!("{user}:(RD)")]
-  } else {
-    [String::from("/remove:d"), user]
-  };
-
-  let _ = Command::new("icacls")
-    .arg(directory)
-    .args(rule)
-    .stdout(Stdio::null())
-    .stderr(Stdio::null())
-    .status();
-}
-
 pub(crate) fn open(destination: &Path) -> ArchiveProject {
   ArchiveProject::new(destination).expect("written archive opens")
 }
@@ -140,9 +120,6 @@ pub(crate) fn read(project: &ArchiveProject, name: &str) -> Vec<u8> {
 }
 
 /// Assert every produced volume file is within the cap its configuration advertised.
-///
-/// File lengths, not the writer's own accounting: the cap covers the descriptor chunk appended at close, which is
-/// what a check against reported sizes or entry counts would miss.
 pub(crate) fn assert_volumes_within(result: &ArchivePackResult, max_volume_size: u64) {
   for volume in &result.volumes {
     let length: u64 = fs::metadata(volume).expect("volume metadata").len();
@@ -177,9 +154,6 @@ pub(crate) fn descriptor<'p>(project: &'p ArchiveProject, name: &str) -> &'p Arc
 }
 
 /// Assert these entries are one payload: every descriptor locates the same bytes in the same volume.
-///
-/// Descriptors rather than the aliased count, because a count proves a payload was reused and not that the reuse
-/// points at the right one. Returns the shared descriptor for whatever else a test has to say about it.
 pub(crate) fn assert_one_payload<'p>(project: &'p ArchiveProject, names: &[&str]) -> &'p ArchiveFileDescriptor {
   let (first, rest) = names.split_first().expect("at least one name");
   let canonical: &ArchiveFileDescriptor = descriptor(project, first);

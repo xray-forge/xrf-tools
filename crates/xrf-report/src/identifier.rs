@@ -1,42 +1,8 @@
-use std::error::Error;
-use std::fmt::{Display, Formatter};
-
-use serde::Serialize;
-use xrf_error::XrfError;
-
-/// Error returned when a stable report identifier is empty.
-#[derive(Debug, Eq, PartialEq)]
-pub struct IdentifierError {
-  kind: &'static str,
-}
-
-impl IdentifierError {
-  fn empty(kind: &'static str) -> Self {
-    Self { kind }
-  }
-}
-
-impl Display for IdentifierError {
-  fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
-    write!(formatter, "{kind} cannot be empty", kind = self.kind)
-  }
-}
-
-impl Error for IdentifierError {}
-
-// Lets fallible identifier construction propagate with `?` where a caller returns `XrfResult`,
-// instead of forcing an `expect` at every dynamic call site.
-impl From<IdentifierError> for XrfError {
-  fn from(value: IdentifierError) -> Self {
-    Self::Invalid {
-      message: value.to_string(),
-    }
-  }
-}
-
+/// Declares a stable, non-empty report identifier: a string newtype that serializes as the plain string.
 macro_rules! identifier {
   ($name:ident, $kind:literal) => {
-    #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+    #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+    #[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd, ::serde::Serialize)]
     #[serde(transparent)]
     pub struct $name(String);
 
@@ -45,15 +11,24 @@ macro_rules! identifier {
       ///
       /// # Errors
       ///
-      /// Returns [`IdentifierError`] when `value` is empty.
-      pub fn new(value: impl Into<String>) -> Result<Self, IdentifierError> {
+      /// Returns [`IdentifierError`](crate::IdentifierError) when `value` is empty.
+      pub fn new(value: impl Into<String>) -> Result<Self, $crate::IdentifierError> {
         let value: String = value.into();
 
         if value.is_empty() {
-          Err(IdentifierError::empty($kind))
+          Err($crate::IdentifierError::empty($kind))
         } else {
           Ok(Self(value))
         }
+      }
+
+      /// Creates a stable identifier a check or rule names itself by, spelled in its source.
+      ///
+      /// # Panics
+      ///
+      /// Panics when `value` is empty, which only a source spelling it so can make it.
+      pub fn of_static(value: &'static str) -> Self {
+        Self::new(value).expect("a check or rule names itself by a non-empty literal")
       }
 
       pub fn as_str(&self) -> &str {
@@ -61,24 +36,12 @@ macro_rules! identifier {
       }
     }
 
-    impl Display for $name {
-      fn fmt(&self, formatter: &mut Formatter<'_>) -> std::fmt::Result {
+    impl ::std::fmt::Display for $name {
+      fn fmt(&self, formatter: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         formatter.write_str(&self.0)
       }
     }
   };
 }
 
-identifier!(CheckId, "check ID");
-identifier!(RuleId, "rule ID");
-
-#[cfg(test)]
-mod tests {
-  use super::{CheckId, RuleId};
-
-  #[test]
-  fn rejects_empty_identifiers() {
-    assert_eq!(CheckId::new("").unwrap_err().to_string(), "check ID cannot be empty");
-    assert_eq!(RuleId::new("").unwrap_err().to_string(), "rule ID cannot be empty");
-  }
-}
+pub(crate) use identifier;

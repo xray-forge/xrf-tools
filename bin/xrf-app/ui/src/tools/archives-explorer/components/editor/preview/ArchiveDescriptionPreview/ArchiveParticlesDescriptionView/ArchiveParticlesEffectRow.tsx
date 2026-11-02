@@ -1,0 +1,58 @@
+import { ArchiveDescribeScope, ArchiveParticlesEffect } from "@xrf/ipc/types/xrf-app-archives";
+import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Typography } from "@xrf/ui/material/typography";
+import { cn } from "@xrf/ui/theme";
+import { ReactElement } from "react";
+
+import { describeReferenceStatus } from "../ArchiveDescriptionPreview.utils";
+import { ArchiveDescriptionReferenceLink } from "../ArchiveDescriptionReferenceLink";
+import { describeEffectCounts, describeEffectDetail } from "./ArchiveParticlesDescriptionView.utils";
+
+interface IArchiveParticlesEffectRowProps extends BaseComponentProps {
+  effect: ArchiveParticlesEffect;
+  scope: ArchiveDescribeScope;
+}
+
+/**
+ * One emitter: what it draws with, how much of it, and what moves it.
+ */
+export function ArchiveParticlesEffectRow({
+  "data-testid": dataTestId = "archive-particles-effect-row",
+  id,
+  className,
+  effect,
+  scope,
+}: IArchiveParticlesEffectRowProps): ReactElement {
+  const status: Nullable<string> = effect.texture ? describeReferenceStatus(effect.texture, scope) : null;
+
+  return (
+    <div data-testid={dataTestId} id={id} className={cn("min-w-0 py-1.5 leading-panel", className)}>
+      <div className={"flex min-w-0 justify-between gap-2"}>
+        <Typography className={"monospace min-w-0 wrap-anywhere"} variant={"body2"}>
+          {effect.name}
+        </Typography>
+
+        <Typography className={"shrink-0 whitespace-nowrap text-text-secondary"} variant={"body2"}>
+          {describeEffectCounts(effect)}
+        </Typography>
+      </div>
+
+      <Typography className={"block wrap-anywhere text-text-disabled"} variant={"caption"}>
+        {effect.texture ? (
+          <>
+            <ArchiveDescriptionReferenceLink reference={effect.texture} />
+            {` · drawn with ${effect.shader}`}
+            {status ? ` · ${status}` : null}
+          </>
+        ) : (
+          "no sprite, draws nothing"
+        )}
+      </Typography>
+
+      <Typography className={"block wrap-anywhere text-text-disabled"} variant={"caption"}>
+        {describeEffectDetail(effect)}
+      </Typography>
+    </div>
+  );
+}

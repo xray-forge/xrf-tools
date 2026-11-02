@@ -1,0 +1,82 @@
+use xrf_lua::XRayLuaMethodCall;
+
+use crate::script::{XRayShaderPassState, XRayShaderSampler};
+
+/// A literal vertex and pixel shader pair selected by `shader:begin`, and the state chained onto it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct XRayShaderPass {
+  /// The function the pass was declared in, which is what decides when the engine compiles it.
+  function: Option<String>,
+  line_number: usize,
+  pixel_shader: String,
+  /// The samplers the function binds after this `begin` and before its next one, in source order.
+  samplers: Vec<XRayShaderSampler>,
+  state: XRayShaderPassState,
+  vertex_shader: String,
+}
+
+impl XRayShaderPass {
+  /// The function whose pass the renderer compiles as a surface's base element (`_lua_Create`).
+  pub const BASE_FUNCTION: &'static str = "normal";
+
+  /// The function DX10 and later compile the high quality base element from instead, where a script declares it and
+  /// the surface's base texture names a detail (`dx11ResourceManager_Scripting.cpp`, `_lua_Create`).
+  pub const DETAILED_BASE_FUNCTION: &'static str = "normal_hq";
+
+  /// The function whose pass the renderer compiles as a surface's special element (`L_special`): drawn into the
+  /// distortion target where it says `distort(true)` (`mapDistort`), and into the light a self-lit surface gathers where
+  /// its base pass says `emissive(true)` (`mapEmissive`).
+  pub const SPECIAL_FUNCTION: &'static str = "l_special";
+
+  /// The function the deferred renderers compile a script's shadow element from (`_lua_Compile`'s `E[2]`): a script
+  /// without one casts no shadow.
+  pub const SHADOW_FUNCTION: &'static str = "l_point";
+
+  /// Reads one pass off a literal `shader:begin` and whatever is chained onto it.
+  pub fn of(call: &XRayLuaMethodCall, vertex_shader: String, pixel_shader: String) -> Self {
+    Self {
+      function: call.function().map(str::to_owned),
+      line_number: call.line_number(),
+      pixel_shader,
+      samplers: Vec::new(),
+      state: XRayShaderPassState::of(call),
+      vertex_shader,
+    }
+  }
+
+  /// The same pass, binding these samplers.
+  pub(crate) fn with_samplers(mut self, samplers: Vec<XRayShaderSampler>) -> Self {
+    self.samplers = samplers;
+
+    self
+  }
+
+  pub fn function(&self) -> Option<&str> {
+    self.function.as_deref()
+  }
+
+  pub fn line_number(&self) -> usize {
+    self.line_number
+  }
+
+  pub fn pixel_shader(&self) -> &str {
+    &self.pixel_shader
+  }
+
+  pub fn samplers(&self) -> &[XRayShaderSampler] {
+    &self.samplers
+  }
+
+  /// The sampler of a name the pass binds, `s_nmap` and its kin.
+  pub fn sampler(&self, name: &str) -> Option<&XRayShaderSampler> {
+    self.samplers.iter().find(|sampler| sampler.name() == name)
+  }
+
+  pub fn state(&self) -> &XRayShaderPassState {
+    &self.state
+  }
+
+  pub fn vertex_shader(&self) -> &str {
+    &self.vertex_shader
+  }
+}

@@ -1,18 +1,11 @@
-/// Field an exported record declares its own kind in, so a reader knows which type to import it back as.
-pub const META_TYPE_FIELD: &str = "$type";
-
-use std::path::Path;
-
 use xrf_error::XrfResult;
 
 use crate::Ltx;
 
-pub trait FileImportExport: Sized {
-  fn import<P: AsRef<Path>>(path: &P) -> XrfResult<Self>;
+/// Field an exported record declares its own kind in, so a reader knows which type to import it back as.
+pub const META_TYPE_FIELD: &str = "$type";
 
-  fn export<P: AsRef<Path>>(&self, path: &P) -> XrfResult;
-}
-
+/// A record that is read from and written to one section of a config.
 pub trait LtxImportExport: Sized {
   fn import(section_name: &str, ltx: &Ltx) -> XrfResult<Self>;
 

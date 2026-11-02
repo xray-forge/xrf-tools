@@ -1,0 +1,28 @@
+use xrf_renderer_core::{GraphTexture, PassParameters, StorageArray, UniformBinding};
+
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
+use crate::scene::level::lights::light_record::LightRecord;
+use crate::scene::level::lights::light_volume_record::LightVolumeRecord;
+use crate::scene::level::lights::light_volumes_uniform::LightVolumesUniform;
+
+/// What the light volume pass reads: the shafts to draw, the lights they belong to, the scene's light shadow atlas and
+/// the sampler comparing it, the noise breaking them, the frame's depth its half-size depth is taken from, and the
+/// lighting, at whose authored levels they gather display values.
+#[derive(Clone, Copy, PassParameters)]
+#[parameters(group = 1)]
+pub struct LightVolumeParameters<'a> {
+  #[storage]
+  pub light_volumes: StorageArray<LightVolumeRecord>,
+  #[storage]
+  pub records: StorageArray<LightRecord>,
+  #[texture(d2, depth)]
+  pub shadow_atlas: GraphTexture,
+  #[sampler(comparison)]
+  pub shadow_sampler: &'a wgpu::Sampler,
+  #[uniform]
+  pub volumes: UniformBinding<LightVolumesUniform>,
+  #[texture(d2, depth)]
+  pub depth_target: GraphTexture,
+  #[uniform]
+  pub lighting: UniformBinding<LightingUniform>,
+}

@@ -1,6 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 mod pass_parameters;
+mod setting_schema;
 mod shader_permutation;
 mod shader_struct;
 
@@ -37,6 +38,19 @@ pub fn pass_parameters_derive(input: TokenStream) -> TokenStream {
   let input: DeriveInput = parse_macro_input!(input as DeriveInput);
 
   pass_parameters::expand(&input)
+    .unwrap_or_else(Error::into_compile_error)
+    .into()
+}
+
+/// Describes one of the renderer contract's settings for the page: a struct's fields by name, each a number between
+/// the bounds its `#[setting(..)]` gives, a run of widths, or what its type describes; a unit enum a choice of its
+/// variants as they serialize. It expands to `xrf-renderer`'s own `crate::contract::settings::schema` and is derived
+/// there alone; see the crate's README.
+#[proc_macro_derive(RenderSettingSchema, attributes(setting))]
+pub fn setting_schema_derive(input: TokenStream) -> TokenStream {
+  let input: DeriveInput = parse_macro_input!(input as DeriveInput);
+
+  setting_schema::expand(&input)
     .unwrap_or_else(Error::into_compile_error)
     .into()
 }

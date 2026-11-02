@@ -146,7 +146,7 @@ declare_xray_extensions! {
   /// Named the way `s_` is, beside `seq` in the same trees.
   Seq_ => "seq_",
   SndStatic => "snd_static",
-  /// A level's sound occlusion mesh, which sits beside `hom` and was missing from this list.
+  /// A level's sound occlusion mesh, which sits beside `hom`.
   Som => "som",
   Spawn => "spawn",
   Tga => "tga",
@@ -177,7 +177,8 @@ impl XrayExtension {
     }
   }
 
-  /// Whether `name` carries this extension, compared the way [`has_extension`] compares one.
+  /// Whether `name` carries this extension: the token after its final dot, compared undotted and ASCII
+  /// case-insensitively.
   pub fn matches(self, name: &str) -> bool {
     has_extension(name, self.as_str())
   }
@@ -199,7 +200,7 @@ mod tests {
   use std::collections::HashSet;
   use std::path::{Path, PathBuf};
 
-  use xrf_test_utils::utils::build_non_unicode_file_name;
+  use xrf_test_utils::HostFilesystem;
 
   use super::XrayExtension;
 
@@ -319,7 +320,7 @@ mod tests {
   #[test]
   fn the_spellings_are_declared_in_alphabetical_order() {
     // Declaration order is what `ALL` and the generated TypeScript enum are emitted in, so it is a wire property and
-    // not a matter of taste. `hs` sat after `htm`/`html` until 2026-09-13.
+    // not a matter of taste.
     let spellings: Vec<&str> = XrayExtension::ALL.iter().map(|extension| extension.as_str()).collect();
     let mut sorted: Vec<&str> = spellings.clone();
 
@@ -393,9 +394,8 @@ mod tests {
 
   #[test]
   fn matches_a_path_whose_parent_directory_is_not_valid_text() {
-    // A whole-path `to_str` answers `None` here and every caller took the `false` branch without saying so - which is
-    // how a cropped PNG came to be written as DDS bytes under a CP1251 mod directory.
-    let path: PathBuf = PathBuf::from(build_non_unicode_file_name()).join("ak74.png");
+    // A whole-path `to_str` answers `None` here, which would read a PNG under a CP1251 mod directory as no PNG at all.
+    let path: PathBuf = PathBuf::from(HostFilesystem::non_unicode_file_name()).join("ak74.png");
 
     assert!(path.to_str().is_none(), "the whole path has to be unreadable as text");
     assert!(XrayExtension::Png.matches_path(&path));

@@ -8,8 +8,29 @@ pub enum GamedataVerificationRule {
   AnimationsHudItem,
   #[display("animations.motion-collision")]
   AnimationsMotionCollision,
+  /// An object motion (`.anm`) that does not read.
+  #[display("animations.object-motion-read")]
+  AnimationsObjectMotionRead,
+  /// An object motion that does not write back to the bytes it was read from.
+  #[display("animations.object-motion-round-trip")]
+  AnimationsObjectMotionRoundTrip,
+  /// An object motion channel that evaluates to something other than a finite number.
+  #[display("animations.object-motion-value")]
+  AnimationsObjectMotionValue,
   #[display("animations.player-hud")]
   AnimationsPlayerHud,
+  /// A post-process effect whose noise granularity reaches zero or below while it plays, which the engine stops on.
+  #[display("animations.post-process-noise-granularity")]
+  AnimationsPostProcessNoiseGranularity,
+  /// A post-process effect (`.ppe`) that does not read.
+  #[display("animations.post-process-read")]
+  AnimationsPostProcessRead,
+  /// A post-process effect that does not write back to the bytes it was read from.
+  #[display("animations.post-process-round-trip")]
+  AnimationsPostProcessRoundTrip,
+  /// A post-process effect channel that evaluates to something other than a finite number.
+  #[display("animations.post-process-value")]
+  AnimationsPostProcessValue,
   #[display("checks.execution")]
   CheckExecution,
   #[display("collisions.unreachable")]
@@ -42,6 +63,9 @@ pub enum GamedataVerificationRule {
   LevelsFileEmpty,
   #[display("levels.file-truncated")]
   LevelsFileTruncated,
+  /// A collision face made of a material the library does not define, or of a dynamic one, which stops level loading.
+  #[display("levels.game-material")]
+  LevelsGameMaterial,
   #[display("levels.graph-duplicate")]
   LevelsGraphDuplicate,
   #[display("levels.graph-guid")]
@@ -70,22 +94,44 @@ pub enum GamedataVerificationRule {
   LevelsTextureReference,
   #[display("levels.undeclared-map")]
   LevelsUndeclaredMap,
+  /// A statement the LTX dialect reports the engine loads and then ignores.
+  #[display("ltx.dialect")]
+  LtxDialect,
   #[display("ltx.formatting")]
   LtxFormatting,
   #[display("ltx.schema")]
   LtxSchema,
   #[display("ltx.verification")]
   LtxVerification,
+  /// A material the engine looks up by a name of its own that the library does not define as the engine needs it.
+  #[display("materials.engine")]
+  MaterialsEngine,
+  /// The game material library is missing or does not read.
+  #[display("materials.library")]
+  MaterialsLibrary,
+  /// A pair list holding more entries than the engine's load asserts it may.
+  #[display("materials.list")]
+  MaterialsList,
+  /// A wallmark texture a pair names that the game does not hold.
+  #[display("materials.mark")]
+  MaterialsMark,
+  /// A pair naming a material number the library does not define.
+  #[display("materials.pair")]
+  MaterialsPair,
+  /// A config or spawn object naming a material the library does not define.
+  #[display("materials.reference")]
+  MaterialsReference,
   #[display("meshes.chunk-residue")]
   MeshesChunkResidue,
+  /// A bone made of a material the library does not define, or of one that is not dynamic.
+  #[display("meshes.game-material")]
+  MeshesGameMaterial,
   #[display("meshes.motion-label")]
   MeshesMotionLabel,
   #[display("meshes.motion-read")]
   MeshesMotionRead,
   #[display("meshes.motion-validation")]
   MeshesMotionValidation,
-  #[display("meshes.path")]
-  MeshesPath,
   #[display("meshes.read")]
   MeshesRead,
   #[display("meshes.shader-library")]
@@ -102,10 +148,10 @@ pub enum GamedataVerificationRule {
   ParticlesUsageSpawn,
   #[display("particles-usage.spawn-custom-data")]
   ParticlesUsageSpawnCustomData,
-  #[display("scripts.path")]
-  ScriptsPath,
+  /// A runtime script that does not read as Windows-1251 text.
   #[display("scripts.read")]
   ScriptsRead,
+  /// A runtime script LuaJIT's parser rejects.
   #[display("scripts.syntax")]
   ScriptsSyntax,
   #[display("shaders.include-cycle")]
@@ -126,8 +172,6 @@ pub enum GamedataVerificationRule {
   SoundsFiles,
   #[display("sounds.references")]
   SoundsReferences,
-  #[display("spawns.path")]
-  SpawnsPath,
   #[display("spawns.read")]
   SpawnsRead,
   #[display("textures.bump")]
@@ -138,8 +182,6 @@ pub enum GamedataVerificationRule {
   TexturesBumpDeclaration,
   #[display("textures.chunk-residue")]
   TexturesChunkResidue,
-  #[display("textures.path")]
-  TexturesPath,
   #[display("textures.read")]
   TexturesRead,
   #[display("textures.dds")]

@@ -5,6 +5,9 @@ pub(crate) struct WeaponSoundValue<'a> {
 }
 
 impl<'a> WeaponSoundValue<'a> {
+  /// Engine sentinel that disables a weapon sound field.
+  pub(crate) const NO_SOUND: &'static str = "$no_sound";
+
   pub(crate) fn parse(value: &'a str) -> Self {
     match value.split_once(',') {
       Some((name, _)) => Self {
@@ -24,6 +27,11 @@ impl<'a> WeaponSoundValue<'a> {
 
   pub(crate) fn has_parameters(self) -> bool {
     self.has_parameters
+  }
+
+  /// Whether the field plays nothing, which the engine reads `$no_sound` as.
+  pub(crate) fn is_disabled(self) -> bool {
+    self.name == Self::NO_SOUND
   }
 }
 

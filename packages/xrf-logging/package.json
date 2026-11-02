@@ -1,0 +1,42 @@
+{
+  "name": "@xrf/logging",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Console logging under a styled, timestamped prefix, and an elapsed-time reader for log lines.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./react": "./src/use-logger.ts"
+  },
+  "imports": {
+    "#/*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "jest",
+    "lint": "eslint . --max-warnings 0 --cache --cache-location target/eslint/cache.json --cache-strategy content",
+    "format": "prettier --write --ignore-path ../../.prettierignore \"**/*.(js|cjs|mjs|ts|md)\" && pnpm run lint --fix"
+  },
+  "dependencies": {
+    "@xrf/types": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.3.1"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@jest/globals": "catalog:",
+    "@types/react": "^19.3.0",
+    "@typescript/native": "catalog:",
+    "eslint": "catalog:",
+    "jest": "catalog:",
+    "prettier": "catalog:",
+    "react": "^19.3.1",
+    "typescript": "catalog:",
+    "@xrf/toolchain": "workspace:*"
+  }
+}

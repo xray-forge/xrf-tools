@@ -1,18 +1,21 @@
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use glam::Vec3;
 use xrf_renderer::{EngineSpace, RenderLighting, RenderSceneId, RenderViewFrame, RenderViewInput, RenderViewOptions};
 
 use crate::camera::camera_controller::CameraController;
-use crate::contract::world_ambient_report::WorldAmbientReport;
-use crate::contract::world_camera_pose::WorldCameraPose;
-use crate::contract::world_model_pose::WorldModelPose;
+use crate::contract::camera::world_camera_pose::WorldCameraPose;
+use crate::contract::level::world_model_pose::WorldModelPose;
+use crate::contract::weather::world_ambient_report::WorldAmbientReport;
 use crate::contract::world_toggles::WorldToggles;
 use crate::contract::world_viewport_event::WorldViewportEvent;
+use crate::host::world_event_sink::WorldEventSink;
+use crate::host::world_level_weather::WorldLevelWeather;
 use crate::level::ambient::ambient_frame::AmbientFrame;
+use crate::weather::thunder::thunder_play::ThunderPlay;
 use crate::weather::viewport_weather::ViewportWeather;
 use crate::weather::weather_lighting::WeatherLighting;
-use crate::world_event_sink::WorldEventSink;
 
 /// How often a moving camera's pose is published.
 const POSE_INTERVAL: Duration = Duration::from_millis(100);
@@ -60,8 +63,14 @@ impl WorldViewport {
   }
 
   /// Moves the camera and the weather on a frame, publishes what changed, and answers the frame's input; `ambient` is
-  /// where its scene's ambient effects stand, which its weather report carries.
-  pub fn advance(&mut self, input: RenderViewInput<'_>, ambient: Option<WorldAmbientReport>) -> RenderViewFrame {
+  /// where its scene's ambient effects stand, which its weather report carries, and `level` what its scene read every
+  /// weather of the level plays with.
+  pub fn advance(
+    &mut self,
+    input: RenderViewInput<'_>,
+    ambient: Option<WorldAmbientReport>,
+    level: Option<&Arc<WorldLevelWeather>>,
+  ) -> RenderViewFrame {
     let RenderViewInput {
       now,
       delta,
@@ -74,14 +83,14 @@ impl WorldViewport {
 
     // The weather is weighed where the camera stands, in engine space; a fade waits for the skies it fades into.
     let position: Vec3 = self.camera.get_pose().position.into();
-    let is_thundering: bool = self.toggles.is_thundering && options.mode.is_lit;
+    let thunder: ThunderPlay = ThunderPlay::of(self.toggles.is_thundering && options.mode.is_lit);
 
     let eye: Vec3 = EngineSpace::mirror(position);
 
     self.eye = eye;
     self.options.clone_from(options);
 
-    self.weather.advance(now, eye.to_array(), is_thundering, |lighting| {
+    self.weather.advance(now, eye.to_array(), thunder, level, |lighting| {
       skies.request_sky(&lighting.sky)
     });
 
@@ -102,7 +111,7 @@ impl WorldViewport {
       scene: self.scene,
       camera: self.camera.get_frame(),
       lighting: self.get_lighting(),
-      weather: self.weather.get_level().cloned(),
+      weather: self.weather.get_level().map(|level| Arc::clone(&level.render)),
       clock_rate: self.weather.get_player().get_clock_rate(),
     }
   }
@@ -110,7 +119,7 @@ impl WorldViewport {
   /// What its weather's ambients play from this frame, for the ambient effects of a scene it drives.
   pub fn get_ambient_frame(&self) -> Option<AmbientFrame<'_>> {
     self.weather.get_level().map(|level| AmbientFrame {
-      ambients: &self.weather.get_lighting().ambients,
+      ambients: self.weather.get_player().get_ambients(),
       level,
     })
   }

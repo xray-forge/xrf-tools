@@ -1,4 +1,3 @@
-use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -7,18 +6,19 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{format_path, open_export_file};
+use xrf_utils::{StagedFile, format_path};
 
 use crate::chunks::thm_bump_chunk::ThmBumpChunk;
+use crate::chunks::thm_chunks::ThmChunks;
 use crate::chunks::thm_detail_chunk::ThmDetailChunk;
 use crate::chunks::thm_extra_chunk::ThmExtraChunk;
 use crate::chunks::thm_material_chunk::ThmMaterialChunk;
 use crate::chunks::thm_texture_param_chunk::ThmTextureParamChunk;
 use crate::chunks::thm_thumbnail_chunk::ThmThumbnailChunk;
 use crate::chunks::thm_trailing_bytes::ThmTrailingBytes;
-use crate::thm_detail_usage::ThmDetailUsage;
-use crate::thm_texture_flag::ThmTextureFlag;
-use crate::thm_texture_type::ThmTextureType;
+use crate::texture::thm_detail_usage::ThmDetailUsage;
+use crate::texture::thm_texture_flag::ThmTextureFlag;
+use crate::texture::thm_texture_type::ThmTextureType;
 
 /// Texture descriptor file: `ETextureThumbnail` wrapping `STextureParams` (`EThumbnailTexture.cpp`,
 /// `ETextureParams.cpp`).
@@ -149,21 +149,7 @@ impl ThmFile {
         _ => false,
       };
 
-      // The engine's `ETextureParams::Load` reads a chunk's fields and nothing past them, which some texture packs
-      // write: a type chunk a byte longer.
-      let rest: Vec<u8> = chunk.read_remaining()?;
-
-      if !is_folded {
-        file.extra.push(ThmExtraChunk {
-          id: chunk.id,
-          data: rest,
-        });
-      } else if !rest.is_empty() {
-        file.trailing.push(ThmTrailingBytes {
-          id: chunk.id,
-          data: rest,
-        });
-      }
+      ThmChunks::keep_rest(&mut chunk, is_folded, &mut file.extra, &mut file.trailing)?;
     }
 
     Ok(file)
@@ -173,11 +159,10 @@ impl ThmFile {
 impl ThmFile {
   /// Writes the descriptor to a path, creating the directories leading to it.
   pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    if let Some(parent) = path.as_ref().parent() {
-      fs::create_dir_all(parent)?;
-    }
-
-    self.write_to::<T>(&mut open_export_file(path)?)
+    Ok(StagedFile::write_creating_directories(
+      path.as_ref(),
+      &self.write_to_bytes::<T>()?,
+    )?)
   }
 
   /// The descriptor as the bytes of a file.
@@ -251,11 +236,7 @@ impl ThmFile {
       })?;
     }
 
-    for extra in &self.extra {
-      Self::write_payload::<T>(destination, extra.id, |writer| extra.write(writer))?;
-    }
-
-    Ok(())
+    ThmChunks::write_extra::<T>(destination, &self.extra)
   }
 
   /// Frames a folded chunk's fields as a chunk of `id`, the bytes read past them after, so that the order above reads
@@ -266,29 +247,7 @@ impl ThmFile {
     id: u32,
     fill: impl FnOnce(&mut ChunkWriter) -> XrfResult,
   ) -> XrfResult {
-    Self::write_payload::<T>(destination, id, |writer| {
-      fill(writer)?;
-
-      for trailing in self.trailing.iter().filter(|trailing| trailing.id == id) {
-        writer.write_all(&trailing.data)?;
-      }
-
-      Ok(())
-    })
-  }
-
-  /// Frames one payload as a chunk of `id`.
-  fn write_payload<T: ByteOrder>(
-    destination: &mut dyn Write,
-    id: u32,
-    fill: impl FnOnce(&mut ChunkWriter) -> XrfResult,
-  ) -> XrfResult {
-    let mut writer: ChunkWriter = ChunkWriter::new();
-
-    fill(&mut writer)?;
-    writer.flush_chunk_into::<T>(destination, id)?;
-
-    Ok(())
+    ThmChunks::write::<T>(destination, id, &self.trailing, fill)
   }
 }
 
@@ -308,6 +267,16 @@ impl ThmFile {
   /// The texture type the engine sees, which for a file without the chunk is the zeroed default.
   pub fn texture_type(&self) -> ThmTextureType {
     self.texture_type.unwrap_or_default()
+  }
+
+  /// Gives the descriptor `texture_type` as the SDK's editor does, with the flags, format and mip filter that type
+  /// brings; see [`ThmTextureParamChunk::apply_texture_type`].
+  pub fn change_texture_type(&mut self, texture_type: ThmTextureType) {
+    self.texture_type = Some(texture_type);
+
+    if let Some(param) = self.texture_param.as_mut() {
+      param.apply_texture_type(texture_type);
+    }
   }
 
   /// Whether `LoadTHM` reads this descriptor's bump and detail at all.

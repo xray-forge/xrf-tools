@@ -4,7 +4,7 @@ Run every task with `cargo make <task>` from the repository root. The root `Make
 task runs once for the whole workspace. List them with `cargo make --list-all-steps`.
 
 CI's Windows jobs run the same tasks, so a passing `cargo make verify` means their checks pass too. The desktop tasks
-use the Tauri CLI version locked in `bin/xrf-ui`, so `cargo-make` is the only tool to install globally.
+use the Tauri CLI version locked in `bin/xrf-app/ui`, so `cargo-make` is the only tool to install globally.
 
 [ENVIRONMENT.md](./ENVIRONMENT.md) lists every environment variable the binaries and the build read.
 `crates/xrf-env-flags` generates it. To add a variable, add it to that crate's table instead of reading it with
@@ -23,12 +23,15 @@ use the Tauri CLI version locked in `bin/xrf-ui`, so `cargo-make` is the only to
 `dev-app` starts the Tauri backend and the Vite UI in watch mode. Use `serve-backend` or `serve-ui` when working on one
 layer independently or need to attach debugger.
 
-Local development and tests use Rust optimization level 0 for faster builds. Use `cargo make dev-app-optimized` for
-renderer and viewer work or expensive asset operations: it runs Tauri with the `dev-optimized` profile (workspace crates
-at level 1, dependencies at level 3) in its own `target/dev-optimized` folder, so it never rebuilds what `dev-app`
-built. The IDE run configuration `tauri: dev-optimized` does the same. Profile with `cargo make dev-app-profiling`: the
-`profiling` profile builds release code with line tables, unstripped, in `target/profiling`, so a profiler measures and
-names the code that ships.
+Local development and tests use Rust optimization level 0 and line tables only for faster builds: panics and backtraces
+name files and lines, but a debugger cannot inspect variables. `serve-backend` and the IDE run configuration
+`tauri: debug` build the `debugging` profile, with full debug information, in its own `target/debugging` folder.
+
+Use `cargo make dev-app-optimized` for renderer and viewer work or expensive asset operations: it runs Tauri with the
+`dev-optimized` profile (workspace crates at level 1, dependencies at level 3) in its own `target/dev-optimized` folder,
+so it never rebuilds what `dev-app` built. The IDE run configuration `tauri: dev-optimized` does the same. Profile with
+`cargo make dev-app-profiling`: the `profiling` profile builds release code with line tables, unstripped, in
+`target/profiling`, so a profiler measures and names the code that ships.
 
 ## Task reference
 
@@ -39,7 +42,7 @@ names the code that ships.
 | `dev-app`           | Runs the desktop backend and UI in watch mode.                      |
 | `dev-app-optimized` | Runs the same watch mode with DLSS and the `dev-optimized` profile. |
 | `dev-app-profiling` | Runs the same watch mode with DLSS and the `profiling` profile.     |
-| `serve-backend`     | Runs the desktop backend without the UI dev server.                 |
+| `serve-backend`     | Runs the desktop backend without the UI dev server, for a debugger. |
 | `serve-ui`          | Runs the Vite UI dev server without the backend.                    |
 
 ### Build
@@ -93,7 +96,7 @@ CI follows because it runs the same tasks.
 ## Prerequisites
 
 See the [build requirements](./README.md#build-from-source). The desktop app needs the Rust toolchain, Node.js and
-pnpm; the Tauri CLI comes locked with `bin/xrf-ui`. The CLI-only tasks need Rust and Cargo Make.
+pnpm; the Tauri CLI comes locked with `bin/xrf-app/ui`. The CLI-only tasks need Rust and Cargo Make.
 
 The renderer's water and rain maps (`crates/xrf-renderer/assets/water`, `assets/rain`) are stored in Git LFS. Install
 it before cloning (`git lfs install`), or run `git lfs pull` after: without it the tree holds pointer files in their
@@ -115,7 +118,7 @@ on an RTX GPU, with either graphics API. `dev-app` and `build-app` build without
   first. `.cargo/config.toml` points `DLSS_SDK`, `VULKAN_SDK` and `LIBCLANG_PATH` there; any set in the environment wins.
 - Elsewhere than Windows, libclang comes from the system (libclang-dev or LLVM), or `LIBCLANG_PATH`.
 - A build with the feature copies `nvngx_dlss.dll`, `nvngx_dlssd.dll` and NVIDIA's `LICENSE.txt` into its profile's
-  `resources/renderer/dlss/` (`bin/xrf-app/tauri.dlss.conf.json`). NVIDIA's licence lets them ship only inside the
+  `resources/renderer/dlss/` (`bin/xrf-app/app/tauri.dlss.conf.json`). NVIDIA's licence lets them ship only inside the
   application, under terms as protective as its own, so they are never committed.
 - wgpu and naga come from the `xray-forge/xrf-wgpu` fork (`[patch.crates-io]` in `Cargo.toml`): a wgpu release with
   its commits on top: the D3D12 command list a HAL encoder records into exposed, which NGX records DLSS into, with the

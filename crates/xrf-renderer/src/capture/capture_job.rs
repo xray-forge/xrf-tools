@@ -6,9 +6,9 @@ use xrf_error::XrfError;
 use crate::capture::capture_event::CaptureEvent;
 use crate::capture::capture_plan::CapturePlan;
 use crate::capture::capture_shot::CaptureShot;
-use crate::frame::frame_capture::FrameCapture;
-use crate::pass::view_binding::ViewBinding;
-use crate::scene::level::scene_view::SceneView;
+use crate::frame::readback::frame_capture::FrameCapture;
+use crate::pass::view::view_binding::ViewBinding;
+use crate::scene::level::view::scene_view::SceneView;
 
 /// Where a capture stands: metering its exposure, settling a shot, or waiting for the last shots back.
 #[derive(Clone, Copy, Debug, PartialEq)]

@@ -1,15 +1,15 @@
-use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
 use byteorder::ByteOrder;
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk};
-use xrf_utils::{assert_equal, format_path, open_export_file};
+use xrf_utils::{StagedFile, assert_equal, format_path};
 
-// c++ CKinematicsAnimated
+/// One motion bank, the two chunks `motions_value::load` reads for a skinned visual's `motions` reference
+/// (`xrCore/Animation/SkeletonMotions.cpp`).
 #[derive(Debug)]
 pub struct OmfFile {
   pub parameters: SkeletonMotionParametersChunk,
@@ -49,11 +49,11 @@ impl OmfFile {
     assert_equal(chunks.len(), 2, "Unexpected chunks count in omf file, expected 2")?;
 
     let parameters: SkeletonMotionParametersChunk =
-      find_required_chunk_by_id(chunks, SkeletonMotionParametersChunk::CHUNK_ID)?
+      ChunkReader::find_required_by_id(chunks, SkeletonMotionParametersChunk::CHUNK_ID)?
         .read_xr::<T, _>()
         .map_err(|error| XrfError::new_read_error(format!("Failed to read OMF parameters: {error}")))?;
 
-    let motions: SkeletonMotionsChunk = find_required_chunk_by_id(chunks, SkeletonMotionsChunk::CHUNK_ID)?
+    let motions: SkeletonMotionsChunk = ChunkReader::find_required_by_id(chunks, SkeletonMotionsChunk::CHUNK_ID)?
       .read_xr::<T, _>()
       .map_err(|error| XrfError::new_read_error(format!("Failed to read OMF motions: {error}")))?;
 
@@ -72,11 +72,11 @@ impl OmfFile {
 impl OmfFile {
   /// Write omf file data into provided path.
   pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    if let Some(parent) = path.as_ref().parent() {
-      fs::create_dir_all(parent)?;
-    }
+    let mut bytes: Vec<u8> = Vec::new();
 
-    self.write_to::<T>(&mut open_export_file(path)?)
+    self.write_to::<T>(&mut bytes)?;
+
+    Ok(StagedFile::write_creating_directories(path.as_ref(), &bytes)?)
   }
 
   /// Write omf file data into the writer.
@@ -135,27 +135,22 @@ impl OmfFile {
   }
 
   pub fn get_bones_count(&self) -> usize {
-    self
-      .parameters
-      .parts
-      .iter()
-      .map(|it| it.get_bones().len())
-      .sum::<usize>()
+    self.parameters.get_bones_count()
   }
 }
 
 #[cfg(test)]
 mod tests {
+  use std::fs;
+  use std::path::PathBuf;
+
   use xrf_chunk::{ChunkReader, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_skeleton::{
     SkeletonMotion, SkeletonMotionDefinition, SkeletonMotionParametersChunk, SkeletonMotionsChunk, SkeletonPart,
   };
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_absolute_generated_test_resource_path, build_relative_test_sample_file_path,
-    open_generated_test_resource_as_slice,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources, RefusedPublication};
+  use xrf_utils::StagingFaults;
 
   use crate::omf_file::OmfFile;
 
@@ -177,14 +172,12 @@ mod tests {
           SkeletonMotion {
             label: String::from("ak74_draw"),
             count: 2,
-            flags: 1,
-            remaining: vec![9, 8, 7],
+            keys: vec![1, 9, 8, 7],
           },
           SkeletonMotion {
             label: String::from("ak74_idle"),
             count: 4,
-            flags: 0,
-            remaining: vec![1, 2],
+            keys: vec![0, 1, 2],
           },
         ],
       },
@@ -193,12 +186,12 @@ mod tests {
 
   #[test]
   fn test_write_read_file() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "write_read.omf");
+    let filename: String = GeneratedResources::sample_name(file!(), "write_read.omf");
     let original: OmfFile = new_mock(4);
 
-    original.write_to_path::<XRayByteOrder, _>(&build_absolute_generated_test_resource_path(&filename))?;
+    original.write_to_path::<XRayByteOrder, _>(&GeneratedResources::path(&filename))?;
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
     let chunks: Vec<ChunkReader> = ChunkReader::from_slice(file)?.read_children()?;
     let read: OmfFile = OmfFile::read_from_chunks::<XRayByteOrder, _>(&chunks)?;
 
@@ -206,6 +199,20 @@ mod tests {
     assert_eq!(read.parameters.parts, original.parameters.parts);
     assert_eq!(read.parameters.motions, original.parameters.motions);
     assert_eq!(read.motions.motions, original.motions.motions);
+
+    Ok(())
+  }
+
+  /// A write that fails part way leaves the motions file a caller had, and nothing staged beside it.
+  #[test]
+  fn keeps_the_previous_file_when_publication_fails() -> XrfResult {
+    let path: PathBuf = GeneratedResources::create_dir("omf_file/publication")?.join("motions.omf");
+
+    fs::write(&path, b"previous")?;
+    StagingFaults::fail_next_write();
+
+    assert!(new_mock(4).write_to_path::<XRayByteOrder, _>(&path).is_err());
+    RefusedPublication::assert_left_previous(&path, b"previous");
 
     Ok(())
   }
@@ -234,13 +241,29 @@ mod tests {
 
   #[test]
   fn test_write_rejects_unsupported_version() {
-    let file: OmfFile = new_mock(2);
+    let file: OmfFile = new_mock(SkeletonMotionParametersChunk::MAXIMUM_VERSION + 1);
 
     assert!(
       file.write_to::<XRayByteOrder>(&mut Vec::new()).is_err(),
       "Expect write to reject unsupported omf version"
     );
   }
+
+  #[test]
+  fn reads_a_bank_older_than_marks() -> XrfResult {
+    // `motions_value::load` reads any version up to its own with one layout, so a bank from before marks still loads.
+    let mut bytes: Vec<u8> = Vec::new();
+
+    new_mock(2).write_to::<XRayByteOrder>(&mut bytes)?;
+
+    let read: OmfFile = OmfFile::read_from_bytes::<XRayByteOrder>(bytes)?;
+
+    assert_eq!(read.parameters.version, 2);
+    assert_eq!(read.parameters.motions, new_mock(2).parameters.motions);
+
+    Ok(())
+  }
+
   #[test]
   fn test_get_motion_names_reads_the_definitions() -> XrfResult {
     let mut file: OmfFile = new_mock(4);
@@ -305,16 +328,16 @@ mod tests {
 
   #[test]
   fn test_write_read_preserves_a_non_text_label() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "non_text_label.omf");
+    let filename: String = GeneratedResources::sample_name(file!(), "non_text_label.omf");
     let mut original: OmfFile = new_mock(4);
 
     // Windows-1251 round-trips every byte, which is why repacking a scrambled bank is byte identical.
     original.motions.motions[0].label = String::from("\u{2019}<\u{0427}\u{2019}\u{201A}m");
     original.parameters.motions[0].motion = 50_992;
 
-    original.write_to_path::<XRayByteOrder, _>(&build_absolute_generated_test_resource_path(&filename))?;
+    original.write_to_path::<XRayByteOrder, _>(&GeneratedResources::path(&filename))?;
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
     let chunks: Vec<ChunkReader> = ChunkReader::from_slice(file)?.read_children()?;
     let read: OmfFile = OmfFile::read_from_chunks::<XRayByteOrder, _>(&chunks)?;
 

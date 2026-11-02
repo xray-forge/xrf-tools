@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use serde::Serialize;
 use xrf_engine_target::XrayEngine;
 
-use crate::key::{EnvironmentDefault, EnvironmentKey, EnvironmentValue};
 use crate::section::environment_origin::EnvironmentOrigin;
+use crate::section::key::{EnvironmentDefault, EnvironmentKey, EnvironmentValue};
 
 /// One section of an environment config as authored: every key the engine reads that it writes, as the engine reads
 /// it, and every other key as written.

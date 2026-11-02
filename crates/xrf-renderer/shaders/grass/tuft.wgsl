@@ -5,7 +5,7 @@
 // A tuft as the cull keeps it (`grass/planting`): its place and yaw, then its size, hemisphere, sun, and its wave with
 // its ground's normal packed in one float; stood, turned, scaled and swayed as the grass draw stands it, so what the
 // trace's cards hold is where the frame draws it. How the grass sways (`GrassWind`) is declared by
-// `pass/grass_wind_uniform.rs`, in the engine's space.
+// `feature/scene/grass/draw/grass_wind_uniform.rs`, in the engine's space.
 
 // A waving tuft's vertex leant across the ground by its wave's `wind`, as far as its height over the foot times the
 // wave at its place, and as much of that as its own height in the model lets it. The wave runs through the engine's
@@ -18,7 +18,8 @@ fn tuft_swayed(wind: GrassWind, standing: vec3<f32>, foot: f32, wave: f32, share
   // The enhanced motion: the flow field's toss, push and lift at the tuft's place, read in the engine's space.
   if (wind.foliage_trees.w > 0.5) {
     let anim: vec4<f32> = select(wind.foliage_anim, wind.foliage_previous_anim, is_previous);
-    let setup: FoliageSetup = FoliageSetup(wind.foliage_wind, wind.foliage_grass, wind.foliage_trees, anim);
+    let blowing: vec4<f32> = select(wind.foliage_wind, wind.foliage_previous_wind, is_previous);
+    let setup: FoliageSetup = FoliageSetup(blowing, wind.foliage_grass, wind.foliage_trees, anim);
     let moved: vec3<f32> = foliage_grass(vec2<f32>(standing.x, -standing.z), standing.y - foot, setup);
 
     return standing + vec3<f32>(moved.x, moved.y, -moved.z);

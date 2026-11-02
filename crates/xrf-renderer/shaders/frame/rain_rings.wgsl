@@ -1,4 +1,4 @@
-// Reduces the rain's rings (`scene/level/rain_rings.rs`) from their first level into the four after it in one
+// Reduces the rain's rings (`feature/effects/rain/rings/rain_rings.rs`) from their first level into the four after it in one
 // dispatch: each workgroup averages a block of 16 texels a side down to one, through workgroup memory, so no level
 // waits on another pass.
 

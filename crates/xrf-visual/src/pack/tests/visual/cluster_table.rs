@@ -1,8 +1,8 @@
 //! How every packer cuts a drawn run of indices into clusters.
 
 use crate::data::visual::geometry::visual_clusters::VisualClusters;
-use crate::pack::visual_buffer_builder::VisualBufferBuilder;
-use crate::pack::visual_cluster_table::VisualClusterTable;
+use crate::pack::buffer::visual_buffer_builder::VisualBufferBuilder;
+use crate::pack::buffer::visual_cluster_table::VisualClusterTable;
 
 /// A strip of quads along x, two triangles a quad, their corners at heights of nought and one.
 fn new_strip(quads: u32) -> (Vec<u32>, Vec<[f32; 3]>) {

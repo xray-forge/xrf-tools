@@ -1,18 +1,17 @@
 use glam::UVec2;
 use xrf_renderer_core::{
-  FrameGraph, GraphBindings, GraphBuffer, GraphRuntime, GraphTexture, ShaderAtomicU32, StorageArray, StorageArrayMut,
-  UniformBinding,
+  GraphBuffer, GraphDeclaration, GraphTexture, ShaderAtomicU32, StorageArray, StorageArrayMut, UniformBinding,
 };
 
-use crate::pass::static_cull_parameters::StaticCullParameters;
-use crate::pass::static_cull_uniform::StaticCullUniform;
-use crate::pass::static_draw_parameters::StaticDrawParameters;
-use crate::pass::static_draws::StaticDraws;
-use crate::pass::static_impostor_parameters::StaticImpostorParameters;
-use crate::pass::static_occlusion_uniform::StaticOcclusionUniform;
-use crate::pass::wind_uniform::WindUniform;
-use crate::scene::static_scene::static_geometry::StaticGeometry;
-use crate::scene::static_scene::static_layout::StaticLayout;
+use crate::feature::scene::statics::cull::static_cull_parameters::StaticCullParameters;
+use crate::feature::scene::statics::cull::static_cull_uniform::StaticCullUniform;
+use crate::feature::scene::statics::cull::static_occlusion_uniform::StaticOcclusionUniform;
+use crate::feature::scene::statics::draw::static_draw_parameters::StaticDrawParameters;
+use crate::feature::scene::statics::draw::static_draws::StaticDraws;
+use crate::feature::scene::statics::draw::static_impostor_parameters::StaticImpostorParameters;
+use crate::feature::scene::wind::wind_uniform::WindUniform;
+use crate::scene::static_scene::geometry::static_geometry::StaticGeometry;
+use crate::scene::static_scene::geometry::vertex::static_layout::StaticLayout;
 use crate::scene::static_scene::static_scene::StaticScene;
 
 /// The static scene's buffers as a frame graph imports them, once a frame, with the uniforms its culls and draws read
@@ -52,10 +51,16 @@ impl StaticSceneHandles {
   /// Imports the static scene into a frame's graph once: its buffers, the camera's lists, arguments and candidates, the
   /// occlusion pyramid, and the cull's, occlusion's and wind's uniforms pushed, for every cull and static draw to bind.
   pub fn import<'r>(
-    (graph, bindings, runtime): (&mut FrameGraph<'_>, &mut GraphBindings<'r>, &mut GraphRuntime),
+    GraphDeclaration {
+      graph,
+      bindings,
+      runtime,
+    }: GraphDeclaration<'_, 'r>,
     scene: &'r StaticScene,
     pyramid: &'r wgpu::TextureView,
-    (cull, occlusion, wind): (&StaticCullUniform, &StaticOcclusionUniform, &WindUniform),
+    cull: &StaticCullUniform,
+    occlusion: &StaticOcclusionUniform,
+    wind: &WindUniform,
   ) -> Self {
     let mut import = |label: &'static str, buffer: &'r wgpu::Buffer| bindings.import_buffer(graph, label, buffer);
     let handles = (

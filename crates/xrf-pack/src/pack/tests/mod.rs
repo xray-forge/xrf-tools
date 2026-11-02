@@ -1,5 +1,7 @@
 pub(crate) mod fixtures;
 
+mod case_overrides;
+mod entry_points;
 mod measurement;
 mod mount;
 mod names;

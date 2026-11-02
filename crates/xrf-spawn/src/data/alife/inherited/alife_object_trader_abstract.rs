@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -66,16 +66,16 @@ impl LtxImportExport for AlifeObjectTraderAbstract {
     })?;
 
     Ok(Self {
-      money: read_ltx_field("trader.money", section)?,
-      specific_character: read_ltx_field("trader.specific_character", section)?,
-      trader_flags: read_ltx_field("trader.trader_flags", section)?,
-      character_profile: read_ltx_field("trader.character_profile", section)?,
-      community_index: read_ltx_field("trader.community_index", section)?,
-      rank: read_ltx_field("trader.rank", section)?,
-      reputation: read_ltx_field("trader.reputation", section)?,
-      character_name: read_ltx_field("trader.character_name", section)?,
-      dead_body_can_take: read_ltx_field("trader.dead_body_can_take", section)?,
-      dead_body_closed: read_ltx_field("trader.dead_body_closed", section)?,
+      money: section.read_field("trader.money")?,
+      specific_character: section.read_field("trader.specific_character")?,
+      trader_flags: section.read_field("trader.trader_flags")?,
+      character_profile: section.read_field("trader.character_profile")?,
+      community_index: section.read_field("trader.community_index")?,
+      rank: section.read_field("trader.rank")?,
+      reputation: section.read_field("trader.reputation")?,
+      character_name: section.read_field("trader.character_name")?,
+      dead_body_can_take: section.read_field("trader.dead_body_can_take")?,
+      dead_body_closed: section.read_field("trader.dead_body_closed")?,
     })
   }
 
@@ -102,18 +102,14 @@ impl LtxImportExport for AlifeObjectTraderAbstract {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_trader_abstract::AlifeObjectTraderAbstract;
 
   #[test]
   fn test_read_write() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
 
     let original: AlifeObjectTraderAbstract = AlifeObjectTraderAbstract {
       money: 1453,
@@ -133,11 +129,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 74);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 74);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 74 + 8);
 

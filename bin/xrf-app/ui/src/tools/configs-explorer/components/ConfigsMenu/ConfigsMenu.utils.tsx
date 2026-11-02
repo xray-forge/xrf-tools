@@ -1,0 +1,56 @@
+import { LtxInventoryFile } from "@xrf/ipc/types/xrf-ltx-inspect";
+import { Nullable } from "@xrf/types";
+import { DescriptionIcon } from "@xrf/ui/icons/description";
+import { FolderIcon } from "@xrf/ui/icons/folder";
+import { FolderOpenIcon } from "@xrf/ui/icons/folder-open";
+import { ITreeIconDecoration, ITreeNode, IVirtualizedTreeIcons } from "@xrf/ui/tree";
+
+/** Hoisted so the tree is handed the same icons every render rather than a fresh set. */
+export const CONFIG_TREE_ICONS: IVirtualizedTreeIcons = {
+  collapsed: <FolderIcon />,
+  expanded: <FolderOpenIcon />,
+  leaf: <DescriptionIcon />,
+};
+
+const ENTRY_POINT_DECORATION: ITreeIconDecoration = {
+  color: "primary.main",
+  title: "Entry point: nothing includes it, so it resolves on its own",
+};
+
+const SCHEME_FILE_DECORATION: ITreeIconDecoration = {
+  color: "secondary.main",
+  title: "Scheme declaration: what a section bound to it may hold",
+};
+
+const ATTACHMENT_DECORATION: ITreeIconDecoration = {
+  color: "success.main",
+  title: "Patch file: it changes another config rather than standing on its own",
+};
+
+/**
+ * How a row is tinted by what the config is to the project.
+ *
+ * @param item - Row the tree is about to draw.
+ * @returns How to tint its icon, or null to leave it in the neutral colour.
+ */
+export function decorateConfigIcon(item: ITreeNode<LtxInventoryFile>): Nullable<ITreeIconDecoration> {
+  // Switched on the role's own discriminator rather than tested against it three times, so adding a role to the
+  // inventory is a compiler error here instead of a row that silently loses its mark.
+  switch (item.payload?.role.kind) {
+    case "entryPoint":
+      return ENTRY_POINT_DECORATION;
+
+    case "schemeFile":
+      return SCHEME_FILE_DECORATION;
+
+    case "attachment":
+      return ATTACHMENT_DECORATION;
+
+    case "included":
+      return null;
+
+    // A directory row, which stands for no config at all.
+    case undefined:
+      return null;
+  }
+}

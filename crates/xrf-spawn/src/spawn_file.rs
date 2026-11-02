@@ -5,11 +5,11 @@ use std::path::Path;
 
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
-use xrf_error::{XrfError, XrfResult};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
+use xrf_error::XrfResult;
 use xrf_ltx::FileImportExport;
 use xrf_math::Vector3d;
-use xrf_utils::{assert_equal, assert_length, open_export_file};
+use xrf_utils::{StagedFile, assert_equal, assert_length};
 
 use crate::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
 use crate::chunks::spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk;
@@ -68,28 +68,33 @@ impl SpawnFile {
   pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
     assert_length(chunks, 5, "Unexpected chunks count in spawn file root, expected 5")?;
 
-    let spawn_file: Self = {
-      Self {
-        header: find_required_chunk_by_id(chunks, SpawnHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-        alife_spawn: find_required_chunk_by_id(chunks, SpawnALifeSpawnsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-        artefact_spawn: find_required_chunk_by_id(chunks, SpawnArtefactSpawnsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-        patrols: find_required_chunk_by_id(chunks, SpawnPatrolsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-        graphs: find_required_chunk_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-      }
+    let spawn_file: Self = Self {
+      header: ChunkReader::find_required_by_id(chunks, SpawnHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      alife_spawn: ChunkReader::find_required_by_id(chunks, SpawnALifeSpawnsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      artefact_spawn: ChunkReader::find_required_by_id(chunks, SpawnArtefactSpawnsChunk::CHUNK_ID)?
+        .read_xr::<T, _>()?,
+      patrols: ChunkReader::find_required_by_id(chunks, SpawnPatrolsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      graphs: ChunkReader::find_required_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?.read_xr::<T, _>()?,
     };
 
+    spawn_file.assert_header_counts()?;
+
+    Ok(spawn_file)
+  }
+
+  /// Refuse a header whose object and level counts are not what the file holds, as the engine sizes its registries by
+  /// them.
+  fn assert_header_counts(&self) -> XrfResult {
     assert_length(
-      &spawn_file.alife_spawn.objects,
-      spawn_file.header.objects_count as usize,
+      &self.alife_spawn.objects,
+      self.header.objects_count as usize,
       "Expected correct objects count",
     )?;
     assert_equal(
-      spawn_file.header.levels_count,
-      spawn_file.graphs.header.levels_count as u32,
+      self.header.levels_count,
+      u32::from(self.graphs.header.levels_count),
       "Expected correct levels count",
-    )?;
-
-    Ok(spawn_file)
+    )
   }
 
   /// Read only the game graphs chunk of the spawn file by provided path.
@@ -121,7 +126,7 @@ impl SpawnFile {
   pub fn read_graphs_from_chunks<T: ByteOrder, D: ChunkDataSource>(
     chunks: &[ChunkReader<D>],
   ) -> XrfResult<SpawnGraphsChunk> {
-    find_required_chunk_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?.read_xr::<T, _>()
+    ChunkReader::find_required_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?.read_xr::<T, _>()
   }
 
   /// Reads which level each game vertex stands on out of a spawn file's root chunks, and nothing else of the graph.
@@ -132,7 +137,10 @@ impl SpawnFile {
   pub(crate) fn read_vertex_levels_from_chunks<T: ByteOrder, D: ChunkDataSource>(
     chunks: &[ChunkReader<D>],
   ) -> XrfResult<GraphVertexLevels> {
-    GraphVertexLevels::read::<T, _>(&mut find_required_chunk_by_id(chunks, SpawnGraphsChunk::CHUNK_ID)?)
+    GraphVertexLevels::read::<T, _>(&mut ChunkReader::find_required_by_id(
+      chunks,
+      SpawnGraphsChunk::CHUNK_ID,
+    )?)
   }
 
   /// The alife objects a spawn file places on one level, by the level each one's game vertex stands on, reading nothing
@@ -150,7 +158,7 @@ impl SpawnFile {
     let mut arrivals: Vec<SpawnLevelArrival> = Vec::new();
     let mut skipped: Vec<SpawnSkippedObject> = Vec::new();
     let total: u32 = SpawnALifeSpawnsChunk::read_each::<T, _>(
-      &mut find_required_chunk_by_id(chunks, SpawnALifeSpawnsChunk::CHUNK_ID)?,
+      &mut ChunkReader::find_required_by_id(chunks, SpawnALifeSpawnsChunk::CHUNK_ID)?,
       |index, object| match object {
         Ok(object) => {
           if let AlifeObjectInherited::SeLevelChanger(changer) = &object.inherited {
@@ -202,7 +210,7 @@ impl SpawnFile {
       .filter(|(id, _)| is_on_level(*id))
       .map(|(id, vertex)| (id, vertex.level_point.clone()))
       .collect();
-    let patrols: Vec<Patrol> = find_required_chunk_by_id(chunks, SpawnPatrolsChunk::CHUNK_ID)?
+    let patrols: Vec<Patrol> = ChunkReader::find_required_by_id(chunks, SpawnPatrolsChunk::CHUNK_ID)?
       .read_xr::<T, SpawnPatrolsChunk>()?
       .patrols
       .into_iter()
@@ -221,23 +229,24 @@ impl SpawnFile {
     })
   }
 
-  /// Write spawn file data to the file by provided path.
+  /// Write spawn file data to the file by provided path, making the directories above it: encoded whole first and
+  /// staged beside it, so a failure leaves whatever was there before.
   pub fn write_to_path<T: ByteOrder, P: AsRef<Path>>(&self, path: &P) -> XrfResult {
-    let path_ref: &Path = path.as_ref();
+    let mut bytes: Vec<u8> = Vec::new();
 
-    if let Some(parent) = path_ref.parent() {
-      fs::create_dir_all(parent)?;
-      self.write_to::<T>(&mut open_export_file(path)?)
-    } else {
-      Err(XrfError::new_not_found_error(format!(
-        "Spawn file parent directory was not found for {:?}",
-        path_ref.to_str()
-      )))
-    }
+    self.write_to::<T>(&mut bytes)?;
+
+    Ok(StagedFile::write_creating_directories(path.as_ref(), &bytes)?)
   }
 
   /// Write spawn file data to the writer.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the header's counts disagree with what the file holds, or a chunk cannot be written.
   pub fn write_to<T: ByteOrder>(&self, writer: &mut dyn Write) -> XrfResult {
+    self.assert_header_counts()?;
+
     let mut header_chunk_writer: ChunkWriter = ChunkWriter::new();
     header_chunk_writer.write_xr::<T, _>(&self.header)?;
     header_chunk_writer.flush_chunk_into::<T>(writer, SpawnHeaderChunk::CHUNK_ID)?;
@@ -288,13 +297,21 @@ impl SpawnFile {
 
 #[cfg(test)]
 mod tests {
-  use uuid::uuid;
+  use std::fs;
+  use std::path::PathBuf;
+
+  use uuid::{Uuid, uuid};
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
+  use xrf_test_utils::{GeneratedResources, RefusedPublication};
+  use xrf_utils::StagingFaults;
 
   use super::SpawnFile;
+  use crate::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
+  use crate::chunks::spawn_artefact_spawns_chunk::SpawnArtefactSpawnsChunk;
   use crate::chunks::spawn_graphs_chunk::SpawnGraphsChunk;
+  use crate::chunks::spawn_header_chunk::SpawnHeaderChunk;
   use crate::chunks::spawn_patrols_chunk::SpawnPatrolsChunk;
   use crate::data::graph::graph_header::GraphHeader;
   use crate::data::graph::graph_level::GraphLevel;
@@ -339,6 +356,89 @@ mod tests {
       }],
       links: vec![],
     }
+  }
+
+  /// A write that fails part way leaves the spawn a caller had, and nothing staged beside it.
+  #[test]
+  fn keeps_the_previous_file_when_publication_fails() -> XrfResult {
+    let path: PathBuf = GeneratedResources::create_dir("spawn_file/publication")?.join("all.spawn");
+    let guid: Uuid = uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7");
+    let spawn: SpawnFile = SpawnFile {
+      header: SpawnHeaderChunk {
+        version: 10,
+        guid,
+        graph_guid: guid,
+        objects_count: 0,
+        levels_count: 0,
+      },
+      alife_spawn: SpawnALifeSpawnsChunk { objects: Vec::new() },
+      artefact_spawn: SpawnArtefactSpawnsChunk { nodes: Vec::new() },
+      patrols: SpawnPatrolsChunk { patrols: Vec::new() },
+      graphs: SpawnGraphsChunk {
+        header: GraphHeader {
+          version: 10,
+          vertices_count: 0,
+          edges_count: 0,
+          points_count: 0,
+          guid,
+          levels_count: 0,
+        },
+        levels: Vec::new(),
+        vertices: Vec::new(),
+        edges: Vec::new(),
+        points: Vec::new(),
+        cross_tables: Vec::new(),
+      },
+    };
+
+    fs::write(&path, b"previous")?;
+    StagingFaults::fail_next_write();
+
+    assert!(spawn.write_to_path::<XRayByteOrder, _>(&path).is_err());
+    RefusedPublication::assert_left_previous(&path, b"previous");
+
+    Ok(())
+  }
+
+  /// A header counting objects the file does not hold would size the engine's registry wrong, so it is not written.
+  #[test]
+  fn refuses_to_write_a_header_that_miscounts_its_objects() {
+    let guid: Uuid = uuid!("78e55023-10b1-426f-9247-bb680e5fe0b7");
+    let spawn: SpawnFile = SpawnFile {
+      header: SpawnHeaderChunk {
+        version: 10,
+        guid,
+        graph_guid: guid,
+        objects_count: 1,
+        levels_count: 0,
+      },
+      alife_spawn: SpawnALifeSpawnsChunk { objects: Vec::new() },
+      artefact_spawn: SpawnArtefactSpawnsChunk { nodes: Vec::new() },
+      patrols: SpawnPatrolsChunk { patrols: Vec::new() },
+      graphs: SpawnGraphsChunk {
+        header: GraphHeader {
+          version: 10,
+          vertices_count: 0,
+          edges_count: 0,
+          points_count: 0,
+          guid,
+          levels_count: 0,
+        },
+        levels: Vec::new(),
+        vertices: Vec::new(),
+        edges: Vec::new(),
+        points: Vec::new(),
+        cross_tables: Vec::new(),
+      },
+    };
+    let mut bytes: Vec<u8> = Vec::new();
+    let error: String = spawn
+      .write_to::<XRayByteOrder>(&mut bytes)
+      .expect_err("a header counting an object the file lacks")
+      .to_string();
+
+    assert!(error.contains("Expected correct objects count"), "{error}");
+    assert!(bytes.is_empty());
   }
 
   #[test]

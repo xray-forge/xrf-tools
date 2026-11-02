@@ -5,6 +5,8 @@ use std::fs;
 use xrf_material::fixtures::{FixtureTree, ThmFixture};
 use xrf_thm::{ThmBumpMode, ThmFile, ThmTextureType};
 
+use crate::project::gamedata_check::GamedataCheck;
+use crate::project::textures::textures_verifier::TexturesVerifier;
 use crate::project::textures::verify_textures_result::GamedataTexturesVerificationResult;
 use crate::{
   Finding, GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions,
@@ -31,8 +33,8 @@ fn project(tree: &FixtureTree) -> GamedataProject {
 }
 
 fn verify(tree: &FixtureTree) -> GamedataTexturesVerificationResult {
-  project(tree)
-    .verify_textures(&GamedataProjectVerifyOptions::default())
+  TexturesVerifier::new(&project(tree), &GamedataProjectVerifyOptions::default())
+    .verify()
     .expect("textures verified")
 }
 
@@ -136,7 +138,7 @@ fn a_declaration_the_engine_skips_for_its_type_is_invalid_rather_than_unresolved
   );
   assert!(
     result
-      .get_failure_message()
+      .get_summary()
       .ends_with("1 bump declarations the engine never reads")
   );
 }

@@ -1,28 +1,49 @@
 use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use xrf_anm::AnmFile;
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
 use xrf_material::XraySurfaceDescriptor;
 use xrf_renderer::{
-  RenderAssetSource, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn, RenderLevelWeather,
-  RenderSpawnModels,
+  RenderAssetSource, RenderLevelDetails, RenderLevelParticles, RenderLevelSource, RenderLevelSpawn, RenderSpawnModels,
 };
 use xrf_visual::{LightsDescription, SectorPackage};
 
 use crate::contract::world_viewport_event::WorldViewportEvent;
-use crate::world_event_sink::WorldEventSink;
+use crate::host::world_event_sink::WorldEventSink;
+use crate::host::world_level_source::WorldLevelSource;
+use crate::host::world_level_weather::WorldLevelWeather;
 
 /// How a test level packs a sector.
 pub type TestSectorPack = Box<dyn Fn(u32) -> XrfResult<SectorPackage> + Send + Sync>;
 
+/// How many times each read of a test level, or of the sources sharing its count, was asked for.
+#[derive(Default)]
+pub struct TestLevelReads {
+  pub lights: AtomicU32,
+  pub weather: AtomicU32,
+  pub spawn: AtomicU32,
+  pub particles: AtomicU32,
+  pub details: AtomicU32,
+}
+
+impl TestLevelReads {
+  /// The lights, weather, spawn, particles and grass reads asked for so far.
+  pub fn count(&self) -> [u32; 5] {
+    [&self.lights, &self.weather, &self.spawn, &self.particles, &self.details].map(|count| count.load(Ordering::SeqCst))
+  }
+}
+
 /// A level holding nothing but what a test gives it: the key its scene is shared by, its sectors, each packed as
-/// `pack` says, and its object motions by name; everything else it is asked for is not there.
+/// `pack` says, and its object motions by name; everything else it is asked for is not there, each ask counted.
 pub struct TestLevelSource {
   pub key: Option<String>,
   pub sectors: u32,
   pub pack: TestSectorPack,
   pub motions: HashMap<String, AnmFile>,
+  pub reads: Arc<TestLevelReads>,
 }
 
 impl Default for TestLevelSource {
@@ -32,6 +53,7 @@ impl Default for TestLevelSource {
       sectors: 0,
       pack: Box::new(|_| Err(Self::none())),
       motions: HashMap::new(),
+      reads: Arc::default(),
     }
   }
 }
@@ -58,6 +80,12 @@ impl RenderLevelSource for TestLevelSource {
     self.sectors
   }
 
+  fn get_surfaces(&self) -> &[XraySurfaceDescriptor] {
+    &[]
+  }
+}
+
+impl WorldLevelSource for TestLevelSource {
   fn get_scene_key(&self) -> Option<String> {
     self.key.clone()
   }
@@ -66,15 +94,15 @@ impl RenderLevelSource for TestLevelSource {
     (self.pack)(sector)
   }
 
-  fn get_surfaces(&self) -> &[XraySurfaceDescriptor] {
-    &[]
-  }
-
   fn read_lights(&self) -> XrfResult<LightsDescription> {
+    self.reads.lights.fetch_add(1, Ordering::SeqCst);
+
     Err(Self::none())
   }
 
-  fn read_weather(&self) -> XrfResult<RenderLevelWeather> {
+  fn read_weather(&self) -> XrfResult<WorldLevelWeather> {
+    self.reads.weather.fetch_add(1, Ordering::SeqCst);
+
     Err(Self::none())
   }
 
@@ -83,6 +111,8 @@ impl RenderLevelSource for TestLevelSource {
   }
 
   fn read_spawn(&self) -> XrfResult<RenderLevelSpawn> {
+    self.reads.spawn.fetch_add(1, Ordering::SeqCst);
+
     Err(Self::none())
   }
 
@@ -91,10 +121,14 @@ impl RenderLevelSource for TestLevelSource {
   }
 
   fn read_details(&self) -> XrfResult<Option<RenderLevelDetails>> {
+    self.reads.details.fetch_add(1, Ordering::SeqCst);
+
     Ok(None)
   }
 
   fn read_particles(&self) -> XrfResult<Option<RenderLevelParticles>> {
+    self.reads.particles.fetch_add(1, Ordering::SeqCst);
+
     Ok(None)
   }
 

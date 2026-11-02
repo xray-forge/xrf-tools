@@ -4,20 +4,18 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_job::JobHandle;
 use xrf_shaders::XRayShaderSourceLoader;
 use xrf_utils::format_path;
-use xrf_vfs::{XrayLookupScope, XrayVfs};
+use xrf_vfs::XraySearch;
 
 /// Loads shader sources through mounted sources, so an installation's `db\shaders` volume reads like a loose tree.
 pub struct GamedataShaderSourceLoader<'a> {
   job: JobHandle,
-  scope: &'a XrayLookupScope,
-  vfs: &'a XrayVfs,
+  search: &'a XraySearch,
 }
 
 impl<'a> GamedataShaderSourceLoader<'a> {
-  pub fn new(vfs: &'a XrayVfs, scope: &'a XrayLookupScope) -> Self {
+  pub fn new(search: &'a XraySearch) -> Self {
     Self {
-      scope,
-      vfs,
+      search,
       job: JobHandle::inert(),
     }
   }
@@ -40,10 +38,10 @@ impl XRayShaderSourceLoader for GamedataShaderSourceLoader<'_> {
 
     // Absence is not an error here: a missing include is reported by the caller as a finding against the shader that names
     // it, which is more useful than a read failure with no context.
-    if self.vfs.scoped(self.scope).find(logical_path)?.is_none() {
+    let Some(asset) = self.search.find(logical_path)? else {
       return Ok(None);
-    }
+    };
 
-    self.vfs.scoped(self.scope).read_bytes(logical_path).map(Some)
+    self.search.read_asset(&asset).map(Some)
   }
 }

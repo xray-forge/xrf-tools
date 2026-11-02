@@ -4,7 +4,9 @@ use std::sync::Arc;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::context::gpu_context::GpuContext;
+use crate::contract::settings::render_frame_rate::RenderFrameRate;
 use crate::host::render_window_host::RenderWindowHost;
+use crate::window::display_target::DisplayTarget;
 use crate::window::window_backdrop::WindowBackdrop;
 
 /// Frames the swapchain may queue ahead of the display: one fewer misses every other refresh under the window's
@@ -22,9 +24,9 @@ pub struct RenderWindow {
   format: wgpu::TextureFormat,
   present_modes: Vec<wgpu::PresentMode>,
   usages: wgpu::TextureUsages,
-  /// What the swapchain was last configured as: its size and whether it waits for vsync; none once an image asks for it
-  /// to be configured again.
-  configured: Cell<Option<(u32, u32, bool)>>,
+  /// What the swapchain was last configured as: its size and how it presents; none once an image asks for it to be
+  /// configured again.
+  configured: Cell<Option<(u32, u32, wgpu::PresentMode)>>,
   /// Whether the surface was lost, which only a new one recovers from.
   is_lost: Cell<bool>,
   /// Frames in a row the surface gave no image for, and why the last one gave none.
@@ -82,8 +84,9 @@ impl RenderWindow {
     &mut self.backdrop
   }
 
-  pub fn get_format(&self) -> wgpu::TextureFormat {
-    self.format
+  /// What it presents into: its swapchain, in the format it picked.
+  pub fn get_target(&self) -> DisplayTarget {
+    DisplayTarget { format: self.format }
   }
 
   /// Whether the surface was lost: the window is then drawn into through a new one.
@@ -96,19 +99,34 @@ impl RenderWindow {
     self.configured.set(None);
   }
 
-  /// Configures the swapchain for the window's size now, answering the size; `None` while the window shows nothing.
-  pub fn ready(&mut self, context: &GpuContext, is_vsync: bool) -> Option<(u32, u32)> {
+  /// Configures the swapchain for the window's size now, presenting as `frame_rate` asks, answering the size; `None`
+  /// while the window shows nothing.
+  pub fn ready(&mut self, context: &GpuContext, frame_rate: &RenderFrameRate) -> Option<(u32, u32)> {
     let (width, height) = self.host.get_client_size();
 
     if width == 0 || height == 0 || self.host.is_hidden() {
       return None;
     }
 
-    if self.configured.get() != Some((width, height, is_vsync)) {
-      self.configure(context, width, height, is_vsync);
+    let present_mode: wgpu::PresentMode = self.get_present_mode(frame_rate);
+
+    if self.configured.get() != Some((width, height, present_mode)) {
+      self.configure(context, width, height, present_mode);
     }
 
     Some((width, height))
+  }
+
+  /// How its swapchain presents at `frame_rate`: waiting for vsync, or else as soon as drawn where the surface allows.
+  fn get_present_mode(&self, frame_rate: &RenderFrameRate) -> wgpu::PresentMode {
+    if frame_rate.is_vsync {
+      wgpu::PresentMode::Fifo
+    } else {
+      [wgpu::PresentMode::Immediate, wgpu::PresentMode::Mailbox]
+        .into_iter()
+        .find(|it| self.present_modes.contains(it))
+        .unwrap_or(wgpu::PresentMode::Fifo)
+    }
   }
 
   /// The next image to draw into, of the size `ready` configured; `None` where the surface gives none this time, which
@@ -169,16 +187,7 @@ impl RenderWindow {
     }
   }
 
-  fn configure(&mut self, context: &GpuContext, width: u32, height: u32, is_vsync: bool) {
-    let present_mode: wgpu::PresentMode = if is_vsync {
-      wgpu::PresentMode::Fifo
-    } else {
-      [wgpu::PresentMode::Immediate, wgpu::PresentMode::Mailbox]
-        .into_iter()
-        .find(|it| self.present_modes.contains(it))
-        .unwrap_or(wgpu::PresentMode::Fifo)
-    };
-
+  fn configure(&mut self, context: &GpuContext, width: u32, height: u32, present_mode: wgpu::PresentMode) {
     self.surface.configure(
       &context.device,
       &wgpu::SurfaceConfiguration {
@@ -194,6 +203,6 @@ impl RenderWindow {
         color_space: wgpu::SurfaceColorSpace::Auto,
       },
     );
-    self.configured.set(Some((width, height, is_vsync)));
+    self.configured.set(Some((width, height, present_mode)));
   }
 }

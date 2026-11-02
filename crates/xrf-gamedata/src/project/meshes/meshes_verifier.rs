@@ -1,7 +1,10 @@
+use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_error::XrfResult;
+use xrf_gamemtl::GameMtlFile;
 
+use crate::project::gamedata_check::GamedataCheck;
 use crate::project::meshes::mesh_assets_verification_result::GamedataMeshAssetsVerificationResult;
 use crate::project::meshes::mesh_assets_verifier::MeshAssetsVerifier;
 use crate::project::meshes::shader_library_verifier::ShaderLibraryVerifier;
@@ -13,12 +16,14 @@ pub(crate) struct MeshesVerifier<'a> {
   project: &'a GamedataProject,
 }
 
-impl<'a> MeshesVerifier<'a> {
-  pub(crate) fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
+impl<'a> GamedataCheck<'a> for MeshesVerifier<'a> {
+  type Result = GamedataMeshesVerificationResult;
+
+  fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
     Self { options, project }
   }
 
-  pub(crate) fn verify(&self) -> XrfResult<GamedataMeshesVerificationResult> {
+  fn verify(&self) -> XrfResult<GamedataMeshesVerificationResult> {
     self.options.job.check_cancelled()?;
 
     xrf_output::heading!(self.options.output, "Verify meshes:");
@@ -26,8 +31,12 @@ impl<'a> MeshesVerifier<'a> {
     let started_at: Instant = Instant::now();
 
     let shader_library = ShaderLibraryVerifier::new(self.project).verify();
+    // Bones are checked against the material library only where it reads; the materials check reports it otherwise.
+    let game_materials: Option<Arc<GameMtlFile>> = self.project.game_materials().ok();
     let mesh_assets: GamedataMeshAssetsVerificationResult = match shader_library.library() {
-      Some(shader_library) => MeshAssetsVerifier::new(self.project, self.options, shader_library).verify()?,
+      Some(shader_library) => {
+        MeshAssetsVerifier::new(self.project, self.options, shader_library, game_materials.as_deref()).verify()?
+      }
       None => GamedataMeshAssetsVerificationResult {
         is_skipped: true,
         ..Default::default()
@@ -41,7 +50,7 @@ impl<'a> MeshesVerifier<'a> {
       self.options.output,
       "Verified gamedata meshes in {}, {}",
       xrf_utils::format_duration(result.duration),
-      result.get_failure_message()
+      result.get_summary()
     );
 
     self.options.job.check_cancelled()?;

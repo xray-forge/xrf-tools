@@ -1,15 +1,14 @@
 //! What the configuration's rules put in the archive and keep out of it, and what an excluded subtree is spared.
-//!
-//! The rules themselves are unit tested beside the configuration that owns them. These pack real trees, which is
-//! where a rule can be caught reaching a neighbour it shares a prefix with, or reading a subtree it excluded.
 
 use std::path::PathBuf;
 
 use xrf_archive::ArchiveProject;
 use xrf_error::XrfError;
+use xrf_ltx::Ltx;
+use xrf_test_utils::HostFilesystem;
 
-use crate::pack::config::ArchivePackDirectory;
-use crate::pack::tests::fixtures::{BINARY, CONFIG, allow_directory, create_config, deny_directory, open, pack, read};
+use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
+use crate::pack::tests::fixtures::{BINARY, CONFIG, create_config, open, pack, read};
 use crate::pack::{ArchivePackResult, ArchivePacker};
 
 #[test]
@@ -58,6 +57,63 @@ fn an_excluded_directory_does_not_reach_the_neighbour_it_shares_a_prefix_with() 
   }
 }
 
+#[test]
+fn an_exclusion_names_its_directory_however_its_separators_are_spelled() {
+  const FILES: [(&str, &[u8]); 3] = [
+    ("configs\\private\\draft.ltx", CONFIG),
+    ("configs\\private_backup\\draft.ltx", CONFIG),
+    ("configs\\public\\release.ltx", CONFIG),
+  ];
+
+  /// The files a packed set holds, sorted so two sets compare as lists.
+  fn packed_files(scope: &str, configure: impl FnOnce(&mut ArchivePackConfig)) -> Vec<String> {
+    let (_, destination) = pack(scope, &FILES, configure);
+    let mut names: Vec<String> = open(&destination)
+      .files
+      .values()
+      .filter(|entry| !entry.is_directory)
+      .map(|entry| entry.name.to_string())
+      .collect();
+
+    names.sort();
+
+    names
+  }
+
+  // The xrCompress dialect, whose import already spelled rules the way an archive names directories.
+  let from_ltx: Vec<String> = packed_files("exclusion_spellings/ltx", |config| {
+    *config = config
+      .clone()
+      .with_ltx(&Ltx::read_from_str("[exclude_folders]\nconfigs/private = true\n").expect("ltx parses"));
+  });
+
+  assert_eq!(
+    from_ltx,
+    ["configs\\private_backup\\draft.ltx", "configs\\public\\release.ltx"],
+    "the directory is excluded and the sibling sharing its prefix is not"
+  );
+
+  // What JSON, the desktop packer and a direct call hand over unchanged.
+  for (index, path) in [
+    "configs/private",
+    "configs\\private\\",
+    "configs/private/",
+    "\\configs\\private",
+  ]
+  .into_iter()
+  .enumerate()
+  {
+    let packed: Vec<String> = packed_files(&format!("exclusion_spellings/{index}"), |config| {
+      config.exclude_directories = vec![ArchivePackDirectory {
+        path: String::from(path),
+        is_recursive: true,
+      }];
+    });
+
+    assert_eq!(packed, from_ltx, "'{path}' selects what the LTX rule does");
+  }
+}
+
 /// A packed volume set is read as a complete build of what the configuration selected, so a source subtree the walk
 /// cannot enumerate has to end the run. Filtered out, packing reported success over an archive silently missing
 /// everything below the unreadable directory.
@@ -72,14 +128,14 @@ fn refuses_to_pack_a_source_subtree_it_cannot_read() {
   );
   let locked: PathBuf = config.source.join("scripts").join("locked");
 
-  if !deny_directory(&locked) {
+  if !HostFilesystem::deny_listing(&locked) {
     return;
   }
 
   let result: Result<ArchivePackResult, XrfError> = ArchivePacker::pack(&config);
 
   // Restored before asserting, so a failed expectation still leaves a tree the next run can remove.
-  allow_directory(&locked);
+  HostFilesystem::allow_listing(&locked);
 
   assert!(
     result.is_err(),
@@ -109,13 +165,13 @@ fn does_not_read_a_recursively_excluded_subtree() {
     is_recursive: true,
   }];
 
-  if !deny_directory(&locked) {
+  if !HostFilesystem::deny_listing(&locked) {
     return;
   }
 
   let result: Result<ArchivePackResult, XrfError> = ArchivePacker::pack(&config);
 
-  allow_directory(&locked);
+  HostFilesystem::allow_listing(&locked);
 
   assert_eq!(
     result.expect("the excluded subtree is never read").files_total,

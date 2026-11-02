@@ -1,14 +1,9 @@
+pub(crate) mod copies;
 pub(crate) mod frame_failure_log;
 pub(crate) mod frame_task;
 pub(crate) mod gpu_state;
-pub(crate) mod loader_receiver;
-pub(crate) mod render_command;
-pub(crate) mod render_link;
-pub(crate) mod render_queue;
+pub(crate) mod queue;
 pub(crate) mod render_thread;
-pub(crate) mod render_wait;
-pub(crate) mod render_workers;
-pub(crate) mod reopening_scenes;
 pub(crate) mod retry_backoff;
 pub(crate) mod running_gpu;
-pub(crate) mod scene_view_framing;
+pub(crate) mod views;

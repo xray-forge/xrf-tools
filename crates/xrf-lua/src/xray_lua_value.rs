@@ -33,11 +33,7 @@ impl XRayLuaValue {
         } => Self::read_string(literal, *quote_type).map_or(Self::Other, Self::String),
         _ => Self::Other,
       },
-      Expression::Number(token) => token
-        .token()
-        .to_string()
-        .parse::<f64>()
-        .map_or(Self::Other, Self::Number),
+      Expression::Number(token) => Self::read_number(&token.token().to_string()).map_or(Self::Other, Self::Number),
       // `true` and `false` arrive as symbols, as do `nil` and `...`, which name nothing.
       Expression::Symbol(token) => match token.token().to_string().as_str() {
         "true" => Self::Boolean(true),
@@ -62,15 +58,16 @@ impl XRayLuaValue {
     }
   }
 
-  /// What a local bound to this value holds.
-  pub(crate) fn to_binding(&self) -> XRayLuaBinding {
-    match self {
-      Self::String(value)
-      | Self::Local {
-        binding: XRayLuaBinding::String(value),
-        ..
-      } => XRayLuaBinding::String(value.clone()),
-      _ => XRayLuaBinding::Other,
+  /// A number literal's value: decimal with an optional fraction and exponent, or a hexadecimal integer.
+  ///
+  /// `None` for a spelling only LuaJIT's FFI gives meaning to, such as `10LL` or `1i`, and for a hexadecimal float,
+  /// which no script this reads writes.
+  fn read_number(literal: &str) -> Option<f64> {
+    match literal.strip_prefix("0x").or_else(|| literal.strip_prefix("0X")) {
+      // Through `u64` so a hexadecimal integer reads as the number it names; the engine's scripts stay far below where
+      // an `f64` stops holding one exactly.
+      Some(digits) => u64::from_str_radix(digits, 16).ok().map(|number| number as f64),
+      None => literal.parse::<f64>().ok(),
     }
   }
 
@@ -133,9 +130,9 @@ impl XRayLuaValue {
             at += 1;
           }
         }
-        // Exactly two hexadecimal digits.
+        // Exactly two hexadecimal digits, which is never more than a byte.
         b'x' => {
-          value.push(Self::read_hex(bytes.get(at..at + 2)?)? as u8);
+          value.push(u8::try_from(Self::read_hex(bytes.get(at..at + 2)?)?).ok()?);
           at += 2;
         }
         // Skips the whitespace after it, line breaks included.

@@ -1,9 +1,11 @@
 use std::path::Path;
 use std::time::Duration;
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_utils::to_portable_path_string;
+
+use crate::project::parse::translation_parse_census::TranslationParseCensus;
 
 /// What one import run read, changed, and objected to.
 ///
@@ -11,6 +13,7 @@ use xrf_utils::to_portable_path_string;
 /// a count says how much moved, a finding says which file has a problem and why. `subject` on a
 /// finding is what makes a per-file breakdown unnecessary.
 #[derive(Debug, Serialize)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct TranslationParseResult {
   /// Whether the run read every table or was stopped between them.
@@ -19,6 +22,7 @@ pub struct TranslationParseResult {
   /// complete and the rest untouched.
   pub outcome: xrf_job::JobOutcome,
   #[serde(with = "xrf_utils::duration_ms")]
+  #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
   pub duration: Duration,
   /// The language this run filed every entry under.
   pub language: String,
@@ -35,38 +39,8 @@ pub struct TranslationParseResult {
   /// cannot drift apart by restating it differently.
   pub report: Report,
   #[serde(skip_serializing)]
+  #[cfg_attr(feature = "typescript-bindings", specta(skip))]
   findings: Vec<Finding>,
-}
-
-/// How much one import run moved.
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[serde(rename_all = "camelCase")]
-pub struct TranslationParseCensus {
-  /// String tables read out of the scope.
-  pub files_read: u32,
-  /// JSON sources created because nothing was there yet.
-  pub files_created: u32,
-  /// JSON sources rewritten because merging changed something in them.
-  pub files_updated: u32,
-  /// JSON sources left alone because merging changed nothing.
-  pub files_unchanged: u32,
-  /// Files skipped without being read, because they are not string tables or hold no entries.
-  pub files_skipped: u32,
-  /// Entries read out of the XML, before any merging.
-  pub entries_read: u32,
-  /// Ids this run introduced to their file.
-  pub entries_inserted: u32,
-  /// Placeholders this run replaced with text.
-  pub entries_filled: u32,
-  /// Ids whose text already matched what was read.
-  pub entries_unchanged: u32,
-  /// Ids whose existing text differed from what was read.
-  ///
-  /// Kept unless the run was told to overwrite, in which case this counts what was replaced.
-  pub entries_conflicted: u32,
-  /// `null` placeholders added for languages a file carries but a record did not.
-  pub placeholders_added: u32,
 }
 
 impl TranslationParseResult {
@@ -105,7 +79,7 @@ impl TranslationParseResult {
 
   pub fn to_report(&self) -> Report {
     Report::new(vec![CheckReport::new(
-      CheckId::new("translations").expect("Expected a non-empty translation check ID"),
+      CheckId::of_static("translations"),
       self.get_status(),
       Some(self.duration),
       self.findings.clone(),
@@ -114,11 +88,9 @@ impl TranslationParseResult {
 
   /// Record something about a file that was read through the VFS, named by its logical path.
   pub(crate) fn record_finding(&mut self, rule: &'static str, subject: &str, message: impl Into<String>) {
-    self.findings.push(Finding::new(
-      RuleId::new(rule).expect("Expected a non-empty translation rule ID"),
-      Some(subject.to_owned()),
-      message,
-    ));
+    self
+      .findings
+      .push(Finding::new(RuleId::of_static(rule), Some(subject.to_owned()), message));
   }
 
   /// Record something about a file on the host, whose path is formatted for showing.

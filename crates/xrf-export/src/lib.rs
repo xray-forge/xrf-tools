@@ -1,7 +1,16 @@
-pub mod extern_manifest;
-pub mod extern_parser;
-pub mod render;
+#![doc = include_str!("../README.md")]
 
-pub use crate::extern_manifest::*;
-pub use crate::extern_parser::*;
-pub use crate::render::*;
+pub(crate) mod manifest;
+pub(crate) mod parse;
+pub(crate) mod project;
+pub(crate) mod render;
+
+pub use crate::manifest::{
+  ExternCallable, ExternDocumentation, ExternExport, ExternManifest, ExternParameter, ExternValue,
+};
+pub use crate::parse::{ExternManifestParser, ExternSourceLocation, ParsedExtern, ParsedExternManifest};
+pub use crate::project::{
+  ExportContractDescriptor, ExportDescriptor, ExportParameterDescriptor, ExportReturnDescriptor, ExportSourceContent,
+  ExportSourceDescriptor, ExportsProject, ExportsProjectParser,
+};
+pub use crate::render::ExternFormat;

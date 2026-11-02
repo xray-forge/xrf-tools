@@ -6,10 +6,10 @@
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_ltx::{LtxProject, LtxProjectOptions};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayLookupScope, XrayMountPlan, XraySourceKind, XrayVfs};
+use xrf_test_utils::GeneratedResources;
 
+use crate::project::coverage::coverage_verifier::CoverageVerifier;
+use crate::project::gamedata_check::GamedataCheck;
 use crate::{
   GamedataCheckResult, GamedataProject, GamedataProjectReadOptions, GamedataProjectVerifyOptions,
   GamedataVerificationReport, GamedataVerificationStatus, GamedataVerificationType,
@@ -29,47 +29,38 @@ $screenshots$   = true  | false | $app_data_root$  | screenshots\\
 ";
 
 fn resource(name: &str) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("gamedata_coverage/{name}"));
-
-  let _ = fs::remove_dir_all(&root);
-
-  root
+  GeneratedResources::create_dir(&format!("gamedata_coverage/{name}")).expect("installation root")
 }
 
-/// A gamedata tree holding the one config that makes it a project.
-fn gamedata(name: &str) -> PathBuf {
+/// An installation holding the one config that makes it a project, declaring one archive alias per `broken` entry over
+/// a directory whose only volume cannot be read, so each alias is planned and then fails to open.
+///
+/// Declared in reverse, because the engine searches the last declaration first: the sources fail in the order given.
+fn installation_with_unreadable_volumes(name: &str, broken: &[(&str, &str)]) -> (PathBuf, GamedataProject) {
   let root: PathBuf = resource(name);
+  let configs: PathBuf = root.join("gamedata").join("configs");
+  let mut fsgame: String = String::new();
 
-  fs::create_dir_all(root.join("configs")).expect("configs directory");
-  fs::write(root.join("configs").join("system.ltx"), "[section]\r\nvalue = 1\r\n").expect("system.ltx");
-
-  root
-}
-
-/// A project over `root` plus one archive source per absent path, so each is planned and then fails to open.
-fn project_missing_sources(root: &PathBuf, absent: &[(&str, PathBuf)]) -> GamedataProject {
-  let mut plan: XrayMountPlan = XrayMountPlan::root(root).expect("the gamedata root is planned");
-
-  for (origin, path) in absent {
-    plan = plan
-      .with_kind(path, "", origin, XraySourceKind::Archive)
-      .expect("the absent archive is planned");
+  for (alias, directory) in broken.iter().rev() {
+    fsgame.push_str(&format!("{alias} = false | false | $fs_root$ | {directory}\\\n"));
+    fs::create_dir_all(root.join(directory)).expect("volume directory");
+    fs::write(root.join(directory).join("broken.db0"), "not a volume").expect("unreadable volume");
   }
 
-  let vfs: XrayVfs = XrayVfs::from_plan(&plan).expect("the readable mount still opens");
+  fsgame.push_str("$game_data$ = true | true | $fs_root$ | gamedata\\\n");
 
-  GamedataProject {
-    engine: xrf_engine_target::XrayEngineResolution::named(xrf_engine_target::XrayEngine::Vanilla),
-    ltx_project: LtxProject::open_at_scope_opt(
-      root.join("configs"),
-      vfs,
-      XrayLookupScope::all().with_prefix("configs").expect("a valid prefix"),
-      LtxProjectOptions::default(),
-    )
-    .expect("a project over the readable mount assembles"),
+  fs::create_dir_all(&configs).expect("configs directory");
+  fs::write(root.join("fsgame.ltx"), fsgame).expect("fsgame");
+  fs::write(configs.join("system.ltx"), "[section]\r\nvalue = 1\r\n").expect("system.ltx");
+
+  let project: GamedataProject = GamedataProject::open(&GamedataProjectReadOptions {
     root: root.clone(),
-    scope: XrayLookupScope::all(),
-  }
+    output: xrf_output::OutputOptions::default(),
+    ..Default::default()
+  })
+  .expect("the readable part of the installation opens");
+
+  (root, project)
 }
 
 fn options(checks: Vec<GamedataVerificationType>) -> GamedataProjectVerifyOptions {
@@ -83,20 +74,18 @@ fn options(checks: Vec<GamedataVerificationType>) -> GamedataProjectVerifyOption
 /// The three things a reader needs: the alias to find the declaration, the path to find the source, the reason to act.
 #[test]
 fn reports_every_unopened_source_with_its_alias_and_reason() {
-  let root: PathBuf = gamedata("unopened");
+  let (root, project) =
+    installation_with_unreadable_volumes("unopened", &[("$arch_dir$", "db"), ("$arch_dir_patches$", "patches")]);
   let volumes: PathBuf = root.join("db");
   let patches: PathBuf = root.join("patches");
 
-  let result = project_missing_sources(
-    &root,
-    &[("$arch_dir$", volumes.clone()), ("$arch_dir_patches$", patches.clone())],
-  )
-  .verify_coverage(&options(Vec::new()))
-  .expect("the coverage check completes");
+  let result = CoverageVerifier::new(&project, &options(Vec::new()))
+    .verify()
+    .expect("the coverage check completes");
 
   assert_eq!(result.get_status(), GamedataVerificationStatus::Incomplete);
   assert_eq!(
-    result.get_failure_message(),
+    result.get_summary(),
     "2 declared source(s) could not be opened, so no result covers them"
   );
 
@@ -134,14 +123,14 @@ fn reports_every_unopened_source_with_its_alias_and_reason() {
 /// Full coverage is not a passing verdict, or a run whose selected checks judged nothing would read as success.
 #[test]
 fn adds_nothing_to_the_verdict_when_every_declared_source_opened() {
-  let root: PathBuf = gamedata("complete");
+  let (root, project) = installation_with_unreadable_volumes("complete", &[]);
 
-  let result = project_missing_sources(&root, &[])
-    .verify_coverage(&options(Vec::new()))
+  let result = CoverageVerifier::new(&project, &options(Vec::new()))
+    .verify()
     .expect("the coverage check completes");
 
   assert_eq!(result.get_status(), GamedataVerificationStatus::Skipped);
-  assert_eq!(result.get_failure_message(), "Every declared source opened");
+  assert_eq!(result.get_summary(), "Every declared source opened");
   assert!(result.get_findings().is_empty());
 
   fs::remove_dir_all(root).expect("cleanup");
@@ -150,8 +139,7 @@ fn adds_nothing_to_the_verdict_when_every_declared_source_opened() {
 /// The point of the issue: passing checks over part of an installation must not report that the whole one passed.
 #[test]
 fn marks_a_run_incomplete_whose_selected_check_passed() {
-  let root: PathBuf = gamedata("incomplete_run");
-  let project: GamedataProject = project_missing_sources(&root, &[("$arch_dir$", root.join("db"))]);
+  let (root, project) = installation_with_unreadable_volumes("incomplete_run", &[("$arch_dir$", "db")]);
 
   let report: GamedataVerificationReport = project
     .verify(&options(vec![GamedataVerificationType::Ltx]))

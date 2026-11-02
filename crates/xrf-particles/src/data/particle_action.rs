@@ -5,7 +5,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReadWriteList, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, META_TYPE_FIELD, Section};
 use xrf_utils::{assert_equal, assert_length, to_format_size};
 
 use crate::data::actions::particle_action_avoid::ParticleActionAvoid;
@@ -75,6 +75,10 @@ pub enum ParticleAction {
 
 impl ParticleAction {
   pub const META_TYPE: &'static str = "particle_action";
+
+  /// `ParticleAction::ALLOW_ROTATE` of an action's flags: its domains and vectors turn with the effect's placement
+  /// rather than only moving with it.
+  pub const ALLOW_ROTATE: u32 = 1 << 1;
 
   /// The action type selects the payload that follows it, so only the type itself is unconditional.
   pub const MIN_SERIALIZED_SIZE: u64 = 4;
@@ -219,7 +223,7 @@ impl LtxImportExport for ParticleAction {
       ))
     })?;
 
-    let meta_type: String = read_ltx_field(META_TYPE_FIELD, section)?;
+    let meta_type: String = section.read_field(META_TYPE_FIELD)?;
 
     assert_equal(
       meta_type.as_str(),
@@ -228,7 +232,7 @@ impl LtxImportExport for ParticleAction {
     )?;
 
     let action_type: ParticleActionType =
-      ParticleActionType::from_str(read_ltx_field::<String>("action_type", section)?.as_str())
+      ParticleActionType::from_str(section.read_field::<String>("action_type")?.as_str())
         .map_err(|_| XrfError::new_parsing_error("Failed to parse particle action type from LTX field"))?;
 
     Ok(match action_type {
@@ -341,11 +345,7 @@ mod tests {
   };
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::actions::particle_action_target_rotate::ParticleActionTargetRotate;
   use crate::data::actions::particle_action_target_velocity::ParticleActionTargetVelocity;
@@ -355,7 +355,7 @@ mod tests {
   #[test]
   fn test_read_write_derivative_action_types() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write_derivative.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write_derivative.chunk");
 
     // Derivative types (TargetRotateD / TargetVelocityD) share enum variants with their
     // base types, so the dispatch u32 must round-trip from the stored action type.
@@ -375,9 +375,9 @@ mod tests {
     rotate.write::<XRayByteOrder>(&mut writer)?;
     velocity.write::<XRayByteOrder>(&mut writer)?;
 
-    writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+    writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
 
     assert_eq!(
@@ -387,7 +387,7 @@ mod tests {
     );
 
     let mut reader: ChunkReader =
-      ChunkReader::from_slice(open_generated_test_resource_as_slice(&filename)?)?.read_child_by_index(0)?;
+      ChunkReader::from_slice(GeneratedResources::open_slice(&filename)?)?.read_child_by_index(0)?;
 
     assert_eq!(ParticleAction::read::<XRayByteOrder, _>(&mut reader)?, rotate);
     assert_eq!(ParticleAction::read::<XRayByteOrder, _>(&mut reader)?, velocity);

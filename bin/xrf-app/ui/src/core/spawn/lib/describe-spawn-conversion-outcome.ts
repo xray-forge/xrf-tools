@@ -1,0 +1,39 @@
+import { ESpawnConversion, SpawnConversion, SpawnConversionResult } from "@xrf/ipc/types/xrf-app-spawn";
+import { EJobOutcome } from "@xrf/ipc/types/xrf-job";
+
+import { describeJobFailure, IJobNotice, IJobOutcome } from "@/core/jobs/lib";
+import { ENotificationSeverity } from "@/core/notifications/lib";
+
+/**
+ * Describes the backend's actual conversion outcome, including a cancellation accepted before writing.
+ *
+ * @param operation - Requested conversion.
+ * @param source - Input path.
+ * @param destination - Output path.
+ * @param outcome - Result or normalized failure from the jobs service.
+ * @returns Notification independent of the lifetime of the initiating form.
+ */
+export function describeSpawnConversionOutcome(
+  operation: SpawnConversion,
+  source: string,
+  destination: string,
+  outcome: IJobOutcome<SpawnConversionResult>
+): IJobNotice {
+  if (outcome.error) {
+    return describeJobFailure(`Could not ${operation} spawn file`, source, outcome.error);
+  }
+
+  if (outcome.result?.outcome === EJobOutcome.CANCELLED) {
+    return {
+      title: `Stopped ${operation === ESpawnConversion.PACK ? "packing" : "unpacking"} spawn file`,
+      severity: ENotificationSeverity.INFO,
+      details: "Stopped before writing. Output was left unchanged.",
+    };
+  }
+
+  return {
+    title: `${operation === ESpawnConversion.PACK ? "Packed" : "Unpacked"} spawn file`,
+    severity: ENotificationSeverity.SUCCESS,
+    details: [source, destination].join("\n"),
+  };
+}

@@ -7,17 +7,20 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::{format_path, to_format_size};
 
-use crate::fog_vol::level_fog_volume::FogVolume;
+use crate::fog_vol::level_fog_volume::LevelFogVolume;
 
 /// The volumetric fog bodies of a level, `level.fog_vol`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelFogVolFile {
   pub version: u16,
-  pub volumes: Vec<FogVolume>,
+  pub volumes: Vec<LevelFogVolume>,
 }
 
 impl LevelFogVolFile {
+  /// The file a level's fog volumes are shipped as, in its directory.
+  pub const FILE_NAME: &'static str = "level.fog_vol";
+
   /// The only version the renderer loads, and the only one shipped.
   pub const CURRENT_VERSION: u16 = 3;
 
@@ -69,10 +72,11 @@ impl LevelFogVolFile {
     }
 
     let count: u32 = reader.read_u32::<T>()?;
-    let mut volumes: Vec<FogVolume> = reader.new_bounded_vec(count.into(), FogVolume::FIXED_SIZE, "fog volumes")?;
+    let mut volumes: Vec<LevelFogVolume> =
+      reader.new_bounded_vec(count.into(), LevelFogVolume::FIXED_SIZE, "fog volumes")?;
 
     for _ in 0..count {
-      volumes.push(FogVolume::read::<T, D>(reader)?);
+      volumes.push(LevelFogVolume::read::<T, D>(reader)?);
     }
 
     reader.assert_read("Expect all data to be read from level fog volume file")?;

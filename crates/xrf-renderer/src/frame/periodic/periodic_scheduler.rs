@@ -2,7 +2,7 @@ use std::collections::{HashMap, VecDeque};
 
 use xrf_renderer_core::GraphTaggedTime;
 
-use crate::contract::render_settings::RENDER_DEFAULT_PERIODIC_BUDGET;
+use crate::contract::settings::render_settings::RENDER_DEFAULT_PERIODIC_BUDGET;
 use crate::frame::periodic::periodic_job::PeriodicJob;
 use crate::frame::periodic::periodic_owner::PeriodicOwner;
 use crate::frame::periodic::periodic_ticket::PeriodicTicket;
@@ -82,7 +82,7 @@ impl PeriodicScheduler {
   /// the passes the timer read back since the last frame, and from the GPU's milliseconds on each frame read back
   /// (`spans`, by the frame's tag) where its passes were not timed. What is offered next is the scenes' own until a
   /// view is named.
-  pub fn begin(&mut self, budget: f32, (times, spans): (&[GraphTaggedTime], &[(u64, f32)])) {
+  pub fn begin(&mut self, budget: f32, times: &[GraphTaggedTime], spans: &[(u64, f32)]) {
     self.learn(times);
     self.fit(times, spans);
     self.budget = budget.max(0.0);

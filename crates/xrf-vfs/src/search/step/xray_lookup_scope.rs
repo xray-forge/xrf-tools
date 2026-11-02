@@ -1,0 +1,119 @@
+use xrf_error::XrfResult;
+
+use crate::path::normalize;
+use crate::search::XrayMountSelection;
+use crate::{XrayMount, XrayMountId, XraySourceKind};
+
+/// Where one search step is allowed to look: which mounts, and which logical subtree of them.
+#[derive(Clone, Debug, Default, Hash, PartialEq, Eq)]
+pub struct XrayLookupScope {
+  selection: XrayMountSelection,
+  prefix: Option<String>,
+}
+
+impl XrayLookupScope {
+  /// Selects every mount in priority order.
+  pub fn all() -> Self {
+    Self::default()
+  }
+
+  /// Selects only writable mounts.
+  pub fn writable() -> Self {
+    Self {
+      selection: XrayMountSelection::Writable,
+      ..Self::default()
+    }
+  }
+
+  /// Selects the named mounts, searched in the order given, highest priority first.
+  pub fn only(mounts: impl IntoIterator<Item = XrayMountId>) -> Self {
+    Self {
+      selection: XrayMountSelection::Only(mounts.into_iter().collect()),
+      ..Self::default()
+    }
+  }
+
+  /// Selects mounts of one storage kind.
+  pub fn of_kind(kind: XraySourceKind) -> Self {
+    Self {
+      selection: XrayMountSelection::OfKind(kind),
+      ..Self::default()
+    }
+  }
+
+  /// Restricts this scope to a normalized logical subtree such as `configs` or `textures\wpn`.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `prefix` is not a valid X-Ray logical path.
+  pub fn with_prefix(mut self, prefix: &str) -> XrfResult<Self> {
+    self.prefix = Some(normalize(prefix)?.into_owned());
+
+    Ok(self)
+  }
+
+  /// Restricts this scope to a subtree only when there is one to restrict to.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a prefix is given and is not a valid X-Ray logical path.
+  pub fn with_optional_prefix(self, prefix: Option<&str>) -> XrfResult<Self> {
+    match prefix.filter(|prefix| !prefix.is_empty()) {
+      Some(prefix) => self.with_prefix(prefix),
+      None => Ok(self),
+    }
+  }
+
+  pub(crate) fn get_selection(&self) -> &XrayMountSelection {
+    &self.selection
+  }
+
+  /// Returns the normalized logical subtree restriction, if any.
+  pub fn get_prefix(&self) -> Option<&str> {
+    self.prefix.as_deref()
+  }
+
+  /// Checks whether a mount matches this scope's selection.
+  pub fn includes(&self, mount: &XrayMount) -> bool {
+    match &self.selection {
+      XrayMountSelection::All => true,
+      XrayMountSelection::Only(ids) => ids.contains(&mount.get_id()),
+      XrayMountSelection::Writable => mount.is_writable(),
+      XrayMountSelection::OfKind(kind) => mount.get_kind() == *kind,
+    }
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::XrayMountSelection;
+  use crate::{XrayLookupScope, XraySourceKind};
+
+  #[test]
+  fn defaults_to_everything() {
+    assert_eq!(XrayLookupScope::all().get_selection(), &XrayMountSelection::All);
+    assert_eq!(XrayLookupScope::all().get_prefix(), None);
+  }
+
+  #[test]
+  fn normalizes_a_prefix_the_way_a_logical_path_is_normalized() {
+    let scope: XrayLookupScope = XrayLookupScope::all()
+      .with_prefix("Configs/Weapons")
+      .expect("prefix is valid");
+
+    assert_eq!(scope.get_prefix(), Some("configs\\weapons"));
+  }
+
+  #[test]
+  fn rejects_an_ambiguous_prefix() {
+    assert!(XrayLookupScope::all().with_prefix("configs/../textures").is_err());
+  }
+
+  #[test]
+  fn selects_by_kind() {
+    assert_eq!(
+      XrayLookupScope::of_kind(XraySourceKind::Archive).get_selection(),
+      &XrayMountSelection::OfKind(XraySourceKind::Archive)
+    );
+  }
+}

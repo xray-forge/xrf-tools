@@ -4,32 +4,34 @@
 // blurred across and down by a fifteen-tap Gaussian (`bloom_filter.ps`). Every target is eight bits a channel, as the
 // engine's are, so each stage clamps to one.
 
-// The source and its sampler, and the draw's `Bloom`: for the build, x, y half a texel of the frame and z the
-// threshold; for a filter, x, y one texel of the target along its way and z one where only the side behind is read, as
-// Anomaly's `bloom_filter.ps` reads it; then `CalcGauss_wave`'s weights, the taps one to four out, then five to seven
-// out and the centre.
+// The source and its sampler, and the draw's `Bloom`: for the build, z the threshold; for a filter, x, y one texel of
+// the target along its way and z one where only the side behind is read, as Anomaly's `bloom_filter.ps` reads it;
+// then `CalcGauss_wave`'s weights, the taps one to four out, then five to seven out and the centre.
 #import "generated/frame/bloom"
 
 // `BLOOM_size_X`, `BLOOM_size_Y`.
 const BLOOM_SIZE: vec2<f32> = vec2<f32>(256.0, 256.0);
 
-// Between the build's taps: half the frame across the target's 256 texels, `(1 / w) * (w / 2 / 256)`, whatever the
-// frame's size.
-const BUILD_STEP: f32 = 1.0 / 512.0;
-
-// The source's colour at a point, filtered between its texels.
-fn read_source(at: vec2<f32>) -> vec3<f32> {
-  return textureSampleLevel(source, source_sampler, at, 0.0).rgb;
-}
-
-// `bloom_build.ps`: four reads of the high part around a texel of the target, twice their mean, and the brightness
-// their three channels sum to less the threshold.
+// `bloom_build.ps`: twice the mean of the high part under a texel of the target, and the brightness its three channels
+// sum to less the threshold. The engine reads four filtered taps, a sixth of a texel's footprint at the drawn size;
+// the high part is drawn jittered, before the resolve, so those taps caught or missed what is smaller than a texel as
+// the jitter turned and the bloom flickered. The whole footprint's mean is the same light however the jitter falls.
 @fragment
 fn fs_bloom_build(in: FullscreenVarying) -> @location(0) vec4<f32> {
-  let at: vec2<f32> = in.clip.xy / BLOOM_SIZE + bloom.params.xy;
-  let sum: vec3<f32> = read_source(at) + read_source(at + vec2<f32>(BUILD_STEP, 0.0)) +
-    read_source(at + vec2<f32>(0.0, BUILD_STEP)) + read_source(at + vec2<f32>(BUILD_STEP));
-  let average: vec3<f32> = sum / 2.0;
+  let size: vec2<f32> = vec2<f32>(textureDimensions(source));
+  let texel: vec2<f32> = floor(in.clip.xy);
+  let first: vec2<i32> = vec2<i32>(floor(texel * size / BLOOM_SIZE));
+  let last: vec2<i32> = max(vec2<i32>(ceil((texel + 1.0) * size / BLOOM_SIZE)) - 1, first);
+  var sum: vec3<f32> = vec3<f32>(0.0);
+
+  for (var y: i32 = first.y; y <= last.y; y++) {
+    for (var x: i32 = first.x; x <= last.x; x++) {
+      sum += textureLoad(source, vec2<i32>(x, y), 0).rgb;
+    }
+  }
+
+  let count: vec2<i32> = last - first + 1;
+  let average: vec3<f32> = sum / f32(count.x * count.y) * 2.0;
 
   return vec4<f32>(average, dot(average, vec3<f32>(1.0)) - bloom.params.z);
 }

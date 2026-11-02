@@ -5,7 +5,7 @@ use crate::project::levels::level_engine_constants::{
   LEVEL_AI_FILE, LEVEL_DETAILS_FILE, LEVEL_DETAILS_TEXTURE_FILE, LEVEL_LTX_FILE, LEVEL_MAP_SECTION,
   LEVEL_MAP_TEXTURE_FIELD, REQUIRED_LEVEL_FILES,
 };
-use crate::project::levels::level_roster::RosterLevel;
+use crate::project::levels::roster_level::RosterLevel;
 use crate::{Finding, GamedataFindingFactory, GamedataVerificationRule};
 
 /// Verifies that a bundle contains the files a built level is made of, and that its own
@@ -116,12 +116,12 @@ impl<'a> LevelManifestVerifier<'a> {
 
     // Read through the project, so an archived level config is parsed rather than skipped and the same dialect
     // resolves it as resolves everything under `configs`. A level config is outside that prefix, which is why this
-    // names a scope instead of a project path.
+    // names the whole project's search instead of a config path.
     let ltx: Ltx = match self
       .bundle
       .project()
       .ltx_project
-      .read_full_in_scope(self.bundle.project().scope(), &path)
+      .read_full_in_search(self.bundle.project().search(), &path)
     {
       Ok(ltx) => ltx,
       Err(error) => {

@@ -4,19 +4,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfError;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackConfigJson, ArchivePackDirectory};
 
 /// An empty directory of one case's own, since several assertions here scan one.
 fn test_directory(name: &str) -> PathBuf {
-  let directory: PathBuf = build_absolute_generated_test_resource_path(&format!("pack/config_codec/{name}"));
-
-  let _ = fs::remove_dir_all(&directory);
-
-  fs::create_dir_all(&directory).expect("test directory is created");
-
-  directory
+  GeneratedResources::create_dir(&format!("pack/config_codec/{name}")).expect("test directory is created")
 }
 
 fn directory(path: &str, is_recursive: bool) -> ArchivePackDirectory {
@@ -117,7 +111,9 @@ fn each_format_round_trips_on_its_own() {
 #[test]
 fn leaves_the_per_run_fields_out_of_the_file() {
   // A configuration travels between machines; a source path and a volume name do not.
-  let rendered: String = populated().to_json().render().expect("json renders");
+  let rendered: String = ArchivePackConfigJson::from(&populated())
+    .render()
+    .expect("json renders");
 
   for absent in [
     "source",
@@ -134,8 +130,12 @@ fn leaves_the_per_run_fields_out_of_the_file() {
 
 #[test]
 fn writes_readable_deterministic_json_ending_in_a_newline() {
-  let once: String = populated().to_json().render().expect("json renders");
-  let twice: String = populated().to_json().render().expect("json renders");
+  let once: String = ArchivePackConfigJson::from(&populated())
+    .render()
+    .expect("json renders");
+  let twice: String = ArchivePackConfigJson::from(&populated())
+    .render()
+    .expect("json renders");
 
   assert_eq!(once, twice, "equal values render equal bytes");
   assert!(once.ends_with("}\n"), "the json ends with a newline:\n{once}");
@@ -238,7 +238,7 @@ fn json_carries_no_header_when_the_configuration_has_none() {
 
   config.header = None;
 
-  let json: ArchivePackConfigJson = config.to_json();
+  let json: ArchivePackConfigJson = ArchivePackConfigJson::from(&config);
 
   assert_eq!(json.header, None);
   assert!(!json.render().expect("json renders").contains("header"));

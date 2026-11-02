@@ -1,0 +1,110 @@
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+
+use crate::XrayVfs;
+use crate::input::{XrayInput, XrayInputAnswer};
+
+/// The inputs some reads resolved, each with what its snapshot answered for it then.
+#[derive(Clone, Debug, Default)]
+pub struct XrayInputRecord {
+  inputs: Arc<Mutex<HashMap<XrayInput, XrayInputAnswer>>>,
+}
+
+impl XrayInputRecord {
+  pub fn new() -> Self {
+    Self::default()
+  }
+
+  /// Records an input as `vfs` answers it now, unless it is recorded already.
+  pub(crate) fn record(&self, vfs: &XrayVfs, input: XrayInput) {
+    if self.lock().contains_key(&input) {
+      return;
+    }
+
+    // Answered outside the lock, so readers recording side by side wait on each other only to file what they found.
+    let answer: XrayInputAnswer = vfs.answer_input(&input);
+
+    self.lock().entry(input).or_insert(answer);
+  }
+
+  /// Adds what another record holds, keeping the answers this one has already.
+  pub fn extend_from(&self, other: &XrayInputRecord) {
+    if Arc::ptr_eq(&self.inputs, &other.inputs) {
+      return;
+    }
+
+    // Copied out first, so the two locks are never held together whichever way round two records join.
+    let other: Vec<(XrayInput, XrayInputAnswer)> = other.list();
+    let mut inputs: MutexGuard<HashMap<XrayInput, XrayInputAnswer>> = self.lock();
+
+    for (input, answer) in other {
+      inputs.entry(input).or_insert(answer);
+    }
+  }
+
+  /// What was recorded for an input, or `None` where nothing read it.
+  pub fn get(&self, input: &XrayInput) -> Option<XrayInputAnswer> {
+    self.lock().get(input).copied()
+  }
+
+  /// A record of the inputs `keep` picks, with the answers this one holds for them: what one change depends on, out of
+  /// everything its author read, so a commit is refused only when that moved.
+  pub fn to_filtered(&self, keep: impl Fn(&XrayInput) -> bool) -> XrayInputRecord {
+    let inputs: HashMap<XrayInput, XrayInputAnswer> = self
+      .lock()
+      .iter()
+      .filter(|(input, _)| keep(input))
+      .map(|(input, answer)| (input.clone(), *answer))
+      .collect();
+
+    Self {
+      inputs: Arc::new(Mutex::new(inputs)),
+    }
+  }
+
+  /// A copy of every input and answer this record holds, sharing nothing with it: a clone shares the record, so what
+  /// either records later the other sees, which a snapshot keeping its own account must not.
+  pub fn to_detached(&self) -> XrayInputRecord {
+    self.to_filtered(|_| true)
+  }
+
+  /// Every input recorded, with its answer, in no particular order.
+  pub fn list(&self) -> Vec<(XrayInput, XrayInputAnswer)> {
+    self
+      .lock()
+      .iter()
+      .map(|(input, answer)| (input.clone(), *answer))
+      .collect()
+  }
+
+  /// The inputs `vfs` answers differently for now: what moved since the reads were recorded, in no particular order.
+  pub fn list_moved_in(&self, vfs: &XrayVfs) -> Vec<XrayInput> {
+    self
+      .list()
+      .into_iter()
+      .filter(|(input, answer)| vfs.answer_input(input) != *answer)
+      .map(|(input, _)| input)
+      .collect()
+  }
+
+  /// Whether `vfs` answers every recorded input as it was answered when read.
+  pub fn is_current_in(&self, vfs: &XrayVfs) -> bool {
+    self
+      .list()
+      .iter()
+      .all(|(input, answer)| vfs.answer_input(input) == *answer)
+  }
+
+  pub fn len(&self) -> usize {
+    self.lock().len()
+  }
+
+  pub fn is_empty(&self) -> bool {
+    self.len() == 0
+  }
+
+  /// The inputs, whatever a panicking reader left: an input is only ever filed whole.
+  fn lock(&self) -> MutexGuard<'_, HashMap<XrayInput, XrayInputAnswer>> {
+    self.inputs.lock().unwrap_or_else(PoisonError::into_inner)
+  }
+}

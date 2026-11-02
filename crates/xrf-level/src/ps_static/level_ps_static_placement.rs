@@ -10,7 +10,7 @@ pub const PS_STATIC_ALL_GAME_TYPES: u16 = u16::MAX;
 /// One particle effect the level plants, from `CLevel::Load`'s static particle pass.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PsStaticPlacement {
+pub struct LevelPsStaticPlacement {
   /// Modes this placement plays in. Version 0 carries none and plays in all of them.
   pub game_types: Option<u16>,
   /// The effect it plays, which names a definition inside `particles.xr` rather than a file.
@@ -19,7 +19,7 @@ pub struct PsStaticPlacement {
   pub transform: Matrix4x4,
 }
 
-impl PsStaticPlacement {
+impl LevelPsStaticPlacement {
   /// Where the placement sits, which is the transform's translation row.
   pub const fn get_position(&self) -> Vector3d<f32> {
     self.transform.get_translation()

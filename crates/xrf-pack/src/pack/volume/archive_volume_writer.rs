@@ -16,15 +16,6 @@ use crate::pack::volume::{
 };
 use crate::pack::{ArchivePackEntryOutcome, ArchivePackNarrator, ArchivePackResult};
 
-/// Extensions the engine expects to find compressed; everything else is stored.
-///
-/// `testVFS` in `xrCompress.cpp` inverts the intuitive rule: only text the engine parses is worth the
-/// LZO round trip, because meshes, textures, and sounds are already compressed in their own formats.
-const COMPRESSED_EXTENSIONS: &[XrayExtension] = &[XrayExtension::Xml, XrayExtension::Ltx, XrayExtension::Script];
-
-/// Compression must save more than this to be worth keeping, matching xrCompress.
-const COMPRESSION_MARGIN: usize = 16;
-
 /// Writes the volumes of one archive set, one at a time.
 ///
 /// Entries arrive one by one and the writer decides where each lands, so nothing here knows the source tree or how
@@ -52,6 +43,15 @@ pub(crate) struct ArchiveVolumeWriter<'a> {
 }
 
 impl<'a> ArchiveVolumeWriter<'a> {
+  /// Extensions the engine expects to find compressed; everything else is stored.
+  ///
+  /// `testVFS` in `xrCompress.cpp` inverts the intuitive rule: only text the engine parses is worth the
+  /// LZO round trip, because meshes, textures, and sounds are already compressed in their own formats.
+  const COMPRESSED_EXTENSIONS: &[XrayExtension] = &[XrayExtension::Xml, XrayExtension::Ltx, XrayExtension::Script];
+
+  /// Compression must save more than this to be worth keeping, matching xrCompress.
+  const COMPRESSION_MARGIN: usize = 16;
+
   /// Open the first volume of the set, seeded with the directory rows every volume of it repeats.
   pub(crate) fn open(
     config: &'a ArchivePackConfig,
@@ -301,7 +301,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
     let is_expected_compressed: bool = self.config.mode == ArchivePackMode::Compress
       && XrayExtensionOf::of(&entry.name)
         .known()
-        .is_some_and(|extension| COMPRESSED_EXTENSIONS.contains(&extension));
+        .is_some_and(|extension| Self::COMPRESSED_EXTENSIONS.contains(&extension));
 
     if !is_expected_compressed {
       return Ok((Cow::Borrowed(contents), ArchivePackEntryOutcome::Stored));
@@ -316,7 +316,7 @@ impl<'a> ArchiveVolumeWriter<'a> {
 
     // A payload that barely shrinks costs more to decompress than it saves, so it reverts to stored.
     // The reader tells the two apart by the sizes alone, so this must stay a real size difference.
-    if compressed.len() + COMPRESSION_MARGIN >= contents.len() {
+    if compressed.len() + Self::COMPRESSION_MARGIN >= contents.len() {
       return Ok((Cow::Borrowed(contents), ArchivePackEntryOutcome::Reverted));
     }
 

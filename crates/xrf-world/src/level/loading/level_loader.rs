@@ -2,21 +2,20 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 
-use xrf_renderer::{LoaderReceiver, RenderLevelSource, RenderWorkers};
+use xrf_renderer::{LoaderReceiver, RenderWorkers};
 use xrf_visual::SectorPackage;
 
+use crate::host::world_level_source::WorldLevelSource;
 use crate::level::loading::loader_flight::LoaderFlight;
+use crate::level::loading::sector_load::SectorLoad;
 use crate::level::streaming::surface_tally::SurfaceTally;
-
-/// One sector's pack as a loader thread finished it, with what its surfaces draw, or why it could not be packed.
-pub type SectorLoad = (u32, Result<(SectorPackage, SurfaceTally), String>);
 
 /// Packs a level's sectors side by side on the loader threads, no more than the pool's width of them running or queued
 /// at once (`LoaderFlight`), handing each to the render thread as it is done; the next start as the render thread takes
 /// the finished ones, once a frame. Dropped, it lets go of the sectors not started yet, so a level closed mid open
 /// stops costing work.
 pub struct LevelLoader {
-  source: Arc<dyn RenderLevelSource>,
+  source: Arc<dyn WorldLevelSource>,
   workers: RenderWorkers,
   sender: Sender<SectorLoad>,
   receiver: LoaderReceiver<SectorLoad>,
@@ -27,7 +26,7 @@ pub struct LevelLoader {
 }
 
 impl LevelLoader {
-  pub fn start(source: Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
+  pub fn start(source: Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     let (sender, receiver) = LoaderReceiver::channel();
     let mut loader: Self = Self {
       total: source.get_sector_count(),
@@ -72,7 +71,10 @@ impl LevelLoader {
 
       self.workers.spawn(move || {
         if !is_cancelled.load(Ordering::Acquire) {
-          let _ = sender.send((sector, Self::pack(source.as_ref(), sector)));
+          let _ = sender.send(SectorLoad {
+            sector,
+            pack: Self::pack(source.as_ref(), sector),
+          });
         }
 
         finished.fetch_add(1, Ordering::AcqRel);
@@ -81,7 +83,7 @@ impl LevelLoader {
   }
 
   /// One sector packed, with what its surfaces draw.
-  fn pack(source: &dyn RenderLevelSource, sector: u32) -> Result<(SectorPackage, SurfaceTally), String> {
+  fn pack(source: &dyn WorldLevelSource, sector: u32) -> Result<(SectorPackage, SurfaceTally), String> {
     let pack: Result<(SectorPackage, SurfaceTally), String> = source
       .pack_sector(sector)
       .map(|package| {

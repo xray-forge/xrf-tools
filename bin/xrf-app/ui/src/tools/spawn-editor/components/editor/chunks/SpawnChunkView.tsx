@@ -1,0 +1,72 @@
+import { AsyncState } from "@xrf/async";
+import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
+import { EmptyState } from "@xrf/ui/layout/empty-state";
+import { ErrorState } from "@xrf/ui/layout/error-state";
+import { cn } from "@xrf/ui/theme";
+import { ReactElement, ReactNode } from "react";
+
+import { useMountEffect } from "@/lib/react/use-mount-effect";
+
+export interface ISpawnChunkViewProps<T> extends BaseComponentProps {
+  chunk: AsyncState<Nullable<T>>;
+  /**
+   * Loads a lazy chunk on mount or retry. Omitted for the header supplied by the session.
+   */
+  onLoad?: () => void;
+  render: (value: T) => ReactNode;
+}
+
+/**
+ * The frame every spawn chunk renders into.
+ */
+export function SpawnChunkView<T>({
+  "data-testid": dataTestId = "spawn-chunk-view",
+  id,
+  className,
+  chunk,
+  onLoad,
+  render,
+}: ISpawnChunkViewProps<T>): ReactElement {
+  useMountEffect(() => void onLoad?.());
+
+  if (chunk.isLoading) {
+    return <DelayedProgress data-testid={dataTestId} id={id} className={className} label={"Reading spawn chunk…"} />;
+  }
+
+  if (chunk.error) {
+    return (
+      <ErrorState
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        title={"Could not read this chunk"}
+        description={chunk.error.message}
+        onRetry={onLoad}
+      />
+    );
+  }
+
+  if (!chunk.value) {
+    return (
+      <EmptyState
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        title={"Nothing to show"}
+        description={"Open a spawn file to read its chunks."}
+      />
+    );
+  }
+
+  return (
+    <div
+      data-testid={dataTestId}
+      id={id}
+      className={cn("flex h-full min-h-0 w-full flex-col flex-nowrap p-4", className)}
+    >
+      {render(chunk.value)}
+    </div>
+  );
+}

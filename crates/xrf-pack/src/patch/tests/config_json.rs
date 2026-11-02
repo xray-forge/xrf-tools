@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::pack::config::ArchivePackHeaderEntry;
 use crate::patch::config::{ArchivePatchConfig, ArchivePatchConfigJson};
@@ -18,7 +18,7 @@ fn authored() -> ArchivePatchConfig {
 
 /// A scratch path under this test's scope.
 fn scratch(scope: &str, name: &str) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("patch_config/{scope}"));
+  let root: PathBuf = GeneratedResources::path(&format!("patch_config/{scope}"));
 
   std::fs::create_dir_all(&root).expect("scratch directory");
 
@@ -40,7 +40,7 @@ fn a_round_trip_returns_the_scope_and_the_header() {
   assert_eq!(read.exclude_extensions, ["*.txt"]);
   assert_eq!(
     ArchivePackHeaderEntry::split(read.header.as_deref().expect("a header")),
-    ArchivePackHeaderEntry::split(&crate::pack::config::default_header())
+    ArchivePackHeaderEntry::split(&crate::pack::config::ArchivePackHeader::default_text())
   );
 }
 
@@ -83,7 +83,8 @@ fn an_absent_field_leaves_what_the_caller_holds() {
 
 #[test]
 fn an_empty_collection_is_written_as_absent_rather_than_as_an_empty_list() {
-  let empty: ArchivePatchConfigJson = ArchivePatchConfig::new("C:\\in", "C:\\out", "patch").to_json();
+  let empty: ArchivePatchConfigJson =
+    ArchivePatchConfigJson::from(&ArchivePatchConfig::new("C:\\in", "C:\\out", "patch"));
 
   assert_eq!(empty.include, None);
   assert_eq!(empty.ignore, None);

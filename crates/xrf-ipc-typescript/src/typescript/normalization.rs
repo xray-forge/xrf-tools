@@ -1,4 +1,4 @@
-use xrf_typescript::ast::ts_type_to_string;
+use xrf_typescript::TypeScriptTypeRenderer;
 use xrf_typescript::swc_common::DUMMY_SP;
 use xrf_typescript::swc_ecma_ast::{
   ArrayLit, ArrowFunctionBody, Decl, Expr, Lit, ModuleDecl, ModuleItem, Pat, Prop, PropName, PropOrSpread, TsArrayType,
@@ -18,6 +18,13 @@ fn normalize_declaration(declaration: &mut Decl) {
     Decl::TsInterface(interface) => normalize_type_elements(&mut interface.body.body),
     Decl::Var(variable) => {
       for declarator in &mut variable.decls {
+        // A constant's own annotation, `Entry[]` fresh and `Array<Entry>` once formatted, sits on its binding.
+        if let Pat::Ident(binding) = &mut declarator.name
+          && let Some(annotation) = &mut binding.type_ann
+        {
+          normalize_type(&mut annotation.type_ann);
+        }
+
         if let Some(initializer) = &mut declarator.init {
           normalize_expression(initializer);
         }
@@ -193,7 +200,7 @@ fn generic_array_element(ts_type: &TsType) -> Option<TsType> {
 /// Total order over the members of a union or intersection, stable across both spellings of a shape.
 fn type_sort_key(ts_type: &TsType) -> String {
   match ts_type {
-    // `ts_type_to_string` renders a type literal as `unsupported`, so its members carry the key instead.
+    // `TypeScriptTypeRenderer::render` writes a type literal as `unsupported`, so its members carry the key instead.
     TsType::TsTypeLit(literal) => format!(
       "lit:{}",
       literal
@@ -218,7 +225,7 @@ fn type_sort_key(ts_type: &TsType) -> String {
           .join("&")
       )
     }
-    other => ts_type_to_string(other),
+    other => TypeScriptTypeRenderer::render(other),
   }
 }
 

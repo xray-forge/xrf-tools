@@ -1,47 +1,22 @@
 //! Round-trips the writer through the reader, which is the only check that matters: an archive is correct when the
 //! code that mounts one can read it back.
-//!
-//! Also where a volume is reached from: a project opened at one file, at a directory of them, or at a root a probe
-//! plan has to recognise. What each entry costs is `payload`, what the rules selected is `selection`.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_archive::ArchiveProject;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
-use xrf_vfs::{XrayAsset, XrayMountMode, XrayProbe, XrayProbeStep, XrayRoots, XrayVfs};
+use xrf_vfs::{XrayMountMode, XrayRoots, XraySearch, XraySearchStep, XrayVfs};
 
-use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
-use crate::pack::tests::fixtures::{BINARY, CONFIG, create_source, open, pack, read};
-use crate::pack::{ArchivePackResult, ArchivePacker};
-
-/// Pack one source tree into a destination shared with other volumes, under its own volume name.
-fn pack_volume(scope: &str, name: &str, files: &[(&str, &[u8])]) -> PathBuf {
-  let source: PathBuf = create_source(&format!("{scope}/{name}"), files);
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
-
-  let mut config: ArchivePackConfig = ArchivePackConfig::new(&source, &destination, name);
-
-  config.include_directories = vec![ArchivePackDirectory {
-    path: String::new(),
-    is_recursive: true,
-  }];
-
-  let result: ArchivePackResult = ArchivePacker::pack(&config).expect("source tree packs");
-
-  result.volumes.first().expect("one volume written").clone()
-}
+use crate::pack::tests::fixtures::{BINARY, CONFIG, empty_destination, open, pack, pack_volume, read, read_mounted};
 
 #[test]
 fn opening_one_volume_opens_only_that_volume() {
   // What the explorer's archive mode asks for: the volume the user named, not the directory it happens to sit in.
   let scope: &str = "opening_one_volume_opens_only_that_volume";
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
+  let destination: PathBuf = empty_destination(scope);
 
-  let _ = fs::remove_dir_all(&destination);
-
-  let first: PathBuf = pack_volume(scope, "first", &[("configs\\first.ltx", CONFIG)]);
-  let second: PathBuf = pack_volume(scope, "second", &[("configs\\second.ltx", CONFIG)]);
+  let first: PathBuf = pack_volume(scope, "first", &[("configs\\first.ltx", CONFIG)], |_| {});
+  let second: PathBuf = pack_volume(scope, "second", &[("configs\\second.ltx", CONFIG)], |_| {});
 
   assert_ne!(first, second, "the two volumes share a directory");
   assert_eq!(open(&destination).archives.len(), 2, "the directory holds both");
@@ -67,28 +42,25 @@ fn a_named_volume_is_searched_as_a_root() {
   // The explorer mounts a project's root to read an entry's bytes back, and for a single-volume project that root is
   // the volume. A root planner that only recognised directories would search nothing and report every entry missing.
   let scope: &str = "a_named_volume_is_searched_as_a_root";
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
 
-  let _ = fs::remove_dir_all(&destination);
+  empty_destination(scope);
 
-  let first: PathBuf = pack_volume(scope, "first", &[("configs\\first.ltx", CONFIG)]);
-  let sibling: PathBuf = pack_volume(scope, "second", &[("configs\\second.ltx", CONFIG)]);
+  let first: PathBuf = pack_volume(scope, "first", &[("configs\\first.ltx", CONFIG)], |_| {});
+  let sibling: PathBuf = pack_volume(scope, "second", &[("configs\\second.ltx", CONFIG)], |_| {});
 
-  // Searched the way the asset commands search: a probe plan over the roots, not a plain mount.
+  // Searched the way the asset commands search: a search plan over the roots, not a plain mount.
   fn find(root: &Path, logical_path: &str) -> bool {
     let mut vfs: XrayVfs = XrayVfs::new();
-    let steps: Vec<XrayProbeStep> = XrayRoots::one(root.to_path_buf(), XrayMountMode::Auto)
-      .to_probe_plan()
+    let steps: Vec<XraySearchStep> = XrayRoots::one(root.to_path_buf(), XrayMountMode::Auto)
+      .to_search_plan()
       .expect("roots plan")
       .mount_into(&mut vfs)
       .expect("plan mounts");
 
-    vfs
-      .probe()
+    XraySearch::new(vfs)
       .with_steps(steps)
       .find(logical_path)
       .expect("lookup succeeds")
-      .get_asset()
       .is_some()
   }
 
@@ -108,14 +80,12 @@ fn a_volume_in_a_subdirectory_is_read_through_the_project_root() {
   // shallow volume set, that root sees only the volumes directly under it, and every entry stored deeper is listed,
   // sized and extractable but previews as missing.
   let scope: &str = "a_volume_in_a_subdirectory_is_read_through_the_project_root";
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
+  let destination: PathBuf = empty_destination(scope);
 
-  let _ = fs::remove_dir_all(&destination);
-
-  pack_volume(scope, "shaders", &[("shaders\\r1\\clouds.vs", CONFIG)]);
+  pack_volume(scope, "shaders", &[("shaders\\r1\\clouds.vs", CONFIG)], |_| {});
 
   // Moved below the root the way an installation stores its own: `db\textures\textures.db0` beside `db\shaders.db0`.
-  let packed: PathBuf = pack_volume(scope, "textures", &[("textures\\act.dds", BINARY)]);
+  let packed: PathBuf = pack_volume(scope, "textures", &[("textures\\act.dds", BINARY)], |_| {});
   let nested: PathBuf = destination.join("textures");
 
   fs::create_dir_all(&nested).expect("volume subdirectory");
@@ -126,24 +96,12 @@ fn a_volume_in_a_subdirectory_is_read_through_the_project_root() {
   assert_eq!(project.archives.len(), 2, "both volumes belong to the project");
   assert_eq!(project.root, destination);
 
-  let mut vfs: XrayVfs = XrayVfs::new();
-  let steps: Vec<XrayProbeStep> = XrayRoots::one(project.root.clone(), XrayMountMode::Volumes)
-    .to_probe_plan()
-    .expect("roots plan")
-    .mount_into(&mut vfs)
-    .expect("plan mounts");
-  let probe: XrayProbe = vfs.probe().with_steps(steps);
-
   for name in ["shaders\\r1\\clouds.vs", "textures\\act.dds"] {
-    let asset: XrayAsset = probe
-      .find(name)
-      .expect("lookup succeeds")
-      .get_asset()
-      .cloned()
+    let mounted: Vec<u8> = read_mounted(&project.root, name)
       .unwrap_or_else(|| panic!("'{name}' is listed by the project, so it must resolve through its root"));
 
     assert_eq!(
-      probe.read_asset_bytes(&asset).expect("asset reads"),
+      mounted,
       read(&project, name),
       "'{name}' reads the same bytes through the root and through the project"
     );
@@ -183,4 +141,22 @@ fn carries_the_header_the_engine_mounts_by() {
 
   // The reader takes the mount root out of that header, so reading it back proves the chunk landed.
   assert_eq!(project.archives[0].output_root_path, Path::new("gamedata\\"));
+}
+
+#[test]
+fn a_commented_header_mounts_where_the_uncommented_one_does() {
+  let (_, destination) = pack(
+    "a_commented_header_mounts_where_the_uncommented_one_does",
+    &[("configs\\system.ltx", CONFIG)],
+    |config| {
+      config.header = Some(String::from(
+        "[header] ; archive metadata\r\nauto_load = true\r\nentry_point = $fs_root$\\gamedata\\ ; installed content\r\n",
+      ));
+    },
+  );
+  let project: ArchiveProject = open(&destination);
+
+  assert_eq!(project.archives[0].output_root_path, Path::new("gamedata\\"));
+  assert_eq!(project.archives[0].mount_root, "gamedata");
+  assert_eq!(read(&project, "configs\\system.ltx"), CONFIG);
 }

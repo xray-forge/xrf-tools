@@ -2,7 +2,7 @@ use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
 use crate::env_mod::level_env_mod_file::LevelEnvModFile;
-use crate::env_mod::level_env_modifier::EnvModifier;
+use crate::env_mod::level_env_modifier::LevelEnvModifier;
 use crate::tests::fixtures::{chunk, floats};
 
 /// One environment modifier, at the width its version gives it.
@@ -89,5 +89,5 @@ fn a_modifier_list_is_written_back_byte_for_byte() -> XrfResult {
 
 #[test]
 fn a_modifier_is_the_width_its_version_declares() {
-  assert_eq!(EnvModifier::SERIALIZED_SIZE, 76);
+  assert_eq!(LevelEnvModifier::SERIALIZED_SIZE, 76);
 }

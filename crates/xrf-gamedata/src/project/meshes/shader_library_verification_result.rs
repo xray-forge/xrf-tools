@@ -42,7 +42,7 @@ impl GamedataCheckResult for GamedataShaderLibraryVerificationResult {
   fn get_status(&self) -> GamedataVerificationStatus {
     GamedataVerificationStatus::from_is_valid(self.invalid_count == 0)
   }
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}/{} shader libraries valid, {} blender definitions",
       self.checked_count - self.invalid_count,

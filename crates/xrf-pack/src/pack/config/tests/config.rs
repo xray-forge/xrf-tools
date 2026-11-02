@@ -15,7 +15,7 @@ fn directory(path: &str, is_recursive: bool) -> ArchivePackDirectory {
 fn write_config(config: &ArchivePackConfig) -> String {
   let mut buffer: Vec<u8> = Vec::new();
 
-  config.to_ltx().write_to(&mut buffer).expect("ltx writes");
+  Ltx::from(config).write_to(&mut buffer).expect("ltx writes");
 
   String::from_utf8(buffer).expect("ltx is utf8")
 }
@@ -26,7 +26,6 @@ fn round_trip(config: &ArchivePackConfig) -> ArchivePackConfig {
 
   ArchivePackConfig::new("gamedata", "db", "configs")
     .with_ltx(&Ltx::read_from_str(&written).unwrap_or_else(|error| panic!("written ltx parses: {error}\n{written}")))
-    .expect("written ltx applies")
 }
 
 fn populated() -> ArchivePackConfig {
@@ -103,8 +102,7 @@ fn a_fresh_config_mounts_where_gamedata_belongs() {
 #[test]
 fn a_configured_header_replaces_the_default() {
   let config: ArchivePackConfig = ArchivePackConfig::new("gamedata", "db", "configs")
-    .with_ltx(&Ltx::read_from_str("[header]\nentry_point = $fs_root$\\levels\\\n").expect("ltx parses"))
-    .expect("ltx applies");
+    .with_ltx(&Ltx::read_from_str("[header]\nentry_point = $fs_root$\\levels\\\n").expect("ltx parses"));
   let header: &str = config.header.as_deref().expect("header is carried");
 
   assert!(header.contains("entry_point = $fs_root$\\levels\\"));

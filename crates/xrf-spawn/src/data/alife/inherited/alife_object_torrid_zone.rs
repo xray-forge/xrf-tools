@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_optional_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_custom_zone::AlifeObjectCustomZone;
 use crate::data::alife::inherited::alife_object_motion::AlifeObjectMotion;
@@ -52,7 +52,7 @@ impl LtxImportExport for AlifeObjectTorridZone {
       base: AlifeObjectCustomZone::import(section_name, ltx)?,
       motion: AlifeObjectMotion::import(section_name, ltx)?,
       last_spawn_time: LastSpawnTime::from_str_optional(
-        read_ltx_optional_field::<String>("last_spawn_time", section)?.as_deref(),
+        section.read_optional_field::<String>("last_spawn_time")?.as_deref(),
       )?,
     })
   }
@@ -74,11 +74,7 @@ impl LtxImportExport for AlifeObjectTorridZone {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
   use crate::data::alife::inherited::alife_object_custom_zone::AlifeObjectCustomZone;
@@ -91,7 +87,7 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
 
     let original: AlifeObjectTorridZone = AlifeObjectTorridZone {
       base: AlifeObjectCustomZone {
@@ -134,11 +130,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 81);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 81);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 81 + 8);
 

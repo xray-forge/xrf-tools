@@ -5,8 +5,8 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 use xrf_error::XrfResult;
 
-use crate::mount::xray_root::implied_install_root;
-use crate::{FsgameFile, XrayMountPlan, XrayRootKind};
+use crate::mount::XrayMountPlan;
+use crate::{FsgameFile, XrayRootKind, XrayRootProbe};
 
 /// How a caller's path is turned into mounts.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -28,13 +28,42 @@ pub enum XrayMountMode {
 }
 
 impl XrayMountMode {
+  /// Every mode, in the order a help text lists them.
+  pub const ALL: [Self; 5] = [
+    Self::Auto,
+    Self::Directory,
+    Self::Volumes,
+    Self::Installation,
+    Self::ContainingInstallation,
+  ];
+
+  /// Every mode's name, as a command flag or a config value spells it, in the order of [`Self::ALL`].
+  pub const NAMES: [&'static str; 5] = [
+    Self::Auto.as_str(),
+    Self::Directory.as_str(),
+    Self::Volumes.as_str(),
+    Self::Installation.as_str(),
+    Self::ContainingInstallation.as_str(),
+  ];
+
+  /// Its name, as a command flag or a config value spells it.
+  pub const fn as_str(self) -> &'static str {
+    match self {
+      Self::Auto => "auto",
+      Self::Directory => "directory",
+      Self::Volumes => "volumes",
+      Self::Installation => "installation",
+      Self::ContainingInstallation => "containing-installation",
+    }
+  }
+
   /// Builds the plan this mode means for `path`.
   ///
   /// # Errors
   ///
   /// Returns an error when [`Self::Installation`] is asked for a path that declares none, or when a declared
   /// fsgame file cannot be read, decoded, or parsed.
-  pub fn plan(&self, path: impl AsRef<Path>) -> XrfResult<XrayMountPlan> {
+  pub(crate) fn plan(&self, path: impl AsRef<Path>) -> XrfResult<XrayMountPlan> {
     let path: &Path = path.as_ref();
 
     match self {
@@ -51,7 +80,7 @@ impl XrayMountMode {
           return XrayMountPlan::from_fsgame(path);
         }
 
-        match implied_install_root(path) {
+        match XrayRootProbe::implied_installation(path) {
           Some(install) => XrayMountPlan::from_fsgame(install),
           None => XrayMountPlan::root(path),
         }
@@ -67,13 +96,7 @@ impl XrayMountMode {
 
 impl Display for XrayMountMode {
   fn fmt(&self, formatter: &mut Formatter<'_>) -> FormatResult {
-    formatter.write_str(match self {
-      Self::Auto => "auto",
-      Self::Directory => "directory",
-      Self::Volumes => "volumes",
-      Self::Installation => "installation",
-      Self::ContainingInstallation => "containing-installation",
-    })
+    formatter.write_str(self.as_str())
   }
 }
 
@@ -81,16 +104,15 @@ impl TryFrom<&str> for XrayMountMode {
   type Error = xrf_error::XrfError;
 
   fn try_from(value: &str) -> Result<Self, Self::Error> {
-    match value {
-      "auto" => Ok(Self::Auto),
-      "directory" => Ok(Self::Directory),
-      "volumes" => Ok(Self::Volumes),
-      "installation" => Ok(Self::Installation),
-      "containing-installation" => Ok(Self::ContainingInstallation),
-      other => Err(xrf_error::XrfError::new_asset_error(format!(
-        "unknown source mode '{other}', expected auto, directory, volumes, installation or containing-installation"
-      ))),
-    }
+    Self::ALL
+      .into_iter()
+      .find(|mode| mode.as_str() == value)
+      .ok_or_else(|| {
+        xrf_error::XrfError::new_asset_error(format!(
+          "unknown source mode '{value}', expected {}",
+          Self::NAMES.join(", ")
+        ))
+      })
   }
 }
 
@@ -108,15 +130,13 @@ mod tests {
   use std::fs;
   use std::path::PathBuf;
 
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
 
   use super::XrayMountMode;
   use crate::XraySourceKind;
 
   fn install(name: &str) -> PathBuf {
-    let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_mount_mode/{name}"));
-
-    let _ = fs::remove_dir_all(&root);
+    let root: PathBuf = GeneratedResources::create_dir(&format!("xray_mount_mode/{name}")).expect("install root");
 
     fs::create_dir_all(root.join("gamedata").join("configs")).expect("gamedata");
     fs::write(
@@ -129,11 +149,7 @@ mod tests {
   }
 
   fn volumes(name: &str, names: &[&str]) -> PathBuf {
-    let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_mount_mode/{name}"));
-
-    let _ = fs::remove_dir_all(&root);
-
-    fs::create_dir_all(&root).expect("volumes root");
+    let root: PathBuf = GeneratedResources::create_dir(&format!("xray_mount_mode/{name}")).expect("volumes root");
 
     for name in names {
       let volume: PathBuf = root.join(name);
@@ -296,17 +312,9 @@ mod tests {
 
   #[test]
   fn parses_and_renders_its_names() {
-    for mode in [
-      XrayMountMode::Auto,
-      XrayMountMode::Directory,
-      XrayMountMode::Volumes,
-      XrayMountMode::Installation,
-      XrayMountMode::ContainingInstallation,
-    ] {
-      assert_eq!(
-        XrayMountMode::try_from(mode.to_string().as_str()).expect("round trip"),
-        mode
-      );
+    for (mode, name) in XrayMountMode::ALL.into_iter().zip(XrayMountMode::NAMES) {
+      assert_eq!(mode.to_string(), name);
+      assert_eq!(XrayMountMode::try_from(name).expect("round trip"), mode);
     }
 
     assert!(XrayMountMode::try_from("nonsense").is_err());

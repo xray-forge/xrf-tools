@@ -230,7 +230,10 @@ fn listing_includes_keeps_a_repeat_that_resolution_refuses() -> XrfResult {
 
   // Scanning is not resolving. Project assembly reads include lists to find entry points, and a repeat is not its
   // business; the file is still refused the moment anything resolves it.
-  assert_eq!(Ltx::read_included_from_str(contents)?, vec!["a.ltx", "a.ltx"]);
+  assert_eq!(
+    Ltx::read_document_from_str(contents)?.list_included(),
+    vec!["a.ltx", "a.ltx"]
+  );
   assert!(Ltx::read_from_str(contents).is_err());
 
   Ok(())

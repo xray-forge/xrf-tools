@@ -1,23 +1,13 @@
-use std::sync::Arc;
-
 use xrf_environment::WeatherDescriptor;
 use xrf_error::XrfResult;
-use xrf_renderer::RenderLevelWeather;
 
-use crate::contract::world_weather_transition::WorldWeatherTransition;
+use crate::contract::weather::world_weather_transition::WorldWeatherTransition;
 
-/// What a loader thread read of a viewport's weather, tagged with the level and the request it was read for.
-pub enum WeatherLoad {
-  /// What every weather of the level plays with.
-  Level {
-    level: u64,
-    read: XrfResult<Arc<RenderLevelWeather>>,
-  },
-  /// A cycle asked for by name.
-  Cycle {
-    level: u64,
-    request: u64,
-    transition: WorldWeatherTransition,
-    read: XrfResult<Vec<WeatherDescriptor>>,
-  },
+/// A weather cycle a loader thread read for a viewport, asked for by name, tagged with the level and the request it
+/// was read for.
+pub struct WeatherLoad {
+  pub level: u64,
+  pub request: u64,
+  pub transition: WorldWeatherTransition,
+  pub read: XrfResult<Vec<WeatherDescriptor>>,
 }

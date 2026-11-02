@@ -4,8 +4,8 @@ use serde_json::{Value, json};
 
 use crate::commands::particle::find::command::FindCommand;
 use crate::commands::particle::fixtures::{create_library, run_for_result};
-use crate::core::command_testing::run_command_for_result;
-use crate::core::generic_command::CommandResult;
+use crate::core::command::CommandResult;
+use crate::core::command::command_testing::run_command_for_result;
 
 /// Each match's name and reasons, in order.
 fn to_found(result: &Value) -> Vec<(String, Value)> {

@@ -1,4 +1,4 @@
-use crate::contract::render_viewport_id::RenderViewportId;
+use crate::contract::viewport::render_viewport_id::RenderViewportId;
 
 /// Who offers a periodic job, which a withdrawal takes back together.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

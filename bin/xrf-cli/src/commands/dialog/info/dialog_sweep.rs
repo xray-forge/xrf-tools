@@ -4,52 +4,15 @@
 //! surface. The census is the point: it is what says whether the schema the reader models is the
 //! schema the shipped files are written in.
 
-use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
 use xrf_dialog::{DialogFile, DialogParseIssue, DialogParseIssueKind, DialogPhrase, DialogProject};
 use xrf_error::XrfResult;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
-use xrf_vfs::{XrayAsset, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
+use xrf_vfs::{XrayAsset, XrayRoots, XraySearch};
 
-/// What a sweep counted, beside what it found.
-///
-/// These are the numbers the reader's premises rest on: that phrases nearly always sit in a
-/// `phrase_list`, that a dialog may legitimately declare none, and that the element set is the one
-/// `DialogElementKind` classifies.
-#[derive(Debug, Default)]
-pub struct DialogSweepCensus {
-  pub files: usize,
-  pub unreadable_files: usize,
-  pub archived_files: usize,
-  pub dialogs: usize,
-  pub phrases: usize,
-  pub dialogs_without_phrases: usize,
-  pub dialogs_with_priority: usize,
-  pub phrases_outside_phrase_list: usize,
-  pub phrases_without_text: usize,
-  pub final_phrases: usize,
-  pub links: usize,
-  pub largest_dialog_phrases: usize,
-  pub largest_dialog_id: Option<String>,
-  pub encodings: BTreeMap<String, usize>,
-  pub dialog_elements: BTreeMap<String, usize>,
-  pub phrase_elements: BTreeMap<String, usize>,
-}
-
-impl DialogSweepCensus {
-  fn count(map: &mut BTreeMap<String, usize>, key: impl Into<String>) {
-    *map.entry(key.into()).or_default() += 1;
-  }
-}
-
-/// Outcome of a sweep: a finalized report and the counts behind it.
-#[derive(Debug)]
-pub struct DialogSweepResult {
-  pub census: DialogSweepCensus,
-  pub duration: Duration,
-  pub report: Report,
-}
+use crate::commands::dialog::info::dialog_sweep_census::DialogSweepCensus;
+use crate::commands::dialog::info::dialog_sweep_result::DialogSweepResult;
 
 /// Which roots to mount, and where to look inside it.
 pub struct DialogSweep<'a> {
@@ -76,18 +39,13 @@ impl<'a> DialogSweep<'a> {
   pub fn run(&self) -> XrfResult<DialogSweepResult> {
     let started: Instant = Instant::now();
 
-    let vfs: XrayVfs = self.roots.open()?;
-    let scope: XrayLookupScope = match self.prefix {
-      Some(prefix) => XrayLookupScope::all().with_prefix(prefix)?,
-      None => XrayLookupScope::all(),
-    };
-    let scoped: XrayScopedVfs = vfs.scoped(&scope);
+    let search: XraySearch = self.roots.to_search_plan()?.open()?.with_optional_prefix(self.prefix)?;
 
     let mut census: DialogSweepCensus = DialogSweepCensus::default();
     let mut read_findings: Vec<Finding> = Vec::new();
     let mut schema_findings: Vec<Finding> = Vec::new();
 
-    for asset in DialogProject::list_dialog_assets(&scoped) {
+    for asset in DialogProject::list_dialog_assets(&search) {
       let logical_path: &str = asset.get_logical_path().as_str();
 
       census.files += 1;
@@ -96,7 +54,7 @@ impl<'a> DialogSweep<'a> {
         census.archived_files += 1;
       }
 
-      match Self::read(&scoped, logical_path) {
+      match Self::read(&search, &asset) {
         Ok(file) => {
           DialogSweepCensus::count(&mut census.encodings, file.get_encoding().name());
           Self::census_file(&mut census, &file);
@@ -148,8 +106,8 @@ impl<'a> DialogSweep<'a> {
     })
   }
 
-  fn read(scoped: &XrayScopedVfs, logical_path: &str) -> XrfResult<DialogFile> {
-    DialogFile::read_from_bytes(&scoped.read_bytes(logical_path)?)
+  fn read(search: &XraySearch, asset: &XrayAsset) -> XrfResult<DialogFile> {
+    DialogFile::read_from_bytes(&search.read_asset(asset)?)
   }
 
   fn census_file(census: &mut DialogSweepCensus, file: &DialogFile) {
@@ -225,18 +183,4 @@ impl<'a> DialogSweep<'a> {
   fn rule(id: &str) -> RuleId {
     RuleId::new(format!("dialog.{id}")).expect("dialog rule ids are not empty")
   }
-}
-
-/// Total findings across every check, which is what the failure line counts.
-pub fn sum_findings(report: &Report) -> usize {
-  report
-    .checks()
-    .iter()
-    .map(|check| check.findings().len())
-    .sum::<usize>()
-}
-
-/// Render a counted distribution as `name: count` pairs, in name order.
-pub fn list_distribution(counts: &BTreeMap<String, usize>) -> Vec<String> {
-  counts.iter().map(|(name, count)| format!("{name}: {count}")).collect()
 }

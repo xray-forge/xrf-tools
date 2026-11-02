@@ -86,6 +86,9 @@ impl<'a> CompiledGraph<'a> {
         group: group_of(position).to_string(),
         owner: pass.pass.owner,
         render_pass: pass.render_pass,
+        reads: pass.pass.list_texture_reads().map(GraphTexture::get_index).collect(),
+        writes: pass.pass.list_texture_writes().map(GraphTexture::get_index).collect(),
+        tags: pass.pass.tags.clone(),
       })
       .collect();
     let textures = self.texture_slots.iter().enumerate().filter_map(|(index, slot)| {
@@ -133,6 +136,11 @@ impl<'a> CompiledGraph<'a> {
       culled: self.culled.iter().map(|name| name.to_string()).collect(),
       groups: self.groups.iter().map(|group| group.name.to_string()).collect(),
       render_pass_count: self.render_pass_count,
+      textures: self
+        .textures
+        .iter()
+        .map(|texture| texture.descriptor.label.to_string())
+        .collect(),
       transient_bytes: transients.iter().map(|transient| transient.bytes).sum(),
       pooled_count: pooled_textures.len() + pooled_buffers.len(),
       pooled_bytes: pooled_textures.values().sum::<u64>() + pooled_buffers.values().sum::<u64>(),

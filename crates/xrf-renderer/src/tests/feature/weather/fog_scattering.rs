@@ -1,0 +1,200 @@
+//! The enhanced fog: its height fog in the lighting, and the scattering's stages.
+
+use glam::{Mat4, Vec2, Vec3, Vec4};
+
+use crate::contract::feature::weather::fog::render_fog_mode::RenderFogMode;
+use crate::contract::feature::weather::fog::render_fog_settings::RenderFogSettings;
+use crate::contract::view::render_view_options::RenderViewOptions;
+use crate::feature::image::exposure::reading::exposure_decisions::ExposureDecisions;
+use crate::feature::weather::fog::fog_feature::FogFeature;
+use crate::feature::weather::fog::fog_scattering_uniform::FogScatteringUniform;
+use crate::feature::weather::sky::irradiance::sky_harmonics::SkyHarmonics;
+use crate::lighting::unit::light_units::LightUnits;
+use crate::lighting::weather::render_fog::RenderFog;
+use crate::lighting::weather::render_lighting::RenderLighting;
+use crate::pass::frame_lighting::lighting_frame::LightingFrame;
+use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
+
+// The enhanced fog, scattering as the pack ships it.
+fn enhanced() -> RenderFogSettings {
+  RenderFogSettings {
+    mode: RenderFogMode::Enhanced,
+    scattering: 0.7,
+    ..RenderFogSettings::default()
+  }
+}
+
+fn options_with(fog: RenderFogSettings) -> RenderViewOptions {
+  let mut options: RenderViewOptions = RenderViewOptions::default();
+
+  options.mode.is_lit = true;
+  options.show.is_fogged = true;
+  options.features.fog = fog;
+
+  options
+}
+
+fn fogged() -> RenderLighting {
+  RenderLighting {
+    fog: Some(RenderFog {
+      color: Vec3::splat(0.5),
+      distance: 300.0,
+      density: 0.5,
+      far_plane: 400.0,
+    }),
+    ..RenderLighting::default()
+  }
+}
+
+fn height_fog(options: &RenderViewOptions, lighting: &RenderLighting) -> Vec4 {
+  LightingUniform::new(
+    lighting,
+    Mat4::IDENTITY,
+    options,
+    &LightingFrame {
+      exposure: ExposureDecisions::default(),
+      display: Vec4::ZERO,
+      light_units: LightUnits::NONE,
+      daylight: None,
+      sky_blend: 0.0,
+      is_irradiance_up: false,
+      clouds_time: 0.0,
+      sun_sprite: Vec4::ZERO,
+      sky_harmonics: SkyHarmonics::default(),
+    },
+  )
+  .height_fog
+}
+
+#[test]
+fn ships_the_engines_fog_with_the_enhanced_strengths() {
+  let defaults: RenderFogSettings = RenderFogSettings::default();
+
+  assert_eq!(defaults.mode, RenderFogMode::Engine);
+  assert_eq!(
+    (
+      defaults.height,
+      defaults.density,
+      defaults.sun_color,
+      defaults.scattering
+    ),
+    (8.0, 0.4, 0.1, 0.0)
+  );
+  assert!(!defaults.is_enhanced() && !defaults.is_scattered());
+  assert!(
+    !RenderFogSettings {
+      mode: RenderFogMode::Enhanced,
+      ..defaults
+    }
+    .is_scattered()
+  );
+  assert!(enhanced().is_scattered());
+  assert!(
+    !RenderFogSettings {
+      scattering: 0.0,
+      ..enhanced()
+    }
+    .is_scattered()
+  );
+}
+
+// The height fog reaches the shaders only while enhanced, lit and fogged; the engine's fog is drawn as it was
+// otherwise.
+#[test]
+fn writes_the_height_fog_only_where_it_is_drawn() {
+  assert_eq!(
+    height_fog(&options_with(enhanced()), &fogged()),
+    Vec4::new(8.0, 0.4, 0.1, 1.0)
+  );
+  assert_eq!(
+    height_fog(&options_with(RenderFogSettings::default()), &fogged()),
+    Vec4::ZERO
+  );
+  assert_eq!(
+    height_fog(&options_with(enhanced()), &RenderLighting::default()),
+    Vec4::ZERO
+  );
+
+  let mut unfogged: RenderViewOptions = options_with(enhanced());
+
+  unfogged.show.is_fogged = false;
+
+  assert_eq!(height_fog(&unfogged, &fogged()), Vec4::ZERO);
+
+  let mut unlit: RenderViewOptions = options_with(enhanced());
+
+  unlit.mode.is_lit = false;
+
+  assert_eq!(height_fog(&unlit, &fogged()), Vec4::ZERO);
+}
+
+// No pass runs while the engine's fog is asked for, nothing scatters, no fog is drawn, unlit or in wireframe.
+#[test]
+fn scatters_only_an_enhanced_fog_drawn_lit_and_solid() {
+  let size: (u32, u32) = (1001, 503);
+  let scattered: RenderViewOptions = options_with(enhanced());
+  let fog: Option<RenderFog> = fogged().fog;
+
+  assert!(FogScatteringUniform::for_view(&scattered, fog.as_ref(), size, 0.0).is_some());
+  assert!(FogScatteringUniform::for_view(&scattered, None, size, 0.0).is_none());
+  assert!(
+    FogScatteringUniform::for_view(&options_with(RenderFogSettings::default()), fog.as_ref(), size, 0.0).is_none()
+  );
+  assert!(
+    FogScatteringUniform::for_view(
+      &options_with(RenderFogSettings {
+        scattering: 0.0,
+        ..enhanced()
+      }),
+      fog.as_ref(),
+      size,
+      0.0
+    )
+    .is_none()
+  );
+
+  let mut wireframe: RenderViewOptions = scattered.clone();
+
+  wireframe.mode.is_wireframe = true;
+
+  assert!(FogScatteringUniform::for_view(&wireframe, fog.as_ref(), size, 0.0).is_none());
+
+  let mut unfogged: RenderViewOptions = scattered;
+
+  unfogged.show.is_fogged = false;
+
+  assert!(FogScatteringUniform::for_view(&unfogged, fog.as_ref(), size, 0.0).is_none());
+}
+
+// The applied height fog says how much of it the camera sees where it stands: whole outdoors and where the level gives
+// no hemi, none indoors.
+#[test]
+fn reports_the_height_fog_faded_indoors() {
+  let share = |camera_hemi: Option<f32>| {
+    let mut fog: FogFeature = FogFeature::default();
+
+    fog.prepare(&options_with(enhanced()), &fogged(), None, 0.0, camera_hemi);
+    fog.get_applied().map(|applied| applied.indoor_share)
+  };
+
+  assert_eq!(share(None), Some(1.0));
+  assert_eq!(share(Some(0.5)), Some(1.0));
+  assert_eq!(share(Some(0.0)), Some(0.0));
+  assert!(share(Some(0.065)).is_some_and(|it| it > 0.0 && it < 1.0));
+}
+
+// A quarter, a half, then the frame's own size, rounding up; the strength held to one.
+#[test]
+fn blurs_to_a_quarter_and_a_half_before_scattering_at_full_size() {
+  let stages: [FogScatteringUniform; 3] = FogScatteringUniform::stages((1001, 503), 1.5, 2.0);
+
+  assert_eq!(
+    stages.map(|it| it.size),
+    [
+      Vec2::new(251.0, 126.0),
+      Vec2::new(501.0, 252.0),
+      Vec2::new(1001.0, 503.0)
+    ]
+  );
+  assert!(stages.iter().all(|it| it.intensity == 1.0 && it.time == 2.0));
+}

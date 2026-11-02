@@ -46,6 +46,12 @@ impl<'g, 'a> ComputePassBuilder<'g, 'a> {
     self
   }
 
+  /// Tags the pass for whoever reads the graph's report, which carries each tag beside it; the graph reads none.
+  pub fn tag(mut self, tag: &'static str) -> Self {
+    self.declaration.tags.push(tag);
+    self
+  }
+
   /// Adds the pass, dispatching with `record` inside the compute pass the graph opens.
   pub fn record(self, record: impl for<'c> FnOnce(&mut ComputeContext<'c>) + Send + 'a) {
     self.declaration.declare(

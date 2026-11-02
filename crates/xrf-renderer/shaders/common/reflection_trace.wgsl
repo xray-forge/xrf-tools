@@ -3,6 +3,7 @@
 #import "common/reflection_end"
 #import "generated/structs"
 #import "common/math"
+#import "common/brdf"
 
 // Screen-space reflection rays: a reflected direction drawn from a surface's GGX lobe, walked across the screen up and
 // down a pyramid of the frame's nearest depth, skipping whole cells it passes over and stepping down where it meets a
@@ -289,12 +290,6 @@ fn traced_roughness(gloss: f32, variance: f32) -> f32 {
   return sqrt(sqrt(alpha * alpha + max(variance, 0.0)));
 }
 
-// The GGX lobe's alpha for a roughness: its square, as the Disney and Unreal convention has it, so a roughness of
-// 0.02 is a lobe a fiftieth of a degree wide and not a degree, which read as the whole puddle jittering.
-fn lobe_alpha(roughness: f32) -> f32 {
-  return roughness * roughness;
-}
-
 // The share of metal in a texture's material, read back from the material table's slice the G-buffer's `material.z`
 // holds (`(material + 0.5) / 4` kept in 5 bits, as `material_slice` packs it): rising over Phong to Metal, falling over
 // Metal to Oren-Nayar, none in any other.
@@ -305,25 +300,99 @@ fn material_metal(slice: f32) -> f32 {
     select(0.0, 4.0 - material, material >= 3.0 && material < 4.0);
 }
 
-// A surface's reflectance head on: a dielectric's, lifted towards its own colour as its gloss passes the metals' where
-// its material (`slice`, the G-buffer's `material.z`) marks it a metal, and water's over the share of it a puddle's
-// clear coat covers.
-fn reflectance_head_on(albedo: vec3<f32>, gloss: f32, coat: f32, slice: f32) -> vec3<f32> {
-  let metal: f32 = smoothstep(METAL_GLOSS.x, METAL_GLOSS.y, gloss) *
-    smoothstep(METAL_TAGGED.x, METAL_TAGGED.y, material_metal(slice));
-
-  return mix(mix(vec3<f32>(DIELECTRIC_F0), albedo, metal), vec3<f32>(COAT_F0), saturate(coat));
+// How far a surface's gloss and material mark it a metal: its gloss past the metals' where its material (`slice`, the
+// G-buffer's `material.z`) is tagged one.
+fn metal_share(gloss: f32, slice: f32) -> f32 {
+  return smoothstep(METAL_GLOSS.x, METAL_GLOSS.y, gloss) * smoothstep(METAL_TAGGED.x, METAL_TAGGED.y,
+    material_metal(slice));
 }
 
-// What share of the light arriving along a surface's reflection it sends to the eye, at a cosine of the view to its
-// normal: the split-sum environment BRDF, Karis's fit of the DFG term over its reflectance head on and its roughness,
-// which holds the Fresnel's rise at grazing angles and its fall with roughness both.
-fn environment_brdf(head_on: vec3<f32>, roughness: f32, facing: f32) -> vec3<f32> {
-  let r: vec4<f32> = roughness * vec4<f32>(-1.0, -0.0275, -0.572, 0.022) + vec4<f32>(1.0, 0.0425, 1.04, -0.04);
-  let a004: f32 = min(r.x * r.x, exp2(-9.28 * saturate(facing))) * r.x + r.y;
-  let ab: vec2<f32> = vec2<f32>(-1.04, 1.04) * a004 + r.zw;
+// A surface's reflectance head on: a dielectric's, lifted towards its own colour as far as it is a metal
+// (`metal_share`), and water's over the share of it a puddle's clear coat covers.
+fn reflectance_head_on(albedo: vec3<f32>, gloss: f32, coat: f32, slice: f32) -> vec3<f32> {
+  return mix(mix(vec3<f32>(DIELECTRIC_F0), albedo, metal_share(gloss, slice)), vec3<f32>(COAT_F0), saturate(coat));
+}
 
-  return head_on * ab.x + ab.y;
+// The engine's lighting models' lobes as GGX's roughness, in their slices' order (Oren-Nayar, Blinn, Phong, metal):
+// their Blinn-Phong powers, 16, 24, 128 and 24, gloss-blind, at the lobe of a width alike, `α = √(2 / (n + 2))`,
+// the roughness α's root (Walter et al. 2007; Lagarde and de Rousiers 2014).
+const ENGINE_LOBE_ROUGHNESS: vec4<f32> = vec4<f32>(0.5774, 0.5266, 0.3522, 0.5266);
+// A dielectric's reflectance head on for a gloss of one: the engine's gloss is the specular's intensity, never its
+// width, read as Unreal's Specular input reads its own, `0.08 × specular`, the common 0.04 at a gloss of a half.
+const GLOSS_REFLECTANCE: f32 = 0.08;
+
+// The roughness of a material's lobe as its slice of the material table names it, between two slices' as the table
+// filters between them, the last wrapping to the first as the table's sampler wraps.
+fn engine_lobe_roughness(slice: f32) -> f32 {
+  let material: f32 = slice * 4.0 - 0.5;
+  let below: i32 = i32(floor(material));
+  let lower: f32 = ENGINE_LOBE_ROUGHNESS[((below % 4) + 4) % 4];
+  let upper: f32 = ENGINE_LOBE_ROUGHNESS[((below + 1) % 4 + 4) % 4];
+
+  return mix(lower, upper, material - floor(material));
+}
+
+// The water over a surface, from its texels of the wet surface (`wet`) and the wet reach (`reach`): the share a puddle's
+// clear coat covers, the gloss the wetting added in all (the engine's, the wet reach's and a puddle's water's), and the
+// share a film of water covers, the coat and that added gloss.
+struct WaterFilm {
+  coat: f32,
+  gained: f32,
+  film: f32,
+};
+
+fn water_film(wet: vec4<f32>, reach: vec4<f32>) -> WaterFilm {
+  return WaterFilm(wet.r, reach.b, saturate(wet.r + reach.b));
+}
+
+// A surface's material as every path shading it takes it (the reflections and their guides, combine, the sun and the
+// lamps): its roughness and reflectance head on from its G-buffer albedo and gloss (`albedo`), its material (`slice`),
+// the water over it (`water`) and the variance its lobe widens by. By the reflections' reading of the gloss as the
+// lobe's width, as the authored levels keep it; or, at the anchored levels, as the industry converts a legacy gloss:
+// the width the engine's own lobe has (`engine_lobe_roughness`), the dry gloss under the wetting's as the specular's
+// intensity (`GLOSS_REFLECTANCE`), and water's smoothness and reflectance as far as its film covers it. As the width,
+// the terrain's dry gloss of 0.37 was a roughness of 0.15 and the sun made polished stone and wet sand of it; the
+// wetting's gloss read as an intensity reflected up to four times what water does, and a soaked bank grazed the sky
+// white. Its specular, direct and reflected, is weighed by `shadowing`: one, but at the anchored levels where the
+// reflectance falls under 2%, the least a real material reflects, which stands for the specular's shadowing instead
+// (Unreal's `saturate(50 · F0)` over the Fresnel's rise; Karis, "Physically Based Shading on Mobile", 2014), so a
+// surface the engine glosses at nought reflects nothing at any angle rather than the sky at every grazing blade.
+struct SurfaceMaterial {
+  roughness: f32,
+  head_on: vec3<f32>,
+  shadowing: f32,
+};
+
+fn surface_material(albedo: vec4<f32>, slice: f32, water: WaterFilm, variance: f32,
+  is_anchored: bool) -> SurfaceMaterial {
+  let gloss: f32 = albedo.a;
+  let wet_roughness: f32 = traced_roughness(gloss, variance);
+
+  if (!is_anchored) {
+    return SurfaceMaterial(wet_roughness, reflectance_head_on(albedo.rgb, gloss, water.coat, slice), 1.0);
+  }
+
+  let dry: f32 = saturate(gloss - water.gained);
+  let dielectric: vec3<f32> = vec3<f32>(GLOSS_REFLECTANCE * dry);
+  let head_on: vec3<f32> = mix(mix(dielectric, albedo.rgb, metal_share(dry, slice)), vec3<f32>(COAT_F0), water.film);
+
+  return SurfaceMaterial(mix(engine_lobe_roughness(slice), wet_roughness, water.film), head_on,
+    saturate(50.0 * max(head_on.r, max(head_on.g, head_on.b))));
+}
+
+// A surface as the one BRDF (`common/brdf`) shades it: its material (`surface_material`) and its lobe's directional
+// albedo for white at the cosine of the view to its normal (`facing`), from the split-sum table.
+struct BrdfSurface {
+  roughness: f32,
+  head_on: vec3<f32>,
+  shadowing: f32,
+  white: f32,
+};
+
+fn brdf_surface(table: texture_2d<f32>, material: SurfaceMaterial, facing: f32) -> BrdfSurface {
+  let split: vec2<f32> = brdf_table_split(table, material.roughness, saturate(facing));
+
+  return BrdfSurface(material.roughness, material.head_on, material.shadowing, split.x + split.y);
 }
 
 // The sun's angular radius, which its glint's lobe is widened by, so a mirror shows the disc rather than a point; and
@@ -345,13 +414,9 @@ fn sun_glint(normal: vec3<f32>, to_eye: vec3<f32>, to_sun: vec3<f32>, roughness:
 
   let half_way: vec3<f32> = normalize(to_sun + to_eye);
   let alpha: f32 = min(lobe_alpha(roughness) + SUN_ANGULAR_RADIUS, 1.0);
-  let alpha_squared: f32 = alpha * alpha;
-  let along: f32 = saturate(dot(normal, half_way));
-  let spread: f32 = along * along * (alpha_squared - 1.0) + 1.0;
-  let lobe: f32 = alpha_squared / (PI * spread * spread);
-  let visibility: f32 = 0.5 / (lit * sqrt(facing * facing * (1.0 - alpha_squared) + alpha_squared) +
-    facing * sqrt(lit * lit * (1.0 - alpha_squared) + alpha_squared));
-  let fresnel: vec3<f32> = head_on + (1.0 - head_on) * pow(1.0 - saturate(dot(to_eye, half_way)), 5.0);
+  let lobe: f32 = ggx_distribution(saturate(dot(normal, half_way)), alpha);
+  let visibility: f32 = smith_visibility(lit, facing, alpha);
+  let fresnel: vec3<f32> = schlick_fresnel(head_on, dot(to_eye, half_way));
 
   return min(vec3<f32>(lobe * visibility * lit), vec3<f32>(SUN_GLINT_MOST)) * fresnel;
 }

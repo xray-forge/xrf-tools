@@ -8,10 +8,10 @@ use xrf_dds::{DdsFile, ImageFormat};
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_ltx::Ltx;
 use xrf_output::{Output, OutputChannel, OutputOptions, OutputVerbosity};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
-use crate::equipment::{PackEquipmentOptions, PackEquipmentProcessor};
-use crate::image_file::{UI_MIPMAPS, save_image_as_ui_dds};
+use crate::equipment::{EquipmentSpritePackOptions, EquipmentSpritePacker};
+use crate::image_file::ImageFileWriter;
 
 struct CancelOnOutput {
   job: JobHandle,
@@ -26,12 +26,8 @@ impl Output for CancelOnOutput {
   }
 }
 
-fn options(name: &str, icons: u32, existing: bool) -> PackEquipmentOptions {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("equipment-pack/{name}/{existing}"));
-  if root.exists() {
-    fs::remove_dir_all(&root).unwrap();
-  }
-  fs::create_dir_all(&root).unwrap();
+fn options(name: &str, icons: u32, existing: bool) -> EquipmentSpritePackOptions {
+  let root: PathBuf = GeneratedResources::create_dir(&format!("equipment-pack/{name}/{existing}")).unwrap();
 
   let mut ltx: Ltx = Ltx::new();
   let icon: RgbaImage = RgbaImage::from_pixel(50, 50, Rgba([255, 255, 255, 255]));
@@ -49,10 +45,16 @@ fn options(name: &str, icons: u32, existing: bool) -> PackEquipmentOptions {
   let output_path: PathBuf = root.join("atlas.dds");
   if existing {
     let sentinel: RgbaImage = RgbaImage::from_pixel(52, 52, Rgba([255, 255, 255, 255]));
-    save_image_as_ui_dds(&output_path, &sentinel, ImageFormat::BC3RgbaUnorm, UI_MIPMAPS).unwrap();
+    ImageFileWriter::write_dds(
+      &output_path,
+      &sentinel,
+      ImageFormat::BC3RgbaUnorm,
+      ImageFileWriter::UI_MIPMAPS,
+    )
+    .unwrap();
   }
 
-  PackEquipmentOptions {
+  EquipmentSpritePackOptions {
     job: JobHandle::default(),
     ltx,
     source: root,
@@ -64,7 +66,7 @@ fn options(name: &str, icons: u32, existing: bool) -> PackEquipmentOptions {
   }
 }
 
-fn cancel_on(options: &mut PackEquipmentOptions, channel: OutputChannel) {
+fn cancel_on(options: &mut EquipmentSpritePackOptions, channel: OutputChannel) {
   options.output = OutputOptions::new(
     Arc::new(CancelOnOutput {
       job: options.job.clone(),
@@ -74,10 +76,10 @@ fn cancel_on(options: &mut PackEquipmentOptions, channel: OutputChannel) {
   );
 }
 
-fn assert_cancelled_without_publication(options: PackEquipmentOptions, packed: u32, skipped: u32) {
+fn assert_cancelled_without_publication(options: EquipmentSpritePackOptions, packed: u32, skipped: u32) {
   let path: PathBuf = options.output_path.clone();
   let before: Option<Vec<u8>> = path.exists().then(|| fs::read(&path).unwrap());
-  let result = PackEquipmentProcessor::pack_sprites(options).unwrap();
+  let result = EquipmentSpritePacker::pack_sprites(options).unwrap();
 
   assert_eq!(result.outcome, JobOutcome::Cancelled);
   assert_eq!(result.packed_count, packed);
@@ -138,7 +140,7 @@ fn completed_pack_publishes_every_icon() {
   for existing in [false, true] {
     let options = options("completed", 2, existing);
     let path: PathBuf = options.output_path.clone();
-    let result = PackEquipmentProcessor::pack_sprites(options).unwrap();
+    let result = EquipmentSpritePacker::pack_sprites(options).unwrap();
     assert_eq!(result.outcome, JobOutcome::Completed);
     assert_eq!(result.packed_count, 2);
     assert_eq!(result.skipped_count, 0);
@@ -163,7 +165,7 @@ fn strict_missing_icon_error_preserves_destination() {
     let path: PathBuf = options.output_path.clone();
     let before: Option<Vec<u8>> = path.exists().then(|| fs::read(&path).unwrap());
 
-    assert!(PackEquipmentProcessor::pack_sprites(options).is_err());
+    assert!(EquipmentSpritePacker::pack_sprites(options).is_err());
     match before {
       Some(bytes) => assert_eq!(fs::read(path).unwrap(), bytes),
       None => assert!(!path.exists()),

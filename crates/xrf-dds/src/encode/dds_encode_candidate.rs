@@ -1,21 +1,11 @@
 use ddsfile::DxgiFormat;
 use image_dds::ImageFormat;
+use xrf_error::XrfError;
 
 use crate::renderer::dds_format_support::DdsFormatSupport;
 use crate::renderer::dds_renderer::DdsRenderer;
 
-/// Pixels along one edge of a block, which every block-compressed family in this format shares.
-///
-/// A texture whose sides are not multiples of it still stores whole blocks, padded, so a caller sizing a canvas it
-/// intends to compress rounds up to this rather than leaving the encoder to pad.
-pub const DDS_BLOCK_SIZE: u32 = 4;
-
 /// A format a texture can be re-encoded into, of the five worth offering.
-///
-/// The list is short on purpose. It is what the engine's own textures are authored in - the three DXT families and
-/// uncompressed - plus BC7, which is the one modern block format worth the trade and which only the DX11 path loads.
-/// Everything else `image_dds` can write is either a channel layout no X-Ray shader samples or a floating point
-/// format the engine has no path for.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DdsEncodeCandidate {
   Bc1,
@@ -27,6 +17,26 @@ pub enum DdsEncodeCandidate {
 
 impl DdsEncodeCandidate {
   pub const ALL: [Self; 5] = [Self::Bc1, Self::Bc2, Self::Bc3, Self::Rgba8, Self::Bc7];
+
+  /// Every candidate's [`Self::as_str`], in [`Self::ALL`] order, for a parser offering them.
+  pub const NAMES: [&'static str; 5] = [
+    Self::Bc1.as_str(),
+    Self::Bc2.as_str(),
+    Self::Bc3.as_str(),
+    Self::Rgba8.as_str(),
+    Self::Bc7.as_str(),
+  ];
+
+  /// The short lowercase name a person types for the format.
+  pub const fn as_str(self) -> &'static str {
+    match self {
+      Self::Bc1 => "bc1",
+      Self::Bc2 => "bc2",
+      Self::Bc3 => "bc3",
+      Self::Rgba8 => "rgba8",
+      Self::Bc7 => "bc7",
+    }
+  }
 
   /// Name of the format, with the DXT name the descriptor and the SDK use for it.
   pub const fn label(self) -> &'static str {
@@ -111,6 +121,23 @@ impl DdsEncodeCandidate {
       .filter(|renderer| self.support(*renderer) == answer)
       .map(DdsRenderer::label)
       .collect()
+  }
+}
+
+impl TryFrom<&str> for DdsEncodeCandidate {
+  type Error = XrfError;
+
+  /// The candidate [`DdsEncodeCandidate::as_str`] spells `value`.
+  fn try_from(value: &str) -> Result<Self, Self::Error> {
+    Self::ALL
+      .into_iter()
+      .find(|candidate| candidate.as_str() == value)
+      .ok_or_else(|| {
+        XrfError::new_invalid_error(format!(
+          "Unexpected texture format '{value}', expected {}",
+          Self::NAMES.join(", ")
+        ))
+      })
   }
 }
 

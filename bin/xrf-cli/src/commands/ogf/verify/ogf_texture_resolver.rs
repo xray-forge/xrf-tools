@@ -1,8 +1,8 @@
 //! Resolves and inspects textures referenced by OGF visuals.
 //!
 //! Each reference is resolved against the visual's implied X-Ray root and then against whatever further roots the
-//! caller named, through the shared asset probe. DDS header results, including failures, are cached by resolved texture
-//! path.
+//! caller named, through the shared asset search. DDS header results, including failures, are cached by resolved
+//! texture path.
 //!
 //! Naming further roots is what makes an overlay measurable. A mod tree ships the meshes that changed and none of the
 //! textures they still share with the base game: swept alone, `gamedata-openxray-gunslinger` reports 1,076 of 1,229
@@ -12,39 +12,22 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use xrf_dds::{DdsFile, DdsMetadata};
+use xrf_error::XrfResult;
 use xrf_utils::{error_to_string, format_path};
-use xrf_vfs::{XrayAssetType, XrayMountPlan, XrayProbePlan, XrayProbeStep, XrayResolution, XrayVfs};
+use xrf_vfs::{XrayAssetType, XrayResolution, XrayRootProbe, XraySearch, XraySearchPlan};
 
-/// The outcome of resolving and reading one texture reference.
-pub enum TextureResolution {
-  /// The visual sits under no directory that looks like an X-Ray root.
-  NoRoot,
-  /// Nothing searched holds the reference. `sources` is every root the probe looked in, in order.
-  Missing { sources: Vec<String> },
-  /// The texture resolved and its DDS header was read.
-  Resolved {
-    step: String,
-    path: PathBuf,
-    format: String,
-    metadata: DdsMetadata,
-  },
-  /// The texture resolved inside an archive, which this sweep locates but does not inspect.
-  ///
-  /// Separate from [`TextureResolution::Resolved`] because the census question splits here: the reference is present,
-  /// and its format stays unknown. Reading it would mean decompressing a whole entry to look at 148 bytes of header.
-  Located { step: String, container: String },
-  /// The texture resolved, but its DDS header could not be read or parsed.
-  Unreadable { path: PathBuf, reason: String },
-}
+use crate::commands::ogf::verify::texture_resolution::TextureResolution;
 
-/// Caches mounted roots and DDS header results across a verification sweep.
+/// Caches mounted searches and DDS header results across a verification sweep.
 ///
-/// Repeated references reuse the success or failure cached for their resolved texture path.
+/// The visuals of one tree share one implied root, so its search is planned and mounted once, not once per texture
+/// reference. Repeated references reuse the success or failure cached for their resolved texture path.
 #[derive(Default)]
 pub struct OgfTextureResolver {
   /// Roots searched after the visual's own, in the order the caller named them.
   roots: Vec<PathBuf>,
-  vfs: XrayVfs,
+  /// The search for each implied root, or why it could not be planned or mounted.
+  searches: HashMap<PathBuf, Result<XraySearch, String>>,
   headers: HashMap<PathBuf, Result<(String, DdsMetadata), String>>,
 }
 
@@ -62,15 +45,28 @@ impl OgfTextureResolver {
     }
   }
 
+  /// Plans every named root once, before any visual is swept: a root that cannot be planned would otherwise turn every
+  /// reference of every visual into a miss.
+  ///
+  /// # Errors
+  ///
+  /// Returns why the first root that cannot be planned is refused.
+  pub fn check_roots(roots: &[PathBuf]) -> XrfResult {
+    for root in roots {
+      XraySearchPlan::new().with_root(root.display().to_string(), root)?;
+    }
+
+    Ok(())
+  }
+
   pub fn resolve(&mut self, visual: &Path, reference: &str) -> TextureResolution {
-    let Some(root) = XrayMountPlan::implied_root(visual) else {
+    let Some(root) = XrayRootProbe::implied_root(visual) else {
       return TextureResolution::NoRoot;
     };
 
-    let Some(resolution) = self.locate(&root, reference) else {
-      return TextureResolution::Missing {
-        sources: vec![root.display().to_string()],
-      };
+    let resolution: XrayResolution = match self.locate(&root, reference) {
+      Ok(resolution) => resolution,
+      Err(unresolved) => return *unresolved,
     };
 
     let step: String = resolution.get_step().unwrap_or_default().to_string();
@@ -107,31 +103,44 @@ impl OgfTextureResolver {
   /// A named root is planned in `Auto` mode, so an installation brings its archives with it. What this intentionally
   /// does not do is read those archives: an archived hit is reported located rather than inspected, because a header
   /// read there means decompressing a whole entry to look at 148 bytes.
-  fn locate(&mut self, root: &Path, reference: &str) -> Option<XrayResolution> {
-    let mut plan: XrayProbePlan = XrayProbePlan::new()
-      .with_root(Self::VISUAL_ROOT_STEP, root)
-      .inspect_err(|error| log::warn!("Failed to plan root {}: {error}", format_path(root)))
-      .ok()?;
+  ///
+  /// Answers the resolution, or the texture's whole answer where the root or the reference rules one out.
+  fn locate(&mut self, root: &Path, reference: &str) -> Result<XrayResolution, Box<TextureResolution>> {
+    let roots: &[PathBuf] = &self.roots;
+    let search: &XraySearch = self
+      .searches
+      .entry(root.to_path_buf())
+      .or_insert_with(|| Self::open_search(root, roots))
+      .as_ref()
+      .map_err(|reason| {
+        Box::new(TextureResolution::RootUnreadable {
+          root: root.to_path_buf(),
+          reason: reason.clone(),
+        })
+      })?;
 
-    for named in &self.roots {
+    search.resolve(XrayAssetType::Dds, reference).map_err(|error| {
+      Box::new(TextureResolution::Rejected {
+        reason: error.to_string(),
+      })
+    })
+  }
+
+  /// The search over the visual root `root`, then each named root, or why one could not be planned or mounted.
+  fn open_search(root: &Path, roots: &[PathBuf]) -> Result<XraySearch, String> {
+    let mut plan: XraySearchPlan = XraySearchPlan::new()
+      .with_root(Self::VISUAL_ROOT_STEP, root)
+      .map_err(|error| format!("Failed to plan root {}: {error}", format_path(root)))?;
+
+    for named in roots {
       plan = plan
         .with_root(named.display().to_string(), named)
-        .inspect_err(|error| log::warn!("Failed to plan root {}: {error}", format_path(named)))
-        .ok()?;
+        .map_err(|error| format!("Failed to plan root {}: {error}", format_path(named)))?;
     }
 
-    let steps: Vec<XrayProbeStep> = plan
-      .mount_into(&mut self.vfs)
-      .inspect_err(|error| log::warn!("Failed to mount root {}: {error}", format_path(root)))
-      .ok()?;
-
-    self
-      .vfs
-      .probe()
-      .with_steps(steps)
-      .resolve(XrayAssetType::Dds, reference)
-      .inspect_err(|error| log::warn!("Rejected texture reference '{reference}': {error}"))
-      .ok()
+    plan
+      .open()
+      .map_err(|error| format!("Failed to mount root {}: {error}", format_path(root)))
   }
 
   /// Returns cached DDS header facts by value.

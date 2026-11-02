@@ -6,8 +6,7 @@ use xrf_output::OutputOptions;
 use xrf_utils::format_path;
 
 use super::report::DdsInfoReport;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct InfoCommand;
@@ -17,21 +16,17 @@ impl GenericCommand for InfoCommand {
     "info"
   }
 
-  /// Create command for printing texture info.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to print information about provided dds file")
-      .arg(
-        Arg::new("path")
-          .help("Path to dds file")
-          .short('p')
-          .long("path")
-          .required(true)
-          .value_parser(value_parser!(PathBuf)),
-      )
+  fn declare(&self, command: Command) -> Command {
+    command.about("Print what a DDS file holds").arg(
+      Arg::new("path")
+        .help("Path to dds file")
+        .short('p')
+        .long("path")
+        .required(true)
+        .value_parser(value_parser!(PathBuf)),
+    )
   }
 
-  /// Print information about dds file.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")

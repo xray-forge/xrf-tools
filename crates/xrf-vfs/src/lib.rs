@@ -1,40 +1,30 @@
 #![doc = include_str!("../README.md")]
-//!
-//! # Module map
-//!
-//! The crate is grouped by the question each part answers:
-//!
-//! - [`path`] — what an engine identity is, and the only place separators and case are decided.
-//! - [`asset`] — what a resolved asset is, plus the per-kind rules that turn a reference into one.
-//! - [`cache`] — what a mounted world keeps after parsing an asset, the policy deciding what is kept, and the coordination that keeps two readers from parsing one asset twice.
-//! - [`source`] — the mountable surface, and the two sources the engine itself has.
-//! - [`mount`] — composing sources into a searchable order, and planning one from a path.
-//! - [`vfs`] — resolving and reading through that order, one scope at a time or as an ordered probe.
-//! - [`fsgame`] — the declaration file an installation describes its own layout with.
-//! - [`trace`] — what a world actually read, when a caller asked to be told.
-//!
-//! The `.db` volume format the archive source reads lives below this crate, in `xrf-archive`.
 
-pub mod asset;
-pub mod cache;
-pub mod fsgame;
-pub mod mount;
-pub mod path;
-pub mod source;
-pub mod trace;
-pub mod vfs;
+mod asset;
+mod change;
+mod input;
+mod mount;
+mod path;
+mod search;
+mod source;
+mod vfs;
 
 pub use asset::{XrayAsset, XrayAssetContainer, XrayAssetRules, XrayAssetType, require_writable_path};
-pub use cache::{XrayAssetCache, XrayCachePolicy, XrayCacheStats};
-pub use fsgame::{FsgameDeclaration, FsgameFile};
+pub use change::{XrayChange, XrayChangeKind, XrayChangeSet, XrayTransaction};
+pub use input::{XrayInput, XrayInputAnswer, XrayInputKind, XrayInputRecord, XrayRevision};
 pub use mount::{
-  XrayMount, XrayMountId, XrayMountMode, XrayMountPlan, XrayPlannedMount, XrayProbePlan, XrayRoot, XrayRootKind,
-  XrayRootProbe, XrayRoots, XraySkippedMount,
+  FsgameDeclaration, FsgameFile, XrayMount, XrayMountId, XrayMountMode, XrayRoot, XrayRootKind, XrayRootProbe,
+  XrayRoots, XraySkippedMount,
 };
 pub use path::{XrayCollisionSite, XrayLogicalPath, XrayPathCollision};
-pub use source::{XrayArchiveSource, XrayAssetSource, XrayDeclaredRoot, XraySourceKind, label_from_path};
-pub use trace::{XrayReadTrace, XrayReadTraceEntry, XrayReadTraceHotPath, XrayReadTraceSummary};
+pub use search::{
+  XrayDirectoryListing, XrayLookupScope, XrayMountedEntry, XrayReadHandle, XrayResolution, XraySearch, XraySearchKey,
+  XraySearchPlan, XraySearchStep, XraySearchedSource, XrayShadowedCopy, XrayShadowingEntry,
+};
+pub use source::{
+  XrayArchiveSource, XrayAssetSource, XrayDeclaredRoot, XrayFileStamp, XraySourceKind, label_from_path,
+};
 pub use vfs::{
-  XrayDirectoryListing, XrayLookupScope, XrayMountedEntry, XrayProbe, XrayProbeStep, XrayResolution, XrayScopedVfs,
-  XraySearchedSource, XrayShadowedCopy, XrayShadowingEntry, XrayVfs,
+  XrayCachePolicy, XrayCacheStats, XrayReadTrace, XrayReadTraceEntry, XrayReadTraceHotPath, XrayReadTraceSummary,
+  XrayVfs, XrayVfsHost,
 };

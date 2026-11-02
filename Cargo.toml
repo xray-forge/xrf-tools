@@ -1,7 +1,9 @@
 [workspace]
 resolver = "3"
 members = [
-  "bin/xrf-app",
+  "bin/xrf-app/app",
+  "bin/xrf-app/core",
+  "bin/xrf-app/plugins/*",
   "bin/xrf-cli",
   "crates/xrf-animation-envelope",
   "crates/xrf-anm",
@@ -72,9 +74,10 @@ ddsfile = "0.5.2"
 criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
 byteorder = "1.5.0"
 bytemuck = { version = "1.25.2", features = ["derive"] }
+bytes = "1.12.1"
 derive_more = "2.1.1"
 enum-map = "3.1.0"
-env_logger = "0.11.11"
+env_logger = { version = "0.11.11", default-features = false, features = ["auto-color", "humantime"] }
 glam = { version = "0.34.1", features = ["bytemuck"] }
 fileslice = { version = "0.8.0", default-features = false }
 image = { version = "0.25.10", default-features = false }
@@ -88,22 +91,37 @@ proc-macro2 = "1.0.107"
 profiling = "1.0.18"
 quote = "1.0.47"
 rayon = "1.12.0"
-serde = { version = "1.0.229", features = ["derive", "rc"] }
+resvg = { version = "0.48.1", default-features = false }
+serde ={ version = "1.0.229", features = ["derive", "rc"] }
 serde_json = "1.0.151"
 syn = "3.0.5"
 sysinfo = "0.39.6"
-specta = { version = "=2.0.0-rc.25", features = ["derive", "serde_json", "uuid"] }
-specta-serde = "0.0.12"
-specta-typescript = "0.0.12"
-specta-util = "0.0.12"
+specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json", "uuid"] }
+specta-serde = "0.0.13"
+specta-typescript = "0.0.13"
+specta-util = "0.0.13"
 tauri = "2.12.0"
-tauri-specta = { version = "=2.0.0-rc.25", features = ["typescript"] }
+tauri-specta = { version = "=2.0.0-rc.26", features = ["typescript"] }
 trybuild = "1.0.121"
 uuid = "1.26.1"
 walkdir = "2.5.0"
 windows = "0.62.2"
 wgpu = { version = "30.0.0", default-features = false, features = ["std", "dx12", "vulkan", "metal", "wgsl"] }
 xrf-animation-envelope = { path = "crates/xrf-animation-envelope" }
+xrf-app-archives = { path = "bin/xrf-app/plugins/xrf-app-archives" }
+xrf-app-configs = { path = "bin/xrf-app/plugins/xrf-app-configs" }
+xrf-app-core = { path = "bin/xrf-app/core" }
+xrf-app-dialogs = { path = "bin/xrf-app/plugins/xrf-app-dialogs" }
+xrf-app-exports = { path = "bin/xrf-app/plugins/xrf-app-exports" }
+xrf-app-gamedata = { path = "bin/xrf-app/plugins/xrf-app-gamedata" }
+xrf-app-levels = { path = "bin/xrf-app/plugins/xrf-app-levels" }
+xrf-app-render = { path = "bin/xrf-app/plugins/xrf-app-render" }
+xrf-app-spawn = { path = "bin/xrf-app/plugins/xrf-app-spawn" }
+xrf-app-sprite-equipment = { path = "bin/xrf-app/plugins/xrf-app-sprite-equipment" }
+xrf-app-system = { path = "bin/xrf-app/plugins/xrf-app-system" }
+xrf-app-textures = { path = "bin/xrf-app/plugins/xrf-app-textures" }
+xrf-app-translations = { path = "bin/xrf-app/plugins/xrf-app-translations" }
+xrf-app-visuals = { path = "bin/xrf-app/plugins/xrf-app-visuals" }
 xrf-anm = { path = "crates/xrf-anm" }
 xrf-archive = { path = "crates/xrf-archive" }
 xrf-archive-stats = { path = "crates/xrf-archive-stats" }
@@ -161,20 +179,21 @@ xrf-world = { path = "crates/xrf-world" }
 xrf-xml = { path = "crates/xrf-xml" }
 
 # wgpu's trunk on the way to v31 (the fork's `xrf/v31-modified`) with D3D12's command list reachable from a HAL command
-# encoder, which DLSS records into on D3D12, and bottom-level acceleration structures refit in place where they allow
-# and ask for it; the whole family comes from the fork so one copy of each crate is built. Trunk still calls itself
-# 30.0.0, which the requirements above match.
+# encoder, which DLSS records into on D3D12, bottom-level acceleration structures refit in place where they allow and
+# ask for it, and D3D12 descriptor heaps released apart from other heaps' creation while the debug layer is on, which
+# otherwise loses track of them across threads; the whole family comes from the fork so one copy of each crate is built.
+# Trunk still calls itself 30.0.0, which the requirements above match.
 [patch.crates-io]
-naga = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
-naga-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
-wgpu = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
-wgpu-core = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
-wgpu-core-deps-linux-android-bsd = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
-wgpu-core-deps-windows = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
-wgpu-hal = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
-wgpu-naga-bridge = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
-wgpu-sync = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
-wgpu-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a" }
+naga = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bfd78f5c9ff0ab2e500e9429af0efb4df0157a62" }
+naga-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bfd78f5c9ff0ab2e500e9429af0efb4df0157a62" }
+wgpu = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bfd78f5c9ff0ab2e500e9429af0efb4df0157a62" }
+wgpu-core = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bfd78f5c9ff0ab2e500e9429af0efb4df0157a62" }
+wgpu-core-deps-linux-android-bsd = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bfd78f5c9ff0ab2e500e9429af0efb4df0157a62" }
+wgpu-core-deps-windows = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bfd78f5c9ff0ab2e500e9429af0efb4df0157a62" }
+wgpu-hal = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bfd78f5c9ff0ab2e500e9429af0efb4df0157a62" }
+wgpu-naga-bridge = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bfd78f5c9ff0ab2e500e9429af0efb4df0157a62" }
+wgpu-sync = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bfd78f5c9ff0ab2e500e9429af0efb4df0157a62" }
+wgpu-types = { git = "https://github.com/xray-forge/xrf-wgpu", rev = "bfd78f5c9ff0ab2e500e9429af0efb4df0157a62" }
 
 # Size-optimised: level 3 measured 3.7% faster for 36-40% larger binaries.
 [profile.release]
@@ -198,9 +217,22 @@ opt-level = 3
 [profile.release.package.wgpu-types]
 opt-level = 3
 
-# Keep development builds fast.
+# Keep development builds fast. Line tables keep panics and backtraces readable; full debug information for a debugger
+# lives in the `debugging` profile, as it slows every compile and link and doubles the target folder.
 [profile.dev]
 opt-level = 0
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
+
+# Development with full debug information, in its own target folder, for stepping through and inspecting in a debugger.
+[profile.debugging]
+inherits = "dev"
+debug = "full"
+
+[profile.debugging.package."*"]
+debug = "full"
 
 # Development with optimisation, in its own target folder: the workspace at level 1, near release on byte loops while
 # it still builds fast, and dependencies at 3, built once, where image encoding, shader compilation and decoding run.

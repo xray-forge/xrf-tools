@@ -7,18 +7,18 @@ use xrf_math::Vector3d;
 /// One occluder triangle, `HOM_poly` (`Layers/xrRender/HOM.cpp`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct HomPolygon {
+pub struct LevelHomPolygon {
   pub vertices: [Vector3d<f32>; 3],
   /// Packed alongside the triangle and handed to the collision collector as its face flags.
   pub flags: u32,
 }
 
-impl HomPolygon {
+impl LevelHomPolygon {
   /// Bytes one triangle occupies: three positions and a flag word.
   pub const SERIALIZED_SIZE: u64 = 3 * 12 + 4;
 }
 
-impl ChunkReadWrite for HomPolygon {
+impl ChunkReadWrite for LevelHomPolygon {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
       vertices: [

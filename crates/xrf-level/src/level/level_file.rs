@@ -3,13 +3,17 @@ use std::path::Path;
 
 use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, find_optional_chunk_by_id, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
 use crate::level::dynamic_lights::level_dynamic_lights_chunk::LevelDynamicLightsChunk;
+use crate::level::glows::level_glow::LevelGlow;
+use crate::level::glows::level_glows_chunk::LevelGlowsChunk;
 use crate::level::level_header_chunk::LevelHeaderChunk;
+use crate::level::portals::level_portal::LevelPortal;
 use crate::level::portals::level_portals_chunk::LevelPortalsChunk;
+use crate::level::sectors::level_sector::LevelSector;
 use crate::level::sectors::level_sectors_chunk::LevelSectorsChunk;
 use crate::level::shaders::level_shaders_chunk::LevelShadersChunk;
 use crate::level::visuals::level_visuals_chunk::LevelVisualsChunk;
@@ -24,9 +28,8 @@ use crate::level::visuals::level_visuals_chunk::LevelVisualsChunk;
 /// 6 - dynamic light
 /// 7 - glows
 /// 8 - sectors
-/// 9 - vertex buffer
-/// 10 - index buffer
-/// 11 - slide window items
+///
+/// The buffers the visuals draw from (chunks 9 to 11) live in `level.geom`, read by [`crate::LevelGeomFile`].
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelFile {
@@ -41,9 +44,29 @@ pub struct LevelFile {
   pub portals: Option<LevelPortalsChunk>,
   /// The static lights the renderer loads, one of which may be the level's sun.
   pub lights: Option<LevelDynamicLightsChunk>,
+  /// The light flares the static-lighting renderer draws; every shipped level carries the chunk.
+  pub glows: Option<LevelGlowsChunk>,
 }
 
 impl LevelFile {
+  /// The file a compiled level's bundle is shipped as, in its directory.
+  pub const FILE_NAME: &'static str = "level";
+
+  /// The glows the level names, none for a level built without them.
+  pub fn get_glows(&self) -> &[LevelGlow] {
+    self.glows.as_ref().map_or(&[], |chunk| &chunk.glows)
+  }
+
+  /// The sectors the level names, none for a level built without them.
+  pub fn get_sectors(&self) -> &[LevelSector] {
+    self.sectors.as_ref().map_or(&[], |chunk| &chunk.sectors)
+  }
+
+  /// The portals the level names, none for a level built without them.
+  pub fn get_portals(&self) -> &[LevelPortal] {
+    self.portals.as_ref().map_or(&[], |chunk| &chunk.portals)
+  }
+
   /// Read level file from provided path.
   pub fn read_from_path<T: ByteOrder, P: AsRef<Path>>(path: &P) -> XrfResult<Self> {
     Self::read_from_file::<T>(File::open(path).map_err(|error| {
@@ -126,7 +149,7 @@ impl LevelFile {
   pub fn read_visuals_from_chunks<T: ByteOrder, D: ChunkDataSource>(
     chunks: &[ChunkReader<D>],
   ) -> XrfResult<Option<LevelVisualsChunk>> {
-    match find_optional_chunk_by_id(chunks, LevelVisualsChunk::CHUNK_ID) {
+    match ChunkReader::find_optional_by_id(chunks, LevelVisualsChunk::CHUNK_ID) {
       Some(mut chunk) => Ok(Some(LevelVisualsChunk::read_from_chunk::<T, _>(&mut chunk)?)),
       None => Ok(None),
     }
@@ -135,20 +158,24 @@ impl LevelFile {
   /// Read level file from chunks.
   pub fn read_from_chunks<T: ByteOrder, D: ChunkDataSource>(chunks: &[ChunkReader<D>]) -> XrfResult<Self> {
     Ok(Self {
-      header: find_required_chunk_by_id(chunks, LevelHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
-      lights: match find_optional_chunk_by_id(chunks, LevelDynamicLightsChunk::CHUNK_ID) {
+      header: ChunkReader::find_required_by_id(chunks, LevelHeaderChunk::CHUNK_ID)?.read_xr::<T, _>()?,
+      glows: match ChunkReader::find_optional_by_id(chunks, LevelGlowsChunk::CHUNK_ID) {
+        Some(mut it) => Some(LevelGlowsChunk::read_from_chunk::<T, _>(&mut it)?),
+        None => None,
+      },
+      lights: match ChunkReader::find_optional_by_id(chunks, LevelDynamicLightsChunk::CHUNK_ID) {
         Some(mut it) => Some(LevelDynamicLightsChunk::read_from_chunk::<T, _>(&mut it)?),
         None => None,
       },
-      portals: match find_optional_chunk_by_id(chunks, LevelPortalsChunk::CHUNK_ID) {
+      portals: match ChunkReader::find_optional_by_id(chunks, LevelPortalsChunk::CHUNK_ID) {
         Some(mut it) => Some(LevelPortalsChunk::read_from_chunk::<T, _>(&mut it)?),
         None => None,
       },
-      sectors: match find_optional_chunk_by_id(chunks, LevelSectorsChunk::CHUNK_ID) {
+      sectors: match ChunkReader::find_optional_by_id(chunks, LevelSectorsChunk::CHUNK_ID) {
         Some(mut it) => Some(LevelSectorsChunk::read_from_chunk::<T, _>(&mut it)?),
         None => None,
       },
-      shaders: match find_optional_chunk_by_id(chunks, LevelShadersChunk::CHUNK_ID) {
+      shaders: match ChunkReader::find_optional_by_id(chunks, LevelShadersChunk::CHUNK_ID) {
         Some(mut it) => Some(it.read_xr::<T, _>()?),
         None => None,
       },

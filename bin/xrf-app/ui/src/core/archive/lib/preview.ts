@@ -1,0 +1,64 @@
+import { ARCHIVE_READ_POLICY, ArchiveReadPolicy } from "@xrf/ipc/types/xrf-archive";
+import { EXrayExtension, XrayExtension } from "@xrf/ipc/types/xrf-extension";
+import { getFoldedFileExtension } from "@xrf/path";
+
+import { IArchiveEntry } from "./entry";
+
+/** A preview representation, or the policy reason an entry cannot be previewed. */
+export type ArchivePreviewSupport =
+  | { kind: "supported" }
+  | { kind: "texture" }
+  | { kind: "image" }
+  | { kind: "audio" }
+  | { kind: "model" }
+  | { kind: "description" }
+  | { kind: "too-large"; maximumSize: number };
+
+/**
+ * Classifies an entry's preview using the backend's extensions and size limits.
+ *
+ * @param descriptor - Browsed entry used to validate type and size.
+ * @param policy - Read policy to classify by, the one generated from the backend unless a test narrows it.
+ * @returns A discriminated result describing preview support or the reason it is unavailable.
+ */
+export function getArchivePreviewSupport(
+  descriptor: IArchiveEntry,
+  policy: ArchiveReadPolicy = ARCHIVE_READ_POLICY
+): ArchivePreviewSupport {
+  // Policy extensions are lower case; normalize the entry's spelling once for every preview kind.
+  const extension: string = getFoldedFileExtension(descriptor.name);
+
+  // Models are read through the asset roots rather than through this project, so no policy limit applies to them.
+  if (extension === EXrayExtension.OGF) {
+    return { kind: "model" };
+  }
+
+  // Media reads have their own limits. Stored compression is handled by the native readers.
+  if (policy.audioExtensions.some((candidate: XrayExtension) => candidate === extension)) {
+    return descriptor.sizeReal > policy.maximumAudioSize
+      ? { kind: "too-large", maximumSize: policy.maximumAudioSize }
+      : { kind: "audio" };
+  }
+
+  if (policy.textureExtensions.some((candidate: XrayExtension) => candidate === extension)) {
+    return descriptor.sizeReal > policy.maximumTextureSize
+      ? { kind: "too-large", maximumSize: policy.maximumTextureSize }
+      : { kind: "texture" };
+  }
+
+  if (policy.imageExtensions.some((candidate: XrayExtension) => candidate === extension)) {
+    return descriptor.sizeReal > policy.maximumImageSize
+      ? { kind: "too-large", maximumSize: policy.maximumImageSize }
+      : { kind: "image" };
+  }
+
+  if (!policy.textExtensions.some((candidate: XrayExtension) => candidate === extension)) {
+    return { kind: "description" };
+  }
+
+  if (descriptor.sizeReal > policy.maximumTextSize) {
+    return { kind: "too-large", maximumSize: policy.maximumTextSize };
+  }
+
+  return { kind: "supported" };
+}

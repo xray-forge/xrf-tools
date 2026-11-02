@@ -1,6 +1,9 @@
 pub(crate) mod command;
-pub(crate) mod omf_repack_finding_report;
-pub(crate) mod report;
-pub(crate) mod statistics;
+mod omf_repack_outcome;
+mod omf_repack_statistics;
+mod report;
 
 pub(crate) use command::RepackCommand;
+pub(crate) use omf_repack_outcome::OmfRepackOutcome;
+pub(crate) use omf_repack_statistics::OmfRepackStatistics;
+pub(crate) use report::OmfRepackVerifyReport;

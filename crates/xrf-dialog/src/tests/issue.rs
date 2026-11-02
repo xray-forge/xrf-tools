@@ -1,8 +1,9 @@
 use xrf_error::XrfResult;
 use xrf_utils::new_windows1251_encoder;
 
-use crate::file::DialogFile;
-use crate::issue::{DialogParseIssue, DialogParseIssueKind};
+use crate::conversation::dialog_parse_issue::DialogParseIssue;
+use crate::conversation::dialog_parse_issue_kind::DialogParseIssueKind;
+use crate::dialog_file::DialogFile;
 
 fn parse(source: &str) -> XrfResult<DialogFile> {
   DialogFile::parse(String::from(source), new_windows1251_encoder())

@@ -2,7 +2,10 @@
 
 pub(crate) mod condlist;
 pub(crate) mod condlist_branch;
+pub(crate) mod condlist_condition;
 pub(crate) mod source_span;
 
 pub use crate::condlist::condlist::Condlist;
-pub use crate::condlist::condlist_branch::{CondlistBranch, CondlistCondition};
+pub use crate::condlist::condlist_branch::CondlistBranch;
+pub use crate::condlist::condlist_condition::CondlistCondition;
+pub(crate) use crate::condlist::source_span::SourceSpan;

@@ -11,7 +11,9 @@ pub struct ChunkLine {
   pub terminator: String,
 }
 
-/// Bytes that end a line, from `is_term` (`xray-16/src/xrCore/FS.cpp:383`).
-pub(crate) fn is_line_terminator(byte: u8) -> bool {
-  byte == b'\r' || byte == b'\n'
+impl ChunkLine {
+  /// Whether a byte ends a line, as `is_term` decides (`xray-16/src/xrCore/FS.cpp:383`).
+  pub(crate) fn is_terminator(byte: u8) -> bool {
+    byte == b'\r' || byte == b'\n'
+  }
 }

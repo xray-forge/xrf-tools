@@ -1,45 +1,34 @@
-//! Reading, resolving, verifying and formatting LTX configs.
-//!
-//! # Module map
-//!
-//! The crate is grouped by the stage each part answers for, and a config passes through them in this order:
-//!
-//! - `syntax` — what the characters and reserved names mean.
-//! - `document` — one file as it was written: the scan, the statements, and the canonical rendering back to text.
-//! - `source` — where a document comes from, so a dialect never learns whether configs sit on disk or in volumes.
-//! - `dialect` — which rules turn a tree of documents into a resolved config. Standard LTX is here; the Monolith
-//!   DLTX patch dialect is `xrf-dltx`, which implements the same trait from outside.
-//! - `ltx` — the resolved config a dialect answers with, and what a caller can do with one.
-//! - `project` — a whole tree of configs, and the verify and format passes over it.
-//!
-//! `scheme` and `condlist` are the two value languages a field may be written in, read on demand rather than as a
-//! stage. `binding` is how a typed record is read out of a config and written back into one.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod binding;
 pub(crate) mod condlist;
 pub(crate) mod dialect;
 pub(crate) mod document;
+pub(crate) mod finding;
 pub(crate) mod ltx;
 pub(crate) mod project;
 pub(crate) mod scheme;
 pub(crate) mod source;
 pub(crate) mod syntax;
 
-pub use crate::binding::ltx_field::{read_ltx_field, read_ltx_optional_field};
-pub use crate::binding::ltx_import_export::{FileImportExport, LtxImportExport, META_TYPE_FIELD};
+pub use crate::binding::{FileImportExport, LtxImportExport, META_TYPE_FIELD};
 pub use crate::condlist::{Condlist, CondlistBranch, CondlistCondition};
 pub use crate::dialect::{
   LtxDialect, LtxFieldOrigin, LtxProvenance, LtxResolution, LtxResolutionDiagnostic, LtxResolveRequest,
   LtxStandardDialect, LtxTextInterner,
 };
 pub use crate::document::{LtxCheck, LtxDocument, LtxItem, LtxItemKind, LtxKeyOperation, LtxSectionOperation, LtxSpan};
-pub use crate::ltx::{Ltx, LtxSectionFieldSchemes, LtxSectionSchemes, Section};
+pub use crate::finding::{LtxFinding, LtxFindingKind};
+pub use crate::ltx::{Ltx, Section};
 pub use crate::project::{
-  LTX_PHASE_CHECK, LTX_PHASE_FORMAT, LTX_PHASE_VERIFY, LtxEntryVerification, LtxFilesFormatter, LtxFormatOptions,
-  LtxProject, LtxProjectFormatResult, LtxProjectOptions, LtxProjectVerifyResult, LtxReadCountersSnapshot,
-  LtxVerifyOptions,
+  LtxEntryVerification, LtxFilesFormatter, LtxFormatOptions, LtxProject, LtxProjectFormatResult, LtxProjectOptions,
+  LtxProjectVerifyResult, LtxReadCountersSnapshot, LtxVerifyOptions,
 };
-pub use crate::scheme::{LtxFieldDataType, LtxFieldScheme, LtxSchemeParser, LtxSectionScheme};
+pub use crate::scheme::{
+  LtxFieldDataType, LtxFieldScheme, LtxSchemeParser, LtxSectionFieldSchemes, LtxSectionScheme, LtxSectionSchemes,
+};
 pub use crate::source::LtxDocumentSource;
-pub use crate::syntax::ltx_value::{read_engine_bool, read_engine_float, read_engine_floats, scan_engine_float};
-pub use crate::syntax::{LTX_SCHEME_FIELD, LTX_SYMBOL_ANY, LTX_SYMBOL_INCLUDE_WILDCARD, LTX_SYMBOL_SCHEME};
+pub use crate::syntax::{
+  LTX_SCHEME_FIELD, LTX_SYMBOL_ANY, LTX_SYMBOL_INCLUDE_WILDCARD, LTX_SYMBOL_SCHEME, read_engine_bool,
+  read_engine_float, read_engine_floats, scan_engine_float,
+};

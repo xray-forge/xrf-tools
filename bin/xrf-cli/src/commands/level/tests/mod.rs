@@ -1,1 +1,2 @@
+mod albedo;
 mod selection;

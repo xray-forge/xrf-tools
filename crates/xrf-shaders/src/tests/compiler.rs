@@ -1,8 +1,7 @@
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
 
-use crate::shader_compiler_file::ShaderCompilerFile;
-use crate::shader_compiler_shader::ShaderCompilerShader;
+use crate::compiler_table::{ShaderCompilerFile, ShaderCompilerShader};
 
 /// One record, with whatever the editor left in the name field past the terminator.
 fn shader(name: &str, trailing: &[u8], flags: u32) -> Vec<u8> {

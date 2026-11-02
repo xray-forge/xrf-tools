@@ -1,7 +1,7 @@
 #import "generated/structs"
 
-// The local lights' records and the clusters of the view they are binned into, as `pass/light_record.rs` and
-// `pass/lights_uniform.rs` write them.
+// The local lights' records and the clusters of the view they are binned into, as `scene/level/lights/light_record.rs` and
+// `feature/lighting/lights/lights_uniform.rs` write them.
 
 // Tiles the view is cut into across and down, and slices into along it.
 const LIGHT_CLUSTERS_X: u32 = 16u;

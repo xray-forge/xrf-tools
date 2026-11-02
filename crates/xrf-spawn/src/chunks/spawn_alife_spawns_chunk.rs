@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkIterator, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_ltx::{FileImportExport, Ltx, LtxImportExport};
-use xrf_utils::{assert_count_fits, assert_equal, assert_length, open_export_file, to_format_size};
+use xrf_utils::{assert_count_fits, assert_equal, assert_length, to_format_size};
 
 use crate::data::alife::alife_object::AlifeObject;
 
@@ -138,7 +138,7 @@ impl ChunkReadWrite for SpawnALifeSpawnsChunk {
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     let mut count_writer: ChunkWriter = ChunkWriter::new();
     let mut objects_writer: ChunkWriter = ChunkWriter::new();
-    let mut vertex_writer: ChunkWriter = ChunkWriter::new();
+    let vertex_writer: ChunkWriter = ChunkWriter::new();
 
     count_writer.write_u32::<T>(to_format_size(self.objects.len(), "alife objects")?)?;
 
@@ -213,7 +213,7 @@ impl FileImportExport for SpawnALifeSpawnsChunk {
       object.export(&index.to_string(), &mut ltx)?;
     }
 
-    ltx.write_to(&mut open_export_file(path.as_ref().join("alife_spawns.ltx"))?)?;
+    ltx.write_to_path(path.as_ref().join("alife_spawns.ltx"))?;
 
     log::info!("Exported ALife spawns chunk");
 
@@ -239,11 +239,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::chunks::spawn_alife_spawns_chunk::SpawnALifeSpawnsChunk;
   use crate::data::alife::alife_object::AlifeObject;
@@ -273,7 +269,7 @@ mod tests {
       version: 128,
       game_type: 1,
       script_version: 10,
-      client_data_size: 0,
+      client_data: Vec::new(),
       spawn_id: 2354,
       inherited: AlifeObjectInherited::CseAlifeSpaceRestrictor(Box::new(AlifeObjectSpaceRestrictor {
         base: AlifeObjectAbstract {
@@ -289,7 +285,6 @@ mod tests {
         shape: vec![],
         restrictor_type: 0,
       })),
-      update_data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8],
     }
   }
 
@@ -365,7 +360,7 @@ mod tests {
 
   #[test]
   fn test_read_write_empty() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write_empty.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write_empty.chunk");
 
     let original: SpawnALifeSpawnsChunk = SpawnALifeSpawnsChunk { objects: vec![] };
 
@@ -376,11 +371,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 28);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 28);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 28 + 8);
 
@@ -397,7 +392,7 @@ mod tests {
 
   #[test]
   fn test_read_write() -> XrfResult {
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
 
     let original: SpawnALifeSpawnsChunk = SpawnALifeSpawnsChunk {
       objects: vec![
@@ -418,7 +413,7 @@ mod tests {
           version: 128,
           game_type: 1,
           script_version: 10,
-          client_data_size: 0,
+          client_data: Vec::new(),
           spawn_id: 2354,
           inherited: AlifeObjectInherited::CseAlifeItemCustomOutfit(Box::new(AlifeObjectItemCustomOutfit {
             base: AlifeObjectItem {
@@ -437,10 +432,11 @@ mod tests {
                 visual_flags: 0,
               },
               condition: 1.0,
-              upgrades_count: 0,
+              upgrades: Vec::new(),
+              update_state: None,
             },
+            update_condition: 255,
           })),
-          update_data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
         },
         AlifeObject {
           id: 2335,
@@ -459,7 +455,7 @@ mod tests {
           version: 128,
           game_type: 1,
           script_version: 10,
-          client_data_size: 0,
+          client_data: Vec::new(),
           spawn_id: 2354,
           inherited: AlifeObjectInherited::CseAlifeSpaceRestrictor(Box::new(AlifeObjectSpaceRestrictor {
             base: AlifeObjectAbstract {
@@ -475,7 +471,6 @@ mod tests {
             shape: vec![],
             restrictor_type: 0,
           })),
-          update_data: vec![0, 1, 2, 3, 4, 5, 6, 7, 8],
         },
       ],
     };
@@ -484,16 +479,16 @@ mod tests {
 
     original.write::<XRayByteOrder>(&mut writer)?;
 
-    assert_eq!(writer.bytes_written(), 419);
+    assert_eq!(writer.bytes_written(), 395);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
-    assert_eq!(bytes_written, 419);
+    assert_eq!(bytes_written, 395);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
-    assert_eq!(file.bytes_remaining(), 419 + 8);
+    assert_eq!(file.bytes_remaining(), 395 + 8);
 
     let mut reader: ChunkReader = ChunkReader::from_slice(file)?
       .read_child_by_index(0)
@@ -513,8 +508,8 @@ mod tests {
   #[test]
   fn rejects_object_count_larger_than_the_objects_chunk_before_reserving_it() -> XrfResult {
     let mut count_writer: ChunkWriter = ChunkWriter::new();
-    let mut objects_writer: ChunkWriter = ChunkWriter::new();
-    let mut vertex_writer: ChunkWriter = ChunkWriter::new();
+    let objects_writer: ChunkWriter = ChunkWriter::new();
+    let vertex_writer: ChunkWriter = ChunkWriter::new();
 
     count_writer.write_u32::<XRayByteOrder>(u32::MAX)?;
 

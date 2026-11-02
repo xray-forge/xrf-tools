@@ -1,0 +1,76 @@
+import { transformError } from "@xrf/errors";
+import { Nullable } from "@xrf/types";
+
+import { IBulkCall } from "#/bulk/bulk-call";
+import { BULK_ENDPOINT } from "#/bulk/bulk-endpoint";
+import { IPC_METRICS, IpcCallMeasurement, weighIpcPayload } from "#/metrics/index";
+import { TransportEndpoint } from "#/types/xrf-app-core";
+
+/**
+ * Fetches a bulk route over the loopback transport, counting what it cost the way an IPC call is counted.
+ *
+ * The bytes never cross the window's thread, which is what Tauri's IPC answers every call on; a failed route rejects
+ * with the message its command would have rejected with.
+ *
+ * @param call - A route and its arguments.
+ * @returns The bytes it answered.
+ */
+export async function fetchBulk(call: IBulkCall): Promise<ArrayBuffer> {
+  const measurement: IpcCallMeasurement = IPC_METRICS.measure(toBulkCommandName(call.route));
+  const sent: Nullable<number> = measurement.isWeighing ? weighIpcPayload(call.args) : null;
+
+  let bytes: ArrayBuffer;
+
+  try {
+    const { origin, token }: TransportEndpoint = await BULK_ENDPOINT.get();
+    const response: Response = await fetch(`${origin}/${call.route}`, {
+      body: JSON.stringify(call.args),
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      method: "POST",
+    }).catch((error: unknown) => {
+      throw new Error(`The transport did not answer '${call.route}': ${transformError(error).message}`);
+    });
+
+    if (!response.ok) {
+      throw new Error(await readBulkFailure(response));
+    }
+
+    bytes = await response.arrayBuffer();
+  } catch (error: unknown) {
+    measurement.recordFailure();
+
+    throw error;
+  }
+
+  measurement.recordAnswer(bytes.byteLength, sent);
+
+  return bytes;
+}
+
+/**
+ * @param route - `<plugin>/<route>`.
+ * @returns The name the metrics count it under, which is the one its IPC command had.
+ */
+function toBulkCommandName(route: string): string {
+  return route.replace("/", "|");
+}
+
+/**
+ * @param response - A route's refusal.
+ * @returns Its message: the JSON string the backend answers with, or the status where the body is not one.
+ */
+async function readBulkFailure(response: Response): Promise<string> {
+  const text: string = await response.text().catch(() => "");
+
+  try {
+    const message: unknown = JSON.parse(text);
+
+    if (typeof message === "string") {
+      return message;
+    }
+  } catch {
+    // Not the backend's shape, so the status is all there is to say.
+  }
+
+  return `The transport answered ${response.status} ${response.statusText}`.trim();
+}

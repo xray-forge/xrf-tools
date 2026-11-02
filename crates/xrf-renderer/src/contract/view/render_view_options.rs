@@ -1,0 +1,100 @@
+use serde::{Deserialize, Serialize};
+
+use crate::contract::feature::image::display::render_tonemap_mode::RenderTonemapMode;
+use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;
+use crate::contract::feature::lighting::model::render_light_falloff::RenderLightFalloff;
+use crate::contract::feature::lighting::model::render_light_level::RenderLightLevel;
+use crate::contract::feature::lighting::model::render_light_model::RenderLightModel;
+use crate::contract::overlay::render_helper_options::RenderHelperOptions;
+use crate::contract::view::asset::render_asset_preview::RenderAssetPreview;
+use crate::contract::view::output::render_debug_view::RenderDebugView;
+use crate::contract::view::output::render_view_output::RenderViewOutput;
+use crate::contract::view::render_show_flags::RenderShowFlags;
+use crate::contract::view::render_view_features::RenderViewFeatures;
+use crate::contract::view::render_view_mode::RenderViewMode;
+
+/// What one viewport draws its scene with, split by who owns each part: what it shows, how it shades it, each
+/// feature's settings, what its frame is drawn at, and an asset viewer's staging. What of the world plays is the
+/// world's own.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenderViewOptions {
+  pub show: RenderShowFlags,
+  pub mode: RenderViewMode,
+  pub features: RenderViewFeatures,
+  pub output: RenderViewOutput,
+  pub asset: RenderAssetPreview,
+  pub helpers: RenderHelperOptions,
+}
+
+impl RenderViewOptions {
+  /// Whether the scene holds linear light at its exposure, which the window pass tonemaps: the enhanced tonemap or the
+  /// physical light model over a lit, solid view.
+  pub fn is_scene_linear(&self) -> bool {
+    (self.features.tonemap == RenderTonemapMode::Enhanced || self.features.light_model == RenderLightModel::Physical)
+      && self.mode.is_lit
+      && !self.mode.is_wireframe
+  }
+
+  /// Whether the view lights in linear light, every colour authored as a display value decoded first: the physical
+  /// light model over a lit, solid view.
+  pub fn is_light_physical(&self) -> bool {
+    self.features.light_model == RenderLightModel::Physical && self.mode.is_lit && !self.mode.is_wireframe
+  }
+
+  /// Whether the lights' specular weight follows their light as their diffuse does (`to_light_specular`): at the
+  /// anchored and the physical levels. Under the engine's light and at the authored levels it is the engine's, over the
+  /// authored colour.
+  pub fn is_specular_linear(&self) -> bool {
+    matches!(
+      self.get_physical_light_level(),
+      Some(RenderLightLevel::Anchored | RenderLightLevel::Physical)
+    )
+  }
+
+  /// Whether the view's lamps fall off by the windowed inverse square (`light_share` in `common/local_lights`), whose
+  /// intensity follows the square of a light's range: at the physical levels always, at the anchored as their falloff
+  /// setting asks (`RenderLightFalloff`); the authored levels keep the engine's falloff, whose pool about a bulb their
+  /// summed decode makes.
+  pub fn is_falloff_inverse_square(&self) -> bool {
+    match self.get_physical_light_level() {
+      Some(RenderLightLevel::Physical) => true,
+      Some(RenderLightLevel::Anchored) => self.features.lights.falloff == RenderLightFalloff::Physical,
+      Some(RenderLightLevel::Authored) | None => false,
+    }
+  }
+
+  /// The level the view's light stands at where it is physical (`is_light_physical`); none under the engine's light.
+  pub fn get_physical_light_level(&self) -> Option<RenderLightLevel> {
+    self.is_light_physical().then_some(self.features.light_level)
+  }
+
+  /// Whether the view inspects its surfaces rather than shows them: a wireframe, the asset checker, alpha hidden, or
+  /// the parallax, bumps, heights or sampled mip drawn for their debug views.
+  pub fn is_inspecting_surfaces(&self) -> bool {
+    self.mode.is_wireframe
+      || self.asset.checker > 0.0
+      || !self.show.is_alpha_visible
+      || matches!(
+        self.mode.debug_view,
+        RenderDebugView::Parallax | RenderDebugView::Bumps | RenderDebugView::Heights | RenderDebugView::SampledMip
+      )
+  }
+
+  /// Whether the view traces rays through its scene: its reflections or its light's occlusion traced.
+  pub fn is_scene_traced(&self) -> bool {
+    (self.features.reflections.is_traced && self.features.reflections.is_drawn()) || self.is_light_traced()
+  }
+
+  /// Whether the view traces what occludes its light: its ambient occlusion traced, or DLSS ray reconstruction asked
+  /// for over linear light, which traces the sun's and the lamps' shadows.
+  pub fn is_light_traced(&self) -> bool {
+    let features: &RenderViewFeatures = &self.features;
+    let is_reconstruction_asked: bool = features.antialiasing == RenderAntialiasing::Dlss
+      && self.output.upscaling.is_ray_reconstructed
+      && self.is_scene_linear();
+
+    (features.ambient_occlusion.is_enabled && features.ambient_occlusion.is_traced()) || is_reconstruction_asked
+  }
+}

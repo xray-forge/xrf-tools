@@ -7,11 +7,8 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_output::OutputOptions;
 
 use super::report::DialogInspectReport;
-use crate::commands::dialog::dialog_project_open::{
-  DialogProjectArguments, open_dialog_project, requested_dialog_language,
-};
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::commands::dialog::dialog_project_opening::DialogProjectOpening;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct InspectCommand;
@@ -21,22 +18,22 @@ impl GenericCommand for InspectCommand {
     "inspect"
   }
 
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Explain one dialog: its conditions and every phrase, with what each says, gives and runs")
-      .with_dialog_project()
-      .arg(
-        Arg::new("dialog")
-          .help("Id of the dialog to explain")
-          .required(true)
-          .value_parser(value_parser!(String)),
-      )
-      .arg(
-        Arg::new("file")
-          .help("Logical path of the file to read the dialog from, when more than one declares it")
-          .long("file")
-          .value_parser(value_parser!(String)),
-      )
+  fn declare(&self, command: Command) -> Command {
+    DialogProjectOpening::declare(
+      command.about("Explain one dialog: its conditions and every phrase, with what each says, gives and runs"),
+    )
+    .arg(
+      Arg::new("dialog")
+        .help("Id of the dialog to explain")
+        .required(true)
+        .value_parser(value_parser!(String)),
+    )
+    .arg(
+      Arg::new("file")
+        .help("Logical path of the file to read the dialog from, when more than one declares it")
+        .long("file")
+        .value_parser(value_parser!(String)),
+    )
   }
 
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
@@ -45,11 +42,12 @@ impl GenericCommand for InspectCommand {
       .expect("Expected a dialog id to be provided");
 
     let output: OutputOptions = context.get_output().clone();
-    let project: DialogProject = open_dialog_project(matches)?;
+    let project: DialogProject = DialogProjectOpening::open(matches)?;
     let declaring: Vec<&DialogProjectFile> = project.list_files_declaring(id);
     let file: &DialogProjectFile = Self::locate(&project, &declaring, id, matches.get_one::<String>("file"))?;
 
-    let Some(dialog) = project.describe_dialog(file.get_logical_path(), id, requested_dialog_language(matches)) else {
+    let Some(dialog) = project.describe_dialog(file.get_logical_path(), id, DialogProjectOpening::language_of(matches))
+    else {
       return Err(
         XrfError::new_read_error(format!(
           "Dialog '{id}' is declared in '{}' but could not be read back",

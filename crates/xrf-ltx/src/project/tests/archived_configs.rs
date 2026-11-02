@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use xrf_error::{XrfError, XrfResult};
-use xrf_vfs::{XrayAssetContainer, XrayAssetSource, XrayLookupScope, XraySourceKind, XrayVfs};
+use xrf_vfs::{XrayAssetContainer, XrayAssetSource, XrayLookupScope, XraySearch, XraySourceKind, XrayVfs};
 
 use crate::project::{LtxProject, LtxProjectFormatResult};
 
@@ -69,14 +69,6 @@ impl XrayAssetSource for ArchivedConfigs {
       .ok_or_else(|| XrfError::new_asset_error(format!("no entry {path}")))
   }
 
-  fn write(&self, _path: &str, _bytes: &[u8]) -> XrfResult<()> {
-    Err(XrfError::new_asset_error("archive is read only"))
-  }
-
-  fn create(&self, _path: &str, _bytes: &[u8]) -> XrfResult<()> {
-    Err(XrfError::new_asset_error("archive is read only"))
-  }
-
   fn list_entries<'a>(&'a self, _prefix: Option<&'a str>) -> Box<dyn Iterator<Item = String> + 'a> {
     Box::new(self.entries.keys().cloned())
   }
@@ -94,10 +86,10 @@ fn archived_project(entries: &[(&str, &str)]) -> LtxProject {
     .mount("", Box::new(ArchivedConfigs::new(entries)))
     .expect("archived configs mount");
 
-  LtxProject::open_at_scope_opt(
+  LtxProject::open_at_search_opt(
     PathBuf::from("C:\\install\\gamedata\\configs"),
-    vfs,
-    XrayLookupScope::all(),
+    &XraySearch::new(vfs).with_step("archive", XrayLookupScope::all()),
+    None,
     Default::default(),
   )
   .expect("project opens over archived configs")

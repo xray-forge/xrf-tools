@@ -11,7 +11,17 @@ use xrf_ltx_inspect::{LtxResolvedDiagnostic, LtxResolvedSection};
 #[serde(rename_all = "camelCase")]
 pub struct LtxInspectReport {
   /// How the dialect that resolved this section names itself.
-  pub dialect: String,
-  pub section: LtxResolvedSection,
-  pub diagnostics: Vec<LtxResolvedDiagnostic>,
+  dialect: String,
+  section: LtxResolvedSection,
+  diagnostics: Vec<LtxResolvedDiagnostic>,
+}
+
+impl LtxInspectReport {
+  pub fn new(dialect: &str, section: LtxResolvedSection, diagnostics: Vec<LtxResolvedDiagnostic>) -> Self {
+    Self {
+      dialect: String::from(dialect),
+      section,
+      diagnostics,
+    }
+  }
 }

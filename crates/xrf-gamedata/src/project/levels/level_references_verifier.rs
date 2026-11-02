@@ -5,15 +5,8 @@ use xrf_shaders::ShaderLibraryFile;
 
 use crate::project::levels::level_bundle::LevelBundle;
 use crate::project::levels::level_engine_constants::LEVEL_FILE;
-use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataVerificationRule};
-
-/// Findings and counters from resolving what a level's geometry references.
-#[derive(Default)]
-pub(crate) struct LevelReferencesOutcome {
-  pub(crate) findings: Vec<Finding>,
-  pub(crate) checked_count: u32,
-  pub(crate) invalid_count: u32,
-}
+use crate::project::levels::level_references_outcome::LevelReferencesOutcome;
+use crate::{GamedataFindingFactory, GamedataProject, GamedataVerificationRule};
 
 /// Resolves the shader and texture table the level geometry is built against.
 pub(crate) struct LevelReferencesVerifier<'a> {
@@ -30,7 +23,6 @@ impl<'a> LevelReferencesVerifier<'a> {
   pub(crate) fn read_library(project: &GamedataProject) -> Option<Arc<ShaderLibraryFile>> {
     project
       .read_parsed(
-        xrf_vfs::XrayAssetType::Shader,
         xrf_vfs::XrayAssetType::SHADER_LIBRARY_PATH,
         ShaderLibraryFile::read_from_chunk,
       )

@@ -35,9 +35,56 @@ impl DdsMipChain {
 
     if let DdsMipmaps::Filtered(filter) = mipmaps {
       for level in 1..Self::level_count(base.width(), base.height()) {
-        let size: (u32, u32) = (mip_dimension(base.width(), level), mip_dimension(base.height(), level));
+        let size: (u32, u32) = Self::level_size(base.width(), base.height(), level);
 
         levels.push(DdsMipResampler::new(base.dimensions(), size, filter).resample(base));
+      }
+    }
+
+    Ok(Self { levels })
+  }
+
+  /// A chain a caller reduced itself, base first, for a converter whose levels are its own rather than a kernel's.
+  ///
+  /// The chain may stop early, as a DDS may, but each level must be the size [`Self::build`] would give it, since a
+  /// level of any other size is not one the format can hold at that place.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when there is no base, the base has no pixels, or a level is not half the size of the one above.
+  pub fn from_levels(levels: Vec<RgbaImage>) -> XrfResult<Self> {
+    let Some(base) = levels.first() else {
+      return Err(XrfError::new_texture_processing_error(
+        "Cannot build a mip chain holding no levels",
+      ));
+    };
+    let (width, height): (u32, u32) = base.dimensions();
+
+    if width == 0 || height == 0 {
+      return Err(XrfError::new_texture_processing_error(
+        "Cannot build a mip chain from an image with no pixels",
+      ));
+    }
+
+    if levels.len() > Self::level_count(width, height) as usize {
+      return Err(XrfError::new_texture_processing_error(format!(
+        "A {width}x{height} base carries at most {} levels, not {}",
+        Self::level_count(width, height),
+        levels.len()
+      )));
+    }
+
+    for (level, image) in (0u32..).zip(&levels) {
+      let expected: (u32, u32) = Self::level_size(width, height, level);
+
+      if image.dimensions() != expected {
+        return Err(XrfError::new_texture_processing_error(format!(
+          "Mip level {level} of a {width}x{height} base is {}x{}, not {}x{}",
+          image.width(),
+          image.height(),
+          expected.0,
+          expected.1
+        )));
       }
     }
 
@@ -117,15 +164,17 @@ impl DdsMipChain {
     })
   }
 
+  /// The size of one mip level of a base this size, which halves on each axis and never falls below one pixel.
+  ///
+  /// The one rule for it, shared by building a chain and by reading one back out of a payload.
+  pub(crate) fn level_size(width: u32, height: u32, level: u32) -> (u32, u32) {
+    ((width >> level).max(1), (height >> level).max(1))
+  }
+
   /// Levels a texture of this size carries, counting the base.
   fn level_count(width: u32, height: u32) -> u32 {
     width.max(height).ilog2() + 1
   }
-}
-
-/// The size of one axis at a mip level, which never falls below one pixel.
-fn mip_dimension(base: u32, level: u32) -> u32 {
-  (base >> level).max(1)
 }
 
 #[cfg(test)]
@@ -222,6 +271,19 @@ mod tests {
 
     assert_eq!(chain.levels().len(), 1);
     assert_eq!(chain.to_surface()?.mipmaps, 1);
+
+    Ok(())
+  }
+
+  #[test]
+  fn takes_a_callers_own_levels_when_each_halves_the_one_above() -> XrfResult {
+    // A chain stopping early, as the SDK's own reduction does once the shorter side reaches one.
+    let chain: DdsMipChain = DdsMipChain::from_levels(vec![RgbaImage::new(8, 2), RgbaImage::new(4, 1)])?;
+
+    assert_eq!(chain.to_surface()?.mipmaps, 2);
+    assert!(DdsMipChain::from_levels(vec![RgbaImage::new(8, 2), RgbaImage::new(3, 1)]).is_err());
+    assert!(DdsMipChain::from_levels(vec![RgbaImage::new(1, 1), RgbaImage::new(1, 1)]).is_err());
+    assert!(DdsMipChain::from_levels(Vec::new()).is_err());
 
     Ok(())
   }

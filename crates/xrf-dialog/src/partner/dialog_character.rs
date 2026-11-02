@@ -1,6 +1,6 @@
 use xrf_xml::XmlElementSpan;
 
-use crate::constants::ID_ATTRIBUTE;
+use crate::partner::dialog_partner_text::DialogPartnerText;
 
 /// A specific character, as far as the dialogs it offers go.
 ///
@@ -18,6 +18,7 @@ pub struct DialogCharacter {
 impl DialogCharacter {
   /// The element a character description declares each character with.
   pub(crate) const ELEMENT: &'static str = "specific_character";
+  const ID_ATTRIBUTE: &'static str = "id";
   const CLASS_ELEMENT: &'static str = "class";
   const START_DIALOG_ELEMENT: &'static str = "start_dialog";
   const ACTOR_DIALOG_ELEMENT: &'static str = "actor_dialog";
@@ -25,19 +26,15 @@ impl DialogCharacter {
 
   /// Read one `specific_character`, or `None` for one with no id or an empty one, which the engine skips.
   pub(crate) fn read(element: &XmlElementSpan) -> Option<Self> {
-    let id: &str = element.attribute(ID_ATTRIBUTE).filter(|id| !id.is_empty())?;
+    let id: &str = element.attribute(Self::ID_ATTRIBUTE).filter(|id| !id.is_empty())?;
 
     Some(Self {
       id: id.to_owned(),
       // The engine reads index 0 once per declared class, so only the first one ever counts.
-      class: Self::read_first(element, Self::CLASS_ELEMENT).map(|class| class.to_lowercase()),
+      class: DialogPartnerText::first(element, Self::CLASS_ELEMENT).map(|class| class.to_lowercase()),
       // A shared include declares `hello_dialog` too, and the first declaration is the one the engine reads.
-      start_dialog: Self::read_first(element, Self::START_DIALOG_ELEMENT),
-      actor_dialogs: element
-        .children_named(Self::ACTOR_DIALOG_ELEMENT)
-        .map(|child| child.text().trim().to_owned())
-        .filter(|dialog| !dialog.is_empty())
-        .collect(),
+      start_dialog: DialogPartnerText::first(element, Self::START_DIALOG_ELEMENT),
+      actor_dialogs: DialogPartnerText::all(element, Self::ACTOR_DIALOG_ELEMENT),
       is_random: element
         .attribute(Self::NO_RANDOM_ATTRIBUTE)
         .is_none_or(|value| xrf_utils::read_engine_integer(value) == 0),
@@ -66,12 +63,5 @@ impl DialogCharacter {
   /// Whether a profile naming only a class may pick the character, which `no_random` turns off.
   pub fn is_random(&self) -> bool {
     self.is_random
-  }
-
-  fn read_first(element: &XmlElementSpan, name: &str) -> Option<String> {
-    element
-      .child_named(name)
-      .map(|child| child.text().trim().to_owned())
-      .filter(|value| !value.is_empty())
   }
 }

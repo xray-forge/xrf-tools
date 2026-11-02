@@ -1,11 +1,17 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
-use xrf_utils::assert_equal;
+use xrf_ltx::{Ltx, LtxImportExport, Section};
+#[cfg(test)]
+use xrf_math::Vector3d;
+use xrf_utils::{to_format_size, vector_from_string, vector_to_string};
 
+use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
+#[cfg(test)]
+use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
 use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
+use crate::data::physics::physics_net_state::PhysicsNetState;
 
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -13,30 +19,55 @@ use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynam
 pub struct AlifeObjectItem {
   pub base: AlifeObjectDynamicVisual,
   pub condition: f32,
-  pub upgrades_count: u32,
+  /// The upgrade sections installed on the item (`CSE_ALifeInventoryItem::m_upgrades`).
+  pub upgrades: Vec<String>,
+  /// The physics state the update packet carries, whose position the engine moves the item to over the spawn
+  /// packet's.
+  pub update_state: Option<PhysicsNetState>,
 }
 
-impl ChunkReadWrite for AlifeObjectItem {
-  /// Read ALife item object data from the chunk.
-  fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
-    let object: Self = Self {
-      base: reader.read_xr::<T, _>()?,
-      condition: reader.read_f32::<T>()?,
-      upgrades_count: reader.read_u32::<T>()?,
-    };
+impl AlifeObjectItem {
+  /// The condition a byte `NET_Packet::r_float_q8` reads over `0..=1` stands for, as an item's update packet stores it.
+  pub fn dequantize_condition(stored: u8) -> f32 {
+    f32::from(stored) / 255.0001
+  }
+}
 
-    assert_equal(object.upgrades_count, 0, "Unexpected upgraded item provided")?;
+impl AlifePacketsReadWrite for AlifeObjectItem {
+  /// Read the item's condition and upgrades, then the physics state of its update packet.
+  fn read<T: ByteOrder, D: ChunkDataSource>(
+    spawn: &mut ChunkReader<D>,
+    update: &mut ChunkReader<D>,
+  ) -> XrfResult<Self> {
+    let base: AlifeObjectDynamicVisual = spawn.read_xr::<T, _>()?;
+    let condition: f32 = spawn.read_f32::<T>()?;
+    let count: u32 = spawn.read_u32::<T>()?;
+    // An upgrade is at least the terminator of an empty name.
+    let mut upgrades: Vec<String> = spawn.new_bounded_vec(count.into(), 1, "item upgrades")?;
 
-    Ok(object)
+    for _ in 0..count {
+      upgrades.push(spawn.read_w1251_string()?);
+    }
+
+    Ok(Self {
+      base,
+      condition,
+      upgrades,
+      update_state: PhysicsNetState::read_optional::<T, _>(update)?,
+    })
   }
 
-  /// Write item data into the writer.
-  fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
-    writer.write_xr::<T, _>(&self.base)?;
-    writer.write_f32::<T>(self.condition)?;
-    writer.write_u32::<T>(self.upgrades_count)?;
+  /// Write the item's condition and upgrades, then the physics state of its update packet.
+  fn write<T: ByteOrder>(&self, spawn: &mut ChunkWriter, update: &mut ChunkWriter) -> XrfResult {
+    spawn.write_xr::<T, _>(&self.base)?;
+    spawn.write_f32::<T>(self.condition)?;
+    spawn.write_u32::<T>(to_format_size(self.upgrades.len(), "item upgrades")?)?;
 
-    Ok(())
+    for upgrade in &self.upgrades {
+      spawn.write_w1251_string(upgrade)?;
+    }
+
+    PhysicsNetState::write_optional::<T>(self.update_state.as_ref(), update)
   }
 }
 
@@ -53,8 +84,9 @@ impl LtxImportExport for AlifeObjectItem {
 
     Ok(Self {
       base: AlifeObjectDynamicVisual::import(section_name, ltx)?,
-      condition: read_ltx_field("item.condition", section)?,
-      upgrades_count: read_ltx_field("item.upgrades_count", section)?,
+      condition: section.read_field("item.condition")?,
+      upgrades: vector_from_string(&section.read_field::<String>("item.upgrades")?)?,
+      update_state: PhysicsNetState::import_optional(section, "item.update_state")?,
     })
   }
 
@@ -65,38 +97,19 @@ impl LtxImportExport for AlifeObjectItem {
     ltx
       .with_section(section_name)
       .set("item.condition", self.condition.to_string())
-      .set("item.upgrades_count", self.upgrades_count.to_string());
+      .set("item.upgrades", vector_to_string(&self.upgrades));
+
+    PhysicsNetState::export_optional(self.update_state.as_ref(), section_name, "item.update_state", ltx);
 
     Ok(())
   }
 }
 
 #[cfg(test)]
-mod tests {
-  use std::fs::File;
-  use std::io::{Seek, SeekFrom, Write};
-
-  use serde_json::to_string_pretty;
-  use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
-  use xrf_error::XrfResult;
-  use xrf_ltx::{Ltx, LtxImportExport};
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::file::read_file_as_string;
-  use xrf_test_utils::utils::{
-    build_absolute_generated_test_resource_path, build_relative_test_sample_file_path,
-    open_generated_test_resource_as_slice, overwrite_generated_test_resource_as_file,
-  };
-
-  use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
-  use crate::data::alife::inherited::alife_object_dynamic_visual::AlifeObjectDynamicVisual;
-  use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
-
-  #[test]
-  fn test_read_write() -> XrfResult {
-    let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write.chunk");
-
-    let original: AlifeObjectItem = AlifeObjectItem {
+impl AlifeObjectItem {
+  /// An item placed at `position` with a physics state there, as most placed items carry one.
+  pub fn new_mock(position: Vector3d) -> Self {
+    Self {
       base: AlifeObjectDynamicVisual {
         base: AlifeObjectAbstract {
           game_vertex_id: 1002,
@@ -112,58 +125,82 @@ mod tests {
         visual_flags: 33,
       },
       condition: 0.5,
-      upgrades_count: 0,
-    };
+      upgrades: Vec::new(),
+      update_state: Some(PhysicsNetState::new_mock(position)),
+    }
+  }
+}
 
-    original.write::<XRayByteOrder>(&mut writer)?;
+#[cfg(test)]
+mod tests {
+  use std::fs::File;
+  use std::io::{Seek, SeekFrom, Write, read_to_string};
 
-    assert_eq!(writer.bytes_written(), 52);
+  use serde_json::to_string_pretty;
+  use xrf_chunk::XRayByteOrder;
+  use xrf_error::XrfResult;
+  use xrf_ltx::{Ltx, LtxImportExport};
+  use xrf_math::Vector3d;
+  use xrf_test_utils::GeneratedResources;
 
-    let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+  use crate::data::alife::alife_packets_read_write::AlifePacketsReadWrite;
+  use crate::data::alife::inherited::alife_object_item::AlifeObjectItem;
 
-    assert_eq!(bytes_written, 52);
+  #[test]
+  fn test_read_write() -> XrfResult {
+    let original: AlifeObjectItem = AlifeObjectItem::new_mock(Vector3d::new(1.0, 2.0, 3.0));
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    assert_eq!(original.read_back::<XRayByteOrder>()?, (52, 54, original));
 
-    assert_eq!(file.bytes_remaining(), 52 + 8);
+    Ok(())
+  }
 
-    let mut reader: ChunkReader = ChunkReader::from_slice(file)?.read_child_by_index(0)?;
+  /// An item with no physics state writes the single zero byte the engine writes for one.
+  #[test]
+  fn reads_and_writes_an_item_without_a_physics_state() -> XrfResult {
+    let mut original: AlifeObjectItem = AlifeObjectItem::new_mock(Vector3d::ZERO);
 
-    assert_eq!(AlifeObjectItem::read::<XRayByteOrder, _>(&mut reader)?, original);
+    original.update_state = None;
+
+    assert_eq!(original.read_back::<XRayByteOrder>()?, (52, 1, original));
+
+    Ok(())
+  }
+
+  /// An item placed upgraded carries each upgrade's section after the count, `save_data` of `m_upgrades`.
+  #[test]
+  fn reads_and_writes_the_upgrades_an_item_carries() -> XrfResult {
+    let mut original: AlifeObjectItem = AlifeObjectItem::new_mock(Vector3d::ZERO);
+
+    original.upgrades = vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")];
+
+    assert_eq!(original.read_back::<XRayByteOrder>()?.2, original);
 
     Ok(())
   }
 
   #[test]
-  fn test_import_export() -> XrfResult {
-    let ltx_filename: String = build_relative_test_sample_file_path(file!(), "import_export.ltx");
-    let mut ltx: Ltx = Ltx::new();
+  fn dequantizes_a_stored_condition_as_the_engine_does() {
+    assert_eq!(AlifeObjectItem::dequantize_condition(0), 0.0);
+    assert!(AlifeObjectItem::dequantize_condition(255) < 1.0);
+    assert!((AlifeObjectItem::dequantize_condition(255) - 1.0).abs() < 1e-6);
+    assert!((AlifeObjectItem::dequantize_condition(128) - 0.502).abs() < 1e-3);
+  }
 
-    let original: AlifeObjectItem = AlifeObjectItem {
-      base: AlifeObjectDynamicVisual {
-        base: AlifeObjectAbstract {
-          game_vertex_id: 52,
-          distance: 6.25,
-          direct_control: 36,
-          level_vertex_id: 3246,
-          flags: 15,
-          custom_data: String::from("custom_data"),
-          story_id: 15,
-          spawn_story_id: 734,
-        },
-        visual_name: String::from("abcd"),
-        visual_flags: 234,
-      },
-      condition: 0.1,
-      upgrades_count: 16,
-    };
+  #[test]
+  fn test_import_export() -> XrfResult {
+    let ltx_filename: String = GeneratedResources::sample_name(file!(), "import_export.ltx");
+    let mut ltx: Ltx = Ltx::new();
+    let mut original: AlifeObjectItem = AlifeObjectItem::new_mock(Vector3d::new(-4.5, 0.25, 7.0));
+
+    original.condition = 0.1;
+    original.upgrades = vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")];
 
     original.export("data", &mut ltx)?;
 
-    ltx.write_to(&mut overwrite_generated_test_resource_as_file(&ltx_filename)?)?;
+    ltx.write_to(&mut GeneratedResources::overwrite(&ltx_filename)?)?;
 
-    let source: Ltx = Ltx::read_from_path(build_absolute_generated_test_resource_path(&ltx_filename))?;
+    let source: Ltx = Ltx::read_from_path(GeneratedResources::path(&ltx_filename))?;
 
     assert_eq!(AlifeObjectItem::import("data", &source)?, original);
 
@@ -172,34 +209,18 @@ mod tests {
 
   #[test]
   fn test_serialize_deserialize() -> XrfResult {
-    let original: AlifeObjectItem = AlifeObjectItem {
-      base: AlifeObjectDynamicVisual {
-        base: AlifeObjectAbstract {
-          game_vertex_id: 15,
-          distance: 516.25,
-          direct_control: 235,
-          level_vertex_id: 737,
-          flags: 45,
-          custom_data: String::from("custom_data"),
-          story_id: 364,
-          spawn_story_id: 44,
-        },
-        visual_name: String::from("abcd"),
-        visual_flags: 25,
-      },
-      condition: 0.65,
-      upgrades_count: 2,
-    };
+    let mut original: AlifeObjectItem = AlifeObjectItem::new_mock(Vector3d::new(1.0, 2.0, 3.0));
 
-    let mut file: File = overwrite_generated_test_resource_as_file(&build_relative_test_sample_file_path(
-      file!(),
-      "serialize_deserialize.json",
-    ))?;
+    original.condition = 0.65;
+    original.upgrades = vec![String::from("up_firsta_ak74"), String::from("up_secondb_ak74")];
+
+    let mut file: File =
+      GeneratedResources::overwrite(&GeneratedResources::sample_name(file!(), "serialize_deserialize.json"))?;
 
     file.write_all(to_string_pretty(&original)?.as_bytes())?;
     file.seek(SeekFrom::Start(0))?;
 
-    let serialized: String = read_file_as_string(&mut file)?;
+    let serialized: String = read_to_string(&mut file)?;
 
     assert_eq!(serialized.to_string(), serialized);
 

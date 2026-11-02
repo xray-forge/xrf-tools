@@ -2,11 +2,12 @@
 
 use xrf_error::XrfResult;
 use xrf_ogf::{OgfBone, OgfBoneIkData};
-use xrf_skeleton::{SAMPLE_FPS, SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
+use xrf_skeleton::{SkeletonMotion, SkeletonMotionDefinition, SkeletonPart};
 
+use crate::data::visual::skeleton::visual_transform::VisualTransform;
 use crate::pack::tests::fixtures::{bind, bones, vector};
-use crate::pack::visual::motion::visual_motion::{FLOATS_PER_BONE, bake_motion, describe_motion};
 use crate::pack::visual::motion::visual_motion_bake::VisualMotionBake;
+use crate::pack::visual::motion::visual_motion_baker::VisualMotionBaker;
 use crate::pack::visual::motion::visual_motion_pose::VisualMotionPose;
 
 /// The measured case behind the reported duration: `s98b_reload` of Anomaly's `ceasar_hand_am98b_hud_animation.omf`.
@@ -27,27 +28,21 @@ fn keyed_run(count: u32) -> (u8, Vec<u8>) {
   ((1 << 0) | (1 << 2), vec![0; 4 + count * 8 + 4 + count * 6 + 12 + 12])
 }
 
-/// Assembles bone runs into a motion, moving the first bone's flags where the chunk reader takes them.
+/// Assembles bone runs into a motion, each led by its flags.
 fn motion(count: u32, runs: &[(u8, Vec<u8>)]) -> SkeletonMotion {
-  let mut remaining: Vec<u8> = Vec::new();
-  let mut first: u8 = 0;
-
-  for (index, (flags, bytes)) in runs.iter().enumerate() {
-    if index == 0 {
-      first = *flags;
-    } else {
-      remaining.push(*flags);
-    }
-
-    remaining.extend(bytes);
-  }
-
   SkeletonMotion {
     label: String::from("stale_label"),
     count,
-    flags: first,
-    remaining,
+    keys: runs
+      .iter()
+      .flat_map(|(flags, bytes)| std::iter::once(*flags).chain(bytes.iter().copied()))
+      .collect(),
   }
+}
+
+/// The speed the engine plays a stored one at, which the bake's duration divides by.
+fn played(speed: f32) -> f32 {
+  definition("s98b_reload", speed).get_playback_speed()
 }
 
 fn definition(name: &str, speed: f32) -> SkeletonMotionDefinition {
@@ -87,7 +82,7 @@ fn flat_skeleton(names: &[&str]) -> (Vec<OgfBone>, Vec<OgfBoneIkData>, Vec<Skele
 fn try_bake(motion: &SkeletonMotion, names: &[&str], speed: f32) -> XrfResult<VisualMotionPose> {
   let (skeleton, binds, parts) = flat_skeleton(names);
 
-  bake_motion(&skeleton, &binds, &parts, &definition("s98b_reload", speed), motion)
+  VisualMotionBaker::bake(&skeleton, &binds, &parts, &definition("s98b_reload", speed), motion)
 }
 
 fn bake_keyed(count: u32, speed: f32) -> VisualMotionPose {
@@ -104,12 +99,16 @@ fn reports_the_frame_span_when_the_motion_plays_at_the_sample_rate() {
 
   assert_eq!(posed.description.frame_count, RELOAD_FRAMES);
   assert_eq!(posed.description.speed, 1.0);
-  assert_eq!(posed.description.duration, RELOAD_FRAMES as f32 / SAMPLE_FPS);
+  assert_eq!(
+    posed.description.duration,
+    RELOAD_FRAMES as f32 / (SkeletonMotion::SAMPLE_FPS * played(1.0))
+  );
 }
 
 #[test]
 fn reports_a_faster_motion_as_taking_less_time_than_its_frames_span() {
-  // The engine divides the frame span by the speed, so 269 frames at 1.2 take 7.47 seconds rather than 8.97.
+  // The engine divides the frame span by the speed it keeps of 1.2, 1.19936, so 269 frames take 7.476 seconds rather
+  // than 8.97.
   let posed: VisualMotionPose = bake_keyed(RELOAD_FRAMES, RELOAD_SPEED);
 
   assert_eq!(
@@ -119,10 +118,10 @@ fn reports_a_faster_motion_as_taking_less_time_than_its_frames_span() {
   assert_eq!(posed.description.speed, RELOAD_SPEED);
   assert_eq!(
     posed.description.duration,
-    RELOAD_FRAMES as f32 / (SAMPLE_FPS * RELOAD_SPEED)
+    RELOAD_FRAMES as f32 / (SkeletonMotion::SAMPLE_FPS * played(RELOAD_SPEED))
   );
   assert!(
-    (posed.description.duration - 7.472).abs() < 0.001,
+    (posed.description.duration - 7.476).abs() < 0.001,
     "unexpected duration: {}",
     posed.description.duration
   );
@@ -135,7 +134,10 @@ fn reports_a_speed_that_cannot_scale_playback_as_the_frame_span() {
   let posed: VisualMotionPose = bake_keyed(RELOAD_FRAMES, 0.0);
 
   assert_eq!(posed.description.speed, 0.0);
-  assert_eq!(posed.description.duration, RELOAD_FRAMES as f32 / SAMPLE_FPS);
+  assert_eq!(
+    posed.description.duration,
+    RELOAD_FRAMES as f32 / SkeletonMotion::SAMPLE_FPS
+  );
 }
 
 #[test]
@@ -145,7 +147,10 @@ fn reports_an_empty_motion_as_the_one_frame_it_poses() {
   let posed: VisualMotionPose = bake_held(0, RELOAD_SPEED);
 
   assert_eq!(posed.description.frame_count, 1);
-  assert_eq!(posed.description.duration, 1.0 / (SAMPLE_FPS * RELOAD_SPEED));
+  assert_eq!(
+    posed.description.duration,
+    1.0 / (SkeletonMotion::SAMPLE_FPS * played(RELOAD_SPEED))
+  );
 }
 
 #[test]
@@ -170,10 +175,13 @@ fn poses_one_frame_for_a_motion_of_nothing_but_held_bones() {
   let posed: VisualMotionPose = bake_held(u32::MAX, RELOAD_SPEED);
 
   assert_eq!(posed.description.frame_count, 1);
-  assert_eq!(posed.description.duration, 1.0 / (SAMPLE_FPS * RELOAD_SPEED));
+  assert_eq!(
+    posed.description.duration,
+    1.0 / (SkeletonMotion::SAMPLE_FPS * played(RELOAD_SPEED))
+  );
   assert_eq!(
     posed.transforms.len(),
-    FLOATS_PER_BONE,
+    VisualTransform::FLOATS,
     "expect one bone's transform, once"
   );
 }
@@ -193,9 +201,28 @@ fn takes_the_frame_count_from_the_longest_stream_any_bone_carries() {
   assert_eq!(posed.description.bone_count, 2);
   assert_eq!(
     posed.transforms.len(),
-    RELOAD_FRAMES as usize * 2 * FLOATS_PER_BONE,
+    RELOAD_FRAMES as usize * 2 * VisualTransform::FLOATS,
     "expect the buffer to hold every baked frame"
   );
+}
+
+#[test]
+fn drives_a_bone_its_bank_names_in_another_case() {
+  // The engine lower-cases the bank's bone names and the skeleton's before matching them, so `Bip01` drives `bip01`.
+  let (skeleton, binds, mut parts) = flat_skeleton(&["bip01"]);
+
+  parts[0].bones[0].0 = String::from("Bip01");
+
+  let described: VisualMotionBake = VisualMotionBaker::describe(
+    &skeleton,
+    &binds,
+    &parts,
+    &definition("idle", 1.0),
+    &motion(RELOAD_FRAMES, &[keyed_run(RELOAD_FRAMES)]),
+  )
+  .expect("expect the motion to describe");
+
+  assert_eq!(described.animated_bone_count, 1);
 }
 
 #[test]
@@ -204,9 +231,9 @@ fn describes_a_motion_as_its_bake_does_without_posing_it() {
   let motion: SkeletonMotion = motion(RELOAD_FRAMES, &[keyed_run(RELOAD_FRAMES), held_run()]);
   let definition: SkeletonMotionDefinition = definition("s98b_reload", RELOAD_SPEED);
   let baked: VisualMotionPose =
-    bake_motion(&skeleton, &binds, &parts, &definition, &motion).expect("expect the motion to bake");
-  let described: VisualMotionBake =
-    describe_motion(&skeleton, &binds, &parts, &definition, &motion).expect("expect the motion to describe");
+    VisualMotionBaker::bake(&skeleton, &binds, &parts, &definition, &motion).expect("expect the motion to bake");
+  let described: VisualMotionBake = VisualMotionBaker::describe(&skeleton, &binds, &parts, &definition, &motion)
+    .expect("expect the motion to describe");
 
   assert_eq!(described, baked.description);
 }

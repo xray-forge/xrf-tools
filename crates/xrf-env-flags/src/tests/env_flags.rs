@@ -41,6 +41,19 @@ fn reports_only_what_a_running_binary_reads() {
   );
 }
 
+#[test]
+fn documents_every_variable_under_its_kind() {
+  let document: String = EnvFlags::to_markdown();
+
+  for flag in EnvFlags::ALL {
+    assert!(
+      document.contains(&format!("\n### `{}`\n", flag.name)),
+      "{} is in no section of the document",
+      flag.name
+    );
+  }
+}
+
 /// `ENVIRONMENT.md` is what the table writes: a stale one is rewritten and fails this once.
 #[test]
 fn keeps_the_document_up_to_date() {

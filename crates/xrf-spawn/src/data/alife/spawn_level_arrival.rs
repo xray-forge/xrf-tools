@@ -61,7 +61,6 @@ mod tests {
       dest_position: Vector3d::new(10.0, 2.0, -30.0),
       enabled: 1,
       hint: String::new(),
-      save_marker: 0,
       silent_mode: 0,
     }
   }

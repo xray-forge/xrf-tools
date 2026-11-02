@@ -2,7 +2,8 @@ use std::path::Path;
 
 use xrf_report::Status;
 
-use crate::project::verify::translation_verify_result::{TranslationVerifyLanguageSummary, TranslationVerifyResult};
+use crate::project::verify::translation_verify_language_summary::TranslationVerifyLanguageSummary;
+use crate::project::verify::translation_verify_result::TranslationVerifyResult;
 
 #[test]
 fn reports_missing_translations_as_findings() {

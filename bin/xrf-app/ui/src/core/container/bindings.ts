@@ -1,0 +1,46 @@
+import { Binding } from "@wirestate/core";
+import {
+  IpcMetricsService,
+  SESSION_TOOL,
+  SessionChangesService,
+  SessionScopeService,
+  SHELL_SESSION_TOOL,
+} from "@xrf/ipc/session";
+
+import { KeybindCommandsService } from "@/core/commands";
+import { HelpService } from "@/core/help/services/help.service";
+import { JobsService } from "@/core/jobs/services/jobs.service";
+import { KeymapService } from "@/core/keybinds/services/keymap.service";
+import { ErrorCaptureService } from "@/core/notifications/services/error-capture";
+import { NotificationsService } from "@/core/notifications/services/notifications";
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
+import { SettingsService } from "@/core/settings/services/settings";
+import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
+import { ShellContributionsService } from "@/core/shell/services/shell-contributions";
+import { ShellKeybindsService } from "@/core/shell/services/shell-keybinds";
+import { ShellToolService } from "@/core/shell/services/shell-tool";
+import { ToolLifecycleService } from "@/core/shell/services/tool-lifecycle";
+
+/**
+ * The services the root container binds, which every tool resolves through. The shell's own openings are held
+ * in its scope; each tool's container binds a scope of its own over it.
+ */
+export const ROOT_BINDINGS: ReadonlyArray<Binding> = [
+  { token: SESSION_TOOL, value: SHELL_SESSION_TOOL },
+  SessionScopeService,
+  ErrorCaptureService,
+  HelpService,
+  IpcMetricsService,
+  JobsService,
+  KeybindCommandsService,
+  KeymapService,
+  NotificationsService,
+  RenderSettingsService,
+  SessionChangesService,
+  SettingsDialogService,
+  SettingsService,
+  ShellContributionsService,
+  ShellKeybindsService,
+  ShellToolService,
+  ToolLifecycleService,
+];

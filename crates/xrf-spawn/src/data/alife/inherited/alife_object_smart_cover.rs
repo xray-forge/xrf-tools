@@ -2,7 +2,7 @@ use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_dynamic::AlifeObjectDynamic;
 use crate::data::generic::shape::Shape;
@@ -65,12 +65,12 @@ impl LtxImportExport for AlifeObjectSmartCover {
     Ok(Self {
       base: AlifeObjectDynamic::import(section_name, ltx)?,
       shape: Shape::import_list(section)?,
-      description: read_ltx_field("description", section)?,
-      hold_position_time: read_ltx_field("hold_position_time", section)?,
-      enter_min_enemy_distance: read_ltx_field("enter_min_enemy_distance", section)?,
-      exit_min_enemy_distance: read_ltx_field("exit_min_enemy_distance", section)?,
-      is_combat_cover: read_ltx_field("is_combat_cover", section)?,
-      can_fire: read_ltx_field("can_fire", section)?,
+      description: section.read_field("description")?,
+      hold_position_time: section.read_field("hold_position_time")?,
+      enter_min_enemy_distance: section.read_field("enter_min_enemy_distance")?,
+      exit_min_enemy_distance: section.read_field("exit_min_enemy_distance")?,
+      is_combat_cover: section.read_field("is_combat_cover")?,
+      can_fire: section.read_field("can_fire")?,
     })
   }
   /// Export object data into ltx file.
@@ -98,11 +98,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
   use crate::data::alife::inherited::alife_object_dynamic::AlifeObjectDynamic;
@@ -112,7 +108,7 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
 
     let original: AlifeObjectSmartCover = AlifeObjectSmartCover {
       base: AlifeObjectDynamic {
@@ -149,11 +145,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 136);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 136);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 136 + 8);
 

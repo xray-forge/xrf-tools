@@ -1,9 +1,9 @@
-//! The compiled level of the X-Ray engine, one module per file the game ships.
-//!
-//! `level` is the render bundle itself and `geom` its geometry; the rest are the files beside them, each
-//! named for the one it reads.
+#![doc = include_str!("../README.md")]
 
 pub(crate) mod ai;
+pub(crate) mod build_aimap;
+pub(crate) mod build_cform;
+pub(crate) mod build_prj;
 pub(crate) mod cform;
 pub(crate) mod details;
 pub(crate) mod env_mod;
@@ -14,18 +14,47 @@ pub(crate) mod hom;
 pub(crate) mod level;
 pub(crate) mod lights;
 pub(crate) mod ps_static;
+pub(crate) mod snd_env;
 pub(crate) mod snd_static;
 pub(crate) mod som;
+pub(crate) mod surface;
+pub(crate) mod verify;
 pub(crate) mod wallmarks;
 
 #[cfg(test)]
 mod tests;
 
 pub use crate::ai::level_ai_file::*;
+pub use crate::ai::level_ai_header::*;
+pub use crate::ai::level_ai_node::*;
+pub use crate::ai::level_ai_nodes::*;
+pub use crate::ai::level_ai_version::*;
+pub use crate::build_aimap::build_aimap_file::*;
+pub use crate::build_aimap::build_aimap_node::*;
+pub use crate::build_aimap::build_aimap_params::*;
+pub use crate::build_cform::build_cform_face::*;
+pub use crate::build_cform::build_cform_file::*;
+pub use crate::build_cform::build_cform_raycast_face::*;
+pub use crate::build_prj::build_prj_file::*;
+pub use crate::build_prj::build_prj_name::*;
+pub use crate::build_prj::build_prj_params::*;
+pub use crate::build_prj::geometry::build_prj_face::*;
+pub use crate::build_prj::geometry::build_prj_glow::*;
+pub use crate::build_prj::geometry::build_prj_portal::*;
+pub use crate::build_prj::lights::build_prj_dynamic_light::*;
+pub use crate::build_prj::lights::build_prj_light_control::*;
+pub use crate::build_prj::models::build_prj_lod::*;
+pub use crate::build_prj::models::build_prj_lod_face::*;
+pub use crate::build_prj::models::build_prj_mu_model::*;
+pub use crate::build_prj::models::build_prj_mu_reference::*;
+pub use crate::build_prj::surfaces::build_prj_material::*;
+pub use crate::build_prj::surfaces::build_prj_shader::*;
+pub use crate::build_prj::surfaces::build_prj_texture::*;
 pub use crate::cform::level_cform_face::*;
 pub use crate::cform::level_cform_file::*;
 pub use crate::cform::level_cform_geometry::*;
 pub use crate::cform::level_cform_hit::LevelCformHit;
+pub use crate::cform::level_cform_materials::LevelCformMaterials;
 pub use crate::cform::level_cform_tracer::*;
 pub use crate::details::detail_model::*;
 pub use crate::details::detail_vertex::*;
@@ -57,6 +86,8 @@ pub use crate::hom::level_hom_polygon::*;
 pub use crate::level::dynamic_lights::level_dynamic_light::*;
 pub use crate::level::dynamic_lights::level_dynamic_lights_chunk::*;
 pub use crate::level::dynamic_lights::level_light_color::*;
+pub use crate::level::glows::level_glow::*;
+pub use crate::level::glows::level_glows_chunk::*;
 pub use crate::level::level_file::*;
 pub use crate::level::level_header_chunk::*;
 pub use crate::level::portals::level_portal::*;
@@ -74,11 +105,20 @@ pub use crate::lights::level_lights_chunk::*;
 pub use crate::lights::level_lights_file::*;
 pub use crate::ps_static::level_ps_static_file::*;
 pub use crate::ps_static::level_ps_static_placement::*;
+pub use crate::snd_env::level_snd_env_face::*;
+pub use crate::snd_env::level_snd_env_file::*;
 pub use crate::snd_static::level_snd_static_file::*;
 pub use crate::snd_static::level_snd_static_sound::*;
 pub use crate::snd_static::level_snd_static_window::*;
 pub use crate::som::level_som_file::*;
 pub use crate::som::level_som_polygon::*;
+pub use crate::surface::level_surface_material::LevelSurfaceMaterial;
+pub use crate::surface::level_surface_materials::LevelSurfaceMaterials;
+pub use crate::verify::level_file_source::*;
+pub use crate::verify::level_geometry_census::*;
+pub use crate::verify::level_geometry_layout_kind::*;
+pub use crate::verify::level_geometry_verifier::*;
+pub use crate::verify::level_geometry_verify_result::*;
 pub use crate::wallmarks::level_wallmark::*;
 pub use crate::wallmarks::level_wallmark_slot::*;
 pub use crate::wallmarks::level_wallmark_vertex::*;

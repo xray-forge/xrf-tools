@@ -5,27 +5,25 @@ use std::sync::{Arc, Mutex, PoisonError};
 
 use glam::Mat4;
 use xrf_renderer::{
-  LoaderReceiver, RenderLevelSource, RenderLevelSpawn, RenderLoadFailure, RenderModelSkeleton, RenderSpawnModels,
-  RenderSpawnObject, RenderWorkers, StaticModel, StaticModelPlace, take_answer,
+  LoaderReceiver, RenderLevelSpawn, RenderLoadFailure, RenderSpawnModels, RenderSpawnObject, RenderWorkers,
+  StaticModel, StaticModelPlace, take_answer,
 };
 
+use crate::host::world_level_source::WorldLevelSource;
 use crate::level::loading::loader_flight::LoaderFlight;
 use crate::level::streaming::indexed_spawn::IndexedSpawn;
+use crate::level::streaming::spawn_load::SpawnLoad;
 
 /// Visuals a loader thread reads in one batch: enough that the level's lighting is estimated for many at once, few
 /// enough that objects appear while the rest are read.
 const VISUALS_PER_BATCH: usize = 16;
-
-/// One model packed for the scene, the visual it was read from, every object standing as it, and the skeleton it is
-/// posed by where the renderer poses it.
-pub type SpawnLoad = (StaticModel, String, Vec<StaticModelPlace>, Option<RenderModelSkeleton>);
 
 /// Reads a level's spawn on the loader threads: the objects once, then their visuals in batches side by side, no more
 /// than the pool's width of them running or queued at once (`LoaderFlight`), each model packed and handed to the render
 /// thread with the objects standing as it; the next batches start as the render thread takes models, once a frame.
 /// Dropped, it lets go of the batches not started yet.
 pub struct SpawnLoader {
-  source: Arc<dyn RenderLevelSource>,
+  source: Arc<dyn WorldLevelSource>,
   workers: RenderWorkers,
   /// The objects on their way from their loader, none once they came or could not be read.
   reading: Option<LoaderReceiver<Option<RenderLevelSpawn>>>,
@@ -44,10 +42,10 @@ pub struct SpawnLoader {
 }
 
 impl SpawnLoader {
-  pub fn start(source: Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
+  pub fn start(source: Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     let (spawn_sender, spawn_receiver) = LoaderReceiver::channel();
     let (sender, receiver) = LoaderReceiver::channel();
-    let reader: Arc<dyn RenderLevelSource> = Arc::clone(&source);
+    let reader: Arc<dyn WorldLevelSource> = Arc::clone(&source);
 
     workers.spawn(move || {
       let spawn: Option<RenderLevelSpawn> = reader
@@ -137,7 +135,7 @@ impl SpawnLoader {
                 .lock()
                 .unwrap_or_else(PoisonError::into_inner)
                 .extend(std::mem::take(&mut models.failures));
-              Self::send_models((&indexed, &names, first), models, &sender, &sent);
+              Self::send_models(&indexed, &names, first, models, &sender, &sent);
             }
             Err(error) => {
               log::warn!("Spawned models cannot be drawn: {error}");
@@ -157,9 +155,12 @@ impl SpawnLoader {
     }
   }
 
-  /// Packs each model read and sends it with the objects standing as it, lit by their cubes where they have them.
+  /// Packs each model read of the batch of `names`, the visuals from `first` on, and sends it with the objects standing
+  /// as it, lit by their cubes where they have them.
   fn send_models(
-    (indexed, names, first): (&IndexedSpawn, &[String], usize),
+    indexed: &IndexedSpawn,
+    names: &[String],
+    first: usize,
     models: RenderSpawnModels,
     sender: &Sender<SpawnLoad>,
     sent: &AtomicU32,
@@ -197,7 +198,12 @@ impl SpawnLoader {
       // Counted before it is sent, so the loader never sees it taken before it was sent.
       sent.fetch_add(1, Ordering::AcqRel);
 
-      let _ = sender.send((packed, model.name, places, model.skeleton));
+      let _ = sender.send(SpawnLoad {
+        model: packed,
+        name: model.name,
+        places,
+        skeleton: model.skeleton,
+      });
     }
   }
 }

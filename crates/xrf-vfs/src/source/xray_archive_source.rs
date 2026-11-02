@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
@@ -11,11 +12,10 @@ use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
 use crate::asset::XrayAsset;
-use crate::path::{XrayLogicalPath, is_component_prefix, normalize_logical};
-use crate::source::xray_asset_source::label_from_path;
+use crate::path::{XrayLogicalPath, is_component_prefix};
 use crate::{
   XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayDeclaredRoot, XrayPathCollision, XrayShadowedCopy,
-  XrayShadowingEntry, XraySourceKind,
+  XrayShadowingEntry, XraySourceKind, label_from_path,
 };
 
 /// Mounts an archive volume set as a read-only asset source.
@@ -135,7 +135,7 @@ impl XrayArchiveSource {
         continue;
       }
 
-      let Some(normalized) = Self::to_identity(descriptor) else {
+      let Some(normalized) = Self::to_identity(project, descriptor) else {
         continue;
       };
 
@@ -149,7 +149,7 @@ impl XrayArchiveSource {
             .get(&slot.get().name)
             .expect("an indexed name belongs to the table it was read from");
 
-          if Self::to_precedence(descriptor) > Self::to_precedence(incumbent) {
+          if descriptor.get_precedence() > incumbent.get_precedence() {
             losers.push((slot.key().clone(), incumbent));
             slot.insert(IndexedEntry::of(descriptor, name));
           } else {
@@ -159,14 +159,15 @@ impl XrayArchiveSource {
       }
     }
 
-    // What the name-table merge overwrote. Each is outranked by the entry that displaced it - same authored name, later
-    // volume - so one can never win its identity, and every one of them is a loser without being compared.
+    // What the name-table merge overwrote. Each is outranked by the entry that displaced it - same name within the
+    // project, so same mount, later volume - so one can never win its identity, and every one of them is a loser
+    // without being compared.
     for descriptor in &project.shadowed {
       if descriptor.is_directory {
         continue;
       }
 
-      if let Some(normalized) = Self::to_identity(descriptor) {
+      if let Some(normalized) = Self::to_identity(project, descriptor) {
         losers.push((normalized, descriptor));
       }
     }
@@ -204,7 +205,7 @@ impl XrayArchiveSource {
 
       // Highest precedence first, so each copy is judged against the one directly ahead of it. The winner outranks
       // every one of them by construction, so it leads without being sorted in.
-      behind.sort_by(|first, second| Self::to_precedence(second).cmp(&Self::to_precedence(first)));
+      behind.sort_by(|first, second| second.get_precedence().cmp(&first.get_precedence()));
 
       for (index, loser) in behind.iter().enumerate() {
         let ahead: &ArchiveFileDescriptor = if index == 0 { winner } else { behind[index - 1] };
@@ -233,16 +234,33 @@ impl XrayArchiveSource {
     (collisions, shadowed)
   }
 
-  /// The engine identity one entry folds to, or nothing when its name is not one.
-  fn to_identity(descriptor: &ArchiveFileDescriptor) -> Option<String> {
-    normalize_logical(&descriptor.name)
+  /// The engine identity one entry folds to, or nothing when its name is not one: its authored name below the part of
+  /// its volume's entry point inside `gamedata`.
+  // todo: Mount an entry whose volume's entry point lies outside `gamedata` where the engine registers it, rather than as
+  // though its authored name were a path under `gamedata`.
+  fn to_identity(project: &ArchiveProject, descriptor: &ArchiveFileDescriptor) -> Option<String> {
+    let below_gamedata: String = project
+      .get_volume_of(descriptor)
+      .ok()
+      .filter(|volume| {
+        volume
+          .list_mount_directories()
+          .next()
+          .is_some_and(|outermost| outermost.eq_ignore_ascii_case("gamedata"))
+      })
+      .map(|volume| volume.to_mount_prefix_below(1))
+      .unwrap_or_default();
+
+    // Nearly every volume mounts at `gamedata` itself, so its names are normalized as they stand.
+    let name: Cow<'_, str> = if below_gamedata.is_empty() {
+      Cow::Borrowed(&descriptor.authored_name)
+    } else {
+      Cow::Owned(below_gamedata + &descriptor.authored_name)
+    };
+
+    XrayLogicalPath::normalize(&name)
       .inspect_err(|error| log::warn!("Skipping archive entry '{}': {error}", descriptor.name))
       .ok()
-  }
-
-  /// What decides between two copies of one identity: volume order first, then the authored name.
-  fn to_precedence(descriptor: &ArchiveFileDescriptor) -> (u32, &str) {
-    (descriptor.volume, &descriptor.name)
   }
 
   /// The volume one copy sits in, which is what a person needs to act on it.
@@ -372,21 +390,6 @@ impl XrayAssetSource for XrayArchiveSource {
       .map(|descriptor| descriptor.crc)
   }
 
-  fn write(&self, path: &str, _bytes: &[u8]) -> XrfResult<()> {
-    Err(XrfError::new_read_error(format!(
-      "cannot write '{path}': archive '{}' is read only",
-      self.label
-    )))
-  }
-
-  /// Always fails. A volume cannot gain an entry; an override belongs in a loose mount in front of it.
-  fn create(&self, path: &str, _bytes: &[u8]) -> XrfResult<()> {
-    Err(XrfError::new_read_error(format!(
-      "cannot create '{path}': archive '{}' is read only",
-      self.label
-    )))
-  }
-
   fn list_entries<'a>(&'a self, prefix: Option<&'a str>) -> Box<dyn Iterator<Item = String> + 'a> {
     let Some(prefix) = prefix else {
       return Box::new(self.entries.keys().cloned());
@@ -420,7 +423,7 @@ mod tests {
   use std::path::{Path, PathBuf};
   use std::sync::Arc;
 
-  use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveReadPolicy};
+  use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
 
   use super::XrayArchiveSource;
   use crate::{XrayAssetContainer, XrayAssetSource, XrayCollisionSite, XrayPathCollision, XrayShadowedCopy};
@@ -440,13 +443,13 @@ mod tests {
           entries: 0,
           modified_at: None,
           output_root_path: PathBuf::from("gamedata"),
+          mount_root: String::from("gamedata"),
           path: PathBuf::from(*volume),
           size_compressed: 0,
           size_real: 0,
         })
         .collect(),
       files: merged.0,
-      read_policy: ArchiveReadPolicy::default(),
       root: PathBuf::from("C:\\game\\db"),
       shadowed: merged.1,
       size_real: 0,

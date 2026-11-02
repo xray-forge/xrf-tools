@@ -73,9 +73,6 @@ enum RunningKind {
 }
 
 impl ParticleRunningAction {
-  /// `ParticleAction::ALLOW_ROTATE`.
-  const ALLOW_ROTATE: u32 = 1 << 1;
-
   /// `PlayEffect`: sources emit again; explosions and turbulence start over.
   pub fn play(&mut self) {
     match &mut self.kind {
@@ -205,7 +202,7 @@ impl From<&ParticleAction> for ParticleRunningAction {
     };
 
     Self {
-      is_rotated: flags & Self::ALLOW_ROTATE != 0,
+      is_rotated: flags & ParticleAction::ALLOW_ROTATE != 0,
       kind,
     }
   }

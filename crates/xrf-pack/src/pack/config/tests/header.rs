@@ -1,6 +1,6 @@
 //! What a written `[header]` has to carry, and what a named key does to the default.
 
-use crate::pack::config::{ArchivePackConfig, ArchivePackHeaderEntry, default_header};
+use crate::pack::config::{ArchivePackConfig, ArchivePackHeader, ArchivePackHeaderEntry};
 
 /// One `key=value` pair, as a command line supplies it.
 fn entry(key: &str, value: &str) -> ArchivePackHeaderEntry {
@@ -70,6 +70,16 @@ fn a_header_missing_a_key_the_engine_reads_unconditionally_is_refused() {
 }
 
 #[test]
+fn a_required_key_is_found_only_as_spelled() {
+  // `CInifile` lower-cases the section name but finds a key with `strcmp`, so `r_string` misses `Entry_Point`.
+  let message: String = refusal(Some(
+    "[Header]\r\nauto_load = true\r\nEntry_Point = $fs_root$\\gamedata\\\r\n",
+  ));
+
+  assert!(message.contains("names no 'entry_point'"), "'{message}'");
+}
+
+#[test]
 fn a_header_with_no_section_is_refused() {
   let message: String = refusal(Some("auto_load = true\r\nentry_point = $fs_root$\\gamedata\\\r\n"));
 
@@ -81,10 +91,18 @@ fn a_header_with_no_section_is_refused() {
 
 #[test]
 fn an_entry_point_the_loader_asserts_on_is_refused() {
-  // `LoadArchive` special-cases the bare `gamedata` literal and otherwise asserts the value opens with an alias.
-  let message: String = refusal(Some("[header]\r\nauto_load = true\r\nentry_point = mydata\\\r\n"));
+  // `LoadArchive` special-cases the bare `gamedata` literal and otherwise asserts the value opens with an alias, then
+  // reads the path after the alias's first `\`, past the end of a value that has none.
+  for entry_point in ["mydata\\", "$game_data$"] {
+    let message: String = refusal(Some(&format!(
+      "[header]\r\nauto_load = true\r\nentry_point = {entry_point}\r\n"
+    )));
 
-  assert!(message.contains("is neither 'gamedata' nor an alias"), "'{message}'");
+    assert!(
+      message.contains("is neither 'gamedata' nor an alias"),
+      "'{entry_point}': '{message}'"
+    );
+  }
 }
 
 #[test]
@@ -100,6 +118,44 @@ fn the_bare_gamedata_literal_and_an_alias_are_both_accepted() {
 }
 
 #[test]
+fn a_commented_header_is_judged_as_the_engine_reads_it() {
+  ArchivePackConfig {
+    header: Some(String::from(
+      "[header] ; archive metadata\r\nauto_load = true\r\nentry_point = $fs_root$\\gamedata\\ ; installed content\r\n",
+    )),
+    ..ArchivePackConfig::new("C:\\source", "C:\\out", "patch")
+  }
+  .validate_for_packing()
+  .expect("comments the engine strips leave a loadable header");
+
+  // A commented-out line names nothing, so the key it held is missing.
+  let message: String = refusal(Some(
+    "[header]\r\nauto_load = true\r\n; entry_point = $fs_root$\\gamedata\\\r\n",
+  ));
+
+  assert!(message.contains("names no 'entry_point'"), "'{message}'");
+}
+
+#[test]
+fn stored_header_text_splits_into_the_pairs_the_engine_reads() {
+  // What a configuration export carries, so a comment must not reach a value nor a commented-out line become a key.
+  assert_eq!(
+    ArchivePackHeaderEntry::split(
+      "[header] ; metadata\r\nauto_load = true\r\n; entry_point = $fs_root$\\levels\\\r\nentry_point = \
+       $fs_root$\\gamedata\\ ; installed content\r\n"
+    ),
+    [
+      entry("auto_load", "true"),
+      entry("entry_point", "$fs_root$\\gamedata\\")
+    ]
+  );
+  assert!(
+    ArchivePackHeaderEntry::split("auto_load = true\r\n").is_empty(),
+    "no section, no pairs"
+  );
+}
+
+#[test]
 fn a_run_asking_for_no_header_at_all_is_still_allowed() {
   // The documented escape hatch, and the one case where nothing is written for the engine to fail to read.
   ArchivePackConfig {
@@ -109,5 +165,5 @@ fn a_run_asking_for_no_header_at_all_is_still_allowed() {
   .validate_for_packing()
   .expect("a headerless volume is a choice, not a malformed header");
 
-  assert!(default_header().contains("entry_point"));
+  assert!(ArchivePackHeader::default_text().contains("entry_point"));
 }

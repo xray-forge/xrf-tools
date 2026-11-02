@@ -8,17 +8,17 @@ use xrf_omf::OmfFile;
 #[serde(rename_all = "camelCase")]
 pub struct OmfRenameMotionsReport {
   destination: String,
-  is_dry: bool,
+  is_dry_run: bool,
   motions: Vec<String>,
   renamed: usize,
   source: String,
 }
 
 impl OmfRenameMotionsReport {
-  pub fn new(source: &Path, destination: &Path, file: &OmfFile, renamed: usize, is_dry: bool) -> Self {
+  pub fn new(source: &Path, destination: &Path, file: &OmfFile, renamed: usize, is_dry_run: bool) -> Self {
     Self {
       destination: xrf_utils::to_portable_path_string(destination),
-      is_dry,
+      is_dry_run,
       motions: file.get_motion_names().into_iter().map(String::from).collect(),
       renamed,
       source: xrf_utils::to_portable_path_string(source),

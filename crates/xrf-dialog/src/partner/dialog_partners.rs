@@ -4,15 +4,15 @@ use indexmap::IndexMap;
 use indexmap::map::Entry;
 use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
-use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayLookupScope, XrayVfs};
-use xrf_xml::{XmlElementSpan, XmlParseOptions, XmlSourceDocument, expand_xml_includes, list_xml_includes};
+use xrf_vfs::{XrayAsset, XrayLogicalPath, XraySearch};
+use xrf_xml::{XmlElementSpan, XmlIncludes, XmlSourceDocument};
 
-use crate::constants::ID_ATTRIBUTE;
-use crate::encoding::decode;
+use crate::dialog_source::DialogSource;
 use crate::partner::dialog_character::DialogCharacter;
 use crate::partner::dialog_offer::DialogOffer;
+use crate::partner::dialog_partner_text::DialogPartnerText;
 use crate::partner::dialog_profile::DialogProfile;
-use crate::project::descriptor::DialogFinding;
+use crate::project::dialog_finding::DialogFinding;
 
 /// Reads one partner file's root into the partners, given the file's logical path for findings.
 type PartnerReader = fn(&mut DialogPartners, &XmlElementSpan, &str);
@@ -41,27 +41,26 @@ impl DialogPartners {
   const INFO_PORTIONS_FILE_PREFIX: &'static str = "info_";
 
   const INFO_PORTION_ELEMENT: &'static str = "info_portion";
+  const INFO_PORTION_ID_ATTRIBUTE: &'static str = "id";
   const INFO_PORTION_DIALOG_ELEMENT: &'static str = "dialog";
 
   /// The prefix the engine opens XML includes under, `$game_config$`.
   const INCLUDES_PREFIX: &'static str = "configs";
 
-  /// Read every character description, profile list and info portion file under a prefix of mounted roots.
+  /// Read every character description, profile list and info portion file a search reaches under a prefix.
   ///
   /// # Errors
   ///
   /// Returns an error when the prefix is not a valid logical path.
-  pub fn from_vfs(vfs: &XrayVfs, prefix: &str) -> XrfResult<Self> {
-    let scope: XrayLookupScope = XrayLookupScope::all().with_prefix(prefix)?;
-    let mut assets: Vec<XrayAsset> = vfs
-      .scoped(&scope)
-      .list_entries()
+  pub fn from_search(search: &XraySearch, prefix: &str) -> XrfResult<Self> {
+    // In engine-identity order rather than mount order, since the first of two declarations is the one kept.
+    let assets: Vec<XrayAsset> = search
+      .clone()
+      .with_prefix(prefix)?
+      .list_files()
       .into_iter()
       .filter(|asset| asset.get_logical_path().has_extension(XrayExtension::Xml))
       .collect();
-
-    // Mount order is not name order, and the first of two declarations is the one kept.
-    assets.sort_by(|left, right| left.get_logical_path().as_str().cmp(right.get_logical_path().as_str()));
 
     let sources: Vec<(&str, PartnerReader, XrfResult<Vec<u8>>)> = assets
       .iter()
@@ -69,7 +68,7 @@ impl DialogPartners {
         let logical_path: &str = asset.get_logical_path().as_str();
 
         Self::find_reader(asset.get_logical_path().file_name())
-          .map(|reader| (logical_path, reader, vfs.read_bytes(logical_path)))
+          .map(|reader| (logical_path, reader, search.read(logical_path)))
       })
       .collect();
 
@@ -79,7 +78,7 @@ impl DialogPartners {
     let included: HashSet<String> = sources
       .iter()
       .filter_map(|(_, _, source)| source.as_ref().ok())
-      .flat_map(|source| list_xml_includes(source))
+      .flat_map(|source| XmlIncludes::list(source))
       .filter_map(|name| XrayLogicalPath::normalize(&Self::to_include_path(&name)).ok())
       .collect();
 
@@ -91,9 +90,9 @@ impl DialogPartners {
       }
 
       let document: XrfResult<XmlSourceDocument> = source
-        .and_then(|source| expand_xml_includes(&source, &mut |name| vfs.read_bytes(&Self::to_include_path(name))))
-        .and_then(|expanded| decode(&expanded))
-        .and_then(|decoded| XmlSourceDocument::parse(decoded.text, XmlParseOptions::default()));
+        .and_then(|source| XmlIncludes::expand(&source, &mut |name| search.read(&Self::to_include_path(name))))
+        .and_then(|expanded| DialogSource::decode(&expanded))
+        .and_then(|decoded| XmlSourceDocument::parse(decoded.text));
 
       match document {
         Ok(document) => reader(&mut partners, document.root(), logical_path),
@@ -244,15 +243,11 @@ impl DialogPartners {
 
   fn read_info_portions(&mut self, root: &XmlElementSpan, logical_path: &str) {
     for element in root.children_named(Self::INFO_PORTION_ELEMENT) {
-      let Some(id) = element.attribute(ID_ATTRIBUTE) else {
+      let Some(id) = element.attribute(Self::INFO_PORTION_ID_ATTRIBUTE) else {
         continue;
       };
 
-      let dialogs: Vec<String> = element
-        .children_named(Self::INFO_PORTION_DIALOG_ELEMENT)
-        .map(|child| child.text().trim().to_owned())
-        .filter(|dialog| !dialog.is_empty())
-        .collect();
+      let dialogs: Vec<String> = DialogPartnerText::all(element, Self::INFO_PORTION_DIALOG_ELEMENT);
 
       // Kept whether it opens anything or not, so a later declaration of the id is a duplicate either way.
       Self::insert(

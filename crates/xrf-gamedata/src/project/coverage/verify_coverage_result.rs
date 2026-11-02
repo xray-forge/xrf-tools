@@ -28,7 +28,7 @@ impl GamedataCheckResult for GamedataCoverageVerificationResult {
     }
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     if self.skipped_mounts_count == 0 {
       String::from("Every declared source opened")
     } else {

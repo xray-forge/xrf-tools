@@ -5,10 +5,11 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_report::Status;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayMountMode, XrayRoots};
 
-use crate::commands::dialog::info::dialog_sweep::{DialogSweep, DialogSweepResult};
+use crate::commands::dialog::info::dialog_sweep::DialogSweep;
+use crate::commands::dialog::info::dialog_sweep_result::DialogSweepResult;
 
 const DIALOG: &str = r#"<game_dialogs><dialog id="d"><phrase_list><phrase id="0"><text>key</text></phrase></phrase_list></dialog></game_dialogs>"#;
 
@@ -18,13 +19,7 @@ fn roots(root: &Path) -> XrayRoots {
 }
 
 fn create_root(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("dialog_info/selection/{name}"));
-
-  if root.exists() {
-    fs::remove_dir_all(&root)?;
-  }
-
-  fs::create_dir_all(&root)?;
+  let root: PathBuf = GeneratedResources::create_dir(&format!("dialog_info/selection/{name}"))?;
 
   Ok(root)
 }

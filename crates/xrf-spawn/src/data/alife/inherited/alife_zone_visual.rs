@@ -2,7 +2,7 @@ use byteorder::ByteOrder;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ltx::{Ltx, LtxImportExport, Section, read_ltx_field, read_ltx_optional_field};
+use xrf_ltx::{Ltx, LtxImportExport, Section};
 
 use crate::data::alife::inherited::alife_object_anomaly_zone::AlifeObjectAnomalyZone;
 use crate::data::alife::inherited::alife_object_visual::AlifeObjectVisual;
@@ -14,6 +14,7 @@ use crate::data::generic::last_spawn_time::LastSpawnTime;
 pub struct AlifeZoneVisual {
   pub base: AlifeObjectAnomalyZone,
   pub visual: AlifeObjectVisual,
+  /// The animation the zone idles in (`CSE_Visual::startup_animation`).
   pub idle_animation: String,
   pub attack_animation: String,
   pub last_spawn_time: LastSpawnTime,
@@ -25,16 +26,8 @@ impl ChunkReadWrite for AlifeZoneVisual {
     Ok(Self {
       base: reader.read_xr::<T, _>()?,
       visual: reader.read_xr::<T, _>()?,
-      idle_animation: if reader.has_data() {
-        reader.read_w1251_string().unwrap()
-      } else {
-        String::new()
-      },
-      attack_animation: if reader.has_data() {
-        reader.read_w1251_string().unwrap()
-      } else {
-        String::new()
-      },
+      idle_animation: reader.read_w1251_string()?,
+      attack_animation: reader.read_w1251_string()?,
       last_spawn_time: reader.read_xr::<T, _>()?,
     })
   }
@@ -65,10 +58,12 @@ impl LtxImportExport for AlifeZoneVisual {
     Ok(Self {
       base: AlifeObjectAnomalyZone::import(section_name, ltx)?,
       visual: AlifeObjectVisual::import(section_name, ltx)?,
-      idle_animation: read_ltx_field("zone_visual.idle_animation", section)?,
-      attack_animation: read_ltx_field("zone_visual.attack_animation", section)?,
+      idle_animation: section.read_field("zone_visual.idle_animation")?,
+      attack_animation: section.read_field("zone_visual.attack_animation")?,
       last_spawn_time: LastSpawnTime::from_str_optional(
-        read_ltx_optional_field::<String>("zone_visual.last_spawn_time", section)?.as_deref(),
+        section
+          .read_optional_field::<String>("zone_visual.last_spawn_time")?
+          .as_deref(),
       )?,
     })
   }
@@ -93,11 +88,7 @@ mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
   use xrf_math::Vector3d;
-  use xrf_test_utils::FileSlice;
-  use xrf_test_utils::utils::{
-    build_relative_test_sample_file_path, open_generated_test_resource_as_slice,
-    overwrite_generated_test_resource_as_file,
-  };
+  use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::data::alife::inherited::alife_object_abstract::AlifeObjectAbstract;
   use crate::data::alife::inherited::alife_object_anomaly_zone::AlifeObjectAnomalyZone;
@@ -112,7 +103,7 @@ mod tests {
   #[test]
   fn test_read_write_empty() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write_empty.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write_empty.chunk");
 
     let original: AlifeZoneVisual = AlifeZoneVisual {
       base: AlifeObjectAnomalyZone {
@@ -163,11 +154,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 145);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 145);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 145 + 8);
 
@@ -181,7 +172,7 @@ mod tests {
   #[test]
   fn test_read_write() -> XrfResult {
     let mut writer: ChunkWriter = ChunkWriter::new();
-    let filename: String = build_relative_test_sample_file_path(file!(), "read_write.chunk");
+    let filename: String = GeneratedResources::sample_name(file!(), "read_write.chunk");
 
     let original: AlifeZoneVisual = AlifeZoneVisual {
       base: AlifeObjectAnomalyZone {
@@ -232,11 +223,11 @@ mod tests {
     assert_eq!(writer.bytes_written(), 190);
 
     let bytes_written: usize =
-      writer.flush_chunk_into::<XRayByteOrder>(&mut overwrite_generated_test_resource_as_file(&filename)?, 0)?;
+      writer.flush_chunk_into::<XRayByteOrder>(&mut GeneratedResources::overwrite(&filename)?, 0)?;
 
     assert_eq!(bytes_written, 190);
 
-    let file: FileSlice = open_generated_test_resource_as_slice(&filename)?;
+    let file: FileSlice = GeneratedResources::open_slice(&filename)?;
 
     assert_eq!(file.bytes_remaining(), 190 + 8);
 

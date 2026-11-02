@@ -3,6 +3,8 @@
 mod compute_pipeline_description;
 mod pipeline_cache;
 mod pipeline_constants;
+mod pipeline_map;
+mod pipeline_set;
 mod render_pipeline_description;
 mod shader_lines;
 mod shader_override;
@@ -16,6 +18,8 @@ mod tests;
 pub use compute_pipeline_description::ComputePipelineDescription;
 pub use pipeline_cache::PipelineCache;
 pub use pipeline_constants::PipelineConstants;
+pub use pipeline_map::PipelineMap;
+pub use pipeline_set::PipelineSet;
 pub use render_pipeline_description::RenderPipelineDescription;
 pub use shader_lines::ShaderLines;
 pub use shader_override::ShaderOverride;

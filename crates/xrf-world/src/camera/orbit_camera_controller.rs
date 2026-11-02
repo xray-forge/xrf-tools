@@ -4,10 +4,10 @@ use std::time::Duration;
 use glam::Vec3;
 use xrf_renderer::CameraFrame;
 
-use crate::contract::world_camera::WorldCamera;
-use crate::contract::world_camera_command::WorldCameraCommand;
-use crate::contract::world_camera_pose::WorldCameraPose;
-use crate::contract::world_input_event::WorldInputEvent;
+use crate::contract::camera::world_camera::WorldCamera;
+use crate::contract::camera::world_camera_command::WorldCameraCommand;
+use crate::contract::camera::world_camera_pose::WorldCameraPose;
+use crate::contract::camera::world_input_event::WorldInputEvent;
 
 /// Keeps the camera off the poles, where turning around the target would flip it over.
 const POLE_MARGIN: f32 = 1e-4;

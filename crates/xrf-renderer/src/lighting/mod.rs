@@ -1,33 +1,12 @@
-pub(crate) mod ambient_gust;
-pub(crate) mod daylight;
-pub(crate) mod foliage_wind;
-pub(crate) mod grass_swing;
-pub(crate) mod grass_wind;
-pub(crate) mod light_animation;
-pub(crate) mod light_basis;
-pub(crate) mod light_bulb;
-pub(crate) mod light_shadow_size;
-pub(crate) mod light_specular;
-pub(crate) mod light_unit;
-pub(crate) mod light_units;
+//! The light and weather model on the CPU, which the frame's uniforms are made from: the lamps, the sun and its
+//! cascades, the units light is measured in, the weather's values and the wind. The passes lighting the frame are in
+//! `feature::lighting`.
+
+pub(crate) mod lamp;
 pub(crate) mod luminance;
 pub(crate) mod material_slice;
-pub(crate) mod render_ambients;
-pub(crate) mod render_clouds;
-pub(crate) mod render_fog;
-pub(crate) mod render_lighting;
-pub(crate) mod render_rainfall;
-pub(crate) mod render_sky;
-pub(crate) mod render_thunderbolt_glow;
-pub(crate) mod render_thunderbolt_strike;
-pub(crate) mod render_tree_wind;
-pub(crate) mod render_wind;
 pub(crate) mod srgb;
-pub(crate) mod sun_cascade;
-pub(crate) mod sun_cascade_basis;
-pub(crate) mod sun_cascade_placement;
-pub(crate) mod sun_direction;
-pub(crate) mod sun_view_ray;
-pub(crate) mod sun_view_rays;
-pub(crate) mod weather_random;
-pub(crate) mod wind_noise;
+pub(crate) mod sun;
+pub(crate) mod unit;
+pub(crate) mod weather;
+pub(crate) mod wind;

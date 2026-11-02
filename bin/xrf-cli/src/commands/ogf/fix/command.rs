@@ -6,9 +6,8 @@ use xrf_output::OutputOptions;
 
 use crate::commands::ogf::fix::ogf_fixer::OgfFixer;
 use crate::commands::ogf::fix::report::OgfFixReport;
-use crate::core::command_context::CommandContext;
-use crate::core::execution::ExecutionArguments;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::arguments::JobsArgument;
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct FixCommand;
@@ -18,10 +17,9 @@ impl GenericCommand for FixCommand {
     "fix"
   }
 
-  /// Create command for normalizing ogf visuals.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to rewrite ogf visuals into well-formed bytes, changing nothing the engine reads")
+  fn declare(&self, command: Command) -> Command {
+    let command: Command = command
+      .about("Rewrite OGF visuals into well-formed bytes, changing nothing the engine reads")
       .arg(
         Arg::new("path")
           .help("Path to an ogf file or a directory to sweep")
@@ -43,11 +41,11 @@ impl GenericCommand for FixCommand {
           .help("Report what would change and how many bytes would go without writing any file")
           .long("dry-run")
           .action(ArgAction::SetTrue),
-      )
-      .with_jobs()
+      );
+
+    JobsArgument::declare(command)
   }
 
-  /// Normalize the visual named, or every visual under the directory named.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
@@ -65,11 +63,12 @@ impl GenericCommand for FixCommand {
     // it did fix and the findings explaining the rest.
     context.set_result(|| &report)?;
 
-    if report.failed > 0 {
+    if !report.findings.is_empty() {
       return Err(
         XrfError::new_verify_error(format!(
           "Failed to fix {} of {} ogf visual(s)",
-          report.failed, report.checked
+          report.findings.len(),
+          report.checked
         ))
         .into(),
       );
@@ -85,21 +84,21 @@ impl FixCommand {
       xrf_output::info!(
         output,
         "Dry run, nothing written: {} of {} visual(s) would be normalized, {} bytes discarded, {} unchanged, {} failed",
-        report.normalized,
+        report.files.len(),
         report.checked,
-        report.discarded_size,
+        report.discarded_size(),
         report.unchanged,
-        report.failed
+        report.findings.len()
       );
     } else {
       xrf_output::info!(
         output,
         "Normalized {} of {} visual(s), {} bytes discarded, {} unchanged, {} failed",
-        report.normalized,
+        report.files.len(),
         report.checked,
-        report.discarded_size,
+        report.discarded_size(),
         report.unchanged,
-        report.failed
+        report.findings.len()
       );
     }
   }

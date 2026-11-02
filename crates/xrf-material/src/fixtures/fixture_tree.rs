@@ -1,11 +1,10 @@
 use std::path::{Path, PathBuf};
 
 use xrf_shaders::fixtures::{ShaderBlenderFixture, ShaderLibraryFixture};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::fixtures::thm_fixture::ThmFixture;
-use crate::resolve::xray_surface_resolver::XraySurfaceResolver;
-use crate::resolve::xray_surface_script::XraySurfaceScript;
+use crate::surface::{XraySurfaceResolver, XraySurfaceScript};
 
 /// A gamedata-shaped tree under the generated test resources, with descriptors that parse and textures that exist.
 pub struct FixtureTree {
@@ -19,10 +18,8 @@ impl FixtureTree {
   ///
   /// When the generated test resources directory cannot be created, which no test can proceed past.
   pub fn new(case: &str) -> Self {
-    let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xrf_material/{case}"));
-
-    let _ = std::fs::remove_dir_all(&root);
-    std::fs::create_dir_all(&root).expect("fixture tree root is creatable");
+    let root: PathBuf =
+      GeneratedResources::create_dir(&format!("xrf_material/{case}")).expect("fixture tree root is creatable");
 
     Self { root }
   }

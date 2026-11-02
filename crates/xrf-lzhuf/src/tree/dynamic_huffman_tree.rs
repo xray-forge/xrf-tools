@@ -1,9 +1,8 @@
 use xrf_error::{XrfError, XrfResult};
 
-use crate::bit_reader::BitReader;
-use crate::bit_writer::BitWriter;
+use crate::bits::{BitReader, BitWriter};
 use crate::lzhuf_constants::{LEAF_COUNT, NODE_COUNT, REBUILD_FREQUENCY_LIMIT};
-use crate::tree::tree_entry::{NodeType, TreeEntry};
+use crate::tree::{NodeType, TreeEntry};
 
 /// One node of the adaptive tree.
 #[derive(Clone, Copy)]
@@ -519,9 +518,9 @@ mod tests {
   use std::collections::{HashMap, HashSet};
 
   use super::{DynamicHuffmanTree, TreeNode};
-  use crate::bit_reader::BitReader;
+  use crate::bits::BitReader;
   use crate::lzhuf_constants::{LEAF_COUNT, NODE_COUNT, REBUILD_FREQUENCY_LIMIT};
-  use crate::tree::tree_entry::NodeType;
+  use crate::tree::NodeType;
 
   /// Assert every invariant the decode walk and the update rule rely on.
   fn assert_tree_is_sound(tree: &DynamicHuffmanTree) {

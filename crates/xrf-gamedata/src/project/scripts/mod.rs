@@ -1,3 +1,2 @@
-pub(crate) mod runtime_script;
-pub(crate) mod verify_scripts;
+pub(crate) mod scripts_verifier;
 pub(crate) mod verify_scripts_result;

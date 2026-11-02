@@ -1,27 +1,33 @@
-//! X-Ray texture recipes: the sprite sheets the interface is drawn from, the bump pair a surface binds, and the
-//! operations that build each of them.
+#![doc = include_str!("../README.md")]
 
+mod albedo;
+mod alignment;
 mod build;
 mod bump;
 mod crop;
 mod description;
+mod encoding;
 mod equipment;
 mod image_file;
 
 pub mod job_phases;
 
+pub use crate::albedo::{AlbedoVerdict, TextureAlbedo};
+pub use crate::alignment::{BumpAlignment, BumpAlignmentVerdict};
 pub use crate::build::{
+  BuildTextureAdvancedChain, BuildTextureBumpPair, BuildTextureLayout, BuildTextureMipmaps, BuildTextureNormalMap,
   BuildTextureOmission, BuildTextureOptions, BuildTextureProcessor, BuildTextureRecipe, BuildTextureResult,
 };
 pub use crate::bump::{GenerateBumpGloss, GenerateBumpOptions, GenerateBumpProcessor, GenerateBumpResult};
 pub use crate::crop::{CropTextureOptions, CropTextureProcessor, CropTextureResult};
 pub use crate::description::{
-  PackDescriptionOptions, PackDescriptionProcessor, TextureFileDescriptor, TextureSpriteDescriptor,
-  UnpackDescriptionProcessor,
+  DescriptionSpriteOptions, DescriptionSpritePacker, DescriptionSpriteResult, DescriptionSpriteUnpacker,
+  TextureFileDescriptor, TextureSpriteDescriptor,
 };
+pub use crate::encoding::{TextureEncodingFormat, TextureEncodingQuality};
 pub use crate::equipment::{
-  EquipmentGridOverlap, EquipmentSlotClaim, EquipmentSlotOccupant, InventorySpriteDescriptor, PackEquipmentOptions,
-  PackEquipmentProcessor, PackEquipmentResult, UnpackEquipmentOptions, UnpackEquipmentProcessor,
-  VerifyEquipmentGridProcessor,
+  EquipmentGridOverlap, EquipmentGridVerifier, EquipmentSlotClaim, EquipmentSlotOccupant, EquipmentSpritePackOptions,
+  EquipmentSpritePackResult, EquipmentSpritePacker, EquipmentSpriteUnpackOptions, EquipmentSpriteUnpacker,
+  InventorySpriteDescriptor,
 };
-pub use crate::image_file::{ImageShape, read_image_as_rgba};
+pub use crate::image_file::{ImageFileReader, ImageShape};

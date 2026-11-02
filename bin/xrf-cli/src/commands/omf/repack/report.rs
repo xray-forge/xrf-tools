@@ -1,30 +1,18 @@
 use serde::Serialize;
-use xrf_report::Status;
+use xrf_report::Report;
 
-use super::statistics::RepackOmfStatistics;
-use crate::commands::omf::repack::omf_repack_finding_report::OmfRepackFindingReport;
-
-/// The verdict `omf repack` reached while verifying round trips.
+/// The verdict `omf repack --verify` reached over the round trips it ran.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OmfRepackVerifyReport {
+  /// Files whose round trip ran: the denominator of the findings, which name every file that did not come back.
   checked: u32,
-  failed: u32,
-  findings: Vec<OmfRepackFindingReport>,
-  identical: u32,
-  mismatched: u32,
-  status: Status,
+  #[serde(flatten)]
+  report: Report,
 }
 
 impl OmfRepackVerifyReport {
-  pub fn new(statistics: &RepackOmfStatistics, findings: Vec<OmfRepackFindingReport>) -> Self {
-    Self {
-      checked: statistics.checked(),
-      failed: statistics.failed(),
-      findings,
-      identical: statistics.identical(),
-      mismatched: statistics.mismatched(),
-      status: Status::from_is_valid(statistics.is_valid()),
-    }
+  pub fn new(checked: u32, report: Report) -> Self {
+    Self { checked, report }
   }
 }

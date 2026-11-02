@@ -1,10 +1,12 @@
 use std::time::Duration;
 
+use crate::level::effects::campfire_state::CampfireState;
+
 /// `CZoneCampfire`'s switching: lit or out, and the turn between them, over which its idle effect starts and stops
 /// late (`PlayIdleParticles` and `StopIdleParticles`) and its light ramps (`OVL_TIME`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Campfire {
-  is_lit: bool,
+  state: CampfireState,
   /// When the turn under way ends, on the level's clock (`m_turn_time`); none once it has.
   turn_end: Option<Duration>,
 }
@@ -20,17 +22,17 @@ impl Campfire {
   const IDLE_STOP_DELAY: Duration = Duration::from_millis(500);
 
   /// One settled in a state, as a campfire spawns lit (`m_turned_on`) or stands once a script has put it out.
-  pub fn new(is_lit: bool) -> Self {
-    Self { is_lit, turn_end: None }
+  pub fn new(state: CampfireState) -> Self {
+    Self { state, turn_end: None }
   }
 
   pub fn is_lit(&self) -> bool {
-    self.is_lit
+    self.state == CampfireState::Lit
   }
 
   /// `turn_on_script` and `turn_off_script`: starts the turn to a state.
-  pub fn turn(&mut self, is_lit: bool, now: Duration) {
-    self.is_lit = is_lit;
+  pub fn turn(&mut self, state: CampfireState, now: Duration) {
+    self.state = state;
     self.turn_end = Some(now + Self::TURN_TIME);
   }
 
@@ -53,7 +55,7 @@ impl Campfire {
       end.saturating_sub(now).as_secs_f32() / Self::TURN_TIME.as_secs_f32()
     });
 
-    if self.is_lit { 1.0 - left } else { left }
+    if self.is_lit() { 1.0 - left } else { left }
   }
 
   /// `CZoneCampfire::PlayIdleParticles`' gate: settled, or within the turn's last second.

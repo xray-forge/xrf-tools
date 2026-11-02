@@ -3,8 +3,9 @@ use std::time::Duration;
 use serde::Serialize;
 use xrf_vfs::XrayPathCollision;
 
-use crate::commands::gamedata::list::asset_lister::AssetListing;
+use crate::commands::gamedata::list::asset_listing::AssetListing;
 use crate::commands::gamedata::list::gamedata_asset_report::GamedataAssetReport;
+use crate::commands::gamedata::list::gamedata_mount_report::GamedataMountReport;
 use crate::core::reports::SkippedMountReport;
 
 /// What `gamedata list` resolved out of the roots it was given.
@@ -18,11 +19,10 @@ pub struct GamedataListReport {
   entries: Vec<GamedataAssetReport>,
   /// Whether shadowed entries were asked for, since an empty list otherwise cannot say which it means.
   is_shadowed_included: bool,
-  mounts: Vec<String>,
+  mounts: Vec<GamedataMountReport>,
   origin: String,
   shadowed: Vec<GamedataAssetReport>,
   skipped: Vec<SkippedMountReport>,
-  total: usize,
 }
 
 impl GamedataListReport {
@@ -32,11 +32,10 @@ impl GamedataListReport {
       duration: listing.duration,
       entries: GamedataAssetReport::list(&listing.entries),
       is_shadowed_included,
-      mounts: listing.mounts.clone(),
+      mounts: GamedataMountReport::list(&listing.mounts),
       origin: listing.origin.clone(),
       shadowed: GamedataAssetReport::list(&listing.shadowed),
       skipped: SkippedMountReport::list(&listing.skipped),
-      total: listing.entries.len(),
     }
   }
 }

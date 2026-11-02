@@ -1,54 +1,27 @@
-use std::path::{Path, PathBuf};
-
 use indexmap::IndexMap;
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
-use xrf_translation::{TranslationProjectMode, read_gamedata_in, read_source_in};
+use xrf_translation::{TranslationGamedataReader, TranslationSourceReader};
 use xrf_utils::to_portable_path_string;
-use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayLookupScope, XrayRoots, XrayScopedVfs, XrayVfs};
+use xrf_vfs::{XrayAsset, XrayLogicalPath, XrayRoots, XraySearch};
 
-use crate::dialog::Dialog;
-use crate::element::DialogElement;
-use crate::file::DialogFile;
-use crate::project::descriptor::{
-  DialogDescriptor, DialogFileDescriptor, DialogFinding, DialogProjectDescriptor, DialogSummaryDescriptor,
-};
-use crate::project::layout::DialogProjectLayout;
-use crate::project::mode::DialogProjectMode;
-use crate::project::reference_descriptor::DialogReferenceDescriptor;
-use crate::project::text_index::{DialogTextIndex, DialogTextLanguage};
+use crate::conversation::dialog::Dialog;
+use crate::conversation::dialog_element::DialogElement;
+use crate::dialog_file::DialogFile;
+use crate::project::descriptor::dialog_descriptor::DialogDescriptor;
+use crate::project::descriptor::dialog_file_descriptor::DialogFileDescriptor;
+use crate::project::descriptor::dialog_project_descriptor::DialogProjectDescriptor;
+use crate::project::descriptor::dialog_reference_descriptor::DialogReferenceDescriptor;
+use crate::project::descriptor::dialog_summary_descriptor::DialogSummaryDescriptor;
+use crate::project::dialog_finding::DialogFinding;
+use crate::project::dialog_project_file::DialogProjectFile;
+use crate::project::dialog_project_layout::DialogProjectLayout;
+use crate::project::dialog_project_mode::DialogProjectMode;
+use crate::project::text::dialog_text_index::DialogTextIndex;
+use crate::project::text::dialog_text_language::DialogTextLanguage;
 
 /// Filename prefix that marks a logical path as dialog data.
 const DIALOG_FILE_PREFIX: &str = "dialog";
-
-/// One file the project holds, parsed, with where the engine found it.
-#[derive(Debug)]
-pub struct DialogProjectFile {
-  logical_path: String,
-  physical_path: Option<PathBuf>,
-  file: DialogFile,
-}
-
-impl DialogProjectFile {
-  /// The engine identity, which is how the project keys it.
-  pub fn get_logical_path(&self) -> &str {
-    &self.logical_path
-  }
-
-  /// The host path, when the winning mount is a loose directory.
-  pub fn get_physical_path(&self) -> Option<&Path> {
-    self.physical_path.as_deref()
-  }
-
-  /// Whether an edit could write this file back.
-  pub fn is_editable(&self) -> bool {
-    self.physical_path.is_some()
-  }
-
-  pub fn get_file(&self) -> &DialogFile {
-    &self.file
-  }
-}
 
 /// An open dialog project: mounted roots, and every dialog file under its dialogs prefix.
 pub struct DialogProject {
@@ -56,7 +29,7 @@ pub struct DialogProject {
   mode: DialogProjectMode,
   dialogs_prefix: String,
   translations_prefix: String,
-  vfs: XrayVfs,
+  search: XraySearch,
   files: Vec<DialogProjectFile>,
   text: DialogTextIndex,
   findings: Vec<DialogFinding>,
@@ -71,7 +44,7 @@ impl DialogProject {
   /// dialog files under the prefix. The second means the caller named the wrong place, and answering
   /// with an empty project would hide that.
   pub fn open(roots: &XrayRoots, layout: &DialogProjectLayout) -> XrfResult<Self> {
-    Self::from_vfs(roots.open()?, roots, layout)
+    Self::from_search(roots.to_search_plan()?.open()?, roots, layout)
   }
 
   /// Open a project over roots somebody else mounted.
@@ -79,10 +52,10 @@ impl DialogProject {
   /// # Errors
   ///
   /// Returns a not-found error when the roots exposes no dialog files under the dialogs prefix.
-  pub fn from_vfs(vfs: XrayVfs, roots: &XrayRoots, layout: &DialogProjectLayout) -> XrfResult<Self> {
+  pub fn from_search(search: XraySearch, roots: &XrayRoots, layout: &DialogProjectLayout) -> XrfResult<Self> {
     let dialogs_prefix: String = layout.get_dialogs_prefix().to_owned();
-    let scope: XrayLookupScope = XrayLookupScope::all().with_prefix(&dialogs_prefix)?;
-    let assets: Vec<XrayAsset> = Self::list_dialog_assets(&vfs.scoped(&scope));
+    let dialogs: XraySearch = search.clone().with_prefix(&dialogs_prefix)?;
+    let assets: Vec<XrayAsset> = Self::list_dialog_assets(&dialogs);
 
     if assets.is_empty() {
       return Err(XrfError::new_not_found_error(format!(
@@ -97,7 +70,7 @@ impl DialogProject {
     for asset in assets {
       let logical_path: String = asset.get_logical_path().as_str().to_owned();
 
-      match Self::read_asset(&vfs.scoped(&scope), &logical_path) {
+      match Self::read_asset(&dialogs, &asset) {
         Ok(file) => {
           for issue in file.get_issues() {
             findings.push(DialogFinding::new(
@@ -125,7 +98,7 @@ impl DialogProject {
     let text: DialogTextIndex = if layout.is_text_skipped {
       DialogTextIndex::default()
     } else {
-      Self::read_text(&vfs, roots, layout.mode, &translations_prefix, &mut findings)
+      Self::read_text(&search, roots, layout.mode, &translations_prefix, &mut findings)
     };
 
     Ok(Self {
@@ -133,7 +106,7 @@ impl DialogProject {
       mode: layout.mode,
       dialogs_prefix,
       translations_prefix,
-      vfs,
+      search,
       files,
       text,
       findings,
@@ -142,7 +115,7 @@ impl DialogProject {
 
   /// Read the text tree the dialogs resolve their lines from, over the roots already mounted.
   fn read_text(
-    vfs: &XrayVfs,
+    search: &XraySearch,
     roots: &XrayRoots,
     mode: DialogProjectMode,
     prefix: &str,
@@ -150,16 +123,11 @@ impl DialogProject {
   ) -> DialogTextIndex {
     // The dialog layout decides the translation layout, because they are the same distinction seen
     // from two crates: XRF sources keep JSON beside the configs, shipped gamedata keeps per-language
-    // XML under `configs\text`. Mapped rather than converted — the two enums default opposite ways on
-    // purpose, so a `From` that looked obvious would silently flip one.
-    let translation_mode: TranslationProjectMode = match mode {
-      DialogProjectMode::Source => TranslationProjectMode::Source,
-      DialogProjectMode::Gamedata => TranslationProjectMode::Gamedata,
-    };
-
-    let read = match translation_mode {
-      TranslationProjectMode::Source => read_source_in(vfs, roots, prefix),
-      TranslationProjectMode::Gamedata => read_gamedata_in(vfs, roots, prefix),
+    // XML under `configs\text`. Matched rather than converted — the two mode enums default opposite
+    // ways on purpose, so a `From` between them that looked obvious would silently flip one.
+    let read = match mode {
+      DialogProjectMode::Source => TranslationSourceReader::read_in(search, roots, prefix),
+      DialogProjectMode::Gamedata => TranslationGamedataReader::read_in(search, roots, prefix),
     };
 
     match read {
@@ -186,17 +154,13 @@ impl DialogProject {
     }
   }
 
-  /// Every dialog asset a scoped roots exposes, in logical-path order.
-  pub fn list_dialog_assets(scoped: &XrayScopedVfs) -> Vec<XrayAsset> {
-    let mut assets: Vec<XrayAsset> = scoped
-      .list_entries()
+  /// Every dialog asset a search reaches, in logical-path order.
+  pub fn list_dialog_assets(search: &XraySearch) -> Vec<XrayAsset> {
+    search
+      .list_files()
       .into_iter()
       .filter(|asset| Self::is_dialog_logical_path(asset.get_logical_path()))
-      .collect();
-
-    assets.sort_by(|left, right| left.get_logical_path().as_str().cmp(right.get_logical_path().as_str()));
-
-    assets
+      .collect()
   }
 
   /// Whether a logical path names dialog data, by its file name.
@@ -221,9 +185,9 @@ impl DialogProject {
     &self.translations_prefix
   }
 
-  /// The mounted roots, for a caller that needs to read something beside the dialogs.
-  pub fn get_vfs(&self) -> &XrayVfs {
-    &self.vfs
+  /// The search over the roots, for a caller that needs to read something beside the dialogs.
+  pub fn get_search(&self) -> &XraySearch {
+    &self.search
   }
 
   pub fn get_files(&self) -> &[DialogProjectFile] {
@@ -342,11 +306,7 @@ impl DialogProject {
             .get_file()
             .get_dialogs()
             .iter()
-            .map(|dialog| DialogSummaryDescriptor {
-              id: dialog.get_id().to_owned(),
-              phrases: dialog.get_phrases().len(),
-              priority: dialog.get_priority(),
-            })
+            .map(DialogSummaryDescriptor::from)
             .collect(),
         },
       );
@@ -365,7 +325,7 @@ impl DialogProject {
     }
   }
 
-  fn read_asset(scoped: &XrayScopedVfs, logical_path: &str) -> XrfResult<DialogFile> {
-    DialogFile::read_from_bytes(&scoped.read_bytes(logical_path)?)
+  fn read_asset(search: &XraySearch, asset: &XrayAsset) -> XrfResult<DialogFile> {
+    DialogFile::read_from_bytes(&search.read_asset(asset)?)
   }
 }

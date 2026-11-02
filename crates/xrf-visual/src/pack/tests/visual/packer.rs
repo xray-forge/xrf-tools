@@ -333,7 +333,7 @@ fn reports_bones_motion_refs_and_embedded_motions() {
     kinematics: Some(kinematics(&["dynamics\\weapons\\wpn_ak74\\wpn_ak74_hud_animation"])),
     motions: Some(motions),
     motion_parameters: Some(motion_parameters),
-    description: Some(description("x:\\rawdata\\objects\\wpn_ak74.object")),
+    description: Some(Ok(description("x:\\rawdata\\objects\\wpn_ak74.object"))),
     ..skeleton(vec![static_triangle_child()])
   };
 
@@ -375,7 +375,7 @@ fn reports_bones_motion_refs_and_embedded_motions() {
 #[test]
 fn treats_an_empty_source_file_as_absent() {
   let file: OgfFile = OgfFile {
-    description: Some(description("")),
+    description: Some(Ok(description(""))),
     ..skeleton(vec![static_triangle_child()])
   };
 

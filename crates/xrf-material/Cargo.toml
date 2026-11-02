@@ -13,6 +13,7 @@ serde = { workspace = true }
 specta = { workspace = true, optional = true }
 xrf-chunk = { workspace = true }
 xrf-error = { workspace = true }
+xrf-extension = { workspace = true }
 xrf-test-utils = { workspace = true, optional = true }
 xrf-vfs = { workspace = true }
 xrf-thm = { workspace = true }

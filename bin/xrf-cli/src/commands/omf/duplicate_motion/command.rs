@@ -7,8 +7,7 @@ use xrf_spawn::XRayByteOrder;
 use xrf_utils::format_path;
 
 use super::report::OmfDuplicateMotionReport;
-use crate::core::command_context::CommandContext;
-use crate::core::generic_command::{CommandResult, GenericCommand};
+use crate::core::command::{CommandContext, CommandResult, GenericCommand};
 
 #[derive(Default)]
 pub struct DuplicateMotionCommand;
@@ -18,10 +17,9 @@ impl GenericCommand for DuplicateMotionCommand {
     "duplicate-motion"
   }
 
-  /// Create command for duplicating a motion of an omf file.
-  fn init(&self) -> Command {
-    Command::new(self.operation())
-      .about("Command to copy a motion of provided omf file under a new name")
+  fn declare(&self, command: Command) -> Command {
+    command
+      .about("Copy a motion of an OMF file under a new name")
       .arg(
         Arg::new("path")
           .help("Path to omf file")
@@ -51,9 +49,14 @@ impl GenericCommand for DuplicateMotionCommand {
           .long("play-once")
           .action(ArgAction::SetTrue),
       )
+      .arg(
+        Arg::new("dry-run")
+          .help("Validate the copy and report the result without writing any file")
+          .long("dry-run")
+          .action(ArgAction::SetTrue),
+      )
   }
 
-  /// Copy a motion of an omf file under a new name.
   fn execute(&self, matches: &ArgMatches, context: &mut CommandContext) -> CommandResult {
     let path: &PathBuf = matches
       .get_one::<PathBuf>("path")
@@ -71,24 +74,37 @@ impl GenericCommand for DuplicateMotionCommand {
       .map_or(path.as_path(), |it| it.as_path());
 
     let play_once: bool = matches.get_flag("play-once");
+    let is_dry_run: bool = matches.get_flag("dry-run");
     let output: OutputOptions = context.get_output().clone();
 
     let mut omf_file: OmfFile = OmfFile::read_from_path::<XRayByteOrder, _>(path)?;
 
     OmfMotionsProcessor::duplicate_motion(&mut omf_file, from, to, play_once)?;
 
-    omf_file.write_to_path::<XRayByteOrder, _>(&destination)?;
+    if is_dry_run {
+      xrf_output::info!(
+        output,
+        "Dry run, nothing written, motion '{}' would be copied to '{}'{} in {}",
+        from,
+        to,
+        if play_once { ", playing once" } else { "" },
+        format_path(destination)
+      );
+    } else {
+      omf_file.write_to_path::<XRayByteOrder, _>(&destination)?;
 
-    xrf_output::info!(
-      output,
-      "Copied motion '{}' to '{}'{}, written into {}",
-      from,
-      to,
-      if play_once { ", playing once" } else { "" },
-      format_path(destination)
-    );
+      xrf_output::success!(
+        output,
+        "Copied motion '{}' to '{}'{}, written into {}",
+        from,
+        to,
+        if play_once { ", playing once" } else { "" },
+        format_path(destination)
+      );
+    }
 
-    context.set_result(|| OmfDuplicateMotionReport::new(path, destination, &omf_file, from, to, play_once))?;
+    context
+      .set_result(|| OmfDuplicateMotionReport::new(path, destination, &omf_file, from, to, play_once, is_dry_run))?;
 
     Ok(())
   }

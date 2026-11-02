@@ -12,9 +12,9 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use xrf_test_utils::utils::write_generated_test_resource;
+use xrf_test_utils::GeneratedResources;
 
-use crate::{compress, decompress};
+use crate::{LzhufDecoder, LzhufEncoder};
 
 const CONFIG_ASSET: &str = "system_fragment.ltx";
 const DESCRIPTOR_ASSET: &str = "file_descriptors.bin";
@@ -73,18 +73,15 @@ fn descriptor_asset() -> Vec<u8> {
 }
 
 /// Write an asset to the scratch tree, pack it into a second file, and hand back both paths.
-///
-/// `scope` keeps one test's files clear of every other test's.
 fn pack_asset(scope: &str, name: &str, asset: &[u8]) -> (Vec<u8>, PathBuf) {
-  let source_path: PathBuf =
-    write_generated_test_resource(&format!("{scope}/{name}"), asset).expect("sample asset writes");
+  let source_path: PathBuf = GeneratedResources::write(&format!("{scope}/{name}"), asset).expect("sample asset writes");
   let source: Vec<u8> = fs::read(&source_path).expect("sample asset reads back");
 
   assert_eq!(source, asset, "sample asset survives its own trip to disk");
 
-  let packed: Vec<u8> = compress(&source).expect("sample asset packs");
+  let packed: Vec<u8> = LzhufEncoder::compress(&source).expect("sample asset packs");
   let packed_path: PathBuf =
-    write_generated_test_resource(&format!("{scope}/{name}.lzhuf"), &packed).expect("packed asset writes");
+    GeneratedResources::write(&format!("{scope}/{name}.lzhuf"), &packed).expect("packed asset writes");
 
   (source, packed_path)
 }
@@ -92,7 +89,7 @@ fn pack_asset(scope: &str, name: &str, asset: &[u8]) -> (Vec<u8>, PathBuf) {
 fn unpack_file(path: &Path) -> Vec<u8> {
   let packed: Vec<u8> = fs::read(path).expect("packed file reads back");
 
-  decompress(&packed).expect("packed file unpacks")
+  LzhufDecoder::decompress(&packed).expect("packed file unpacks")
 }
 
 #[test]
@@ -166,7 +163,7 @@ fn unpacking_a_truncated_packed_file_fails() {
   let scope: &str = "unpacking_a_truncated_packed_file_fails";
   let (_, packed_path) = pack_asset(scope, CONFIG_ASSET, &config_asset());
   let packed: Vec<u8> = fs::read(&packed_path).expect("packed file reads back");
-  let truncated_path: PathBuf = write_generated_test_resource(
+  let truncated_path: PathBuf = GeneratedResources::write(
     &format!("{scope}/{CONFIG_ASSET}.truncated.lzhuf"),
     &packed[..packed.len() / 2],
   )
@@ -174,7 +171,7 @@ fn unpacking_a_truncated_packed_file_fails() {
 
   // The header still declares the full size, so the stream runs out before it is produced.
   assert!(
-    decompress(&fs::read(&truncated_path).expect("truncated file reads back")).is_err(),
+    LzhufDecoder::decompress(&fs::read(&truncated_path).expect("truncated file reads back")).is_err(),
     "a half written packed file must not unpack into plausible bytes"
   );
 }

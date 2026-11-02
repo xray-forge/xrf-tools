@@ -1,0 +1,69 @@
+import { AsyncState } from "@xrf/async";
+import { AssetTextureShape } from "@xrf/ipc/types/xrf-app-core";
+import { Nullable } from "@xrf/types";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
+import { ErrorState } from "@xrf/ui/layout/error-state";
+import { ImageViewport, PanZoomController } from "@xrf/ui/media/image-viewport";
+import { ReactElement } from "react";
+
+import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
+
+import { TexturePreviewFrame } from "./TexturePreviewFrame";
+
+interface ITextureImagePaneProps extends BaseComponentProps {
+  /** What this picture is, on the bar beneath it. */
+  caption: string;
+  alt: string;
+  /** Slot the decoded bytes are held under, unique to this pane. */
+  assetKey: string;
+  /** The picture, as png bytes. */
+  preview: AsyncState<Nullable<ArrayBuffer>>;
+  /** How large it is, which the viewport lays itself out against. */
+  shape: Nullable<AssetTextureShape>;
+  /** The camera this pane looks through, shared with the pane it is compared against. */
+  controller?: PanZoomController;
+  hasControls?: boolean;
+}
+
+/**
+ * One captioned picture in the preview area.
+ *
+ * Made a component of its own for the pair: two of these showing the same part of two encodes is what a comparison
+ * is, and they can only move together if neither of them owns the pan.
+ */
+export function TextureImagePane({
+  "data-testid": dataTestId = "texture-image-pane",
+  id,
+  className,
+  caption,
+  alt,
+  assetKey,
+  preview,
+  shape,
+  controller,
+  hasControls,
+}: ITextureImagePaneProps): ReactElement {
+  const url: Nullable<string> = useAssetUrl(assetKey, preview.value);
+
+  return (
+    <TexturePreviewFrame data-testid={dataTestId} id={id} className={className} caption={caption} isCheckered={false}>
+      {preview.error ? <ErrorState title={"Could not show this encoding"} description={preview.error.message} /> : null}
+
+      {!preview.error && (preview.isLoading || !url || !shape) ? (
+        <DelayedProgress label={`Reading ${caption}…`} />
+      ) : null}
+
+      {!preview.error && url && shape ? (
+        <ImageViewport
+          alt={alt}
+          src={url}
+          width={shape.width}
+          height={shape.height}
+          controller={controller}
+          hasControls={hasControls}
+        />
+      ) : null}
+    </TexturePreviewFrame>
+  );
+}

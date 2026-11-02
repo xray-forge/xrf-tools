@@ -44,14 +44,15 @@ fn selection_run(index: u32) -> vec2<u32> {
 }
 
 // The surfaces' bits in `switches.w`: the engines' steep parallax drawn; the parallax, the bumps or the heights drawn
-// in place of the albedo for their debug views; the enhanced parallax marched; and the sampled mip drawn in place of
-// the albedo for its debug view.
+// in place of the albedo for their debug views; the enhanced parallax marched; the sampled mip drawn in place of the
+// albedo for its debug view; and the terrain's details read by hex tiles (`RenderTerrainTiling::Varied`).
 const SURFACES_STEEP: u32 = 1u;
 const SURFACES_PARALLAX_SHOWN: u32 = 2u;
 const SURFACES_BUMPS_SHOWN: u32 = 4u;
 const SURFACES_HEIGHTS_SHOWN: u32 = 8u;
 const SURFACES_ENHANCED: u32 = 16u;
 const SURFACES_MIP_SHOWN: u32 = 32u;
+const SURFACES_TERRAIN_VARIED: u32 = 64u;
 
 fn has_surfaces_bit(bit: u32) -> bool {
   return (u32(camera.switches.w) & bit) != 0u;

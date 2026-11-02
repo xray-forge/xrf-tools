@@ -1,4 +1,4 @@
-// The rings the enhanced drops leave where they land (`scene/level/rain_rings.rs`): a tile of the level seen from
+// The rings the enhanced drops leave where they land (`feature/effects/rain/rings/rain_rings.rs`): a tile of the level seen from
 // overhead, wrapping, which the drops' columns repeat over, each texel the tilt the rings give the water in renderer
 // `x` and `z`, then that tilt's square, so a level reduced from many rings keeps the tilt they lost to each other as
 // its variance. Inside the drops' square each ring is a drop seen landing; past it the tile's rings repeat, as the

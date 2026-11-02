@@ -8,7 +8,7 @@ use std::num::NonZeroUsize;
 use std::path::{Path, PathBuf};
 
 use xrf_archive::ArchiveProject;
-use xrf_test_utils::links::{link_directory, link_file};
+use xrf_test_utils::HostFilesystem;
 use xrf_utils::HostLinkPolicy;
 
 use super::fixtures::{Entry, create_project, create_temporary_directory, unpack_with};
@@ -52,7 +52,7 @@ fn unpack_follows_a_directory_link_below_the_destination_by_default() {
 
   fs::create_dir_all(&out).expect("destination");
 
-  if !link_directory(&sentinel, &out.join("configs")) {
+  if !HostFilesystem::link_directory(&sentinel, &out.join("configs")) {
     return;
   }
 
@@ -73,7 +73,7 @@ fn unpack_refuses_a_directory_link_below_the_destination_when_asked() {
 
   fs::create_dir_all(&out).expect("destination");
 
-  if !link_directory(&sentinel, &out.join("configs")) {
+  if !HostFilesystem::link_directory(&sentinel, &out.join("configs")) {
     return;
   }
 
@@ -94,7 +94,7 @@ fn unpack_refuses_a_file_link_in_place_of_an_entry_when_asked() {
   fs::create_dir_all(out.join("configs")).expect("destination");
 
   // Every directory on the way down is real; only the entry itself has been replaced by a link.
-  if !link_file(&sentinel.join("keep.txt"), &out.join("configs").join("keep.txt")) {
+  if !HostFilesystem::link_file(&sentinel.join("keep.txt"), &out.join("configs").join("keep.txt")) {
     return;
   }
 
@@ -118,7 +118,7 @@ fn extract_directory_refuses_a_directory_link_below_the_destination_when_asked()
   fs::create_dir_all(&out).expect("destination");
 
   // The prefix is stripped, so `gameplay` is the first component written below the destination.
-  if !link_directory(&sentinel, &out.join("gameplay")) {
+  if !HostFilesystem::link_directory(&sentinel, &out.join("gameplay")) {
     return;
   }
 
@@ -143,7 +143,7 @@ fn extract_file_still_writes_to_the_linked_path_it_is_given() {
 
   fs::create_dir_all(&out).expect("destination");
 
-  if !link_file(&sentinel.join("keep.txt"), &out.join("chosen.ltx")) {
+  if !HostFilesystem::link_file(&sentinel.join("keep.txt"), &out.join("chosen.ltx")) {
     return;
   }
 

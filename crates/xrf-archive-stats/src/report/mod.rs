@@ -8,5 +8,6 @@ pub(crate) mod archive_measure;
 pub(crate) mod archive_origins;
 pub(crate) mod archive_overview;
 pub(crate) mod archive_size_band;
+pub(crate) mod archive_source_usage;
 pub(crate) mod archive_statistics;
 pub(crate) mod archive_volume_summary;

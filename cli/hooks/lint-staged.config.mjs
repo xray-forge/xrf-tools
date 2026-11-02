@@ -11,5 +11,5 @@ const ESLINT = [
 ].join(" ");
 
 export default {
-  "{bin/xrf-ui,cli,packages}/**/*.{cjs,js,mjs,ts,tsx}": ["prettier --write", ESLINT],
+  "{bin/xrf-app/ui,cli,packages}/**/*.{cjs,js,mjs,ts,tsx}": ["prettier --write", ESLINT],
 };

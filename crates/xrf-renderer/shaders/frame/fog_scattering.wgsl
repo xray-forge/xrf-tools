@@ -47,7 +47,8 @@ fn fs_scatter_blur(in: FullscreenVarying) -> @location(0) vec4<f32> {
 }
 
 // The scattering: the scene where nothing scatters, else towards the brighter of it and the half-size blur by the fog's
-// share, squared and weighed by how alike the two are, past a tenth.
+// share, squared and weighed by how alike the two are, past a tenth. Blended in the scene's own light, so a pixel
+// nothing scatters into keeps what it held, a linear scene's highlight past the shown range too.
 @fragment
 fn fs_scattering(in: FullscreenVarying) -> @location(0) vec4<f32> {
   let texel: vec2<i32> = vec2<i32>(in.clip.xy);
@@ -69,8 +70,7 @@ fn fs_scattering(in: FullscreenVarying) -> @location(0) vec4<f32> {
     SCATTER_DEBAND_RADIUS, scattering.time, DISPLAY_UNGRADED);
   let alike: f32 = dot(blur, saturate(image));
   let share: f32 = fog * fog * alike * alike;
-  let scattered: vec3<f32> = mix(image, max(image, blur),
-    smoothstep(0.1, 1.0 - scattering.intensity * 0.8, share));
+  let weight: f32 = smoothstep(0.1, 1.0 - scattering.intensity * 0.8, share);
 
-  return vec4<f32>(scene_from_shown(scattered), 1.0);
+  return vec4<f32>(mix(held, scene_from_shown(max(image, blur)), weight), 1.0);
 }

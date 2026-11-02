@@ -4,7 +4,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::ltx::{Ltx, Section};
 use crate::syntax::ROOT_SECTION;
@@ -14,9 +14,7 @@ use crate::syntax::ROOT_SECTION;
 /// The root is cleared first because these trees are described in full: a file an earlier run left behind would join a
 /// wildcard include and silently widen the golden.
 fn tree(name: &str, files: &[(&str, &str)]) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("ltx_golden_contract/{name}"));
-
-  let _ = fs::remove_dir_all(&root);
+  let root: PathBuf = GeneratedResources::create_dir(&format!("ltx_golden_contract/{name}")).expect("config tree root");
 
   for (path, contents) in files {
     let path: PathBuf = root.join(path.replace('\\', "/"));
@@ -352,7 +350,7 @@ fn accepts_both_spellings_of_an_include_statement() -> XrfResult {
     ],
   );
 
-  let ltx: Ltx = Ltx::read_from_file_included(root.join("system.ltx"))?;
+  let ltx: Ltx = Ltx::read_from_file_standard(root.join("system.ltx"))?;
 
   assert!(ltx.has_section("quoted"));
   assert!(ltx.has_section("parenthesized"));
@@ -372,7 +370,7 @@ fn treats_a_missing_include_with_a_ts_sibling_as_nothing_to_merge() -> XrfResult
 
   // A config a generator has not produced yet is nothing to merge rather than a failure, which is what lets a project be
   // read mid-build. Without the sibling the same missing include is an error.
-  let ltx: Ltx = Ltx::read_from_file_included(root.join("system.ltx"))?;
+  let ltx: Ltx = Ltx::read_from_file_standard(root.join("system.ltx"))?;
 
   assert!(ltx.has_section("present"));
   assert!(!ltx.has_section("generated"));
@@ -384,7 +382,7 @@ fn treats_a_missing_include_with_a_ts_sibling_as_nothing_to_merge() -> XrfResult
 fn reports_a_missing_include_with_no_ts_sibling() -> XrfResult {
   let root: PathBuf = tree("missing_include", &[("system.ltx", "#include \"absent.ltx\"\n")]);
 
-  assert!(Ltx::read_from_file_included(root.join("system.ltx")).is_err());
+  assert!(Ltx::read_from_file_standard(root.join("system.ltx")).is_err());
 
   Ok(())
 }
@@ -491,10 +489,7 @@ fn a_semicolon_anywhere_in_a_value_starts_a_comment() -> XrfResult {
 
 #[test]
 fn reads_and_writes_windows_1251_bytes_unchanged() -> XrfResult {
-  let root: PathBuf = build_absolute_generated_test_resource_path("ltx_golden_contract/encoding");
-
-  let _ = fs::remove_dir_all(&root);
-  fs::create_dir_all(&root)?;
+  let root: PathBuf = GeneratedResources::create_dir("ltx_golden_contract/encoding")?;
 
   // Cyrillic in Windows-1251, which is what shipped configs carry. Written as bytes because the source file is UTF-8.
   let path: PathBuf = root.join("cyrillic.ltx");
@@ -528,9 +523,7 @@ fn refuses_a_value_that_windows_1251_cannot_hold() {
 
   assert!(
     ltx
-      .write_to_path(build_absolute_generated_test_resource_path(
-        "ltx_golden_contract/refused.ltx"
-      ))
+      .write_to_path(GeneratedResources::path("ltx_golden_contract/refused.ltx"))
       .is_err()
   );
 }

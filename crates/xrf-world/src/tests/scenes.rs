@@ -2,15 +2,17 @@
 
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
-use xrf_renderer::{RenderLevelSource, RenderSceneFrame, RenderSceneId, RenderViewportId, RenderWorld};
+use xrf_renderer::{RenderSceneFrame, RenderSceneId, RenderViewportId, RenderWorld};
 
-use crate::tests::fixtures::{SilentSink, TestLevelSource};
+use crate::host::world_level_source::WorldLevelSource;
+use crate::tests::fixtures::{SilentSink, TestLevelReads, TestLevelSource};
 use crate::tests::test_workers::create_workers;
 use crate::world::World;
 
-fn source(key: Option<&str>) -> Arc<dyn RenderLevelSource> {
+fn source(key: Option<&str>) -> Arc<dyn WorldLevelSource> {
   Arc::new(TestLevelSource {
     key: key.map(String::from),
     ..TestLevelSource::default()
@@ -53,6 +55,39 @@ fn viewports_showing_one_opening_share_its_scene_driven_by_the_first() {
   // The last goes, and the scene with it.
   world.detach(second);
   assert!(list_drivers(&mut world).is_empty());
+}
+
+#[test]
+fn viewports_sharing_a_scene_read_its_weather_once() {
+  let mut world: World = World::new(create_workers());
+  let reads: Arc<TestLevelReads> = Arc::default();
+  let (first, second) = (RenderViewportId(1), RenderViewportId(2));
+  let counted = || -> Arc<dyn WorldLevelSource> {
+    Arc::new(TestLevelSource {
+      key: Some(String::from("zaton")),
+      reads: Arc::clone(&reads),
+      ..TestLevelSource::default()
+    })
+  };
+
+  world.attach(first, Box::new(SilentSink));
+  world.attach(second, Box::new(SilentSink));
+
+  world.show_level(first, Some(counted()));
+  world.show_level(second, Some(counted()));
+
+  let started: Instant = Instant::now();
+
+  while reads.weather.load(Ordering::SeqCst) == 0 && started.elapsed() < Duration::from_secs(10) {
+    list_drivers(&mut world);
+    std::thread::sleep(Duration::from_millis(2));
+  }
+
+  // Given time to read again, neither viewport does: the weather is the scene's.
+  std::thread::sleep(Duration::from_millis(100));
+  list_drivers(&mut world);
+
+  assert_eq!(reads.weather.load(Ordering::SeqCst), 1);
 }
 
 #[test]

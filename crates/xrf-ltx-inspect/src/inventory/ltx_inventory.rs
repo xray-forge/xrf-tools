@@ -1,5 +1,7 @@
 use serde::Serialize;
 
+use crate::inventory::{LtxInventoryFile, LtxInventoryRole};
+
 /// Every config a project holds, and what each one is to the project.
 ///
 /// The tree a person navigates and the list `ltx list` prints are the same record: one place decides what an entry
@@ -58,35 +60,4 @@ impl LtxInventory {
 
     reached
   }
-}
-
-/// One config, and what the project makes of it.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LtxInventoryFile {
-  /// Lower-case, backslash-separated engine identity.
-  pub path: String,
-  /// The mount that supplied it, as that mount describes itself - a directory, or an archive volume set.
-  pub source: String,
-  /// Whether a loose file backs it, which is what decides if an editor could ever write to it.
-  pub is_physical: bool,
-  /// Configs whose `#include` names it, in project order.
-  pub included_by: Vec<String>,
-  pub role: LtxInventoryRole,
-}
-
-/// What one config is to the project holding it.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Debug, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
-pub enum LtxInventoryRole {
-  /// Nothing includes it, so it resolves on its own and is a unit a check or a view can be asked for.
-  EntryPoint,
-  /// Reached only through another config's `#include`; `included_by` names which.
-  Included,
-  /// A scheme declaration. Not verified against schemes itself, which is why it outranks every other role here.
-  SchemeFile,
-  /// A file that patches another config rather than standing on its own, as the dialect identified it.
-  Attachment,
 }

@@ -1,8 +1,9 @@
 use std::path::PathBuf;
 
-use crate::vfs::tests::fake_source::{FakeArchiveSource, directory};
+use crate::vfs::tests::fixtures::{FakeArchiveSource, directory};
 use crate::{
-  XrayAssetContainer, XrayLookupScope, XrayMountedEntry, XrayProbePlan, XrayProbeStep, XrayShadowingEntry, XrayVfs,
+  XrayAssetContainer, XrayLookupScope, XrayMountedEntry, XraySearch, XraySearchPlan, XraySearchStep,
+  XrayShadowingEntry, XrayVfs,
 };
 
 /// A loose tree in front of a volume set, which is what an installation with unpacked files is.
@@ -29,7 +30,7 @@ fn layered(name: &str) -> XrayVfs {
 fn a_winner_carries_the_copies_it_hides() {
   let vfs: XrayVfs = layered("mounted_entries_layered");
 
-  let entries: Vec<XrayShadowingEntry> = vfs.list_shadowing_entries();
+  let entries: Vec<XrayShadowingEntry> = vfs.list_shadowing_entries_in(&XrayLookupScope::all());
 
   assert_eq!(
     entries
@@ -66,7 +67,7 @@ fn a_winner_carries_the_copies_it_hides() {
 fn the_plain_listing_keeps_the_winner_and_drops_what_it_hides() {
   let vfs: XrayVfs = layered("mounted_entries_lean");
 
-  let entries: Vec<XrayMountedEntry> = vfs.list_mounted_entries();
+  let entries: Vec<XrayMountedEntry> = vfs.list_mounted_entries_in(&XrayLookupScope::all());
 
   assert_eq!(
     entries
@@ -86,7 +87,7 @@ fn the_plain_listing_keeps_the_winner_and_drops_what_it_hides() {
     "and the same copy wins, so the two shapes cannot disagree about priority"
   );
 
-  let shadowing: Vec<XrayShadowingEntry> = vfs.list_shadowing_entries();
+  let shadowing: Vec<XrayShadowingEntry> = vfs.list_shadowing_entries_in(&XrayLookupScope::all());
 
   assert_eq!(
     entries.len(),
@@ -104,7 +105,7 @@ fn the_plain_listing_keeps_the_winner_and_drops_what_it_hides() {
 fn a_hidden_copy_carries_its_own_size() {
   let vfs: XrayVfs = layered("mounted_entries_shadowed_size");
 
-  let entries: Vec<XrayShadowingEntry> = vfs.list_shadowing_entries();
+  let entries: Vec<XrayShadowingEntry> = vfs.list_shadowing_entries_in(&XrayLookupScope::all());
   let shared: &XrayShadowingEntry = &entries[2];
 
   assert_eq!(shared.get_size(), "mounted_entries_shadowed_size".len() as u64);
@@ -124,7 +125,7 @@ fn a_hidden_copy_carries_its_own_size() {
 fn a_listing_carries_the_size_of_the_copy_that_wins() {
   let vfs: XrayVfs = layered("mounted_entries_size");
 
-  let entries: Vec<XrayMountedEntry> = vfs.list_mounted_entries();
+  let entries: Vec<XrayMountedEntry> = vfs.list_mounted_entries_in(&XrayLookupScope::all());
   let shared: &XrayMountedEntry = &entries[2];
 
   // The fixture writes its own name into every loose file, and the fake volume stores its label as each payload.
@@ -134,7 +135,7 @@ fn a_listing_carries_the_size_of_the_copy_that_wins() {
     "the winner is measured, not the copy behind it"
   );
   assert_eq!(
-    vfs.read_size("configs\\system.ltx"),
+    vfs.read_size_in(&XrayLookupScope::all(), "configs\\system.ltx"),
     Some(shared.size),
     "and it agrees with asking for one size on its own"
   );
@@ -152,8 +153,7 @@ fn a_scope_narrows_the_listing_the_way_it_narrows_a_lookup() {
 
   assert_eq!(
     vfs
-      .scoped(&scope)
-      .list_mounted_entries()
+      .list_mounted_entries_in(&scope)
       .iter()
       .map(XrayMountedEntry::get_logical_path)
       .collect::<Vec<&str>>(),
@@ -162,8 +162,7 @@ fn a_scope_narrows_the_listing_the_way_it_narrows_a_lookup() {
 
   assert_eq!(
     vfs
-      .scoped(&scope)
-      .list_shadowing_entries()
+      .list_shadowing_entries_in(&scope)
       .iter()
       .map(XrayShadowingEntry::get_logical_path)
       .collect::<Vec<&str>>(),
@@ -173,18 +172,18 @@ fn a_scope_narrows_the_listing_the_way_it_narrows_a_lookup() {
 }
 
 #[test]
-fn a_probe_folds_a_later_step_behind_an_earlier_one() {
-  // Two steps holding one path is the probe's own shadowing: the asset's own tree answers before the installation
+fn a_search_folds_a_later_step_behind_an_earlier_one() {
+  // Two steps holding one path is the search's own shadowing: the asset's own tree answers before the installation
   // behind it, and reporting only the winner would hide that arrangement exactly as dropping a mount would.
-  let front: PathBuf = directory("mounted_entries_probe_front", &["configs/system.ltx"]);
+  let front: PathBuf = directory("mounted_entries_search_front", &["configs/system.ltx"]);
   let back: PathBuf = directory(
-    "mounted_entries_probe_back",
+    "mounted_entries_search_back",
     &["configs/system.ltx", "configs/other.ltx"],
   );
 
   let mut vfs: XrayVfs = XrayVfs::new();
 
-  let steps: Vec<XrayProbeStep> = XrayProbePlan::new()
+  let steps: Vec<XraySearchStep> = XraySearchPlan::new()
     .with_root("front", &front)
     .expect("front plans")
     .with_root("back", &back)
@@ -192,7 +191,8 @@ fn a_probe_folds_a_later_step_behind_an_earlier_one() {
     .mount_into(&mut vfs)
     .expect("both mount");
 
-  let entries: Vec<XrayShadowingEntry> = vfs.probe().with_steps(steps.clone()).list_shadowing_entries();
+  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
+  let entries: Vec<XrayShadowingEntry> = search.list_shadowing_entries();
 
   assert_eq!(
     entries
@@ -207,12 +207,12 @@ fn a_probe_folds_a_later_step_behind_an_earlier_one() {
   assert_eq!(entries[1].shadowed[0].asset.get_root(), Some(back.as_path()));
   assert_eq!(
     entries[1].shadowed[0].size,
-    "mounted_entries_probe_back".len() as u64,
+    "mounted_entries_search_back".len() as u64,
     "a copy hidden across steps is measured by the step that holds it"
   );
 
   // The plain listing folds the same steps and keeps the same winner, holding nothing behind it.
-  let lean: Vec<XrayMountedEntry> = vfs.probe().with_steps(steps).list_mounted_entries();
+  let lean: Vec<XrayMountedEntry> = search.list_entries();
 
   assert_eq!(
     lean

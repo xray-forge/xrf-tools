@@ -1,11 +1,4 @@
 //! What packing refuses to publish over, and what a run that did not finish leaves behind.
-//!
-//! Two halves of one rule. A destination already holding the set is refused unless the caller forces it, and because
-//! of that refusal every volume of the set in a destination afterwards belongs to the run that just failed there — so
-//! it is taken back rather than left as residue.
-//!
-//! Where a volume may be published is the same subject: a set is every volume of one name directly under the
-//! destination, whatever a configuration tried to name it.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -15,20 +8,15 @@ use std::time::Duration;
 
 use xrf_error::XrfError;
 use xrf_job::{JobHandle, JobOutcome, JobProgress, ProgressSink};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 use crate::pack::config::{ArchivePackConfig, ArchivePackDirectory};
 use crate::pack::tests::fixtures::{CONFIG, borrow_files, create_source, distinct_files, open, pack, read};
-use crate::pack::{ArchivePackOptions, ArchivePackResult, ArchivePacker, PACK_PHASE_WRITE};
+use crate::pack::{ArchivePackOptions, ArchivePackResult, ArchivePacker};
 
 /// A source tree of its own, packed as `packed` into the scope's shared destination.
-///
-/// Unlike the shared fixture, the destination is left exactly as the test found it: what a second run does to a
-/// destination the first one filled is the whole subject here.
 fn create_run(scope: &str, run: &str, files: &[(&str, &[u8])]) -> ArchivePackConfig {
-  let source: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/{run}"));
-
-  let _ = fs::remove_dir_all(&source);
+  let source: PathBuf = GeneratedResources::create_dir(&format!("{scope}/{run}")).expect("source directory");
 
   for (name, contents) in files {
     let path: PathBuf = source.join(name.replace('\\', "/"));
@@ -49,7 +37,7 @@ fn create_run(scope: &str, run: &str, files: &[(&str, &[u8])]) -> ArchivePackCon
 
 /// The one destination every run of a scope publishes into, emptied before the scope's first run.
 fn destination_of(scope: &str) -> PathBuf {
-  build_absolute_generated_test_resource_path(&format!("{scope}/db"))
+  GeneratedResources::path(&format!("{scope}/db"))
 }
 
 fn clear_destination(scope: &str) -> PathBuf {
@@ -82,10 +70,6 @@ fn list_files(destination: &Path) -> Vec<String> {
 }
 
 /// Stops the run it watches as soon as one entry has been written.
-///
-/// Reported to at a zero interval, so the write phase's first advance arrives here rather than being coalesced away.
-/// Waiting for that advance is what makes the cancellation land inside the write loop, with a volume already created,
-/// instead of at the boundary before it where there would be nothing to clean up.
 #[derive(Default)]
 struct CancelOnFirstEntry {
   job: std::sync::OnceLock<JobHandle>,
@@ -97,7 +81,7 @@ impl ProgressSink for CancelOnFirstEntry {
     let is_writing: bool = progress
       .levels
       .iter()
-      .any(|level| level.id == PACK_PHASE_WRITE && level.completed > 0);
+      .any(|level| level.id == ArchivePackOptions::PHASE_WRITE && level.completed > 0);
 
     if is_writing && !self.is_cancelled.swap(true, Ordering::Relaxed) {
       self.job.get().expect("the sink is given its job").cancel();
@@ -322,7 +306,7 @@ fn every_published_volume_is_a_direct_child_of_the_destination() {
 fn refuses_a_volume_name_that_would_leave_the_destination_before_writing() {
   let scope: &str = "refuses_a_volume_name_that_would_leave_the_destination_before_writing";
   let source: PathBuf = create_source(scope, &[("configs\\system.ltx", CONFIG)]);
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("{scope}/db"));
+  let destination: PathBuf = GeneratedResources::path(&format!("{scope}/db"));
 
   let _ = fs::remove_dir_all(&destination);
 
@@ -350,4 +334,45 @@ fn refuses_a_volume_name_that_would_leave_the_destination_before_writing() {
       .exists(),
     "and writes nothing beside it"
   );
+}
+
+#[test]
+fn a_destination_inside_the_source_is_refused_before_anything_is_written() {
+  let source: PathBuf = create_source(
+    "a_destination_inside_the_source_is_refused_before_anything_is_written",
+    &[("configs\\system.ltx", CONFIG)],
+  );
+
+  for destination in [source.join("output"), source.clone()] {
+    // A set an earlier build left there, which a forced rebuild walking the source would have packed as an asset.
+    fs::create_dir_all(&destination).expect("destination directory");
+    fs::write(destination.join("packed.db0"), b"previous").expect("previous volume");
+
+    let config: ArchivePackConfig = ArchivePackConfig::new(&source, &destination, "packed");
+    let error: XrfError = ArchivePacker::pack_opt(&config, ArchivePackOptions::default().with_force(true))
+      .expect_err("a destination inside the source is refused");
+
+    assert!(matches!(error, XrfError::Invalid { .. }), "{error}");
+    assert!(error.to_string().contains("is inside the source"), "{error}");
+    assert_eq!(
+      fs::read(destination.join("packed.db0")).expect("previous volume"),
+      b"previous",
+      "nothing in '{}' was replaced",
+      destination.display()
+    );
+  }
+}
+
+#[test]
+fn a_source_inside_the_destination_packs_beside_it() {
+  let source: PathBuf = create_source(
+    "a_source_inside_the_destination_packs_beside_it",
+    &[("configs\\system.ltx", CONFIG)],
+  );
+  let destination: PathBuf = source.parent().expect("scope directory").to_path_buf();
+  let result: ArchivePackResult =
+    ArchivePacker::pack(&ArchivePackConfig::new(&source, &destination, "packed")).expect("the source packs");
+
+  assert_eq!(result.files_total, 1);
+  assert_eq!(read(&open(&result.volumes[0]), "configs\\system.ltx"), CONFIG);
 }

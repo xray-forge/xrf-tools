@@ -2,7 +2,7 @@
 
 Every environment variable the workspace reads. This file is generated from `EnvFlags::ALL` in `crates/xrf-env-flags`: edit the table there, and its test rewrites this file.
 
-Runtime switches accept `1`, `true`, `on` or `yes` for on and `0`, `false`, `off` or `no` for off. Runtime choices accept their names in any case. An unrecognised value is logged as a warning, and the default applies. Passed-through and build variables follow their own readers' rules, described with each. The application logs every variable that is set at startup and lists them in Settings, About.
+Runtime switches accept `1`, `true`, `on` or `yes` for on; `0`, `false`, `off` or `no` for off. Runtime choices accept their names in any case. An unrecognised value is logged as a warning, and the default applies. Passed-through and build variables follow their own readers' rules, described with each. The application logs every variable that is set at startup and lists them in Settings, About.
 
 ## Runtime
 
@@ -29,7 +29,7 @@ Set it off to stop the renderer using hardware ray queries. Traced effects then 
 Directory to load unpacked browser extensions into the webview from. Each entry must be a folder with a `manifest.json`.
 
 - Takes: a path.
-- Default: `bin/xrf-app/extensions/unpacked` in the checkout.
+- Default: `bin/xrf-app/app/extensions/unpacked` in the checkout.
 - Read by: `xrf-app`.
 - Only in: debug builds on Windows.
 

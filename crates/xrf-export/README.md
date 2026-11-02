@@ -1,16 +1,21 @@
 # xrf-export
 
-Extracts XRF TypeScript `extern(...)` declarations into a manifest and renders JSON, XML, or HTML documentation.
+Extracts `extern(...)` declarations from XRF TypeScript into a manifest and renders it as JSON, XML or HTML. In
+xrf-engine, `extern("name", value)` (from `xray16/lib`) publishes a function or value under a global name that the
+game's configs and engine callbacks reach; the declarations live under `src/engine/declarations`. The CLI command
+`xrf-cli externs export` writes or checks the manifest artifact, and the desktop app's exports browser reads the same
+declarations.
 
 ## Extract and render declarations
 
 ```rust,no_run
 use std::path::Path;
-use xrf_export::{ExternFormat, ExternManifestParser, render_extern_manifest};
+
+use xrf_export::{ExternFormat, ExternManifestParser, ParsedExternManifest};
 
 fn main() -> xrf_error::XrfResult {
-  let parsed = ExternManifestParser::new().parse_directory(Path::new("src/declarations"))?;
-  let json = render_extern_manifest(&parsed.manifest, ExternFormat::Json, None)?;
+  let parsed: ParsedExternManifest = ExternManifestParser::new().parse_directory(Path::new("src/engine/declarations"))?;
+  let json: String = parsed.manifest.render(ExternFormat::Json, None)?;
 
   println!("{} exports", parsed.manifest.exports.len());
   print!("{json}");
@@ -19,51 +24,70 @@ fn main() -> xrf_error::XrfResult {
 }
 ```
 
-The input directory must contain XRF extern declarations. Parsing reads TypeScript source and its contracts; it does
-not execute declarations or require the game's Lua runtime.
+Parsing reads TypeScript source and resolves imported symbols through `tsconfig.json` path aliases
+([xrf-typescript](../xrf-typescript/README.md)); it executes nothing and needs no game runtime.
+
+## Source selection
+
+`parse_directory` walks the declarations root and keeps `.ts` files (any case) whose text contains `extern` followed by
+`(`. It skips `.test.ts`, `.spec.ts`, anything under a `__test__` directory, and the `.git`, `node_modules`, `target`
+and `dist` directories. Files are parsed in sorted path order, and only a source's top-level `extern(...)` calls
+declare anything. It is an extractor for this one declaration contract, not a general TypeScript documentation
+generator, and a successful extraction does not prove the export is callable in the game.
+
+## What the runtime does with a call
+
+`xray16/lib`'s `extern(key, value)` splits the key on dots, makes a table of each missing segment under `_G`, and
+assigns the value at the last one, replacing whatever was there and everything under it. So the parser refuses two
+calls of which the game would keep at most one: in different modules, one at or inside the other's key, since the
+order the modules load in decides; in one module, which runs its calls in source order, one written before an object
+literal at a key around it, or one writing inside a value that is not an object literal. Calls that only share a root,
+like every `xr_effects.*` effect, each add a name to the one table.
 
 ## Manifest and project views
 
-Call `ExternManifestParser::new().parse_directory` with the declarations root. The returned `ParsedExternManifest`
-contains the canonical manifest and parsed declaration details. Source paths are relative to that root.
+`ParsedExternManifest` holds the canonical `manifest` and the `parsed` declarations with their source locations
+(`ExternSourceLocation`: path, line, column and inclusive `end_line`). Source paths are relative to the declarations
+root, with `/` separators.
 
-`ExternManifest` maps exported names to `ExternExport::Callable` or `ExternExport::Value`. A callable carries parameter
-and return contracts; a value carries its asserted type. Both retain the source and optional documentation.
+`ExternManifest::exports` maps each exported name, sorted, to `ExternExport::Callable` (parameters, return type,
+optional JSDoc description and `@returns`, per-parameter docs) or `ExternExport::Value` (its asserted type). A callable
+parameter or return without a type annotation is recorded as `unknown`. A function passed by reference must have a
+resolvable type; otherwise parsing fails with a message suggesting `name as (arg: Type) => ReturnType`.
 
-Use the canonical manifest for generated artifacts and `ExportsProjectParser` when a browser also needs source and
-contract descriptors. Keep relative source paths rooted at the same declarations directory when linking diagnostics.
+`ExportsProjectParser::parse_project_from_path` builds the desktop app's `ExportsProject`: the same parse projected into
+serializable `ExportDescriptor`s, plus the manifest so the app can publish the artifact without parsing again.
+`ExportsProject::read_declaration_source(name)` returns a declaration's source lines; it reads only files of
+declarations the project already parsed, and returns whatever lines remain if the file has shrunk since.
 
 ## Output formats
 
-Pass the manifest to `render_extern_manifest` with an `ExternFormat`. An explicit line-ending choice overrides the
-format's default.
+`ExternManifest::render` returns the rendered text with a final newline; it does not write a file. A `Some` line-ending
+argument overrides the format's default.
 
-| Format | Typical use                 | Default endings |
-| ------ | --------------------------- | --------------- |
-| `Json` | Machine-readable manifest   | CRLF            |
-| `Xml`  | Structured export document  | LF              |
-| `Html` | Readable contract reference | LF              |
+| Format | Content                                          | Default endings |
+| ------ | ------------------------------------------------ | --------------- |
+| `Json` | The manifest, pretty-printed; the tracked format | CRLF            |
+| `Xml`  | `<externs><exports>`, one `<export>` per name    | LF              |
+| `Html` | A reference page grouped by namespace            | LF              |
 
-Rendering returns a string with a final newline; it does not write a file. `write_extern_manifest` publishes a rendered
-manifest through staged file output, creating parent directories. `ExternFormat::from_extension` accepts `.json`,
-`.xml`, `.html`, and `.htm`; unsupported extensions return an error.
-
-## Source selection and limitations
-
-The parser selects eligible `.ts` files containing extern calls, excluding test files and generated/dependency
-directories. It is an extractor for XRF's declaration contract, not a general TypeScript documentation generator.
-Duplicate extern names are rejected.
-
-Declarations need to fit the supported extern contract. A declaration's documentation does not replace its type
-information, and successful extraction does not prove that the exported implementation is callable in the game.
+`ExternManifest::write` renders and publishes through `xrf_utils::StagedFile::write_creating_directories`, creating
+parent directories, so a failed write leaves the previous artifact whole. `ExternManifest::verify_artifact` checks an
+existing artifact: a JSON one must read back as the same manifest, an XML or HTML one must match a fresh render whatever
+its line endings. `ExternFormat::from_extension` infers the format from `.json`, `.xml`, `.html` or `.htm`, and
+`ExternFormat`'s `FromStr` takes the `--format` names in `ExternFormat::NAMES`.
 
 ## Errors and checks
 
-Malformed selected declarations and duplicate names fail parsing or validation. An invalid root, failed read, or
-failed publication can return an I/O error. Rendering JSON can return a serialization error. Preserve these causes
-when reporting why an artifact could not be generated.
+Failures split by cause, which `externs export --check` relies on to tell a finding from a run that could not happen:
 
-Run `cargo test --locked -p xrf-export` from the repository root. TypeScript parsing and symbol resolution are provided
-by [xrf-typescript](../xrf-typescript/README.md).
+- `Parsing` or `Invalid` for content the parser judged: TypeScript that does not parse, a declaration it cannot read a
+  contract from, a name declared twice, or two calls writing over each other (`Invalid`, naming both sources).
+- `Io` for a root that is not a directory, an unreadable source or artifact, and a failed publication.
+- `Serde` when JSON rendering fails; an unsupported extension or format name, and a JSON artifact that does not read as
+  a manifest, are `Invalid`; an artifact describing another manifest is `Verify`.
 
-See the [parser](src/extern_parser.rs), [manifest](src/extern_manifest.rs), and [rendering API](src/render.rs).
+Run `cargo test --locked -p xrf-export` from the repository root. `manifest` holds the model, `parse` the source
+selection and the per-call parsers under `parse::declaration`, `render` the formats and their renderers, and `project`
+the desktop app's view. See the [parser](src/parse/extern_manifest_parser.rs), [manifest](src/manifest/extern_manifest.rs)
+and [formats](src/render/extern_format.rs).

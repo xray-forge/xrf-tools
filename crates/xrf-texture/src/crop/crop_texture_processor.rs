@@ -5,7 +5,7 @@ use xrf_extension::XrayExtension;
 use xrf_utils::format_path;
 
 use crate::crop::{CropTextureOptions, CropTextureResult};
-use crate::image_file::{fit_image_into_bounds, save_image_as_ui_dds, save_image_as_ui_png};
+use crate::image_file::{ImageFileWriter, ImageFit};
 
 pub struct CropTextureProcessor {}
 
@@ -13,7 +13,10 @@ impl CropTextureProcessor {
   pub fn crop(options: &CropTextureOptions) -> XrfResult<CropTextureResult> {
     let image: RgbaImage = DdsFile::read_from_path(&options.source)?.decode_rgba(0)?;
 
-    if options.x + options.width > image.width() || options.y + options.height > image.height() {
+    // Saturating: a region named past `u32` must be refused, never wrap back inside the image.
+    if options.x.saturating_add(options.width) > image.width()
+      || options.y.saturating_add(options.height) > image.height()
+    {
       return Err(XrfError::new_texture_processing_error(format!(
         "Region {}:{} {}x{} does not fit in source {} which is {}x{}",
         options.x,
@@ -40,15 +43,15 @@ impl CropTextureProcessor {
           fit_height
         );
 
-        fit_image_into_bounds(DynamicImage::from(cropped), fit_width, fit_height, &options.source)?.into()
+        ImageFit::into_bounds(DynamicImage::from(cropped), fit_width, fit_height, &options.source)?.into()
       }
       _ => cropped,
     };
 
     if XrayExtension::Png.matches_path(&options.output_path) {
-      save_image_as_ui_png(&options.output_path, &result)?;
+      ImageFileWriter::write_png(&options.output_path, &result)?;
     } else {
-      save_image_as_ui_dds(
+      ImageFileWriter::write_dds(
         &options.output_path,
         &result,
         options.dds_compression_format,
@@ -69,14 +72,14 @@ mod tests {
 
   use image::RgbaImage;
   use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat, Quality};
-  use xrf_test_utils::utils::write_generated_test_resource;
+  use xrf_test_utils::GeneratedResources;
 
   use super::CropTextureProcessor;
   use crate::CropTextureOptions;
 
   fn options_for(name: &str) -> CropTextureOptions {
     let resource: String = format!("xrf-texture/crop/{name}-source.dds");
-    let source: PathBuf = write_generated_test_resource(&resource, []).expect("expect scratch source");
+    let source: PathBuf = GeneratedResources::write(&resource, []).expect("expect scratch source");
 
     let chain: DdsMipChain =
       DdsMipChain::build(&RgbaImage::new(8, 8), DdsMipmaps::Disabled).expect("expect a source chain");
@@ -140,11 +143,10 @@ mod tests {
   #[test]
   #[cfg(target_os = "linux")]
   fn writes_a_png_under_a_parent_directory_that_is_not_valid_text() {
-    use xrf_test_utils::utils::{build_absolute_generated_test_resource_path, build_non_unicode_file_name};
+    use xrf_test_utils::{GeneratedResources, HostFilesystem};
 
     let mut options: CropTextureOptions = options_for("non-unicode-parent");
-    let directory: PathBuf =
-      build_absolute_generated_test_resource_path("xrf-texture/crop").join(build_non_unicode_file_name());
+    let directory: PathBuf = GeneratedResources::path("xrf-texture/crop").join(HostFilesystem::non_unicode_file_name());
 
     std::fs::create_dir_all(&directory).expect("expect a scratch directory");
 

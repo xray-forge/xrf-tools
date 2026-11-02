@@ -13,6 +13,9 @@ pub struct DdsEncoding {
 }
 
 impl DdsEncoding {
+  /// Pixels along one edge of a block, which every block-compressed family in this format shares.
+  pub const BLOCK_SIZE: u32 = 4;
+
   pub fn new(format: ImageFormat, quality: Quality) -> Self {
     Self { format, quality }
   }
@@ -42,7 +45,7 @@ impl DdsEncoding {
       .encode(self.format, self.quality, Mipmaps::FromSurface)
       .map_err(|error| XrfError::new_texture_processing_error(error.to_string()))?;
 
-    let mut dds: Dds = match to_legacy_format(self.format) {
+    let mut dds: Dds = match Self::legacy_format(self.format) {
       Some(format) => {
         let mut dds: Dds = Dds::new_d3d(NewD3dParams {
           height: surface.height,
@@ -75,17 +78,17 @@ impl DdsEncoding {
 
     DdsFile::from_encoded(dds)
   }
-}
 
-/// The legacy `FourCC` spelling of a layout, for the formats that predate the DX10 header extension.
-fn to_legacy_format(format: ImageFormat) -> Option<D3DFormat> {
-  match format {
-    ImageFormat::BC1RgbaUnorm => Some(D3DFormat::DXT1),
-    ImageFormat::BC2RgbaUnorm => Some(D3DFormat::DXT3),
-    ImageFormat::BC3RgbaUnorm => Some(D3DFormat::DXT5),
-    // Byte for byte the same layout: `Rgba8Unorm` is red first, which is what D3D calls `A8B8G8R8`.
-    ImageFormat::Rgba8Unorm => Some(D3DFormat::A8B8G8R8),
-    _ => None,
+  /// The legacy `FourCC` spelling of a layout, for the formats that predate the DX10 header extension.
+  fn legacy_format(format: ImageFormat) -> Option<D3DFormat> {
+    match format {
+      ImageFormat::BC1RgbaUnorm => Some(D3DFormat::DXT1),
+      ImageFormat::BC2RgbaUnorm => Some(D3DFormat::DXT3),
+      ImageFormat::BC3RgbaUnorm => Some(D3DFormat::DXT5),
+      // Byte for byte the same layout: `Rgba8Unorm` is red first, which is what D3D calls `A8B8G8R8`.
+      ImageFormat::Rgba8Unorm => Some(D3DFormat::A8B8G8R8),
+      _ => None,
+    }
   }
 }
 
@@ -149,11 +152,9 @@ mod tests {
       // Every candidate decodes back to pixels, which is what the preview and the comparison both need.
       assert_eq!(read.decode_rgba(0)?.dimensions(), (16, 16), "{}", candidate.label());
 
-      // BC7 is the one candidate with no legacy spelling, so it is the one written through a DX10 header - twenty
-      // bytes longer, and a layout a reader that only knew the old header would miss entirely.
       // BC7 is the one candidate with no legacy `FourCC` spelling, so it is the only one written through a DX10
-      // header. Everything else takes the old header the engine's own textures use, because the D3D9 loader reads
-      // no other kind.
+      // header, twenty bytes longer. Everything else takes the old header the engine's own textures use, because the
+      // D3D9 loader reads no other kind.
       let expected_header: u64 = if candidate == DdsEncodeCandidate::Bc7 { 148 } else { 128 };
 
       assert_eq!(metadata.metadata_size, expected_header, "{}", candidate.label());

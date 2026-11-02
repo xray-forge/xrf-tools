@@ -1,5 +1,4 @@
 use xrf_shaders::ShaderLibraryFile;
-use xrf_vfs::XrayAssetType as AssetType;
 
 use crate::project::meshes::shader_library_verification_result::GamedataShaderLibraryVerificationResult;
 use crate::{GamedataFindingFactory, GamedataProject, GamedataVerificationRule};
@@ -17,9 +16,7 @@ impl<'a> ShaderLibraryVerifier<'a> {
     // The logical path is the identity to report, since an archived library has no file to name.
     let path: &str = xrf_vfs::XrayAssetType::SHADER_LIBRARY_PATH;
 
-    match self.project.read_parsed(AssetType::Shader, path, |chunk| {
-      ShaderLibraryFile::read_from_chunk(chunk)
-    }) {
+    match self.project.read_parsed(path, ShaderLibraryFile::read_from_chunk) {
       Ok(library) => GamedataShaderLibraryVerificationResult::passed(library),
       Err(error) => GamedataShaderLibraryVerificationResult::failed(GamedataFindingFactory::for_asset(
         GamedataVerificationRule::MeshesShaderLibrary,

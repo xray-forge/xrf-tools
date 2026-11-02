@@ -55,6 +55,16 @@ impl CameraView {
     (!self.is_orthographic()).then(|| (2.0 * (1.0 / self.projection.y_axis.y).atan()).to_degrees())
   }
 
+  /// The tangents of its lens's half view across and up, read back from the projection; none for parallel rays, which
+  /// reach the film square on.
+  pub fn get_lens_tangents(&self) -> Vec2 {
+    if self.is_orthographic() {
+      return Vec2::ZERO;
+    }
+
+    Vec2::new(1.0 / self.projection.x_axis.x, 1.0 / self.projection.y_axis.y)
+  }
+
   /// The box a lens of parallel rays sees, across, up and deep, read back from the projection; none for a perspective.
   pub fn get_orthographic_extent(&self) -> Option<Vec3> {
     self.is_orthographic().then(|| {

@@ -1,18 +1,11 @@
 use std::borrow::Cow;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
-use serde::Serialize;
 use xrf_error::XrfResult;
 
 use crate::path::{is_component_prefix, join, normalize, normalize_base};
-use crate::{XrayAssetSource, XraySourceKind};
-
-/// Stable identity of a mount within one VFS.
-///
-/// Labels need not be unique, so scopes select mounts by this identifier.
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
-pub struct XrayMountId(pub(crate) usize);
+use crate::{XrayAssetSource, XrayMountId, XraySourceKind};
 
 /// One source mounted at a logical base.
 ///
@@ -21,6 +14,8 @@ pub struct XrayMountId(pub(crate) usize);
 #[derive(Clone, Debug)]
 pub struct XrayMount {
   id: XrayMountId,
+  /// Which opening of a source this mount holds, unique in the process and shared by its clones.
+  opening: u64,
   base: String,
   /// How the plan that produced this mount described it, absent for a source mounted by hand.
   origin: Option<String>,
@@ -34,17 +29,38 @@ impl XrayMount {
   ///
   /// Returns an error when a non-empty base is not a valid X-Ray logical path.
   pub fn new(id: XrayMountId, base: &str, source: Box<dyn XrayAssetSource>) -> XrfResult<Self> {
+    static OPENINGS: AtomicU64 = AtomicU64::new(0);
+
     Ok(Self {
       base: normalize_base(base)?,
       id,
+      opening: OPENINGS.fetch_add(1, Ordering::Relaxed),
       origin: None,
       source: Arc::from(source),
     })
   }
 
-  /// Stable identity of this mount within its VFS, for scoping and remounting.
+  /// The same mount reading a changed copy of its source: the same id, base and origin, and the same opening, since
+  /// every copy the change left alone is the copy it was.
+  pub(crate) fn with_source(&self, source: Box<dyn XrayAssetSource>) -> Self {
+    Self {
+      base: self.base.clone(),
+      id: self.id,
+      opening: self.opening,
+      origin: self.origin.clone(),
+      source: Arc::from(source),
+    }
+  }
+
+  /// Stable identity of this mount within its VFS, for scoping.
   pub fn get_id(&self) -> XrayMountId {
     self.id
+  }
+
+  /// Names the opened source this mount reads, apart from every other opening in the process: two forks may mount
+  /// different sources at one id, and two single volumes of one directory share a root path.
+  pub(crate) fn get_opening(&self) -> u64 {
+    self.opening
   }
 
   /// How the plan that produced this mount described it: an `fsgame.ltx` alias such as `$game_data$`, or the

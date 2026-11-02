@@ -1,10 +1,10 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
 use xrf_error::{XrfError, XrfResult};
 use xrf_job::{JobHandle, JobOutcome};
 use xrf_utils::format_path;
-use xrf_vfs::{XrayMountPlan, XraySourceKind};
+use xrf_vfs::{XraySearchPlan, XraySourceKind};
 
 use crate::pack::config::ArchivePackConfig;
 use crate::pack::source::{ArchivePackEntry, ArchivePackNameTable, ArchivePackPayloads};
@@ -14,9 +14,7 @@ use crate::patch::archive_patch_publication::ArchivePatchPublication;
 use crate::patch::compare::ArchivePatchComparison;
 use crate::patch::config::{ArchivePatchConfig, ArchivePatchScope};
 use crate::patch::world::{ArchivePatchRole, ArchivePatchWorld};
-use crate::patch::{
-  ArchivePatchNarrator, ArchivePatchOptions, ArchivePatchResult, PATCH_PHASE_PACK, to_patch_directory_rows,
-};
+use crate::patch::{ArchivePatchNarrator, ArchivePatchOptions, ArchivePatchResult};
 
 /// Compares two roots and publishes added or modified target entries as archive volumes.
 ///
@@ -126,7 +124,7 @@ impl ArchivePatcher {
   /// # Errors
   ///
   /// Propagates the read error of a destination that cannot be listed.
-  pub fn list_published_volumes(config: &ArchivePatchConfig) -> XrfResult<Vec<std::path::PathBuf>> {
+  pub fn list_published_volumes(config: &ArchivePatchConfig) -> XrfResult<Vec<PathBuf>> {
     ArchivePacker::list_published_volumes(&config.to_publication())
   }
 
@@ -147,12 +145,12 @@ impl ArchivePatcher {
         ArchivePatchWorld::mount(target, ArchivePatchRole::Target)?,
       )),
       None => {
-        let plan: XrayMountPlan = ArchivePatchWorld::plan(input, ArchivePatchRole::Base)?;
-        let archived: XrayMountPlan = plan.of_kind(XraySourceKind::Archive);
+        let plan: XraySearchPlan = ArchivePatchWorld::plan(input, ArchivePatchRole::Base)?;
+        let archived: XraySearchPlan = plan.of_kind(XraySourceKind::Archive);
 
         // The likeliest mistake, which the generic empty-mount message would report as a missing root: a gamedata
         // folder named where the game was meant. Its files have nothing to override, so there is no patch to build.
-        if archived.is_empty() {
+        if archived.count_sources() == 0 {
           return Err(XrfError::new_invalid_error(format!(
             "'{}' holds no archive volumes, so its loose files have nothing to override. Point at the game \
              installation instead, or name this tree as the target of one.",
@@ -185,7 +183,7 @@ impl ArchivePatcher {
     let names: ArchivePackNameTable = ArchivePackNameTable::register(
       &publication,
       carried.iter().copied().map(ArchivePackEntry::of_mounted).collect(),
-      to_patch_directory_rows(&carried),
+      ArchivePatchComparison::list_carried_directories(&carried),
     )?;
 
     let guarded: ArchivePublishedSet = ArchivePacker::guard_destination(&publication, options.is_forced)?;
@@ -193,10 +191,10 @@ impl ArchivePatcher {
     let written: XrfResult<ArchivePackResult> = ArchivePacker::write_set(
       &publication,
       &names,
-      &ArchivePackPayloads::Mounted(target.get_vfs()),
+      &ArchivePackPayloads::Mounted(target.get_search()),
       &options.job,
       &pack_narrator,
-      PATCH_PHASE_PACK,
+      ArchivePatchOptions::PHASE_PACK,
     );
 
     ArchivePacker::settle_publication(&publication, &guarded, written)

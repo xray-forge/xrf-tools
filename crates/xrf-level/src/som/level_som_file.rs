@@ -3,21 +3,24 @@ use std::path::Path;
 
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
 use serde::{Deserialize, Serialize};
-use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter, find_required_chunk_by_id};
+use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::format_path;
 
-use crate::som::level_som_polygon::SomPolygon;
+use crate::som::level_som_polygon::LevelSomPolygon;
 
 /// The sound occlusion mesh of a level, `level.som`.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LevelSomFile {
   pub version: u32,
-  pub polygons: Vec<SomPolygon>,
+  pub polygons: Vec<LevelSomPolygon>,
 }
 
 impl LevelSomFile {
+  /// The file a level's sound occlusion mesh is shipped as, in its directory.
+  pub const FILE_NAME: &'static str = "level.som";
+
   /// The version `CSoundRender_Scene::set_geometry_som` asserts on.
   pub const CURRENT_VERSION: u32 = 0;
 
@@ -65,7 +68,7 @@ impl LevelSomFile {
   /// triangles.
   pub fn read_from_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let chunks: Vec<ChunkReader<D>> = reader.read_children()?;
-    let version: u32 = find_required_chunk_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u32::<T>()?;
+    let version: u32 = ChunkReader::find_required_by_id(&chunks, Self::VERSION_CHUNK_ID)?.read_u32::<T>()?;
 
     if version != Self::CURRENT_VERSION {
       return Err(XrfError::new_not_implemented_error(format!(
@@ -74,24 +77,8 @@ impl LevelSomFile {
       )));
     }
 
-    let mut geometry: ChunkReader<D> = find_required_chunk_by_id(&chunks, Self::GEOMETRY_CHUNK_ID)?;
-    let count: u64 = geometry.read_bytes_remain();
-
-    if !count.is_multiple_of(SomPolygon::SERIALIZED_SIZE) {
-      return Err(XrfError::new_invalid_error(format!(
-        "Unexpected level sound occlusion geometry of {count} bytes, expected whole triangles"
-      )));
-    }
-
-    let count: u64 = count / SomPolygon::SERIALIZED_SIZE;
-    let mut polygons: Vec<SomPolygon> =
-      geometry.new_bounded_vec(count, SomPolygon::SERIALIZED_SIZE, "sound occlusion triangles")?;
-
-    for _ in 0..count {
-      polygons.push(geometry.read_xr::<T, _>()?);
-    }
-
-    geometry.assert_read("Expect all data to be read from level sound occlusion geometry chunk")?;
+    let polygons: Vec<LevelSomPolygon> = ChunkReader::find_required_by_id(&chunks, Self::GEOMETRY_CHUNK_ID)?
+      .read_xr_records::<T, _>(LevelSomPolygon::SERIALIZED_SIZE, "level sound occlusion geometry chunk")?;
 
     Ok(Self { version, polygons })
   }
@@ -122,7 +109,7 @@ impl LevelSomFile {
 impl LevelSomFile {
   /// Faces the loader builds, which is more than the triangle count wherever an occluder is two-sided.
   pub fn get_faces_count(&self) -> usize {
-    self.polygons.iter().map(SomPolygon::get_faces_count).sum()
+    self.polygons.iter().map(LevelSomPolygon::get_faces_count).sum()
   }
 
   /// Triangles that occlude from both sides.

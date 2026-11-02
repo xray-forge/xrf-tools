@@ -2,20 +2,17 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject, ArchiveReadPolicy};
+use xrf_archive::{ArchiveDescriptor, ArchiveFileDescriptor, ArchiveProject};
 
-use crate::{ArchiveExtensionUsage, ArchiveStatistics};
+use crate::{ArchiveCompression, ArchiveExtensionUsage, ArchiveStatistics, ArchiveVolumeSummary};
 
 fn descriptor(name: &str, size_real: u32, size_compressed: u32, is_directory: bool) -> ArchiveFileDescriptor {
-  ArchiveFileDescriptor {
-    crc: 0,
-    is_directory,
-    name: Arc::from(name),
-    offset: 0,
-    size_compressed,
-    size_real,
-    volume: 0,
-  }
+  let mut descriptor: ArchiveFileDescriptor =
+    ArchiveFileDescriptor::new(0, Arc::from(name), 0, size_compressed, size_real);
+
+  descriptor.is_directory = is_directory;
+
+  descriptor
 }
 
 /// A volume set holding one of each thing a breakdown has to treat differently.
@@ -36,6 +33,7 @@ fn project() -> ArchiveProject {
       modified_at: Some(1_700_000_000_000),
       entries: 7,
       output_root_path: PathBuf::from("gamedata/"),
+      mount_root: String::from("gamedata"),
       path: PathBuf::from("C:/game/db/textures.db0"),
       size_compressed: 11_876,
       size_real: 15_848,
@@ -44,7 +42,6 @@ fn project() -> ArchiveProject {
       .into_iter()
       .map(|descriptor| (Arc::clone(&descriptor.name), descriptor))
       .collect::<HashMap<Arc<str>, ArchiveFileDescriptor>>(),
-    read_policy: ArchiveReadPolicy::default(),
     root: PathBuf::from("C:/game/db"),
     shadowed: Vec::new(),
     size_real: 15_848,
@@ -78,9 +75,8 @@ fn an_overview_counts_files_and_leaves_directories_out_of_the_bytes() {
 fn an_undeclared_spelling_is_reported_as_itself() {
   let statistics: ArchiveStatistics = ArchiveStatistics::of_volumes(&project());
 
-  // The point of the section: `mdl` is a spelling the workspace trees ship and the extension vocabulary does
-  // not declare, and folding it into an `Other` row would hide the one row worth acting on. It stands in for
-  // `som`, which the vocabulary gained when `level.som` got a reader.
+  // `mdl` is a spelling the workspace trees ship and the extension vocabulary does not declare: folding it into an
+  // `Other` row would hide the one row worth acting on.
   let undeclared: &ArchiveExtensionUsage = row(&statistics.extensions, Some("mdl"));
 
   assert!(!undeclared.is_declared, "the vocabulary does not declare it");
@@ -151,9 +147,9 @@ fn folders_group_by_the_first_segment_and_a_root_file_sits_in_none() {
 #[test]
 fn compression_reads_the_stored_sizes_the_format_records() {
   let statistics: ArchiveStatistics = ArchiveStatistics::of_volumes(&project());
-  let compression = statistics.compression.expect("a volume set records stored sizes");
+  let compression: ArchiveCompression = statistics.compression.expect("a volume set records stored sizes");
 
-  // The zero-length file contributes nothing to either side and is left out of the sum rather than added as zero.
+  // The zero-length file adds nothing to either total, yet still counts as stored uncompressed below.
   assert_eq!(compression.size_compressed, 2048 + 1024 + 100 + 8192 + 512);
   assert_eq!(compression.size_real, statistics.overview.total.size_real);
   assert_eq!(
@@ -165,7 +161,7 @@ fn compression_reads_the_stored_sizes_the_format_records() {
 #[test]
 fn a_volume_row_reads_the_volume_descriptor_rather_than_recounting_the_merged_table() {
   let statistics: ArchiveStatistics = ArchiveStatistics::of_volumes(&project());
-  let volumes: Vec<crate::ArchiveVolumeSummary> = statistics.volumes.expect("a volume set has volumes");
+  let volumes: Vec<ArchiveVolumeSummary> = statistics.volumes.expect("a volume set has volumes");
 
   assert_eq!(volumes.len(), 1);
   assert_eq!(volumes[0].entries, 7, "including the directory entry the table holds");
@@ -213,6 +209,7 @@ fn a_volume_set_reports_the_copies_its_merge_displaced() {
       modified_at: None,
       entries: 1,
       output_root_path: PathBuf::from("gamedata/"),
+      mount_root: String::from("gamedata"),
       path: PathBuf::from("C:/game/db/base.db0"),
       size_compressed: 100,
       size_real: 900,
@@ -272,19 +269,16 @@ fn size_bands_omit_what_nothing_fell_into_and_keep_empty_files_apart() {
   let statistics: ArchiveStatistics = ArchiveStatistics::of_volumes(&project());
 
   assert_eq!(
-    statistics
-      .sizes
-      .first()
-      .map(|bucket| (bucket.from, bucket.measure.files)),
+    statistics.sizes.first().map(|band| (band.from, band.measure.files)),
     Some((0, 1)),
     "the zero-length file is its own band"
   );
   assert!(
-    statistics.sizes.iter().all(|bucket| !bucket.measure.is_empty()),
+    statistics.sizes.iter().all(|band| !band.measure.is_empty()),
     "a band nothing fell into is not reported"
   );
   assert_eq!(
-    statistics.sizes.iter().map(|bucket| bucket.measure.files).sum::<u64>(),
+    statistics.sizes.iter().map(|band| band.measure.files).sum::<u64>(),
     statistics.overview.total.files
   );
 }

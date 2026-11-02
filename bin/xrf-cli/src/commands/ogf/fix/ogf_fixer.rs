@@ -4,18 +4,18 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use rayon::prelude::*;
-use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_ogf::OgfNormalization;
 use xrf_output::{OutputOptions, OutputSequence, OutputSlot};
 use xrf_spawn::XRayByteOrder;
-use xrf_utils::{format_path, write_file_staged};
+use xrf_utils::{StagedFile, format_path};
 
 use crate::commands::ogf::fix::ogf_fix_file_report::OgfFixFileReport;
 use crate::commands::ogf::fix::ogf_fix_finding_report::OgfFixFindingReport;
 use crate::commands::ogf::fix::ogf_fix_outcome::OgfFixOutcome;
 use crate::commands::ogf::fix::report::OgfFixReport;
+use crate::core::host_walk::HostWalk;
 
 pub struct OgfFixer<'a> {
   output: &'a OutputOptions,
@@ -66,13 +66,10 @@ impl<'a> OgfFixer<'a> {
       )));
     }
 
-    let files: Vec<PathBuf> = WalkDir::new(path)
-      .sort_by_file_name()
+    // A directory the walk cannot read fails the run: a fix that skipped it would claim a tree it never saw.
+    let files: Vec<PathBuf> = HostWalk::files_with(path, XrayExtension::Ogf)
       .into_iter()
-      .filter_map(Result::ok)
-      .map(DirEntry::into_path)
-      .filter(|it| it.is_file() && XrayExtension::Ogf.matches_path(it))
-      .collect();
+      .collect::<XrfResult<_>>()?;
 
     // A directory holding no visuals is refused rather than swept successfully: a mistyped path would otherwise report
     // a clean run over nothing.
@@ -169,7 +166,6 @@ impl<'a> OgfFixer<'a> {
       original.len(),
       normalization.bytes.len(),
       normalization.residue.as_ref(),
-      !self.is_dry_run,
     ))
   }
 
@@ -204,7 +200,7 @@ impl<'a> OgfFixer<'a> {
       fs::create_dir_all(parent)?;
     }
 
-    write_file_staged(destination, bytes)
+    StagedFile::write(destination, bytes)
       .map_err(|error| XrfError::new_io_error(format!("File was not written: {error}"), error.kind()))
   }
 

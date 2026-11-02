@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use crate::contract::render_frame_rate::RenderFrameRate;
+use crate::contract::settings::render_frame_rate::RenderFrameRate;
 
 /// What a frame gives the work that may wait, from the headroom its frames leave: where a frame cap or the display's
 /// refresh holds the frames, the interval they are held to less the GPU's smoothed frame time and a margin, between the
@@ -32,7 +32,7 @@ impl PeriodicBudget {
 
   /// Takes a frame `delta` after the last, `span` the milliseconds of the latest GPU frame read back where one came
   /// back, held to `frame_rate`: answers what the frame gives the work that may wait, at least `floor`.
-  pub fn update(&mut self, (delta, span): (Duration, Option<f32>), frame_rate: RenderFrameRate, floor: f32) -> f32 {
+  pub fn update(&mut self, delta: Duration, span: Option<f32>, frame_rate: RenderFrameRate, floor: f32) -> f32 {
     let seconds: f32 = delta.as_secs_f32();
     let interval: f32 = seconds * 1000.0;
 

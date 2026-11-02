@@ -25,9 +25,6 @@ pub(crate) struct SourceAction {
 }
 
 impl SourceAction {
-  /// `flSingleSize`: every axis takes the size drawn for x.
-  const SINGLE_SIZE: u32 = 1 << 29;
-
   /// `flSilent`: emits nothing, which stopping an effect sets.
   const SILENT: u32 = 1 << 30;
 
@@ -66,7 +63,7 @@ impl SourceAction {
       let position: Vec3 = self.position.generate(random);
       let mut size: Vec3 = self.size.generate(random);
 
-      if self.flags & Self::SINGLE_SIZE != 0 {
+      if self.flags & ParticleActionSource::SINGLE_SIZE != 0 {
         size = Vec3::splat(size.x);
       }
 
@@ -117,6 +114,7 @@ mod tests {
   use glam::{Mat4, Vec3, Vec4};
 
   use super::SourceAction;
+  use crate::data::actions::particle_action_source::ParticleActionSource;
   use crate::simulation::actions::particle_action_step::ParticleActionStep;
   use crate::simulation::domain::particle_volume::ParticleVolume;
   use crate::simulation::domain::particle_volume_kind::ParticleVolumeKind;
@@ -139,7 +137,7 @@ mod tests {
 
   fn source(rate: f32) -> SourceAction {
     SourceAction {
-      flags: SourceAction::SINGLE_SIZE,
+      flags: ParticleActionSource::SINGLE_SIZE,
       position_local: point(Vec3::new(1.0, 2.0, 3.0)),
       velocity_local: point(Vec3::Y),
       position: point(Vec3::new(1.0, 2.0, 3.0)),

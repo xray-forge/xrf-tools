@@ -2,6 +2,7 @@
 #import "common/noise"
 #import "common/water_surface"
 #import "common/scene_light"
+#import "common/display_transform"
 #import "common/water_enhanced"
 #import "common/trace_requests"
 #import "generated/static/water_reflection"
@@ -311,7 +312,12 @@ fn fs_water_reflection(in: WaterVarying) -> @location(0) vec4<f32> {
   if (is_away) {
     hit = march_reflection(position, reflected, noise, uv, MARCH_THICKNESS);
   }
-  let sky: vec3<f32> = enhanced_sky(flat_reflected, lighting, sky_cube_0, sky_cube_1, sky_clamp) * water.reflection;
+  // The sky's picture as the frame's display brings it in, so the reflection holds light throughout, as what the
+  // screen and the trace answer is.
+  let sky: vec3<f32> = picture_for_display(
+    enhanced_sky(flat_reflected, lighting, sky_cube_0, sky_cube_1, sky_clamp) * water.reflection,
+    lighting.display,
+  );
   // The screen answers first, as it does untraced: the trace takes only what it misses (off the screen, the sky, past
   // its reach), and a surface the screen met facing away from the ray, which the mirror cannot see.
   let is_met: bool = all(hit.xy != vec2<f32>(0.0)) && !(is_traced && is_away && is_facing_away(hit.xy, reflected));

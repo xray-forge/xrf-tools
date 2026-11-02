@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use xrf_extension::{XrayExtension, XrayExtensionOf};
 
-use crate::path::XrayLogicalPath;
+use crate::XrayAssetRules;
 
 /// Asset category inferred from an X-Ray logical path's extension or recognized suffix.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -43,24 +43,25 @@ pub enum XrayAssetType {
   XrPack,
 }
 
-/// Where a kind of asset lives and what extension the engine loads it as.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct XrayAssetRules {
-  /// Logical directory the engine resolves this kind under.
-  pub directory: &'static str,
-  /// Extension the engine loads.
-  pub extension: XrayExtension,
-  /// Extensions a reference may be authored with, which resolve to [`Self::extension`].
-  pub authoring_extensions: &'static [XrayExtension],
-}
-
 impl XrayAssetType {
   /// The X-Ray shader library's fixed gamedata-relative logical path.
-  pub const SHADER_LIBRARY_PATH: &'static str = super::shader::SHADER_LIBRARY_LOGICAL_PATH;
+  pub const SHADER_LIBRARY_PATH: &'static str = "shaders.xr";
 
   /// Converts a sound reference into the name the engine registers it under.
   pub fn sound_reference_name(reference: &str) -> String {
-    super::sound::sound_reference_name(reference)
+    let reference: String = reference.trim().replace('/', "\\").to_ascii_lowercase();
+    let reference: &str = reference.strip_prefix("sounds\\").unwrap_or(&reference);
+
+    if !XrayExtension::Ogg.matches(reference) {
+      return reference.to_string();
+    }
+
+    // The extension matched, so the final dot is inside the final segment and this splits the name rather than a
+    // directory holding one.
+    reference
+      .rsplit_once('.')
+      .map_or(reference, |(stem, _)| stem)
+      .to_string()
   }
 
   /// Where this kind lives, for the kinds with one canonical home.
@@ -164,156 +165,14 @@ impl XrayAssetType {
   }
 }
 
-impl XrayAssetRules {
-  /// Converts a raw engine reference into the logical path below the kind's directory.
-  pub fn to_logical_path(&self, reference: &str) -> String {
-    if let Some((stem, extension)) = reference.rsplit_once('.') {
-      if XrayExtension::parse(extension).is_some_and(|authored| self.authoring_extensions.contains(&authored)) {
-        return format!("{stem}.{}", self.extension);
-      }
-
-      if self.extension.matches(reference) {
-        return reference.to_string();
-      }
-    }
-
-    format!("{reference}.{}", self.extension)
-  }
-
-  /// Converts a logical path below this kind's directory back into the reference the engine names it by.
-  pub fn to_reference(&self, logical_path: &XrayLogicalPath) -> Option<String> {
-    let below: &str = logical_path.strip_prefix(self.directory).ok()??;
-
-    if !self.extension.matches(below) {
-      return None;
-    }
-
-    // The extension matched, so the final dot is inside the final segment and this splits the name rather than a
-    // directory holding one.
-    let (reference, _) = below.rsplit_once('.')?;
-
-    (!reference.is_empty()).then(|| reference.to_owned())
-  }
-}
-
 #[cfg(test)]
 mod tests {
   use xrf_extension::XrayExtension;
 
   use super::{XrayAssetRules, XrayAssetType};
-  use crate::path::XrayLogicalPath;
 
   fn rules(asset_type: XrayAssetType) -> XrayAssetRules {
     asset_type.get_rules().expect("kind has a canonical home")
-  }
-
-  fn logical(path: &str) -> XrayLogicalPath {
-    XrayLogicalPath::new(path).expect("valid logical path")
-  }
-
-  #[test]
-  fn reads_a_reference_back_off_a_logical_path_in_the_kinds_home() {
-    assert_eq!(
-      rules(XrayAssetType::Dds)
-        .to_reference(&logical("textures\\pfx\\smoke.dds"))
-        .as_deref(),
-      Some("pfx\\smoke")
-    );
-    assert_eq!(
-      rules(XrayAssetType::Ogf)
-        .to_reference(&logical("meshes\\actors\\stalker.ogf"))
-        .as_deref(),
-      Some("actors\\stalker")
-    );
-    // Round trip: the reference resolves back to the path it was read from.
-    assert_eq!(
-      rules(XrayAssetType::Dds).to_logical_path("pfx\\smoke"),
-      "pfx\\smoke.dds"
-    );
-  }
-
-  #[test]
-  fn names_no_reference_for_a_path_outside_the_kinds_home_or_extension() {
-    assert_eq!(
-      rules(XrayAssetType::Dds).to_reference(&logical("levels\\l01\\lmap#0_1.dds")),
-      None,
-      "the directory has to match, not only the extension"
-    );
-    assert_eq!(
-      rules(XrayAssetType::Dds).to_reference(&logical("textures_old\\a.dds")),
-      None,
-      "a directory sharing the prefix is not the home"
-    );
-    assert_eq!(
-      rules(XrayAssetType::Dds).to_reference(&logical("textures\\pfx\\smoke.thm")),
-      None,
-      "a descriptor is not a texture, whatever directory it sits in"
-    );
-    assert_eq!(
-      rules(XrayAssetType::Dds).to_reference(&logical("textures\\.dds")),
-      None,
-      "an extension alone names nothing"
-    );
-  }
-
-  #[test]
-  fn replaces_an_authoring_extension_with_the_loaded_one() {
-    assert_eq!(
-      rules(XrayAssetType::Dds).to_logical_path("pfx\\smoke.tga"),
-      "pfx\\smoke.dds"
-    );
-    assert_eq!(
-      rules(XrayAssetType::Dds).to_logical_path("pfx\\smoke.TGA"),
-      "pfx\\smoke.dds"
-    );
-    assert_eq!(
-      rules(XrayAssetType::Dds).to_logical_path("pfx\\smoke.bmp"),
-      "pfx\\smoke.dds"
-    );
-  }
-
-  #[test]
-  fn appends_the_extension_when_a_reference_omits_it() {
-    assert_eq!(
-      rules(XrayAssetType::Dds).to_logical_path("pfx\\smoke"),
-      "pfx\\smoke.dds"
-    );
-    assert_eq!(
-      rules(XrayAssetType::Ogg).to_logical_path("weapons\\ak74_shot"),
-      "weapons\\ak74_shot.ogg"
-    );
-    assert_eq!(
-      rules(XrayAssetType::Ogg).to_logical_path("weapons\\ak74_shot.OGG"),
-      "weapons\\ak74_shot.OGG",
-      "an uppercase extension is not doubled"
-    );
-    assert_eq!(
-      rules(XrayAssetType::Ogf).to_logical_path("actors\\stalker"),
-      "actors\\stalker.ogf"
-    );
-  }
-
-  #[test]
-  fn leaves_an_already_loaded_extension_alone_whatever_its_case() {
-    // Appending a second extension resolves to nothing, which is how mesh references silently failed.
-    assert_eq!(
-      rules(XrayAssetType::Ogf).to_logical_path("actors\\stalker.OGF"),
-      "actors\\stalker.OGF"
-    );
-    assert_eq!(
-      rules(XrayAssetType::Dds).to_logical_path("pfx\\smoke.dds"),
-      "pfx\\smoke.dds"
-    );
-  }
-
-  #[test]
-  fn treats_an_unknown_extension_as_part_of_the_name() {
-    // Not a gap in the authoring list: a reference is a name rather than a filename, so an extension the row does not
-    // claim stays part of it and the loaded one is appended.
-    assert_eq!(
-      rules(XrayAssetType::Dds).to_logical_path("pfx\\smoke.png"),
-      "pfx\\smoke.png.dds"
-    );
   }
 
   #[test]
@@ -370,7 +229,7 @@ mod tests {
   #[test]
   fn gathers_the_spellings_the_engine_loads_the_same_way() {
     // The groupings are this crate's knowledge, not the vocabulary's: `anm1` is a different file from `anm`, and a
-    // reader outside a mounted world is free to treat them differently.
+    // reader outside a VFS snapshot is free to treat them differently.
     for extension in [XrayExtension::Anm, XrayExtension::Anm1] {
       assert_eq!(XrayAssetType::of(extension), Some(XrayAssetType::Anm));
     }
@@ -441,6 +300,39 @@ mod tests {
     assert_eq!(XrayAssetType::of(XrayExtension::Png), None);
     assert_eq!(XrayAssetType::of(XrayExtension::Tga), None);
     assert_eq!(XrayAssetType::of(XrayExtension::Xml), None);
+  }
+
+  #[test]
+  fn strips_the_implied_root_and_extension_from_a_sound_name() {
+    assert_eq!(
+      XrayAssetType::sound_reference_name(" sounds/weapons/ak74_shot.ogg "),
+      "weapons\\ak74_shot"
+    );
+    assert_eq!(
+      XrayAssetType::sound_reference_name("Weapons\\AK74_Shot"),
+      "weapons\\ak74_shot"
+    );
+  }
+
+  #[test]
+  fn keeps_a_sound_name_that_merely_ends_in_the_letters() {
+    // The last dotted byte-suffix rule in the workspace lived here, and it was safe only because the value above it is
+    // folded first. The splitter answers the same for a lower-case name and says why for the others.
+    assert_eq!(
+      XrayAssetType::sound_reference_name("weapons\\ak74_myogg"),
+      "weapons\\ak74_myogg"
+    );
+    assert_eq!(XrayAssetType::sound_reference_name("weapons\\ogg"), "weapons\\ogg");
+  }
+
+  #[test]
+  fn leaves_a_sound_directory_carrying_the_dot_alone() {
+    // `rsplit_once` is reached only once the extension matched, so an unextensioned name inside `sounds.old\` keeps
+    // every character of it rather than losing its last directory.
+    assert_eq!(
+      XrayAssetType::sound_reference_name("weapons.old\\ak74_shot"),
+      "weapons.old\\ak74_shot"
+    );
   }
 
   #[test]

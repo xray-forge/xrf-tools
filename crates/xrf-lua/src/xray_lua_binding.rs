@@ -1,3 +1,5 @@
+use crate::xray_lua_value::XRayLuaValue;
+
 /// What a bare name means where a script uses it, by Lua's own scoping: the innermost local or parameter of that name.
 #[derive(Clone, Debug, PartialEq)]
 pub enum XRayLuaBinding {
@@ -8,4 +10,18 @@ pub enum XRayLuaBinding {
   Parameter { index: usize },
   /// A local bound to anything else.
   Other,
+}
+
+impl From<&XRayLuaValue> for XRayLuaBinding {
+  /// What a local assigned this value holds: the string it is, or binds, and nothing known otherwise.
+  fn from(value: &XRayLuaValue) -> Self {
+    match value {
+      XRayLuaValue::String(value)
+      | XRayLuaValue::Local {
+        binding: Self::String(value),
+        ..
+      } => Self::String(value.clone()),
+      _ => Self::Other,
+    }
+  }
 }

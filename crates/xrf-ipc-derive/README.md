@@ -1,15 +1,38 @@
 # xrf-ipc-derive
 
-The `#[constant]` attribute `xrf-ipc` re-exports; depend on `xrf-ipc` and name it `xrf_ipc::constant`.
+The `#[constant]` attribute that [xrf-ipc](../xrf-ipc/README.md) re-exports. Depend on `xrf-ipc` and name it
+`xrf_ipc::constant`; the expansion refers to `::xrf_ipc` and does not compile without it.
 
 ## `#[constant]`
 
-On a module-level `const` item, public or not, it keeps the item as written and registers an `xrf_ipc::IpcConstant`
-in a hidden module beside it: the item's module path, its name, its `///` lines joined by `\n` and trimmed, and a
-function serializing its value. It takes no arguments, and refuses anything but a non-generic `const` item, and a doc
-comment it cannot read as `///` lines (a block comment over several lines, or a computed `#[doc = ...]`), with the
-error on what it refuses. An associated constant is refused where the hidden module would land: Rust allows no module
-in an `impl` or a trait.
+On a module-level `const` item, public or private and of any name, it keeps the item as written and adds a hidden
+module beside it, `__xrf_ipc_constant_<NAME>`, that submits an `xrf_ipc::IpcConstant` to `inventory`:
+
+| Field         | Value                                                                                          |
+| ------------- | ---------------------------------------------------------------------------------------------- |
+| `module_path` | The module declaring the constant, not the hidden one (`IpcConstant::enclosing_module`)        |
+| `name`        | The constant's identifier                                                                      |
+| `doc`         | Its `///` lines, each without the one space after the slashes, joined by `\n`, then trimmed    |
+| `value`       | A function serializing it through `IpcConstant::serialize_value`, so its type must `Serialize` |
+| `data_type`   | Its type's definition through `IpcConstant::define_type`, so its type must be a `specta::Type` |
+
+A value Rust cannot write as a `const`, one holding a `Vec` or a `String`, is a module-level function of no arguments
+computing it, not generic, async or unsafe; it is called as the bindings are generated and exported under its name in
+upper case (`render_feature_schema` as `RENDER_FEATURE_SCHEMA`).
+
+```rust
+/// The engine's cascade widths in metres.
+#[xrf_ipc::constant]
+fn render_shadow_cascade_widths() -> Vec<f32> {
+  vec![20.0, 40.0, 160.0]
+}
+
+fn main() {
+  assert_eq!(render_shadow_cascade_widths().len(), 3);
+}
+```
+
+Inner indentation of a doc line survives; `#[doc(hidden)]` and other list-form doc attributes are skipped.
 
 ```rust
 /// Frames VBAO accumulates over at most.
@@ -21,9 +44,23 @@ fn main() {
 }
 ```
 
+## What it refuses
+
+Each refusal is a compile error on the offending tokens:
+
+- Any argument: `#[constant]` takes none.
+- Anything but a non-generic `const` item or such a function: a `static`, a generic `const`, a function taking
+  arguments, generic, async, unsafe or returning nothing.
+- A doc comment it cannot read as `///` lines: a block comment spanning lines, or a computed `#[doc = ...]`.
+- An associated constant. Rust allows no module in an `impl` or a trait, so the error is Rust's own, on the item.
+
 ```rust,compile_fail
 #[xrf_ipc::constant]
 static RENDER_MAX_SHADOW_FILTER: u32 = 3;
 ```
 
-Run `cargo test --locked -p xrf-ipc-derive`; `tests/ui` holds the refused forms and their diagnostics.
+## Checks
+
+Run `cargo test --locked -p xrf-ipc-derive`. The trybuild cases are in `tests/ui`: `pass/` compiles and runs, `fail/`
+holds each refused form with the diagnostic it must produce in its `.stderr`. The expansion is `ConstantAttribute`, in
+[`constant_attribute.rs`](src/constant_attribute.rs).

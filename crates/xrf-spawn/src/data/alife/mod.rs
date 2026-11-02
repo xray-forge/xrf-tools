@@ -1,5 +1,6 @@
 pub(crate) mod alife_object;
 pub(crate) mod alife_object_inherited;
+pub(crate) mod alife_packets_read_write;
 pub(crate) mod inherited;
 pub(crate) mod spawn_level_arrival;
 pub(crate) mod spawn_level_objects;

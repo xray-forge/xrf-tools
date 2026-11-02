@@ -3,15 +3,13 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::PathBuf;
 
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
-use crate::{XrayMountMode, XrayMountPlan, XrayProbePlan, XrayRoot, XrayRoots, XrayVfs};
+use crate::{XrayMountMode, XrayRoot, XrayRoots, XraySearch, XraySearchPlan};
 
 /// Builds a loose root holding one asset, since a plan is decided by what is actually there.
 fn root(name: &str, logical: &str) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("xray_roots/{name}"));
-
-  let _ = fs::remove_dir_all(&root);
+  let root: PathBuf = GeneratedResources::create_dir(&format!("xray_roots/{name}")).expect("root directory");
 
   let path: PathBuf = root.join(logical.replace('\\', "/"));
 
@@ -38,12 +36,13 @@ fn non_unicode_component() -> OsString {
   OsString::from_wide(&name)
 }
 
-fn paths(plan: &XrayMountPlan) -> Vec<String> {
-  plan
-    .get_mounts()
-    .iter()
-    .map(|mount| mount.path.display().to_string())
-    .collect()
+/// The roots a search over `spec` reaches, in search order.
+fn searched_roots(spec: &XrayRoots) -> Vec<String> {
+  open(spec).list_roots()
+}
+
+fn open(spec: &XrayRoots) -> XraySearch {
+  spec.to_search_plan().expect("roots plan").open().expect("roots open")
 }
 
 #[test]
@@ -51,10 +50,7 @@ fn plans_one_root() {
   let first: PathBuf = root("single", r"configs\system.ltx");
   let spec: XrayRoots = XrayRoots::one(first.clone(), XrayMountMode::Directory);
 
-  assert_eq!(
-    paths(&spec.to_mount_plan().expect("plan")),
-    vec![first.display().to_string()]
-  );
+  assert_eq!(searched_roots(&spec), vec![first.display().to_string()]);
 }
 
 #[test]
@@ -69,25 +65,64 @@ fn keeps_roots_in_declaration_order() {
   ]);
 
   assert_eq!(
-    paths(&spec.to_mount_plan().expect("plan")),
+    searched_roots(&spec),
     vec![front.display().to_string(), back.display().to_string()]
+  );
+  assert_eq!(
+    open(&spec)
+      .find(r"configs\system.ltx")
+      .expect("lookup")
+      .and_then(|asset| asset.get_root().map(PathBuf::from)),
+    Some(front),
+    "the front root answers what both hold"
   );
 }
 
 #[test]
-fn drops_a_root_named_twice() {
-  // `behind` dedupes by path, so a fallback that repeats an earlier root is not mounted twice.
-  let only: PathBuf = root("duplicate", r"configs\system.ltx");
-  let named: PathBuf = only.clone();
+fn mounts_a_root_named_twice_once() {
+  // A fallback that repeats an earlier root is a second step over the same mount, not a second mount.
+  let named: PathBuf = root("duplicate", r"configs\system.ltx");
 
   let spec: XrayRoots = XrayRoots::new([
     XrayRoot::new(named.clone(), XrayMountMode::Directory),
     XrayRoot::new(named.clone(), XrayMountMode::Directory),
   ]);
+  let search: XraySearch = open(&spec);
 
+  assert_eq!(search.get_steps().len(), 2);
+  assert_eq!(search.get_vfs().get_mounts().len(), 1);
+  assert_eq!(searched_roots(&spec), vec![named.display().to_string()]);
+}
+
+#[test]
+fn a_root_that_is_not_there_is_an_empty_step_reported_as_skipped() {
+  // A missing root searches nothing rather than failing the open, and says so, so a report can name what was not read.
+  let present: PathBuf = root("missing-present", r"configs\system.ltx");
+  let absent: PathBuf = present.with_file_name("missing-absent");
+
+  let spec: XrayRoots = XrayRoots::new([
+    XrayRoot::new(absent.clone(), XrayMountMode::Installation),
+    XrayRoot::new(present.clone(), XrayMountMode::Directory),
+  ]);
+  let search: XraySearch = open(&spec);
+
+  assert_eq!(search.get_steps().len(), 2);
   assert_eq!(
-    paths(&spec.to_mount_plan().expect("plan")),
-    vec![named.display().to_string()]
+    search
+      .list_skipped_sources()
+      .iter()
+      .map(|skipped| skipped.path.clone())
+      .collect::<Vec<PathBuf>>(),
+    vec![absent],
+    "the missing root is skipped, whatever mode named it"
+  );
+  assert!(search.find(r"configs\system.ltx").expect("lookup").is_some());
+  assert!(
+    !spec
+      .to_search_plan()
+      .expect("roots plan")
+      .has_failed_in(search.get_vfs()),
+    "a root that is not there is not a source that failed to open, so a retry has nothing to try"
   );
 }
 
@@ -103,8 +138,7 @@ fn plans_nothing_for_an_empty_spec() {
   let spec: XrayRoots = XrayRoots::default();
 
   assert!(spec.is_empty());
-  assert!(spec.to_mount_plan().expect("plan").is_empty());
-  assert!(spec.to_probe_plan().expect("plan").is_empty());
+  assert!(spec.to_search_plan().expect("plan").is_empty());
 }
 
 #[test]
@@ -124,14 +158,14 @@ fn centres_on_an_asset_only_when_none_was_named() {
 }
 
 #[test]
-fn plans_probe_steps_for_an_asset_and_its_roots() {
-  let first: PathBuf = root("probe", r"configs\system.ltx");
+fn plans_search_steps_for_an_asset_and_its_roots() {
+  let first: PathBuf = root("search", r"configs\system.ltx");
   let spec: XrayRoots = XrayRoots {
     asset: Some(first.join("configs/system.ltx")),
     roots: vec![XrayRoot::new(first, XrayMountMode::Directory)],
   };
 
-  let plan: XrayProbePlan = spec.to_probe_plan().expect("plan");
+  let plan: XraySearchPlan = spec.to_search_plan().expect("plan");
 
   assert!(!plan.is_empty());
 }
@@ -141,15 +175,13 @@ fn opens_what_it_planned() {
   let first: PathBuf = root("open", r"configs\system.ltx");
   let spec: XrayRoots = XrayRoots::one(first, XrayMountMode::Directory);
 
-  let vfs: XrayVfs = spec.open().expect("roots opens");
-
-  assert!(vfs.read_bytes(r"configs\system.ltx").is_ok());
+  assert!(open(&spec).read(r"configs\system.ltx").is_ok());
 }
 
 #[cfg(any(target_os = "linux", windows))]
 #[test]
 fn opens_a_non_unicode_root_without_changing_its_address() {
-  let base: PathBuf = build_absolute_generated_test_resource_path("xray_roots/non-unicode-address");
+  let base: PathBuf = GeneratedResources::path("xray_roots/non-unicode-address");
   let root: PathBuf = base.join(non_unicode_component());
   let asset: PathBuf = root.join("configs/system.ltx");
 
@@ -157,11 +189,10 @@ fn opens_a_non_unicode_root_without_changing_its_address() {
   fs::write(&asset, b"payload").expect("root file");
 
   let spec: XrayRoots = XrayRoots::one(root, XrayMountMode::Directory);
-  let vfs: XrayVfs = spec.open().expect("roots open");
 
   assert_eq!(
-    vfs
-      .read_bytes(r"configs\system.ltx")
+    open(&spec)
+      .read(r"configs\system.ltx")
       .expect("the declared root remains addressable"),
     b"payload"
   );

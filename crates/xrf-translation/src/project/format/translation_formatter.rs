@@ -4,19 +4,21 @@ use xrf_error::XrfResult;
 use xrf_job::{JobOutcome, JobScope};
 use xrf_utils::format_path;
 
-use crate::json::normalize::sort_document;
-use crate::json::read::read_json;
-use crate::json::write::{CanonicalRender, render_canonical, write_canonical};
+use crate::json::translation_json_canon::TranslationJsonCanon;
+use crate::json::translation_json_reader::TranslationJsonReader;
+use crate::json::translation_json_render::TranslationJsonRender;
 use crate::project::format::translation_format_options::TranslationFormatOptions;
 use crate::project::format::translation_format_result::TranslationFormatResult;
-use crate::project::format::translation_source_selection::select_sources;
-use crate::project::job_phases::TRANSLATION_PHASE_FORMAT;
-use crate::types::TranslationJson;
+use crate::project::format::translation_source_selection::TranslationSourceSelection;
+use crate::text::translation_json::TranslationJson;
 
 /// Normalizes multi-language JSON translation sources in place.
 pub struct TranslationFormatter;
 
 impl TranslationFormatter {
+  /// Phase a formatting run reports while it normalizes sources in place.
+  pub const PHASE: &str = "format";
+
   /// Rewrite every source under `paths` that is not canonical.
   ///
   /// The plain door. A caller that wants to watch the run, stop it, or assert its line endings uses
@@ -70,7 +72,7 @@ impl TranslationFormatter {
 
     // Selected inside the measured span, because walking a large tree before the first file is read is part of the
     // wait the caller is asking about.
-    let files: Vec<PathBuf> = select_sources(paths)?;
+    let files: Vec<PathBuf> = TranslationSourceSelection::select(paths)?;
 
     result.startup_duration = options.job.elapsed();
 
@@ -81,7 +83,7 @@ impl TranslationFormatter {
       files.len()
     );
 
-    let formatting: JobScope = options.job.enter(TRANSLATION_PHASE_FORMAT, Some(files.len() as u64));
+    let formatting: JobScope = options.job.enter(Self::PHASE, Some(files.len() as u64));
 
     for file in &files {
       // Between files, never inside one. A stopped check reports what it had judged and says so; findings read as a
@@ -117,11 +119,11 @@ impl TranslationFormatter {
     is_check: bool,
     result: &mut TranslationFormatResult,
   ) -> XrfResult {
-    let mut parsed: TranslationJson = read_json(path)?;
+    let mut parsed: TranslationJson = TranslationJsonReader::read(path)?;
 
-    sort_document(&mut parsed);
+    TranslationJsonCanon::sort(&mut parsed);
 
-    let render: CanonicalRender = render_canonical(path, &parsed, options.line_endings)?;
+    let render: TranslationJsonRender = TranslationJsonRender::render(path, &parsed, options.line_endings)?;
     let is_changed: bool = render.is_changed();
 
     result.record(path.to_path_buf(), is_changed);
@@ -138,7 +140,7 @@ impl TranslationFormatter {
       return Ok(());
     }
 
-    write_canonical(path, &render)?;
+    render.write(path)?;
 
     xrf_output::info!(options.output, "Formatted: {}", format_path(path));
 

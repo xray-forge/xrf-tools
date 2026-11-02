@@ -1,0 +1,271 @@
+import { afterEach, describe, expect, it, jest } from "@jest/globals";
+import { act, RenderResult, waitFor } from "@testing-library/react";
+import { userEvent } from "@testing-library/user-event";
+import { Container } from "@wirestate/core";
+import { ELevelsCommand } from "@xrf/ipc/commands/levels";
+import { IpcCommandMocks, mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
+import { EXrayEngine } from "@xrf/ipc/types/xrf-engine-target";
+import { EEnvironmentRule, WeatherCycleId } from "@xrf/ipc/types/xrf-environment";
+import { EWorldWeatherPlay } from "@xrf/ipc/types/xrf-world";
+import { Nullable } from "@xrf/types";
+
+import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
+import {
+  mockLevelWeatherCycle,
+  mockLevelWeatherDescription,
+  mockWorldWeatherReport,
+} from "@/core/level/fixtures/weather.mocks";
+import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
+import { LevelLoadService } from "@/core/level/services/level-load";
+import { LevelLookService } from "@/core/level/services/level-look";
+import { LevelRenderService } from "@/core/level/services/level-render";
+import { LevelRenderWeather } from "@/core/level/services/level-render/level-render.service.weather";
+import { LevelViewService } from "@/core/level/services/level-view";
+import { LevelViewportService } from "@/core/level/services/level-viewport";
+import { LevelWeatherService } from "@/core/level/services/level-weather";
+import { clearLocalStorage } from "@/core/storage";
+import { mockSessionResponse } from "@/fixtures/mocks/session.mocks";
+import { mockContainer } from "@/fixtures/utils/container";
+import { renderWithProviders } from "@/fixtures/utils/render";
+
+import { LevelWeatherPanel } from "./LevelWeatherPanel";
+
+/** What the panel asked the viewport playing the weather for, which no viewport is attached to hear. */
+const asked: Array<string> = [];
+
+/** The services the panel reads, the viewport playing the weather stood in for. */
+function mockPanelContainer(): Container {
+  jest
+    .spyOn(LevelRenderWeather.prototype, "playEffect")
+    .mockImplementation((name: Nullable<string>) => void asked.push(`effect ${name}`));
+  jest.spyOn(LevelRenderWeather.prototype, "playAmbientEffect").mockImplementation(() => void asked.push("ambient"));
+
+  return mockContainer([
+    LevelLoadService,
+    LevelLookService,
+    LevelViewService,
+    LevelViewportService,
+    LevelWeatherService,
+    LevelRenderService,
+  ]);
+}
+
+async function renderPanel(responses: IpcCommandMocks = {}): Promise<RenderResult & { weather: LevelWeatherService }> {
+  mockIpcCommands({
+    [ELevelsCommand.RESTORE_LEVEL]: mockSessionResponse(mockSelectedLevelDescription()),
+    [ELevelsCommand.READ_LEVEL_CYCLE]: mockSessionResponse(({ cycle }: { cycle: WeatherCycleId }) =>
+      mockLevelWeatherCycle({ name: cycle.name })
+    ),
+    [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(
+      mockLevelWeatherDescription({
+        cycles: [{ file: "", findings: 3, keyframes: 24, kind: "cycle", name: "default_rain" }],
+        effects: [mockLevelWeatherCycle({ kind: "effect", name: "fx_blowout" })],
+        offered: [
+          mockLevelWeatherCycle({
+            findings: [
+              {
+                file: "environment\\weathers\\default_clear.ltx",
+                key: "fog_color",
+                message: "Weather [12:00:00] writes 2 of fog_color's 3 components",
+                rule: EEnvironmentRule.ENGINE,
+                section: "12:00:00",
+              },
+            ],
+          }),
+        ],
+      })
+    ),
+    ...responses,
+  });
+
+  const container: Container = mockPanelContainer();
+  const load: LevelLoadService = container.get(LevelLoadService);
+  const weather: LevelWeatherService = container.get(LevelWeatherService);
+  const result: RenderResult = renderWithProviders(<LevelWeatherPanel />, { container });
+
+  // Mounting provisions the container: that restores the level the backend holds, and its weather opens with it.
+  await waitFor(() => expect(load.selection.isRestored).toBe(true));
+  await waitFor(() => expect(weather.description.isLoading || weather.cycle.isLoading).toBe(false));
+
+  return { ...result, weather };
+}
+
+afterEach(() => {
+  asked.length = 0;
+  jest.restoreAllMocks();
+  resetMockInvoke();
+  clearLocalStorage();
+});
+
+describe("LevelWeatherPanel", () => {
+  it("plays the level's own cycle first, marked, then the game's others, with the playing one's findings", async () => {
+    const { getByRole, getByTestId } = await renderPanel();
+
+    expect(getByRole("button", { name: "Weather" })).toHaveAttribute("aria-pressed", "true");
+    expect(getByRole("combobox", { name: "Cycle" }).textContent).toBe("default_clear");
+
+    await userEvent.click(getByRole("combobox", { name: "Cycle" }));
+
+    expect(getByRole("listbox").textContent).toMatch(/default_clear · level.*default_rain.*3 findings/);
+    expect(getByTestId("level-weather-findings-section").textContent).toContain("writes 2 of fog_color");
+    expect(getByTestId("level-weather-clock-section").textContent).toContain("12:00:00");
+  });
+
+  it("plays a cycle picked from the list, lights by hand on asking, and by the weather again on a pick", async () => {
+    const { getByRole, getByTestId, weather } = await renderPanel();
+
+    await userEvent.click(getByRole("combobox", { name: "Cycle" }));
+    await userEvent.click(getByRole("option", { name: /default_rain/ }));
+    await waitFor(() => expect(weather.cycle.value?.name).toBe("default_rain"));
+
+    await userEvent.click(getByRole("button", { name: "Manual" }));
+
+    expect(weather.source).toBe(ELevelWeatherSource.MANUAL);
+    await waitFor(() => expect(weather.weather?.kind).toBe(EWorldWeatherPlay.KEYFRAME));
+    expect(getByTestId("level-weather-play-section").textContent).toContain("Seeded from");
+    expect(getByRole("checkbox", { name: "Dynamic sun" })).toBeDisabled();
+
+    await userEvent.click(getByRole("combobox", { name: "Cycle" }));
+    await userEvent.click(getByRole("option", { name: /default_clear/ }));
+
+    await waitFor(() => expect(weather.source).toBe(ELevelWeatherSource.WEATHER));
+    expect(weather.cycle.value?.name).toBe("default_clear");
+  });
+
+  it("goes back to the weather from the keyframe set by hand", async () => {
+    const { getByRole, weather } = await renderPanel();
+
+    await userEvent.click(getByRole("button", { name: "Manual" }));
+    await userEvent.click(getByRole("button", { name: "Play the weather" }));
+
+    expect(weather.source).toBe(ELevelWeatherSource.WEATHER);
+  });
+
+  it("runs the clock from its button, and offers the dynamic sun on vanilla alone", async () => {
+    const { getByRole, weather } = await renderPanel();
+
+    await userEvent.click(getByRole("button", { name: "Play" }));
+
+    expect(weather.control.isPaused).toBe(false);
+    expect(getByRole("checkbox", { name: "Dynamic sun" })).not.toBeChecked();
+  });
+
+  it("says why the weather cannot light a level whose weather does not read, and keeps it manual", async () => {
+    const { getByRole, getByTestId } = await renderPanel({
+      [ELevelsCommand.DESCRIBE_WEATHER]: () => Promise.reject(new Error("The configs are gone")),
+    });
+
+    expect(getByRole("button", { name: "Weather" })).toBeDisabled();
+    expect(getByRole("button", { name: "Manual" })).toHaveAttribute("aria-pressed", "true");
+    expect(getByTestId("level-weather-play-section").textContent).toContain("The configs are gone");
+  });
+
+  it("stands the sun by the table on extended where the game has one", async () => {
+    const { getByTestId, queryByRole } = await renderPanel({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(
+        mockLevelWeatherDescription({ engine: EXrayEngine.EXTENDED, sunTable: [] })
+      ),
+    });
+
+    expect(queryByRole("checkbox", { name: "Dynamic sun" })).not.toBeInTheDocument();
+    expect(getByTestId("level-weather-clock-section").textContent).toContain("sun table");
+  });
+
+  // A game made for OpenXRay, opened on extended, has no table: its keyframes stand the sun, as on vanilla.
+  it("stands the sun by the keyframes on extended where the game has no table", async () => {
+    const { getByRole, getByTestId } = await renderPanel({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(
+        mockLevelWeatherDescription({ engine: EXrayEngine.EXTENDED, sunTable: null })
+      ),
+    });
+
+    expect(getByRole("checkbox", { name: "Dynamic sun" })).toBeInTheDocument();
+    expect(getByTestId("level-weather-clock-section").textContent).not.toContain("sun table");
+  });
+
+  it("plays an effect over the cycle, and says what is left of the one playing with a way to end it", async () => {
+    const { getByRole, getByTestId, weather } = await renderPanel();
+
+    await userEvent.click(getByRole("combobox", { name: "Effect" }));
+    await userEvent.click(getByRole("option", { name: /fx_blowout/ }));
+
+    expect(asked).toEqual(["effect fx_blowout"]);
+
+    act(() =>
+      weather.noteReport(mockWorldWeatherReport({ effect: { name: "fx_blowout", remaining: 125 }, time: 43_300 }))
+    );
+
+    await waitFor(() =>
+      expect(getByTestId("level-weather-play-section").textContent).toContain("00:02:05 of game time left")
+    );
+
+    await userEvent.click(getByRole("combobox", { name: "Effect" }));
+    await userEvent.click(getByRole("option", { name: "None" }));
+
+    expect(asked).toEqual(["effect fx_blowout", "effect null"]);
+  });
+
+  it("says what ambient effect plays near the camera and asks for one at once", async () => {
+    const { getByRole, getByTestId, weather } = await renderPanel();
+
+    act(() =>
+      weather.noteReport(
+        mockWorldWeatherReport({
+          ambient: {
+            effect: { name: "effect_6", particles: "nature\\fog_stormy_01", remaining: 4_000 },
+            isIndoors: false,
+            played: 1,
+            wait: 20_000,
+          },
+        })
+      )
+    );
+
+    await waitFor(() => expect(getByTestId("level-weather-ambient-section").textContent).toContain("effect_6"));
+
+    await userEvent.click(getByRole("button", { name: "Play one now" }));
+
+    expect(asked).toEqual(["ambient"]);
+  });
+
+  it("says how many of the level's own overrides there are, and how many reach the camera", async () => {
+    const { getByTestId, weather } = await renderPanel({
+      [ELevelsCommand.DESCRIBE_WEATHER]: mockSessionResponse(
+        mockLevelWeatherDescription({
+          modifiers: [
+            {
+              ambient: { x: 0, y: 0, z: 0 },
+              farPlane: 100,
+              fogColor: { x: 0, y: 0, z: 0 },
+              fogDensity: 0,
+              hemiColor: { x: 0, y: 0, z: 0 },
+              position: { x: 0, y: 0, z: 0 },
+              power: 1,
+              radius: 10,
+              skyColor: { x: 0, y: 0, z: 0 },
+              useFlags: 1,
+            },
+          ],
+        })
+      ),
+    });
+
+    function section(): string {
+      return getByTestId("level-weather-modifiers-section").textContent ?? "";
+    }
+
+    expect(section()).toMatch(/Volumes\s*1.*Around the camera\s*0/);
+
+    act(() => weather.noteReport(mockWorldWeatherReport({ modifiers: 1, weight: 1 })));
+
+    await waitFor(() => expect(section()).toMatch(/Around the camera\s*1/));
+  });
+
+  it("stands empty until a level is open", () => {
+    const { getByTestId } = renderWithProviders(<LevelWeatherPanel />, {
+      container: mockPanelContainer(),
+    });
+
+    expect(getByTestId("level-weather-panel").textContent).toContain("No level open");
+  });
+});

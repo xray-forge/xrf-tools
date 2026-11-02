@@ -21,7 +21,7 @@ use xrf_pack::{
   ArchiveExtractDirectoryResult, ArchiveExtractOptions, ArchivePackConfig, ArchivePacker, ArchiveUnpackResult,
   ArchiveUnpacker,
 };
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 
 /// Entries per archive, held constant so depth is the only thing that varies.
 const ENTRY_COUNT: usize = 512;
@@ -42,11 +42,8 @@ fn one_worker() -> NonZeroUsize {
 /// `.dds` rather than `.ltx`: the packer compresses configs and stores textures, and a decoder running per entry would
 /// drown the filesystem work this measures.
 fn create_source_tree(scope: &str, depth: usize) -> PathBuf {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("bench/{scope}/source"));
-
-  if root.exists() {
-    fs::remove_dir_all(&root).expect("a source tree can be replaced");
-  }
+  let root: PathBuf =
+    GeneratedResources::create_dir(&format!("bench/{scope}/source")).expect("a source tree can be replaced");
 
   let payload: Vec<u8> = vec![0x41; PAYLOAD_SIZE];
 
@@ -69,7 +66,7 @@ fn create_source_tree(scope: &str, depth: usize) -> PathBuf {
 /// Pack a source tree into its own volume set and open it, so the timed region only unpacks.
 fn create_project(scope: &str, depth: usize) -> ArchiveProject {
   let source: PathBuf = create_source_tree(scope, depth);
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("bench/{scope}/db"));
+  let destination: PathBuf = GeneratedResources::path(&format!("bench/{scope}/db"));
 
   if destination.exists() {
     fs::remove_dir_all(&destination).expect("a destination can be replaced");
@@ -84,7 +81,7 @@ fn create_project(scope: &str, depth: usize) -> ArchiveProject {
 
 /// An empty destination for one iteration, outside the timed region.
 fn reset_destination(scope: &str) -> PathBuf {
-  let path: PathBuf = build_absolute_generated_test_resource_path(&format!("bench/{scope}/out"));
+  let path: PathBuf = GeneratedResources::path(&format!("bench/{scope}/out"));
 
   if path.exists() {
     fs::remove_dir_all(&path).expect("a destination can be emptied");

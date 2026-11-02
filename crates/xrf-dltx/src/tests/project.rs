@@ -5,21 +5,15 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use xrf_error::XrfResult;
-use xrf_ltx::{LtxDialect, LtxProject, LtxProjectOptions, LtxResolution, LtxStandardDialect};
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_ltx::{Ltx, LtxDialect, LtxProject, LtxProjectOptions, LtxResolution, LtxStandardDialect};
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{XrayLogicalPath, XrayMountMode, XrayRoots};
 
 use crate::dltx_dialect::DltxDialect;
 
 /// Writes a base config and one patch file beside it.
 fn patched_tree(name: &str) -> XrfResult<PathBuf> {
-  let root: PathBuf = build_absolute_generated_test_resource_path(&format!("dltx_project/{name}"));
-
-  if root.exists() {
-    fs::remove_dir_all(&root)?;
-  }
-
-  fs::create_dir_all(&root)?;
+  let root: PathBuf = GeneratedResources::create_dir(&format!("dltx_project/{name}"))?;
 
   fs::write(
     root.join("system.ltx"),
@@ -122,6 +116,25 @@ fn the_same_tree_resolves_differently_under_each_dialect() -> XrfResult {
 }
 
 #[test]
+fn a_config_read_by_a_forward_slash_path_still_finds_its_patches() -> XrfResult {
+  // A host path, as a file read by path hands it over: forward slashes on Linux, and wherever a caller writes them on
+  // Windows. Its directory is where the patch files are listed and the includes resolved from.
+  let root: PathBuf = patched_tree("forward_slash")?;
+  let path: String = format!("{}/system.ltx", root.to_string_lossy().replace('\\', "/"));
+  let ltx: Ltx = Ltx::read_from_file_with_dialect(&path, &DltxDialect)?;
+
+  assert_eq!(
+    ltx.get_from("wpn_ak74", "cost"),
+    Some("9999"),
+    "the patch beside it wins"
+  );
+
+  fs::remove_dir_all(root)?;
+
+  Ok(())
+}
+
+#[test]
 fn dltx_mode_reports_a_dialect_name_a_caller_can_show() {
   assert_eq!(DltxDialect.get_name(), "dltx");
   assert_eq!(LtxStandardDialect.get_name(), "ltx");
@@ -130,8 +143,11 @@ fn dltx_mode_reports_a_dialect_name_a_caller_can_show() {
 #[test]
 fn a_lean_project_resolves_the_patched_values_it_never_listed() -> XrfResult {
   let root: PathBuf = patched_tree("lean")?;
-  let project: LtxProject = LtxProject::open_lean_at_roots_opt(
-    &XrayRoots::one(root.clone(), XrayMountMode::Directory),
+  let project: LtxProject = LtxProject::open_lean_at_search_opt(
+    &root,
+    &XrayRoots::one(root.clone(), XrayMountMode::Directory)
+      .to_search_plan()?
+      .open()?,
     None,
     LtxProjectOptions::default().with_dialect(Arc::new(DltxDialect)),
   )?;

@@ -3,12 +3,12 @@ use std::path::{Path, PathBuf};
 
 use xrf_error::XrfResult;
 use xrf_extension::XrayExtension;
+use xrf_gamemtl::GameMtlFile;
 use xrf_ltx::{Ltx, LtxProject};
 use xrf_utils::format_path;
 use xrf_vfs::{XrayAssetType, XrayLogicalPath};
 use xrf_xml::{XmlDocument, XmlParseOptions};
 
-use crate::project::gamedata_project::CONFIGS_DIRECTORY;
 use crate::project::sounds::sound_references_verification_result::GamedataSoundReferencesVerificationResult;
 use crate::{GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions, GamedataVerificationRule};
 
@@ -40,6 +40,7 @@ impl<'a> SoundReferencesVerifier<'a> {
 
     self.verify_references_in_configs(&sound_names, &sound_roots, &mut result);
     self.verify_references_in_xml(&sound_names, &sound_roots, &mut result);
+    self.verify_references_in_game_materials(&sound_names, &mut result);
 
     self.options.job.check_cancelled()?;
 
@@ -105,7 +106,11 @@ impl<'a> SoundReferencesVerifier<'a> {
 
       let logical_path: &XrayLogicalPath = location.get_logical_path();
 
-      if !logical_path.is_under(CONFIGS_DIRECTORY).unwrap_or(false) || !logical_path.has_extension(XrayExtension::Xml) {
+      if !logical_path
+        .is_under(GamedataProject::CONFIGS_DIRECTORY)
+        .unwrap_or(false)
+        || !logical_path.has_extension(XrayExtension::Xml)
+      {
         continue;
       }
 
@@ -150,6 +155,42 @@ impl<'a> SoundReferencesVerifier<'a> {
         if Self::is_direct_sound_reference(sound_roots, reference) {
           self.verify_reference(sound_names, reference, &path, "<sound>", result);
         }
+      }
+    }
+  }
+
+  /// The sounds material pairs play when broken, stepped on and collided with, each once however many pairs name it.
+  /// Every entry is a sound path, so none is screened by its root. Checked only where the library reads; the materials
+  /// check reports it otherwise.
+  fn verify_references_in_game_materials(
+    &self,
+    sound_names: &HashSet<String>,
+    result: &mut GamedataSoundReferencesVerificationResult,
+  ) {
+    let Ok(library) = self.project.game_materials() else {
+      return;
+    };
+
+    for (label, entries) in [
+      (
+        "breaking sounds",
+        library.get_list_entries(|pair| &pair.breaking_sounds),
+      ),
+      ("step sounds", library.get_list_entries(|pair| &pair.step_sounds)),
+      ("collide sounds", library.get_list_entries(|pair| &pair.collide_sounds)),
+    ] {
+      for (reference, pairs_count) in entries {
+        if self.options.job.is_cancelled() {
+          return;
+        }
+
+        self.verify_reference(
+          sound_names,
+          reference,
+          Path::new(GameMtlFile::FILE_NAME),
+          &format!("{label} of {pairs_count} pairs"),
+          result,
+        );
       }
     }
   }

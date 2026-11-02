@@ -1,24 +1,13 @@
 use std::time::Duration;
 
 use indexmap::IndexMap;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-/// What one language's build produced.
-#[derive(Clone, Debug, Default, Deserialize, Serialize)]
-#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
-#[serde(rename_all = "camelCase")]
-pub struct TranslationBuildLanguageSummary {
-  pub language: String,
-  /// String tables written for this language, one per source.
-  pub files: u32,
-  /// Ids compiled into them, counting an id once per file it appears in.
-  ///
-  /// A missing translation still compiles - to the id itself, which is the engine's own fallback - so
-  /// this counts what the tables hold rather than what was translated.
-  pub entries: u32,
-}
+use crate::project::build::translation_build_language_summary::TranslationBuildLanguageSummary;
 
+/// What a build produced, across every language it built.
 #[derive(Debug, Default, Serialize)]
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[serde(rename_all = "camelCase")]
 pub struct TranslationBuildResult {
   /// Whether the run compiled every source or was stopped between them.
@@ -27,6 +16,7 @@ pub struct TranslationBuildResult {
   /// state running it again resolves.
   pub outcome: xrf_job::JobOutcome,
   #[serde(with = "xrf_utils::duration_ms")]
+  #[cfg_attr(feature = "typescript-bindings", specta(type = u64))]
   pub duration: Duration,
   /// Sources read, whatever they built into.
   pub sources: u32,
@@ -35,6 +25,7 @@ pub struct TranslationBuildResult {
   /// Per language, in build order.
   pub languages: Vec<TranslationBuildLanguageSummary>,
   #[serde(skip_serializing)]
+  #[cfg_attr(feature = "typescript-bindings", specta(skip))]
   language_index: IndexMap<String, usize>,
 }
 

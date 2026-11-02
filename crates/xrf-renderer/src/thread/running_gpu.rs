@@ -2,7 +2,7 @@ use wgpu::util::StagingBelt;
 use xrf_renderer_core::GraphRuntime;
 
 use crate::frame::frame_encoder::FrameEncoder;
-use crate::frame::frame_span_timer::FrameSpanTimer;
+use crate::frame::timing::frame_span_timer::FrameSpanTimer;
 use crate::host::render_cache_store::RenderCacheStore;
 use crate::thread::gpu_state::GpuState;
 

@@ -11,14 +11,16 @@
 #import "common/luminance"
 #import "common/srgb"
 #import "common/display_transform"
+#import "common/lens"
 
-// The viewport's finished scene put into its rectangle of the window, moved where the water and the particles distort
-// it; or, for a debug view, one of the targets the scene was built from.
+// The viewport's finished scene put into its rectangle of the window; or, for a debug view, one of the targets the
+// scene was built from.
 
-// The scene, what the water and the particles move what is seen through them by, the targets a debug view shows, what
+// The scene, the targets a debug view shows, what
 // the frame shows, the frame upscaled or the scene again (filtered for the debanding's reads), the bloom, finished in
-// the engine's 256-square target or at half the frame's size for the enhanced bloom, the indirect light at half the
-// frame's size, and the reflections and how their rays ended, at the size they are traced at.
+// the engine's 256-square target or at half the frame's size for the enhanced bloom, the indirect light gathered at
+// half the frame's size or traced at its size, and the reflections and how their rays ended, at the size they are
+// traced at.
 #import "generated/frame/present"
 
 const VIEW_ALBEDO: u32 = 1u;
@@ -77,13 +79,6 @@ const GRASS_STRIPE_WIDTH: i32 = 2;
 // One step of the eight-bit window the frame is written to.
 const OUTPUT_STEP: f32 = 1.0 / 255.0;
 
-// What the distortion target holds where nothing distorts it.
-const NEUTRAL_DISTORTION: f32 = 127.0 / 255.0;
-
-// Metres, and the share of its own depth, what a move reads may stand nearer than what the pixel shows behind it.
-const NEARER_MARGIN: f32 = 0.25;
-const NEARER_SHARE: f32 = 0.02;
-
 // Half a step either way by interleaved gradient noise (Jimenez, 2014), so a flat gradient falls between two steps as
 // a fine grain rather than as bands.
 fn output_dither(pixel: vec2<f32>) -> vec3<f32> {
@@ -92,11 +87,19 @@ fn output_dither(pixel: vec2<f32>) -> vec3<f32> {
   return vec3<f32>((noise - 0.5) * OUTPUT_STEP);
 }
 
-// How far along the view a texel of the viewport's targets lies, farther than anything where nothing was drawn.
-fn view_distance(texel: vec2<i32>) -> f32 {
-  let stored: f32 = textureLoad(depth_target, texel, 0);
+// How far the grain at its strongest moves a displayed value either way.
+const GRAIN_REACH: f32 = 0.15;
 
-  return select(-camera_view_position(vec2<f32>(texel) + 0.5, stored).z, 1e6, stored <= 0.0);
+// A displayed colour on the camera's film (`Present::grain`): its grain at the pixel, by its brightness, after the
+// display transform as film's grain is seen, and before the dither the window rounds by.
+fn on_film(color: vec3<f32>, pixel: vec2<f32>) -> vec3<f32> {
+  if (present.grain.x <= 0.0) {
+    return color;
+  }
+
+  let grain: f32 = lens_grain(pixel, present.grain.y, u32(present.grain.z));
+
+  return color + grain * present.grain.x * GRAIN_REACH * lens_grain_response(luminance(color));
 }
 
 // One target of the frame at a texel, as a colour.
@@ -276,23 +279,85 @@ fn selection_share(texel: vec2<i32>) -> f32 {
   return 0.0;
 }
 
+// Drawn texels around a marked model its outline reaches, how much of its colour tints it, and how a faded texel shows:
+// greyed by this share and dimmed to this much of its light.
+const MARK_REACH: i32 = 1;
+const MARK_TINT: f32 = 0.15;
+const REST_GREY: f32 = 0.85;
+const REST_DIM: f32 = 0.35;
+
+// The colour the helpers marked a drawn texel in, with one in alpha where they marked it, held to the targets' edges.
+fn mark_at(texel: vec2<i32>) -> vec4<f32> {
+  let last: vec2<i32> = vec2<i32>(camera.viewport.xy) - 1;
+
+  return textureLoad(mark_target, clamp(texel, vec2<i32>(0), last), 0);
+}
+
+// A shown colour with what the helpers and the selection lay over it: a marked model tinted in its helper's colour and
+// outlined a texel round in it, what neither a mark nor the selection with its outline covers greyed and dimmed where
+// the rest fades, then the selection's outline and tint over all.
+fn laid_over(color: vec3<f32>, texel: vec2<i32>) -> vec3<f32> {
+  let selected: f32 = selection_share(texel);
+  var shown: vec3<f32> = color;
+  var is_covered: bool = selected > 0.0;
+
+  if (present.marks.x != 0.0) {
+    let own: vec4<f32> = mark_at(texel);
+
+    if (own.a > 0.5) {
+      shown = mix(shown, own.rgb, MARK_TINT);
+      is_covered = true;
+    } else {
+      for (var y: i32 = -MARK_REACH; y <= MARK_REACH && !is_covered; y += 1) {
+        for (var x: i32 = -MARK_REACH; x <= MARK_REACH; x += 1) {
+          let near: vec4<f32> = mark_at(texel + vec2<i32>(x, y));
+
+          if (near.a > 0.5) {
+            shown = near.rgb;
+            is_covered = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  if (present.marks.y != 0.0 && !is_covered) {
+    shown = mix(shown, vec3<f32>(luminance(shown)), REST_GREY) * REST_DIM;
+  }
+
+  return mix(shown, present.selection.rgb, selected);
+}
+
 // The drawn texel under a point of the viewport, in its pixels.
 fn drawn_texel(pixel: vec2<f32>) -> vec2<i32> {
   return to_drawn_texel(pixel, camera.viewport.xy, present.size);
 }
 
-// `combine_2`'s bloom over a colour: the bloom read where the scene is; where the distortion (`strength`) blurs, the
-// colour first goes towards it by the distortion's `z`, `lerp(img, bloom * def_hdr, distort.z)`; then the bloom added,
-// `combine_bloom`.
-fn engine_bloomed(color: vec3<f32>, read: vec2<f32>, texel: vec2<i32>, strength: f32) -> vec3<f32> {
-  let bloom: vec4<f32> = textureSampleLevel(bloom_target, bloom_sampler, (read + 0.5) / present.size, 0.0);
-  var bloomed: vec3<f32> = color;
+// `combine_2`'s bloom added over a colour at a pixel, `combine_bloom`; its blur by the distortion's `z` came before the
+// resolve (`frame/distort.wgsl`).
+fn engine_bloomed(color: vec3<f32>, pixel: vec2<f32>) -> vec3<f32> {
+  let bloom: vec4<f32> = textureSampleLevel(bloom_target, bloom_sampler, (pixel + 0.5) / present.size, 0.0);
 
-  if (strength > 0.0) {
-    bloomed = mix(bloomed, bloom.rgb * DEF_HDR, textureLoad(distortion, texel, 0).z);
-  }
+  return color + bloom.rgb * bloom.a;
+}
 
-  return bloomed + bloom.rgb * bloom.a;
+// One where nothing was drawn at a drawn texel, held to the frame's edges.
+fn sky_at(texel: vec2<i32>) -> f32 {
+  let last: vec2<i32> = vec2<i32>(camera.viewport.xy) - 1;
+
+  return select(0.0, 1.0, textureLoad(depth_target, clamp(texel, vec2<i32>(0), last), 0) <= 0.0);
+}
+
+// How much of the drawn frame about a pixel is the sky, the bilinear share of the four drawn texels around its
+// centre: the frame is drawn jittered, and one texel would flip a skyline's pixels in and out of the debanding.
+fn sky_share(pixel: vec2<f32>) -> f32 {
+  let position: vec2<f32> = (pixel + 0.5) / present.size * camera.viewport.xy - 0.5;
+  let corner: vec2<i32> = vec2<i32>(floor(position));
+  let f: vec2<f32> = position - floor(position);
+
+  return mix(mix(sky_at(corner), sky_at(corner + vec2<i32>(1, 0)), f.x),
+    mix(sky_at(corner + vec2<i32>(0, 1)), sky_at(corner + vec2<i32>(1, 1)), f.x), f.y);
 }
 
 @fragment
@@ -312,71 +377,47 @@ fn fs_present(in: FullscreenVarying) -> @location(0) vec4<f32> {
     return vec4<f32>(saturate(shown_target(texel)), 1.0);
   }
 
-  var read: vec2<f32> = pixel;
-  let strength: f32 = present.distortion;
-
-  // `combine_2`'s `USE_DISTORT`: the scene read where the distortion target moves each pixel, `(distort.xy - .5) *
-  // def_distort`. A move that would read something standing nearer than what the pixel shows reads the pixel itself:
-  // a departure from the engine, whose water copies a railing standing in it into the water beside it.
-  if (strength > 0.0) {
-    let offset: vec2<f32> = (textureLoad(distortion, texel, 0).xy - NEUTRAL_DISTORTION) * strength;
-
-    // A pixel nothing moves reads itself, with no depths to compare.
-    if (any(offset != vec2<f32>(0.0))) {
-      let moved: vec2<f32> = clamp(pixel + offset * present.size, vec2<f32>(0.0), present.size - 1.0);
-      let here: f32 = view_distance(texel);
-      let there: f32 = view_distance(drawn_texel(moved));
-
-      if (there >= here - max(NEARER_MARGIN, here * NEARER_SHARE)) {
-        read = moved;
-      }
-    }
-  }
-
-  var color: vec3<f32> = select(textureLoad(scene, drawn_texel(read), 0).rgb,
-    textureLoad(upscaled, vec2<i32>(read), 0).rgb, present.is_upscaled != 0u);
+  // `combine_2`'s `USE_DISTORT`, its move and its blur, came before the resolve (`frame/distort.wgsl`).
+  let drawn: vec3<f32> = select(textureLoad(scene, texel, 0).rgb, textureLoad(upscaled, vec2<i32>(pixel), 0).rgb,
+    present.is_upscaled != 0u);
 
   let display: vec4<f32> = present.display;
   // The physical light's engine bloom is light, built from its linear scene, so it joins the scene as light before the
   // display transform; the engine's joins its shown frame after, as `combine_2` adds it.
   let is_bloom_light: bool = present.is_bloomed == BLOOM_ENGINE && u32(display.x) >= DISPLAY_ENGINE_ENCODED;
-
-  if (is_bloom_light) {
-    color = engine_bloomed(color, read, texel, strength);
-  }
-
   // A scene of linear light at its exposure is shown here, by the engine's curve or the physical light's display
   // transform and encoding, before everything the engine lays over its displayed frame.
-  color = shown_for_display(color, display);
+  let unbloomed: vec3<f32> = shown_for_display(drawn, display);
+  var color: vec3<f32> = unbloomed;
 
-  // The sky debanding, where nothing was drawn, over the shown steps it bands in: its neighbours read about the pixel
-  // itself, not where the distortion moved its read.
-  if (present.deband.x > 0.0 && textureLoad(depth_target, texel, 0) <= 0.0) {
-    color = debanded(upscaled, bloom_sampler, color, (pixel + 0.5) / present.size, 1.0 / present.size,
-      u32(present.deband.x), present.deband.y, present.deband.z, display);
+  if (is_bloom_light) {
+    color = shown_for_display(engine_bloomed(drawn, pixel), display);
   }
 
-  // The enhanced bloom screened over the frame, `1 - (1 - img)(1 - bloom)`, before its corrections; where the
-  // distortion blurs, the corrected frame then goes towards the bloom by the distortion's `z`, as the engine's does.
+  // The sky debanding, by how much of the drawn frame about the pixel is the sky, over the shown steps it bands in:
+  // its neighbours read about the pixel. They are read without the bloom, so where the bloom joined as light the
+  // frame is debanded as it shows without it and the bloom's share kept, as the engine debands before its bloom: a
+  // bloomed pixel against its unbloomed neighbours would blend the bloom's faint edge away and leave a ring.
+  let sky: f32 = select(0.0, sky_share(pixel), present.deband.x > 0.0);
+
+  if (sky > 0.0) {
+    let blended: vec3<f32> = debanded(upscaled, bloom_sampler, unbloomed, (pixel + 0.5) / present.size,
+      1.0 / present.size, u32(present.deband.x), present.deband.y, present.deband.z, display);
+
+    color = select(mix(color, blended, sky), color + (blended - unbloomed) * sky, is_bloom_light);
+  }
+
+  // The enhanced bloom screened over the frame, `1 - (1 - img)(1 - bloom)`, before its corrections.
   if (present.is_bloomed == BLOOM_ENHANCED) {
-    let bloom: vec3<f32> = textureSampleLevel(bloom_target, bloom_sampler, (read + 0.5) / present.size, 0.0).rgb;
-    var finished: vec3<f32> = corrected(1.0 - (1.0 - saturate(color)) * (1.0 - bloom));
-
-    if (strength > 0.0) {
-      finished = mix(finished, bloom * DEF_HDR, textureLoad(distortion, texel, 0).z);
-    }
-
-    let shown: vec3<f32> = mix(finished, present.selection.rgb, selection_share(texel));
-
-    return vec4<f32>(shown + output_dither(in.clip.xy), 1.0);
+    let bloom: vec3<f32> = textureSampleLevel(bloom_target, bloom_sampler, (pixel + 0.5) / present.size, 0.0).rgb;
+    let finished: vec3<f32> = on_film(corrected(1.0 - (1.0 - saturate(color)) * (1.0 - bloom)), pixel);
+    return vec4<f32>(laid_over(finished, texel) + output_dither(in.clip.xy), 1.0);
   }
 
   // The engine's bloom over its shown frame, as `combine_2` adds it.
   if (present.is_bloomed == BLOOM_ENGINE && !is_bloom_light) {
-    color = engine_bloomed(color, read, texel, strength);
+    color = engine_bloomed(color, pixel);
   }
 
-  let shown: vec3<f32> = mix(corrected(color), present.selection.rgb, selection_share(texel));
-
-  return vec4<f32>(shown + output_dither(in.clip.xy), 1.0);
+  return vec4<f32>(laid_over(on_film(corrected(color), pixel), texel) + output_dither(in.clip.xy), 1.0);
 }

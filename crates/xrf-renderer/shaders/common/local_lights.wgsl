@@ -2,7 +2,7 @@
 #import "generated/structs"
 
 // A local light as it lights a point in view space, shared by the lights pass and a traced hit: its falloff, a spot's
-// cone and projector, and a shadowed light's map in the shadow atlas, as `pass/light_record.rs` writes its record.
+// cone and projector, and a shadowed light's map in the shadow atlas, as `scene/level/lights/light_record.rs` writes its record.
 
 // `gbd.P += gbd.N * 0.015`: the virtual offset `accum_base` moves a point by with the optimised G-buffer.
 const VIRTUAL_OFFSET: f32 = 0.015;
@@ -76,16 +76,18 @@ fn light_falloff(record: LightRecord, to_point: vec3<f32>) -> f32 {
   return saturate(1.0 - dot(to_point, to_point) * record.position.w);
 }
 
-// The physical levels' intensity, as a share of a light's colour at the square of its reach: what makes its falloff
-// give the engine's a third of the way out, `(8 / 9) / (9 * (1 - 1 / 81)²)`.
-const LIGHT_THIRD_SHARE: f32 = 0.10125;
+// The inverse square's intensity, as a share of a light's colour at the square of its reach: what gives as much light
+// within the reach as the engine's falloff does, `∫(1 - x²)x² dx / ∫(1 - x⁴)² dx = (2 / 15) / (32 / 45) = 3 / 16`
+// over the reach's share `x`. Matched instead a third of the way out (0.10125), a room lit from past that third read
+// 1.1 stops under the authored levels'; matched by energy, 0.35.
+const LIGHT_ENERGY_SHARE: f32 = 0.1875;
 
 // The share of a light's colour that reaches a point within its reach. The engine's falloff, `1 - d²/r²`, which the
-// game's lamps are placed and tuned by; at the physical levels (`is_inverse_square`) the inverse square from the
-// light's bulb (`shadow.w`, its radius squared), windowed to zero at the reach (Karis, "Real Shading in
-// Unreal Engine 4", SIGGRAPH 2013, the bulb in place of his one), at the intensity that gives what the engine's falloff
-// gave a third of the way out. A light taken at one point for a volume `spread` metres about it (a froxel's cell) stops
-// growing within that too, as within its bulb, rather than give the whole cell what its centre would take.
+// game's lamps are placed and tuned by; where the view asks for it (`is_inverse_square`) the inverse square from the
+// light's bulb (`shadow.w`, its radius squared), windowed to zero at the reach (Karis, "Real Shading in Unreal Engine
+// 4", SIGGRAPH 2013, the bulb in place of his one), at the intensity that gives as much light within the reach as the
+// engine's falloff (`LIGHT_ENERGY_SHARE`). A light taken at one point for a volume `spread` metres about it (a froxel's
+// cell) stops growing within that too, as within its bulb, rather than give the whole cell what its centre would take.
 fn light_share(record: LightRecord, to_point: vec3<f32>, is_inverse_square: bool, spread: f32) -> f32 {
   let reach: f32 = dot(to_point, to_point) * record.position.w;
 
@@ -97,7 +99,7 @@ fn light_share(record: LightRecord, to_point: vec3<f32>, is_inverse_square: bool
 
   let nearest: f32 = max(record.shadow.w, spread * spread);
 
-  return LIGHT_THIRD_SHARE * window * window / max(max(reach, nearest * record.position.w), 1e-12);
+  return LIGHT_ENERGY_SHARE * window * window / max(max(reach, nearest * record.position.w), 1e-12);
 }
 
 // Whether a point stands outside a spot's cone or behind its apex; never for a light without a cone.

@@ -1,0 +1,132 @@
+import { useInjection } from "@wirestate/react";
+import { filterByName } from "@xrf/search";
+import { Nullable } from "@xrf/types";
+import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { PlayArrowIcon } from "@xrf/ui/icons/play-arrow";
+import { Tooltip } from "@xrf/ui/material/tooltip";
+import { cn } from "@xrf/ui/theme";
+import { ITreeNode, IUseTreeState, useTreeState, VirtualizedTree } from "@xrf/ui/tree";
+import { ReactElement, ReactNode, useCallback, useEffect, useMemo } from "react";
+
+import { VisualMotionService } from "@/core/visuals/services/visual-motion";
+
+import { getMotionNodeName, groupMotionNames, listMotionGroupIds } from "./motion-groups";
+
+export interface IVisualMotionListProps extends BaseComponentProps {
+  /** What the panel's filter field holds, already the user's whole query. */
+  filter: string;
+}
+
+/**
+ * Every motion the open visual can play, grouped by the token its name starts with.
+ */
+export function VisualMotionList({
+  "data-testid": dataTestId = "visual-motion-list",
+  id,
+  className,
+  filter,
+}: IVisualMotionListProps): ReactElement {
+  const service: VisualMotionService = useInjection(VisualMotionService);
+  const tree: IUseTreeState = useTreeState();
+  const { expandAll, select } = tree;
+
+  // The async state's own value is what the memo depends on: a default of `[]` is a fresh array every render, which as a
+  // dependency would regroup on each one.
+  const listed: Nullable<Array<string>> = service.motions.value;
+  const posed: Nullable<string> = service.posed.value?.name ?? null;
+
+  const matched: Array<string> = useMemo(() => {
+    return filterByName(listed ?? [], filter, (name: string) => name);
+  }, [filter, listed]);
+
+  const nodes: Array<ITreeNode<string>> = useMemo(() => groupMotionNames(matched), [matched]);
+
+  /** Marks the motion the viewport is posing, which selection cannot say: selection is where the user is. */
+  const renderLabel = useCallback(
+    (item: ITreeNode<string>): ReactNode =>
+      item.payload === posed ? (
+        <div className={"flex min-w-0 items-center gap-1"}>
+          <span className={"min-w-0 overflow-hidden text-ellipsis"}>{item.label}</span>
+
+          <Tooltip title={"Posed in the viewport"}>
+            <PlayArrowIcon fontSize={"inherit"} className={"shrink-0 text-primary"} />
+          </Tooltip>
+        </div>
+      ) : (
+        item.label
+      ),
+    [posed]
+  );
+
+  const onSelect = useCallback((item: ITreeNode<string>) => select(item.id), [select]);
+
+  /** Posing reads and bakes a motion, which is work, so it waits for the gesture that means work. */
+  const onActivate = useCallback(
+    (item: ITreeNode<string>) => {
+      const name: Nullable<string> = getMotionNodeName(item.id);
+
+      if (name) {
+        void service.open(name);
+      }
+    },
+    [service]
+  );
+
+  // A filter that matched inside a family opens it, because a closed family answering a query looks like no answer.
+  // Additive, so a family opened by hand stays open once the query is cleared.
+  useEffect(() => {
+    if (filter.trim()) {
+      expandAll(listMotionGroupIds(nodes));
+    }
+  }, [expandAll, filter, nodes]);
+
+  if (service.motions.isLoading) {
+    return (
+      <EditorPanelEmpty
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        label={"Listing motions. Every animation file the visual references is read once."}
+      />
+    );
+  }
+
+  if (!listed?.length) {
+    return (
+      <EditorPanelEmpty
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        label={service.motions.error?.message ?? "This visual references animation files that name no motions."}
+      />
+    );
+  }
+
+  if (!nodes.length) {
+    return (
+      <EditorPanelEmpty
+        data-testid={dataTestId}
+        id={id}
+        className={className}
+        label={`No motion of the ${listed.length} this visual plays matches that.`}
+      />
+    );
+  }
+
+  return (
+    <VirtualizedTree<string>
+      data-testid={dataTestId}
+      id={id}
+      className={cn("min-h-40 p-0", className)}
+      ariaLabel={"Motions"}
+      items={nodes}
+      expandedIds={tree.expandedIds}
+      selectedId={tree.selectedId}
+      renderLabel={renderLabel}
+      onSelect={onSelect}
+      onActivate={onActivate}
+      onToggleExpanded={tree.toggleExpanded}
+    />
+  );
+}

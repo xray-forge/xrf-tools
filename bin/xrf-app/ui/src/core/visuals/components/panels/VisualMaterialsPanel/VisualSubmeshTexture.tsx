@@ -1,0 +1,73 @@
+import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
+import { EXrayResolution, XrayAsset } from "@xrf/ipc/types/xrf-vfs";
+import { VisualTextureDependency } from "@xrf/ipc/types/xrf-visual";
+import { Nullable } from "@xrf/types";
+import { EditorPanelProperty } from "@xrf/ui/editor/panel";
+import { BaseComponentProps } from "@xrf/ui/element-types";
+import { Chip } from "@xrf/ui/material/chip";
+import { ReactElement } from "react";
+
+import { AssetTextureDetails } from "@/core/assets/components/AssetTextureDetails";
+import { describeResolution, getLocatedAsset } from "@/core/assets/lib/resolution";
+import { EVisualTextureState, IVisualTextureStatus } from "@/core/visuals/lib/visual-texture";
+
+import { describeTextureState, IVisualTextureStateDescriptor } from "./VisualSubmeshTexture.utils";
+
+interface IVisualSubmeshTextureProps extends BaseComponentProps {
+  texture: Nullable<VisualTextureDependency>;
+  status: Nullable<IVisualTextureStatus>;
+  /** Descriptors the open reported, keyed by logical path, so a file two submeshes share is described once. */
+  textures?: Record<string, AssetTextureDescriptor>;
+}
+
+/**
+ * What became of one submesh's texture: the outcome, the root that answered, the file inside it, and what that file is.
+ */
+export function VisualSubmeshTexture({
+  "data-testid": dataTestId,
+  id,
+  className,
+  texture,
+  status,
+  textures,
+}: IVisualSubmeshTextureProps): ReactElement | null {
+  if (!texture) {
+    return null;
+  }
+
+  const { resolution } = texture;
+  const located: Nullable<XrayAsset> = getLocatedAsset(resolution);
+  const state: EVisualTextureState = status?.state ?? EVisualTextureState.ABSENT;
+  const descriptor: IVisualTextureStateDescriptor = describeTextureState(state);
+
+  return (
+    <div data-testid={dataTestId} id={id} className={className}>
+      <EditorPanelProperty
+        label={"Texture"}
+        value={<Chip size={"small"} color={descriptor.color} variant={"outlined"} label={descriptor.label} />}
+      />
+      <EditorPanelProperty label={"Resolution"} value={describeResolution(resolution)} />
+
+      {located ? <AssetTextureDetails asset={located} descriptor={textures?.[located.logicalPath] ?? null} /> : null}
+
+      {resolution.kind === EXrayResolution.MISSING
+        ? resolution.roots.map((root: string) => (
+            <EditorPanelProperty key={root} label={"Searched"} value={root} isMonospace />
+          ))
+        : null}
+
+      {resolution.kind === EXrayResolution.REJECTED ? (
+        <EditorPanelProperty label={"Rejected"} value={resolution.reason} />
+      ) : null}
+
+      {state === EVisualTextureState.DECODED ? (
+        <EditorPanelProperty
+          label={"Upload"}
+          value={"Expanded from a layout the renderer cannot read, so it is uploaded without a mip chain"}
+        />
+      ) : null}
+
+      {status?.reason ? <EditorPanelProperty label={"Texture error"} value={status.reason} /> : null}
+    </div>
+  );
+}

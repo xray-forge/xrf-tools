@@ -3,7 +3,7 @@ use std::io::{BufWriter, Write};
 use std::path::Path;
 
 use xrf_error::XrfResult;
-use xrf_utils::{encode_string_to_w1251_bytes, read_as_string_from_w1251_encoded};
+use xrf_utils::{StagedFile, encode_string_to_w1251_bytes, read_as_string_from_w1251_encoded};
 
 use crate::ltx::Ltx;
 use crate::syntax::{DEFAULT_KV_SEPARATOR, LTX_LINE_SEPARATOR, ROOT_SECTION};
@@ -19,40 +19,44 @@ impl Ltx {
       Ok(false)
     } else {
       if write {
-        // The read path above decodes Windows-1251, so the rewrite has to go back in that encoding.
-        fs::write(&filename, encode_string_to_w1251_bytes(&formatted)?)?;
+        // The read path above decodes Windows-1251, so the rewrite has to go back in that encoding. Staged, so a
+        // failed write leaves the source as it was.
+        StagedFile::write(filename.as_ref(), &encode_string_to_w1251_bytes(&formatted)?)?;
       }
 
       Ok(true)
     }
   }
 
-  /// Write to a file
+  /// Write to a file, making the directories above it: encoded whole first and staged beside it, so a value the
+  /// encoding refuses or a failed write leaves whatever was there before.
   pub fn write_to_path<P: AsRef<Path>>(&self, filename: P) -> XrfResult {
-    self.write_to(
-      &mut fs::OpenOptions::new()
-        .write(true)
-        .truncate(true)
-        .create(true)
-        .open(filename.as_ref())?,
-    )
+    Ok(StagedFile::write_creating_directories(
+      filename.as_ref(),
+      &self.write_to_bytes()?,
+    )?)
   }
 
   /// Write to a writer, in the Windows-1251 encoding the read path decodes.
+  pub fn write_to<W: Write>(&self, writer: &mut W) -> XrfResult {
+    writer.write_all(&self.write_to_bytes()?)?;
+
+    Ok(())
+  }
+
+  /// The file's bytes, in the Windows-1251 encoding the read path decodes.
   ///
   /// Rendered into a buffer first because `write!` of a Rust string emits UTF-8, which the next read would decode as
   /// something else. Encoding per `write!` is not an option: a format piece can end mid-character.
-  pub fn write_to<W: Write>(&self, writer: &mut W) -> XrfResult {
+  pub fn write_to_bytes(&self) -> XrfResult<Vec<u8>> {
     let mut rendered: Vec<u8> = Vec::new();
 
     self.render_to(&mut rendered)?;
 
-    writer.write_all(&encode_string_to_w1251_bytes(
+    Ok(encode_string_to_w1251_bytes(
       // Every piece written below came from a Rust string, so the buffer is valid UTF-8.
       &String::from_utf8(rendered).expect("Rendered LTX to be valid UTF-8"),
-    )?)?;
-
-    Ok(())
+    )?)
   }
 
   /// Buffered here rather than at the call sites. Every line below is a `write!`, and `write_fmt` issues one
@@ -108,7 +112,7 @@ impl Ltx {
 
 #[cfg(test)]
 mod test {
-  use xrf_utils::{encode_string_to_w1251_bytes, encode_w1251_bytes_to_string};
+  use xrf_utils::{decode_w1251_bytes_to_string, encode_string_to_w1251_bytes};
 
   use crate::ltx::Ltx;
   use crate::syntax::{LTX_LINE_SEPARATOR, ROOT_SECTION};
@@ -228,7 +232,7 @@ a3 = n3
     ltx.write_to(&mut output).unwrap();
 
     assert_eq!(output, encode_string_to_w1251_bytes(&input).unwrap());
-    assert_eq!(encode_w1251_bytes_to_string(&output).unwrap(), input);
+    assert_eq!(decode_w1251_bytes_to_string(&output).unwrap(), input);
   }
 
   #[test]

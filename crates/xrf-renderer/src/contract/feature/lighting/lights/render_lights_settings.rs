@@ -1,0 +1,46 @@
+use serde::{Deserialize, Serialize};
+use xrf_renderer_derive::RenderSettingSchema;
+
+use crate::contract::feature::lighting::lights::render_light_shadow_filter::RenderLightShadowFilter;
+use crate::contract::feature::lighting::model::render_light_falloff::RenderLightFalloff;
+use crate::contract::feature::weather::render_light_shafts::RenderLightShafts;
+
+/// The level's local lights: binned into clusters of the view, and accumulated after the sun in one pass.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, RenderSettingSchema, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenderLightsSettings {
+  pub is_enabled: bool,
+  /// Whether the level file's own lights are drawn too, which the engine does only with `r2_allow_r1_lights`.
+  pub is_level_lights: bool,
+  /// Whether a light the engine shadows casts its shadows.
+  pub is_shadowed: bool,
+  pub shadow_filter: RenderLightShadowFilter,
+  /// Whether shadowed lights draw their shafts (`r2_volumetric_lights`), as the view's engine gives them out.
+  pub is_volumetric: bool,
+  /// Which shadowed lights draw shafts.
+  pub shafts: RenderLightShafts,
+  /// What every lamp's shafts are scaled by, the engine's slices and the enhanced volumetric light's scattering alike.
+  // The renderer's own: from none to four times the game's.
+  #[setting(min = 0, max = 4)]
+  pub shaft_strength: f32,
+  /// How the lamps fall off at the anchored light level (`RenderViewOptions::is_falloff_inverse_square`).
+  pub falloff: RenderLightFalloff,
+}
+
+impl Default for RenderLightsSettings {
+  /// The engine's own: every spawned light with its shafts as the engine gives them, at its strength, and none of the
+  /// level file's; at the anchored light level falling off as light does in the world.
+  fn default() -> Self {
+    Self {
+      is_enabled: true,
+      is_level_lights: false,
+      is_shadowed: true,
+      shadow_filter: RenderLightShadowFilter::Engine,
+      is_volumetric: true,
+      shafts: RenderLightShafts::Engine,
+      shaft_strength: 1.0,
+      falloff: RenderLightFalloff::default(),
+    }
+  }
+}

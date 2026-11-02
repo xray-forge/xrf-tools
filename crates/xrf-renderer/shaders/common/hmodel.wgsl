@@ -21,9 +21,10 @@ fn physical_hemisphere(colour: vec3<f32>, irradiance: vec3<f32>, gain: f32) -> v
   return select(srgb_light(colour) * srgb_decoded(irradiance), srgb_light(engine * engine) * gain, gain > 0.0);
 }
 
-// `env_color * lerp(env_s0, env_s1, w)` along a world direction, squared as `hmodel` squares it: the lighting's
-// stand-in until both cubes are up. The cubes take the engine's coordinate, whose `z` is the renderer's negated.
-fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: texture_cube<f32>, cube_sampler: sampler,
+// `env_color * lerp(env_s0, env_s1, w)` along a world direction, squared as `hmodel` squares it: the authored
+// hemisphere the sky's harmonics are levelled to (`SkyHarmonics::at_level`). The cubes take the engine's coordinate,
+// whose `z` is the renderer's negated.
+fn authored_hemisphere(state: Lighting, cube_0: texture_cube<f32>, cube_1: texture_cube<f32>, cube_sampler: sampler,
   direction: vec3<f32>) -> vec3<f32> {
   let lookup: vec3<f32> = cube_lookup(direction);
   let cubes: vec3<f32> = mix(
@@ -34,21 +35,62 @@ fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: te
   let irradiance: vec3<f32> = mix(state.sky_irradiance.rgb, cubes, state.sky_irradiance.w);
   let environment: vec3<f32> = state.environment.rgb * irradiance;
 
-  // The engine's square stands in for decoding the product; the physical light decodes it (`physical_hemisphere`).
-  if (is_lighting_physical(state)) {
+  // The engine's square stands in for decoding the product; the physical light decodes it (`physical_hemisphere`). The
+  // anchored levels (`environment.w`) keep the engine's own square, which their irradiance pass reads to anchor the
+  // sky's harmonics by.
+  if (is_lighting_physical(state) && !is_light_anchored(state)) {
     return physical_hemisphere(state.environment.rgb, irradiance, state.summed_light.x) * light_scale(state);
   }
 
   return environment * environment * light_scale(state);
 }
 
+// The hemisphere a surface is lit by or reflects from the weather's cubes, the lighting's stand-in until the sky is
+// first projected and the engine's reflections' environment: the authored hemisphere, at the anchored levels anchored
+// over the ambient as the harmonics, the sun and the lamps are (`anchored_light`); left the engine's square, it lit and
+// reflected at the engine's display values as linear light.
+fn hemisphere_environment(state: Lighting, cube_0: texture_cube<f32>, cube_1: texture_cube<f32>, cube_sampler: sampler,
+  direction: vec3<f32>) -> vec3<f32> {
+  let authored: vec3<f32> = authored_hemisphere(state, cube_0, cube_1, cube_sampler, direction);
+
+  if (!is_light_anchored(state)) {
+    return authored;
+  }
+
+  // The ambient is held anchored over nothing, its display value its encode.
+  let scale: f32 = max(light_scale(state), 1e-12);
+
+  return anchored_light(authored / scale, srgb_encoded(state.ambient.rgb / scale)) * scale;
+}
+
+// The material's terms for a light towards `to_light` at a normal, seen along `view_ray`, all three in one space, as
+// `plight_infinity` and `plight_local` read them: the table looked up by the light's angle to the normal and the
+// halfway vector's, the diffuse in `x`, the specular in `y`.
+fn light_terms(table: texture_3d<f32>, table_sampler: sampler, to_light: vec3<f32>, normal: vec3<f32>,
+  view_ray: vec3<f32>, slice: f32) -> vec4<f32> {
+  let half_way: vec3<f32> = normalize(to_light - view_ray);
+
+  return material_lookup(table, table_sampler, dot(to_light, normal), dot(half_way, normal), slice);
+}
+
+// A light's terms at a surface the frame's own passes do not light (a traced hit, a composited surface), as they would
+// light it under the lighting `state`: the material table's (`light_terms`), but at the anchored levels Lambert's
+// cosine for the diffuse, as the sun and lights passes light the frame there (`fs_sun_split`, `fs_lights_split`), so a
+// bank the water mirrors is lit by the curve the bank itself is. The specular stays the table's: a traced hit takes no
+// gloss to weigh it by, and a composited surface's gloss joins it through `hmodel` as at every level.
+fn surface_light_terms(state: Lighting, table: texture_3d<f32>, table_sampler: sampler, to_light: vec3<f32>,
+  normal: vec3<f32>, view_ray: vec3<f32>, slice: f32) -> vec4<f32> {
+  let terms: vec4<f32> = light_terms(table, table_sampler, to_light, normal, view_ray, slice);
+
+  return select(terms, vec4<f32>(saturate(dot(normal, to_light)), terms.yzw), is_light_anchored(state));
+}
+
 // `plight_infinity` for the sun: its colour by the diffuse term, its specular weight by the specular, at a view space
-// normal and point.
+// normal and point (`surface_light_terms`).
 fn sun_light(state: Lighting, table: texture_3d<f32>, table_sampler: sampler, normal: vec3<f32>, position: vec3<f32>,
   slice: f32) -> vec4<f32> {
-  let to_light: vec3<f32> = state.to_sun.xyz;
-  let half: vec3<f32> = normalize(to_light - normalize(position));
-  let terms: vec4<f32> = material_lookup(table, table_sampler, dot(to_light, normal), dot(half, normal), slice);
+  let terms: vec4<f32> =
+    surface_light_terms(state, table, table_sampler, state.to_sun.xyz, normal, normalize(position), slice);
 
   return vec4<f32>(state.sun.rgb * terms.x, state.sun.w * terms.y);
 }
@@ -81,6 +123,18 @@ fn authored_diffuse(state: Lighting, light: vec3<f32>) -> vec3<f32> {
   let summed: f32 = luminance(light) / (light_scale(state) * gain);
 
   return light * pow(max(summed, 0.0), SRGB_DISPLAY_POWER - 1.0) / gain;
+}
+
+// The lights' specular joined to the diffuse `lit` in display values, as the engine adds them before its display
+// decodes the sum: the specular `glossed` and the lights' colour `light` written at `scale` by the lights' `gain`, taken
+// back to the engine's units, the specular tinted by the colour as the engine bound it where Anomaly tints it
+// (`is_tinted`).
+fn summed_specular(lit: vec3<f32>, light: vec3<f32>, glossed: f32, scale: f32, gain: f32,
+  is_tinted: bool) -> vec3<f32> {
+  let unit: f32 = scale * gain;
+  let tint: vec3<f32> = select(vec3<f32>(1.0), srgb_light_authored(light / unit), is_tinted);
+
+  return srgb_decoded(srgb_encoded(max(lit, vec3<f32>(0.0)) / scale) + tint * glossed / unit) * scale;
 }
 
 // `hmodel` and `combine_1` in two parts: what the surface shows without its reflection of the environment, the
@@ -136,6 +190,17 @@ fn hmodel_terms(state: Lighting, table: texture_3d<f32>, table_sampler: sampler,
   // `C = D * light`: the lit albedo, and the gloss times what the lights reflect.
   let lit: vec3<f32> = albedo.rgb * authored_diffuse(state, light.rgb + hemisphere_diffuse);
   let glossed: f32 = gloss * light.a;
+
+  // At the authored levels the lights' specular joins the diffuse in display values as the engine's does, its weight
+  // the engine's (`to_light_specular`) and Anomaly's tint the lights' colour as the engine bound it, back in the
+  // engine's units, then decoded once with it: added as light, a dim moon's broad lobe stood hundreds of times the
+  // engine's, laying a grey sheet over wet ground and lighting metal from within.
+  if (is_light_summed(state)) {
+    let scale: f32 = light_scale(state);
+    let base: vec3<f32> = summed_specular(lit, light.rgb, glossed, scale, state.summed_light.x, is_extended);
+
+    return HmodelTerms(base, environment, select(weight, weight * lit / scale, is_extended), lit);
+  }
 
   // Anomaly's tint multiplies light by light, the lights' colour by their specular and the environment by the lit
   // albedo: the engine's values multiplied, so the lit albedo has the light's scale taken off. Under the physical light

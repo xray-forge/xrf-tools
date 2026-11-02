@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use crate::vfs::tests::fake_source::{FakeArchiveSource, directory};
-use crate::{XrayAsset, XrayLookupScope, XrayVfs};
+use crate::vfs::tests::fixtures::{FakeArchiveSource, directory};
+use crate::{XrayAsset, XrayAssetType, XrayLookupScope, XrayVfs};
 
 #[test]
 fn resolves_a_texture_reference_against_a_mounted_root() {
@@ -12,8 +12,9 @@ fn resolves_a_texture_reference_against_a_mounted_root() {
     .expect("root mounts");
 
   let location: XrayAsset = vfs
-    .resolve_dds_texture("wpn\\wpn_ak74")
+    .resolve_all_in(&XrayLookupScope::all(), XrayAssetType::Dds, "wpn\\wpn_ak74")
     .expect("lookup succeeds")
+    .pop()
     .expect("texture resolves");
 
   assert_eq!(location.get_logical_path().as_str(), "textures\\wpn\\wpn_ak74.dds");
@@ -34,25 +35,17 @@ fn the_first_mount_holding_a_name_wins_and_the_shadowed_copy_stays_visible() {
 
   assert_eq!(
     vfs
-      .scoped(&scope)
-      .find("textures\\wpn\\wpn_ak74.dds")
+      .find_in(&scope, "textures\\wpn\\wpn_ak74.dds")
       .unwrap()
       .and_then(|it| it.get_root().map(Path::to_path_buf)),
     Some(overlay)
   );
   assert_eq!(
-    vfs
-      .scoped(&scope)
-      .find_all("textures\\wpn\\wpn_ak74.dds")
-      .unwrap()
-      .len(),
+    vfs.list_entries_all_in(&scope).len(),
     2,
     "the shadowed copy is still reportable"
   );
-  assert_eq!(
-    vfs.scoped(&scope).read_bytes("textures\\wpn\\wpn_ak74.dds").unwrap(),
-    b"overlay"
-  );
+  assert_eq!(vfs.read_in(&scope, "textures\\wpn\\wpn_ak74.dds").unwrap(), b"overlay");
 }
 
 #[test]
@@ -66,15 +59,14 @@ fn a_subtree_mount_carries_engine_identity_through_its_base() {
 
   let scope: XrayLookupScope = XrayLookupScope::all();
 
-  assert!(vfs.scoped(&scope).find("configs\\weapons\\ak74.ltx").unwrap().is_some());
+  assert!(vfs.find_in(&scope, "configs\\weapons\\ak74.ltx").unwrap().is_some());
   assert!(
-    vfs.scoped(&scope).find("ak74.ltx").unwrap().is_none(),
+    vfs.find_in(&scope, "ak74.ltx").unwrap().is_none(),
     "a source relative path is not a logical path"
   );
   assert_eq!(
     vfs
-      .scoped(&scope)
-      .list_entries()
+      .list_entries_in(&scope)
       .first()
       .map(|it| it.get_logical_path().to_string()),
     Some(String::from("configs\\weapons\\ak74.ltx"))
@@ -94,16 +86,12 @@ fn an_archived_entry_resolves_and_reads_but_offers_no_physical_path() {
 
   let scope: XrayLookupScope = XrayLookupScope::all();
   let location: XrayAsset = vfs
-    .scoped(&scope)
-    .find("textures\\wpn\\wpn_ak74.dds")
+    .find_in(&scope, "textures\\wpn\\wpn_ak74.dds")
     .unwrap()
     .expect("entry resolves");
 
   assert_eq!(location.to_physical_path(), None);
-  assert_eq!(
-    vfs.scoped(&scope).read_bytes("textures\\wpn\\wpn_ak74.dds").unwrap(),
-    b"textures"
-  );
+  assert_eq!(vfs.read_in(&scope, "textures\\wpn\\wpn_ak74.dds").unwrap(), b"textures");
 }
 
 #[test]
@@ -121,27 +109,63 @@ fn a_loose_file_overrides_an_archived_one() {
     )
     .expect("archive mounts");
 
-  assert_eq!(vfs.read_bytes("textures\\wpn\\wpn_ak74.dds").unwrap(), b"loose_wins");
+  assert_eq!(
+    vfs
+      .read_in(&XrayLookupScope::all(), "textures\\wpn\\wpn_ak74.dds")
+      .unwrap(),
+    b"loose_wins"
+  );
 }
 
+// Two steps over one mount, as a root named twice is, list its files once and hidden by nothing.
 #[test]
-fn writing_an_archived_winner_is_refused_and_names_the_archive() {
+fn a_mount_searched_by_two_steps_hides_none_of_its_own_files() {
+  let loose: PathBuf = directory("repeated_step", &["configs/system.ltx"]);
   let mut vfs: XrayVfs = XrayVfs::new();
 
+  vfs.mount_directory("", &loose).expect("directory mounts");
+
+  let search: crate::XraySearch = crate::XraySearch::new(vfs)
+    .with_step("first", XrayLookupScope::all())
+    .with_step("second", XrayLookupScope::all());
+  let entries = search.list_shadowing_entries();
+
+  assert_eq!(entries.len(), 1);
+  assert!(entries[0].shadowed.is_empty(), "a copy cannot hide itself");
+}
+
+// Handed the copy a loose file hides, a raw read and a parse both read that copy, never the winner.
+#[test]
+fn a_raw_read_and_a_parse_of_a_shadowed_copy_read_that_copy() {
+  let loose: PathBuf = directory("shadowed_parse", &["configs/system.ltx"]);
+  let mut vfs: XrayVfs = XrayVfs::new();
+
+  vfs.mount_directory("", &loose).expect("directory mounts");
   vfs
     .mount(
       "",
-      Box::new(FakeArchiveSource::new("configs", &["configs\\system.ltx"])),
+      Box::new(FakeArchiveSource::new("archived", &["configs\\system.ltx"])),
     )
     .expect("archive mounts");
 
-  let error: String = vfs
-    .write(&XrayLookupScope::all(), "configs\\system.ltx", b"formatted")
-    .expect_err("write is refused")
-    .to_string();
+  let search: crate::XraySearch = crate::XraySearch::new(vfs.with_cache_policy(crate::XrayCachePolicy::configs()))
+    .with_step("all", XrayLookupScope::all());
+  let shadowed: XrayAsset = search
+    .list_shadowing_entries()
+    .pop()
+    .expect("the path is listed")
+    .shadowed
+    .pop()
+    .expect("the archive's copy is hidden")
+    .asset;
+  let parse = |bytes: Vec<u8>| Ok(String::from_utf8(bytes).expect("text"));
 
-  assert!(error.contains("read only"), "{error}");
-  assert!(error.contains("configs"), "the refusal names what holds it: {error}");
+  assert_eq!(search.read_asset(&shadowed).unwrap(), b"archived");
+  assert_eq!(search.read_parsed(&shadowed, parse).unwrap().as_str(), "archived");
+
+  let winner: XrayAsset = search.find("configs\\system.ltx").unwrap().expect("found");
+
+  assert_eq!(search.read_parsed(&winner, parse).unwrap().as_str(), "shadowed_parse");
 }
 
 #[test]
@@ -158,17 +182,13 @@ fn a_writable_scope_skips_an_archive_entirely() {
 
   let writable: XrayLookupScope = XrayLookupScope::writable();
 
-  vfs
-    .write(&writable, "configs\\system.ltx", b"formatted")
-    .expect("a loose winner is writable");
-
   assert_eq!(
-    vfs.scoped(&writable).list_entries().len(),
+    vfs.list_entries_in(&writable).len(),
     1,
     "only the loose entry is in scope"
   );
   assert!(
-    vfs.scoped(&writable).find("configs\\other.ltx").unwrap().is_none(),
+    vfs.find_in(&writable, "configs\\other.ltx").unwrap().is_none(),
     "the archived entry is out of scope"
   );
 }
@@ -186,16 +206,12 @@ fn a_prefix_scope_cannot_answer_outside_its_subtree() {
 
   let configs: XrayLookupScope = XrayLookupScope::all().with_prefix("configs").expect("prefix is valid");
 
-  assert!(vfs.scoped(&configs).find("configs\\system.ltx").unwrap().is_some());
+  assert!(vfs.find_in(&configs, "configs\\system.ltx").unwrap().is_some());
   assert!(
-    vfs
-      .scoped(&configs)
-      .find("textures\\wpn\\wpn_ak74.dds")
-      .unwrap()
-      .is_none(),
+    vfs.find_in(&configs, "textures\\wpn\\wpn_ak74.dds").unwrap().is_none(),
     "a scoped lookup must not reach outside its subtree"
   );
-  assert_eq!(vfs.scoped(&configs).list_entries().len(), 1);
+  assert_eq!(vfs.list_entries_in(&configs).len(), 1);
 }
 
 #[test]
@@ -211,6 +227,32 @@ fn mounting_the_same_directory_twice_reuses_the_mount() {
 }
 
 #[test]
+fn mounting_one_directory_at_another_base_is_another_mount() {
+  // Reusing the first mount would answer the second base's paths from the first base, so `weapons\ak74.ltx` would be
+  // found nowhere the caller mounted it.
+  let root: PathBuf = directory("rebased", &["ak74.ltx"]);
+
+  let mut vfs: XrayVfs = XrayVfs::new();
+  let root_mount = vfs.mount_directory("", &root).expect("mounts at the root");
+  let based_mount = vfs
+    .mount_directory("Configs\\Weapons", &root)
+    .expect("mounts at a base");
+
+  assert_ne!(root_mount, based_mount);
+  assert_eq!(
+    vfs.mount_directory("configs\\weapons", &root).expect("mounts again"),
+    based_mount,
+    "the same base, however spelled, reuses its mount"
+  );
+  assert!(
+    vfs
+      .find_in(&XrayLookupScope::all(), "configs\\weapons\\ak74.ltx")
+      .expect("lookup")
+      .is_some()
+  );
+}
+
+#[test]
 fn enumeration_dedupes_across_mounts_and_reports_shadowed_copies_separately() {
   let overlay: PathBuf = directory("dedupe_overlay", &["configs/system.ltx"]);
   let base: PathBuf = directory("dedupe_base", &["configs/system.ltx", "configs/weather.ltx"]);
@@ -222,12 +264,8 @@ fn enumeration_dedupes_across_mounts_and_reports_shadowed_copies_separately() {
 
   let scope: XrayLookupScope = XrayLookupScope::all();
 
-  assert_eq!(vfs.scoped(&scope).list_entries().len(), 2, "winners only");
-  assert_eq!(
-    vfs.scoped(&scope).list_entries_all().len(),
-    3,
-    "including the shadowed copy"
-  );
+  assert_eq!(vfs.list_entries_in(&scope).len(), 2, "winners only");
+  assert_eq!(vfs.list_entries_all_in(&scope).len(), 3, "including the shadowed copy");
 }
 
 #[test]
@@ -246,14 +284,17 @@ fn suffix_enumeration_matches_on_component_boundaries() {
     )
     .expect("mounts");
 
-  let mut found: Vec<String> = vfs
-    .list_entries_with_suffix("particles.xr")
-    .expect("suffix is a valid fragment")
+  let found: Vec<String> = vfs
+    .list_entries_in(&XrayLookupScope::all())
     .into_iter()
+    .filter(|entry| {
+      entry
+        .get_logical_path()
+        .ends_with("particles.xr")
+        .expect("suffix is a valid fragment")
+    })
     .map(|entry| entry.get_logical_path().to_string())
     .collect();
-
-  found.sort();
 
   assert_eq!(found, vec!["mods\\particles.xr", "particles.xr"]);
 }

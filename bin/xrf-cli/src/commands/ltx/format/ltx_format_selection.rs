@@ -5,9 +5,9 @@ use walkdir::{DirEntry, WalkDir};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_utils::format_path;
-use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayVfs};
+use xrf_vfs::{XrayAsset, XrayAssetContainer, XrayAssetType, XraySearch};
 
-use crate::commands::ltx::ltx_installation::mount_installation;
+use crate::commands::ltx::ltx_installation::LtxInstallation;
 
 /// The files a formatting run will touch, and what it declined to.
 pub struct LtxFormatSelection {
@@ -33,8 +33,8 @@ impl LtxFormatSelection {
     let mut visited: HashSet<PathBuf> = HashSet::new();
 
     for path in paths {
-      match mount_installation(path)? {
-        Some(vfs) => Self::select_installation(&vfs, &mut files, &mut declined, &mut visited)?,
+      match LtxInstallation::mount(path)? {
+        Some(search) => Self::select_installation(&search, &mut files, &mut declined, &mut visited)?,
         None => Self::select_path(path, &mut files, &mut visited)?,
       }
     }
@@ -55,16 +55,12 @@ impl LtxFormatSelection {
   /// Loose winners are formatted through their physical paths. Archived winners are declined because archive volumes
   /// cannot be rewritten in place.
   fn select_installation(
-    vfs: &XrayVfs,
+    search: &XraySearch,
     files: &mut Vec<PathBuf>,
     declined: &mut Vec<String>,
     visited: &mut HashSet<PathBuf>,
   ) -> XrfResult<()> {
-    for location in vfs.list_entries() {
-      if !location.get_logical_path().has_extension(XrayExtension::Ltx) {
-        continue;
-      }
-
+    for location in search.list_assets(XrayAssetType::Ltx) {
       match location.get_container() {
         XrayAssetContainer::Directory { .. } => {
           if let Some(physical) = location.to_physical_path()

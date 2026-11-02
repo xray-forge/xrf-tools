@@ -1,0 +1,55 @@
+use serde::{Deserialize, Serialize};
+
+use crate::contract::feature::image::bloom::render_bloom_mode::RenderBloomMode;
+use crate::contract::feature::image::resolve::render_antialiasing::RenderAntialiasing;
+use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_method::RenderAmbientOcclusionMethod;
+use crate::contract::feature::lighting::ambient_occlusion::render_ambient_occlusion_settings::RenderAmbientOcclusionSettings;
+use crate::contract::feature::lighting::lights::render_lights_settings::RenderLightsSettings;
+use crate::contract::report::applied::render_applied_environment::RenderAppliedEnvironment;
+use crate::contract::report::applied::render_applied_grass::RenderAppliedGrass;
+use crate::contract::report::applied::render_applied_height_fog::RenderAppliedHeightFog;
+use crate::contract::report::applied::render_applied_indirect_light::RenderAppliedIndirectLight;
+use crate::contract::report::applied::render_applied_reflections::RenderAppliedReflections;
+use crate::contract::report::applied::render_applied_shadows::RenderAppliedShadows;
+use crate::contract::view::output::render_scale::RenderScale;
+
+/// What a viewport's frames are drawn with, as the renderer resolved what it was asked: sent as it changes.
+#[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
+#[derive(Clone, Debug, Default, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenderAppliedReport {
+  /// What smooths the finished frame: none where a target other than the frame is shown.
+  pub antialiasing: RenderAntialiasing,
+  /// Whether DLSS reconstructs rays as it upscales the frame.
+  pub is_ray_reconstructed: bool,
+  /// How much smaller the scene is drawn than the viewport, native for anything but a level.
+  pub render_scale: RenderScale,
+  /// The sun's shadow, or none where no cascade is drawn.
+  pub shadows: Option<RenderAppliedShadows>,
+  /// The screen's ambient occlusion, or none where it is off or the scene is unlit.
+  pub ambient_occlusion: Option<RenderAmbientOcclusionSettings>,
+  /// How the ambient occlusion is found, or none where it is not: RTAO asked for is VBAO's search on a GPU that traces
+  /// no rays.
+  pub ambient_occlusion_method: Option<RenderAmbientOcclusionMethod>,
+  /// The screen-space indirect light, or none where it is not gathered.
+  pub indirect_light: Option<RenderAppliedIndirectLight>,
+  /// The screen-space reflections, or none where they are not traced.
+  pub reflections: Option<RenderAppliedReflections>,
+  /// The enhanced height fog, or none where the engine's fog alone is drawn or none at all.
+  pub height_fog: Option<RenderAppliedHeightFog>,
+  /// How hard the sky is debanded, or none where it is drawn as it is.
+  pub debanding: Option<u32>,
+  /// Which bloom is drawn, or none where the frame blooms nothing.
+  pub bloom: Option<RenderBloomMode>,
+  /// The local lights, or none where they are off.
+  pub lights: Option<RenderLightsSettings>,
+  /// The grass planted, or none where none is.
+  pub grass: Option<RenderAppliedGrass>,
+  /// Whether the level's water is drawn.
+  pub is_water: bool,
+  /// What the weather lights the scene with now, or none for an asset viewer's rig.
+  pub environment: Option<RenderAppliedEnvironment>,
+  /// The lens flare whose sprite the sky draws, its `suns.ltx` section: the sun or the moon; none where the sky shows
+  /// neither.
+  pub sun: Option<String>,
+}

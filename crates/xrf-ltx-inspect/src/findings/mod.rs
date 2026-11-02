@@ -3,5 +3,5 @@
 pub(crate) mod ltx_anchored_finding;
 pub(crate) mod ltx_finding_anchor;
 
-pub use crate::findings::ltx_anchored_finding::{LtxAnchoredFinding, LtxFindingKind};
+pub use crate::findings::ltx_anchored_finding::LtxAnchoredFinding;
 pub(crate) use crate::findings::ltx_finding_anchor::LtxFindingAnchor;

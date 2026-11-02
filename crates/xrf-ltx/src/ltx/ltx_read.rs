@@ -2,19 +2,17 @@ use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use xrf_error::XrfResult;
-use xrf_utils::{
-  decode_bytes_to_string, encode_w1251_bytes_to_string, new_windows1251_encoder, read_as_string_from_w1251_encoded,
-};
-use xrf_vfs::{XrayLookupScope, XrayVfs};
+use xrf_error::{XrfError, XrfResult};
+use xrf_utils::{decode_w1251_bytes_to_string, format_path, read_as_string_from_w1251_encoded};
+use xrf_vfs::{XrayLogicalPath, XraySearch};
 
 use crate::dialect::{LtxDialect, LtxResolveRequest, LtxStandardDialect};
 use crate::document::{LtxDocument, LtxParser};
-use crate::ltx::{Ltx, LtxIncludeConvertor, LtxIncluded};
+use crate::ltx::Ltx;
 use crate::source::{LtxFilesystemSource, LtxVfsSource};
 
 impl Ltx {
-  /// Read LTX from a string.
+  /// Read one document from a string under standard rules, without reading anything it includes.
   pub fn read_from_str(buf: &str) -> XrfResult<Self> {
     LtxStandardDialect::lower(&Self::read_document_from_str(buf)?)
   }
@@ -33,50 +31,37 @@ impl Ltx {
     LtxParser::new_preserving_source(buf.chars()).parse_document()
   }
 
-  /// Read LTX from a file as full parsed file, inject included files.
-  pub(crate) fn read_from_file_included<P: AsRef<Path>>(filename: P) -> XrfResult<Self> {
-    Self::read_from_path(filename)?.into_included()
-  }
-
-  /// Read LTX from a file under standard rules, injecting includes and flattening inheritance.
-  ///
-  /// Named for the dialect it applies because it applies one: a game config from a patched Anomaly install resolves
-  /// differently, and silently. Use [`Self::read_from_file_with_dialect`] for anything a patch file could target, and
-  /// this for XRF's own data files, which nothing patches.
-  pub fn read_from_file_standard<P: AsRef<Path>>(filename: P) -> XrfResult<Self> {
-    Self::read_from_path(filename)?.into_included()?.into_inherited()
-  }
-
-  /// Read LTX out of a mounted VFS, injecting includes resolved through it.
-  ///
-  /// This is how configs are read from an installation, where they sit inside `db\configs` volumes and have no filesystem
-  /// path. Wildcard includes resolve by prefix enumeration rather than `read_dir`, and an include the VFS does not hold is
-  /// nothing to merge rather than a failure - the same tolerance a not-yet-generated config gets on disk.
-  ///
-  /// `path` and `directory` on the result carry logical paths, not filesystem ones.
+  /// Read a config from the filesystem under standard rules, merging its includes and flattening inheritance.
   ///
   /// # Errors
   ///
-  /// Returns an error when the path is not in scope, its bytes are not valid Windows-1251, or the contents will not parse.
-  pub(crate) fn read_from_vfs(vfs: &XrayVfs, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Self> {
-    let source: LtxVfsSource = LtxVfsSource::new(vfs, scope);
-
-    LtxIncludeConvertor::convert_with(source.read_ltx(logical_path)?, &source)
+  /// Returns an error when the config or a file it includes cannot be read, or when standard rules refuse the tree.
+  pub fn read_from_file_standard<P: AsRef<Path>>(path: P) -> XrfResult<Self> {
+    Self::read_from_file_with_dialect(path, &LtxStandardDialect)
   }
 
-  /// Read LTX out of a mounted VFS under standard rules, with includes injected and inheritance flattened.
-  ///
-  /// Resolve a game config through a project instead, which carries the chosen dialect; see
-  /// `LtxProject::read_full_in_scope` for one outside the project's own prefix.
+  /// Read a config through a search under standard rules, merging its includes and flattening inheritance.
   ///
   /// # Errors
   ///
-  /// Returns an error when reading fails, or when an inherited section cannot be resolved.
-  pub(crate) fn read_from_vfs_standard(vfs: &XrayVfs, scope: &XrayLookupScope, logical_path: &str) -> XrfResult<Self> {
-    Self::read_from_vfs(vfs, scope, logical_path)?.into_inherited()
+  /// Returns an error when the search does not reach the config or a file it includes, its bytes are not valid
+  /// Windows-1251, or standard rules refuse the tree.
+  pub(crate) fn read_from_search_standard(search: &XraySearch, logical_path: &str) -> XrfResult<Self> {
+    // Normalized first, so the location the config records is its engine identity rather than the spelling asked for.
+    let logical_path: XrayLogicalPath = XrayLogicalPath::new(logical_path)?;
+
+    Ok(
+      LtxStandardDialect
+        .resolve(
+          logical_path.as_str(),
+          &LtxVfsSource::new(search.clone()),
+          LtxResolveRequest::plain(),
+        )?
+        .ltx,
+    )
   }
 
-  /// Read from a file as generic ltx with LTX descriptor filled.
+  /// Read one config file under standard rules, recording where it was read from, without reading what it includes.
   pub fn read_from_path<P: AsRef<Path>>(filename: P) -> XrfResult<Self> {
     let mut ltx: Self = Self::read_from(&mut File::open(filename.as_ref())?)?;
 
@@ -97,64 +82,31 @@ impl Ltx {
 
   /// Read a config from the filesystem, resolving it under `dialect`.
   ///
-  /// What a command reading one named config should use rather than [`Self::read_from_file_standard`]: a patched
-  /// install resolves differently, and the difference is silent. `path` is used as written, so a relative path
-  /// resolves its includes relative to itself.
-  ///
   /// # Errors
   ///
-  /// Returns an error when the config cannot be read, or when the dialect refuses it.
+  /// Returns an error when the config's name is not valid Unicode, when it cannot be read, or when the dialect refuses
+  /// it.
   pub fn read_from_file_with_dialect<P: AsRef<Path>>(path: P, dialect: &dyn LtxDialect) -> XrfResult<Self> {
+    let path: &Path = path.as_ref();
+    // A source addresses configs by text, as `LtxFilesystemSource` refuses an include whose name is not valid Unicode:
+    // a lossy name would read a different file or none, silently.
+    let Some(root) = path.to_str() else {
+      return Err(XrfError::new_convert_error(format!(
+        "Failed to read ltx file '{}', its name is not valid Unicode",
+        format_path(path)
+      )));
+    };
+
     Ok(
       dialect
-        .resolve(
-          &path.as_ref().to_string_lossy(),
-          &LtxFilesystemSource,
-          LtxResolveRequest::plain(),
-        )?
+        .resolve(root, &LtxFilesystemSource, LtxResolveRequest::plain())?
         .ltx,
     )
   }
 
-  /// Read from a reader as generic ltx with LTX descriptor filled.
+  /// Read one document from a reader under standard rules, decoding strict Windows-1251.
   pub(crate) fn read_from<R: Read>(reader: &mut R) -> XrfResult<Self> {
     Self::read_from_str(&read_as_string_from_w1251_encoded(reader)?)
-  }
-}
-
-impl Ltx {
-  /// Load include statements from a string.
-  pub(crate) fn read_included_from_str(buf: &str) -> XrfResult<LtxIncluded> {
-    Ok(
-      Self::read_document_from_str(buf)?
-        .list_included()
-        .into_iter()
-        .map(String::from)
-        .collect(),
-    )
-  }
-
-  /// Load include statements from a file.
-  pub(crate) fn read_included_from_file<P: AsRef<Path>>(filename: P) -> XrfResult<LtxIncluded> {
-    Self::read_included_from_str(&read_as_string_from_w1251_encoded(&mut File::open(filename.as_ref())?)?)
-  }
-
-  /// Load include statements from a config in a mounted VFS, without parsing its sections.
-  ///
-  /// Used when assembling a project: entry points are the files nothing else includes, which needs every file's include list
-  /// and none of their contents.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the path is not in scope, its bytes are not valid Windows-1251, or the contents will not parse.
-  pub(crate) fn read_included_from_vfs(
-    vfs: &XrayVfs,
-    scope: &XrayLookupScope,
-    logical_path: &str,
-  ) -> XrfResult<LtxIncluded> {
-    let bytes: Vec<u8> = vfs.scoped(scope).read_bytes(logical_path)?;
-
-    Self::read_included_from_str(&decode_bytes_to_string(&bytes, new_windows1251_encoder())?)
   }
 }
 
@@ -171,14 +123,11 @@ impl Ltx {
 
   /// Whether the given LTX bytes are already formatted canonically.
   ///
-  /// Content is all a formatting verdict needs, so this answers for an archived config too — only rewriting one needs a
-  /// file, which is why [`Self::format_file`] stays separate.
-  ///
   /// # Errors
   ///
   /// Returns an error when the bytes cannot be decoded or parsed.
   pub(crate) fn is_formatted(bytes: &[u8]) -> XrfResult<bool> {
-    let existing: String = encode_w1251_bytes_to_string(bytes)?;
+    let existing: String = decode_w1251_bytes_to_string(bytes)?;
 
     Ok(existing == Self::format_from_str(&existing)?)
   }
@@ -188,14 +137,14 @@ impl Ltx {
 mod test {
   use std::path::PathBuf;
 
-  use xrf_test_utils::utils::{build_relative_test_sample_file_path, write_generated_test_resource};
+  use xrf_test_utils::GeneratedResources;
 
-  use crate::ltx::{Ltx, LtxIncluded};
+  use crate::ltx::Ltx;
 
   #[test]
   fn load_from_file() {
-    let file_name: PathBuf = write_generated_test_resource(
-      &build_relative_test_sample_file_path(file!(), "load_from_file.ltx"),
+    let file_name: PathBuf = GeneratedResources::write(
+      &GeneratedResources::sample_name(file!(), "load_from_file.ltx"),
       b"[test]\nKey=Value\n",
     )
     .expect("generated LTX input to be written");
@@ -204,13 +153,38 @@ mod test {
     assert_eq!(ltx.get_from("test", "Key"), Some("Value"));
   }
 
+  /// Linux filenames are bytes, not text, and a dialect addresses configs by text, so a root whose name is not valid
+  /// Unicode is refused by name rather than read under its lossy spelling, which names a different file or none.
+  #[test]
+  #[cfg(target_os = "linux")]
+  fn refuses_a_root_whose_file_name_is_not_valid_unicode() -> xrf_error::XrfResult {
+    use std::ffi::OsStr;
+    use std::fs;
+    use std::os::unix::ffi::OsStrExt;
+
+    let root: PathBuf = GeneratedResources::create_dir("read/non_utf8_root")?;
+    let path: PathBuf = root.join(OsStr::from_bytes(b"\xffbroken.ltx"));
+
+    fs::write(&path, "[section]\n")?;
+
+    let error: String = Ltx::read_from_file_standard(&path)
+      .expect_err("a root whose name is not valid Unicode to be refused")
+      .to_string();
+
+    // Not left behind: the CI cache archives `target/` with tar, which cannot read a name that is not valid Unicode.
+    fs::remove_dir_all(root)?;
+
+    assert!(error.contains("not valid Unicode"), "{error}");
+    assert!(error.contains("\u{fffd}broken.ltx"), "{error}");
+
+    Ok(())
+  }
+
   /// Format `input` through a file on disk and compare the result to `expected`, line by line.
   fn assert_formats(case: &str, input: &str, expected: &str) {
-    let path: PathBuf = write_generated_test_resource(
-      &build_relative_test_sample_file_path(file!(), &format!("{case}.ltx")),
-      input,
-    )
-    .expect("generated LTX input to be written");
+    let path: PathBuf =
+      GeneratedResources::write(&GeneratedResources::sample_name(file!(), &format!("{case}.ltx")), input)
+        .expect("generated LTX input to be written");
 
     assert_eq!(
       Ltx::format_from_file(path)
@@ -403,28 +377,36 @@ value3 ; another comment
     );
   }
 
+  /// The include statements a file holds, read through the document a project reads it as.
+  fn includes_of(case: &str, contents: &[u8]) -> Vec<String> {
+    let file_name: PathBuf = GeneratedResources::write(&GeneratedResources::sample_name(file!(), case), contents)
+      .expect("generated LTX input to be written");
+
+    Ltx::read_document_from(&mut std::fs::File::open(file_name).expect("generated LTX input to open"))
+      .unwrap()
+      .list_included()
+      .into_iter()
+      .map(String::from)
+      .collect()
+  }
+
   #[test]
   fn load_no_includes_from_file() {
-    let file_name: PathBuf = write_generated_test_resource(
-      &build_relative_test_sample_file_path(file!(), "load_no_includes.ltx"),
-      b"[test]Key=Value\n",
-    )
-    .expect("generated LTX input to be written");
-
-    let includes: LtxIncluded = Ltx::read_included_from_file(&file_name).unwrap();
-    assert_eq!(includes, Vec::<String>::new());
+    assert_eq!(
+      includes_of("load_no_includes.ltx", b"[test]Key=Value\n"),
+      Vec::<String>::new()
+    );
   }
 
   #[test]
   fn load_few_includes_from_file() {
-    let file_name: PathBuf = write_generated_test_resource(
-      &build_relative_test_sample_file_path(file!(), "load_few_includes.ltx"),
-      b"#include \"first.ltx\"\n;commented\n#include \"second.ltx\"",
-    )
-    .expect("generated LTX input to be written");
-
-    let includes: LtxIncluded = Ltx::read_included_from_file(&file_name).unwrap();
-    assert_eq!(includes, vec!("first.ltx", "second.ltx"));
+    assert_eq!(
+      includes_of(
+        "load_few_includes.ltx",
+        b"#include \"first.ltx\"\n;commented\n#include \"second.ltx\""
+      ),
+      vec!("first.ltx", "second.ltx")
+    );
   }
 
   #[test]

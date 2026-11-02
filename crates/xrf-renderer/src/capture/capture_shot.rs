@@ -1,12 +1,12 @@
 use std::borrow::Cow;
 
 use crate::camera::camera_view::CameraView;
-use crate::capture::cube_capture_look::CubeCaptureLook;
-use crate::capture::cube_face::CubeFace;
-use crate::capture::map_capture_look::MapCaptureLook;
-use crate::capture::map_tile::MapTile;
-use crate::contract::render_view_options::RenderViewOptions;
-use crate::lighting::render_lighting::RenderLighting;
+use crate::capture::cube::cube_capture_look::CubeCaptureLook;
+use crate::capture::cube::cube_face::CubeFace;
+use crate::capture::map::map_capture_look::MapCaptureLook;
+use crate::capture::map::map_tile::MapTile;
+use crate::contract::view::render_view_options::RenderViewOptions;
+use crate::lighting::weather::render_lighting::RenderLighting;
 
 /// One view a capture draws in place of its viewport's frames: a level map's tile, or a cubemap's face.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -37,13 +37,19 @@ impl CaptureShot {
     matches!(self, Self::Tile(_))
   }
 
-  /// The options it is drawn with, from the viewport's `options`; metering, its exposure adapts as its kind meters.
-  pub fn apply_look(&self, options: &RenderViewOptions, is_metering: bool) -> RenderViewOptions {
-    match (self, is_metering) {
-      (Self::Tile(tile), false) => MapCaptureLook::apply(options, tile),
-      (Self::Tile(tile), true) => MapCaptureLook::apply_metering(options, tile),
-      (Self::Face(_), false) => CubeCaptureLook::apply(options),
-      (Self::Face(_), true) => CubeCaptureLook::apply_metering(options),
+  /// The options it is drawn with, from the viewport's `options`.
+  pub fn apply_look(&self, options: &RenderViewOptions) -> RenderViewOptions {
+    match self {
+      Self::Tile(tile) => MapCaptureLook::apply(options, tile),
+      Self::Face(_) => CubeCaptureLook::apply(options),
+    }
+  }
+
+  /// The same, metering: its exposure adapts as its kind meters.
+  pub fn apply_metering_look(&self, options: &RenderViewOptions) -> RenderViewOptions {
+    match self {
+      Self::Tile(tile) => MapCaptureLook::apply_metering(options, tile),
+      Self::Face(_) => CubeCaptureLook::apply_metering(options),
     }
   }
 

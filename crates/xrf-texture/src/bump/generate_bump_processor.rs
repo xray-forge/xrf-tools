@@ -1,21 +1,25 @@
 use std::path::{Path, PathBuf};
 
-use image::RgbaImage;
+use image::{Rgba, RgbaImage};
 use xrf_dds::{DdsEncoding, DdsFile, DdsMipChain, DdsMipmaps, ImageFormat};
 use xrf_error::{XrfError, XrfResult};
 use xrf_extension::XrayExtension;
 use xrf_job::{JobOutcome, JobScope};
+use xrf_math::EPS_S;
 
-use crate::bump::bump_normal_map::{GreyPlane, derive_normal_map};
-use crate::bump::generate_bump_options::{GenerateBumpGloss, GenerateBumpOptions};
+use crate::bump::bump_normal_map::BumpNormalMap;
+use crate::bump::generate_bump_gloss::GenerateBumpGloss;
+use crate::bump::generate_bump_options::GenerateBumpOptions;
 use crate::bump::generate_bump_result::GenerateBumpResult;
+use crate::bump::grey_plane::GreyPlane;
 use crate::job_phases::TEXTURE_PHASE_GENERATE_BUMP;
 
-/// Suffix of the half holding the normals and the gloss.
+/// Suffix a texture's own bump takes, which is how the shipped bumps and the SDK's authors name them.
 const BUMP_SUFFIX: &str = "_bump";
 
-/// Suffix of the half holding the compression error and the height.
-const COMPANION_SUFFIX: &str = "_bump#";
+/// Suffix the half holding the compression error and the height takes after the bump's own name, `#.dds` in
+/// `DXTCompressBump`.
+const COMPANION_SUFFIX: &str = "#";
 
 /// The value a difference of nothing encodes to, so an error plane is signed around the middle of the byte range.
 const ERROR_BIAS: i32 = 128;
@@ -48,13 +52,13 @@ impl GenerateBumpProcessor {
   /// than refused; see [`GenerateBumpResult::is_gloss_too_dark`].
   pub fn generate(options: &GenerateBumpOptions) -> XrfResult<GenerateBumpResult> {
     let steps: JobScope = options.job.enter(TEXTURE_PHASE_GENERATE_BUMP, Some(GENERATE_STEPS));
-    let bump_path: PathBuf = Self::half_path(&options.destination, BUMP_SUFFIX);
-    let companion_path: PathBuf = Self::half_path(&options.destination, COMPANION_SUFFIX);
+    let [bump_path, companion_path]: [PathBuf; 2] = Self::pair_paths(&options.bump);
 
     let stopped = |gloss_power: f32| GenerateBumpResult {
       outcome: JobOutcome::Cancelled,
       bump: bump_path.clone(),
       companion: companion_path.clone(),
+      mipmap_levels: 0,
       gloss_power,
     };
 
@@ -100,7 +104,7 @@ impl GenerateBumpProcessor {
     // `write_to_path` would write, so the round trip through the filesystem answered the same and only cost a write
     // that a cancelled run should not have made.
     let restored: RgbaImage = encoded_bump.decode_rgba(0)?;
-    let companion: RgbaImage = Self::pack_companion(&bump, &restored, &Self::center_height(options, &height));
+    let companion: RgbaImage = Self::pack_companion(&bump, &restored, &Self::center_height(options));
 
     steps.advance();
     options.job.set_detail(Some(String::from("Encoding the height")));
@@ -126,6 +130,7 @@ impl GenerateBumpProcessor {
       outcome: JobOutcome::Completed,
       bump: bump_path,
       companion: companion_path,
+      mipmap_levels: encoded_bump.metadata().mipmap_levels,
       gloss_power,
     })
   }
@@ -136,7 +141,7 @@ impl GenerateBumpProcessor {
   /// naming: an author who has real normals is not asking for them to be inferred again.
   fn resolve_normals(options: &GenerateBumpOptions, height: &GreyPlane) -> XrfResult<RgbaImage> {
     let Some(normal_map) = &options.normal_map else {
-      return Ok(derive_normal_map(height, options.virtual_height));
+      return Ok(BumpNormalMap::derive(height, options.virtual_height));
     };
 
     if normal_map.dimensions() != options.height.dimensions() {
@@ -168,11 +173,12 @@ impl GenerateBumpProcessor {
 
         Ok(GreyPlane::from_rgb_average(mask))
       }
-      GenerateBumpGloss::Constant(level) => Ok(GreyPlane::from_rgb_average(&RgbaImage::from_pixel(
+      GenerateBumpGloss::HeightAlpha => Ok(GreyPlane::from_channel(&options.height, 3)),
+      GenerateBumpGloss::Constant(level) => Ok(GreyPlane::filled(
         options.height.width(),
         options.height.height(),
-        image::Rgba([to_byte(*level * 255.0); 4]),
-      ))),
+        Self::to_byte(*level * 255.0),
+      )),
     }
   }
 
@@ -183,43 +189,48 @@ impl GenerateBumpProcessor {
   fn pack_bump(normals: &RgbaImage, gloss: &GreyPlane) -> RgbaImage {
     RgbaImage::from_fn(normals.width(), normals.height(), |x, y| {
       let normal = normals.get_pixel(x, y).0;
-      let level: u8 = to_byte(gloss.wrapped(i64::from(x), i64::from(y)) * 255.0);
+      let level: u8 = gloss.get_wrapped(i64::from(x), i64::from(y));
 
-      image::Rgba([level.saturating_add(1), normal[2], normal[1], normal[0]])
+      Rgba([level.saturating_add(1), normal[2], normal[1], normal[0]])
     })
   }
 
   /// The second half: what the first half lost, and the height (`it_difference` then `it_height_rev`).
   ///
   /// The error is two thirds of the difference biased onto the middle of the byte range, which is what the shader
-  /// undoes when it adds `NuE.xyz - 1`. The height goes into alpha, where the parallax path reads it.
+  /// undoes when it adds `NuE.xyz - 1`. The height goes into alpha, where the parallax path reads it. An error past
+  /// the byte range is clamped where the SDK's `color_rgba` keeps its low eight bits; only a far larger loss than
+  /// DXT5's can reach it.
   fn pack_companion(bump: &RgbaImage, restored: &RgbaImage, height: &[u8]) -> RgbaImage {
     RgbaImage::from_fn(bump.width(), bump.height(), |x, y| {
       let original = bump.get_pixel(x, y).0;
       let decoded = restored.get_pixel(x, y).0;
       let error = |channel: usize| {
-        to_byte_from_int(ERROR_BIAS + 2 * (i32::from(original[channel]) - i32::from(decoded[channel])) / 3)
+        Self::to_byte_from_int(ERROR_BIAS + 2 * (i32::from(original[channel]) - i32::from(decoded[channel])) / 3)
       };
 
       // Reversed once more, so the error lines up channel for channel with the normal the shader rebuilds.
-      image::Rgba([error(3), error(2), error(1), height[(y * bump.width() + x) as usize]])
+      Rgba([error(3), error(2), error(1), height[(y * bump.width() + x) as usize]])
     })
   }
 
-  /// The height plane as it is stored: rescaled by the virtual height, then shifted so its middle sits at the centre.
+  /// The height plane as it is stored: the source's red channel, which is what `DXTCompressBump` reads here rather
+  /// than the colour average the normals came from, rescaled by the virtual height and shifted so its middle sits at
+  /// the centre.
   ///
   /// Centring is what makes parallax behave the same on a surface authored bright as on one authored dark. The middle
   /// is nine parts the mean and one part the midpoint between the extremes, so one very bright or very dark region
-  /// moves it a little and a generally bright surface moves it a lot.
-  fn center_height(options: &GenerateBumpOptions, height: &GreyPlane) -> Vec<u8> {
+  /// moves it a little and a generally bright surface moves it a lot. A rescaled height past 255 is clamped where the
+  /// SDK keeps its low eight bits and wraps a tall surface's peaks to the floor.
+  fn center_height(options: &GenerateBumpOptions) -> Vec<u8> {
     let scale: f32 = (options.virtual_height / GenerateBumpOptions::DEFAULT_VIRTUAL_HEIGHT).powf(0.75);
     // Past one the rescale is softened, so a tall surface does not flatten against the top of the byte range.
     let scale: f32 = if scale > 1.0 { scale.sqrt() } else { scale };
 
-    let scaled: Vec<u8> = (0..height.height)
-      .flat_map(|y| {
-        (0..height.width).map(move |x| to_byte((height.wrapped(i64::from(x), i64::from(y)) * 255.0 * scale).floor()))
-      })
+    let scaled: Vec<u8> = GreyPlane::from_channel(&options.height, 0)
+      .get_bytes()
+      .iter()
+      .map(|level| Self::to_byte((f32::from(*level) * scale + EPS_S).floor()))
       .collect();
 
     let total: u32 = scaled.iter().map(|level| u32::from(*level)).sum();
@@ -231,8 +242,18 @@ impl GenerateBumpProcessor {
 
     scaled
       .into_iter()
-      .map(|level| to_byte_from_int(i32::from(level) + correction))
+      .map(|level| Self::to_byte_from_int(i32::from(level) + correction))
       .collect()
+  }
+
+  /// Rounds a computed level into a byte, clamping rather than wrapping at either end.
+  fn to_byte(value: f32) -> u8 {
+    value.clamp(0.0, 255.0) as u8
+  }
+
+  /// The same clamp for a value that is already whole, which is where the error and the centring land.
+  fn to_byte_from_int(value: i32) -> u8 {
+    value.clamp(0, 255) as u8
   }
 
   /// Both halves are written the same way: DXT5, with a mip chain, as `fmt0` in the SDK sets up twice.
@@ -241,35 +262,29 @@ impl GenerateBumpProcessor {
       .encode(&DdsMipChain::build(image, DdsMipmaps::Filtered(options.mip_filter))?)
   }
 
-  /// Both halves a generation would write, in the order it writes them.
+  /// Both halves a generation writes for a bump named `bump`, in the order it writes them: `<bump>.dds` and
+  /// `<bump>#.dds`, as `DXTCompressBump` names them.
   ///
   /// Public because the naming rule is the generator's and a caller that needs the paths before the run - to hold them
-  /// while it works, or to say what it is about to replace - should not be spelling `_bump#` a second time.
-  pub fn pair_paths(destination: &Path) -> [PathBuf; 2] {
-    [
-      Self::half_path(destination, BUMP_SUFFIX),
-      Self::half_path(destination, COMPANION_SUFFIX),
-    ]
+  /// while it works, or to say what it is about to replace - should not be spelling `#` a second time.
+  pub fn pair_paths(bump: &Path) -> [PathBuf; 2] {
+    [Self::half_path(bump, ""), Self::half_path(bump, COMPANION_SUFFIX)]
   }
 
-  /// Where one half of the pair is written, from the base name both share.
-  fn half_path(destination: &Path, suffix: &str) -> PathBuf {
-    let name: String = destination
+  /// The bump a texture binds, `<texture>_bump`, without an extension: what [`GenerateBumpOptions::bump`] names for a
+  /// pair generated for the texture at `texture`.
+  pub fn bump_of(texture: &Path) -> PathBuf {
+    Self::half_path(texture, BUMP_SUFFIX).with_extension("")
+  }
+
+  /// Where one half of the pair is written, from the name both share.
+  fn half_path(bump: &Path, suffix: &str) -> PathBuf {
+    let name: String = bump
       .file_name()
       .map_or_else(String::new, |name| name.to_string_lossy().into_owned());
 
-    destination.with_file_name(format!("{name}{suffix}.{}", XrayExtension::Dds))
+    bump.with_file_name(format!("{name}{suffix}.{}", XrayExtension::Dds))
   }
-}
-
-/// Rounds a computed level into a byte, clamping rather than wrapping at either end.
-fn to_byte(value: f32) -> u8 {
-  value.clamp(0.0, 255.0) as u8
-}
-
-/// The same clamp for a value that is already whole, which is where the error and the centring land.
-fn to_byte_from_int(value: i32) -> u8 {
-  value.clamp(0, 255) as u8
 }
 
 #[cfg(test)]
@@ -280,10 +295,11 @@ mod tests {
   use xrf_dds::{DdsFile, DdsMipFilter, Quality};
   use xrf_error::XrfResult;
   use xrf_job::JobHandle;
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
 
   use super::GenerateBumpProcessor;
-  use crate::bump::generate_bump_options::{GenerateBumpGloss, GenerateBumpOptions};
+  use crate::bump::generate_bump_gloss::GenerateBumpGloss;
+  use crate::bump::generate_bump_options::GenerateBumpOptions;
   use crate::bump::generate_bump_result::GenerateBumpResult;
 
   /// A height map of one level everywhere, written into all three colour channels.
@@ -292,13 +308,13 @@ mod tests {
   }
 
   fn options(case: &str, height: RgbaImage) -> GenerateBumpOptions {
-    let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("xrf-texture/bump/{case}"));
+    let texture: PathBuf = GeneratedResources::path(&format!("xrf-texture/bump/{case}"));
 
-    std::fs::create_dir_all(destination.parent().expect("case directory")).expect("scratch directory");
+    std::fs::create_dir_all(texture.parent().expect("case directory")).expect("scratch directory");
 
     GenerateBumpOptions {
       job: JobHandle::inert(),
-      destination,
+      bump: GenerateBumpProcessor::bump_of(&texture),
       height,
       gloss: GenerateBumpGloss::Constant(0.5),
       normal_map: None,
@@ -438,6 +454,33 @@ mod tests {
 
     assert_eq!(result.bump.file_name().unwrap(), "naming_bump.dds");
     assert_eq!(result.companion.file_name().unwrap(), "naming_bump#.dds");
+    assert_eq!(result.mipmap_levels, 4);
+
+    // A bump of any name pairs as the SDK names it, `#` after the bump's own name.
+    assert_eq!(
+      GenerateBumpProcessor::pair_paths(&PathBuf::from("detail/stone"))
+        .map(|path| path.file_name().unwrap().to_owned()),
+      ["stone.dds", "stone#.dds"].map(std::ffi::OsString::from)
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn reads_the_gloss_from_the_heights_own_alpha_as_the_sdk_does() -> XrfResult {
+    // The SDK's bump source carries the gloss in its alpha: here 0x30, stored one above.
+    let mut sourced: GenerateBumpOptions =
+      options("height_alpha", RgbaImage::from_pixel(8, 8, Rgba([128, 128, 128, 0x30])));
+
+    sourced.gloss = GenerateBumpGloss::HeightAlpha;
+
+    let result: GenerateBumpResult = GenerateBumpProcessor::generate(&sourced)?;
+
+    assert!(
+      (result.gloss_power - 48.0 / 255.0).abs() < 1e-6,
+      "got {}",
+      result.gloss_power
+    );
 
     Ok(())
   }
@@ -455,5 +498,25 @@ mod tests {
     mismatched.gloss = GenerateBumpGloss::Mask(level(4, 200));
 
     assert!(GenerateBumpProcessor::generate(&mismatched).is_err());
+  }
+
+  #[test]
+  fn a_generation_asked_to_stop_leaves_neither_half() -> XrfResult {
+    // Both halves are encoded before either is written, so there is no point at which stopping could leave a `_bump`
+    // whose `_bump#` never arrived - which is the pair half of a bumped surface the engine would then substitute for.
+    let stopped: GenerateBumpOptions = options("stopped", level(16, 128));
+
+    stopped.job.cancel();
+
+    let result: GenerateBumpResult = GenerateBumpProcessor::generate(&stopped)?;
+
+    assert_eq!(result.outcome, xrf_job::JobOutcome::Cancelled);
+    assert!(!result.bump.exists() && !result.companion.exists());
+    assert!(
+      result.gloss_power > 0.0,
+      "expect the gloss it did measure to be reported, since a dark mask is worth saying even about a stopped run"
+    );
+
+    Ok(())
   }
 }

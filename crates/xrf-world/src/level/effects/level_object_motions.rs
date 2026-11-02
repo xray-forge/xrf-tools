@@ -2,10 +2,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use glam::{Mat4, Vec3};
+use xrf_animation_envelope::AnimationPlayback;
 use xrf_anm::AnmFile;
-use xrf_renderer::{RenderLevelSource, RenderWorkers};
+use xrf_renderer::{LevelPart, LevelParts, RenderWorkers};
 use xrf_visual::VisualTransform;
 
+use crate::host::world_level_source::WorldLevelSource;
 use crate::level::loading::loader_slot::LoaderSlot;
 use crate::level::loading::loader_slots::LoaderSlots;
 
@@ -13,7 +15,7 @@ use crate::level::loading::loader_slots::LoaderSlots;
 /// carries asks, and played looping from when the level began opening (`CObjectAnimator::Play(true)` at spawn), one
 /// clock for every zone, so a zone's idle effect and its idle light move together.
 pub struct LevelObjectMotions {
-  source: Arc<dyn RenderLevelSource>,
+  source: Arc<dyn WorldLevelSource>,
   workers: RenderWorkers,
   motions: LoaderSlots<AnmFile>,
   /// The level's clock at this frame and at the one before.
@@ -22,13 +24,23 @@ pub struct LevelObjectMotions {
 }
 
 impl LevelObjectMotions {
-  pub fn new(source: &Arc<dyn RenderLevelSource>, workers: &RenderWorkers) -> Self {
+  pub fn new(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     Self {
       source: Arc::clone(source),
       workers: workers.clone(),
       motions: LoaderSlots::default(),
       now: Duration::ZERO,
       previous: Duration::ZERO,
+    }
+  }
+
+  /// Reads from `source`, a next source of the same level, from now on: where `reload` names the motions, every motion
+  /// read before is let go and read again from it the next time something asks, else each stays as it was read.
+  pub fn follow(&mut self, source: &Arc<dyn WorldLevelSource>, reload: LevelParts) {
+    self.source = Arc::clone(source);
+
+    if reload.contains(LevelPart::Motions) {
+      self.motions = LoaderSlots::default();
     }
   }
 
@@ -43,7 +55,10 @@ impl LevelObjectMotions {
   pub fn get_pose(&mut self, name: &str) -> Option<(Mat4, Vec3)> {
     let (now, previous) = (self.now, self.previous);
     let motion: &AnmFile = self.get(name)?;
-    let (looped, looped_before): (f32, f32) = (motion.get_looped_time(now), motion.get_looped_time(previous));
+    let (looped, looped_before): (f32, f32) = (
+      motion.get_played_time(now, AnimationPlayback::Looped),
+      motion.get_played_time(previous, AnimationPlayback::Looped),
+    );
     let (position, rotation) = motion.evaluate(looped);
     let transform: Mat4 =
       Mat4::from_cols_array(&VisualTransform::of_motion(&position, &rotation).mirrored().to_matrix());
@@ -64,13 +79,13 @@ impl LevelObjectMotions {
     Some((transform, velocity))
   }
 
-  /// The motion by its name once it is read, asking for it the first time.
   /// Whether the motion `name` is still on its way from its loader.
   #[cfg(test)]
   pub(crate) fn is_pending(&self, name: &str) -> bool {
     self.motions.is_pending(name)
   }
 
+  /// The motion by its name once it is read, asking for it the first time.
   fn get(&mut self, name: &str) -> Option<&AnmFile> {
     let (source, workers) = (&self.source, &self.workers);
 

@@ -5,8 +5,8 @@ use serde_json::{Value, json};
 
 use crate::commands::dialog::find::command::FindCommand;
 use crate::commands::dialog::fixtures::{create_tree, run_for_result};
-use crate::core::command_testing::run_command_for_result;
-use crate::core::generic_command::CommandResult;
+use crate::core::command::CommandResult;
+use crate::core::command::command_testing::run_command_for_result;
 
 /// A dialog whose entry phrase carries a condition nothing ever gives, as Cardan's first drink does.
 const DRINKS: &str = r#"<game_dialogs>

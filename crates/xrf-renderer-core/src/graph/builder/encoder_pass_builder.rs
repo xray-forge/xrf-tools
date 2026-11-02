@@ -40,6 +40,12 @@ impl<'g, 'a> EncoderPassBuilder<'g, 'a> {
     self
   }
 
+  /// Tags the pass for whoever reads the graph's report, which carries each tag beside it; the graph reads none.
+  pub fn tag(mut self, tag: &'static str) -> Self {
+    self.declaration.tags.push(tag);
+    self
+  }
+
   /// Marks it a pass recorded as before the graph, opening its own render and compute passes; its accesses are
   /// declared by hand and the graph cannot check them.
   pub fn bridge(mut self) -> Self {

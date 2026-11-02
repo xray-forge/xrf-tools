@@ -1,0 +1,48 @@
+import { ABSENT_VALUE, formatBytes, formatBytesPair, formatCount, formatDuration } from "@xrf/format";
+import { Nullable } from "@xrf/types";
+import { DetailSection } from "@xrf/ui/layout/detail-section";
+import { StatFigure } from "@xrf/ui/stats";
+import { ReactElement } from "react";
+
+import { usePolledValue } from "@/lib/react/use-polled-value";
+
+import { IWebviewStats, readWebviewStats } from "./webview-stats";
+
+/** How often the window re-reads itself. Nothing here leaves the process, so it can afford the runtime section's rate. */
+const POLL_INTERVAL: number = 1_000;
+
+/**
+ * What this window reports about itself, which a reload resets and the backend does not.
+ */
+export function SettingsWebviewSection(): ReactElement {
+  const stats: Nullable<IWebviewStats> = usePolledValue(readWebviewStats, POLL_INTERVAL);
+  const [heapUsed, heapTotal] = formatBytesPair(stats?.heap?.used ?? 0, stats?.heap?.total ?? 0);
+
+  return (
+    <DetailSection
+      data-testid={"settings-webview-section"}
+      title={"Webview"}
+      description={"What this window reports about itself, which a reload resets and the backend above does not."}
+      fact={stats ? formatDuration(stats.age) : null}
+    >
+      <div className={"mt-2 flex flex-wrap gap-4"}>
+        <StatFigure
+          label={"Script heap"}
+          value={stats?.heap ? heapUsed : "not reported"}
+          hint={stats?.heap ? `of ${heapTotal} allocated` : "this engine publishes none"}
+        />
+        <StatFigure
+          label={"Heap ceiling"}
+          value={stats?.heap ? formatBytes(stats.heap.limit) : ABSENT_VALUE}
+          hint={"before the engine gives up"}
+        />
+        <StatFigure label={"Elements"} value={formatCount(stats?.nodes ?? 0)} hint={"in the document"} />
+        <StatFigure
+          label={"Loaded in"}
+          value={stats?.loadDuration ? formatDuration(stats.loadDuration) : "still loading"}
+          hint={"to the load event"}
+        />
+      </div>
+    </DetailSection>
+  );
+}

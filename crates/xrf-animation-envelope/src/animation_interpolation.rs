@@ -3,8 +3,9 @@ use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
 
-/// The curve parameters a key that interpolates carries.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+/// The curve parameters every key carries, `st_Key`'s tension, continuity, bias and `param`. Zero by default, as
+/// `st_Key::st_Key` leaves them.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AnimationInterpolation {
   pub tension: f32,

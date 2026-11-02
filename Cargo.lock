@@ -632,9 +632,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.10.0"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86e055fa6e3e40ad6187ba25b6855eeb635d5271f8e0f0e1e9a5826b8d75bea0"
+checksum = "877bf67ac8e52449eb2f9e98a344ea163beb70dd1f9eebe3cc5357dcfeaee4df"
 dependencies = [
  "find-msvc-tools",
  "jobserver",
@@ -790,12 +790,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "color_quant"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d7b894f5411737b7867f4827955924d7c254fc9f4d91a6aad6b097804b1018b"
-
-[[package]]
 name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -918,9 +912,9 @@ dependencies = [
 
 [[package]]
 name = "crc32fast"
-version = "1.5.3"
+version = "1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ba106e844045ddc02c20768ac4b0b7cb45f2cc2ecbd833ac9f5dacb183c2055"
+checksum = "01a7799fd6b852db0e61728dde9a204c423b44d689dbd432522543614b490e78"
 dependencies = [
  "cfg-if",
 ]
@@ -1491,12 +1485,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
-name = "fax"
-version = "0.2.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "caf1079563223d5d59d83c85886a56e586cfd5c1a26292e971a0fa266531ac5a"
-
-[[package]]
 name = "fdeflate"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1630,6 +1618,15 @@ checksum = "e5ff35a391aef949120a0340d690269b3d9f63460a6106e99bd07b961f345ea9"
 dependencies = [
  "swc_macros_common",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "fsevent-sys"
+version = "4.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76ee7a02da4d231650c7cea31349b889be2f45ddb3ef3032d2ec8185f6313fd2"
+dependencies = [
+ "libc",
 ]
 
 [[package]]
@@ -1884,16 +1881,6 @@ dependencies = [
  "cfg-if",
  "libc",
  "r-efi 6.0.0",
-]
-
-[[package]]
-name = "gif"
-version = "0.14.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee8cfcc411d9adbbaba82fb72661cc1bcca13e8bba98b364e62b2dba8f960159"
-dependencies = [
- "color_quant",
- "weezl",
 ]
 
 [[package]]
@@ -2291,12 +2278,12 @@ dependencies = [
 
 [[package]]
 name = "ico"
-version = "0.6.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d75e94d66081e4d8dcd098bd8dc5254800fea14a26389b298410158d834de167"
+checksum = "3e795dff5605e0f04bff85ca41b51a96b83e80b281e96231bcaaf1ac35103371"
 dependencies = [
  "byteorder",
- "png",
+ "png 0.17.16",
 ]
 
 [[package]]
@@ -2417,29 +2404,14 @@ checksum = "85ab80394333c02fe689eaf900ab500fbd0c2213da414687ebf995a65d5a6104"
 dependencies = [
  "bytemuck",
  "byteorder-lite",
- "color_quant",
  "exr",
- "gif",
- "image-webp",
  "moxcms",
  "num-traits",
- "png",
- "qoi",
+ "png 0.18.1",
  "ravif",
  "rayon",
- "tiff",
  "zune-core",
  "zune-jpeg",
-]
-
-[[package]]
-name = "image-webp"
-version = "0.2.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "525e9ff3e1a4be2fbea1fdf0e98686a6d98b4d8f937e1bf7402245af1909e8c3"
-dependencies = [
- "byteorder-lite",
- "quick-error",
 ]
 
 [[package]]
@@ -3127,7 +3099,7 @@ dependencies = [
  "objc2-core-foundation",
  "objc2-foundation",
  "once_cell",
- "png",
+ "png 0.18.1",
  "serde",
  "thiserror 2.0.21",
  "windows-sys 0.61.2",
@@ -3142,7 +3114,7 @@ checksum = "743fb55ba31b18fb1ecef6bdc9aa2743314978ac084044301a7eee33fb99a20d"
 [[package]]
 name = "naga"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=bfd78f5c9ff0ab2e500e9429af0efb4df0157a62#bfd78f5c9ff0ab2e500e9429af0efb4df0157a62"
 dependencies = [
  "arrayvec",
  "bit-set 0.11.1",
@@ -3167,7 +3139,7 @@ dependencies = [
 [[package]]
 name = "naga-types"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=bfd78f5c9ff0ab2e500e9429af0efb4df0157a62#bfd78f5c9ff0ab2e500e9429af0efb4df0157a62"
 dependencies = [
  "bytemuck",
  "hashbrown 0.17.1",
@@ -3253,21 +3225,20 @@ checksum = "0676bb32a98c1a483ce53e500a81ad9c3d5b3f7c920c28c24e9cb0980d0b5bc8"
 
 [[package]]
 name = "notify"
-version = "8.2.1"
+version = "8.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82f812702fbc75d35416d3f884e04925be7e9498f4eceea2e24ba34559284674"
+checksum = "4d3d07927151ff8575b7087f245456e549fea62edf0ec4e565a5ee50c8402bc3"
 dependencies = [
  "bitflags 2.13.2",
+ "fsevent-sys",
  "inotify",
  "kqueue",
  "libc",
  "log",
  "mio",
  "notify-types",
- "objc2-core-foundation",
- "objc2-core-services",
  "walkdir",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -3484,16 +3455,6 @@ checksum = "ca347214e24bc973fc025fd0d36ebb179ff30536ed1f80252706db19ee452009"
 dependencies = [
  "objc2",
  "objc2-foundation",
-]
-
-[[package]]
-name = "objc2-core-services"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "583300ad934cba24ff5292aee751ecc070f7ca6b39a574cc21b7b5e588e06a0b"
-dependencies = [
- "libc",
- "objc2-core-foundation",
 ]
 
 [[package]]
@@ -3983,6 +3944,19 @@ dependencies = [
 
 [[package]]
 name = "png"
+version = "0.17.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82151a2fc869e011c153adc57cf2789ccb8d9906ce52c0b39a6b5697749d7526"
+dependencies = [
+ "bitflags 1.3.2",
+ "crc32fast",
+ "fdeflate",
+ "flate2",
+ "miniz_oxide 0.8.9",
+]
+
+[[package]]
+name = "png"
 version = "0.18.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60769b8b31b2a9f263dae2776c37b1b28ae246943cf719eb6946a1db05128a61"
@@ -4190,15 +4164,6 @@ name = "pxfm"
 version = "0.1.30"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d55d956fa96f5ec02be2e13af0e20391a5aa83d6a074e3ad368959d0fab299ea"
-
-[[package]]
-name = "qoi"
-version = "0.4.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f6d64c71eb498fe9eae14ce4ec935c555749aef511cca85b5568910d6e48001"
-dependencies = [
- "bytemuck",
-]
 
 [[package]]
 name = "quick-error"
@@ -4571,9 +4536,9 @@ checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
 
 [[package]]
 name = "roxmltree"
-version = "0.21.2"
+version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9da7f59328b09405b181fee1018925fad50f157afb43c0c0f5c522c256dd5907"
+checksum = "f1964b10c76125c36f8afe190065a4bf9a87bf324842c05701330bba9f1cacbb"
 dependencies = [
  "memchr",
 ]
@@ -5056,9 +5021,9 @@ dependencies = [
 
 [[package]]
 name = "specta"
-version = "2.0.0-rc.25"
+version = "2.0.0-rc.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38f9a30cbcbb7011f1da7d73483983bf838af123883e45f2b36ed76328df9c50"
+checksum = "ed155e448f42fc4be7a5cbc12bd43f6c549981f7c32fcba429ff6bc57cc4f30c"
 dependencies = [
  "indexmap 2.14.2",
  "paste",
@@ -5070,9 +5035,9 @@ dependencies = [
 
 [[package]]
 name = "specta-macros"
-version = "2.0.0-rc.25"
+version = "2.0.0-rc.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ce14957ecc2897f1f848b8255b6531d13ddf49cbcf506b7c2c9fb1d005593bb"
+checksum = "b34b2516e16a9ddd3dc4e73cd6454cfe21fe209f8cb5a6f37346fe3774d759b3"
 dependencies = [
  "Inflector",
  "proc-macro2",
@@ -5082,9 +5047,9 @@ dependencies = [
 
 [[package]]
 name = "specta-serde"
-version = "0.0.12"
+version = "0.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee8a72b755ddb8949fd8f17c5db43f0e8a806ea587d9bc602ee3f73240c00029"
+checksum = "4983177ed0eb28235080261953de5f9ebae8a2d107851b5852420bd2ab246245"
 dependencies = [
  "specta",
  "specta-macros",
@@ -5092,18 +5057,18 @@ dependencies = [
 
 [[package]]
 name = "specta-typescript"
-version = "0.0.12"
+version = "0.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "639404ee95557f2f8b7e4cb773ffefd45304c7ab8ba21ac83b69051595e083c0"
+checksum = "3ecbe75dc1d27b36141b50b02b7c73bed00945710cee6edffa86d296a159a6f9"
 dependencies = [
  "specta",
 ]
 
 [[package]]
 name = "specta-util"
-version = "0.0.12"
+version = "0.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29b1fc02b446f7244a92924fe68c0555921209f1d342990cd1539e9138e69502"
+checksum = "d9bf531215ea70fba8264edecf98f12600462cf359f2038602a47aeda5ecd5b8"
 dependencies = [
  "specta",
 ]
@@ -5299,9 +5264,9 @@ dependencies = [
 
 [[package]]
 name = "swc_ecma_codegen"
-version = "32.0.5"
+version = "32.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "967aff044e24cd2c725cdc3067835824fcde9a918ef3222512db8b08bb479966"
+checksum = "d1387962cb942b27737db3e0227c1cfe5a656d72a7460575deddd5e69e3c2dcc"
 dependencies = [
  "ascii",
  "compact_str",
@@ -5334,9 +5299,9 @@ dependencies = [
 
 [[package]]
 name = "swc_ecma_parser"
-version = "46.1.2"
+version = "46.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a032f869f6690d4eddd6e67757c8d849f2c8219d8c5f3bb05a7ec8b456867642"
+checksum = "2fc77f241a90e3d5f82187bf1b6aa51ac054095b77c29b9e87518f98f0858218"
 dependencies = [
  "bitflags 2.13.2",
  "either",
@@ -5635,9 +5600,9 @@ checksum = "876fef147edbcbddc8ac5cbbba92c7b86519e314e86638596c09673b2ed01e7f"
 
 [[package]]
 name = "tauri"
-version = "2.12.5"
+version = "2.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fb0244332cfb9cee7e2a568bf5da29a36ed8fdbd717f6f47a66b6b7b358c072"
+checksum = "f316751027fc2644221d1a448564d519efb07067fda584879d9cda966391d212"
 dependencies = [
  "anyhow",
  "bytes",
@@ -5687,9 +5652,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-build"
-version = "2.7.4"
+version = "2.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "adddb0e648752aaac5da9c3c3c6a68e1e87cab55e3b757b18a9441ef8c3ac614"
+checksum = "641dd5fd297c99ab92717b0428cca5b9c6f960b2ac96ca131b3eebc9d70b8ddc"
 dependencies = [
  "anyhow",
  "cargo_toml",
@@ -5712,16 +5677,16 @@ dependencies = [
 
 [[package]]
 name = "tauri-codegen"
-version = "2.7.4"
+version = "2.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb37631cf71dab5e8ab55e1bdd701e18a52653d90b78e71d0e5598b1e0a61316"
+checksum = "a6585c5b536c00f039d12ce70a9755172d5423bbcfd3969863baa70314c3e02f"
 dependencies = [
  "base64 0.23.1",
  "brotli",
  "ico",
  "json-patch",
  "plist",
- "png",
+ "png 0.18.1",
  "proc-macro2",
  "quote",
  "semver",
@@ -5739,9 +5704,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-macros"
-version = "2.7.4"
+version = "2.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0cc38db58854c10fb5f91a887ed8bf82d3239bb92b5d8db86eda09e96d9963d1"
+checksum = "e2e83a0cfa1bae376e8fbbdc0b1692707aed50cd6072ce85cae4789af5d6c19f"
 dependencies = [
  "heck 0.5.0",
  "proc-macro2",
@@ -5875,9 +5840,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-runtime-wry"
-version = "2.12.3"
+version = "2.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1aa9d8b7a120f879f44fdc1053f7b7dbf416bf0bbc6a72b714dec46b782b52f"
+checksum = "8d61892587aea2a85245bcaec98c6fe46268874c0a0deae5535fb71ca7b93eae"
 dependencies = [
  "gtk",
  "http",
@@ -5885,6 +5850,7 @@ dependencies = [
  "log",
  "objc2",
  "objc2-app-kit",
+ "once_cell",
  "percent-encoding",
  "raw-window-handle",
  "softbuffer",
@@ -5900,11 +5866,12 @@ dependencies = [
 
 [[package]]
 name = "tauri-specta"
-version = "2.0.0-rc.25"
+version = "2.0.0-rc.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee080f36d2ac17ce2f3a82fb53f02d664e8345457de51b56dad3c394dacc41a2"
+checksum = "fe71fc209fa4c49f959644f1ae2d70f72d5675bcb3d3ad8518122fa7b330994e"
 dependencies = [
  "heck 0.5.0",
+ "paste",
  "serde",
  "serde_json",
  "specta",
@@ -6032,20 +5999,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tiff"
-version = "0.11.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b63feaf3343d35b6ca4d50483f94843803b0f51634937cc2ec519fc32232bc52"
-dependencies = [
- "fax",
- "flate2",
- "half",
- "quick-error",
- "weezl",
- "zune-jpeg",
-]
-
-[[package]]
 name = "time"
 version = "0.3.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6086,7 +6039,7 @@ dependencies = [
  "bytemuck",
  "cfg-if",
  "log",
- "png",
+ "png 0.18.1",
  "tiny-skia-path",
 ]
 
@@ -6129,9 +6082,9 @@ checksum = "fd3ca314f692efd6c868f8408f53fe444634a845f96c028b97d35f6a1f79f0ee"
 
 [[package]]
 name = "tokio"
-version = "1.54.1"
+version = "1.53.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b52fd3255258d26fac7264ab5a76b53c13367136dc011d3d6ad4f8ed070396a3"
+checksum = "ce3335fa71841cda333a58d7615b03901380ecf09d59b3296d21f8bbac0dde4e"
 dependencies = [
  "bytes",
  "libc",
@@ -6405,7 +6358,7 @@ dependencies = [
  "objc2-core-graphics",
  "objc2-foundation",
  "once_cell",
- "png",
+ "png 0.18.1",
  "serde",
  "thiserror 2.0.21",
  "windows-sys 0.61.2",
@@ -6541,7 +6494,7 @@ dependencies = [
  "kurbo",
  "log",
  "pico-args",
- "roxmltree 0.21.2",
+ "roxmltree 0.21.1",
  "simplecss",
  "siphasher 1.0.4",
  "skrifa",
@@ -6568,9 +6521,9 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "uuid"
-version = "1.29.0"
+version = "1.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4a0e2d11620c50695fe12bbbfde96b3477fe606e7284c22d505c12ce51214514"
+checksum = "7cc1186384beb7dd8eedea376413fd654937285ea6c9cfbb928dc3043ea4b606"
 dependencies = [
  "getrandom 0.4.3",
  "js-sys",
@@ -6841,15 +6794,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "weezl"
-version = "0.1.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88"
-
-[[package]]
 name = "wgpu"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=bfd78f5c9ff0ab2e500e9429af0efb4df0157a62#bfd78f5c9ff0ab2e500e9429af0efb4df0157a62"
 dependencies = [
  "arrayvec",
  "bitflags 2.13.2",
@@ -6876,7 +6823,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=bfd78f5c9ff0ab2e500e9429af0efb4df0157a62#bfd78f5c9ff0ab2e500e9429af0efb4df0157a62"
 dependencies = [
  "arrayvec",
  "bit-set 0.11.1",
@@ -6909,7 +6856,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core-deps-apple"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=bfd78f5c9ff0ab2e500e9429af0efb4df0157a62#bfd78f5c9ff0ab2e500e9429af0efb4df0157a62"
 dependencies = [
  "wgpu-hal",
 ]
@@ -6917,7 +6864,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core-deps-linux-android-bsd"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=bfd78f5c9ff0ab2e500e9429af0efb4df0157a62#bfd78f5c9ff0ab2e500e9429af0efb4df0157a62"
 dependencies = [
  "wgpu-hal",
 ]
@@ -6925,7 +6872,7 @@ dependencies = [
 [[package]]
 name = "wgpu-core-deps-windows"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=bfd78f5c9ff0ab2e500e9429af0efb4df0157a62#bfd78f5c9ff0ab2e500e9429af0efb4df0157a62"
 dependencies = [
  "wgpu-hal",
 ]
@@ -6933,7 +6880,7 @@ dependencies = [
 [[package]]
 name = "wgpu-hal"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=bfd78f5c9ff0ab2e500e9429af0efb4df0157a62#bfd78f5c9ff0ab2e500e9429af0efb4df0157a62"
 dependencies = [
  "android_system_properties",
  "arrayvec",
@@ -6976,7 +6923,7 @@ dependencies = [
 [[package]]
 name = "wgpu-naga-bridge"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=bfd78f5c9ff0ab2e500e9429af0efb4df0157a62#bfd78f5c9ff0ab2e500e9429af0efb4df0157a62"
 dependencies = [
  "naga",
  "wgpu-types",
@@ -6985,7 +6932,7 @@ dependencies = [
 [[package]]
 name = "wgpu-sync"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=bfd78f5c9ff0ab2e500e9429af0efb4df0157a62#bfd78f5c9ff0ab2e500e9429af0efb4df0157a62"
 dependencies = [
  "cfg-if",
  "lock_api",
@@ -6998,7 +6945,7 @@ dependencies = [
 [[package]]
 name = "wgpu-types"
 version = "30.0.0"
-source = "git+https://github.com/xray-forge/xrf-wgpu?rev=f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a#f44a0393368074bbe3aa4ca02d957c4a8a1e4b9a"
+source = "git+https://github.com/xray-forge/xrf-wgpu?rev=bfd78f5c9ff0ab2e500e9429af0efb4df0157a62#bfd78f5c9ff0ab2e500e9429af0efb4df0157a62"
 dependencies = [
  "bitflags 2.13.2",
  "bytemuck",
@@ -7531,76 +7478,68 @@ dependencies = [
 name = "xrf-app"
 version = "0.1.0"
 dependencies = [
- "bytes",
- "dirs",
- "env_logger",
- "getrandom 0.4.3",
- "glam",
- "http-body-util",
- "hyper",
- "hyper-util",
- "image",
  "log",
- "notify",
- "objc2",
- "objc2-app-kit",
- "objc2-foundation",
- "objc2-quartz-core",
- "percent-encoding",
- "profiling",
- "rayon",
- "resvg",
  "serde",
  "serde_json",
- "specta",
- "specta-serde",
- "specta-typescript",
- "specta-util",
- "sysinfo",
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
  "tauri-plugin-fs",
  "tauri-plugin-shell",
  "tauri-plugin-store",
- "tauri-specta",
- "tokio",
- "uuid",
- "webview2-com",
  "windows",
+ "xrf-app-archives",
+ "xrf-app-configs",
+ "xrf-app-core",
+ "xrf-app-dialogs",
+ "xrf-app-exports",
+ "xrf-app-gamedata",
+ "xrf-app-levels",
+ "xrf-app-render",
+ "xrf-app-spawn",
+ "xrf-app-sprite-equipment",
+ "xrf-app-system",
+ "xrf-app-textures",
+ "xrf-app-translations",
+ "xrf-app-visuals",
+ "xrf-build-info",
+ "xrf-env-flags",
+ "xrf-ipc-typescript",
+ "xrf-job",
+ "xrf-renderer",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-app-archives"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
  "xrf-animation-envelope",
  "xrf-anm",
+ "xrf-app-core",
  "xrf-archive",
  "xrf-archive-stats",
- "xrf-build-info",
  "xrf-chunk",
- "xrf-dds",
- "xrf-dialog",
- "xrf-dltx",
  "xrf-efd",
- "xrf-engine-target",
- "xrf-env-flags",
- "xrf-environment",
  "xrf-error",
- "xrf-export",
  "xrf-extension",
- "xrf-gamedata",
  "xrf-gamemtl",
- "xrf-ipc-typescript",
+ "xrf-ipc",
  "xrf-job",
  "xrf-level",
  "xrf-light-anim",
- "xrf-ltx",
- "xrf-ltx-inspect",
- "xrf-material",
  "xrf-math",
- "xrf-ogf",
  "xrf-omf",
- "xrf-output",
  "xrf-pack",
  "xrf-particles",
  "xrf-ppe",
- "xrf-renderer",
  "xrf-shaders",
  "xrf-skeleton",
  "xrf-sound",
@@ -7608,9 +7547,331 @@ dependencies = [
  "xrf-test-utils",
  "xrf-texture",
  "xrf-thm",
- "xrf-translation",
- "xrf-typescript",
  "xrf-utils",
+ "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-app-configs"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
+ "xrf-app-core",
+ "xrf-dltx",
+ "xrf-error",
+ "xrf-ipc",
+ "xrf-job",
+ "xrf-ltx",
+ "xrf-ltx-inspect",
+ "xrf-test-utils",
+ "xrf-utils",
+ "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-app-core"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "dirs",
+ "env_logger",
+ "getrandom 0.4.3",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "log",
+ "rayon",
+ "serde",
+ "serde_json",
+ "specta",
+ "specta-typescript",
+ "tauri",
+ "tauri-specta",
+ "tokio",
+ "uuid",
+ "windows",
+ "xrf-dds",
+ "xrf-engine-target",
+ "xrf-env-flags",
+ "xrf-error",
+ "xrf-ipc-typescript",
+ "xrf-job",
+ "xrf-test-utils",
+ "xrf-utils",
+ "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-app-dialogs"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "xrf-app-core",
+ "xrf-dialog",
+ "xrf-job",
+ "xrf-test-utils",
+ "xrf-utils",
+ "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-app-exports"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "xrf-app-core",
+ "xrf-export",
+ "xrf-job",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-app-gamedata"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
+ "xrf-app-core",
+ "xrf-engine-target",
+ "xrf-error",
+ "xrf-gamedata",
+ "xrf-ipc",
+ "xrf-job",
+ "xrf-report",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-app-levels"
+version = "0.1.0"
+dependencies = [
+ "glam",
+ "image",
+ "log",
+ "rayon",
+ "resvg",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
+ "xrf-anm",
+ "xrf-app-core",
+ "xrf-app-render",
+ "xrf-chunk",
+ "xrf-dds",
+ "xrf-dltx",
+ "xrf-engine-target",
+ "xrf-environment",
+ "xrf-error",
+ "xrf-extension",
+ "xrf-gamemtl",
+ "xrf-ipc",
+ "xrf-job",
+ "xrf-level",
+ "xrf-light-anim",
+ "xrf-ltx",
+ "xrf-material",
+ "xrf-math",
+ "xrf-ogf",
+ "xrf-particles",
+ "xrf-renderer",
+ "xrf-shaders",
+ "xrf-spawn",
+ "xrf-test-utils",
+ "xrf-texture",
+ "xrf-thm",
+ "xrf-utils",
+ "xrf-vfs",
+ "xrf-visual",
+ "xrf-world",
+]
+
+[[package]]
+name = "xrf-app-render"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "log",
+ "notify",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
+ "objc2-quartz-core",
+ "profiling",
+ "rayon",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "windows",
+ "xrf-app-core",
+ "xrf-environment",
+ "xrf-error",
+ "xrf-extension",
+ "xrf-job",
+ "xrf-material",
+ "xrf-renderer",
+ "xrf-test-utils",
+ "xrf-utils",
+ "xrf-vfs",
+ "xrf-visual",
+ "xrf-world",
+]
+
+[[package]]
+name = "xrf-app-spawn"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "serde_json",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
+ "xrf-app-core",
+ "xrf-chunk",
+ "xrf-ipc",
+ "xrf-job",
+ "xrf-spawn",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-app-sprite-equipment"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "log",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
+ "xrf-app-core",
+ "xrf-dds",
+ "xrf-dltx",
+ "xrf-error",
+ "xrf-ipc",
+ "xrf-job",
+ "xrf-ltx",
+ "xrf-output",
+ "xrf-texture",
+ "xrf-utils",
+ "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-app-system"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "serde_json",
+ "specta",
+ "sysinfo",
+ "tauri",
+ "tauri-specta",
+ "webview2-com",
+ "windows",
+ "xrf-app-core",
+ "xrf-app-render",
+ "xrf-build-info",
+ "xrf-env-flags",
+ "xrf-renderer",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
+name = "xrf-app-textures"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "rayon",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
+ "xrf-app-core",
+ "xrf-app-render",
+ "xrf-chunk",
+ "xrf-dds",
+ "xrf-environment",
+ "xrf-error",
+ "xrf-ipc",
+ "xrf-job",
+ "xrf-material",
+ "xrf-renderer",
+ "xrf-test-utils",
+ "xrf-texture",
+ "xrf-thm",
+ "xrf-utils",
+ "xrf-vfs",
+ "xrf-visual",
+ "xrf-world",
+]
+
+[[package]]
+name = "xrf-app-translations"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "uuid",
+ "xrf-app-core",
+ "xrf-ipc",
+ "xrf-job",
+ "xrf-output",
+ "xrf-test-utils",
+ "xrf-translation",
+ "xrf-utils",
+ "xrf-vfs",
+]
+
+[[package]]
+name = "xrf-app-visuals"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "specta",
+ "tauri",
+ "tauri-specta",
+ "xrf-app-core",
+ "xrf-app-render",
+ "xrf-chunk",
+ "xrf-environment",
+ "xrf-error",
+ "xrf-job",
+ "xrf-material",
+ "xrf-ogf",
+ "xrf-renderer",
+ "xrf-test-utils",
  "xrf-vfs",
  "xrf-visual",
  "xrf-world",
@@ -7624,13 +7885,13 @@ dependencies = [
  "crc32fast",
  "log",
  "lzokay",
- "regex",
  "serde",
  "specta",
  "walkdir",
  "xrf-chunk",
  "xrf-error",
  "xrf-extension",
+ "xrf-ipc",
  "xrf-lzhuf",
  "xrf-test-utils",
  "xrf-utils",
@@ -7695,10 +7956,12 @@ dependencies = [
  "xrf-export",
  "xrf-extension",
  "xrf-gamedata",
+ "xrf-gamemtl",
  "xrf-job",
  "xrf-level",
  "xrf-ltx",
  "xrf-ltx-inspect",
+ "xrf-material",
  "xrf-math",
  "xrf-ogf",
  "xrf-omf",
@@ -7828,9 +8091,7 @@ name = "xrf-error"
 version = "0.1.0"
 dependencies = [
  "image",
- "serde",
  "serde_json",
- "specta",
  "thiserror 2.0.21",
  "xrf-error-derive",
 ]
@@ -7879,13 +8140,19 @@ dependencies = [
  "criterion",
  "derive_more 2.1.1",
  "rayon",
+ "serde",
+ "serde_json",
+ "specta",
  "uuid",
+ "xrf-animation-envelope",
+ "xrf-anm",
  "xrf-chunk",
  "xrf-dds",
  "xrf-engine-target",
  "xrf-environment",
  "xrf-error",
  "xrf-extension",
+ "xrf-gamemtl",
  "xrf-job",
  "xrf-level",
  "xrf-ltx",
@@ -7896,6 +8163,7 @@ dependencies = [
  "xrf-omf",
  "xrf-output",
  "xrf-particles",
+ "xrf-ppe",
  "xrf-report",
  "xrf-shaders",
  "xrf-sound",
@@ -7915,7 +8183,6 @@ dependencies = [
  "serde",
  "xrf-chunk",
  "xrf-error",
- "xrf-test-utils",
  "xrf-utils",
 ]
 
@@ -7926,6 +8193,7 @@ dependencies = [
  "inventory",
  "serde",
  "serde_json",
+ "specta",
  "xrf-ipc-derive",
 ]
 
@@ -7944,6 +8212,7 @@ dependencies = [
 name = "xrf-ipc-typescript"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "serde_json",
  "specta",
  "specta-serde",
@@ -7984,6 +8253,7 @@ dependencies = [
  "xrf-error",
  "xrf-math",
  "xrf-ogf",
+ "xrf-report",
  "xrf-test-utils",
  "xrf-utils",
 ]
@@ -8055,6 +8325,7 @@ dependencies = [
  "specta",
  "xrf-chunk",
  "xrf-error",
+ "xrf-extension",
  "xrf-particles",
  "xrf-shaders",
  "xrf-test-utils",
@@ -8145,7 +8416,6 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
- "uuid",
  "xrf-chunk",
  "xrf-engine-target",
  "xrf-error",
@@ -8185,23 +8455,24 @@ dependencies = [
  "profiling",
  "raw-window-handle",
  "rayon",
+ "resvg",
  "serde",
  "serde_json",
  "specta",
  "wgpu",
  "windows",
- "xrf-anm",
  "xrf-dds",
  "xrf-dlss",
  "xrf-engine-target",
  "xrf-env-flags",
- "xrf-environment",
  "xrf-error",
  "xrf-ipc",
+ "xrf-light-anim",
  "xrf-material",
  "xrf-math",
  "xrf-particles",
  "xrf-renderer-core",
+ "xrf-renderer-derive",
  "xrf-test-utils",
  "xrf-utils",
  "xrf-vfs",
@@ -8249,6 +8520,8 @@ name = "xrf-report"
 version = "0.1.0"
 dependencies = [
  "serde",
+ "serde_json",
+ "specta",
  "xrf-error",
  "xrf-utils",
 ]
@@ -8273,8 +8546,6 @@ version = "0.1.0"
 dependencies = [
  "byteorder",
  "log",
- "serde",
- "specta",
  "xrf-chunk",
  "xrf-error",
  "xrf-math",
@@ -8338,6 +8609,7 @@ dependencies = [
  "xrf-extension",
  "xrf-job",
  "xrf-ltx",
+ "xrf-math",
  "xrf-output",
  "xrf-particles",
  "xrf-spawn",
@@ -8353,10 +8625,12 @@ name = "xrf-thm"
 version = "0.1.0"
 dependencies = [
  "byteorder",
+ "image",
  "serde",
  "serde_json",
  "xrf-chunk",
  "xrf-error",
+ "xrf-lzhuf",
  "xrf-test-utils",
  "xrf-utils",
 ]
@@ -8444,6 +8718,7 @@ dependencies = [
  "xrf-ltx",
  "xrf-math",
  "xrf-ogf",
+ "xrf-omf",
  "xrf-particles",
  "xrf-skeleton",
  "xrf-spawn",
@@ -8465,6 +8740,7 @@ dependencies = [
  "xrf-engine-target",
  "xrf-environment",
  "xrf-error",
+ "xrf-level",
  "xrf-material",
  "xrf-math",
  "xrf-particles",
@@ -8479,7 +8755,7 @@ name = "xrf-xml"
 version = "0.1.0"
 dependencies = [
  "quick-xml",
- "roxmltree 0.21.2",
+ "roxmltree 0.21.1",
  "serde",
  "xrf-error",
  "xrf-utils",

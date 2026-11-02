@@ -3,13 +3,17 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use xrf_error::XrfResult;
+use xrf_gamemtl::GameMtlFile;
 use xrf_shaders::ShaderLibraryFile;
 
-use crate::project::levels::level_binaries_verifier::{LevelBinariesOutcome, LevelBinariesVerifier};
+use crate::project::gamedata_check::GamedataCheck;
+use crate::project::levels::level_binaries_outcome::LevelBinariesOutcome;
+use crate::project::levels::level_binaries_verifier::LevelBinariesVerifier;
 use crate::project::levels::level_bundle::LevelBundle;
 use crate::project::levels::level_manifest_verifier::LevelManifestVerifier;
 use crate::project::levels::level_reconciliation_verifier::LevelReconciliationVerifier;
-use crate::project::levels::level_references_verifier::{LevelReferencesOutcome, LevelReferencesVerifier};
+use crate::project::levels::level_references_outcome::LevelReferencesOutcome;
+use crate::project::levels::level_references_verifier::LevelReferencesVerifier;
 use crate::project::levels::level_roster::LevelRoster;
 use crate::project::levels::verify_levels_result::GamedataLevelsVerificationResult;
 use crate::{Finding, GamedataFindingFactory, GamedataProject, GamedataProjectVerifyOptions};
@@ -19,12 +23,14 @@ pub(crate) struct LevelsVerifier<'a> {
   project: &'a GamedataProject,
 }
 
-impl<'a> LevelsVerifier<'a> {
-  pub(crate) fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
+impl<'a> GamedataCheck<'a> for LevelsVerifier<'a> {
+  type Result = GamedataLevelsVerificationResult;
+
+  fn new(project: &'a GamedataProject, options: &'a GamedataProjectVerifyOptions) -> Self {
     Self { options, project }
   }
 
-  pub(crate) fn verify(&self) -> XrfResult<GamedataLevelsVerificationResult> {
+  fn verify(&self) -> XrfResult<GamedataLevelsVerificationResult> {
     self.options.job.check_cancelled()?;
 
     xrf_output::heading!(self.options.output, "Verify levels:");
@@ -49,6 +55,7 @@ impl<'a> LevelsVerifier<'a> {
     findings.extend(reconciliation.verify(&roster, &bundles)?);
 
     let shader_library: Option<Arc<ShaderLibraryFile>> = LevelReferencesVerifier::read_library(self.project);
+    let game_materials: Option<Arc<GameMtlFile>> = self.project.game_materials().ok();
 
     let mut checked_references_count: u32 = 0;
     let mut invalid_references_count: u32 = 0;
@@ -63,7 +70,7 @@ impl<'a> LevelsVerifier<'a> {
       let level = roster.find(name);
 
       let mut bundle_findings: Vec<Finding> = LevelManifestVerifier::new(&bundle).verify(level);
-      let binaries: LevelBinariesOutcome = LevelBinariesVerifier::new(&bundle).verify(level);
+      let binaries: LevelBinariesOutcome = LevelBinariesVerifier::new(&bundle, game_materials.as_deref()).verify(level);
 
       bundle_findings.extend(binaries.findings);
 

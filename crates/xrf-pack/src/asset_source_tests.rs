@@ -7,10 +7,11 @@ use std::fs;
 use std::path::PathBuf;
 
 use xrf_archive::ArchiveProject;
-use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+use xrf_test_utils::GeneratedResources;
 use xrf_vfs::{
   XrayArchiveSource, XrayAsset, XrayAssetContainer, XrayAssetSource, XrayAssetType, XrayDeclaredRoot, XrayLookupScope,
-  XrayMountPlan, XrayProbe, XrayProbePlan, XrayProbeStep, XrayShadowedCopy, XraySourceKind, XrayVfs,
+  XrayMountMode, XrayRootProbe, XraySearch, XraySearchPlan, XraySearchStep, XrayShadowedCopy, XrayShadowingEntry,
+  XraySourceKind, XrayVfs,
 };
 
 use crate::pack::ArchivePacker;
@@ -21,12 +22,26 @@ const CONFIG: &[u8] = b"[section]\nvalue = 1\n";
 /// Distinct payload for the volume that must win, so a test names which volume answered rather than only that one did.
 const PATCHED: &[u8] = b"patched";
 
+/// A search over every mount of `vfs`, in mount order.
+fn search_all(vfs: XrayVfs) -> XraySearch {
+  XraySearch::new(vfs).with_step("all", XrayLookupScope::all())
+}
+
+/// A search over one loose root, planned as a person naming the directory would.
+fn search_root(root: &PathBuf) -> XraySearch {
+  XraySearchPlan::new()
+    .with_root_mode("gamedata", root, XrayMountMode::Directory)
+    .expect("plan")
+    .open()
+    .expect("mounts")
+}
+
 /// Packs a source tree into volumes and mounts the result.
 fn mount(scope: &str, files: &[(&str, &[u8])]) -> XrayArchiveSource {
-  let source: PathBuf = build_absolute_generated_test_resource_path(&format!("archive_asset_source/{scope}/gamedata"));
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("archive_asset_source/{scope}/db"));
+  let source: PathBuf =
+    GeneratedResources::create_dir(&format!("archive_asset_source/{scope}/gamedata")).expect("source directory");
+  let destination: PathBuf = GeneratedResources::path(&format!("archive_asset_source/{scope}/db"));
 
-  let _ = fs::remove_dir_all(&source);
   let _ = fs::remove_dir_all(&destination);
 
   for (name, contents) in files {
@@ -54,16 +69,14 @@ fn mount(scope: &str, files: &[(&str, &[u8])]) -> XrayArchiveSource {
 /// trees and meet only inside the volume set — which is how a case-only duplicate reaches a player's install in the
 /// first place, as a patch volume built elsewhere.
 fn mount_volumes(scope: &str, volumes: &[(&str, &str, &[u8])]) -> XrayArchiveSource {
-  let destination: PathBuf = build_absolute_generated_test_resource_path(&format!("archive_asset_source/{scope}/db"));
+  let destination: PathBuf = GeneratedResources::path(&format!("archive_asset_source/{scope}/db"));
 
   let _ = fs::remove_dir_all(&destination);
 
   for (volume, name, contents) in volumes {
     let source: PathBuf =
-      build_absolute_generated_test_resource_path(&format!("archive_asset_source/{scope}/{volume}"));
+      GeneratedResources::create_dir(&format!("archive_asset_source/{scope}/{volume}")).expect("source directory");
     let path: PathBuf = source.join(name.replace('\\', "/"));
-
-    let _ = fs::remove_dir_all(&source);
 
     fs::create_dir_all(path.parent().expect("entry parent")).expect("source directory");
     fs::write(&path, contents).expect("source file");
@@ -87,7 +100,7 @@ fn reports_itself_as_a_read_only_archive() {
 
   assert_eq!(source.get_kind(), XraySourceKind::Archive);
   assert!(!source.is_writable());
-  assert!(source.write("textures\\wpn\\wpn_ak74.dds", TEXTURE).is_err());
+  assert!(source.get_writable_path("textures\\wpn\\wpn_ak74.dds").is_none());
 }
 
 #[test]
@@ -142,19 +155,16 @@ fn resolves_a_texture_reference_once_mounted_in_a_vfs() {
 
   vfs.mount("", Box::new(source)).expect("archive mounts");
 
-  let scope: XrayLookupScope = XrayLookupScope::all();
-  let location = vfs
-    .scoped(&scope)
-    .dds_texture("wpn\\wpn_ak74")
+  let search: XraySearch = search_all(vfs);
+  let location: XrayAsset = search
+    .resolve(XrayAssetType::Dds, "wpn\\wpn_ak74")
     .expect("lookup succeeds")
+    .into_asset()
     .expect("texture resolves");
 
   assert_eq!(location.get_logical_path().as_str(), "textures\\wpn\\wpn_ak74.dds");
   assert_eq!(location.to_physical_path(), None);
-  assert_eq!(
-    vfs.scoped(&scope).read_bytes("textures\\wpn\\wpn_ak74.dds").unwrap(),
-    TEXTURE
-  );
+  assert_eq!(search.read("textures\\wpn\\wpn_ak74.dds").unwrap(), TEXTURE);
 }
 
 #[test]
@@ -174,19 +184,15 @@ fn an_asset_located_in_a_volume_set_reads_back_through_the_mount_that_answered()
 
   vfs.mount("", Box::new(source)).expect("archive mounts");
 
-  let scope: XrayLookupScope = XrayLookupScope::all();
+  let search: XraySearch = search_all(vfs);
 
   for (path, expected) in [
     ("configs\\system.ltx", CONFIG),
     ("textures\\wpn\\wpn_ak74.dds", TEXTURE),
   ] {
-    let asset: XrayAsset = vfs
-      .scoped(&scope)
-      .find(path)
-      .expect("lookup succeeds")
-      .expect("the entry resolves");
+    let asset: XrayAsset = search.find(path).expect("lookup succeeds").expect("the entry resolves");
 
-    assert_eq!(vfs.read_asset_bytes(&asset).expect("the located asset reads"), expected);
+    assert_eq!(search.read_asset(&asset).expect("the located asset reads"), expected);
   }
 }
 
@@ -195,9 +201,7 @@ fn a_loose_file_wins_over_the_same_name_in_an_archive() {
   // The rule fsgame declares by listing db before gamedata. Mount order carries it.
   let archived: XrayArchiveSource = mount("override", &[("textures\\wpn\\wpn_ak74.dds", TEXTURE)]);
 
-  let loose: PathBuf = build_absolute_generated_test_resource_path("archive_asset_source/override/loose");
-
-  let _ = fs::remove_dir_all(&loose);
+  let loose: PathBuf = GeneratedResources::create_dir("archive_asset_source/override/loose").expect("loose directory");
 
   fs::create_dir_all(loose.join("textures/wpn")).expect("loose directory");
   fs::write(loose.join("textures/wpn/wpn_ak74.dds"), b"loose").expect("loose file");
@@ -207,19 +211,13 @@ fn a_loose_file_wins_over_the_same_name_in_an_archive() {
   vfs.mount_directory("", &loose).expect("directory mounts");
   vfs.mount("", Box::new(archived)).expect("archive mounts");
 
-  let scope: XrayLookupScope = XrayLookupScope::all();
+  let search: XraySearch = search_all(vfs);
+  let entries: Vec<XrayShadowingEntry> = search.list_shadowing_entries();
 
+  assert_eq!(search.read("textures\\wpn\\wpn_ak74.dds").unwrap(), b"loose");
   assert_eq!(
-    vfs.scoped(&scope).read_bytes("textures\\wpn\\wpn_ak74.dds").unwrap(),
-    b"loose"
-  );
-  assert_eq!(
-    vfs
-      .scoped(&scope)
-      .find_all("textures\\wpn\\wpn_ak74.dds")
-      .unwrap()
-      .len(),
-    2,
+    entries[0].shadowed.len(),
+    1,
     "the archived copy stays reportable behind the override"
   );
 }
@@ -230,20 +228,20 @@ fn a_directory_of_volumes_is_planned_as_an_archive_source() {
   // mounting it as the latter answers for `packed.db0` instead of for the assets inside it.
   mount("planned", &[("meshes\\wpn\\wpn_ak74.ogf", TEXTURE)]);
 
-  let volumes: PathBuf = build_absolute_generated_test_resource_path("archive_asset_source/planned/db");
+  let volumes: PathBuf = GeneratedResources::path("archive_asset_source/planned/db");
 
-  assert!(XrayMountPlan::holds_volumes(&volumes), "the packer wrote volumes there");
+  assert!(XrayRootProbe::holds_volumes(&volumes), "the packer wrote volumes there");
 
   let mut vfs: XrayVfs = XrayVfs::new();
-  let steps: Vec<XrayProbeStep> = XrayProbePlan::new()
+  let steps: Vec<XraySearchStep> = XraySearchPlan::new()
     .with_root("browsed root", &volumes)
     .expect("volumes plan")
     .mount_into(&mut vfs)
     .expect("volumes mount");
 
-  let probe: XrayProbe = vfs.probe().with_steps(steps);
-  let listed: Vec<String> = probe
-    .list_assets_of_type(XrayAssetType::Ogf)
+  let search: XraySearch = XraySearch::new(vfs).with_steps(steps);
+  let listed: Vec<String> = search
+    .list_assets(XrayAssetType::Ogf)
     .into_iter()
     .map(|asset| asset.get_logical_path().as_str().to_string())
     .collect();
@@ -254,7 +252,7 @@ fn a_directory_of_volumes_is_planned_as_an_archive_source() {
     "the volume's assets are browsable"
   );
   assert_eq!(
-    probe
+    search
       .resolve(XrayAssetType::Ogf, "wpn\\wpn_ak74")
       .expect("lookup succeeds")
       .get_asset()
@@ -363,17 +361,17 @@ fn a_recorded_checksum_is_answered_without_reading_the_payload() {
 fn a_loose_source_records_no_checksum_of_its_own() {
   // The default half of the seam. A directory would have to read the file to produce one, so it declines and leaves
   // the caller to decide whether the payload is worth reading.
-  let root: PathBuf = build_absolute_generated_test_resource_path("archive_asset_source/loose_crc/gamedata");
+  let root: PathBuf =
+    GeneratedResources::create_dir("archive_asset_source/loose_crc/gamedata").expect("source directory");
 
-  let _ = fs::remove_dir_all(&root);
   fs::create_dir_all(root.join("configs")).expect("source directory");
   fs::write(root.join("configs").join("system.ltx"), CONFIG).expect("source file");
 
-  let vfs: XrayVfs = XrayVfs::from_plan(&XrayMountPlan::root(&root).expect("plan")).expect("mounts");
+  let search: XraySearch = search_root(&root);
 
-  assert_eq!(vfs.read_size("configs\\system.ltx"), Some(CONFIG.len() as u64));
+  assert_eq!(search.read_size("configs\\system.ltx"), Some(CONFIG.len() as u64));
   assert!(
-    vfs.read_recorded_crc("configs\\system.ltx").is_none(),
+    search.read_recorded_crc("configs\\system.ltx").is_none(),
     "a loose file records nothing, however readable it is"
   );
 }
@@ -384,9 +382,9 @@ fn a_checksum_is_read_through_the_mount_that_won() {
   // mount is a directory, which records none.
   let scope: &str = "crc_follows_the_winner";
   let archived: XrayArchiveSource = mount(scope, &[("configs\\system.ltx", CONFIG)]);
-  let loose: PathBuf = build_absolute_generated_test_resource_path(&format!("archive_asset_source/{scope}/loose"));
+  let loose: PathBuf =
+    GeneratedResources::create_dir(&format!("archive_asset_source/{scope}/loose")).expect("override directory");
 
-  let _ = fs::remove_dir_all(&loose);
   fs::create_dir_all(loose.join("configs")).expect("override directory");
   fs::write(loose.join("configs").join("system.ltx"), PATCHED).expect("override file");
 
@@ -395,9 +393,11 @@ fn a_checksum_is_read_through_the_mount_that_won() {
   vfs.mount_directory("", &loose).expect("loose mount wins");
   vfs.mount("", Box::new(archived)).expect("archive mount behind it");
 
-  assert_eq!(vfs.read_bytes("configs\\system.ltx").expect("reads"), PATCHED);
+  let search: XraySearch = search_all(vfs);
+
+  assert_eq!(search.read("configs\\system.ltx").expect("reads"), PATCHED);
   assert!(
-    vfs.read_recorded_crc("configs\\system.ltx").is_none(),
+    search.read_recorded_crc("configs\\system.ltx").is_none(),
     "the archive's checksum describes a payload no lookup reaches"
   );
 }
@@ -425,15 +425,13 @@ fn a_volume_declares_the_root_its_entries_mount_under() {
 #[test]
 fn a_loose_source_declares_no_root() {
   // A directory mounts where it was mounted and claims nothing, which is why the default is empty rather than a guess.
-  let root: PathBuf = build_absolute_generated_test_resource_path("archive_asset_source/loose_roots/gamedata");
+  let root: PathBuf =
+    GeneratedResources::create_dir("archive_asset_source/loose_roots/gamedata").expect("source directory");
 
-  let _ = fs::remove_dir_all(&root);
   fs::create_dir_all(root.join("configs")).expect("source directory");
   fs::write(root.join("configs").join("system.ltx"), CONFIG).expect("source file");
 
-  let vfs: XrayVfs = XrayVfs::from_plan(&XrayMountPlan::root(&root).expect("plan")).expect("mounts");
-
-  for mount in vfs.get_mounts() {
+  for mount in search_root(&root).get_vfs().get_mounts() {
     assert!(mount.get_source().list_declared_roots().is_empty());
   }
 }

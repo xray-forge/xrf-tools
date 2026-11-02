@@ -1,34 +1,25 @@
 use std::collections::HashMap;
-use std::fs::File;
+use std::fs::{File, Metadata};
 use std::io::ErrorKind::UnexpectedEof;
 use std::io::{Cursor, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use byteorder::ReadBytesExt;
-use regex::Regex;
 use xrf_chunk::{CHUNK_ID_COMPRESSED_MASK, CHUNK_ID_MASK, XRayByteOrder};
 use xrf_error::{XrfError, XrfResult};
-use xrf_lzhuf::decompress;
+use xrf_lzhuf::LzhufDecoder;
 use xrf_utils::{
-  XRayEncoding, assert, decode_bytes_to_string_without_bom_handling, format_path, new_declared_vec,
-  new_windows1251_encoder,
+  XRayEncoding, decode_bytes_to_string_without_bom_handling, format_path, new_declared_vec, new_windows1251_encoder,
 };
 
 use crate::volume::archive_constants::{
   CHUNK_ID_FILE_DESCRIPTORS_READ, CHUNK_ID_METADATA_READ, DESCRIPTOR_ROW_FIELDS_SIZE, MAXIMUM_ENTRY_NAME_SIZE,
 };
 use crate::volume::archive_header::ArchiveHeader;
+use crate::volume::archive_metadata::ArchiveMetadata;
 use crate::volume::{ArchiveDescriptor, ArchiveFileDescriptor};
-
-/// Patterns of the `[header]` metadata chunk, compiled once.
-static SECTION_PATTERN: LazyLock<Regex> =
-  LazyLock::new(|| Regex::new(r"^.*\[(?P<name>\w*)\]$").expect("section pattern is valid"));
-static VARIABLE_PATTERN: LazyLock<Regex> =
-  LazyLock::new(|| Regex::new(r"^\s*(?P<name>\w+)\s*=\s*(?P<value>.+)\s*$").expect("variable pattern is valid"));
-static ROOT_ALIAS_PATTERN: LazyLock<Regex> =
-  LazyLock::new(|| Regex::new(r"^\$\w+?\$\\").expect("root alias pattern is valid"));
 
 /// Reads one archive volume's header chunks.
 pub(crate) struct ArchiveReader {
@@ -62,22 +53,17 @@ impl ArchiveReader {
     new_windows1251_encoder()
   }
 
-  /// Reads a volume's header chunks into a descriptor.
+  /// Reads a volume's header chunks into a descriptor, returned alongside its entries, which the project merges and
+  /// then owns alone.
   ///
   /// # Errors
   ///
   /// Returns an error when the volume cannot be read, declares chunk or entry sizes its bytes cannot hold, or contains
   /// no file descriptors chunk. Malformed volumes are errors, never panics: a corrupt `.db` must become a skipped or
   /// reported mount rather than aborting the tool.
-  /// Returns the volume alongside its entries, which the project merges and then owns alone.
   pub(crate) fn read_archive(&mut self) -> XrfResult<(ArchiveDescriptor, HashMap<Arc<str>, ArchiveFileDescriptor>)> {
-    let header: ArchiveHeader = self.read_archive_header()?.ok_or_else(|| {
-      XrfError::new_read_error(format!(
-        "archive {} holds no file descriptors chunk",
-        format_path(&self.path)
-      ))
-    })?;
-    let metadata = self.file.metadata()?;
+    let metadata: Metadata = self.file.metadata()?;
+    let header: ArchiveHeader = self.read_header(metadata.len())?;
     let files: HashMap<Arc<str>, ArchiveFileDescriptor> = header.files;
 
     // Summed here because this is the last point the volume's own entries are known: after the merge a later volume
@@ -91,7 +77,8 @@ impl ArchiveReader {
         entries: files.len(),
         modified_at: Self::timestamp_millis(metadata.modified().ok()),
         output_root_path: header.output_root_path,
-        path: header.archive_path,
+        mount_root: header.mount_root,
+        path: self.path.clone(),
         size_compressed,
         size_real,
       },
@@ -106,21 +93,18 @@ impl ArchiveReader {
       .and_then(|duration| u64::try_from(duration.as_millis()).ok())
   }
 
-  fn read_archive_header(&mut self) -> XrfResult<Option<ArchiveHeader>> {
-    let mut file_descriptors = None;
-    let mut root_path: String = String::new();
-
-    let volume_size: u64 = self.file.metadata()?.len();
+  /// Walks the volume's top-level chunks, keeping the name table and the metadata and skipping the rest.
+  fn read_header(&mut self, volume_size: u64) -> XrfResult<ArchiveHeader> {
+    let mut files: Option<HashMap<Arc<str>, ArchiveFileDescriptor>> = None;
+    let mut root_path: Option<String> = None;
 
     loop {
       let raw_chunk_id: u32 = match self.file.read_u32::<XRayByteOrder>() {
         Ok(data) => data,
         Err(error) if error.kind() == UnexpectedEof => break,
-        Err(error) => return Err(XrfError::new_read_error(error.to_string())),
+        Err(error) => return Err(error.into()),
       };
       let chunk_size: u32 = self.file.read_u32::<XRayByteOrder>()?;
-      let chunk_usize: usize = usize::try_from(chunk_size)
-        .map_err(|error| XrfError::new_read_error(format!("Failed to read archive header chunk size: {error}")))?;
 
       // A chunk's payload lives in this file, so a declared size beyond it is corruption — checked before the size can
       // reach an allocation.
@@ -134,72 +118,58 @@ impl ArchiveReader {
       }
 
       let chunk_id: u32 = raw_chunk_id & CHUNK_ID_MASK;
-      let compressed: bool = (raw_chunk_id & CHUNK_ID_COMPRESSED_MASK) != 0;
+      let is_compressed: bool = (raw_chunk_id & CHUNK_ID_COMPRESSED_MASK) != 0;
 
       if CHUNK_ID_FILE_DESCRIPTORS_READ.contains(&chunk_id) {
-        let chunk_data: Vec<u8> = Self::read_chunk(&mut self.file, chunk_usize, compressed)?;
-        let mut reader: Cursor<&[u8]> = Cursor::new(chunk_data.as_slice());
+        let chunk: Vec<u8> = self.read_chunk(chunk_size, is_compressed)?;
 
-        file_descriptors = Some(Self::read_file_descriptors(&mut reader)?);
+        files = Some(Self::read_file_descriptors(&mut Cursor::new(chunk.as_slice()))?);
       } else if CHUNK_ID_METADATA_READ.contains(&chunk_id) {
-        let chunk_data: Vec<u8> = Self::read_chunk(&mut self.file, chunk_usize, compressed)?;
+        let chunk: Vec<u8> = self.read_chunk(chunk_size, is_compressed)?;
+        let metadata: String = decode_bytes_to_string_without_bom_handling(&chunk, Self::header_encoding())?;
 
-        root_path = self.read_root_path(chunk_data.as_slice())?.ok_or_else(|| {
+        root_path = Some(ArchiveMetadata::find_root_path(&metadata).ok_or_else(|| {
           XrfError::new_read_error(format!(
             "archive {} has a metadata chunk without an [header] entry_point",
             format_path(&self.path)
           ))
-        })?;
+        })?);
       } else {
         // A volume may carry chunks this reader has no use for; skipping keeps an unknown one from ending the walk.
         self.file.seek(SeekFrom::Current(i64::from(chunk_size)))?;
       }
     }
 
-    Ok(file_descriptors.map(|file_descriptors| ArchiveHeader {
-      archive_path: self.path.clone(),
-      output_root_path: root_path.into(),
-      files: file_descriptors,
-    }))
+    let files: HashMap<Arc<str>, ArchiveFileDescriptor> = files.ok_or_else(|| {
+      XrfError::new_read_error(format!(
+        "archive {} holds no file descriptors chunk",
+        format_path(&self.path)
+      ))
+    })?;
+
+    Ok(ArchiveHeader {
+      mount_root: ArchiveMetadata::to_mount_root(root_path.as_deref()),
+      output_root_path: root_path.map(PathBuf::from).unwrap_or_default(),
+      files,
+    })
   }
 
-  fn read_root_path(&self, chunk_data: &[u8]) -> XrfResult<Option<String>> {
-    let mut last_section_name: String = String::new();
+  /// Reads the payload of the chunk the file is positioned at, decompressing it when its id says so.
+  fn read_chunk(&mut self, size: u32, is_compressed: bool) -> XrfResult<Vec<u8>> {
+    let mut buffer: Vec<u8> = new_declared_vec(size as usize, "an archive header chunk")?;
 
-    for line in decode_bytes_to_string_without_bom_handling(chunk_data, Self::header_encoding())?.lines() {
-      let section_captures = SECTION_PATTERN.captures(line);
-      match (section_captures, last_section_name.as_str()) {
-        (None, "header") => {
-          let variable_captures = VARIABLE_PATTERN.captures(line);
+    self.file.read_exact(buffer.as_mut_slice())?;
 
-          if let Some(captures) = variable_captures
-            && &captures["name"] == "entry_point"
-          {
-            let entry_point = captures["value"].to_string();
-            return Ok(Some(ROOT_ALIAS_PATTERN.replace(entry_point.as_str(), "").to_string()));
-          }
-        }
-        (Some(capture), _) => {
-          last_section_name = capture["name"].to_string();
-        }
-        _ => {}
-      }
+    if is_compressed {
+      LzhufDecoder::decompress(&buffer)
+    } else {
+      Ok(buffer)
     }
-
-    Ok(None)
-  }
-
-  fn read_chunk<T: Read>(file: &mut T, chunk_usize: usize, compressed: bool) -> XrfResult<Vec<u8>> {
-    let mut buffer: Vec<u8> = new_declared_vec(chunk_usize, "an archive header chunk")?;
-
-    file.read_exact(buffer.as_mut_slice())?;
-
-    if compressed { decompress(&buffer) } else { Ok(buffer) }
   }
 
   fn read_file_descriptors<T: Read>(reader: &mut T) -> XrfResult<HashMap<Arc<str>, ArchiveFileDescriptor>> {
     let mut file_descriptors: HashMap<Arc<str>, ArchiveFileDescriptor> = HashMap::new();
-    let mut name_buf: [u8; MAXIMUM_ENTRY_NAME_SIZE] = [0u8; MAXIMUM_ENTRY_NAME_SIZE];
+    let mut name_buffer: [u8; MAXIMUM_ENTRY_NAME_SIZE] = [0u8; MAXIMUM_ENTRY_NAME_SIZE];
 
     loop {
       let header_size: u16 = match reader.read_u16::<XRayByteOrder>() {
@@ -219,13 +189,17 @@ impl ArchiveReader {
         ))
       })?;
 
-      let name_bytes = {
-        assert((name_size as usize) < name_buf.len(), "Name is too long")?;
+      // Strictly under the buffer: the engine reads a name into it and terminates it, so a full one has no room.
+      if usize::from(name_size) >= MAXIMUM_ENTRY_NAME_SIZE {
+        return Err(XrfError::new_read_error(format!(
+          "archive entry name declares {name_size} bytes, more than the engine's {MAXIMUM_ENTRY_NAME_SIZE}-byte buffer \
+           holds with its terminator"
+        )));
+      }
 
-        reader.read_exact(&mut name_buf[..(name_size as usize)])?;
+      let name_bytes: &mut [u8] = &mut name_buffer[..usize::from(name_size)];
 
-        &name_buf[..(name_size as usize)]
-      };
+      reader.read_exact(name_bytes)?;
 
       let offset: u32 = reader.read_u32::<XRayByteOrder>()?;
       let name: Arc<str> = Arc::from(decode_bytes_to_string_without_bom_handling(
@@ -249,13 +223,13 @@ mod tests {
   use std::path::PathBuf;
 
   use byteorder::{LittleEndian, WriteBytesExt};
-  use xrf_test_utils::utils::build_absolute_generated_test_resource_path;
+  use xrf_test_utils::GeneratedResources;
 
   use super::ArchiveReader;
 
   /// Writes raw bytes as a volume file, since malformed input is a byte-level condition.
   fn volume(name: &str, bytes: &[u8]) -> PathBuf {
-    let root: PathBuf = build_absolute_generated_test_resource_path("archive_reader");
+    let root: PathBuf = GeneratedResources::path("archive_reader");
 
     fs::create_dir_all(&root).expect("scratch root");
 
@@ -326,6 +300,28 @@ mod tests {
   }
 
   #[test]
+  fn a_metadata_chunk_naming_no_entry_point_is_an_error() {
+    let metadata: &[u8] = b"[header]\r\nauto_load = true\r\n";
+    let mut bytes: Vec<u8> = Vec::new();
+
+    bytes.write_u32::<LittleEndian>(666).expect("chunk id");
+    bytes
+      .write_u32::<LittleEndian>(metadata.len() as u32)
+      .expect("chunk size");
+    bytes.extend_from_slice(metadata);
+    bytes.write_u32::<LittleEndian>(1).expect("chunk id");
+    bytes.write_u32::<LittleEndian>(0).expect("chunk size");
+
+    let path: PathBuf = volume("no_entry_point.db0", &bytes);
+    let error = ArchiveReader::from_path(&path)
+      .expect("reader opens")
+      .read_archive()
+      .expect_err("metadata without an entry point");
+
+    assert!(error.to_string().contains("entry_point"), "got: {error}");
+  }
+
+  #[test]
   fn a_truncated_descriptor_chunk_is_an_error_not_a_panic() {
     // A descriptor declaring a 20-character name the chunk does not contain.
     let mut descriptors: Vec<u8> = Vec::new();
@@ -352,5 +348,34 @@ mod tests {
         .read_archive()
         .is_err()
     );
+  }
+
+  #[test]
+  fn a_name_the_engine_buffer_cannot_hold_is_an_error() {
+    // A 520-byte name fills the engine's buffer and leaves no room for its terminator.
+    let mut descriptors: Vec<u8> = Vec::new();
+
+    descriptors.write_u16::<LittleEndian>(16 + 520).expect("header size");
+    descriptors.write_u32::<LittleEndian>(0).expect("size real");
+    descriptors.write_u32::<LittleEndian>(0).expect("size compressed");
+    descriptors.write_u32::<LittleEndian>(0).expect("crc");
+    descriptors.extend_from_slice(&[b'a'; 520]);
+    descriptors.write_u32::<LittleEndian>(0).expect("offset");
+
+    let mut bytes: Vec<u8> = Vec::new();
+
+    bytes.write_u32::<LittleEndian>(1).expect("chunk id");
+    bytes
+      .write_u32::<LittleEndian>(descriptors.len() as u32)
+      .expect("chunk size");
+    bytes.extend_from_slice(&descriptors);
+
+    let path: PathBuf = volume("long_name.db0", &bytes);
+    let error = ArchiveReader::from_path(&path)
+      .expect("reader opens")
+      .read_archive()
+      .expect_err("name over the engine's buffer");
+
+    assert!(error.to_string().contains("520-byte buffer"), "got: {error}");
   }
 }

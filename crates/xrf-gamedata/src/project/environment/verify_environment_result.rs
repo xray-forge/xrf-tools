@@ -22,7 +22,7 @@ impl GamedataCheckResult for GamedataEnvironmentVerificationResult {
     GamedataVerificationStatus::from_is_valid(self.findings.is_empty())
   }
 
-  fn get_failure_message(&self) -> String {
+  fn get_summary(&self) -> String {
     format!(
       "{}/{} environment configs valid",
       self.checked_configs_count - self.invalid_configs_count,

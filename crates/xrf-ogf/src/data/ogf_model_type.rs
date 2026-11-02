@@ -46,12 +46,19 @@ impl OgfModelType {
     }
   }
 
+  /// Whether a visual of this kind reads its vertices as skin layouts, `CSkeletonX`, rather than as a flexible vertex
+  /// format, `Fvisual`: the skinned children of a skeleton and nothing else.
+  pub const fn is_skinned_geometry(self) -> bool {
+    matches!(self, Self::SkeletonGeomdefPm | Self::SkeletonGeomdefSt)
+  }
+
   /// Whether geometry of this kind is a sliding window over its index buffer.
   pub const fn is_progressive(self) -> bool {
     matches!(self, Self::Progressive | Self::SkeletonGeomdefPm | Self::TreePm)
   }
 
-  const fn name(self) -> &'static str {
+  /// The engine identifier, such as `MT_NORMAL`.
+  pub const fn name(self) -> &'static str {
     match self {
       Self::Normal => "MT_NORMAL",
       Self::Hierarchy => "MT_HIERRARHY",

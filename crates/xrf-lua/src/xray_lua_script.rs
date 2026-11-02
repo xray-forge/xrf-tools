@@ -16,7 +16,11 @@ pub struct XRayLuaScript {
 }
 
 impl XRayLuaScript {
-  /// Parse LuaJIT source and retain the source path in any diagnostics.
+  /// Parse LuaJIT source and read its method calls; `path` only names the script in diagnostics.
+  ///
+  /// # Errors
+  ///
+  /// Returns a verify error naming `path` and listing the parser's diagnostics.
   pub fn parse<P>(path: P, source: &str) -> XrfResult<Self>
   where
     P: AsRef<Path>,
@@ -30,6 +34,19 @@ impl XRayLuaScript {
     })
   }
 
+  /// Whether LuaJIT source parses, for a caller that only needs to know the script is valid.
+  ///
+  /// # Errors
+  ///
+  /// Returns a verify error naming `path` and listing the parser's diagnostics.
+  pub fn verify<P>(path: P, source: &str) -> XrfResult
+  where
+    P: AsRef<Path>,
+  {
+    Self::parse_ast(path.as_ref(), source).map(drop)
+  }
+
+  /// Every call of `method` on a receiver named `receiver` directly, in source order.
   pub fn method_calls(&self, receiver: &str, method: &str) -> Vec<&XRayLuaMethodCall> {
     self
       .method_calls
@@ -38,6 +55,7 @@ impl XRayLuaScript {
       .collect()
   }
 
+  /// The path the script was parsed as, which names it in diagnostics.
   pub fn path(&self) -> &Path {
     &self.path
   }
@@ -478,5 +496,73 @@ next")"#,
     assert_eq!(script.method_calls("shader", "begin")[0].function(), None);
 
     Ok(())
+  }
+
+  // A local function is as much a named function as a global one, and the call after it is back at the top.
+  #[test]
+  fn names_the_local_function_a_call_is_written_in() -> XrfResult {
+    let script: XRayLuaScript = XRayLuaScript::parse(
+      Path::new("script.s"),
+      r#"
+local function helper(shader)
+  shader:begin("v", "p")
+end
+
+shader:begin("top", "level")
+"#,
+    )?;
+    let begins: Vec<&XRayLuaMethodCall> = script.method_calls("shader", "begin");
+
+    assert_eq!(begins[0].function(), Some("helper"));
+    assert_eq!(begins[1].function(), None);
+
+    Ok(())
+  }
+
+  #[test]
+  fn reads_decimal_hexadecimal_and_exponent_numbers() -> XrfResult {
+    let script: XRayLuaScript =
+      XRayLuaScript::parse(Path::new("script.s"), "shader:begin(32, 0x80, 0XfF, 1.5e2, .5, 10LL)")?;
+    let numbers: Vec<Option<f64>> = script.method_calls("shader", "begin")[0]
+      .arguments()
+      .iter()
+      .map(XRayLuaValue::as_number)
+      .collect();
+
+    assert_eq!(
+      numbers,
+      vec![Some(32.0), Some(128.0), Some(255.0), Some(150.0), Some(0.5), None]
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn accepts_luajit_goto_and_label() {
+    let code: &str = r#"
+local ____exports = {}
+
+for index = 1, 3 do
+  if index == 2 then
+    goto __continue1
+  end
+
+  ::__continue1::
+end
+
+return ____exports
+"#;
+
+    assert!(XRayLuaScript::verify(Path::new("generated.script"), code).is_ok());
+  }
+
+  #[test]
+  fn reports_invalid_luajit_syntax_with_source_path() {
+    let error: String = XRayLuaScript::verify(Path::new("invalid.script"), "local value =")
+      .expect_err("Expected malformed LuaJIT script to fail")
+      .to_string();
+
+    assert!(error.contains("invalid.script"));
+    assert!(error.contains("errors:"));
   }
 }

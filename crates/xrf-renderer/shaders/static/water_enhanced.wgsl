@@ -1,5 +1,7 @@
 #import "common/water_surface"
+#import "common/fog_colour"
 #import "common/scene_light"
+#import "common/display_transform"
 #import "common/water_enhanced"
 #import "common/rain_rings"
 #import "common/ray_guides"
@@ -292,12 +294,8 @@ fn enhanced_caustics(bottom: vec3<f32>) -> vec3<f32> {
   return min(first, second);
 }
 
-// The enhanced water's surface: what lies under it, read where its waves move it unless something
-// nearer than the water stands there, clouded into the water's colour by the water's depth, its reflection over it by
-// the fresnel cubed, the light it gathers on its bottom and the sun's highlight where the sun reaches it, fogged, and
-// faded into what lies under it along its shallow edge.
 // The enhanced water's pixel and what ray reconstruction's guides read of it: its waves' normal, the share of its
-// reflection it shows, how rough its reflection reads, and how far its reflected ray went.
+// light it reflects, the sun's highlight included, how rough its reflection reads, and how far its reflected ray went.
 struct EnhancedShaded {
   out: WaterOutput,
   normal: vec3<f32>,
@@ -353,6 +351,10 @@ fn reflected_ray_length(position: vec3<f32>, kept: f32) -> f32 {
   return clamp((kept / max(-position.z, 1e-4) - 1.0) * length(position), 0.0, RAY_GUIDE_FAR_HIT);
 }
 
+// The enhanced water's surface: what lies under it, read where its waves move it unless something
+// nearer than the water stands there, clouded into the water's colour by the water's depth, its reflection over it by
+// the fresnel cubed, the light it gathers on its bottom and the sun's highlight where the sun reaches it, fogged, and
+// faded into what lies under it along its shallow edge.
 fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
   let size: vec2<f32> = camera.viewport.xy;
   let pixel: vec2<f32> = floor(in.clip.xy);
@@ -368,7 +370,11 @@ fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
   let moved_behind: f32 = select(-camera_view_position(moved, moved_stored).z, FAR_BEHIND, moved_stored <= 0.0);
   // A read nearer than the water would copy what stands over it into it, and the sky is refused as well.
   let refracted: vec2<f32> = select(pixel, moved, moved_stored > 0.0 && moved_behind > -fragment.position.z);
-  let screen: vec3<f32> = scene_shown(textureLoad(water_scene, vec2<i32>(refracted), 0).rgb);
+  // The water mixes as the engine's display shows it: its colour, caustics, highlight and fog are pictures painted for
+  // that display, and the scene behind and the reflection, light, are taken to the pictures the frame's display shows
+  // them as (`picture_from_display`); the whole enters the scene through the frame's display.
+  let screen: vec3<f32> =
+    picture_from_display(scene_shown(textureLoad(water_scene, vec2<i32>(refracted), 0).rgb), lighting.display);
   // How deep the water stands over its bottom, straight down.
   let water_depth: f32 = in.world.y - bottom.y;
   // How much water the eye looks through to the bottom, never less than straight down: shallow water seen at a slant
@@ -385,8 +391,10 @@ fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
   let reflected: vec3<f32> = reflect(fragment.to_point, waves.normal);
   let fresnel: f32 = pow(saturate(dot(reflected, fragment.to_point)), 3.0);
   let reflection: vec3<f32> = enhanced_reflection(waves, reflected, in.world, (pixel + 0.5) / size);
-  // Where the lights reached the bottom the sun shines on it.
-  let sunlit: f32 = saturate(textureLoad(light_target, vec2<i32>(refracted), 0).r * 2000.0);
+  // Where the sun reaches the bottom it shines on it, as its pass found its shadow there. Read off the lights' sum, as
+  // the pack it is ported from reads it, every lamp lighting the bottom drew the sun's highlight and caustics in the
+  // sun's colour and direction, underground at noon's strength.
+  let sunlit: f32 = textureLoad(sun_seen, vec2<i32>(refracted), 0).x;
   let sun: f32 = dot(sun_shown(lighting), vec3<f32>(0.5));
   // The gathered light fades as the water clouds.
   let gathering: f32 = 1.0 - smoothstep(0.0, ENHANCED_FOG_DEPTH + 0.5, water_fog);
@@ -401,19 +409,26 @@ fn shade_enhanced(in: WaterVarying) -> EnhancedShaded {
     (sharpness + 8.0) / (HIGHLIGHT_NEAR + 8.0) * saturate(sun) * enhanced.specular * sunlit;
   let seen: f32 = 1.0 - fragment.fog;
   let lit: vec3<f32> = mix(turbid, reflection, saturate(fresnel * enhanced.reflectivity)) + caustics + highlight;
-  let fogged: vec3<f32> = mix(lighting.fog_color.rgb, lit, seen);
+  let fogged: vec3<f32> = mix(fog_shown_toward(lighting, normalize(in.world - camera.position.xyz)), lit, seen);
   let border: f32 = smoothstep(0.0, max(enhanced.soft_border, 1e-4), path + fresnel);
   let shown: vec3<f32> = mix(screen, fogged, border * seen * seen);
   var shaded: EnhancedShaded;
 
   shaded.out.color = vec4<f32>(
-    scene_from_shown(select(fragment.base.rgb, shown, lighting.params.y > 0.5)),
+    scene_from_shown(picture_for_display(select(fragment.base.rgb, shown, lighting.params.y > 0.5), lighting.display)),
     saturate(water_depth * SHORE_FADE),
   );
-  shaded.out.distortion = write_distortion(fragment, water);
-  shaded.out.motion = camera_motion(in.world, in.world);
+  // No distortion: the water refracts what is behind it above, before the temporal resolve. The distortion target is
+  // read after the resolve, at the drawn size against its depth, which flips a blade's border pixels in and out of the
+  // move each frame: a dotted outline along every blade over the water, nothing resolving it.
+  shaded.out.distortion = vec4<f32>(0.0);
+  shaded.out.motion = camera_motion(in.world, in.previous);
   shaded.normal = waves.normal;
-  shaded.reflected_share = saturate(fresnel * enhanced.reflectivity) * seen * border * seen * seen;
+  // The sun's highlight is reflected light the fresnel does not weigh, so where it lights the water the share reaches
+  // as far as its part of the light: weighed by the fresnel alone, ray reconstruction's model D takes a glint for light
+  // many times what the water reflects and holds it on the water long after the sun has moved.
+  let glinted: f32 = dot(highlight, LUMINANCE) / max(dot(lit, LUMINANCE), 1e-4);
+  shaded.reflected_share = mix(saturate(fresnel * enhanced.reflectivity), 1.0, glinted) * seen * border * seen * seen;
   shaded.roughness = mix(GUIDE_ROUGHNESS_CALM, GUIDE_ROUGHNESS_RAIN, waves.rain_rough);
   shaded.hit_distance = reflected_ray_length(fragment.position,
     textureSampleLevel(reflection_clear, sky_clamp, saturate((pixel + 0.5) / size + waves.screen), 0.0).a);
@@ -435,8 +450,9 @@ fn enhanced_colour(in: WaterVarying, tilt: vec2<f32>) -> vec3<f32> {
   return mix(first, second, saturate(noise) * enhanced.variation);
 }
 
-// What the enhanced water reflects: its reflection drawn this frame, blurred and clear mixed by a perlin noise over the
-// level and greyed a little, read where its waves move it; the sky alone while it draws none.
+// What the enhanced water reflects, as the picture the frame's display shows it as: its reflection drawn this frame,
+// light, blurred and clear mixed by a perlin noise over the level and greyed a little, read where its waves move it;
+// the sky's picture alone while it draws none.
 fn enhanced_reflection(waves: EnhancedWaves, reflected: vec3<f32>, world: vec3<f32>, uv: vec2<f32>) -> vec3<f32> {
   if (enhanced.reflected < 0.5) {
     return enhanced_sky(reflected, lighting, sky_cube_0, sky_cube_1, sky_clamp) * water.reflection;
@@ -450,5 +466,5 @@ fn enhanced_reflection(waves: EnhancedWaves, reflected: vec3<f32>, world: vec3<f
   // The rain's roughness takes the clear reflection away for the blurred one.
   let mixed: vec3<f32> = mix(blurred, clear, saturate(noise * enhanced.blur_noise) * (1.0 - waves.rain_rough));
 
-  return mix(vec3<f32>(dot(mixed, LUMINANCE)), mixed, enhanced.vibrance);
+  return picture_from_display(mix(vec3<f32>(dot(mixed, LUMINANCE)), mixed, enhanced.vibrance), lighting.display);
 }

@@ -2,13 +2,13 @@
 
 pub(crate) mod ltx_declared_parents;
 pub(crate) mod ltx_document_scan;
-pub(crate) mod ltx_file_structure;
 pub(crate) mod ltx_structure_reader;
+pub(crate) mod record;
 
 pub(crate) use crate::structure::ltx_declared_parents::LtxDeclaredParents;
 pub(crate) use crate::structure::ltx_document_scan::LtxDocumentScan;
-pub use crate::structure::ltx_file_structure::{
+pub(crate) use crate::structure::ltx_structure_reader::LtxStructureReader;
+pub use crate::structure::record::{
   LtxFileStructure, LtxStructureEntry, LtxStructureInclude, LtxStructureParent, LtxStructureParseError,
   LtxStructureScheme, LtxStructureSection,
 };
-pub(crate) use crate::structure::ltx_structure_reader::LtxStructureReader;

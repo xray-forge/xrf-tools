@@ -1,73 +1,28 @@
 //! Packs every visual under a path and accounts for what came out.
 
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use walkdir::WalkDir;
+use xrf_error::XrfError;
 use xrf_extension::XrayExtension;
+use xrf_math::Vector3d;
 use xrf_ogf::OgfFile;
 use xrf_report::{CheckId, CheckReport, Finding, Report, RuleId, Status};
 use xrf_spawn::XRayByteOrder;
 use xrf_utils::{format_path, to_portable_path_string};
 use xrf_visual::{VisualBounds, VisualDescription, VisualPackage, VisualPacker, VisualSkipCause, VisualSubmesh};
 
-use crate::commands::ogf::verify::ogf_texture_resolver::{OgfTextureResolver, TextureResolution};
+use crate::commands::ogf::verify::ogf_texture_resolver::OgfTextureResolver;
+use crate::commands::ogf::verify::ogf_verification_census::OgfVerificationCensus;
+use crate::commands::ogf::verify::ogf_verification_result::OgfVerificationResult;
+use crate::commands::ogf::verify::texture_resolution::TextureResolution;
+use crate::core::host_walk::HostWalk;
 
 /// Fraction of a declared bounding box's diagonal that geometry may exceed it by before it is worth
 /// reporting. Exporters pad declared bounds, and float error is unavoidable, so only a gross
 /// disagreement says anything.
 const BOUNDS_TOLERANCE_RATIO: f32 = 0.01;
 const BOUNDS_TOLERANCE_FLOOR: f32 = 0.001;
-
-/// What a sweep counted, beside what it found.
-#[derive(Debug, Default)]
-pub struct OgfVerificationCensus {
-  pub files: usize,
-  pub unreadable_files: usize,
-  pub files_without_geometry: usize,
-  pub submeshes: usize,
-  pub packed_submeshes: usize,
-  pub unsupported_submeshes: usize,
-  pub malformed_submeshes: usize,
-  pub progressive_submeshes: usize,
-  pub progressive_submeshes_drawing_part_of_the_buffer: usize,
-  pub skinned_submeshes: usize,
-  /// Vertices whose four weights do not sum to one, which a renderer would draw pulled toward the origin.
-  pub vertices_with_stray_skin_weights: usize,
-  pub bounds_disagreements: usize,
-  pub versions: BTreeMap<u8, usize>,
-  pub root_model_types: BTreeMap<String, usize>,
-  pub submesh_model_types: BTreeMap<String, usize>,
-  pub vertex_formats: BTreeMap<String, usize>,
-  pub visuals_without_root: usize,
-  pub texture_references: usize,
-  pub resolved_texture_references: usize,
-  /// References that resolved inside an archive, which the sweep locates without reading a header.
-  pub located_texture_references: usize,
-  /// Which probe step answered each resolved reference, so an overlay shows what it still takes from its base.
-  pub texture_steps: BTreeMap<String, usize>,
-  pub missing_texture_references: usize,
-  pub unreadable_textures: usize,
-  pub distinct_textures: usize,
-  pub textures_without_mipmaps: usize,
-  pub texture_formats: BTreeMap<String, usize>,
-  pub texture_sizes: BTreeMap<String, usize>,
-}
-
-impl OgfVerificationCensus {
-  fn count(map: &mut BTreeMap<String, usize>, key: impl Into<String>) {
-    *map.entry(key.into()).or_default() += 1;
-  }
-}
-
-/// Outcome of a sweep: a finalized report and the counts behind it.
-#[derive(Debug)]
-pub struct OgfVerificationResult {
-  pub census: OgfVerificationCensus,
-  pub duration: Duration,
-  pub report: Report,
-}
 
 pub struct OgfVerifier<'a> {
   root: &'a Path,
@@ -94,7 +49,22 @@ impl<'a> OgfVerifier<'a> {
     let mut texture_findings: Vec<Finding> = Vec::new();
     let mut textures: OgfTextureResolver = OgfTextureResolver::new(self.roots.clone());
 
-    for path in self.visual_paths() {
+    // Files the sweep could not read at all, as opposed to files it read and judged malformed.
+    let mut io_failures: usize = 0;
+
+    for path in HostWalk::files_with(self.root, XrayExtension::Ogf) {
+      // A directory the sweep could not walk is a read finding: its visuals were never judged, which is no pass.
+      let path: PathBuf = match path {
+        Ok(path) => path,
+        Err(error) => {
+          census.unreadable_files += 1;
+          io_failures += 1;
+          read_findings.push(Finding::new(RuleId::of_static("ogf.read"), None, error.to_string()));
+
+          continue;
+        }
+      };
+
       census.files += 1;
 
       // A read error is a value here, but a panic inside the reader is not: the release profile aborts,
@@ -103,8 +73,13 @@ impl<'a> OgfVerifier<'a> {
         Ok(file) => file,
         Err(error) => {
           census.unreadable_files += 1;
+
+          if matches!(error, XrfError::Io { .. }) {
+            io_failures += 1;
+          }
+
           read_findings.push(Finding::new(
-            Self::rule("visuals.read"),
+            RuleId::of_static("ogf.read"),
             Some(self.subject(&path)),
             error.to_string(),
           ));
@@ -134,10 +109,14 @@ impl<'a> OgfVerifier<'a> {
       }
     }
 
-    // A rejected file is invalid input, which `Status::from_is_valid` grades as failed. `Status::Error`
-    // is reserved for the checker itself breaking, and a reader that breaks panics rather than
-    // returning, so the sweep aborts instead of reaching this.
-    let read_status: Status = Status::from_is_valid(read_findings.is_empty());
+    // A rejected file is invalid input, which `Status::from_is_valid` grades as failed. A file or directory that could
+    // not be read at all is the run's own failure: `Status::Error` outranks every verdict, so the sweep answers an
+    // execution failure rather than a judgement on visuals it never saw.
+    let read_status: Status = if io_failures > 0 {
+      Status::Error
+    } else {
+      Status::from_is_valid(read_findings.is_empty())
+    };
     let geometry_status: Status = if census.malformed_submeshes > 0 {
       Status::Failed
     } else if census.unsupported_submeshes > 0 {
@@ -162,20 +141,38 @@ impl<'a> OgfVerifier<'a> {
 
     census.distinct_textures = textures.distinct_textures();
 
+    // Nothing swept is not a pass: a path holding no visual judged nothing, which every check says.
+    let [read_status, geometry_status, bounds_status, texture_status]: [Status; 4] =
+      if census.files == 0 && read_findings.is_empty() {
+        [Status::Skipped; 4]
+      } else {
+        [read_status, geometry_status, bounds_status, texture_status]
+      };
+
     let duration: Duration = started_at.elapsed();
 
     OgfVerificationResult {
       report: Report::new(vec![
-        CheckReport::new(Self::check("read"), read_status, Some(duration), read_findings),
         CheckReport::new(
-          Self::check("geometry"),
+          CheckId::of_static("ogf.read"),
+          read_status,
+          Some(duration),
+          read_findings,
+        ),
+        CheckReport::new(
+          CheckId::of_static("ogf.geometry"),
           geometry_status,
           Some(duration),
           geometry_findings,
         ),
-        CheckReport::new(Self::check("bounds"), bounds_status, Some(duration), bounds_findings),
         CheckReport::new(
-          Self::check("textures"),
+          CheckId::of_static("ogf.bounds"),
+          bounds_status,
+          Some(duration),
+          bounds_findings,
+        ),
+        CheckReport::new(
+          CheckId::of_static("ogf.textures"),
           texture_status,
           Some(duration),
           texture_findings,
@@ -184,21 +181,6 @@ impl<'a> OgfVerifier<'a> {
       census,
       duration,
     }
-  }
-
-  /// Every visual the sweep covers: one named file, or every `.ogf` under a directory.
-  fn visual_paths(&self) -> Vec<PathBuf> {
-    if self.root.is_file() {
-      return vec![self.root.to_path_buf()];
-    }
-
-    WalkDir::new(self.root)
-      .into_iter()
-      .filter_map(Result::ok)
-      .filter(|entry| entry.file_type().is_file())
-      .map(|entry| entry.into_path())
-      .filter(|path| XrayExtension::Ogf.matches_path(path))
-      .collect()
   }
 
   /// Count what the file declares, before packing has a chance to normalise any of it away.
@@ -298,7 +280,7 @@ impl<'a> OgfVerifier<'a> {
         TextureResolution::NoRoot => {
           census.visuals_without_root += 1;
           findings.push(Finding::new(
-            Self::rule("visuals.textures.root_missing"),
+            RuleId::of_static("ogf.textures.root_missing"),
             Some(subject),
             format!("No directory above the visual holds both meshes and textures, so '{reference}' cannot resolve"),
           ));
@@ -306,7 +288,7 @@ impl<'a> OgfVerifier<'a> {
         TextureResolution::Missing { sources } => {
           census.missing_texture_references += 1;
           findings.push(Finding::new(
-            Self::rule("visuals.textures.missing"),
+            RuleId::of_static("ogf.textures.missing"),
             Some(subject),
             format!("'{reference}' does not resolve under {}", sources.join(", ")),
           ));
@@ -317,10 +299,30 @@ impl<'a> OgfVerifier<'a> {
           census.located_texture_references += 1;
           OgfVerificationCensus::count(&mut census.texture_steps, step);
         }
+        // Counted as missing, which leaves the check incomplete: what the root holds was never looked at.
+        TextureResolution::RootUnreadable { root, reason } => {
+          census.missing_texture_references += 1;
+          findings.push(Finding::new(
+            RuleId::of_static("ogf.textures.root_unreadable"),
+            Some(subject),
+            format!(
+              "'{reference}' was not looked for, {} could not be searched: {reason}",
+              format_path(&root)
+            ),
+          ));
+        }
+        TextureResolution::Rejected { reason } => {
+          census.missing_texture_references += 1;
+          findings.push(Finding::new(
+            RuleId::of_static("ogf.textures.rejected"),
+            Some(subject),
+            format!("'{reference}' names no path the engine resolves: {reason}"),
+          ));
+        }
         TextureResolution::Unreadable { path: texture, reason } => {
           census.unreadable_textures += 1;
           findings.push(Finding::new(
-            Self::rule("visuals.textures.unreadable"),
+            RuleId::of_static("ogf.textures.unreadable"),
             Some(subject),
             format!("'{}' would not parse: {reason}", format_path(&texture)),
           ));
@@ -352,13 +354,13 @@ impl<'a> OgfVerifier<'a> {
       .iter()
       .filter_map(|submesh: &VisualSubmesh| {
         let (cause, reason) = submesh.skipped()?;
-        let rule: &str = match cause {
-          VisualSkipCause::Unsupported => "visuals.geometry.unsupported",
-          VisualSkipCause::Malformed => "visuals.geometry.malformed",
+        let rule: &'static str = match cause {
+          VisualSkipCause::Unsupported => "ogf.geometry.unsupported",
+          VisualSkipCause::Malformed => "ogf.geometry.malformed",
         };
 
         Some(Finding::new(
-          Self::rule(rule),
+          RuleId::of_static(rule),
           Some(format!("{}#{}", self.subject(path), submesh.index)),
           reason,
         ))
@@ -392,27 +394,27 @@ impl<'a> OgfVerifier<'a> {
     }
 
     Some(Finding::new(
-      Self::rule("visuals.bounds.outside"),
+      RuleId::of_static("ogf.bounds.outside"),
       Some(self.subject(path)),
       format!(
         "Geometry reaches {excess} past the declared bounding box, tolerance {tolerance}. \
-         Declared {:?} to {:?}, measured {:?} to {:?}",
-        declared.bounding_box.min, declared.bounding_box.max, computed.bounding_box.min, computed.bounding_box.max
+         Declared {} to {}, measured {} to {}",
+        Self::describe_point(&declared.bounding_box.min),
+        Self::describe_point(&declared.bounding_box.max),
+        Self::describe_point(&computed.bounding_box.min),
+        Self::describe_point(&computed.bounding_box.max)
       ),
     ))
+  }
+
+  /// A corner as `ogf info` prints one.
+  fn describe_point(point: &Vector3d) -> String {
+    format!("[{}, {}, {}]", point.x, point.y, point.z)
   }
 
   /// Subject of a finding: the path relative to the swept root, with forward slashes, matching how
   /// gamedata verification names assets.
   fn subject(&self, path: &Path) -> String {
     to_portable_path_string(path.strip_prefix(self.root).unwrap_or(path))
-  }
-
-  fn check(id: &str) -> CheckId {
-    CheckId::new(id).expect("Expected a non-empty check id")
-  }
-
-  fn rule(id: &str) -> RuleId {
-    RuleId::new(id).expect("Expected a non-empty rule id")
   }
 }
