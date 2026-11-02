@@ -189,9 +189,10 @@ impl LevelShadows {
       cascade.has_drawn_moving = offer.draw != CascadeDraw::Whole && has_moving;
       cascade.is_kept = offer.draw != CascadeDraw::Whole && self.kept.is_some() && has_moving;
 
+      // Trees drawn again with each sway, or into a kept layer, follow the camera: they are drawn only where their
+      // shadows can fall in its view, and again once it turns away.
       if matches!(offer.draw, CascadeDraw::Static | CascadeDraw::Swaying) {
-        cascade.received_at = cascade
-          .is_kept
+        cascade.received_at = (cascade.is_kept || frame.settings.is_swaying(offer.index))
           .then(|| (frame.camera.position, frame.camera.get_look()));
       } else if offer.draw == CascadeDraw::Whole {
         cascade.received_at = None;

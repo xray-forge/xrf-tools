@@ -23,8 +23,8 @@ pub struct ShadowCascadeView {
   /// Whether its kept layer holds its static layer and trees as its map was last drawn from, which a frame drawing
   /// only what moves every frame copies in.
   pub is_kept: bool,
-  /// The eye and the look its kept layer's trees were kept for, where they were kept only where the camera saw their
-  /// shadows.
+  /// The eye and the look its trees were last drawn for, where they were drawn only where the camera saw their shadows:
+  /// a swaying cascade's, or one whose trees went into its kept layer.
   pub received_at: Option<(Vec3, Vec3)>,
   /// The sway's time a banded redraw of its trees started at and the band it draws next, while one runs.
   pub sway_sweep: Option<(f32, u32)>,
