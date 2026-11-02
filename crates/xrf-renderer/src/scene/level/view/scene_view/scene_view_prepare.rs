@@ -7,6 +7,7 @@ use crate::contract::feature::weather::water::render_water_mode::RenderWaterMode
 use crate::contract::feature::weather::water::render_water_settings::RenderWaterSettings;
 use crate::contract::view::render_view_options::RenderViewOptions;
 use crate::contract::viewport::render_rect::RenderRect;
+use crate::feature::effects::distort::distortion_tiles::DistortionTiles;
 use crate::feature::effects::flares::sun_sprite::SunSprite;
 use crate::feature::effects::rain::cover::rain_cover::RainCover;
 use crate::feature::effects::rain::rain_uniform::RainUniform;
@@ -281,24 +282,33 @@ impl SceneView {
     }
   }
 
-  /// Whether the water, a particle, the enhanced rain's splashes or a distorting surface of the scene moves what is seen
-  /// through the frame, once every unit knows what it draws.
-  pub(super) fn is_distorting(&self, options: &RenderViewOptions) -> bool {
+  /// Where on the frame the water, the particles, the enhanced rain's splashes and the distorting surfaces of the scene
+  /// move what is seen through it, once every unit knows what it draws: every tile where the water or the splashes do,
+  /// which keep no bound; none where nothing does.
+  pub(super) fn get_distortion_tiles(&self, options: &RenderViewOptions) -> DistortionTiles {
     let water: &RenderWaterSettings = &options.features.water;
     let features: &SceneFeatures = &self.features;
     // Where water draws this frame; the enhanced water refracts what is behind it itself and writes no distortion.
     let is_water_distorting: bool =
       features.water.is_drawn() && water.is_distorted && water.mode != RenderWaterMode::Enhanced && options.mode.is_lit;
 
-    !options.mode.is_wireframe
-      && (is_water_distorting
-        || features.particles.is_distorting()
-        || features.rain.is_distorting()
-        || features.composited.is_distorting())
+    if options.mode.is_wireframe {
+      return DistortionTiles::default();
+    }
+
+    if is_water_distorting || features.rain.is_distorting() {
+      return DistortionTiles::new_whole();
+    }
+
+    let mut tiles: DistortionTiles = *features.particles.get_distortion_tiles();
+
+    tiles.cover_tiles(features.composited.get_distortion_tiles());
+
+    tiles
   }
 
-  /// Notes what the window pass reads, once every other unit knows what it draws: whether the frame distorts
-  /// (`is_distorting`), which bloom it lays over the frame, the sky debanding, its noise turning with `time`, and the
+  /// Notes what the window pass reads, once every other unit knows what it draws: where the frame distorts
+  /// (`distortion`), which bloom it lays over the frame, the sky debanding, its noise turning with `time`, and the
   /// film's grain, drawn for `noise_frame`.
   pub(super) fn prepare_present(
     &mut self,
@@ -306,7 +316,7 @@ impl SceneView {
     output: RenderRect,
     time: f32,
     noise_frame: u32,
-    is_distorting: bool,
+    distortion: DistortionTiles,
   ) {
     if self.targets.is_none() {
       return;
@@ -318,7 +328,7 @@ impl SceneView {
       is_occluded: self.stages.lighting.is_occluded(),
       is_indirect: self.stages.lighting.is_indirect(),
       reflection_ratio: features.reflections.get_trace().map(ReflectionTrace::get_ratio),
-      is_distorting,
+      distortion,
       selection_color: features.overlays.get_selection_color(),
       marks: features.helpers.get_present_marks(),
       is_engine_bloomed: features.bloom.is_engine_drawn(),

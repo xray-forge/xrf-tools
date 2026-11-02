@@ -417,9 +417,10 @@ impl LevelParticles {
     drawn.sort_by(|a, b| b.0.total_cmp(&a.0));
 
     let sprite: ParticleSprite = ParticleSprite::new(view.view);
+    let view_projection: Mat4 = view.get_view_projection();
 
     for (_, effect, surface, drawing) in drawn {
-      into.push_effect(&sprite, effect, surface, drawing);
+      into.push_effect(&sprite, view_projection, effect, surface, drawing);
     }
   }
 

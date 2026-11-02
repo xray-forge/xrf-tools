@@ -1,8 +1,10 @@
 use std::ops::Range;
 
+use glam::{Mat4, Vec3};
 use xrf_particles::ParticleEffectInstance;
 use xrf_renderer_core::{GraphColorAttachment, GraphDeclaration, GraphDepthAttachment, StorageArray, UniformBinding};
 
+use crate::feature::effects::distort::distortion_tiles::DistortionTiles;
 use crate::feature::effects::over_scene::add_over_scene;
 use crate::feature::effects::particles::particle_batch::ParticleBatch;
 use crate::feature::effects::particles::particle_parameters::ParticleParameters;
@@ -20,13 +22,16 @@ use crate::scene::level::view::record::view_record::ViewRecord;
 const INITIAL_QUADS: u64 = 4096;
 
 /// A level's particles as one view draws them: the quads of the effects in its camera, far to near, filled by the
-/// scene's `LevelParticles::fill` each frame, the batches drawing their colour and the runs drawing their distortion.
+/// scene's `LevelParticles::fill` each frame, the batches drawing their colour and the runs drawing their distortion
+/// where it reaches the screen.
 pub struct ParticlesView {
   vertices: Vec<ParticleVertex>,
   /// The blending effects' quads, far to near, a batch each run of one equation.
   batches: Vec<ParticleBatch>,
-  /// The distorting effects' quads, far to near.
+  /// The quads of the distorting effects with one on the screen, far to near.
   distortion_runs: Vec<Range<u32>>,
+  /// The tiles of the frame those quads touch.
+  distortion_tiles: DistortionTiles,
   /// How many effects it draws this frame.
   drawn: u32,
   vertex_buffer: wgpu::Buffer,
@@ -38,6 +43,7 @@ impl ParticlesView {
       vertices: Vec::new(),
       batches: Vec::new(),
       distortion_runs: Vec::new(),
+      distortion_tiles: DistortionTiles::default(),
       drawn: 0,
       vertex_buffer: Self::create_storage(
         device,
@@ -51,14 +57,17 @@ impl ParticlesView {
     self.vertices.clear();
     self.batches.clear();
     self.distortion_runs.clear();
+    self.distortion_tiles = DistortionTiles::default();
     self.drawn = 0;
   }
 
   /// Adds an effect's quads after those added before, as `sprite` faces them with its `surface`: into its equation's
-  /// batch where it blends, into a distortion run where it distorts, as the surface draws (`drawing`).
+  /// batch where it blends, into a distortion run where it distorts, as the surface draws (`drawing`), and one of its
+  /// quads reaches the screen of `view_projection`.
   pub fn push_effect(
     &mut self,
     sprite: &ParticleSprite,
+    view_projection: Mat4,
     effect: &ParticleEffectInstance,
     surface: u32,
     drawing: &ParticleSurface,
@@ -81,7 +90,7 @@ impl ParticlesView {
       }
     }
 
-    if is_distorting {
+    if is_distorting && self.cover_distortion(view_projection, first..end) {
       match self.distortion_runs.last_mut() {
         Some(last) if last.end == first => last.end = end,
         _ => self.distortion_runs.push(first..end),
@@ -89,6 +98,22 @@ impl ParticlesView {
     }
 
     self.drawn += 1;
+  }
+
+  /// Marks the tiles `quads` touch on the screen of `view_projection`; whether one does.
+  fn cover_distortion(&mut self, view_projection: Mat4, quads: Range<u32>) -> bool {
+    let corners: usize = ParticleVertex::CORNERS as usize;
+    let mut tiles: DistortionTiles = DistortionTiles::default();
+
+    for quad in self.vertices[quads.start as usize * corners..quads.end as usize * corners].chunks_exact(corners) {
+      let points: [Vec3; 4] = std::array::from_fn(|corner| quad[corner].position);
+
+      tiles.cover_hull(view_projection, &points);
+    }
+
+    self.distortion_tiles.cover_tiles(&tiles);
+
+    !tiles.is_empty()
   }
 
   /// How many effects it draws this frame.
@@ -160,6 +185,11 @@ impl ParticlesView {
   /// Whether this frame's particles draw into the distortion target.
   pub fn is_distorting(&self) -> bool {
     !self.distortion_runs.is_empty()
+  }
+
+  /// The tiles of the frame this frame's particles draw into the distortion target in.
+  pub fn get_distortion_tiles(&self) -> &DistortionTiles {
+    &self.distortion_tiles
   }
 
   fn create_storage(device: &wgpu::Device, size: u64) -> wgpu::Buffer {

@@ -1,11 +1,12 @@
 use glam::Vec4;
 
+use crate::feature::effects::distort::distortion_tiles::DistortionTiles;
 use crate::feature::page::present_marks::PresentMarks;
 use crate::pass::frame_lighting::light_encoding::LightEncoding;
 
 /// What the other units decided this frame that the window pass reads: whether the scene was upscaled into the
 /// viewport, whether an ambient occlusion and an indirect light are drawn, how many frame pixels a traced reflection
-/// pixel stands for, whether anything distorts the frame, the selection's colour, the helpers' marks and fading, which
+/// pixel stands for, where anything distorts the frame, the selection's colour, the helpers' marks and fading, which
 /// bloom is laid over it, how far the grass casts the sun's shadow, the light's scale and whether it is summed, which
 /// the reflections' view shows what the rays met by, how the frame is shown, and the frame the camera's film grain is
 /// drawn for.
@@ -15,7 +16,7 @@ pub struct PresentInputs {
   pub is_occluded: bool,
   pub is_indirect: bool,
   pub reflection_ratio: Option<u32>,
-  pub is_distorting: bool,
+  pub distortion: DistortionTiles,
   pub selection_color: Option<[f32; 3]>,
   pub marks: PresentMarks,
   pub is_engine_bloomed: bool,

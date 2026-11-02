@@ -1,6 +1,7 @@
 use xrf_error::XrfResult;
 use xrf_renderer_core::{PassParameters, PipelineSet, RasterContext};
 
+use crate::contract::viewport::render_rect::RenderRect;
 use crate::feature::effects::distort::distort_parameters::DistortParameters;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::pass::build::fullscreen_pipeline::create_fullscreen_pipeline;
@@ -39,15 +40,25 @@ impl DistortPass {
     }
   }
 
-  /// Draws the frame moved by the distortion target into the scene target.
-  pub fn record(&self, context: &mut RasterContext<'_>, view: &ViewBinding, parameters: &DistortParameters<'_>) {
+  /// Draws the frame moved by the distortion target into the scene target, within each of `rects`.
+  pub fn record(
+    &self,
+    context: &mut RasterContext<'_>,
+    view: &ViewBinding,
+    parameters: &DistortParameters<'_>,
+    rects: &[RenderRect],
+  ) {
     context.bind(parameters);
 
     let pass: &mut wgpu::RenderPass<'static> = context.get_pass();
 
     pass.set_pipeline(&self.pipeline);
     pass.set_bind_group(0, &view.bind_group, &[]);
-    pass.draw(0..3, 0..1);
+
+    for rect in rects {
+      pass.set_scissor_rect(rect.x as u32, rect.y as u32, rect.width, rect.height);
+      pass.draw(0..3, 0..1);
+    }
   }
 
   fn create_pipeline(
