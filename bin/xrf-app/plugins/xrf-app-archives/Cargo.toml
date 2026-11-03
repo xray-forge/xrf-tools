@@ -22,6 +22,7 @@ xrf-app-audio = { workspace = true }
 xrf-app-core = { workspace = true }
 xrf-archive = { workspace = true }
 xrf-archive-stats = { workspace = true }
+xrf-audio = { workspace = true }
 xrf-chunk = { workspace = true }
 xrf-efd = { workspace = true }
 xrf-error = { workspace = true }
@@ -61,6 +62,7 @@ typescript-bindings = [
   "xrf-app-core/typescript-bindings",
   "xrf-archive/typescript-bindings",
   "xrf-archive-stats/typescript-bindings",
+  "xrf-audio/typescript-bindings",
   "xrf-ipc",
   "xrf-job/typescript-bindings",
   "xrf-level/typescript-bindings",

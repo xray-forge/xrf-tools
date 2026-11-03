@@ -36,6 +36,9 @@ export type AudioOutputStatus = {
   failure: string | null;
 };
 
+/** One transport an [`crate::AudioServer`] opened, which its caller plays, steers and closes by it. */
+export type AudioTransportId = number;
+
 /** Whether a transport plays, as a media element's states name it. */
 export enum EAudioTransportPlayback {
   /** At the start, or put back there. */

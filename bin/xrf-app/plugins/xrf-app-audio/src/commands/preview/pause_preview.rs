@@ -1,7 +1,9 @@
 use tauri::State;
 use xrf_app_core::TauriResult;
 
-use crate::preview::{AudioTransportId, PreviewTransports};
+use xrf_audio::AudioTransportId;
+
+use crate::preview::PreviewTransports;
 
 /// Hold the preview where it plays now.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

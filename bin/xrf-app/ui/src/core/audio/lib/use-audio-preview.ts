@@ -1,7 +1,6 @@
 import { Channel } from "@tauri-apps/api/core";
 import { audioCommands } from "@xrf/ipc/commands/audio";
-import { AudioTransportId } from "@xrf/ipc/types/xrf-app-audio";
-import { AudioTransportState, SoundPeaks } from "@xrf/ipc/types/xrf-audio";
+import { AudioTransportId, AudioTransportState, SoundPeaks } from "@xrf/ipc/types/xrf-audio";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 import { IAudioTransport, IAudioTransportState } from "@xrf/ui/media/audio-player";

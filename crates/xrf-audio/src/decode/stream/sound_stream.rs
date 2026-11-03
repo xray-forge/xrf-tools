@@ -6,6 +6,7 @@ use rtrb::{Producer, RingBuffer};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::decode::sound_decoder::SoundDecoder;
+use crate::decode::sound_format::SoundFormat;
 use crate::decode::stream::sound_stream_start::SoundStreamStart;
 use crate::decode::stream::stream_reader::StreamReader;
 use crate::decode::stream::stream_shared::StreamShared;
@@ -21,30 +22,50 @@ impl SoundStream {
   /// How long the decoder thread waits once the ring is full.
   const FULL_WAIT: Duration = Duration::from_millis(2);
 
-  /// Opens the sound in `bytes` at `start.frame` and starts decoding it; the reader goes to the voice that plays it.
+  /// Starts decoding the sound in `bytes`, of `format`, from `start.frame` on a thread of its own; the reader goes to the
+  /// voice that plays it.
   ///
-  /// The sound is opened and sought before this returns, so a sound that cannot be read is refused here rather than
-  /// heard as silence.
+  /// The thread opens the sound and seeks before it decodes, so no caller waits on a seek. A voice reading the stream
+  /// is silent until the first frames come; a sound that cannot be opened, is not of `format`, or cannot be sought ends
+  /// the stream, and [`crate::StreamControl::get_failure`] says why.
   ///
   /// # Errors
   ///
-  /// Returns an error when [`SoundDecoder`] cannot open the sound or seek to the frame, or the thread cannot start.
-  pub fn start(bytes: Arc<[u8]>, start: SoundStreamStart) -> XrfResult<StreamReader> {
-    let mut decoder: SoundDecoder = SoundDecoder::open(bytes)?;
-    let frame: u64 = start.frame.min(decoder.get_frames_count());
-
-    decoder.seek(frame)?;
-
-    let shared: Arc<StreamShared> = Arc::new(StreamShared::new(&decoder, start.is_looped));
+  /// Returns an error when the thread cannot start.
+  pub fn start(bytes: Arc<[u8]>, format: SoundFormat, start: SoundStreamStart) -> XrfResult<StreamReader> {
+    let frame: u64 = start.frame.min(format.frames_count);
+    let shared: Arc<StreamShared> = Arc::new(StreamShared::new(format, start.is_looped));
     let (producer, consumer) = RingBuffer::new(Self::RING_SAMPLES);
     let thread_shared: Arc<StreamShared> = shared.clone();
 
     thread::Builder::new()
       .name(String::from("xrf-audio-stream"))
-      .spawn(move || Self::run(decoder, producer, &thread_shared))
+      .spawn(move || Self::open_and_run(bytes, frame, producer, &thread_shared))
       .map_err(|error| XrfError::new_unexpected_error(format!("Could not start a sound stream: {error}")))?;
 
     Ok(StreamReader::new(consumer, shared, frame))
+  }
+
+  fn open_and_run(bytes: Arc<[u8]>, frame: u64, producer: Producer<f32>, shared: &StreamShared) {
+    match Self::open(bytes, frame, shared.format) {
+      Ok(decoder) => Self::run(decoder, producer, shared),
+      Err(error) => shared.fail(error.to_string()),
+    }
+  }
+
+  fn open(bytes: Arc<[u8]>, frame: u64, format: SoundFormat) -> XrfResult<SoundDecoder> {
+    let mut decoder: SoundDecoder = SoundDecoder::open(bytes)?;
+
+    if decoder.get_format() != format {
+      return Err(XrfError::new_read_error(format!(
+        "The sound is {:?}, not the {format:?} it was started as",
+        decoder.get_format()
+      )));
+    }
+
+    decoder.seek(frame)?;
+
+    Ok(decoder)
   }
 
   /// Decodes until the reader is dropped, the sound ends without looping, or the decoder fails.

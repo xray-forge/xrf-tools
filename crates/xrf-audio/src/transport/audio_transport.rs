@@ -6,6 +6,7 @@ use xrf_error::{XrfError, XrfResult};
 use crate::control::audio_engine::AudioEngine;
 use crate::control::audio_play::AudioPlay;
 use crate::decode::sound_decoder::SoundDecoder;
+use crate::decode::sound_format::SoundFormat;
 use crate::decode::stream::sound_stream::SoundStream;
 use crate::decode::stream::sound_stream_start::SoundStreamStart;
 use crate::decode::stream::stream_control::StreamControl;
@@ -21,8 +22,7 @@ use crate::voice::voice_source::VoiceSource;
 pub struct AudioTransport {
   bytes: Arc<[u8]>,
   bus: AudioBus,
-  sample_rate: u32,
-  frames_count: u64,
+  format: SoundFormat,
   is_looped: bool,
   place: TransportPlace,
   failure: Option<String>,
@@ -48,13 +48,12 @@ impl AudioTransport {
   ///
   /// Returns an error when the bytes are not a sound [`SoundDecoder`] opens.
   pub fn open(bytes: Arc<[u8]>, bus: AudioBus) -> XrfResult<Self> {
-    let decoder: SoundDecoder = SoundDecoder::open(bytes.clone())?;
+    let format: SoundFormat = SoundDecoder::open(bytes.clone())?.get_format();
 
     Ok(Self {
       bytes,
       bus,
-      sample_rate: decoder.get_sample_rate(),
-      frames_count: decoder.get_frames_count(),
+      format,
       is_looped: false,
       place: TransportPlace::Held {
         frame: 0,
@@ -133,7 +132,7 @@ impl AudioTransport {
   ///
   /// Returns an error when the engine refuses to stop the voice, or the sound cannot be streamed from there.
   pub fn seek(&mut self, engine: &mut AudioEngine, position: Duration) -> XrfResult<()> {
-    let frame: u64 = ((position.as_secs_f64() * f64::from(self.sample_rate)) as u64).min(self.frames_count);
+    let frame: u64 = self.format.to_frame(position);
 
     self.follow(engine);
 
@@ -177,8 +176,8 @@ impl AudioTransport {
 
     AudioTransportState {
       playback,
-      position: self.to_duration(frame),
-      duration: self.to_duration(self.frames_count),
+      position: self.format.to_duration(frame),
+      duration: self.format.get_duration(),
       is_looped: self.is_looped,
       failure: self.failure.clone(),
     }
@@ -189,7 +188,7 @@ impl AudioTransport {
       frame,
       is_looped: self.is_looped,
     };
-    let reader = SoundStream::start(self.bytes.clone(), start).inspect_err(|error| {
+    let reader = SoundStream::start(self.bytes.clone(), self.format, start).inspect_err(|error| {
       self.failure = Some(error.to_string());
     })?;
     let control: StreamControl = reader.get_control();
@@ -229,12 +228,8 @@ impl AudioTransport {
 
     self.failure = control.get_failure();
     self.place = TransportPlace::Held {
-      frame: self.frames_count,
+      frame: self.format.frames_count,
       playback: AudioTransportPlayback::Ended,
     };
-  }
-
-  fn to_duration(&self, frame: u64) -> Duration {
-    Duration::from_secs_f64(frame as f64 / f64::from(self.sample_rate))
   }
 }

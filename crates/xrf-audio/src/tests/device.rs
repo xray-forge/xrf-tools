@@ -1,10 +1,12 @@
-use std::sync::Arc;
+use std::sync::mpsc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use rtrb::RingBuffer;
 
 use crate::device::stream::mixer_holder::MixerHolder;
-use crate::tests::fixtures::{RATE, engine, looped, sine};
+use crate::device::stream::output_thread::OutputThread;
+use crate::tests::fixtures::{RATE, engine, looped, once, sine};
 use crate::{
   AudioBus, AudioEngineParts, AudioMixer, AudioOutput, AudioOutputChoice, AudioOutputStatus, AudioPlay, AudioVoiceId,
   AudioVoiceState, DecodedSound, OfflineRender, SoundChannels,
@@ -31,6 +33,44 @@ fn hands_the_mixer_back_with_its_voices_when_a_stream_drops_its_callback() {
   render.render(480);
   assert_eq!(engine.get_playback(voice).state, AudioVoiceState::Playing);
   assert_eq!(engine.get_playback(voice).frame, 960);
+}
+
+/// While no device plays, the output thread renders the mixer at a device's pace: commands are taken, voices play out
+/// and come back to be freed, and the mixer's clock runs on.
+#[test]
+fn plays_the_mixer_to_nothing_while_no_device_plays_it() {
+  let sound: Arc<DecodedSound> = Arc::new(sine(RATE, 480, 1000.0, 0.5, SoundChannels::Mono));
+  let AudioEngineParts { mut engine, mut mixer } = engine(4);
+  let (_requests, received) = mpsc::channel();
+  let started: Instant = Instant::now();
+
+  mixer.set_output_rate(RATE);
+
+  let meter = mixer.get_meter().clone();
+  let mut output_thread: OutputThread = OutputThread::new(
+    mixer,
+    AudioOutputChoice::SystemDefault,
+    received,
+    Arc::new(Mutex::new(AudioOutputStatus::default())),
+  );
+  let voice: AudioVoiceId = engine
+    .play(AudioPlay::new(once(&sound), AudioBus::Ambience))
+    .expect("a voice starts");
+
+  output_thread.render_silent();
+  std::thread::sleep(Duration::from_millis(40));
+  output_thread.render_silent();
+  engine.collect();
+
+  let elapsed: Duration = started.elapsed();
+  let frames: u64 = meter.get_frames();
+
+  assert_eq!(engine.get_playback(voice).state, AudioVoiceState::Ended);
+  assert_eq!(engine.get_playing_count(), 0, "the ended voice's slot came back");
+  assert!(
+    frames >= 40 * 48 && frames <= (elapsed.as_secs_f64() * f64::from(RATE)) as u64 + 480,
+    "{frames} frames over {elapsed:?}"
+  );
 }
 
 /// The machine may have a device or none: either way the output answers with a status rather than a panic, and closes.

@@ -15,6 +15,9 @@ use crate::mixer::audio_mixer::AudioMixer;
 
 /// The thread that owns the device stream: it opens one for the chosen device, follows the system default, and opens
 /// another when a device goes, keeping the same mixer and so the same voices throughout.
+///
+/// While no device plays, the thread renders the mixer itself at the pace a device would and drops what it renders,
+/// so commands are taken, voices advance and end, their slots come back, and the mixer's clock runs on.
 pub(crate) struct OutputThread {
   /// The mixer while no stream plays it.
   mixer: Option<AudioMixer>,
@@ -24,11 +27,24 @@ pub(crate) struct OutputThread {
   status: Arc<Mutex<AudioOutputStatus>>,
   /// When to try opening a device again after a failure.
   retry_at: Instant,
+  /// Where the mixer renders while no device plays it.
+  silent_buffer: Box<[f32]>,
+  /// When the mixer was last rendered without a device, or `None` while a device plays it.
+  silent_since: Option<Instant>,
 }
 
 impl OutputThread {
   /// How often the thread looks at the devices and the stream's errors.
   const CHECK_INTERVAL: Duration = Duration::from_millis(500);
+
+  /// How often the thread renders the mixer while no device plays it.
+  const SILENT_INTERVAL: Duration = Duration::from_millis(10);
+
+  /// The most time one silent render catches up on, so a thread held up for long does not render seconds at once.
+  const SILENT_MOST: Duration = Duration::from_millis(250);
+
+  /// Frames rendered at a time while no device plays.
+  const SILENT_FRAMES: usize = AudioMixer::BLOCK_FRAMES * 4;
 
   /// How long to wait before trying a device again after it failed to open.
   const RETRY_INTERVAL: Duration = Duration::from_secs(2);
@@ -51,12 +67,20 @@ impl OutputThread {
       requests,
       status,
       retry_at: Instant::now(),
+      silent_buffer: vec![0.0; Self::SILENT_FRAMES * 2].into_boxed_slice(),
+      silent_since: None,
     }
   }
 
   pub(crate) fn run(mut self) {
     loop {
-      match self.requests.recv_timeout(Self::CHECK_INTERVAL) {
+      let wait: Duration = if self.stream.is_some() {
+        Self::CHECK_INTERVAL
+      } else {
+        Self::SILENT_INTERVAL
+      };
+
+      match self.requests.recv_timeout(wait) {
         Ok(OutputRequest::Choose(choice)) => {
           self.choice = choice;
           self.close_stream();
@@ -74,7 +98,36 @@ impl OutputThread {
       if self.stream.is_none() && Instant::now() >= self.retry_at {
         self.open_stream();
       }
+
+      self.render_silent();
     }
+  }
+
+  /// Renders the frames a device would have taken since the last silent render, while the thread holds the mixer.
+  pub(crate) fn render_silent(&mut self) {
+    let Some(mixer) = &mut self.mixer else {
+      self.silent_since = None;
+      return;
+    };
+    let now: Instant = Instant::now();
+    // A thread held up past the most it catches up on starts counting again from that far back.
+    let since: Instant = self
+      .silent_since
+      .filter(|since| now.duration_since(*since) <= Self::SILENT_MOST)
+      .unwrap_or_else(|| now.checked_sub(Self::SILENT_INTERVAL).unwrap_or(now));
+    let rate: f64 = f64::from(mixer.get_output_rate());
+    let frames: usize = (now.duration_since(since).as_secs_f64() * rate) as usize;
+    let mut left: usize = frames;
+
+    while left > 0 {
+      let count: usize = left.min(Self::SILENT_FRAMES);
+
+      mixer.render(&mut self.silent_buffer[..count * 2], 2);
+      left -= count;
+    }
+
+    // Counting on from the frames rendered, not from now, keeps the part of a frame left over for the next render.
+    self.silent_since = Some(since + Duration::from_secs_f64(frames as f64 / rate));
   }
 
   /// Closes the stream when its device went, or when it no longer plays on the device the choice names.

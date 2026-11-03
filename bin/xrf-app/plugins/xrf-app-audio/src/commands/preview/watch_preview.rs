@@ -3,7 +3,9 @@ use tauri::ipc::Channel;
 use xrf_app_core::TauriResult;
 use xrf_audio::AudioTransportState;
 
-use crate::preview::{AudioTransportId, PreviewTransports};
+use xrf_audio::AudioTransportId;
+
+use crate::preview::PreviewTransports;
 
 /// Send the preview's state to `states` now and whenever it changes, its position included, until it closes.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

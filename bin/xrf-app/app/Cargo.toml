@@ -52,6 +52,7 @@ windows = { workspace = true, features = ["Win32_UI_WindowsAndMessaging"] }
 # The mock runtime, which dispatches a command the way a webview would without one.
 tauri = { workspace = true, features = ["test"] }
 xrf-app-core = { workspace = true, features = ["fixtures"] }
+xrf-audio = { workspace = true }
 xrf-test-utils = { workspace = true }
 
 [features]

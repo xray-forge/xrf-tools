@@ -3,7 +3,9 @@ use std::time::Duration;
 use tauri::State;
 use xrf_app_core::TauriResult;
 
-use crate::preview::{AudioTransportId, PreviewTransports};
+use xrf_audio::AudioTransportId;
+
+use crate::preview::PreviewTransports;
 
 /// Move the preview to `position` milliseconds in, clamped to the sound: a playing preview plays on from there, any
 /// other holds there paused.

@@ -3,10 +3,9 @@ use std::time::{Duration, Instant};
 
 use assert_no_alloc::{AllocDisabler, assert_no_alloc, reset_violation_count, violation_count};
 
-use crate::tests::fixtures::{RATE, engine, play_voices, ramp, sine, wav};
+use crate::tests::fixtures::{RATE, engine, play_voices, ramp, sine, stream, wav};
 use crate::{
-  AudioBus, AudioEngineParts, AudioPlay, AudioVoiceId, DecodedSound, OfflineRender, SoundChannels, SoundStream,
-  SoundStreamStart, VoiceSource,
+  AudioBus, AudioEngineParts, AudioPlay, AudioVoiceId, DecodedSound, OfflineRender, SoundChannels, VoiceSource,
 };
 
 /// Counts, rather than forbids, what the audio thread's code allocates or frees inside `assert_no_alloc`.
@@ -65,7 +64,7 @@ fn streams_without_allocating_on_the_audio_thread() {
   let AudioEngineParts { mut engine, mixer } = engine(4);
   let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
   let mut out: Vec<f32> = vec![0.0; 480 * 2];
-  let reader = SoundStream::start(bytes, SoundStreamStart::default()).expect("the stream starts");
+  let reader = stream(bytes, 0, false);
   let voice: AudioVoiceId = engine
     .play(AudioPlay::new(VoiceSource::Streamed(reader), AudioBus::Previews))
     .expect("a voice starts");

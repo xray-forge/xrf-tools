@@ -14,9 +14,6 @@ export type AudioSettings = {
   isMutedInBackground: boolean;
 };
 
-/** One preview a domain opened, which the page plays, steers and closes by it. */
-export type AudioTransportId = number;
-
 /**
  * How loud each category plays under the master, each from 0 (silent) to 1 (as recorded), linear as a media element's
  * volume is.

@@ -16,10 +16,10 @@ import {
   AudioDescriptor,
   ImageDescriptor,
 } from "#/types/xrf-app-archives";
-import { AudioTransportId } from "#/types/xrf-app-audio";
 import { AssetTextureDescriptor, SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
 import { ArchiveReadResult, ArchiveSharedPayload } from "#/types/xrf-archive";
 import { ArchiveStatistics } from "#/types/xrf-archive-stats";
+import { AudioTransportId } from "#/types/xrf-audio";
 import { JobProgress } from "#/types/xrf-job";
 import {
   ArchiveExtractDirectoryResult,

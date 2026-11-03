@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use crate::tests::fixtures::{RATE, ramp, wav};
-use crate::{DecodedSound, SoundChannels, SoundDecoder, SoundPeaks, SoundStream, SoundStreamStart};
+use crate::{DecodedSound, SoundChannels, SoundDecoder, SoundPeaks};
 
 /// A ramp sample read back as the frame it was written at.
 fn to_frame(sample: f32) -> i64 {
@@ -48,7 +48,7 @@ fn refuses_what_it_cannot_play() {
 
   for bytes in [three_channels, garbage, Arc::from(&[][..])] {
     assert!(DecodedSound::decode(bytes.clone()).is_err());
-    assert!(SoundStream::start(bytes.clone(), SoundStreamStart::default()).is_err());
+    assert!(SoundDecoder::open(bytes.clone()).is_err());
     assert!(SoundPeaks::read(bytes, 16).is_err());
   }
 }

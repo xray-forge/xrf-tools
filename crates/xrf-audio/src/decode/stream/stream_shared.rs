@@ -1,15 +1,12 @@
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use crate::decode::sound_channels::SoundChannels;
-use crate::decode::sound_decoder::SoundDecoder;
+use crate::decode::sound_format::SoundFormat;
 
 /// What a stream's decoder thread, the voice reading it and its control share.
 #[derive(Debug)]
 pub(crate) struct StreamShared {
-  pub(crate) sample_rate: u32,
-  pub(crate) channels: SoundChannels,
-  pub(crate) frames_count: u64,
+  pub(crate) format: SoundFormat,
   is_looped: AtomicBool,
   /// Set once the thread has pushed its last sample: the sound ended and does not loop, or it failed.
   is_ended: AtomicBool,
@@ -18,11 +15,9 @@ pub(crate) struct StreamShared {
 }
 
 impl StreamShared {
-  pub(crate) fn new(decoder: &SoundDecoder, is_looped: bool) -> Self {
+  pub(crate) fn new(format: SoundFormat, is_looped: bool) -> Self {
     Self {
-      sample_rate: decoder.get_sample_rate(),
-      channels: decoder.get_channels(),
-      frames_count: decoder.get_frames_count(),
+      format,
       is_looped: AtomicBool::new(is_looped),
       is_ended: AtomicBool::new(false),
       failure: Mutex::new(None),

@@ -13,6 +13,7 @@ use symphonia::core::units::Timestamp;
 use xrf_error::{XrfError, XrfResult};
 
 use crate::decode::sound_channels::SoundChannels;
+use crate::decode::sound_format::SoundFormat;
 
 /// A sound's audio track decoded packet by packet from its bytes: Ogg/Vorbis as the game ships, or WAV as the SDK keeps
 /// sources.
@@ -97,6 +98,15 @@ impl SoundDecoder {
 
   pub fn get_duration(&self) -> Duration {
     Duration::from_secs_f64(self.frames_count as f64 / f64::from(self.sample_rate))
+  }
+
+  /// The track's rate, channels and length together.
+  pub fn get_format(&self) -> SoundFormat {
+    SoundFormat {
+      sample_rate: self.sample_rate,
+      channels: self.channels,
+      frames_count: self.frames_count,
+    }
   }
 
   /// Moves to `frame`: the next decoded samples start exactly there, and a frame at or past the sound's end leaves
