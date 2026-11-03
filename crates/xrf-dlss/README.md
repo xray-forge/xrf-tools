@@ -7,9 +7,9 @@ resolves a view with an upscaler or a ray reconstructor in place of its own upsc
 ## The `sdk` feature
 
 Built without the `sdk` feature, the crate offers the same types and no device has DLSS: `DlssInstance` starts plain
-devices, `request_device` always answers `None` for DLSS, and `Dlss`, `DlssUpscaler` and `DlssRayReconstructor` cannot
-be made, so code using them compiles everywhere. `Dlss::IS_BUILT` says which build this is. The renderer's `dlss`
-feature, and through it the app's, turns `sdk` on.
+devices, `request_device` always answers a `DlssTask` with no DLSS, and `Dlss`, `DlssUpscaler` and
+`DlssRayReconstructor` cannot be made, so code using them compiles everywhere. `Dlss::IS_BUILT` says which build this
+is. The renderer's `dlss` feature, and through it the app's, turns `sdk` on.
 
 Building with `sdk` needs NVIDIA's DLSS SDK (`DLSS_SDK`), the Vulkan SDK (`VULKAN_SDK`) and libclang, as
 [DEVELOPMENT.md](../../DEVELOPMENT.md) sets them up (`cargo make fetch-sdks`). The build script binds NGX's C API with
@@ -27,9 +27,11 @@ DLSS has to be asked for before the device exists, so the renderer makes its wgp
   With `is_upscaled` and Vulkan alone as the backend, it adds the instance extensions NGX needs; with D3D12 alone, it
   prepares NGX for the device (Windows only). Any other backend set gives a plain instance, and so does a Vulkan
   instance NGX's extensions fail on, with a warning logged.
-- `request_device(adapter, descriptor)` answers the device, its queue and `Option<Dlss>`. On Vulkan it opens the device
-  with NGX's device extensions where the adapter has them; on D3D12 it starts NGX only on an NVIDIA adapter. A GPU or
-  driver without DLSS answers `None`, logged; only wgpu's own failure to start the device is an error.
+- `request_device(adapter, descriptor)` answers the device, its queue and a `DlssTask`. On Vulkan it opens the
+  device with NGX's device extensions where the adapter has them; on D3D12 it starts NGX only on an NVIDIA adapter.
+  NGX takes about a second to start, so it starts on a thread of its own (`xrf-dlss`) and the device is answered at
+  once: `get` waits for whatever of the start remains and answers `Option<Dlss>`, `None` for a GPU or driver without
+  DLSS, logged. Dropping it waits for the start to end. Only wgpu's own failure to start the device is an error.
 - `runtime` is the directory an application ships NGX's runtime library in (`Dlss::RUNTIME_LIBRARY`, `nvngx_dlss.dll`
   on Windows, with ray reconstruction's beside it). NGX also searches the SDK the build was made against.
 
@@ -67,7 +69,8 @@ let instance = DlssInstance::new(descriptor, true, Some(runtime_directory));
 let adapter = pollster::block_on(instance.instance.request_adapter(&options))?;
 let (device, queue, dlss) = instance.request_device(&adapter, &device_descriptor)?;
 
-if let Some(dlss) = &dlss {
+// Other start-up work here runs while NGX starts.
+if let Some(dlss) = dlss.get() {
   let upscaler = dlss.create_upscaler((1920, 1080), (DlssQuality::Quality, DlssPreset::Default), true)?;
   let ngx: wgpu::CommandBuffer = upscaler.record(&mut encoder, &inputs)?;
 
@@ -80,7 +83,7 @@ NGX's own messages go to the log under the `xrf_dlss::ngx` target while its debu
 ## Checks
 
 Run `cargo test --locked -p xrf-dlss`, adding `--features sdk` to build the NGX glue. Sources: the
-[instance](src/dlss_instance.rs), [`Dlss`](src/dlss.rs), the [upscaler](src/upscaler/dlss_upscaler.rs), the
+[instance](src/dlss_instance.rs), [the start's task](src/dlss_task.rs), [`Dlss`](src/dlss.rs), the [upscaler](src/upscaler/dlss_upscaler.rs), the
 [ray reconstructor](src/reconstruction/dlss_ray_reconstructor.rs), and the [build script](build.rs). The NGX glue
 under `src/ngx` groups NGX started on a device (`sdk`), the features it makes (`feature`), and the graphics APIs it runs
 on (`backend`).

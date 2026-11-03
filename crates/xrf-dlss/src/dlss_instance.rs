@@ -1,6 +1,8 @@
 use std::path::Path;
 
+#[cfg(feature = "sdk")]
 use crate::dlss::Dlss;
+use crate::dlss_task::DlssTask;
 #[cfg(feature = "sdk")]
 use crate::ngx::backend::ngx_vulkan_extensions::NgxVulkanExtensions;
 #[cfg(feature = "sdk")]
@@ -51,7 +53,7 @@ impl DlssInstance {
   }
 
   /// Starts a device on `adapter`, one of this instance's, and DLSS on it where NGX is hooked in and the adapter has
-  /// what it needs.
+  /// what it needs, the device answered while DLSS still starts.
   ///
   /// # Errors
   ///
@@ -60,15 +62,17 @@ impl DlssInstance {
     &self,
     adapter: &wgpu::Adapter,
     descriptor: &wgpu::DeviceDescriptor<'_>,
-  ) -> Result<(wgpu::Device, wgpu::Queue, Option<Dlss>), wgpu::RequestDeviceError> {
+  ) -> Result<(wgpu::Device, wgpu::Queue, DlssTask), wgpu::RequestDeviceError> {
     #[cfg(feature = "sdk")]
     if let Some(application) = &self.application
       && adapter.get_info().backend == wgpu::Backend::Dx12
     {
       let (device, queue) = pollster::block_on(adapter.request_device(descriptor))?;
-      let dlss: Option<Dlss> = (adapter.get_info().vendor == Self::NVIDIA)
-        .then(|| Dlss::start(application, adapter, (&device, &queue)))
-        .flatten();
+      let dlss: DlssTask = if adapter.get_info().vendor == Self::NVIDIA {
+        Self::launch(application, adapter, (&device, &queue))
+      } else {
+        DlssTask::none()
+      };
 
       return Ok((device, queue, dlss));
     }
@@ -77,9 +81,11 @@ impl DlssInstance {
     if let Some(application) = &self.application {
       match Self::open(application, adapter, descriptor) {
         Ok((device, queue, is_supported)) => {
-          let dlss: Option<Dlss> = is_supported
-            .then(|| Dlss::start(application, adapter, (&device, &queue)))
-            .flatten();
+          let dlss: DlssTask = if is_supported {
+            Self::launch(application, adapter, (&device, &queue))
+          } else {
+            DlssTask::none()
+          };
 
           return Ok((device, queue, dlss));
         }
@@ -89,7 +95,19 @@ impl DlssInstance {
 
     let (device, queue) = pollster::block_on(adapter.request_device(descriptor))?;
 
-    Ok((device, queue, None))
+    Ok((device, queue, DlssTask::none()))
+  }
+
+  /// Starts DLSS on `device` on a thread of its own.
+  #[cfg(feature = "sdk")]
+  fn launch(
+    application: &NgxApplication,
+    adapter: &wgpu::Adapter,
+    (device, queue): (&wgpu::Device, &wgpu::Queue),
+  ) -> DlssTask {
+    let (application, adapter, device, queue) = (application.clone(), adapter.clone(), device.clone(), queue.clone());
+
+    DlssTask::launch(move || Dlss::start(&application, &adapter, (&device, &queue)))
   }
 
   /// A Vulkan instance with NGX's instance extensions, where the loader has them; one without NGX otherwise.

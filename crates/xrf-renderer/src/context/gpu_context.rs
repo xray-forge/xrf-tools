@@ -2,7 +2,7 @@ use std::path::Path;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use xrf_dlss::{Dlss, DlssInstance};
+use xrf_dlss::{DlssInstance, DlssTask};
 use xrf_env_flags::{EnvFlags, SwitchFlag};
 use xrf_error::{XrfError, XrfResult};
 
@@ -27,8 +27,9 @@ pub struct GpuContext {
   pub adapter_name: String,
   /// The GPU drawn on.
   pub gpu: RenderGpu,
-  /// DLSS where the build and the GPU both have it: an RTX GPU, on Vulkan or D3D12.
-  pub dlss: Option<Dlss>,
+  /// DLSS where the build and the GPU both have it: an RTX GPU, on Vulkan or D3D12. It starts beside the passes, the
+  /// first frame asking for it waiting for what remains.
+  pub dlss: DlssTask,
   lost: Arc<AtomicBool>,
 }
 
@@ -365,7 +366,7 @@ impl GpuContext {
       } else {
         "without ray queries"
       },
-      if dlss.is_some() { ", with DLSS" } else { "" }
+      if dlss.is_launched() { ", with DLSS" } else { "" }
     );
 
     Ok(Self {
