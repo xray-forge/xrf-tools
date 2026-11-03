@@ -25,6 +25,7 @@ use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::contract::viewport::render_viewport_layout::RenderViewportLayout;
 use crate::host::render_event_sink::RenderEventSink;
 use crate::host::render_window_host::RenderWindowHost;
+use crate::host::world::render_scene_id::RenderSceneId;
 
 /// What the render thread is told, through a [`crate::RenderQueue`]; it is the only one touching the GPU.
 pub enum RenderCommand {
@@ -56,10 +57,11 @@ pub enum RenderCommand {
     id: RenderViewportId,
     options: Box<RenderViewOptions>,
   },
-  /// Replaces what a viewport draws over its frame.
+  /// Replaces what a viewport draws over its frame: at once, or from the frame it shows `scene`.
   Overlays {
     id: RenderViewportId,
     overlays: Vec<RenderOverlay>,
+    scene: Option<RenderSceneId>,
   },
   /// Marks what of a viewport's level is selected, or nothing for `None`.
   Selection {

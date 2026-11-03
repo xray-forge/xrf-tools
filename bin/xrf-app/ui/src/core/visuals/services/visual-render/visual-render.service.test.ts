@@ -166,6 +166,29 @@ describe("VisualRenderService", () => {
     service.dispose();
   });
 
+  it("sends the helpers for the scene of the model they are sized to, so a grid swaps with its model", async () => {
+    const source: IVisualRenderSource = mockSource({ model: mockVisualModelViews(), sessionId: "first" });
+    const { service } = await mockAttached(source);
+
+    function sent(): Array<unknown> {
+      return listMockInvokeCalls(ERenderCommand.SET_OVERLAYS).map(({ scene }) => scene);
+    }
+
+    expect(sent()).toEqual([SCENE]);
+
+    // The next model is read before the renderer names its scene: its grid waits for that, never sent for the last.
+    mockIpcCommands({ [ERenderCommand.ATTACH_VIEWPORT]: VIEWPORT, [EVisualsCommand.SHOW_MODEL]: SCENE + 1 });
+    runInAction(() => {
+      source.model = mockVisualModelViews({ fit: { center: [0, 1, 0], radius: 4 } });
+      source.sessionId = "second";
+    });
+    await flush();
+
+    expect(sent()).toEqual([SCENE, SCENE + 1]);
+
+    service.dispose();
+  });
+
   // Clicking through a tree keeps the view the person turned to: only the first model a view shows is framed.
   it("frames the first model a view shows, and keeps the camera for the ones after", async () => {
     const source: IVisualRenderSource = mockSource({ model: mockVisualModelViews(), sessionId: "first" });

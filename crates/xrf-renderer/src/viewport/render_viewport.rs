@@ -130,9 +130,11 @@ impl RenderViewport {
     self.options = options;
   }
 
-  /// Takes what it draws over its frame from now on.
-  pub fn set_overlays(&mut self, overlays: Vec<RenderOverlay>) {
-    self.overlays.replace(overlays);
+  /// Takes what it draws over its frame: from now on for no scene, else from the frame it shows `scene`.
+  pub fn set_overlays(&mut self, overlays: Vec<RenderOverlay>, scene: Option<RenderSceneId>) {
+    let shown: Option<RenderSceneId> = self.get_shown_scene();
+
+    self.overlays.set(overlays, scene, shown);
   }
 
   /// Takes what of its level is selected from now on, none for nothing.
@@ -417,10 +419,11 @@ impl RenderViewport {
     }
   }
 
-  /// Shows the scene `scene` through `view`, a view of it of its own.
+  /// Shows the scene `scene` through `view`, a view of it of its own, with the overlays given for it.
   pub fn show(&mut self, scene: RenderSceneId, view: SceneView) {
     self.leave_shown();
     self.shown = Some(ShownView { scene, view });
+    self.overlays.show(scene);
   }
 
   /// Shows no scene.
