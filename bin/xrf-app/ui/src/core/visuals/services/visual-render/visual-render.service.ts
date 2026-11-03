@@ -1,5 +1,5 @@
 import { inject, Injectable } from "@wirestate/core";
-import { BoundAction, comparer, reaction } from "@wirestate/mobx";
+import { BoundAction, comparer, reaction, RefObservable, runInAction } from "@wirestate/mobx";
 import { visualsCommands } from "@xrf/ipc/commands/visuals";
 import {
   RenderLoadReport,
@@ -22,6 +22,12 @@ import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
 import { VisualLoadService } from "@/core/visuals/services/visual-load";
 import { VisualViewService } from "@/core/visuals/services/visual-view";
 
+/** A scene the renderer drew a model as, and the session the model was shown from. */
+interface IShownScene {
+  scene: number;
+  sessionId: Nullable<string>;
+}
+
 /**
  * Owns the native viewport the open model is drawn in, and everything said to it.
  */
@@ -38,8 +44,9 @@ export class VisualRenderService extends NativeRenderSurfaceService {
   private hasFramed: boolean = false;
   /** Whether the shown model's textures were described since it was shown. */
   private hasDescribed: boolean = false;
-  /** The scene the shown model is drawn as, which its load reports name; null until the renderer answers. */
-  private scene: Nullable<number> = null;
+  /** The scene the shown model is drawn as and the session it was shown from; null until the renderer answers. */
+  @RefObservable()
+  private shown: Nullable<IShownScene> = null;
   /** The viewport's last load report, of whichever scene it named. */
   private loaded: Nullable<RenderLoadReport> = null;
 
@@ -50,6 +57,21 @@ export class VisualRenderService extends NativeRenderSurfaceService {
     renderSettingsService: RenderSettingsService = inject(RenderSettingsService)
   ) {
     super(renderSettingsService);
+  }
+
+  /** The scene the shown model is drawn as, which its load reports name; null until the renderer answers. */
+  private get scene(): Nullable<number> {
+    return this.shown?.scene ?? null;
+  }
+
+  /**
+   * The scene the source's model is drawn as: null until the renderer answers for its session, however the source's
+   * model and the show change in turn, so helpers sized to the next model are never sent for the one it replaces.
+   */
+  private get modelScene(): Nullable<number> {
+    const shown: Nullable<IShownScene> = this.shown;
+
+    return shown && shown.sessionId === this.source.sessionId ? shown.scene : null;
   }
 
   /**
@@ -95,7 +117,8 @@ export class VisualRenderService extends NativeRenderSurfaceService {
         (pose: WorldModelPose) => viewport.poseModel(pose),
         { equals: comparer.structural, fireImmediately: true }
       ),
-      // Keyed by the switches, the extent and the joint alone: the overlays themselves are long arrays.
+      // Keyed by the switches, the extent and the joint alone: the overlays themselves are long arrays. Sent for the
+      // model's scene once the renderer names it, so a grid sized to the next model waits for it to be drawn.
       reaction(
         () => {
           const { isAxesVisible, isGridVisible, isSkeletonVisible } = this.viewService.options;
@@ -104,9 +127,14 @@ export class VisualRenderService extends NativeRenderSurfaceService {
             joint: this.source.highlightedJoint ?? null,
             options: { isAxesVisible, isGridVisible, isSkeletonVisible },
             radius: this.source.model?.fit.radius ?? 1,
+            scene: this.modelScene,
           };
         },
-        ({ joint, options, radius }) => viewport.setOverlays(toVisualOverlays(options, radius, joint, this.config)),
+        ({ joint, options, radius, scene }) => {
+          if (scene !== null) {
+            viewport.setOverlays(toVisualOverlays(options, radius, joint, this.config), scene);
+          }
+        },
         { equals: comparer.structural, fireImmediately: true }
       ),
     ];
@@ -122,18 +150,28 @@ export class VisualRenderService extends NativeRenderSurfaceService {
   protected release(): void {
     this.hasFramed = false;
     this.hasDescribed = false;
-    this.scene = null;
     this.loaded = null;
+
+    runInAction(() => {
+      this.shown = null;
+    });
   }
 
   private showModel(sessionId: Nullable<string>, detail: number): void {
     this.hasDescribed = false;
-    this.scene = null;
+
+    runInAction(() => {
+      this.shown = null;
+    });
+
     this.show(
       (viewport: NativeViewport) =>
         viewport.ask("showModel", (id: RenderViewportId) => visualsCommands.showModel(id, sessionId, detail), null),
       (scene: Nullable<number>) => {
-        this.scene = scene;
+        runInAction(() => {
+          this.shown = scene === null ? null : { scene, sessionId };
+        });
+
         this.revealWhenDrawn();
         this.describeWhenReady();
       }

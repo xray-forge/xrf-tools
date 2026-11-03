@@ -8,8 +8,9 @@ use xrf_error::XrfResult;
 use xrf_renderer::{
   BurstEvent, CaptureEvent, RenderBurst, RenderCapture, RenderCommand, RenderCubeCapture, RenderEventSink,
   RenderFrameReport, RenderHoldId, RenderLevelHit, RenderLibraries, RenderLoadReport, RenderMapCapture,
-  RenderMemoryReport, RenderOverlay, RenderPick, RenderQueue, RenderScreenshot, RenderSelection, RenderSettings,
-  RenderTextureReport, RenderViewOptions, RenderViewportId, RenderViewportLayout, RenderWait, RenderWindowHost,
+  RenderMemoryReport, RenderOverlay, RenderPick, RenderQueue, RenderSceneId, RenderScreenshot, RenderSelection,
+  RenderSettings, RenderTextureReport, RenderViewOptions, RenderViewportId, RenderViewportLayout, RenderWait,
+  RenderWindowHost,
 };
 
 use crate::renderer::{RenderAnswer, RenderPickRequest};
@@ -220,9 +221,13 @@ impl Renderer {
     });
   }
 
-  /// Replaces what a viewport draws over its frame.
-  pub fn set_overlays(&self, id: RenderViewportId, overlays: Vec<RenderOverlay>) {
-    self.queue.send(RenderCommand::Overlays { id, overlays });
+  /// Replaces what a viewport draws over its frame: at once, or from the frame it shows the scene `scene` names.
+  pub fn set_overlays(&self, id: RenderViewportId, overlays: Vec<RenderOverlay>, scene: Option<u32>) {
+    self.queue.send(RenderCommand::Overlays {
+      id,
+      overlays,
+      scene: scene.map(RenderSceneId),
+    });
   }
 
   /// Marks what of a viewport's level is selected, or nothing for `None`.

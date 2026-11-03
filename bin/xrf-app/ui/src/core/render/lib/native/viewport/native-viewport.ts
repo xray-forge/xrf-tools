@@ -155,10 +155,12 @@ export class NativeViewport {
   }
 
   /**
-   * @param overlays - The helpers drawn over its frame from now on, in place of those before.
+   * @param overlays - The helpers drawn over its frame in place of those before.
+   * @param scene - The scene they are for, as a load report names it, drawn from the frame the viewport shows it; null
+   *   draws them from now on.
    */
-  public setOverlays(overlays: Array<RenderOverlay>): void {
-    this.call("setOverlays", (id: RenderViewportId) => renderCommands.setOverlays(id, overlays));
+  public setOverlays(overlays: Array<RenderOverlay>, scene: Nullable<number> = null): void {
+    this.call("setOverlays", (id: RenderViewportId) => renderCommands.setOverlays(id, overlays, scene));
   }
 
   public setSelection(selection: Nullable<RenderSelection>): void {

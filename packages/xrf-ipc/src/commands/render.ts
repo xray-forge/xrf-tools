@@ -159,9 +159,12 @@ export const renderCommands = {
   /** Describe a viewport's camera; described again from the same start, it keeps where it has been moved. */
   setCamera: (viewport: RenderViewportId, camera: WorldCamera) =>
     __TAURI_INVOKE<void>(ERenderCommand.SET_CAMERA, { viewport, camera }),
-  /** Set the helpers drawn over one viewport's frame. */
-  setOverlays: (viewport: RenderViewportId, overlays: Array<RenderOverlay>) =>
-    __TAURI_INVOKE<void>(ERenderCommand.SET_OVERLAYS, { viewport, overlays }),
+  /**
+   * Set the helpers drawn over one viewport's frame: at once, or for a scene from the frame the viewport shows it, as a
+   * load report names it, so helpers sized to a model never stand over the one it replaces.
+   */
+  setOverlays: (viewport: RenderViewportId, overlays: Array<RenderOverlay>, scene: number | null) =>
+    __TAURI_INVOKE<void>(ERenderCommand.SET_OVERLAYS, { viewport, overlays, scene }),
   /** Mark what of one viewport's level is selected, or nothing. */
   setSelection: (viewport: RenderViewportId, selection: RenderSelection | null) =>
     __TAURI_INVOKE<void>(ERenderCommand.SET_SELECTION, { viewport, selection }),
@@ -225,7 +228,10 @@ export interface IRenderCommandSignatures {
   [ERenderCommand.SEEK_WEATHER]: IIpcCommandSignature<typeof renderCommands.seekWeather, ["viewport", "time"]>;
   [ERenderCommand.SEND_INPUT]: IIpcCommandSignature<typeof renderCommands.sendInput, ["viewport", "event"]>;
   [ERenderCommand.SET_CAMERA]: IIpcCommandSignature<typeof renderCommands.setCamera, ["viewport", "camera"]>;
-  [ERenderCommand.SET_OVERLAYS]: IIpcCommandSignature<typeof renderCommands.setOverlays, ["viewport", "overlays"]>;
+  [ERenderCommand.SET_OVERLAYS]: IIpcCommandSignature<
+    typeof renderCommands.setOverlays,
+    ["viewport", "overlays", "scene"]
+  >;
   [ERenderCommand.SET_SELECTION]: IIpcCommandSignature<typeof renderCommands.setSelection, ["viewport", "selection"]>;
   [ERenderCommand.SET_VIEW_OPTIONS]: IIpcCommandSignature<
     typeof renderCommands.setViewOptions,

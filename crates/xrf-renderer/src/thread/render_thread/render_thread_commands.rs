@@ -104,9 +104,9 @@ impl RenderThread {
           viewport.set_options(*options);
         }
       }
-      RenderCommand::Overlays { id, overlays } => {
+      RenderCommand::Overlays { id, overlays, scene } => {
         if let Some(viewport) = self.viewports.get_mut(&id) {
-          viewport.set_overlays(overlays);
+          viewport.set_overlays(overlays, scene);
         }
       }
       RenderCommand::Selection { id, selection } => {
