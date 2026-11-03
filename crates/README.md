@@ -75,6 +75,12 @@ README is also its crate's rustdoc page.
 | [xrf-world](xrf-world/README.md)                     | Run what moves in a level each frame and hand it to the renderer           |
 | [xrf-dlss](xrf-dlss/README.md)                       | NVIDIA DLSS for the renderer's views; without the `sdk` feature, none      |
 
+### Sound
+
+| Crate                            | Purpose                                                                  |
+| -------------------------------- | ------------------------------------------------------------------------ |
+| [xrf-audio](xrf-audio/README.md) | Play sounds through a lock-free mixer of preallocated voices on a device |
+
 ### Frontend bindings
 
 | Crate                                              | Purpose                                                                            |

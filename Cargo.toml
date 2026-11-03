@@ -9,6 +9,7 @@ members = [
   "crates/xrf-anm",
   "crates/xrf-archive",
   "crates/xrf-archive-stats",
+  "crates/xrf-audio",
   "crates/xrf-build-info",
   "crates/xrf-chunk",
   "crates/xrf-dds",
@@ -95,6 +96,7 @@ resvg = { version = "0.49.0", default-features = false }
 serde ={ version = "1.0.229", features = ["derive", "rc"] }
 serde_json = "1.0.151"
 syn = "3.0.5"
+symphonia = { version = "0.6.1", default-features = false, features = ["vorbis"] }
 sysinfo = "0.39.6"
 specta = { version = "=2.0.0-rc.26", features = ["derive", "serde_json", "uuid"] }
 specta-serde = "0.0.13"
@@ -125,6 +127,7 @@ xrf-app-visuals = { path = "bin/xrf-app/plugins/xrf-app-visuals" }
 xrf-anm = { path = "crates/xrf-anm" }
 xrf-archive = { path = "crates/xrf-archive" }
 xrf-archive-stats = { path = "crates/xrf-archive-stats" }
+xrf-audio = { path = "crates/xrf-audio" }
 xrf-build-info = { path = "crates/xrf-build-info" }
 xrf-chunk = { path = "crates/xrf-chunk" }
 xrf-dds = { path = "crates/xrf-dds" }
