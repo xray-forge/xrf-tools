@@ -40,6 +40,13 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
 
   protected viewport: Nullable<NativeViewport> = null;
 
+  /**
+   * Whether the viewport is revealed by its first frame, whatever it drew. A service attaching its viewport before
+   * what it shows is drawn answers false and calls `reveal` once it is, so the page never shows the grid a viewport
+   * draws while it has nothing to show.
+   */
+  protected readonly isRevealedByAnyFrame: boolean = true;
+
   private readonly hold: NativeRendererHold = new NativeRendererHold(new Logger(__MODULE_NAME__));
   private target: Nullable<NativeViewportTarget> = null;
   private readonly reactions: Array<() => void> = [];
@@ -80,7 +87,10 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
       onFailed: (message: string): void => this.fail(message),
       onFrame: (report: RenderFrameReport): void => {
         // A viewport reports only frames it drew, so by its first the window holds the page's backdrop.
-        this.target?.openHole();
+        if (this.isRevealedByAnyFrame) {
+          this.reveal();
+        }
+
         runInAction(() => {
           this.frame = report;
         });
@@ -225,6 +235,14 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
 
   /** Forgets what the subclass told the viewport, which went with it. */
   protected release(): void {}
+
+  /**
+   * Shows the viewport through the page, once it has drawn: the page's backgrounds over it are taken off, the renderer
+   * painting them now. Again does nothing.
+   */
+  protected reveal(): void {
+    this.target?.openHole();
+  }
 
   private fail(message: string): void {
     this.log.error("The native viewport cannot be drawn:", message);

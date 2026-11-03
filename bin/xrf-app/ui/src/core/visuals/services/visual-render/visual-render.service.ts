@@ -29,6 +29,9 @@ import { VisualViewService } from "@/core/visuals/services/visual-view";
 export class VisualRenderService extends NativeRenderSurfaceService {
   public readonly log: Logger = new Logger(__MODULE_NAME__);
 
+  /** The viewport attaches before its model opens: revealed then, it would show the grid it draws meanwhile. */
+  protected override readonly isRevealedByAnyFrame: boolean = false;
+
   private readonly config: IVisualPreviewSceneConfig = DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG;
 
   /** Whether the attached viewport has fitted its camera to a model yet. */
@@ -111,6 +114,7 @@ export class VisualRenderService extends NativeRenderSurfaceService {
 
   protected onLoad(report: RenderLoadReport): void {
     this.loaded = report;
+    this.revealWhenDrawn();
     this.describeWhenReady();
   }
 
@@ -130,9 +134,22 @@ export class VisualRenderService extends NativeRenderSurfaceService {
         viewport.ask("showModel", (id: RenderViewportId) => visualsCommands.showModel(id, sessionId, detail), null),
       (scene: Nullable<number>) => {
         this.scene = scene;
+        this.revealWhenDrawn();
         this.describeWhenReady();
       }
     );
+  }
+
+  /**
+   * Reveals the viewport once it draws the model shown whole, whichever of the show's answer and the load report comes
+   * last; a viewport with no model shown stays under the page, whose empty state covers it.
+   */
+  private revealWhenDrawn(): void {
+    const report: Nullable<RenderLoadReport> = this.loaded;
+
+    if (this.scene !== null && report?.isReady && report.scene === this.scene) {
+      this.reveal();
+    }
   }
 
   /**

@@ -51,7 +51,10 @@ function mockSource(overrides: Partial<IVisualRenderSource> = {}): IVisualRender
   );
 }
 
-async function mockAttached(source: IVisualRenderSource): Promise<{
+async function mockAttached(
+  source: IVisualRenderSource,
+  element: HTMLElement = document.createElement("div")
+): Promise<{
   container: Container;
   service: VisualRenderService;
   viewService: VisualViewService;
@@ -66,7 +69,7 @@ async function mockAttached(source: IVisualRenderSource): Promise<{
   ]);
   const service: VisualRenderService = container.get(VisualRenderService);
 
-  service.attach(document.createElement("div"));
+  service.attach(element);
   await flush();
 
   return { container, service, viewService: container.get(VisualViewService) };
@@ -190,6 +193,32 @@ describe("VisualRenderService", () => {
     expect(framings()).toEqual([2, 2]);
 
     service.dispose();
+  });
+
+  it("reveals the viewport once the model shown stands drawn whole, never on a frame of its grid", async () => {
+    // The viewport attaches while the model still opens, and draws its grid until it is shown.
+    const page: HTMLElement = document.createElement("div");
+    const element: HTMLElement = document.createElement("div");
+
+    page.style.background = "rgb(40, 50, 60)";
+    page.append(element);
+    document.body.append(page);
+
+    const { service } = await mockAttached(mockSource({ model: mockVisualModelViews(), sessionId: "first" }), element);
+
+    emit({ kind: ERenderViewportEvent.FRAME, report: { framesPerSecond: 60 } } as unknown as ViewportEvent);
+    emit({ kind: ERenderViewportEvent.LOAD, report: mockRenderLoadReport({ isReady: false, scene: SCENE }) });
+    await flush();
+
+    expect(page.style.background).toBe("rgb(40, 50, 60)");
+
+    emit({ kind: ERenderViewportEvent.LOAD, report: mockRenderLoadReport({ isReady: true, scene: SCENE }) });
+    await flush();
+
+    expect(page.style.background).toBe("transparent");
+
+    service.dispose();
+    page.remove();
   });
 
   it("notes what became of the model's textures once the viewport holds it whole", async () => {
