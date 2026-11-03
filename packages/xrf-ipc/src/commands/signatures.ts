@@ -4,6 +4,7 @@ import { IArchivesCommandSignatures } from "#/commands/archives";
 import { IArchivesBulkRouteSignatures } from "#/commands/archives-bulk";
 import { IAssetsCommandSignatures } from "#/commands/assets";
 import { IAssetsBulkRouteSignatures } from "#/commands/assets-bulk";
+import { IAudioCommandSignatures } from "#/commands/audio";
 import { IConfigsCommandSignatures } from "#/commands/configs";
 import { IDialogsCommandSignatures } from "#/commands/dialogs";
 import { IExportsCommandSignatures } from "#/commands/exports";
@@ -28,6 +29,7 @@ export interface IIpcCommandSignatures
   extends
     IArchivesCommandSignatures,
     IAssetsCommandSignatures,
+    IAudioCommandSignatures,
     IConfigsCommandSignatures,
     IDialogsCommandSignatures,
     IExportsCommandSignatures,

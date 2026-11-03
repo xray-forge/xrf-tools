@@ -14,8 +14,9 @@ that belong together sit together.
   compiled level file), `light_anim`, `omf`, `particles`, `ppe`, `shader_compiler`, `shaders`, `sound`, `spawn` and
   `thm`. A describer gets what it needs through `ArchiveDescribeSource`, so it is written against its format rather
   than against the subjects the explorer browses.
-- `preview`: decoding one entry of the open subject for display: a sound's or a picture's facts, its stored bytes for
-  the page to play or draw, and a texture as a picture.
+- `preview`: decoding one entry of the open subject for display: a sound's or a picture's facts, a picture's stored
+  bytes for the page to draw, a texture as a picture, and a sound opened as a preview the audio plugin plays
+  (`open_audio_preview`), so a sound's bytes never reach the page.
 - `pack`: writing a tree into archive volumes, and the configuration a run is authored in.
 - `patch`: comparing two trees and publishing the difference as a patch volume.
 - `unpack`: writing a volume set back out to a directory whole.

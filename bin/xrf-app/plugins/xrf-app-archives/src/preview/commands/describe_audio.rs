@@ -2,7 +2,6 @@ use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
-use xrf_extension::XrayExtensionOf;
 
 use crate::browse::ArchiveSubjects;
 use crate::preview::AudioDescriptor;
@@ -18,14 +17,9 @@ pub async fn archives_describe_audio(
 ) -> TauriResult<SessionSnapshot<AudioDescriptor>> {
   log::info!("Describing audio: {name}");
 
-  let media_type: &'static str = XrayExtensionOf::of(&name)
-    .known()
-    .and_then(|extension| extension.get_media_type())
-    .ok_or_else(|| format!("Failed to describe audio '{name}': no webview plays this extension"))?;
-
   subjects
     .read_on_pool(&execution, session_id, "Describing audio", move |subject| {
-      Ok(AudioDescriptor::of(&name, &subject.read_bytes(&name)?, media_type))
+      Ok(AudioDescriptor::of(&name, &subject.read_bytes(&name)?))
     })
     .await
 }

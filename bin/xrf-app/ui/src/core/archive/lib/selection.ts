@@ -1,5 +1,5 @@
 import { ArchiveFileDescription, AudioDescriptor, ImageDescriptor } from "@xrf/ipc/types/xrf-app-archives";
-import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
+import { AssetTextureDescriptor, SessionId } from "@xrf/ipc/types/xrf-app-core";
 import { ArchiveReadResult } from "@xrf/ipc/types/xrf-archive";
 import { EPathEntryKind } from "@xrf/path";
 
@@ -24,13 +24,14 @@ export type TArchiveBytes = Uint8Array<ArrayBuffer>;
 /**
  * What was loaded for the current selection, whatever form it took.
  *
- * Media carries its description and its bytes side by side because they arrive as two calls: the bytes are what the
- * webview plays or paints, the descriptor is what the engine would read. Both are read by the open subject's session,
- * so they always describe the same file.
+ * A picture carries its description and its bytes side by side because they arrive as two calls: the bytes are what
+ * the webview paints, the descriptor is what the engine would read. A sound carries its description and where it is,
+ * as the application's audio plays it from the backend: its player opens it there by the same session and name. Every
+ * read is addressed by the open subject's session, so they always describe the same file.
  */
 export type TArchiveContent =
   | { kind: "text"; result: ArchiveReadResult }
   | { kind: "texture"; descriptor: AssetTextureDescriptor; bytes: TArchiveBytes }
   | { kind: "image"; descriptor: ImageDescriptor; bytes: TArchiveBytes }
-  | { kind: "audio"; descriptor: AudioDescriptor; bytes: TArchiveBytes }
+  | { kind: "audio"; descriptor: AudioDescriptor; sessionId: SessionId; name: string }
   | { kind: "description"; description: ArchiveFileDescription };

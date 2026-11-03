@@ -16,6 +16,7 @@ import {
   AudioDescriptor,
   ImageDescriptor,
 } from "#/types/xrf-app-archives";
+import { AudioTransportId } from "#/types/xrf-app-audio";
 import { AssetTextureDescriptor, SessionId, SessionRestore, SessionSnapshot } from "#/types/xrf-app-core";
 import { ArchiveReadResult, ArchiveSharedPayload } from "#/types/xrf-archive";
 import { ArchiveStatistics } from "#/types/xrf-archive-stats";
@@ -48,6 +49,7 @@ export enum EArchivesCommand {
   DESCRIBE_AUDIO = "plugin:archives|describe_audio",
   DESCRIBE_TEXTURE = "plugin:archives|describe_texture",
   DESCRIBE_IMAGE = "plugin:archives|describe_image",
+  OPEN_AUDIO_PREVIEW = "plugin:archives|open_audio_preview",
   DEFAULT_PACK_CONFIG = "plugin:archives|default_pack_config",
   EXPORT_PACK_CONFIG = "plugin:archives|export_pack_config",
   IMPORT_PACK_CONFIG = "plugin:archives|import_pack_config",
@@ -124,6 +126,12 @@ export const archivesCommands = {
    */
   describeImage: (sessionId: SessionId, name: string) =>
     __TAURI_INVOKE<SessionSnapshot<ImageDescriptor>>(EArchivesCommand.DESCRIBE_IMAGE, { sessionId, name }),
+  /**
+   * Open a sound of the open subject as a preview the invoking window's page plays through the application's audio,
+   * stopped at its start.
+   */
+  openAudioPreview: (sessionId: SessionId, name: string) =>
+    __TAURI_INVOKE<AudioTransportId>(EArchivesCommand.OPEN_AUDIO_PREVIEW, { sessionId, name }),
   /** Hand back a packing configuration with nothing chosen yet. */
   defaultPackConfig: () => __TAURI_INVOKE<ArchivePackConfig>(EArchivesCommand.DEFAULT_PACK_CONFIG),
   /** Write the selection rules of a configuration out as a packing configuration file. */
@@ -195,6 +203,10 @@ export interface IArchivesCommandSignatures {
     ["sessionId", "name"]
   >;
   [EArchivesCommand.DESCRIBE_IMAGE]: IIpcCommandSignature<typeof archivesCommands.describeImage, ["sessionId", "name"]>;
+  [EArchivesCommand.OPEN_AUDIO_PREVIEW]: IIpcCommandSignature<
+    typeof archivesCommands.openAudioPreview,
+    ["sessionId", "name"]
+  >;
   [EArchivesCommand.DEFAULT_PACK_CONFIG]: IIpcCommandSignature<typeof archivesCommands.defaultPackConfig, []>;
   [EArchivesCommand.EXPORT_PACK_CONFIG]: IIpcCommandSignature<
     typeof archivesCommands.exportPackConfig,

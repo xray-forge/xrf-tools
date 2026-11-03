@@ -2,6 +2,7 @@
 export enum ESettingsSection {
   GENERAL = "general",
   RENDER = "render",
+  AUDIO = "audio",
   STORAGE = "storage",
   IPC = "ipc",
   JOBS = "jobs",
@@ -11,6 +12,7 @@ export enum ESettingsSection {
 export const SETTINGS_SECTION_LABELS: Readonly<Record<ESettingsSection, string>> = {
   [ESettingsSection.GENERAL]: "General",
   [ESettingsSection.RENDER]: "Rendering",
+  [ESettingsSection.AUDIO]: "Audio",
   [ESettingsSection.STORAGE]: "Storage",
   [ESettingsSection.IPC]: "IPC",
   [ESettingsSection.JOBS]: "Jobs",
@@ -21,6 +23,7 @@ export const SETTINGS_SECTION_LABELS: Readonly<Record<ESettingsSection, string>>
 export const SETTINGS_SECTIONS: ReadonlyArray<ESettingsSection> = [
   ESettingsSection.GENERAL,
   ESettingsSection.RENDER,
+  ESettingsSection.AUDIO,
   ESettingsSection.STORAGE,
   ESettingsSection.IPC,
   ESettingsSection.JOBS,

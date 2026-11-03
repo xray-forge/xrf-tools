@@ -6,7 +6,6 @@ mod application;
 mod application_failure;
 mod ipc;
 mod plugins;
-mod preferences;
 mod window;
 
 use std::process::ExitCode;

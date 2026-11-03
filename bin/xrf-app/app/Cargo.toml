@@ -21,8 +21,9 @@ tauri = { workspace = true }
 tauri-plugin-dialog = "2.7.3"
 tauri-plugin-fs = "2.5.2"
 tauri-plugin-shell = "2.3.6"
-tauri-plugin-store = "2.4.5"
+tauri-plugin-store = { workspace = true }
 xrf-app-archives = { workspace = true }
+xrf-app-audio = { workspace = true }
 xrf-app-configs = { workspace = true }
 xrf-app-core = { workspace = true }
 xrf-app-dialogs = { workspace = true }
@@ -64,6 +65,7 @@ dlss = ["xrf-renderer/dlss"]
 typescript-bindings = [
   "xrf-ipc-typescript",
   "xrf-app-archives/typescript-bindings",
+  "xrf-app-audio/typescript-bindings",
   "xrf-app-configs/typescript-bindings",
   "xrf-app-core/typescript-bindings",
   "xrf-app-dialogs/typescript-bindings",

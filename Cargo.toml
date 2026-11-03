@@ -103,6 +103,7 @@ specta-serde = "0.0.13"
 specta-typescript = "0.0.13"
 specta-util = "0.0.13"
 tauri = "2.12.0"
+tauri-plugin-store = "2.4.5"
 tauri-specta = { version = "=2.0.0-rc.26", features = ["typescript"] }
 trybuild = "1.0.121"
 uuid = "1.26.1"
@@ -111,6 +112,7 @@ windows = "0.62.2"
 wgpu = { version = "30.0.0", default-features = false, features = ["std", "dx12", "vulkan", "metal", "wgsl"] }
 xrf-animation-envelope = { path = "crates/xrf-animation-envelope" }
 xrf-app-archives = { path = "bin/xrf-app/plugins/xrf-app-archives" }
+xrf-app-audio = { path = "bin/xrf-app/plugins/xrf-app-audio" }
 xrf-app-configs = { path = "bin/xrf-app/plugins/xrf-app-configs" }
 xrf-app-core = { path = "bin/xrf-app/core" }
 xrf-app-dialogs = { path = "bin/xrf-app/plugins/xrf-app-dialogs" }

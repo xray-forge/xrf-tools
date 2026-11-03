@@ -4,10 +4,10 @@ use tauri::utils::config::WindowConfig;
 use tauri::webview::{WebviewWindow, WebviewWindowBuilder};
 use tauri::window::Color;
 use tauri::{App, AppHandle, Manager, Runtime};
+use xrf_app_core::preferences::Preferences;
 use xrf_app_core::window::{WindowHandles, WindowReveals};
 use xrf_build_info::BuildInfo;
 
-use crate::preferences::Preferences;
 use crate::window::geometry::{WindowGeometry, WindowGeometryTracker};
 use crate::window::webview_extensions::WebviewExtensions;
 use crate::window::window_build_kind::WindowBuildKind;
@@ -30,7 +30,7 @@ impl MainWindow {
       .ok_or("The main window has to be declared in tauri.conf.json")?;
 
     // A window nobody can open is worse than one that forgot where it was, or what it was set to run with.
-    let preferences: Option<Preferences<R>> = match Preferences::open(application.handle()) {
+    let preferences: Option<Preferences> = match Preferences::open(application.handle()) {
       Ok(preferences) => Some(preferences),
       Err(error) => {
         log::error!("Opening the main window without its saved preferences: {error}");

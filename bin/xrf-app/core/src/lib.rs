@@ -8,6 +8,7 @@ pub mod ipc;
 pub mod jobs;
 pub mod logging;
 pub mod plugins;
+pub mod preferences;
 pub mod session;
 mod tauri_result;
 pub mod transport;

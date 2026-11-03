@@ -95,6 +95,15 @@ stream when the device goes; the same mixer, and so the same voices, carry over.
 retrying every 2 s, and `AudioOutput::get_status` says why. On macOS it does not list devices during playback and relies
 on the stream's own rerouting and loss errors. `AudioDevices::list` names the system's output devices.
 
+## A player's transport
+
+`AudioTransport` is what a player plays one sound through, as a media element would: `open` probes the bytes (refusing
+what is not a sound), `play` streams from where it holds (from the start once it has `Ended`), `pause` and `seek` end the
+voice and remember the frame (a seek while playing plays on from there), `stop` puts it back at the start, and
+`set_looped` reaches the playing stream. `describe` answers an `AudioTransportState` (playback, position and duration
+in milliseconds on the wire, looping, why it failed), having taken in a voice that ended since. Every call takes the
+engine, so a host holds the transports beside it.
+
 ## Not here yet
 
 Voices play in 2D only: 3D voices, the engines' distance attenuation, occlusion and reverb are not written yet, and the

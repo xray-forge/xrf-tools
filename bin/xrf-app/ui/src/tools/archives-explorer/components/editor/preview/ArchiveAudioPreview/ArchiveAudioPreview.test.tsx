@@ -1,10 +1,13 @@
-import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { RenderResult } from "@testing-library/react";
+import { beforeEach, describe, expect, it } from "@jest/globals";
+import { act, RenderResult, waitFor } from "@testing-library/react";
+import { EArchivesCommand } from "@xrf/ipc/commands/archives";
+import { EAudioCommand } from "@xrf/ipc/commands/audio";
+import { getMockChannels, mockInvoke, mockIpcCommands, resetMockChannels } from "@xrf/ipc/testing";
 import { AudioDescriptor } from "@xrf/ipc/types/xrf-app-archives";
+import { AudioTransportState } from "@xrf/ipc/types/xrf-audio";
 import { Nullable } from "@xrf/types";
 
 import { mockArchiveFileDescriptor } from "@/core/archive/fixtures/archive.mocks";
-import { TArchiveBytes } from "@/core/archive/lib";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { ArchiveAudioPreview } from "@/tools/archives-explorer/components/editor/preview/ArchiveAudioPreview";
 import {
@@ -13,13 +16,22 @@ import {
   mockShownArchiveFile,
 } from "@/tools/archives-explorer/fixtures/archives-explorer.mocks";
 
-const BYTES: TArchiveBytes = new Uint8Array([0x4f, 0x67, 0x67, 0x53]);
+const SESSION: string = "fixture-session";
+const NAME: string = "sounds\\ambient\\wind.ogg";
+const TRANSPORT: number = 7;
 
 const FULL: AudioDescriptor = {
   channels: 2,
   sampleRate: 44100,
   parameters: { minDistance: 1, maxDistance: 50, baseVolume: 0.8, gameType: 3, maxAiDistance: 25 },
-  mediaType: "audio/ogg",
+};
+
+const PLAYING: AudioTransportState = {
+  playback: "playing",
+  position: 9000,
+  duration: 65000,
+  isLooped: false,
+  failure: null,
 };
 
 function renderPreview(descriptor: Nullable<AudioDescriptor>): RenderResult {
@@ -27,8 +39,8 @@ function renderPreview(descriptor: Nullable<AudioDescriptor>): RenderResult {
 
   mockShownArchiveFile(
     explorer,
-    mockArchiveFileDescriptor(),
-    descriptor ? { kind: "audio" as const, descriptor, bytes: BYTES } : null
+    mockArchiveFileDescriptor({ name: NAME }),
+    descriptor ? { kind: "audio" as const, descriptor, name: NAME, sessionId: SESSION } : null
   );
 
   return renderWithProviders(<ArchiveAudioPreview />, { container: explorer.container });
@@ -36,8 +48,13 @@ function renderPreview(descriptor: Nullable<AudioDescriptor>): RenderResult {
 
 describe("ArchiveAudioPreview", () => {
   beforeEach(() => {
-    jest.spyOn(URL, "createObjectURL").mockImplementation(() => "blob:sound");
-    jest.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    resetMockChannels();
+    mockIpcCommands({
+      [EArchivesCommand.OPEN_AUDIO_PREVIEW]: TRANSPORT,
+      [EAudioCommand.WATCH_PREVIEW]: null,
+      [EAudioCommand.READ_PREVIEW_PEAKS]: { peaks: [0.5, 1], duration: 65000 },
+      [EAudioCommand.CLOSE_PREVIEW]: undefined,
+    });
   });
 
   it("reports the stream the sound declares", () => {
@@ -54,7 +71,6 @@ describe("ArchiveAudioPreview", () => {
       channels: null,
       sampleRate: null,
       parameters: null,
-      mediaType: "audio/ogg",
     });
 
     expect(getAllByText("-")).toHaveLength(2);
@@ -65,7 +81,6 @@ describe("ArchiveAudioPreview", () => {
       channels: 1,
       sampleRate: 22050,
       parameters: null,
-      mediaType: "audio/ogg",
     });
 
     expect(getByText("1 (mono)")).toBeTruthy();
@@ -73,15 +88,39 @@ describe("ArchiveAudioPreview", () => {
     expect(getByText(/built-in source defaults/)).toBeTruthy();
   });
 
-  it("plays the bytes it was handed rather than fetching them again", () => {
-    const { container } = renderPreview(FULL);
+  it("opens the sound as a preview, follows its state, and closes it as it goes", async () => {
+    const { findByText, unmount } = renderPreview(FULL);
 
-    expect(container.querySelector("audio")?.getAttribute("src")).toBe("blob:sound");
+    await waitFor(() =>
+      expect(mockInvoke).toHaveBeenCalledWith(EArchivesCommand.OPEN_AUDIO_PREVIEW, { sessionId: SESSION, name: NAME })
+    );
+    await waitFor(() => expect(getMockChannels()).toHaveLength(1));
+
+    act(() => getMockChannels()[0].onmessage(PLAYING));
+
+    expect(await findByText("00:09 / 01:05")).toBeTruthy();
+
+    unmount();
+
+    expect(mockInvoke).toHaveBeenCalledWith(EAudioCommand.CLOSE_PREVIEW, { transport: TRANSPORT });
+  });
+
+  it("says why the sound could not be previewed", async () => {
+    mockIpcCommands({
+      [EArchivesCommand.OPEN_AUDIO_PREVIEW]: () => {
+        throw new Error("Cannot preview the sound: not a sound");
+      },
+    });
+
+    const { findByRole } = renderPreview(FULL);
+
+    expect(await findByRole("alert")).toHaveTextContent("not a sound");
   });
 
   it("shows nothing to preview when the sound was not read", () => {
     const { getByText } = renderPreview(null);
 
     expect(getByText("Preview unavailable")).toBeTruthy();
+    expect(mockInvoke).not.toHaveBeenCalledWith(EArchivesCommand.OPEN_AUDIO_PREVIEW, expect.anything());
   });
 });

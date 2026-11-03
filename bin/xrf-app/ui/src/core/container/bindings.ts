@@ -7,6 +7,7 @@ import {
   SHELL_SESSION_TOOL,
 } from "@xrf/ipc/session";
 
+import { AudioSettingsService } from "@/core/audio/services/audio-settings.service";
 import { KeybindCommandsService } from "@/core/commands";
 import { HelpService } from "@/core/help/services/help.service";
 import { JobsService } from "@/core/jobs/services/jobs.service";
@@ -28,6 +29,7 @@ import { ToolLifecycleService } from "@/core/shell/services/tool-lifecycle";
 export const ROOT_BINDINGS: ReadonlyArray<Binding> = [
   { token: SESSION_TOOL, value: SHELL_SESSION_TOOL },
   SessionScopeService,
+  AudioSettingsService,
   ErrorCaptureService,
   HelpService,
   IpcMetricsService,
