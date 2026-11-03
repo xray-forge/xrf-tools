@@ -32,13 +32,16 @@ export function ArchiveModelPreview({
   const subject: Nullable<ArchiveSubject> = archivesService.subject.value;
   const visual: AsyncState<Nullable<IOpenVisual>> = loadService.visual;
 
+  // The open replaces the model shown once the next one is read, so moving through the tree never empties the viewport.
   useEffect(() => {
     if (subject) {
       void loadService.load({ kind: EAssetSource.ASSET, logicalPath: name }, subject.roots);
+    } else {
+      loadService.clear();
     }
-
-    return () => loadService.clear();
   }, [loadService, name, subject]);
+
+  useEffect(() => () => loadService.clear(), [loadService]);
 
   return (
     <div
