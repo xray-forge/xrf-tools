@@ -1672,6 +1672,9 @@ export type RenderHelperOptions = {
   isRestFaded: boolean;
 };
 
+/** One hold on the renderer, which keeps its GPU started while no viewport draws, numbered as it is taken. */
+export type RenderHoldId = number;
+
 /**
  * Anomaly's `img_corrections`, which `combine_2` applies to the finished frame: `r__exposure`, `r__gamma`,
  * `r__saturation` and `r__color_grading`.

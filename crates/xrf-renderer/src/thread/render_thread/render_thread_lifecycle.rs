@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::PoisonError;
 use std::time::Instant;
@@ -39,8 +40,27 @@ impl RenderThread {
       gpu.windows.retain(|key, _| used.contains(key));
     }
 
-    if self.viewports.is_empty() && self.idle_since.is_none() {
+    self.start_idle_clock();
+  }
+
+  /// Starts the idle clock once no viewport draws and no hold keeps the GPU, unless it runs.
+  pub(super) fn start_idle_clock(&mut self) {
+    if self.viewports.is_empty() && self.holds.is_empty() && self.idle_since.is_none() {
       self.idle_since = Some(Instant::now());
+    }
+  }
+
+  /// What a held thread with no viewport keeps: the GPU and its passes, ready for the next viewport, but none of what
+  /// the last ones drew. The world keeps no scene no viewport shows, so each goes as the next frame would let it go, and
+  /// the textures only they sampled with it; the frames' caches go too, which would otherwise hold the last view's
+  /// targets alive; and the device is polled as a frame's report polls it, since wgpu frees what was dropped only then.
+  pub(super) fn keep_held(&mut self, now: Instant) {
+    self.retain_scenes(&HashSet::new());
+    self.sweep_textures(now);
+
+    if let Some(RunningGpu { gpu, runtime, .. }) = &mut self.running {
+      runtime.forget_frames();
+      let _ = gpu.context.device.poll(wgpu::PollType::Poll);
     }
   }
 

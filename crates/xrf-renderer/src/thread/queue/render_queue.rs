@@ -16,10 +16,10 @@ use crate::thread::queue::render_wait::RenderWait;
 use crate::thread::queue::render_workers::RenderWorkers;
 use crate::thread::render_thread::RenderThread;
 
-/// The way to the render thread: cheap to make, and touching no GPU until a viewport is attached.
+/// The way to the render thread: cheap to make, and touching no GPU until a viewport is attached or a hold taken.
 ///
-/// Every command is a message to the thread, started by the first attach and stopped a few seconds after the last
-/// detach, so a tool that never draws never starts a GPU. A clone reaches the same thread.
+/// Every command is a message to the thread, started by the first attach or hold and stopped a few seconds after the
+/// last detach and release, so a tool that never draws never starts a GPU. A clone reaches the same thread.
 #[derive(Clone)]
 pub struct RenderQueue {
   link: Arc<Mutex<RenderLink>>,
@@ -55,8 +55,9 @@ impl RenderQueue {
     describe_libraries(self.bundle.as_ref())
   }
 
-  /// Hands a command to the running thread, starting one for an attach; any other command has nothing to act on
-  /// without a thread, since a stopped thread had no viewport left. Settings are kept for every thread started later.
+  /// Hands a command to the running thread, starting one for an attach or a hold; any other command has nothing to act
+  /// on without a thread, since a stopped thread had no viewport or hold left. Settings are kept for every thread
+  /// started later.
   pub fn send(&self, command: RenderCommand) {
     self.dispatch(command);
   }
@@ -87,7 +88,7 @@ impl RenderQueue {
   /// `send`, answering whether a thread took the command.
   fn dispatch(&self, command: RenderCommand) -> bool {
     let mut link: MutexGuard<'_, RenderLink> = self.lock();
-    let is_attach: bool = matches!(command, RenderCommand::Attach { .. });
+    let is_starting: bool = matches!(command, RenderCommand::Attach { .. } | RenderCommand::Hold { .. });
 
     if let RenderCommand::Settings { settings } = &command {
       link.settings = *settings;
@@ -104,17 +105,17 @@ impl RenderQueue {
 
     link.sender = None;
 
-    if !is_attach {
+    if !is_starting {
       return false;
     }
 
-    // A thread that cannot start leaves the viewport undrawn; the next attach tries again.
+    // A thread that cannot start leaves the viewport undrawn or the hold untaken; the next attach or hold tries again.
     let Some(sender) = self.spawn(&mut link) else {
       return false;
     };
 
     if sender.send(command).is_err() {
-      log::error!("The render thread stopped before its first viewport arrived");
+      log::error!("The render thread stopped before its first viewport or hold arrived");
 
       return false;
     }

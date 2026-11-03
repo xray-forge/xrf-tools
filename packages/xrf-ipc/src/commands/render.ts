@@ -8,6 +8,7 @@ import { RenderPickRequest, ViewportEvent } from "#/types/xrf-app-render";
 import {
   RenderBackendAvailability,
   RenderFrameReport,
+  RenderHoldId,
   RenderLevelHit,
   RenderLibraries,
   RenderLoadReport,
@@ -43,6 +44,7 @@ export enum ERenderCommand {
   DESCRIBE_PROBLEMS = "plugin:render|describe_problems",
   DESCRIBE_TEXTURE_LOADS = "plugin:render|describe_texture_loads",
   DETACH_VIEWPORT = "plugin:render|detach_viewport",
+  HOLD = "plugin:render|hold",
   LIST_BACKENDS = "plugin:render|list_backends",
   LOCATE_SPAWN_OBJECT = "plugin:render|locate_spawn_object",
   MARK_PROFILE = "plugin:render|mark_profile",
@@ -52,6 +54,7 @@ export enum ERenderCommand {
   PLAY_AMBIENT_EFFECT = "plugin:render|play_ambient_effect",
   PLAY_WEATHER = "plugin:render|play_weather",
   PLAY_WEATHER_EFFECT = "plugin:render|play_weather_effect",
+  RELEASE_HOLD = "plugin:render|release_hold",
   SAVE_CAPTURE = "plugin:render|save_capture",
   SEEK_WEATHER = "plugin:render|seek_weather",
   SEND_INPUT = "plugin:render|send_input",
@@ -101,6 +104,11 @@ export const renderCommands = {
   /** Stop drawing a viewport; the GPU goes a few seconds after the last one. */
   detachViewport: (viewport: RenderViewportId) => __TAURI_INVOKE<void>(ERenderCommand.DETACH_VIEWPORT, { viewport }),
   /**
+   * Keep the renderer's GPU started for the calling window's page, starting it where it is not, so a viewport attached
+   * later draws at once: for a tool whose viewports come and go. Held until released, the page goes or the window closes.
+   */
+  hold: () => __TAURI_INVOKE<RenderHoldId>(ERenderCommand.HOLD),
+  /**
    * Say which graphics backends the renderer can draw with on this machine, and on which GPU, for the settings to offer
    * only those; each is probed off the render thread.
    */
@@ -137,6 +145,8 @@ export const renderCommands = {
   /** Play a weather effect over a viewport's cycle from its clock's time, or end the one playing for none. */
   playWeatherEffect: (viewport: RenderViewportId, name: string | null) =>
     __TAURI_INVOKE<void>(ERenderCommand.PLAY_WEATHER_EFFECT, { viewport, name }),
+  /** Let a hold on the renderer go; the GPU goes a few seconds after the last hold and viewport. */
+  releaseHold: (hold: RenderHoldId) => __TAURI_INVOKE<void>(ERenderCommand.RELEASE_HOLD, { hold }),
   /** Write a viewport's next presented frame to a PNG file, as the renderer drew it rather than as the screen shows it. */
   saveCapture: (viewport: RenderViewportId, path: string) =>
     __TAURI_INVOKE<null>(ERenderCommand.SAVE_CAPTURE, { viewport, path }),
@@ -191,6 +201,7 @@ export interface IRenderCommandSignatures {
     ["viewport"]
   >;
   [ERenderCommand.DETACH_VIEWPORT]: IIpcCommandSignature<typeof renderCommands.detachViewport, ["viewport"]>;
+  [ERenderCommand.HOLD]: IIpcCommandSignature<typeof renderCommands.hold, []>;
   [ERenderCommand.LIST_BACKENDS]: IIpcCommandSignature<typeof renderCommands.listBackends, []>;
   [ERenderCommand.LOCATE_SPAWN_OBJECT]: IIpcCommandSignature<
     typeof renderCommands.locateSpawnObject,
@@ -209,6 +220,7 @@ export interface IRenderCommandSignatures {
     typeof renderCommands.playWeatherEffect,
     ["viewport", "name"]
   >;
+  [ERenderCommand.RELEASE_HOLD]: IIpcCommandSignature<typeof renderCommands.releaseHold, ["hold"]>;
   [ERenderCommand.SAVE_CAPTURE]: IIpcCommandSignature<typeof renderCommands.saveCapture, ["viewport", "path"]>;
   [ERenderCommand.SEEK_WEATHER]: IIpcCommandSignature<typeof renderCommands.seekWeather, ["viewport", "time"]>;
   [ERenderCommand.SEND_INPUT]: IIpcCommandSignature<typeof renderCommands.sendInput, ["viewport", "event"]>;

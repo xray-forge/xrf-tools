@@ -66,6 +66,12 @@ impl TransientPool {
     self.buffers.retain(|_, entries| !entries.is_empty());
   }
 
+  /// Frees every texture and buffer, for a renderer drawing no frames.
+  pub(crate) fn clear(&mut self) {
+    self.textures.clear();
+    self.buffers.clear();
+  }
+
   /// Makes sure `count` textures of a key exist, each marked used this frame.
   pub(crate) fn reserve_textures(&mut self, device: &wgpu::Device, key: TransientTextureKey, count: usize) {
     let frame: u64 = self.frame;

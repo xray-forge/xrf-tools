@@ -78,6 +78,29 @@ describe("VisualRenderService", () => {
     resetMockChannels();
   });
 
+  it("holds the renderer while its tool is open, before any view attaches", async () => {
+    // A tool opens by provisioning its container: the GPU starts then, so the first model shown waits for none of it.
+    mockIpcCommands({ [ERenderCommand.HOLD]: 7 });
+
+    const container: Container = mockContainer([
+      VisualLoadService,
+      VisualViewService,
+      VisualRenderService,
+      { factory: () => mockSource(), token: VISUAL_RENDER_SOURCE },
+    ]);
+
+    container.provision();
+    await flush();
+
+    expect(listMockInvokeCalls(ERenderCommand.HOLD)).toHaveLength(1);
+    expect(listMockInvokeCalls(ERenderCommand.ATTACH_VIEWPORT)).toHaveLength(0);
+
+    container.deprovision();
+    await flush();
+
+    expect(listMockInvokeCalls(ERenderCommand.RELEASE_HOLD)).toEqual([{ hold: 7 }]);
+  });
+
   it("shows the open model's session at the toolbar's detail, and again as either changes", async () => {
     const source: IVisualRenderSource = mockSource({ model: mockVisualModelViews(), sessionId: "first" });
     const { service, viewService } = await mockAttached(source);
