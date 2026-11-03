@@ -175,6 +175,38 @@ impl DecodedTexture {
     !self.is_volume && self.layers == 1
   }
 
+  /// Whether any texel of any level may hold some blue: a block compressed one's where a block's colour endpoints hold
+  /// some, since each texel's colour lies between them; an eight bit one's where a texel does; any other layout may.
+  pub fn has_blue(&self) -> bool {
+    // A block's bytes, and where its colour endpoints stand in it, each a little endian 5:6:5 colour, blue lowest.
+    let block = |size: usize, colors: usize| {
+      self.levels.iter().any(|level| {
+        level.chunks_exact(size).any(|block| {
+          let endpoint = |at: usize| u16::from_le_bytes([block[colors + at], block[colors + at + 1]]) & 0x1f;
+
+          endpoint(0) != 0 || endpoint(2) != 0
+        })
+      })
+    };
+    let texel = |blue: usize| {
+      self
+        .levels
+        .iter()
+        .any(|level| level.as_chunks::<4>().0.iter().any(|texel| texel[blue] != 0))
+    };
+
+    match self.format {
+      wgpu::TextureFormat::Bc1RgbaUnorm | wgpu::TextureFormat::Bc1RgbaUnormSrgb => block(8, 0),
+      wgpu::TextureFormat::Bc2RgbaUnorm
+      | wgpu::TextureFormat::Bc2RgbaUnormSrgb
+      | wgpu::TextureFormat::Bc3RgbaUnorm
+      | wgpu::TextureFormat::Bc3RgbaUnormSrgb => block(16, 8),
+      wgpu::TextureFormat::Rgba8Unorm | wgpu::TextureFormat::Rgba8UnormSrgb => texel(2),
+      wgpu::TextureFormat::Bgra8Unorm | wgpu::TextureFormat::Bgra8UnormSrgb => texel(0),
+      _ => true,
+    }
+  }
+
   /// How a shader reads it: a volume's slices as an array, a cube's faces as a cube, anything else flat.
   pub fn get_view_dimension(&self) -> wgpu::TextureViewDimension {
     if self.is_volume {

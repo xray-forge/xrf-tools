@@ -21,6 +21,8 @@ pub struct PresentInputs {
   pub marks: PresentMarks,
   pub is_engine_bloomed: bool,
   pub is_enhanced_bloomed: bool,
+  /// Whether the engine's bloom is built this frame, shown or under the enhanced one, which the distortion blurs towards.
+  pub is_engine_built: bool,
   /// Metres from the camera the grass's cards cast the sun's shadow to, none where they cast none.
   pub grass_reach: Option<f32>,
   pub light: LightEncoding,

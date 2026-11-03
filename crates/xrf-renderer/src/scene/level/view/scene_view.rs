@@ -177,16 +177,14 @@ impl SceneView {
   }
 
   /// Finishes readying its frame once its scene settled every view's asks (`LevelScene::settle`): writes its lights as
-  /// it asked for them, the faces now settled, and fills its effects' quads from the step the scene joined; then, every
-  /// unit knowing what it draws, keeps the engine's bloom for a distorting frame's blur and notes what the window pass
-  /// reads, with `options` and over `output` as its frame was prepared.
+  /// it asked for them, the faces now settled, and fills its effects' quads from the step the scene joined, with
+  /// `options` as its frame was prepared. `finish_present` follows.
   pub fn finish_prepare(
     &mut self,
     scene: &LevelScene,
     device: &wgpu::Device,
     encoder: &mut FrameEncoder,
     options: &RenderViewOptions,
-    output: RenderRect,
     asks: &SceneAsks,
   ) {
     profiling::scope!("finish view");
@@ -198,10 +196,22 @@ impl SceneView {
       .particles
       .fill(&self.shared.camera, options, &mut self.features.particles);
     self.features.particles.upload(device, &mut *encoder);
+  }
 
+  /// Once every unit knows what it draws (`finish_prepare`): keeps the engine's bloom where the frame's distortion may
+  /// blur it, by the blue of the maps its writers draw in `textures`, and notes what the window pass reads, with
+  /// `options` and over `output` as its frame was prepared.
+  pub fn finish_present(
+    &mut self,
+    scene: &LevelScene,
+    textures: &TextureCache,
+    options: &RenderViewOptions,
+    output: RenderRect,
+  ) {
     let distortion: ScreenTiles = self.get_distortion_tiles(options);
+    let is_blurring: bool = !distortion.is_empty() && self.is_distortion_blurring(scene, options, textures);
 
-    self.features.bloom.keep_for_distortion(!distortion.is_empty());
+    self.features.bloom.keep_for_distortion(is_blurring);
     self.prepare_present(options, output, self.shared.resolve.noise_frame, distortion);
   }
 

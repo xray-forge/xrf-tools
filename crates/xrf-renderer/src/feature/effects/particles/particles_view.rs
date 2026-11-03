@@ -17,6 +17,7 @@ use crate::scene::level::particles::particle_sprite::ParticleSprite;
 use crate::scene::level::particles::particle_surface::ParticleSurface;
 use crate::scene::level::particles::particle_vertex::ParticleVertex;
 use crate::scene::level::view::record::view_record::ViewRecord;
+use crate::scene::texture::texture_cache::TextureCache;
 
 /// Quads the vertex buffer holds at first; it doubles past them.
 const INITIAL_QUADS: u64 = 4096;
@@ -32,6 +33,8 @@ pub struct ParticlesView {
   distortion_runs: Vec<Range<u32>>,
   /// The tiles of the frame those quads touch.
   distortion_tiles: ScreenTiles,
+  /// The texture slots those effects draw into the distortion target, once each.
+  distortion_slots: Vec<u32>,
   /// How many effects it draws this frame.
   drawn: u32,
   vertex_buffer: wgpu::Buffer,
@@ -44,6 +47,7 @@ impl ParticlesView {
       batches: Vec::new(),
       distortion_runs: Vec::new(),
       distortion_tiles: ScreenTiles::default(),
+      distortion_slots: Vec::new(),
       drawn: 0,
       vertex_buffer: Self::create_storage(
         device,
@@ -58,6 +62,7 @@ impl ParticlesView {
     self.batches.clear();
     self.distortion_runs.clear();
     self.distortion_tiles = ScreenTiles::default();
+    self.distortion_slots.clear();
     self.drawn = 0;
   }
 
@@ -94,6 +99,10 @@ impl ParticlesView {
       match self.distortion_runs.last_mut() {
         Some(last) if last.end == first => last.end = end,
         _ => self.distortion_runs.push(first..end),
+      }
+
+      if !self.distortion_slots.contains(&drawing.record.distortion) {
+        self.distortion_slots.push(drawing.record.distortion);
       }
     }
 
@@ -190,6 +199,12 @@ impl ParticlesView {
   /// The tiles of the frame this frame's particles draw into the distortion target in.
   pub fn get_distortion_tiles(&self) -> &ScreenTiles {
     &self.distortion_tiles
+  }
+
+  /// Whether this frame's particles may blur the frame: one drawn into the distortion target whose map holds some blue
+  /// or is not yet up (`TextureCache::is_blue_free`).
+  pub fn is_blurring(&self, textures: &TextureCache) -> bool {
+    self.distortion_slots.iter().any(|slot| !textures.is_blue_free(*slot))
   }
 
   fn create_storage(device: &wgpu::Device, size: u64) -> wgpu::Buffer {

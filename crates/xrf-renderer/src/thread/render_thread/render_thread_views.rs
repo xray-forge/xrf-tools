@@ -180,7 +180,8 @@ impl RenderThread {
       let view: Option<&mut SceneView> = self.viewports.get_mut(&id).and_then(RenderViewport::get_drawn_view_mut);
 
       if let (Some(view), Some(scene)) = (view, self.scenes.get(&scene_id)) {
-        view.finish_prepare(scene, &gpu.context.device, &mut *encoder, &options, output, &asks);
+        view.finish_prepare(scene, &gpu.context.device, &mut *encoder, &options, &asks);
+        view.finish_present(scene, &gpu.textures, &options, output);
       }
 
       let Some(mut frame) = frame else {

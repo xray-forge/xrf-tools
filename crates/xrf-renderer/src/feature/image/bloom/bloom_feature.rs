@@ -88,10 +88,10 @@ impl BloomFeature {
       });
   }
 
-  /// Builds the engine's bloom under the enhanced one only where the frame distorts (`is_distorting`), whose blur goes
-  /// towards the engine's bloom as `combine_2`'s does; once every unit knows what it draws.
-  pub fn keep_for_distortion(&mut self, is_distorting: bool) {
-    if !self.is_engine_shown && !is_distorting {
+  /// Builds the engine's bloom under the enhanced one only where the frame's distortion may blur it (`is_blurring`),
+  /// which blurs towards the engine's bloom as `combine_2`'s does; once every unit knows what it draws.
+  pub fn keep_for_distortion(&mut self, is_blurring: bool) {
+    if !self.is_engine_shown && !is_blurring {
       self.engine = None;
     }
   }

@@ -35,6 +35,7 @@ use crate::scene::level::lights::asks::lights_frame::LightsFrame;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::level::view::view_prepare::ViewPrepare;
 use crate::scene::static_scene::draw::static_sight::StaticSight;
+use crate::scene::texture::texture_cache::TextureCache;
 
 impl SceneView {
   /// The units the weather drives: the shadows' maps, the effects laid over the lit frame (whose flares give the sky its
@@ -305,17 +306,13 @@ impl SceneView {
   /// move what is seen through it, once every unit knows what it draws: every tile where the water or the splashes do,
   /// which keep no bound; none where nothing does.
   pub(super) fn get_distortion_tiles(&self, options: &RenderViewOptions) -> ScreenTiles {
-    let water: &RenderWaterSettings = &options.features.water;
     let features: &SceneFeatures = &self.features;
-    // Where water draws this frame; the enhanced water refracts what is behind it itself and writes no distortion.
-    let is_water_distorting: bool =
-      features.water.is_drawn() && water.is_distorted && water.mode != RenderWaterMode::Enhanced && options.mode.is_lit;
 
     if options.mode.is_wireframe {
       return ScreenTiles::default();
     }
 
-    if is_water_distorting || features.rain.is_distorting() {
+    if self.is_water_distorting(options) || features.rain.is_distorting() {
       return ScreenTiles::new_whole();
     }
 
@@ -324,6 +321,38 @@ impl SceneView {
     tiles.cover_tiles(features.composited.get_distortion_tiles());
 
     tiles
+  }
+
+  /// Whether this frame's distortion may blur the frame towards the engine's bloom, which is built for it then: where a
+  /// writer drawn this frame writes some blue, the water, or a particle or a surface of the `scene` whose map holds some
+  /// or is not yet up in `textures`; the enhanced rain's splashes write none.
+  pub(super) fn is_distortion_blurring(
+    &self,
+    scene: &LevelScene,
+    options: &RenderViewOptions,
+    textures: &TextureCache,
+  ) -> bool {
+    let features: &SceneFeatures = &self.features;
+
+    if options.mode.is_wireframe {
+      return false;
+    }
+
+    self.is_water_distorting(options)
+      || features.particles.is_blurring(textures)
+      || (!features.composited.get_distortion_tiles().is_empty()
+        && scene.statics.surfaces.is_distortion_blurring(textures))
+  }
+
+  /// Whether water draws its distortion this frame; the enhanced water refracts what is behind it itself and writes
+  /// none.
+  fn is_water_distorting(&self, options: &RenderViewOptions) -> bool {
+    let water: &RenderWaterSettings = &options.features.water;
+
+    self.features.water.is_drawn()
+      && water.is_distorted
+      && water.mode != RenderWaterMode::Enhanced
+      && options.mode.is_lit
   }
 
   /// Notes what the window pass reads, once every other unit knows what it draws: where the frame distorts
@@ -350,6 +379,7 @@ impl SceneView {
       marks: features.helpers.get_present_marks(),
       is_engine_bloomed: features.bloom.is_engine_drawn(),
       is_enhanced_bloomed: features.bloom.is_enhanced_drawn(),
+      is_engine_built: features.bloom.is_engine_built(),
       grass_reach: features.grass.get_cascade_reach(),
       light: self.shared.lighting.get_light_encoding(),
       display: self.shared.display,

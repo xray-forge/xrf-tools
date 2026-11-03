@@ -22,11 +22,14 @@ pub enum TextureRole {
   TerrainHeight,
   /// A water's normal map, neutral facing straight out of the surface: two reads of it summed less one give its normal.
   WaterNormal,
+  /// What a distorting particle or surface draws into the distortion target, neutral at mid grey as a detail is; read
+  /// as it loads for whether it holds any blue, which blurs the frame (`TextureCache::is_blue_free`).
+  Distortion,
 }
 
 impl TextureRole {
   /// Every role, in declaration order, so `role as usize` indexes what is kept a role.
-  pub const ALL: [TextureRole; 10] = [
+  pub const ALL: [TextureRole; 11] = [
     TextureRole::Base,
     TextureRole::Detail,
     TextureRole::Bump,
@@ -37,6 +40,7 @@ impl TextureRole {
     TextureRole::TerrainMask,
     TextureRole::TerrainHeight,
     TextureRole::WaterNormal,
+    TextureRole::Distortion,
   ];
 
   /// What a terrain detail's height is named by beside the detail, as the third-party pack names it, and its bump.
@@ -47,7 +51,7 @@ impl TextureRole {
   pub const fn get_neutral(self) -> [u8; 4] {
     match self {
       TextureRole::Base | TextureRole::Hemi | TextureRole::Projector | TextureRole::TerrainMask => [255, 255, 255, 255],
-      TextureRole::Detail | TextureRole::TerrainHeight => [128, 128, 128, 128],
+      TextureRole::Detail | TextureRole::TerrainHeight | TextureRole::Distortion => [128, 128, 128, 128],
       TextureRole::Bump => [23, 255, 128, 128],
       TextureRole::BumpCompanion => [128, 128, 128, 0],
       TextureRole::ImpostorCompanion => [128, 128, 0, 255],
