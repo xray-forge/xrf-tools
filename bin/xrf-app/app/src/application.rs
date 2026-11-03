@@ -129,7 +129,7 @@ mod tests {
   use tauri::test::{MockRuntime, mock_builder, mock_context, noop_assets};
   use tauri::{App, Manager};
   use xrf_app_archives::ArchiveSubjects;
-  use xrf_app_audio::{AudioEngineState, AudioSettingsStore, PreviewTransports};
+  use xrf_app_audio::{AudioFocus, AudioSettingsStore, PreviewTransports};
   use xrf_app_configs::ConfigsProjects;
   use xrf_app_core::assets::AssetMountState;
   use xrf_app_core::directories::AppDirectories;
@@ -177,7 +177,8 @@ mod tests {
     assert!(application.try_state::<ViewportShows>().is_some());
     assert!(application.try_state::<RenderViewports>().is_some());
     assert!(application.try_state::<TextureReloads>().is_some());
-    assert!(application.try_state::<AudioEngineState>().is_some());
+    assert!(application.try_state::<xrf_audio::AudioServer>().is_some());
+    assert!(application.try_state::<AudioFocus>().is_some());
     assert!(application.try_state::<AudioSettingsStore>().is_some());
     assert!(application.try_state::<PreviewTransports>().is_some());
     assert!(application.try_state::<SelectedLevels>().is_some());

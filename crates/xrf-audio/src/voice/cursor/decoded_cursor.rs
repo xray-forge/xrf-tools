@@ -39,9 +39,10 @@ impl DecodedCursor {
 
   /// Writes the next frames, `step` source frames apart, into `out` in the sound's own channels, leaving frames past a
   /// sound played once as they were. Answers `false` once the sound has played to its end without looping.
-  // todo: resample block-wise, with a fast path for a sound at the output rate and a mono one interpolated once:
-  // 1024 voices all playing take about 40% of a buffer's time here, too much for Extended's 1024 targets beside the
-  // rest of a frame's work.
+  // todo: resample block-wise, with a fast path for a sound at the output rate and a mono one interpolated once rather
+  // than in both channels, and skip a voice whose gain has settled at zero: 1024 voices all playing take about 40% of a
+  // buffer's time here, a silent one as much as a heard one, too much for Extended's 1024 targets beside the rest of a
+  // frame's work.
   pub(crate) fn render(&mut self, out: &mut [f32], step: f64) -> bool {
     let samples: &[f32] = self.sound.get_samples();
     let channels: usize = self.sound.get_channels().get_count();

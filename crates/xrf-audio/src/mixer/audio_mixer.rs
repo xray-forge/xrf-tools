@@ -1,8 +1,10 @@
 use std::sync::Arc;
+use std::time::Instant;
 
 use rtrb::{Consumer, Producer};
 
 use crate::mixer::audio_bus::AudioBus;
+use crate::mixer::audio_mixer_meter::AudioMixerMeter;
 use crate::mixer::gain_ramp::GainRamp;
 use crate::mixer::mixer_command::MixerCommand;
 use crate::voice::audio_voice_id::AudioVoiceId;
@@ -37,6 +39,7 @@ pub struct AudioMixer {
   ramp_frames: u32,
   /// Frames a pause, resume or stop fades over.
   fade_frames: u32,
+  meter: AudioMixerMeter,
 }
 
 impl AudioMixer {
@@ -57,6 +60,7 @@ impl AudioMixer {
     retired: Producer<Box<Voice>>,
     parameters: Arc<[VoiceParameters]>,
     statuses: Arc<[VoiceStatus]>,
+    meter: AudioMixerMeter,
   ) -> Self {
     let mut mixer: Self = Self {
       voices: (0..statuses.len()).map(|_| None).collect(),
@@ -71,6 +75,7 @@ impl AudioMixer {
       output_rate: Self::DEFAULT_OUTPUT_RATE,
       ramp_frames: 0,
       fade_frames: 0,
+      meter,
     };
 
     mixer.set_output_rate(Self::DEFAULT_OUTPUT_RATE);
@@ -90,17 +95,34 @@ impl AudioMixer {
 
   /// Fills `out`, interleaved frames of `channels`, with the next frames of every voice: the first two channels carry
   /// the mix, any further ones silence, and a single channel the two averaged.
+  ///
+  /// Commands and parameters are taken before each block, so a command waits at most [`Self::BLOCK_FRAMES`] however
+  /// long the device's buffer is.
   pub fn render(&mut self, out: &mut [f32], channels: usize) {
+    let started: Instant = Instant::now();
     let channels: usize = channels.max(1);
-
-    self.take_commands();
-    self.follow_parameters();
+    let frames: usize = out.len() / channels;
 
     for chunk in out.chunks_mut(Self::BLOCK_FRAMES * channels) {
+      self.take_commands();
+      self.follow_parameters();
       self.render_block(chunk, channels);
     }
 
-    self.report();
+    let voices: u32 = self.report();
+    let playing_for: f64 = frames as f64 / f64::from(self.output_rate);
+    let load: f64 = if frames == 0 {
+      0.0
+    } else {
+      started.elapsed().as_secs_f64() / playing_for
+    };
+
+    self.meter.record(frames as u64, load as f32, voices);
+  }
+
+  /// The mixer's clock and load, for whoever drives or watches it.
+  pub fn get_meter(&self) -> &AudioMixerMeter {
+    &self.meter
   }
 
   fn render_block(&mut self, out: &mut [f32], channels: usize) {
@@ -181,7 +203,7 @@ impl AudioMixer {
     }
   }
 
-  /// Moves every playing voice towards its slot's parameters, once a buffer.
+  /// Moves every playing voice towards its slot's parameters, once a block.
   fn follow_parameters(&mut self) {
     for (voice, parameters) in self.voices.iter_mut().zip(self.parameters.iter()) {
       if let Some(voice) = voice {
@@ -190,11 +212,16 @@ impl AudioMixer {
     }
   }
 
-  /// Publishes where every playing voice is, once a buffer.
-  fn report(&self) {
+  /// Publishes where every playing voice is, once a buffer, answering how many there are.
+  fn report(&self) -> u32 {
+    let mut count: u32 = 0;
+
     for voice in self.voices.iter().flatten() {
       self.statuses[voice.id.slot as usize].write(voice.id.generation, Self::get_playback(voice));
+      count += 1;
     }
+
+    count
   }
 
   fn find_voice(&mut self, id: AudioVoiceId) -> Option<&mut Box<Voice>> {

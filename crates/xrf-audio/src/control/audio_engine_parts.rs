@@ -5,6 +5,7 @@ use rtrb::RingBuffer;
 use crate::control::audio_engine::AudioEngine;
 use crate::control::audio_engine_settings::AudioEngineSettings;
 use crate::mixer::audio_mixer::AudioMixer;
+use crate::mixer::audio_mixer_meter::AudioMixerMeter;
 use crate::voice::shared::voice_parameters::VoiceParameters;
 use crate::voice::shared::voice_status::VoiceStatus;
 
@@ -23,10 +24,11 @@ impl AudioEngineParts {
     let (mixer_retired, retired) = RingBuffer::new(voices_count);
     let parameters: Arc<[VoiceParameters]> = (0..voices_count).map(|_| VoiceParameters::default()).collect();
     let statuses: Arc<[VoiceStatus]> = (0..voices_count).map(|_| VoiceStatus::default()).collect();
+    let meter: AudioMixerMeter = AudioMixerMeter::default();
 
     Self {
-      engine: AudioEngine::new(commands, retired, parameters.clone(), statuses.clone()),
-      mixer: AudioMixer::new(mixer_commands, mixer_retired, parameters, statuses),
+      engine: AudioEngine::new(commands, retired, parameters.clone(), statuses.clone(), meter.clone()),
+      mixer: AudioMixer::new(mixer_commands, mixer_retired, parameters, statuses, meter),
     }
   }
 }

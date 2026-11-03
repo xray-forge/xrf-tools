@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::{
   AudioBus, AudioEngine, AudioEngineParts, AudioEngineSettings, AudioPlay, AudioVoiceId, DecodedSound, SoundChannels,
-  VoiceSource,
+  SoundDecoder, SoundFormat, SoundStream, SoundStreamStart, StreamReader, VoiceSource,
 };
 
 /// The rate tests render and write their sounds at.
@@ -46,6 +46,13 @@ pub(crate) fn wav(rate: u32, channels: u16, samples: &[i16]) -> Arc<[u8]> {
   }
 
   bytes.into()
+}
+
+/// The sound in `bytes` streamed from `frame`, its format read from its header as a caller reads it.
+pub(crate) fn stream(bytes: Arc<[u8]>, frame: u64, is_looped: bool) -> StreamReader {
+  let format: SoundFormat = SoundDecoder::open(bytes.clone()).expect("the sound opens").get_format();
+
+  SoundStream::start(bytes, format, SoundStreamStart { frame, is_looped }).expect("the stream starts")
 }
 
 /// A mono ramp of `frames` samples, each its own index, so a frame read back names where it came from.

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use xrf_app_core::preferences::PreferenceKey;
-use xrf_audio::AudioOutputChoice;
+use xrf_audio::{AudioBus, AudioGains, AudioOutputChoice};
 
 use crate::settings::audio_volumes::AudioVolumes;
 
@@ -25,6 +25,17 @@ impl AudioSettings {
     Self {
       volumes: self.volumes.clamp(),
       ..self.clone()
+    }
+  }
+
+  /// The mixer's gains at these volumes, the master silent when the application is in the background and the settings
+  /// mute it there.
+  pub fn get_gains(&self, is_in_background: bool) -> AudioGains {
+    let is_muted: bool = self.is_muted_in_background && is_in_background;
+
+    AudioGains {
+      master: if is_muted { 0.0 } else { self.volumes.master },
+      buses: AudioBus::ALL.map(|bus| self.volumes.get_bus(bus)),
     }
   }
 }

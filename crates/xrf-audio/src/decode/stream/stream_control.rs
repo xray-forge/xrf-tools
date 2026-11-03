@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use crate::decode::sound_format::SoundFormat;
 use crate::decode::stream::stream_shared::StreamShared;
 
 /// The control side's handle on a stream a voice plays.
@@ -28,15 +29,16 @@ impl StreamControl {
     self.shared.get_failure()
   }
 
-  pub fn get_sample_rate(&self) -> u32 {
-    self.shared.sample_rate
+  /// Whether the decoder thread stopped: the sound ended without looping, or it failed.
+  pub fn is_ended(&self) -> bool {
+    self.shared.is_ended()
   }
 
-  pub fn get_frames_count(&self) -> u64 {
-    self.shared.frames_count
+  pub fn get_format(&self) -> SoundFormat {
+    self.shared.format
   }
 
   pub fn get_duration(&self) -> Duration {
-    Duration::from_secs_f64(self.shared.frames_count as f64 / f64::from(self.shared.sample_rate))
+    self.shared.format.get_duration()
   }
 }

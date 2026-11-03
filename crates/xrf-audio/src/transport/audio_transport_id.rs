@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-/// One preview a domain opened, which the page plays, steers and closes by it.
+/// One transport an [`crate::AudioServer`] opened, which its caller plays, steers and closes by it.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(transparent)]

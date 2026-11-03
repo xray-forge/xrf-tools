@@ -1,9 +1,10 @@
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use crate::tests::fixtures::{RATE, engine, ramp, wav};
+use crate::tests::fixtures::{RATE, engine, ramp, stream, wav};
 use crate::{
-  AudioBus, AudioEngine, AudioEngineParts, AudioPlay, AudioVoiceId, AudioVoiceState, OfflineRender, SoundStream,
-  SoundStreamStart, StreamControl, StreamReader, VoiceSource,
+  AudioBus, AudioEngine, AudioEngineParts, AudioPlay, AudioVoiceId, AudioVoiceState, OfflineRender, SoundChannels,
+  SoundFormat, SoundStream, SoundStreamStart, StreamControl, StreamReader, VoiceSource,
 };
 
 /// Renders until the voice has sounded, or two seconds pass: the stream's thread fills its ring meanwhile.
@@ -33,15 +34,7 @@ fn starts_a_stream_mid_file_at_the_frame_asked_for() {
   let AudioEngineParts { mut engine, mixer } = engine(1);
   let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
   let started: Instant = Instant::now();
-  let reader: StreamReader = SoundStream::start(
-    wav(RATE, 1, &ramp(20_000)),
-    SoundStreamStart {
-      frame: 12_345,
-      is_looped: false,
-    },
-  )
-  .expect("the stream starts");
-  let voice: AudioVoiceId = play(&mut engine, reader);
+  let voice: AudioVoiceId = play(&mut engine, stream(wav(RATE, 1, &ramp(20_000)), 12_345, false));
   let out: Vec<f32> = render_until_audible(&engine, &mut render, voice);
 
   assert!(
@@ -58,15 +51,7 @@ fn starts_a_stream_mid_file_at_the_frame_asked_for() {
 fn ends_a_stream_at_its_last_frame() {
   let AudioEngineParts { mut engine, mixer } = engine(1);
   let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
-  let reader: StreamReader = SoundStream::start(
-    wav(RATE, 1, &ramp(1000)),
-    SoundStreamStart {
-      frame: 900,
-      is_looped: false,
-    },
-  )
-  .expect("the stream starts");
-  let voice: AudioVoiceId = play(&mut engine, reader);
+  let voice: AudioVoiceId = play(&mut engine, stream(wav(RATE, 1, &ramp(1000)), 900, false));
   let out: Vec<f32> = render_until_audible(&engine, &mut render, voice);
   let frames: Vec<i64> = out
     .iter()
@@ -85,14 +70,7 @@ fn ends_a_stream_at_its_last_frame() {
 fn loops_a_stream_until_told_otherwise() {
   let AudioEngineParts { mut engine, mixer } = engine(1);
   let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
-  let reader: StreamReader = SoundStream::start(
-    wav(RATE, 1, &ramp(1000)),
-    SoundStreamStart {
-      frame: 0,
-      is_looped: true,
-    },
-  )
-  .expect("the stream starts");
+  let reader: StreamReader = stream(wav(RATE, 1, &ramp(1000)), 0, true);
   let control: StreamControl = reader.get_control();
   let voice: AudioVoiceId = play(&mut engine, reader);
   let mut frames: Vec<i64> = Vec::new();
@@ -132,15 +110,7 @@ fn loops_a_stream_until_told_otherwise() {
 fn reports_the_frame_a_stream_plays() {
   let AudioEngineParts { mut engine, mixer } = engine(1);
   let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
-  let reader: StreamReader = SoundStream::start(
-    wav(RATE, 1, &ramp(20_000)),
-    SoundStreamStart {
-      frame: 5000,
-      is_looped: false,
-    },
-  )
-  .expect("the stream starts");
-  let voice: AudioVoiceId = play(&mut engine, reader);
+  let voice: AudioVoiceId = play(&mut engine, stream(wav(RATE, 1, &ramp(20_000)), 5000, false));
   let out: Vec<f32> = render_until_audible(&engine, &mut render, voice);
   let first_heard: i64 = (out[0] * 32768.0).round() as i64;
   let reported: u64 = engine.get_playback(voice).frame;
@@ -148,4 +118,41 @@ fn reports_the_frame_a_stream_plays() {
   // The render that first sounded played 256 frames from 5000, so the next to play is 5256.
   assert_eq!(first_heard, 5000);
   assert_eq!(reported, 5256);
+}
+
+/// A stream opens on its own thread, so a sound that cannot be read, or is not what it was started as, ends its voice
+/// and names why rather than holding up the caller.
+#[test]
+fn fails_a_stream_it_cannot_open_on_its_thread() {
+  let format: SoundFormat = SoundFormat {
+    sample_rate: RATE,
+    channels: SoundChannels::Mono,
+    frames_count: 1000,
+  };
+  let cases: [(Arc<[u8]>, &str); 2] = [
+    (Arc::from(&b"OggS this is no sound at all"[..]), "open"),
+    (wav(RATE, 2, &ramp(2000)), "not the"),
+  ];
+
+  for (bytes, failure) in cases {
+    let AudioEngineParts { mut engine, mixer } = engine(1);
+    let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
+    let reader: StreamReader =
+      SoundStream::start(bytes, format, SoundStreamStart::default()).expect("the stream starts");
+    let control: StreamControl = reader.get_control();
+    let voice: AudioVoiceId = play(&mut engine, reader);
+    let deadline: Instant = Instant::now() + Duration::from_secs(2);
+
+    while engine.get_playback(voice).state != AudioVoiceState::Ended && Instant::now() < deadline {
+      assert!(render.render(256).iter().all(|sample| *sample == 0.0));
+      std::thread::sleep(Duration::from_millis(1));
+    }
+
+    assert_eq!(engine.get_playback(voice).state, AudioVoiceState::Ended);
+    assert!(
+      control.get_failure().is_some_and(|reason| reason.contains(failure)),
+      "{:?}",
+      control.get_failure()
+    );
+  }
 }

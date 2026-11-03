@@ -1,6 +1,8 @@
 use tauri::State;
 
-use crate::preview::{AudioTransportId, PreviewTransports};
+use xrf_audio::AudioTransportId;
+
+use crate::preview::PreviewTransports;
 
 /// Stop and forget the preview, as its player goes; one already closed is left alone.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

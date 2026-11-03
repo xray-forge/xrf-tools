@@ -33,11 +33,11 @@ impl StreamReader {
   }
 
   pub(crate) fn get_sample_rate(&self) -> u32 {
-    self.shared.sample_rate
+    self.shared.format.sample_rate
   }
 
   pub(crate) fn get_frames_count(&self) -> u64 {
-    self.shared.frames_count
+    self.shared.format.frames_count
   }
 
   /// The source frame the stream started at.
@@ -46,17 +46,17 @@ impl StreamReader {
   }
 
   pub(crate) fn get_channels(&self) -> SoundChannels {
-    self.shared.channels
+    self.shared.format.channels
   }
 
   /// The next frame, or `None` when the decoder thread has not produced it yet or the stream ended.
   pub(crate) fn pop_frame(&mut self) -> Option<StereoFrame> {
-    if self.samples.slots() < self.shared.channels.get_count() {
+    if self.samples.slots() < self.get_channels().get_count() {
       return None;
     }
 
     let left: f32 = self.samples.pop().ok()?;
-    let right: f32 = match self.shared.channels {
+    let right: f32 = match self.get_channels() {
       SoundChannels::Mono => left,
       SoundChannels::Stereo => self.samples.pop().ok()?,
     };
@@ -66,6 +66,6 @@ impl StreamReader {
 
   /// Whether no frame will follow: the decoder thread ended and every frame it pushed was taken.
   pub(crate) fn is_drained(&self) -> bool {
-    self.shared.is_ended() && self.samples.slots() < self.shared.channels.get_count()
+    self.shared.is_ended() && self.samples.slots() < self.get_channels().get_count()
   }
 }

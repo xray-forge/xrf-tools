@@ -1,8 +1,19 @@
 use std::sync::Arc;
 
-use xrf_audio::{AudioBus, AudioOutputChoice, AudioTransportPlayback};
+use xrf_audio::{
+  AudioBus, AudioEngineParts, AudioEngineSettings, AudioOutputChoice, AudioServer, AudioTransportPlayback,
+};
 
-use crate::{AudioEngineState, AudioSettings, AudioVolumes, PreviewTransports};
+use crate::{AudioFocus, AudioSettings, AudioVolumes, PreviewEvents, PreviewTransports};
+
+/// Previews on a server that plays to nothing: no device opens in a test.
+fn transports() -> PreviewTransports {
+  let AudioEngineParts { engine, .. } = AudioEngineParts::new(AudioEngineSettings::default());
+  let events: PreviewEvents = PreviewEvents::default();
+  let server: AudioServer = AudioServer::start_on(engine, None, events.clone()).expect("the server starts");
+
+  PreviewTransports::new(server, &events)
+}
 
 /// A 16-bit mono PCM WAV of `frames` silent frames at 48 kHz.
 fn silent_wav(frames: u32) -> Arc<[u8]> {
@@ -80,7 +91,7 @@ fn round_trips_settings_through_their_wire_shape() {
 
 #[test]
 fn opens_steers_and_closes_a_preview() {
-  let transports: PreviewTransports = PreviewTransports::start(AudioEngineState::new(AudioSettings::default()));
+  let transports: PreviewTransports = transports();
   let id = transports.open(silent_wav(48_000), "main").expect("the preview opens");
 
   transports
@@ -108,7 +119,7 @@ fn opens_steers_and_closes_a_preview() {
 
 #[test]
 fn refuses_to_preview_what_is_not_a_sound() {
-  let transports: PreviewTransports = PreviewTransports::start(AudioEngineState::new(AudioSettings::default()));
+  let transports: PreviewTransports = transports();
 
   assert!(transports.open(Arc::from(&b"no sound"[..]), "main").is_err());
 
@@ -118,7 +129,7 @@ fn refuses_to_preview_what_is_not_a_sound() {
 /// A window's page that loads again or goes closes its own previews, and another window's play on.
 #[test]
 fn closes_only_the_previews_of_the_window_that_went() {
-  let transports: PreviewTransports = PreviewTransports::start(AudioEngineState::new(AudioSettings::default()));
+  let transports: PreviewTransports = transports();
   let main = transports.open(silent_wav(4_800), "main").expect("the preview opens");
   let other = transports.open(silent_wav(4_800), "other").expect("the preview opens");
 
@@ -131,25 +142,45 @@ fn closes_only_the_previews_of_the_window_that_went() {
   assert!(transports.describe(other).is_err());
 }
 
-/// The application mutes in the background only once no window has the focus, whatever order windows report it in,
+/// The application goes to the background only once no window has the focus, whatever order windows report it in,
 /// and never before any window reported it.
 #[test]
-fn mutes_in_the_background_once_no_window_has_the_focus() {
-  let engine: AudioEngineState = AudioEngineState::new(AudioSettings::default());
+fn goes_to_the_background_once_no_window_has_the_focus() {
+  let focus: AudioFocus = AudioFocus::default();
 
-  assert!(!engine.is_muted());
+  assert!(!focus.is_in_background());
 
-  engine.set_window_focused("main", true);
-  engine.set_window_focused("other", true);
-  engine.set_window_focused("main", false);
-  assert!(!engine.is_muted());
+  assert!(!focus.set_window_focused("main", true));
+  assert!(!focus.set_window_focused("other", true));
+  assert!(!focus.set_window_focused("main", false));
+  assert!(!focus.is_in_background());
 
-  engine.set_window_focused("other", false);
-  assert!(engine.is_muted());
+  assert!(focus.set_window_focused("other", false));
+  assert!(focus.is_in_background());
 
-  engine.apply(AudioSettings {
-    is_muted_in_background: false,
+  assert!(focus.set_window_focused("other", true));
+}
+
+/// The background silences the master only where the settings say so; the buses keep their volumes.
+#[test]
+fn silences_the_master_in_the_background_where_the_settings_say_so() {
+  let settings: AudioSettings = AudioSettings {
+    volumes: AudioVolumes {
+      master: 0.8,
+      music: 0.5,
+      ..AudioVolumes::default()
+    },
     ..AudioSettings::default()
-  });
-  assert!(!engine.is_muted());
+  };
+
+  assert_eq!(settings.get_gains(false).master, 0.8);
+  assert_eq!(settings.get_gains(true).master, 0.0);
+  assert_eq!(settings.get_gains(true).get_bus(AudioBus::Music), 0.5);
+
+  let audible: AudioSettings = AudioSettings {
+    is_muted_in_background: false,
+    ..settings
+  };
+
+  assert_eq!(audible.get_gains(true).master, 0.8);
 }

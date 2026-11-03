@@ -6,6 +6,7 @@ use crate::control::audio_play::AudioPlay;
 use crate::control::audio_refusal::AudioRefusal;
 use crate::control::voice_slots::VoiceSlots;
 use crate::mixer::audio_bus::AudioBus;
+use crate::mixer::audio_mixer_meter::AudioMixerMeter;
 use crate::mixer::mixer_command::MixerCommand;
 use crate::voice::audio_voice_id::AudioVoiceId;
 use crate::voice::audio_voice_playback::AudioVoicePlayback;
@@ -30,6 +31,7 @@ pub struct AudioEngine {
   slots: VoiceSlots,
   /// Each slot's voice's first frame, reported while the audio thread has not taken the voice up.
   start_frames: Box<[u64]>,
+  meter: AudioMixerMeter,
 }
 
 impl AudioEngine {
@@ -38,6 +40,7 @@ impl AudioEngine {
     retired: Consumer<Box<Voice>>,
     parameters: Arc<[VoiceParameters]>,
     statuses: Arc<[VoiceStatus]>,
+    meter: AudioMixerMeter,
   ) -> Self {
     let slots: VoiceSlots = VoiceSlots::new(statuses.len());
     let start_frames: Box<[u64]> = vec![0; statuses.len()].into_boxed_slice();
@@ -49,7 +52,13 @@ impl AudioEngine {
       statuses,
       slots,
       start_frames,
+      meter,
     }
+  }
+
+  /// The mixer's clock and load.
+  pub fn get_meter(&self) -> &AudioMixerMeter {
+    &self.meter
   }
 
   /// Starts a voice, which the audio thread takes up with the next buffer.

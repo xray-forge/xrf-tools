@@ -4,8 +4,14 @@ import { Channel } from "@tauri-apps/api/core";
 
 import { invoke as __TAURI_INVOKE } from "#/invoke";
 import { IIpcCommandSignature } from "#/signature";
-import { AudioSettings, AudioTransportId } from "#/types/xrf-app-audio";
-import { AudioDeviceDescription, AudioOutputStatus, AudioTransportState, SoundPeaks } from "#/types/xrf-audio";
+import { AudioSettings } from "#/types/xrf-app-audio";
+import {
+  AudioDeviceDescription,
+  AudioOutputStatus,
+  AudioTransportId,
+  AudioTransportState,
+  SoundPeaks,
+} from "#/types/xrf-audio";
 
 /** The wire name of every command of the `audio` plugin. */
 export enum EAudioCommand {

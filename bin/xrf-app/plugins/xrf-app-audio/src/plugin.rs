@@ -1,16 +1,17 @@
 use tauri::plugin::TauriPlugin;
 use tauri::webview::{PageLoadEvent, PageLoadPayload};
 use tauri::{AppHandle, Manager, RunEvent, Runtime, Webview, WindowEvent};
+use xrf_audio::{AudioEngineSettings, AudioServer};
 
-use crate::engine::AudioEngineState;
-use crate::preview::PreviewTransports;
+use crate::focus::AudioFocus;
+use crate::preview::{PreviewEvents, PreviewTransports};
 use crate::settings::AudioSettingsStore;
 
-/// The `audio` plugin: the application's one audio engine on its output device (`AudioEngineState`), the settings it
-/// plays with, kept between runs (`AudioSettingsStore`), and the previews a domain opens for the page to play
-/// (`PreviewTransports`). It knows no domain: each plays its own sounds through these units. Its hooks close a window's
-/// previews as its page loads again or the window goes, mute the application where the settings say so once no window
-/// has the focus, and close every preview as the application exits.
+/// The `audio` plugin: the application's one `xrf_audio::AudioServer`, whose control thread owns the engine on the
+/// output device; the settings it plays with, kept between runs (`AudioSettingsStore`); the windows' focus and the
+/// background mute (`AudioFocus`); and the previews a domain opens for the page to play (`PreviewTransports`). It knows
+/// no domain: each plays its own sounds through these units. Its hooks close a window's previews as its page loads
+/// again or the window goes, follow each window's focus, and shut the server down as the application exits.
 pub struct AudioPlugin;
 
 impl AudioPlugin {
@@ -19,10 +20,15 @@ impl AudioPlugin {
     crate::ipc::audio::builder()
       .setup(|application, _| {
         let store: AudioSettingsStore = AudioSettingsStore::open(application);
-        let engine: AudioEngineState = AudioEngineState::new(store.get());
+        let events: PreviewEvents = PreviewEvents::default();
+        let server: AudioServer =
+          AudioServer::start(AudioEngineSettings::default(), store.get().output, events.clone())?;
+        let focus: AudioFocus = AudioFocus::default();
 
-        application.manage(PreviewTransports::start(engine.clone()));
-        application.manage(engine);
+        focus.apply(&server, &store);
+        application.manage(PreviewTransports::new(server.clone(), &events));
+        application.manage(server);
+        application.manage(focus);
         application.manage(store);
 
         Ok(())
@@ -47,19 +53,13 @@ impl AudioPlugin {
         label,
         event: WindowEvent::Focused(is_focused),
         ..
-      } => {
-        if let Some(engine) = application.try_state::<AudioEngineState>() {
-          engine.set_window_focused(label, *is_focused);
-        }
-      }
+      } => Self::follow_focus(application, label, *is_focused),
       RunEvent::WindowEvent {
         label,
         event: WindowEvent::Destroyed,
         ..
       } => {
-        if let Some(engine) = application.try_state::<AudioEngineState>() {
-          engine.set_window_focused(label, false);
-        }
+        Self::follow_focus(application, label, false);
 
         if let Some(transports) = application.try_state::<PreviewTransports>() {
           transports.close_window(label);
@@ -71,6 +71,21 @@ impl AudioPlugin {
         }
       }
       _ => {}
+    }
+  }
+
+  /// Notes the window's focus, and moves the gains when the application went to or came back from the background.
+  fn follow_focus<R: Runtime>(application: &AppHandle<R>, label: &str, is_focused: bool) {
+    let (Some(focus), Some(server), Some(store)) = (
+      application.try_state::<AudioFocus>(),
+      application.try_state::<AudioServer>(),
+      application.try_state::<AudioSettingsStore>(),
+    ) else {
+      return;
+    };
+
+    if focus.set_window_focused(label, is_focused) {
+      focus.apply(&server, &store);
     }
   }
 }

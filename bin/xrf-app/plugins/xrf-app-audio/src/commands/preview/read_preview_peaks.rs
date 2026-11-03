@@ -3,7 +3,9 @@ use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_audio::SoundPeaks;
 
-use crate::preview::{AudioTransportId, PreviewTransports};
+use xrf_audio::AudioTransportId;
+
+use crate::preview::PreviewTransports;
 
 /// The preview's waveform: the loudest sample of each of `count` equal stretches of its sound, decoded on the pool.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

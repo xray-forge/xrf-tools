@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
 use tauri::State;
-use xrf_app_audio::{AudioTransportId, PreviewTransports};
+use xrf_app_audio::PreviewTransports;
 use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_app_core::window::InvokingWindow;
+use xrf_audio::AudioTransportId;
 
 use crate::browse::{ArchiveSubject, ArchiveSubjects};
 
