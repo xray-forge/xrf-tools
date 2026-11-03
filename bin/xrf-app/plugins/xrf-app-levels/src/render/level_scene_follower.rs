@@ -54,7 +54,7 @@ impl LevelSceneFollower {
     };
     let key: String = LevelRenderParts::to_scene_key(change.session_id);
     let source: Arc<LevelRenderSource> = match step {
-      SceneStep::Afresh => Arc::new(LevelRenderSource::new(next, AssetMountState::clone(assets))),
+      SceneStep::Afresh => Arc::new(self.shown.build_source(next, assets)),
       SceneStep::Reload(_) => Arc::new(shown.follow(next)),
     };
     let drawn: Arc<dyn WorldLevelSource> = Arc::clone(&source) as Arc<dyn WorldLevelSource>;

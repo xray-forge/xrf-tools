@@ -13,7 +13,10 @@ use crate::contract::world_viewport_event::WorldViewportEvent;
 use crate::host::world_event_sink::WorldEventSink;
 use crate::host::world_level_weather::WorldLevelWeather;
 use crate::level::ambient::ambient_frame::AmbientFrame;
+use crate::sound::rain_sound::RainFrame;
+use crate::sound::thunder_sound::ThunderSound;
 use crate::weather::thunder::thunder_play::ThunderPlay;
+use crate::weather::thunder::weather_thunder::StrikeThunder;
 use crate::weather::viewport_weather::ViewportWeather;
 use crate::weather::weather_lighting::WeatherLighting;
 
@@ -31,6 +34,10 @@ pub struct WorldViewport {
   /// drives it.
   pub options: RenderViewOptions,
   pub eye: Vec3,
+  /// Where its camera looked from `eye` then, in engine space.
+  pub look: Vec3,
+  /// The strikes its weather thundered with that its scene has not heard yet.
+  pub thunders: Vec<ThunderSound>,
   /// How its skinned models stand, whatever level it shows.
   pub pose: WorldModelPose,
   /// What of its world plays: the weather's rain, bolts and wind, the campfires, the ambient effects, and which spawn
@@ -49,6 +56,8 @@ impl WorldViewport {
       scene: None,
       options: RenderViewOptions::default(),
       eye: Vec3::ZERO,
+      look: Vec3::Z,
+      thunders: Vec::new(),
       pose: WorldModelPose::default(),
       toggles: WorldToggles::default(),
       sink: None,
@@ -88,11 +97,24 @@ impl WorldViewport {
     let eye: Vec3 = EngineSpace::mirror(position);
 
     self.eye = eye;
+    self.look = EngineSpace::mirror(self.camera.get_pose().target.into()) - eye;
     self.options.clone_from(options);
 
     self.weather.advance(now, eye.to_array(), thunder, level, |lighting| {
       skies.request_sky(&lighting.sky)
     });
+    self.thunders.extend(self.weather.get_player_mut().take_thunders().map(
+      |StrikeThunder {
+         bolt,
+         position,
+         distance,
+       }| ThunderSound {
+        bolt,
+        position,
+        distance,
+        at: now,
+      },
+    ));
 
     // The keyframe the clock walks to next has its skies fetched before it is reached.
     if let Some(next) = self.weather.get_player().get_next() {
@@ -122,6 +144,23 @@ impl WorldViewport {
       ambients: self.weather.get_player().get_ambients(),
       level,
     })
+  }
+
+  /// How hard its weather rains and blows as last mixed, no rain while it is switched off; `hemi` is how open the
+  /// camera of the scene stands.
+  pub fn get_rain_frame(&self, hemi: Option<f32>) -> RainFrame {
+    let mix = self.weather.get_player().get_mix().filter(|_| self.toggles.is_rainy);
+
+    RainFrame {
+      density: mix.map_or(0.0, |mix| mix.rain_density),
+      wind_velocity: mix.map_or(0.0, |mix| mix.wind_velocity),
+      hemi,
+    }
+  }
+
+  /// Milliseconds of the day its weather stands at, `GetGameDayTimeMS`.
+  pub fn get_game_time(&self) -> u32 {
+    (self.weather.get_player().get_time() * 1000.0) as u32
   }
 
   /// One frame's lighting as the toggles let it play: no rain while it is switched off, and trees and grass standing

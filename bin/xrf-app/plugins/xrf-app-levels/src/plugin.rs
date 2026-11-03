@@ -4,6 +4,7 @@ use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_core::session::SessionScopes;
 use xrf_app_render::WorldState;
+use xrf_audio::AudioServer;
 
 use crate::level::{OpenedLevel, SelectedLevels};
 use crate::render::{LevelRenderParts, LevelSceneFollower, ShownLevels};
@@ -32,7 +33,12 @@ impl LevelsPlugin {
             OpenedLevel::derive,
           )
           .with_view_parts(LevelRenderParts::VIEW_PARTS);
-        let shown: ShownLevels = ShownLevels::default();
+        // A shown level is heard through the audio plugin's server, set up before the domains; without it, silent.
+        let shown: ShownLevels = ShownLevels::new(
+          application
+            .try_state::<AudioServer>()
+            .map(|server| server.inner().clone()),
+        );
 
         // A shown level's scene follows its session.
         assets.add_subscriber(LevelSceneFollower {

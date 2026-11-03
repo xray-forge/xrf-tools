@@ -40,6 +40,11 @@ impl GainRamp {
     self.target
   }
 
+  /// The gain the last frame took.
+  pub(crate) fn get_value(&self) -> f32 {
+    self.value
+  }
+
   fn to_gain(gain: f32) -> f32 {
     if gain.is_finite() { gain.max(0.0) } else { 0.0 }
   }
@@ -47,6 +52,22 @@ impl GainRamp {
   /// Whether the ramp has reached its target.
   pub(crate) fn is_settled(&self) -> bool {
     self.frames_left == 0
+  }
+
+  /// Whether it stands at silence and stays there.
+  pub(crate) fn is_silent(&self) -> bool {
+    self.is_settled() && self.value == 0.0
+  }
+
+  /// Moves `frames` frames on without reading them.
+  pub(crate) fn skip(&mut self, frames: u32) {
+    if frames >= self.frames_left {
+      self.value = self.target;
+      self.frames_left = 0;
+    } else {
+      self.frames_left -= frames;
+      self.value += self.step * frames as f32;
+    }
   }
 
   /// The gain for the next frame.

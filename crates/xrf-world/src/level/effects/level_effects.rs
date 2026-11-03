@@ -225,6 +225,8 @@ impl LevelEffects {
       campfire_shares,
       motions,
       camera_hemi: self.systems.as_ref().and_then(|systems| systems.hemi.get_smooth()),
+      open_sky: self.systems.as_ref().and_then(|systems| systems.hemi.get_open_sky()),
+      started_effect: self.ambient.take_started(),
     }
   }
 

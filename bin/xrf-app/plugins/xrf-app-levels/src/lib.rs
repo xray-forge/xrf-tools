@@ -9,6 +9,7 @@ mod parts;
 pub mod plugin;
 mod render;
 mod report;
+mod sound;
 mod spawn;
 #[cfg(test)]
 mod tests;

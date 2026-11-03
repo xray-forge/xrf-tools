@@ -10,6 +10,7 @@ import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/contract/native-frame-report";
 import { NativeRendererHold } from "@/core/render/lib/native/viewport/native-renderer-hold";
 import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
+import { followListening } from "@/core/render/lib/native/viewport/native-viewport-listening";
 import { INativeViewportClick, NativeViewportTarget } from "@/core/render/lib/native/viewport/native-viewport-target";
 import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
@@ -105,7 +106,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
       onHover: (point: Nullable<IRenderViewPoint>) => this.onHover(point),
     });
     this.onAttached(container);
-    this.reactions.push(...this.start(viewport));
+    this.reactions.push(followListening(viewport, container), ...this.start(viewport));
   }
 
   /** Stops drawing and closes the element's hole. */

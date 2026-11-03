@@ -1,3 +1,4 @@
+pub(crate) mod sound;
 pub(crate) mod world_ambient;
 pub(crate) mod world_ambient_effect;
 pub(crate) mod world_event_sink;

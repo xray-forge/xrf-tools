@@ -2,15 +2,16 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use xrf_app_core::session::SessionSnapshot;
-use xrf_environment::{EnvironmentCatalog, WeatherModifier};
+use xrf_environment::{EnvironmentCatalog, ThunderboltKey, WeatherModifier};
 use xrf_level::LevelEnvModifier;
 use xrf_math::Vector3d;
 use xrf_renderer::{RenderLensFlare, RenderLevelWeather, RenderRain, RenderWetSurfaces};
 use xrf_vfs::XraySearch;
-use xrf_world::WorldLevelWeather;
+use xrf_world::{WorldLevelWeather, WorldSound};
 
 use crate::level::SelectedLevel;
 use crate::parts::LevelEnvironment;
+use crate::sound::LevelSoundFiles;
 use crate::weather::LevelWorldAmbients;
 use crate::weather::render::{LevelLensFlares, LevelRain, LevelThunderbolts, LevelWetSurfaces};
 
@@ -30,6 +31,9 @@ impl LevelWorldWeather {
     let wet: LevelWetSurfaces = LevelWetSurfaces::read(&source);
     let thunder: LevelThunderbolts = LevelThunderbolts::read(&source);
     let modifiers: Vec<LevelEnvModifier> = LevelEnvironment::read_modifiers(level, search);
+    let mut files: LevelSoundFiles<'_> = LevelSoundFiles::new(search);
+    let thunder_sounds: HashMap<String, WorldSound> =
+      Self::to_thunder_sounds(&environment.catalog, &thunder, &mut files);
 
     WorldLevelWeather {
       render: Arc::new(RenderLevelWeather {
@@ -58,8 +62,33 @@ impl LevelWorldWeather {
         .as_ref()
         .map(|table| table.list_positions()),
       ambients: LevelWorldAmbients::to_world(&environment.catalog, &level.source.get_name().unwrap_or_default()),
-      ambient_effects: LevelWorldAmbients::to_world_effects(&environment.catalog),
+      ambient_effects: LevelWorldAmbients::to_world_effects(&environment.catalog, &mut |sound| files.get(sound)),
+      sound_channels: LevelWorldAmbients::to_world_channels(&environment.catalog, &mut |sound| files.get(sound)),
+      rain_sound: Some(files.get(Self::RAIN_SOUND)),
+      thunder_sounds,
     }
+  }
+
+  /// The rain's loop, `CEffect_Rain::snd_Ambient`.
+  const RAIN_SOUND: &'static str = "ambient\\rain";
+
+  /// Each bolt's `sound` that names one, by the bolt's section.
+  fn to_thunder_sounds(
+    catalog: &EnvironmentCatalog,
+    thunder: &LevelThunderbolts,
+    files: &mut LevelSoundFiles<'_>,
+  ) -> HashMap<String, WorldSound> {
+    thunder
+      .bolts
+      .iter()
+      .filter_map(|bolt| {
+        let sound: &str = catalog
+          .find_thunderbolt(&bolt.name)?
+          .get_text(ThunderboltKey::Sound, catalog.engine);
+
+        (!sound.trim().is_empty()).then(|| (bolt.name.clone(), files.get(sound)))
+      })
+      .collect()
   }
 
   /// A `level.env_mod` volume as the mixer weighs it: one from a file before the flag word adds every value, as the

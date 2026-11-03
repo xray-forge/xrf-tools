@@ -1,6 +1,6 @@
 use crate::decode::sound_channels::SoundChannels;
 use crate::decode::stream::stream_reader::StreamReader;
-use crate::voice::cursor::stereo_frame::StereoFrame;
+use crate::voice::cursor::stereo_frame::{StereoFrame, hermite};
 
 /// A voice's place in a stream: the four frames around the playing one, taken from the ring as the voice moves on.
 #[derive(Debug)]
@@ -61,17 +61,50 @@ impl StreamCursor {
 
     for at in 0..out.len() / channels {
       let [previous, current, next, after] = self.window;
+      let t: f32 = self.fraction as f32;
 
-      StereoFrame::hermite(previous, current, next, after, self.fraction as f32).write(out, channels, at);
-      self.fraction += step;
-
-      while self.fraction >= 1.0 {
-        if !self.advance() {
-          return !self.is_played_out();
-        }
-
-        self.fraction -= 1.0;
+      // A mono stream is interpolated in its one channel.
+      if channels == 1 {
+        out[at] = hermite(previous.left, current.left, next.left, after.left, t);
+      } else {
+        StereoFrame::hermite(previous, current, next, after, t).write(out, channels, at);
       }
+
+      if !self.step(step) {
+        return !self.is_played_out();
+      }
+    }
+
+    true
+  }
+
+  /// Moves on `frames` output frames, `step` source frames apart, rendering nothing: a voice no one hears. Frames the
+  /// decoder thread has not produced yet hold it where it is. Answers `false` once the stream has drained and played
+  /// out.
+  pub(crate) fn skip(&mut self, frames: usize, step: f64) -> bool {
+    if !self.fill() {
+      return !self.is_played_out();
+    }
+
+    for _ in 0..frames {
+      if !self.step(step) {
+        return !self.is_played_out();
+      }
+    }
+
+    true
+  }
+
+  /// Moves `step` source frames on, answering whether the frames to move to were there.
+  fn step(&mut self, step: f64) -> bool {
+    self.fraction += step;
+
+    while self.fraction >= 1.0 {
+      if !self.advance() {
+        return false;
+      }
+
+      self.fraction -= 1.0;
     }
 
     true

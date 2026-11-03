@@ -12,6 +12,8 @@ pub struct AudioMixerMeter {
 #[derive(Debug, Default)]
 struct MeterShared {
   frames: AtomicU64,
+  /// The rate it renders at, frames a second.
+  rate: AtomicU32,
   load: AtomicU32,
   peak_load: AtomicU32,
   overruns: AtomicU64,
@@ -22,6 +24,20 @@ impl AudioMixerMeter {
   /// Frames the mixer has rendered.
   pub fn get_frames(&self) -> u64 {
     self.shared.frames.load(Ordering::Acquire)
+  }
+
+  /// The last buffer's share of the time it plays for, leaving the peak as it is.
+  pub fn get_load(&self) -> f32 {
+    f32::from_bits(self.shared.load.load(Ordering::Relaxed))
+  }
+
+  /// The rate the mixer renders at, frames a second.
+  pub fn get_rate(&self) -> u32 {
+    self.shared.rate.load(Ordering::Relaxed)
+  }
+
+  pub(crate) fn set_rate(&self, rate: u32) {
+    self.shared.rate.store(rate, Ordering::Relaxed);
   }
 
   /// The mixer's load, starting the peak over.

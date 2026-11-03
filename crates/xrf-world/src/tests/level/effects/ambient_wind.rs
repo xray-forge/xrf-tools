@@ -22,6 +22,7 @@ fn blasting(gust_factor: f32) -> WorldAmbientEffect {
       in_time: Duration::from_secs(2),
       out_time: Duration::from_secs(2),
     },
+    sound: None,
   }
 }
 

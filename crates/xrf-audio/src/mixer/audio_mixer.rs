@@ -89,6 +89,7 @@ impl AudioMixer {
   /// Renders at `rate` from the next buffer on; the device sets it to the rate it opened with.
   pub fn set_output_rate(&mut self, rate: u32) {
     self.output_rate = rate.max(1);
+    self.meter.set_rate(self.output_rate);
     self.ramp_frames = Self::to_frames(Self::RAMP_SECONDS, self.output_rate);
     self.fade_frames = Self::to_frames(Self::FADE_SECONDS, self.output_rate);
   }

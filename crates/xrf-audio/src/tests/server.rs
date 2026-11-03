@@ -60,7 +60,11 @@ fn steers_a_transport_through_the_control_thread_and_pushes_its_state() {
       .any(|state| state.position > Duration::ZERO)
   });
 
-  let states: Vec<AudioTransportState> = sent_states(&events, id);
+  // A tick may push the transport's Stopped state between its opening and the play; from the play on, it plays.
+  let states: Vec<AudioTransportState> = sent_states(&events, id)
+    .into_iter()
+    .skip_while(|state| state.playback == AudioTransportPlayback::Stopped)
+    .collect();
 
   assert!(
     states

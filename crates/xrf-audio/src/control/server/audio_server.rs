@@ -16,8 +16,11 @@ use crate::control::server::control_request::ControlRequest;
 use crate::device::audio_output::AudioOutput;
 use crate::device::audio_output_choice::AudioOutputChoice;
 use crate::device::audio_output_status::AudioOutputStatus;
+use crate::host::audio_asset_source::AudioAssetSource;
 use crate::mixer::audio_bus::AudioBus;
 use crate::mixer::audio_mixer_meter::AudioMixerMeter;
+use crate::scene::audio_scene_inbox::AudioSceneInbox;
+use crate::scene::audio_scene_report::AudioSceneReport;
 use crate::transport::audio_transport::AudioTransport;
 use crate::transport::audio_transport_command::AudioTransportCommand;
 use crate::transport::audio_transport_id::AudioTransportId;
@@ -28,8 +31,9 @@ use crate::transport::audio_transport_state::AudioTransportState;
 /// thread ends when the last handle goes or [`Self::shut_down`] runs. The sink must hold no handle, or the thread would
 /// keep itself alive.
 ///
-/// Requests that answer (steering or describing a transport) wait for the thread; the rest return at once. The mixer's
-/// clock and load and the device are read without waiting on the thread.
+/// Requests that answer (steering or describing a transport, describing a scene) wait for the thread; the rest return
+/// at once. A scene's frames go through its own inbox, never waiting. The mixer's clock and load and the device are
+/// read without waiting on the thread.
 #[derive(Clone)]
 pub struct AudioServer {
   shared: Arc<ServerShared>,
@@ -153,6 +157,31 @@ impl AudioServer {
     self.post(ControlRequest::CloseTransport(id));
   }
 
+  /// Opens a scene the control thread plays from the frames sent through the inbox answered, its sounds read through
+  /// `assets`. Dropping the inbox closes the scene.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the control thread has ended.
+  pub fn open_scene(&self, assets: Arc<dyn AudioAssetSource>) -> XrfResult<AudioSceneInbox> {
+    let (inbox, mailbox) = AudioSceneInbox::open();
+
+    if self.post(ControlRequest::OpenScene { mailbox, assets }) {
+      Ok(inbox)
+    } else {
+      Err(Self::new_ended())
+    }
+  }
+
+  /// How the scene the host names `scene` plays now, none for a scene not open.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the control thread does not answer.
+  pub fn describe_scene(&self, scene: u32) -> XrfResult<Option<AudioSceneReport>> {
+    self.ask(|answer| ControlRequest::DescribeScene { scene, answer })
+  }
+
   /// The device the mixer plays on, or `None` when it could not start.
   pub fn get_output(&self) -> Option<&AudioOutput> {
     self.shared.output.as_ref()
@@ -195,6 +224,7 @@ impl AudioServer {
         Err(RecvTimeoutError::Timeout) => {}
         Err(RecvTimeoutError::Disconnected) => {
           control.close_transports();
+          control.close_scenes();
           return;
         }
       }

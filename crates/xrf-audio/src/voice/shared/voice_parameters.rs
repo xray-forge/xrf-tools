@@ -9,6 +9,8 @@ pub(crate) struct VoiceParameters {
   gain: AtomicU32,
   /// Playback speed, as `f32` bits, above zero.
   rate: AtomicU32,
+  /// Linear gains of the left and right outputs, as `f32` bits, zero or above: where a placed voice is heard.
+  pan: [AtomicU32; 2],
 }
 
 impl VoiceParameters {
@@ -18,9 +20,7 @@ impl VoiceParameters {
 
   /// Sets the gain; one below zero or not a number is silence.
   pub(crate) fn set_gain(&self, gain: f32) {
-    let gain: f32 = if gain.is_finite() { gain.max(0.0) } else { 0.0 };
-
-    self.gain.store(gain.to_bits(), Ordering::Relaxed);
+    self.gain.store(Self::to_gain(gain).to_bits(), Ordering::Relaxed);
   }
 
   pub(crate) fn get_rate(&self) -> f32 {
@@ -34,6 +34,24 @@ impl VoiceParameters {
 
     self.rate.store(rate.to_bits(), Ordering::Relaxed);
   }
+
+  pub(crate) fn get_pan(&self) -> [f32; 2] {
+    self
+      .pan
+      .each_ref()
+      .map(|gain| f32::from_bits(gain.load(Ordering::Relaxed)))
+  }
+
+  /// Sets the left and right gains; one below zero or not a number is silence on that side.
+  pub(crate) fn set_pan(&self, pan: [f32; 2]) {
+    for (gain, value) in self.pan.iter().zip(pan) {
+      gain.store(Self::to_gain(value).to_bits(), Ordering::Relaxed);
+    }
+  }
+
+  fn to_gain(gain: f32) -> f32 {
+    if gain.is_finite() { gain.max(0.0) } else { 0.0 }
+  }
 }
 
 impl Default for VoiceParameters {
@@ -41,6 +59,7 @@ impl Default for VoiceParameters {
     Self {
       gain: AtomicU32::new(1f32.to_bits()),
       rate: AtomicU32::new(1f32.to_bits()),
+      pan: [AtomicU32::new(1f32.to_bits()), AtomicU32::new(1f32.to_bits())],
     }
   }
 }

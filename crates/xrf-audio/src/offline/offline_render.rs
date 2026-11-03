@@ -1,4 +1,5 @@
 use crate::mixer::audio_mixer::AudioMixer;
+use crate::mixer::audio_mixer_meter::AudioMixerMeter;
 
 /// Renders a mixer without a device, as many frames as asked and as fast as the machine allows: what tests listen to.
 pub struct OfflineRender {
@@ -27,6 +28,11 @@ impl OfflineRender {
   /// Fills `out` with the next stereo frames, interleaved, allocating nothing.
   pub fn render_into(&mut self, out: &mut [f32]) {
     self.mixer.render(out, 2);
+  }
+
+  /// The mixer's clock and load.
+  pub fn get_meter(&self) -> &AudioMixerMeter {
+    self.mixer.get_meter()
   }
 
   pub fn into_mixer(self) -> AudioMixer {

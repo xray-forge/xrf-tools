@@ -17,6 +17,7 @@ macro_rules! for_each_render_domain {
         detach_viewport => crate::commands::viewport::detach_viewport::render_detach_viewport,
         hold => crate::commands::renderer::hold::render_hold,
         list_backends => crate::commands::renderer::list_backends::render_list_backends,
+        listen_viewport => crate::commands::world::listen_viewport::render_listen_viewport,
         locate_spawn_object => crate::commands::queries::locate_spawn_object::render_locate_spawn_object,
         mark_profile => crate::commands::renderer::mark_profile::render_mark_profile,
         measure_surfaces => crate::commands::queries::measure_surfaces::render_measure_surfaces,

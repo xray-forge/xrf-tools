@@ -13,6 +13,7 @@ macro_rules! for_each_levels_domain {
         describe_console_defaults => crate::commands::describe_console_defaults::levels_describe_console_defaults,
         describe_level_map => crate::commands::describe_level_map::levels_describe_level_map,
         describe_objects => crate::commands::describe_objects::levels_describe_objects,
+        describe_sound => crate::commands::describe_sound::levels_describe_sound,
         describe_spawn_object => crate::commands::describe_spawn_object::levels_describe_spawn_object,
         describe_start => crate::commands::describe_start::levels_describe_start,
         describe_surfaces => crate::commands::describe_surfaces::levels_describe_surfaces,

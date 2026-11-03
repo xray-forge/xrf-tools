@@ -7,6 +7,8 @@ use xrf_renderer::{
 };
 use xrf_visual::{LightsDescription, SectorPackage};
 
+use crate::host::sound::world_level_sounds::WorldLevelSounds;
+use crate::host::sound::world_sound_sink::WorldSoundSink;
 use crate::host::world_level_weather::WorldLevelWeather;
 
 /// An open level as the world plays it: the application reads its parts on demand, on the renderer's loader threads,
@@ -113,5 +115,20 @@ pub trait WorldLevelSource: RenderLevelSource {
     Err(XrfError::new_not_found_error(format!(
       "No object motion '{name}' to play"
     )))
+  }
+
+  /// The level's static sounds and music tracks, each sound's file read for what the engine reads of it, called from
+  /// a loader thread as the level opens; none for a source with no level.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the level's sounds cannot be read.
+  fn read_sounds(&self) -> XrfResult<WorldLevelSounds> {
+    Ok(WorldLevelSounds::default())
+  }
+
+  /// Where the scene's sound frames go, asked once as its level starts playing; none for a source that is not heard.
+  fn open_sound(&self) -> Option<Box<dyn WorldSoundSink>> {
+    None
   }
 }

@@ -5,9 +5,9 @@ import {
   EAudioOutputChoice,
 } from "@xrf/ipc/types/xrf-audio";
 import { Nullable } from "@xrf/types";
-import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
+import { IChoiceListFormRowOption } from "@xrf/ui/form/choice-list-row";
 
-/** An output choice as one string a choice row can hold. */
+/** An output choice as one string a choice list can hold. */
 export type TAudioOutputKey = string;
 
 const SYSTEM_DEFAULT_KEY: TAudioOutputKey = EAudioOutputChoice.SYSTEM_DEFAULT;
@@ -33,28 +33,37 @@ export function fromAudioOutputKey(key: TAudioOutputKey): AudioOutputChoice {
 }
 
 /**
- * The devices a person can pick: the system default, every device the system offers, and the chosen one while it is
- * missing, so the choice never disappears from under the row.
+ * The devices a person can pick, a row each however long its name: the system default, every device the system
+ * offers, and the chosen one while it is missing, so the choice never disappears from under the list.
  *
  * @param devices - The devices the system offers, or null before it was asked.
  * @param choice - The device the settings name.
- * @returns The row's options.
+ * @returns The list's options.
  */
 export function listAudioOutputOptions(
   devices: Nullable<ReadonlyArray<AudioDeviceDescription>>,
   choice: AudioOutputChoice
-): ReadonlyArray<IChoiceFormRowOption<TAudioOutputKey>> {
-  const options: Array<IChoiceFormRowOption<TAudioOutputKey>> = [
-    { label: "System default", value: SYSTEM_DEFAULT_KEY },
+): ReadonlyArray<IChoiceListFormRowOption<TAudioOutputKey>> {
+  const options: Array<IChoiceListFormRowOption<TAudioOutputKey>> = [
+    {
+      label: "System default",
+      value: SYSTEM_DEFAULT_KEY,
+      description: "Follows the device the system plays on, as it changes",
+    },
     ...(devices ?? []).map((device: AudioDeviceDescription) => ({
       label: device.name,
       value: toAudioOutputKey({ kind: EAudioOutputChoice.DEVICE, id: device.id }),
+      description: device.isDefault ? "The system's default device now" : undefined,
     })),
   ];
   const chosen: TAudioOutputKey = toAudioOutputKey(choice);
 
-  if (!options.some((option: IChoiceFormRowOption<TAudioOutputKey>) => option.value === chosen)) {
-    options.push({ label: "Missing device", value: chosen });
+  if (!options.some((option: IChoiceListFormRowOption<TAudioOutputKey>) => option.value === chosen)) {
+    options.push({
+      label: "Missing device",
+      value: chosen,
+      description: "Not connected; the system default plays until it returns",
+    });
   }
 
   return options;

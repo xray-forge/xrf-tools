@@ -19,8 +19,8 @@ use crate::voice::voice::Voice;
 /// ([`crate::AudioEngineParts::new`]), from any one thread, without waiting on the audio thread.
 ///
 /// A voice's life (start, pause, resume, stop) and the mix's levels travel as commands, which a full ring refuses. A
-/// voice's continuous controls (gain, rate) are written into its slot's parameter block, which never refuses and keeps
-/// only the latest write, however many a buffer brings.
+/// voice's continuous controls (gain, rate, its two pan gains) are written into its slot's parameter block, which never
+/// refuses and keeps only the latest write, however many a buffer brings.
 ///
 /// Voices the mixer is done with come back here to be freed, the next time a voice starts or [`Self::collect`] runs.
 pub struct AudioEngine {
@@ -75,6 +75,7 @@ impl AudioEngine {
     // The slot is free, so no voice reads its block until this one starts with what is written here.
     parameters.set_gain(play.gain);
     parameters.set_rate(play.rate);
+    parameters.set_pan(play.pan);
     self.start_frames[id.slot as usize] = play.source.get_start_frame();
 
     let voice: Box<Voice> = Box::new(Voice::new(id, play.source, play.bus));
@@ -119,6 +120,13 @@ impl AudioEngine {
   pub fn set_voice_gain(&mut self, voice: AudioVoiceId, gain: f32) {
     if let Some(parameters) = self.get_parameters(voice) {
       parameters.set_gain(gain);
+    }
+  }
+
+  /// Moves the voice's left and right gains to `pan` from the next buffer. A voice that has ended is left alone.
+  pub fn set_voice_pan(&mut self, voice: AudioVoiceId, pan: [f32; 2]) {
+    if let Some(parameters) = self.get_parameters(voice) {
+      parameters.set_pan(pan);
     }
   }
 

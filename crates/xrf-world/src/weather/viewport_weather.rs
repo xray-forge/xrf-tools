@@ -72,6 +72,10 @@ impl ViewportWeather {
     &self.player
   }
 
+  pub fn get_player_mut(&mut self) -> &mut WeatherPlayer {
+    &mut self.player
+  }
+
   /// What every weather of the shown level plays with, once read.
   pub fn get_level(&self) -> Option<&Arc<WorldLevelWeather>> {
     self.level.as_ref()

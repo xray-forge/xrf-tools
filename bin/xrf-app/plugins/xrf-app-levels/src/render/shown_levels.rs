@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
 
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::{SessionId, SessionSnapshot};
+use xrf_audio::AudioServer;
 
 use crate::level::SelectedLevel;
 use crate::render::LevelRenderSource;
@@ -12,9 +13,28 @@ use crate::render::LevelRenderSource;
 #[derive(Clone, Default)]
 pub struct ShownLevels {
   sources: Arc<Mutex<HashMap<SessionId, Weak<LevelRenderSource>>>>,
+  /// The application's audio, which every source plays its scene's sound through; none where it did not start.
+  audio: Option<AudioServer>,
 }
 
 impl ShownLevels {
+  /// Shown levels heard through `audio`.
+  pub fn new(audio: Option<AudioServer>) -> Self {
+    Self {
+      sources: Arc::default(),
+      audio,
+    }
+  }
+
+  /// A new source drawing `level`, sharing nothing with one before it.
+  pub fn build_source(
+    &self,
+    level: Arc<SessionSnapshot<SelectedLevel>>,
+    assets: &AssetMountState,
+  ) -> LevelRenderSource {
+    LevelRenderSource::new(level, AssetMountState::clone(assets), self.audio.clone())
+  }
+
   /// The source drawing `level`: the one drawing it already, else one following the session's source onto it, keeping
   /// the textures that one resolved, else a new one. A new source may resolve the level's surfaces, so it is built
   /// outside the lock, which a commit's follow waits on; where another show placed one for the same snapshot meanwhile,
@@ -37,7 +57,7 @@ impl ShownLevels {
 
     let built: Arc<LevelRenderSource> = Arc::new(match shown {
       Some(shown) => shown.follow(level),
-      None => LevelRenderSource::new(level, AssetMountState::clone(assets)),
+      None => self.build_source(level, assets),
     });
     let mut sources: MutexGuard<'_, HashMap<SessionId, Weak<LevelRenderSource>>> = self.lock();
 

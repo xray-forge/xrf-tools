@@ -5,6 +5,7 @@ use xrf_anm::AnmFile;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::SessionSnapshot;
 use xrf_app_render::{ResolvedTexture, TextureResolver};
+use xrf_audio::AudioServer;
 use xrf_chunk::{InMemoryChunkDataSource, XRayByteOrder};
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
@@ -18,7 +19,7 @@ use xrf_renderer::{
 };
 use xrf_vfs::XraySearch;
 use xrf_visual::{LightsDescription, SectorAttributes, SectorPackage, SectorPacker, VisualPoser};
-use xrf_world::{WorldLevelSource, WorldLevelWeather};
+use xrf_world::{WorldLevelSounds, WorldLevelSource, WorldLevelWeather, WorldSoundSink};
 
 use crate::level::SelectedLevel;
 use crate::objects::LevelObjectsDescription;
@@ -30,6 +31,7 @@ use crate::parts::{
 };
 use crate::render::{LevelParticleCollider, LevelRenderParts};
 use crate::report::LevelReport;
+use crate::sound::{LevelSoundAssets, LevelSoundSink, LevelWorldSounds};
 use crate::weather::LevelWorldWeather;
 
 /// A level's shader table as it is drawn, and the textures its surfaces bind.
@@ -51,6 +53,8 @@ pub struct LevelRenderSource {
   textures: Arc<TextureResolver>,
   /// The textures the game loads a step coarser at the same texture quality, out of the sections read as it opened.
   reduced: XrayReducedTextures,
+  /// The application's audio, which plays the scene's sound; none where it did not start.
+  audio: Option<AudioServer>,
 }
 
 impl LevelRenderSource {
@@ -65,8 +69,9 @@ impl LevelRenderSource {
     uvs: true,
   };
 
-  /// The level `level` holds as the renderer draws it, its surfaces and textures as its parts hold them.
-  pub fn new(level: Arc<SessionSnapshot<SelectedLevel>>, assets: AssetMountState) -> Self {
+  /// The level `level` holds as the renderer draws it, its surfaces and textures as its parts hold them, and its sound
+  /// played through `audio`.
+  pub fn new(level: Arc<SessionSnapshot<SelectedLevel>>, assets: AssetMountState, audio: Option<AudioServer>) -> Self {
     let DrawnSurfaces { surfaces, textures } = Self::find_surfaces(&level, &assets);
     let resolver: TextureResolver = TextureResolver::new(
       level.roots.clone(),
@@ -80,6 +85,7 @@ impl LevelRenderSource {
       level,
       assets,
       textures: Arc::new(resolver),
+      audio,
     }
   }
 
@@ -124,6 +130,7 @@ impl LevelRenderSource {
       level: next,
       assets: AssetMountState::clone(&self.assets),
       textures: Arc::clone(&self.textures),
+      audio: self.audio.clone(),
     }
   }
 
@@ -299,6 +306,27 @@ impl WorldLevelSource for LevelRenderSource {
 
   fn read_object_motion(&self, name: &str) -> XrfResult<AnmFile> {
     LevelObjectMotionsPart::read(&self.level, &self.search()?, name).map_err(XrfError::new_asset_error)
+  }
+
+  fn read_sounds(&self) -> XrfResult<WorldLevelSounds> {
+    LevelWorldSounds::read(&self.level, &self.search()?)
+  }
+
+  /// A scene on the audio's control thread, its sounds read from the roots the level opened in.
+  fn open_sound(&self) -> Option<Box<dyn WorldSoundSink>> {
+    let assets: LevelSoundAssets = LevelSoundAssets::new(
+      AssetMountState::clone(&self.assets),
+      self.level.roots.clone(),
+      self.textures.get_scope_key().to_owned(),
+    );
+
+    self
+      .audio
+      .as_ref()?
+      .open_scene(Arc::new(assets))
+      .inspect_err(|error| log::warn!("The level's sound cannot play: {error}"))
+      .ok()
+      .map(|inbox| Box::new(LevelSoundSink::new(inbox)) as Box<dyn WorldSoundSink>)
   }
 
   fn read_spawn_models(&self, names: &[String]) -> XrfResult<RenderSpawnModels> {
