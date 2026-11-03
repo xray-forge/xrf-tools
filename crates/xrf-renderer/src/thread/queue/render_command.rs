@@ -19,6 +19,7 @@ use crate::contract::report::load::render_load_report::RenderLoadReport;
 use crate::contract::report::texture::render_texture_report::RenderTextureReport;
 use crate::contract::settings::render_settings::RenderSettings;
 use crate::contract::view::render_view_options::RenderViewOptions;
+use crate::contract::viewport::render_hold_id::RenderHoldId;
 use crate::contract::viewport::render_pick::RenderPick;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::contract::viewport::render_viewport_layout::RenderViewportLayout;
@@ -34,6 +35,15 @@ pub enum RenderCommand {
   },
   Detach {
     id: RenderViewportId,
+  },
+  /// Keeps the GPU started, starting it where it is not, until the hold is released: for a tool whose viewports come
+  /// and go, so showing one again never waits for the GPU to start.
+  Hold {
+    id: RenderHoldId,
+  },
+  /// Lets a hold go; the GPU goes a few seconds after the last hold and viewport.
+  Release {
+    id: RenderHoldId,
   },
   Layout {
     id: RenderViewportId,

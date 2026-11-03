@@ -271,7 +271,7 @@ impl RenderThread {
   }
 
   /// Lets a scene the world let go (`live` holds the ones it keeps) go once no viewport shows it.
-  fn retain_scenes(&mut self, live: &HashSet<RenderSceneId>) {
+  pub(super) fn retain_scenes(&mut self, live: &HashSet<RenderSceneId>) {
     let shown: HashSet<RenderSceneId> = self
       .viewports
       .values()
@@ -285,26 +285,11 @@ impl RenderThread {
   /// Keeps the textures: every `TEXTURE_SWEEP` those no scene samples let go, then the uploads streamed and the
   /// weather's textures brought up.
   fn keep_textures(&mut self, now: Instant) {
+    self.sweep_textures(now);
+
     let Some(RunningGpu { gpu, .. }) = &mut self.running else {
       return;
     };
-
-    if now.duration_since(self.textures_swept) >= TEXTURE_SWEEP {
-      profiling::scope!("texture sweep");
-
-      self.textures_swept = now;
-
-      let sampled: HashSet<u32> = self.scenes.values().flat_map(LevelScene::list_texture_slots).collect();
-      let environments: HashSet<u32> = self
-        .scenes
-        .values()
-        .flat_map(LevelScene::list_environment_slots)
-        .collect();
-
-      gpu.textures.retain(&sampled);
-      gpu.textures.retain_environments(&environments);
-    }
-
     let is_opening: bool = self.scenes.values().any(|scene| !scene.is_ready(&gpu.textures));
 
     profiling::scope!("texture uploads");
@@ -316,6 +301,31 @@ impl RenderThread {
       TextureUploadPace::of(is_opening),
     );
     gpu.weather_textures.update(&gpu.context.device, &gpu.context.queue);
+  }
+
+  /// Lets go of the textures no scene samples, every `TEXTURE_SWEEP`.
+  pub(super) fn sweep_textures(&mut self, now: Instant) {
+    let Some(RunningGpu { gpu, .. }) = &mut self.running else {
+      return;
+    };
+
+    if now.duration_since(self.textures_swept) < TEXTURE_SWEEP {
+      return;
+    }
+
+    profiling::scope!("texture sweep");
+
+    self.textures_swept = now;
+
+    let sampled: HashSet<u32> = self.scenes.values().flat_map(LevelScene::list_texture_slots).collect();
+    let environments: HashSet<u32> = self
+      .scenes
+      .values()
+      .flat_map(LevelScene::list_environment_slots)
+      .collect();
+
+    gpu.textures.retain(&sampled);
+    gpu.textures.retain_environments(&environments);
   }
 
   /// Delivers what earlier frames' reads asked for, without waiting on this frame's work, and reports each viewport:

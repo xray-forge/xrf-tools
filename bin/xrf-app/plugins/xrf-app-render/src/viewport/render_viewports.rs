@@ -4,19 +4,20 @@ use std::time::Duration;
 
 use tauri::ipc::Channel;
 use xrf_app_core::TauriResult;
-use xrf_renderer::{RenderViewportId, RenderWait, RenderWindowHost};
+use xrf_renderer::{RenderHoldId, RenderViewportId, RenderWait, RenderWindowHost};
 
 use crate::viewport::channel_event_sink::ChannelEventSink;
 use crate::viewport::viewport_windows::ViewportWindows;
 use crate::{Renderer, ViewportEvent, ViewportShows, WorldState};
 
 /// The native viewports drawn into the application's windows, attached to the renderer and the world together and let
-/// go of together, as their page asks, as it goes or its window closes, or as the application exits.
+/// go of together, as their page asks, as it goes or its window closes, or as the application exits; and the holds a
+/// page takes on the renderer between its viewports, let go of the same ways.
 pub struct RenderViewports {
   renderer: Renderer,
   world: WorldState,
   shows: ViewportShows,
-  /// The window each viewport draws into, so a page that goes takes its viewports with it.
+  /// The window each viewport draws into and each hold was taken for, so a page that goes takes them with it.
   windows: Mutex<ViewportWindows>,
   /// The windows held open until the render thread lets go of the viewports they drew, by label; shared with the thread
   /// waiting for each, which lets its window go once the renderer did.
@@ -89,15 +90,57 @@ impl RenderViewports {
     self.release(viewport);
   }
 
+  /// Keeps the renderer's GPU started for a window's page, so a viewport it attaches later draws at once, until the
+  /// page releases the hold or goes.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error once every hold number was handed.
+  pub fn hold(&self, window: &str) -> TauriResult<RenderHoldId> {
+    let Some(hold) = self.renderer.hold() else {
+      let error: String = format!("No renderer hold number is left to hold it for window '{window}'");
+
+      log::error!("{error}");
+
+      return Err(error);
+    };
+
+    self.lock_windows().insert_hold(hold, window);
+
+    log::info!("Held the renderer for window '{window}' as hold {hold}");
+
+    Ok(hold)
+  }
+
+  /// Lets a hold its page took go.
+  pub fn release_hold(&self, hold: RenderHoldId) {
+    match self.lock_windows().remove_hold(hold) {
+      Some(window) => log::info!("Released renderer hold {hold} of window '{window}'"),
+      None => log::info!("Released renderer hold {hold}, which no window held"),
+    }
+
+    self.renderer.release_hold(hold);
+  }
+
   /// Stops drawing every viewport in a window whose page is loading again or which is going, neither of which can let
-  /// them go itself; answers whether it held any.
+  /// them go itself, and lets its holds go; answers whether it held any viewport.
   pub fn detach_window(&self, window: &str) -> bool {
-    let viewports: Vec<RenderViewportId> = self.lock_windows().take_window(window);
+    let (viewports, holds) = {
+      let mut windows: MutexGuard<'_, ViewportWindows> = self.lock_windows();
+
+      (windows.take_window(window), windows.take_window_holds(window))
+    };
 
     for viewport in &viewports {
       log::info!("Detached native viewport {viewport} from window '{window}', whose page went");
 
       self.release(*viewport);
+    }
+
+    for hold in holds {
+      log::info!("Released renderer hold {hold} of window '{window}', whose page went");
+
+      self.renderer.release_hold(hold);
     }
 
     !viewports.is_empty()
@@ -162,10 +205,11 @@ impl RenderViewports {
     }
   }
 
-  /// Detaches every viewport and stops the renderer as the application exits, so its GPU is let go in order rather
-  /// than with the process.
+  /// Detaches every viewport, lets every hold go and stops the renderer as the application exits, so its GPU is let go
+  /// in order rather than with the process.
   pub fn shut_down(&self) {
-    let viewports: Vec<RenderViewportId> = self.lock_windows().take_all();
+    // The stop below lets the holds go on the render thread; they need only be forgotten here.
+    let (viewports, _) = self.lock_windows().take_all();
 
     for viewport in viewports {
       self.release(viewport);

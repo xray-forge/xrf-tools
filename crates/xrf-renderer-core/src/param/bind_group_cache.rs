@@ -133,6 +133,11 @@ impl BindGroupCache {
     group.clone()
   }
 
+  /// Drops every bind group, and its hold on what it binds, keeping the layouts, for a renderer drawing no frames.
+  pub(crate) fn clear_groups(&self) {
+    self.groups.write().expect("bind group cache lock").clear();
+  }
+
   /// Starts a frame: drops the bind groups the frames before it left unused for too long.
   pub(crate) fn begin_frame(&self) {
     let frame: u64 = self.frame.fetch_add(1, Ordering::Relaxed) + 1;

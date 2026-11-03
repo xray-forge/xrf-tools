@@ -7,9 +7,9 @@ use xrf_app_core::TauriResult;
 use xrf_error::XrfResult;
 use xrf_renderer::{
   BurstEvent, CaptureEvent, RenderBurst, RenderCapture, RenderCommand, RenderCubeCapture, RenderEventSink,
-  RenderFrameReport, RenderLevelHit, RenderLibraries, RenderLoadReport, RenderMapCapture, RenderMemoryReport,
-  RenderOverlay, RenderPick, RenderQueue, RenderScreenshot, RenderSelection, RenderSettings, RenderTextureReport,
-  RenderViewOptions, RenderViewportId, RenderViewportLayout, RenderWait, RenderWindowHost,
+  RenderFrameReport, RenderHoldId, RenderLevelHit, RenderLibraries, RenderLoadReport, RenderMapCapture,
+  RenderMemoryReport, RenderOverlay, RenderPick, RenderQueue, RenderScreenshot, RenderSelection, RenderSettings,
+  RenderTextureReport, RenderViewOptions, RenderViewportId, RenderViewportLayout, RenderWait, RenderWindowHost,
 };
 
 use crate::renderer::{RenderAnswer, RenderPickRequest};
@@ -22,6 +22,8 @@ pub struct Renderer {
   queue: RenderQueue,
   /// The number the last viewport was attached under, none before the first.
   last_id: Arc<AtomicU32>,
+  /// The number the last hold was taken under, none before the first.
+  last_hold: Arc<AtomicU32>,
 }
 
 impl Renderer {
@@ -30,7 +32,27 @@ impl Renderer {
     Self {
       queue,
       last_id: Arc::new(AtomicU32::new(0)),
+      last_hold: Arc::new(AtomicU32::new(0)),
     }
+  }
+
+  /// Keeps the GPU started, starting it where it is not, answering the number the hold is released by; none once every
+  /// number was handed. `RenderViewports` holds it for a window.
+  pub(crate) fn hold(&self) -> Option<RenderHoldId> {
+    let last: u32 = self
+      .last_hold
+      .try_update(Ordering::Relaxed, Ordering::Relaxed, |last| last.checked_add(1))
+      .ok()?;
+    let id: RenderHoldId = RenderHoldId(last + 1);
+
+    self.queue.send(RenderCommand::Hold { id });
+
+    Some(id)
+  }
+
+  /// Lets a hold go; the GPU goes a few seconds after the last hold and viewport.
+  pub(crate) fn release_hold(&self, id: RenderHoldId) {
+    self.queue.send(RenderCommand::Release { id });
   }
 
   /// Starts drawing a viewport into a window, answering the number every later call names it by; none once every

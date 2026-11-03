@@ -4,6 +4,7 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Condvar, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
+use crate::contract::viewport::render_hold_id::RenderHoldId;
 use crate::contract::viewport::render_viewport_event::RenderViewportEvent;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::host::render_event_sink::RenderEventSink;
@@ -169,6 +170,25 @@ fn stops_letting_every_viewport_go_and_leaves_no_thread_running() {
 
   assert!(answer.recv_timeout(WAIT).is_ok());
   assert!(dropped.load(Ordering::Acquire));
+  assert_eq!(queue.wait_handled(WAIT), RenderWait::NotRunning);
+}
+
+#[test]
+fn starts_a_thread_for_a_hold_as_for_an_attach() {
+  let queue: RenderQueue = create_queue();
+
+  // No other command starts one: with nothing drawn or held there is nothing for it to act on.
+  queue.send(RenderCommand::Release { id: RenderHoldId(1) });
+  assert_eq!(queue.wait_handled(WAIT), RenderWait::NotRunning);
+
+  // The stop is queued behind the hold before the thread's first turn, so it stops without starting a GPU: the hold's
+  // contract needs none, and one made and let go beside the other tests' devices crashed NVIDIA's driver now and then.
+  queue.send(RenderCommand::Hold { id: RenderHoldId(1) });
+  assert_eq!(
+    queue.stop(WAIT),
+    RenderWait::Answered,
+    "the hold started a thread to answer the stop"
+  );
   assert_eq!(queue.wait_handled(WAIT), RenderWait::NotRunning);
 }
 

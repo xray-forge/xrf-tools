@@ -610,3 +610,51 @@ fn draws_into_a_mip_through_a_view_made_once() {
     "the second frame draws through the first frame's view of the mip"
   );
 }
+
+#[test]
+fn forgets_what_its_frames_kept_once_none_is_drawn() {
+  let Some((device, queue)) = create_device() else {
+    return;
+  };
+  let output: wgpu::Buffer = device.create_buffer(&wgpu::BufferDescriptor {
+    label: Some("output"),
+    size: BYTES,
+    usage: wgpu::BufferUsages::COPY_DST,
+    mapped_at_creation: false,
+  });
+  let mut runtime: GraphRuntime = GraphRuntime::new(&device, &queue);
+  let mut graph: FrameGraph<'_> = FrameGraph::new();
+  let chain = graph.create_texture(color_texture("chain").with_mip_level_count(2));
+  let imported = graph.import_buffer(GraphBufferDescriptor::new("output", BYTES));
+
+  graph
+    .add_raster_pass("clear mip")
+    .color(GraphColorAttachment::new(chain, wgpu::LoadOp::Clear(wgpu::Color::RED)).with_mip_level(1))
+    .record(|_| {});
+  graph
+    .add_encoder_pass("keep")
+    .texture(chain, GraphTextureAccess::CopySource)
+    .buffer(imported, GraphBufferAccess::CopyDestination)
+    .record(|_| {});
+
+  let compiled = graph.compile(&GraphCompileOptions::default()).unwrap();
+  let mut bindings: GraphBindings<'_> = GraphBindings::new();
+
+  bindings.bind_buffer(imported, &output);
+  queue.submit(
+    compiled
+      .execute((&device, &queue), &mut runtime, &bindings)
+      .unwrap()
+      .commands,
+  );
+
+  assert_eq!(runtime.pool.get_texture_count(), 1);
+  assert_eq!(runtime.attachment_views.get_view_count(), 1);
+
+  // A renderer held with no viewport draws no frame to age these out by, so it lets them go at once.
+  runtime.forget_frames();
+
+  assert_eq!(runtime.pool.get_texture_count(), 0);
+  assert_eq!(runtime.attachment_views.get_view_count(), 0);
+  assert_eq!(runtime.bind_groups.get_bind_group_count(), 0);
+}

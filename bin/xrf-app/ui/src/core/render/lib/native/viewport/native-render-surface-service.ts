@@ -1,4 +1,4 @@
-import { OnDeactivation } from "@wirestate/core";
+import { OnDeactivation, OnDeprovision, OnProvision } from "@wirestate/core";
 import { Computed, RefObservable, runInAction } from "@wirestate/mobx";
 import { transformError } from "@xrf/errors";
 import { RenderAppliedReport, RenderFrameReport, RenderLoadReport } from "@xrf/ipc/types/xrf-renderer";
@@ -8,6 +8,7 @@ import { Nullable } from "@xrf/types";
 
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { EMPTY_RENDER_FRAME_REPORT } from "@/core/render/lib/native/contract/native-frame-report";
+import { NativeRendererHold } from "@/core/render/lib/native/viewport/native-renderer-hold";
 import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
 import { INativeViewportClick, NativeViewportTarget } from "@/core/render/lib/native/viewport/native-viewport-target";
 import { IRenderSurfaceHost } from "@/core/render/lib/surface/render-surface-host";
@@ -15,7 +16,8 @@ import { RenderSettingsService } from "@/core/render/services/render-settings.se
 
 /**
  * A service owning one native viewport: attached where a view hands it an element, told everything through reactions
- * while attached, and let go when the view or the tool goes.
+ * while attached, and let go when the view or the tool goes. It holds the renderer for as long as its tool is open, so
+ * the GPU is started by the time a view asks for the viewport and stays started between views.
  */
 export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   public abstract readonly log: Logger;
@@ -38,6 +40,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
 
   protected viewport: Nullable<NativeViewport> = null;
 
+  private readonly hold: NativeRendererHold = new NativeRendererHold(new Logger(__MODULE_NAME__));
   private target: Nullable<NativeViewportTarget> = null;
   private readonly reactions: Array<() => void> = [];
   /** Shows asked, so one replaced since neither hands its scene on nor fails. */
@@ -118,6 +121,18 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
   @OnDeactivation()
   public dispose(): void {
     this.detach();
+  }
+
+  /** Holds the renderer as the tool opens, before any view asks for the viewport. */
+  @OnProvision()
+  public holdRenderer(): void {
+    this.hold.take();
+  }
+
+  /** Lets the renderer go as the tool is left. */
+  @OnDeprovision()
+  public releaseRenderer(): void {
+    this.hold.release();
   }
 
   /**

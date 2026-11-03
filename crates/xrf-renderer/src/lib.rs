@@ -159,6 +159,7 @@ pub use crate::contract::viewport::page::render_backdrop_squares::RenderBackdrop
 pub use crate::contract::viewport::page::render_page_backdrop::RenderPageBackdrop;
 pub use crate::contract::viewport::page::render_page_plane::RenderPagePlane;
 pub use crate::contract::viewport::page::render_page_wash::RenderPageWash;
+pub use crate::contract::viewport::render_hold_id::RenderHoldId;
 pub use crate::contract::viewport::render_level_hit::RenderLevelHit;
 pub use crate::contract::viewport::render_pick::RenderPick;
 pub use crate::contract::viewport::render_rect::RenderRect;

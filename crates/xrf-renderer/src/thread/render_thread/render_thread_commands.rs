@@ -45,11 +45,22 @@ impl RenderThread {
         self.viewports.remove(&id);
         self.forget_unused_windows();
       }
+      RenderCommand::Hold { id } => {
+        self.holds.insert(id);
+        self.idle_since = None;
+        // A hold after a stop keeps the thread, as an attach does.
+        self.stopping = None;
+      }
+      RenderCommand::Release { id } => {
+        self.holds.remove(&id);
+        self.start_idle_clock();
+      }
       RenderCommand::Handled { reply } => {
         let _ = reply.send(());
       }
       RenderCommand::Stop { reply } => {
         self.viewports.clear();
+        self.holds.clear();
         self.forget_unused_windows();
         self.stopping = Some(reply);
       }
