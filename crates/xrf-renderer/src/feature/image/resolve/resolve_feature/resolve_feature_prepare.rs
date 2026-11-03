@@ -252,7 +252,11 @@ impl ResolveFeature {
   fn prepare_dlss(
     &mut self,
     &ViewPrepare {
-      device, dlss, options, ..
+      device,
+      queue,
+      dlss,
+      options,
+      ..
     }: &ViewPrepare<'_>,
     (render, display): ((u32, u32), (u32, u32)),
   ) -> bool {
@@ -279,14 +283,7 @@ impl ResolveFeature {
         Ok(upscaler) => {
           self.resolve = Some(Resolve::Dlss(Box::new(DlssResolve {
             upscaler,
-            output: FrameTexture::new(
-              device,
-              "dlss output",
-              display,
-              DlssResolve::FORMAT,
-              // NGX writes the output as storage and clears it with a transfer command.
-              wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_DST,
-            ),
+            output: DlssResolve::create_output(device, queue, "dlss output", display),
             is_reset: true,
           })));
         }
@@ -321,7 +318,13 @@ impl ResolveFeature {
   /// which super resolution does where it refuses them.
   fn prepare_ray_reconstruction(
     &mut self,
-    &ViewPrepare { device, dlss, view, .. }: &ViewPrepare<'_>,
+    &ViewPrepare {
+      device,
+      queue,
+      dlss,
+      view,
+      ..
+    }: &ViewPrepare<'_>,
     (render, display): ((u32, u32), (u32, u32)),
   ) -> bool {
     let quality: DlssQuality = self.upscaling.scale.get_dlss_quality();
@@ -348,14 +351,7 @@ impl ResolveFeature {
         Ok(reconstructor) => {
           self.resolve = Some(Resolve::RayReconstruction(Box::new(RayReconstructionResolve {
             reconstructor,
-            output: FrameTexture::new(
-              device,
-              "ray reconstruction output",
-              display,
-              DlssResolve::FORMAT,
-              // As super resolution's: NGX writes it as storage and clears it with a transfer command.
-              wgpu::TextureUsages::STORAGE_BINDING | wgpu::TextureUsages::COPY_DST,
-            ),
+            output: DlssResolve::create_output(device, queue, "ray reconstruction output", display),
             is_reset: true,
             view: Mat4::IDENTITY,
             projection: Mat4::IDENTITY,
