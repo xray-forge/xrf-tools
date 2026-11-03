@@ -9,7 +9,7 @@ import {
   RenderViewMode,
   RenderViewOptions,
 } from "@xrf/ipc/types/xrf-renderer";
-import { WorldToggles } from "@xrf/ipc/types/xrf-world";
+import { WorldSoundToggles, WorldToggles } from "@xrf/ipc/types/xrf-world";
 
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { NATIVE_RENDER_OUTPUT, TRenderOutput } from "@/core/render/lib/settings/device/render-resolution";
@@ -173,12 +173,14 @@ export function toNativeViewOptions(
 /**
  * @param switches - What the view switches of its scene, the world's part among them.
  * @param hiddenSpawnObjects - The spawned objects hidden one by one, by index among the level's, ascending.
+ * @param sound - What of the scene's sound is heard while the view listens.
  * @returns What of the level's world plays in the view: the weather's rain, bolts and wind, the campfires, the ambient
- *   effects and the spawned objects' groups, less those hidden one by one.
+ *   effects and the spawned objects' groups, less those hidden one by one, and what of its sound is heard.
  */
 export function toNativeWorldToggles(
-  switches: Omit<WorldToggles, "hiddenSpawnObjects">,
-  hiddenSpawnObjects: Array<number> = []
+  switches: Omit<WorldToggles, "hiddenSpawnObjects" | "sound">,
+  hiddenSpawnObjects: Array<number> = [],
+  sound: WorldSoundToggles = NATIVE_WORLD_SOUND_TOGGLES
 ): WorldToggles {
   return {
     hiddenSpawnObjects,
@@ -192,8 +194,17 @@ export function toNativeWorldToggles(
     isSpawnedWeapons: switches.isSpawnedWeapons,
     isThundering: switches.isThundering,
     isWindy: switches.isWindy,
+    sound: { ...sound },
   };
 }
+
+/** Every category of a scene's sound heard. */
+export const NATIVE_WORLD_SOUND_TOGGLES: WorldSoundToggles = {
+  isAmbience: true,
+  isHeard: true,
+  isMusic: true,
+  isWorld: true,
+};
 
 /**
  * One asset against a backdrop, as the texture and visual viewers both draw it: textured, at the engine's noon scale

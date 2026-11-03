@@ -13,6 +13,7 @@ import { LevelWaterAction } from "@/core/level/components/preview/toolbar/conten
 import { LevelWeatherAction } from "@/core/level/components/preview/toolbar/environment/LevelWeatherAction";
 import { LevelLightsAction } from "@/core/level/components/preview/toolbar/lighting/LevelLightsAction";
 import { LevelSunAction } from "@/core/level/components/preview/toolbar/lighting/LevelSunAction";
+import { LevelSoundAction } from "@/core/level/components/preview/toolbar/sound/LevelSoundAction";
 import { LevelHelpersAction } from "@/core/level/components/preview/toolbar/view/LevelHelpersAction";
 import { LevelOverlaysAction } from "@/core/level/components/preview/toolbar/view/LevelOverlaysAction";
 import { LevelShadingAction } from "@/core/level/components/preview/toolbar/view/LevelShadingAction";
@@ -77,6 +78,7 @@ export function LevelViewerToolbar({
           <LevelFogAction />
           <LevelRainAction />
           <LevelWindAction />
+          <LevelSoundAction />
 
           <EditorToolbarSeparator />
 

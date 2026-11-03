@@ -42,6 +42,14 @@ impl VoiceCursor {
       Self::Streamed(cursor) => cursor.render(out, step),
     }
   }
+
+  /// Moves on `frames` output frames resampled by `step`, rendering nothing; `false` once it has played out.
+  pub(crate) fn skip(&mut self, frames: usize, step: f64) -> bool {
+    match self {
+      Self::Decoded(cursor) => cursor.skip(frames, step),
+      Self::Streamed(cursor) => cursor.skip(frames, step),
+    }
+  }
 }
 
 impl From<VoiceSource> for VoiceCursor {

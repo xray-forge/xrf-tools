@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
+use glam::Vec3;
 use xrf_renderer::{
   LevelParts, RenderLevelSource, RenderSceneFeedback, RenderSceneFrame, RenderSceneId, RenderSceneUpdate,
   RenderViewFrame, RenderViewInput, RenderViewportId, RenderWorkers, RenderWorld,
@@ -13,6 +14,7 @@ use crate::contract::camera::world_input_event::WorldInputEvent;
 use crate::contract::level::world_level_problems::WorldLevelProblems;
 use crate::contract::level::world_model_pose::WorldModelPose;
 use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::sound::world_sound_report::WorldSoundReport;
 use crate::contract::weather::world_weather_control::WorldWeatherControl;
 use crate::contract::weather::world_weather_play::WorldWeatherPlay;
 use crate::contract::weather::world_weather_transition::WorldWeatherTransition;
@@ -22,6 +24,7 @@ use crate::host::world_level_source::WorldLevelSource;
 use crate::level::effects::effects_frame::EffectsFrame;
 use crate::level::level_drive::LevelDrive;
 use crate::level::world_level::WorldLevel;
+use crate::sound::sound_drive::SoundDrive;
 use crate::weather::viewport_weather::ViewportWeather;
 use crate::world_scene::WorldScene;
 use crate::world_viewport::WorldViewport;
@@ -36,6 +39,9 @@ pub struct World {
   next_scene: u32,
   /// The pool its levels and weather are read on.
   workers: RenderWorkers,
+  /// The viewport heard, as the host last named it, and the last one shown a level, heard while the host names none.
+  listener: Option<RenderViewportId>,
+  last_shown: Option<RenderViewportId>,
 }
 
 impl World {
@@ -45,7 +51,32 @@ impl World {
       scenes: HashMap::new(),
       next_scene: 1,
       workers,
+      listener: None,
+      last_shown: None,
     }
+  }
+
+  /// Hears the scene a viewport shows from its camera from the next frame on: the focused window's active pane. Every
+  /// other scene falls silent and plays on.
+  pub fn set_listener(&mut self, viewport: RenderViewportId) {
+    self.listener = Some(viewport);
+  }
+
+  /// What the scene a viewport shows plays as the world schedules it, and the scene; none for a viewport showing no
+  /// level.
+  pub fn report_sound(&mut self, viewport: RenderViewportId) -> Option<(RenderSceneId, WorldSoundReport)> {
+    let id: RenderSceneId = self.viewports.get(&viewport)?.scene?;
+    let scene: &mut WorldScene = self.scenes.get_mut(&id)?;
+
+    Some((id, scene.level.report_sound()))
+  }
+
+  /// The viewport heard: the one the host named while it is attached, else the last shown a level.
+  fn get_listener(&self) -> Option<RenderViewportId> {
+    self
+      .listener
+      .filter(|viewport| self.viewports.contains_key(viewport))
+      .or(self.last_shown.filter(|viewport| self.viewports.contains_key(viewport)))
   }
 
   /// Starts a viewport's world, publishing its camera and weather on `sink`: the one door a viewport's world opens by,
@@ -136,6 +167,7 @@ impl World {
     }
 
     self.get_viewport(viewport).scene = Some(id);
+    self.last_shown = Some(viewport);
 
     Some(id)
   }
@@ -341,6 +373,7 @@ impl RenderWorld for World {
     mut feedback: HashMap<RenderSceneId, RenderSceneFeedback>,
   ) -> HashMap<RenderSceneId, RenderSceneFrame> {
     let mut frames: HashMap<RenderSceneId, RenderSceneFrame> = HashMap::with_capacity(self.scenes.len());
+    let listener: Option<RenderViewportId> = self.get_listener();
 
     for (id, scene) in &mut self.scenes {
       // The scene told it once, so it is taken even in a frame no viewport drives the scene.
@@ -350,6 +383,28 @@ impl RenderWorld for World {
       let Some(driving) = driver.and_then(|driver| self.viewports.get(&driver)) else {
         continue;
       };
+      // The listening viewport hears the scene it shows; a scene it does not show plays on, silent, by its driver.
+      let is_audible: bool = listener.is_some_and(|listener| scene.viewers.contains(&listener));
+      let hearing: &WorldViewport = listener
+        .filter(|_| is_audible)
+        .and_then(|listener| self.viewports.get(&listener))
+        .unwrap_or(driving);
+      let sound: SoundDrive<'_> = SoundDrive {
+        scene: *id,
+        at: now,
+        is_audible,
+        eye: hearing.eye,
+        forward: hearing.look,
+        up: Vec3::Y,
+        game_time: hearing.get_game_time(),
+        toggles: hearing.toggles.sound,
+        ambients: hearing
+          .weather
+          .get_level()
+          .map(|_| hearing.weather.get_player().get_ambients()),
+        rain: hearing.get_rain_frame(None),
+        thunder: &hearing.thunders,
+      };
       let (updates, effects): (Vec<RenderSceneUpdate>, EffectsFrame) = scene.level.advance(
         now,
         LevelDrive {
@@ -358,6 +413,7 @@ impl RenderWorld for World {
           ambient: driving.get_ambient_frame(),
           eye: driving.eye,
         },
+        &sound,
       );
 
       frames.insert(
@@ -374,6 +430,11 @@ impl RenderWorld for World {
           camera_hemi: effects.camera_hemi,
         },
       );
+    }
+
+    // A strike is heard by the frame after it, or by none.
+    for world in self.viewports.values_mut() {
+      world.thunders.clear();
     }
 
     frames

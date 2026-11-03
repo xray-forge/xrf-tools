@@ -2,6 +2,7 @@ pub(crate) mod close_level;
 pub(crate) mod describe_console_defaults;
 pub(crate) mod describe_level_map;
 pub(crate) mod describe_objects;
+pub(crate) mod describe_sound;
 pub(crate) mod describe_spawn_object;
 pub(crate) mod describe_start;
 pub(crate) mod describe_surfaces;

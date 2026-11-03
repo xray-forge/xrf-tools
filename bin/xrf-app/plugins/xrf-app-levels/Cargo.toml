@@ -24,6 +24,7 @@ uuid = { workspace = true, features = ["serde", "v4"] }
 xrf-anm = { workspace = true }
 xrf-app-core = { workspace = true }
 xrf-app-render = { workspace = true }
+xrf-audio = { workspace = true }
 xrf-chunk = { workspace = true }
 xrf-dds = { workspace = true }
 xrf-dltx = { workspace = true }
@@ -42,6 +43,7 @@ xrf-math = { workspace = true }
 xrf-ogf = { workspace = true }
 xrf-particles = { workspace = true }
 xrf-renderer = { workspace = true }
+xrf-sound = { workspace = true }
 xrf-spawn = { workspace = true }
 xrf-texture = { workspace = true }
 xrf-utils = { workspace = true }

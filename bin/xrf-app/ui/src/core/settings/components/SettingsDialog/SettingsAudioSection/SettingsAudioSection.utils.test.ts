@@ -35,6 +35,17 @@ describe("SettingsAudioSection utils", () => {
     ]);
   });
 
+  it("says which device is the system's default now, and what a missing one plays", () => {
+    const headphones: AudioDeviceDescription = { id: "headphones", name: "Headphones", isDefault: false };
+
+    expect(
+      listAudioOutputOptions([SPEAKERS, headphones], { kind: "systemDefault" }).map((it) => it.description)
+    ).toEqual(["Follows the device the system plays on, as it changes", "The system's default device now", undefined]);
+    expect(listAudioOutputOptions(null, { kind: "device", id: "gone" })[1].description).toContain(
+      "the system default plays"
+    );
+  });
+
   it("says what plays, what fell back, and why nothing plays", () => {
     expect(describeAudioOutput(PLAYING)).toContain("Playing on Speakers at 48000 Hz.");
     expect(describeAudioOutput({ ...PLAYING, isFallback: true })).toContain("chosen device is missing");

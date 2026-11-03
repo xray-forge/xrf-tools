@@ -5,7 +5,7 @@ import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { RenderLoadReport, RenderViewportId } from "@xrf/ipc/types/xrf-renderer";
-import { WorldCameraPose, WorldWeatherReport } from "@xrf/ipc/types/xrf-world";
+import { WorldCameraPose, WorldSoundReport, WorldWeatherReport } from "@xrf/ipc/types/xrf-world";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
@@ -56,6 +56,18 @@ export class LevelRenderService extends NativeRenderSurfaceService {
   public readonly captures: LevelRenderCaptures;
   /** The level's weather as the viewport plays it. */
   public readonly weather: LevelRenderWeather;
+
+  /**
+   * @returns What the level's scene plays and why, as the world schedules it and the audio hears it; null while no
+   *   level is shown or no viewport is attached, and for a description that failed.
+   */
+  public describeSound(): Promise<Nullable<WorldSoundReport>> {
+    return (
+      this.viewport
+        ?.ask("describeSound", (id: RenderViewportId) => levelsCommands.describeSound(id), null)
+        .catch(() => null) ?? Promise.resolve(null)
+    );
+  }
 
   /** Which scene shows the open level, and whether it is revealed. */
   private readonly shown: LevelSceneShow = new LevelSceneShow({

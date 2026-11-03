@@ -64,6 +64,7 @@ fn weather(effects: &[&str]) -> WorldLevelWeather {
         effects: effects.iter().map(|it| String::from(*it)).collect(),
         least_period: Duration::from_secs(10),
         most_period: Duration::from_secs(20),
+        ..WorldAmbient::default()
       },
     )]),
     ambient_effects: effects

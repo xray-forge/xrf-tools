@@ -36,6 +36,8 @@ pub struct LevelAmbientEffects {
   /// Whether the next update is to play an effect at once, whatever plays or is waited for.
   is_forced: bool,
   wind: AmbientWind,
+  /// The effect started since the last take and where, in engine space, which plays its sound there.
+  started: Option<(String, Vec3)>,
 }
 
 /// The effect playing: its emitter, the names it is reported by, and whether it was stopped.
@@ -56,6 +58,7 @@ impl Default for LevelAmbientEffects {
       played: 0,
       is_forced: false,
       wind: AmbientWind::default(),
+      started: None,
     }
   }
 }
@@ -118,6 +121,11 @@ impl LevelAmbientEffects {
   /// The wind as it blows this frame.
   pub fn get_gust(&self) -> AmbientGust {
     self.wind.get_gust()
+  }
+
+  /// The effect started since the last take, by its section, and where it stands in engine space.
+  pub fn take_started(&mut self) -> Option<(String, Vec3)> {
+    self.started.take()
   }
 
   /// Ends what plays at once and plays an effect on the next update, outdoors, without waiting.
@@ -193,6 +201,7 @@ impl LevelAmbientEffects {
     let offset: Vec3 = self.draw_offset(effect, systems.engine);
 
     self.played += 1;
+    self.started = Some((chosen.to_owned(), eye + offset));
 
     // `CParticlesObject::Create`, then `play_at_pos`; an effect the library lacks plays nothing.
     let library: &ParticleLibrary = systems.library;

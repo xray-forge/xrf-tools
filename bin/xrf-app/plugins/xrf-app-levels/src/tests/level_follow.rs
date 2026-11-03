@@ -508,7 +508,7 @@ fn a_commit_to_a_file_only_a_part_read_names_that_part_stale() {
   assets.add_subscriber(log.clone());
 
   let opened: Arc<SessionSnapshot<SelectedLevel>> = open(&levels, &assets, &roots);
-  let source: LevelRenderSource = LevelRenderSource::new(Arc::clone(&opened), AssetMountState::clone(&assets));
+  let source: LevelRenderSource = LevelRenderSource::new(Arc::clone(&opened), AssetMountState::clone(&assets), None);
 
   // Each read finds nothing of what it looks for in the synthetic level, which it records as it would a file.
   assert!(source.read_details().unwrap().is_none());

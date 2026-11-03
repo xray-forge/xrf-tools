@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use glam::Vec3;
 use xrf_renderer::{
@@ -9,6 +9,7 @@ use xrf_renderer::{
 use crate::contract::level::world_level_problems::WorldLevelProblems;
 use crate::contract::level::world_model_pose::WorldModelPose;
 use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::sound::world_sound_report::WorldSoundReport;
 use crate::contract::weather::world_ambient_report::WorldAmbientReport;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_level_weather::WorldLevelWeather;
@@ -18,6 +19,9 @@ use crate::level::effects::level_effects::LevelEffects;
 use crate::level::level_drive::LevelDrive;
 use crate::level::loading::loader_slot::LoaderSlot;
 use crate::level::streaming::level_streaming::LevelStreaming;
+use crate::sound::level_sound::{EffectSound, LevelSound};
+use crate::sound::rain_sound::RainFrame;
+use crate::sound::sound_drive::SoundDrive;
 
 /// A level as a viewport's world plays it: what streams it into its scene, how its skinned objects are posed, what its
 /// effects play, by one clock running from when it began opening, and what every weather of it plays with, read once
@@ -27,6 +31,7 @@ pub struct WorldLevel {
   animation: LevelAnimation,
   effects: LevelEffects,
   weather: LoaderSlot<Arc<WorldLevelWeather>>,
+  sound: LevelSound,
   opened: Instant,
   /// What a reload took out of the scene, posted ahead of the next frame's own.
   queued: Vec<RenderSceneUpdate>,
@@ -37,6 +42,7 @@ impl WorldLevel {
     Self {
       effects: LevelEffects::start(&source, workers),
       weather: Self::read_weather(&source, workers),
+      sound: LevelSound::start(&source, workers),
       streaming: LevelStreaming::start(source, workers),
       animation: LevelAnimation::new(workers),
       opened: Instant::now(),
@@ -117,8 +123,16 @@ impl WorldLevel {
 
   /// This frame's posts to the level's scene at the frame's `now` as its driving viewport gives it, and what its effects
   /// give the scene besides.
-  pub fn advance(&mut self, now: Instant, drive: LevelDrive<'_>) -> (Vec<RenderSceneUpdate>, EffectsFrame) {
+  ///
+  /// Its sound plays on as `sound` gives the frame: the viewport it is heard by.
+  pub fn advance(
+    &mut self,
+    now: Instant,
+    drive: LevelDrive<'_>,
+    sound: &SoundDrive<'_>,
+  ) -> (Vec<RenderSceneUpdate>, EffectsFrame) {
     let mut updates: Vec<RenderSceneUpdate> = std::mem::take(&mut self.queued);
+    let clock: Duration = now.saturating_duration_since(self.opened);
 
     self
       .streaming
@@ -126,15 +140,38 @@ impl WorldLevel {
     self.animation.pose(&mut updates, self.streaming.get_source());
 
     let (campfires, motions): (&[u16], &[String]) = self.streaming.list_light_followed();
-    let effects: EffectsFrame = self.effects.advance(
-      &mut updates,
-      now.saturating_duration_since(self.opened),
-      drive,
-      campfires,
-      motions,
-    );
+    let mut effects: EffectsFrame = self.effects.advance(&mut updates, clock, drive, campfires, motions);
+    let weather: Option<Arc<WorldLevelWeather>> = self.weather.poll().cloned();
+    let started: Option<(String, Vec3)> = effects.started_effect.take();
+    let effect: Option<EffectSound<'_>> = started.as_ref().and_then(|(name, position)| {
+      let sound = weather.as_deref()?.ambient_effects.get(name)?.sound.as_ref()?;
+
+      Some(EffectSound {
+        effect: name,
+        sound,
+        position: *position,
+      })
+    });
+    let drive: SoundDrive<'_> = SoundDrive {
+      rain: RainFrame {
+        hemi: effects.open_sky,
+        ..sound.rain
+      },
+      ..*sound
+    };
+
+    self
+      .sound
+      .advance(clock, self.opened, weather.as_deref(), &drive, effect);
 
     (updates, effects)
+  }
+
+  /// What its sound plays as the world schedules it.
+  pub fn report_sound(&mut self) -> WorldSoundReport {
+    let weather: Option<Arc<WorldLevelWeather>> = self.weather.poll().cloned();
+
+    self.sound.report(weather.as_deref())
   }
 
   pub fn get_progress(&self) -> RenderStreamingProgress {

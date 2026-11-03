@@ -33,6 +33,7 @@ import { JobProgress } from "#/types/xrf-job";
 import { XraySurfaceDescriptor } from "#/types/xrf-material";
 import { RenderViewportId } from "#/types/xrf-renderer";
 import { XrayRoots } from "#/types/xrf-vfs";
+import { WorldSoundReport } from "#/types/xrf-world";
 
 /** The wire name of every command of the `levels` plugin. */
 export enum ELevelsCommand {
@@ -44,6 +45,7 @@ export enum ELevelsCommand {
   DESCRIBE_CONSOLE_DEFAULTS = "plugin:levels|describe_console_defaults",
   DESCRIBE_LEVEL_MAP = "plugin:levels|describe_level_map",
   DESCRIBE_OBJECTS = "plugin:levels|describe_objects",
+  DESCRIBE_SOUND = "plugin:levels|describe_sound",
   DESCRIBE_SPAWN_OBJECT = "plugin:levels|describe_spawn_object",
   DESCRIBE_START = "plugin:levels|describe_start",
   DESCRIBE_SURFACES = "plugin:levels|describe_surfaces",
@@ -105,6 +107,13 @@ export const levelsCommands = {
    */
   describeObjects: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelObjectsDescription>>(ELevelsCommand.DESCRIBE_OBJECTS, { sessionId }),
+  /**
+   * What the level a viewport shows plays and why: each sound, where it stands and how loud it is heard, the music, the
+   * ambient's channels, and every sound that could not play; none for a viewport showing no level. The world says what
+   * it schedules, the audio how each is heard, asked on a blocking thread since it answers from its own.
+   */
+  describeSound: (viewport: RenderViewportId) =>
+    __TAURI_INVOKE<WorldSoundReport | null>(ELevelsCommand.DESCRIBE_SOUND, { viewport }),
   /** Describe one of the open level's spawned objects, by its index among them, as a level object's spawn id names it. */
   describeSpawnObject: (sessionId: SessionId, index: number) =>
     __TAURI_INVOKE<SessionSnapshot<LevelSpawnObjectDetails>>(ELevelsCommand.DESCRIBE_SPAWN_OBJECT, {
@@ -208,6 +217,7 @@ export interface ILevelsCommandSignatures {
   >;
   [ELevelsCommand.DESCRIBE_LEVEL_MAP]: IIpcCommandSignature<typeof levelsCommands.describeLevelMap, ["sessionId"]>;
   [ELevelsCommand.DESCRIBE_OBJECTS]: IIpcCommandSignature<typeof levelsCommands.describeObjects, ["sessionId"]>;
+  [ELevelsCommand.DESCRIBE_SOUND]: IIpcCommandSignature<typeof levelsCommands.describeSound, ["viewport"]>;
   [ELevelsCommand.DESCRIBE_SPAWN_OBJECT]: IIpcCommandSignature<
     typeof levelsCommands.describeSpawnObject,
     ["sessionId", "index"]

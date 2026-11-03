@@ -48,6 +48,16 @@ pub struct WeatherThunder {
   next: Duration,
   strike: Option<Strike>,
   advanced_at: Option<Duration>,
+  /// The strikes that thundered and were not taken yet.
+  thunders: Vec<StrikeThunder>,
+}
+
+/// A strike's thunder: the bolt's section, where it struck from in engine space, and how far from the view.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StrikeThunder {
+  pub bolt: String,
+  pub position: Vec3,
+  pub distance: f32,
 }
 
 impl WeatherThunder {
@@ -58,7 +68,13 @@ impl WeatherThunder {
       next: Duration::ZERO,
       strike: None,
       advanced_at: None,
+      thunders: Vec::new(),
     }
+  }
+
+  /// Takes the strikes that thundered since the last take.
+  pub fn take_thunders(&mut self) -> std::vec::Drain<'_, StrikeThunder> {
+    self.thunders.drain(..)
   }
 
   /// Forgets any strike and when the next was due, as a weather taken afresh does.
@@ -66,6 +82,7 @@ impl WeatherThunder {
     self.is_enabled = false;
     self.strike = None;
     self.advanced_at = None;
+    self.thunders.clear();
   }
 
   /// `OnFrame`: schedules a strike as the weather starts to name a collection while `play` lets it strike, strikes
@@ -152,14 +169,17 @@ impl WeatherThunder {
     let down: Vec3 = -j;
     let size: f32 = Self::to_ground(position, down, far * 2.0);
 
-    self.next = Self::get_moment(
-      now,
-      if random.next_fraction() < settings.second_probability {
-        lasting + SECOND_DELAY
-      } else {
-        period + random.between(-period * 0.3, period * 0.3)
-      },
-    );
+    // A strike followed at once by a second is silent; any other thunders.
+    if random.next_fraction() < settings.second_probability {
+      self.next = Self::get_moment(now, lasting + SECOND_DELAY);
+    } else {
+      self.next = Self::get_moment(now, period + random.between(-period * 0.3, period * 0.3));
+      self.thunders.push(StrikeThunder {
+        bolt: name.clone(),
+        position,
+        distance,
+      });
+    }
 
     Strike {
       name: name.clone(),

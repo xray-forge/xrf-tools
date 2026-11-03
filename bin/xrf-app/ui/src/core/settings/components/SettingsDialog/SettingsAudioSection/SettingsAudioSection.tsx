@@ -3,7 +3,7 @@ import { formatPercent } from "@xrf/format";
 import { AudioSettings } from "@xrf/ipc/types/xrf-app-audio";
 import { Nullable } from "@xrf/types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { ChoiceFormRow } from "@xrf/ui/form/choice-row";
+import { ChoiceListFormRow } from "@xrf/ui/form/choice-list-row";
 import { SliderFormRow } from "@xrf/ui/form/slider-row";
 import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
 import { ReactElement } from "react";
@@ -41,7 +41,7 @@ export function SettingsAudioSection(): ReactElement {
 
   return (
     <div className={"flex flex-col gap-6"}>
-      <ChoiceFormRow
+      <ChoiceListFormRow
         label={"Output device"}
         description={describeAudioOutput(audioSettingsService.output)}
         options={listAudioOutputOptions(audioSettingsService.devices, settings.output)}

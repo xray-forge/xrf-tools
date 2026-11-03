@@ -8,6 +8,7 @@ import { InfoOutlinedIcon } from "@xrf/ui/icons/info-outlined";
 import { LayersIcon } from "@xrf/ui/icons/layers";
 import { SpeedIcon } from "@xrf/ui/icons/speed";
 import { TuneIcon } from "@xrf/ui/icons/tune";
+import { VolumeUpIcon } from "@xrf/ui/icons/volume-up";
 import { WarningAmberIcon as WarningIcon } from "@xrf/ui/icons/warning-amber";
 import { WbCloudyIcon } from "@xrf/ui/icons/wb-cloudy";
 import { cn } from "@xrf/ui/theme";
@@ -30,6 +31,7 @@ import { LevelInspectorPanel } from "@/tools/level-viewer/components/panels/Leve
 import { LevelOutlinerPanel } from "@/tools/level-viewer/components/panels/LevelOutlinerPanel";
 import { LevelProblemsPanel } from "@/tools/level-viewer/components/panels/LevelProblemsPanel";
 import { LevelRendererPanel } from "@/tools/level-viewer/components/panels/LevelRendererPanel";
+import { LevelSoundPanel } from "@/tools/level-viewer/components/panels/LevelSoundPanel";
 import { LevelSurfacesPanel } from "@/tools/level-viewer/components/panels/LevelSurfacesPanel";
 import { LevelWeatherPanel } from "@/tools/level-viewer/components/panels/LevelWeatherPanel";
 import { LevelPreviewCoordinates } from "@/tools/level-viewer/components/preview/LevelPreviewCoordinates";
@@ -92,6 +94,13 @@ export function LevelViewerLayout({
         isOpenByDefault: true,
         label: "Weather",
         render: () => <LevelWeatherPanel />,
+        side: "left",
+      },
+      {
+        icon: <VolumeUpIcon />,
+        id: ELevelViewerPanelId.SOUND,
+        label: "Sound",
+        render: () => <LevelSoundPanel />,
         side: "left",
       },
       {

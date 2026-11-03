@@ -16,7 +16,7 @@ use crate::weather::fade::weather_fader::WeatherFader;
 use crate::weather::played_weather::PlayedWeather;
 use crate::weather::playing_effect::PlayingEffect;
 use crate::weather::thunder::thunder_play::ThunderPlay;
-use crate::weather::thunder::weather_thunder::WeatherThunder;
+use crate::weather::thunder::weather_thunder::{StrikeThunder, WeatherThunder};
 use crate::weather::weather_ambients::WeatherAmbients;
 use crate::weather::weather_lighting::WeatherLighting;
 
@@ -126,6 +126,21 @@ impl WeatherPlayer {
   /// What the ambient effects play from: the ambients the keyframes played between name, none while nothing plays.
   pub fn get_ambients(&self) -> &WeatherAmbients {
     &self.ambients
+  }
+
+  /// The weather as last mixed, none while nothing plays.
+  pub fn get_mix(&self) -> Option<&WeatherMix> {
+    self.weather.as_ref().and(self.mix.as_ref())
+  }
+
+  /// Seconds since midnight.
+  pub fn get_time(&self) -> f32 {
+    self.time
+  }
+
+  /// The strikes that thundered since the last take.
+  pub fn take_thunders(&mut self) -> std::vec::Drain<'_, StrikeThunder> {
+    self.thunder.take_thunders()
   }
 
   pub fn set_control(&mut self, control: WorldWeatherControl) {

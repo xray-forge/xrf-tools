@@ -180,6 +180,124 @@ export type WorldSectorSkip = {
   skip: SectorSkip;
 };
 
+/** The volumes a level's sounds are heard at, which the viewer switches each on or off. */
+export enum EWorldSoundCategory {
+  MUSIC = "music",
+  /** Static sounds, the weather's channels, rain, thunder and ambient effects. */
+  AMBIENCE = "ambience",
+  /** Sounds at the world's objects: anomalies and campfires. */
+  WORLD = "world",
+}
+
+/** Every `EWorldSoundCategory` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type WorldSoundCategory = `${EWorldSoundCategory}`;
+
+/** One sound channel of the ambient playing and how long until its next sound. */
+export type WorldSoundChannelReport = {
+  /** The `sound_channels.ltx` section. */
+  channel: string;
+  /** Level time until its next sound. */
+  wait: number;
+};
+
+/** What plays a sound in a level. */
+export enum EWorldSoundKind {
+  /** One of the level's static sounds, `level.snd_static`. */
+  STATIC = "static",
+  /** One of the level's music tracks. */
+  MUSIC = "music",
+  /** A sound channel of the weather's ambient, around the camera. */
+  CHANNEL = "channel",
+  /** The sound an ambient effect plays where it starts. */
+  AMBIENT_EFFECT = "ambientEffect",
+  /** The rain's loop. */
+  RAIN = "rain",
+  /** A thunderbolt's strike. */
+  THUNDER = "thunder",
+}
+
+/** Every `EWorldSoundKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type WorldSoundKind = `${EWorldSoundKind}`;
+
+/** Where a level's music stands: the track playing and how far into it, or how long until the next is picked. */
+export type WorldSoundMusicReport = {
+  /** The track playing, by its entry's name, none between tracks. */
+  track: string | null;
+  /** How far it has played. */
+  position: number;
+  /** Level time until the next pick, zero while a track plays. */
+  wait: number;
+  /** Tracks the level has. */
+  tracks: number;
+};
+
+/** A sound a scene could not play, and why: its file is missing, it cannot be decoded, or no voice was left for it. */
+export type WorldSoundRefusal = {
+  /** The sound's reference. */
+  sound: string;
+  /** What would have played it, none where the audio refused it by its sound alone. */
+  kind: WorldSoundKind | null;
+  reason: string;
+};
+
+/**
+ * What a viewport's scene plays and why: each sound and how it is heard, the music, the ambient's channels, and what
+ * could not play. The world fills what it schedules; the host's audio fills the gains and its own refusals.
+ */
+export type WorldSoundReport = {
+  /** Whether the scene is heard: its viewport, or another showing it, is the one listening. */
+  isAudible: boolean;
+  /** Where it is heard from, in engine space. */
+  listener: [number | null, number | null, number | null];
+  /** Game time of day the schedules read, in milliseconds. */
+  gameTime: number;
+  voices: Array<WorldSoundVoiceReport>;
+  music: WorldSoundMusicReport | null;
+  /** The ambient whose channels play, none while the weather names none. */
+  ambient: string | null;
+  channels: Array<WorldSoundChannelReport>;
+  refused: Array<WorldSoundRefusal>;
+  /** Voices realized on the device, and the engine's targets for them. */
+  realVoices: number;
+  targets: number;
+  /** The mixer's share of the device's period, as last measured. */
+  mixerLoad: number | null;
+};
+
+/**
+ * What of a viewport's level is heard while it listens: its sound at all, and each category. A sound switched off is
+ * silent and its schedule runs on.
+ */
+export type WorldSoundToggles = {
+  isHeard: boolean;
+  isMusic: boolean;
+  isAmbience: boolean;
+  isWorld: boolean;
+};
+
+/** One sound a scene plays and how it is heard. */
+export type WorldSoundVoiceReport = {
+  /** The emitter's id, stable while the same play goes on. */
+  id: number | null;
+  /** The sound's reference. */
+  sound: string;
+  kind: WorldSoundKind;
+  category: WorldSoundCategory;
+  /** In engine space; from the listener for a 2D sound. */
+  position: [number | null, number | null, number | null];
+  is2d: boolean;
+  /** Metres from the listener; none for a 2D sound. */
+  distance: number | null;
+  /** Its linear gain after its volume, attenuation and smoothing, none until the audio has taken it. */
+  gain: number | null;
+  /** Whether it holds one of the engine's targets, so plays on the device, rather than only simulating. */
+  isReal: boolean;
+  /** Whether its sound is still being read. */
+  isLoading: boolean;
+  /** Times the audio started its voice over where its clock says, having starved or ended early. */
+  restarts: number;
+};
+
 /** How much geometry one shader table entry of a viewport's level draws, across the sectors resident. */
 export type WorldSurfaceGeometry = {
   shaderId: number;
@@ -203,7 +321,7 @@ export type WorldSurfaceSpan = {
 
 /**
  * What of the level's world plays, rather than what is drawn of it: the weather's rain, bolts and wind, the campfires,
- * the ambient effects, and which groups of the spawned objects stream in.
+ * the ambient effects, which groups of the spawned objects stream in, and what of its sound is heard.
  */
 export type WorldToggles = {
   /** Whether the weather's rain falls and wets surfaces. */
@@ -228,6 +346,8 @@ export type WorldToggles = {
    * those the viewer hides one by one.
    */
   hiddenSpawnObjects: Array<number>;
+  /** What of the level's sound is heard while the viewport listens. */
+  sound: WorldSoundToggles;
 };
 
 /** Every `kind` the `WorldViewportEvent` union is told apart by, so a switch or a comparison names one. */

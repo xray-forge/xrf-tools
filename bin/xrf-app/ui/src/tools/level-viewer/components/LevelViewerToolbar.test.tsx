@@ -43,6 +43,7 @@ describe("LevelViewerToolbar", () => {
       "level-fog-action",
       "level-rain-action",
       "level-wind-action",
+      "level-sound-action",
       "level-show-action",
       "level-particles-action",
       "level-grass-action",

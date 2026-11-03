@@ -8,17 +8,24 @@ use crate::control::server::audio_event::AudioEvent;
 use crate::control::server::audio_event_sink::AudioEventSink;
 use crate::control::server::audio_gains::AudioGains;
 use crate::control::server::control_request::ControlRequest;
+use crate::control::server::control_scene::ControlScene;
 use crate::mixer::audio_bus::AudioBus;
+use crate::render::sound_bank::SoundBank;
+use crate::render::stream_launcher::StreamLauncher;
+use crate::scene::audio_scene_report::AudioSceneReport;
 use crate::transport::audio_transport::AudioTransport;
 use crate::transport::audio_transport_command::AudioTransportCommand;
 use crate::transport::audio_transport_id::AudioTransportId;
 use crate::transport::audio_transport_state::AudioTransportState;
 
-/// What the control thread owns: the engine and the transports open on it, steered by requests and looked at once a
-/// tick. A plain state machine, so a test drives it without the thread.
+/// What the control thread owns: the engine, the transports and the scenes open on it, steered by requests and looked
+/// at once a tick. A plain state machine, so a test or an offline session drives it without the thread.
 pub(crate) struct AudioControl {
   engine: AudioEngine,
   transports: HashMap<AudioTransportId, OpenTransport>,
+  scenes: Vec<ControlScene>,
+  bank: SoundBank,
+  streams: StreamLauncher,
   events: Box<dyn AudioEventSink>,
   /// How often a playing transport's position is sent.
   position_interval: Duration,
@@ -38,13 +45,37 @@ pub(crate) enum ControlFlow {
 }
 
 impl AudioControl {
+  /// A control reading sounds on a thread of its own and streaming each on its own thread.
   pub(crate) fn new(engine: AudioEngine, events: Box<dyn AudioEventSink>, position_interval: Duration) -> Self {
+    Self::with(
+      engine,
+      events,
+      position_interval,
+      SoundBank::threaded(),
+      StreamLauncher::Threads,
+    )
+  }
+
+  pub(crate) fn with(
+    engine: AudioEngine,
+    events: Box<dyn AudioEventSink>,
+    position_interval: Duration,
+    bank: SoundBank,
+    streams: StreamLauncher,
+  ) -> Self {
     Self {
       engine,
       transports: HashMap::new(),
+      scenes: Vec::new(),
+      bank,
+      streams,
       events,
       position_interval,
     }
+  }
+
+  pub(crate) fn get_streams(&mut self) -> &mut StreamLauncher {
+    &mut self.streams
   }
 
   pub(crate) fn handle(&mut self, request: ControlRequest) -> ControlFlow {
@@ -70,8 +101,13 @@ impl AudioControl {
         }
       }
       ControlRequest::CloseTransport(id) => self.close_transport(id),
+      ControlRequest::OpenScene { mailbox, assets } => self.scenes.push(ControlScene::new(mailbox, assets)),
+      ControlRequest::DescribeScene { scene, answer } => {
+        let _ = answer.send(self.describe_scene(scene));
+      }
       ControlRequest::ShutDown => {
         self.close_transports();
+        self.close_scenes();
         return ControlFlow::ShutDown;
       }
     }
@@ -79,9 +115,12 @@ impl AudioControl {
     ControlFlow::Continue
   }
 
-  /// Frees the voices the mixer is done with and sends what changed since the last tick.
+  /// Frees the voices the mixer is done with, plays every scene on to the mixer's clock, and sends what changed of the
+  /// transports since the last tick.
   pub(crate) fn tick(&mut self, now: Instant) {
     self.engine.collect();
+    self.bank.collect();
+    self.tick_scenes();
 
     for (id, open) in &mut self.transports {
       let state: AudioTransportState = open.transport.describe(&self.engine);
@@ -103,6 +142,16 @@ impl AudioControl {
     }
   }
 
+  /// How the scene the host names `scene` plays as of the last tick, none for a scene not open.
+  pub(crate) fn describe_scene(&self, scene: u32) -> Option<AudioSceneReport> {
+    let open: &ControlScene = self.scenes.iter().find(|open| open.get_scene() == scene)?;
+
+    Some(AudioSceneReport {
+      mixer_load: self.engine.get_meter().get_load(),
+      ..open.get_render().report()
+    })
+  }
+
   /// Stops and forgets every transport.
   pub(crate) fn close_transports(&mut self) {
     let ids: Vec<AudioTransportId> = self.transports.keys().copied().collect();
@@ -110,6 +159,31 @@ impl AudioControl {
     for id in ids {
       self.close_transport(id);
     }
+  }
+
+  /// Ends every scene's voices and forgets the scenes.
+  pub(crate) fn close_scenes(&mut self) {
+    for scene in &mut self.scenes {
+      scene.close(&mut self.engine);
+    }
+
+    self.scenes.clear();
+  }
+
+  fn tick_scenes(&mut self) {
+    let (frame, rate): (u64, u32) = (self.engine.get_meter().get_frames(), self.engine.get_meter().get_rate());
+
+    self.scenes.retain_mut(|scene| {
+      if scene.is_closed() {
+        scene.close(&mut self.engine);
+
+        return false;
+      }
+
+      scene.tick(&mut self.engine, &mut self.bank, &mut self.streams, frame, rate);
+
+      true
+    });
   }
 
   fn set_gains(&mut self, gains: AudioGains) {

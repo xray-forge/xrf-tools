@@ -194,6 +194,11 @@ export class NativeViewport {
     this.call("playAmbientEffect", (id: RenderViewportId) => renderCommands.playAmbientEffect(id));
   }
 
+  /** Hears the scene the viewport shows from its camera; every other scene falls silent and plays on. */
+  public listen(): void {
+    this.call("listenViewport", (id: RenderViewportId) => renderCommands.listenViewport(id));
+  }
+
   /**
    * Names what the viewport's level draws under a point.
    *

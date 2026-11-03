@@ -38,15 +38,24 @@ impl StereoFrame {
     }
   }
 
-  /// The four-point, third-order Hermite curve through `current` and `next` at `t` in `[0, 1)`, steered by the frames
-  /// either side: smooth enough for the engines' 22 and 44.1 kHz sounds on a 48 kHz device, cheap enough per voice.
+  /// [`hermite`] in each channel.
   pub(crate) fn hermite(previous: Self, current: Self, next: Self, after: Self, t: f32) -> Self {
-    let slope: Self = (next - previous) * 0.5;
-    let curve: Self = previous - current * 2.5 + next * 2.0 - after * 0.5;
-    let cubic: Self = (after - previous) * 0.5 + (current - next) * 1.5;
-
-    ((cubic * t + curve) * t + slope) * t + current
+    Self {
+      left: hermite(previous.left, current.left, next.left, after.left, t),
+      right: hermite(previous.right, current.right, next.right, after.right, t),
+    }
   }
+}
+
+/// The four-point, third-order Hermite curve through `current` and `next` at `t` in `[0, 1)`, steered by the samples
+/// either side: smooth enough for the engines' 22 and 44.1 kHz sounds on a 48 kHz device, cheap enough per voice.
+#[inline]
+pub(crate) fn hermite(previous: f32, current: f32, next: f32, after: f32, t: f32) -> f32 {
+  let slope: f32 = (next - previous) * 0.5;
+  let curve: f32 = previous - current * 2.5 + next * 2.0 - after * 0.5;
+  let cubic: f32 = (after - previous) * 0.5 + (current - next) * 1.5;
+
+  ((cubic * t + curve) * t + slope) * t + current
 }
 
 impl Add for StereoFrame {

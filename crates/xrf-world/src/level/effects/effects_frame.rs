@@ -13,4 +13,8 @@ pub struct EffectsFrame {
   pub motions: HashMap<String, (Mat4, Vec3)>,
   /// The camera's smoothed hemi, none where the level has no estimator.
   pub camera_hemi: Option<f32>,
+  /// How open to the sky the camera stands for the rain's loop, none where the level has no estimator.
+  pub open_sky: Option<f32>,
+  /// The ambient effect started this frame, by its section, and where it stands in engine space.
+  pub started_effect: Option<(String, Vec3)>,
 }

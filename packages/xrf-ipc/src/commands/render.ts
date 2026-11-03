@@ -46,6 +46,7 @@ export enum ERenderCommand {
   DETACH_VIEWPORT = "plugin:render|detach_viewport",
   HOLD = "plugin:render|hold",
   LIST_BACKENDS = "plugin:render|list_backends",
+  LISTEN_VIEWPORT = "plugin:render|listen_viewport",
   LOCATE_SPAWN_OBJECT = "plugin:render|locate_spawn_object",
   MARK_PROFILE = "plugin:render|mark_profile",
   MEASURE_SURFACES = "plugin:render|measure_surfaces",
@@ -113,6 +114,11 @@ export const renderCommands = {
    * only those; each is probed off the render thread.
    */
   listBackends: () => __TAURI_INVOKE<Array<RenderBackendAvailability>>(ERenderCommand.LIST_BACKENDS),
+  /**
+   * Hear the scene a viewport shows from its camera: the focused window's active pane. Every other scene falls silent
+   * and plays on.
+   */
+  listenViewport: (viewport: RenderViewportId) => __TAURI_INVOKE<void>(ERenderCommand.LISTEN_VIEWPORT, { viewport }),
   /**
    * Find a spawned object's bounding sphere in a viewport's level, centre then radius in renderer space; none until
    * its model is drawn.
@@ -206,6 +212,7 @@ export interface IRenderCommandSignatures {
   [ERenderCommand.DETACH_VIEWPORT]: IIpcCommandSignature<typeof renderCommands.detachViewport, ["viewport"]>;
   [ERenderCommand.HOLD]: IIpcCommandSignature<typeof renderCommands.hold, []>;
   [ERenderCommand.LIST_BACKENDS]: IIpcCommandSignature<typeof renderCommands.listBackends, []>;
+  [ERenderCommand.LISTEN_VIEWPORT]: IIpcCommandSignature<typeof renderCommands.listenViewport, ["viewport"]>;
   [ERenderCommand.LOCATE_SPAWN_OBJECT]: IIpcCommandSignature<
     typeof renderCommands.locateSpawnObject,
     ["viewport", "object"]
