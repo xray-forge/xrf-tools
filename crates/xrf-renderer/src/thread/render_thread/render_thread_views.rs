@@ -588,7 +588,7 @@ impl RenderThread {
     let jitter: Vec2 = view_state.next_jitter(
       options,
       resolved.0 as f32 / drawn_rect.width.max(1) as f32,
-      gpu.context.dlss.as_ref(),
+      gpu.context.dlss.get(),
     );
     let drawn: CameraView = view.jittered(jitter, Vec2::new(drawn_rect.width as f32, drawn_rect.height as f32));
     let motion: ViewMotion = view_state.next_motion(&view, drawn.get_view_projection());
@@ -646,7 +646,7 @@ impl RenderThread {
         &ViewPrepare {
           device,
           queue,
-          dlss: gpu.context.dlss.as_ref(),
+          dlss: gpu.context.dlss.get(),
           passes: gpu.get_level_passes(shaders),
           view: &view,
           drawn: (drawn_rect.width, drawn_rect.height),

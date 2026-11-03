@@ -327,7 +327,7 @@ impl RenderThread {
     };
     let _ = gpu.context.device.poll(wgpu::PollType::Poll);
     let (dlss, ray_reconstruction): (RenderDlssAvailability, RenderDlssAvailability) =
-      match (Dlss::IS_BUILT, &gpu.context.dlss) {
+      match (Dlss::IS_BUILT, gpu.context.dlss.get()) {
         (false, _) => (RenderDlssAvailability::Unbuilt, RenderDlssAvailability::Unbuilt),
         (true, Some(dlss)) => (
           RenderDlssAvailability::Available,
