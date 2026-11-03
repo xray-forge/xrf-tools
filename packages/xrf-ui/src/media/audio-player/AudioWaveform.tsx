@@ -8,8 +8,6 @@ import { useForkRef } from "#/material/utils";
 import { useElementSize } from "#/react/element-size";
 import { cn } from "#/theme";
 
-import { useAudioSamples } from "./use-audio-samples";
-
 /** One peak per two pixels preserves short transients without crowding the strip. */
 const PEAKS_PER_PIXEL: number = 0.5;
 
@@ -17,8 +15,8 @@ const PEAKS_PER_PIXEL: number = 0.5;
 const SEEK_STEP: number = 5;
 
 interface IAudioWaveformProps {
-  src: string;
-  bytes?: Nullable<Uint8Array>;
+  /** The sound's loudest sample per stretch, reduced here to the strip's width; null while unknown. */
+  peaks: Nullable<Float32Array>;
   position: number;
   duration: number;
   onSeek: (position: number) => void;
@@ -27,8 +25,7 @@ interface IAudioWaveformProps {
 
 /** Resizable waveform and keyboard-accessible seek surface for the current sound. */
 export function AudioWaveform({
-  src,
-  bytes,
+  peaks: soundPeaks,
   position,
   duration,
   onSeek,
@@ -40,14 +37,13 @@ export function AudioWaveform({
 
   const canvasRef = useRef<Nullable<HTMLCanvasElement>>(null);
   const [measure, size] = useElementSize<HTMLCanvasElement>();
-  const samples: Nullable<Float32Array> = useAudioSamples(src, bytes);
 
   const length: number = Number.isFinite(duration) ? Math.max(0, duration) : 0;
   const current: number = Number.isFinite(position) ? clamp(position, 0, length) : 0;
   const width: number = size?.width ?? 0;
   const peaks: Nullable<Float32Array> = useMemo(
-    () => (samples && width > 0 ? extractPeaks(samples, Math.max(1, Math.floor(width * PEAKS_PER_PIXEL))) : null),
-    [samples, width]
+    () => (soundPeaks && width > 0 ? extractPeaks(soundPeaks, Math.max(1, Math.floor(width * PEAKS_PER_PIXEL))) : null),
+    [soundPeaks, width]
   );
 
   const attach = useForkRef(canvasRef, measure);

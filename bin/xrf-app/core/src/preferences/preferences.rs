@@ -7,31 +7,28 @@ use serde::de::DeserializeOwned;
 use serde_json::Value;
 use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_store::{Store, StoreBuilder};
-use xrf_app_core::TauriResult;
-use xrf_app_core::directories::AppDirectories;
 
+use crate::TauriResult;
+use crate::directories::AppDirectories;
 use crate::preferences::preference_key::PreferenceKey;
+use crate::preferences::preference_store::PreferenceStore;
 
 /// What the backend remembers between runs, as opposed to what the document keeps in its own local storage: kept in the
 /// application's own data, beside the executable for a portable install.
-pub struct Preferences<R: Runtime> {
-  store: Arc<Store<R>>,
+///
+/// Every opener shares one store: the store plugin hands back the instance already open for the file, so the window
+/// and each plugin open their own and never overwrite another's writes.
+#[derive(Clone)]
+pub struct Preferences {
+  store: Arc<dyn PreferenceStore>,
 }
 
-impl<R: Runtime> Clone for Preferences<R> {
-  fn clone(&self) -> Self {
-    Self {
-      store: Arc::clone(&self.store),
-    }
-  }
-}
-
-impl<R: Runtime> Preferences<R> {
+impl Preferences {
   /// How long a write waits for a quieter moment before it reaches the disk.
   const AUTO_SAVE_DEBOUNCE: Duration = Duration::from_secs(1);
 
   /// Open the preference file, which is created by its first write.
-  pub fn open(application: &AppHandle<R>) -> TauriResult<Self> {
+  pub fn open<R: Runtime>(application: &AppHandle<R>) -> TauriResult<Self> {
     let path: PathBuf = application
       .state::<AppDirectories>()
       .get_preferences_file()

@@ -10,6 +10,9 @@ mod core_domains;
 #[path = "../plugins/xrf-app-render/src/ipc/domains.rs"]
 mod render_domains;
 #[macro_use]
+#[path = "../plugins/xrf-app-audio/src/ipc/domains.rs"]
+mod audio_domains;
+#[macro_use]
 #[path = "../plugins/xrf-app-archives/src/ipc/domains.rs"]
 mod archives_domains;
 #[macro_use]

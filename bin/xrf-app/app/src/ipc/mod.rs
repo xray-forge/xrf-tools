@@ -12,6 +12,7 @@ macro_rules! for_each_plugin_crate {
     $consumer!(
       xrf_app_core,
       xrf_app_render,
+      xrf_app_audio,
       xrf_app_archives,
       xrf_app_configs,
       xrf_app_dialogs,

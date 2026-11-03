@@ -54,14 +54,17 @@ export class ArchiveContentReader {
     };
   }
 
-  /** Reads a sound as the description the engine would read plus the bytes the webview plays. */
+  /**
+   * Reads a sound as the description the engine would read; its player opens the sound itself, by the same session
+   * and name, as the application's audio plays it.
+   */
   private async readAudio(sessionId: SessionId, entry: IArchiveEntry): Promise<TArchiveContent> {
-    const [audio, bytes] = await Promise.all([
-      archivesCommands.describeAudio(sessionId, entry.name),
-      fetchBulk(archivesBulkRoutes.readEntry(sessionId, entry.name)),
-    ]);
-
-    return { bytes: new Uint8Array(bytes), descriptor: audio.value, kind: "audio" };
+    return {
+      descriptor: (await archivesCommands.describeAudio(sessionId, entry.name)).value,
+      kind: "audio",
+      name: entry.name,
+      sessionId,
+    };
   }
 
   /** Reads a texture as its source shape plus the png the backend decoded it into. */

@@ -1,5 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { AsyncState } from "@xrf/async";
+import { archivesCommands } from "@xrf/ipc/commands/archives";
 import { AudioDescriptor } from "@xrf/ipc/types/xrf-app-archives";
 import { Nullable } from "@xrf/types";
 import { EditorPanelProperty } from "@xrf/ui/editor/panel";
@@ -7,22 +8,24 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CenteredColumn } from "@xrf/ui/layout/centered-column";
 import { DelayedProgress } from "@xrf/ui/layout/delayed-progress";
 import { EmptyState } from "@xrf/ui/layout/empty-state";
+import { Alert } from "@xrf/ui/material/alert";
 import { Divider } from "@xrf/ui/material/divider";
 import { Typography } from "@xrf/ui/material/typography";
 import { AudioPlayer } from "@xrf/ui/media/audio-player";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
-import { TArchiveBytes, TArchiveContent, useLastContent } from "@/core/archive/lib";
-import { useAssetUrl } from "@/core/assets/lib/use-asset-url";
-import { IMediaVolume, useMediaVolume } from "@/core/ui/media/use-media-volume";
+import { TArchiveContent, useLastContent } from "@/core/archive/lib";
+import { IAudioPreview, useAudioPreview } from "@/core/audio/lib/use-audio-preview";
+import { AudioSettingsService } from "@/core/audio/services/audio-settings.service";
 import { ArchivePreviewError } from "@/tools/archives-explorer/components/editor/preview/ArchivePreviewError/ArchivePreviewError";
 import { ArchivePreviewService } from "@/tools/archives-explorer/services/archive-preview";
 
 import { formatAudioChannels } from "./ArchiveAudioPreview.utils";
 
 /**
- * Plays an archived sound and reports what the engine would read from it.
+ * Plays an archived sound through the application's audio, on the Previews volume, and reports what the engine would
+ * read from it.
  */
 export function ArchiveAudioPreview({
   "data-testid": dataTestId = "archive-audio-preview",
@@ -30,18 +33,24 @@ export function ArchiveAudioPreview({
   className,
 }: BaseComponentProps): ReactElement {
   const previewService: ArchivePreviewService = useInjection(ArchivePreviewService);
+  const audioSettingsService: AudioSettingsService = useInjection(AudioSettingsService);
   const content: AsyncState<Nullable<TArchiveContent>> = previewService.content;
 
-  // The previous sound stays on screen while the next one loads, so the transport is never torn down mid-selection.
+  // The previous sound stays on screen while the next one loads, so the player is never torn down mid-selection.
   const audio: Nullable<TArchiveContent & { kind: "audio" }> = useLastContent(
     content.value?.kind === "audio" ? content.value : null,
     content.isLoading
   );
 
   const descriptor: Nullable<AudioDescriptor> = audio?.descriptor ?? null;
-  const bytes: Nullable<TArchiveBytes> = audio?.bytes ?? null;
-  const url: Nullable<string> = useAssetUrl(`${__MODULE_NAME__}/archive-audio`, bytes, descriptor?.mediaType);
-  const volume: IMediaVolume = useMediaVolume();
+  const preview: IAudioPreview = useAudioPreview(
+    audio
+      ? {
+          key: `${audio.sessionId}/${audio.name}`,
+          open: () => archivesCommands.openAudioPreview(audio.sessionId, audio.name),
+        }
+      : null
+  );
 
   if (content.error) {
     return (
@@ -55,7 +64,7 @@ export function ArchiveAudioPreview({
     );
   }
 
-  if (!descriptor || !url) {
+  if (!descriptor) {
     return content.isLoading ? (
       <DelayedProgress data-testid={dataTestId} id={id} className={className} />
     ) : (
@@ -76,7 +85,17 @@ export function ArchiveAudioPreview({
       className={cn("justify-center-safe gap-5 overflow-y-auto p-6", className)}
     >
       <div className={"w-full max-w-160 shrink-0"}>
-        <AudioPlayer src={url} bytes={bytes} volume={volume.value} onVolumeChange={volume.set} />
+        {preview.error ? <Alert severity={"error"}>{preview.error}</Alert> : null}
+
+        {preview.transport ? (
+          <AudioPlayer
+            transport={preview.transport}
+            volume={audioSettingsService.previewsVolume}
+            onVolumeChange={audioSettingsService.setPreviewsVolume}
+          />
+        ) : preview.error ? null : (
+          <DelayedProgress />
+        )}
       </div>
 
       <div className={"w-full max-w-160 shrink-0"}>

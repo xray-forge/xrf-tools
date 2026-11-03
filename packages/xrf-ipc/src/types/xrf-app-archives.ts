@@ -1298,8 +1298,6 @@ export type AudioDescriptor = {
   sampleRate: number | null;
   /** Absent for a sound carrying no recognized X-Ray comment, where the engine uses its own defaults. */
   parameters: AudioSourceParameters | null;
-  /** What to hand the bytes over as, taken from the extension rather than from the content. */
-  mediaType: string;
 };
 
 /** The X-Ray source parameters carried in a sound's first vorbis comment. */

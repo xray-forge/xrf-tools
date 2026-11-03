@@ -47,6 +47,7 @@ pub fn configure(attributes: tauri_build::Attributes) -> tauri_build::Attributes
   let plugins: Vec<Vec<(&str, tauri_build::InlinedPlugin)>> = vec![
     for_each_core_domain!(inline_plugins),
     for_each_render_domain!(inline_plugins),
+    for_each_audio_domain!(inline_plugins),
     for_each_archives_domain!(inline_plugins),
     for_each_configs_domain!(inline_plugins),
     for_each_dialogs_domain!(inline_plugins),

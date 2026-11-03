@@ -20,6 +20,7 @@ macro_rules! for_each_archives_domain {
         describe_audio => crate::preview::commands::describe_audio::archives_describe_audio,
         describe_texture => crate::preview::commands::describe_texture::archives_describe_texture,
         describe_image => crate::preview::commands::describe_image::archives_describe_image,
+        open_audio_preview => crate::preview::commands::open_audio_preview::archives_open_audio_preview,
         default_pack_config => crate::pack::commands::default_pack_config::archives_default_pack_config,
         export_pack_config => crate::pack::commands::export_pack_config::archives_export_pack_config,
         import_pack_config => crate::pack::commands::import_pack_config::archives_import_pack_config,

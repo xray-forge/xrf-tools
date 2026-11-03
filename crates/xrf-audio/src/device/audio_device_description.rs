@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AudioDeviceDescription {
-  /// The device's id, stable across runs, which [`crate::AudioOutputChoice::Device`] names it by.
+  /// The device's id, stable across runs, which an output choice of one device names it by.
   pub id: String,
   pub name: String,
   /// Whether the system plays on it by default now.

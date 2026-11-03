@@ -3,6 +3,7 @@
 use tauri::Runtime;
 use tauri::plugin::TauriPlugin;
 use xrf_app_archives::plugin::ArchivesPlugin;
+use xrf_app_audio::plugin::AudioPlugin;
 use xrf_app_configs::plugin::ConfigsPlugin;
 use xrf_app_core::plugins::{AssetsPlugin, JobsPlugin, SessionsPlugin, TransportPlugin};
 use xrf_app_dialogs::plugin::DialogsPlugin;
@@ -17,11 +18,12 @@ use xrf_app_textures::plugin::TexturesPlugin;
 use xrf_app_translations::plugin::TranslationsPlugin;
 use xrf_app_visuals::plugin::VisualsPlugin;
 
-/// The plugins this application registers, set up in this order: render first, since a domain's setup takes the units
-/// it manages, then core's own plugins and every domain.
+/// The plugins this application registers, set up in this order: the infrastructure plugins render and audio first,
+/// since a domain's setup takes the units they manage, then core's own plugins and every domain.
 pub(crate) fn domain_plugins<R: Runtime>() -> Vec<TauriPlugin<R>> {
   vec![
     RenderPlugin::init(),
+    AudioPlugin::init(),
     AssetsPlugin::init(),
     ArchivesPlugin::init(),
     ConfigsPlugin::init(),

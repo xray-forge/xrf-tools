@@ -12,6 +12,7 @@ import { SettingsDialogService } from "@/core/settings/services/settings-dialog"
 import { inline } from "@/lib/callbacks/inline";
 
 import { SettingsAboutSection } from "./SettingsAboutSection";
+import { SettingsAudioSection } from "./SettingsAudioSection";
 import { SettingsGeneralSection } from "./SettingsGeneralSection";
 import { SettingsIpcSection } from "./SettingsIpcSection";
 import { SettingsJobsSection } from "./SettingsJobsSection";
@@ -47,6 +48,8 @@ export function SettingsDialog(): ReactElement {
                 return <SettingsGeneralSection />;
               case ESettingsSection.RENDER:
                 return <SettingsRenderSection />;
+              case ESettingsSection.AUDIO:
+                return <SettingsAudioSection />;
               case ESettingsSection.STORAGE:
                 return <SettingsStorageSection />;
               case ESettingsSection.IPC:

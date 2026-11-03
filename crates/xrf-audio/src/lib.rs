@@ -7,6 +7,7 @@ pub(crate) mod mixer;
 pub(crate) mod offline;
 #[cfg(test)]
 mod tests;
+pub(crate) mod transport;
 pub(crate) mod voice;
 
 pub use crate::control::audio_engine::AudioEngine;
@@ -30,6 +31,9 @@ pub use crate::device::audio_output_status::AudioOutputStatus;
 pub use crate::mixer::audio_bus::AudioBus;
 pub use crate::mixer::audio_mixer::AudioMixer;
 pub use crate::offline::offline_render::OfflineRender;
+pub use crate::transport::audio_transport::AudioTransport;
+pub use crate::transport::audio_transport_playback::AudioTransportPlayback;
+pub use crate::transport::audio_transport_state::AudioTransportState;
 pub use crate::voice::audio_voice_id::AudioVoiceId;
 pub use crate::voice::audio_voice_playback::AudioVoicePlayback;
 pub use crate::voice::audio_voice_state::AudioVoiceState;
