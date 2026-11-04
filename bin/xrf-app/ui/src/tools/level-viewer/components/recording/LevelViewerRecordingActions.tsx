@@ -1,7 +1,7 @@
 import { ReactElement } from "react";
 
 import { useShellMenus } from "@/core/shell/contributions";
-import { IMenuContribution } from "@/core/shell/menu/lib";
+import { EMenuEntryKind, IMenuContribution } from "@/core/shell/menu/lib";
 import { RECORD_LEVEL_KEYBIND_COMMAND } from "@/tools/level-viewer/commands";
 import { LEVEL_VIEWER_FILE_MENU_EXTENSION } from "@/tools/level-viewer/menus";
 
@@ -11,7 +11,7 @@ export function LevelViewerRecordingActions(): ReactElement {
     (): Array<IMenuContribution> => [
       {
         section: LEVEL_VIEWER_FILE_MENU_EXTENSION.sections.screenshot,
-        entries: [{ kind: "command", command: RECORD_LEVEL_KEYBIND_COMMAND }],
+        entries: [{ kind: EMenuEntryKind.COMMAND, command: RECORD_LEVEL_KEYBIND_COMMAND }],
       },
     ],
     []

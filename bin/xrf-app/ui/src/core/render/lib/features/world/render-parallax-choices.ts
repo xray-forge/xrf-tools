@@ -59,6 +59,14 @@ export function formatParallaxStrength(strength: number): string {
   return formatPercent(strength);
 }
 
+/**
+ * @param parallax - The parallax a view resolves to.
+ * @returns Whether it displaces anything: the enhanced march, or the engine's steep parallax while that is on.
+ */
+export function isRenderParallaxDrawn(parallax: TRenderParallaxSettings): boolean {
+  return parallax.isSteep || parallax.mode === ERenderParallaxMode.ENHANCED;
+}
+
 /** Whether the parallax is the engine's steep parallax alone, which none of the enhanced march's values tune. */
 function isEngineParallax(parallax: TRenderParallaxSettings): boolean {
   return parallax.mode === ERenderParallaxMode.ENGINE;

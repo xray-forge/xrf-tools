@@ -1,66 +1,44 @@
-import { KeyboardEvent, ReactElement } from "react";
+import { PointerEventHandler, ReactElement, ReactNode } from "react";
 
-import { Divider } from "#/material/divider";
-import { MenuList } from "#/material/menu";
 import { Paper } from "#/material/paper";
 import { Popper } from "#/material/popper";
 
-import { IMenubarItem, IMenubarMenu } from "./menubar-menu";
-import { MenubarRow } from "./MenubarRow";
+/** Where an open menu stands: under its menubar button, or beside the row opening it as a submenu. */
+export type TMenubarPopupPlacement = "bottom-start" | "right-start";
 
-/** Sets the menu a little below its button, as a popover keeps clear of what opened it. */
-const POPUP_MODIFIERS: Array<{ name: string; options: { offset: [number, number] } }> = [
-  { name: "offset", options: { offset: [0, 4] } },
-];
+/**
+ * Sets a menu a little below its button, as a popover keeps clear of what opened it, and a submenu's first row level
+ * with the row opening it, past the list's padding and the surface's border.
+ */
+const POPUP_MODIFIERS: Record<
+  TMenubarPopupPlacement,
+  Array<{ name: string; options: { offset: [number, number] } }>
+> = {
+  "bottom-start": [{ name: "offset", options: { offset: [0, 4] } }],
+  "right-start": [{ name: "offset", options: { offset: [-5, 2] } }],
+};
 
 interface IMenubarPopupProps {
-  menu: IMenubarMenu;
   anchor: HTMLElement;
-  /** Puts the caret on the first row, for a menu opened from the keyboard; a pointer opening focuses only the list. */
-  isFirstRowFocused: boolean;
-  onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
-  onChoose: (item: IMenubarItem) => void;
+  placement: TMenubarPopupPlacement;
+  children: ReactNode;
+  onPointerEnter?: PointerEventHandler<HTMLElement>;
 }
 
 /**
- * The open menu under its menubar button: its sections, a divider between each.
+ * The surface an open menu is drawn on, over everything and beside what opened it.
  */
-export function MenubarPopup({
-  menu,
-  anchor,
-  isFirstRowFocused,
-  onKeyDown,
-  onChoose,
-}: IMenubarPopupProps): ReactElement {
-  // Rows and dividers as one flat list: `MenuList` walks its direct children to find the row to focus, and refuses a
-  // fragment among them.
-  const rows: Array<ReactElement> = menu
-    .getSections()
-    .flatMap((items: ReadonlyArray<IMenubarItem>, index: number) => [
-      ...(index > 0 ? [<Divider key={`divider-${index}`} className={"my-1"} />] : []),
-      ...items.map((item: IMenubarItem) => <MenubarRow key={item.id} item={item} onChoose={onChoose} />),
-    ]);
-
+export function MenubarPopup({ anchor, placement, children, onPointerEnter }: IMenubarPopupProps): ReactElement {
   return (
     <Popper
       open={true}
       anchorEl={anchor}
-      placement={"bottom-start"}
-      modifiers={POPUP_MODIFIERS}
+      placement={placement}
+      modifiers={POPUP_MODIFIERS[placement]}
       sx={{ zIndex: "modal" }}
     >
-      <Paper className={"rounded-surface border border-divider"} elevation={8}>
-        <MenuList
-          className={"min-w-44 py-1"}
-          aria-label={menu.label}
-          autoFocus={!isFirstRowFocused}
-          autoFocusItem={isFirstRowFocused}
-          dense={true}
-          variant={"menu"}
-          onKeyDown={onKeyDown}
-        >
-          {rows}
-        </MenuList>
+      <Paper className={"rounded-surface border border-divider"} elevation={8} onPointerEnter={onPointerEnter}>
+        {children}
       </Paper>
     </Popper>
   );

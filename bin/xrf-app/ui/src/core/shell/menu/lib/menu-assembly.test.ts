@@ -4,7 +4,7 @@ import { EToolId } from "@/core/routing/tool";
 
 import { assembleMenus, IAssembledMenu } from "./menu-assembly";
 import { defineMenu, IMenu } from "./menu-descriptor";
-import { IMenuContribution, TMenuEntry } from "./menu-entry";
+import { EMenuEntryKind, IMenuContribution, TMenuEntry } from "./menu-entry";
 import { defineMenuExtension, IMenuExtension } from "./menu-extension";
 
 const FIRST: IMenu<"top" | "bottom"> = defineMenu({ id: "test/first", label: "First", sections: ["top", "bottom"] });
@@ -17,13 +17,13 @@ const SLOTTED: IMenu<"top" | "bottom"> = defineMenu({
 });
 
 function action(id: string): TMenuEntry {
-  return { kind: "action", id, label: id, onSelect: jest.fn() };
+  return { kind: EMenuEntryKind.ACTION, id, label: id, onSelect: jest.fn() };
 }
 
 function toIds(menus: ReadonlyArray<IAssembledMenu>): Array<Array<Array<string>>> {
   return menus.map((it: IAssembledMenu) =>
     it.sections.map((entries: ReadonlyArray<TMenuEntry>) =>
-      entries.map((entry: TMenuEntry) => (entry.kind === "command" ? entry.command.id : entry.id))
+      entries.map((entry: TMenuEntry) => (entry.kind === EMenuEntryKind.COMMAND ? entry.command.id : entry.id))
     )
   );
 }

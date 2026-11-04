@@ -14,7 +14,7 @@ import { toAssetLocation } from "@/core/assets/lib";
 import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { useShellMenus, useShellPanels, useShellStatus } from "@/core/shell/contributions";
 import { useToolBusy } from "@/core/shell/lifecycle";
-import { IMenuContribution } from "@/core/shell/menu/lib";
+import { EMenuEntryKind, IMenuContribution } from "@/core/shell/menu/lib";
 import { RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND } from "@/tools/sprite-equipment-editor/commands";
 import { SPRITE_EQUIPMENT_EDITOR_PANELS } from "@/tools/sprite-equipment-editor/components/panels/sprite-equipment-editor-panels";
 import { SPRITE_EQUIPMENT_EDITOR_MENU } from "@/tools/sprite-equipment-editor/menus";
@@ -58,7 +58,7 @@ export function EquipmentSpriteEditor({
     (): Array<IMenuContribution> => [
       {
         section: SPRITE_EQUIPMENT_EDITOR_MENU.sections.sprite,
-        entries: [{ kind: "command", command: RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND }],
+        entries: [{ kind: EMenuEntryKind.COMMAND, command: RELOAD_EQUIPMENT_SPRITE_KEYBIND_COMMAND }],
       },
     ],
     []

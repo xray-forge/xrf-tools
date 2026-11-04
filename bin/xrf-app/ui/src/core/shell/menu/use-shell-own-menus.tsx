@@ -15,7 +15,7 @@ import { ESettingsSection } from "@/core/settings/lib/settings-section";
 import { SettingsDialogService } from "@/core/settings/services/settings-dialog";
 import { CLOSE_TOOL_KEYBIND_COMMAND } from "@/core/shell/commands";
 import { useShellContribution } from "@/core/shell/contributions";
-import { IMenuContribution } from "@/core/shell/menu/lib";
+import { EMenuEntryKind, IMenuContribution } from "@/core/shell/menu/lib";
 import { FILE_MENU, HELP_MENU } from "@/core/shell/menu/menus";
 import { resolveAppWindow } from "@/lib/tauri/app-window";
 
@@ -32,14 +32,14 @@ export function useShellOwnMenus(): void {
     () => [
       {
         section: FILE_MENU.sections.settings,
-        entries: [{ kind: "command", command: OPEN_SETTINGS_KEYBIND_COMMAND }],
+        entries: [{ kind: EMenuEntryKind.COMMAND, command: OPEN_SETTINGS_KEYBIND_COMMAND }],
       },
       {
         section: FILE_MENU.sections.close,
         entries: [
-          { kind: "command", command: CLOSE_TOOL_KEYBIND_COMMAND },
+          { kind: EMenuEntryKind.COMMAND, command: CLOSE_TOOL_KEYBIND_COMMAND },
           {
-            kind: "action",
+            kind: EMenuEntryKind.ACTION,
             id: "shell/exit",
             label: "Exit",
             isDisabled: !appWindow,
@@ -51,20 +51,20 @@ export function useShellOwnMenus(): void {
       },
       {
         section: HELP_MENU.sections.help,
-        entries: [{ kind: "command", command: OPEN_TOOL_HELP_KEYBIND_COMMAND }],
+        entries: [{ kind: EMenuEntryKind.COMMAND, command: OPEN_TOOL_HELP_KEYBIND_COMMAND }],
       },
       {
         section: HELP_MENU.sections.about,
         entries: [
           {
-            kind: "action",
+            kind: EMenuEntryKind.ACTION,
             id: "shell/open-repository",
             label: "Source",
             icon: <GitHubIcon />,
             onSelect: onOpenRepository,
           },
           {
-            kind: "action",
+            kind: EMenuEntryKind.ACTION,
             id: "settings/open-about",
             label: "About",
             icon: <InfoOutlinedIcon />,

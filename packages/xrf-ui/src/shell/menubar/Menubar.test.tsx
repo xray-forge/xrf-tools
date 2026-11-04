@@ -4,13 +4,17 @@ import { userEvent } from "@testing-library/user-event";
 import { ReactElement, useState } from "react";
 
 import { Menubar } from "./Menubar";
-import { IMenubarItem, IMenubarMenu } from "./menubar-menu";
+import { IMenubarItem, IMenubarMenu, IMenubarSubmenu, TMenubarEntry } from "./menubar-menu";
 
 function item(label: string, overrides: Partial<IMenubarItem> = {}): IMenubarItem {
   return { id: label.toLowerCase(), label, onSelect: jest.fn(), ...overrides };
 }
 
-function menu(label: string, sections: ReadonlyArray<ReadonlyArray<IMenubarItem>>): IMenubarMenu {
+function submenu(label: string, sections: ReadonlyArray<ReadonlyArray<TMenubarEntry>>): IMenubarSubmenu {
+  return { id: label.toLowerCase(), label, sections };
+}
+
+function menu(label: string, sections: ReadonlyArray<ReadonlyArray<TMenubarEntry>>): IMenubarMenu {
   return { id: `test/${label.toLowerCase()}`, label, getSections: () => sections };
 }
 
@@ -161,6 +165,81 @@ describe("Menubar", () => {
     expect(getByRole("menuitemcheckbox", { name: "Axes" })).toHaveAttribute("aria-checked", "false");
     expect(getByRole("menuitem", { name: /Reload/ })).toHaveAttribute("aria-disabled", "true");
     expect(getByText("F5")).toBeInTheDocument();
+  });
+
+  it("opens a submenu from the keyboard with its first row ready, and closes it back onto its row", async () => {
+    const { getByRole, queryByRole } = await renderExpanded([
+      menu("View", [[submenu("Shading", [[item("Final", { isChecked: true, isExclusive: true })]])]]),
+    ]);
+
+    await userEvent.keyboard("{ArrowDown}");
+    expect(getByRole("menuitem", { name: "Shading" })).toHaveFocus();
+
+    await userEvent.keyboard("{ArrowRight}");
+    expect(getByRole("menu", { name: "Shading" })).toBeInTheDocument();
+    expect(getByRole("menuitemradio", { name: "Final" })).toHaveFocus();
+    expect(getByRole("menuitem", { name: "Shading" })).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(queryByRole("menu", { name: "Shading" })).not.toBeInTheDocument();
+    expect(getByRole("menuitem", { name: "Shading" })).toHaveFocus();
+  });
+
+  it("closes only the submenu on Escape, leaving the menu that opened it", async () => {
+    const onCollapse = jest.fn();
+    const { getByRole, queryByRole } = await renderExpanded(
+      [menu("View", [[submenu("Shading", [[item("Clay")]])]])],
+      onCollapse
+    );
+
+    await userEvent.keyboard("{ArrowDown}{ArrowRight}{Escape}");
+
+    expect(queryByRole("menu", { name: "Shading" })).not.toBeInTheDocument();
+    expect(getByRole("menu", { name: "View" })).toBeInTheDocument();
+    expect(onCollapse).not.toHaveBeenCalled();
+  });
+
+  it("steps to the next menu on the right arrow from a submenu's plain row", async () => {
+    const { getByRole } = await renderExpanded([
+      menu("View", [[submenu("Shading", [[item("Clay")]])]]),
+      menu("Help", [[item("About")]]),
+    ]);
+
+    await userEvent.keyboard("{ArrowDown}{ArrowRight}{ArrowRight}");
+
+    expect(getByRole("menu", { name: "Help" })).toBeInTheDocument();
+    expect(getByRole("menuitem", { name: "About" })).toHaveFocus();
+  });
+
+  it("opens a submenu by pointing at its row, and chooses in it with the menus kept open for a switch", async () => {
+    const clay: IMenubarItem = item("Clay", { isChecked: false, isExclusive: true });
+    const onCollapse = jest.fn();
+    const { getByRole, findByRole } = await renderExpanded(
+      [menu("View", [[submenu("Shading", [[item("Final", { isChecked: true, isExclusive: true }), clay]])]])],
+      onCollapse
+    );
+
+    await userEvent.click(getByRole("menuitem", { name: "View" }));
+    await userEvent.hover(getByRole("menuitem", { name: "Shading" }));
+    await userEvent.click(await findByRole("menuitemradio", { name: "Clay" }));
+
+    expect(clay.onSelect).toHaveBeenCalledTimes(1);
+    expect(getByRole("menuitemradio", { name: "Final" })).toHaveAttribute("aria-checked", "true");
+    expect(getByRole("menu", { name: "Shading" })).toBeInTheDocument();
+    expect(onCollapse).not.toHaveBeenCalled();
+  });
+
+  it("puts the whole bar away when a submenu's action is chosen", async () => {
+    const reset: IMenubarItem = item("Reset");
+    const onCollapse = jest.fn();
+    const { getByRole } = await renderExpanded([menu("View", [[submenu("Camera", [[reset]])]])], onCollapse);
+
+    await userEvent.click(getByRole("menuitem", { name: "View" }));
+    await userEvent.click(getByRole("menuitem", { name: "Camera" }));
+    await userEvent.click(getByRole("menuitem", { name: "Reset" }));
+
+    expect(reset.onSelect).toHaveBeenCalledTimes(1);
+    expect(onCollapse).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the menu open when a switch is turned, so several can be turned in one visit", async () => {
