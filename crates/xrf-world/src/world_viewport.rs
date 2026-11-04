@@ -110,6 +110,8 @@ impl WorldViewport {
     self.weather.advance(now, eye.to_array(), thunder, level, |lighting| {
       skies.request_sky(&lighting.sky)
     });
+    // A strike is heard by the frame after it or by none, so one no scene's frame took, as while no GPU draws, goes.
+    self.thunders.clear();
     self.thunders.extend(self.weather.get_player_mut().take_thunders().map(
       |StrikeThunder {
          bolt,
