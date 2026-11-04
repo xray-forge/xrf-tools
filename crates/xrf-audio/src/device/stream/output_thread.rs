@@ -43,6 +43,9 @@ impl OutputThread {
   /// The most time one silent render catches up on, so a thread held up for long does not render seconds at once.
   const SILENT_MOST: Duration = Duration::from_millis(250);
 
+  /// How far the frames rendered with no device may drift from the clock's anchor before it moves.
+  const MOST_DRIFT: Duration = Duration::from_millis(5);
+
   /// Frames rendered at a time while no device plays.
   const SILENT_FRAMES: usize = AudioMixer::BLOCK_FRAMES * 4;
 
@@ -118,6 +121,9 @@ impl OutputThread {
     let rate: f64 = f64::from(mixer.get_output_rate());
     let frames: usize = (now.duration_since(since).as_secs_f64() * rate) as usize;
     let mut left: usize = frames;
+
+    // The frames rendered now would have played from `since` on, with no latency.
+    mixer.get_meter().follow_anchor(since, Self::MOST_DRIFT);
 
     while left > 0 {
       let count: usize = left.min(Self::SILENT_FRAMES);

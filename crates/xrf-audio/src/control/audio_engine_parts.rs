@@ -29,6 +29,8 @@ impl AudioEngineParts {
     let voices_count: usize = settings.voices_count.max(1);
     let (commands, mixer_commands) = RingBuffer::new(settings.commands_count.max(1));
     let (mixer_retired, retired) = RingBuffer::new(voices_count);
+    // A tap set while another is held hands that one back, and one let go comes back too.
+    let (mixer_retired_taps, retired_taps) = RingBuffer::new(2);
     let shared: EngineShared = EngineShared {
       parameters: (0..voices_count).map(|_| VoiceParameters::default()).collect(),
       statuses: (0..voices_count).map(|_| VoiceStatus::default()).collect(),
@@ -38,8 +40,8 @@ impl AudioEngineParts {
     };
 
     Self {
-      engine: AudioEngine::new(commands, retired, shared.clone()),
-      mixer: AudioMixer::new(mixer_commands, mixer_retired, shared),
+      engine: AudioEngine::new(commands, retired, retired_taps, shared.clone()),
+      mixer: AudioMixer::new(mixer_commands, mixer_retired, mixer_retired_taps, shared),
     }
   }
 }

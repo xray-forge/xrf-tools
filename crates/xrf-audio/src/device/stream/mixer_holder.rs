@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use rtrb::Producer;
 
 use crate::mixer::audio_mixer::AudioMixer;
@@ -17,9 +19,14 @@ impl MixerHolder {
     }
   }
 
-  pub(crate) fn render(&mut self, out: &mut [f32], channels: usize) {
+  /// Renders the device's buffer `out`, which plays `latency` after it is handed over, anchoring the mixer's clock at
+  /// its first frame.
+  pub(crate) fn render(&mut self, out: &mut [f32], channels: usize, latency: Duration) {
     match &mut self.mixer {
-      Some(mixer) => mixer.render(out, channels),
+      Some(mixer) => {
+        mixer.get_meter().anchor_at(latency);
+        mixer.render(out, channels);
+      }
       None => out.fill(0.0),
     }
   }

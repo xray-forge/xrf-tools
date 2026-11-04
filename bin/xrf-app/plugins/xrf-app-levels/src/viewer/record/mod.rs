@@ -9,6 +9,8 @@ mod media_sink;
 #[cfg(windows)]
 mod record_format;
 #[cfg(windows)]
+mod record_resampler;
+#[cfg(windows)]
 mod record_sample;
 #[cfg(windows)]
 mod record_sound_format;
@@ -24,6 +26,8 @@ pub use media_session::MediaSession;
 use media_sink::MediaSink;
 #[cfg(windows)]
 pub use record_format::RecordFormat;
+#[cfg(windows)]
+pub use record_resampler::RecordResampler;
 #[cfg(windows)]
 pub use record_sample::RecordSample;
 #[cfg(windows)]

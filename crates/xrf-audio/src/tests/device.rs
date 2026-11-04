@@ -24,7 +24,7 @@ fn hands_the_mixer_back_with_its_voices_when_a_stream_drops_its_callback() {
   let mut holder: MixerHolder = MixerHolder::new(mixer, returned);
   let mut out: Vec<f32> = vec![0.0; 512 * 2];
 
-  holder.render(&mut out, 2);
+  holder.render(&mut out, 2, Duration::ZERO);
   drop(holder);
 
   let mixer: AudioMixer = back.pop().expect("the dropped callback hands the mixer back");

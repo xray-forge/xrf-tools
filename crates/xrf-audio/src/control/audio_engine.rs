@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use rtrb::{Consumer, Producer};
 
@@ -11,6 +12,8 @@ use crate::mixer::audio_bus::AudioBus;
 use crate::mixer::audio_mixer_meter::AudioMixerMeter;
 use crate::mixer::mixer_command::MixerCommand;
 use crate::mixer::reverb_parameters::ReverbParameters;
+use crate::mixer::tap::audio_tap::AudioTap;
+use crate::mixer::tap::mixer_tap::MixerTap;
 use crate::voice::audio_voice_id::AudioVoiceId;
 use crate::voice::audio_voice_playback::AudioVoicePlayback;
 use crate::voice::audio_voice_state::AudioVoiceState;
@@ -25,6 +28,8 @@ use crate::voice::voice_spatial::VoiceSpatial;
 pub struct AudioEngine {
   commands: Producer<MixerCommand>,
   retired: Consumer<Box<Voice>>,
+  /// Taps the mixer let go of, freed here.
+  retired_taps: Consumer<Box<MixerTap>>,
   parameters: Arc<[VoiceParameters]>,
   statuses: Arc<[VoiceStatus]>,
   slots: VoiceSlots,
@@ -37,7 +42,12 @@ pub struct AudioEngine {
 }
 
 impl AudioEngine {
-  pub(crate) fn new(commands: Producer<MixerCommand>, retired: Consumer<Box<Voice>>, shared: EngineShared) -> Self {
+  pub(crate) fn new(
+    commands: Producer<MixerCommand>,
+    retired: Consumer<Box<Voice>>,
+    retired_taps: Consumer<Box<MixerTap>>,
+    shared: EngineShared,
+  ) -> Self {
     let EngineShared {
       parameters,
       statuses,
@@ -51,6 +61,7 @@ impl AudioEngine {
     Self {
       commands,
       retired,
+      retired_taps,
       parameters,
       statuses,
       slots,
@@ -235,11 +246,27 @@ impl AudioEngine {
     self.slots.get_count()
   }
 
-  /// Frees the voices the mixer is done with, and their slots.
+  /// Taps the mix after the reverb and before the master from the mixer's next block, through a ring holding `length`
+  /// of it, in place of any tap set before.
+  ///
+  /// # Errors
+  ///
+  /// Refuses when the audio thread has not taken its commands.
+  pub fn open_tap(&mut self, length: Duration) -> Result<AudioTap, AudioRefusal> {
+    let (tap, mixer_tap) = AudioTap::new(length, self.meter.get_rate());
+
+    self.send(MixerCommand::SetTap(Box::new(mixer_tap)))?;
+
+    Ok(tap)
+  }
+
+  /// Frees the voices the mixer is done with, and their slots, and the taps it let go of.
   pub fn collect(&mut self) {
     while let Ok(voice) = self.retired.pop() {
       self.slots.give_back(voice.id);
     }
+
+    while self.retired_taps.pop().is_ok() {}
   }
 
   /// The parameter block of `voice`, while its slot still holds it: a block is never written for a voice whose slot

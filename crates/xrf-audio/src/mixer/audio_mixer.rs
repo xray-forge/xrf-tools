@@ -12,6 +12,7 @@ use crate::mixer::gain_ramp::GainRamp;
 use crate::mixer::mixer_command::MixerCommand;
 use crate::mixer::mixer_reverb::MixerReverb;
 use crate::mixer::reverb_parameters::ReverbParameters;
+use crate::mixer::tap::mixer_tap::MixerTap;
 use crate::voice::audio_voice_id::AudioVoiceId;
 use crate::voice::audio_voice_playback::AudioVoicePlayback;
 use crate::voice::audio_voice_state::AudioVoiceState;
@@ -20,11 +21,14 @@ use crate::voice::shared::voice_status::VoiceStatus;
 use crate::voice::voice::Voice;
 
 /// The audio thread's half: a fixed pool of voice slots mixed into their buses, the buses and the listener's reverb into
-/// the master, and the master into the device's buffer.
+/// the master, and the master into the device's buffer; a tap takes the mix before the master.
 pub struct AudioMixer {
   voices: Box<[Option<Box<Voice>>]>,
   commands: Consumer<MixerCommand>,
   retired: Producer<Box<Voice>>,
+  /// The tap the mix goes into before the master, and where one let go or replaced goes back to be freed.
+  tap: Option<Box<MixerTap>>,
+  retired_taps: Producer<Box<MixerTap>>,
   /// Each slot's controls, written by the control side.
   parameters: Arc<[VoiceParameters]>,
   /// Each slot's report, read by the control side.
@@ -70,7 +74,12 @@ impl AudioMixer {
   /// Seconds a pause, resume or stop fades over.
   const FADE_SECONDS: f64 = 0.005;
 
-  pub(crate) fn new(commands: Consumer<MixerCommand>, retired: Producer<Box<Voice>>, shared: EngineShared) -> Self {
+  pub(crate) fn new(
+    commands: Consumer<MixerCommand>,
+    retired: Producer<Box<Voice>>,
+    retired_taps: Producer<Box<MixerTap>>,
+    shared: EngineShared,
+  ) -> Self {
     let EngineShared {
       parameters,
       statuses,
@@ -83,6 +92,8 @@ impl AudioMixer {
       voices: (0..statuses.len()).map(|_| None).collect(),
       commands,
       retired,
+      tap: None,
+      retired_taps,
       parameters,
       statuses,
       buses: [GainRamp::new(1.0); AudioBus::COUNT],
@@ -112,12 +123,16 @@ impl AudioMixer {
   }
 
   /// Renders at `rate` from the next buffer on; the device sets it to the rate it opened with, before it plays, which
-  /// is when the reverb is made again for a new rate.
+  /// is when the reverb is made again for a new rate, and a tap's stream ends.
   pub fn set_output_rate(&mut self, rate: u32) {
     let rate: u32 = rate.max(1);
 
     if rate != self.output_rate || (self.reverb.is_none() && self.acoustics.is_running()) {
       self.reverb = MixerReverb::for_acoustics(&self.acoustics, rate);
+    }
+
+    if let Some(tap) = &self.tap {
+      tap.follow_rate(rate);
     }
 
     self.output_rate = rate;
@@ -237,6 +252,10 @@ impl AudioMixer {
       }
     }
 
+    if let Some(tap) = self.tap.as_deref_mut() {
+      tap.push(self.block_frame, &self.block);
+    }
+
     for pair in self.block.as_chunks_mut::<2>().0 {
       let master: f32 = self.master.next();
 
@@ -276,7 +295,26 @@ impl AudioMixer {
         }
         MixerCommand::SetBusGain { bus, gain } => self.buses[bus.get_index()].set_target(gain, ramp_frames),
         MixerCommand::SetMasterGain(gain) => self.master.set_target(gain, ramp_frames),
+        MixerCommand::SetTap(tap) => {
+          tap.start(self.output_rate);
+          Self::retire_tap(self.tap.replace(tap), &mut self.retired_taps);
+        }
       }
+    }
+
+    if self.tap.as_ref().is_some_and(|tap| tap.is_abandoned()) {
+      Self::retire_tap(self.tap.take(), &mut self.retired_taps);
+    }
+  }
+
+  /// Hands `tap` back to the control side, which frees it.
+  fn retire_tap(tap: Option<Box<MixerTap>>, retired: &mut Producer<Box<MixerTap>>) {
+    // The ring holds two, and the control side empties it each tick, a tap at a time being set; were it full, the tap
+    // would be lost rather than freed on this thread.
+    if let Some(tap) = tap
+      && let Err(rtrb::PushError::Full(tap)) = retired.push(tap)
+    {
+      std::mem::forget(tap);
     }
   }
 
