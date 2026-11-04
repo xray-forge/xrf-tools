@@ -83,6 +83,11 @@ impl LevelLoad {
     }
   }
 
+  /// Whether the level has stood ready once since its scene was made, as its load reports the moment.
+  pub fn has_stood_ready(&self) -> bool {
+    self.durations.ready.is_some()
+  }
+
   /// Whether everything the level opens with is resident, so it draws as it will.
   pub fn is_ready(&self, slots: impl IntoIterator<Item = impl Borrow<u32>>, textures: &TextureCache) -> bool {
     textures.is_settled(slots) && self.are_parts_done()

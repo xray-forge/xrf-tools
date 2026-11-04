@@ -143,6 +143,7 @@ impl LevelEffects {
     updates: &mut Vec<RenderSceneUpdate>,
     now: Duration,
     LevelDrive {
+      viewport: _,
       options,
       toggles,
       ambient,

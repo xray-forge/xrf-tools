@@ -1,12 +1,15 @@
-//! A level's sound as a whole: a burst starts every schedule afresh at its own time, so bursts from one time send the
-//! same frames whatever played before them.
+//! A level's sound as a whole: it waits for its scene to stand ready and runs on the scene's clock, and a burst starts
+//! every schedule afresh at its own time, so bursts from one time send the same frames whatever played before them.
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use glam::Vec3;
 use xrf_engine_target::XrayEngine;
-use xrf_renderer::{RenderSceneId, RenderViewBurst, RenderWorkers};
+use xrf_renderer::{
+  RenderSceneFeedback, RenderSceneFrame, RenderSceneId, RenderViewBurst, RenderViewportId, RenderWorkers, RenderWorld,
+};
 
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
 use crate::host::sound::world_level_sounds::WorldLevelSounds;
@@ -21,9 +24,10 @@ use crate::sound::level_sound::LevelSound;
 use crate::sound::rain_sound::RainFrame;
 use crate::sound::sound_drive::SoundDrive;
 use crate::sound::zone_sounds::ZoneStates;
-use crate::tests::fixtures::TestLevelSource;
+use crate::tests::fixtures::{SilentSink, TestLevelSource};
 use crate::tests::sound::found;
 use crate::tests::test_workers::create_workers;
+use crate::world::World;
 
 /// A sink keeping a copy of every frame it is sent and handing each straight back.
 #[derive(Clone, Default)]
@@ -205,6 +209,69 @@ impl Heard {
 
     sent[before..].iter().map(Played::from).collect()
   }
+}
+
+// The level is shown two seconds before its first frame, as a long frame or a held lock delays it, and its scene stands
+// ready two seconds into its frames: the scene is told its clock began at the first frame, nothing is heard before it
+// stands ready, and then its sound starts on that clock, two seconds in, not four.
+#[test]
+fn starts_the_level_sound_once_its_scene_stands_ready_on_the_scenes_clock() {
+  let sink: KeepingSink = KeepingSink::default();
+  let sent: Arc<Mutex<Vec<WorldSoundFrame>>> = Arc::clone(&sink.sent);
+  let source: Arc<dyn WorldLevelSource> = Arc::new(TestLevelSource {
+    sounds: sounds(),
+    sound_sink: Mutex::new(Some(Box::new(sink))),
+    ..TestLevelSource::default()
+  });
+  let mut world: World = World::new(create_workers());
+  let viewport: RenderViewportId = RenderViewportId(1);
+
+  world.attach(viewport, Box::new(SilentSink));
+  world.set_listener(viewport);
+
+  let scene: RenderSceneId = world.show_level(viewport, Some(source)).expect("the level is shown");
+  let first: Instant = Instant::now() + Duration::from_secs(2);
+  let play = |world: &mut World, frame: u32, has_stood_ready: bool| -> Instant {
+    let feedback: RenderSceneFeedback = RenderSceneFeedback {
+      has_stood_ready,
+      ..RenderSceneFeedback::default()
+    };
+    let frames: HashMap<RenderSceneId, RenderSceneFrame> = world.advance_scenes(
+      first + Duration::from_secs_f64(f64::from(frame) / 60.0),
+      HashMap::from([(scene, feedback)]),
+    );
+
+    frames[&scene].opened
+  };
+
+  for frame in 0..120 {
+    assert_eq!(play(&mut world, frame, false), first);
+  }
+
+  assert!(
+    sent.lock().unwrap().is_empty(),
+    "the level is heard before it stands ready"
+  );
+
+  let deadline: Instant = Instant::now() + Duration::from_secs(5);
+  let mut frame: u32 = 120;
+
+  // Its sounds are read on a worker meanwhile, maybe not yet by the frame it stands ready.
+  while sent.lock().unwrap().iter().all(|frame| frame.emitters.is_empty()) {
+    assert!(Instant::now() < deadline, "the level's sounds were never read");
+    assert_eq!(play(&mut world, frame, true), first);
+    frame += 1;
+  }
+
+  let sent = sent.lock().unwrap();
+
+  assert_eq!(sent[0].time, Duration::from_secs(2));
+  assert!(
+    sent
+      .iter()
+      .flat_map(|frame| &frame.emitters)
+      .all(|emitter| emitter.start >= Duration::from_secs(2))
+  );
 }
 
 #[test]

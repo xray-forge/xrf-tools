@@ -4,8 +4,8 @@ use std::time::Instant;
 
 use glam::Vec3;
 use xrf_renderer::{
-  LevelParts, RenderLevelSource, RenderSceneFeedback, RenderSceneFrame, RenderSceneId, RenderSceneUpdate,
-  RenderViewFrame, RenderViewInput, RenderViewportId, RenderWorkers, RenderWorld,
+  LevelParts, RenderSceneFeedback, RenderSceneFrame, RenderSceneId, RenderViewFrame, RenderViewInput, RenderViewportId,
+  RenderWorkers, RenderWorld,
 };
 
 use crate::contract::camera::world_camera::WorldCamera;
@@ -22,7 +22,6 @@ use crate::contract::weather::world_weather_transition::WorldWeatherTransition;
 use crate::contract::world_toggles::WorldToggles;
 use crate::host::world_event_sink::WorldEventSink;
 use crate::host::world_level_source::WorldLevelSource;
-use crate::level::effects::effects_frame::EffectsFrame;
 use crate::level::level_drive::LevelDrive;
 use crate::level::world_level::WorldLevel;
 use crate::sound::sound_drive::SoundDrive;
@@ -402,8 +401,10 @@ impl RenderWorld for World {
       // The scene told it once, so it is taken even in a frame no viewport drives the scene.
       scene.level.take_feedback(feedback.remove(id).unwrap_or_default());
 
-      let driver: Option<RenderViewportId> = scene.get_driver();
-      let Some(driving) = driver.and_then(|driver| self.viewports.get(&driver)) else {
+      let Some((driver, driving)) = scene
+        .get_driver()
+        .and_then(|driver| Some((driver, self.viewports.get(&driver)?)))
+      else {
         continue;
       };
       // A viewport drawing a burst of the scene hears it, at the burst's times; else the listening viewport hears the
@@ -438,9 +439,10 @@ impl RenderWorld for World {
         thunder: &hearing.thunders,
         burst: hearing.burst,
       };
-      let (updates, effects): (Vec<RenderSceneUpdate>, EffectsFrame) = scene.level.advance(
+      let frame: RenderSceneFrame = scene.level.advance(
         now,
         LevelDrive {
+          viewport: driver,
           options: &driving.options,
           toggles: &driving.toggles,
           ambient: driving.get_ambient_frame(),
@@ -449,21 +451,7 @@ impl RenderWorld for World {
         &sound,
       );
 
-      frames.insert(
-        *id,
-        RenderSceneFrame {
-          source: Arc::clone(scene.level.get_source()) as Arc<dyn RenderLevelSource>,
-          driver,
-          updates,
-          streaming: scene.level.get_progress(),
-          skeleton_segments: scene.level.list_segments(),
-          gust: effects.gust,
-          campfire_shares: effects.campfire_shares,
-          motions: effects.motions,
-          camera_hemi: effects.camera_hemi,
-          sounding: scene.level.list_sounding(),
-        },
-      );
+      frames.insert(*id, frame);
     }
 
     // A strike is heard by the frame after it, or by none.

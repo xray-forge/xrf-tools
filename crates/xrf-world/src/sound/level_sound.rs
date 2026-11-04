@@ -33,12 +33,13 @@ pub struct EffectSound<'a> {
   pub position: Vec3,
 }
 
-/// A level's sound as the world plays it beside its picture, by its own clock: its static sounds, music and zones' sounds
-/// read on a loader thread, the weather's ambient channels, rain, thunder and ambient-effect sounds as the viewport it is
-/// heard by plays them, and a frame to the host's audio at most sixty times a second.
+/// A level's sound as the world plays it beside its picture, by the level's clock: its static sounds, music and zones'
+/// sounds read on a loader thread, the weather's ambient channels, rain, thunder and ambient-effect sounds as the
+/// viewport it is heard by plays them, and a frame to the host's audio at most sixty times a second.
 ///
-/// A burst's first frame starts every schedule afresh at the burst's time, as the level's open does, and so does the
-/// first frame after a burst: what a burst plays depends on its own frames alone, so bursts from one time play alike.
+/// Its schedules start at the first frame it plays, which its level gives it once its scene stands ready. A burst's
+/// first frame starts every schedule afresh at the burst's time, as that first frame does, and so does the first frame
+/// after a burst: what a burst plays depends on its own frames alone, so bursts from one time play alike.
 pub struct LevelSound {
   pending: LoaderOnce<WorldLevelSounds>,
   /// The level's own sounds as read, which a schedule starting afresh plays from again.
@@ -250,8 +251,8 @@ impl LevelSound {
     }
   }
 
-  /// Starts every schedule afresh at `now`, as the level's open does, letting go of whatever plays; a track played by
-  /// hand plays again from its start.
+  /// Starts every schedule afresh at `now`, as the first frame it plays does, letting go of whatever plays; a track
+  /// played by hand plays again from its start.
   fn restart(&mut self, now: Duration) {
     let chosen: Option<String> = self
       .level

@@ -58,7 +58,7 @@ impl RenderThread {
     let Some((mut encoder, span)) = self.begin_frame_work(delta) else {
       return;
     };
-    let live: HashSet<RenderSceneId> = self.ingest_scenes(scene_frames, &mut encoder, clock);
+    let live: HashSet<RenderSceneId> = self.ingest_scenes(scene_frames, &mut encoder);
 
     self.show_asked_scenes();
     self.retain_scenes(&live);
@@ -180,14 +180,13 @@ impl RenderThread {
     Some((encoder, span))
   }
 
-  /// Feeds each scene what the world posted for it, making it where it is new, opening at `now` on the frames' clock; a
-  /// scene keeps its acceleration structures only while a viewport traces rays in it
+  /// Feeds each scene what the world posted for it, making it where it is new, its clock begun where the world's began
+  /// (`RenderSceneFrame::opened`); a scene keeps its acceleration structures only while a viewport traces rays in it
   /// (`RenderViewOptions::is_scene_traced`). Answers the scenes the world still holds.
   fn ingest_scenes(
     &mut self,
     mut scene_frames: HashMap<RenderSceneId, RenderSceneFrame>,
     encoder: &mut FrameEncoder,
-    now: Instant,
   ) -> HashSet<RenderSceneId> {
     let live: HashSet<RenderSceneId> = scene_frames.keys().copied().collect();
     let traced: HashSet<RenderSceneId> = self
@@ -208,7 +207,7 @@ impl RenderThread {
           &gpu.view_layout,
           Arc::clone(&frame.source),
           &self.workers,
-          now,
+          frame.opened,
         )
       });
 
