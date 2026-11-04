@@ -221,6 +221,11 @@ impl RenderThread {
       }
       RenderCommand::CaptureBurst { id, burst, events } => self.begin_burst(id, burst, events),
       RenderCommand::Record { id, size, events } => self.begin_record(id, size, events),
+      RenderCommand::StopRecord { id } => {
+        if let Some(viewport) = self.viewports.get_mut(&id) {
+          viewport.stop_record("The recording was stopped");
+        }
+      }
       RenderCommand::StepClock { step } => self.clock.set_step(step),
     }
   }

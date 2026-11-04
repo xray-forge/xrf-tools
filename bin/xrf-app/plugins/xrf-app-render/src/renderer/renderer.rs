@@ -215,6 +215,11 @@ impl Renderer {
     self.ask(|events| RenderCommand::Record { id, size, events })
   }
 
+  /// Stops a viewport's recording at once, as its recorder goes, whether or not the viewport draws.
+  pub fn stop_record(&self, id: RenderViewportId) {
+    self.queue.send(RenderCommand::StopRecord { id });
+  }
+
   /// Draws every scene's frames `step` apart on its clock from the next on; none at the time each is drawn.
   pub fn step_clock(&self, step: Option<Duration>) {
     self.queue.send(RenderCommand::StepClock { step });

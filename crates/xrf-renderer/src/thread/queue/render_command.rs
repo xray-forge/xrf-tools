@@ -150,6 +150,11 @@ pub enum RenderCommand {
     size: (u32, u32),
     events: Sender<RecordEvent>,
   },
+  /// Stops a viewport's recording at once, as its recorder goes: a viewport drawing nothing sends no frame whose failed
+  /// send would end it, and would otherwise hold off every other long job.
+  StopRecord {
+    id: RenderViewportId,
+  },
   /// Draws every scene's frames `step` apart on its clock from the next on, however long each takes; none at the time
   /// each is drawn.
   StepClock {
