@@ -38,6 +38,8 @@ import { LevelPreviewCoordinates } from "@/tools/level-viewer/components/preview
 import { LevelPreviewEmpty } from "@/tools/level-viewer/components/preview/LevelPreviewEmpty";
 import { LevelPreviewMetrics } from "@/tools/level-viewer/components/preview/LevelPreviewMetrics";
 import { LevelPreviewSpot } from "@/tools/level-viewer/components/preview/LevelPreviewSpot";
+import { LevelViewerRecordingActions } from "@/tools/level-viewer/components/recording/LevelViewerRecordingActions";
+import { LevelViewerRecordingToast } from "@/tools/level-viewer/components/recording/LevelViewerRecordingToast";
 import { LevelViewerScreenshotActions } from "@/tools/level-viewer/components/screenshot/LevelViewerScreenshotActions";
 import { LevelViewerScreenshotToast } from "@/tools/level-viewer/components/screenshot/LevelViewerScreenshotToast";
 import { LevelViewerSnapshotActions } from "@/tools/level-viewer/components/snapshot/LevelViewerSnapshotActions";
@@ -166,6 +168,7 @@ export function LevelViewerLayout({
     <EditorLayout toolbar={<LevelViewerToolbar onBack={onBack} />}>
       <LevelViewerSnapshotActions />
       <LevelViewerScreenshotActions />
+      <LevelViewerRecordingActions />
       <LevelViewerCaptureActions />
 
       <div className={"flex min-h-0 min-w-0 grow flex-col"}>
@@ -198,6 +201,8 @@ export function LevelViewerLayout({
           {isOpen ? <LevelPreviewPick /> : null}
 
           {isOpen ? <LevelViewerScreenshotToast /> : null}
+
+          {isOpen ? <LevelViewerRecordingToast /> : null}
 
           {isOpen ? <LevelViewerCaptureCover /> : null}
 

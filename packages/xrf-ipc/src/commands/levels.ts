@@ -45,6 +45,7 @@ export enum ELevelsCommand {
   CLOSE_LEVEL = "plugin:levels|close_level",
   COMMAND_MUSIC = "plugin:levels|command_music",
   COPY_SCREENSHOT = "plugin:levels|copy_screenshot",
+  DELETE_RECORDING = "plugin:levels|delete_recording",
   DELETE_SCREENSHOT = "plugin:levels|delete_screenshot",
   DESCRIBE_CONSOLE_DEFAULTS = "plugin:levels|describe_console_defaults",
   DESCRIBE_LEVEL_MAP = "plugin:levels|describe_level_map",
@@ -98,6 +99,8 @@ export const levelsCommands = {
    */
   copyScreenshot: (path: string, target: string) =>
     __TAURI_INVOKE<null>(ELevelsCommand.COPY_SCREENSHOT, { path, target }),
+  /** Delete a recording of the recordings folder for good. */
+  deleteRecording: (path: string) => __TAURI_INVOKE<null>(ELevelsCommand.DELETE_RECORDING, { path }),
   /**
    * Delete a screenshot of the screenshots folder for good, with what stands beside it: a screenshot's report, a level
    * map's annotations.
@@ -240,6 +243,7 @@ export interface ILevelsCommandSignatures {
   [ELevelsCommand.CLOSE_LEVEL]: IIpcCommandSignature<typeof levelsCommands.closeLevel, ["sessionIds"]>;
   [ELevelsCommand.COMMAND_MUSIC]: IIpcCommandSignature<typeof levelsCommands.commandMusic, ["viewport", "command"]>;
   [ELevelsCommand.COPY_SCREENSHOT]: IIpcCommandSignature<typeof levelsCommands.copyScreenshot, ["path", "target"]>;
+  [ELevelsCommand.DELETE_RECORDING]: IIpcCommandSignature<typeof levelsCommands.deleteRecording, ["path"]>;
   [ELevelsCommand.DELETE_SCREENSHOT]: IIpcCommandSignature<typeof levelsCommands.deleteScreenshot, ["path"]>;
   [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: IIpcCommandSignature<
     typeof levelsCommands.describeConsoleDefaults,

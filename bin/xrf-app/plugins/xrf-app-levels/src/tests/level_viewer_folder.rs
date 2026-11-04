@@ -57,6 +57,27 @@ fn takes_only_a_json_file_for_a_view() {
   assert!(LevelViewerFolder::require_view_file(Path::new("C:/views/zaton")).is_err());
 }
 
+// A recording deleted from the page is a video directly in the recordings folder, nothing else there or elsewhere.
+#[test]
+fn takes_only_a_video_directly_in_the_recordings_folder() {
+  let folder: &Path = Path::new("appdata/level-viewer/recordings");
+
+  assert!(LevelViewerFolder::is_recording(
+    folder,
+    &folder.join("zaton-20261104-230005.mp4")
+  ));
+  assert!(LevelViewerFolder::is_recording(folder, &folder.join("zaton.MP4")));
+  assert!(!LevelViewerFolder::is_recording(folder, &folder.join("zaton.png")));
+  assert!(!LevelViewerFolder::is_recording(
+    folder,
+    &folder.join("nested").join("zaton.mp4")
+  ));
+  assert!(!LevelViewerFolder::is_recording(
+    Path::new("appdata/level-viewer/screenshots"),
+    &folder.join("zaton.mp4")
+  ));
+}
+
 #[test]
 fn takes_only_an_image_directly_in_the_screenshots_folder() {
   let folder: &Path = Path::new("appdata/level-viewer/screenshots");

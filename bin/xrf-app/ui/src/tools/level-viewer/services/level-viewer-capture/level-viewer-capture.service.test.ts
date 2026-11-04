@@ -18,6 +18,8 @@ import { ELevelCaptureMode } from "@/tools/level-viewer/lib/capture/level-captur
 import { ELevelMapArea, ELevelMapLook } from "@/tools/level-viewer/lib/map/level-map-capture";
 import { LevelViewerCaptureService } from "@/tools/level-viewer/services/level-viewer-capture";
 import { LevelViewerCaptureResultService } from "@/tools/level-viewer/services/level-viewer-capture-result";
+import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level-viewer-recording";
+import { LevelViewerSnapshotService } from "@/tools/level-viewer/services/level-viewer-snapshot";
 
 const PATH: string = "appdata/level-viewer/screenshots/map_zaton-20261021-101500.png";
 
@@ -44,6 +46,8 @@ function mockCapture(
   const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer([
     LevelViewerCaptureResultService,
     LevelViewerCaptureService,
+    LevelViewerRecordingService,
+    LevelViewerSnapshotService,
   ]);
   const raised: Array<INotificationPayload> = [];
 

@@ -19,6 +19,7 @@ import { mockToolScope } from "@/fixtures/utils/container";
 import { deferred } from "@/fixtures/utils/promise";
 import { ILevelViewerScreenshot } from "@/tools/level-viewer/lib/screenshot/level-viewer-screenshot";
 import { LEVEL_VIEWER_SNAPSHOT_FORMAT } from "@/tools/level-viewer/lib/snapshot/level-viewer-snapshot";
+import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level-viewer-recording";
 import { LevelViewerScreenshotService } from "@/tools/level-viewer/services/level-viewer-screenshot";
 import { LevelViewerSnapshotService } from "@/tools/level-viewer/services/level-viewer-snapshot";
 
@@ -31,6 +32,7 @@ function mockScreenshots(): ILevelViewContainerDescriptor & {
 } {
   const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer([
     ...mockToolScope(EToolId.LEVEL_VIEWER),
+    LevelViewerRecordingService,
     LevelViewerScreenshotService,
     LevelViewerSnapshotService,
   ]);
