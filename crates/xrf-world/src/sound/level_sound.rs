@@ -277,7 +277,9 @@ impl LevelSound {
     }
   }
 
-  /// Hears the frame from the drive's camera, moving as fast as it moved since the last.
+  /// Hears the frame from the drive's camera, moving as fast as it moved since the last. Its up is the drive's made
+  /// square to where it looks, as a camera looking at a point holds it, so a camera pitched up or down still hears left
+  /// from right; looking along the drive's up, it keeps the last up it had.
   fn follow_listener(&mut self, drive: &SoundDrive<'_>, delta: Duration) {
     let before: Vec3 = Vec3::from(self.listener.position);
     let seconds: f32 = delta.as_secs_f32();
@@ -286,11 +288,17 @@ impl LevelSound {
     } else {
       Vec3::ZERO
     };
+    let forward: Vec3 = drive.forward.normalize_or(Vec3::Z);
+    let square = |up: Vec3| (up - forward * forward.dot(up)).try_normalize();
+    let up: Vec3 = square(drive.up)
+      .or_else(|| square(Vec3::from(self.listener.up)))
+      .or_else(|| square(Vec3::Z))
+      .unwrap_or(Vec3::Y);
 
     self.listener = WorldSoundListener {
       position: drive.eye.to_array(),
-      forward: drive.forward.normalize_or(Vec3::Z).to_array(),
-      up: drive.up.normalize_or(Vec3::Y).to_array(),
+      forward: forward.to_array(),
+      up: up.to_array(),
       velocity: velocity.to_array(),
     };
   }
@@ -368,13 +376,15 @@ impl LevelSound {
           .iter_records()
           .map(|record| (&record.sound, WorldSoundKind::Static)),
       );
-      missing.extend(
-        level
-          .music
-          .iter_tracks()
-          .filter(|track| track.halves.is_none() || level.engine == XrayEngine::Extended)
-          .map(|track| (&track.stereo, WorldSoundKind::Music)),
-      );
+      // Vanilla plays a track's two halves where its stereo file is missing, so the halves are what may be missing then.
+      for track in level.music.iter_tracks() {
+        match &track.halves {
+          Some(halves) if level.engine != XrayEngine::Extended => {
+            missing.extend(halves.iter().map(|half| (half, WorldSoundKind::Music)));
+          }
+          _ => missing.push((&track.stereo, WorldSoundKind::Music)),
+        }
+      }
 
       for zone in level.zones.iter_records() {
         missing.extend(
