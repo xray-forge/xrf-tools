@@ -14,6 +14,7 @@ macro_rules! for_each_levels_domain {
         describe_console_defaults => crate::commands::describe_console_defaults::levels_describe_console_defaults,
         describe_level_map => crate::commands::describe_level_map::levels_describe_level_map,
         describe_objects => crate::commands::describe_objects::levels_describe_objects,
+        describe_recording => crate::viewer::commands::record::describe_recording::levels_describe_recording,
         describe_sound => crate::commands::describe_sound::levels_describe_sound,
         describe_spawn_object => crate::commands::describe_spawn_object::levels_describe_spawn_object,
         describe_start => crate::commands::describe_start::levels_describe_start,
@@ -33,6 +34,8 @@ macro_rules! for_each_levels_domain {
         save_screenshot => crate::viewer::commands::screenshot::save_screenshot::levels_save_screenshot,
         save_view => crate::viewer::commands::view::save_view::levels_save_view,
         show_level => crate::commands::show_level::levels_show_level,
+        start_recording => crate::viewer::commands::record::start_recording::levels_start_recording,
+        stop_recording => crate::viewer::commands::record::stop_recording::levels_stop_recording,
         write_map_annotations => crate::viewer::commands::export::write_map_annotations::levels_write_map_annotations,
         write_screenshot_report => crate::viewer::commands::screenshot::write_screenshot_report::levels_write_screenshot_report,
       }

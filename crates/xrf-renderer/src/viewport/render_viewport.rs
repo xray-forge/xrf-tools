@@ -17,6 +17,7 @@ use crate::contract::report::applied::render_applied_report::RenderAppliedReport
 use crate::contract::report::frame::render_frame_report::RenderFrameReport;
 use crate::contract::report::frame::render_memory_report::RenderMemoryReport;
 use crate::contract::report::frame::render_pass_cost::RenderPassCost;
+use crate::contract::report::frame::render_viewport_job::RenderViewportJob;
 use crate::contract::report::graph::render_graph_report::RenderGraphReport;
 use crate::contract::report::load::render_load_report::RenderLoadReport;
 use crate::contract::view::render_view_options::RenderViewOptions;
@@ -287,6 +288,19 @@ impl RenderViewport {
   /// Whether its frames are recorded.
   pub fn is_recording(&self) -> bool {
     self.record.as_ref().is_some_and(|record| !record.is_ended())
+  }
+
+  /// The long job it runs, none while it runs none.
+  pub fn get_job(&self) -> Option<RenderViewportJob> {
+    if self.is_recording() {
+      Some(RenderViewportJob::Recording)
+    } else if self.is_bursting() {
+      Some(RenderViewportJob::Burst)
+    } else if self.is_capturing() {
+      Some(RenderViewportJob::Capture)
+    } else {
+      None
+    }
   }
 
   /// Starts recording its frames as they are presented.
@@ -686,6 +700,7 @@ impl RenderViewport {
       graph: graph.map(|graph| Box::new(RenderGraphReport::of(graph, self.get_graph_owner()))),
       memory: RenderMemoryReport::of(allocator),
       meter,
+      job: self.get_job(),
     };
 
     self.sent_frame = Some(report.clone());

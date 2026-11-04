@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 
 import { mockLevelViewContainer, renderLevelView, TLevelViewRenderResult } from "@/core/level/fixtures/level-container";
+import { EToolId } from "@/core/routing/tool";
 import { clearLocalStorage } from "@/core/storage";
+import { mockToolScope } from "@/fixtures/utils/container";
 import { LevelViewerToolbar } from "@/tools/level-viewer/components/LevelViewerToolbar";
 import { LevelViewerCaptureService } from "@/tools/level-viewer/services/level-viewer-capture";
 import { LevelViewerCaptureResultService } from "@/tools/level-viewer/services/level-viewer-capture-result";
+import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level-viewer-recording";
 import { LevelViewerScreenshotService } from "@/tools/level-viewer/services/level-viewer-screenshot";
 import { LevelViewerSnapshotService } from "@/tools/level-viewer/services/level-viewer-snapshot";
 
@@ -17,8 +20,10 @@ describe("LevelViewerToolbar", () => {
     const { baseElement }: TLevelViewRenderResult = renderLevelView(
       <LevelViewerToolbar />,
       mockLevelViewContainer([
+        ...mockToolScope(EToolId.LEVEL_VIEWER),
         LevelViewerCaptureService,
         LevelViewerCaptureResultService,
+        LevelViewerRecordingService,
         LevelViewerScreenshotService,
         LevelViewerSnapshotService,
       ])
@@ -53,6 +58,7 @@ describe("LevelViewerToolbar", () => {
       "level-camera-effects-action",
       "level-go-to-action",
       "level-viewer-capture-action",
+      "level-viewer-record-action",
     ]);
   });
 });

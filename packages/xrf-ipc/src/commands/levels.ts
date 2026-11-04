@@ -24,6 +24,9 @@ import {
   MapCaptureRequest,
   MapExportOutcome,
   MapExportRequest,
+  RecordingAvailability,
+  RecordingOutcome,
+  RecordingProgress,
   ScreenshotSaveRequest,
   SelectedLevelDescription,
 } from "#/types/xrf-app-levels";
@@ -46,6 +49,7 @@ export enum ELevelsCommand {
   DESCRIBE_CONSOLE_DEFAULTS = "plugin:levels|describe_console_defaults",
   DESCRIBE_LEVEL_MAP = "plugin:levels|describe_level_map",
   DESCRIBE_OBJECTS = "plugin:levels|describe_objects",
+  DESCRIBE_RECORDING = "plugin:levels|describe_recording",
   DESCRIBE_SOUND = "plugin:levels|describe_sound",
   DESCRIBE_SPAWN_OBJECT = "plugin:levels|describe_spawn_object",
   DESCRIBE_START = "plugin:levels|describe_start",
@@ -65,6 +69,8 @@ export enum ELevelsCommand {
   SAVE_SCREENSHOT = "plugin:levels|save_screenshot",
   SAVE_VIEW = "plugin:levels|save_view",
   SHOW_LEVEL = "plugin:levels|show_level",
+  START_RECORDING = "plugin:levels|start_recording",
+  STOP_RECORDING = "plugin:levels|stop_recording",
   WRITE_MAP_ANNOTATIONS = "plugin:levels|write_map_annotations",
   WRITE_SCREENSHOT_REPORT = "plugin:levels|write_screenshot_report",
 }
@@ -115,6 +121,8 @@ export const levelsCommands = {
    */
   describeObjects: (sessionId: SessionId) =>
     __TAURI_INVOKE<SessionSnapshot<LevelObjectsDescription>>(ELevelsCommand.DESCRIBE_OBJECTS, { sessionId }),
+  /** Whether a viewport can be recorded here: Media Foundation loads and the audio started; why not where not. */
+  describeRecording: () => __TAURI_INVOKE<RecordingAvailability>(ELevelsCommand.DESCRIBE_RECORDING),
   /**
    * What the level a viewport shows plays and why: each sound, where it stands and how loud it is heard, the music, the
    * ambient's channels, and every sound that could not play; none for a viewport showing no level. The world says what
@@ -181,7 +189,8 @@ export const levelsCommands = {
     __TAURI_INVOKE<SessionRestore<SelectedLevelDescription>>(ELevelsCommand.RESTORE_LEVEL, { tool }),
   /**
    * Draw a burst of consecutive frames in a viewport and write each, with its G-buffer's marks, into a new folder of
-   * the level viewer's bursts named as asked; answers once the last is written.
+   * the level viewer's bursts named as asked, the sound its camera hears at the burst's times beside them, and the frames
+   * with that sound as one video, where asked; answers once the last is written.
    */
   saveBurst: (request: BurstCaptureRequest) => __TAURI_INVOKE<BurstOutcome>(ELevelsCommand.SAVE_BURST, { request }),
   /**
@@ -198,6 +207,18 @@ export const levelsCommands = {
    */
   showLevel: (viewport: RenderViewportId, sessionId: SessionId | null) =>
     __TAURI_INVOKE<number | null>(ELevelsCommand.SHOW_LEVEL, { viewport, sessionId }),
+  /**
+   * Record a viewport with what its camera hears into a new video of the level viewer's recordings named as asked, at
+   * the size it is drawn at now, its camera heard whatever window takes the focus until it stops; `progress` is told
+   * where it stands a few times a second, and why where it ends by itself. Answers the file.
+   */
+  startRecording: (viewport: RenderViewportId, name: string, progress: Channel<RecordingProgress>) =>
+    __TAURI_INVOKE<string>(ELevelsCommand.START_RECORDING, { viewport, name, progress }),
+  /**
+   * Stop the recording, running or ended by itself, and finish its video; the camera heard follows the focus again.
+   * Answers what was written.
+   */
+  stopRecording: () => __TAURI_INVOKE<RecordingOutcome>(ELevelsCommand.STOP_RECORDING),
   /** Draw the open level's annotations over one of its level maps and write them beside it as an SVG; answers the SVG. */
   writeMapAnnotations: (sessionId: SessionId, request: MapAnnotationsWriteRequest) =>
     __TAURI_INVOKE<SessionSnapshot<string>>(ELevelsCommand.WRITE_MAP_ANNOTATIONS, { sessionId, request }),
@@ -226,6 +247,7 @@ export interface ILevelsCommandSignatures {
   >;
   [ELevelsCommand.DESCRIBE_LEVEL_MAP]: IIpcCommandSignature<typeof levelsCommands.describeLevelMap, ["sessionId"]>;
   [ELevelsCommand.DESCRIBE_OBJECTS]: IIpcCommandSignature<typeof levelsCommands.describeObjects, ["sessionId"]>;
+  [ELevelsCommand.DESCRIBE_RECORDING]: IIpcCommandSignature<typeof levelsCommands.describeRecording, []>;
   [ELevelsCommand.DESCRIBE_SOUND]: IIpcCommandSignature<typeof levelsCommands.describeSound, ["viewport"]>;
   [ELevelsCommand.DESCRIBE_SPAWN_OBJECT]: IIpcCommandSignature<
     typeof levelsCommands.describeSpawnObject,
@@ -248,6 +270,11 @@ export interface ILevelsCommandSignatures {
   [ELevelsCommand.SAVE_SCREENSHOT]: IIpcCommandSignature<typeof levelsCommands.saveScreenshot, ["request"]>;
   [ELevelsCommand.SAVE_VIEW]: IIpcCommandSignature<typeof levelsCommands.saveView, ["path", "text"]>;
   [ELevelsCommand.SHOW_LEVEL]: IIpcCommandSignature<typeof levelsCommands.showLevel, ["viewport", "sessionId"]>;
+  [ELevelsCommand.START_RECORDING]: IIpcCommandSignature<
+    typeof levelsCommands.startRecording,
+    ["viewport", "name", "progress"]
+  >;
+  [ELevelsCommand.STOP_RECORDING]: IIpcCommandSignature<typeof levelsCommands.stopRecording, []>;
   [ELevelsCommand.WRITE_MAP_ANNOTATIONS]: IIpcCommandSignature<
     typeof levelsCommands.writeMapAnnotations,
     ["sessionId", "request"]

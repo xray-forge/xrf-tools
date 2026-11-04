@@ -4,6 +4,7 @@ import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Fragment, ReactElement, ReactNode } from "react";
 
+import { RenderViewportJobMark } from "@/core/render/components/overlay/RenderViewportJobMark";
 import { RenderViewportOverlay, TRenderOverlayCorner } from "@/core/render/components/overlay/RenderViewportOverlay";
 import {
   describeRenderAntialiasing,
@@ -81,7 +82,10 @@ export function RenderFrameReadout({
 
   return (
     <RenderViewportOverlay data-testid={dataTestId} id={id} className={className} corner={corner}>
-      <div>{`${(report.framesPerSecond ?? 0).toFixed(0)} fps · ${formatMilliseconds(report.frameTime ?? 0)}`}</div>
+      <div className={"flex items-center gap-1"}>
+        {report.job ? <RenderViewportJobMark job={report.job} /> : null}
+        <span>{`${(report.framesPerSecond ?? 0).toFixed(0)} fps · ${formatMilliseconds(report.frameTime ?? 0)}`}</span>
+      </div>
       <div>{toDrawnLine(report)}</div>
       <div>{`${report.width} × ${report.height}`}</div>
       {scaling ? <div>{scaling}</div> : null}

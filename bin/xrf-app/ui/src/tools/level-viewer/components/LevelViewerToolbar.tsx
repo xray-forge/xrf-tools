@@ -21,6 +21,7 @@ import { RenderSliderReference } from "@/core/render/components/controls/RenderS
 import { ERenderSliderReferenceSource } from "@/core/render/lib/settings/choice/render-slider-reference-source";
 import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
 import { LevelViewerCaptureAction } from "@/tools/level-viewer/components/toolbar/camera/LevelViewerCaptureAction";
+import { LevelViewerRecordAction } from "@/tools/level-viewer/components/toolbar/camera/LevelViewerRecordAction";
 import { LevelFogAction } from "@/tools/level-viewer/components/toolbar/environment/LevelFogAction";
 import { LevelRainAction } from "@/tools/level-viewer/components/toolbar/environment/LevelRainAction";
 import { LevelSkyAction } from "@/tools/level-viewer/components/toolbar/environment/LevelSkyAction";
@@ -37,7 +38,7 @@ interface ILevelViewerToolbarProps extends BaseComponentProps {
 
 /**
  * Composes the level view toggles in the editor toolbar, by what each changes: the view, the image, the lighting, the
- * environment and the contents, then the camera's value pickers and the screenshot last. Each action reads and sets
+ * environment and the contents, then the camera's value pickers, the captures and the recording last. Each action reads and sets
  * what it shows itself, its sliders measured by the settings, which its popover resets to.
  */
 export function LevelViewerToolbar({
@@ -94,6 +95,7 @@ export function LevelViewerToolbar({
           <LevelCameraEffectsAction />
           <LevelGoToAction />
           <LevelViewerCaptureAction />
+          <LevelViewerRecordAction />
         </RenderSliderReference>
       }
     />

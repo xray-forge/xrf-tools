@@ -5,6 +5,7 @@ use crate::contract::report::frame::render_frame_phases::RenderFramePhases;
 use crate::contract::report::frame::render_group_cost::RenderGroupCost;
 use crate::contract::report::frame::render_memory_report::RenderMemoryReport;
 use crate::contract::report::frame::render_pass_cost::RenderPassCost;
+use crate::contract::report::frame::render_viewport_job::RenderViewportJob;
 use crate::contract::report::graph::render_graph_report::RenderGraphReport;
 use crate::contract::report::scene::render_drawable_report::RenderDrawableReport;
 use crate::contract::report::scene::render_lights_report::RenderLightsReport;
@@ -87,4 +88,6 @@ pub struct RenderFrameReport {
   pub meter: Option<RenderMeterReading>,
   /// What the frame graph made of its latest frame, none before its first.
   pub graph: Option<Box<RenderGraphReport>>,
+  /// The long job it runs, none while it runs none.
+  pub job: Option<RenderViewportJob>,
 }

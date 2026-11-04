@@ -1449,6 +1449,8 @@ export type RenderFrameReport = {
   meter: RenderMeterReading | null;
   /** What the frame graph made of its latest frame, none before its first. */
   graph: RenderGraphReport | null;
+  /** The long job it runs, none while it runs none. */
+  job: RenderViewportJob | null;
 };
 
 /** How glass is drawn. */
@@ -2940,6 +2942,19 @@ export type RenderViewportEvent =
 
 /** One viewport of the renderer, numbered by the renderer as it is attached. */
 export type RenderViewportId = number;
+
+/**
+ * The long job a viewport runs, one at a time over every viewport: its frames recorded, a burst it draws, or a level
+ * map or cubemap it captures in place of its own frames.
+ */
+export enum ERenderViewportJob {
+  RECORDING = "recording",
+  BURST = "burst",
+  CAPTURE = "capture",
+}
+
+/** Every `ERenderViewportJob` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type RenderViewportJob = `${ERenderViewportJob}`;
 
 /** Where a viewport sits in its window and what the page shows around it. */
 export type RenderViewportLayout = {

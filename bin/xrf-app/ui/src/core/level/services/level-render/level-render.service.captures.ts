@@ -1,4 +1,6 @@
+import { Channel } from "@tauri-apps/api/core";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
+import { RecordingProgress } from "@xrf/ipc/types/xrf-app-levels";
 import { CaptureOutcome } from "@xrf/ipc/types/xrf-app-render";
 import { RenderCubeCapture, RenderMapCapture, RenderViewportId } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
@@ -8,7 +10,10 @@ import { ILevelRenderContext } from "@/core/level/services/level-render/level-re
 import { LevelViewService } from "@/core/level/services/level-view";
 import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
 
-/** What the level's viewport writes to files: its next frame, a map of the level, a cubemap about the camera. */
+/**
+ * What the level's viewport writes to files: its next frame, a map of the level, a cubemap about the camera, a
+ * recording of it with its sound.
+ */
 export class LevelRenderCaptures {
   /**
    * @param context - The viewport the captures are taken of.
@@ -62,6 +67,23 @@ export class LevelRenderCaptures {
       ? viewport.ask<Nullable<CaptureOutcome>>(
           "captureMap",
           (id: RenderViewportId) => levelsCommands.captureMap({ viewport: id, capture, path }, job.id, job.progress),
+          null
+        )
+      : null;
+  }
+
+  /**
+   * @param name - What the recording's file in the recordings folder is named for, without its extension.
+   * @param progress - Where the recording tells where it stands, and why where it ends by itself.
+   * @returns The file it records into, or null with no viewport attached; rejects for a recording that cannot start.
+   */
+  public async startRecording(name: string, progress: Channel<RecordingProgress>): Promise<Nullable<string>> {
+    const viewport: Nullable<NativeViewport> = this.context.getViewport();
+
+    return viewport
+      ? viewport.ask<Nullable<string>>(
+          "startRecording",
+          (id: RenderViewportId) => levelsCommands.startRecording(id, name, progress),
           null
         )
       : null;

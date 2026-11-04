@@ -176,8 +176,7 @@ impl RenderThread {
   }
 
   /// The recordings' frames this frame copies out, each where its viewport is readied this frame (`frames`) and a
-  /// sixtieth on from its last at `now`. A viewport capturing a map or cubemap keeps none, its frames being the
-  /// capture's shots, so its recording has a gap there.
+  /// sixtieth on from its last at `now`. No map or cubemap is captured meanwhile: one long job runs at a time.
   pub(super) fn take_record_shots(
     &mut self,
     device: &wgpu::Device,
@@ -191,8 +190,7 @@ impl RenderThread {
       .filter_map(|frame| {
         let shot: RecordShot = self
           .viewports
-          .get_mut(&frame.viewport)
-          .filter(|viewport| !viewport.is_capturing())?
+          .get_mut(&frame.viewport)?
           .get_record_mut()?
           .take_shot(device, now)?;
 

@@ -1,6 +1,11 @@
 import { describe, expect, it } from "@jest/globals";
 import { render } from "@testing-library/react";
-import { ERenderAntialiasing, ERenderBackend, RenderFrameReport } from "@xrf/ipc/types/xrf-renderer";
+import {
+  ERenderAntialiasing,
+  ERenderBackend,
+  ERenderViewportJob,
+  RenderFrameReport,
+} from "@xrf/ipc/types/xrf-renderer";
 
 import { RenderFrameReadout } from "@/core/render/components/overlay/RenderFrameReadout";
 import {
@@ -28,6 +33,25 @@ describe("RenderFrameReadout", () => {
 
     expect(getByText("160 fps · 6.3 ms")).toBeInTheDocument();
     expect(getByText("dx · 6,445,460 tris")).toBeInTheDocument();
+  });
+
+  it("marks the frame rate with the long job the viewport runs, coloured and named by it", () => {
+    const { getByRole, queryByRole, rerender } = render(<RenderFrameReadout report={REPORT} />);
+
+    // The readout is laid over the viewport hidden from assistive technology; its marks are found among the hidden.
+    expect(queryByRole("img", { hidden: true })).toBeNull();
+
+    rerender(<RenderFrameReadout report={{ ...REPORT, job: ERenderViewportJob.RECORDING }} />);
+
+    expect(getByRole("img", { hidden: true, name: "Recording" })).toHaveClass("text-error");
+
+    rerender(<RenderFrameReadout report={{ ...REPORT, job: ERenderViewportJob.BURST }} />);
+
+    expect(getByRole("img", { hidden: true, name: "Drawing a burst" })).toHaveClass("text-warning");
+
+    rerender(<RenderFrameReadout report={{ ...REPORT, job: ERenderViewportJob.CAPTURE }} />);
+
+    expect(getByRole("img", { hidden: true, name: "Capturing a level map or cubemap" })).toHaveClass("text-info");
   });
 
   it("tags the graphics API the frame was drawn with", () => {

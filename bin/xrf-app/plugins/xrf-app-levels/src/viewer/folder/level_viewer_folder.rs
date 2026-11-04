@@ -11,11 +11,15 @@ pub enum LevelViewerFolder {
   Views,
   Screenshots,
   Bursts,
+  Recordings,
 }
 
 impl LevelViewerFolder {
   /// The extension of the screenshots' images.
   pub const SCREENSHOT_EXTENSION: &'static str = "png";
+
+  /// The extension of a recording's video.
+  pub const RECORDING_EXTENSION: &'static str = "mp4";
 
   /// The extension of a screenshot's report beside it.
   pub const REPORT_EXTENSION: &'static str = "json";
@@ -31,6 +35,7 @@ impl LevelViewerFolder {
       Self::Views => "views",
       Self::Screenshots => "screenshots",
       Self::Bursts => "bursts",
+      Self::Recordings => "recordings",
     }
   }
 
@@ -98,10 +103,25 @@ impl LevelViewerFolder {
   ///
   /// Returns an error when `name` is not one file name Windows takes, or starts with a dot.
   pub fn find_free_screenshot(folder: &Path, name: &str) -> TauriResult<PathBuf> {
-    let name: HostFileName = HostFileName::new(name, "A screenshot's name").map_err(|error| error.to_string())?;
+    Self::find_free(folder, name, Self::SCREENSHOT_EXTENSION, "screenshot")
+  }
+
+  /// The first free path in the recordings folder (`folder`) for a recording named `name`, as a screenshot's is found.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when `name` is not one file name Windows takes, or starts with a dot.
+  pub fn find_free_recording(folder: &Path, name: &str) -> TauriResult<PathBuf> {
+    Self::find_free(folder, name, Self::RECORDING_EXTENSION, "recording")
+  }
+
+  /// The first free path in `folder` for a `what` named `name` with `extension`, `-2`, `-3` and on added for one made
+  /// within the same second.
+  fn find_free(folder: &Path, name: &str, extension: &str, what: &str) -> TauriResult<PathBuf> {
+    let name: HostFileName = HostFileName::new(name, &format!("A {what}'s name")).map_err(|error| error.to_string())?;
 
     if name.as_str().contains(['*', '?', '"', '<', '>', '|']) || name.as_str().starts_with('.') {
-      return Err(format!("'{name}' is not a screenshot's name"));
+      return Err(format!("'{name}' is not a {what}'s name"));
     }
 
     (1..=u32::MAX)
@@ -112,10 +132,10 @@ impl LevelViewerFolder {
           format!("{name}-{index}")
         };
 
-        folder.join(format!("{stem}.{}", Self::SCREENSHOT_EXTENSION))
+        folder.join(format!("{stem}.{extension}"))
       })
       .find(|path: &PathBuf| !path.exists())
-      .ok_or_else(|| format!("No free name for the screenshot '{name}'"))
+      .ok_or_else(|| format!("No free name for the {what} '{name}'"))
   }
 
   /// The folder of the bursts folder (`folder`) a burst named `name` is written into, which must not be there yet, so
