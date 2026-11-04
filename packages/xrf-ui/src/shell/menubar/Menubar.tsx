@@ -8,6 +8,7 @@ import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
 import { IMenubarItem, IMenubarMenu } from "./menubar-menu";
+import { MenubarList } from "./MenubarList";
 import { MenubarPopup } from "./MenubarPopup";
 
 interface IMenubarOpening {
@@ -58,7 +59,7 @@ export function Menubar({
    * bar gone, and with it the open menu every shortcut checks for.
    */
   const collapse = useCallback(
-    (isFocusReturned: boolean) => {
+    ({ isFocusReturned }: { isFocusReturned: boolean }) => {
       const target: Nullable<Element> = returnFocus.current;
 
       flushSync(onCollapse);
@@ -83,7 +84,7 @@ export function Menubar({
   );
 
   const open = useCallback(
-    (index: number, isFromKeyboard: boolean) => setOpening({ index: focusButton(index), isFromKeyboard }),
+    ({ index, isFromKeyboard }: IMenubarOpening) => setOpening({ index: focusButton(index), isFromKeyboard }),
     [focusButton]
   );
 
@@ -99,7 +100,7 @@ export function Menubar({
     (item: IMenubarItem) => {
       // A switch keeps its menu open, so several can be turned in one visit, as a toolbar popover allows.
       if (item.isChecked === undefined) {
-        collapse(false);
+        collapse({ isFocusReturned: false });
       }
 
       item.onSelect();
@@ -108,7 +109,7 @@ export function Menubar({
   );
 
   const onButtonClick = useCallback(
-    (index: number) => (index === openIndex ? close() : open(index, false)),
+    (index: number) => (index === openIndex ? close() : open({ index, isFromKeyboard: false })),
     [close, open, openIndex]
   );
 
@@ -118,7 +119,7 @@ export function Menubar({
       if (openIndex < 0) {
         focusButton(index);
       } else if (index !== openIndex) {
-        open(index, false);
+        open({ index, isFromKeyboard: false });
       }
     },
     [focusButton, open, openIndex]
@@ -132,7 +133,7 @@ export function Menubar({
           const next: number = index + (event.key === "ArrowRight" ? 1 : -1);
 
           if (openIndex >= 0) {
-            open(next, true);
+            open({ index: next, isFromKeyboard: true });
           } else {
             focusButton(next);
           }
@@ -140,7 +141,7 @@ export function Menubar({
           break;
         }
         case "ArrowDown":
-          open(index, true);
+          open({ index, isFromKeyboard: true });
           break;
         case "Home":
           focusButton(0);
@@ -150,7 +151,7 @@ export function Menubar({
           break;
         case "Escape":
         case "Tab":
-          collapse(true);
+          collapse({ isFocusReturned: true });
           break;
         default:
           return;
@@ -171,14 +172,14 @@ export function Menubar({
 
       switch (event.key) {
         case "ArrowRight":
-          open(openIndex + 1, true);
+          open({ index: openIndex + 1, isFromKeyboard: true });
           break;
         case "ArrowLeft":
-          open(openIndex - 1, true);
+          open({ index: openIndex - 1, isFromKeyboard: true });
           break;
         case "Escape":
         case "Tab":
-          collapse(true);
+          collapse({ isFocusReturned: true });
           break;
         default:
           // The list moves its own caret; a key it handled is still not one for the shortcuts behind it.
@@ -214,7 +215,7 @@ export function Menubar({
   // A native menu closes when its window loses focus; this one would otherwise wait open behind another application.
   useEffect(() => {
     function onBlur(): void {
-      collapse(false);
+      collapse({ isFocusReturned: false });
     }
 
     window.addEventListener("blur", onBlur);
@@ -223,7 +224,7 @@ export function Menubar({
   }, [collapse]);
 
   return (
-    <ClickAwayListener mouseEvent={"onPointerDown"} onClickAway={() => collapse(false)}>
+    <ClickAwayListener mouseEvent={"onPointerDown"} onClickAway={() => collapse({ isFocusReturned: false })}>
       <div
         ref={root}
         data-testid={dataTestId}
@@ -268,14 +269,15 @@ export function Menubar({
         })}
 
         {openMenu && anchor ? (
-          <MenubarPopup
-            key={openMenu.id}
-            menu={openMenu}
-            anchor={anchor}
-            isFirstRowFocused={opening?.isFromKeyboard ?? false}
-            onKeyDown={onPopupKeyDown}
-            onChoose={onChoose}
-          />
+          <MenubarPopup key={openMenu.id} anchor={anchor} placement={"bottom-start"}>
+            <MenubarList
+              label={openMenu.label}
+              sections={openMenu.getSections()}
+              focus={opening?.isFromKeyboard ? "first-row" : "list"}
+              onKeyDown={onPopupKeyDown}
+              onChoose={onChoose}
+            />
+          </MenubarPopup>
         ) : null}
       </div>
     </ClickAwayListener>

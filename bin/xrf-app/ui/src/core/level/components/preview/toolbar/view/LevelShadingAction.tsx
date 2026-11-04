@@ -1,5 +1,5 @@
 import { useInjection } from "@wirestate/react";
-import { ERenderParallaxMode, ERenderTerrainTiling } from "@xrf/ipc/types/xrf-renderer";
+import { ERenderTerrainTiling } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ChoiceListFormRow } from "@xrf/ui/form/choice-list-row";
@@ -20,6 +20,7 @@ import {
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
+import { isRenderParallaxDrawn } from "@/core/render/lib/features/world/render-parallax-choices";
 import { explainRenderTerrainTiling } from "@/core/render/lib/features/world/render-terrain-choices";
 import {
   TRenderParallaxSettings,
@@ -46,7 +47,7 @@ export function LevelShadingAction({
   const shadings: ReadonlyArray<ILevelShadingChoice> = getLevelShadings(renderService.drawing.antialiasing);
   const parallax: TRenderParallaxSettings = toLevelModeFeature("parallax", settings, features);
   const { isWireframe, isBumped, isWallmarked } = options;
-  const isParallaxAvailable: boolean = parallax.isSteep || parallax.mode === ERenderParallaxMode.ENHANCED;
+  const isParallaxAvailable: boolean = isRenderParallaxDrawn(parallax);
   const isParallaxed: boolean = options.isParallaxed && isParallaxAvailable;
   const terrain: TRenderTerrainSettings = toLevelModeFeature("terrain", settings, features);
   const isTerrainVaried: boolean = terrain.tiling === ERenderTerrainTiling.VARIED;

@@ -17,15 +17,14 @@ import { ReactElement, ReactNode } from "react";
 import { LevelPreviewCover } from "@/core/level/components/preview/LevelPreviewCover";
 import { LevelPreviewPick } from "@/core/level/components/preview/LevelPreviewPick";
 import { ILevelPreviewViewportProps, LevelPreviewViewport } from "@/core/level/components/preview/LevelPreviewViewport";
-import { ILevelOverlay, LEVEL_OVERLAYS } from "@/core/level/lib/view/level-overlays";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view";
-import { useShellMenus, useShellPanels } from "@/core/shell/contributions";
-import { IMenuContribution, TMenuEntry } from "@/core/shell/menu/lib";
+import { useShellPanels } from "@/core/shell/contributions";
 import { IShellPanel } from "@/core/shell/panels/shell-panel";
 import { LevelViewerCaptureActions } from "@/tools/level-viewer/components/capture/LevelViewerCaptureActions";
 import { LevelViewerCaptureCover } from "@/tools/level-viewer/components/capture/LevelViewerCaptureCover";
 import { LevelViewerToolbar } from "@/tools/level-viewer/components/LevelViewerToolbar";
+import { LevelViewerViewMenu } from "@/tools/level-viewer/components/menus/LevelViewerViewMenu";
 import { LevelHeaderPanel } from "@/tools/level-viewer/components/panels/LevelHeaderPanel";
 import { LevelInspectorPanel } from "@/tools/level-viewer/components/panels/LevelInspectorPanel";
 import { LevelOutlinerPanel } from "@/tools/level-viewer/components/panels/LevelOutlinerPanel";
@@ -44,7 +43,6 @@ import { LevelViewerScreenshotActions } from "@/tools/level-viewer/components/sc
 import { LevelViewerScreenshotToast } from "@/tools/level-viewer/components/screenshot/LevelViewerScreenshotToast";
 import { LevelViewerSnapshotActions } from "@/tools/level-viewer/components/snapshot/LevelViewerSnapshotActions";
 import { ELevelViewerPanelId } from "@/tools/level-viewer/lib/panels/level-viewer-panel-id";
-import { LEVEL_VIEWER_VIEW_MENU } from "@/tools/level-viewer/menus";
 
 interface ILevelViewerLayoutProps extends BaseComponentProps {
   /** What the open level is called, which heads the viewport. Its presence is what offers stats and picks. */
@@ -148,24 +146,9 @@ export function LevelViewerLayout({
     []
   );
 
-  useShellMenus(
-    (): Array<IMenuContribution> => [
-      {
-        section: LEVEL_VIEWER_VIEW_MENU.sections.overlays,
-        entries: LEVEL_OVERLAYS.map((it: ILevelOverlay): TMenuEntry => ({
-          kind: "toggle",
-          id: `level-viewer/toggle-${it.id}`,
-          label: it.label,
-          isChecked: viewOptions[it.option],
-          onToggle: () => viewService.toggleOption(it.option),
-        })),
-      },
-    ],
-    [viewOptions, viewService]
-  );
-
   return (
     <EditorLayout toolbar={<LevelViewerToolbar onBack={onBack} />}>
+      <LevelViewerViewMenu />
       <LevelViewerSnapshotActions />
       <LevelViewerScreenshotActions />
       <LevelViewerRecordingActions />

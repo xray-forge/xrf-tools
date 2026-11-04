@@ -5,10 +5,11 @@ import { ReactElement } from "react";
 import { useLocation } from "react-router-dom";
 
 import { NotificationsService } from "@/core/notifications/services";
+import { CLOSE_TOOL_KEYBIND_COMMAND } from "@/core/shell/commands";
 import { useShellMenus } from "@/core/shell/contributions";
 import { ApplicationShell } from "@/core/shell/frame/ApplicationShell";
 import { useToolBusy, useToolDirty } from "@/core/shell/lifecycle";
-import { IMenuContribution } from "@/core/shell/menu/lib";
+import { EMenuEntryKind, IMenuContribution } from "@/core/shell/menu/lib";
 import { clearLocalStorage } from "@/core/storage";
 import { renderWithProviders } from "@/fixtures/utils/render";
 import { SPRITE_EQUIPMENT_EDITOR_MENU } from "@/tools/sprite-equipment-editor/menus";
@@ -29,10 +30,49 @@ function SpriteMenuPublisher({ onRepack }: { onRepack: () => void }): ReactEleme
     (): Array<IMenuContribution> => [
       {
         section: SPRITE_EQUIPMENT_EDITOR_MENU.sections.sprite,
-        entries: [{ kind: "action", id: "sprite-equipment-editor/repack", label: "Repack", onSelect: onRepack }],
+        entries: [
+          { kind: EMenuEntryKind.ACTION, id: "sprite-equipment-editor/repack", label: "Repack", onSelect: onRepack },
+        ],
       },
     ],
     [onRepack]
+  );
+
+  return <div>sprite editor</div>;
+}
+
+function SpriteSubmenuPublisher({ onChoose }: { onChoose: () => void }): ReactElement {
+  useShellMenus(
+    (): Array<IMenuContribution> => [
+      {
+        section: SPRITE_EQUIPMENT_EDITOR_MENU.sections.sprite,
+        entries: [
+          {
+            kind: EMenuEntryKind.SUBMENU,
+            id: "sprite-equipment-editor/grid",
+            label: "Grid",
+            sections: [
+              [],
+              [
+                { kind: EMenuEntryKind.CHOICE, id: "test/fine", label: "Fine", isChosen: true, onChoose },
+                { kind: EMenuEntryKind.CHOICE, id: "test/coarse", label: "Coarse", isChosen: false, onChoose },
+              ],
+              [
+                {
+                  kind: EMenuEntryKind.TOGGLE,
+                  id: "test/lock",
+                  label: "Lock",
+                  command: CLOSE_TOOL_KEYBIND_COMMAND,
+                  isChecked: false,
+                  onToggle: jest.fn(),
+                },
+              ],
+            ],
+          },
+        ],
+      },
+    ],
+    [onChoose]
   );
 
   return <div>sprite editor</div>;
@@ -128,6 +168,28 @@ describe("ApplicationMenu", () => {
     await userEvent.click(result.getByRole("menuitem", { name: "Repack" }));
 
     expect(onRepack).toHaveBeenCalledTimes(1);
+  });
+
+  it("draws a published submenu with its choices, its empty runs dropped and a toggle's chord", async () => {
+    const onChoose = jest.fn();
+    const result: RenderResult = await act(async () =>
+      renderShell(<SpriteSubmenuPublisher onChoose={onChoose} />, "/sprite-equipment-editor")
+    );
+
+    await result.findByText("sprite editor");
+    await openMenu(result, "Sprite");
+    await userEvent.click(result.getByRole("menuitem", { name: "Grid" }));
+
+    const grid: HTMLElement = result.getByRole("menu", { name: "Grid" });
+
+    expect(within(grid).getAllByRole("separator")).toHaveLength(1);
+    expect(within(grid).getByRole("menuitemradio", { name: "Fine" })).toHaveAttribute("aria-checked", "true");
+    expect(within(grid).getByRole("menuitemcheckbox", { name: /^Lock/ }).textContent).toMatch(/W$/);
+
+    await userEvent.click(within(grid).getByRole("menuitemradio", { name: "Coarse" }));
+
+    expect(onChoose).toHaveBeenCalledTimes(1);
+    expect(result.getByRole("menu", { name: "Grid" })).toBeInTheDocument();
   });
 
   it("opens from Alt pressed on its own, and not from Alt held through a click", async () => {

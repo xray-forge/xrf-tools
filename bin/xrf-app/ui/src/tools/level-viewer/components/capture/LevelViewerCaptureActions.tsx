@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { ReactElement } from "react";
 
 import { useShellMenus } from "@/core/shell/contributions";
-import { IMenuContribution } from "@/core/shell/menu/lib";
+import { EMenuEntryKind, IMenuContribution } from "@/core/shell/menu/lib";
 import {
   CAPTURE_LEVEL_CUBEMAP_KEYBIND_COMMAND,
   CAPTURE_LEVEL_MAP_KEYBIND_COMMAND,
@@ -23,8 +23,8 @@ export function LevelViewerCaptureActions(): ReactElement {
       {
         section: LEVEL_VIEWER_FILE_MENU_EXTENSION.sections.screenshot,
         entries: [
-          { kind: "command", command: CAPTURE_LEVEL_MAP_KEYBIND_COMMAND },
-          { kind: "command", command: CAPTURE_LEVEL_CUBEMAP_KEYBIND_COMMAND },
+          { kind: EMenuEntryKind.COMMAND, command: CAPTURE_LEVEL_MAP_KEYBIND_COMMAND },
+          { kind: EMenuEntryKind.COMMAND, command: CAPTURE_LEVEL_CUBEMAP_KEYBIND_COMMAND },
         ],
       },
     ],

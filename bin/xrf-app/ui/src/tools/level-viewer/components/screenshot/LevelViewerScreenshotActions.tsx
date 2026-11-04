@@ -3,7 +3,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement } from "react";
 
 import { useShellMenus } from "@/core/shell/contributions";
-import { IMenuContribution } from "@/core/shell/menu/lib";
+import { EMenuEntryKind, IMenuContribution } from "@/core/shell/menu/lib";
 import { TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND } from "@/tools/level-viewer/commands";
 import { LevelViewerScreenshotDialog } from "@/tools/level-viewer/components/screenshot/LevelViewerScreenshotDialog";
 import { ILevelViewerScreenshot } from "@/tools/level-viewer/lib/screenshot/level-viewer-screenshot";
@@ -21,7 +21,7 @@ export function LevelViewerScreenshotActions(): ReactElement {
     (): Array<IMenuContribution> => [
       {
         section: LEVEL_VIEWER_FILE_MENU_EXTENSION.sections.screenshot,
-        entries: [{ kind: "command", command: TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND }],
+        entries: [{ kind: EMenuEntryKind.COMMAND, command: TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND }],
       },
     ],
     []
