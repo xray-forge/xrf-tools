@@ -53,7 +53,7 @@ export function toLevelViewerObjectEntries(
 
 /**
  * What the frame shows, one choice: the frame's own looks first, a further submenu for each kind of target it is built
- * from, then the surfaces' switches, as the toolbar's Shading popover lists them.
+ * from, each saying in its tooltip how to read it, then the surfaces' switches.
  */
 function toShadingSubmenu(state: ILevelViewerViewMenuState, viewService: LevelViewService): IMenuSubmenuEntry {
   const targetSections: Array<TLevelShadingSection> = [
@@ -98,6 +98,7 @@ function toShadingChoices(
       kind: EMenuEntryKind.CHOICE,
       id: `level-viewer/shade-${toKebabCase(choice.value)}`,
       label: choice.label,
+      description: choice.description,
       isChosen: choice.value === state.shading,
       onChoose: () => viewService.setShading(choice.value),
     }));

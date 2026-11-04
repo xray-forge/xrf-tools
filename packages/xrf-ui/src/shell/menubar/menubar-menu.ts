@@ -5,6 +5,8 @@ import { ReactNode } from "react";
 export interface IMenubarItem {
   id: string;
   label: string;
+  /** Says more than the label in the row's tooltip, beside the menu. */
+  description?: string;
   /** Drawn in the icon column; a switch draws its check there instead. */
   icon?: ReactNode;
   /** Written at the row's end, such as the chord that does the same. */

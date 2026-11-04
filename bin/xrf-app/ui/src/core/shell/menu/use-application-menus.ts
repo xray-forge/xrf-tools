@@ -52,6 +52,7 @@ export function useApplicationMenus(): Array<IMenubarMenu> {
             return {
               id: entry.id,
               label: entry.label,
+              description: entry.description,
               isChecked: entry.isChosen,
               isExclusive: true,
               isDisabled: entry.isDisabled,

@@ -62,6 +62,8 @@ describe("LevelViewerViewMenu.utils", () => {
     ]);
     expect(toLabels(targets)).toEqual(["Surfaces", "Light", "Temporal"]);
     expect(toLabels(toSubmenu(targets, "Surfaces").sections[0])).toContain("Albedo");
+    // The Shading submenu is the only place a target is offered, so each carries how to read it.
+    expect(looks[0]).toEqual(expect.objectContaining({ description: "The finished frame, every pass applied." }));
   });
 
   it("chooses a shading through the view", () => {

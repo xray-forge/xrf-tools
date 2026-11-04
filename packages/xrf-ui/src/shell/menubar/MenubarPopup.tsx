@@ -31,6 +31,8 @@ interface IMenubarPopupProps {
 export function MenubarPopup({ anchor, placement, children, onPointerEnter }: IMenubarPopupProps): ReactElement {
   return (
     <Popper
+      // The list inside is the menu; a popper is a tooltip to assistive technology unless told otherwise.
+      role={"presentation"}
       open={true}
       anchorEl={anchor}
       placement={placement}

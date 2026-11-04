@@ -16,7 +16,7 @@ import { LevelSunAction } from "@/core/level/components/preview/toolbar/lighting
 import { LevelSoundAction } from "@/core/level/components/preview/toolbar/sound/LevelSoundAction";
 import { LevelHelpersAction } from "@/core/level/components/preview/toolbar/view/LevelHelpersAction";
 import { LevelOverlaysAction } from "@/core/level/components/preview/toolbar/view/LevelOverlaysAction";
-import { LevelShadingAction } from "@/core/level/components/preview/toolbar/view/LevelShadingAction";
+import { LevelReliefAction } from "@/core/level/components/preview/toolbar/view/LevelReliefAction";
 import { RenderSliderReference } from "@/core/render/components/controls/RenderSliderReference";
 import { ERenderSliderReferenceSource } from "@/core/render/lib/settings/choice/render-slider-reference-source";
 import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
@@ -54,7 +54,7 @@ export function LevelViewerToolbar({
       onBack={onBack}
       actions={
         <RenderSliderReference source={ERenderSliderReferenceSource.SETTINGS}>
-          <LevelShadingAction />
+          <LevelReliefAction />
           <LevelOverlaysAction />
           <LevelHelpersAction />
 
