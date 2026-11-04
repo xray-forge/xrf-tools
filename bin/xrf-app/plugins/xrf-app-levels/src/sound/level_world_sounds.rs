@@ -99,7 +99,7 @@ impl LevelWorldSounds {
 
     let stereo = files.get(track);
     let halves = (stereo.info.is_none()).then(|| [files.get(&format!("{track}_l")), files.get(&format!("{track}_r"))]);
-    let to_millis = |value: i64, scale: i64| u32::try_from((value * scale).max(0)).unwrap_or(u32::MAX);
+    let to_millis = |value: i64, scale: i64| u32::try_from(value.saturating_mul(scale).max(0)).unwrap_or(u32::MAX);
 
     WorldMusicTrack {
       name: track.to_owned(),
