@@ -52,6 +52,7 @@ pub use crate::host::sound::world_sound_info::WorldSoundInfo;
 pub use crate::host::sound::world_sound_listener::WorldSoundListener;
 pub use crate::host::sound::world_sound_sink::WorldSoundSink;
 pub use crate::host::sound::world_static_sound::WorldStaticSound;
+pub use crate::host::sound::world_zone_sound::WorldZoneSound;
 pub use crate::host::world_ambient::WorldAmbient;
 pub use crate::host::world_ambient_effect::WorldAmbientEffect;
 pub use crate::host::world_event_sink::WorldEventSink;

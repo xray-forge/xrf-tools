@@ -35,6 +35,8 @@ struct LiveEmitter {
 pub struct SoundPlay<'a> {
   pub sound: &'a WorldSound,
   pub kind: WorldSoundKind,
+  /// The level object it plays at, by the id its helper carries.
+  pub object: Option<u32>,
   /// In engine space; from the listener for a sound played 2D.
   pub position: [f32; 3],
   /// When its first frame plays, on the level's clock.
@@ -54,6 +56,7 @@ impl<'a> SoundPlay<'a> {
     Self {
       sound,
       kind,
+      object: None,
       position,
       start,
       is_looped: false,
@@ -81,6 +84,7 @@ impl SoundEmitters {
         id,
         sound: play.sound.reference.clone(),
         kind: play.kind,
+        object: play.object,
         position,
         start: play.start,
         stop: None,
@@ -124,6 +128,15 @@ impl SoundEmitters {
   pub fn set_volume(&mut self, id: u64, volume: f32) {
     if let Some(live) = self.find_mut(id) {
       live.emitter.volume = volume;
+    }
+  }
+
+  /// `set_position`: moves a placed sound, in engine space; a 2D one stays at the listener.
+  pub fn set_position(&mut self, id: u64, position: [f32; 3]) {
+    if let Some(live) = self.find_mut(id)
+      && !live.emitter.is_2d
+    {
+      live.emitter.position = position;
     }
   }
 

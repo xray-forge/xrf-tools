@@ -4,7 +4,7 @@
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct HelperVertex {
   pub position: [f32; 3],
-  /// sRGB, then how its object is singled out: [`Self::SELECTED`], [`Self::HOVERED`] or nought.
+  /// sRGB, then how its object is singled out: [`Self::SELECTED`], [`Self::HOVERED`], [`Self::SOUNDING`] or nought.
   pub color: [f32; 4],
   /// The distance it has faded out by, none for a singled out object's, then how strongly it shows behind what is
   /// drawn.
@@ -16,9 +16,11 @@ impl HelperVertex {
   /// Bytes a vertex takes.
   pub const SIZE: u64 = size_of::<Self>() as u64;
 
-  /// The colour's last channel for an object selected and for one hovered, which `fs_helper` lifts toward white by.
+  /// The colour's last channel for an object selected, for one hovered and for one whose sound plays, which `fs_helper`
+  /// lifts toward white by; a sounding one still fades with distance.
   pub const SELECTED: f32 = 1.0;
   pub const HOVERED: f32 = 0.5;
+  pub const SOUNDING: f32 = 0.75;
 
   /// The vertex attributes, by location: position, colour, fade, object.
   pub const ATTRIBUTES: [wgpu::VertexAttribute; 4] =

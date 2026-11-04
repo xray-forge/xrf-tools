@@ -428,6 +428,7 @@ impl RenderWorld for World {
           campfire_shares: effects.campfire_shares,
           motions: effects.motions,
           camera_hemi: effects.camera_hemi,
+          sounding: scene.level.list_sounding(),
         },
       );
     }

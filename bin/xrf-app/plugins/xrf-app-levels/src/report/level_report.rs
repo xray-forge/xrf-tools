@@ -439,6 +439,11 @@ impl LevelReport {
     log::warn!("Zones of {} play no particles: {error}", source.get_label());
   }
 
+  /// That the level's zones play no sound, their spawn or the configs naming their sounds being unreadable.
+  pub fn missing_zone_sounds(source: &LevelSource, error: &impl Display) {
+    log::warn!("Zones of {} play no sound: {error}", source.get_label());
+  }
+
   /// That the collision form could not be read, so no particle effect collides with anything.
   pub fn missing_particle_collision(source: &LevelSource, error: &impl Display) {
     log::warn!("Particles of {} collide with nothing: {error}", source.get_label());

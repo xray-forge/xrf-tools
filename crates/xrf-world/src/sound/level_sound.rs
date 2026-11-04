@@ -23,6 +23,7 @@ use crate::sound::sound_drive::SoundDrive;
 use crate::sound::sound_emitters::{SoundEmitters, SoundPlay};
 use crate::sound::sound_outlet::SoundOutlet;
 use crate::sound::static_sounds::StaticSounds;
+use crate::sound::zone_sounds::{ZoneSounds, ZoneStates};
 
 /// An ambient effect's sound starting this frame: the effect's section and where it plays, in engine space.
 pub struct EffectSound<'a> {
@@ -31,9 +32,9 @@ pub struct EffectSound<'a> {
   pub position: Vec3,
 }
 
-/// A level's sound as the world plays it beside its picture, by its own clock: its static sounds and music read on a
-/// loader thread, the weather's ambient channels, rain, thunder and ambient-effect sounds as the viewport it is heard
-/// by plays them, and a frame to the host's audio at most sixty times a second.
+/// A level's sound as the world plays it beside its picture, by its own clock: its static sounds, music and zones' sounds
+/// read on a loader thread, the weather's ambient channels, rain, thunder and ambient-effect sounds as the viewport it is
+/// heard by plays them, and a frame to the host's audio at most sixty times a second.
 pub struct LevelSound {
   pending: LoaderOnce<WorldLevelSounds>,
   /// The level's own sounds once read.
@@ -55,6 +56,7 @@ struct LevelSounds {
   engine: XrayEngine,
   statics: StaticSounds,
   music: LevelMusic,
+  zones: ZoneSounds,
 }
 
 impl LevelSound {
@@ -82,7 +84,8 @@ impl LevelSound {
   }
 
   /// Plays on to `now`, the level's clock started at `opened`, as `drive` gives the frame over what the level's weathers
-  /// play with, an ambient effect's sound starting with it where one does, and sends the scene's frame where one is due.
+  /// play with and `zones` stand its zones, an ambient effect's sound starting with it where one does, and sends the
+  /// scene's frame where one is due.
   pub fn advance(
     &mut self,
     now: Duration,
@@ -90,6 +93,7 @@ impl LevelSound {
     weather: Option<&WorldLevelWeather>,
     drive: &SoundDrive<'_>,
     effect: Option<EffectSound<'_>>,
+    zones: &mut dyn ZoneStates,
   ) {
     let delta: Duration = now.saturating_sub(self.now);
 
@@ -110,6 +114,9 @@ impl LevelSound {
         .statics
         .update(&mut self.emitters, level.engine, drive.game_time, now);
       level.music.update(&mut self.emitters, drive.game_time, now);
+      level
+        .zones
+        .update(&mut self.emitters, level.engine, zones, drive.eye, now);
     }
 
     if let Some(weather) = weather {
@@ -154,6 +161,7 @@ impl LevelSound {
           sound: emitter.sound.to_string(),
           kind: emitter.kind,
           category: emitter.kind.get_category(),
+          object: emitter.object,
           position: emitter.position,
           is_2d: emitter.is_2d,
           distance: (!emitter.is_2d).then(|| listener.distance(Vec3::from(emitter.position))),
@@ -178,18 +186,33 @@ impl LevelSound {
     }
   }
 
+  /// The level objects whose sounds play at the last frame, by the ids their helpers carry, ascending, each once.
+  pub fn list_sounding(&self) -> Vec<u32> {
+    let mut objects: Vec<u32> = self
+      .emitters
+      .iter_playing(self.now)
+      .filter_map(|emitter| emitter.object)
+      .collect();
+
+    objects.sort_unstable();
+    objects.dedup();
+    objects
+  }
+
   fn take_read(&mut self) {
     if let Some(sounds) = self.pending.take() {
       log::info!(
-        "Level sounds: {} static sounds, {} music tracks",
+        "Level sounds: {} static sounds, {} music tracks, {} zones",
         sounds.statics.len(),
-        sounds.music.len()
+        sounds.music.len(),
+        sounds.zones.len()
       );
 
       self.level = Some(LevelSounds {
         engine: sounds.engine,
         statics: StaticSounds::new(sounds.statics),
         music: LevelMusic::new(sounds.music, sounds.engine),
+        zones: ZoneSounds::new(sounds.zones),
       });
     }
   }
@@ -272,8 +295,8 @@ impl LevelSound {
     });
   }
 
-  /// The sounds the scene would play whose files are missing: its static sounds, its music, the channels of the
-  /// ambient playing, and the rain.
+  /// The sounds the scene would play whose files are missing: its static sounds, its music, its zones', the channels of
+  /// the ambient playing, and the rain.
   fn list_missing(&self, weather: Option<&WorldLevelWeather>) -> Vec<WorldSoundRefusal> {
     let mut missing: Vec<(&WorldSound, WorldSoundKind)> = Vec::new();
 
@@ -291,6 +314,15 @@ impl LevelSound {
           .filter(|track| track.halves.is_none() || level.engine == XrayEngine::Extended)
           .map(|track| (&track.stereo, WorldSoundKind::Music)),
       );
+
+      for zone in level.zones.iter_records() {
+        missing.extend(
+          [&zone.idle, &zone.disabled]
+            .into_iter()
+            .flatten()
+            .map(|sound| (sound, zone.get_kind())),
+        );
+      }
     }
 
     if let Some(weather) = weather {

@@ -2,38 +2,33 @@ use std::sync::Arc;
 
 use xrf_app_core::session::SessionSnapshot;
 use xrf_error::{XrfError, XrfResult};
-use xrf_level::{LevelSndStaticFile, LevelSndStaticSound, LevelSndStaticWindow};
 use xrf_ltx::{LtxProject, LtxResolution};
 use xrf_vfs::{XrayLogicalPath, XraySearch};
-use xrf_world::{WorldLevelSounds, WorldMusicTrack, WorldStaticSound};
+use xrf_world::{WorldLevelSounds, WorldMusicTrack};
 
 use crate::level::{LevelConfigs, SelectedLevel};
-use crate::parts::{LevelPlacements, LevelPlacementsPart};
-use crate::sound::LevelSoundFiles;
+use crate::objects::LevelObjectsDescription;
+use crate::sound::{LevelSoundEmitters, LevelSoundFiles};
 
-/// What a level plays whatever its weather, as the world takes it (`CLevelSoundManager::Load`): its static sounds from
-/// `level.snd_static`, and the music tracks of the section its `game.ltx` section names by `music_tracks`, each sound
-/// read for what its file says.
+/// What a level plays whatever its weather, as the world takes it (`CLevelSoundManager::Load`, `CCustomZone::Load`):
+/// its static sounds and zones' sounds (`LevelSoundEmitters`), and the music tracks of the section its `game.ltx`
+/// section names by `music_tracks`, each sound read for what its file says.
 pub struct LevelWorldSounds;
 
 impl LevelWorldSounds {
   /// The config the level's music is named in.
   const GAME: &'static str = "game.ltx";
 
-  /// Reads the level's sounds through `search`.
+  /// Reads the level's sounds through `search`, each emitter named by its level object's place in the listing, none
+  /// where the listing cannot be read, which its report says.
   ///
   /// # Errors
   ///
   /// Returns an error when the game's configs cannot be opened.
   pub fn read(level: &SessionSnapshot<SelectedLevel>, search: &XraySearch) -> XrfResult<WorldLevelSounds> {
-    let placements: Arc<LevelPlacements> = LevelPlacementsPart::get(level, search);
+    let objects: Option<LevelObjectsDescription> = LevelObjectsDescription::read(level, search).ok();
     let mut files: LevelSoundFiles<'_> = LevelSoundFiles::new(search);
-    let statics: Vec<WorldStaticSound> = placements
-      .sounds
-      .iter()
-      .flat_map(|file: &LevelSndStaticFile| &file.sounds)
-      .map(|sound| Self::to_static(sound, &mut files))
-      .collect();
+    let emitters: LevelSoundEmitters = LevelSoundEmitters::read(level, search, objects.as_ref(), &mut files);
     let name: String = level.source.get_name().unwrap_or_default();
     let music: Vec<WorldMusicTrack> = Self::read_music(level, search, &name)?
       .into_iter()
@@ -42,23 +37,10 @@ impl LevelWorldSounds {
 
     Ok(WorldLevelSounds {
       engine: level.engine.engine,
-      statics,
+      statics: emitters.statics,
       music,
+      zones: emitters.zones,
     })
-  }
-
-  fn to_static(sound: &LevelSndStaticSound, files: &mut LevelSoundFiles<'_>) -> WorldStaticSound {
-    let window = |window: &LevelSndStaticWindow| [window.from, window.to];
-
-    WorldStaticSound {
-      sound: files.get(&sound.sound),
-      position: [sound.position.x, sound.position.y, sound.position.z],
-      volume: sound.volume,
-      frequency: sound.frequency,
-      active: window(&sound.active),
-      play: window(&sound.play),
-      pause: window(&sound.pause),
-    }
   }
 
   /// The entries of the level's music section, in the config's order; none where `game.ltx` or the section names

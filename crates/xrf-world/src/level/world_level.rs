@@ -160,11 +160,21 @@ impl WorldLevel {
       ..*sound
     };
 
-    self
-      .sound
-      .advance(clock, self.opened, weather.as_deref(), &drive, effect);
+    self.sound.advance(
+      clock,
+      self.opened,
+      weather.as_deref(),
+      &drive,
+      effect,
+      &mut self.effects,
+    );
 
     (updates, effects)
+  }
+
+  /// The level objects whose sounds play at the last frame, by the ids their helpers carry, ascending.
+  pub fn list_sounding(&self) -> Vec<u32> {
+    self.sound.list_sounding()
   }
 
   /// What its sound plays as the world schedules it.

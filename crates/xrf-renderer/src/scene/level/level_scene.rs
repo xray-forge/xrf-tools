@@ -76,8 +76,10 @@ pub struct LevelScene {
   driver: Option<RenderViewportId>,
   /// Every skinned object's bones as segments, which the skeleton overlay draws.
   pub skeleton_segments: Arc<[(Vec3, Vec3)]>,
-  /// The level objects' helpers as wires, which every view draws as its options ask.
+  /// The level objects' helpers as wires, which every view draws as its options ask, and those whose objects sound, by
+  /// their ids ascending, which it draws lit.
   pub helpers: LevelHelpers,
+  pub sounding: Vec<u32>,
   /// The wind the ambient effects blow, and how much of each campfire's idle light shows.
   pub gust: AmbientGust,
   pub campfire_shares: HashMap<u16, f32>,
@@ -124,6 +126,7 @@ impl LevelScene {
       driver: None,
       skeleton_segments: Arc::from([]),
       helpers: LevelHelpers::default(),
+      sounding: Vec::new(),
       gust: AmbientGust::default(),
       campfire_shares: HashMap::new(),
       camera_hemi: None,
@@ -164,6 +167,7 @@ impl LevelScene {
       campfire_shares,
       motions,
       camera_hemi,
+      sounding,
     } = frame;
 
     // The world moves a scene onto a next source of its level, which every read from now on goes through.
@@ -222,6 +226,7 @@ impl LevelScene {
     self.gust = gust;
     self.campfire_shares = campfire_shares;
     self.camera_hemi = camera_hemi;
+    self.sounding = sounding;
     self.lights.begin_frame(&motions);
     self.statics.prepare_draws(device, queue, encoder);
   }

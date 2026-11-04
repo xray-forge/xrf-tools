@@ -6,4 +6,4 @@ mod level_object_kind_entry;
 
 pub use level_object_group::LevelObjectGroup;
 pub use level_object_kind::LevelObjectKind;
-pub use level_object_kind_entry::{LEVEL_OBJECT_KINDS, LevelObjectKindEntry};
+pub use level_object_kind_entry::{LEVEL_OBJECT_KINDS, LEVEL_SOUND_EMITTERS_HELPER_KIND, LevelObjectKindEntry};

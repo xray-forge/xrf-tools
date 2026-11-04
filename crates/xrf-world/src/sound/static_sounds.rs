@@ -78,6 +78,7 @@ impl StaticSounds {
 
       let play = |is_looped: bool| SoundPlay {
         is_looped,
+        object: record.object,
         volume: record.volume,
         frequency: record.frequency,
         ..SoundPlay::new(&record.sound, WorldSoundKind::Static, record.position, now)

@@ -105,6 +105,12 @@ export class LevelViewService {
     this.storedHelpers.set({ ...this.helpers, ...helpers });
   }
 
+  /** Draws the sound emitters' spheres or leaves them out, while helpers are. */
+  @BoundAction()
+  public toggleSoundEmitters(): void {
+    this.storedHelpers.set({ ...this.helpers, isEmitterShown: !this.helpers.isEmitterShown });
+  }
+
   /**
    * @param change - Kinds of level object, and whether their helpers are drawn from now on, while helpers are.
    */

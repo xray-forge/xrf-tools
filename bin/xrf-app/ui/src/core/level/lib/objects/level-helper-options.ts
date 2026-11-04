@@ -11,6 +11,8 @@ export interface ILevelHelperOptions {
   isShown: boolean;
   /** Each kind's helper as switched, by kind name; a kind not named draws as the kind table says by default. */
   kinds: Partial<Record<LevelObjectKind, boolean>>;
+  /** Draws each static and zone sound's spheres out to its minimum and maximum distance, the playing ones lit. */
+  isEmitterShown: boolean;
   /** How strongly a wire shows behind what the level draws in front of it, from none to whole. */
   occludedStrength: number;
   /** What every kind's draw distance is scaled by. */
@@ -27,15 +29,22 @@ export interface ILevelHelperKindsChange {
   isOn: boolean;
 }
 
+/** Why a helper switch cannot be turned while helpers are off. */
+export const LEVEL_HELPERS_OFF_REASON: string = "Helpers are off: turn them on with G";
+
 /** How strongly an occluded wire shows: from none to whole. */
 export const LEVEL_HELPER_OCCLUDED_LIMITS: IRenderLimits = { max: 1, min: 0, step: 0.05 };
 
 /** How far every kind's draw distance is scaled: from a quarter to four times. */
 export const LEVEL_HELPER_DISTANCE_LIMITS: IRenderLimits = { max: 4, min: 0.25, step: 0.25 };
 
-/** The photo mode, each kind left to the kind table, an occluded wire at a quarter, nothing faded or screenshotted. */
+/**
+ * The photo mode, each kind left to the kind table, no sound emitter, an occluded wire at a quarter, nothing faded or
+ * screenshotted.
+ */
 export const DEFAULT_LEVEL_HELPER_OPTIONS: ILevelHelperOptions = {
   distanceScale: 1,
+  isEmitterShown: false,
   isRestFaded: false,
   isScreenshotHelped: false,
   isShown: false,
@@ -74,6 +83,8 @@ export function toLevelHelperOptions(stored: unknown): ILevelHelperOptions {
       LEVEL_HELPER_DISTANCE_LIMITS,
       DEFAULT_LEVEL_HELPER_OPTIONS.distanceScale
     ),
+    isEmitterShown:
+      typeof stored.isEmitterShown === "boolean" ? stored.isEmitterShown : DEFAULT_LEVEL_HELPER_OPTIONS.isEmitterShown,
     isRestFaded:
       typeof stored.isRestFaded === "boolean" ? stored.isRestFaded : DEFAULT_LEVEL_HELPER_OPTIONS.isRestFaded,
     isScreenshotHelped:

@@ -23,6 +23,7 @@ function voice(gain: number | null, isLoading: boolean = false): WorldSoundVoice
     isLoading,
     isReal: true,
     kind: EWorldSoundKind.STATIC,
+    object: null,
     position: [0, 0, 0],
     restarts: 0,
     sound: "ambient\\wind",

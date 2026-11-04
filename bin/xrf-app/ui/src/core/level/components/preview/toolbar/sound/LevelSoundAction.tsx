@@ -4,11 +4,13 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { VolumeUpIcon } from "@xrf/ui/icons/volume-up";
 import { ReactElement } from "react";
 
+import { ILevelHelperOptions, LEVEL_HELPERS_OFF_REASON } from "@/core/level/lib/objects/level-helper-options";
 import { LevelViewService } from "@/core/level/services/level-view";
 
 /**
  * Whether the level's sound is heard while its viewport is the one listening, and which of its categories: a sound
- * switched off is silent and its schedule runs on, so switching it back on hears it where it would be.
+ * switched off is silent and its schedule runs on, so switching it back on hears it where it would be. Its emitters'
+ * spheres draw among the helpers.
  */
 export function LevelSoundAction({
   "data-testid": dataTestId = "level-sound-action",
@@ -18,6 +20,7 @@ export function LevelSoundAction({
   const viewService: LevelViewService = useInjection(LevelViewService);
 
   const { isSoundHeard, isMusicHeard, isAmbienceHeard, isWorldHeard } = viewService.options;
+  const helpers: ILevelHelperOptions = viewService.helpers;
 
   return (
     <EditorPopoverGroup
@@ -55,6 +58,18 @@ export function LevelSoundAction({
         description={"Sounds at the world's objects: anomalies and campfires"}
         isOn={isWorldHeard}
         onToggle={() => viewService.toggleOption("isWorldHeard")}
+      />
+
+      <EditorPopoverGroupSection
+        label={"Emitters"}
+        description={
+          helpers.isShown
+            ? "Spheres out to each static and zone sound's minimum and maximum distance, the playing ones lit"
+            : LEVEL_HELPERS_OFF_REASON
+        }
+        isOn={helpers.isEmitterShown}
+        isDisabled={!helpers.isShown}
+        onToggle={() => viewService.toggleSoundEmitters()}
       />
     </EditorPopoverGroup>
   );

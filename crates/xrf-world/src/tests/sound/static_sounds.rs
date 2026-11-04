@@ -13,6 +13,7 @@ use crate::tests::sound::{found, missing, seconds};
 fn record(active: [u32; 2], play: [u32; 2], pause: [u32; 2]) -> WorldStaticSound {
   WorldStaticSound {
     sound: found("ambient\\water", 4),
+    object: Some(12),
     position: [1.0, 2.0, 3.0],
     volume: 0.5,
     frequency: 1.0,
@@ -37,6 +38,7 @@ fn loops_one_with_no_pause_for_ever_as_one_play() {
 
   assert_eq!(first.len(), 1);
   assert!(first[0].is_looped);
+  assert_eq!(first[0].object, Some(12));
   assert_eq!(first[0].position, [1.0, 2.0, 3.0]);
   assert_eq!(first[0].volume, 0.5);
 

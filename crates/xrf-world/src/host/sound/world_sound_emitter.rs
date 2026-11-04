@@ -12,6 +12,8 @@ pub struct WorldSoundEmitter {
   /// The sound's reference.
   pub sound: Arc<str>,
   pub kind: WorldSoundKind,
+  /// The level object it plays at, by the id its helper carries; none for a sound of no object.
+  pub object: Option<u32>,
   /// In engine space; for a 2D sound, from the listener.
   pub position: [f32; 3],
   /// When its first frame plays, on the level's clock; later than the frame for a delayed start.

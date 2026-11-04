@@ -235,6 +235,10 @@ export enum EWorldSoundKind {
   RAIN = "rain",
   /** A thunderbolt's strike. */
   THUNDER = "thunder",
+  /** A zone's `idle_sound`, looped while its idle plays. */
+  ANOMALY = "anomaly",
+  /** A campfire's idle sound while lit, or its `disabled_sound` while out. */
+  CAMPFIRE = "campfire",
 }
 
 /** Every `EWorldSoundKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
@@ -306,6 +310,8 @@ export type WorldSoundVoiceReport = {
   sound: string;
   kind: WorldSoundKind;
   category: WorldSoundCategory;
+  /** The level object it plays for, by the id its helper carries; none for a sound of no object. */
+  object: number | null;
   /** In engine space; from the listener for a 2D sound. */
   position: [number | null, number | null, number | null];
   is2d: boolean;

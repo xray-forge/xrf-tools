@@ -7,13 +7,14 @@ import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { Inventory2Icon } from "@xrf/ui/icons/inventory2";
 import { ReactElement } from "react";
 
-import { ILevelHelperOptions, isLevelHelperOn } from "@/core/level/lib/objects/level-helper-options";
+import {
+  ILevelHelperOptions,
+  isLevelHelperOn,
+  LEVEL_HELPERS_OFF_REASON,
+} from "@/core/level/lib/objects/level-helper-options";
 import { getLevelVisibleOption, TLevelVisibleOption } from "@/core/level/lib/objects/level-object-visibility";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view";
-
-/** Why a helper switch cannot be turned while helpers are off. */
-const HELPERS_OFF: string = "Helpers are off: turn them on with G";
 
 /**
  * What of the level's objects is shown, a row a kind from the kind table: a kind drawn as a model by its picture, its
@@ -61,7 +62,9 @@ export function LevelShowAction({
           >
             <CheckboxFormRow
               label={"Helper"}
-              description={helpers.isShown ? `Outlines the ${entry.label.toLowerCase()} by kind` : HELPERS_OFF}
+              description={
+                helpers.isShown ? `Outlines the ${entry.label.toLowerCase()} by kind` : LEVEL_HELPERS_OFF_REASON
+              }
               isChecked={isHelped}
               isDisabled={!helpers.isShown}
               onChange={() => viewService.setHelperKinds({ isOn: !isHelped, kinds: [entry.kind] })}
@@ -71,7 +74,7 @@ export function LevelShowAction({
           <EditorPopoverGroupSection
             key={entry.kind}
             label={`${entry.label} helpers`}
-            description={helpers.isShown ? undefined : HELPERS_OFF}
+            description={helpers.isShown ? undefined : LEVEL_HELPERS_OFF_REASON}
             isOn={isHelped}
             isDisabled={!helpers.isShown}
             onToggle={() => viewService.setHelperKinds({ isOn: !isHelped, kinds: [entry.kind] })}

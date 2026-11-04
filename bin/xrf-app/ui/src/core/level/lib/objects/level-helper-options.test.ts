@@ -31,6 +31,7 @@ describe("toLevelHelperOptions", () => {
     expect(
       toLevelHelperOptions({
         distanceScale: 99,
+        isEmitterShown: "on",
         isRestFaded: 1,
         isScreenshotHelped: "no",
         isShown: "yes",
@@ -39,6 +40,7 @@ describe("toLevelHelperOptions", () => {
       })
     ).toEqual({
       distanceScale: 4,
+      isEmitterShown: false,
       isRestFaded: false,
       isScreenshotHelped: false,
       isShown: false,
@@ -47,5 +49,6 @@ describe("toLevelHelperOptions", () => {
     });
     expect(toLevelHelperOptions({ isRestFaded: true }).isRestFaded).toBe(true);
     expect(toLevelHelperOptions({ isScreenshotHelped: true }).isScreenshotHelped).toBe(true);
+    expect(toLevelHelperOptions({ isEmitterShown: true }).isEmitterShown).toBe(true);
   });
 });

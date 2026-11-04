@@ -8,3 +8,4 @@ pub(crate) mod world_sound_info;
 pub(crate) mod world_sound_listener;
 pub(crate) mod world_sound_sink;
 pub(crate) mod world_static_sound;
+pub(crate) mod world_zone_sound;

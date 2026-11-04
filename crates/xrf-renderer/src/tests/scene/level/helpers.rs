@@ -127,6 +127,7 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
     ids(HelpersFeature::to_vertices(
       &helpers,
       &options(1 << 10 | 1 << 11),
+      &[],
       HelperPart::Every,
       no_boxes
     )),
@@ -136,6 +137,7 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
     ids(HelpersFeature::to_vertices(
       &helpers,
       &options(1 << 11),
+      &[],
       HelperPart::Every,
       no_boxes
     )),
@@ -148,6 +150,7 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
         is_shown: false,
         ..options(u32::MAX)
       },
+      &[],
       HelperPart::Every,
       no_boxes
     )
@@ -160,6 +163,7 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
         hidden: vec![3],
         ..options(u32::MAX)
       },
+      &[],
       HelperPart::Every,
       no_boxes
     )),
@@ -172,13 +176,42 @@ fn draws_the_kinds_switched_on_less_the_hidden_and_marks_the_selected_unfaded() 
     distance_scale: 2.0,
     ..options(u32::MAX)
   };
-  let every: Vec<HelperVertex> = HelpersFeature::to_vertices(&helpers, &selecting, HelperPart::Every, no_boxes);
-  let singled: Vec<HelperVertex> = HelpersFeature::to_vertices(&helpers, &selecting, HelperPart::Singled, no_boxes);
+  let every: Vec<HelperVertex> = HelpersFeature::to_vertices(&helpers, &selecting, &[], HelperPart::Every, no_boxes);
+  let singled: Vec<HelperVertex> =
+    HelpersFeature::to_vertices(&helpers, &selecting, &[], HelperPart::Singled, no_boxes);
 
   assert_eq!(ids(every.clone()), vec![3, 7]);
   assert!(every.iter().all(|it| it.color[3] == 0.0 && it.fade[0] == 200.0));
   assert_eq!(ids(singled.clone()), vec![7]);
   assert!(singled.iter().all(|it| it.color[3] == 1.0 && it.fade[0] == 0.0));
+}
+
+// An object whose sound plays is drawn apart, lit, fading with distance as it would unlit; a selection outranks it.
+#[test]
+fn lights_the_sounding_objects_apart_still_fading() {
+  let helpers: LevelHelpers = new_helpers();
+  let options: RenderHelperOptions = RenderHelperOptions {
+    selected: vec![7],
+    ..options(u32::MAX)
+  };
+  let every: Vec<HelperVertex> = HelpersFeature::to_vertices(&helpers, &options, &[3, 7], HelperPart::Every, no_boxes);
+  let singled: Vec<HelperVertex> =
+    HelpersFeature::to_vertices(&helpers, &options, &[3, 7], HelperPart::Singled, no_boxes);
+
+  assert!(every.iter().all(|it| it.color[3] == 0.0));
+  assert!(
+    singled
+      .iter()
+      .filter(|it| it.object == 3)
+      .all(|it| it.color[3] == HelperVertex::SOUNDING && it.fade[0] == 100.0)
+  );
+  assert!(
+    singled
+      .iter()
+      .filter(|it| it.object == 7)
+      .all(|it| it.color[3] == HelperVertex::SELECTED && it.fade[0] == 0.0)
+  );
+  assert!(singled.iter().any(|it| it.object == 3));
 }
 
 // A model marks its place in its colour while it stands in the scene, by place, and draws its box only while hovered or
@@ -218,7 +251,7 @@ fn marks_each_standing_model_by_its_place_and_boxes_the_hovered_and_selected() {
     vec![[300, orange], [900, orange]]
   );
   assert!(HelpersFeature::to_marks(&helpers, &options(1 << 3), places).is_empty());
-  assert!(HelpersFeature::to_vertices(&helpers, &options(1 << 2), HelperPart::Every, boxes).is_empty());
+  assert!(HelpersFeature::to_vertices(&helpers, &options(1 << 2), &[], HelperPart::Every, boxes).is_empty());
 
   let singled: Vec<HelperVertex> = HelpersFeature::to_vertices(
     &helpers,
@@ -227,6 +260,7 @@ fn marks_each_standing_model_by_its_place_and_boxes_the_hovered_and_selected() {
       hovered: Some(5),
       ..options(1 << 2)
     },
+    &[],
     HelperPart::Singled,
     boxes,
   );
@@ -280,6 +314,7 @@ fn stands_each_icon_at_its_point_by_its_cell_drawn_as_its_object() {
       selected: vec![8],
       ..options(1 << 4)
     },
+    &[],
     HelperPart::Singled,
   );
 

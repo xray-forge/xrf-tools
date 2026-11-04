@@ -31,6 +31,22 @@ describe("LevelSoundAction", () => {
     });
   });
 
+  it("draws the emitters' spheres among the helpers, only while helpers are on", async () => {
+    const { container, view } = mockLevelViewContainer();
+    const { getByRole, findByRole } = renderWithProviders(<LevelSoundAction />, { container });
+
+    await userEvent.click(getByRole("button", { name: "Sound" }));
+    await findByRole("dialog", { name: "Sound" });
+
+    expect(getByRole("checkbox", { name: "Emitters" })).toBeDisabled();
+
+    view.toggleHelpers();
+
+    await userEvent.click(await findByRole("checkbox", { name: "Emitters" }));
+
+    expect(view.helpers.isEmitterShown).toBe(true);
+  });
+
   it("says when the sound is off", () => {
     const { container, view } = mockLevelViewContainer();
 

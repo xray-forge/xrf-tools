@@ -15,6 +15,8 @@ pub struct WorldSoundVoiceReport {
   pub sound: String,
   pub kind: WorldSoundKind,
   pub category: WorldSoundCategory,
+  /// The level object it plays for, by the id its helper carries; none for a sound of no object.
+  pub object: Option<u32>,
   /// In engine space; from the listener for a 2D sound.
   pub position: [f32; 3],
   pub is_2d: bool,
