@@ -1,12 +1,15 @@
 use std::sync::Arc;
 use std::sync::mpsc::SyncSender;
+use std::time::Duration;
 
 use xrf_error::XrfResult;
 
 use crate::acoustics::audio_spatialization::AudioSpatialization;
+use crate::control::audio_refusal::AudioRefusal;
 use crate::control::server::audio_gains::AudioGains;
 use crate::host::audio_asset_source::AudioAssetSource;
 use crate::host::audio_scene_geometry::AudioSceneGeometry;
+use crate::mixer::tap::audio_tap::AudioTap;
 use crate::scene::audio_scene_inbox::SceneMailbox;
 use crate::scene::audio_scene_report::AudioSceneReport;
 use crate::transport::audio_transport::AudioTransport;
@@ -46,6 +49,11 @@ pub(crate) enum ControlRequest {
   DescribeScene {
     scene: u32,
     answer: SyncSender<Option<AudioSceneReport>>,
+  },
+  /// Taps the mix before the master through a ring holding `length` of it.
+  OpenTap {
+    length: Duration,
+    answer: SyncSender<Result<AudioTap, AudioRefusal>>,
   },
   /// Closes every transport and scene and ends the thread.
   ShutDown,

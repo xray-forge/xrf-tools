@@ -20,6 +20,8 @@ mod level_viewer_folder;
 mod map_export;
 mod new_game;
 mod particles;
+#[cfg(windows)]
+mod record_resampler;
 mod render_reload;
 mod sound_emitters;
 mod surfaces;

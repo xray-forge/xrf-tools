@@ -23,6 +23,7 @@ use crate::host::audio_asset_source::AudioAssetSource;
 use crate::host::audio_scene_geometry::AudioSceneGeometry;
 use crate::mixer::audio_bus::AudioBus;
 use crate::mixer::audio_mixer_meter::AudioMixerMeter;
+use crate::mixer::tap::audio_tap::AudioTap;
 use crate::scene::audio_scene_inbox::AudioSceneInbox;
 use crate::scene::audio_scene_report::AudioSceneReport;
 use crate::transport::audio_transport::AudioTransport;
@@ -241,9 +242,21 @@ impl AudioServer {
     }
   }
 
-  /// The mixer's clock and load.
+  /// The mixer's clock and load, and where its frames play.
   pub fn get_meter(&self) -> &AudioMixerMeter {
     &self.shared.meter
+  }
+
+  /// Taps the mix after the reverb and before the master through a ring holding `length` of it, in place of any tap
+  /// open before; a recorder takes its sound here, without the app's master volume or background mute.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the audio thread is not taking commands, or the control thread does not answer.
+  pub fn open_tap(&self, length: Duration) -> XrfResult<AudioTap> {
+    self
+      .ask(|answer| ControlRequest::OpenTap { length, answer })?
+      .map_err(|refusal| XrfError::new_unexpected_error(format!("The mix cannot be tapped: {refusal}")))
   }
 
   /// Closes every transport and ends the control thread, waiting for it; later requests are refused or dropped.

@@ -79,6 +79,13 @@ The four buses (`Music`, `Ambience`, `World`, `Previews`) are scaled and summed 
 10 ms, and a pause, resume or stop fades over 5 ms, so nothing clicks. A device with more than two channels gets
 silence past the first two; a mono one gets the two averaged.
 
+A recorder takes the mix before the master through `AudioServer::open_tap`, so the app's volume stays out of what it
+records: whole blocks, each with its first frame, through a ring the control side makes, a block the reader has no room
+for dropped and counted rather than waited for, and the stream ended with `AudioTapEnd::RateChanged` when another
+device opens at another rate. It lines the sound up with the picture by `AudioMixerMeter::get_anchor`, which says when
+a frame plays: each device buffer anchors it with the device's latency, and with no device the pace it renders at
+does.
+
 ## Sounds
 
 `SoundDecoder` reads Ogg/Vorbis, as the game ships sounds, and 16-bit WAV, as the SDK keeps sources, through

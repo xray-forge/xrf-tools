@@ -2,7 +2,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use cpal::traits::{DeviceTrait, StreamTrait};
-use cpal::{Device, ErrorKind, Stream, StreamConfig};
+use cpal::{Device, ErrorKind, OutputCallbackInfo, OutputStreamTimestamp, Stream, StreamConfig};
 use rtrb::{Consumer, RingBuffer};
 
 use crate::device::stream::mixer_holder::MixerHolder;
@@ -46,7 +46,15 @@ impl OutputStream {
     let mut holder: MixerHolder = MixerHolder::new(mixer, mixer_returned);
     let built = device.build_output_stream(
       config,
-      move |out: &mut [f32], _| holder.render(out, channels),
+      move |out: &mut [f32], info: &OutputCallbackInfo| {
+        let timestamp: OutputStreamTimestamp = info.timestamp();
+
+        holder.render(
+          out,
+          channels,
+          timestamp.playback.saturating_duration_since(timestamp.callback),
+        );
+      },
       move |error: cpal::Error| {
         let _ = error_sink.push(error.kind());
       },

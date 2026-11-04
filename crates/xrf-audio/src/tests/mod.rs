@@ -7,4 +7,5 @@ mod mixer;
 mod scene;
 mod server;
 mod stream;
+mod tap;
 mod transport;

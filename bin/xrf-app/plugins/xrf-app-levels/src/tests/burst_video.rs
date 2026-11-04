@@ -3,6 +3,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use image::{Rgba, RgbaImage};
 use windows::Win32::Media::MediaFoundation::{
@@ -14,7 +15,9 @@ use xrf_renderer::RenderBurst;
 use xrf_test_utils::GeneratedResources;
 
 use crate::viewer::burst::{BurstSound, BurstSoundOutcome, BurstVideo, BurstVideoOutcome};
-use crate::viewer::record::{MediaProbe, MediaSession};
+use crate::viewer::record::{
+  MediaProbe, MediaSession, RecordFormat, RecordSample, RecordSoundFormat, RecordSummary, RecordWriter,
+};
 
 /// Half a second of frames 1/60 s apart.
 const BURST: RenderBurst = RenderBurst {
@@ -154,6 +157,93 @@ fn writes_a_small_bursts_frames_and_sound_as_one_video() {
 #[test]
 fn writes_a_bursts_frames_and_sound_as_one_video() {
   write_and_read("larger", 321, 181);
+}
+
+// The viewer's widest burst at its default step, 3730×1930 frames 1/120 s apart, past what H.264's highest common
+// level names a frame rate for, is written as given.
+#[test]
+fn writes_the_viewers_widest_burst_at_its_default_step() {
+  let file: PathBuf = folder("widest").join("burst.mp4");
+  let (width, height): (u32, u32) = (3730, 1930);
+  let step: Duration = Duration::from_secs_f64(1.0 / 120.0);
+  let mut writer: RecordWriter = RecordWriter::start(
+    file.clone(),
+    RecordFormat {
+      width,
+      height,
+      frame: step,
+      sound: None,
+    },
+  )
+  .expect("the writer to take the size and rate");
+
+  for index in 0..12u32 {
+    writer
+      .write(RecordSample::Frame {
+        bgra: vec![(index * 20) as u8; width as usize * height as usize * 4],
+        time: step * index,
+        duration: step,
+      })
+      .expect("the frame to be written");
+  }
+
+  let summary: RecordSummary = writer.finish().expect("the video to be finished");
+  let video: ReadStream = read_stream(&file, MF_SOURCE_READER_FIRST_VIDEO_STREAM.0 as u32);
+
+  assert_eq!(summary.frames, 12, "{summary:?}");
+  assert_eq!((video.samples, video.first), (12, Some(0)), "{summary:?} {video:?}");
+  assert!((video.end - TICKS / 10).abs() <= 1, "{summary:?} {video:?}");
+}
+
+// Sound from a device at a rate AAC does not take is brought to 48 kHz on its own clock: a block missing between two
+// does not slide what comes after, and the sound ends with the picture.
+#[test]
+fn writes_sound_from_a_rate_aac_does_not_take() {
+  let file: PathBuf = folder("resampled").join("burst.mp4");
+  let (width, height): (u32, u32) = (320, 180);
+  let step: Duration = Duration::from_secs_f64(1.0 / 60.0);
+  let mut writer: RecordWriter = RecordWriter::start(
+    file.clone(),
+    RecordFormat {
+      width,
+      height,
+      frame: step,
+      sound: Some(RecordSoundFormat {
+        rate: 96_000,
+        channels: 2,
+      }),
+    },
+  )
+  .expect("the writer to take the sound's rate");
+
+  for index in 0..30u32 {
+    // Half a second of 96 kHz in blocks of 256 frames, one skipped as a full tap drops it.
+    for block in (index * 1600 / 256)..((index + 1) * 1600 / 256) {
+      if block != 40 {
+        writer
+          .write(RecordSample::Sound {
+            samples: vec![0.25; 512],
+            at: u64::from(block) * 256,
+          })
+          .expect("the sound to be written");
+      }
+    }
+
+    writer
+      .write(RecordSample::Frame {
+        bgra: vec![128; width as usize * height as usize * 4],
+        time: step * index,
+        duration: step,
+      })
+      .expect("the frame to be written");
+  }
+
+  writer.finish().expect("the video to be finished");
+
+  let audio: ReadStream = read_stream(&file, MF_SOURCE_READER_FIRST_AUDIO_STREAM.0 as u32);
+
+  assert_eq!(audio.first, Some(0), "{audio:?}");
+  assert!((audio.end - TICKS / 2).abs() <= 1024 * TICKS / 48_000, "{audio:?}");
 }
 
 // Where Media Foundation does not load, a video is refused before anything draws, naming what is missing.

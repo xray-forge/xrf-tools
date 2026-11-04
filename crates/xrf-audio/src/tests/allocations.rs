@@ -5,7 +5,8 @@ use assert_no_alloc::{AllocDisabler, assert_no_alloc, reset_violation_count, vio
 
 use crate::tests::fixtures::{RATE, engine, looped, play_voices, ramp, rms_left, sine, stream, wav};
 use crate::{
-  AudioBus, AudioEngineParts, AudioPlay, AudioVoiceId, DecodedSound, OfflineRender, SoundChannels, VoiceSource,
+  AudioBus, AudioEngineParts, AudioPlay, AudioTap, AudioVoiceId, DecodedSound, OfflineRender, SoundChannels,
+  VoiceSource,
 };
 
 /// Counts, rather than forbids, what the audio thread's code allocates or frees inside `assert_no_alloc`.
@@ -88,6 +89,37 @@ fn starts_voices_stamped_to_their_frames_without_allocating() {
 
   assert_eq!(violation_count(), 0);
   assert!(rms_left(&out) > 0.0);
+}
+
+// A tap takes the mix, drops what its full ring has no room for, and is let go of, none of it allocating or freeing on
+// the mixer: the tap goes back to be freed on the control side.
+#[test]
+fn taps_the_mix_without_allocating() {
+  let sound: Arc<DecodedSound> = Arc::new(sine(RATE, 4800, 440.0, 0.5, SoundChannels::Mono));
+  let AudioEngineParts { mut engine, mixer } = engine(64);
+  let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
+  let mut out: Vec<f32> = vec![0.0; 480 * 2];
+
+  play_voices(&mut engine, &sound, 32);
+
+  let mut tap: AudioTap = engine.open_tap(Duration::from_millis(50)).expect("the tap opens");
+
+  reset_violation_count();
+
+  for _ in 0..20 {
+    assert_no_alloc(|| render.render_into(&mut out));
+  }
+
+  assert!(tap.read().expect("the stream runs").is_some());
+  assert!(tap.get_dropped() > 0, "the ring filled");
+  drop(tap);
+
+  for _ in 0..4 {
+    assert_no_alloc(|| render.render_into(&mut out));
+  }
+
+  assert_eq!(violation_count(), 0);
+  engine.collect();
 }
 
 #[test]

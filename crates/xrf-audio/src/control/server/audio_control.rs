@@ -124,6 +124,9 @@ impl AudioControl {
       ControlRequest::DescribeScene { scene, answer } => {
         let _ = answer.send(self.describe_scene(scene));
       }
+      ControlRequest::OpenTap { length, answer } => {
+        let _ = answer.send(self.engine.open_tap(length));
+      }
       ControlRequest::ShutDown => {
         self.close_transports();
         self.close_scenes();
