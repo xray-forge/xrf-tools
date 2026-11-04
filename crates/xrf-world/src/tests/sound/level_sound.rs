@@ -135,6 +135,8 @@ struct Heard {
   sound: LevelSound,
   sent: Arc<Mutex<Vec<WorldSoundFrame>>>,
   opened: Instant,
+  /// Where its camera looks.
+  forward: Vec3,
   zones: NoZones,
   /// The workers its sounds are read on, kept while it plays.
   _workers: RenderWorkers,
@@ -155,6 +157,7 @@ impl Heard {
       sound: LevelSound::start(&source, &workers),
       sent,
       opened: Instant::now(),
+      forward: Vec3::Z,
       zones: NoZones(LevelCampfires::default()),
       _workers: workers,
     }
@@ -167,7 +170,7 @@ impl Heard {
       at: self.opened + now,
       is_audible: true,
       eye: Vec3::ZERO,
-      forward: Vec3::Z,
+      forward: self.forward,
       up: Vec3::Y,
       game_time: 12 * 3_600_000,
       toggles: Default::default(),
@@ -315,4 +318,33 @@ fn sends_the_same_frames_for_two_bursts_from_one_time() {
   assert!(first.len() >= 60, "{} frames", first.len());
   assert!(first.iter().any(|played| played.emitters.len() >= 3), "{first:?}");
   assert_eq!(first, second);
+}
+
+// A camera pitched down holds its up square to where it looks, as its view does, so the listener still has a whole
+// right ear; looking straight down, it keeps the up it last had.
+#[test]
+fn hears_from_the_cameras_own_up_as_it_pitches() {
+  let mut heard: Heard = Heard::new();
+  let listened = |heard: &mut Heard, at: f64| -> (Vec3, Vec3) {
+    heard.advance(Duration::from_secs_f64(at), None);
+
+    let sent: WorldSoundFrame = heard.sent.lock().unwrap().last().cloned().expect("a frame was sent");
+
+    (Vec3::from(sent.listener.forward), Vec3::from(sent.listener.up))
+  };
+
+  heard.forward = Vec3::new(0.0, -1.0, 1.0);
+
+  let (forward, up) = listened(&mut heard, 1.0);
+
+  assert!(forward.dot(up).abs() < 1e-5, "{forward} {up}");
+  assert!((up.length() - 1.0).abs() < 1e-5 && up.y > 0.0 && up.z > 0.0, "{up}");
+  assert!((up.cross(forward).length() - 1.0).abs() < 1e-5);
+
+  heard.forward = Vec3::NEG_Y;
+
+  let (forward, down) = listened(&mut heard, 1.1);
+
+  assert!(forward.dot(down).abs() < 1e-5, "{forward} {down}");
+  assert!((down - Vec3::Z).length() < 1e-5, "{down}");
 }
