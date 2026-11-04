@@ -30,6 +30,7 @@ pub async fn levels_start_recording(
   name: String,
   progress: Channel<RecordingProgress>,
 ) -> TauriResult<PathBuf> {
+  // Refused before the frame is asked for; the start itself checks again under the lock.
   if recordings.is_recording() {
     return Err(String::from("A recording runs already"));
   }
@@ -57,21 +58,29 @@ pub async fn levels_start_recording(
 
     execution
       .run_blocking("Starting a recording", move || -> TauriResult<PathBuf> {
+        // Held from the check to the recorder taking its place, so two starts asked at once never both pass it.
+        let mut active = recordings.lock();
+
+        if active.as_ref().is_some_and(|recorder| !recorder.is_ended()) {
+          return Err(String::from("A recording runs already"));
+        }
+
+        // One that ended by itself is collected, its file finished already, before the next opens its tap.
+        if let Some(ended) = active.take() {
+          let _ = ended.stop();
+        }
+
         let file: PathBuf = LevelViewerFolder::find_free_recording(&LevelViewerFolder::make(folder)?, &name)?;
-        let recorder: ViewportRecorder = ViewportRecorder::start(
+
+        *active = Some(ViewportRecorder::start(
           &renderer,
           &server,
           viewport,
           (frame.width, frame.height),
           file.clone(),
           progress,
-        )?;
-        // One that ended by itself is collected, its file finished already.
-        let ended: Option<ViewportRecorder> = recordings.lock().replace(recorder);
-
-        if let Some(ended) = ended {
-          let _ = ended.stop();
-        }
+        )?);
+        drop(active);
 
         world.lock().pin_listener(Some(viewport));
 
