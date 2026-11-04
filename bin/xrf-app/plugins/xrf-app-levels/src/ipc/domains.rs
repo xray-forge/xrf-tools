@@ -8,6 +8,7 @@ macro_rules! for_each_levels_domain {
         capture_cube => crate::viewer::commands::capture::capture_cube::levels_capture_cube,
         capture_map => crate::viewer::commands::capture::capture_map::levels_capture_map,
         close_level => crate::commands::close_level::levels_close_level,
+        command_music => crate::commands::command_music::levels_command_music,
         copy_screenshot => crate::viewer::commands::screenshot::copy_screenshot::levels_copy_screenshot,
         delete_screenshot => crate::viewer::commands::screenshot::delete_screenshot::levels_delete_screenshot,
         describe_console_defaults => crate::commands::describe_console_defaults::levels_describe_console_defaults,

@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use xrf_engine_target::XrayEngine;
 
+use crate::contract::sound::world_music_command::WorldMusicCommand;
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
 use crate::contract::sound::world_sound_music_report::WorldSoundMusicReport;
 use crate::host::sound::world_music_track::WorldMusicTrack;
@@ -24,11 +25,16 @@ const HALF_POSITIONS: [[f32; 3]; 2] = [[-0.5, 0.0, 0.3], [0.5, 0.0, 0.3]];
 /// OpenXRay picks at random among the eligible, and plays a track's halves where its stereo file is missing. Monolith
 /// shuffles the tracks once and takes the first eligible one not yet played; none left forgets what played and shuffles
 /// again.
+///
+/// A viewer may play one track by hand in place of the schedule, over and over until it asks the schedule back, and
+/// play the track playing from any point.
 pub struct LevelMusic {
   tracks: Vec<WorldMusicTrack>,
   engine: XrayEngine,
   /// The track playing, by its place in `tracks`, and its emitters.
   current: Option<(usize, Vec<u64>)>,
+  /// The track played by hand, by its place in `tracks`, none while the schedule picks.
+  chosen: Option<usize>,
   next: Duration,
   /// Monolith's tracks played since the last shuffle.
   played: Vec<usize>,
@@ -47,6 +53,7 @@ impl LevelMusic {
       tracks,
       engine,
       current: None,
+      chosen: None,
       next: Duration::ZERO,
       played: Vec::new(),
       random,
@@ -59,8 +66,12 @@ impl LevelMusic {
       return;
     }
 
-    if self.current.is_none() && now > self.next {
-      self.pick(emitters, game_time, now);
+    if self.current.is_none() {
+      if let Some(index) = self.chosen {
+        self.current = Some((index, self.play(emitters, index, now, Duration::ZERO)));
+      } else if now > self.next {
+        self.pick(emitters, game_time, now);
+      }
     }
 
     if let Some((index, playing)) = &self.current
@@ -71,20 +82,62 @@ impl LevelMusic {
       self.current = None;
       self.next = now;
 
-      if pause != [0, 0] {
+      if pause != [0, 0] && self.chosen.is_none() {
         self.next += self.random.millis(pause);
       }
     }
   }
 
-  /// The track playing and how far into it, or how long until the next pick.
+  /// Does what a viewer asks at `now`, the level's clock, answering whether it could: a track it names is one the
+  /// level has, and a seek finds a track playing.
+  pub fn command(&mut self, emitters: &mut SoundEmitters, command: &WorldMusicCommand, now: Duration) -> bool {
+    match command {
+      WorldMusicCommand::Schedule => {
+        if self.chosen.take().is_some() {
+          self.stop(emitters);
+          self.next = now;
+        }
+
+        true
+      }
+      WorldMusicCommand::Play { track } => {
+        let Some(index) = self.tracks.iter().position(|it| it.name == *track) else {
+          return false;
+        };
+
+        self.stop(emitters);
+        self.chosen = Some(index);
+        self.current = Some((index, self.play(emitters, index, now, Duration::ZERO)));
+
+        true
+      }
+      WorldMusicCommand::Seek { position } => {
+        let Some((index, _)) = self.current else {
+          return false;
+        };
+        let length: Duration = self.get_length(index);
+        let offset: Duration = Duration::from_millis(*position).min(length);
+
+        self.stop(emitters);
+        self.current = Some((index, self.play(emitters, index, now, offset)));
+
+        true
+      }
+    }
+  }
+
+  /// The track playing, how far into it and how long it is, or how long until the next pick; the track chosen by
+  /// hand, and every track by name.
   pub fn report(&self, emitters: &SoundEmitters, now: Duration) -> WorldSoundMusicReport {
     let playing = self.current.as_ref().and_then(|(index, ids)| {
       emitters
         .iter_playing(now)
         .find(|emitter| ids.contains(&emitter.id))
-        .map(|emitter| (self.tracks[*index].name.clone(), now.saturating_sub(emitter.start)))
+        .map(|emitter| (*index, now.saturating_sub(emitter.start) + emitter.offset))
     });
+    let mut tracks: Vec<String> = self.tracks.iter().map(|track| track.name.clone()).collect();
+
+    tracks.sort();
 
     WorldSoundMusicReport {
       wait: if playing.is_some() {
@@ -92,9 +145,11 @@ impl LevelMusic {
       } else {
         self.next.saturating_sub(now)
       },
-      position: playing.as_ref().map_or(Duration::ZERO, |(_, position)| *position),
-      track: playing.map(|(track, _)| track),
-      tracks: self.tracks.len() as u32,
+      position: playing.map_or(Duration::ZERO, |(_, position)| position),
+      length: playing.map_or(Duration::ZERO, |(index, _)| self.get_length(index)),
+      track: playing.map(|(index, _)| self.tracks[index].name.clone()),
+      chosen: self.chosen.map(|index| self.tracks[index].name.clone()),
+      tracks,
     }
   }
 
@@ -124,15 +179,35 @@ impl LevelMusic {
     };
 
     self.played.push(index);
-    self.current = Some((index, self.play(emitters, index, now)));
+    self.current = Some((index, self.play(emitters, index, now, Duration::ZERO)));
   }
 
-  /// `SMusicTrack::Play`: the stereo file 2D, or OpenXRay's halves either side, each at the track's volume.
-  fn play(&self, emitters: &mut SoundEmitters, index: usize, now: Duration) -> Vec<u64> {
+  /// Stops the track playing at once.
+  fn stop(&mut self, emitters: &mut SoundEmitters) {
+    for id in self.current.take().into_iter().flat_map(|(_, ids)| ids) {
+      emitters.stop(id);
+    }
+  }
+
+  /// How long a track plays: its stereo file's length, or its halves' where only they play.
+  fn get_length(&self, index: usize) -> Duration {
+    let track: &WorldMusicTrack = &self.tracks[index];
+
+    track
+      .stereo
+      .info
+      .or_else(|| track.halves.as_ref().and_then(|[left, _]| left.info))
+      .map_or(Duration::ZERO, |info| info.length)
+  }
+
+  /// `SMusicTrack::Play`: the stereo file 2D, or OpenXRay's halves either side, each at the track's volume, from
+  /// `offset` into it.
+  fn play(&self, emitters: &mut SoundEmitters, index: usize, now: Duration, offset: Duration) -> Vec<u64> {
     let track: &WorldMusicTrack = &self.tracks[index];
     let play = |sound, position| SoundPlay {
       is_2d: true,
       volume: track.volume,
+      offset,
       ..SoundPlay::new(sound, WorldSoundKind::Music, position, now)
     };
 

@@ -1,14 +1,15 @@
 import { useInjection } from "@wirestate/react";
-import { WorldSoundReport, WorldSoundVoiceReport } from "@xrf/ipc/types/xrf-world";
+import { WorldMusicCommand, WorldSoundReport, WorldSoundVoiceReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material/typography";
-import { ReactElement, useEffect, useState } from "react";
+import { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
+import { LevelSoundMusicSection } from "@/tools/level-viewer/components/panels/LevelSoundPanel/LevelSoundMusicSection";
 import {
   formatLevelSoundAcoustics,
   formatLevelSoundAcousticsState,
@@ -68,6 +69,11 @@ export function LevelSoundPanel({
 
   const report: Nullable<WorldSoundReport> = useLevelSoundReport(renderService);
 
+  const onMusic = useCallback(
+    (command: WorldMusicCommand): Promise<boolean> => renderService.commandMusic(command),
+    [renderService]
+  );
+
   if (!loadService.level.value || !report) {
     return (
       <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Sound"}>
@@ -93,22 +99,7 @@ export function LevelSoundPanel({
         ) : null}
       </EditorPanelSection>
 
-      <EditorPanelSection title={"Music"}>
-        {report.music === null || report.music.tracks === 0 ? (
-          <Typography className={"block text-text-secondary"} variant={"caption"}>
-            The level names no music.
-          </Typography>
-        ) : (
-          <EditorPanelProperty
-            label={report.music.track ?? "Next"}
-            value={
-              report.music.track
-                ? formatLevelSoundSeconds(report.music.position)
-                : `In ${formatLevelSoundSeconds(report.music.wait)}`
-            }
-          />
-        )}
-      </EditorPanelSection>
+      <LevelSoundMusicSection music={report.music} onCommand={onMusic} />
 
       <EditorPanelSection title={report.ambient ? `Channels of ${report.ambient}` : "Channels"}>
         {report.channels.length === 0 ? (

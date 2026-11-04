@@ -5,7 +5,7 @@ import { levelsCommands } from "@xrf/ipc/commands/levels";
 import { SessionSnapshot } from "@xrf/ipc/types/xrf-app-core";
 import { SelectedLevelDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { RenderLoadReport, RenderViewportId } from "@xrf/ipc/types/xrf-renderer";
-import { WorldCameraPose, WorldSoundReport, WorldWeatherReport } from "@xrf/ipc/types/xrf-world";
+import { WorldCameraPose, WorldMusicCommand, WorldSoundReport, WorldWeatherReport } from "@xrf/ipc/types/xrf-world";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
@@ -66,6 +66,20 @@ export class LevelRenderService extends NativeRenderSurfaceService {
       this.viewport
         ?.ask("describeSound", (id: RenderViewportId) => levelsCommands.describeSound(id), null)
         .catch(() => null) ?? Promise.resolve(null)
+    );
+  }
+
+  /**
+   * @param command - How the level's music plays from now on: by the game's schedule, one track by hand, or the track
+   *   playing from a point.
+   * @returns Whether the world could: not while no level is shown, for a track the level does not have, or for a seek
+   *   between tracks.
+   */
+  public commandMusic(command: WorldMusicCommand): Promise<boolean> {
+    return (
+      this.viewport
+        ?.ask("commandMusic", (id: RenderViewportId) => levelsCommands.commandMusic(id, command), false)
+        .catch(() => false) ?? Promise.resolve(false)
     );
   }
 

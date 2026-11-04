@@ -29,6 +29,7 @@ fn emitter(id: u64, sound: &str) -> AudioSceneEmitter {
     bus: AudioBus::Ambience,
     position: [0.0, 0.0, 4.0],
     start: Duration::ZERO,
+    offset: Duration::ZERO,
     stop: None,
     is_looped: true,
     is_2d: false,
@@ -221,6 +222,33 @@ fn plays_an_emitter_where_the_scene_hears_it() {
   assert_eq!(report.real_voices, 1);
   assert!(report.emitters[0].is_real && report.emitters[0].gain > 0.4);
   assert!(rms_left(&heard[heard.len() / 2..]) > 0.05);
+}
+
+// An emitter played once from 0.9 s into its second-long sound is over a tenth of a second after its start, as one
+// played from its first frame is not.
+#[test]
+fn plays_an_emitter_from_its_offset_into_its_sound() {
+  let heard_from = |offset: Duration| -> f32 {
+    let (mut session, mut inbox) = session();
+    let played: AudioSceneEmitter = AudioSceneEmitter {
+      is_looped: false,
+      offset,
+      ..emitter(1, "ambient\\tone")
+    };
+
+    assert!(
+      inbox
+        .send(frame(Duration::ZERO, AudioSceneRules::Vanilla, vec![played]))
+        .is_ok()
+    );
+
+    let heard: Vec<f32> = session.render(RATE as usize / 2);
+
+    rms_left(&heard[heard.len() / 2..])
+  };
+
+  assert!(heard_from(Duration::ZERO) > 0.05);
+  assert!(heard_from(Duration::from_millis(900)) < 1e-4);
 }
 
 // A clock stepped three times as fast as the mixer anchors again and again, and moves no playing voice: a voice is

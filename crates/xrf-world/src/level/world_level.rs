@@ -9,6 +9,7 @@ use xrf_renderer::{
 use crate::contract::level::world_level_problems::WorldLevelProblems;
 use crate::contract::level::world_model_pose::WorldModelPose;
 use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::sound::world_music_command::WorldMusicCommand;
 use crate::contract::sound::world_sound_report::WorldSoundReport;
 use crate::contract::weather::world_ambient_report::WorldAmbientReport;
 use crate::host::world_level_source::WorldLevelSource;
@@ -170,6 +171,11 @@ impl WorldLevel {
     );
 
     (updates, effects)
+  }
+
+  /// Does what a viewer asks of the level's music, answering whether it could.
+  pub fn command_music(&mut self, command: &WorldMusicCommand) -> bool {
+    self.sound.command_music(command)
   }
 
   /// The level objects whose sounds play at the last frame, by the ids their helpers carry, ascending.

@@ -34,6 +34,24 @@ describe("LevelWeatherAction", () => {
     expect(getByRole("dialog", { name: "Weather" }).textContent).toContain("Play the weather");
   });
 
+  it("shows the time of day as the panel does: the cycle's keyframes marked, and its speed beneath", async () => {
+    const { getByRole, findByRole, weather } = await renderAction();
+
+    await userEvent.click(getByRole("button", { name: "Weather" }));
+
+    const dialog: HTMLElement = await findByRole("dialog", { name: "Weather" });
+    const marks: NodeListOf<Element> = dialog.querySelectorAll(".MuiSlider-mark");
+
+    expect(getByRole("slider", { name: "Time of day" })).toBeInTheDocument();
+    expect(marks.length).toBeGreaterThan(0);
+    expect(marks).toHaveLength(weather.cycle.value?.keyframes.length ?? -1);
+
+    getByRole("slider", { name: "Speed" }).focus();
+    await userEvent.keyboard("{End}");
+
+    expect(weather.control.factor).toBeGreaterThan(12);
+  });
+
   it("copies the keyframe on screen as a weather config section", async () => {
     const writeText = jest.fn<(text: string) => Promise<void>>(() => Promise.resolve());
     const { getByRole, findByRole } = await renderAction();

@@ -6,6 +6,7 @@ use glam::Vec3;
 use xrf_engine_target::XrayEngine;
 use xrf_renderer::RenderWorkers;
 
+use crate::contract::sound::world_music_command::WorldMusicCommand;
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
 use crate::contract::sound::world_sound_refusal::WorldSoundRefusal;
 use crate::contract::sound::world_sound_report::WorldSoundReport;
@@ -184,6 +185,15 @@ impl LevelSound {
       refused: self.list_missing(weather),
       ..WorldSoundReport::default()
     }
+  }
+
+  /// Does what a viewer asks of the music at the last frame's clock, answering whether it could; none can before the
+  /// level's sounds are read.
+  pub fn command_music(&mut self, command: &WorldMusicCommand) -> bool {
+    self
+      .level
+      .as_mut()
+      .is_some_and(|level| level.music.command(&mut self.emitters, command, self.now))
   }
 
   /// The level objects whose sounds play at the last frame, by the ids their helpers carry, ascending, each once.

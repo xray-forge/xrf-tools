@@ -174,6 +174,25 @@ export type WorldModelPose = {
   hiddenBones: Array<number>;
 };
 
+/** Every `kind` the `WorldMusicCommand` union is told apart by, so a switch or a comparison names one. */
+export enum EWorldMusicCommand {
+  /** Back to the game's schedule: a track played by hand stops, and the next is picked as the game would. */
+  SCHEDULE = "schedule",
+  /** Plays one track by its entry's name from its start, and again each time it ends, until the schedule is asked back. */
+  PLAY = "play",
+  /** Plays the track playing from `position` milliseconds in. */
+  SEEK = "seek",
+}
+
+/** What a viewer asks of a level's music. */
+export type WorldMusicCommand =
+  /** Back to the game's schedule: a track played by hand stops, and the next is picked as the game would. */
+  | { kind: "schedule" }
+  /** Plays one track by its entry's name from its start, and again each time it ends, until the schedule is asked back. */
+  | { kind: "play"; track: string }
+  /** Plays the track playing from `position` milliseconds in. */
+  | { kind: "seek"; position: number };
+
 /** A drawable of a level's sector the packer left out, and why. */
 export type WorldSectorSkip = {
   sector: number;
@@ -244,16 +263,23 @@ export enum EWorldSoundKind {
 /** Every `EWorldSoundKind` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type WorldSoundKind = `${EWorldSoundKind}`;
 
-/** Where a level's music stands: the track playing and how far into it, or how long until the next is picked. */
+/**
+ * Where a level's music stands: the track playing, how far into it and how long it is, or how long until the next is
+ * picked, and whether a track was chosen by hand.
+ */
 export type WorldSoundMusicReport = {
   /** The track playing, by its entry's name, none between tracks. */
   track: string | null;
   /** How far it has played. */
   position: number;
+  /** How long it plays, nought between tracks. */
+  length: number;
   /** Level time until the next pick, zero while a track plays. */
   wait: number;
-  /** Tracks the level has. */
-  tracks: number;
+  /** The track played by hand in place of the schedule, none while the schedule picks. */
+  chosen: string | null;
+  /** Every track the level has, by name, sorted. */
+  tracks: Array<string>;
 };
 
 /** A sound a scene could not play, and why: its file is missing, it cannot be decoded, or no voice was left for it. */

@@ -55,6 +55,7 @@ impl LevelSoundSink {
       bus: Self::to_bus(emitter.kind.get_category()),
       position: emitter.position,
       start: emitter.start,
+      offset: emitter.offset,
       stop: emitter.stop,
       is_looped: emitter.is_looped,
       is_2d: emitter.is_2d,

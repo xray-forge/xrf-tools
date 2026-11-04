@@ -1,16 +1,13 @@
-import { formatPercent } from "@xrf/format";
 import { WorldWeatherReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
-import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
-import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
-import { ILevelWeatherControl, LEVEL_WEATHER_FACTOR_LIMITS } from "@/core/level/lib/weather/level-weather-control";
-import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
-import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
+import { LevelWeatherTime } from "@/core/level/components/weather/LevelWeatherTime";
+import { ILevelWeatherControl } from "@/core/level/lib/weather/level-weather-control";
 
 interface ILevelWeatherClockSectionProps extends BaseComponentProps {
   /** Seconds since midnight. */
@@ -31,8 +28,7 @@ interface ILevelWeatherClockSectionProps extends BaseComponentProps {
 }
 
 /**
- * The time of day: whether the clock runs and how fast, where it stands between which keyframes, and how the sun
- * stands for it.
+ * The time of day as the toolbar's Weather popover shows it too (`LevelWeatherTime`), and how the sun stands for it.
  */
 export function LevelWeatherClockSection({
   "data-testid": dataTestId = "level-weather-clock-section",
@@ -51,30 +47,14 @@ export function LevelWeatherClockSection({
 }: ILevelWeatherClockSectionProps): ReactElement {
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Time"}>
-      <LevelWeatherClock
+      <LevelWeatherTime
         time={time}
-        isPlaying={!control.isPaused}
         keyframes={keyframes}
+        report={report}
+        control={control}
         onSeek={onSeek}
         onPlaying={onPlaying}
-      />
-
-      {report ? (
-        <EditorPanelProperty
-          label={"Between"}
-          value={`${formatLevelWeatherTime(report.between[0] ?? 0)}-${formatLevelWeatherTime(report.between[1] ?? 0)}, ${formatPercent(report.weight ?? 0)}`}
-        />
-      ) : null}
-
-      <RenderValueSlider
-        className={"mt-1"}
-        label={"Speed"}
-        value={Math.log10(control.factor)}
-        min={Math.log10(LEVEL_WEATHER_FACTOR_LIMITS.min)}
-        max={Math.log10(LEVEL_WEATHER_FACTOR_LIMITS.max)}
-        step={0.01}
-        format={(value: number) => `${Math.round(10 ** value)}× real time`}
-        onChange={(value: number) => onFactor(10 ** value)}
+        onFactor={onFactor}
       />
 
       {isSunTabled ? (

@@ -14,6 +14,7 @@ use crate::contract::camera::world_input_event::WorldInputEvent;
 use crate::contract::level::world_level_problems::WorldLevelProblems;
 use crate::contract::level::world_model_pose::WorldModelPose;
 use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::sound::world_music_command::WorldMusicCommand;
 use crate::contract::sound::world_sound_report::WorldSoundReport;
 use crate::contract::weather::world_weather_control::WorldWeatherControl;
 use crate::contract::weather::world_weather_play::WorldWeatherPlay;
@@ -69,6 +70,16 @@ impl World {
     let scene: &mut WorldScene = self.scenes.get_mut(&id)?;
 
     Some((id, scene.level.report_sound()))
+  }
+
+  /// Does what a viewer asks of the music of the scene a viewport shows, answering whether it could: none can for a
+  /// viewport showing no level, or before its sounds are read.
+  pub fn command_music(&mut self, viewport: RenderViewportId, command: &WorldMusicCommand) -> bool {
+    let scene: Option<RenderSceneId> = self.viewports.get(&viewport).and_then(|world| world.scene);
+
+    scene
+      .and_then(|id| self.scenes.get_mut(&id))
+      .is_some_and(|scene| scene.level.command_music(command))
   }
 
   /// The viewport heard: the one the host named while it is attached, else the last shown a level.

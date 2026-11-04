@@ -10,6 +10,16 @@ export function formatLevelSoundSeconds(milliseconds: number): string {
 }
 
 /**
+ * @param milliseconds - Milliseconds into a track.
+ * @returns Them as `m:ss`, whole seconds rounded down.
+ */
+export function formatLevelSoundTrackTime(milliseconds: number): string {
+  const seconds: number = Math.floor(Math.max(0, milliseconds) / 1000);
+
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+/**
  * @param milliseconds - Milliseconds since midnight.
  * @returns The time of day they name, `hh:mm`.
  */

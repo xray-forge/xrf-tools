@@ -7,6 +7,7 @@ import {
   formatLevelSoundGain,
   formatLevelSoundSeconds,
   formatLevelSoundTimeOfDay,
+  formatLevelSoundTrackTime,
 } from "@/tools/level-viewer/lib/sound/level-sound-format";
 
 function voice(gain: number | null, isLoading: boolean = false): WorldSoundVoiceReport {
@@ -76,5 +77,11 @@ describe("level sound format", () => {
   it("says the level's time of day and waits in whole seconds", () => {
     expect(formatLevelSoundTimeOfDay(23 * 3_600_000 + 5 * 60_000)).toBe("23:05");
     expect(formatLevelSoundSeconds(1200)).toBe("2 s");
+  });
+
+  it("says how far into a track in minutes and seconds", () => {
+    expect(formatLevelSoundTrackTime(0)).toBe("0:00");
+    expect(formatLevelSoundTrackTime(65_900)).toBe("1:05");
+    expect(formatLevelSoundTrackTime(-10)).toBe("0:00");
   });
 });
