@@ -71,6 +71,23 @@ describe("AudioSettingsService", () => {
     expect(service.getVolume("master")).toBe(0.8);
   });
 
+  it("reads the kept settings back when the backend refuses a write", async () => {
+    const service: AudioSettingsService = await mockReadService();
+
+    mockIpcCommands({
+      [EAudioCommand.DESCRIBE_SETTINGS]: SETTINGS,
+      [EAudioCommand.SET_SETTINGS]: () => Promise.reject(new Error("The settings could not be written")),
+    });
+
+    service.setVolume("music", 0.3);
+
+    expect(service.getVolume("music")).toBe(0.3);
+
+    await new Promise((resolve) => setTimeout(resolve));
+
+    expect(service.settings).toEqual(SETTINGS);
+  });
+
   it("sends the chosen device and the background mute", async () => {
     const service: AudioSettingsService = await mockReadService();
 
