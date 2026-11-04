@@ -7957,6 +7957,7 @@ dependencies = [
  "tauri",
  "tauri-specta",
  "uuid",
+ "windows",
  "xrf-anm",
  "xrf-app-core",
  "xrf-app-render",
