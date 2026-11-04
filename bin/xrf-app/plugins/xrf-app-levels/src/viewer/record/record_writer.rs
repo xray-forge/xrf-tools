@@ -18,7 +18,8 @@ impl RecordWriter {
   /// Samples queued for the writer's thread before one more waits.
   const QUEUED: usize = 4;
 
-  /// Starts writing a recording of `format` into `file`, replacing one there.
+  /// Starts writing a recording of `format` into `file`, replacing one there. A writer that cannot open leaves no file:
+  /// the Sink Writer makes it before it refuses the stream.
   ///
   /// # Errors
   ///
@@ -28,20 +29,28 @@ impl RecordWriter {
 
     let (samples, received) = sync_channel::<RecordSample>(Self::QUEUED);
     let (opened, opening) = sync_channel::<TauriResult>(1);
+    let written: PathBuf = file.clone();
     let thread: JoinHandle<TauriResult<RecordSummary>> = thread::Builder::new()
       .name(String::from("xrf-record"))
-      .spawn(move || Self::write_all(&file, format, &received, &opened))
+      .spawn(move || Self::write_all(&written, format, &received, &opened))
       .map_err(|error| format!("The recording cannot start: {error}"))?;
     let mut writer: Self = Self {
       samples,
       thread: Some(thread),
     };
+    let refused: String = match opening.recv() {
+      Ok(Ok(())) => return Ok(writer),
+      Ok(Err(error)) => {
+        let _ = Self::join(writer.thread.take());
 
-    match opening.recv() {
-      Ok(Ok(())) => Ok(writer),
-      Ok(Err(error)) => Err(error),
-      Err(_) => Err(writer.take_error()),
-    }
+        error
+      }
+      Err(_) => writer.take_error(),
+    };
+
+    let _ = std::fs::remove_file(&file);
+
+    Err(refused)
   }
 
   /// Hands `sample` to the writer's thread, waiting while its queue is full.

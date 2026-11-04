@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -41,17 +42,29 @@ struct RecorderInputs {
 /// Where a recording stands on its thread.
 #[derive(Default)]
 struct RecorderState {
-  /// The first frame's present, and the mixer's frame playing then.
-  zero: Option<(Instant, u64)>,
+  zero: Option<RecordZero>,
+  /// The sound tapped before the first frame came, which reaches the recorder after the sound playing at its present
+  /// was tapped: kept, at most [`ViewportRecorder::EARLY`] of it, so the recording's sound starts with its picture.
+  early: VecDeque<AudioTapBlock>,
   frames: u32,
   end: Duration,
   dropped_frames: u64,
   ended: Option<String>,
 }
 
+/// A recording's time zero: the first frame's present, and the mixer's frame playing then.
+#[derive(Clone, Copy)]
+struct RecordZero {
+  presented: Instant,
+  frame: u64,
+}
+
 impl ViewportRecorder {
   /// The sound the tap holds before a block drops: the recorder takes it every frame.
   const TAP_LENGTH: Duration = Duration::from_secs(2);
+
+  /// The sound kept from before the first frame came, past the device's latency and a frame's readback.
+  const EARLY: Duration = Duration::from_millis(500);
 
   /// How long a frame shows where the next has not come: the renderer keeps one a sixtieth apart at most.
   const FRAME: Duration = Duration::from_nanos(16_666_667);
@@ -155,17 +168,21 @@ impl RecorderInputs {
     let mut state: RecorderState = RecorderState::default();
     let mut told: Instant = Instant::now();
 
+    // A frame or sound the writer refuses ends the recording as the renderer stopping it does, so its file is finished,
+    // or let go of where nothing was written.
     while !self.is_stopped.load(Ordering::Acquire) && state.ended.is_none() {
-      match self.frames.recv_timeout(Duration::from_millis(5)) {
-        Ok(RecordEvent::Frame(frame)) => self.take_frame(frame, &mut state)?,
-        Ok(RecordEvent::Stopped { error }) => state.ended = Some(error.to_string()),
-        Err(RecvTimeoutError::Timeout) => {}
-        Err(RecvTimeoutError::Disconnected) => {
-          state.ended = Some(String::from("The renderer stopped recording"));
-        }
-      }
+      let received: TauriResult = match self.frames.recv_timeout(Duration::from_millis(5)) {
+        Ok(RecordEvent::Frame(frame)) => self.take_frame(frame, &mut state),
+        Ok(RecordEvent::Stopped { error }) => Err(error.to_string()),
+        Err(RecvTimeoutError::Timeout) => Ok(()),
+        Err(RecvTimeoutError::Disconnected) => Err(String::from("The renderer stopped recording")),
+      };
+      // The sound tapped up to where it ended is written all the same.
+      let sounded: TauriResult = self.take_sound(&mut state);
 
-      self.take_sound(&mut state)?;
+      if let Err(error) = received.and(sounded) {
+        state.ended = Some(error);
+      }
 
       if told.elapsed() >= ViewportRecorder::PROGRESS_EVERY || state.ended.is_some() {
         told = Instant::now();
@@ -200,17 +217,16 @@ impl RecorderInputs {
   fn take_frame(&mut self, frame: RecordFrame, state: &mut RecorderState) -> TauriResult {
     let presented: Instant = frame.presented;
     let rate: u32 = self.tap.get_rate();
-    let (zero, _) = *state.zero.get_or_insert_with(|| {
-      let mixer: u64 = self
+    let zero: RecordZero = *state.zero.get_or_insert_with(|| RecordZero {
+      presented,
+      frame: self
         .meter
         .get_anchor()
         .map_or(self.meter.get_frames(), |anchor: AudioClockAnchor| {
           anchor.get_frame(presented, rate)
-        });
-
-      (presented, mixer)
+        }),
     });
-    let time: Duration = presented.saturating_duration_since(zero);
+    let time: Duration = presented.saturating_duration_since(zero.presented);
 
     state.dropped_frames = frame.dropped;
 
@@ -228,34 +244,51 @@ impl RecorderInputs {
   }
 
   /// Writes the sound the tap holds from the recording's zero on, each block at its frame from the zero's; before the
-  /// first frame it is let go.
+  /// first frame it is kept, the last [`ViewportRecorder::EARLY`] of it, for the zero to start from.
   fn take_sound(&mut self, state: &mut RecorderState) -> TauriResult {
+    if let Some(zero) = state.zero {
+      while let Some(block) = state.early.pop_front() {
+        self.write_sound(block, zero)?;
+      }
+    }
+
     loop {
       let block: AudioTapBlock = match self.tap.read() {
         Ok(Some(block)) => block,
         Ok(None) => return Ok(()),
-        Err(end) => {
-          state.ended = Some(format!("The recording ended: {end}"));
+        Err(end) => return Err(format!("The recording ended: {end}")),
+      };
 
-          return Ok(());
+      match state.zero {
+        Some(zero) => self.write_sound(block, zero)?,
+        None => {
+          let most: usize =
+            (ViewportRecorder::EARLY.as_secs_f64() * f64::from(self.tap.get_rate())) as usize / AudioTapBlock::FRAMES;
+
+          state.early.push_back(block);
+
+          while state.early.len() > most.max(1) {
+            state.early.pop_front();
+          }
         }
-      };
-      let Some((_, start)) = state.zero else {
-        continue;
-      };
-      let end: u64 = block.frame + AudioTapBlock::FRAMES as u64;
-
-      if end <= start {
-        continue;
       }
-
-      let skipped: usize = start.saturating_sub(block.frame) as usize;
-
-      self.writer.write(RecordSample::Sound {
-        samples: block.samples[skipped * 2..].to_vec(),
-        at: block.frame.max(start) - start,
-      })?;
     }
+  }
+
+  /// Writes the part of `block` from `zero`'s frame on, at its frame from it.
+  fn write_sound(&mut self, block: AudioTapBlock, zero: RecordZero) -> TauriResult {
+    let end: u64 = block.frame + AudioTapBlock::FRAMES as u64;
+
+    if end <= zero.frame {
+      return Ok(());
+    }
+
+    let skipped: usize = zero.frame.saturating_sub(block.frame) as usize;
+
+    self.writer.write(RecordSample::Sound {
+      samples: block.samples[skipped * 2..].to_vec(),
+      at: block.frame.max(zero.frame) - zero.frame,
+    })
   }
 
   fn describe(&self, state: &RecorderState) -> RecordingProgress {
