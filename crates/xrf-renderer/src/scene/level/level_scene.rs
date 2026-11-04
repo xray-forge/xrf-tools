@@ -60,8 +60,8 @@ pub struct LevelScene {
   /// The cubes the scene's environment-mapped models mix toward, by environment slot from the second, as of the cache's
   /// generation of them.
   pub environments: (u64, Vec<String>),
-  /// When the level began opening on the frames' clock, which the clouds drift and the trees sway from, and the time
-  /// this frame is drawn at on it.
+  /// When the level's clock began on the frames' clock, as the world plays it (`RenderSceneFrame::opened`), which the
+  /// clouds drift and the trees sway from, and the time this frame is drawn at on it.
   started: Instant,
   now: Instant,
   pub lights: LevelLights,
@@ -99,16 +99,19 @@ pub struct LevelScene {
 static SECTOR_PASSES: [&str; 1] = ["sector add"];
 
 impl LevelScene {
+  /// A scene of the level `source`, made on the first frame the world gives it, its clock begun at `opened` on the
+  /// frames' clock as the world's is (`RenderSceneFrame::opened`).
   pub fn new(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     view_layout: &wgpu::BindGroupLayout,
     source: Arc<dyn RenderLevelSource>,
     workers: &RenderWorkers,
-    now: Instant,
+    opened: Instant,
   ) -> Self {
-    // Taken before anything is made, so the load is timed from the moment the level began opening.
-    let opened: Instant = Instant::now();
+    // Taken before anything is made, so the load is timed from the moment the scene began to be made, until the world
+    // says when it began opening the level.
+    let made: Instant = Instant::now();
     let statics: StaticScene = StaticScene::new(device, queue);
 
     Self {
@@ -118,10 +121,10 @@ impl LevelScene {
       statics,
       trace: None,
       environments: (0, Vec::new()),
-      started: now,
-      now,
+      started: opened,
+      now: opened,
       sector_time: 0.0,
-      load: LevelLoad::new(opened),
+      load: LevelLoad::new(made),
       texture_slots: Vec::new(),
       driver: None,
       skeleton_segments: Arc::from([]),
@@ -159,6 +162,8 @@ impl LevelScene {
   ) {
     let RenderSceneFrame {
       source,
+      // The level's clock begins once, with the scene's (`LevelScene::new`).
+      opened: _,
       driver,
       updates,
       streaming,
@@ -315,12 +320,13 @@ impl LevelScene {
   }
 
   /// What it tells the world of the frames since the last: the sectors and the spawned models it could not take in,
-  /// and the effects whose particles stopped playing.
+  /// the effects whose particles stopped playing, and whether it has stood ready.
   pub fn take_feedback(&mut self) -> RenderSceneFeedback {
     RenderSceneFeedback {
       sector_failures: std::mem::take(&mut self.sector_failures),
       model_failures: std::mem::take(&mut self.model_failures),
       finished_effects: self.particles.take_finished(),
+      has_stood_ready: self.load.has_stood_ready(),
     }
   }
 

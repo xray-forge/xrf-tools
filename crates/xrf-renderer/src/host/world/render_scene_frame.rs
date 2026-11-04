@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Instant;
 
 use glam::{Mat4, Vec3};
 
@@ -9,10 +10,14 @@ use crate::host::world::feedback::render_streaming_progress::RenderStreamingProg
 use crate::host::world::render_scene_update::RenderSceneUpdate;
 use crate::lighting::wind::ambient_gust::AmbientGust;
 
-/// What the world gives a scene's frame: the level it is, what changed in it, how far it is streamed, which viewport
-/// drives what it simulates by its camera, and what its effects and moving zones do.
+/// What the world gives a scene's frame: the level it is, when its clock began, what changed in it, how far it is
+/// streamed, which viewport drives what it simulates by its camera, and what its effects and moving zones do.
 pub struct RenderSceneFrame {
   pub source: Arc<dyn RenderLevelSource>,
+  /// When the level's clock began on the frames' clock, which the world plays the level's effects and sound from: the
+  /// first frame it played the level on. The scene's time runs from it too (`LevelScene::get_time`), so the picture, the
+  /// effects and the sound keep one time.
+  pub opened: Instant,
   /// The viewport whose camera stands for the actor: the first still showing the scene.
   pub driver: Option<RenderViewportId>,
   pub updates: Vec<RenderSceneUpdate>,

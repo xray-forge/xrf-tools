@@ -3,7 +3,8 @@ use std::time::{Duration, Instant};
 
 use glam::Vec3;
 use xrf_renderer::{
-  LevelPart, LevelParts, RenderSceneFeedback, RenderSceneUpdate, RenderStreamingProgress, RenderWorkers,
+  LevelPart, LevelParts, RenderLevelSource, RenderSceneFeedback, RenderSceneFrame, RenderSceneUpdate,
+  RenderStreamingProgress, RenderViewportId, RenderWorkers,
 };
 
 use crate::contract::level::world_level_problems::WorldLevelProblems;
@@ -25,15 +26,22 @@ use crate::sound::rain_sound::RainFrame;
 use crate::sound::sound_drive::SoundDrive;
 
 /// A level as a viewport's world plays it: what streams it into its scene, how its skinned objects are posed, what its
-/// effects play, by one clock running from when it began opening, and what every weather of it plays with, read once
-/// for every viewport showing it.
+/// effects play, and what every weather of it plays with, read once for every viewport showing it.
+///
+/// It owns the level's clock: begun on the frames' clock at the first frame it plays, which its scene is made on and
+/// told of (`RenderSceneFrame::opened`), so its effects, its sound and its picture keep one time. Its sound waits for
+/// the scene to stand ready, then starts every schedule at that frame, as the game starts a level's sound once it has
+/// loaded; a burst is heard whether or not it stands ready, as it starts its schedules afresh itself.
 pub struct WorldLevel {
   streaming: LevelStreaming,
   animation: LevelAnimation,
   effects: LevelEffects,
   weather: LoaderSlot<Arc<WorldLevelWeather>>,
   sound: LevelSound,
-  opened: Instant,
+  /// When the level's clock began, on the frames' clock; none before its first frame.
+  opened: Option<Instant>,
+  /// Whether the level's scene has stood ready, as it told the world.
+  has_stood_ready: bool,
   /// What a reload took out of the scene, posted ahead of the next frame's own.
   queued: Vec<RenderSceneUpdate>,
 }
@@ -46,7 +54,8 @@ impl WorldLevel {
       sound: LevelSound::start(&source, workers),
       streaming: LevelStreaming::start(source, workers),
       animation: LevelAnimation::new(workers),
-      opened: Instant::now(),
+      opened: None,
+      has_stood_ready: false,
       queued: Vec::new(),
     }
   }
@@ -107,33 +116,33 @@ impl WorldLevel {
   }
 
   /// Takes what the level's scene told of the last frame, whether or not a viewport drives it now: the sectors and the
-  /// spawned models it could not take in of the posts before, and the effects it finished.
+  /// spawned models it could not take in of the posts before, the effects it finished, and whether it stood ready.
   pub fn take_feedback(
     &mut self,
     RenderSceneFeedback {
       sector_failures,
       model_failures,
       finished_effects,
+      has_stood_ready,
     }: RenderSceneFeedback,
   ) {
     self
       .streaming
       .take_failures(&mut self.animation, sector_failures, model_failures);
     self.effects.note_finished(finished_effects);
+    self.has_stood_ready |= has_stood_ready;
   }
 
-  /// This frame's posts to the level's scene at the frame's `now` as its driving viewport gives it, and what its effects
-  /// give the scene besides.
+  /// The level's scene's frame at the frame's `now`, on the frames' clock, as its driving viewport gives it: what it
+  /// posts, what its effects give the scene besides, and when its clock began.
   ///
-  /// Its sound plays on as `sound` gives the frame: the viewport it is heard by.
-  pub fn advance(
-    &mut self,
-    now: Instant,
-    drive: LevelDrive<'_>,
-    sound: &SoundDrive<'_>,
-  ) -> (Vec<RenderSceneUpdate>, EffectsFrame) {
+  /// Its sound plays on as `sound` gives the frame, the viewport it is heard by, once the scene stands ready or a burst
+  /// draws it.
+  pub fn advance(&mut self, now: Instant, drive: LevelDrive<'_>, sound: &SoundDrive<'_>) -> RenderSceneFrame {
     let mut updates: Vec<RenderSceneUpdate> = std::mem::take(&mut self.queued);
-    let clock: Duration = now.saturating_duration_since(self.opened);
+    let opened: Instant = *self.opened.get_or_insert(now);
+    let clock: Duration = now.saturating_duration_since(opened);
+    let driver: RenderViewportId = drive.viewport;
 
     self
       .streaming
@@ -161,26 +170,31 @@ impl WorldLevel {
       ..*sound
     };
 
-    self.sound.advance(
-      clock,
-      self.opened,
-      weather.as_deref(),
-      &drive,
-      effect,
-      &mut self.effects,
-    );
+    if self.has_stood_ready || drive.burst.is_some() {
+      self
+        .sound
+        .advance(clock, opened, weather.as_deref(), &drive, effect, &mut self.effects);
+    }
 
-    (updates, effects)
+    RenderSceneFrame {
+      source: Arc::clone(self.streaming.get_source()) as Arc<dyn RenderLevelSource>,
+      opened,
+      driver: Some(driver),
+      updates,
+      streaming: self.get_progress(),
+      skeleton_segments: self.animation.list_segments(),
+      // The level objects whose sounds play at this frame, by the ids their helpers carry, ascending.
+      gust: effects.gust,
+      campfire_shares: effects.campfire_shares,
+      motions: effects.motions,
+      camera_hemi: effects.camera_hemi,
+      sounding: self.sound.list_sounding(),
+    }
   }
 
   /// Does what a viewer asks of the level's music, answering whether it could.
   pub fn command_music(&mut self, command: &WorldMusicCommand) -> bool {
     self.sound.command_music(command)
-  }
-
-  /// The level objects whose sounds play at the last frame, by the ids their helpers carry, ascending.
-  pub fn list_sounding(&self) -> Vec<u32> {
-    self.sound.list_sounding()
   }
 
   /// What its sound plays as the world schedules it.
@@ -190,18 +204,14 @@ impl WorldLevel {
     self.sound.report(weather.as_deref())
   }
 
-  pub fn get_progress(&self) -> RenderStreamingProgress {
+  /// How far the level is streamed into its scene, its particles read among its parts.
+  fn get_progress(&self) -> RenderStreamingProgress {
     let streamed: RenderStreamingProgress = self.streaming.get_progress();
 
     RenderStreamingProgress {
       done: streamed.done.with_if(LevelPart::Particles, self.effects.is_read()),
       ..streamed
     }
-  }
-
-  /// Every skinned object's bones as segments in renderer space, child then parent, where this frame poses them.
-  pub fn list_segments(&self) -> Arc<[(Vec3, Vec3)]> {
-    self.animation.list_segments()
   }
 
   pub fn measure_surfaces(&self) -> Vec<WorldSurfaceGeometry> {
