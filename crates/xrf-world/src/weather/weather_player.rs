@@ -15,8 +15,9 @@ use crate::weather::fade::fade_skies::FadeSkies;
 use crate::weather::fade::weather_fader::WeatherFader;
 use crate::weather::played_weather::PlayedWeather;
 use crate::weather::playing_effect::PlayingEffect;
+use crate::weather::thunder::strike_thunder::StrikeThunder;
 use crate::weather::thunder::thunder_play::ThunderPlay;
-use crate::weather::thunder::weather_thunder::{StrikeThunder, WeatherThunder};
+use crate::weather::thunder::weather_thunder::WeatherThunder;
 use crate::weather::weather_ambients::WeatherAmbients;
 use crate::weather::weather_lighting::WeatherLighting;
 

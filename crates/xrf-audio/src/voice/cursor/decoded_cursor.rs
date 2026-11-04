@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::decode::decoded_sound::DecodedSound;
 use crate::decode::sound_channels::SoundChannels;
-use crate::voice::cursor::stereo_frame::{StereoFrame, hermite};
+use crate::voice::cursor::stereo_frame::StereoFrame;
 
 /// A voice's place in a sound decoded whole.
 #[derive(Debug)]
@@ -146,7 +146,7 @@ impl DecodedCursor {
         let index: usize = position as usize;
         let window: &[f32] = &samples[index - 1..index + 3];
 
-        *slot = hermite(
+        *slot = StereoFrame::hermite_sample(
           window[0],
           window[1],
           window[2],
@@ -161,8 +161,8 @@ impl DecodedCursor {
         let t: f32 = (position - index as f64) as f32;
         let window: &[f32] = &samples[(index - 1) * 2..(index + 3) * 2];
 
-        pair[0] = hermite(window[0], window[2], window[4], window[6], t);
-        pair[1] = hermite(window[1], window[3], window[5], window[7], t);
+        pair[0] = StereoFrame::hermite_sample(window[0], window[2], window[4], window[6], t);
+        pair[1] = StereoFrame::hermite_sample(window[1], window[3], window[5], window[7], t);
         position += step;
       }
     }

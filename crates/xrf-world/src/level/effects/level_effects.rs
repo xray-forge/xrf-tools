@@ -24,7 +24,7 @@ use crate::level::effects::level_object_motions::LevelObjectMotions;
 use crate::level::effects::placed_emitter::PlacedEmitter;
 use crate::level::level_drive::LevelDrive;
 use crate::level::loading::loader_once::LoaderOnce;
-use crate::sound::zone_sounds::ZoneStates;
+use crate::sound::schedule::zone_states::ZoneStates;
 
 /// A level's effects as the world plays them: its particle systems, read on a loader thread and each placed at an
 /// emitter of the scene's; the weather's ambient effects and the wind they bring; its campfires' switching; and the

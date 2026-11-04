@@ -9,6 +9,7 @@ use xrf_renderer::{
   WeatherRandom, to_interpolated_color,
 };
 
+use crate::weather::thunder::strike_thunder::StrikeThunder;
 use crate::weather::thunder::thunder_flash::ThunderFlash;
 use crate::weather::thunder::thunder_play::ThunderPlay;
 
@@ -50,14 +51,6 @@ pub struct WeatherThunder {
   advanced_at: Option<Duration>,
   /// The strikes that thundered and were not taken yet.
   thunders: Vec<StrikeThunder>,
-}
-
-/// A strike's thunder: the bolt's section, where it struck from in engine space, and how far from the view.
-#[derive(Clone, Debug, PartialEq)]
-pub struct StrikeThunder {
-  pub bolt: String,
-  pub position: Vec3,
-  pub distance: f32,
 }
 
 impl WeatherThunder {

@@ -142,7 +142,7 @@ fn drops_a_frame_rather_than_waits_while_the_recorder_holds_every_buffer() {
   let (events, received) = channel();
   let mut job: RecordJob = RecordJob::new(SIZE, events);
   let start: Instant = Instant::now();
-  let at = |sixtieth: u32| start + RecordJob::EVERY * sixtieth;
+  let at = |sixtieth: u32| start + RecordFrame::INTERVAL * sixtieth;
 
   for sixtieth in 0..RecordJob::RING as u32 {
     assert!(draw(&mut job, &context, &presented, at(sixtieth)));

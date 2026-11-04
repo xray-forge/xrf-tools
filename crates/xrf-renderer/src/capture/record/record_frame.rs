@@ -1,8 +1,9 @@
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use xrf_error::{XrfError, XrfResult};
 
+use crate::capture::record::record_layout::RecordLayout;
 use crate::frame::readback::gpu_readback::GpuReadback;
 
 /// A recorded frame back from the GPU and mapped, handed to the recorder to read on its own thread: its buffer goes back
@@ -11,10 +12,7 @@ use crate::frame::readback::gpu_readback::GpuReadback;
 #[derive(Debug)]
 pub struct RecordFrame {
   readback: Arc<GpuReadback>,
-  width: u32,
-  height: u32,
-  /// Bytes a row of the copy takes, aligned as copies need.
-  row: u32,
+  layout: RecordLayout,
   /// Its place among the recording's sixtieths of a second, counted from its first frame.
   pub index: u64,
   /// When it was presented, which a video places it at.
@@ -25,18 +23,20 @@ pub struct RecordFrame {
 }
 
 impl RecordFrame {
+  /// The time between the frames a recording keeps, a sixtieth of a second: how long a frame shows where the next has
+  /// not come.
+  pub const INTERVAL: Duration = Duration::from_nanos(16_666_667);
+
   pub(crate) fn new(
     readback: Arc<GpuReadback>,
-    (width, height, row): (u32, u32, u32),
+    layout: RecordLayout,
     index: u64,
     presented: Instant,
     dropped: u64,
   ) -> Self {
     Self {
       readback,
-      width,
-      height,
-      row,
+      layout,
       index,
       presented,
       dropped,
@@ -46,7 +46,7 @@ impl RecordFrame {
 
   /// Pixels across and down.
   pub fn get_size(&self) -> (u32, u32) {
-    (self.width, self.height)
+    self.layout.size
   }
 
   /// Its pixels, rows top down, each four bytes blue first; its buffer goes back to the ring.
@@ -55,7 +55,9 @@ impl RecordFrame {
   ///
   /// Returns an error when the buffer could not be mapped.
   pub fn read(mut self) -> XrfResult<Vec<u8>> {
-    let (width, height, row): (usize, usize, usize) = (self.width as usize, self.height as usize, self.row as usize);
+    let width: usize = self.layout.size.0 as usize;
+    let height: usize = self.layout.size.1 as usize;
+    let row: usize = self.layout.row as usize;
 
     self.is_read = true;
     self

@@ -6,12 +6,12 @@ use std::time::Duration;
 
 use xrf_engine_target::XrayEngine;
 
+use crate::contract::sound::report::world_sound_music_report::WorldSoundMusicReport;
 use crate::contract::sound::world_music_command::WorldMusicCommand;
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
-use crate::contract::sound::world_sound_music_report::WorldSoundMusicReport;
-use crate::host::sound::world_music_track::WorldMusicTrack;
-use crate::sound::level_music::LevelMusic;
-use crate::sound::sound_emitters::SoundEmitters;
+use crate::host::sound::level::world_music_track::WorldMusicTrack;
+use crate::sound::emitters::sound_emitters::SoundEmitters;
+use crate::sound::schedule::level_music::LevelMusic;
 use crate::tests::sound::{found, missing, seconds};
 
 const HOUR: u32 = 3_600_000;

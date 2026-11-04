@@ -4,10 +4,10 @@ use std::time::Duration;
 
 use xrf_engine_target::XrayEngine;
 
-use crate::host::sound::world_sound_emitter::WorldSoundEmitter;
-use crate::host::sound::world_static_sound::WorldStaticSound;
-use crate::sound::sound_emitters::SoundEmitters;
-use crate::sound::static_sounds::StaticSounds;
+use crate::host::sound::level::world_static_sound::WorldStaticSound;
+use crate::host::sound::sink::world_sound_emitter::WorldSoundEmitter;
+use crate::sound::emitters::sound_emitters::SoundEmitters;
+use crate::sound::schedule::static_sounds::StaticSounds;
 use crate::tests::sound::{found, missing, seconds};
 
 fn record(active: [u32; 2], play: [u32; 2], pause: [u32; 2]) -> WorldStaticSound {

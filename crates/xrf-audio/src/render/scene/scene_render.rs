@@ -15,20 +15,23 @@ use crate::decode::stream::sound_stream_start::SoundStreamStart;
 use crate::decode::stream::stream_control::StreamControl;
 use crate::host::audio_scene_geometry::AudioSceneGeometry;
 use crate::mixer::audio_bus::AudioBus;
-use crate::render::emitter_loudness::{EmitterCulling, EmitterLoudness};
+use crate::render::bank::banked_sound::BankedSound;
+use crate::render::emitter_loudness::EmitterLoudness;
 use crate::render::listener_pan::ListenerPan;
+use crate::render::scene::emitter::real_voice::RealVoice;
+use crate::render::scene::emitter::rendered_emitter::RenderedEmitter;
+use crate::render::scene::emitter::sound_place::SoundPlace;
 use crate::render::scene::scene_assets::SceneAssets;
 use crate::render::scene::scene_clock::SceneClock;
+use crate::render::scene::scene_moment::SceneMoment;
 use crate::render::scene::scene_tick::SceneTick;
-use crate::render::sound_bank::{BankedSound, SoundBank};
-use crate::scene::audio_emitter_report::AudioEmitterReport;
 use crate::scene::audio_listener::AudioListener;
 use crate::scene::audio_scene_emitter::AudioSceneEmitter;
 use crate::scene::audio_scene_frame::AudioSceneFrame;
-use crate::scene::audio_scene_refusal::AudioSceneRefusal;
-use crate::scene::audio_scene_report::AudioSceneReport;
 use crate::scene::audio_scene_rules::AudioSceneRules;
-use crate::voice::audio_voice_id::AudioVoiceId;
+use crate::scene::report::audio_emitter_report::AudioEmitterReport;
+use crate::scene::report::audio_scene_refusal::AudioSceneRefusal;
+use crate::scene::report::audio_scene_report::AudioSceneReport;
 use crate::voice::audio_voice_playback::AudioVoicePlayback;
 use crate::voice::audio_voice_state::AudioVoiceState;
 use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
@@ -62,73 +65,6 @@ pub(crate) struct SceneRender {
   real_voices: u32,
 }
 
-struct RenderedEmitter {
-  emitter: AudioSceneEmitter,
-  sound: BankedSound,
-  loudness: Option<EmitterLoudness>,
-  culling: EmitterCulling,
-  distance: Option<f32>,
-  /// Where it was when it last moved.
-  motion: Option<EmitterMotion>,
-  /// How fast it moves, metres a second.
-  velocity: [f32; 3],
-  voice: Option<RealVoice>,
-  /// Whether it ranked among the loudest at the last tick.
-  is_ranked: bool,
-  /// How the walls shape its way to the listener as of the last tick.
-  acoustics: SourceAcoustics,
-  /// How the acoustics hear it as of the last tick, for the report; none where it plays dry.
-  spatial: Option<VoiceSpatialParameters>,
-  /// Times its voice was started over where its clock says, having starved or ended early.
-  restarts: u32,
-  /// Played out, faded out after a stop, or refused: nothing more plays of it.
-  is_done: bool,
-  /// The frame that last named it, which a frame not naming it ends.
-  seen: u64,
-}
-
-/// The voice an emitter holds, its stream's control where it streams, and where it should be by now: reckoned from the
-/// source frame it started at, at the rate it was last set to, its Doppler shift included, from the mixer frame that
-/// rate was set at.
-struct RealVoice {
-  id: AudioVoiceId,
-  stream: Option<StreamControl>,
-  /// The source frame due at mixer frame `reckoned_at`, unwrapped past the loop seam.
-  due: f64,
-  reckoned_at: u64,
-  /// The rate it plays at, its emitter's speed times its Doppler shift.
-  rate: f32,
-  /// Whether the acoustics place it.
-  is_placed: bool,
-}
-
-impl RealVoice {
-  /// The source frame due at `mixer_frame`, its sound at `sample_rate` played by a mixer at `mixer_rate`; a mixer frame
-  /// before the one it starts at is its start.
-  fn get_due(&self, mixer_frame: u64, sample_rate: u32, mixer_rate: u32) -> f64 {
-    let played: u64 = mixer_frame.saturating_sub(self.reckoned_at);
-
-    self.due + played as f64 * f64::from(sample_rate) * f64::from(self.rate) / f64::from(mixer_rate.max(1))
-  }
-
-  /// Takes `rate` from `mixer_frame` on, what was due by then kept.
-  fn reckon(&mut self, mixer_frame: u64, sample_rate: u32, mixer_rate: u32, rate: f32) {
-    if mixer_frame > self.reckoned_at {
-      self.due = self.get_due(mixer_frame, sample_rate, mixer_rate);
-      self.reckoned_at = mixer_frame;
-    }
-
-    self.rate = rate;
-  }
-}
-
-/// Where an emitter's sound is at a moment.
-struct SoundPlace {
-  frame: u64,
-  frames: u64,
-  sample_rate: u32,
-}
-
 /// A candidate for a target, and how much it deserves one.
 struct RankedEmitter {
   priority: f32,
@@ -143,22 +79,6 @@ impl RankedEmitter {
   }
 }
 
-/// Where an emitter stood, and when on the scene's clock.
-#[derive(Clone, Copy)]
-struct EmitterMotion {
-  position: [f32; 3],
-  at: Duration,
-}
-
-/// A tick on the scene's clock: its time, how far ahead a sound starting is given its voice, and the seconds since the
-/// last tick.
-#[derive(Clone, Copy)]
-struct SceneMoment {
-  now: Duration,
-  horizon: Duration,
-  seconds: f32,
-}
-
 impl SceneRender {
   /// How long a scene takes to fall silent or be heard again as the listener moves between scenes.
   const FADE: Duration = Duration::from_millis(250);
@@ -169,9 +89,6 @@ impl SceneRender {
 
   /// How much of a placed sound the listener's reverb hears.
   const REVERB_SEND: f32 = 0.5;
-
-  /// Seconds an emitter's followed speed takes to settle about two thirds of the way to a new step's.
-  const MOTION_EASE: f32 = 0.15;
 
   /// A scene heard through `acoustics`, its walls where `geometry` has them, simulated at `pace`.
   pub(crate) fn new(
@@ -222,25 +139,7 @@ impl SceneRender {
           rendered.emitter.clone_from(emitter);
           rendered.seen = generation;
         })
-        .or_insert_with(|| RenderedEmitter {
-          emitter: emitter.clone(),
-          sound: BankedSound::Loading,
-          loudness: None,
-          culling: EmitterCulling {
-            is_audible: false,
-            priority: 0.0,
-          },
-          distance: None,
-          motion: None,
-          velocity: [0.0; 3],
-          voice: None,
-          is_ranked: false,
-          acoustics: SourceAcoustics::default(),
-          spatial: None,
-          restarts: 0,
-          is_done: false,
-          seen: generation,
-        });
+        .or_insert_with(|| RenderedEmitter::new(emitter.clone(), generation));
     }
   }
 
@@ -273,7 +172,7 @@ impl SceneRender {
     self.ranked.clear();
 
     for (id, rendered) in &mut self.emitters {
-      if Self::simulate(rendered, &self.listener, moment, tick.bank, assets, &mut self.refused) {
+      if rendered.simulate(&self.listener, moment, tick.bank, assets, &mut self.refused) {
         self.ranked.push(RankedEmitter {
           priority: rendered.culling.priority,
           id: *id,
@@ -306,7 +205,7 @@ impl SceneRender {
       if let Some(rendered) = self.emitters.get_mut(&ranked.id) {
         rendered.is_ranked = true;
 
-        if Self::is_placeable(rendered, &self.acoustics) {
+        if rendered.is_placeable(&self.acoustics) {
           self.simulated.push(SimulatedSource {
             id: ranked.id,
             position: rendered.emitter.position,
@@ -343,7 +242,7 @@ impl SceneRender {
         continue;
       }
 
-      let ears: AudioSpatialization = if binaural_left > 0 && Self::is_placeable(rendered, &self.acoustics) {
+      let ears: AudioSpatialization = if binaural_left > 0 && rendered.is_placeable(&self.acoustics) {
         AudioSpatialization::Headphones
       } else {
         AudioSpatialization::Speakers
@@ -423,102 +322,6 @@ impl SceneRender {
     }
   }
 
-  /// Whether the acoustics place the emitter's sound: a mono sound at a place in the scene, while they run. A stereo
-  /// file plays as it was recorded, as both engines play it.
-  fn is_placeable(rendered: &RenderedEmitter, acoustics: &SceneAcoustics) -> bool {
-    acoustics.is_running() && !rendered.emitter.is_2d && rendered.sound.get_channel_count() == Some(1)
-  }
-
-  /// Moves an emitter on to the moment's time, answering whether it is a candidate for a target: one starting within
-  /// its horizon is, so its voice waits for its first frame in the mixer.
-  fn simulate(
-    rendered: &mut RenderedEmitter,
-    listener: &AudioListener,
-    SceneMoment { now, horizon, seconds }: SceneMoment,
-    bank: &mut SoundBank,
-    assets: &SceneAssets,
-    refused: &mut Vec<AudioSceneRefusal>,
-  ) -> bool {
-    let emitter: &AudioSceneEmitter = &rendered.emitter;
-
-    if rendered.is_done || horizon < emitter.start {
-      return false;
-    }
-
-    if matches!(rendered.sound, BankedSound::Loading) {
-      rendered.sound = bank.get(&assets.scope, &assets.source, &emitter.sound);
-    }
-
-    if let BankedSound::Refused(reason) = &rendered.sound {
-      Self::record_refusal(refused, &emitter.sound, reason.clone());
-      rendered.is_done = true;
-
-      return false;
-    }
-
-    if Self::locate(rendered, now).is_none() && !matches!(rendered.sound, BankedSound::Loading) {
-      rendered.is_done = true;
-
-      return false;
-    }
-
-    Self::follow_motion(rendered, now);
-
-    let emitter: &AudioSceneEmitter = &rendered.emitter;
-    let is_stopping: bool = emitter.stop.is_some_and(|stop| now >= stop);
-    let distance: Option<f32> = (!emitter.is_2d).then(|| {
-      let [x, y, z] = std::array::from_fn::<f32, 3, _>(|axis| emitter.position[axis] - listener.position[axis]);
-
-      (x * x + y * y + z * z).sqrt()
-    });
-    let loudness: &mut EmitterLoudness = rendered.loudness.get_or_insert_with(EmitterLoudness::start);
-
-    rendered.culling = loudness.update(emitter, distance, seconds, is_stopping);
-    rendered.distance = distance;
-
-    if is_stopping && loudness.is_faded() {
-      rendered.is_done = true;
-
-      return false;
-    }
-
-    rendered.culling.is_audible && !matches!(rendered.sound, BankedSound::Loading)
-  }
-
-  /// Follows how fast the emitter moves, from where it was at the last tick that moved it, eased over
-  /// [`Self::MOTION_EASE`]: its place comes with the host's frames and is read at the ticks, which fall unevenly
-  /// between them, so a step's own speed swings about the true one and would make the pitch waver.
-  fn follow_motion(rendered: &mut RenderedEmitter, now: Duration) {
-    let position: [f32; 3] = rendered.emitter.position;
-
-    let here: EmitterMotion = EmitterMotion { position, at: now };
-
-    match rendered.motion {
-      Some(before) if before.position == position => {
-        // Still for a tenth of a second is still.
-        if now.saturating_sub(before.at) > Duration::from_millis(100) {
-          rendered.velocity = [0.0; 3];
-        }
-      }
-      Some(before) => {
-        let seconds: f32 = now.saturating_sub(before.at).as_secs_f32();
-
-        if seconds > 0.0 {
-          let share: f32 = 1.0 - (-seconds / Self::MOTION_EASE).exp();
-
-          rendered.velocity = std::array::from_fn(|axis| {
-            let step: f32 = (position[axis] - before.position[axis]) / seconds;
-
-            rendered.velocity[axis] + (step - rendered.velocity[axis]) * share
-          });
-        }
-
-        rendered.motion = Some(here);
-      }
-      None => rendered.motion = Some(here),
-    }
-  }
-
   /// Gives an emitter a voice where its clock says its sound is at `now`, starting one where it has none, or where its
   /// voice ended or starved past [`SceneClock::DRIFT`], and sets how it is heard, through the HRTF or panned as `ears`
   /// says where the acoustics place it, the walls' hold eased over the `seconds` since the last tick. Answers whether it
@@ -531,7 +334,7 @@ impl SceneRender {
     seconds: f32,
     ears: AudioSpatialization,
   ) -> bool {
-    let Some(place) = Self::locate(rendered, now) else {
+    let Some(place) = rendered.locate(now) else {
       return false;
     };
     let frequency: f32 = rendered.emitter.frequency;
@@ -555,7 +358,7 @@ impl SceneRender {
     // A voice keeps how it started: one whose effects could not be made plays dry to its end.
     let mut is_placed: bool = match &rendered.voice {
       Some(voice) => voice.is_placed,
-      None => Self::is_placeable(rendered, &self.acoustics),
+      None => rendered.is_placeable(&self.acoustics),
     };
     // todo: A placed voice keeps the effects made at the rate the mixer ran at when it started, so a device opened at
     // another rate afterwards plays it through effects tuned to the old one until it starts over.
@@ -600,16 +403,11 @@ impl SceneRender {
     });
 
     // A placed voice takes its distance through the acoustics; a dry one in its gain, panned.
-    let (gain, pan): (f32, [f32; 2]) = if is_placed {
-      (scale, [1.0, 1.0])
+    let gain: f32 = if is_placed { scale } else { scale * attenuation };
+    let pan: [f32; 2] = if is_placed || rendered.sound.get_channel_count() == Some(2) {
+      [1.0, 1.0]
     } else {
-      let pan: [f32; 2] = if rendered.sound.get_channel_count() == Some(2) {
-        [1.0, 1.0]
-      } else {
-        ListenerPan::of(&self.listener, emitter.position, emitter.is_2d)
-      };
-
-      (scale * attenuation, pan)
+      ListenerPan::of(&self.listener, emitter.position, emitter.is_2d)
     };
 
     if let Some(voice) = &mut rendered.voice {
@@ -630,27 +428,20 @@ impl SceneRender {
       is_looped: emitter.is_looped,
     };
     let bus: AudioBus = emitter.bus;
-    let source: Result<(VoiceSource, Option<StreamControl>), String> = match &rendered.sound {
-      BankedSound::Decoded(sound) => Ok((
-        VoiceSource::Decoded {
-          sound: Arc::clone(sound),
-          start_frame: start.frame,
-          is_looped: start.is_looped,
-        },
-        None,
-      )),
+    let source: Result<VoiceSource, String> = match &rendered.sound {
+      BankedSound::Decoded(sound) => Ok(VoiceSource::Decoded {
+        sound: Arc::clone(sound),
+        start_frame: start.frame,
+        is_looped: start.is_looped,
+      }),
       BankedSound::Streamed { bytes, format } => tick
         .streams
         .start(Arc::clone(bytes), *format, start)
-        .map(|reader| {
-          let control: StreamControl = reader.get_control();
-
-          (VoiceSource::Streamed(reader), Some(control))
-        })
+        .map(VoiceSource::Streamed)
         .map_err(|error| error.to_string()),
       BankedSound::Loading | BankedSound::Refused(_) => return false,
     };
-    let (source, stream) = match source {
+    let source: VoiceSource = match source {
       Ok(source) => source,
       Err(reason) => {
         self.refuse(rendered, reason);
@@ -658,6 +449,7 @@ impl SceneRender {
         return false;
       }
     };
+    let stream: Option<StreamControl> = source.get_stream_control();
     // Its first frame plays at the mixer frame its clock puts it at: where it stands now, or where it starts ahead.
     let at: u64 = self
       .clock
@@ -689,7 +481,7 @@ impl SceneRender {
         true
       }
       Err(refusal) => {
-        Self::record_refusal(
+        AudioSceneRefusal::record(
           &mut self.refused,
           &rendered.emitter.sound,
           format!("No voice was left for it: {refusal}"),
@@ -697,38 +489,6 @@ impl SceneRender {
 
         false
       }
-    }
-  }
-
-  /// Where the emitter's sound is at `now` by its start, offset, speed and loop; none once a sound played once is over,
-  /// or while it is still being read.
-  fn locate(rendered: &RenderedEmitter, now: Duration) -> Option<SoundPlace> {
-    let (frames, sample_rate): (u64, u32) = match &rendered.sound {
-      BankedSound::Decoded(sound) => (sound.get_frames_count() as u64, sound.get_sample_rate()),
-      BankedSound::Streamed { format, .. } => (format.frames_count, format.sample_rate),
-      BankedSound::Loading | BankedSound::Refused(_) => return None,
-    };
-    let emitter: &AudioSceneEmitter = &rendered.emitter;
-    let played: f64 =
-      now.saturating_sub(emitter.start).as_secs_f64() * f64::from(emitter.frequency) + emitter.offset.as_secs_f64();
-    let frame: u64 = (played * f64::from(sample_rate)) as u64;
-
-    if frames == 0 {
-      return None;
-    }
-
-    if emitter.is_looped {
-      Some(SoundPlace {
-        frame: frame % frames,
-        frames,
-        sample_rate,
-      })
-    } else {
-      (frame < frames).then_some(SoundPlace {
-        frame,
-        frames,
-        sample_rate,
-      })
     }
   }
 
@@ -756,17 +516,7 @@ impl SceneRender {
   fn refuse(&mut self, rendered: &mut RenderedEmitter, reason: String) {
     rendered.is_done = true;
     rendered.voice = None;
-    Self::record_refusal(&mut self.refused, &rendered.emitter.sound, reason);
-  }
-
-  /// Notes that `sound` was refused for `reason`, once a sound however many emitters play it.
-  fn record_refusal(refused: &mut Vec<AudioSceneRefusal>, sound: &str, reason: String) {
-    if !refused.iter().any(|refusal| *refusal.sound == *sound) {
-      refused.push(AudioSceneRefusal {
-        sound: sound.to_owned(),
-        reason,
-      });
-    }
+    AudioSceneRefusal::record(&mut self.refused, &rendered.emitter.sound, reason);
   }
 
   /// How much of the scene is heard `seconds` on, moving toward heard or silent.

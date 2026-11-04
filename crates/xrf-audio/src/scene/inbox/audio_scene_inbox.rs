@@ -1,18 +1,13 @@
 use rtrb::{Consumer, Producer, RingBuffer};
 
 use crate::scene::audio_scene_frame::AudioSceneFrame;
+use crate::scene::inbox::scene_mailbox::SceneMailbox;
 
 /// The host's end of a scene on the control thread: frames go in through one ring and come back through another to be
 /// filled again, so a warm scene allocates nothing. Dropping it closes the scene, its voices fading out.
 pub struct AudioSceneInbox {
   frames: Producer<Box<AudioSceneFrame>>,
   spent: Consumer<Box<AudioSceneFrame>>,
-}
-
-/// The control thread's end.
-pub(crate) struct SceneMailbox {
-  pub(crate) frames: Consumer<Box<AudioSceneFrame>>,
-  pub(crate) spent: Producer<Box<AudioSceneFrame>>,
 }
 
 impl AudioSceneInbox {

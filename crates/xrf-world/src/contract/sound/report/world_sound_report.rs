@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
-use crate::contract::sound::world_sound_acoustics_report::WorldSoundAcousticsReport;
-use crate::contract::sound::world_sound_channel_report::WorldSoundChannelReport;
-use crate::contract::sound::world_sound_music_report::WorldSoundMusicReport;
-use crate::contract::sound::world_sound_refusal::WorldSoundRefusal;
-use crate::contract::sound::world_sound_voice_report::WorldSoundVoiceReport;
+use crate::contract::sound::report::world_sound_acoustics_report::WorldSoundAcousticsReport;
+use crate::contract::sound::report::world_sound_channel_report::WorldSoundChannelReport;
+use crate::contract::sound::report::world_sound_music_report::WorldSoundMusicReport;
+use crate::contract::sound::report::world_sound_refusal::WorldSoundRefusal;
+use crate::contract::sound::report::world_sound_voice_report::WorldSoundVoiceReport;
 
 /// What a viewport's scene plays and why: each sound and how it is heard, the music, the ambient's channels, and what
 /// could not play. The world fills what it schedules; the host's audio fills the gains and its own refusals.

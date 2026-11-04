@@ -5,19 +5,9 @@ use xrf_math::EPS_L;
 
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
 use crate::host::sound::world_sound::WorldSound;
-use crate::sound::sound_emitters::{SoundEmitters, SoundPlay};
-
-/// How hard it rains and blows, and how open the camera stands, as one frame gives the rain's loop.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct RainFrame {
-  /// The weather's `rain_density`, none while the rain is switched off or nothing plays.
-  pub density: f32,
-  /// The weather's `wind_velocity`, metres a second times a thousand as configs give it.
-  pub wind_velocity: f32,
-  /// The brightest of the camera's hemi cube faces but the one facing down; none where the level has no estimate,
-  /// which counts as open sky.
-  pub hemi: Option<f32>,
-}
+use crate::sound::emitters::sound_emitters::SoundEmitters;
+use crate::sound::emitters::sound_play::SoundPlay;
+use crate::sound::weather::rain_frame::RainFrame;
 
 /// `CEffect_Rain`'s loop, `ambient\rain`: started once the rain's factor rises above `EPS_L`, stopped at once when it
 /// falls back, played at the level's origin over a range, its volume the factor eased by how open the camera stands.

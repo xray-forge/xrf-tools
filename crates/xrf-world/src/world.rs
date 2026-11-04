@@ -14,8 +14,8 @@ use crate::contract::camera::world_input_event::WorldInputEvent;
 use crate::contract::level::world_level_problems::WorldLevelProblems;
 use crate::contract::level::world_model_pose::WorldModelPose;
 use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::sound::report::world_scene_sound::WorldSceneSound;
 use crate::contract::sound::world_music_command::WorldMusicCommand;
-use crate::contract::sound::world_sound_report::WorldSoundReport;
 use crate::contract::weather::world_weather_control::WorldWeatherControl;
 use crate::contract::weather::world_weather_play::WorldWeatherPlay;
 use crate::contract::weather::world_weather_transition::WorldWeatherTransition;
@@ -24,7 +24,7 @@ use crate::host::world_event_sink::WorldEventSink;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::level_drive::LevelDrive;
 use crate::level::world_level::WorldLevel;
-use crate::sound::sound_drive::SoundDrive;
+use crate::sound::level::sound_drive::SoundDrive;
 use crate::weather::viewport_weather::ViewportWeather;
 use crate::world_scene::WorldScene;
 use crate::world_viewport::WorldViewport;
@@ -73,11 +73,14 @@ impl World {
 
   /// What the scene a viewport shows plays as the world schedules it, and the scene; none for a viewport showing no
   /// level.
-  pub fn report_sound(&mut self, viewport: RenderViewportId) -> Option<(RenderSceneId, WorldSoundReport)> {
+  pub fn report_sound(&mut self, viewport: RenderViewportId) -> Option<WorldSceneSound> {
     let id: RenderSceneId = self.viewports.get(&viewport)?.scene?;
     let scene: &mut WorldScene = self.scenes.get_mut(&id)?;
 
-    Some((id, scene.level.report_sound()))
+    Some(WorldSceneSound {
+      scene: id,
+      report: scene.level.report_sound(),
+    })
   }
 
   /// Does what a viewer asks of the music of the scene a viewport shows, answering whether it could: none can for a

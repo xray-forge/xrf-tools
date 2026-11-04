@@ -1,7 +1,6 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use glam::Vec3;
 use xrf_renderer::{
   LevelPart, LevelParts, RenderLevelSource, RenderSceneFeedback, RenderSceneFrame, RenderSceneUpdate,
   RenderStreamingProgress, RenderViewportId, RenderWorkers,
@@ -10,20 +9,22 @@ use xrf_renderer::{
 use crate::contract::level::world_level_problems::WorldLevelProblems;
 use crate::contract::level::world_model_pose::WorldModelPose;
 use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
+use crate::contract::sound::report::world_sound_report::WorldSoundReport;
 use crate::contract::sound::world_music_command::WorldMusicCommand;
-use crate::contract::sound::world_sound_report::WorldSoundReport;
 use crate::contract::weather::world_ambient_report::WorldAmbientReport;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_level_weather::WorldLevelWeather;
+use crate::level::ambient::started_effect::StartedEffect;
 use crate::level::animation::level_animation::LevelAnimation;
 use crate::level::effects::effects_frame::EffectsFrame;
 use crate::level::effects::level_effects::LevelEffects;
 use crate::level::level_drive::LevelDrive;
 use crate::level::loading::loader_slot::LoaderSlot;
 use crate::level::streaming::level_streaming::LevelStreaming;
-use crate::sound::level_sound::{EffectSound, LevelSound};
-use crate::sound::rain_sound::RainFrame;
-use crate::sound::sound_drive::SoundDrive;
+use crate::sound::level::effect_sound::EffectSound;
+use crate::sound::level::level_sound::LevelSound;
+use crate::sound::level::sound_drive::SoundDrive;
+use crate::sound::weather::rain_frame::RainFrame;
 
 /// A level as a viewport's world plays it: what streams it into its scene, how its skinned objects are posed, what its
 /// effects play, and what every weather of it plays with, read once for every viewport showing it.
@@ -155,14 +156,14 @@ impl WorldLevel {
     let (campfires, motions): (&[u16], &[String]) = self.streaming.list_light_followed();
     let mut effects: EffectsFrame = self.effects.advance(&mut updates, clock, drive, campfires, motions);
     let weather: Option<Arc<WorldLevelWeather>> = self.weather.poll().cloned();
-    let started: Option<(String, Vec3)> = effects.started_effect.take();
-    let effect: Option<EffectSound<'_>> = started.as_ref().and_then(|(name, position)| {
-      let sound = weather.as_deref()?.ambient_effects.get(name)?.sound.as_ref()?;
+    let started: Option<StartedEffect> = effects.started_effect.take();
+    let effect: Option<EffectSound<'_>> = started.as_ref().and_then(|started| {
+      let sound = weather.as_deref()?.ambient_effects.get(&started.name)?.sound.as_ref()?;
 
       Some(EffectSound {
-        effect: name,
+        effect: &started.name,
         sound,
-        position: *position,
+        position: started.position,
       })
     });
     let drive: SoundDrive<'_> = SoundDrive {
@@ -186,11 +187,11 @@ impl WorldLevel {
       updates,
       streaming: self.get_progress(),
       skeleton_segments: self.animation.list_segments(),
-      // The level objects whose sounds play at this frame, by the ids their helpers carry, ascending.
       gust: effects.gust,
       campfire_shares: effects.campfire_shares,
       motions: effects.motions,
       camera_hemi: effects.camera_hemi,
+      // The level objects whose sounds play at this frame, by the ids their helpers carry, ascending.
       sounding: self.sound.list_sounding(),
     }
   }

@@ -15,10 +15,10 @@ use crate::host::audio_scene_geometry::AudioSceneGeometry;
 use crate::mixer::audio_mixer::AudioMixer;
 use crate::mixer::audio_mixer_meter::AudioMixerMeter;
 use crate::offline::offline_render::OfflineRender;
-use crate::render::sound_bank::SoundBank;
+use crate::render::bank::sound_bank::SoundBank;
 use crate::render::stream_launcher::StreamLauncher;
-use crate::scene::audio_scene_inbox::AudioSceneInbox;
-use crate::scene::audio_scene_report::AudioSceneReport;
+use crate::scene::inbox::audio_scene_inbox::AudioSceneInbox;
+use crate::scene::report::audio_scene_report::AudioSceneReport;
 
 /// The audio's whole runtime without a device or a thread, on a clock of the frames it renders: the control side ticks
 /// every [`Self::TICK`] of them however the renders are cut, sounds are read and streams decode before each tick, so a
@@ -92,7 +92,8 @@ impl OfflineSession {
   ) -> AudioSceneInbox {
     let (inbox, mailbox) = AudioSceneInbox::open();
 
-    self.control.handle(ControlRequest::OpenScene {
+    // Only a shut-down breaks the control's flow.
+    let _ = self.control.handle(ControlRequest::OpenScene {
       mailbox,
       assets,
       geometry,
@@ -103,7 +104,7 @@ impl OfflineSession {
 
   /// Places sounds for headphones or speakers from the next tick.
   pub fn set_spatialization(&mut self, spatialization: AudioSpatialization) {
-    self.control.handle(ControlRequest::SetSpatialization(spatialization));
+    let _ = self.control.handle(ControlRequest::SetSpatialization(spatialization));
   }
 
   pub fn get_output_rate(&self) -> u32 {

@@ -4,8 +4,8 @@ use xrf_engine_target::XrayEngine;
 use xrf_renderer::RenderSceneId;
 
 use crate::contract::sound::world_sound_toggles::WorldSoundToggles;
-use crate::host::sound::world_sound_emitter::WorldSoundEmitter;
-use crate::host::sound::world_sound_listener::WorldSoundListener;
+use crate::host::sound::sink::world_sound_emitter::WorldSoundEmitter;
+use crate::host::sound::sink::world_sound_listener::WorldSoundListener;
 
 /// A scene's sound as of a moment on its level's clock: what plays, from where it is heard, and whether it is heard.
 /// Frames come from a pool the sink hands back, so a warm world allocates none.

@@ -7,8 +7,8 @@ use xrf_renderer::{
 };
 use xrf_visual::{LightsDescription, SectorPackage};
 
-use crate::host::sound::world_level_sounds::WorldLevelSounds;
-use crate::host::sound::world_sound_sink::WorldSoundSink;
+use crate::host::sound::level::world_level_sounds::WorldLevelSounds;
+use crate::host::sound::sink::world_sound_sink::WorldSoundSink;
 use crate::host::world_level_weather::WorldLevelWeather;
 
 /// An open level as the world plays it: the application reads its parts on demand, on the renderer's loader threads,

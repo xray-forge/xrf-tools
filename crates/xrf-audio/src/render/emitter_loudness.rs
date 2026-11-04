@@ -1,8 +1,9 @@
 use crate::acoustics::distance_curve::DistanceCurve;
+use crate::render::emitter_culling::EmitterCulling;
 use crate::scene::audio_scene_emitter::AudioSceneEmitter;
 
 /// Below this a sound is not worth a voice.
-pub(crate) const CULL: f32 = 0.01;
+const CULL: f32 = 0.01;
 
 /// How much more a sound heard as it was recorded deserves a voice than a placed one of the same loudness: music and
 /// the weather's 2D sounds keep theirs while placed sounds crowd in.
@@ -14,13 +15,6 @@ const PRIORITY_2D: f32 = 100.0;
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct EmitterLoudness {
   fade: f32,
-}
-
-/// What an update answers: whether the emitter is loud enough for a voice, and how much it deserves one.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct EmitterCulling {
-  pub(crate) is_audible: bool,
-  pub(crate) priority: f32,
 }
 
 impl EmitterLoudness {

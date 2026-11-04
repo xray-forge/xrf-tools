@@ -1,6 +1,6 @@
 use crate::decode::sound_channels::SoundChannels;
 use crate::decode::stream::stream_reader::StreamReader;
-use crate::voice::cursor::stereo_frame::{StereoFrame, hermite};
+use crate::voice::cursor::stereo_frame::StereoFrame;
 
 /// A voice's place in a stream: the four frames around the playing one, taken from the ring as the voice moves on.
 #[derive(Debug)]
@@ -65,7 +65,7 @@ impl StreamCursor {
 
       // A mono stream is interpolated in its one channel.
       if channels == 1 {
-        out[at] = hermite(previous.left, current.left, next.left, after.left, t);
+        out[at] = StereoFrame::hermite_sample(previous.left, current.left, next.left, after.left, t);
       } else {
         StereoFrame::hermite(previous, current, next, after, t).write(out, channels, at);
       }

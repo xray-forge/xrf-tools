@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::acoustics::scene::simulation_pace::SimulationPace;
-use crate::render::sound_bank::SoundBank;
+use crate::render::bank::sound_bank::SoundBank;
 use crate::render::stream_launcher::StreamLauncher;
 
 /// How a control side runs: where its sounds are read and its streams decode, how often it ticks, and how its scenes'

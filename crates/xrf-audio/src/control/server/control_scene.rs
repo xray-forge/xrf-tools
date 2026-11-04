@@ -9,7 +9,7 @@ use crate::render::scene::scene_assets::SceneAssets;
 use crate::render::scene::scene_render::SceneRender;
 use crate::render::scene::scene_tick::SceneTick;
 use crate::scene::audio_scene_frame::AudioSceneFrame;
-use crate::scene::audio_scene_inbox::SceneMailbox;
+use crate::scene::inbox::scene_mailbox::SceneMailbox;
 
 /// A scene open on the control thread: where its frames come in and go back, where its sounds are read, and how it
 /// plays.

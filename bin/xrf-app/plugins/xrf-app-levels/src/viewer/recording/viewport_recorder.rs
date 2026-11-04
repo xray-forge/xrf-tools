@@ -66,9 +66,6 @@ impl ViewportRecorder {
   /// The sound kept from before the first frame came, past the device's latency and a frame's readback.
   const EARLY: Duration = Duration::from_millis(500);
 
-  /// How long a frame shows where the next has not come: the renderer keeps one a sixtieth apart at most.
-  const FRAME: Duration = Duration::from_nanos(16_666_667);
-
   /// How often the page is told where the recording stands.
   const PROGRESS_EVERY: Duration = Duration::from_millis(250);
 
@@ -93,7 +90,7 @@ impl ViewportRecorder {
       RecordFormat {
         width: size.0,
         height: size.1,
-        frame: Self::FRAME,
+        frame: RecordFrame::INTERVAL,
         sound: Some(RecordSoundFormat {
           rate: tap.get_rate(),
           channels: 2,
@@ -235,10 +232,10 @@ impl RecorderInputs {
     self.writer.write(RecordSample::Frame {
       bgra,
       time,
-      duration: ViewportRecorder::FRAME,
+      duration: RecordFrame::INTERVAL,
     })?;
     state.frames += 1;
-    state.end = time + ViewportRecorder::FRAME;
+    state.end = time + RecordFrame::INTERVAL;
 
     Ok(())
   }

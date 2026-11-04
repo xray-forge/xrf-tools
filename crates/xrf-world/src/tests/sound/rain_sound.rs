@@ -4,10 +4,11 @@ use std::time::Duration;
 
 use xrf_engine_target::XrayEngine;
 
+use crate::host::sound::sink::world_sound_emitter::WorldSoundEmitter;
 use crate::host::sound::world_sound::WorldSound;
-use crate::host::sound::world_sound_emitter::WorldSoundEmitter;
-use crate::sound::rain_sound::{RainFrame, RainSound};
-use crate::sound::sound_emitters::SoundEmitters;
+use crate::sound::emitters::sound_emitters::SoundEmitters;
+use crate::sound::weather::rain_frame::RainFrame;
+use crate::sound::weather::rain_sound::RainSound;
 use crate::tests::sound::found;
 
 /// The loop after a second of frames at `frame`, its hemi eased all the way.

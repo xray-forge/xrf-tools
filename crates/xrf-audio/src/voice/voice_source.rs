@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::decode::decoded_sound::DecodedSound;
+use crate::decode::stream::stream_control::StreamControl;
 use crate::decode::stream::stream_reader::StreamReader;
 
 /// Where a voice's frames come from.
@@ -25,6 +26,14 @@ impl VoiceSource {
     match self {
       Self::Decoded { sound, start_frame, .. } => (*start_frame).min(sound.get_frames_count() as u64),
       Self::Streamed(reader) => reader.get_start_frame(),
+    }
+  }
+
+  /// The control of the stream it reads, none for a sound decoded whole.
+  pub(crate) fn get_stream_control(&self) -> Option<StreamControl> {
+    match self {
+      Self::Decoded { .. } => None,
+      Self::Streamed(reader) => Some(reader.get_control()),
     }
   }
 }
