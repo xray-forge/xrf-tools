@@ -128,7 +128,8 @@ export class AudioSettingsService {
 
   /**
    * Shows the settings at once and takes back what the backend kept of them, unless a later write has gone out since:
-   * a slider dragged sends several, and an earlier answer must not pull it back.
+   * a slider dragged sends several, and an earlier answer must not pull it back. A write refused reads the settings
+   * again, so the page never shows what the backend does not play with.
    */
   private async write(settings: AudioSettings): Promise<void> {
     const write: number = ++this.writes;
@@ -143,6 +144,10 @@ export class AudioSettingsService {
       }
     } catch (error: unknown) {
       this.log.warn("The audio settings were not kept:", error);
+
+      if (write === this.writes) {
+        await this.read();
+      }
     }
   }
 }
