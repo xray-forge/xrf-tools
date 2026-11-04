@@ -77,6 +77,12 @@ impl SceneSimulation {
   /// How big a sound is taken to be for its occlusion, in metres.
   const OCCLUSION_RADIUS: f32 = 1.0;
 
+  /// Metres a sound's way through the walls is heard from above where it is placed. A level places a zone or an object
+  /// by its foot, on the ground or a little sunk into it, and a sound whose centre is under a surface is hidden from
+  /// every listener: a smaller radius or a single ray hears no more of it, while half a metre up it reaches a listener in
+  /// the open as it should, without lifting it through a ceiling it stands under.
+  const OCCLUSION_LIFT: f32 = 0.5;
+
   /// Walls in the way whose transmission is counted, nearest the listener first.
   const TRANSMISSION_RAYS: u32 = 4;
 
@@ -362,8 +368,9 @@ impl SimulatedWorld {
 
     for simulated in &input.sources {
       if let Some(source) = self.sources.get(&simulated.id) {
+        let [x, y, z] = simulated.position;
         let inputs = SimulationInputs {
-          source: SteamSpace::to_source(simulated.position),
+          source: SteamSpace::to_source([x, y + SceneSimulation::OCCLUSION_LIFT, z]),
           parameters: parameters.clone(),
         };
 
