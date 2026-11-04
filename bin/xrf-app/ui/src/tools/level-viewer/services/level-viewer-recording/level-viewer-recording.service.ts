@@ -73,11 +73,14 @@ export class LevelViewerRecordingService {
     return this.availability?.isAvailable === true && this.snapshotService.level !== null && !this.isRecording;
   }
 
-  /** Starts a recording where none runs, else stops the one running. */
+  /**
+   * Starts a recording where none runs, else stops the one running. It shares one lane with {@link start} and
+   * {@link stop}: the backend keeps one recording, so a start or stop asked while another is under way joins it.
+   */
   @KeybindCommand(RECORD_LEVEL_KEYBIND_COMMAND, {
     isEnabled: (service: LevelViewerRecordingService) => service.isRecording || service.canStart,
   })
-  @ExclusiveFlow()
+  @ExclusiveFlow<LevelViewerRecordingService>("file")
   public *toggle(): TFlow {
     if (this.isRecording) {
       yield* this.finish();
@@ -87,13 +90,13 @@ export class LevelViewerRecordingService {
   }
 
   /** Starts recording the viewport into a new file named after the level and the moment. */
-  @ExclusiveFlow()
+  @ExclusiveFlow<LevelViewerRecordingService>("file")
   public *start(): TFlow<Nullable<string>> {
     return yield* this.record();
   }
 
   /** Stops the recording and finishes its file, its toast telling where it went. */
-  @ExclusiveFlow()
+  @ExclusiveFlow<LevelViewerRecordingService>("file")
   public *stop(): TFlow<Nullable<RecordingOutcome>> {
     return yield* this.finish();
   }
@@ -160,6 +163,7 @@ export class LevelViewerRecordingService {
     const name: string = toLevelViewerFileStem(level, new Date());
 
     progress.onmessage = (told: RecordingProgress) => this.follow(told);
+    this.prepare();
 
     const started: TCommandCompletion<Nullable<string>> = yield* this.reporter.run({
       name: "Start recording",
@@ -170,9 +174,15 @@ export class LevelViewerRecordingService {
 
     if (started.result) {
       this.begin(started.result);
+
+      // A recording the renderer refused at once, as while another long job runs, can say it ended before its start
+      // answers; it is collected here, its failure telling why.
+      if (this.progress?.ended) {
+        yield* this.finish();
+      }
     }
 
-    return started.result;
+    return this.file;
   }
 
   private *finish(): TFlow<Nullable<RecordingOutcome>> {
@@ -216,9 +226,13 @@ export class LevelViewerRecordingService {
   }
 
   @BoundAction()
+  private prepare(): void {
+    this.progress = null;
+  }
+
+  @BoundAction()
   private begin(file: string): void {
     this.file = file;
-    this.progress = null;
   }
 
   @BoundAction()
@@ -232,7 +246,10 @@ export class LevelViewerRecordingService {
     this.outcome = null;
   }
 
-  /** Takes what the recording told; one that ended by itself is stopped and collected, saying why. */
+  /**
+   * Takes what the recording told; one that ended by itself is stopped and collected, saying why. One that ends while
+   * it starts is collected by the start itself, since this stop joins the start's lane.
+   */
   @BoundAction()
   private follow(told: RecordingProgress): void {
     this.progress = told;

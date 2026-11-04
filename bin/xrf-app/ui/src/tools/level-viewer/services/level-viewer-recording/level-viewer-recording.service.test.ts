@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from "@jest/globals";
+import { Channel } from "@tauri-apps/api/core";
 import { waitFor } from "@testing-library/react";
 import { EventBus, WireEvent } from "@wirestate/core";
 import { flowResult } from "@wirestate/mobx";
@@ -7,6 +8,7 @@ import { emitMockChannelMessage, mockIpcCommands, resetMockChannels, resetMockIn
 import { RecordingOutcome, RecordingProgress } from "@xrf/ipc/types/xrf-app-levels";
 
 import { ILevelViewContainerDescriptor, mockLevelViewContainer } from "@/core/level/fixtures/level-container";
+import { LevelRenderCaptures } from "@/core/level/services/level-render/level-render.service.captures";
 import { EMIT_NOTIFICATION_EVENT, ENotificationSeverity, INotificationPayload } from "@/core/notifications/lib";
 import { EToolId } from "@/core/routing/tool";
 import { mockToolScope } from "@/fixtures/utils/container";
@@ -30,10 +32,17 @@ function progress(ended: RecordingProgress["ended"] = null): RecordingProgress {
   return { elapsed: 3, frames: 180, droppedFrames: 0, droppedSound: 0, ended };
 }
 
+interface IMockedRecording {
+  service: LevelViewerRecordingService;
+  raised: Array<INotificationPayload>;
+  asked: Array<string>;
+  startRecording: jest.SpiedFunction<LevelRenderCaptures["startRecording"]>;
+}
+
 async function mockRecording(
   outcome: RecordingOutcome = OUTCOME,
   isAvailable: boolean = true
-): Promise<{ service: LevelViewerRecordingService; raised: Array<INotificationPayload>; asked: Array<string> }> {
+): Promise<IMockedRecording> {
   const asked: Array<string> = [];
 
   mockIpcCommands({
@@ -60,7 +69,10 @@ async function mockRecording(
   ]);
   const raised: Array<INotificationPayload> = [];
 
-  jest.spyOn(descriptor.render.captures, "startRecording").mockResolvedValue(FILE);
+  const startRecording: jest.SpiedFunction<LevelRenderCaptures["startRecording"]> = jest
+    .spyOn(descriptor.render.captures, "startRecording")
+    .mockResolvedValue(FILE);
+
   descriptor.container
     .get(EventBus)
     .subscribe(EMIT_NOTIFICATION_EVENT, (event: WireEvent<INotificationPayload>) =>
@@ -71,7 +83,7 @@ async function mockRecording(
 
   await waitFor(() => expect(service.availability).not.toBeNull());
 
-  return { service, raised, asked };
+  return { service, raised, asked, startRecording };
 }
 
 beforeEach(() => {
@@ -127,6 +139,30 @@ describe("LevelViewerRecordingService", () => {
     emitMockChannelMessage(progress("The recording ended: the audio went from 48000 Hz to 44100 Hz"));
 
     await waitFor(() => expect(service.isRecording).toBe(false));
+    expect(asked).toEqual(["stop"]);
+  });
+
+  it("collects a recording that said it ended before its start answered", async () => {
+    const { service, asked, startRecording } = await mockRecording();
+
+    startRecording.mockImplementation(async (_name: string, channel: Channel<RecordingProgress>) => {
+      channel.onmessage(progress("Another long job runs"));
+
+      return FILE;
+    });
+
+    expect(await flowResult(service.start())).toBeNull();
+    expect(service.isRecording).toBe(false);
+    expect(asked).toEqual(["stop"]);
+  });
+
+  it("joins a stop asked while the toggle stops, rather than stopping twice", async () => {
+    const { service, asked } = await mockRecording();
+
+    await flowResult(service.start());
+    await Promise.all([flowResult(service.toggle()), flowResult(service.stop())]);
+
+    expect(service.isRecording).toBe(false);
     expect(asked).toEqual(["stop"]);
   });
 
