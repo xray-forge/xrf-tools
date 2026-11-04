@@ -9,6 +9,7 @@ use xrf_renderer_core::{
 
 use wgpu::util::StagingBelt;
 
+use crate::capture::record::record_shot::RecordShot;
 use crate::contract::settings::render_frame_rate::RenderFrameRate;
 use crate::contract::viewport::render_rect::RenderRect;
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
@@ -272,6 +273,7 @@ impl RenderThread {
       captures: self.take_captures(device, &windows),
       shots: self.take_capture_shots(device, &windows),
       bursts: self.take_burst_shots(device, &windows, &frames),
+      records: self.take_record_shots(device, &frames, started),
     };
     let composing: Instant = Instant::now();
 
@@ -294,7 +296,7 @@ impl RenderThread {
     let executed: ExecutedGraph = match recorded {
       Ok(executed) => executed,
       Err(error) => {
-        self.abandon_frame(running, encoder, frames, &recorders, copies.captures, &error);
+        self.abandon_frame(running, encoder, frames, &recorders, copies, &error);
 
         return;
       }
@@ -362,9 +364,9 @@ impl RenderThread {
     }
   }
 
-  /// Readies the present's and the overlays' pipelines for what this frame presents into: each window's target, and
-  /// the captures' own where the frame draws a screenshot, a capture's shot or a burst's frame apart (`copies`). A
-  /// pipeline that cannot be built is logged here, and what it would present is left undrawn.
+  /// Readies the present's and the overlays' pipelines for what this frame presents into: each window's target, the
+  /// captures' own where the frame draws a screenshot, a capture's shot or a burst's frame apart (`copies`), and a
+  /// recording's. A pipeline that cannot be built is logged here, and what it would present is left undrawn.
   fn prepare_composition(&mut self, gpu: &mut GpuState, windows: &[WindowFrame], copies: &FrameCopies) {
     let is_drawn_apart: bool = copies.captures.iter().any(|copy| copy.capture.is_screenshot())
       || !copies.shots.is_empty()
@@ -373,6 +375,9 @@ impl RenderThread {
       .iter()
       .map(|window| window.target)
       .chain(is_drawn_apart.then_some(DisplayTarget::CAPTURE))
+      .chain((!copies.records.is_empty()).then_some(DisplayTarget {
+        format: RecordShot::FORMAT,
+      }))
       .collect();
 
     for DisplayTarget { format } in targets {
@@ -425,6 +430,7 @@ impl RenderThread {
       captures,
       shots,
       bursts,
+      records,
     } = copies;
 
     // Each window's image as the composition draws into it, once acquired.
@@ -562,6 +568,17 @@ impl RenderThread {
 
     for copy in bursts.iter() {
       Self::declare_burst_shot(
+        GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
+        gpu,
+        &self.viewports,
+        copy.viewport,
+        &copy.shot,
+        outputs.get(&copy.viewport),
+      );
+    }
+
+    for copy in records.iter() {
+      Self::declare_record_shot(
         GraphDeclaration::new(&mut graph, &mut bindings, &mut *runtime),
         gpu,
         &self.viewports,

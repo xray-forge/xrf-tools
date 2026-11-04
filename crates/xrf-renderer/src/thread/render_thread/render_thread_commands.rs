@@ -9,6 +9,8 @@ use crate::capture::burst::burst_job::BurstJob;
 use crate::capture::capture_event::CaptureEvent;
 use crate::capture::capture_job::CaptureJob;
 use crate::capture::capture_plan::CapturePlan;
+use crate::capture::record::record_event::RecordEvent;
+use crate::capture::record::record_job::RecordJob;
 use crate::contract::capture::render_burst::RenderBurst;
 use crate::contract::report::frame::render_frame_report::RenderFrameReport;
 use crate::contract::report::frame::render_memory_report::RenderMemoryReport;
@@ -217,7 +219,35 @@ impl RenderThread {
         });
       }
       RenderCommand::CaptureBurst { id, burst, events } => self.begin_burst(id, burst, events),
+      RenderCommand::Record { id, size, events } => self.begin_record(id, size, events),
       RenderCommand::StepClock { step } => self.clock.set_step(step),
+    }
+  }
+
+  /// Starts recording a viewport's frames; refused, through `events`, where the viewport is gone or recorded already,
+  /// or the size is nothing or past the GPU's largest texture.
+  fn begin_record(&mut self, id: RenderViewportId, size: (u32, u32), events: Sender<RecordEvent>) {
+    let most: u32 = self.get_most_texture();
+    let refusal: Option<String> = match self.viewports.get(&id) {
+      None => Some(format!("Viewport {} is no longer drawn", id.0)),
+      Some(viewport) if viewport.is_recording() => Some(format!("Viewport {} is recorded already", id.0)),
+      Some(_) if size.0 == 0 || size.1 == 0 || size.0 > most || size.1 > most => Some(format!(
+        "A recording is 1 to {most} pixels a side, not {}×{}",
+        size.0, size.1
+      )),
+      Some(_) => None,
+    };
+
+    if let Some(refusal) = refusal {
+      let _ = events.send(RecordEvent::Stopped {
+        error: XrfError::new_invalid_error(refusal),
+      });
+
+      return;
+    }
+
+    if let Some(viewport) = self.viewports.get_mut(&id) {
+      viewport.start_record(RecordJob::new(size, events));
     }
   }
 

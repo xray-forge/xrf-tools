@@ -6,6 +6,7 @@ use xrf_error::XrfResult;
 
 use crate::capture::burst::burst_event::BurstEvent;
 use crate::capture::capture_event::CaptureEvent;
+use crate::capture::record::record_event::RecordEvent;
 use crate::contract::capture::render_burst::RenderBurst;
 use crate::contract::capture::render_capture::RenderCapture;
 use crate::contract::capture::render_cube_capture::RenderCubeCapture;
@@ -140,6 +141,14 @@ pub enum RenderCommand {
     id: RenderViewportId,
     burst: RenderBurst,
     events: Sender<BurstEvent>,
+  },
+  /// Records a viewport's frames as they are presented, a sixtieth of a second apart at most, at `size` pixels across
+  /// and down, its view scaled into it should it resize, telling `events` of each frame as it comes back. Dropping the
+  /// receiving end stops it, at its next frame.
+  Record {
+    id: RenderViewportId,
+    size: (u32, u32),
+    events: Sender<RecordEvent>,
   },
   /// Draws every scene's frames `step` apart on its clock from the next on, however long each takes; none at the time
   /// each is drawn.

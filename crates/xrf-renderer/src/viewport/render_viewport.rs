@@ -7,6 +7,7 @@ use xrf_renderer_core::{ExecutedGroup, GraphOwner, GraphPassTime};
 
 use crate::capture::burst::burst_job::BurstJob;
 use crate::capture::capture_job::CaptureJob;
+use crate::capture::record::record_job::RecordJob;
 use crate::contract::feature::lighting::model::render_light_scales::RenderLightScales;
 use crate::contract::overlay::render_overlay::RenderOverlay;
 use crate::contract::overlay::render_selection::RenderSelection;
@@ -77,6 +78,8 @@ pub struct RenderViewport {
   capture: Option<CaptureJob>,
   /// The burst its own view draws, pacing the frames' clock until it ends.
   burst: Option<BurstJob>,
+  /// The recording of its frames as they are presented, until its recorder goes.
+  record: Option<RecordJob>,
   /// Picks asked for, drawn one a frame while a readback is free, and those drawn, answered once they are back.
   picks: Vec<PendingPick>,
   picks_in_flight: Vec<PickInFlight>,
@@ -276,6 +279,28 @@ impl RenderViewport {
     self.burst = Some(burst);
   }
 
+  /// The recording of its frames, while one runs.
+  pub fn get_record_mut(&mut self) -> Option<&mut RecordJob> {
+    self.record.as_mut().filter(|record| !record.is_ended())
+  }
+
+  /// Whether its frames are recorded.
+  pub fn is_recording(&self) -> bool {
+    self.record.as_ref().is_some_and(|record| !record.is_ended())
+  }
+
+  /// Starts recording its frames as they are presented.
+  pub fn start_record(&mut self, record: RecordJob) {
+    self.record = Some(record);
+  }
+
+  /// Stops the recording of its frames, telling its recorder why.
+  pub fn stop_record(&mut self, reason: &str) {
+    if let Some(mut record) = self.record.take() {
+      record.stop(XrfError::new_invalid_error(reason.to_string()));
+    }
+  }
+
   /// The level map or cubemap it captures, while one runs.
   pub fn get_capture(&self) -> Option<&CaptureJob> {
     self.capture.as_ref().filter(|capture| !capture.is_ended())
@@ -357,6 +382,16 @@ impl RenderViewport {
     if self.burst.as_ref().is_some_and(BurstJob::is_ended) {
       self.burst = None;
     }
+
+    if let Some(record) = self.record.as_mut() {
+      profiling::scope!("record frames");
+
+      record.poll();
+    }
+
+    if self.record.as_ref().is_some_and(RecordJob::is_ended) {
+      self.record = None;
+    }
   }
 
   /// The view it draws and its camera's binding: its capture's while it captures, else its own.
@@ -409,6 +444,7 @@ impl RenderViewport {
   pub fn release_captures(&mut self) {
     self.stop_capture("The GPU went before the capture was read back");
     self.stop_burst("The GPU went before the burst was read back");
+    self.stop_record("The GPU went while the viewport was recorded");
 
     for CaptureInFlight { capture, reply } in std::mem::take(&mut self.captures_in_flight) {
       let _ = reply.send(capture.take().unwrap_or_else(|| {
@@ -473,6 +509,7 @@ impl RenderViewport {
       captures_in_flight: Vec::new(),
       capture: None,
       burst: None,
+      record: None,
       picks: Vec::new(),
       picks_in_flight: Vec::new(),
       frame: 0,

@@ -33,6 +33,8 @@ pub use crate::capture::cube::cube_assembly::CubeAssembly;
 pub use crate::capture::cube::cube_face::CubeFace;
 pub use crate::capture::map::map_assembly::MapAssembly;
 pub use crate::capture::map::map_tile::MapTile;
+pub use crate::capture::record::record_event::RecordEvent;
+pub use crate::capture::record::record_frame::RecordFrame;
 pub use crate::context::backend_probe::probe_render_backends;
 pub use crate::contract::capture::render_burst::RenderBurst;
 pub use crate::contract::capture::render_capture::RenderCapture;

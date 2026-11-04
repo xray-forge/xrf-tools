@@ -11,9 +11,11 @@ use crate::frame::readback::frame_capture::FrameCapture;
 use crate::frame::timing::frame_phases::FramePhases;
 use crate::thread::copies::capture_copy::CaptureCopy;
 use crate::thread::copies::frame_copies::FrameCopies;
+use crate::thread::copies::record_copy::RecordCopy;
 use crate::thread::running_gpu::RunningGpu;
 use crate::thread::views::readied_view::ReadiedView;
 use crate::thread::views::scene_recorder::SceneRecorder;
+use crate::viewport::render_viewport::RenderViewport;
 use crate::window::window_frame::WindowFrame;
 
 use super::RenderThread;
@@ -22,14 +24,14 @@ impl RenderThread {
   /// Gives up a frame its graph could not draw: what the frame's own encoder holds is not of the frame (the uploads and
   /// the acceleration structures the scenes built, which they count as done) and still goes up; what the graph copied
   /// out for reading back is dropped, its picks wait for the next frame, and its captures and bursts are refused, a
-  /// burst's frames no longer following one another.
+  /// burst's frames no longer following one another; a recording's frame is dropped, its buffer freed.
   pub(super) fn abandon_frame(
     &mut self,
     running: &mut RunningGpu,
     encoder: FrameEncoder,
     frames: Vec<ReadiedView>,
     recorders: &[SceneRecorder],
-    captures: Vec<CaptureCopy>,
+    FrameCopies { captures, records, .. }: FrameCopies,
     error: &XrfError,
   ) {
     log::error!("The frame cannot be drawn: {error}");
@@ -72,6 +74,16 @@ impl RenderThread {
 
     for copy in captures {
       let _ = copy.reply.send(Err(XrfError::new_invalid_error(message.clone())));
+    }
+
+    for RecordCopy { viewport, shot } in records {
+      if let Some(record) = self
+        .viewports
+        .get_mut(&viewport)
+        .and_then(RenderViewport::get_record_mut)
+      {
+        record.abandon(&shot);
+      }
     }
   }
 
@@ -128,7 +140,7 @@ impl RenderThread {
   }
 
   /// Ends each view's submitted frame: its history kept, its stats and its pick asked for back, its burst moved on with
-  /// the frame copied out of it; and each capture asked for back.
+  /// the frame copied out of it; each capture asked for back; and each recording's frame.
   pub(super) fn end_view_frames(
     &mut self,
     frames: Vec<ReadiedView>,
@@ -136,8 +148,19 @@ impl RenderThread {
       captures,
       mut shots,
       mut bursts,
+      records,
     }: FrameCopies,
   ) {
+    for RecordCopy { viewport, shot } in records {
+      if let Some(record) = self
+        .viewports
+        .get_mut(&viewport)
+        .and_then(RenderViewport::get_record_mut)
+      {
+        record.advance(shot);
+      }
+    }
+
     for ReadiedView {
       viewport: id,
       frame,
@@ -240,8 +263,19 @@ impl RenderThread {
       for drawn in &window.drawn {
         if let Some(viewport) = self.viewports.get_mut(&drawn.id) {
           viewport.count_frame(interval, cpu, span, &window_phases, groups);
+
+          if let Some(record) = viewport.get_record_mut() {
+            record.present(presented);
+          }
         }
       }
+    }
+
+    // A recorded viewport whose window gave no image this frame was drawn all the same, its frame done now.
+    let done: Instant = Instant::now();
+
+    for record in self.viewports.values_mut().filter_map(RenderViewport::get_record_mut) {
+      record.present(done);
     }
   }
 }
