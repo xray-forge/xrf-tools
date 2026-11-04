@@ -23,7 +23,7 @@ pub use media_probe::MediaProbe;
 #[cfg(windows)]
 pub use media_session::MediaSession;
 #[cfg(windows)]
-use media_sink::MediaSink;
+pub use media_sink::MediaSink;
 #[cfg(windows)]
 pub use record_format::RecordFormat;
 #[cfg(windows)]
