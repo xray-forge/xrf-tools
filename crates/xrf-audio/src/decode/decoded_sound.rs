@@ -16,6 +16,10 @@ pub struct DecodedSound {
 }
 
 impl DecodedSound {
+  /// The most samples reserved up front from the length a sound's header states, a minute of 48 kHz stereo: a header
+  /// claiming more is read to its true end, its buffer growing as it does, rather than trusted with an allocation.
+  const RESERVED_MOST: usize = 60 * 48_000 * 2;
+
   /// # Panics
   ///
   /// Panics when `sample_rate` is zero or `samples` does not hold whole frames of `channels`.
@@ -49,7 +53,8 @@ impl DecodedSound {
     let mut samples: Vec<f32> = Vec::with_capacity(
       usize::try_from(decoder.get_frames_count())
         .unwrap_or(0)
-        .saturating_mul(channels.get_count()),
+        .saturating_mul(channels.get_count())
+        .min(Self::RESERVED_MOST),
     );
     let mut packet: Vec<f32> = Vec::new();
 
