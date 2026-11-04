@@ -64,13 +64,18 @@ fn campfire() -> WorldZoneSound {
   }
 }
 
+/// What plays on at `now`, those fading out after a stop aside.
 fn playing(emitters: &SoundEmitters, now: Duration) -> Vec<WorldSoundEmitter> {
-  emitters.iter_playing(now).cloned().collect()
+  emitters
+    .iter_playing(now)
+    .filter(|emitter| emitter.stop.is_none())
+    .cloned()
+    .collect()
 }
 
 fn sounds_of(emitters: &SoundEmitters, now: Duration) -> Vec<String> {
-  emitters
-    .iter_playing(now)
+  playing(emitters, now)
+    .into_iter()
     .map(|emitter| emitter.sound.to_string())
     .collect()
 }
@@ -102,8 +107,8 @@ fn hums_from_the_first_frame_looped_at_the_zone_as_its_object() {
   assert_eq!(hum[0].position, [0.0; 3]);
 }
 
-// Past a hundred metres from its sphere Monolith stops the idle and plays it afresh once the camera is back; Vanilla's
-// slowing touches its light alone, so the same play goes on.
+// Past a hundred metres from its sphere Monolith stops the idle, fading it out, and plays it afresh once the camera is
+// back; Vanilla's slowing touches its light alone, so the same play goes on.
 #[test]
 fn falls_silent_past_the_fast_distance_on_monolith_only() {
   for (engine, is_heard_far) in [(XrayEngine::Vanilla, true), (XrayEngine::Extended, false)] {
@@ -122,6 +127,13 @@ fn falls_silent_past_the_fast_distance_on_monolith_only() {
     zones.update(&mut emitters, engine, &mut states, eye(106.0), seconds(2));
     emitters.retire(seconds(2));
     assert_eq!(!playing(&emitters, seconds(2)).is_empty(), is_heard_far, "{engine:?}");
+    // A stopped idle fades out over a tenth of a second rather than cuts.
+    assert!(emitters.is_playing(near, Duration::from_millis(2099)), "{engine:?}");
+    assert_eq!(
+      emitters.is_playing(near, Duration::from_millis(2100)),
+      is_heard_far,
+      "{engine:?}"
+    );
 
     zones.update(&mut emitters, engine, &mut states, eye(50.0), seconds(3));
 

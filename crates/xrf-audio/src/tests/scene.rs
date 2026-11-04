@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use crate::acoustics::distance_curve::DistanceCurve;
 use crate::acoustics::listener_space::ListenerSpace;
+use crate::acoustics::scene::source_acoustics::SourceAcoustics;
 use crate::render::emitter_loudness::EmitterLoudness;
 use crate::render::scene::scene_clock::SceneClock;
 use crate::render::sound_bank::{BankedSound, SoundBank};
@@ -66,19 +67,42 @@ fn report(session: &OfflineSession) -> AudioSceneReport {
   session.describe_scene(7).expect("the scene is open")
 }
 
-// Full up to the minimum distance, then one over the distance, eased to silence over the last fifth of the range.
+// Full up to the minimum distance, then one over the distance, eased to silence over the outer half of the range.
 #[test]
 fn falls_with_distance_by_one_curve() {
   assert_eq!(DistanceCurve::get_attenuation(2.0, 50.0, 1.0), 1.0);
   assert!((DistanceCurve::get_attenuation(2.0, 50.0, 4.0) - 0.5).abs() < 1e-6);
   assert!((DistanceCurve::get_attenuation(2.0, 50.0, 20.0) - 0.1).abs() < 1e-6);
 
-  // Half way through the taper, from 40.4 m to 50 m, smoothstep leaves half.
-  let middle: f32 = 50.0 - (48.0 * 0.2) / 2.0;
+  // Half way through the taper over the outer half of the range, from 26 m to 50 m, smoothstep leaves half.
+  let middle: f32 = 50.0 - (48.0 * 0.5) / 2.0;
 
   assert!((DistanceCurve::get_attenuation(2.0, 50.0, middle) - 2.0 / middle * 0.5).abs() < 1e-5);
   assert_eq!(DistanceCurve::get_attenuation(2.0, 50.0, 50.0), 0.0);
   assert_eq!(DistanceCurve::get_attenuation(2.0, 50.0, f32::NAN), 0.0);
+}
+
+// A playing sound's walls ease toward each new simulation, about two thirds of the way in a tenth of a second, so a
+// sound moving behind an edge fades rather than steps.
+#[test]
+fn eases_a_sounds_walls_toward_each_simulation() {
+  let walled: SourceAcoustics = SourceAcoustics {
+    occlusion: 0.0,
+    transmission: [0.1; 3],
+  };
+  let mut heard: SourceAcoustics = SourceAcoustics::default();
+
+  heard.approach(walled, 0.01);
+
+  assert!((heard.occlusion - (-0.1f32).exp()).abs() < 1e-4, "{heard:?}");
+
+  heard.approach(walled, 0.09);
+
+  assert!((heard.occlusion - (-1.0f32).exp()).abs() < 1e-4, "{heard:?}");
+  assert!(
+    (heard.transmission[0] - (0.1 + 0.9 * (-1.0f32).exp())).abs() < 1e-4,
+    "{heard:?}"
+  );
 }
 
 // Volume times the curve for a placed sound whatever the engine; past its maximum distance it is culled at once.
