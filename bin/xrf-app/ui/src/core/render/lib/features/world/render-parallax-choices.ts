@@ -72,7 +72,7 @@ function isEngineParallax(parallax: TRenderParallaxSettings): boolean {
   return parallax.mode === ERenderParallaxMode.ENGINE;
 }
 
-/** How each parallax setting is set, in the settings and the Shading popover alike. */
+/** How each parallax setting is set, in the settings and the Relief popover alike. */
 export const RENDER_PARALLAX_SETTINGS: TRenderSettings<TRenderParallaxSettings> = {
   blending: {
     control: ERenderSettingControl.SLIDER,

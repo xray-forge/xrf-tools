@@ -45,13 +45,13 @@ export enum ELevelShading {
   FSR_FRAME_SHARE = "fsrFrameShare",
 }
 
-/** One shading as the toolbar offers it. */
+/** One shading as it is offered to choose. */
 export interface ILevelShadingChoice {
   value: ELevelShading;
   label: string;
-  /** The heading it is listed under. */
+  /** The heading it is listed under: `Frame` for the frame's own looks, the others for the targets it is built from. */
   section: "Frame" | "Surfaces" | "Light" | "Temporal";
-  /** One line on what it shows. */
+  /** One line on what it shows and how to read its colours. */
   description: string;
   /** The surfaces' colour it draws with. */
   surfaceColor: RenderSurfaceColor;

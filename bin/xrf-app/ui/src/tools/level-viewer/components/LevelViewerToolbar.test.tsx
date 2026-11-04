@@ -33,7 +33,7 @@ describe("LevelViewerToolbar", () => {
     );
 
     expect(actions).toEqual([
-      "level-shading-action",
+      "level-relief-action",
       "level-overlays-action",
       "level-helpers-action",
       "level-look-action",

@@ -54,6 +54,8 @@ export interface IMenuChoiceEntry {
   /** `<domain>/<verb-noun>`, as a keybind command's id. */
   readonly id: string;
   readonly label: string;
+  /** What choosing it shows and how to read it, in the row's tooltip. */
+  readonly description?: string;
   readonly isChosen: boolean;
   readonly isDisabled?: boolean;
   readonly onChoose: () => void;

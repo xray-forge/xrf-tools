@@ -153,6 +153,15 @@ describe("Menubar", () => {
     expect(queryByRole("menubar")).not.toBeInTheDocument();
   });
 
+  it("draws an open menu's surface as nothing but the menu it holds, never a tooltip", async () => {
+    const { getByRole, queryByRole } = await renderExpanded([menu("File", [[item("Exit")]])]);
+
+    await userEvent.click(getByRole("menuitem", { name: "File" }));
+
+    expect(getByRole("menu", { name: "File" })).toBeInTheDocument();
+    expect(queryByRole("tooltip")).toBeNull();
+  });
+
   it("draws a switch with its state and a disabled row that cannot be chosen", async () => {
     const disabled: IMenubarItem = item("Reload", { isDisabled: true, shortcut: "F5" });
     const { getByRole, getByText } = await renderExpanded([
@@ -227,6 +236,18 @@ describe("Menubar", () => {
     expect(getByRole("menuitemradio", { name: "Final" })).toHaveAttribute("aria-checked", "true");
     expect(getByRole("menu", { name: "Shading" })).toBeInTheDocument();
     expect(onCollapse).not.toHaveBeenCalled();
+  });
+
+  it("says more of a row than its label in a tooltip beside it", async () => {
+    const { getByRole, findByRole } = await renderExpanded([
+      menu("View", [[item("Overdraw", { description: "Blue one, to red at eight" })]]),
+    ]);
+
+    await userEvent.click(getByRole("menuitem", { name: "View" }));
+    await userEvent.hover(getByRole("menuitem", { name: "Overdraw" }));
+
+    expect(await findByRole("tooltip")).toHaveTextContent("Blue one, to red at eight");
+    expect(getByRole("menuitem", { name: "Overdraw" })).toHaveAccessibleDescription("Blue one, to red at eight");
   });
 
   it("puts the whole bar away when a submenu's action is chosen", async () => {
