@@ -39,8 +39,10 @@ pub struct SoundPlay<'a> {
   pub object: Option<u32>,
   /// In engine space; from the listener for a sound played 2D.
   pub position: [f32; 3],
-  /// When its first frame plays, on the level's clock.
+  /// When it starts playing, on the level's clock.
   pub start: Duration,
+  /// How far into its sound it starts, at its own speed.
+  pub offset: Duration,
   pub is_looped: bool,
   /// Whether it plays 2D whatever its file, `sm_2D`.
   pub is_2d: bool,
@@ -59,6 +61,7 @@ impl<'a> SoundPlay<'a> {
       object: None,
       position,
       start,
+      offset: Duration::ZERO,
       is_looped: false,
       is_2d: false,
       volume: 1.0,
@@ -87,6 +90,7 @@ impl SoundEmitters {
         object: play.object,
         position,
         start: play.start,
+        offset: play.offset,
         stop: None,
         is_looped: play.is_looped,
         is_2d,
@@ -98,8 +102,8 @@ impl SoundEmitters {
         // Monolith plays its music `sm_Intro`, which sends nothing to the reverb.
         has_reverb: !(play.kind == WorldSoundKind::Music && engine == XrayEngine::Extended),
       },
-      // `fTimeToStop`: the file's length at the sound's speed.
-      end: (!play.is_looped).then(|| play.start + info.length.div_f32(frequency)),
+      // `fTimeToStop`: what is left of the file at the sound's speed.
+      end: (!play.is_looped).then(|| play.start + info.length.saturating_sub(play.offset).div_f32(frequency)),
       is_new: true,
     });
 

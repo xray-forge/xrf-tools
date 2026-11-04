@@ -14,8 +14,10 @@ pub struct AudioSceneEmitter {
   pub bus: AudioBus,
   /// In the scene's space; for a 2D sound, from the listener.
   pub position: [f32; 3],
-  /// When its first frame plays, on the scene's clock.
+  /// When it starts playing, on the scene's clock.
   pub start: Duration,
+  /// How far into its sound it starts, at its own speed: nought from its first frame.
+  pub offset: Duration,
   /// When a deferred stop began, on the scene's clock.
   pub stop: Option<Duration>,
   pub is_looped: bool,

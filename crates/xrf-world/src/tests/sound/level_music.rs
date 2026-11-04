@@ -6,7 +6,9 @@ use std::time::Duration;
 
 use xrf_engine_target::XrayEngine;
 
+use crate::contract::sound::world_music_command::WorldMusicCommand;
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
+use crate::contract::sound::world_sound_music_report::WorldSoundMusicReport;
 use crate::host::sound::world_music_track::WorldMusicTrack;
 use crate::sound::level_music::LevelMusic;
 use crate::sound::sound_emitters::SoundEmitters;
@@ -126,6 +128,88 @@ fn plays_a_missing_tracks_halves_on_openxray_only() {
   LevelMusic::new(vec![halved()], XrayEngine::Extended).update(&mut emitters, 12 * HOUR, seconds(1));
 
   assert_eq!(emitters.iter_playing(seconds(1)).count(), 0);
+}
+
+// A track played by hand plays at once whatever the hour, and again each time it ends with no pause, until the
+// schedule is asked back, which picks at once.
+#[test]
+fn plays_a_track_by_hand_over_and_over_until_the_schedule_is_back() {
+  let mut music: LevelMusic = LevelMusic::new(
+    vec![track("day", [6, 20]), track("night", [21, 5])],
+    XrayEngine::Vanilla,
+  );
+  let mut emitters: SoundEmitters = SoundEmitters::default();
+
+  music.update(&mut emitters, 12 * HOUR, seconds(1));
+
+  assert!(!music.command(
+    &mut emitters,
+    &WorldMusicCommand::Play {
+      track: String::from("dusk")
+    },
+    seconds(2)
+  ));
+  assert!(music.command(
+    &mut emitters,
+    &WorldMusicCommand::Play {
+      track: String::from("night")
+    },
+    seconds(2)
+  ));
+
+  let report: WorldSoundMusicReport = music.report(&emitters, seconds(2));
+
+  assert_eq!(report.track.as_deref(), Some("night"));
+  assert_eq!(report.chosen.as_deref(), Some("night"));
+  assert_eq!(report.tracks, ["day", "night"]);
+  assert_eq!(report.length, seconds(10));
+  assert_eq!(emitters.iter_playing(seconds(2)).count(), 1);
+
+  // Its ten seconds over, it starts again on the next update.
+  for tick in 21..=125 {
+    let now: Duration = Duration::from_millis(tick * 100);
+
+    music.update(&mut emitters, 12 * HOUR, now);
+    emitters.retire(now);
+  }
+
+  let again: WorldSoundMusicReport = music.report(&emitters, Duration::from_millis(12_500));
+
+  assert_eq!(again.track.as_deref(), Some("night"));
+  assert!(again.position < seconds(1), "{again:?}");
+
+  assert!(music.command(&mut emitters, &WorldMusicCommand::Schedule, seconds(13)));
+  music.update(&mut emitters, 12 * HOUR, Duration::from_millis(13_100));
+
+  let scheduled: WorldSoundMusicReport = music.report(&emitters, Duration::from_millis(13_100));
+
+  assert_eq!(scheduled.track.as_deref(), Some("day"));
+  assert_eq!(scheduled.chosen, None);
+}
+
+// A seek plays the track playing from the point asked, which the report then stands at; none plays between tracks.
+#[test]
+fn plays_the_track_playing_from_a_point_asked() {
+  let mut music: LevelMusic = LevelMusic::new(vec![track("day", [1, 23])], XrayEngine::Extended);
+  let mut emitters: SoundEmitters = SoundEmitters::default();
+
+  assert!(!music.command(&mut emitters, &WorldMusicCommand::Seek { position: 4000 }, seconds(1)));
+
+  music.update(&mut emitters, 12 * HOUR, seconds(1));
+
+  let first: u64 = emitters.iter_playing(seconds(1)).next().unwrap().id;
+
+  assert!(music.command(&mut emitters, &WorldMusicCommand::Seek { position: 7000 }, seconds(2)));
+
+  let seeked: Vec<_> = emitters.iter_playing(seconds(2)).collect();
+
+  assert_eq!(seeked.len(), 1);
+  assert_ne!(seeked[0].id, first);
+  assert_eq!(seeked[0].offset, seconds(7));
+  assert_eq!(music.report(&emitters, seconds(3)).position, seconds(8));
+  // Three seconds were left of it.
+  assert!(emitters.is_playing(seeked[0].id, Duration::from_millis(4900)));
+  assert!(!emitters.is_playing(seeked[0].id, seconds(5)));
 }
 
 // Monolith plays music `sm_Intro`, which feeds no reverb.

@@ -16,8 +16,10 @@ pub struct WorldSoundEmitter {
   pub object: Option<u32>,
   /// In engine space; for a 2D sound, from the listener.
   pub position: [f32; 3],
-  /// When its first frame plays, on the level's clock; later than the frame for a delayed start.
+  /// When it starts playing, on the level's clock; later than the frame for a delayed start.
   pub start: Duration,
+  /// How far into its sound it starts, at its own speed: nought from its first frame.
+  pub offset: Duration,
   /// When a deferred stop began, on the level's clock: it fades out from there.
   pub stop: Option<Duration>,
   pub is_looped: bool,

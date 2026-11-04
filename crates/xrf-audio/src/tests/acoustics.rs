@@ -22,6 +22,7 @@ fn emitter(id: u64, sound: &str, position: [f32; 3]) -> AudioSceneEmitter {
     bus: AudioBus::Ambience,
     position,
     start: Duration::ZERO,
+    offset: Duration::ZERO,
     stop: None,
     is_looped: true,
     is_2d: false,
@@ -419,6 +420,7 @@ mod steam {
     let burst_at: Duration = Duration::from_secs(30);
     let burst: Vec<AudioSceneEmitter> = vec![AudioSceneEmitter {
       start: burst_at,
+      offset: Duration::ZERO,
       is_looped: false,
       ..emitter(1, "burst", [0.0, 0.0, 2.0])
     }];

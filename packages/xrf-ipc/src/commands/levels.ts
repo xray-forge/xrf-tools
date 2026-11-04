@@ -33,13 +33,14 @@ import { JobProgress } from "#/types/xrf-job";
 import { XraySurfaceDescriptor } from "#/types/xrf-material";
 import { RenderViewportId } from "#/types/xrf-renderer";
 import { XrayRoots } from "#/types/xrf-vfs";
-import { WorldSoundReport } from "#/types/xrf-world";
+import { WorldMusicCommand, WorldSoundReport } from "#/types/xrf-world";
 
 /** The wire name of every command of the `levels` plugin. */
 export enum ELevelsCommand {
   CAPTURE_CUBE = "plugin:levels|capture_cube",
   CAPTURE_MAP = "plugin:levels|capture_map",
   CLOSE_LEVEL = "plugin:levels|close_level",
+  COMMAND_MUSIC = "plugin:levels|command_music",
   COPY_SCREENSHOT = "plugin:levels|copy_screenshot",
   DELETE_SCREENSHOT = "plugin:levels|delete_screenshot",
   DESCRIBE_CONSOLE_DEFAULTS = "plugin:levels|describe_console_defaults",
@@ -78,6 +79,13 @@ export const levelsCommands = {
     __TAURI_INVOKE<CaptureOutcome>(ELevelsCommand.CAPTURE_MAP, { request, jobId, progress }),
   /** Close the levels `session_ids` name, each once, unbinding it from its scope. */
   closeLevel: (sessionIds: Array<SessionId>) => __TAURI_INVOKE<void>(ELevelsCommand.CLOSE_LEVEL, { sessionIds }),
+  /**
+   * Plays the music of the level a viewport shows as asked: by the game's schedule, one track by hand, or the track
+   * playing from a point; answers whether it could, which it cannot for a viewport showing no level, a track the level
+   * does not have, or a seek between tracks.
+   */
+  commandMusic: (viewport: RenderViewportId, command: WorldMusicCommand) =>
+    __TAURI_INVOKE<boolean>(ELevelsCommand.COMMAND_MUSIC, { viewport, command }),
   /**
    * Copy a screenshot of the screenshots folder to where the page names, as Save as does; read whole first, so a failed
    * copy leaves no partial file and keeps any file it would have replaced.
@@ -209,6 +217,7 @@ export interface ILevelsCommandSignatures {
     ["request", "jobId", "progress"]
   >;
   [ELevelsCommand.CLOSE_LEVEL]: IIpcCommandSignature<typeof levelsCommands.closeLevel, ["sessionIds"]>;
+  [ELevelsCommand.COMMAND_MUSIC]: IIpcCommandSignature<typeof levelsCommands.commandMusic, ["viewport", "command"]>;
   [ELevelsCommand.COPY_SCREENSHOT]: IIpcCommandSignature<typeof levelsCommands.copyScreenshot, ["path", "target"]>;
   [ELevelsCommand.DELETE_SCREENSHOT]: IIpcCommandSignature<typeof levelsCommands.deleteScreenshot, ["path"]>;
   [ELevelsCommand.DESCRIBE_CONSOLE_DEFAULTS]: IIpcCommandSignature<

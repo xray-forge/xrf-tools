@@ -1,4 +1,5 @@
 pub(crate) mod close_level;
+pub(crate) mod command_music;
 pub(crate) mod describe_console_defaults;
 pub(crate) mod describe_level_map;
 pub(crate) mod describe_objects;

@@ -10,11 +10,11 @@ import { Button } from "@xrf/ui/material/button";
 import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback, useMemo } from "react";
 
-import { LevelWeatherClock } from "@/core/level/components/weather/LevelWeatherClock";
 import { LevelWeatherCycleSelect } from "@/core/level/components/weather/LevelWeatherCycleSelect";
 import { LevelWeatherEffectSelect } from "@/core/level/components/weather/LevelWeatherEffectSelect";
 import { LevelWeatherSeedNote } from "@/core/level/components/weather/LevelWeatherSeedNote";
 import { LevelWeatherSourceChoice } from "@/core/level/components/weather/LevelWeatherSourceChoice";
+import { LevelWeatherTime } from "@/core/level/components/weather/LevelWeatherTime";
 import { toLevelManualWeatherLtx } from "@/core/level/lib/weather/level-manual-weather-ltx";
 import { listLevelWeatherCycles } from "@/core/level/lib/weather/level-weather-cycle-choice";
 import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
@@ -24,7 +24,8 @@ import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { useCopiedText } from "@/lib/react/use-copied-text";
 
 /**
- * The weather in short: what lights the level, the cycle and the effect, and the clock; the panel keeps the detail.
+ * The weather in short: what lights the level, the cycle and the effect, and the time of day as the panel shows it (the
+ * clock with the cycle's keyframes marked, the keyframes it stands between, its speed); the panel keeps the detail.
  */
 export function LevelWeatherAction({
   "data-testid": dataTestId = "level-weather-action",
@@ -41,6 +42,7 @@ export function LevelWeatherAction({
   const isPlayable: boolean = cycle !== null;
   const isPlaying: boolean = !control.isPaused;
   const cycles = useMemo(() => (description ? listLevelWeatherCycles(description) : []), [description]);
+  const keyframes: Array<number> = useMemo(() => cycle?.keyframes.map((it) => it.time) ?? [], [cycle]);
 
   const at: string = formatLevelWeatherTime(time);
 
@@ -102,11 +104,14 @@ export function LevelWeatherAction({
           onPlay={renderService.weather.playEffect}
         />
 
-        <LevelWeatherClock
+        <LevelWeatherTime
           time={time}
-          isPlaying={isPlaying}
+          keyframes={keyframes}
+          report={weatherService.weather !== null ? report : null}
+          control={control}
           onSeek={renderService.weather.seek}
           onPlaying={weatherService.setPlaying}
+          onFactor={weatherService.setFactor}
         />
 
         <Button size={"small"} onClick={onCopy}>

@@ -650,8 +650,8 @@ impl SceneRender {
     }
   }
 
-  /// Where the emitter's sound is at `now` by its start, speed and loop; none once a sound played once is over, or
-  /// while it is still being read.
+  /// Where the emitter's sound is at `now` by its start, offset, speed and loop; none once a sound played once is over,
+  /// or while it is still being read.
   fn locate(rendered: &RenderedEmitter, now: Duration) -> Option<SoundPlace> {
     let (frames, sample_rate): (u64, u32) = match &rendered.sound {
       BankedSound::Decoded(sound) => (sound.get_frames_count() as u64, sound.get_sample_rate()),
@@ -659,7 +659,8 @@ impl SceneRender {
       BankedSound::Loading | BankedSound::Refused(_) => return None,
     };
     let emitter: &AudioSceneEmitter = &rendered.emitter;
-    let played: f64 = now.saturating_sub(emitter.start).as_secs_f64() * f64::from(emitter.frequency);
+    let played: f64 =
+      now.saturating_sub(emitter.start).as_secs_f64() * f64::from(emitter.frequency) + emitter.offset.as_secs_f64();
     let frame: u64 = (played * f64::from(sample_rate)) as u64;
 
     if frames == 0 {
