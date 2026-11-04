@@ -15,6 +15,9 @@ impl XRaySoundCommentVersion {
   /// The version `CSoundManager::MakeGameSound` writes, `OGG_COMMENT_VERSION`.
   pub const CURRENT: Self = Self::V3;
 
+  /// Bytes the `u32` a comment starts with takes, before its version's fields.
+  pub(crate) const SIZE: usize = size_of::<u32>();
+
   /// The version a comment starting with `code` is, or none for one `CSoundRender_Source::LoadWave` does not read.
   pub const fn from_code(code: u32) -> Option<Self> {
     match code {
@@ -26,8 +29,12 @@ impl XRaySoundCommentVersion {
   }
 
   /// The version of the parameter block a comment holds, or none for a comment that is not one the engine reads.
+  ///
+  /// A comment shorter than its `u32` holds none: `LoadWave` reads the version past its end, as `IReader` checks its
+  /// bounds only in debug builds, and finds no version it knows there, so it plays the sound with its defaults.
+  /// Re-encoded sounds carry such comments: GAMMA's blowout and soundscape sounds hold two bytes.
   pub(crate) fn read(comment: &[u8]) -> Option<Self> {
-    Self::from_code(u32::from_le_bytes(comment.get(..4)?.try_into().ok()?))
+    Self::from_code(u32::from_le_bytes(comment.get(..Self::SIZE)?.try_into().ok()?))
   }
 
   /// The `u32` a comment of this version starts with.

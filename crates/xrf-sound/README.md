@@ -52,8 +52,9 @@ distance, maximum distance, base volume, game type, and maximum AI distance. The
 little-endian `u32` version followed by that version's fields. Version 1 stores no base volume, which reads as 1.0;
 versions 1 and 2 store no maximum AI distance, which reads as the maximum distance.
 
-`SoundMetadata::EngineDefaults` means the sound has no comment or its first comment's version is not one of the three,
-so the engine applies its built-in source parameters. Keep it distinct from an authored parameter block: it describes
+`SoundMetadata::EngineDefaults` means the sound has no comment, or its first comment's version is not one of the three
+or is cut short (GAMMA's re-encoded sounds carry two bytes, which the engine reads past), so the engine applies its
+built-in source parameters. Keep it distinct from an authored parameter block: it describes
 the absence of recognized metadata, not an explicit set of values written by the sound author. `get_parameters` answers
 the parameters the sound plays with either way; `XRaySoundParameters::default()` is the engine's set, which the SDK's
 sound editor also starts a sound with.
