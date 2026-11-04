@@ -47,6 +47,8 @@ pub struct AudioMixer {
   block: Box<[f32]>,
   /// Frames of [`Self::block`] already handed out.
   block_read: usize,
+  /// The mixer frame the next block starts at: every block rendered so far, the clock voices start on.
+  block_frame: u64,
   output_rate: u32,
   /// Frames a gain change takes.
   ramp_frames: u32,
@@ -94,6 +96,7 @@ impl AudioMixer {
       voice_block: block(),
       block: block(),
       block_read: Self::BLOCK_FRAMES,
+      block_frame: 0,
       output_rate: 0,
       ramp_frames: 0,
       fade_frames: 0,
@@ -140,6 +143,7 @@ impl AudioMixer {
         self.follow_parameters();
         self.render_block();
         self.block_read = 0;
+        self.block_frame += Self::BLOCK_FRAMES as u64;
       }
 
       let count: usize = (Self::BLOCK_FRAMES - self.block_read).min(frames - written);
@@ -251,6 +255,7 @@ impl AudioMixer {
           let slot: usize = voice.id.slot as usize;
 
           voice.follow(&self.parameters[slot], 0);
+          voice.take_up(self.block_frame, self.output_rate);
           self.statuses[slot].write(voice.id.generation, Self::get_playback(&voice));
           self.voices[slot] = Some(voice);
         }

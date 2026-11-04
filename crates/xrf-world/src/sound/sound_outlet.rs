@@ -30,6 +30,11 @@ impl SoundOutlet {
     self.sent_at.is_none_or(|at| now < at || now - at >= INTERVAL)
   }
 
+  /// Sends the next frame whenever it comes, as on the scene's first.
+  pub fn restart(&mut self) {
+    self.sent_at = None;
+  }
+
   /// Sends a frame `fill` fills at `now`, out of those handed back where there are any.
   pub fn send(&mut self, now: Duration, fill: impl FnOnce(&mut WorldSoundFrame)) {
     while let Some(spent) = self.sink.take_spent() {

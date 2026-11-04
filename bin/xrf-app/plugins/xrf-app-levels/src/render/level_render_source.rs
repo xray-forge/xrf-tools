@@ -5,7 +5,7 @@ use xrf_anm::AnmFile;
 use xrf_app_core::assets::AssetMountState;
 use xrf_app_core::session::SessionSnapshot;
 use xrf_app_render::{ResolvedTexture, TextureResolver};
-use xrf_audio::AudioServer;
+use xrf_audio::{AudioAssetSource, AudioSceneGeometry, AudioSceneInbox};
 use xrf_chunk::{InMemoryChunkDataSource, XRayByteOrder};
 use xrf_environment::WeatherDescriptor;
 use xrf_error::{XrfError, XrfResult};
@@ -29,7 +29,7 @@ use crate::parts::{
   LevelTextureReference, LevelTexturesPart, LevelWeatherPart, NamedSpawnVisual, PackedLevelDetails, PackedLevelLights,
   PackedLevelParticles, SpawnVisualReader,
 };
-use crate::render::{LevelParticleCollider, LevelRenderParts};
+use crate::render::{LevelAudio, LevelParticleCollider, LevelRenderParts};
 use crate::report::LevelReport;
 use crate::sound::{
   LevelSoundAssets, LevelSoundEmitters, LevelSoundFiles, LevelSoundGeometry, LevelSoundSink, LevelWorldSounds,
@@ -55,8 +55,8 @@ pub struct LevelRenderSource {
   textures: Arc<TextureResolver>,
   /// The textures the game loads a step coarser at the same texture quality, out of the sections read as it opened.
   reduced: XrayReducedTextures,
-  /// The application's audio, which plays the scene's sound; none where it did not start.
-  audio: Option<AudioServer>,
+  /// Where the scene's sound plays.
+  audio: LevelAudio,
 }
 
 impl LevelRenderSource {
@@ -73,7 +73,7 @@ impl LevelRenderSource {
 
   /// The level `level` holds as the renderer draws it, its surfaces and textures as its parts hold them, and its sound
   /// played through `audio`.
-  pub fn new(level: Arc<SessionSnapshot<SelectedLevel>>, assets: AssetMountState, audio: Option<AudioServer>) -> Self {
+  pub fn new(level: Arc<SessionSnapshot<SelectedLevel>>, assets: AssetMountState, audio: LevelAudio) -> Self {
     let DrawnSurfaces { surfaces, textures } = Self::find_surfaces(&level, &assets);
     let resolver: TextureResolver = TextureResolver::new(
       level.roots.clone(),
@@ -324,21 +324,29 @@ impl WorldLevelSource for LevelRenderSource {
   /// A scene on the audio's control thread, its sounds read from the roots the level opened in and shaped by its
   /// collision form.
   fn open_sound(&self) -> Option<Box<dyn WorldSoundSink>> {
-    let assets: LevelSoundAssets = LevelSoundAssets::new(
+    let assets: Arc<dyn AudioAssetSource> = Arc::new(LevelSoundAssets::new(
       AssetMountState::clone(&self.assets),
       self.level.roots.clone(),
       self.textures.get_scope_key().to_owned(),
-    );
-    let geometry: LevelSoundGeometry =
-      LevelSoundGeometry::new(Arc::clone(&self.level), AssetMountState::clone(&self.assets));
-
-    self
+    ));
+    let geometry: Arc<dyn AudioSceneGeometry> = Arc::new(LevelSoundGeometry::new(
+      Arc::clone(&self.level),
+      AssetMountState::clone(&self.assets),
+    ));
+    let inbox: AudioSceneInbox = self
       .audio
+      .server
       .as_ref()?
-      .open_scene(Arc::new(assets), Some(Arc::new(geometry)))
+      .open_scene(Arc::clone(&assets), Some(Arc::clone(&geometry)))
       .inspect_err(|error| log::warn!("The level's sound cannot play: {error}"))
-      .ok()
-      .map(|inbox| Box::new(LevelSoundSink::new(inbox)) as Box<dyn WorldSoundSink>)
+      .ok()?;
+
+    Some(Box::new(LevelSoundSink::new(
+      inbox,
+      self.audio.bursts.clone(),
+      assets,
+      geometry,
+    )))
   }
 
   fn read_spawn_models(&self, names: &[String]) -> XrfResult<RenderSpawnModels> {

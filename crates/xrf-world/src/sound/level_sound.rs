@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 use glam::Vec3;
 use xrf_engine_target::XrayEngine;
-use xrf_renderer::RenderWorkers;
+use xrf_renderer::{RenderViewBurst, RenderWorkers};
 
 use crate::contract::sound::world_music_command::WorldMusicCommand;
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
@@ -36,10 +36,17 @@ pub struct EffectSound<'a> {
 /// A level's sound as the world plays it beside its picture, by its own clock: its static sounds, music and zones' sounds
 /// read on a loader thread, the weather's ambient channels, rain, thunder and ambient-effect sounds as the viewport it is
 /// heard by plays them, and a frame to the host's audio at most sixty times a second.
+///
+/// A burst's first frame starts every schedule afresh at the burst's time, as the level's open does, and so does the
+/// first frame after a burst: what a burst plays depends on its own frames alone, so bursts from one time play alike.
 pub struct LevelSound {
   pending: LoaderOnce<WorldLevelSounds>,
+  /// The level's own sounds as read, which a schedule starting afresh plays from again.
+  read: Option<WorldLevelSounds>,
   /// The level's own sounds once read.
   level: Option<LevelSounds>,
+  /// Whether the last frame was a burst's.
+  is_bursting: bool,
   channels: AmbientChannels,
   rain: RainSound,
   /// Each ambient effect's sound last played, which the same effect started again plays over.
@@ -60,6 +67,18 @@ struct LevelSounds {
   zones: ZoneSounds,
 }
 
+impl LevelSounds {
+  /// The schedules of the level's sounds as read, from their start.
+  fn new(sounds: &WorldLevelSounds) -> Self {
+    Self {
+      engine: sounds.engine,
+      statics: StaticSounds::new(sounds.statics.clone()),
+      music: LevelMusic::new(sounds.music.clone(), sounds.engine),
+      zones: ZoneSounds::new(sounds.zones.clone()),
+    }
+  }
+}
+
 impl LevelSound {
   pub fn start(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
     let reader: Arc<dyn WorldLevelSource> = Arc::clone(source);
@@ -71,7 +90,9 @@ impl LevelSound {
           .inspect_err(|error| log::warn!("The level's sounds cannot be played: {error}"))
           .ok()
       }),
+      read: None,
       level: None,
+      is_bursting: false,
       channels: AmbientChannels::default(),
       rain: RainSound::default(),
       effects: HashMap::new(),
@@ -99,6 +120,12 @@ impl LevelSound {
     let delta: Duration = now.saturating_sub(self.now);
 
     self.take_read();
+
+    if drive.burst == Some(RenderViewBurst::Starting) || (self.is_bursting && drive.burst.is_none()) {
+      self.restart(now);
+    }
+
+    self.is_bursting = drive.burst.is_some();
     self.follow_listener(drive, delta);
     self.now = now;
     self.is_audible = drive.is_audible;
@@ -218,12 +245,34 @@ impl LevelSound {
         sounds.zones.len()
       );
 
-      self.level = Some(LevelSounds {
-        engine: sounds.engine,
-        statics: StaticSounds::new(sounds.statics),
-        music: LevelMusic::new(sounds.music, sounds.engine),
-        zones: ZoneSounds::new(sounds.zones),
-      });
+      self.level = Some(LevelSounds::new(&sounds));
+      self.read = Some(sounds);
+    }
+  }
+
+  /// Starts every schedule afresh at `now`, as the level's open does, letting go of whatever plays; a track played by
+  /// hand plays again from its start.
+  fn restart(&mut self, now: Duration) {
+    let chosen: Option<String> = self
+      .level
+      .as_ref()
+      .and_then(|level| level.music.get_chosen())
+      .map(str::to_owned);
+
+    self.level = self.read.as_ref().map(LevelSounds::new);
+    self.channels = AmbientChannels::default();
+    self.rain = RainSound::default();
+    self.effects.clear();
+    self.emitters = SoundEmitters::default();
+
+    if let Some(outlet) = &mut self.outlet {
+      outlet.restart();
+    }
+
+    if let (Some(level), Some(track)) = (&mut self.level, chosen) {
+      level
+        .music
+        .command(&mut self.emitters, &WorldMusicCommand::Play { track }, now);
     }
   }
 
@@ -299,6 +348,7 @@ impl LevelSound {
       frame.time = now;
       frame.engine = engine;
       frame.is_audible = drive.is_audible;
+      frame.is_burst = drive.burst.is_some();
       frame.listener = listener;
       frame.toggles = drive.toggles;
       emitters.fill(&mut frame.emitters, now);

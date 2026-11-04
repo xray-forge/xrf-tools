@@ -2,7 +2,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use glam::Vec3;
-use xrf_renderer::{EngineSpace, RenderLighting, RenderSceneId, RenderViewFrame, RenderViewInput, RenderViewOptions};
+use xrf_renderer::{
+  EngineSpace, RenderLighting, RenderSceneId, RenderViewBurst, RenderViewFrame, RenderViewInput, RenderViewOptions,
+};
 
 use crate::camera::camera_controller::CameraController;
 use crate::contract::camera::world_camera_pose::WorldCameraPose;
@@ -43,6 +45,8 @@ pub struct WorldViewport {
   /// What of its world plays: the weather's rain, bolts and wind, the campfires, the ambient effects, and which spawn
   /// groups stream in.
   pub toggles: WorldToggles,
+  /// The burst it drew this frame at its own time, none while it draws on the frames' clock.
+  pub burst: Option<RenderViewBurst>,
   sink: Option<Box<dyn WorldEventSink>>,
   sent_pose: Option<WorldCameraPose>,
   pose_due: Instant,
@@ -60,6 +64,7 @@ impl WorldViewport {
       thunders: Vec::new(),
       pose: WorldModelPose::default(),
       toggles: WorldToggles::default(),
+      burst: None,
       sink: None,
       sent_pose: None,
       pose_due: now,
@@ -86,8 +91,10 @@ impl WorldViewport {
       height,
       options,
       skies,
+      burst,
     } = input;
 
+    self.burst = burst;
     self.camera.update(delta, height);
 
     // The weather is weighed where the camera stands, in engine space; a fade waits for the skies it fades into.

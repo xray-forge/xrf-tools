@@ -115,13 +115,13 @@ mod steam {
   use assert_no_alloc::{assert_no_alloc, reset_violation_count, violation_count};
   use xrf_error::XrfResult;
 
-  use super::{emitter, play, report};
+  use super::{emitter, frame, play, report};
   use crate::tests::fixtures::{MemorySounds, RATE, looped, rms_left, sine, tone};
   use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
   use crate::{
-    AudioAcoustics, AudioBus, AudioEngineParts, AudioEngineSettings, AudioMaterial, AudioPlay, AudioSceneEmitter,
-    AudioSceneGeometry, AudioSceneInbox, AudioSceneMesh, AudioSceneReport, DecodedSound, OfflineRender, OfflineSession,
-    SoundChannels,
+    AudioAcoustics, AudioBus, AudioEngineParts, AudioEngineSettings, AudioListener, AudioMaterial, AudioMixer,
+    AudioPlay, AudioSceneEmitter, AudioSceneFrame, AudioSceneGeometry, AudioSceneInbox, AudioSceneMesh,
+    AudioSceneReport, DecodedSound, OfflineRender, OfflineSession, SoundChannels,
   };
 
   /// Steam Audio as `cargo make fetch-sdks` placed it in the checkout, as the application ships it.
@@ -465,6 +465,153 @@ mod steam {
       hall.tail,
       small.tail
     );
+  }
+
+  /// A stepped render, and how the scene played at its end.
+  struct Stepped {
+    heard: Vec<f32>,
+    report: AudioSceneReport,
+  }
+
+  /// Two seconds of placed tones moving around a listener walking through a room with a wall across it, the
+  /// simulation stepped inline: each sound's walls, both ears and, where the tones send it theirs, the reverb.
+  fn hear_stepped(has_reverb: bool) -> Stepped {
+    let mut mesh: AudioSceneMesh = room([12.0, 4.0, 12.0], CONCRETE);
+    let across: AudioSceneMesh = wall(1.0, Some([-1.0, 1.0, -2.0, 2.0]), CONCRETE);
+    let base: u32 = mesh.vertices.len() as u32;
+
+    mesh.vertices.extend(across.vertices);
+    mesh
+      .triangles
+      .extend(across.triangles.iter().map(|corners| corners.map(|index| index + base)));
+    mesh.material_indices.extend(across.material_indices);
+
+    let mut session: OfflineSession =
+      OfflineSession::with_stepped_acoustics(AudioEngineSettings::default(), RATE, checkout_acoustics());
+    let mut inbox: AudioSceneInbox = session.open_scene(
+      Arc::new(MemorySounds(HashMap::from([(String::from("tone"), tone(1.0))]))),
+      Some(Arc::new(Geometry(mesh))),
+    );
+    let mut heard: Vec<f32> = Vec::new();
+
+    for step in 0..120u16 {
+      let seconds: f32 = f32::from(step) / 60.0;
+      let emitters: Vec<AudioSceneEmitter> = (0..6u16)
+        .map(|index| {
+          let angle: f32 = f32::from(index) + seconds;
+
+          AudioSceneEmitter {
+            has_reverb,
+            ..emitter(
+              u64::from(index) + 1,
+              "tone",
+              [angle.cos() * 4.0, 0.0, angle.sin() * 4.0],
+            )
+          }
+        })
+        .collect();
+
+      while inbox.take_spent().is_some() {}
+
+      let _ = inbox.send(Box::new(AudioSceneFrame {
+        listener: AudioListener {
+          position: [0.0, 0.0, seconds * 2.0 - 2.0],
+          ..AudioListener::default()
+        },
+        ..*frame(Duration::from_secs_f32(seconds), emitters)
+      }));
+      heard.extend(session.render(RATE as usize / 60));
+    }
+
+    let report: AudioSceneReport = report(&session);
+
+    assert!(report.acoustics.triangles.is_some());
+    assert!(report.acoustics.reverb_times.iter().any(|time| *time > 0.0));
+    assert!(report.emitters.iter().any(|emitter| emitter.occlusion < 0.9));
+
+    Stepped { heard, report }
+  }
+
+  /// Two renders on one thread a second apart, which Steam Audio's reverb rays have always differed between.
+  fn hear_stepped_twice(has_reverb: bool) -> [Stepped; 2] {
+    let first: Stepped = hear_stepped(has_reverb);
+
+    std::thread::sleep(Duration::from_millis(1100));
+
+    [first, hear_stepped(has_reverb)]
+  }
+
+  // Stepped, the simulation hears each sound's walls from the same frames the same way, a second apart too.
+  #[test]
+  fn hears_the_walls_alike_with_the_simulation_stepped() {
+    let walls = |stepped: &Stepped| -> Vec<(u64, u32, [u32; 3])> {
+      let mut walls: Vec<(u64, u32, [u32; 3])> = stepped
+        .report
+        .emitters
+        .iter()
+        .map(|emitter| {
+          (
+            emitter.id,
+            emitter.occlusion.to_bits(),
+            emitter.transmission.map(f32::to_bits),
+          )
+        })
+        .collect();
+
+      walls.sort_unstable();
+      walls
+    };
+    let [first, second] = hear_stepped_twice(false);
+
+    assert_eq!(walls(&first), walls(&second));
+  }
+
+  // The reverb's times come from rays Steam Audio draws at random, which can differ from run to run: each 120th of a
+  // second of the render stays 40 dB under its own level of the other run's.
+  #[test]
+  fn keeps_a_stepped_render_within_its_tolerance() {
+    let [first, second] = hear_stepped_twice(true);
+    let frame: usize = RATE as usize / 120 * 2;
+    let worst: f32 = first
+      .heard
+      .chunks(frame)
+      .zip(second.heard.chunks(frame))
+      .map(|(a, b)| {
+        let level: f32 = a.iter().map(|sample| sample * sample).sum::<f32>();
+        let error: f32 = a.iter().zip(b).map(|(a, b)| (a - b) * (a - b)).sum::<f32>();
+
+        10.0 * (error.max(1e-24) / level.max(1e-24)).log10()
+      })
+      .fold(f32::NEG_INFINITY, f32::max);
+
+    assert!(rms_left(&first.heard) > 1e-3);
+    assert!(
+      worst < -40.0,
+      "a frame of the two renders differs at {worst:.1} dB under its level"
+    );
+  }
+
+  // Every reverb renders the same input the same, the first a thread makes too.
+  #[test]
+  fn renders_one_input_alike_through_every_reverb() {
+    let acoustics: AudioAcoustics = checkout_acoustics();
+    let steam = acoustics.get_steam().expect("Steam Audio runs");
+    let input: Vec<f32> = (0..AudioMixer::BLOCK_FRAMES * 200)
+      .map(|frame| (frame as f32 * 0.37).sin() * 0.3)
+      .collect();
+    let reverberate = || -> Vec<f32> {
+      let mut reverb = steam.create_reverb(RATE).expect("the reverb is made");
+
+      input
+        .chunks(AudioMixer::BLOCK_FRAMES)
+        .flat_map(|block| reverb.apply([1.0, 0.9, 0.8], block).left.to_vec())
+        .collect()
+    };
+    let first: Vec<f32> = reverberate();
+    let second: Vec<f32> = reverberate();
+
+    assert!(rms_left(&first) > 1e-4);
+    assert!(first.iter().zip(&second).all(|(a, b)| a.to_bits() == b.to_bits()));
   }
 
   #[test]

@@ -36,6 +36,13 @@ impl SceneClock {
     Some(Duration::from_secs_f64(frames as f64 / f64::from(rate.max(1))))
   }
 
+  /// The mixer frame of `rate` the scene's `time` plays at, none before the first frame anchored it.
+  pub(crate) fn get_frame(&self, time: Duration, rate: u32) -> Option<u64> {
+    let offset: i64 = self.offset?;
+
+    Some((offset + Self::to_frames(time, rate)).max(0) as u64)
+  }
+
   fn to_frames(time: Duration, rate: u32) -> i64 {
     (time.as_secs_f64() * f64::from(rate)).round() as i64
   }

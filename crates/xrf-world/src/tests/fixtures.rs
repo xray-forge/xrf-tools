@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use xrf_anm::AnmFile;
 use xrf_environment::WeatherDescriptor;
@@ -12,6 +12,8 @@ use xrf_renderer::{
 use xrf_visual::{LightsDescription, SectorPackage};
 
 use crate::contract::world_viewport_event::WorldViewportEvent;
+use crate::host::sound::world_level_sounds::WorldLevelSounds;
+use crate::host::sound::world_sound_sink::WorldSoundSink;
 use crate::host::world_event_sink::WorldEventSink;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_level_weather::WorldLevelWeather;
@@ -37,12 +39,16 @@ impl TestLevelReads {
 }
 
 /// A level holding nothing but what a test gives it: the key its scene is shared by, its sectors, each packed as
-/// `pack` says, and its object motions by name; everything else it is asked for is not there, each ask counted.
+/// `pack` says, its object motions by name, its sounds and where their frames go; everything else it is asked for is
+/// not there, each ask counted.
 pub struct TestLevelSource {
   pub key: Option<String>,
   pub sectors: u32,
   pub pack: TestSectorPack,
   pub motions: HashMap<String, AnmFile>,
+  pub sounds: WorldLevelSounds,
+  /// The sink the scene's sound frames go to, taken by the first scene asking.
+  pub sound_sink: Mutex<Option<Box<dyn WorldSoundSink>>>,
   pub reads: Arc<TestLevelReads>,
 }
 
@@ -53,6 +59,8 @@ impl Default for TestLevelSource {
       sectors: 0,
       pack: Box::new(|_| Err(Self::none())),
       motions: HashMap::new(),
+      sounds: WorldLevelSounds::default(),
+      sound_sink: Mutex::new(None),
       reads: Arc::default(),
     }
   }
@@ -134,6 +142,14 @@ impl WorldLevelSource for TestLevelSource {
 
   fn read_object_motion(&self, name: &str) -> XrfResult<AnmFile> {
     self.motions.get(name).cloned().ok_or_else(Self::none)
+  }
+
+  fn read_sounds(&self) -> XrfResult<WorldLevelSounds> {
+    Ok(self.sounds.clone())
+  }
+
+  fn open_sound(&self) -> Option<Box<dyn WorldSoundSink>> {
+    self.sound_sink.lock().unwrap_or_else(PoisonError::into_inner).take()
   }
 }
 

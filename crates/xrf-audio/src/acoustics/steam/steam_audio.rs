@@ -1,3 +1,4 @@
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Mutex, PoisonError};
@@ -75,6 +76,16 @@ impl SteamAudio {
 
   /// The listener's reverb at `rate`.
   pub(crate) fn create_reverb(&self, rate: u32) -> Result<MixerReverb, String> {
+    thread_local! {
+      static IS_REVERB_MADE: Cell<bool> = const { Cell::new(false) };
+    }
+
+    // The first parametric reverb made on a thread renders the same input differently from every one made after it
+    // there, so one is made and let go first, and every reverb renders alike.
+    if !IS_REVERB_MADE.replace(true) {
+      drop(MixerReverb::new(&self.context, &Self::get_audio_settings(rate)));
+    }
+
     MixerReverb::new(&self.context, &Self::get_audio_settings(rate))
   }
 

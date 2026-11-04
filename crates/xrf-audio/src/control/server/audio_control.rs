@@ -4,13 +4,16 @@ use std::time::{Duration, Instant};
 use xrf_error::{XrfError, XrfResult};
 
 use crate::acoustics::audio_spatialization::AudioSpatialization;
+use crate::acoustics::scene::simulation_pace::SimulationPace;
 use crate::control::audio_engine::AudioEngine;
 use crate::control::server::audio_event::AudioEvent;
 use crate::control::server::audio_event_sink::AudioEventSink;
 use crate::control::server::audio_gains::AudioGains;
 use crate::control::server::control_request::ControlRequest;
+use crate::control::server::control_runtime::ControlRuntime;
 use crate::control::server::control_scene::ControlScene;
 use crate::mixer::audio_bus::AudioBus;
+use crate::mixer::audio_mixer::AudioMixer;
 use crate::render::scene::scene_tick::SceneTick;
 use crate::render::sound_bank::SoundBank;
 use crate::render::stream_launcher::StreamLauncher;
@@ -33,6 +36,9 @@ pub(crate) struct AudioControl {
   position_interval: Duration,
   /// Whether placed sounds are heard for headphones or speakers.
   spatialization: AudioSpatialization,
+  /// How long passes between two ticks at most, and how the scenes' acoustics keep up.
+  tick: Duration,
+  pace: SimulationPace,
 }
 
 struct OpenTransport {
@@ -49,24 +55,21 @@ pub(crate) enum ControlFlow {
 }
 
 impl AudioControl {
-  /// A control reading sounds on a thread of its own and streaming each on its own thread.
-  pub(crate) fn new(engine: AudioEngine, events: Box<dyn AudioEventSink>, position_interval: Duration) -> Self {
-    Self::with(
-      engine,
-      events,
-      position_interval,
-      SoundBank::threaded(),
-      StreamLauncher::Threads,
-    )
-  }
-
-  pub(crate) fn with(
+  /// A control steering `engine` and telling `events` what changed, a playing transport's position every
+  /// `position_interval`, run as `runtime` says.
+  pub(crate) fn new(
     engine: AudioEngine,
     events: Box<dyn AudioEventSink>,
     position_interval: Duration,
-    bank: SoundBank,
-    streams: StreamLauncher,
+    runtime: ControlRuntime,
   ) -> Self {
+    let ControlRuntime {
+      bank,
+      streams,
+      tick,
+      pace,
+    } = runtime;
+
     Self {
       engine,
       transports: HashMap::new(),
@@ -76,6 +79,8 @@ impl AudioControl {
       events,
       position_interval,
       spatialization: AudioSpatialization::default(),
+      tick,
+      pace,
     }
   }
 
@@ -111,7 +116,7 @@ impl AudioControl {
         assets,
         geometry,
       } => {
-        let scene: ControlScene = ControlScene::new(mailbox, assets, self.engine.get_acoustics(), geometry);
+        let scene: ControlScene = ControlScene::new(mailbox, assets, self.engine.get_acoustics(), geometry, self.pace);
 
         self.scenes.push(scene);
       }
@@ -186,6 +191,9 @@ impl AudioControl {
 
   fn tick_scenes(&mut self) {
     let (frame, rate): (u64, u32) = (self.engine.get_meter().get_frames(), self.engine.get_meter().get_rate());
+    // A start before the next tick's commands land is given its voice now: they land at the block after that tick.
+    let lookahead: Duration =
+      self.tick + Duration::from_secs_f64(AudioMixer::BLOCK_FRAMES as f64 / f64::from(rate.max(1)));
 
     self.scenes.retain_mut(|scene| {
       if scene.is_closed() {
@@ -201,6 +209,7 @@ impl AudioControl {
         spatialization: self.spatialization,
         mixer_frame: frame,
         rate,
+        lookahead,
       });
 
       true

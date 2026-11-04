@@ -128,7 +128,7 @@ impl AudioEngine {
 
       spatial
     });
-    let voice: Box<Voice> = Box::new(Voice::new(id, play.source, play.bus, spatial));
+    let voice: Box<Voice> = Box::new(Voice::new(id, play.source, play.bus, spatial).starting_at(play.at));
 
     if self.commands.push(MixerCommand::Start(voice)).is_err() {
       self.slots.give_back(id);

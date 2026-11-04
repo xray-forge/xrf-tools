@@ -35,6 +35,11 @@ pub(crate) struct Voice {
   spatial: Option<Box<VoiceSpatial>>,
   /// How the effects hear it, following the slot's [`VoiceParameters`].
   spatial_parameters: VoiceSpatialParameters,
+  /// The mixer frame its first frame plays at, until the mixer takes it up; none plays it from the block it is taken
+  /// up in.
+  at: Option<u64>,
+  /// Frames of silence left before its first frame, rendered as nothing.
+  delay: u32,
 }
 
 /// Whether a voice moves through its source, and where a fade is taking it.
@@ -63,6 +68,31 @@ impl Voice {
       motion: VoiceMotion::Playing,
       spatial,
       spatial_parameters: VoiceSpatialParameters::default(),
+      at: None,
+      delay: 0,
+    }
+  }
+
+  /// The voice with its first frame playing at mixer frame `at`, none for the block the mixer takes it up in.
+  pub(crate) fn starting_at(self, at: Option<u64>) -> Self {
+    Self { at, ..self }
+  }
+
+  /// Lines the voice up with the mixer's clock as the mixer takes it up for the block starting at mixer frame `block`
+  /// at `output_rate`: a start still ahead waits that many frames as silence; one already past moves on through its
+  /// source as far as it would have played, so it plays where its clock says rather than late.
+  pub(crate) fn take_up(&mut self, block: u64, output_rate: u32) {
+    let Some(at) = self.at.take() else {
+      return;
+    };
+
+    match at.checked_sub(block) {
+      Some(ahead) => self.delay = u32::try_from(ahead).unwrap_or(u32::MAX),
+      None => {
+        let late: usize = usize::try_from(block - at).unwrap_or(usize::MAX);
+
+        self.cursor.skip(late, self.get_step(output_rate));
+      }
     }
   }
 
@@ -119,25 +149,38 @@ impl Voice {
 
   /// Adds the voice's next frames to the stereo pairs of `out` at `output_rate`, and what it sends the listener's
   /// reverb to `reverb`, one sample a frame, rendering its source into `block`, scratch of at least two samples a frame.
-  /// A placed voice takes whole mixer blocks. Answers `false` once it has played out or faded out after a stop, when
-  /// the mixer retires it.
+  /// A placed voice takes whole mixer blocks. Frames before a start still ahead are silence. Answers `false` once it
+  /// has played out or faded out after a stop, when the mixer retires it.
   pub(crate) fn mix(&mut self, out: &mut [f32], reverb: &mut [f32], block: &mut [f32], output_rate: u32) -> bool {
     if self.motion == VoiceMotion::Paused {
       return true;
     }
 
+    // Stopped before it was heard, it has nothing to fade.
+    if self.delay > 0 && self.motion == VoiceMotion::Stopping {
+      return false;
+    }
+
     let frames: usize = out.len() / 2;
-    let step: f64 = f64::from(self.cursor.get_sample_rate()) * f64::from(self.rate) / f64::from(output_rate);
+    let waited: usize = (self.delay as usize).min(frames);
+
+    self.delay -= waited as u32;
+
+    if waited == frames {
+      return true;
+    }
+
+    let step: f64 = self.get_step(output_rate);
     let is_playing: bool = if self.is_silent() {
-      self.fade.skip(frames as u32);
-      self.cursor.skip(frames, step)
+      self.fade.skip((frames - waited) as u32);
+      self.cursor.skip(frames - waited, step)
     } else {
       let channels: usize = self.cursor.get_channels().get_count();
       let block: &mut [f32] = &mut block[..frames * channels];
 
       block.fill(0.0);
 
-      let is_playing: bool = self.cursor.render(block, step);
+      let is_playing: bool = self.cursor.render(&mut block[waited * channels..], step);
 
       if self.spatial.is_some() {
         self.write_placed(block, channels, out, reverb);
@@ -157,6 +200,11 @@ impl Voice {
     }
 
     is_playing
+  }
+
+  /// Source frames an output frame at `output_rate` moves on by.
+  fn get_step(&self, output_rate: u32) -> f64 {
+    f64::from(self.cursor.get_sample_rate()) * f64::from(self.rate) / f64::from(output_rate)
   }
 
   /// Whether nothing of it is heard until its gain changes: settled at silence, or a dry one on both sides.

@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use assert_no_alloc::{AllocDisabler, assert_no_alloc, reset_violation_count, violation_count};
 
-use crate::tests::fixtures::{RATE, engine, play_voices, ramp, sine, stream, wav};
+use crate::tests::fixtures::{RATE, engine, looped, play_voices, ramp, rms_left, sine, stream, wav};
 use crate::{
   AudioBus, AudioEngineParts, AudioPlay, AudioVoiceId, DecodedSound, OfflineRender, SoundChannels, VoiceSource,
 };
@@ -56,6 +56,38 @@ fn renders_starts_stops_and_retires_voices_without_allocating() {
 
   assert_eq!(violation_count(), 0);
   engine.collect();
+}
+
+// A voice stamped to start inside a later block waits for it in silence, and one stamped before its block plays on
+// from as far as it would have got, neither allocating.
+#[test]
+fn starts_voices_stamped_to_their_frames_without_allocating() {
+  let sound: Arc<DecodedSound> = Arc::new(sine(RATE, 4800, 440.0, 0.5, SoundChannels::Mono));
+  let AudioEngineParts { mut engine, mixer } = engine(64);
+  let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
+  let mut out: Vec<f32> = vec![0.0; 480 * 2];
+
+  // Two blocks rendered, so the voices are taken up at the third, at frame 512.
+  render.render_into(&mut out);
+
+  for index in 0..32 {
+    engine
+      .play(AudioPlay {
+        // Half a few blocks ahead of the block they are taken up in, and half behind it.
+        at: Some(if index % 2 == 0 { 1000 + index * 37 } else { 100 }),
+        ..AudioPlay::new(looped(&sound), AudioBus::ALL[index as usize % AudioBus::COUNT])
+      })
+      .expect("a voice starts");
+  }
+
+  reset_violation_count();
+
+  for _ in 0..20 {
+    assert_no_alloc(|| render.render_into(&mut out));
+  }
+
+  assert_eq!(violation_count(), 0);
+  assert!(rms_left(&out) > 0.0);
 }
 
 #[test]

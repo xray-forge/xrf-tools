@@ -7,7 +7,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_render::CaptureFile;
 use xrf_renderer::{BurstEvent, BurstMarks, RenderBurst, RenderCapture};
 
-use crate::viewer::burst::BurstOutcome;
+use crate::viewer::burst::{BurstOutcome, BurstSound};
 
 /// A frame's samples summed as they come back: the scene's seconds it was drawn at, its colour's sums at its size and
 /// how many samples of its marks held each of `BurstWriter::MARKS`, at theirs.
@@ -38,13 +38,14 @@ struct BurstSample {
 /// A burst's frames written into its folder as they come back: `frame-NNN.png` each frame read back, or for a
 /// reference `reference-NNN.png` each frame's samples averaged; and beside each `marks-NNN.png`, the share of its
 /// samples each texel of the G-buffer was a plant (red), grass (green) or moved by itself (blue), at the size the scene
-/// was drawn at.
+/// was drawn at; and once the last is in, its sound as `sound.wav` where it records one.
 pub struct BurstWriter {
   folder: PathBuf,
   /// Samples each frame is drawn at, one but for a reference, and what its frames' files are named.
   samples: u32,
   kind: &'static str,
   sum: Option<BurstSum>,
+  sound: Option<BurstSound>,
   outcome: BurstOutcome,
 }
 
@@ -67,15 +68,25 @@ impl BurstWriter {
       samples: burst.samples.unwrap_or(1),
       kind: if burst.samples.is_some() { "reference" } else { "frame" },
       sum: None,
+      sound: None,
     }
   }
 
-  /// Writes each frame `events` tells of as it comes, until the burst finishes; answers what was written.
+  /// The writer recording `sound` beside the frames.
+  pub fn with_sound(self, sound: BurstSound) -> Self {
+    Self {
+      sound: Some(sound),
+      ..self
+    }
+  }
+
+  /// Writes each frame `events` tells of as it comes, until the burst finishes, then its sound; answers what was
+  /// written.
   ///
   /// # Errors
   ///
   /// Returns an error when the burst stops, the renderer tells nothing for `SILENCE`, its frames come out of order, or
-  /// one cannot be written.
+  /// one or the sound cannot be written.
   pub fn receive(mut self, events: &Receiver<BurstEvent>) -> TauriResult<BurstOutcome> {
     loop {
       match events.recv_timeout(Self::SILENCE) {
@@ -86,7 +97,13 @@ impl BurstWriter {
           picture,
           marks,
         }) => self.take(index, sample.unwrap_or(0), time, &picture, &marks)?,
-        Ok(BurstEvent::Finished) => return Ok(self.outcome),
+        Ok(BurstEvent::Finished) => {
+          if let Some(sound) = self.sound.take() {
+            self.outcome.sound = Some(sound.write(&self.folder)?);
+          }
+
+          return Ok(self.outcome);
+        }
         Ok(BurstEvent::Stopped { error }) => return Err(format!("The burst stopped: {error}")),
         Err(RecvTimeoutError::Timeout) => {
           return Err(format!(

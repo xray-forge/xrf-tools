@@ -6,15 +6,15 @@ use xrf_app_core::session::{SessionId, SessionSnapshot};
 use xrf_audio::AudioServer;
 
 use crate::level::SelectedLevel;
-use crate::render::LevelRenderSource;
+use crate::render::{LevelAudio, LevelRenderSource};
 
 /// The source each level session is drawn from, while anything draws it: every viewport showing a snapshot shares
 /// one, and a commit moving the session moves its scene onto the next. A clone holds the same sources.
 #[derive(Clone, Default)]
 pub struct ShownLevels {
   sources: Arc<Mutex<HashMap<SessionId, Weak<LevelRenderSource>>>>,
-  /// The application's audio, which every source plays its scene's sound through; none where it did not start.
-  audio: Option<AudioServer>,
+  /// Where every source plays its scene's sound.
+  audio: LevelAudio,
 }
 
 impl ShownLevels {
@@ -22,8 +22,13 @@ impl ShownLevels {
   pub fn new(audio: Option<AudioServer>) -> Self {
     Self {
       sources: Arc::default(),
-      audio,
+      audio: LevelAudio::new(audio),
     }
+  }
+
+  /// Where shown levels are heard.
+  pub fn get_audio(&self) -> &LevelAudio {
+    &self.audio
   }
 
   /// A new source drawing `level`, sharing nothing with one before it.
@@ -39,9 +44,6 @@ impl ShownLevels {
   /// the textures that one resolved, else a new one. A new source may resolve the level's surfaces, so it is built
   /// outside the lock, which a commit's follow waits on; where another show placed one for the same snapshot meanwhile,
   /// that one is answered, so viewports still share one source.
-  ///
-  /// A source already past `level` answers instead: a show that took its snapshot before a commit and lands after the
-  /// commit's follow draws what the follow drew, never the older snapshot over it.
   pub fn get_source(
     &self,
     level: Arc<SessionSnapshot<SelectedLevel>>,

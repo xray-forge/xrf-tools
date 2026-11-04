@@ -7,6 +7,7 @@ use crate::acoustics::audio_spatialization::AudioSpatialization;
 use crate::acoustics::listener_space::ListenerSpace;
 use crate::acoustics::scene::scene_acoustics::SceneAcoustics;
 use crate::acoustics::scene::simulated_source::SimulatedSource;
+use crate::acoustics::scene::simulation_pace::SimulationPace;
 use crate::acoustics::scene::source_acoustics::SourceAcoustics;
 use crate::control::audio_engine::AudioEngine;
 use crate::control::audio_play::AudioPlay;
@@ -110,11 +111,28 @@ struct RankedEmitter {
   id: u64,
 }
 
+impl RankedEmitter {
+  /// The more deserving first, equals by their ids: the emitters are kept in no order, and the ranking decides which
+  /// voices start in which order, so a scene played twice from the same frames comes out the same.
+  fn compare(a: &Self, b: &Self) -> std::cmp::Ordering {
+    b.priority.total_cmp(&a.priority).then(a.id.cmp(&b.id))
+  }
+}
+
 /// Where an emitter stood, and when on the scene's clock.
 #[derive(Clone, Copy)]
 struct EmitterMotion {
   position: [f32; 3],
   at: Duration,
+}
+
+/// A tick on the scene's clock: its time, how far ahead a sound starting is given its voice, and the seconds since the
+/// last tick.
+#[derive(Clone, Copy)]
+struct SceneMoment {
+  now: Duration,
+  horizon: Duration,
+  seconds: f32,
 }
 
 impl SceneRender {
@@ -131,7 +149,12 @@ impl SceneRender {
   /// Seconds an emitter's followed speed takes to settle about two thirds of the way to a new step's.
   const MOTION_EASE: f32 = 0.15;
 
-  pub(crate) fn new(acoustics: &AudioAcoustics, geometry: Option<Arc<dyn AudioSceneGeometry>>) -> Self {
+  /// A scene heard through `acoustics`, its walls where `geometry` has them, simulated at `pace`.
+  pub(crate) fn new(
+    acoustics: &AudioAcoustics,
+    geometry: Option<Arc<dyn AudioSceneGeometry>>,
+    pace: SimulationPace,
+  ) -> Self {
     Self {
       scene: 0,
       rules: AudioSceneRules::default(),
@@ -141,7 +164,7 @@ impl SceneRender {
       heard: [true; AudioBus::COUNT],
       presence: 0.0,
       emitters: HashMap::new(),
-      acoustics: SceneAcoustics::open(acoustics, geometry),
+      acoustics: SceneAcoustics::open(acoustics, geometry, pace),
       ticked_at: None,
       refused: Vec::new(),
       ranked: Vec::new(),
@@ -215,21 +238,18 @@ impl SceneRender {
       return;
     };
     let seconds: f32 = self.ticked_at.map_or(0.0, |at| now.saturating_sub(at).as_secs_f32());
+    let moment: SceneMoment = SceneMoment {
+      now,
+      horizon: now + tick.lookahead,
+      seconds,
+    };
 
     self.ticked_at = Some(now);
     self.presence = self.approach_presence(seconds);
     self.ranked.clear();
 
     for (id, rendered) in &mut self.emitters {
-      if Self::simulate(
-        rendered,
-        &self.listener,
-        now,
-        seconds,
-        tick.bank,
-        assets,
-        &mut self.refused,
-      ) {
+      if Self::simulate(rendered, &self.listener, moment, tick.bank, assets, &mut self.refused) {
         self.ranked.push(RankedEmitter {
           priority: rendered.culling.priority,
           id: *id,
@@ -246,13 +266,11 @@ impl SceneRender {
     }
 
     if self.ranked.len() > targets {
-      self
-        .ranked
-        .select_nth_unstable_by(targets, |a, b| b.priority.total_cmp(&a.priority));
+      self.ranked.select_nth_unstable_by(targets, RankedEmitter::compare);
       self.ranked.truncate(targets);
     }
 
-    self.ranked.sort_unstable_by(|a, b| b.priority.total_cmp(&a.priority));
+    self.ranked.sort_unstable_by(RankedEmitter::compare);
 
     for rendered in self.emitters.values_mut() {
       rendered.is_ranked = false;
@@ -274,7 +292,7 @@ impl SceneRender {
     }
 
     if self.acoustics.is_running() {
-      self.acoustics.simulate(&self.listener, &self.simulated);
+      self.acoustics.simulate(&self.listener, &self.simulated, now);
 
       // The mixer's one reverb is the room heard now, so a scene fading out leaves it to the one fading in.
       if self.is_audible {
@@ -387,19 +405,19 @@ impl SceneRender {
     acoustics.is_running() && !rendered.emitter.is_2d && rendered.sound.get_channel_count() == Some(1)
   }
 
-  /// Moves an emitter on to `now`, answering whether it is a candidate for a target.
+  /// Moves an emitter on to the moment's time, answering whether it is a candidate for a target: one starting within
+  /// its horizon is, so its voice waits for its first frame in the mixer.
   fn simulate(
     rendered: &mut RenderedEmitter,
     listener: &AudioListener,
-    now: Duration,
-    seconds: f32,
+    SceneMoment { now, horizon, seconds }: SceneMoment,
     bank: &mut SoundBank,
     assets: &SceneAssets,
     refused: &mut Vec<AudioSceneRefusal>,
   ) -> bool {
     let emitter: &AudioSceneEmitter = &rendered.emitter;
 
-    if rendered.is_done || now < emitter.start {
+    if rendered.is_done || horizon < emitter.start {
       return false;
     }
 
@@ -615,10 +633,16 @@ impl SceneRender {
         return false;
       }
     };
+    // Its first frame plays at the mixer frame its clock puts it at: where it stands now, or where it starts ahead.
+    let at: u64 = self
+      .clock
+      .get_frame(now.max(rendered.emitter.start), tick.rate)
+      .unwrap_or(tick.mixer_frame);
     let play: AudioPlay = AudioPlay {
       gain,
       rate,
       pan,
+      at: Some(at),
       ..AudioPlay::new(source, bus)
     };
     let started = match (spatial, &rendered.spatial) {
@@ -631,7 +655,7 @@ impl SceneRender {
         rendered.voice = Some(RealVoice {
           id,
           stream,
-          started_at: tick.mixer_frame,
+          started_at: at,
           start_frame: place.frame,
           is_placed,
         });
