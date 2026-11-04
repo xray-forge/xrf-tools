@@ -96,6 +96,9 @@ impl WorldLevel {
 
     self.effects.follow_motions(&source, reload);
 
+    // todo: Read the level's sounds again on a reload that changes them (the spawn, `level.snd_static`, the helpers'
+    // order) and reopen their sink where the geometry changed; the sound keeps what it read as the level opened, so an
+    // edited zone plays as it was and a sounding emitter lights the helper that now stands at its old place.
     self
       .streaming
       .follow(&mut self.queued, &mut self.animation, source, reload, workers);
