@@ -42,17 +42,22 @@ pub async fn levels_save_burst(
     ));
   }
 
-  // Refused before anything draws where this Windows cannot write video.
-  let video: Option<BurstVideo> = has_video
-    .then(|| BurstVideo::new(&burst, &MediaProbe::MEDIA_FOUNDATION))
-    .transpose()?;
-
   execution
     .run_blocking("Saving a burst", move || -> TauriResult<BurstOutcome> {
       let folder: PathBuf = LevelViewerFolder::find_new_burst(&bursts, &name)?;
-      // The sound takes the burst's frames from its first, so it starts before the burst does.
+      // Refused before anything draws where this Windows cannot write video.
+      let mut video: Option<BurstVideo> = has_video
+        .then(|| BurstVideo::new(&burst, &MediaProbe::MEDIA_FOUNDATION, &folder))
+        .transpose()?;
+      // The sound takes the burst's frames from its first, so it starts before the burst does, sending the video what
+      // it renders.
       let sound: Option<BurstSound> = match audio.server.as_ref().filter(|_| has_sound) {
-        Some(server) => Some(BurstSound::start(&burst, server, &audio.bursts)?),
+        Some(server) => Some(BurstSound::start(
+          &burst,
+          server,
+          &audio.bursts,
+          video.as_mut().and_then(BurstVideo::take_sound),
+        )?),
         None => None,
       };
       let mut writer: BurstWriter = BurstWriter::new(LevelViewerFolder::make(folder)?, &burst);

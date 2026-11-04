@@ -1,8 +1,9 @@
-//! A burst's video: its frames and its sound written as one MP4 through Media Foundation, read back through its Source
-//! Reader, and refused where Media Foundation does not load.
+//! A burst's video: its frames and its sound written as one MP4 through Media Foundation as they come, read back
+//! through its Source Reader, and refused where Media Foundation does not load.
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc::Sender;
 use std::time::Duration;
 
 use image::{Rgba, RgbaImage};
@@ -14,7 +15,7 @@ use windows::core::{HSTRING, PCWSTR};
 use xrf_renderer::RenderBurst;
 use xrf_test_utils::GeneratedResources;
 
-use crate::viewer::burst::{BurstSound, BurstSoundOutcome, BurstVideo, BurstVideoOutcome};
+use crate::viewer::burst::{BurstSoundChunk, BurstVideo, BurstVideoOutcome};
 use crate::viewer::record::{
   MediaProbe, MediaSession, RecordFormat, RecordSample, RecordSoundFormat, RecordSummary, RecordWriter,
 };
@@ -88,44 +89,50 @@ fn read_stream(file: &Path, stream: u32) -> ReadStream {
   read
 }
 
-/// A burst of `width` by `height` frames and its sound written as a video into the folder `name`, and its file read
-/// back: each frame once, a step apart from zero, the sound beside them from the same start to the same end, an odd size
-/// cut to the even one under it.
+/// A frame's sound, a step of a tone.
+fn sound_of(index: u32) -> BurstSoundChunk {
+  BurstSoundChunk {
+    at: u64::from(index) * FRAME_SOUND,
+    samples: (0..FRAME_SOUND * 2)
+      .map(|sample| ((sample / 2) as f32 * 0.05).sin() * 0.5)
+      .collect(),
+  }
+}
+
+/// A burst of `width` by `height` frames and its sound written as a video into the folder `name` as a burst hands them
+/// over, the sound coming two frames behind them and the rest after the last, and its file read back: each frame once,
+/// a step apart from zero, the sound beside them from the same start to the same end, an odd size cut to the even one
+/// under it.
 fn write_and_read(name: &str, width: u32, height: u32) {
   let folder: PathBuf = folder(name);
-  let frames: Vec<PathBuf> = (0..BURST.frames)
-    .map(|index| {
-      let file: PathBuf = folder.join(format!("frame-{index:03}.png"));
-      let shade: u8 = (index * 8) as u8;
+  let mut video: BurstVideo =
+    BurstVideo::new(&BURST, &MediaProbe::MEDIA_FOUNDATION, &folder).expect("Media Foundation to load");
+  let sound: Sender<BurstSoundChunk> = video.take_sound().expect("the sound's way in");
 
-      RgbaImage::from_pixel(width, height, Rgba([shade, 255 - shade, 64, 255]))
-        .save(&file)
-        .expect("the frame to be written");
+  assert!(video.take_sound().is_none(), "the sound's way in is taken once");
 
-      file
-    })
-    .collect();
-  let samples: Vec<f32> = (0..u64::from(BURST.frames) * FRAME_SOUND * 2)
-    .map(|sample| ((sample / 2) as f32 * 0.05).sin() * 0.5)
-    .collect();
-  let sound: BurstSoundOutcome = BurstSoundOutcome {
-    file: folder.join("sound.wav"),
-    rate: BurstSound::RATE,
-    channels: 2,
-    offsets: (0..u64::from(BURST.frames)).map(|index| index * FRAME_SOUND).collect(),
-  };
+  for index in 0..BURST.frames {
+    let shade: u8 = (index * 8) as u8;
 
-  fs::write(&sound.file, BurstSound::to_wave(&samples)).expect("the sound to be written");
+    if let Some(behind) = index.checked_sub(2) {
+      sound.send(sound_of(behind)).expect("the video to take the sound");
+    }
 
-  assert_eq!(
-    BurstSound::read_wave(&sound.file).expect("the sound to be read"),
-    samples
-  );
+    video
+      .write_frame(
+        index,
+        &RgbaImage::from_pixel(width, height, Rgba([shade, 255 - shade, 64, 255])),
+      )
+      .expect("the frame to be written");
+  }
 
-  let outcome: BurstVideoOutcome = BurstVideo::new(&BURST, &MediaProbe::MEDIA_FOUNDATION)
-    .expect("Media Foundation to load")
-    .write(&frames, Some(&sound), &folder)
-    .expect("the video to be written");
+  for index in BURST.frames - 2..BURST.frames {
+    sound.send(sound_of(index)).expect("the video to take the sound");
+  }
+
+  drop(sound);
+
+  let outcome: BurstVideoOutcome = video.finish().expect("the video to be written");
   let video: ReadStream = read_stream(&outcome.file, MF_SOURCE_READER_FIRST_VIDEO_STREAM.0 as u32);
   let audio: ReadStream = read_stream(&outcome.file, MF_SOURCE_READER_FIRST_AUDIO_STREAM.0 as u32);
   let burst_end: i64 = i64::from(BURST.frames) * TICKS / 60;
@@ -246,12 +253,83 @@ fn writes_sound_from_a_rate_aac_does_not_take() {
   assert!((audio.end - TICKS / 2).abs() <= 1024 * TICKS / 48_000, "{audio:?}");
 }
 
+// Frames handed over seconds ahead of their sound, as a burst's come while its sound waits on a level's walls, are
+// written with it, the writer waiting on neither.
+#[test]
+fn writes_frames_handed_over_seconds_ahead_of_their_sound() {
+  let file: PathBuf = folder("frames-ahead").join("burst.mp4");
+  let (width, height): (u32, u32) = (640, 360);
+  let step: Duration = Duration::from_secs_f64(1.0 / 60.0);
+  let frames: u32 = 300;
+  let mut writer: RecordWriter = RecordWriter::start(
+    file.clone(),
+    RecordFormat {
+      width,
+      height,
+      frame: step,
+      sound: Some(RecordSoundFormat {
+        rate: 48_000,
+        channels: 2,
+      }),
+    },
+  )
+  .expect("the writer to start");
+
+  for index in 0..frames {
+    writer
+      .write(RecordSample::Frame {
+        bgra: vec![(index % 256) as u8; width as usize * height as usize * 4],
+        time: step * index,
+        duration: step,
+      })
+      .expect("the frame to be written");
+  }
+
+  for index in 0..frames {
+    writer
+      .write(RecordSample::Sound {
+        samples: vec![0.25; 800 * 2],
+        at: u64::from(index) * 800,
+      })
+      .expect("the sound to be written");
+  }
+
+  writer.finish().expect("the video to be finished");
+
+  let video: ReadStream = read_stream(&file, MF_SOURCE_READER_FIRST_VIDEO_STREAM.0 as u32);
+  let audio: ReadStream = read_stream(&file, MF_SOURCE_READER_FIRST_AUDIO_STREAM.0 as u32);
+
+  assert_eq!(
+    (video.samples, video.first, audio.first),
+    (frames, Some(0), Some(0)),
+    "{video:?} {audio:?}"
+  );
+  // The file's timescale rounds a frame's time to well under a millisecond.
+  assert!((video.end - 5 * TICKS).abs() <= TICKS / 1000, "{video:?}");
+  assert!((audio.end - 5 * TICKS).abs() <= 1024 * TICKS / 48_000, "{audio:?}");
+}
+
+// A frame goes to the encoder blue first, an odd size's last column and row left out.
+#[test]
+fn hands_a_frame_over_blue_first_at_its_even_size() {
+  let picture: RgbaImage = RgbaImage::from_fn(3, 3, |x, y| Rgba([x as u8, y as u8, 10 + x as u8, 255]));
+
+  assert_eq!(
+    BurstVideo::to_bgra(&picture, 2, 2),
+    [10, 0, 0, 255, 11, 0, 1, 255, 10, 1, 0, 255, 11, 1, 1, 255]
+  );
+}
+
 // Where Media Foundation does not load, a video is refused before anything draws, naming what is missing.
 #[test]
 fn refuses_a_video_where_media_foundation_does_not_load() {
-  let error: String = BurstVideo::new(&BURST, &MediaProbe::new(&["xrf-no-such-library.dll"]))
-    .err()
-    .expect("the video to be refused");
+  let error: String = BurstVideo::new(
+    &BURST,
+    &MediaProbe::new(&["xrf-no-such-library.dll"]),
+    &folder("refused"),
+  )
+  .err()
+  .expect("the video to be refused");
 
   assert!(error.contains("xrf-no-such-library.dll"), "{error}");
   assert!(error.contains("Media Feature Pack"), "{error}");

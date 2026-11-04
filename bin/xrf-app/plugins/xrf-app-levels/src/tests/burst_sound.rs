@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::f32::consts::TAU;
 use std::fs;
 use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, mpsc};
 use std::time::Duration;
 
 use xrf_audio::{
@@ -16,7 +16,7 @@ use xrf_error::XrfResult;
 use xrf_renderer::RenderBurst;
 use xrf_test_utils::GeneratedResources;
 
-use crate::viewer::burst::{BurstSound, BurstSoundFrame, BurstSoundOutcome, BurstSoundTee};
+use crate::viewer::burst::{BurstSound, BurstSoundChunk, BurstSoundFrame, BurstSoundOutcome, BurstSoundTee};
 
 /// The viewer's defaults but for fewer frames: 1/120 s apart from 600 s after a lead-in of 60.
 const BURST: RenderBurst = RenderBurst {
@@ -116,13 +116,15 @@ fn emitter(id: u64, sound: &str, position: [f32; 3]) -> AudioSceneEmitter {
 }
 
 /// The sound a burst records of frames `emitters` gives each moment, sent as the world sends them, sixty a second,
-/// into the folder `name`; answers what was written and the file's bytes.
+/// into the folder `name`; answers what was written and the file's bytes, having checked that what the burst's video
+/// was sent as it rendered is the file's sound, in order and whole.
 fn record(name: &str, emitters: impl Fn(Duration) -> Vec<AudioSceneEmitter>) -> (BurstSoundOutcome, Vec<u8>) {
   let folder: PathBuf = GeneratedResources::path(&format!("burst_sound/{name}"));
   let AudioEngineParts { engine, .. } = AudioEngineParts::new(AudioEngineSettings::default());
   let server: AudioServer = AudioServer::start_on(engine, None, |_: AudioEvent| {}).expect("the server starts");
   let tee: BurstSoundTee = BurstSoundTee::default();
-  let sound: BurstSound = BurstSound::start(&BURST, &server, &tee).expect("the sound starts");
+  let (video, heard) = mpsc::channel::<BurstSoundChunk>();
+  let sound: BurstSound = BurstSound::start(&BURST, &server, &tee, Some(video)).expect("the sound starts");
   let (assets, geometry): (Arc<dyn AudioAssetSource>, Arc<dyn AudioSceneGeometry>) = (sounds(), Arc::new(NoWalls));
 
   let _ = fs::remove_dir_all(&folder);
@@ -151,6 +153,21 @@ fn record(name: &str, emitters: impl Fn(Duration) -> Vec<AudioSceneEmitter>) -> 
 
   let outcome: BurstSoundOutcome = sound.write(&folder).expect("the sound to be written");
   let bytes: Vec<u8> = fs::read(&outcome.file).expect("the sound to be read back");
+  let mut sent: Vec<f32> = Vec::new();
+
+  for chunk in heard.iter() {
+    assert_eq!(chunk.at, (sent.len() / 2) as u64, "each stretch follows the last");
+    sent.extend(chunk.samples);
+  }
+
+  let written: Vec<f32> = bytes[58..]
+    .as_chunks::<4>()
+    .0
+    .iter()
+    .map(|sample| f32::from_le_bytes(*sample))
+    .collect();
+
+  assert!(sent == written, "the video was sent other sound than the file holds");
 
   (outcome, bytes)
 }
@@ -205,13 +222,13 @@ fn refuses_a_second_bursts_sound_while_one_records() {
   let AudioEngineParts { engine, .. } = AudioEngineParts::new(AudioEngineSettings::default());
   let server: AudioServer = AudioServer::start_on(engine, None, |_: AudioEvent| {}).expect("the server starts");
   let tee: BurstSoundTee = BurstSoundTee::default();
-  let first: BurstSound = BurstSound::start(&BURST, &server, &tee).expect("the sound starts");
+  let first: BurstSound = BurstSound::start(&BURST, &server, &tee, None).expect("the sound starts");
 
-  assert!(BurstSound::start(&BURST, &server, &tee).is_err());
+  assert!(BurstSound::start(&BURST, &server, &tee, None).is_err());
 
   drop(first);
 
-  assert!(BurstSound::start(&BURST, &server, &tee).is_ok());
+  assert!(BurstSound::start(&BURST, &server, &tee, None).is_ok());
 }
 
 /// The first sample of the left channel heard, of a click starting at `start`, named only by frames from `named` on.

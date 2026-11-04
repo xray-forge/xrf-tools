@@ -7,11 +7,11 @@ use windows::Win32::Media::MediaFoundation::{
   MF_MT_AUDIO_BLOCK_ALIGNMENT, MF_MT_AUDIO_NUM_CHANNELS, MF_MT_AUDIO_SAMPLES_PER_SECOND, MF_MT_AVG_BITRATE,
   MF_MT_DEFAULT_STRIDE, MF_MT_FRAME_RATE, MF_MT_FRAME_SIZE, MF_MT_INTERLACE_MODE, MF_MT_MAJOR_TYPE,
   MF_MT_MPEG2_PROFILE, MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SUBTYPE, MF_MT_VIDEO_LEVEL,
-  MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, MF_TRANSCODE_CONTAINERTYPE, MFAudioFormat_AAC, MFAudioFormat_PCM,
-  MFCreateAttributes, MFCreateMediaType, MFCreateMemoryBuffer, MFCreateSample, MFCreateSinkWriterFromURL,
-  MFMediaType_Audio, MFMediaType_Video, MFT_CATEGORY_VIDEO_ENCODER, MFT_ENUM_HARDWARE_URL_Attribute,
-  MFT_FRIENDLY_NAME_Attribute, MFTranscodeContainerType_FMPEG4, MFVideoFormat_H264, MFVideoFormat_RGB32,
-  MFVideoInterlace_Progressive, eAVEncH264VProfile_High,
+  MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, MF_SINK_WRITER_DISABLE_THROTTLING, MF_TRANSCODE_CONTAINERTYPE,
+  MFAudioFormat_AAC, MFAudioFormat_PCM, MFCreateAttributes, MFCreateMediaType, MFCreateMemoryBuffer, MFCreateSample,
+  MFCreateSinkWriterFromURL, MFMediaType_Audio, MFMediaType_Video, MFT_CATEGORY_VIDEO_ENCODER,
+  MFT_ENUM_HARDWARE_URL_Attribute, MFT_FRIENDLY_NAME_Attribute, MFTranscodeContainerType_FMPEG4, MFVideoFormat_H264,
+  MFVideoFormat_RGB32, MFVideoInterlace_Progressive, eAVEncH264VProfile_High,
 };
 use windows::core::{GUID, HSTRING, Interface, PCWSTR};
 
@@ -77,7 +77,11 @@ impl MediaSink {
 
     // SAFETY: Media Foundation calls on objects this function makes, on a thread holding a session.
     unsafe {
-      let attributes: IMFAttributes = Self::new_attributes(2).map_err(fail("Making the writer's attributes"))?;
+      let attributes: IMFAttributes = Self::new_attributes(3).map_err(fail("Making the writer's attributes"))?;
+
+      attributes
+        .SetUINT32(&MF_SINK_WRITER_DISABLE_THROTTLING, 1)
+        .map_err(fail("Turning the throttle off"))?;
 
       attributes
         .SetGUID(&MF_TRANSCODE_CONTAINERTYPE, &MFTranscodeContainerType_FMPEG4)

@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{Receiver, Sender};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
@@ -10,12 +10,13 @@ use xrf_audio::{
 };
 use xrf_renderer::RenderBurst;
 
-use crate::viewer::burst::{BurstSoundFrame, BurstSoundOutcome, BurstSoundTee};
+use crate::viewer::burst::{BurstSoundChunk, BurstSoundFrame, BurstSoundOutcome, BurstSoundTee};
 
 /// A burst's sound, rendered as the burst draws on a thread of its own: the scene's frames the burst drew, played in
 /// order through an offline session of their own on the burst's clock, the scene's walls and rooms simulated in step,
 /// so a burst from one time plays alike however fast it draws. Its sample `n` plays at the burst's start plus
-/// `n / RATE` seconds; what plays from the first frame read back to the last one's end is kept.
+/// `n / RATE` seconds; what plays from the first frame read back to the last one's end is kept, and handed to the
+/// burst's video as it is where one is made.
 ///
 /// The scene fades in over its first quarter of a second, and a sound starting with the burst's first frame lands up to
 /// a tick late, which a lead-in covers. Dropped before it is written, it stops taking frames and its thread ends.
@@ -38,6 +39,8 @@ struct BurstSoundRender {
   rendered: u64,
   /// What plays from the first frame read back on, interleaved stereo.
   kept: Vec<f32>,
+  /// Where each stretch kept goes as it is, for the burst's video; gone with the video.
+  video: Option<Sender<BurstSoundChunk>>,
   /// Where each render lands before what is kept of it is.
   scratch: Vec<f32>,
 }
@@ -63,12 +66,18 @@ impl BurstSound {
   /// Frames rendered at once, a tenth of a second.
   const CHUNK_FRAMES: usize = Self::RATE as usize / 10;
 
-  /// Starts taking the frames `burst` draws through `tee`, played through `server`'s acoustics for its ears.
+  /// Starts taking the frames `burst` draws through `tee`, played through `server`'s acoustics for its ears, each
+  /// stretch kept sent on to `video` where there is one.
   ///
   /// # Errors
   ///
   /// Returns an error while another burst records its sound, or when the sound's thread cannot start.
-  pub fn start(burst: &RenderBurst, server: &AudioServer, tee: &BurstSoundTee) -> TauriResult<Self> {
+  pub fn start(
+    burst: &RenderBurst,
+    server: &AudioServer,
+    tee: &BurstSoundTee,
+    video: Option<Sender<BurstSoundChunk>>,
+  ) -> TauriResult<Self> {
     let timing: BurstSoundTiming = BurstSoundTiming {
       step: f64::from(burst.step),
       lead_in: burst.lead_in,
@@ -82,6 +91,7 @@ impl BurstSound {
       played: None,
       rendered: 0,
       kept: Vec::new(),
+      video,
       scratch: vec![0.0; Self::CHUNK_FRAMES * 2],
     };
     let frames: Receiver<BurstSoundFrame> = tee.arm()?;
@@ -130,46 +140,8 @@ impl BurstSound {
     })
   }
 
-  /// The interleaved stereo samples of a `sound.wav` [`Self::to_wave`] made.
-  ///
-  /// # Errors
-  ///
-  /// Returns an error when the file cannot be read or is not one `to_wave` makes.
-  pub fn read_wave(file: &Path) -> TauriResult<Vec<f32>> {
-    let bytes: Vec<u8> = std::fs::read(file)
-      .map_err(|error| format!("The burst's sound cannot be read from {}: {error}", file.display()))?;
-    let header: Vec<u8> = Self::to_wave(&[]);
-    let length: Option<usize> = bytes
-      .get(54..58)
-      .and_then(|length| length.try_into().ok())
-      .map(|length| u32::from_le_bytes(length) as usize);
-    // The format and the chunks' names, but not the lengths, are those of every sound it makes.
-    let is_ours: bool = bytes.len() >= header.len()
-      && bytes[..4] == header[..4]
-      && bytes[8..46] == header[8..46]
-      && bytes[50..54] == header[50..54]
-      && length == Some(bytes.len() - header.len());
-
-    if !is_ours {
-      return Err(format!(
-        "{} is not a burst's sound: 32-bit float stereo at {} Hz",
-        file.display(),
-        Self::RATE
-      ));
-    }
-
-    Ok(
-      bytes[header.len()..]
-        .as_chunks::<4>()
-        .0
-        .iter()
-        .map(|sample| f32::from_le_bytes(*sample))
-        .collect(),
-    )
-  }
-
   /// A WAV file of interleaved stereo 32-bit float `samples` at [`Self::RATE`].
-  pub fn to_wave(samples: &[f32]) -> Vec<u8> {
+  fn to_wave(samples: &[f32]) -> Vec<u8> {
     const CHANNELS: u16 = 2;
     const FLOAT: u16 = 3;
     let data_length: u32 = (samples.len() * 4) as u32;
@@ -290,8 +262,22 @@ impl BurstSoundRender {
       played.session.render_into(rendered);
 
       let skipped: usize = (kept_from.saturating_sub(self.rendered) as usize).min(count);
+      let kept: &[f32] = &rendered[skipped * 2..];
 
-      self.kept.extend_from_slice(&rendered[skipped * 2..]);
+      if let Some(video) = &self.video
+        && !kept.is_empty()
+        && video
+          .send(BurstSoundChunk {
+            at: (self.kept.len() / 2) as u64,
+            samples: kept.to_vec(),
+          })
+          .is_err()
+      {
+        // The video stopped, and says why itself.
+        self.video = None;
+      }
+
+      self.kept.extend_from_slice(kept);
       self.rendered += count as u64;
     }
   }

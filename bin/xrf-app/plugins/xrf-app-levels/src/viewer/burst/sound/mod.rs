@@ -2,11 +2,13 @@
 //! beside its frames.
 
 mod burst_sound;
+mod burst_sound_chunk;
 mod burst_sound_frame;
 mod burst_sound_outcome;
 mod burst_sound_tee;
 
 pub use burst_sound::BurstSound;
+pub use burst_sound_chunk::BurstSoundChunk;
 pub use burst_sound_frame::BurstSoundFrame;
 pub use burst_sound_outcome::BurstSoundOutcome;
 pub use burst_sound_tee::BurstSoundTee;

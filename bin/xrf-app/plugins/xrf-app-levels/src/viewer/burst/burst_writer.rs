@@ -109,16 +109,13 @@ impl BurstWriter {
           marks,
         }) => self.take(index, sample.unwrap_or(0), time, &picture, &marks)?,
         Ok(BurstEvent::Finished) => {
+          // The sound's thread ends first, having sent the video the last of its sound.
           if let Some(sound) = self.sound.take() {
             self.outcome.sound = Some(sound.write(&self.folder)?);
           }
 
           if let Some(video) = self.video.take() {
-            let frames: Vec<PathBuf> = (0..self.outcome.times.len() as u32)
-              .map(|index| self.get_frame_file(index))
-              .collect();
-
-            self.outcome.video = Some(video.write(&frames, self.outcome.sound.as_ref(), &self.folder)?);
+            self.outcome.video = Some(video.finish()?);
           }
 
           return Ok(self.outcome);
@@ -229,6 +226,10 @@ impl BurstWriter {
       &self.folder.join(format!("marks-{index:03}.png")),
       "burst marks",
     )?;
+
+    if let Some(video) = &mut self.video {
+      video.write_frame(index, &picture)?;
+    }
 
     self.outcome.times.push(time);
     (self.outcome.width, self.outcome.height) = (width, height);
