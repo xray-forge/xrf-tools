@@ -25,6 +25,10 @@ pub fn audio_set_settings(
     output.choose(current.output);
   }
 
+  if current.spatialization != previous.spatialization {
+    server.set_spatialization(current.spatialization);
+  }
+
   focus.apply(&server, &store);
 
   kept

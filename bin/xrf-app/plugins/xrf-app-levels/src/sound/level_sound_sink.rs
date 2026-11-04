@@ -63,7 +63,6 @@ impl LevelSoundSink {
       min_distance: emitter.min_distance,
       max_distance: emitter.max_distance,
       base_volume: emitter.base_volume,
-      is_occluded: emitter.is_occluded,
       has_reverb: emitter.has_reverb,
     }
   }

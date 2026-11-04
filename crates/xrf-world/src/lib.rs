@@ -24,6 +24,7 @@ pub use crate::contract::level::world_model_pose::WorldModelPose;
 pub use crate::contract::level::world_sector_skip::WorldSectorSkip;
 pub use crate::contract::level::world_surface_geometry::WorldSurfaceGeometry;
 pub use crate::contract::level::world_surface_span::WorldSurfaceSpan;
+pub use crate::contract::sound::world_sound_acoustics_report::WorldSoundAcousticsReport;
 pub use crate::contract::sound::world_sound_category::WorldSoundCategory;
 pub use crate::contract::sound::world_sound_channel_report::WorldSoundChannelReport;
 pub use crate::contract::sound::world_sound_kind::WorldSoundKind;

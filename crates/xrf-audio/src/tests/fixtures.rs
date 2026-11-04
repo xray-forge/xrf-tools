@@ -1,13 +1,38 @@
+use std::collections::HashMap;
 use std::f32::consts::TAU;
 use std::sync::Arc;
 
+use xrf_error::XrfResult;
+
 use crate::{
-  AudioBus, AudioEngine, AudioEngineParts, AudioEngineSettings, AudioPlay, AudioVoiceId, DecodedSound, SoundChannels,
-  SoundDecoder, SoundFormat, SoundStream, SoundStreamStart, StreamReader, VoiceSource,
+  AudioAssetSource, AudioBus, AudioEngine, AudioEngineParts, AudioEngineSettings, AudioPlay, AudioVoiceId,
+  DecodedSound, SoundChannels, SoundDecoder, SoundFormat, SoundStream, SoundStreamStart, StreamReader, VoiceSource,
 };
 
 /// The rate tests render and write their sounds at.
 pub(crate) const RATE: u32 = 48_000;
+
+/// Sounds held in memory by reference.
+pub(crate) struct MemorySounds(pub(crate) HashMap<String, Arc<[u8]>>);
+
+impl AudioAssetSource for MemorySounds {
+  fn get_sound_scope(&self) -> &str {
+    "memory"
+  }
+
+  fn read_sound(&self, reference: &str) -> XrfResult<Option<Vec<u8>>> {
+    Ok(self.0.get(reference).map(|bytes| bytes.to_vec()))
+  }
+}
+
+/// `seconds` of a 440 Hz mono sine at half scale, as 16-bit PCM.
+pub(crate) fn tone(seconds: f32) -> Arc<[u8]> {
+  let samples: Vec<i16> = (0..(RATE as f32 * seconds) as u32)
+    .map(|frame| ((TAU * 440.0 * frame as f32 / RATE as f32).sin() * 16_000.0) as i16)
+    .collect();
+
+  wav(RATE, 1, &samples)
+}
 
 /// A sine of `frequency` at `amplitude`, `frames` long at `rate`, the same in every channel.
 pub(crate) fn sine(rate: u32, frames: usize, frequency: f32, amplitude: f32, channels: SoundChannels) -> DecodedSound {

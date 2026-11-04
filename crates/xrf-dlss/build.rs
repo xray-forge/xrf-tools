@@ -21,19 +21,16 @@ mod sdk {
     runtime: &'static str,
   }
 
-  /// On a Windows host with no `LIBCLANG_PATH` set, points bindgen at the libclang `cargo make fetch-sdks` placed in
-  /// `.sdks/libclang` and answers true; elsewhere bindgen finds the system's.
-  fn use_fetched_libclang() -> bool {
-    if cfg!(windows) && env::var_os("LIBCLANG_PATH").is_none() {
-      let fetched: PathBuf = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../.sdks/libclang");
+  /// Whether bindgen loads the libclang `cargo make fetch-sdks` placed in `.sdks/libclang` on a Windows host, where
+  /// `.cargo/config.toml` points `LIBCLANG_PATH`; elsewhere that directory links the system's libclang.
+  fn is_libclang_fetched() -> bool {
+    let fetched: Option<PathBuf> = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+      .join("../../.sdks/libclang")
+      .canonicalize()
+      .ok();
+    let used: Option<PathBuf> = env::var_os("LIBCLANG_PATH").and_then(|path| PathBuf::from(path).canonicalize().ok());
 
-      // SAFETY: the build script runs on one thread, and bindgen reads the variable after this as it loads libclang.
-      unsafe { env::set_var("LIBCLANG_PATH", fetched) };
-
-      return true;
-    }
-
-    false
+    cfg!(windows) && fetched.is_some() && used == fetched
   }
 
   pub fn bind() {
@@ -87,7 +84,7 @@ mod sdk {
       }
     }
 
-    let is_libclang_fetched: bool = use_fetched_libclang();
+    let is_libclang_fetched: bool = is_libclang_fetched();
 
     // Vulkan's own types come from ash, so only NGX's are generated; its static inline helpers are compiled into a
     // library of their own. The fetched libclang takes no system clang's headers: a clang on PATH of another version

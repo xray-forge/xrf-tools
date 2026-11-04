@@ -11,8 +11,6 @@ pub struct WorldSoundInfo {
   pub min_distance: f32,
   pub max_distance: f32,
   pub base_volume: f32,
-  /// Whether its game type is `SOUND_TYPE_WORLD_AMBIENT`, which the sound renderer never occludes.
-  pub is_world_ambient: bool,
 }
 
 impl Default for WorldSoundInfo {
@@ -24,7 +22,6 @@ impl Default for WorldSoundInfo {
       min_distance: 1.0,
       max_distance: 300.0,
       base_volume: 1.0,
-      is_world_ambient: false,
     }
   }
 }

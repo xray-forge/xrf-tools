@@ -2,10 +2,26 @@ import {
   AudioDeviceDescription,
   AudioOutputChoice,
   AudioOutputStatus,
+  AudioSpatialization,
   EAudioOutputChoice,
+  EAudioSpatialization,
 } from "@xrf/ipc/types/xrf-audio";
 import { Nullable } from "@xrf/types";
 import { IChoiceListFormRowOption } from "@xrf/ui/form/choice-list-row";
+
+/** How placed sounds can reach the ears. */
+export const AUDIO_SPATIALIZATION_OPTIONS: ReadonlyArray<IChoiceListFormRowOption<AudioSpatialization>> = [
+  {
+    label: "Headphones",
+    value: EAudioSpatialization.HEADPHONES,
+    description: "Placed around and above you through a head-related transfer function",
+  },
+  {
+    label: "Speakers",
+    value: EAudioSpatialization.SPEAKERS,
+    description: "Panned between two speakers",
+  },
+];
 
 /** An output choice as one string a choice list can hold. */
 export type TAudioOutputKey = string;

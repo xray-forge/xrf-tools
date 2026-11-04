@@ -4,3 +4,5 @@ pub(crate) mod audio_mixer_load;
 pub(crate) mod audio_mixer_meter;
 pub(crate) mod gain_ramp;
 pub(crate) mod mixer_command;
+pub(crate) mod mixer_reverb;
+pub(crate) mod reverb_parameters;

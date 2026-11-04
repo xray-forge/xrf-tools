@@ -1,3 +1,4 @@
+mod acoustics;
 mod allocations;
 mod decode;
 mod device;

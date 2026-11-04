@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { formatPercent } from "@xrf/format";
 import { AudioSettings } from "@xrf/ipc/types/xrf-app-audio";
+import { EAudioSpatialization } from "@xrf/ipc/types/xrf-audio";
 import { Nullable } from "@xrf/types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ChoiceListFormRow } from "@xrf/ui/form/choice-list-row";
@@ -18,6 +19,7 @@ import { AudioSettingsService } from "@/core/audio/services/audio-settings.servi
 import { useMountEffect } from "@/lib/react/use-mount-effect";
 
 import {
+  AUDIO_SPATIALIZATION_OPTIONS,
   describeAudioOutput,
   fromAudioOutputKey,
   listAudioOutputOptions,
@@ -25,7 +27,10 @@ import {
   toAudioOutputKey,
 } from "./SettingsAudioSection.utils";
 
-/** How the application plays sound: on which device, how loud each category, and whether it mutes in the background. */
+/**
+ * How the application plays sound: on which device, how loud each category, how placed sounds reach the ears, and
+ * whether it mutes in the background.
+ */
 export function SettingsAudioSection(): ReactElement {
   const audioSettingsService: AudioSettingsService = useInjection(AudioSettingsService);
 
@@ -62,6 +67,14 @@ export function SettingsAudioSection(): ReactElement {
           onChange={(value: number) => audioSettingsService.setVolume(volume, value)}
         />
       ))}
+
+      <ChoiceListFormRow
+        label={"Placed sounds"}
+        description={"How sounds placed in a level reach your ears."}
+        options={AUDIO_SPATIALIZATION_OPTIONS}
+        value={settings.spatialization ?? EAudioSpatialization.HEADPHONES}
+        onChange={audioSettingsService.setSpatialization}
+      />
 
       <CheckboxFormRow
         label={"Mute in the background"}

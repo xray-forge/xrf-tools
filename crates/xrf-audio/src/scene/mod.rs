@@ -1,3 +1,4 @@
+pub(crate) mod audio_acoustics_report;
 pub(crate) mod audio_emitter_report;
 pub(crate) mod audio_listener;
 pub(crate) mod audio_scene_emitter;

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use xrf_app_core::preferences::PreferenceKey;
-use xrf_audio::{AudioBus, AudioGains, AudioOutputChoice};
+use xrf_audio::{AudioBus, AudioGains, AudioOutputChoice, AudioSpatialization};
 
 use crate::settings::audio_volumes::AudioVolumes;
 
@@ -15,6 +15,10 @@ pub struct AudioSettings {
   pub volumes: AudioVolumes,
   /// Whether sound falls silent while no window of the application has the focus.
   pub is_muted_in_background: bool,
+  /// Whether placed sounds are heard for headphones, through the HRTF, or panned for speakers; settings kept before
+  /// there was a choice take headphones.
+  #[serde(default)]
+  pub spatialization: AudioSpatialization,
 }
 
 impl AudioSettings {
@@ -46,6 +50,7 @@ impl Default for AudioSettings {
       output: AudioOutputChoice::SystemDefault,
       volumes: AudioVolumes::default(),
       is_muted_in_background: true,
+      spatialization: AudioSpatialization::default(),
     }
   }
 }

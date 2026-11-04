@@ -3,10 +3,15 @@ use std::time::Instant;
 
 use rtrb::{Consumer, Producer};
 
+use crate::acoustics::audio_acoustics::AudioAcoustics;
+use crate::acoustics::effects::ear_blocks::EarBlocks;
+use crate::control::engine_shared::EngineShared;
 use crate::mixer::audio_bus::AudioBus;
 use crate::mixer::audio_mixer_meter::AudioMixerMeter;
 use crate::mixer::gain_ramp::GainRamp;
 use crate::mixer::mixer_command::MixerCommand;
+use crate::mixer::mixer_reverb::MixerReverb;
+use crate::mixer::reverb_parameters::ReverbParameters;
 use crate::voice::audio_voice_id::AudioVoiceId;
 use crate::voice::audio_voice_playback::AudioVoicePlayback;
 use crate::voice::audio_voice_state::AudioVoiceState;
@@ -14,12 +19,8 @@ use crate::voice::shared::voice_parameters::VoiceParameters;
 use crate::voice::shared::voice_status::VoiceStatus;
 use crate::voice::voice::Voice;
 
-/// The audio thread's half: a fixed pool of voice slots mixed into their buses, the buses into the master, and the
-/// master into the device's buffer.
-///
-/// It takes no lock and allocates nothing while rendering: commands arrive through a ring, each slot's continuous
-/// controls through its parameter block, voices arrive boxed, and a voice that ends goes back through another ring to
-/// be freed by the control side.
+/// The audio thread's half: a fixed pool of voice slots mixed into their buses, the buses and the listener's reverb into
+/// the master, and the master into the device's buffer.
 pub struct AudioMixer {
   voices: Box<[Option<Box<Voice>>]>,
   commands: Consumer<MixerCommand>,
@@ -32,8 +33,20 @@ pub struct AudioMixer {
   master: GainRamp,
   /// Each bus's stereo pairs for one block.
   bus_buffers: [Box<[f32]>; AudioBus::COUNT],
+  /// What each bus's voices send the listener's reverb in one block, taken at the bus's gain.
+  reverb_sends: [Box<[f32]>; AudioBus::COUNT],
+  /// What the reverb hears in one block.
+  reverb_input: Box<[f32]>,
+  reverb: Option<Box<MixerReverb>>,
+  /// How the reverb decays, written by the control side.
+  reverb_parameters: Arc<ReverbParameters>,
+  acoustics: AudioAcoustics,
   /// Where a voice renders its source for one block before writing it to its bus.
   voice_block: Box<[f32]>,
+  /// The last block rendered, in stereo pairs, which buffers are filled from.
+  block: Box<[f32]>,
+  /// Frames of [`Self::block`] already handed out.
+  block_read: usize,
   output_rate: u32,
   /// Frames a gain change takes.
   ramp_frames: u32,
@@ -55,13 +68,15 @@ impl AudioMixer {
   /// Seconds a pause, resume or stop fades over.
   const FADE_SECONDS: f64 = 0.005;
 
-  pub(crate) fn new(
-    commands: Consumer<MixerCommand>,
-    retired: Producer<Box<Voice>>,
-    parameters: Arc<[VoiceParameters]>,
-    statuses: Arc<[VoiceStatus]>,
-    meter: AudioMixerMeter,
-  ) -> Self {
+  pub(crate) fn new(commands: Consumer<MixerCommand>, retired: Producer<Box<Voice>>, shared: EngineShared) -> Self {
+    let EngineShared {
+      parameters,
+      statuses,
+      meter,
+      acoustics,
+      reverb: reverb_parameters,
+    } = shared;
+    let block = || vec![0.0; Self::BLOCK_FRAMES * 2].into_boxed_slice();
     let mut mixer: Self = Self {
       voices: (0..statuses.len()).map(|_| None).collect(),
       commands,
@@ -70,9 +85,16 @@ impl AudioMixer {
       statuses,
       buses: [GainRamp::new(1.0); AudioBus::COUNT],
       master: GainRamp::new(1.0),
-      bus_buffers: std::array::from_fn(|_| vec![0.0; Self::BLOCK_FRAMES * 2].into_boxed_slice()),
-      voice_block: vec![0.0; Self::BLOCK_FRAMES * 2].into_boxed_slice(),
-      output_rate: Self::DEFAULT_OUTPUT_RATE,
+      bus_buffers: std::array::from_fn(|_| block()),
+      reverb_sends: std::array::from_fn(|_| vec![0.0; Self::BLOCK_FRAMES].into_boxed_slice()),
+      reverb_input: vec![0.0; Self::BLOCK_FRAMES].into_boxed_slice(),
+      reverb: None,
+      reverb_parameters,
+      acoustics,
+      voice_block: block(),
+      block: block(),
+      block_read: Self::BLOCK_FRAMES,
+      output_rate: 0,
       ramp_frames: 0,
       fade_frames: 0,
       meter,
@@ -86,9 +108,16 @@ impl AudioMixer {
     self.output_rate
   }
 
-  /// Renders at `rate` from the next buffer on; the device sets it to the rate it opened with.
+  /// Renders at `rate` from the next buffer on; the device sets it to the rate it opened with, before it plays, which
+  /// is when the reverb is made again for a new rate.
   pub fn set_output_rate(&mut self, rate: u32) {
-    self.output_rate = rate.max(1);
+    let rate: u32 = rate.max(1);
+
+    if rate != self.output_rate || (self.reverb.is_none() && self.acoustics.is_running()) {
+      self.reverb = MixerReverb::for_acoustics(&self.acoustics, rate);
+    }
+
+    self.output_rate = rate;
     self.meter.set_rate(self.output_rate);
     self.ramp_frames = Self::to_frames(Self::RAMP_SECONDS, self.output_rate);
     self.fade_frames = Self::to_frames(Self::FADE_SECONDS, self.output_rate);
@@ -98,16 +127,39 @@ impl AudioMixer {
   /// the mix, any further ones silence, and a single channel the two averaged.
   ///
   /// Commands and parameters are taken before each block, so a command waits at most [`Self::BLOCK_FRAMES`] however
-  /// long the device's buffer is.
+  /// long the device's buffer is; what a buffer leaves of a block plays at the start of the next.
   pub fn render(&mut self, out: &mut [f32], channels: usize) {
     let started: Instant = Instant::now();
     let channels: usize = channels.max(1);
     let frames: usize = out.len() / channels;
+    let mut written: usize = 0;
 
-    for chunk in out.chunks_mut(Self::BLOCK_FRAMES * channels) {
-      self.take_commands();
-      self.follow_parameters();
-      self.render_block(chunk, channels);
+    while written < frames {
+      if self.block_read == Self::BLOCK_FRAMES {
+        self.take_commands();
+        self.follow_parameters();
+        self.render_block();
+        self.block_read = 0;
+      }
+
+      let count: usize = (Self::BLOCK_FRAMES - self.block_read).min(frames - written);
+      let pairs: &[[f32; 2]] = &self.block.as_chunks::<2>().0[self.block_read..self.block_read + count];
+
+      for (samples, [left, right]) in out[written * channels..(written + count) * channels]
+        .chunks_exact_mut(channels)
+        .zip(pairs)
+      {
+        if channels == 1 {
+          samples[0] = (left + right) * 0.5;
+        } else {
+          samples[0] = *left;
+          samples[1] = *right;
+          samples[2..].fill(0.0);
+        }
+      }
+
+      self.block_read += count;
+      written += count;
     }
 
     let voices: u32 = self.report();
@@ -126,20 +178,26 @@ impl AudioMixer {
     &self.meter
   }
 
-  fn render_block(&mut self, out: &mut [f32], channels: usize) {
-    let frames: usize = out.len() / channels;
-
+  /// Renders the next block into [`Self::block`]: every voice into its bus, the buses and what they send the reverb at
+  /// their gains, the reverb, then the master.
+  fn render_block(&mut self) {
     for buffer in &mut self.bus_buffers {
-      buffer[..frames * 2].fill(0.0);
+      buffer.fill(0.0);
+    }
+
+    for send in &mut self.reverb_sends {
+      send.fill(0.0);
     }
 
     for slot in &mut self.voices {
       let Some(voice) = slot else {
         continue;
       };
+      let bus: usize = voice.bus.get_index();
 
       if !voice.mix(
-        &mut self.bus_buffers[voice.bus.get_index()][..frames * 2],
+        &mut self.bus_buffers[bus],
+        &mut self.reverb_sends[bus],
         &mut self.voice_block,
         self.output_rate,
       ) {
@@ -147,26 +205,39 @@ impl AudioMixer {
       }
     }
 
-    for (frame, samples) in out.chunks_exact_mut(channels).enumerate() {
+    self.reverb_input.fill(0.0);
+
+    for (frame, pair) in self.block.as_chunks_mut::<2>().0.iter_mut().enumerate() {
       let mut left: f32 = 0.0;
       let mut right: f32 = 0.0;
+      let mut sent: f32 = 0.0;
 
-      for (bus, buffer) in self.buses.iter_mut().zip(&self.bus_buffers) {
+      for ((bus, buffer), send) in self.buses.iter_mut().zip(&self.bus_buffers).zip(&self.reverb_sends) {
         let gain: f32 = bus.next();
 
         left += buffer[frame * 2] * gain;
         right += buffer[frame * 2 + 1] * gain;
+        sent += send[frame] * gain;
       }
 
+      *pair = [left, right];
+      self.reverb_input[frame] = sent;
+    }
+
+    if let Some(reverb) = self.reverb.as_deref_mut() {
+      let EarBlocks { left, right } = reverb.apply(self.reverb_parameters.get_times(), &self.reverb_input);
+
+      for ((pair, left), right) in self.block.as_chunks_mut::<2>().0.iter_mut().zip(left).zip(right) {
+        pair[0] += left;
+        pair[1] += right;
+      }
+    }
+
+    for pair in self.block.as_chunks_mut::<2>().0 {
       let master: f32 = self.master.next();
 
-      if channels == 1 {
-        samples[0] = (left + right) * 0.5 * master;
-      } else {
-        samples[0] = left * master;
-        samples[1] = right * master;
-        samples[2..].fill(0.0);
-      }
+      pair[0] *= master;
+      pair[1] *= master;
     }
   }
 

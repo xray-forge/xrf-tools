@@ -180,6 +180,27 @@ export type WorldSectorSkip = {
   skip: SectorSkip;
 };
 
+/**
+ * How the host's acoustics shape a scene's sound: whether they run or the scene plays dry and why, the walls they
+ * trace, and the reverb they hear around the listener.
+ */
+export type WorldSoundAcousticsReport = {
+  /** Why the scene plays dry, placed by distance and panning alone; none while the acoustics run. */
+  failure: string | null;
+  /** The triangles the acoustics trace, none while the level's walls are built or where there are none. */
+  triangles: number | null;
+  /** Why the walls shape nothing though the acoustics run. */
+  geometryFailure: string | null;
+  /** The listener's reverb, each band's decay time in seconds (below 800 Hz, to 8 kHz, above). */
+  reverbTimes: [number | null, number | null, number | null];
+  /** How long the walls took to read and build, in milliseconds. */
+  buildMs: number | null;
+  /** How long the last simulation of the sounds' ways through the walls took, in milliseconds. */
+  directMs: number | null;
+  /** How long the last simulation of the reverb took, in milliseconds. */
+  reflectionsMs: number | null;
+};
+
 /** The volumes a level's sounds are heard at, which the viewer switches each on or off. */
 export enum EWorldSoundCategory {
   MUSIC = "music",
@@ -262,6 +283,8 @@ export type WorldSoundReport = {
   targets: number;
   /** The mixer's share of the device's period, as last measured. */
   mixerLoad: number | null;
+  /** How the host's acoustics shape the scene, none until the audio has taken it. */
+  acoustics: WorldSoundAcousticsReport | null;
 };
 
 /**
@@ -288,8 +311,16 @@ export type WorldSoundVoiceReport = {
   is2d: boolean;
   /** Metres from the listener; none for a 2D sound. */
   distance: number | null;
-  /** Its linear gain after its volume, attenuation and smoothing, none until the audio has taken it. */
+  /** Its linear gain after its volume, fade and distance, before walls, none until the audio has taken it. */
   gain: number | null;
+  /** The share of it heard unobstructed by the level's walls, from 0 to 1, none until the audio has taken it. */
+  occlusion: number | null;
+  /** What the walls in its way let through in each band (below 800 Hz, to 8 kHz, above), from 0 to 1. */
+  transmission: [number | null, number | null, number | null] | null;
+  /** How much of it the listener's reverb hears. */
+  reverbSend: number | null;
+  /** Whether it reaches the ears through the HRTF rather than panned. */
+  isBinaural: boolean;
   /** Whether it holds one of the engine's targets, so plays on the device, rather than only simulating. */
   isReal: boolean;
   /** Whether its sound is still being read. */

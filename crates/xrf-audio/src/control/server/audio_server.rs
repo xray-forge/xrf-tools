@@ -6,6 +6,8 @@ use std::time::{Duration, Instant};
 
 use xrf_error::{XrfError, XrfResult};
 
+use crate::acoustics::audio_acoustics::AudioAcoustics;
+use crate::acoustics::audio_spatialization::AudioSpatialization;
 use crate::control::audio_engine::AudioEngine;
 use crate::control::audio_engine_parts::AudioEngineParts;
 use crate::control::audio_engine_settings::AudioEngineSettings;
@@ -17,6 +19,7 @@ use crate::device::audio_output::AudioOutput;
 use crate::device::audio_output_choice::AudioOutputChoice;
 use crate::device::audio_output_status::AudioOutputStatus;
 use crate::host::audio_asset_source::AudioAssetSource;
+use crate::host::audio_scene_geometry::AudioSceneGeometry;
 use crate::mixer::audio_bus::AudioBus;
 use crate::mixer::audio_mixer_meter::AudioMixerMeter;
 use crate::scene::audio_scene_inbox::AudioSceneInbox;
@@ -60,8 +63,8 @@ impl AudioServer {
   /// Requests that queue before a sender waits for the thread.
   const REQUESTS_COUNT: usize = 256;
 
-  /// A server playing on the device `choice` names, with an engine sized by `settings`. A device that cannot start
-  /// leaves the server playing to nothing, and the reason in the log.
+  /// A server playing on the device `choice` names, with an engine sized by `settings` whose placed voices are heard
+  /// through `acoustics`. A device that cannot start leaves the server playing to nothing, and the reason in the log.
   ///
   /// # Errors
   ///
@@ -69,9 +72,10 @@ impl AudioServer {
   pub fn start(
     settings: AudioEngineSettings,
     choice: AudioOutputChoice,
+    acoustics: AudioAcoustics,
     events: impl AudioEventSink,
   ) -> XrfResult<Self> {
-    let AudioEngineParts { engine, mixer } = AudioEngineParts::new(settings);
+    let AudioEngineParts { engine, mixer } = AudioEngineParts::with_acoustics(settings, acoustics);
     let output: Option<AudioOutput> = AudioOutput::start(mixer, choice)
       .inspect_err(|error| log::error!("No audio: {error}"))
       .ok();
@@ -158,19 +162,32 @@ impl AudioServer {
   }
 
   /// Opens a scene the control thread plays from the frames sent through the inbox answered, its sounds read through
-  /// `assets`. Dropping the inbox closes the scene.
+  /// `assets`, its walls and rooms from `geometry` where the host has it. Dropping the inbox closes the scene.
   ///
   /// # Errors
   ///
   /// Returns an error when the control thread has ended.
-  pub fn open_scene(&self, assets: Arc<dyn AudioAssetSource>) -> XrfResult<AudioSceneInbox> {
+  pub fn open_scene(
+    &self,
+    assets: Arc<dyn AudioAssetSource>,
+    geometry: Option<Arc<dyn AudioSceneGeometry>>,
+  ) -> XrfResult<AudioSceneInbox> {
     let (inbox, mailbox) = AudioSceneInbox::open();
 
-    if self.post(ControlRequest::OpenScene { mailbox, assets }) {
+    if self.post(ControlRequest::OpenScene {
+      mailbox,
+      assets,
+      geometry,
+    }) {
       Ok(inbox)
     } else {
       Err(Self::new_ended())
     }
+  }
+
+  /// Places sounds for headphones or speakers from the next tick.
+  pub fn set_spatialization(&self, spatialization: AudioSpatialization) {
+    self.post(ControlRequest::SetSpatialization(spatialization));
   }
 
   /// How the scene the host names `scene` plays now, none for a scene not open.

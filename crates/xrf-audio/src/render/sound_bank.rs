@@ -21,6 +21,15 @@ pub(crate) enum BankedSound {
 }
 
 impl BankedSound {
+  /// How many channels it plays in, none until it is read or once it is refused.
+  pub(crate) fn get_channel_count(&self) -> Option<usize> {
+    match self {
+      Self::Decoded(sound) => Some(sound.get_channels().get_count()),
+      Self::Streamed { format, .. } => Some(format.channels.get_count()),
+      Self::Loading | Self::Refused(_) => None,
+    }
+  }
+
   /// The bytes it holds in memory.
   fn get_size(&self) -> usize {
     match self {

@@ -4,7 +4,10 @@
       "../../../.sdks/dxc/dxcompiler.dll": "resources/renderer/dxc/dxcompiler.dll",
       "../../../.sdks/dxc/LICENCE-MIT.txt": "resources/renderer/dxc/LICENCE-MIT.txt",
       "../../../.sdks/dxc/LICENSE-LLVM.txt": "resources/renderer/dxc/LICENSE-LLVM.txt",
-      "../../../.sdks/dxc/LICENSE-MS.txt": "resources/renderer/dxc/LICENSE-MS.txt"
+      "../../../.sdks/dxc/LICENSE-MS.txt": "resources/renderer/dxc/LICENSE-MS.txt",
+      "../../../.sdks/steam-audio/phonon.dll": "resources/audio/steam-audio/phonon.dll",
+      "../../../.sdks/steam-audio/LICENSE.md": "resources/audio/steam-audio/LICENSE.md",
+      "../../../.sdks/steam-audio/THIRDPARTY.md": "resources/audio/steam-audio/THIRDPARTY.md"
     }
   }
 }

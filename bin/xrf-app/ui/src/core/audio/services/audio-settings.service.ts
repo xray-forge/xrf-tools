@@ -2,7 +2,12 @@ import { Injectable, OnProvision } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable, runInAction } from "@wirestate/mobx";
 import { audioCommands } from "@xrf/ipc/commands/audio";
 import { AudioSettings } from "@xrf/ipc/types/xrf-app-audio";
-import { AudioDeviceDescription, AudioOutputChoice, AudioOutputStatus } from "@xrf/ipc/types/xrf-audio";
+import {
+  AudioDeviceDescription,
+  AudioOutputChoice,
+  AudioOutputStatus,
+  AudioSpatialization,
+} from "@xrf/ipc/types/xrf-audio";
 import { Logger } from "@xrf/logging";
 import { saturate } from "@xrf/math";
 import { Nullable } from "@xrf/types";
@@ -10,9 +15,9 @@ import { Nullable } from "@xrf/types";
 import { readAudioVolume, TAudioVolume } from "@/core/audio/lib/audio-volumes";
 
 /**
- * How the application plays sound: the output device, the volumes and the background mute. The backend keeps them
- * between runs, so they hold before any page loads; this reads them once and sends each change, taking back what the
- * backend kept.
+ * How the application plays sound: the output device, the volumes, the background mute, and whether placed sounds are
+ * heard for headphones or speakers. The backend keeps them between runs, so they hold before any page loads; this
+ * reads them once and sends each change, taking back what the backend kept.
  */
 @Injectable()
 export class AudioSettingsService {
@@ -111,6 +116,13 @@ export class AudioSettingsService {
   public setMutedInBackground(isMutedInBackground: boolean): void {
     if (this.settings) {
       void this.write({ ...this.settings, isMutedInBackground });
+    }
+  }
+
+  @BoundAction()
+  public setSpatialization(spatialization: AudioSpatialization): void {
+    if (this.settings) {
+      void this.write({ ...this.settings, spatialization });
     }
   }
 

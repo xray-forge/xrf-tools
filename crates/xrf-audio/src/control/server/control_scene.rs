@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
+use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::control::audio_engine::AudioEngine;
 use crate::host::audio_asset_source::AudioAssetSource;
-use crate::render::scene_render::SceneRender;
-use crate::render::sound_bank::SoundBank;
-use crate::render::stream_launcher::StreamLauncher;
+use crate::host::audio_scene_geometry::AudioSceneGeometry;
+use crate::render::scene::scene_assets::SceneAssets;
+use crate::render::scene::scene_render::SceneRender;
+use crate::render::scene::scene_tick::SceneTick;
 use crate::scene::audio_scene_frame::AudioSceneFrame;
 use crate::scene::audio_scene_inbox::SceneMailbox;
 
@@ -12,20 +14,25 @@ use crate::scene::audio_scene_inbox::SceneMailbox;
 /// plays.
 pub(crate) struct ControlScene {
   mailbox: SceneMailbox,
-  scope: Arc<str>,
-  assets: Arc<dyn AudioAssetSource>,
+  assets: SceneAssets,
   render: SceneRender,
   /// Counts the frames taken, so the emitters a frame no longer names end.
   generation: u64,
 }
 
 impl ControlScene {
-  pub(crate) fn new(mailbox: SceneMailbox, assets: Arc<dyn AudioAssetSource>) -> Self {
+  /// A scene whose frames come through `mailbox`, its sounds read through `assets`, heard through `acoustics` and
+  /// shaped by `geometry` where the host has it.
+  pub(crate) fn new(
+    mailbox: SceneMailbox,
+    assets: Arc<dyn AudioAssetSource>,
+    acoustics: &AudioAcoustics,
+    geometry: Option<Arc<dyn AudioSceneGeometry>>,
+  ) -> Self {
     Self {
       mailbox,
-      scope: Arc::from(assets.get_sound_scope()),
-      assets,
-      render: SceneRender::new(),
+      assets: SceneAssets::new(assets),
+      render: SceneRender::new(acoustics, geometry),
       generation: 0,
     }
   }
@@ -44,15 +51,8 @@ impl ControlScene {
     self.mailbox.frames.is_abandoned() && self.mailbox.frames.is_empty()
   }
 
-  /// Takes the newest frame the host sent, handing back every one it read, and plays on to `mixer_frame` of `rate`.
-  pub(crate) fn tick(
-    &mut self,
-    engine: &mut AudioEngine,
-    bank: &mut SoundBank,
-    streams: &mut StreamLauncher,
-    mixer_frame: u64,
-    rate: u32,
-  ) {
+  /// Takes the newest frame the host sent, handing back every one it read, and plays on to the tick's mixer frame.
+  pub(crate) fn tick(&mut self, tick: SceneTick<'_>) {
     let mut latest: Option<Box<AudioSceneFrame>> = None;
 
     while let Ok(frame) = self.mailbox.frames.pop() {
@@ -63,19 +63,11 @@ impl ControlScene {
 
     if let Some(frame) = latest {
       self.generation += 1;
-      self.render.take(&frame, mixer_frame, rate, self.generation);
+      self.render.take(&frame, tick.mixer_frame, tick.rate, self.generation);
       self.give_back(frame);
     }
 
-    self.render.tick(
-      engine,
-      bank,
-      streams,
-      (&self.scope, &self.assets),
-      mixer_frame,
-      rate,
-      self.generation,
-    );
+    self.render.tick(tick, &self.assets, self.generation);
   }
 
   /// Ends every voice it holds.

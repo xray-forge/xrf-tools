@@ -27,8 +27,6 @@ pub struct WorldSoundEmitter {
   pub min_distance: f32,
   pub max_distance: f32,
   pub base_volume: f32,
-  /// Whether the scene's geometry occludes it: never for a world-ambient sound.
-  pub is_occluded: bool,
   /// Whether it feeds the reverb: never for Monolith's music, played `sm_Intro`.
   pub has_reverb: bool,
 }
