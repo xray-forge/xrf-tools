@@ -334,6 +334,37 @@ mod steam {
     );
   }
 
+  /// Ground at `y`, 40 m across about the listener, facing up.
+  fn ground(y: f32) -> AudioSceneMesh {
+    let mut mesh: AudioSceneMesh = AudioSceneMesh {
+      materials: vec![CONCRETE],
+      ..AudioSceneMesh::default()
+    };
+
+    quad(
+      &mut mesh,
+      [[-20.0, y, -20.0], [20.0, y, -20.0], [20.0, y, 20.0], [-20.0, y, 20.0]],
+      [0.0, y + 1.0, 0.0],
+      0,
+    );
+
+    mesh
+  }
+
+  // A level places a zone by its foot, a few centimetres into the ground as often as not: the ground it stands on hides
+  // none of it from a listener across open ground, though Steam Audio hears nothing of a sound whose centre is under a
+  // surface.
+  #[test]
+  fn hears_a_sound_standing_on_the_ground_across_open_ground() {
+    let heard: Heard = hear_through(Some(ground(-1.7)), [0.0, -1.75, 10.0]);
+
+    assert!(
+      heard.report.emitters[0].occlusion > 0.9,
+      "{:?}",
+      heard.report.emitters[0]
+    );
+  }
+
   #[test]
   fn lets_a_sound_through_a_doorway() {
     let heard: Heard = hear_through(
