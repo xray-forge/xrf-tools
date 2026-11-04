@@ -642,6 +642,49 @@ mod steam {
     assert!(first.iter().zip(&second).all(|(a, b)| a.to_bits() == b.to_bits()));
   }
 
+  // A placed tone switching between the HRTF and panning every four blocks crosses between them over a block, so no
+  // step between two frames at a switch is much larger than the tone's own steps away from one.
+  #[test]
+  fn crosses_between_the_hrtf_and_panning_without_a_step() {
+    let acoustics: AudioAcoustics = checkout_acoustics();
+    let steam = acoustics.get_steam().expect("Steam Audio runs");
+    let mut effects = steam.create_voice_effects(RATE).expect("the effects are made");
+    let tone: Vec<f32> = (0..AudioMixer::BLOCK_FRAMES * 32)
+      .map(|frame| (frame as f32 * 440.0 * std::f32::consts::TAU / RATE as f32).sin() * 0.5)
+      .collect();
+    let mut left: Vec<f32> = Vec::with_capacity(tone.len());
+
+    for (index, block) in tone.as_chunks::<{ AudioMixer::BLOCK_FRAMES }>().0.iter().enumerate() {
+      let parameters: VoiceSpatialParameters = VoiceSpatialParameters {
+        direction: [0.6, 0.0, -0.8],
+        attenuation: 1.0,
+        is_binaural: (index / 4) % 2 == 0,
+        ..VoiceSpatialParameters::default()
+      };
+
+      left.extend_from_slice(effects.apply(&parameters, block).ears.left);
+    }
+
+    let step = |at: usize| (left[at] - left[at - 1]).abs();
+    let switches: Vec<usize> = (1..8).map(|switch| switch * 4 * AudioMixer::BLOCK_FRAMES).collect();
+    let at_switch: f32 = switches.iter().map(|at| step(*at)).fold(0.0, f32::max);
+    // Away from a switch and past the first block, where the effects fill their history.
+    let steady: f32 = (AudioMixer::BLOCK_FRAMES * 2..left.len())
+      .filter(|at| {
+        switches
+          .iter()
+          .all(|switch| at.abs_diff(*switch) > AudioMixer::BLOCK_FRAMES)
+      })
+      .map(step)
+      .fold(0.0, f32::max);
+
+    assert!(steady > 0.0);
+    assert!(
+      at_switch < steady * 1.5,
+      "{at_switch} at a switch, {steady} away from one"
+    );
+  }
+
   #[test]
   fn renders_placed_voices_and_the_reverb_without_allocating() {
     let acoustics: AudioAcoustics = checkout_acoustics();
