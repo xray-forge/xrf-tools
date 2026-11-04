@@ -121,6 +121,7 @@ pub use crate::contract::report::frame::render_memory_report::RenderMemoryReport
 pub use crate::contract::report::frame::render_memory_section::RenderMemorySection;
 pub use crate::contract::report::frame::render_pass_cost::RenderPassCost;
 pub use crate::contract::report::frame::render_pool_use::RenderPoolUse;
+pub use crate::contract::report::frame::render_viewport_job::RenderViewportJob;
 pub use crate::contract::report::graph::render_graph_pass::RenderGraphPass;
 pub use crate::contract::report::graph::render_graph_pass_kind::RenderGraphPassKind;
 pub use crate::contract::report::graph::render_graph_report::RenderGraphReport;

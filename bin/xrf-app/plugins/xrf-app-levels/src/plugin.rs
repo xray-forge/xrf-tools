@@ -8,6 +8,7 @@ use xrf_audio::AudioServer;
 
 use crate::level::{OpenedLevel, SelectedLevels};
 use crate::render::{LevelRenderParts, LevelSceneFollower, ShownLevels};
+use crate::viewer::recording::LevelRecordings;
 
 /// The `levels` plugin: compiled levels opened as documents whose parts follow commits, shown in a viewport, and
 /// captured or exported through the viewer.
@@ -49,6 +50,7 @@ impl LevelsPlugin {
 
         application.manage(levels);
         application.manage(shown);
+        application.manage(LevelRecordings::default());
 
         Ok(())
       })

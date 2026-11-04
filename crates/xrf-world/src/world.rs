@@ -40,7 +40,9 @@ pub struct World {
   next_scene: u32,
   /// The pool its levels and weather are read on.
   workers: RenderWorkers,
-  /// The viewport heard, as the host last named it, and the last one shown a level, heard while the host names none.
+  /// The viewport heard whatever the host names while it is pinned, as a recording pins its viewport; the viewport heard,
+  /// as the host last named it; and the last one shown a level, heard while the host names none.
+  pinned: Option<RenderViewportId>,
   listener: Option<RenderViewportId>,
   last_shown: Option<RenderViewportId>,
 }
@@ -52,15 +54,22 @@ impl World {
       scenes: HashMap::new(),
       next_scene: 1,
       workers,
+      pinned: None,
       listener: None,
       last_shown: None,
     }
   }
 
   /// Hears the scene a viewport shows from its camera from the next frame on: the focused window's active pane. Every
-  /// other scene falls silent and plays on.
+  /// other scene falls silent and plays on. A pinned viewport is heard over it until it is let go.
   pub fn set_listener(&mut self, viewport: RenderViewportId) {
     self.listener = Some(viewport);
+  }
+
+  /// Hears `viewport` whatever the host names from the next frame on, as a recording of it does; none lets it go, the
+  /// viewport the host last named heard again.
+  pub fn pin_listener(&mut self, viewport: Option<RenderViewportId>) {
+    self.pinned = viewport;
   }
 
   /// What the scene a viewport shows plays as the world schedules it, and the scene; none for a viewport showing no
@@ -82,12 +91,15 @@ impl World {
       .is_some_and(|scene| scene.level.command_music(command))
   }
 
-  /// The viewport heard: the one the host named while it is attached, else the last shown a level.
-  fn get_listener(&self) -> Option<RenderViewportId> {
+  /// The viewport heard: the pinned one, else the one the host named, while it is attached; else the last shown a level.
+  pub(crate) fn get_listener(&self) -> Option<RenderViewportId> {
+    let is_attached = |viewport: &RenderViewportId| self.viewports.contains_key(viewport);
+
     self
-      .listener
-      .filter(|viewport| self.viewports.contains_key(viewport))
-      .or(self.last_shown.filter(|viewport| self.viewports.contains_key(viewport)))
+      .pinned
+      .filter(is_attached)
+      .or(self.listener.filter(is_attached))
+      .or(self.last_shown.filter(is_attached))
   }
 
   /// Starts a viewport's world, publishing its camera and weather on `sink`: the one door a viewport's world opens by,

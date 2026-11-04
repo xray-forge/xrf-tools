@@ -341,16 +341,22 @@ export const LEVEL_TEXTURES_PART = "textures" as const;
 /** What a change event calls what a level's weather plays with beyond its environment when it goes stale. */
 export const LEVEL_WEATHER_PART = "weather" as const;
 
-/** A burst asked of a viewport, and the name of the folder of the level viewer's bursts it is written into. */
+/**
+ * A burst asked of a viewport, the name of the folder of the level viewer's bursts it is written into, whether it
+ * records the sound the viewport's camera hears at the burst's times as `sound.wav` beside its frames, and whether it
+ * writes its frames with that sound as `burst.mp4`.
+ */
 export type BurstCaptureRequest = {
   viewport: RenderViewportId;
   burst: RenderBurst;
   name: string;
+  hasSound: boolean;
+  hasVideo: boolean;
 };
 
 /**
- * A burst written: its folder, the scene's seconds each frame was drawn at in the order written, and the sizes of
- * its frames and of their marks.
+ * A burst written: its folder, the scene's seconds each frame was drawn at in the order written, the sizes of its
+ * frames and of their marks, its sound where it was asked to record one, and its video where it was asked to make one.
  */
 export type BurstOutcome = {
   folder: string;
@@ -359,6 +365,32 @@ export type BurstOutcome = {
   height: number;
   marksWidth: number;
   marksHeight: number;
+  sound: BurstSoundOutcome | null;
+  video: BurstVideoOutcome | null;
+};
+
+/**
+ * A burst's sound written: its file, its frames a second and channels, and the sound's frame each frame read back
+ * starts at, in the order written.
+ */
+export type BurstSoundOutcome = {
+  file: string;
+  rate: number;
+  channels: number;
+  offsets: Array<number>;
+};
+
+/**
+ * A burst's video written: its file, the frames in it and the last one's end in seconds, the size it was written at,
+ * and the H.264 encoder that wrote it, by its name.
+ */
+export type BurstVideoOutcome = {
+  file: string;
+  frames: number;
+  duration: number | null;
+  width: number;
+  height: number;
+  encoder: string;
 };
 
 /** A cubemap asked of a viewport, and the cross PNG it is written to. */
@@ -1001,6 +1033,40 @@ export type MapExportRequest = {
   backdrop: [number, number, number] | null;
   /** Whether and how its annotations go in, or none for the map alone. */
   annotations: MapExportAnnotations | null;
+};
+
+/** Whether this machine can record a viewport, and why not where it cannot: no Media Foundation, or no audio. */
+export type RecordingAvailability = {
+  isAvailable: boolean;
+  reason: string | null;
+};
+
+/**
+ * A recording written: its file, its length in seconds, its frames, the frames and sound blocks dropped, its size, and
+ * the H.264 encoder that wrote it, by its name.
+ */
+export type RecordingOutcome = {
+  file: string;
+  duration: number | null;
+  frames: number;
+  droppedFrames: number;
+  droppedSound: number;
+  width: number;
+  height: number;
+  encoder: string;
+};
+
+/**
+ * Where a recording stands, sent a few times a second while it runs: the seconds of it written since its first frame,
+ * its frames, and the frames and sound blocks dropped, the recorder having fallen behind. Its last, where it ended by
+ * itself, says why.
+ */
+export type RecordingProgress = {
+  elapsed: number | null;
+  frames: number;
+  droppedFrames: number;
+  droppedSound: number;
+  ended: string | null;
 };
 
 /**

@@ -84,6 +84,7 @@ export const EMPTY_RENDER_FRAME_REPORT: RenderFrameReport = {
   isRayReconstructed: false,
   height: 0,
   isGpuTimed: false,
+  job: null,
   lights: EMPTY_RENDER_LIGHTS_REPORT,
   memory: { allocated: null, budget: null, peakAllocated: null, reserved: null, sections: [], total: null, used: null },
   meter: null,
