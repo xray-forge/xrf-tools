@@ -145,8 +145,6 @@ export function MenubarList({ label, sections, focus, onClose, onKeyDown, onChoo
     [isSubmenu, onClose, onKeyDown]
   );
 
-  useEffect(() => cancelHover, [cancelHover]);
-
   // Rows and dividers as one flat list: `MenuList` walks its direct children to find the row to focus, and refuses a
   // fragment among them.
   const children: Array<ReactElement> = sections.flatMap((entries: ReadonlyArray<TMenubarEntry>, index: number) => [
@@ -172,6 +170,8 @@ export function MenubarList({ label, sections, focus, onClose, onKeyDown, onChoo
       )
     ),
   ]);
+
+  useEffect(() => cancelHover, [cancelHover]);
 
   return (
     <MenuList

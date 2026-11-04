@@ -11,18 +11,19 @@ import { ChangeEvent, ReactElement, RefObject, useCallback, useEffect, useRef, u
 
 import { formatLevelSoundSeconds, formatLevelSoundTrackTime } from "@/tools/level-viewer/lib/sound/level-sound-format";
 
+/** A seek let go of: the point shown until a report made after the world took it replaces it. */
+interface ILevelSoundSeek {
+  position: number;
+  track: Nullable<string>;
+  /** Once the world answered: the report shown then, and how many came since. */
+  answered: Nullable<{ last: Nullable<WorldSoundMusicReport>; reports: number }>;
+}
+
 /** What the track list holds for the game's own pick. */
 const BY_SCHEDULE: string = "";
 
 /** A second, the seek slider's step. */
 const SECOND_MS: number = 1000;
-
-interface ILevelSoundMusicSectionProps extends BaseComponentProps {
-  /** Where the level's music stands, null for a level naming none. */
-  music: Nullable<WorldSoundMusicReport>;
-  /** Asks the world, settling once it has answered. */
-  onCommand: (command: WorldMusicCommand) => Promise<unknown>;
-}
 
 /** How far from a seek's point a report may stand and still be one made after it. */
 const SEEK_REACHED_MS: number = 2000;
@@ -30,12 +31,11 @@ const SEEK_REACHED_MS: number = 2000;
 /** Reports after the world answered a seek past which the slider follows them whatever they say. */
 const SEEK_REPORTS_MOST: number = 2;
 
-/** A seek let go of: the point shown until a report made after the world took it replaces it. */
-interface ILevelSoundSeek {
-  position: number;
-  track: Nullable<string>;
-  /** Once the world answered: the report shown then, and how many came since. */
-  answered: Nullable<{ last: Nullable<WorldSoundMusicReport>; reports: number }>;
+interface ILevelSoundMusicSectionProps extends BaseComponentProps {
+  /** Where the level's music stands, null for a level naming none. */
+  music: Nullable<WorldSoundMusicReport>;
+  /** Asks the world, settling once it has answered. */
+  onCommand: (command: WorldMusicCommand) => Promise<unknown>;
 }
 
 /**
