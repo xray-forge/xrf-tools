@@ -2,27 +2,26 @@ use std::sync::Arc;
 
 use rtrb::{Consumer, Producer};
 
+use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::control::audio_play::AudioPlay;
 use crate::control::audio_refusal::AudioRefusal;
+use crate::control::engine_shared::EngineShared;
 use crate::control::voice_slots::VoiceSlots;
 use crate::mixer::audio_bus::AudioBus;
 use crate::mixer::audio_mixer_meter::AudioMixerMeter;
 use crate::mixer::mixer_command::MixerCommand;
+use crate::mixer::reverb_parameters::ReverbParameters;
 use crate::voice::audio_voice_id::AudioVoiceId;
 use crate::voice::audio_voice_playback::AudioVoicePlayback;
 use crate::voice::audio_voice_state::AudioVoiceState;
 use crate::voice::shared::voice_parameters::VoiceParameters;
+use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
 use crate::voice::shared::voice_status::VoiceStatus;
 use crate::voice::voice::Voice;
+use crate::voice::voice_spatial::VoiceSpatial;
 
 /// The control side of the audio: it starts, steers and stops voices on the mixer it was made with
 /// ([`crate::AudioEngineParts::new`]), from any one thread, without waiting on the audio thread.
-///
-/// A voice's life (start, pause, resume, stop) and the mix's levels travel as commands, which a full ring refuses. A
-/// voice's continuous controls (gain, rate, its two pan gains) are written into its slot's parameter block, which never
-/// refuses and keeps only the latest write, however many a buffer brings.
-///
-/// Voices the mixer is done with come back here to be freed, the next time a voice starts or [`Self::collect`] runs.
 pub struct AudioEngine {
   commands: Producer<MixerCommand>,
   retired: Consumer<Box<Voice>>,
@@ -32,16 +31,20 @@ pub struct AudioEngine {
   /// Each slot's voice's first frame, reported while the audio thread has not taken the voice up.
   start_frames: Box<[u64]>,
   meter: AudioMixerMeter,
+  acoustics: AudioAcoustics,
+  /// The listener's reverb on the mixer.
+  reverb: Arc<ReverbParameters>,
 }
 
 impl AudioEngine {
-  pub(crate) fn new(
-    commands: Producer<MixerCommand>,
-    retired: Consumer<Box<Voice>>,
-    parameters: Arc<[VoiceParameters]>,
-    statuses: Arc<[VoiceStatus]>,
-    meter: AudioMixerMeter,
-  ) -> Self {
+  pub(crate) fn new(commands: Producer<MixerCommand>, retired: Consumer<Box<Voice>>, shared: EngineShared) -> Self {
+    let EngineShared {
+      parameters,
+      statuses,
+      meter,
+      acoustics,
+      reverb,
+    } = shared;
     let slots: VoiceSlots = VoiceSlots::new(statuses.len());
     let start_frames: Box<[u64]> = vec![0; statuses.len()].into_boxed_slice();
 
@@ -53,6 +56,8 @@ impl AudioEngine {
       slots,
       start_frames,
       meter,
+      acoustics,
+      reverb,
     }
   }
 
@@ -61,12 +66,52 @@ impl AudioEngine {
     &self.meter
   }
 
+  /// The acoustics placed voices are heard through.
+  pub fn get_acoustics(&self) -> &AudioAcoustics {
+    &self.acoustics
+  }
+
   /// Starts a voice, which the audio thread takes up with the next buffer.
   ///
   /// # Errors
   ///
   /// Refuses the voice when every slot plays or the audio thread has not taken its commands; the source is dropped.
   pub fn play(&mut self, play: AudioPlay) -> Result<AudioVoiceId, AudioRefusal> {
+    self.start(play, None)
+  }
+
+  /// Starts a voice the acoustics place through `spatial`, heard as `parameters` say until they are set again.
+  ///
+  /// # Errors
+  ///
+  /// Refuses the voice as [`Self::play`] does.
+  pub(crate) fn play_placed(
+    &mut self,
+    play: AudioPlay,
+    spatial: Box<VoiceSpatial>,
+    parameters: &VoiceSpatialParameters,
+  ) -> Result<AudioVoiceId, AudioRefusal> {
+    self.start(play, Some((spatial, parameters)))
+  }
+
+  /// Moves a placed voice to how `parameters` say it is heard, from its next block. A voice that has ended is left
+  /// alone.
+  pub(crate) fn set_voice_spatial(&mut self, voice: AudioVoiceId, parameters: &VoiceSpatialParameters) {
+    if let Some(block) = self.get_parameters(voice) {
+      block.set_spatial(parameters);
+    }
+  }
+
+  /// Sets how the listener's reverb decays, each band's time in seconds; nought silences it.
+  pub(crate) fn set_reverb_times(&self, times: [f32; 3]) {
+    self.reverb.set_times(times);
+  }
+
+  fn start(
+    &mut self,
+    play: AudioPlay,
+    spatial: Option<(Box<VoiceSpatial>, &VoiceSpatialParameters)>,
+  ) -> Result<AudioVoiceId, AudioRefusal> {
     self.collect();
 
     let id: AudioVoiceId = self.slots.take().ok_or(AudioRefusal::VoicesExhausted)?;
@@ -78,7 +123,12 @@ impl AudioEngine {
     parameters.set_pan(play.pan);
     self.start_frames[id.slot as usize] = play.source.get_start_frame();
 
-    let voice: Box<Voice> = Box::new(Voice::new(id, play.source, play.bus));
+    let spatial: Option<Box<VoiceSpatial>> = spatial.map(|(spatial, spatial_parameters)| {
+      parameters.set_spatial(spatial_parameters);
+
+      spatial
+    });
+    let voice: Box<Voice> = Box::new(Voice::new(id, play.source, play.bus, spatial));
 
     if self.commands.push(MixerCommand::Start(voice)).is_err() {
       self.slots.give_back(id);

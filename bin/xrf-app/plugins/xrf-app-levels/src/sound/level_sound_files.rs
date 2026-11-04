@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use xrf_sound::{SoundFile, XRaySoundGameType, XRaySoundParameters};
+use xrf_sound::{SoundFile, XRaySoundParameters};
 use xrf_vfs::XraySearch;
 use xrf_world::{WorldSound, WorldSoundInfo};
 
@@ -67,7 +67,6 @@ impl<'a> LevelSoundFiles<'a> {
       min_distance: parameters.min_distance,
       max_distance: parameters.max_distance,
       base_volume: parameters.base_volume,
-      is_world_ambient: parameters.game_type == XRaySoundGameType::WorldAmbient,
     })
   }
 }

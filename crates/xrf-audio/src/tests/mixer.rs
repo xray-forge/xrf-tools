@@ -122,27 +122,59 @@ fn holds_a_paused_voice_in_place_and_ends_a_stopped_one_after_its_fade() {
     .play(AudioPlay::new(looped(&sound), AudioBus::Music))
     .expect("a voice starts");
 
-  render.render(4800);
+  // Buffers of whole blocks, so each command lands at the start of the next buffer.
+  render.render(4608);
   engine.pause(voice).expect("the voice pauses");
-  render.render(480);
+  render.render(512);
 
   let paused_at: u64 = engine.get_playback(voice).frame;
 
   assert_eq!(engine.get_playback(voice).state, AudioVoiceState::Paused);
   assert!(
-    render.render(4800).iter().all(|sample| *sample == 0.0),
+    render.render(4608).iter().all(|sample| *sample == 0.0),
     "a paused voice is silent"
   );
   assert_eq!(engine.get_playback(voice).frame, paused_at);
 
   engine.resume(voice).expect("the voice resumes");
-  render.render(4800);
+  render.render(4608);
   assert_eq!(engine.get_playback(voice).state, AudioVoiceState::Playing);
-  assert_eq!(engine.get_playback(voice).frame, paused_at + 4800);
+  assert_eq!(engine.get_playback(voice).frame, paused_at + 4608);
 
   engine.stop(voice).expect("the voice stops");
-  render.render(480);
+  render.render(512);
   assert_eq!(engine.get_playback(voice).state, AudioVoiceState::Ended);
+}
+
+/// The mixer renders whole blocks and hands a buffer what it asks for out of them: a buffer shorter than a block takes
+/// the rest of the last block first, and a command lands at the next block.
+#[test]
+fn hands_out_whole_blocks_across_buffers_of_any_length() {
+  let sound: Arc<DecodedSound> = Arc::new(sine(RATE, RATE as usize, 1000.0, 0.5, SoundChannels::Mono));
+  let AudioEngineParts {
+    engine: mut whole_engine,
+    mixer: whole_mixer,
+  } = engine(1);
+  let AudioEngineParts {
+    engine: mut cut_engine,
+    mixer: cut_mixer,
+  } = engine(1);
+  let mut whole: OfflineRender = OfflineRender::new(whole_mixer, RATE);
+  let mut cut: OfflineRender = OfflineRender::new(cut_mixer, RATE);
+
+  for engine in [&mut whole_engine, &mut cut_engine] {
+    engine
+      .play(AudioPlay::new(looped(&sound), AudioBus::Music))
+      .expect("a voice starts");
+  }
+
+  let expected: Vec<f32> = whole.render(2400);
+  let pieces: Vec<f32> = [100, 480, 7, 1024, 789]
+    .into_iter()
+    .flat_map(|frames| cut.render(frames))
+    .collect();
+
+  assert_eq!(pieces, expected);
 }
 
 #[test]
@@ -190,20 +222,20 @@ fn follows_a_voice_s_gain_and_rate_from_the_next_buffer() {
     .play(AudioPlay::new(looped(&sound), AudioBus::Ambience))
     .expect("a voice starts");
 
-  render.render(480);
+  render.render(512);
   engine.set_voice_gain(voice, 0.5);
   engine.set_voice_rate(voice, 2.0);
-  render.render(480);
+  render.render(512);
 
   let frame: u64 = engine.get_playback(voice).frame;
-  let out: Vec<f32> = render.render(4800);
+  let out: Vec<f32> = render.render(4608);
 
   assert!(
     (rms_left(&out) - 0.25 / 2f32.sqrt()).abs() < 0.005,
     "{}",
     rms_left(&out)
   );
-  assert_eq!(engine.get_playback(voice).frame, frame + 9600);
+  assert_eq!(engine.get_playback(voice).frame, frame + 9216);
 }
 
 /// Continuous controls never wait on the audio thread: with no device rendering, as many writes as a level's voices
@@ -277,8 +309,9 @@ fn reports_where_a_voice_starts_before_the_audio_thread_takes_it_up() {
     }
   );
 
+  // A buffer shorter than a block still renders a whole one.
   render.render(100);
-  assert_eq!(engine.get_playback(voice).frame, 6100);
+  assert_eq!(engine.get_playback(voice).frame, 6256);
 }
 
 #[test]
@@ -295,8 +328,8 @@ fn plays_a_bad_rate_at_the_sound_s_own_and_a_bad_gain_as_silence() {
       })
       .expect("a voice starts");
 
-    render.render(480);
-    assert_eq!(engine.get_playback(voice).frame, 480, "rate {rate}");
+    render.render(512);
+    assert_eq!(engine.get_playback(voice).frame, 512, "rate {rate}");
   }
 
   for gain in [-1.0, f32::NAN, f32::INFINITY] {

@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+use crate::contract::sound::world_sound_acoustics_report::WorldSoundAcousticsReport;
 use crate::contract::sound::world_sound_channel_report::WorldSoundChannelReport;
 use crate::contract::sound::world_sound_music_report::WorldSoundMusicReport;
 use crate::contract::sound::world_sound_refusal::WorldSoundRefusal;
@@ -28,4 +29,6 @@ pub struct WorldSoundReport {
   pub targets: u32,
   /// The mixer's share of the device's period, as last measured.
   pub mixer_load: Option<f32>,
+  /// How the host's acoustics shape the scene, none until the audio has taken it.
+  pub acoustics: Option<WorldSoundAcousticsReport>,
 }

@@ -3,8 +3,10 @@ use std::sync::mpsc::SyncSender;
 
 use xrf_error::XrfResult;
 
+use crate::acoustics::audio_spatialization::AudioSpatialization;
 use crate::control::server::audio_gains::AudioGains;
 use crate::host::audio_asset_source::AudioAssetSource;
+use crate::host::audio_scene_geometry::AudioSceneGeometry;
 use crate::scene::audio_scene_inbox::SceneMailbox;
 use crate::scene::audio_scene_report::AudioSceneReport;
 use crate::transport::audio_transport::AudioTransport;
@@ -31,11 +33,15 @@ pub(crate) enum ControlRequest {
   /// Sends the transport's state again on the next tick, whether or not it changed.
   ResendTransport(AudioTransportId),
   CloseTransport(AudioTransportId),
-  /// Plays a scene whose frames come through `mailbox`, its sounds read from `assets`.
+  /// Plays a scene whose frames come through `mailbox`, its sounds read from `assets`, shaped by `geometry` where the
+  /// host has it.
   OpenScene {
     mailbox: SceneMailbox,
     assets: Arc<dyn AudioAssetSource>,
+    geometry: Option<Arc<dyn AudioSceneGeometry>>,
   },
+  /// Places sounds for headphones or speakers from the next tick.
+  SetSpatialization(AudioSpatialization),
   /// How the scene the host names `scene` plays, none for a scene not open.
   DescribeScene {
     scene: u32,

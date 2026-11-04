@@ -1,17 +1,22 @@
+use crate::acoustics::effects::ear_blocks::EarBlocks;
+use crate::acoustics::effects::placed_block::PlacedBlock;
 use crate::mixer::audio_bus::AudioBus;
 use crate::mixer::gain_ramp::GainRamp;
 use crate::voice::audio_voice_id::AudioVoiceId;
 use crate::voice::audio_voice_state::AudioVoiceState;
 use crate::voice::cursor::voice_cursor::VoiceCursor;
 use crate::voice::shared::voice_parameters::VoiceParameters;
+use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
 use crate::voice::voice_source::VoiceSource;
+use crate::voice::voice_spatial::VoiceSpatial;
 
 /// A sound playing on the audio thread. Built on the control thread and boxed there, so the audio thread only moves it
 /// in and out of its slot and frees nothing.
 ///
 /// Each block it renders its source, resampled, into a block of the source's own channels, then writes that block to
 /// its bus: what the sound is and where it is heard stay apart, so what shapes the second leaves the first alone. A
-/// voice whose gain has settled at silence only moves on through its source.
+/// voice the acoustics place takes the second step through their effects and sends the listener's reverb its share; a
+/// dry one takes its two pan gains. A voice whose gain has settled at silence only moves on through its source.
 #[derive(Debug)]
 pub(crate) struct Voice {
   pub(crate) id: AudioVoiceId,
@@ -26,6 +31,10 @@ pub(crate) struct Voice {
   /// Playback speed, above zero, 1 at the source's own rate, following the slot's [`VoiceParameters`].
   rate: f32,
   motion: VoiceMotion,
+  /// The acoustics' effects of a placed voice.
+  spatial: Option<Box<VoiceSpatial>>,
+  /// How the effects hear it, following the slot's [`VoiceParameters`].
+  spatial_parameters: VoiceSpatialParameters,
 }
 
 /// Whether a voice moves through its source, and where a fade is taking it.
@@ -40,8 +49,9 @@ enum VoiceMotion {
 }
 
 impl Voice {
-  /// A voice at its slot's parameters, which the mixer applies as it takes the voice up.
-  pub(crate) fn new(id: AudioVoiceId, source: VoiceSource, bus: AudioBus) -> Self {
+  /// A voice at its slot's parameters, which the mixer applies as it takes the voice up, placed through `spatial`
+  /// where the acoustics run.
+  pub(crate) fn new(id: AudioVoiceId, source: VoiceSource, bus: AudioBus, spatial: Option<Box<VoiceSpatial>>) -> Self {
     Self {
       id,
       bus,
@@ -51,6 +61,8 @@ impl Voice {
       fade: GainRamp::new(1.0),
       rate: 1.0,
       motion: VoiceMotion::Playing,
+      spatial,
+      spatial_parameters: VoiceSpatialParameters::default(),
     }
   }
 
@@ -80,6 +92,10 @@ impl Voice {
     }
 
     self.rate = parameters.get_rate();
+
+    if self.spatial.is_some() {
+      self.spatial_parameters = parameters.get_spatial();
+    }
   }
 
   pub(crate) fn pause(&mut self, frames: u32) {
@@ -101,10 +117,11 @@ impl Voice {
     self.fade.set_target(0.0, frames);
   }
 
-  /// Adds the voice's next frames to the stereo pairs of `out` at `output_rate`, rendering its source into `block`,
-  /// scratch of at least two samples a frame. Answers `false` once it has played out or faded out after a stop, when
+  /// Adds the voice's next frames to the stereo pairs of `out` at `output_rate`, and what it sends the listener's
+  /// reverb to `reverb`, one sample a frame, rendering its source into `block`, scratch of at least two samples a frame.
+  /// A placed voice takes whole mixer blocks. Answers `false` once it has played out or faded out after a stop, when
   /// the mixer retires it.
-  pub(crate) fn mix(&mut self, out: &mut [f32], block: &mut [f32], output_rate: u32) -> bool {
+  pub(crate) fn mix(&mut self, out: &mut [f32], reverb: &mut [f32], block: &mut [f32], output_rate: u32) -> bool {
     if self.motion == VoiceMotion::Paused {
       return true;
     }
@@ -122,7 +139,11 @@ impl Voice {
 
       let is_playing: bool = self.cursor.render(block, step);
 
-      self.write_output(block, channels, out);
+      if self.spatial.is_some() {
+        self.write_placed(block, channels, out, reverb);
+      } else {
+        self.write_output(block, channels, out);
+      }
 
       is_playing
     };
@@ -138,9 +159,45 @@ impl Voice {
     is_playing
   }
 
-  /// Whether nothing of it is heard until its gain changes: settled at silence, or on both sides.
+  /// Whether nothing of it is heard until its gain changes: settled at silence, or a dry one on both sides.
   fn is_silent(&self) -> bool {
-    self.gain.is_silent() || self.pan.iter().all(GainRamp::is_silent)
+    self.gain.is_silent() || (self.spatial.is_none() && self.pan.iter().all(GainRamp::is_silent))
+  }
+
+  /// Adds `block`, frames of `channels`, to the stereo pairs of `out` through the acoustics' effects, at the voice's
+  /// gain and fade, and its share to `reverb`: a placed sound is mono, a stereo one heard as both channels averaged.
+  fn write_placed(&mut self, block: &mut [f32], channels: usize, out: &mut [f32], reverb: &mut [f32]) {
+    let Some(spatial) = self.spatial.as_deref_mut() else {
+      return;
+    };
+    let frames: usize = out.len() / 2;
+
+    if channels == 2 {
+      // Each frame lands at or before where it was read, so averaging in place reads every pair before it is written.
+      for frame in 0..frames {
+        block[frame] = (block[frame * 2] + block[frame * 2 + 1]) * 0.5;
+      }
+    }
+
+    let send: f32 = self.spatial_parameters.reverb_send;
+    let PlacedBlock {
+      direct,
+      ears: EarBlocks { left, right },
+    } = spatial.apply(&self.spatial_parameters, &block[..frames]);
+    let pairs: &mut [[f32; 2]] = out.as_chunks_mut::<2>().0;
+
+    for (((pair, left), right), (direct, reverb)) in pairs
+      .iter_mut()
+      .zip(left)
+      .zip(right)
+      .zip(direct.iter().zip(reverb.iter_mut()))
+    {
+      let scale: f32 = self.gain.next() * self.fade.next();
+
+      pair[0] += left * scale;
+      pair[1] += right * scale;
+      *reverb += direct * scale * send;
+    }
   }
 
   /// Adds `block`, frames of `channels`, to the stereo pairs of `out` at the voice's gain, pan and fade: a mono source

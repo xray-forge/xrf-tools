@@ -1,16 +1,21 @@
 use std::sync::atomic::{AtomicU32, Ordering};
 
+use crate::voice::shared::spatial_parameter_block::SpatialParameterBlock;
+use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
+
 /// A voice's continuous controls, in a block per slot that the control side writes and the audio thread reads once a
-/// buffer. Unlike a command, a write never waits on the audio thread and is never refused, and writes between two
-/// buffers coalesce into the last.
+/// block. Unlike a command, a write never waits on the audio thread and is never refused, and writes between two
+/// blocks coalesce into the last.
 #[derive(Debug)]
 pub(crate) struct VoiceParameters {
   /// Linear gain, as `f32` bits, zero or above.
   gain: AtomicU32,
   /// Playback speed, as `f32` bits, above zero.
   rate: AtomicU32,
-  /// Linear gains of the left and right outputs, as `f32` bits, zero or above: where a placed voice is heard.
+  /// Linear gains of the left and right outputs, as `f32` bits, zero or above: where a dry placed voice is heard.
   pan: [AtomicU32; 2],
+  /// How a voice the acoustics place is heard.
+  spatial: SpatialParameterBlock,
 }
 
 impl VoiceParameters {
@@ -49,6 +54,14 @@ impl VoiceParameters {
     }
   }
 
+  pub(crate) fn get_spatial(&self) -> VoiceSpatialParameters {
+    self.spatial.get()
+  }
+
+  pub(crate) fn set_spatial(&self, parameters: &VoiceSpatialParameters) {
+    self.spatial.set(parameters);
+  }
+
   fn to_gain(gain: f32) -> f32 {
     if gain.is_finite() { gain.max(0.0) } else { 0.0 }
   }
@@ -60,6 +73,7 @@ impl Default for VoiceParameters {
       gain: AtomicU32::new(1f32.to_bits()),
       rate: AtomicU32::new(1f32.to_bits()),
       pan: [AtomicU32::new(1f32.to_bits()), AtomicU32::new(1f32.to_bits())],
+      spatial: SpatialParameterBlock::default(),
     }
   }
 }

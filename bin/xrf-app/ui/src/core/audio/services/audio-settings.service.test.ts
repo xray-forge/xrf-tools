@@ -11,6 +11,7 @@ const SETTINGS: AudioSettings = {
   output: { kind: "systemDefault" },
   volumes: { master: 1, music: 1, ambience: 1, world: 1, previews: 1 },
   isMutedInBackground: true,
+  spatialization: "headphones",
 };
 
 async function mockReadService(): Promise<AudioSettingsService> {
@@ -80,5 +81,16 @@ describe("AudioSettingsService", () => {
       settings: { ...SETTINGS, output: { kind: "device", id: "speakers" } },
     });
     expect(service.settings?.isMutedInBackground).toBe(false);
+  });
+
+  it("sends how placed sounds reach the ears", async () => {
+    const service: AudioSettingsService = await mockReadService();
+
+    service.setSpatialization("speakers");
+
+    expect(mockInvoke).toHaveBeenCalledWith(EAudioCommand.SET_SETTINGS, {
+      settings: { ...SETTINGS, spatialization: "speakers" },
+    });
+    expect(service.settings?.spatialization).toBe("speakers");
   });
 });

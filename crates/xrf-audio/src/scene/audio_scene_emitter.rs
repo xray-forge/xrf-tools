@@ -27,6 +27,6 @@ pub struct AudioSceneEmitter {
   pub min_distance: f32,
   pub max_distance: f32,
   pub base_volume: f32,
-  pub is_occluded: bool,
+  /// Whether the listener's reverb hears it.
   pub has_reverb: bool,
 }

@@ -10,6 +10,8 @@ import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import {
+  formatLevelSoundAcoustics,
+  formatLevelSoundAcousticsState,
   formatLevelSoundGain,
   formatLevelSoundSeconds,
   formatLevelSoundTimeOfDay,
@@ -85,6 +87,7 @@ export function LevelSoundPanel({
         />
         <EditorPanelProperty label={"Game time"} value={formatLevelSoundTimeOfDay(report.gameTime)} />
         <EditorPanelProperty label={"Voices"} value={`${report.realVoices} of ${report.targets} targets`} />
+        <EditorPanelProperty label={"Acoustics"} value={formatLevelSoundAcousticsState(report.acoustics)} />
         {report.mixerLoad !== null ? (
           <EditorPanelProperty label={"Mixer"} value={`${(report.mixerLoad * 100).toFixed(1)}% of the period`} />
         ) : null}
@@ -124,15 +127,21 @@ export function LevelSoundPanel({
       </EditorPanelSection>
 
       <EditorPanelSection title={`Playing (${voices.length})`}>
-        {voices.map((voice: WorldSoundVoiceReport) => (
-          <EditorPanelProperty
-            key={voice.id}
-            label={voice.sound}
-            value={`${voice.kind}, ${voice.distance !== null ? `${voice.distance.toFixed(1)} m` : "2D"}, ${
-              voice.isReal ? "" : "simulated at "
-            }${formatLevelSoundGain(voice)}${voice.restarts > 0 ? `, started over ${voice.restarts}×` : ""}`}
-          />
-        ))}
+        {voices.map((voice: WorldSoundVoiceReport) => {
+          const acoustics: string = voice.isReal ? formatLevelSoundAcoustics(voice) : "";
+
+          return (
+            <EditorPanelProperty
+              key={voice.id}
+              label={voice.sound}
+              value={`${voice.kind}, ${voice.distance !== null ? `${voice.distance.toFixed(1)} m` : "2D"}, ${
+                voice.isReal ? "" : "simulated at "
+              }${formatLevelSoundGain(voice)}${voice.restarts > 0 ? `, started over ${voice.restarts}×` : ""}${
+                acoustics ? `; ${acoustics}` : ""
+              }`}
+            />
+          );
+        })}
       </EditorPanelSection>
 
       {report.refused.length > 0 ? (

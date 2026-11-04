@@ -16,7 +16,8 @@ specta = { workspace = true, optional = true }
 tauri = { workspace = true }
 tauri-specta = { workspace = true, optional = true }
 xrf-app-core = { workspace = true }
-xrf-audio = { workspace = true }
+# The application always ships Steam Audio, as `cargo make fetch-sdks` places it.
+xrf-audio = { workspace = true, features = ["steam-audio"] }
 xrf-error = { workspace = true }
 
 [dev-dependencies]

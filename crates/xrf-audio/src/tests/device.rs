@@ -22,7 +22,7 @@ fn hands_the_mixer_back_with_its_voices_when_a_stream_drops_its_callback() {
     .expect("a voice starts");
   let (returned, mut back) = RingBuffer::new(1);
   let mut holder: MixerHolder = MixerHolder::new(mixer, returned);
-  let mut out: Vec<f32> = vec![0.0; 480 * 2];
+  let mut out: Vec<f32> = vec![0.0; 512 * 2];
 
   holder.render(&mut out, 2);
   drop(holder);
@@ -30,9 +30,9 @@ fn hands_the_mixer_back_with_its_voices_when_a_stream_drops_its_callback() {
   let mixer: AudioMixer = back.pop().expect("the dropped callback hands the mixer back");
   let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
 
-  render.render(480);
+  render.render(512);
   assert_eq!(engine.get_playback(voice).state, AudioVoiceState::Playing);
-  assert_eq!(engine.get_playback(voice).frame, 960);
+  assert_eq!(engine.get_playback(voice).frame, 1024);
 }
 
 /// While no device plays, the output thread renders the mixer at a device's pace: commands are taken, voices play out

@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use xrf_audio::{
-  AudioBus, AudioEngineParts, AudioEngineSettings, AudioOutputChoice, AudioServer, AudioTransportPlayback,
+  AudioBus, AudioEngineParts, AudioEngineSettings, AudioOutputChoice, AudioServer, AudioSpatialization,
+  AudioTransportPlayback,
 };
 
 use crate::{AudioFocus, AudioSettings, AudioVolumes, PreviewEvents, PreviewTransports};
@@ -76,6 +77,7 @@ fn round_trips_settings_through_their_wire_shape() {
       ..AudioVolumes::default()
     },
     is_muted_in_background: false,
+    spatialization: AudioSpatialization::Speakers,
   };
   let written: String = serde_json::to_string(&settings).expect("settings write");
 
@@ -83,10 +85,22 @@ fn round_trips_settings_through_their_wire_shape() {
     written.contains(r#""output":{"kind":"device","id":"speakers"}"#),
     "{written}"
   );
+  assert!(written.contains(r#""spatialization":"speakers""#), "{written}");
   assert_eq!(
     serde_json::from_str::<AudioSettings>(&written).expect("settings read"),
     settings
   );
+}
+
+// Settings kept before placed sound had a choice still read whole, as headphones, rather than falling to the defaults.
+#[test]
+fn reads_settings_kept_before_the_spatialization_choice() {
+  let kept: &str = r#"{"output":{"kind":"systemDefault"},"volumes":{"master":0.5,"music":1,"ambience":1,"world":1,
+    "previews":1},"isMutedInBackground":false}"#;
+  let settings: AudioSettings = serde_json::from_str(kept).expect("settings read");
+
+  assert_eq!(settings.volumes.master, 0.5);
+  assert_eq!(settings.spatialization, AudioSpatialization::Headphones);
 }
 
 #[test]

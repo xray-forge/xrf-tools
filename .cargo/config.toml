@@ -5,8 +5,25 @@
 [target.'cfg(all(target_os = "linux", target_env = "gnu"))']
 rustflags = ["-Clink-arg=-lstdc++"]
 
-# The SDKs `cargo make fetch-sdks` checks out, which the `dlss` feature builds against; any set in the environment
-# wins. On Windows `xrf-dlss`'s build script points bindgen at the libclang it fetches, elsewhere at the system's.
+# Steam Audio is loaded when the audio starts rather than when a binary does, so one without it plays dry: on Windows
+# its library is delay-loaded, which every binary linking it needs, hence here rather than in a build script. A binary
+# importing nothing of it is told so by the linker (LNK4199), which is no fault.
+[target.'cfg(windows)']
+rustflags = ["-Clink-arg=/DELAYLOAD:phonon.dll", "-Clink-arg=delayimp.lib", "-Clink-arg=/IGNORE:4199"]
+
+# On macOS it is linked weakly, found beside the executable in the application's resources or in the checkout's
+# `.sdks` for a development build.
+[target.'cfg(target_os = "macos")']
+rustflags = [
+  "-Clink-arg=-Wl,-weak-lphonon",
+  "-Clink-arg=-Wl,-rpath,@executable_path/../Resources/resources/audio/steam-audio",
+  "-Clink-arg=-Wl,-rpath,@executable_path/../../.sdks/steam-audio",
+]
+
+# The SDKs `cargo make fetch-sdks` places; any set in the environment wins. bindgen loads libclang from
+# `.sdks/libclang`: the fetched one on Windows, a link to the system's elsewhere.
 [env]
 DLSS_SDK = { value = ".sdks/dlss", relative = true }
 VULKAN_SDK = { value = ".sdks/vulkan-headers", relative = true }
+LIBCLANG_PATH = { value = ".sdks/libclang", relative = true }
+STEAMAUDIO_LIB_DIR = { value = ".sdks/steam-audio", relative = true }

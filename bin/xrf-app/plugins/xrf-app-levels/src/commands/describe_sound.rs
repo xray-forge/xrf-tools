@@ -2,9 +2,9 @@ use tauri::State;
 use xrf_app_core::TauriResult;
 use xrf_app_core::execution::ExecutionState;
 use xrf_app_render::WorldState;
-use xrf_audio::{AudioEmitterReport, AudioSceneReport, AudioServer};
+use xrf_audio::{AudioAcousticsReport, AudioEmitterReport, AudioSceneReport, AudioServer};
 use xrf_renderer::{RenderSceneId, RenderViewportId};
-use xrf_world::{WorldSoundRefusal, WorldSoundReport};
+use xrf_world::{WorldSoundAcousticsReport, WorldSoundRefusal, WorldSoundReport};
 
 /// What the level a viewport shows plays and why: each sound, where it stands and how loud it is heard, the music, the
 /// ambient's channels, and every sound that could not play; none for a viewport showing no level. The world says what
@@ -33,12 +33,16 @@ pub async fn levels_describe_sound(
   }))
 }
 
-/// The world's report with how the audio hears each sound, and what it refused.
+/// The world's report with how the audio hears each sound, what it refused, and how its acoustics run.
 fn join(mut report: WorldSoundReport, heard: AudioSceneReport) -> WorldSoundReport {
   for voice in &mut report.voices {
     if let Some(emitter) = heard.emitters.iter().find(|emitter| emitter.id == voice.id) {
       let AudioEmitterReport {
         gain,
+        occlusion,
+        transmission,
+        reverb_send,
+        is_binaural,
         is_real,
         is_loading,
         restarts,
@@ -46,11 +50,35 @@ fn join(mut report: WorldSoundReport, heard: AudioSceneReport) -> WorldSoundRepo
       } = *emitter;
 
       voice.gain = Some(gain);
+      voice.occlusion = Some(occlusion);
+      voice.transmission = Some(transmission);
+      voice.reverb_send = Some(reverb_send);
+      voice.is_binaural = is_binaural;
       voice.is_real = is_real;
       voice.is_loading = is_loading;
       voice.restarts = restarts;
     }
   }
+
+  let AudioAcousticsReport {
+    failure,
+    triangles,
+    geometry_failure,
+    reverb_times,
+    build_ms,
+    direct_ms,
+    reflections_ms,
+  } = heard.acoustics;
+
+  report.acoustics = Some(WorldSoundAcousticsReport {
+    failure,
+    triangles,
+    geometry_failure,
+    reverb_times,
+    build_ms,
+    direct_ms,
+    reflections_ms,
+  });
 
   report
     .refused

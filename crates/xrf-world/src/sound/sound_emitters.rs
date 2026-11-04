@@ -91,7 +91,6 @@ impl SoundEmitters {
         min_distance,
         max_distance,
         base_volume: info.base_volume,
-        is_occluded: !info.is_world_ambient,
         // Monolith plays its music `sm_Intro`, which sends nothing to the reverb.
         has_reverb: !(play.kind == WorldSoundKind::Music && engine == XrayEngine::Extended),
       },

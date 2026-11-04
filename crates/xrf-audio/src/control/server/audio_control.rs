@@ -3,6 +3,7 @@ use std::time::{Duration, Instant};
 
 use xrf_error::{XrfError, XrfResult};
 
+use crate::acoustics::audio_spatialization::AudioSpatialization;
 use crate::control::audio_engine::AudioEngine;
 use crate::control::server::audio_event::AudioEvent;
 use crate::control::server::audio_event_sink::AudioEventSink;
@@ -10,6 +11,7 @@ use crate::control::server::audio_gains::AudioGains;
 use crate::control::server::control_request::ControlRequest;
 use crate::control::server::control_scene::ControlScene;
 use crate::mixer::audio_bus::AudioBus;
+use crate::render::scene::scene_tick::SceneTick;
 use crate::render::sound_bank::SoundBank;
 use crate::render::stream_launcher::StreamLauncher;
 use crate::scene::audio_scene_report::AudioSceneReport;
@@ -29,6 +31,8 @@ pub(crate) struct AudioControl {
   events: Box<dyn AudioEventSink>,
   /// How often a playing transport's position is sent.
   position_interval: Duration,
+  /// Whether placed sounds are heard for headphones or speakers.
+  spatialization: AudioSpatialization,
 }
 
 struct OpenTransport {
@@ -71,6 +75,7 @@ impl AudioControl {
       streams,
       events,
       position_interval,
+      spatialization: AudioSpatialization::default(),
     }
   }
 
@@ -101,7 +106,16 @@ impl AudioControl {
         }
       }
       ControlRequest::CloseTransport(id) => self.close_transport(id),
-      ControlRequest::OpenScene { mailbox, assets } => self.scenes.push(ControlScene::new(mailbox, assets)),
+      ControlRequest::OpenScene {
+        mailbox,
+        assets,
+        geometry,
+      } => {
+        let scene: ControlScene = ControlScene::new(mailbox, assets, self.engine.get_acoustics(), geometry);
+
+        self.scenes.push(scene);
+      }
+      ControlRequest::SetSpatialization(spatialization) => self.spatialization = spatialization,
       ControlRequest::DescribeScene { scene, answer } => {
         let _ = answer.send(self.describe_scene(scene));
       }
@@ -180,7 +194,14 @@ impl AudioControl {
         return false;
       }
 
-      scene.tick(&mut self.engine, &mut self.bank, &mut self.streams, frame, rate);
+      scene.tick(SceneTick {
+        engine: &mut self.engine,
+        bank: &mut self.bank,
+        streams: &mut self.streams,
+        spatialization: self.spatialization,
+        mixer_frame: frame,
+        rate,
+      });
 
       true
     });

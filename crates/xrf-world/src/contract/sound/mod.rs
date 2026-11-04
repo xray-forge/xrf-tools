@@ -1,3 +1,4 @@
+pub(crate) mod world_sound_acoustics_report;
 pub(crate) mod world_sound_category;
 pub(crate) mod world_sound_channel_report;
 pub(crate) mod world_sound_kind;

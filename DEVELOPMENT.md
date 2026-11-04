@@ -54,7 +54,7 @@ so it never rebuilds what `dev-app` built. The IDE run configuration `tauri: dev
 | `build-app`         | Builds the desktop application in debug mode, without DLSS.                                                                    |
 | `build-app-release` | Builds the desktop application in release mode, with DLSS, from cleared resources. Sets `XRF_BUILD_KIND=optimized` unless set. |
 | `package-app`       | Builds the release application and packs it into `target/package/<PACKAGE_NAME>.zip`.                                          |
-| `fetch-sdks`        | Fetches the pinned DLSS SDK, Vulkan headers and libclang into `.sdks/`.                                                        |
+| `fetch-sdks`        | Fetches the pinned DLSS SDK, Vulkan headers, libclang, DXC and Steam Audio into `.sdks/`.                                      |
 
 `package-app` names the archive `xrf-app-windows-x64` unless `PACKAGE_NAME` is set. `fetch-sdks` skips anything
 already at its pinned version, so repeated runs fetch nothing.
@@ -106,6 +106,20 @@ On Windows the application ships DXC, which D3D12 compiles shader model 6 with: 
 pinned release in `.sdks/dxc`, and `tauri.windows.conf.json` copies it into the renderer's bundle. Every task that
 builds the application fetches it first; a plain `cargo build -p xrf-app` wants it fetched once.
 
+The application's acoustics are Valve's Steam Audio (Apache-2.0, through the `audionimbus` crate), which every build of
+the application links:
+
+- `cargo make fetch-sdks` places the pinned 4.8.1 release's library for the platform in `.sdks/steam-audio`
+  (`phonon.dll` and `phonon.lib`, `libphonon.dylib` or `libphonon.so`) with Valve's `LICENSE.md` and the
+  `THIRDPARTY.md` notices of what the library is built with. `.cargo/config.toml` points `STEAMAUDIO_LIB_DIR` there.
+- Building its bindings needs libclang, which `.cargo/config.toml` points `LIBCLANG_PATH` at `.sdks/libclang` for: the
+  fetched one on Windows, a link to the system's elsewhere (Xcode's command line tools, libclang-dev or LLVM).
+- The library is loaded as the audio starts, not as the application does, so where it is missing or broken sound plays
+  dry and the Sound panel says why: on Windows every binary delay-loads `phonon.dll` (`.cargo/config.toml`), on macOS it
+  is linked weakly and found in the application's resources. `tauri.windows.conf.json` and `tauri.macos.conf.json` copy
+  it and its notices into `resources/audio/steam-audio/`; a development build loads it from `.sdks/steam-audio`.
+- `xrf-audio` alone builds without it (its `steam-audio` feature off), playing dry, as Linux CI tests it.
+
 ### DLSS
 
 The desktop app upscales with NVIDIA DLSS when built with the `dlss` feature (`cargo build -p xrf-app --features dlss`),
@@ -116,7 +130,7 @@ on an RTX GPU, with either graphics API. `dev-app` and `build-app` build without
   the files the build reads, and on Windows places LLVM's libclang there for bindgen. Whatever is already there at the
   pinned commit or hash is left alone, so it fetches nothing on a second run. Every task that builds with DLSS runs it
   first. `.cargo/config.toml` points `DLSS_SDK`, `VULKAN_SDK` and `LIBCLANG_PATH` there; any set in the environment wins.
-- Elsewhere than Windows, libclang comes from the system (libclang-dev or LLVM), or `LIBCLANG_PATH`.
+- Elsewhere than Windows, `.sdks/libclang` links the system's libclang (libclang-dev or LLVM), or set `LIBCLANG_PATH`.
 - A build with the feature copies `nvngx_dlss.dll`, `nvngx_dlssd.dll` and NVIDIA's `LICENSE.txt` into its profile's
   `resources/renderer/dlss/` (`bin/xrf-app/app/tauri.dlss.conf.json`). NVIDIA's licence lets them ship only inside the
   application, under terms as protective as its own, so they are never committed.

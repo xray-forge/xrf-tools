@@ -1,6 +1,6 @@
 // Auto-generated rust bindings. Do not edit it manually.
 
-import { AudioOutputChoice } from "#/types/xrf-audio";
+import { AudioOutputChoice, AudioSpatialization } from "#/types/xrf-audio";
 
 /**
  * How the application plays sound, kept by the backend between runs so it holds before any page loads; stored
@@ -12,6 +12,11 @@ export type AudioSettings = {
   volumes: AudioVolumes;
   /** Whether sound falls silent while no window of the application has the focus. */
   isMutedInBackground: boolean;
+  /**
+   * Whether placed sounds are heard for headphones, through the HRTF, or panned for speakers; settings kept before
+   * there was a choice take headphones.
+   */
+  spatialization?: AudioSpatialization;
 };
 
 /**

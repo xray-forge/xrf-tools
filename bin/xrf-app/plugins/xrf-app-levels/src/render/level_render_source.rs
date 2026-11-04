@@ -31,7 +31,7 @@ use crate::parts::{
 };
 use crate::render::{LevelParticleCollider, LevelRenderParts};
 use crate::report::LevelReport;
-use crate::sound::{LevelSoundAssets, LevelSoundSink, LevelWorldSounds};
+use crate::sound::{LevelSoundAssets, LevelSoundGeometry, LevelSoundSink, LevelWorldSounds};
 use crate::weather::LevelWorldWeather;
 
 /// A level's shader table as it is drawn, and the textures its surfaces bind.
@@ -312,18 +312,21 @@ impl WorldLevelSource for LevelRenderSource {
     LevelWorldSounds::read(&self.level, &self.search()?)
   }
 
-  /// A scene on the audio's control thread, its sounds read from the roots the level opened in.
+  /// A scene on the audio's control thread, its sounds read from the roots the level opened in and shaped by its
+  /// collision form.
   fn open_sound(&self) -> Option<Box<dyn WorldSoundSink>> {
     let assets: LevelSoundAssets = LevelSoundAssets::new(
       AssetMountState::clone(&self.assets),
       self.level.roots.clone(),
       self.textures.get_scope_key().to_owned(),
     );
+    let geometry: LevelSoundGeometry =
+      LevelSoundGeometry::new(Arc::clone(&self.level), AssetMountState::clone(&self.assets));
 
     self
       .audio
       .as_ref()?
-      .open_scene(Arc::new(assets))
+      .open_scene(Arc::new(assets), Some(Arc::new(geometry)))
       .inspect_err(|error| log::warn!("The level's sound cannot play: {error}"))
       .ok()
       .map(|inbox| Box::new(LevelSoundSink::new(inbox)) as Box<dyn WorldSoundSink>)

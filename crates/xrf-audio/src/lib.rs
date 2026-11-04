@@ -1,5 +1,6 @@
 #![doc = include_str!("../README.md")]
 
+pub(crate) mod acoustics;
 pub(crate) mod control;
 pub(crate) mod decode;
 pub(crate) mod device;
@@ -13,6 +14,8 @@ mod tests;
 pub(crate) mod transport;
 pub(crate) mod voice;
 
+pub use crate::acoustics::audio_acoustics::AudioAcoustics;
+pub use crate::acoustics::audio_spatialization::AudioSpatialization;
 pub use crate::control::audio_engine::AudioEngine;
 pub use crate::control::audio_engine_parts::AudioEngineParts;
 pub use crate::control::audio_engine_settings::AudioEngineSettings;
@@ -38,12 +41,16 @@ pub use crate::device::audio_output::AudioOutput;
 pub use crate::device::audio_output_choice::AudioOutputChoice;
 pub use crate::device::audio_output_status::AudioOutputStatus;
 pub use crate::host::audio_asset_source::AudioAssetSource;
+pub use crate::host::audio_material::AudioMaterial;
+pub use crate::host::audio_scene_geometry::AudioSceneGeometry;
+pub use crate::host::audio_scene_mesh::AudioSceneMesh;
 pub use crate::mixer::audio_bus::AudioBus;
 pub use crate::mixer::audio_mixer::AudioMixer;
 pub use crate::mixer::audio_mixer_load::AudioMixerLoad;
 pub use crate::mixer::audio_mixer_meter::AudioMixerMeter;
 pub use crate::offline::offline_render::OfflineRender;
 pub use crate::offline::offline_session::OfflineSession;
+pub use crate::scene::audio_acoustics_report::AudioAcousticsReport;
 pub use crate::scene::audio_emitter_report::AudioEmitterReport;
 pub use crate::scene::audio_listener::AudioListener;
 pub use crate::scene::audio_scene_emitter::AudioSceneEmitter;

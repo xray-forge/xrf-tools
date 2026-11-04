@@ -36,6 +36,18 @@ export type AudioOutputStatus = {
   failure: string | null;
 };
 
+/**
+ * How placed sounds reach the listener's ears: through a head-related transfer function, which places a sound around
+ * and above on headphones, or panned between two speakers. Dry sound always pans.
+ */
+export enum EAudioSpatialization {
+  HEADPHONES = "headphones",
+  SPEAKERS = "speakers",
+}
+
+/** Every `EAudioSpatialization` as the spelling it crosses IPC as, for a value no member has narrowed. */
+export type AudioSpatialization = `${EAudioSpatialization}`;
+
 /** One transport an [`crate::AudioServer`] opened, which its caller plays, steers and closes by it. */
 export type AudioTransportId = number;
 
