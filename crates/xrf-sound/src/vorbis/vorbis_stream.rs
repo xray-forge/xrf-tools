@@ -4,11 +4,12 @@ use ogg::Packet as OggPacket;
 use ogg::reading::PacketReader;
 use ogg::writing::{PacketWriteEndInfo, PacketWriter};
 use symphonia::core::codecs::audio::well_known::CODEC_ID_VORBIS;
-use symphonia::core::codecs::audio::{AudioCodecParameters, AudioDecoderOptions};
+use symphonia::core::codecs::audio::{AudioCodecParameters, AudioDecoder, AudioDecoderOptions};
 use symphonia::core::packet::Packet;
 use symphonia::core::units::{Duration, Timestamp};
 use symphonia::default::get_codecs;
 
+use crate::vorbis::ogg_page_header::OggPageHeader;
 use crate::vorbis::vorbis_comment::VorbisComment;
 use crate::vorbis::vorbis_identification::VorbisIdentification;
 
@@ -58,20 +59,7 @@ impl VorbisStream {
 
   /// Decodes every audio packet after the headers, which is what proves the payload playable.
   pub(crate) fn decode<R: Read + Seek>(&self, reader: &mut PacketReader<R>) -> Result<(), String> {
-    let mut extra_data: Vec<u8> = Vec::with_capacity(self.identification_packet.len() + self.setup_packet.len());
-
-    extra_data.extend_from_slice(&self.identification_packet);
-    extra_data.extend_from_slice(&self.setup_packet);
-
-    let mut codec_parameters: AudioCodecParameters = AudioCodecParameters::new();
-
-    codec_parameters
-      .for_codec(CODEC_ID_VORBIS)
-      .with_extra_data(extra_data.into_boxed_slice());
-
-    let mut decoder = get_codecs()
-      .make_audio_decoder(&codec_parameters, &AudioDecoderOptions::default())
-      .map_err(|error| format!("Could not initialize Vorbis decoder: {error}"))?;
+    let mut decoder: Box<dyn AudioDecoder> = self.make_decoder()?;
 
     while let Some(packet) = Self::read_audio_packet(reader)? {
       if packet.stream_serial() != self.serial {
@@ -84,6 +72,31 @@ impl VorbisStream {
     }
 
     Ok(())
+  }
+
+  /// The stream's audio codec, symphonia's Vorbis decoder set up from the identification and setup packets.
+  ///
+  /// It trims as libvorbis does: the first packet after it starts or resets renders nothing, so each later packet
+  /// renders from where the one before it ended.
+  pub(crate) fn make_decoder(&self) -> Result<Box<dyn AudioDecoder>, String> {
+    let mut extra_data: Vec<u8> = Vec::with_capacity(self.identification_packet.len() + self.setup_packet.len());
+
+    extra_data.extend_from_slice(&self.identification_packet);
+    extra_data.extend_from_slice(&self.setup_packet);
+
+    let mut codec_parameters: AudioCodecParameters = AudioCodecParameters::new();
+
+    codec_parameters
+      .for_codec(CODEC_ID_VORBIS)
+      .with_extra_data(extra_data.into_boxed_slice());
+
+    get_codecs()
+      .make_audio_decoder(&codec_parameters, &AudioDecoderOptions::default().gapless(true))
+      .map_err(|error| format!("Could not initialize Vorbis decoder: {error}"))
+  }
+
+  pub(crate) fn get_serial(&self) -> u32 {
+    self.serial
   }
 
   /// Samples a channel plays, `ov_pcm_total`: the granule position of the stream's last page that places one, found
@@ -101,9 +114,20 @@ impl VorbisStream {
       .and_then(|_| source.read_to_end(&mut tail))
       .map_err(|error| format!("Could not read the end of the Ogg stream: {error}"))?;
 
-    (0..tail.len().saturating_sub(26))
+    self.find_samples_count(&tail)
+  }
+
+  /// [`Self::read_samples_count`] of a stream held whole in `bytes`.
+  pub(crate) fn find_samples_count(&self, bytes: &[u8]) -> Result<u64, String> {
+    let tail: &[u8] = &bytes[bytes.len().saturating_sub(Self::MAX_PAGE_SIZE as usize)..];
+
+    (0..tail.len())
       .rev()
-      .find_map(|offset| self.read_page_granule(&tail[offset..]))
+      .find_map(|offset| {
+        OggPageHeader::read(tail, offset)
+          .filter(|header| header.serial == self.serial)
+          .and_then(|header| header.granule)
+      })
       .ok_or_else(|| String::from("Ogg stream has no page placing its last sample"))
   }
 
@@ -159,26 +183,6 @@ impl VorbisStream {
     }
 
     Ok(writer.into_inner())
-  }
-
-  /// The granule position of a page of this stream starting at `bytes`, when it places a sample and fits in them.
-  fn read_page_granule(&self, bytes: &[u8]) -> Option<u64> {
-    if !bytes.starts_with(b"OggS\0") {
-      return None;
-    }
-
-    let segments_count: usize = usize::from(bytes[26]);
-    let body_length: usize = bytes
-      .get(27..27 + segments_count)?
-      .iter()
-      .map(|&size| usize::from(size))
-      .sum();
-    let granule: u64 = u64::from_le_bytes(bytes[6..14].try_into().ok()?);
-    let serial: u32 = u32::from_le_bytes(bytes[14..18].try_into().ok()?);
-
-    // A granule of all ones marks a page where no packet ends.
-    (27 + segments_count + body_length <= bytes.len() && serial == self.serial && granule != u64::MAX)
-      .then_some(granule)
   }
 
   fn read_header_packet<R: Read + Seek>(reader: &mut PacketReader<R>, name: &str) -> Result<OggPacket, String> {

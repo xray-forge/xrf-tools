@@ -249,16 +249,17 @@ impl SoundBank {
       Ok(None) => return BankedSound::Refused(String::from("The sound's file is missing")),
       Err(error) => return BankedSound::Refused(format!("The sound's file cannot be read: {error}")),
     };
-    let format: SoundFormat = match SoundDecoder::open(Arc::clone(&bytes)) {
-      Ok(decoder) => decoder.get_format(),
+    let decoder: SoundDecoder = match SoundDecoder::open(Arc::clone(&bytes)) {
+      Ok(decoder) => decoder,
       Err(error) => return BankedSound::Refused(format!("The sound cannot be decoded: {error}")),
     };
+    let format: SoundFormat = decoder.get_format();
 
     if format.get_duration().as_secs_f64() > Self::DECODED_SECONDS {
       return BankedSound::Streamed { bytes, format };
     }
 
-    match DecodedSound::decode(bytes) {
+    match DecodedSound::decode_from(decoder) {
       Ok(sound) => BankedSound::Decoded(Arc::new(sound)),
       Err(error) => BankedSound::Refused(format!("The sound cannot be decoded: {error}")),
     }
