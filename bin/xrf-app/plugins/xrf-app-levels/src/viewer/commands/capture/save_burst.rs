@@ -10,11 +10,12 @@ use xrf_renderer::BurstEvent;
 
 use crate::render::{LevelAudio, ShownLevels};
 use crate::viewer::LevelViewerFolder;
-use crate::viewer::burst::{BurstCaptureRequest, BurstOutcome, BurstSound, BurstWriter};
+use crate::viewer::burst::{BurstCaptureRequest, BurstOutcome, BurstSound, BurstVideo, BurstWriter};
+use crate::viewer::record::MediaProbe;
 
 /// Draw a burst of consecutive frames in a viewport and write each, with its G-buffer's marks, into a new folder of
-/// the level viewer's bursts named as asked, and the sound its camera hears at the burst's times beside them where
-/// asked; answers once the last is written.
+/// the level viewer's bursts named as asked, the sound its camera hears at the burst's times beside them, and the frames
+/// with that sound as one video, where asked; answers once the last is written.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]
 #[tauri::command(rename = "save_burst")]
 pub async fn levels_save_burst(
@@ -29,6 +30,7 @@ pub async fn levels_save_burst(
     burst,
     name,
     has_sound,
+    has_video,
   } = request;
   let bursts: PathBuf = LevelViewerFolder::Bursts.get_path(&directories)?;
   let renderer: Renderer = renderer.inner().clone();
@@ -39,6 +41,11 @@ pub async fn levels_save_burst(
       "The audio did not start, so a burst has no sound to record",
     ));
   }
+
+  // Refused before anything draws where this Windows cannot write video.
+  let video: Option<BurstVideo> = has_video
+    .then(|| BurstVideo::new(&burst, &MediaProbe::MEDIA_FOUNDATION))
+    .transpose()?;
 
   execution
     .run_blocking("Saving a burst", move || -> TauriResult<BurstOutcome> {
@@ -52,6 +59,10 @@ pub async fn levels_save_burst(
 
       if let Some(sound) = sound {
         writer = writer.with_sound(sound);
+      }
+
+      if let Some(video) = video {
+        writer = writer.with_video(video);
       }
 
       let events: Receiver<BurstEvent> = renderer.capture_burst(viewport, burst);

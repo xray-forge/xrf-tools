@@ -1,6 +1,8 @@
 mod ambients;
 mod annotations;
 mod burst_sound;
+#[cfg(windows)]
+mod burst_video;
 mod burst_writer;
 mod console_defaults;
 mod cube_export;

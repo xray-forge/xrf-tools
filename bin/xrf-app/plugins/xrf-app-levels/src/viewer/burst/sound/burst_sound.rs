@@ -130,8 +130,46 @@ impl BurstSound {
     })
   }
 
+  /// The interleaved stereo samples of a `sound.wav` [`Self::to_wave`] made.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the file cannot be read or is not one `to_wave` makes.
+  pub fn read_wave(file: &Path) -> TauriResult<Vec<f32>> {
+    let bytes: Vec<u8> = std::fs::read(file)
+      .map_err(|error| format!("The burst's sound cannot be read from {}: {error}", file.display()))?;
+    let header: Vec<u8> = Self::to_wave(&[]);
+    let length: Option<usize> = bytes
+      .get(54..58)
+      .and_then(|length| length.try_into().ok())
+      .map(|length| u32::from_le_bytes(length) as usize);
+    // The format and the chunks' names, but not the lengths, are those of every sound it makes.
+    let is_ours: bool = bytes.len() >= header.len()
+      && bytes[..4] == header[..4]
+      && bytes[8..46] == header[8..46]
+      && bytes[50..54] == header[50..54]
+      && length == Some(bytes.len() - header.len());
+
+    if !is_ours {
+      return Err(format!(
+        "{} is not a burst's sound: 32-bit float stereo at {} Hz",
+        file.display(),
+        Self::RATE
+      ));
+    }
+
+    Ok(
+      bytes[header.len()..]
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|sample| f32::from_le_bytes(*sample))
+        .collect(),
+    )
+  }
+
   /// A WAV file of interleaved stereo 32-bit float `samples` at [`Self::RATE`].
-  fn to_wave(samples: &[f32]) -> Vec<u8> {
+  pub fn to_wave(samples: &[f32]) -> Vec<u8> {
     const CHANNELS: u16 = 2;
     const FLOAT: u16 = 3;
     let data_length: u32 = (samples.len() * 4) as u32;

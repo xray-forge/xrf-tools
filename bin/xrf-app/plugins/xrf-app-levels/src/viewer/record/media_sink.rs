@@ -1,0 +1,420 @@
+use std::path::Path;
+use std::time::Duration;
+
+use windows::Win32::Media::MediaFoundation::{
+  CODECAPI_AVEncMPVDefaultBPictureCount, IMFAttributes, IMFMediaBuffer, IMFMediaType, IMFSample, IMFSinkWriter,
+  IMFSinkWriterEx, IMFTransform, MF_MT_AUDIO_AVG_BYTES_PER_SECOND, MF_MT_AUDIO_BITS_PER_SAMPLE,
+  MF_MT_AUDIO_BLOCK_ALIGNMENT, MF_MT_AUDIO_NUM_CHANNELS, MF_MT_AUDIO_SAMPLES_PER_SECOND, MF_MT_AVG_BITRATE,
+  MF_MT_DEFAULT_STRIDE, MF_MT_FRAME_RATE, MF_MT_FRAME_SIZE, MF_MT_INTERLACE_MODE, MF_MT_MAJOR_TYPE,
+  MF_MT_MPEG2_PROFILE, MF_MT_PIXEL_ASPECT_RATIO, MF_MT_SUBTYPE, MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS,
+  MF_TRANSCODE_CONTAINERTYPE, MFAudioFormat_AAC, MFAudioFormat_PCM, MFCreateAttributes, MFCreateMediaType,
+  MFCreateMemoryBuffer, MFCreateSample, MFCreateSinkWriterFromURL, MFMediaType_Audio, MFMediaType_Video,
+  MFT_CATEGORY_VIDEO_ENCODER, MFT_ENUM_HARDWARE_URL_Attribute, MFT_FRIENDLY_NAME_Attribute,
+  MFTranscodeContainerType_FMPEG4, MFVideoFormat_H264, MFVideoFormat_RGB32, MFVideoInterlace_Progressive,
+  eAVEncH264VProfile_High,
+};
+use windows::core::{GUID, HSTRING, Interface, PCWSTR};
+
+use crate::viewer::record::{RecordFormat, RecordSample, RecordSoundFormat, RecordSummary};
+
+/// Media Foundation's Sink Writer writing one recording as fragmented MP4: H.264 High from frames handed over as RGB32,
+/// which the writer converts for the encoder, a hardware one where the GPU has it; and AAC from 16-bit PCM. Each
+/// fragment is whole once written, so a recording cut short plays to its last. Made and used on the thread holding a
+/// `MediaSession`.
+pub struct MediaSink {
+  writer: IMFSinkWriter,
+  format: RecordFormat,
+  video: u32,
+  sound: Option<u32>,
+  encoder: String,
+  frames: u32,
+  end: Duration,
+}
+
+impl MediaSink {
+  /// Ticks of Media Foundation's clock a second.
+  const TICKS: u64 = 10_000_000;
+
+  /// The video's bits a pixel of each frame, so the bitrate follows the size and the frame rate.
+  const BITS_PER_PIXEL: f64 = 0.1;
+
+  /// AAC's highest stereo bitrate the encoder takes, bytes a second, and the bits of each sample handed to it.
+  const AAC_BYTES_PER_SECOND: u32 = 24_000;
+  const SOUND_BITS: u16 = 16;
+
+  /// Opens `file` for a recording of `format` and begins writing it.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error, naming the step, when the writer cannot be made or takes no stream of the format: an odd size,
+  /// or a sound rate AAC does not take.
+  pub fn open(file: &Path, format: RecordFormat) -> Result<Self, String> {
+    let fail = |step: &'static str| move |error: windows::core::Error| format!("{step}: {}", error.message());
+    let path: HSTRING = HSTRING::from(file.as_os_str());
+
+    // SAFETY: Media Foundation calls on objects this function makes, on a thread holding a session.
+    unsafe {
+      let attributes: IMFAttributes = Self::new_attributes(2).map_err(fail("Making the writer's attributes"))?;
+
+      attributes
+        .SetGUID(&MF_TRANSCODE_CONTAINERTYPE, &MFTranscodeContainerType_FMPEG4)
+        .map_err(fail("Asking for fragmented MP4"))?;
+      attributes
+        .SetUINT32(&MF_READWRITE_ENABLE_HARDWARE_TRANSFORMS, 1)
+        .map_err(fail("Allowing hardware encoders"))?;
+
+      let writer: IMFSinkWriter = MFCreateSinkWriterFromURL(PCWSTR(path.as_ptr()), None, &attributes)
+        .map_err(|error| format!("Creating the writer of {}: {}", file.display(), error.message()))?;
+      let video: u32 = writer
+        .AddStream(&Self::new_h264(&format).map_err(fail("Describing the H.264 stream"))?)
+        .map_err(fail("Adding the H.264 stream"))?;
+      let encoding: IMFAttributes = Self::new_attributes(1).map_err(fail("Making the encoder's settings"))?;
+
+      // No B-frames: the fragmented MP4 sink writes no edit list, so a frame shown after one decoded later would start
+      // the picture a frame behind its sound.
+      encoding
+        .SetUINT32(&CODECAPI_AVEncMPVDefaultBPictureCount, 0)
+        .map_err(fail("Turning B-frames off"))?;
+      writer
+        .SetInputMediaType(
+          video,
+          &Self::new_rgb32(&format).map_err(fail("Describing the frames"))?,
+          &encoding,
+        )
+        .map_err(|error| {
+          format!(
+            "Handing {}×{} frames to the H.264 encoder: {}",
+            format.width,
+            format.height,
+            error.message()
+          )
+        })?;
+
+      let sound: Option<u32> = match format.sound {
+        Some(sound) => {
+          let stream: u32 = writer
+            .AddStream(&Self::new_aac(sound).map_err(fail("Describing the AAC stream"))?)
+            .map_err(fail("Adding the AAC stream"))?;
+
+          writer
+            .SetInputMediaType(
+              stream,
+              &Self::new_pcm(sound).map_err(fail("Describing the sound"))?,
+              None,
+            )
+            .map_err(|error| {
+              format!(
+                "Handing {} channels at {} Hz to the AAC encoder: {}",
+                sound.channels,
+                sound.rate,
+                error.message()
+              )
+            })?;
+
+          Some(stream)
+        }
+        None => None,
+      };
+
+      writer.BeginWriting().map_err(fail("Beginning to write"))?;
+
+      Ok(Self {
+        encoder: Self::find_encoder(&writer, video),
+        writer,
+        format,
+        video,
+        sound,
+        frames: 0,
+        end: Duration::ZERO,
+      })
+    }
+  }
+
+  /// Hands `sample` to its stream's encoder.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when a frame is not the recording's size, sound comes to a recording without it or not in whole
+  /// frames, or the writer refuses the sample.
+  pub fn write(&mut self, sample: RecordSample) -> Result<(), String> {
+    match sample {
+      RecordSample::Frame { bgra, time, duration } => {
+        let expected: usize = self.format.width as usize * self.format.height as usize * 4;
+
+        if bgra.len() != expected {
+          return Err(format!(
+            "A frame of {} bytes came to a {}×{} recording",
+            bgra.len(),
+            self.format.width,
+            self.format.height
+          ));
+        }
+
+        let start: i64 = Self::to_ticks(time);
+
+        // SAFETY: a sample of this sink's own to its video stream.
+        unsafe {
+          let sample: IMFSample = Self::new_sample(&bgra, start, Self::to_ticks(time + duration) - start)
+            .map_err(|error| format!("Making a frame's sample: {}", error.message()))?;
+
+          self
+            .writer
+            .WriteSample(self.video, &sample)
+            .map_err(|error| format!("Writing frame {}: {}", self.frames, error.message()))?;
+        }
+
+        self.frames += 1;
+        self.end = self.end.max(time + duration);
+
+        Ok(())
+      }
+      RecordSample::Sound { samples, at } => {
+        let (Some(stream), Some(sound)) = (self.sound, self.format.sound) else {
+          return Err(String::from("Sound came to a recording without it"));
+        };
+        let channels: usize = usize::from(sound.channels);
+
+        if !samples.len().is_multiple_of(channels) {
+          return Err(format!(
+            "{} samples came, not whole frames of {channels} channels",
+            samples.len()
+          ));
+        }
+
+        let frames: u64 = (samples.len() / channels) as u64;
+
+        if frames == 0 {
+          return Ok(());
+        }
+
+        let pcm: Vec<u8> = samples
+          .iter()
+          .flat_map(|sample| ((sample.clamp(-1.0, 1.0) * f32::from(i16::MAX)).round() as i16).to_le_bytes())
+          .collect();
+        let start: i64 = Self::to_sound_ticks(at, sound);
+
+        // SAFETY: a sample of this sink's own to its sound stream.
+        unsafe {
+          let sample: IMFSample = Self::new_sample(&pcm, start, Self::to_sound_ticks(at + frames, sound) - start)
+            .map_err(|error| format!("Making a sound's sample: {}", error.message()))?;
+
+          self
+            .writer
+            .WriteSample(stream, &sample)
+            .map_err(|error| format!("Writing sound at frame {at}: {}", error.message()))?;
+        }
+
+        Ok(())
+      }
+    }
+  }
+
+  /// Writes what the encoders still hold and closes the file.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the writer cannot finish the file.
+  pub fn finish(self) -> Result<RecordSummary, String> {
+    // SAFETY: finalizes this sink's writer once; nothing is written after.
+    unsafe { self.writer.Finalize() }.map_err(|error| format!("Finishing the recording: {}", error.message()))?;
+
+    Ok(RecordSummary {
+      encoder: self.encoder,
+      frames: self.frames,
+      duration: self.end,
+    })
+  }
+
+  /// `time` on Media Foundation's clock, to the nearest tick.
+  fn to_ticks(time: Duration) -> i64 {
+    ((time.as_nanos() + 50) / 100) as i64
+  }
+
+  /// The sound's frame `at` on Media Foundation's clock.
+  fn to_sound_ticks(at: u64, sound: RecordSoundFormat) -> i64 {
+    (u128::from(at) * u128::from(Self::TICKS) / u128::from(sound.rate)) as i64
+  }
+
+  /// The frame rate a file names for frames `frame` apart: whole where it is within a thousandth of one, else as
+  /// ticks.
+  fn get_frame_rate(frame: Duration) -> (u32, u32) {
+    let ticks: i64 = Self::to_ticks(frame).max(1);
+    let rate: f64 = Self::TICKS as f64 / ticks as f64;
+
+    if (rate - rate.round()).abs() < 1e-3 {
+      (rate.round() as u32, 1)
+    } else {
+      (Self::TICKS as u32, ticks as u32)
+    }
+  }
+
+  /// The video encoder's name, from the writer's transforms on `stream`: a hardware one's with its device, Microsoft's
+  /// software one's as it names itself.
+  unsafe fn find_encoder(writer: &IMFSinkWriter, stream: u32) -> String {
+    let Ok(writer) = writer.cast::<IMFSinkWriterEx>() else {
+      return String::from("unknown");
+    };
+
+    for index in 0.. {
+      let mut category: GUID = GUID::zeroed();
+      let mut transform: Option<IMFTransform> = None;
+
+      // SAFETY: both out-pointers are valid for the call.
+      if unsafe { writer.GetTransformForStream(stream, index, Some(&mut category), &mut transform) }.is_err() {
+        break;
+      }
+
+      if category == MFT_CATEGORY_VIDEO_ENCODER
+        && let Some(transform) = transform
+      {
+        // SAFETY: the transform's attributes, read once.
+        let Ok(attributes) = (unsafe { transform.GetAttributes() }) else {
+          return String::from("unknown");
+        };
+        let name = |key: &GUID| Self::read_string(&attributes, key).filter(|name| !name.is_empty());
+
+        return match (
+          name(&MFT_FRIENDLY_NAME_Attribute),
+          name(&MFT_ENUM_HARDWARE_URL_Attribute),
+        ) {
+          (Some(friendly), Some(_)) => format!("{friendly} (hardware)"),
+          (None, Some(url)) => format!("{url} (hardware)"),
+          (Some(friendly), None) => friendly,
+          (None, None) => String::from("H.264 Encoder MFT"),
+        };
+      }
+    }
+
+    String::from("unknown")
+  }
+
+  fn read_string(attributes: &IMFAttributes, key: &GUID) -> Option<String> {
+    let mut buffer: [u16; 256] = [0; 256];
+    let mut length: u32 = 0;
+
+    // SAFETY: the buffer is as long as the length it is given.
+    unsafe { attributes.GetString(key, &mut buffer, Some(&mut length)) }.ok()?;
+
+    Some(String::from_utf16_lossy(&buffer[..length as usize]))
+  }
+
+  unsafe fn new_attributes(count: u32) -> windows::core::Result<IMFAttributes> {
+    let mut attributes: Option<IMFAttributes> = None;
+
+    // SAFETY: the out-pointer is valid.
+    unsafe { MFCreateAttributes(&mut attributes, count)? };
+
+    attributes.ok_or_else(windows::core::Error::empty)
+  }
+
+  unsafe fn new_h264(format: &RecordFormat) -> windows::core::Result<IMFMediaType> {
+    let (numerator, denominator) = Self::get_frame_rate(format.frame);
+    let bitrate: f64 = f64::from(format.width) * f64::from(format.height) * Self::BITS_PER_PIXEL * f64::from(numerator)
+      / f64::from(denominator);
+
+    // SAFETY: setting attributes of a new media type.
+    unsafe {
+      let media: IMFMediaType = Self::new_video(format, &MFVideoFormat_H264)?;
+
+      media.SetUINT32(&MF_MT_AVG_BITRATE, bitrate as u32)?;
+      media.SetUINT32(&MF_MT_MPEG2_PROFILE, eAVEncH264VProfile_High.0 as u32)?;
+
+      Ok(media)
+    }
+  }
+
+  unsafe fn new_rgb32(format: &RecordFormat) -> windows::core::Result<IMFMediaType> {
+    // SAFETY: setting attributes of a new media type.
+    unsafe {
+      let media: IMFMediaType = Self::new_video(format, &MFVideoFormat_RGB32)?;
+
+      // Positive: the rows run top down.
+      media.SetUINT32(&MF_MT_DEFAULT_STRIDE, format.width * 4)?;
+
+      Ok(media)
+    }
+  }
+
+  unsafe fn new_video(format: &RecordFormat, subtype: &GUID) -> windows::core::Result<IMFMediaType> {
+    let (numerator, denominator) = Self::get_frame_rate(format.frame);
+
+    // SAFETY: setting attributes of a new media type.
+    unsafe {
+      let media: IMFMediaType = MFCreateMediaType()?;
+
+      media.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Video)?;
+      media.SetGUID(&MF_MT_SUBTYPE, subtype)?;
+      media.SetUINT32(&MF_MT_INTERLACE_MODE, MFVideoInterlace_Progressive.0 as u32)?;
+      media.SetUINT64(
+        &MF_MT_FRAME_SIZE,
+        (u64::from(format.width) << 32) | u64::from(format.height),
+      )?;
+      media.SetUINT64(&MF_MT_FRAME_RATE, (u64::from(numerator) << 32) | u64::from(denominator))?;
+      media.SetUINT64(&MF_MT_PIXEL_ASPECT_RATIO, (1 << 32) | 1)?;
+
+      Ok(media)
+    }
+  }
+
+  unsafe fn new_aac(sound: RecordSoundFormat) -> windows::core::Result<IMFMediaType> {
+    // SAFETY: setting attributes of a new media type.
+    unsafe {
+      let media: IMFMediaType = Self::new_audio(sound, &MFAudioFormat_AAC)?;
+
+      media.SetUINT32(&MF_MT_AUDIO_AVG_BYTES_PER_SECOND, Self::AAC_BYTES_PER_SECOND)?;
+
+      Ok(media)
+    }
+  }
+
+  unsafe fn new_pcm(sound: RecordSoundFormat) -> windows::core::Result<IMFMediaType> {
+    let block: u32 = u32::from(sound.channels) * u32::from(Self::SOUND_BITS / 8);
+
+    // SAFETY: setting attributes of a new media type.
+    unsafe {
+      let media: IMFMediaType = Self::new_audio(sound, &MFAudioFormat_PCM)?;
+
+      media.SetUINT32(&MF_MT_AUDIO_BLOCK_ALIGNMENT, block)?;
+      media.SetUINT32(&MF_MT_AUDIO_AVG_BYTES_PER_SECOND, sound.rate * block)?;
+
+      Ok(media)
+    }
+  }
+
+  unsafe fn new_audio(sound: RecordSoundFormat, subtype: &GUID) -> windows::core::Result<IMFMediaType> {
+    // SAFETY: setting attributes of a new media type.
+    unsafe {
+      let media: IMFMediaType = MFCreateMediaType()?;
+
+      media.SetGUID(&MF_MT_MAJOR_TYPE, &MFMediaType_Audio)?;
+      media.SetGUID(&MF_MT_SUBTYPE, subtype)?;
+      media.SetUINT32(&MF_MT_AUDIO_BITS_PER_SAMPLE, u32::from(Self::SOUND_BITS))?;
+      media.SetUINT32(&MF_MT_AUDIO_SAMPLES_PER_SECOND, sound.rate)?;
+      media.SetUINT32(&MF_MT_AUDIO_NUM_CHANNELS, u32::from(sound.channels))?;
+
+      Ok(media)
+    }
+  }
+
+  /// A sample of `data` from `time` for `duration`, both in ticks.
+  unsafe fn new_sample(data: &[u8], time: i64, duration: i64) -> windows::core::Result<IMFSample> {
+    // SAFETY: the buffer, `data.len()` bytes long, is locked while `data` is copied into it.
+    unsafe {
+      let buffer: IMFMediaBuffer = MFCreateMemoryBuffer(data.len() as u32)?;
+      let mut target: *mut u8 = std::ptr::null_mut();
+
+      buffer.Lock(&mut target, None, None)?;
+      std::ptr::copy_nonoverlapping(data.as_ptr(), target, data.len());
+      buffer.Unlock()?;
+      buffer.SetCurrentLength(data.len() as u32)?;
+
+      let sample: IMFSample = MFCreateSample()?;
+
+      sample.AddBuffer(&buffer)?;
+      sample.SetSampleTime(time)?;
+      sample.SetSampleDuration(duration)?;
+
+      Ok(sample)
+    }
+  }
+}

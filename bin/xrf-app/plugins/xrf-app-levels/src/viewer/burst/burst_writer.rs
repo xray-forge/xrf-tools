@@ -7,7 +7,7 @@ use xrf_app_core::TauriResult;
 use xrf_app_render::CaptureFile;
 use xrf_renderer::{BurstEvent, BurstMarks, RenderBurst, RenderCapture};
 
-use crate::viewer::burst::{BurstOutcome, BurstSound};
+use crate::viewer::burst::{BurstOutcome, BurstSound, BurstVideo};
 
 /// A frame's samples summed as they come back: the scene's seconds it was drawn at, its colour's sums at its size and
 /// how many samples of its marks held each of `BurstWriter::MARKS`, at theirs.
@@ -38,7 +38,8 @@ struct BurstSample {
 /// A burst's frames written into its folder as they come back: `frame-NNN.png` each frame read back, or for a
 /// reference `reference-NNN.png` each frame's samples averaged; and beside each `marks-NNN.png`, the share of its
 /// samples each texel of the G-buffer was a plant (red), grass (green) or moved by itself (blue), at the size the scene
-/// was drawn at; and once the last is in, its sound as `sound.wav` where it records one.
+/// was drawn at; and once the last is in, its sound as `sound.wav` where it records one, and its frames with their sound
+/// as `burst.mp4` where it makes a video.
 pub struct BurstWriter {
   folder: PathBuf,
   /// Samples each frame is drawn at, one but for a reference, and what its frames' files are named.
@@ -46,6 +47,7 @@ pub struct BurstWriter {
   kind: &'static str,
   sum: Option<BurstSum>,
   sound: Option<BurstSound>,
+  video: Option<BurstVideo>,
   outcome: BurstOutcome,
 }
 
@@ -69,6 +71,7 @@ impl BurstWriter {
       kind: if burst.samples.is_some() { "reference" } else { "frame" },
       sum: None,
       sound: None,
+      video: None,
     }
   }
 
@@ -80,13 +83,21 @@ impl BurstWriter {
     }
   }
 
-  /// Writes each frame `events` tells of as it comes, until the burst finishes, then its sound; answers what was
-  /// written.
+  /// The writer making `video` of the frames and their sound.
+  pub fn with_video(self, video: BurstVideo) -> Self {
+    Self {
+      video: Some(video),
+      ..self
+    }
+  }
+
+  /// Writes each frame `events` tells of as it comes, until the burst finishes, then its sound and its video; answers
+  /// what was written.
   ///
   /// # Errors
   ///
   /// Returns an error when the burst stops, the renderer tells nothing for `SILENCE`, its frames come out of order, or
-  /// one or the sound cannot be written.
+  /// one, the sound or the video cannot be written.
   pub fn receive(mut self, events: &Receiver<BurstEvent>) -> TauriResult<BurstOutcome> {
     loop {
       match events.recv_timeout(Self::SILENCE) {
@@ -100,6 +111,14 @@ impl BurstWriter {
         Ok(BurstEvent::Finished) => {
           if let Some(sound) = self.sound.take() {
             self.outcome.sound = Some(sound.write(&self.folder)?);
+          }
+
+          if let Some(video) = self.video.take() {
+            let frames: Vec<PathBuf> = (0..self.outcome.times.len() as u32)
+              .map(|index| self.get_frame_file(index))
+              .collect();
+
+            self.outcome.video = Some(video.write(&frames, self.outcome.sound.as_ref(), &self.folder)?);
           }
 
           return Ok(self.outcome);
@@ -204,11 +223,7 @@ impl BurstWriter {
       .collect();
     let marks: RgbaImage = RgbaImage::from_raw(marks_width, marks_height, shares)
       .ok_or_else(|| format!("The burst's frame {index} marks do not fill their size"))?;
-    CaptureFile::write_png(
-      &picture,
-      &self.folder.join(format!("{}-{index:03}.png", self.kind)),
-      "burst frame",
-    )?;
+    CaptureFile::write_png(&picture, &self.get_frame_file(index), "burst frame")?;
     CaptureFile::write_png(
       &marks,
       &self.folder.join(format!("marks-{index:03}.png")),
@@ -220,5 +235,10 @@ impl BurstWriter {
     (self.outcome.marks_width, self.outcome.marks_height) = (marks_width, marks_height);
 
     Ok(())
+  }
+
+  /// Frame `index`'s picture in the burst's folder.
+  fn get_frame_file(&self, index: u32) -> PathBuf {
+    self.folder.join(format!("{}-{index:03}.png", self.kind))
   }
 }

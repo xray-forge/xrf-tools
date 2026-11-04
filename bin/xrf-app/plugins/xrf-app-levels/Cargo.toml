@@ -51,6 +51,15 @@ xrf-vfs = { workspace = true }
 xrf-visual = { workspace = true }
 xrf-world = { workspace = true }
 
+# Media Foundation's Sink Writer, which writes a burst's video, delay-loaded behind a probe.
+[target.'cfg(windows)'.dependencies]
+windows = { workspace = true, features = [
+  "Win32_Foundation",
+  "Win32_Media_MediaFoundation",
+  "Win32_System_Com",
+  "Win32_System_LibraryLoader",
+] }
+
 [dev-dependencies]
 # The mock runtime, which dispatches a command the way a webview would without one.
 tauri = { workspace = true, features = ["test"] }

@@ -6,10 +6,19 @@
 rustflags = ["-Clink-arg=-lstdc++"]
 
 # Steam Audio is loaded when the audio starts rather than when a binary does, so one without it plays dry: on Windows
-# its library is delay-loaded, which every binary linking it needs, hence here rather than in a build script. A binary
-# importing nothing of it is told so by the linker (LNK4199), which is no fault.
+# its library is delay-loaded, which every binary linking it needs, hence here rather than in a build script. Media
+# Foundation's libraries are delayed the same way, which the `windows` crate's raw-dylib imports take, so a Windows
+# without them (an N edition lacking the Media Feature Pack) still starts the app and only video is refused. A binary
+# importing nothing of a library is told so by the linker (LNK4199), which is no fault.
 [target.'cfg(windows)']
-rustflags = ["-Clink-arg=/DELAYLOAD:phonon.dll", "-Clink-arg=delayimp.lib", "-Clink-arg=/IGNORE:4199"]
+rustflags = [
+  "-Clink-arg=/DELAYLOAD:phonon.dll",
+  "-Clink-arg=/DELAYLOAD:mfplat.dll",
+  "-Clink-arg=/DELAYLOAD:mfreadwrite.dll",
+  "-Clink-arg=/DELAYLOAD:mf.dll",
+  "-Clink-arg=delayimp.lib",
+  "-Clink-arg=/IGNORE:4199",
+]
 
 # On macOS it is linked weakly, found beside the executable in the application's resources or in the checkout's
 # `.sdks` for a development build.
