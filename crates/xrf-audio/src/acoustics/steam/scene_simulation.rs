@@ -59,9 +59,9 @@ impl SceneSimulation {
   /// Threads the reverb's rays are traced on in real time, beside the control thread and the mixer's.
   const REVERB_THREADS: u32 = 2;
 
-  /// Threads the reverb's rays are traced on stepped, which waits for them. With two, the reverb heard differs between
-  /// any two runs of the same frames; with one it often repeats, and otherwise differs only by the rays Steam Audio
-  /// draws at random.
+  /// Threads the reverb's rays are traced on stepped, which waits for them. Steam Audio seeds each thread's draws, which
+  /// decide where a ray scatters, by the wall clock's second as the simulator is made: with one thread, simulators made
+  /// within one second trace the same rays; with two, the threads share out the rays differently every run.
   const STEPPED_REVERB_THREADS: u32 = 1;
 
   /// A simulation of the scene `geometry` holds, keeping up as `pace` says.

@@ -532,13 +532,41 @@ mod steam {
     Stepped { heard, report }
   }
 
-  /// Two renders on one thread a second apart, which Steam Audio's reverb rays have always differed between.
+  /// Two renders a second apart, so Steam Audio, which seeds a simulator's rays by the wall clock's second as it is
+  /// made, traces other rays for the second's reverb.
   fn hear_stepped_twice(has_reverb: bool) -> [Stepped; 2] {
     let first: Stepped = hear_stepped(has_reverb);
 
     std::thread::sleep(Duration::from_millis(1100));
 
     [first, hear_stepped(has_reverb)]
+  }
+
+  // Two renders whose simulators are made within one second of the wall clock trace the same rays, so a stepped render
+  // repeats to the bit, the reverb included: what varies between runs is the second Steam Audio seeds its rays by.
+  #[test]
+  fn repeats_a_stepped_render_within_one_second() {
+    let since_second: Duration = std::time::SystemTime::now()
+      .duration_since(std::time::UNIX_EPOCH)
+      .expect("the clock is past the epoch");
+
+    // Both renders take a few tenths of a second, so starting just past a second's turn keeps them inside it.
+    std::thread::sleep(Duration::from_nanos(
+      1_000_000_000 - u64::from(since_second.subsec_nanos()) + 5_000_000,
+    ));
+
+    let first: Stepped = hear_stepped(true);
+    let second: Stepped = hear_stepped(true);
+
+    assert!(rms_left(&first.heard) > 1e-3);
+    assert!(
+      first
+        .heard
+        .iter()
+        .zip(&second.heard)
+        .all(|(a, b)| a.to_bits() == b.to_bits()),
+      "two renders inside one second differ"
+    );
   }
 
   // Stepped, the simulation hears each sound's walls from the same frames the same way, a second apart too.
@@ -566,8 +594,8 @@ mod steam {
     assert_eq!(walls(&first), walls(&second));
   }
 
-  // The reverb's times come from rays Steam Audio draws at random, which can differ from run to run: each 120th of a
-  // second of the render stays 40 dB under its own level of the other run's.
+  // A second apart the reverb's rays differ: each 120th of a second of the render stays 40 dB under its own level of the
+  // other run's.
   #[test]
   fn keeps_a_stepped_render_within_its_tolerance() {
     let [first, second] = hear_stepped_twice(true);
