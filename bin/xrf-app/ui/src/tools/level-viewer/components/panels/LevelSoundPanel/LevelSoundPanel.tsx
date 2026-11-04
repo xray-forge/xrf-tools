@@ -4,11 +4,12 @@ import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material/typography";
-import { ReactElement, useCallback, useEffect, useState } from "react";
+import { ReactElement, useCallback } from "react";
 
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
+import { usePolledValue } from "@/lib/react/use-polled-value";
 import { LevelSoundMusicSection } from "@/tools/level-viewer/components/panels/LevelSoundPanel/LevelSoundMusicSection";
 import {
   formatLevelSoundAcoustics,
@@ -23,39 +24,6 @@ import {
 const LEVEL_SOUND_REFRESH_MS: number = 500;
 
 /**
- * Asks what the level's scene plays while mounted, again every {@link LEVEL_SOUND_REFRESH_MS}.
- *
- * @param renderService - The viewport the level is shown in.
- * @returns The last answer, null until one came or while no level is shown.
- */
-function useLevelSoundReport(renderService: LevelRenderService): Nullable<WorldSoundReport> {
-  const [report, setReport] = useState<Nullable<WorldSoundReport>>(null);
-
-  useEffect(() => {
-    let isMounted: boolean = true;
-
-    function ask(): void {
-      void renderService.describeSound().then((next: Nullable<WorldSoundReport>) => {
-        if (isMounted) {
-          setReport(next);
-        }
-      });
-    }
-
-    ask();
-
-    const timer: ReturnType<typeof setInterval> = setInterval(ask, LEVEL_SOUND_REFRESH_MS);
-
-    return () => {
-      isMounted = false;
-      clearInterval(timer);
-    };
-  }, [renderService]);
-
-  return report;
-}
-
-/**
  * The level's sound as it plays: whether it is heard, each sound with where it stands and how loud, the music, the
  * weather ambient's channels, and every sound that could not play and why.
  */
@@ -67,7 +35,11 @@ export function LevelSoundPanel({
   const loadService: LevelLoadService = useInjection(LevelLoadService);
   const renderService: LevelRenderService = useInjection(LevelRenderService);
 
-  const report: Nullable<WorldSoundReport> = useLevelSoundReport(renderService);
+  // One question at a time: the world answers from the audio's thread, so a slow answer must not pile up behind it.
+  const report: Nullable<WorldSoundReport> = usePolledValue(
+    () => renderService.describeSound(),
+    LEVEL_SOUND_REFRESH_MS
+  );
 
   const onMusic = useCallback(
     (command: WorldMusicCommand): Promise<boolean> => renderService.commandMusic(command),
