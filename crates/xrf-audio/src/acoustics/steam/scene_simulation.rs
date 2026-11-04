@@ -49,6 +49,13 @@ struct SteppedSimulation {
   output: Option<SceneAcousticsState>,
 }
 
+/// How a scene's world is built: its reverb's rays on `reverb_threads`, and, in real time, the simulation whose scene
+/// may close while it is read, which then builds nothing more.
+struct SceneBuild<'a> {
+  reverb_threads: u32,
+  shared: Option<&'a SimulationShared>,
+}
+
 /// Steam Audio's world of a scene's geometry, none where it failed, and the geometry's state.
 struct BuiltScene {
   world: Option<SimulatedWorld>,
@@ -123,7 +130,11 @@ impl SceneSimulation {
   }
 
   fn run(acoustics: &AudioAcoustics, geometry: &dyn AudioSceneGeometry, shared: &SimulationShared) {
-    let Some(BuiltScene { world, geometry }) = Self::build(acoustics, geometry, Self::REVERB_THREADS) else {
+    let build: SceneBuild<'_> = SceneBuild {
+      reverb_threads: Self::REVERB_THREADS,
+      shared: Some(shared),
+    };
+    let Some(BuiltScene { world, geometry }) = Self::build(acoustics, geometry, &build) else {
       return;
     };
     let mut last: SceneAcousticsState = SceneAcousticsState::new(geometry);
@@ -157,15 +168,32 @@ impl SceneSimulation {
     }
   }
 
-  /// Steam Audio's world of the scene's geometry, its reverb on `reverb_threads`, and the geometry's state: ready, or
-  /// failed with no world. None where the acoustics do not run.
-  fn build(acoustics: &AudioAcoustics, geometry: &dyn AudioSceneGeometry, reverb_threads: u32) -> Option<BuiltScene> {
+  /// Steam Audio's world of the scene's geometry built as `build` says, and the geometry's state: ready, or failed with
+  /// no world. None where the acoustics do not run, or where the scene closed before its world was built: a level
+  /// switched away from while its walls are read builds no world it would never hear, beside the next level's.
+  fn build(
+    acoustics: &AudioAcoustics,
+    geometry: &dyn AudioSceneGeometry,
+    build: &SceneBuild<'_>,
+  ) -> Option<BuiltScene> {
+    let is_closed = || build.shared.is_some_and(SimulationShared::is_closed);
     let steam = acoustics.get_steam()?;
     let started: Instant = Instant::now();
-    let built: Result<SimulatedWorld, String> = geometry
+
+    if is_closed() {
+      return None;
+    }
+
+    let mesh = geometry
       .read_mesh()
-      .map_err(|error| format!("The scene's geometry cannot be read: {error}"))
-      .and_then(|mesh| SimulatedWorld::build(steam, &mesh, reverb_threads));
+      .map_err(|error| format!("The scene's geometry cannot be read: {error}"));
+
+    if is_closed() {
+      return None;
+    }
+
+    let built: Result<SimulatedWorld, String> =
+      mesh.and_then(|mesh| SimulatedWorld::build(steam, &mesh, build.reverb_threads));
 
     Some(match built {
       Ok(world) => {
@@ -251,16 +279,23 @@ impl SimulationShared {
   fn publish(&self, output: SceneAcousticsState) {
     self.lock().output = Some(output);
   }
+
+  fn is_closed(&self) -> bool {
+    self.lock().is_closed
+  }
 }
 
 impl SteppedSimulation {
   /// Builds the scene's world inline, telling what it built at once.
   fn build(acoustics: &AudioAcoustics, geometry: &dyn AudioSceneGeometry) -> Self {
-    let BuiltScene { world, geometry } =
-      SceneSimulation::build(acoustics, geometry, SceneSimulation::STEPPED_REVERB_THREADS).unwrap_or(BuiltScene {
-        world: None,
-        geometry: SceneGeometryState::Absent,
-      });
+    let build: SceneBuild<'_> = SceneBuild {
+      reverb_threads: SceneSimulation::STEPPED_REVERB_THREADS,
+      shared: None,
+    };
+    let BuiltScene { world, geometry } = SceneSimulation::build(acoustics, geometry, &build).unwrap_or(BuiltScene {
+      world: None,
+      geometry: SceneGeometryState::Absent,
+    });
     let last: SceneAcousticsState = SceneAcousticsState::new(geometry);
 
     Self {
