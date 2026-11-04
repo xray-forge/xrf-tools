@@ -20,6 +20,8 @@ const STOP_FADE: Duration = Duration::from_millis(100);
 /// whether it still plays (`_feedback()`), never what was heard.
 #[derive(Default)]
 pub struct SoundEmitters {
+  /// Ascending by id, as ids only grow and each play is pushed last, so an emitter is found by halving rather than by
+  /// walking every one: each schedule asks after its own emitters every frame.
   live: Vec<LiveEmitter>,
 }
 
@@ -86,7 +88,9 @@ impl SoundEmitters {
 
   /// `stop`: ends it at once.
   pub fn stop(&mut self, id: u64) {
-    self.live.retain(|live| live.emitter.id != id);
+    if let Ok(index) = self.live.binary_search_by_key(&id, |live| live.emitter.id) {
+      self.live.remove(index);
+    }
   }
 
   pub fn set_volume(&mut self, id: u64, volume: f32) {
@@ -136,10 +140,14 @@ impl SoundEmitters {
   }
 
   fn find(&self, id: u64) -> Option<&LiveEmitter> {
-    self.live.iter().find(|live| live.emitter.id == id)
+    let index: usize = self.live.binary_search_by_key(&id, |live| live.emitter.id).ok()?;
+
+    self.live.get(index)
   }
 
   fn find_mut(&mut self, id: u64) -> Option<&mut LiveEmitter> {
-    self.live.iter_mut().find(|live| live.emitter.id == id)
+    let index: usize = self.live.binary_search_by_key(&id, |live| live.emitter.id).ok()?;
+
+    self.live.get_mut(index)
   }
 }
