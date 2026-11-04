@@ -6,12 +6,18 @@ use xrf_env_flags::EnvFlags;
 
 use crate::logging::log_file::LogFile;
 use crate::logging::log_sink::LogSink;
+use crate::logging::muted_log_targets::MutedLogTargets;
 
 /// Configure environment logger, fallback to info level, writing to the console and to this run's log file, which is
 /// kept beside the executable or in the data directory of the bundle `identifier`; its first line names the application
-/// at `version`.
+/// at `version`. The [`MutedLogTargets`] are held to errors whatever level the rest logs at, unless `RUST_LOG` names one
+/// of them.
 pub fn setup_logger(identifier: &str, version: &str) {
   let mut logger: Builder = env_logger::builder();
+
+  for target in MutedLogTargets::ALL {
+    logger.filter_module(target, LevelFilter::Error);
+  }
 
   if let Some(rust_log) = EnvFlags::RUST_LOG.read_text() {
     logger.parse_filters(&rust_log);

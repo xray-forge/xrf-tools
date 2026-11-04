@@ -3,6 +3,7 @@
 
 mod log_file;
 mod log_sink;
+mod muted_log_targets;
 mod process_start;
 mod setup_logger;
 #[cfg(test)]
