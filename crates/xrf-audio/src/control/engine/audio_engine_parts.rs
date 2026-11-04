@@ -3,11 +3,11 @@ use std::sync::Arc;
 use rtrb::RingBuffer;
 
 use crate::acoustics::audio_acoustics::AudioAcoustics;
-use crate::control::audio_engine::AudioEngine;
-use crate::control::audio_engine_settings::AudioEngineSettings;
-use crate::control::engine_shared::EngineShared;
+use crate::control::engine::audio_engine::AudioEngine;
+use crate::control::engine::audio_engine_settings::AudioEngineSettings;
+use crate::control::engine::engine_shared::EngineShared;
 use crate::mixer::audio_mixer::AudioMixer;
-use crate::mixer::audio_mixer_meter::AudioMixerMeter;
+use crate::mixer::meter::audio_mixer_meter::AudioMixerMeter;
 use crate::voice::shared::voice_parameters::VoiceParameters;
 use crate::voice::shared::voice_status::VoiceStatus;
 
@@ -29,8 +29,9 @@ impl AudioEngineParts {
     let voices_count: usize = settings.voices_count.max(1);
     let (commands, mixer_commands) = RingBuffer::new(settings.commands_count.max(1));
     let (mixer_retired, retired) = RingBuffer::new(voices_count);
-    // A tap set while another is held hands that one back, and one let go comes back too.
-    let (mixer_retired_taps, retired_taps) = RingBuffer::new(2);
+    // A tap set while another is held hands that one back, and one let go comes back too; the engine never has more out
+    // than the ring holds.
+    let (mixer_retired_taps, retired_taps) = RingBuffer::new(AudioEngine::TAPS_MOST);
     let shared: EngineShared = EngineShared {
       parameters: (0..voices_count).map(|_| VoiceParameters::default()).collect(),
       statuses: (0..voices_count).map(|_| VoiceStatus::default()).collect(),

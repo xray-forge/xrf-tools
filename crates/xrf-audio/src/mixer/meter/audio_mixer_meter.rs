@@ -2,9 +2,9 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
-use crate::mixer::audio_mixer_load::AudioMixerLoad;
 use crate::mixer::clock::audio_clock_anchor::AudioClockAnchor;
 use crate::mixer::clock::clock_anchor_cell::ClockAnchorCell;
+use crate::mixer::meter::audio_mixer_load::AudioMixerLoad;
 
 /// The mixer's clock and load, and where its frames play, written by the audio thread once a buffer and read without a
 /// lock from any thread.

@@ -1,4 +1,4 @@
-use crate::voice::audio_voice_state::AudioVoiceState;
+use crate::voice::playback::audio_voice_state::AudioVoiceState;
 
 /// Where a voice is: its state and the source frame playing, as the audio thread last reported them.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

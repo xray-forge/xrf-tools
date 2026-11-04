@@ -3,8 +3,8 @@ use std::time::Duration;
 
 use xrf_error::{XrfError, XrfResult};
 
-use crate::control::audio_engine::AudioEngine;
 use crate::control::audio_play::AudioPlay;
+use crate::control::engine::audio_engine::AudioEngine;
 use crate::decode::sound_decoder::SoundDecoder;
 use crate::decode::sound_format::SoundFormat;
 use crate::decode::stream::sound_stream::SoundStream;
@@ -13,7 +13,7 @@ use crate::decode::stream::stream_control::StreamControl;
 use crate::transport::audio_transport_playback::AudioTransportPlayback;
 use crate::transport::audio_transport_state::AudioTransportState;
 use crate::voice::audio_voice_id::AudioVoiceId;
-use crate::voice::audio_voice_state::AudioVoiceState;
+use crate::voice::playback::audio_voice_state::AudioVoiceState;
 use crate::voice::voice_source::VoiceSource;
 use xrf_audio_scene::AudioBus;
 

@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::acoustics::audio_spatialization::AudioSpatialization;
-use crate::control::audio_engine::AudioEngine;
+use crate::control::engine::audio_engine::AudioEngine;
 use crate::render::bank::sound_bank::SoundBank;
 use crate::render::stream_launcher::StreamLauncher;
 

@@ -4,20 +4,20 @@ use std::time::{Duration, Instant};
 use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::acoustics::audio_spatialization::AudioSpatialization;
 use crate::acoustics::scene::simulation_pace::SimulationPace;
-use crate::control::audio_engine_parts::AudioEngineParts;
-use crate::control::audio_engine_settings::AudioEngineSettings;
+use crate::control::engine::audio_engine_parts::AudioEngineParts;
+use crate::control::engine::audio_engine_settings::AudioEngineSettings;
 use crate::control::server::audio_control::AudioControl;
-use crate::control::server::audio_event::AudioEvent;
 use crate::control::server::control_request::ControlRequest;
 use crate::control::server::control_runtime::ControlRuntime;
-use crate::host::audio_asset_source::AudioAssetSource;
-use crate::host::audio_scene_geometry::AudioSceneGeometry;
+use crate::control::server::events::audio_event::AudioEvent;
 use crate::mixer::audio_mixer::AudioMixer;
-use crate::mixer::audio_mixer_meter::AudioMixerMeter;
+use crate::mixer::meter::audio_mixer_meter::AudioMixerMeter;
 use crate::offline::offline_render::OfflineRender;
 use crate::render::bank::sound_bank::SoundBank;
 use crate::render::stream_launcher::StreamLauncher;
-use crate::scene::audio_scene_report::AudioSceneReport;
+use crate::scene::host::audio_asset_source::AudioAssetSource;
+use crate::scene::host::audio_scene_geometry::AudioSceneGeometry;
+use crate::scene::report::audio_scene_report::AudioSceneReport;
 use xrf_audio_scene::AudioSceneInbox;
 
 /// The audio's whole runtime without a device or a thread, on a clock of the frames it renders: the control side ticks

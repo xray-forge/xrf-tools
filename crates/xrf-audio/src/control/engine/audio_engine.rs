@@ -6,16 +6,16 @@ use rtrb::{Consumer, Producer};
 use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::control::audio_play::AudioPlay;
 use crate::control::audio_refusal::AudioRefusal;
-use crate::control::engine_shared::EngineShared;
+use crate::control::engine::engine_shared::EngineShared;
 use crate::control::voice_slots::VoiceSlots;
-use crate::mixer::audio_mixer_meter::AudioMixerMeter;
+use crate::mixer::meter::audio_mixer_meter::AudioMixerMeter;
 use crate::mixer::mixer_command::MixerCommand;
-use crate::mixer::reverb_parameters::ReverbParameters;
+use crate::mixer::reverb::reverb_parameters::ReverbParameters;
 use crate::mixer::tap::audio_tap::AudioTap;
 use crate::mixer::tap::mixer_tap::MixerTap;
 use crate::voice::audio_voice_id::AudioVoiceId;
-use crate::voice::audio_voice_playback::AudioVoicePlayback;
-use crate::voice::audio_voice_state::AudioVoiceState;
+use crate::voice::playback::audio_voice_playback::AudioVoicePlayback;
+use crate::voice::playback::audio_voice_state::AudioVoiceState;
 use crate::voice::shared::voice_parameters::VoiceParameters;
 use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
 use crate::voice::shared::voice_status::VoiceStatus;
@@ -41,6 +41,8 @@ pub struct AudioEngine {
   reverb: Arc<ReverbParameters>,
   /// Voices let go of whose stop the audio thread had no room for, asked again by every call until it takes them.
   letting_go: Vec<AudioVoiceId>,
+  /// Taps handed to the mixer and not had back: the one it holds, and those it let go of on their way back.
+  taps_out: usize,
 }
 
 /// What a voice the acoustics place starts with: its effects, and how they hear it at first.
@@ -50,6 +52,9 @@ struct PlacedStart<'a> {
 }
 
 impl AudioEngine {
+  /// Taps the mixer may hold or be handing back at once, the ring they come back through.
+  pub(crate) const TAPS_MOST: usize = 2;
+
   pub(crate) fn new(
     commands: Producer<MixerCommand>,
     retired: Consumer<Box<Voice>>,
@@ -78,6 +83,7 @@ impl AudioEngine {
       acoustics,
       reverb,
       letting_go: Vec::new(),
+      taps_out: 0,
     }
   }
 
@@ -264,11 +270,19 @@ impl AudioEngine {
   ///
   /// # Errors
   ///
-  /// Refuses when the audio thread has not taken its commands.
+  /// Refuses when the audio thread has not taken its commands, or holds [`Self::TAPS_MOST`] taps this side has not had
+  /// back: each one the mixer lets go of comes back through a ring of that many, which must never be full.
   pub fn open_tap(&mut self, length: Duration) -> Result<AudioTap, AudioRefusal> {
+    self.collect();
+
+    if self.taps_out >= Self::TAPS_MOST {
+      return Err(AudioRefusal::TapsBusy);
+    }
+
     let (tap, mixer_tap) = AudioTap::new(length, self.meter.get_rate());
 
     self.send(MixerCommand::SetTap(Box::new(mixer_tap)))?;
+    self.taps_out += 1;
 
     Ok(tap)
   }
@@ -280,7 +294,9 @@ impl AudioEngine {
       self.slots.give_back(voice.id);
     }
 
-    while self.retired_taps.pop().is_ok() {}
+    while self.retired_taps.pop().is_ok() {
+      self.taps_out = self.taps_out.saturating_sub(1);
+    }
 
     let Self {
       letting_go,

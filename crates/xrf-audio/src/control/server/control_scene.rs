@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::acoustics::scene::simulation_pace::SimulationPace;
-use crate::control::audio_engine::AudioEngine;
-use crate::host::audio_asset_source::AudioAssetSource;
-use crate::host::audio_scene_geometry::AudioSceneGeometry;
+use crate::control::engine::audio_engine::AudioEngine;
 use crate::render::scene::scene_assets::SceneAssets;
 use crate::render::scene::scene_render::SceneRender;
 use crate::render::scene::scene_tick::SceneTick;
+use crate::scene::host::audio_asset_source::AudioAssetSource;
+use crate::scene::host::audio_scene_geometry::AudioSceneGeometry;
 use xrf_audio_scene::AudioSceneFrame;
 use xrf_audio_scene::AudioSceneMailbox;
 
