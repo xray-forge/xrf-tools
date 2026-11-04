@@ -87,15 +87,39 @@ struct RenderedEmitter {
   seen: u64,
 }
 
-/// The voice an emitter holds, its stream's control where it streams, and the mixer frame and source frame it started
-/// at, which say where it should be by now at its own pace.
+/// The voice an emitter holds, its stream's control where it streams, and where it should be by now: reckoned from the
+/// source frame it started at, at the rate it was last set to, its Doppler shift included, from the mixer frame that
+/// rate was set at.
 struct RealVoice {
   id: AudioVoiceId,
   stream: Option<StreamControl>,
-  started_at: u64,
-  start_frame: u64,
+  /// The source frame due at mixer frame `reckoned_at`, unwrapped past the loop seam.
+  due: f64,
+  reckoned_at: u64,
+  /// The rate it plays at, its emitter's speed times its Doppler shift.
+  rate: f32,
   /// Whether the acoustics place it.
   is_placed: bool,
+}
+
+impl RealVoice {
+  /// The source frame due at `mixer_frame`, its sound at `sample_rate` played by a mixer at `mixer_rate`; a mixer frame
+  /// before the one it starts at is its start.
+  fn get_due(&self, mixer_frame: u64, sample_rate: u32, mixer_rate: u32) -> f64 {
+    let played: u64 = mixer_frame.saturating_sub(self.reckoned_at);
+
+    self.due + played as f64 * f64::from(sample_rate) * f64::from(self.rate) / f64::from(mixer_rate.max(1))
+  }
+
+  /// Takes `rate` from `mixer_frame` on, what was due by then kept.
+  fn reckon(&mut self, mixer_frame: u64, sample_rate: u32, mixer_rate: u32, rate: f32) {
+    if mixer_frame > self.reckoned_at {
+      self.due = self.get_due(mixer_frame, sample_rate, mixer_rate);
+      self.reckoned_at = mixer_frame;
+    }
+
+    self.rate = rate;
+  }
 }
 
 /// Where an emitter's sound is at a moment.
@@ -228,7 +252,7 @@ impl SceneRender {
       let is_named: bool = rendered.seen == generation;
 
       if !is_named && let Some(voice) = rendered.voice.take() {
-        let _ = tick.engine.stop(voice.id);
+        tick.engine.let_go(voice.id);
       }
 
       is_named
@@ -339,7 +363,7 @@ impl SceneRender {
         rendered.spatial = None;
 
         if let Some(voice) = rendered.voice.take() {
-          let _ = tick.engine.stop(voice.id);
+          tick.engine.let_go(voice.id);
         }
       }
     }
@@ -352,7 +376,7 @@ impl SceneRender {
   pub(crate) fn close(&mut self, engine: &mut AudioEngine) {
     for rendered in self.emitters.values_mut() {
       if let Some(voice) = rendered.voice.take() {
-        let _ = engine.stop(voice.id);
+        engine.let_go(voice.id);
       }
     }
 
@@ -513,11 +537,11 @@ impl SceneRender {
     let frequency: f32 = rendered.emitter.frequency;
     let starved: Option<RealVoice> = rendered
       .voice
-      .take_if(|voice| Self::is_starved(tick.engine.get_playback(voice.id), voice, &place, frequency, tick));
+      .take_if(|voice| Self::is_starved(tick.engine.get_playback(voice.id), voice, &place, tick));
     let engine: &mut AudioEngine = &mut *tick.engine;
 
     if let Some(voice) = starved {
-      let _ = engine.stop(voice.id);
+      engine.let_go(voice.id);
 
       if let Some(failure) = voice.stream.as_ref().and_then(StreamControl::get_failure) {
         self.refuse(rendered, failure);
@@ -588,10 +612,11 @@ impl SceneRender {
       (scale * attenuation, pan)
     };
 
-    if let Some(voice) = &rendered.voice {
+    if let Some(voice) = &mut rendered.voice {
       engine.set_voice_gain(voice.id, gain);
       engine.set_voice_pan(voice.id, pan);
       engine.set_voice_rate(voice.id, rate);
+      voice.reckon(tick.mixer_frame, place.sample_rate, tick.rate, rate);
 
       if let Some(spatial) = &rendered.spatial {
         engine.set_voice_spatial(voice.id, spatial);
@@ -655,8 +680,9 @@ impl SceneRender {
         rendered.voice = Some(RealVoice {
           id,
           stream,
-          started_at: at,
-          start_frame: place.frame,
+          due: place.frame as f64,
+          reckoned_at: at,
+          rate,
           is_placed,
         });
 
@@ -706,28 +732,19 @@ impl SceneRender {
     }
   }
 
-  /// Whether a voice has ended while its emitter plays on, or lags where its own pace since it started should have it
-  /// by more than the drift allowed, as a stream its decoder has not fed: it neither renders nor advances. Measured
-  /// against the voice's own start, never the scene's clock, so a clock stepped or anchored again moves no voice; a voice
-  /// not yet taken up by the mixer is where it was started. `frequency` is the emitter's speed.
-  fn is_starved(
-    playback: AudioVoicePlayback,
-    voice: &RealVoice,
-    place: &SoundPlace,
-    frequency: f32,
-    tick: &SceneTick<'_>,
-  ) -> bool {
+  /// Whether a voice has ended while its emitter plays on, or lags where its own reckoning should have it by more than
+  /// the drift allowed, as a stream its decoder has not fed: it neither renders nor advances. Measured against the
+  /// voice's own start at the rates it was set to, never the scene's clock, so neither a clock stepped or anchored again
+  /// nor a Doppler shift moves a voice; a voice not yet taken up by the mixer is where it was started.
+  fn is_starved(playback: AudioVoicePlayback, voice: &RealVoice, place: &SoundPlace, tick: &SceneTick<'_>) -> bool {
     match playback.state {
       AudioVoiceState::Ended => true,
       AudioVoiceState::Starting => false,
       AudioVoiceState::Playing | AudioVoiceState::Paused => {
-        // Source frames a mixer frame.
-        let pace: f64 = f64::from(place.sample_rate) * f64::from(frequency) / f64::from(tick.rate.max(1));
         let frames: i64 = place.frames.max(1) as i64;
-        let played: u64 = tick.mixer_frame.saturating_sub(voice.started_at);
-        let due: i64 = voice.start_frame as i64 + (played as f64 * pace) as i64;
+        let due: i64 = voice.get_due(tick.mixer_frame, place.sample_rate, tick.rate) as i64;
         let behind: i64 = (due - playback.frame as i64).rem_euclid(frames);
-        let allowed: f64 = SceneClock::DRIFT.as_secs_f64() * f64::from(place.sample_rate) * f64::from(frequency);
+        let allowed: f64 = SceneClock::DRIFT.as_secs_f64() * f64::from(place.sample_rate) * f64::from(voice.rate);
 
         // A lag past half the sound is the voice ahead across the loop seam, not behind.
         behind < frames / 2 && behind as f64 > allowed

@@ -278,6 +278,34 @@ fn moves_no_playing_voice_for_a_stepped_clock() {
   assert_eq!(report.emitters[0].restarts, 0);
 }
 
+// A looped sound parting at 20 m/s plays about 5% slow for its Doppler shift, and keeps its voice: a voice is reckoned
+// at the rate it was set to, so a pitch shift never reads as a starved stream.
+#[test]
+fn keeps_the_voice_of_a_sound_shifted_by_its_motion() {
+  let (mut session, mut inbox) = session();
+
+  for step in 0..80u32 {
+    let time: Duration = Duration::from_millis(u64::from(step) * 50);
+    let parting: AudioSceneEmitter = AudioSceneEmitter {
+      position: [0.0, 0.0, 4.0 + 20.0 * time.as_secs_f32()],
+      max_distance: 500.0,
+      ..emitter(1, "ambient\\tone")
+    };
+
+    while let Some(spent) = inbox.take_spent() {
+      drop(spent);
+    }
+
+    assert!(inbox.send(frame(time, AudioSceneRules::Vanilla, vec![parting])).is_ok());
+    session.render(RATE as usize / 20);
+  }
+
+  let report: AudioSceneReport = report(&session);
+
+  assert!(report.emitters[0].is_real);
+  assert_eq!(report.emitters[0].restarts, 0);
+}
+
 // OpenXRay's 32 targets go to the loudest; the rest simulate.
 #[test]
 fn realizes_the_loudest_up_to_the_engines_targets() {
