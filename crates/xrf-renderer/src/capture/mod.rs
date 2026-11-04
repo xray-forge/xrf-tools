@@ -5,3 +5,4 @@ pub(crate) mod capture_plan;
 pub(crate) mod capture_shot;
 pub(crate) mod cube;
 pub(crate) mod map;
+pub(crate) mod record;

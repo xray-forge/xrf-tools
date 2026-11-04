@@ -12,6 +12,8 @@ const FAILED: u8 = 4;
 
 /// A buffer the GPU copies into and the CPU reads without ever waiting on it: a copy goes out with a frame, the buffer
 /// is mapped once that frame's work is done, which a later frame's poll reports, and it is read then and freed again.
+/// Its state is shared, so another thread may read and free it once it is mapped.
+#[derive(Debug)]
 pub struct GpuReadback {
   buffer: wgpu::Buffer,
   state: Arc<AtomicU8>,

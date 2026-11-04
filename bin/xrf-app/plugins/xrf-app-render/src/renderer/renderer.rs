@@ -6,7 +6,7 @@ use std::time::Duration;
 use xrf_app_core::TauriResult;
 use xrf_error::XrfResult;
 use xrf_renderer::{
-  BurstEvent, CaptureEvent, RenderBurst, RenderCapture, RenderCommand, RenderCubeCapture, RenderEventSink,
+  BurstEvent, CaptureEvent, RecordEvent, RenderBurst, RenderCapture, RenderCommand, RenderCubeCapture, RenderEventSink,
   RenderFrameReport, RenderHoldId, RenderLevelHit, RenderLibraries, RenderLoadReport, RenderMapCapture,
   RenderMemoryReport, RenderOverlay, RenderPick, RenderQueue, RenderSceneId, RenderScreenshot, RenderSelection,
   RenderSettings, RenderTextureReport, RenderViewOptions, RenderViewportId, RenderViewportLayout, RenderWait,
@@ -206,6 +206,13 @@ impl Renderer {
   /// answer stops it.
   pub fn capture_burst(&self, id: RenderViewportId, burst: RenderBurst) -> Receiver<BurstEvent> {
     self.ask(|events| RenderCommand::CaptureBurst { id, burst, events })
+  }
+
+  /// Records a viewport's frames as they are presented at `size`, a sixtieth of a second apart at most, answering each
+  /// frame as it comes back for the caller to read; a frame due while the caller holds every buffer is dropped and
+  /// counted. Dropping the answer stops it.
+  pub fn record(&self, id: RenderViewportId, size: (u32, u32)) -> Receiver<RecordEvent> {
+    self.ask(|events| RenderCommand::Record { id, size, events })
   }
 
   /// Draws every scene's frames `step` apart on its clock from the next on; none at the time each is drawn.
