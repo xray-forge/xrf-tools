@@ -13,6 +13,7 @@ rtrb = "0.4.1"
 serde = { workspace = true }
 specta = { workspace = true, optional = true }
 symphonia = { workspace = true, features = ["pcm", "wav"] }
+xrf-audio-scene = { workspace = true }
 xrf-error = { workspace = true }
 xrf-sound = { workspace = true }
 xrf-utils = { workspace = true }
@@ -25,7 +26,7 @@ xrf-sound = { workspace = true, features = ["fixtures"] }
 # Acoustics through Steam Audio, linked as `.cargo/config.toml` sets it up and loaded when the audio starts; without it,
 # or where the library does not load, sound plays dry.
 steam-audio = ["dep:audionimbus"]
-typescript-bindings = ["specta"]
+typescript-bindings = ["specta", "xrf-audio-scene/typescript-bindings"]
 
 [lints]
 workspace = true

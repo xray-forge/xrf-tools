@@ -1,5 +1,7 @@
 use std::time::Duration;
 
+use xrf_audio_scene::AudioSceneFrame;
+
 use crate::host::sound::sink::world_sound_frame::WorldSoundFrame;
 use crate::host::sound::sink::world_sound_sink::WorldSoundSink;
 
@@ -12,7 +14,9 @@ const INTERVAL: Duration = Duration::from_nanos(1_000_000_000 / 60);
 pub struct SoundOutlet {
   sink: Box<dyn WorldSoundSink>,
   /// Frames to fill before the sink has handed any back.
-  spare: Vec<WorldSoundFrame>,
+  // Boxed as the audio's rings carry them, so a frame moves between the threads by its pointer.
+  #[allow(clippy::vec_box)]
+  spare: Vec<Box<AudioSceneFrame>>,
   sent_at: Option<Duration>,
 }
 
@@ -35,15 +39,18 @@ impl SoundOutlet {
     self.sent_at = None;
   }
 
-  /// Sends a frame `fill` fills at `now`, out of those handed back where there are any.
+  /// Sends a frame `fill` fills at `now`, out of those handed back where there are any, emptied of what they held.
   pub fn send(&mut self, now: Duration, fill: impl FnOnce(&mut WorldSoundFrame)) {
     while let Some(spent) = self.sink.take_spent() {
       self.spare.push(spent);
     }
 
-    let mut frame: WorldSoundFrame = self.spare.pop().unwrap_or_default();
+    let mut frame: WorldSoundFrame = WorldSoundFrame {
+      sound: self.spare.pop().unwrap_or_default(),
+      is_burst: false,
+    };
 
-    frame.clear();
+    frame.sound.emitters.clear();
     fill(&mut frame);
     self.sink.send(frame);
     self.sent_at = Some(now);

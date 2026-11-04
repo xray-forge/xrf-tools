@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use xrf_audio_scene::AudioBus;
 
 use crate::contract::sound::world_sound_category::WorldSoundCategory;
 
@@ -34,5 +35,17 @@ impl WorldSoundToggles {
         WorldSoundCategory::Ambience => self.is_ambience,
         WorldSoundCategory::World => self.is_world,
       }
+  }
+
+  /// Which of the audio's buses are heard, by [`AudioBus::get_index`]: each category's, a bus no category plays on
+  /// heard as the audio's own.
+  pub fn get_heard_buses(&self) -> [bool; AudioBus::COUNT] {
+    let mut heard: [bool; AudioBus::COUNT] = [true; AudioBus::COUNT];
+
+    for category in WorldSoundCategory::ALL {
+      heard[category.get_bus().get_index()] = self.is_heard(category);
+    }
+
+    heard
   }
 }

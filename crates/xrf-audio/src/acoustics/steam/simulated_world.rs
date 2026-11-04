@@ -14,7 +14,7 @@ use crate::acoustics::steam::steam_audio::SteamAudio;
 use crate::acoustics::steam::steam_space::SteamSpace;
 use crate::host::audio_scene_mesh::AudioSceneMesh;
 use crate::mixer::audio_mixer::AudioMixer;
-use crate::scene::audio_listener::AudioListener;
+use xrf_audio_scene::AudioListener;
 
 type DirectSimulator = Simulator<DefaultRayTracer, Direct>;
 type DirectSource = Source<Direct>;

@@ -1,11 +1,12 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
+use xrf_audio_scene::AudioSceneEmitter;
 use xrf_engine_target::XrayEngine;
 
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
-use crate::host::sound::sink::world_sound_emitter::WorldSoundEmitter;
 use crate::host::sound::world_sound_info::WorldSoundInfo;
+use crate::sound::emitters::live_emitter::LiveEmitter;
 use crate::sound::emitters::sound_play::SoundPlay;
 
 /// The ids emitters take, unique across every scene and every restart of one, so the audio never mistakes a new play
@@ -25,14 +26,6 @@ pub struct SoundEmitters {
   live: Vec<LiveEmitter>,
 }
 
-struct LiveEmitter {
-  emitter: WorldSoundEmitter,
-  /// When it plays out, none while looped.
-  end: Option<Duration>,
-  /// Whether no frame has carried it yet, which keeps a short sound for the next frame even once it is over.
-  is_new: bool,
-}
-
 impl SoundEmitters {
   /// Starts a sound, answering its emitter, none for a sound whose file is missing, which the engine plays as nothing.
   pub fn play(&mut self, engine: XrayEngine, play: SoundPlay<'_>) -> Option<u64> {
@@ -45,11 +38,10 @@ impl SoundEmitters {
     let [min_distance, max_distance] = play.range.unwrap_or([info.min_distance, info.max_distance]);
 
     self.live.push(LiveEmitter {
-      emitter: WorldSoundEmitter {
+      emitter: AudioSceneEmitter {
         id,
         sound: play.sound.reference.clone(),
-        kind: play.kind,
-        object: play.object,
+        bus: play.kind.get_category().get_bus(),
         position,
         start: play.start,
         offset: play.offset,
@@ -64,6 +56,8 @@ impl SoundEmitters {
         // Monolith plays its music `sm_Intro`, which sends nothing to the reverb.
         has_reverb: !(play.kind == WorldSoundKind::Music && engine == XrayEngine::Extended),
       },
+      kind: play.kind,
+      object: play.object,
       // `fTimeToStop`: what is left of the file at the sound's speed.
       end: (!play.is_looped).then(|| play.start + info.length.saturating_sub(play.offset).div_f32(frequency)),
       is_new: true,
@@ -115,7 +109,7 @@ impl SoundEmitters {
 
   /// Every emitter a frame at `now` carries: what plays, and what started since the last frame however short; each is
   /// marked carried.
-  pub fn fill(&mut self, out: &mut Vec<WorldSoundEmitter>, now: Duration) {
+  pub fn fill(&mut self, out: &mut Vec<AudioSceneEmitter>, now: Duration) {
     for live in &mut self.live {
       if live.is_new || Self::is_alive(live, now) {
         out.push(live.emitter.clone());
@@ -126,12 +120,8 @@ impl SoundEmitters {
   }
 
   /// What plays at `now`.
-  pub fn iter_playing(&self, now: Duration) -> impl Iterator<Item = &WorldSoundEmitter> {
-    self
-      .live
-      .iter()
-      .filter(move |live| Self::is_alive(live, now))
-      .map(|live| &live.emitter)
+  pub(crate) fn iter_playing(&self, now: Duration) -> impl Iterator<Item = &LiveEmitter> {
+    self.live.iter().filter(move |live| Self::is_alive(live, now))
   }
 
   /// A delayed sound plays from its start, as the engine's emitter holds the sound while it waits.

@@ -1,6 +1,6 @@
 use audionimbus::{CoordinateSystem, Point, Vector3};
 
-use crate::scene::audio_listener::AudioListener;
+use xrf_audio_scene::AudioListener;
 
 /// The game's left-handed space (`x` right, `y` up, `z` ahead) in Steam Audio's right-handed one, whose listener looks
 /// along `-z`: flipping `z` maps one onto the other.

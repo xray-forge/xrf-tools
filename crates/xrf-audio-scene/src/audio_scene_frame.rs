@@ -1,9 +1,9 @@
 use std::time::Duration;
 
-use crate::mixer::audio_bus::AudioBus;
-use crate::scene::audio_listener::AudioListener;
-use crate::scene::audio_scene_emitter::AudioSceneEmitter;
-use crate::scene::audio_scene_rules::AudioSceneRules;
+use crate::audio_bus::AudioBus;
+use crate::audio_listener::AudioListener;
+use crate::audio_scene_emitter::AudioSceneEmitter;
+use crate::audio_scene_rules::AudioSceneRules;
 
 /// A scene's sound as of a moment on its clock, which the control thread plays on from until the next: what plays,
 /// from where it is heard, and whether it is heard. Frames travel through an [`crate::AudioSceneInbox`] and come back

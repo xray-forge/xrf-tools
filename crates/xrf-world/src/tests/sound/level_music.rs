@@ -61,10 +61,10 @@ fn plays_a_track_2d_at_its_volume_within_its_hours() {
   let playing: Vec<_> = emitters.iter_playing(seconds(1)).collect();
 
   assert_eq!(playing.len(), 1);
-  assert_eq!(&*playing[0].sound, "day");
+  assert_eq!(&*playing[0].emitter.sound, "day");
   assert_eq!(playing[0].kind, WorldSoundKind::Music);
-  assert!(playing[0].is_2d && !playing[0].is_looped);
-  assert_eq!(playing[0].volume, 0.8);
+  assert!(playing[0].emitter.is_2d && !playing[0].emitter.is_looped);
+  assert_eq!(playing[0].emitter.volume, 0.8);
 
   // Hours crossing midnight hold either side of it.
   assert_eq!(
@@ -119,7 +119,10 @@ fn plays_a_missing_tracks_halves_on_openxray_only() {
 
   LevelMusic::new(vec![halved()], XrayEngine::Vanilla).update(&mut emitters, 12 * HOUR, seconds(1));
 
-  let positions: Vec<[f32; 3]> = emitters.iter_playing(seconds(1)).map(|it| it.position).collect();
+  let positions: Vec<[f32; 3]> = emitters
+    .iter_playing(seconds(1))
+    .map(|it| it.emitter.position)
+    .collect();
 
   assert_eq!(positions, [[-0.5, 0.0, 0.3], [0.5, 0.0, 0.3]]);
 
@@ -197,19 +200,19 @@ fn plays_the_track_playing_from_a_point_asked() {
 
   music.update(&mut emitters, 12 * HOUR, seconds(1));
 
-  let first: u64 = emitters.iter_playing(seconds(1)).next().unwrap().id;
+  let first: u64 = emitters.iter_playing(seconds(1)).next().unwrap().emitter.id;
 
   assert!(music.command(&mut emitters, &WorldMusicCommand::Seek { position: 7000 }, seconds(2)));
 
   let seeked: Vec<_> = emitters.iter_playing(seconds(2)).collect();
 
   assert_eq!(seeked.len(), 1);
-  assert_ne!(seeked[0].id, first);
-  assert_eq!(seeked[0].offset, seconds(7));
+  assert_ne!(seeked[0].emitter.id, first);
+  assert_eq!(seeked[0].emitter.offset, seconds(7));
   assert_eq!(music.report(&emitters, seconds(3)).position, seconds(8));
   // Three seconds were left of it.
-  assert!(emitters.is_playing(seeked[0].id, Duration::from_millis(4900)));
-  assert!(!emitters.is_playing(seeked[0].id, seconds(5)));
+  assert!(emitters.is_playing(seeked[0].emitter.id, Duration::from_millis(4900)));
+  assert!(!emitters.is_playing(seeked[0].emitter.id, seconds(5)));
 }
 
 // Monolith plays music `sm_Intro`, which feeds no reverb.
@@ -219,5 +222,5 @@ fn sends_no_reverb_for_monolith_music() {
 
   LevelMusic::new(vec![track("day", [1, 23])], XrayEngine::Extended).update(&mut emitters, 12 * HOUR, seconds(1));
 
-  assert!(emitters.iter_playing(seconds(1)).all(|it| !it.has_reverb));
+  assert!(emitters.iter_playing(seconds(1)).all(|it| !it.emitter.has_reverb));
 }

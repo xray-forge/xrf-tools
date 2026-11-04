@@ -5,7 +5,7 @@ use std::time::Duration;
 use xrf_engine_target::XrayEngine;
 
 use crate::host::sound::level::world_static_sound::WorldStaticSound;
-use crate::host::sound::sink::world_sound_emitter::WorldSoundEmitter;
+use crate::sound::emitters::live_emitter::LiveEmitter;
 use crate::sound::emitters::sound_emitters::SoundEmitters;
 use crate::sound::schedule::static_sounds::StaticSounds;
 use crate::tests::sound::{found, missing, seconds};
@@ -23,7 +23,7 @@ fn record(active: [u32; 2], play: [u32; 2], pause: [u32; 2]) -> WorldStaticSound
   }
 }
 
-fn playing(emitters: &SoundEmitters, now: Duration) -> Vec<WorldSoundEmitter> {
+fn playing(emitters: &SoundEmitters, now: Duration) -> Vec<LiveEmitter> {
   emitters.iter_playing(now).cloned().collect()
 }
 
@@ -34,21 +34,21 @@ fn loops_one_with_no_pause_for_ever_as_one_play() {
 
   sounds.update(&mut emitters, XrayEngine::Vanilla, 0, Duration::ZERO);
 
-  let first: Vec<WorldSoundEmitter> = playing(&emitters, Duration::ZERO);
+  let first: Vec<LiveEmitter> = playing(&emitters, Duration::ZERO);
 
   assert_eq!(first.len(), 1);
-  assert!(first[0].is_looped);
+  assert!(first[0].emitter.is_looped);
   assert_eq!(first[0].object, Some(12));
-  assert_eq!(first[0].position, [1.0, 2.0, 3.0]);
-  assert_eq!(first[0].volume, 0.5);
+  assert_eq!(first[0].emitter.position, [1.0, 2.0, 3.0]);
+  assert_eq!(first[0].emitter.volume, 0.5);
 
   for second in 1..100 {
     sounds.update(&mut emitters, XrayEngine::Vanilla, 0, seconds(second));
   }
 
   assert_eq!(
-    playing(&emitters, seconds(99)).first().map(|it| it.id),
-    Some(first[0].id)
+    playing(&emitters, seconds(99)).first().map(|it| it.emitter.id),
+    Some(first[0].emitter.id)
   );
 }
 
@@ -65,11 +65,11 @@ fn plays_one_through_and_waits_a_drawn_pause_after() {
     sounds.update(&mut emitters, XrayEngine::Vanilla, 0, now);
     emitters.retire(now);
 
-    for emitter in emitters.iter_playing(now) {
-      assert!(!emitter.is_looped);
+    for live in emitters.iter_playing(now) {
+      assert!(!live.emitter.is_looped);
 
-      if !starts.contains(&emitter.start) {
-        starts.push(emitter.start);
+      if !starts.contains(&live.emitter.start) {
+        starts.push(live.emitter.start);
       }
     }
   }
@@ -91,13 +91,13 @@ fn loops_one_until_its_drawn_stop_and_fades_it_out() {
 
   sounds.update(&mut emitters, XrayEngine::Vanilla, 0, Duration::ZERO);
 
-  let id: u64 = playing(&emitters, Duration::ZERO)[0].id;
+  let id: u64 = playing(&emitters, Duration::ZERO)[0].emitter.id;
 
-  assert!(playing(&emitters, Duration::ZERO)[0].is_looped);
+  assert!(playing(&emitters, Duration::ZERO)[0].emitter.is_looped);
 
   sounds.update(&mut emitters, XrayEngine::Vanilla, 0, seconds(1));
 
-  assert_eq!(playing(&emitters, seconds(1))[0].stop, Some(seconds(1)));
+  assert_eq!(playing(&emitters, seconds(1))[0].emitter.stop, Some(seconds(1)));
   assert!(emitters.is_playing(id, Duration::from_millis(1099)));
   assert!(!emitters.is_playing(id, Duration::from_millis(1100)));
 
@@ -128,7 +128,7 @@ fn follows_its_active_window_of_the_day() {
 
   sounds.update(&mut emitters, XrayEngine::Vanilla, 2000, seconds(2));
 
-  assert_eq!(playing(&emitters, seconds(2))[0].stop, Some(seconds(2)));
+  assert_eq!(playing(&emitters, seconds(2))[0].emitter.stop, Some(seconds(2)));
 }
 
 #[test]

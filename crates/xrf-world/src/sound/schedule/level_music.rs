@@ -6,7 +6,7 @@ use crate::contract::sound::report::world_sound_music_report::WorldSoundMusicRep
 use crate::contract::sound::world_music_command::WorldMusicCommand;
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
 use crate::host::sound::level::world_music_track::WorldMusicTrack;
-use crate::host::sound::sink::world_sound_emitter::WorldSoundEmitter;
+use crate::sound::emitters::live_emitter::LiveEmitter;
 use crate::sound::emitters::sound_emitters::SoundEmitters;
 use crate::sound::emitters::sound_play::SoundPlay;
 use crate::sound::sound_random::SoundRandom;
@@ -137,10 +137,10 @@ impl LevelMusic {
   /// The track playing, how far into it and how long it is, or how long until the next pick; the track chosen by
   /// hand, and every track by name.
   pub fn report(&self, emitters: &SoundEmitters, now: Duration) -> WorldSoundMusicReport {
-    let heard: Option<&WorldSoundEmitter> = self.current.as_ref().and_then(|current| {
+    let heard: Option<&LiveEmitter> = self.current.as_ref().and_then(|current| {
       emitters
         .iter_playing(now)
-        .find(|emitter| current.emitters.contains(&emitter.id))
+        .find(|live| current.emitters.contains(&live.emitter.id))
     });
     let index: Option<usize> = heard.and(self.current.as_ref()).map(|current| current.index);
     let mut tracks: Vec<String> = self.tracks.iter().map(|track| track.name.clone()).collect();
@@ -153,8 +153,8 @@ impl LevelMusic {
       } else {
         self.next.saturating_sub(now)
       },
-      position: heard.map_or(Duration::ZERO, |emitter| {
-        now.saturating_sub(emitter.start) + emitter.offset
+      position: heard.map_or(Duration::ZERO, |live| {
+        now.saturating_sub(live.emitter.start) + live.emitter.offset
       }),
       length: index.map_or(Duration::ZERO, |index| self.get_length(index)),
       track: index.map(|index| self.tracks[index].name.clone()),

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use crate::mixer::audio_bus::AudioBus;
+use crate::audio_bus::AudioBus;
 
 /// One sound a scene plays, as its host schedules it: the engine's emitter, whose place in the sound follows from the
 /// scene's clock.

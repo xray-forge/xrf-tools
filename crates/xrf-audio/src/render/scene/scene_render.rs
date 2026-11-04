@@ -14,7 +14,6 @@ use crate::control::audio_play::AudioPlay;
 use crate::decode::stream::sound_stream_start::SoundStreamStart;
 use crate::decode::stream::stream_control::StreamControl;
 use crate::host::audio_scene_geometry::AudioSceneGeometry;
-use crate::mixer::audio_bus::AudioBus;
 use crate::render::bank::banked_sound::BankedSound;
 use crate::render::emitter_loudness::EmitterLoudness;
 use crate::render::listener_pan::ListenerPan;
@@ -25,18 +24,19 @@ use crate::render::scene::scene_assets::SceneAssets;
 use crate::render::scene::scene_clock::SceneClock;
 use crate::render::scene::scene_moment::SceneMoment;
 use crate::render::scene::scene_tick::SceneTick;
-use crate::scene::audio_listener::AudioListener;
-use crate::scene::audio_scene_emitter::AudioSceneEmitter;
-use crate::scene::audio_scene_frame::AudioSceneFrame;
-use crate::scene::audio_scene_rules::AudioSceneRules;
-use crate::scene::report::audio_emitter_report::AudioEmitterReport;
-use crate::scene::report::audio_scene_refusal::AudioSceneRefusal;
-use crate::scene::report::audio_scene_report::AudioSceneReport;
+use crate::scene::audio_emitter_report::AudioEmitterReport;
+use crate::scene::audio_scene_refusal::AudioSceneRefusal;
+use crate::scene::audio_scene_report::AudioSceneReport;
 use crate::voice::audio_voice_playback::AudioVoicePlayback;
 use crate::voice::audio_voice_state::AudioVoiceState;
 use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
 use crate::voice::voice_source::VoiceSource;
 use crate::voice::voice_spatial::VoiceSpatial;
+use xrf_audio_scene::AudioBus;
+use xrf_audio_scene::AudioListener;
+use xrf_audio_scene::AudioSceneEmitter;
+use xrf_audio_scene::AudioSceneFrame;
+use xrf_audio_scene::AudioSceneRules;
 
 /// One scene as the control thread plays it: every emitter its frames name simulates by the scene's clock, and the
 /// loudest by priority, up to the engine's targets, hold a voice placed where its clock says it is.

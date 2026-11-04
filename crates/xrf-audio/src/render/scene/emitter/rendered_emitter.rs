@@ -10,10 +10,10 @@ use crate::render::scene::emitter::real_voice::RealVoice;
 use crate::render::scene::emitter::sound_place::SoundPlace;
 use crate::render::scene::scene_assets::SceneAssets;
 use crate::render::scene::scene_moment::SceneMoment;
-use crate::scene::audio_listener::AudioListener;
-use crate::scene::audio_scene_emitter::AudioSceneEmitter;
-use crate::scene::report::audio_scene_refusal::AudioSceneRefusal;
+use crate::scene::audio_scene_refusal::AudioSceneRefusal;
 use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
+use xrf_audio_scene::AudioListener;
+use xrf_audio_scene::AudioSceneEmitter;
 
 /// An emitter as its scene plays it: its sound, how loud it is and where it moves, and the voice it holds.
 pub(crate) struct RenderedEmitter {

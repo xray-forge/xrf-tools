@@ -9,7 +9,7 @@ use crate::acoustics::scene::simulated_source::SimulatedSource;
 use crate::acoustics::scene::simulation_pace::SimulationPace;
 use crate::acoustics::steam::simulated_world::SimulatedWorld;
 use crate::host::audio_scene_geometry::AudioSceneGeometry;
-use crate::scene::audio_listener::AudioListener;
+use xrf_audio_scene::AudioListener;
 
 /// One scene's simulation: it reads the scene's geometry and builds Steam Audio's scene from it, then, each time the
 /// control side hands it where the listener and the sounds are, hears each sound's way through the walls (occlusion,

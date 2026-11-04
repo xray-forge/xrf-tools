@@ -10,12 +10,12 @@ use crate::decode::sound_format::SoundFormat;
 use crate::decode::stream::sound_stream::SoundStream;
 use crate::decode::stream::sound_stream_start::SoundStreamStart;
 use crate::decode::stream::stream_control::StreamControl;
-use crate::mixer::audio_bus::AudioBus;
 use crate::transport::audio_transport_playback::AudioTransportPlayback;
 use crate::transport::audio_transport_state::AudioTransportState;
 use crate::voice::audio_voice_id::AudioVoiceId;
 use crate::voice::audio_voice_state::AudioVoiceState;
 use crate::voice::voice_source::VoiceSource;
+use xrf_audio_scene::AudioBus;
 
 /// One sound a player plays, pauses, seeks and stops, as a media element would: each play streams the sound from where
 /// the transport stands, and a pause or a seek ends that voice and remembers the frame.

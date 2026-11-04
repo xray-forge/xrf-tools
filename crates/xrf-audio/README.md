@@ -136,7 +136,8 @@ the transports and ends the thread. The sink must hold no handle, or the thread 
 ## Scenes and acoustics
 
 `AudioServer::open_scene` opens a level's sound on the control thread: the host sends `AudioSceneFrame`s (the emitters
-playing, the listener, the clock) through the `AudioSceneInbox` it answers, never waiting, and the thread gives the
+playing, the listener, the clock) through the `AudioSceneInbox` it answers, never waiting. Those types are
+`xrf-audio-scene`'s, re-exported here, so a host scheduling sound depends on them without the device. The thread gives the
 loudest emitters by priority, up to the engine's targets, voices placed where the scene's clock says, each stamped to
 the mixer frame it starts on. `AudioAcoustics::load` brings in Steam Audio, behind the `steam-audio` feature: a placed
 mono voice is then heard through its distance, the air, the walls the scene's `AudioSceneGeometry` builds and both

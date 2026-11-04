@@ -2,9 +2,9 @@
 
 use std::time::Duration;
 
+use xrf_audio_scene::AudioSceneEmitter;
 use xrf_engine_target::XrayEngine;
 
-use crate::host::sound::sink::world_sound_emitter::WorldSoundEmitter;
 use crate::host::sound::world_sound::WorldSound;
 use crate::sound::emitters::sound_emitters::SoundEmitters;
 use crate::sound::weather::rain_frame::RainFrame;
@@ -12,7 +12,7 @@ use crate::sound::weather::rain_sound::RainSound;
 use crate::tests::sound::found;
 
 /// The loop after a second of frames at `frame`, its hemi eased all the way.
-fn rain(engine: XrayEngine, frame: RainFrame) -> Option<WorldSoundEmitter> {
+fn rain(engine: XrayEngine, frame: RainFrame) -> Option<AudioSceneEmitter> {
   let sound: WorldSound = found("ambient\\rain", 30);
   let mut rain: RainSound = RainSound::default();
   let mut emitters: SoundEmitters = SoundEmitters::default();
@@ -28,7 +28,10 @@ fn rain(engine: XrayEngine, frame: RainFrame) -> Option<WorldSoundEmitter> {
     );
   }
 
-  emitters.iter_playing(Duration::from_secs(10)).next().cloned()
+  emitters
+    .iter_playing(Duration::from_secs(10))
+    .next()
+    .map(|live| live.emitter.clone())
 }
 
 #[test]
@@ -38,7 +41,7 @@ fn loops_at_the_origin_once_it_rains_and_stops_when_it_does_not() {
     wind_velocity: 0.0,
     hemi: Some(1.0),
   };
-  let playing: WorldSoundEmitter = rain(XrayEngine::Vanilla, wet).expect("it rains");
+  let playing: AudioSceneEmitter = rain(XrayEngine::Vanilla, wet).expect("it rains");
 
   assert!(playing.is_looped);
   assert_eq!(playing.position, [0.0; 3]);
@@ -54,8 +57,8 @@ fn is_as_loud_as_each_engine_makes_it() {
     wind_velocity: 600.0,
     hemi: Some(0.5),
   };
-  let vanilla: WorldSoundEmitter = rain(XrayEngine::Vanilla, frame).expect("it rains");
-  let extended: WorldSoundEmitter = rain(XrayEngine::Extended, frame).expect("it rains");
+  let vanilla: AudioSceneEmitter = rain(XrayEngine::Vanilla, frame).expect("it rains");
+  let extended: AudioSceneEmitter = rain(XrayEngine::Extended, frame).expect("it rains");
 
   assert!((vanilla.volume - 0.1 * 0.5).abs() < 1e-3, "{}", vanilla.volume);
   assert!(

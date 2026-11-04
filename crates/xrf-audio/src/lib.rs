@@ -45,7 +45,6 @@ pub use crate::host::audio_asset_source::AudioAssetSource;
 pub use crate::host::audio_material::AudioMaterial;
 pub use crate::host::audio_scene_geometry::AudioSceneGeometry;
 pub use crate::host::audio_scene_mesh::AudioSceneMesh;
-pub use crate::mixer::audio_bus::AudioBus;
 pub use crate::mixer::audio_mixer::AudioMixer;
 pub use crate::mixer::audio_mixer_load::AudioMixerLoad;
 pub use crate::mixer::audio_mixer_meter::AudioMixerMeter;
@@ -55,15 +54,10 @@ pub use crate::mixer::tap::audio_tap_block::AudioTapBlock;
 pub use crate::mixer::tap::audio_tap_end::AudioTapEnd;
 pub use crate::offline::offline_render::OfflineRender;
 pub use crate::offline::offline_session::OfflineSession;
-pub use crate::scene::audio_listener::AudioListener;
-pub use crate::scene::audio_scene_emitter::AudioSceneEmitter;
-pub use crate::scene::audio_scene_frame::AudioSceneFrame;
-pub use crate::scene::audio_scene_rules::AudioSceneRules;
-pub use crate::scene::inbox::audio_scene_inbox::AudioSceneInbox;
-pub use crate::scene::report::audio_acoustics_report::AudioAcousticsReport;
-pub use crate::scene::report::audio_emitter_report::AudioEmitterReport;
-pub use crate::scene::report::audio_scene_refusal::AudioSceneRefusal;
-pub use crate::scene::report::audio_scene_report::AudioSceneReport;
+pub use crate::scene::audio_acoustics_report::AudioAcousticsReport;
+pub use crate::scene::audio_emitter_report::AudioEmitterReport;
+pub use crate::scene::audio_scene_refusal::AudioSceneRefusal;
+pub use crate::scene::audio_scene_report::AudioSceneReport;
 pub use crate::transport::audio_transport::AudioTransport;
 pub use crate::transport::audio_transport_command::AudioTransportCommand;
 pub use crate::transport::audio_transport_id::AudioTransportId;
@@ -73,3 +67,7 @@ pub use crate::voice::audio_voice_id::AudioVoiceId;
 pub use crate::voice::audio_voice_playback::AudioVoicePlayback;
 pub use crate::voice::audio_voice_state::AudioVoiceState;
 pub use crate::voice::voice_source::VoiceSource;
+// What a host tells the audio of a scene, so a host playing one names it here beside the server it plays through.
+pub use xrf_audio_scene::{
+  AudioBus, AudioListener, AudioSceneEmitter, AudioSceneFrame, AudioSceneInbox, AudioSceneRules,
+};

@@ -1,4 +1,4 @@
-use crate::scene::audio_listener::AudioListener;
+use xrf_audio_scene::AudioListener;
 
 /// Where a placed sound is from the listener, and how its motion and the listener's shift its pitch.
 pub(crate) struct ListenerSpace;

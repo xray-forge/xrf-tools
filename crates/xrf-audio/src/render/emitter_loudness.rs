@@ -1,6 +1,6 @@
 use crate::acoustics::distance_curve::DistanceCurve;
 use crate::render::emitter_culling::EmitterCulling;
-use crate::scene::audio_scene_emitter::AudioSceneEmitter;
+use xrf_audio_scene::AudioSceneEmitter;
 
 /// Below this a sound is not worth a voice.
 const CULL: f32 = 0.01;
