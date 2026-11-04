@@ -39,12 +39,13 @@ impl XRaySoundParameters {
 
   /// Reads the parameter block of the first comment as `CSoundRender_Source::LoadWave` does: a `u32` version, then that
   /// version's fields. Version 1 stores no base volume, which reads as 1, and versions 1 and 2 no maximum AI distance,
-  /// which reads as the maximum distance. None for a version the engine does not read.
+  /// which reads as the maximum distance. None for a comment holding no version the engine reads
+  /// ([`XRaySoundCommentVersion::read`]).
   pub(crate) fn read(comment: &[u8]) -> Result<Option<(XRaySoundCommentVersion, Self)>, String> {
-    let mut reader: VorbisPacketReader = VorbisPacketReader::new(comment);
-    let Some(version) = XRaySoundCommentVersion::from_code(reader.read_u32("X-Ray comment version")?) else {
+    let Some(version) = XRaySoundCommentVersion::read(comment) else {
       return Ok(None);
     };
+    let mut reader: VorbisPacketReader = VorbisPacketReader::new(&comment[XRaySoundCommentVersion::SIZE..]);
 
     let min_distance: f32 = reader.read_f32("minimum distance")?;
     let max_distance: f32 = reader.read_f32("maximum distance")?;
