@@ -1,10 +1,12 @@
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use xrf_sound::fixtures::VorbisNoiseFixture;
+
 use crate::tests::fixtures::{RATE, engine, ramp, stream, wav};
 use crate::{
-  AudioBus, AudioEngine, AudioEngineParts, AudioPlay, AudioVoiceId, AudioVoiceState, OfflineRender, SoundChannels,
-  SoundFormat, SoundStream, SoundStreamStart, StreamControl, StreamReader, VoiceSource,
+  AudioBus, AudioEngine, AudioEngineParts, AudioPlay, AudioVoiceId, AudioVoiceState, DecodedSound, OfflineRender,
+  SoundChannels, SoundFormat, SoundStream, SoundStreamStart, StreamControl, StreamReader, VoiceSource,
 };
 
 /// Renders until the voice has sounded, or two seconds pass: the stream's thread fills its ring meanwhile.
@@ -45,6 +47,24 @@ fn starts_a_stream_mid_file_at_the_frame_asked_for() {
   assert_eq!((out[0] * 32768.0).round() as i64, 12_345);
   assert_eq!((out[2] * 32768.0).round() as i64, 12_346);
   assert_eq!(out[0], out[1], "a mono stream plays in both channels");
+}
+
+#[test]
+fn streams_an_ogg_sound_from_the_frame_asked_for() {
+  let bytes: Arc<[u8]> = VorbisNoiseFixture::sound(1, 200).into();
+  let whole: DecodedSound = DecodedSound::decode(bytes.clone()).expect("the sound decodes");
+  let AudioEngineParts { mut engine, mixer } = engine(1);
+  let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
+  let voice: AudioVoiceId = play(&mut engine, stream(bytes, 54_321, false));
+  let out: Vec<f32> = render_until_audible(&engine, &mut render, voice);
+  let lefts: Vec<f32> = out.iter().step_by(2).copied().collect();
+
+  assert_eq!(
+    VorbisNoiseFixture::SAMPLE_RATE,
+    RATE,
+    "the sound plays at the output rate, copied"
+  );
+  assert_eq!(&lefts[..], &whole.get_samples()[54_321..54_321 + lefts.len()]);
 }
 
 #[test]

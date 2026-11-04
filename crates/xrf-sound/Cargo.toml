@@ -14,5 +14,9 @@ byteorder = { workspace = true }
 serde = { workspace = true }
 xrf-chunk = { workspace = true }
 
+[features]
+# Exports the Vorbis sounds this crate's tests decode, so a dependant tests against the same streams.
+fixtures = []
+
 [lints]
 workspace = true

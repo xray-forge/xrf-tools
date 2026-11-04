@@ -36,7 +36,15 @@ impl DecodedSound {
   ///
   /// Returns an error when the bytes are not a sound [`SoundDecoder`] opens or its audio fails to decode.
   pub fn decode(bytes: Arc<[u8]>) -> XrfResult<Self> {
-    let mut decoder: SoundDecoder = SoundDecoder::open(bytes)?;
+    Self::decode_from(SoundDecoder::open(bytes)?)
+  }
+
+  /// Decodes every frame `decoder` has left, for a caller that opened it to read the sound's format first.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error when the sound's audio fails to decode.
+  pub fn decode_from(mut decoder: SoundDecoder) -> XrfResult<Self> {
     let channels: SoundChannels = decoder.get_channels();
     let mut samples: Vec<f32> = Vec::with_capacity(
       usize::try_from(decoder.get_frames_count())

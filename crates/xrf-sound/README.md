@@ -2,9 +2,9 @@
 
 Sound files the engine plays, and the environment presets it mixes them in. `SoundFile` reads what the engine reads of
 an Ogg/Vorbis sound — its stream headers, its length, and the X-Ray source parameters stored in its first Vorbis comment
-— with optional validation of the full audio stream, and writes new parameters into a sound. `SoundEnvironmentFile`
-reads, edits and writes `senvironment.xr`, the reverb preset library. The sound verifier and the desktop app's archive
-previews read through it.
+— with optional validation of the full audio stream, and writes new parameters into a sound. `VorbisDecoder` decodes a
+sound's audio, seeking to the frame. `SoundEnvironmentFile` reads, edits and writes `senvironment.xr`, the reverb preset
+library. The sound verifier, `xrf-audio` and the desktop app's archive previews read through it.
 
 ## Read sound metadata
 
@@ -90,6 +90,42 @@ fn main() -> xrf_error::XrfResult {
 The crate does not play or encode sounds, and the SDK's sound thumbnails, which hold the parameters beside a source
 `.wav` before encoding, are not read here.
 
+## Decode a sound
+
+`VorbisDecoder` decodes an Ogg/Vorbis sound held in memory packet by packet, for `xrf-audio` to play. It reads the Ogg
+pages itself and hands each audio packet to symphonia's Vorbis codec, so the comments are never interpreted, and it
+answers the frame each packet starts on as libvorbis places it: from the stream's start, the first packet rendering
+nothing, and after a seek from the granule position of the page it lands on. Decoding stops at `get_samples_count`, the
+same `ov_pcm_total` as `SoundFile::samples_count`, trimming the last packet to it.
+
+```rust,no_run
+use xrf_sound::VorbisDecoder;
+
+fn main() -> xrf_error::XrfResult {
+  let bytes: Vec<u8> = std::fs::read("gamedata/sounds/music/outro.ogg")?;
+  let mut decoder = VorbisDecoder::open(bytes.as_slice())?;
+  let mut samples: Vec<f32> = Vec::new();
+
+  decoder.seek(48_000)?;
+
+  while let Some(first_frame) = decoder.decode_next(&mut samples)? {
+    // A packet may start before the frame sought; drop what comes before it by `first_frame`.
+    println!("{} frames from {first_frame}", samples.len() / usize::from(decoder.get_channels()));
+  }
+
+  Ok(())
+}
+```
+
+`VorbisDecoder::is_ogg` tells an Ogg stream by its first bytes, for a player choosing its decoder. `seek` bisects the
+bytes by granule position and lands on the last page placing a frame at or before the one asked for
+that a reader starting there is handed a packet of; the packets up to that page's end are decoded and dropped. A packet
+the codec refuses as corrupt is skipped, and the packets after it wait for the next page's granule position.
+
+The `fixtures` feature exports `VorbisNoiseFixture`, an Ogg/Vorbis sound of noise written without an encoder (one
+codebook pair, a flat floor, random residues; short and long blocks, a packet over three pages, a trimmed last page),
+which this crate's decoder tests and `xrf-audio`'s seek tests compare frame for frame.
+
 ## Sound environments
 
 `SoundEnvironmentFile` reads `senvironment.xr` with `read_from_path`, `read_from_file`, `read_from_bytes` or
@@ -121,5 +157,7 @@ as it was.
 
 Run `cargo test --locked -p xrf-sound` from the repository root.
 
-See the [read and write API](src/sound_file.rs), the [X-Ray comment format](src/xray/xray_sound_parameters.rs), the
-[environment library](src/environment/sound_environment_file.rs), and its [presets](src/environment/sound_environment.rs).
+See the [read and write API](src/sound_file.rs), the [decoder](src/vorbis/vorbis_decoder.rs), the
+[X-Ray comment format](src/xray/xray_sound_parameters.rs), the
+[environment library](src/environment/sound_environment_file.rs), and its
+[presets](src/environment/sound_environment.rs).

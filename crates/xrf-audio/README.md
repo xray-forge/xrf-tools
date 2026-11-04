@@ -88,10 +88,11 @@ does.
 
 ## Sounds
 
-`SoundDecoder` reads Ogg/Vorbis, as the game ships sounds, and 16-bit WAV, as the SDK keeps sources, through
-symphonia. A sound with other than one or two channels is refused, as the engines play nothing else. Seeking is exact
-to the frame: the decoder lands a second early, because symphonia sometimes misplaces the first packets of the Ogg page
-a seek lands on, and drops what it decodes before the frame.
+`SoundDecoder` reads Ogg/Vorbis, as the game ships sounds, through `xrf-sound`'s `VorbisDecoder` (its own Ogg reading,
+symphonia's Vorbis codec), and 16-bit WAV, as the SDK keeps sources, through symphonia. A sound with other than one or
+two channels is refused, as the engines play nothing else. An Ogg/Vorbis sound is as long as `ov_pcm_total` says, the
+engine's count. Seeking is exact to the frame: the decoder lands on the packet holding the frame, or before it, and drops
+what it decodes before the frame.
 
 - `DecodedSound` holds a sound whole, interleaved at its own rate, for the short sounds most voices play.
 - `SoundStream::start` takes the sound's `SoundFormat` (rate, channels, length, from `SoundDecoder::get_format` or a
