@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::acoustics::audio_acoustics::AudioAcoustics;
+use crate::acoustics::scene::simulation_pace::SimulationPace;
 use crate::control::audio_engine::AudioEngine;
 use crate::host::audio_asset_source::AudioAssetSource;
 use crate::host::audio_scene_geometry::AudioSceneGeometry;
@@ -22,17 +23,18 @@ pub(crate) struct ControlScene {
 
 impl ControlScene {
   /// A scene whose frames come through `mailbox`, its sounds read through `assets`, heard through `acoustics` and
-  /// shaped by `geometry` where the host has it.
+  /// shaped by `geometry` where the host has it, simulated at `pace`.
   pub(crate) fn new(
     mailbox: SceneMailbox,
     assets: Arc<dyn AudioAssetSource>,
     acoustics: &AudioAcoustics,
     geometry: Option<Arc<dyn AudioSceneGeometry>>,
+    pace: SimulationPace,
   ) -> Self {
     Self {
       mailbox,
       assets: SceneAssets::new(assets),
-      render: SceneRender::new(acoustics, geometry),
+      render: SceneRender::new(acoustics, geometry, pace),
       generation: 0,
     }
   }

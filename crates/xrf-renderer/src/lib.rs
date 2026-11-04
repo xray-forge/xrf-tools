@@ -214,6 +214,7 @@ pub use crate::host::world::feedback::render_streaming_progress::RenderStreaming
 pub use crate::host::world::render_scene_frame::RenderSceneFrame;
 pub use crate::host::world::render_scene_id::RenderSceneId;
 pub use crate::host::world::render_scene_update::RenderSceneUpdate;
+pub use crate::host::world::render_view_burst::RenderViewBurst;
 pub use crate::host::world::render_view_frame::RenderViewFrame;
 pub use crate::host::world::render_view_input::RenderViewInput;
 pub use crate::host::world::render_world::RenderWorld;

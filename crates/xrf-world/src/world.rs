@@ -394,11 +394,20 @@ impl RenderWorld for World {
       let Some(driving) = driver.and_then(|driver| self.viewports.get(&driver)) else {
         continue;
       };
-      // The listening viewport hears the scene it shows; a scene it does not show plays on, silent, by its driver.
-      let is_audible: bool = listener.is_some_and(|listener| scene.viewers.contains(&listener));
-      let hearing: &WorldViewport = listener
-        .filter(|_| is_audible)
-        .and_then(|listener| self.viewports.get(&listener))
+      // A viewport drawing a burst of the scene hears it, at the burst's times; else the listening viewport hears the
+      // scene it shows; a scene it does not show plays on, silent, by its driver.
+      let bursting: Option<&WorldViewport> = scene
+        .viewers
+        .iter()
+        .filter_map(|viewer| self.viewports.get(viewer))
+        .find(|viewer| viewer.burst.is_some());
+      let is_audible: bool = bursting.is_some() || listener.is_some_and(|listener| scene.viewers.contains(&listener));
+      let hearing: &WorldViewport = bursting
+        .or_else(|| {
+          listener
+            .filter(|_| is_audible)
+            .and_then(|listener| self.viewports.get(&listener))
+        })
         .unwrap_or(driving);
       let sound: SoundDrive<'_> = SoundDrive {
         scene: *id,
@@ -415,6 +424,7 @@ impl RenderWorld for World {
           .map(|_| hearing.weather.get_player().get_ambients()),
         rain: hearing.get_rain_frame(None),
         thunder: &hearing.thunders,
+        burst: hearing.burst,
       };
       let (updates, effects): (Vec<RenderSceneUpdate>, EffectsFrame) = scene.level.advance(
         now,

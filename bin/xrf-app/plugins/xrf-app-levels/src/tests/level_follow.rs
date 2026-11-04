@@ -27,7 +27,7 @@ use crate::parts::{
   LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelStartPart, LevelSurfacesPart,
   LevelTexturesPart, LevelWeatherPart,
 };
-use crate::render::{LevelRenderParts, LevelRenderSource, LevelSceneFollower, ShownLevels};
+use crate::render::{LevelAudio, LevelRenderParts, LevelRenderSource, LevelSceneFollower, ShownLevels};
 
 /// Longer than a synthetic level takes to read on the test pool.
 const WAIT: Duration = Duration::from_secs(10);
@@ -508,7 +508,11 @@ fn a_commit_to_a_file_only_a_part_read_names_that_part_stale() {
   assets.add_subscriber(log.clone());
 
   let opened: Arc<SessionSnapshot<SelectedLevel>> = open(&levels, &assets, &roots);
-  let source: LevelRenderSource = LevelRenderSource::new(Arc::clone(&opened), AssetMountState::clone(&assets), None);
+  let source: LevelRenderSource = LevelRenderSource::new(
+    Arc::clone(&opened),
+    AssetMountState::clone(&assets),
+    LevelAudio::default(),
+  );
 
   // Each read finds nothing of what it looks for in the synthetic level, which it records as it would a file.
   assert!(source.read_details().unwrap().is_none());

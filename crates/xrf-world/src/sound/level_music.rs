@@ -153,6 +153,11 @@ impl LevelMusic {
     }
   }
 
+  /// The track played by hand, by its name, none while the schedule picks.
+  pub fn get_chosen(&self) -> Option<&str> {
+    self.chosen.map(|index| self.tracks[index].name.as_str())
+  }
+
   pub fn iter_tracks(&self) -> impl Iterator<Item = &WorldMusicTrack> {
     self.tracks.iter()
   }

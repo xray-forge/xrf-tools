@@ -18,6 +18,9 @@ pub struct WorldSoundFrame {
   pub engine: XrayEngine,
   /// Whether the listener's viewport shows the scene; every other scene is silent and plays on.
   pub is_audible: bool,
+  /// Whether a burst draws the frame at a time of its own, heard by the burst's viewport: the scene's sound plays the
+  /// burst's frames from a start of their own, the same however often a burst from that time is drawn.
+  pub is_burst: bool,
   pub listener: WorldSoundListener,
   pub toggles: WorldSoundToggles,
   /// What plays at the frame's time, and what started since the frame before, however short.
@@ -31,6 +34,7 @@ impl Default for WorldSoundFrame {
       time: Duration::ZERO,
       engine: XrayEngine::default(),
       is_audible: false,
+      is_burst: false,
       listener: WorldSoundListener::default(),
       toggles: WorldSoundToggles::default(),
       emitters: Vec::new(),

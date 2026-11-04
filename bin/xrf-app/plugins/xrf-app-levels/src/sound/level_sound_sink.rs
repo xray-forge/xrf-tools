@@ -1,12 +1,22 @@
-use xrf_audio::{AudioBus, AudioListener, AudioSceneEmitter, AudioSceneFrame, AudioSceneInbox, AudioSceneRules};
+use std::sync::Arc;
+
+use xrf_audio::{
+  AudioAssetSource, AudioBus, AudioListener, AudioSceneEmitter, AudioSceneFrame, AudioSceneGeometry, AudioSceneInbox,
+  AudioSceneRules,
+};
 use xrf_engine_target::XrayEngine;
 use xrf_world::{WorldSoundCategory, WorldSoundEmitter, WorldSoundFrame, WorldSoundSink};
+
+use crate::viewer::burst::{BurstSoundFrame, BurstSoundTee};
 
 /// A shown level's sound on its way from the world to the audio's control thread: each world frame copied into a scene
 /// frame the control thread handed back, and handed back to the world at once. The world cannot depend on the audio,
 /// since the renderer it feeds depends on the world, so the levels domain joins them.
 pub struct LevelSoundSink {
   inbox: AudioSceneInbox,
+  tee: BurstSoundTee,
+  assets: Arc<dyn AudioAssetSource>,
+  geometry: Arc<dyn AudioSceneGeometry>,
   /// Scene frames to fill before the control thread has handed any back, and those the inbox refused.
   // Boxed as the inbox's rings carry them, so a frame moves between the threads by its pointer.
   #[allow(clippy::vec_box)]
@@ -16,9 +26,19 @@ pub struct LevelSoundSink {
 }
 
 impl LevelSoundSink {
-  pub fn new(inbox: AudioSceneInbox) -> Self {
+  /// A sink into `inbox`, the scene's sounds read through `assets` and its walls from `geometry`, a burst's frames sent
+  /// on through `tee`.
+  pub fn new(
+    inbox: AudioSceneInbox,
+    tee: BurstSoundTee,
+    assets: Arc<dyn AudioAssetSource>,
+    geometry: Arc<dyn AudioSceneGeometry>,
+  ) -> Self {
     Self {
       inbox,
+      tee,
+      assets,
+      geometry,
       spare: Vec::new(),
       spent: Vec::new(),
     }
@@ -95,6 +115,18 @@ impl WorldSoundSink for LevelSoundSink {
     let mut scene: Box<AudioSceneFrame> = self.spare.pop().unwrap_or_default();
 
     Self::fill(&mut scene, &frame);
+
+    if frame.is_burst {
+      if self.tee.is_armed() {
+        self.tee.send(BurstSoundFrame {
+          frame: scene.clone(),
+          assets: Arc::clone(&self.assets),
+          geometry: Arc::clone(&self.geometry),
+        });
+      }
+
+      scene.is_audible = false;
+    }
 
     // A frame the control thread has no room for waits as a spare; the next frame carries everything again.
     if let Err(refused) = self.inbox.send(scene) {

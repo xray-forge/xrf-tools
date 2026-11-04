@@ -57,14 +57,16 @@ The control side reaches the audio thread two ways:
 | Way                    | Carries                                              | When it is full                                  |
 | ---------------------- | ---------------------------------------------------- | ------------------------------------------------ |
 | Command ring           | A voice's start, pause, resume, stop; bus and master | Refused with `AudioRefusal::CommandsFull`        |
-| Slot's parameter block | A voice's continuous controls: gain and rate         | Never: the latest write wins, read once a buffer |
+| Slot's parameter block | Gain, rate, pan, and a placed voice's spatial block  | Never: the latest write wins, read once a block  |
 
 A voice's controls change every frame for a level's emitters, and a device may not be taking buffers at all, so they
 never queue: a thousand voices updated every frame cost a thousand writes and nothing else. A full pool refuses a voice
 with `AudioRefusal::VoicesExhausted`.
 
 The mixer renders in blocks of `AudioMixer::BLOCK_FRAMES` frames, taking commands and parameters before each, so a
-command waits at most a block whatever the device's buffer. `AudioMixerMeter` (from `AudioEngine::get_meter`) reads the
+command waits at most a block whatever the device's buffer. A voice may name the mixer frame its first frame plays at
+(`AudioPlay::at`): one still ahead when the mixer takes it up waits in silence to that frame, inside its block, and one
+already passed plays from as far on as it would have got. `AudioMixerMeter` (from `AudioEngine::get_meter`) reads the
 frames rendered, the mixer's clock, and its load: a buffer's render time over the time it plays for, the peak since the
 last read, overruns and the voices held. Each block renders in two steps a voice:
 
@@ -123,9 +125,22 @@ plays; `resend_transport` sends it again for a new watcher. The device and the m
 thread. `AudioServer::start_on` runs one over an engine whose mixer the caller renders, as tests do; `shut_down` closes
 the transports and ends the thread. The sink must hold no handle, or the thread would keep itself alive.
 
+## Scenes and acoustics
+
+`AudioServer::open_scene` opens a level's sound on the control thread: the host sends `AudioSceneFrame`s (the emitters
+playing, the listener, the clock) through the `AudioSceneInbox` it answers, never waiting, and the thread gives the
+loudest emitters by priority, up to the engine's targets, voices placed where the scene's clock says, each stamped to
+the mixer frame it starts on. `AudioAcoustics::load` brings in Steam Audio, behind the `steam-audio` feature: a placed
+mono voice is then heard through its distance, the air, the walls the scene's `AudioSceneGeometry` builds and both
+ears, with the listener's reverb; without it, or where the library does not load, sound plays dry by one distance curve
+and panning.
+
+`OfflineSession` runs the whole of it without a device or a thread, on a clock of the frames it renders, so a render of
+the same frames comes out the same; `with_stepped_acoustics` runs the acoustics' simulation inline on that clock too.
+
 ## Not here yet
 
-Voices play in 2D only: 3D voices, the engines' distance attenuation, occlusion and reverb are not written yet, and the
-voice's resampler needs a faster inner loop before 1024 voices play at once.
+A placed voice keeps the effects made at the rate the mixer ran at when it started, so a device opened at another rate
+afterwards plays it through effects tuned to the old one until it starts over.
 
 Run `cargo test -p xrf-audio`. The device test opens the machine's real default device, or reports that there is none.

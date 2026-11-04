@@ -14,6 +14,7 @@ use crate::host::render_asset_source::RenderAssetSource;
 use crate::host::world::feedback::render_scene_feedback::RenderSceneFeedback;
 use crate::host::world::render_scene_frame::RenderSceneFrame;
 use crate::host::world::render_scene_id::RenderSceneId;
+use crate::host::world::render_view_burst::RenderViewBurst;
 use crate::host::world::render_view_frame::RenderViewFrame;
 use crate::host::world::render_view_input::RenderViewInput;
 use crate::host::world::render_world::RenderWorld;
@@ -121,6 +122,17 @@ impl RenderThread {
           .map(|scene| Arc::clone(&scene.source) as Arc<dyn RenderAssetSource>),
         is_clouded: viewport.get_options().show.is_clouded,
       };
+      let burst: Option<RenderViewBurst> =
+        viewport
+          .get_burst()
+          .filter(|burst| burst.get_time().is_some())
+          .map(|burst| {
+            if burst.is_starting() {
+              RenderViewBurst::Starting
+            } else {
+              RenderViewBurst::Drawing
+            }
+          });
       let frame: RenderViewFrame = world.advance_view(
         viewport.get_id(),
         RenderViewInput {
@@ -129,6 +141,7 @@ impl RenderThread {
           height: viewport.get_css_height(),
           options: viewport.get_options(),
           skies: &mut skies,
+          burst,
         },
       );
 

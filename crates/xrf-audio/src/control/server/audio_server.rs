@@ -15,6 +15,7 @@ use crate::control::server::audio_control::{AudioControl, ControlFlow};
 use crate::control::server::audio_event_sink::AudioEventSink;
 use crate::control::server::audio_gains::AudioGains;
 use crate::control::server::control_request::ControlRequest;
+use crate::control::server::control_runtime::ControlRuntime;
 use crate::device::audio_output::AudioOutput;
 use crate::device::audio_output_choice::AudioOutputChoice;
 use crate::device::audio_output_status::AudioOutputStatus;
@@ -33,10 +34,6 @@ use crate::transport::audio_transport_state::AudioTransportState;
 /// thread, and tells its host what changed through an [`AudioEventSink`]. A clone is a handle on the same thread; the
 /// thread ends when the last handle goes or [`Self::shut_down`] runs. The sink must hold no handle, or the thread would
 /// keep itself alive.
-///
-/// Requests that answer (steering or describing a transport, describing a scene) wait for the thread; the rest return
-/// at once. A scene's frames go through its own inbox, never waiting. The mixer's clock and load and the device are
-/// read without waiting on the thread.
 #[derive(Clone)]
 pub struct AudioServer {
   shared: Arc<ServerShared>,
@@ -46,6 +43,9 @@ struct ServerShared {
   requests: SyncSender<ControlRequest>,
   output: Option<AudioOutput>,
   meter: AudioMixerMeter,
+  /// What placed voices are heard through, and for which ears as last set.
+  acoustics: AudioAcoustics,
+  spatialization: Mutex<AudioSpatialization>,
   next_transport: AtomicU32,
   thread: Mutex<Option<JoinHandle<()>>>,
 }
@@ -91,7 +91,13 @@ impl AudioServer {
   pub fn start_on(engine: AudioEngine, output: Option<AudioOutput>, events: impl AudioEventSink) -> XrfResult<Self> {
     let (requests, received) = mpsc::sync_channel(Self::REQUESTS_COUNT);
     let meter: AudioMixerMeter = engine.get_meter().clone();
-    let control: AudioControl = AudioControl::new(engine, Box::new(events), Self::POSITION_INTERVAL);
+    let acoustics: AudioAcoustics = engine.get_acoustics().clone();
+    let control: AudioControl = AudioControl::new(
+      engine,
+      Box::new(events),
+      Self::POSITION_INTERVAL,
+      ControlRuntime::threaded(Self::TICK_INTERVAL),
+    );
     let thread: JoinHandle<()> = thread::Builder::new()
       .name(String::from("xrf-audio-control"))
       .spawn(move || Self::run(control, &received))
@@ -102,6 +108,8 @@ impl AudioServer {
         requests,
         output,
         meter,
+        acoustics,
+        spatialization: Mutex::new(AudioSpatialization::default()),
         next_transport: AtomicU32::new(1),
         thread: Mutex::new(Some(thread)),
       }),
@@ -187,7 +195,26 @@ impl AudioServer {
 
   /// Places sounds for headphones or speakers from the next tick.
   pub fn set_spatialization(&self, spatialization: AudioSpatialization) {
+    *self
+      .shared
+      .spatialization
+      .lock()
+      .unwrap_or_else(PoisonError::into_inner) = spatialization;
     self.post(ControlRequest::SetSpatialization(spatialization));
+  }
+
+  /// Whether sounds are placed for headphones or speakers, as last set.
+  pub fn get_spatialization(&self) -> AudioSpatialization {
+    *self
+      .shared
+      .spatialization
+      .lock()
+      .unwrap_or_else(PoisonError::into_inner)
+  }
+
+  /// The acoustics placed voices are heard through, which an offline render of the same scenes shares.
+  pub fn get_acoustics(&self) -> &AudioAcoustics {
+    &self.shared.acoustics
   }
 
   /// How the scene the host names `scene` plays now, none for a scene not open.

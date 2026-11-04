@@ -5,6 +5,7 @@ use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::acoustics::scene::scene_acoustics_state::SceneAcousticsState;
 use crate::acoustics::scene::scene_geometry_state::SceneGeometryState;
 use crate::acoustics::scene::simulated_source::SimulatedSource;
+use crate::acoustics::scene::simulation_pace::SimulationPace;
 use crate::acoustics::scene::source_acoustics::SourceAcoustics;
 #[cfg(feature = "steam-audio")]
 use crate::acoustics::steam::scene_simulation::SceneSimulation;
@@ -14,8 +15,8 @@ use crate::scene::audio_listener::AudioListener;
 use crate::voice::voice_spatial::VoiceSpatial;
 
 /// A scene's acoustics on the control thread: where the acoustics run and the host gave the scene's geometry, a
-/// simulation on a thread of its own hears each placed sound's way through the walls and the listener's reverb; the
-/// control thread hands it the sounds each tick and reads what it last heard, never waiting on it.
+/// simulation hears each placed sound's way through the walls and the listener's reverb; the control thread hands it
+/// the sounds each tick and reads what it last heard, never waiting on one in real time.
 pub(crate) struct SceneAcoustics {
   #[cfg(feature = "steam-audio")]
   acoustics: AudioAcoustics,
@@ -27,31 +28,40 @@ pub(crate) struct SceneAcoustics {
 }
 
 impl SceneAcoustics {
-  pub(crate) fn open(acoustics: &AudioAcoustics, geometry: Option<Arc<dyn AudioSceneGeometry>>) -> Self {
+  /// The acoustics of a scene whose walls `geometry` holds, simulated at `pace`.
+  pub(crate) fn open(
+    acoustics: &AudioAcoustics,
+    geometry: Option<Arc<dyn AudioSceneGeometry>>,
+    pace: SimulationPace,
+  ) -> Self {
     let failure: Option<String> = acoustics.get_failure().map(str::to_owned);
 
     #[cfg(feature = "steam-audio")]
     {
-      let simulation: Option<SceneSimulation> = geometry
+      let mut simulation: Option<SceneSimulation> = geometry
         .filter(|_| failure.is_none())
-        .map(|geometry| SceneSimulation::start(acoustics.clone(), geometry));
+        .map(|geometry| SceneSimulation::start(acoustics.clone(), geometry, pace));
       let geometry: SceneGeometryState = if simulation.is_some() {
         SceneGeometryState::Building
       } else {
         SceneGeometryState::Absent
       };
+      let latest: SceneAcousticsState = simulation
+        .as_mut()
+        .and_then(SceneSimulation::take)
+        .unwrap_or_else(|| SceneAcousticsState::new(geometry));
 
       Self {
         acoustics: acoustics.clone(),
         failure,
         simulation,
-        latest: SceneAcousticsState::new(geometry),
+        latest,
       }
     }
 
     #[cfg(not(feature = "steam-audio"))]
     {
-      let _ = geometry;
+      let _ = (geometry, pace);
 
       Self {
         failure,
@@ -98,11 +108,12 @@ impl SceneAcoustics {
     [1.0; 3]
   }
 
-  /// Hands the simulation where the listener and `sources` are now, and takes what it last heard.
-  pub(crate) fn simulate(&mut self, listener: &AudioListener, sources: &[SimulatedSource]) {
+  /// Hands the simulation where the listener and `sources` are at `now` on the scene's clock, and takes what it last
+  /// heard.
+  pub(crate) fn simulate(&mut self, listener: &AudioListener, sources: &[SimulatedSource], now: Duration) {
     #[cfg(feature = "steam-audio")]
-    if let Some(simulation) = &self.simulation {
-      simulation.submit(listener, sources);
+    if let Some(simulation) = &mut self.simulation {
+      simulation.submit(listener, sources, now);
 
       if let Some(state) = simulation.take() {
         self.latest = state;
@@ -110,7 +121,7 @@ impl SceneAcoustics {
     }
 
     #[cfg(not(feature = "steam-audio"))]
-    let _ = (listener, sources);
+    let _ = (listener, sources, now);
   }
 
   /// How the walls shape the source `id`'s way to the listener, unobstructed until the simulation has heard it.

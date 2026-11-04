@@ -11,7 +11,7 @@ use crate::acoustics::scene::source_acoustics::SourceAcoustics;
 use crate::render::emitter_loudness::EmitterLoudness;
 use crate::render::scene::scene_clock::SceneClock;
 use crate::render::sound_bank::{BankedSound, SoundBank};
-use crate::tests::fixtures::{MemorySounds, RATE, rms_left};
+use crate::tests::fixtures::{MemorySounds, RATE, rms_left, wav};
 use crate::{
   AudioAssetSource, AudioBus, AudioEngineSettings, AudioListener, AudioSceneEmitter, AudioSceneFrame, AudioSceneInbox,
   AudioSceneReport, AudioSceneRules, OfflineSession,
@@ -376,6 +376,118 @@ fn fades_a_scene_no_longer_heard() {
   session.render(RATE as usize / 2);
 
   assert_eq!(report(&session).real_voices, 1);
+}
+
+/// A session holding the tone and `click`, a tenth of a second at a constant level, so its first frame is heard alone.
+fn clicking_session() -> (OfflineSession, AudioSceneInbox) {
+  let mut session: OfflineSession = OfflineSession::new(AudioEngineSettings::default(), RATE);
+  let inbox: AudioSceneInbox = session.open_scene(
+    Arc::new(MemorySounds(HashMap::from([
+      (String::from("ambient\\tone"), tone()),
+      (String::from("click"), wav(RATE, 1, &[16_000; RATE as usize / 10])),
+    ]))),
+    None,
+  );
+
+  (session, inbox)
+}
+
+/// Plays `frames` of the scene `step` seconds apart from nought, frame `index` naming `emitters(index)` and sent `lead`
+/// mixer frames ahead of its time, and answers everything rendered up to the last frame's end.
+fn play_ahead(
+  session: &mut OfflineSession,
+  inbox: &mut AudioSceneInbox,
+  frames: u32,
+  step: f64,
+  lead: u64,
+  emitters: impl Fn(u32) -> Vec<AudioSceneEmitter>,
+) -> Vec<f32> {
+  let at = |index: u32| (f64::from(index) * step * f64::from(RATE)).round() as u64;
+  let mut heard: Vec<f32> = Vec::new();
+
+  for index in 0..frames {
+    let sent_at: u64 = at(index).saturating_sub(lead).max(heard.len() as u64 / 2);
+
+    heard.extend(session.render((sent_at - heard.len() as u64 / 2) as usize));
+
+    while inbox.take_spent().is_some() {}
+
+    assert!(
+      inbox
+        .send(frame(
+          Duration::from_secs_f64(f64::from(index) * step),
+          AudioSceneRules::Vanilla,
+          emitters(index),
+        ))
+        .is_ok()
+    );
+  }
+
+  heard.extend(session.render((at(frames) - heard.len() as u64 / 2) as usize));
+  heard
+}
+
+// A sound starting between two ticks and inside a mixer block plays its first frame on the frame its start falls on,
+// the scene's frames sent as far ahead as the session asks.
+#[test]
+fn lands_a_start_inside_a_block_on_its_frame() {
+  let (mut session, mut inbox) = clicking_session();
+  let lead: u64 = session.get_lead_frames();
+  // A second in, 37 frames into the 188th block and 37 frames past a tick.
+  let start: u64 = u64::from(RATE) + 37;
+  let click: AudioSceneEmitter = AudioSceneEmitter {
+    is_2d: true,
+    is_looped: false,
+    start: Duration::from_secs_f64(start as f64 / f64::from(RATE)),
+    ..emitter(1, "click")
+  };
+  let heard: Vec<f32> = play_ahead(&mut session, &mut inbox, 90, 1.0 / 60.0, lead, |_| vec![click.clone()]);
+  let first: Option<usize> = heard.iter().step_by(2).position(|sample| *sample != 0.0);
+
+  assert_eq!(first, Some(start as usize));
+}
+
+// The same frames sent the same way give the same samples to the bit: equal emitters rank by their ids however they
+// are held, a sound starting meanwhile lands on its frame, and the session's ticks follow its own frames.
+#[test]
+fn plays_the_same_frames_the_same_to_the_bit() {
+  let listen = || {
+    let (mut session, mut inbox) = clicking_session();
+    let lead: u64 = session.get_lead_frames();
+
+    play_ahead(&mut session, &mut inbox, 120, 1.0 / 120.0, lead, |index| {
+      let mut emitters: Vec<AudioSceneEmitter> = (0..12)
+        .map(|id| AudioSceneEmitter {
+          // Pairs as loud as each other, either side of the listener.
+          position: [if id % 2 == 0 { 3.0 } else { -3.0 }, 0.0, 2.0 + (id / 2) as f32],
+          volume: 0.5,
+          ..emitter(id + 1, "ambient\\tone")
+        })
+        .collect();
+
+      emitters.push(AudioSceneEmitter {
+        position: [f32::from(index as u16) * 0.05, 0.0, 6.0],
+        ..emitter(20, "ambient\\tone")
+      });
+      emitters.push(AudioSceneEmitter {
+        is_2d: true,
+        is_looped: false,
+        start: Duration::from_secs_f64(0.6123),
+        ..emitter(21, "click")
+      });
+
+      emitters
+    })
+  };
+  let first: Vec<f32> = listen();
+  let second: Vec<f32> = listen();
+
+  assert!(rms_left(&first) > 0.01);
+  assert_eq!(first.len(), second.len());
+  assert!(
+    first.iter().zip(&second).all(|(a, b)| a.to_bits() == b.to_bits()),
+    "the two renders differ"
+  );
 }
 
 // Past its budget the bank lets go of the sounds no emitter holds, the least recently asked first.
