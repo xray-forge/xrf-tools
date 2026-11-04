@@ -79,6 +79,20 @@ impl LevelViewerFolder {
     }
   }
 
+  /// Refuses a path other than a recording's video directly in the recordings folder, the only files the page may have
+  /// deleted there; checks the path alone.
+  ///
+  /// # Errors
+  ///
+  /// Returns an error naming the path when it is not one, or when the folder cannot be named.
+  pub fn require_recording(directories: &AppDirectories, path: &Path) -> TauriResult {
+    if Self::is_recording(&Self::Recordings.get_path(directories)?, path) {
+      Ok(())
+    } else {
+      Err(format!("'{}' is not a recording of the level viewer", path.display()))
+    }
+  }
+
   /// Refuses a view file other than a JSON one, the only kind the page may write or read where a file dialog answered.
   ///
   /// # Errors
@@ -176,10 +190,20 @@ impl LevelViewerFolder {
 
   /// Whether `path` is an image directly in the screenshots folder (`folder`).
   pub(crate) fn is_screenshot(folder: &Path, path: &Path) -> bool {
+    Self::is_in(folder, path, Self::SCREENSHOT_EXTENSION)
+  }
+
+  /// Whether `path` is a video directly in the recordings folder (`folder`).
+  pub(crate) fn is_recording(folder: &Path, path: &Path) -> bool {
+    Self::is_in(folder, path, Self::RECORDING_EXTENSION)
+  }
+
+  /// Whether `path` is a file of `extension` directly in `folder`.
+  fn is_in(folder: &Path, path: &Path, extension: &str) -> bool {
     path.parent() == Some(folder)
       && path.file_name().is_some()
       && path
         .extension()
-        .is_some_and(|extension| extension.eq_ignore_ascii_case(Self::SCREENSHOT_EXTENSION))
+        .is_some_and(|found| found.eq_ignore_ascii_case(extension))
   }
 }

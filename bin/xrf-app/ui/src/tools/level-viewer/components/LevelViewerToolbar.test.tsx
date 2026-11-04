@@ -58,7 +58,6 @@ describe("LevelViewerToolbar", () => {
       "level-camera-effects-action",
       "level-go-to-action",
       "level-viewer-capture-action",
-      "level-viewer-record-action",
     ]);
   });
 });

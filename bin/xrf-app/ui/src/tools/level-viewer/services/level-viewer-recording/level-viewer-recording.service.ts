@@ -2,16 +2,19 @@ import { Channel } from "@tauri-apps/api/core";
 import { inject, Injectable, OnActivation, OnDeactivation } from "@wirestate/core";
 import { BoundAction, Computed, RefObservable } from "@wirestate/mobx";
 import { ExclusiveFlow, TFlow } from "@xrf/flow";
-import { formatDuration } from "@xrf/format";
 import { levelsCommands } from "@xrf/ipc/commands/levels";
+import { systemCommands } from "@xrf/ipc/commands/system";
 import { RecordingAvailability, RecordingOutcome, RecordingProgress } from "@xrf/ipc/types/xrf-app-levels";
 import { Logger } from "@xrf/logging";
 import { Nullable } from "@xrf/types";
 
+import { KeybindCommand } from "@/core/commands";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { ENotificationSeverity } from "@/core/notifications/lib";
 import { CommandReporter, TCommandCompletion } from "@/core/operations/lib/command-reporter";
+import { RECORD_LEVEL_KEYBIND_COMMAND } from "@/tools/level-viewer/commands";
 import { toLevelViewerFileStem } from "@/tools/level-viewer/lib/files/level-viewer-file-stem";
+import { LevelViewerRecordingReadout } from "@/tools/level-viewer/lib/recording/level-viewer-recording-readout";
 import { LevelViewerSnapshotService } from "@/tools/level-viewer/services/level-viewer-snapshot";
 
 /**
@@ -71,6 +74,9 @@ export class LevelViewerRecordingService {
   }
 
   /** Starts a recording where none runs, else stops the one running. */
+  @KeybindCommand(RECORD_LEVEL_KEYBIND_COMMAND, {
+    isEnabled: (service: LevelViewerRecordingService) => service.isRecording || service.canStart,
+  })
   @ExclusiveFlow()
   public *toggle(): TFlow {
     if (this.isRecording) {
@@ -86,10 +92,61 @@ export class LevelViewerRecordingService {
     return yield* this.record();
   }
 
-  /** Stops the recording and finishes its file, telling where it went. */
+  /** Stops the recording and finishes its file, its toast telling where it went. */
   @ExclusiveFlow()
   public *stop(): TFlow<Nullable<RecordingOutcome>> {
     return yield* this.finish();
+  }
+
+  /** Deletes the last recording for good. */
+  @ExclusiveFlow()
+  public *remove(): TFlow {
+    const outcome: Nullable<RecordingOutcome> = this.outcome;
+
+    if (!outcome) {
+      return;
+    }
+
+    const completion: TCommandCompletion<unknown> = yield* this.reporter.run({
+      name: "Delete recording",
+      subject: outcome.file,
+      command: () => levelsCommands.deleteRecording(outcome.file),
+      failure: "Could not delete the recording",
+    });
+
+    if (!completion.error) {
+      this.forget();
+    }
+  }
+
+  /** Shows the last recording selected in its folder. */
+  @ExclusiveFlow()
+  public *reveal(): TFlow {
+    const outcome: Nullable<RecordingOutcome> = this.outcome;
+
+    if (outcome) {
+      yield* this.reporter.run({
+        name: "Show recording",
+        subject: outcome.file,
+        command: () => systemCommands.revealPath(outcome.file),
+        failure: "Could not show the recording",
+      });
+    }
+  }
+
+  /** Puts the last recording's path on the clipboard. */
+  @ExclusiveFlow()
+  public *copyPath(): TFlow {
+    const outcome: Nullable<RecordingOutcome> = this.outcome;
+
+    if (outcome) {
+      yield* this.reporter.run({
+        name: "Copy recording path",
+        subject: outcome.file,
+        command: () => navigator.clipboard.writeText(outcome.file),
+        failure: "Could not copy the recording's path",
+      });
+    }
   }
 
   private *record(): TFlow<Nullable<string>> {
@@ -128,14 +185,15 @@ export class LevelViewerRecordingService {
       subject: this.file,
       command: () => levelsCommands.stopRecording(),
       failure: "Could not finish the recording",
-      success: (outcome: RecordingOutcome) => ({
-        title: "Recorded",
-        details: `${outcome.file} · ${formatDuration((outcome.duration ?? 0) * 1000)} · ${describeDrops(outcome)}`,
-        severity:
-          outcome.droppedFrames + outcome.droppedSound > 0
-            ? ENotificationSeverity.WARNING
-            : ENotificationSeverity.SUCCESS,
-      }),
+      // Its toast tells it; a notice stays only where it dropped something, which the toast's fading would lose.
+      success: (outcome: RecordingOutcome) =>
+        LevelViewerRecordingReadout.hasDrops(outcome)
+          ? {
+              title: "Recorded with drops",
+              details: `${outcome.file} · ${LevelViewerRecordingReadout.describeOutcome(outcome)}`,
+              severity: ENotificationSeverity.WARNING,
+            }
+          : null,
     });
 
     this.end(stopped.result);
@@ -169,6 +227,11 @@ export class LevelViewerRecordingService {
     this.outcome = outcome ?? this.outcome;
   }
 
+  @BoundAction()
+  private forget(): void {
+    this.outcome = null;
+  }
+
   /** Takes what the recording told; one that ended by itself is stopped and collected, saying why. */
   @BoundAction()
   private follow(told: RecordingProgress): void {
@@ -179,16 +242,4 @@ export class LevelViewerRecordingService {
       void this.stop();
     }
   }
-}
-
-/**
- * @param drops - What a recording dropped so far, or once written: frames, and blocks of sound.
- * @returns What it dropped, frames and sound, or that it dropped nothing.
- */
-export function describeDrops(drops: Pick<RecordingOutcome, "droppedFrames" | "droppedSound">): string {
-  if (drops.droppedFrames + drops.droppedSound === 0) {
-    return "nothing dropped";
-  }
-
-  return `${drops.droppedFrames} frames and ${drops.droppedSound} sound blocks dropped`;
 }

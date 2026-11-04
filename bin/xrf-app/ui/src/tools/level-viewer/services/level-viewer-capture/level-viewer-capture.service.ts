@@ -63,6 +63,7 @@ import {
   toRenderMapCapture,
 } from "@/tools/level-viewer/lib/map/level-map-capture";
 import { LevelViewerCaptureResultService } from "@/tools/level-viewer/services/level-viewer-capture-result";
+import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level-viewer-recording";
 
 /** The weather cycle `CDemoRecord` captures a level map under. */
 const MAP_WEATHER_CYCLE: string = "map";
@@ -140,7 +141,8 @@ export class LevelViewerCaptureService {
     private readonly viewService: LevelViewService = inject(LevelViewService),
     private readonly viewportService: LevelViewportService = inject(LevelViewportService),
     private readonly weatherService: LevelWeatherService = inject(LevelWeatherService),
-    private readonly resultService: LevelViewerCaptureResultService = inject(LevelViewerCaptureResultService)
+    private readonly resultService: LevelViewerCaptureResultService = inject(LevelViewerCaptureResultService),
+    private readonly recordingService: LevelViewerRecordingService = inject(LevelViewerRecordingService)
   ) {}
 
   /** The level open, or null for none. */
@@ -176,10 +178,10 @@ export class LevelViewerCaptureService {
     return this.isViewHeld || this.operation.isRunning;
   }
 
-  /** Whether the dialog can open on a cubemap: a level is open and no capture runs. */
+  /** Whether the dialog can open on a cubemap: a level is open, and no capture or recording runs. */
   @Computed()
   public get canOpen(): boolean {
-    return this.level !== null && !this.isCapturing;
+    return this.level !== null && !this.isCapturing && !this.recordingService.isRecording;
   }
 
   /** Whether the dialog can open on a level map: it can open, and the level's sectors cover a box to map. */

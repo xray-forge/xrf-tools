@@ -12,8 +12,8 @@ import { LEVEL_VIEWER_FILE_MENU_EXTENSION } from "@/tools/level-viewer/menus";
 import { LevelViewerCaptureService } from "@/tools/level-viewer/services/level-viewer-capture";
 
 /**
- * The level viewer's File › Capture map and Capture cubemap, after Take screenshot, and the capture's dialog while it is
- * open.
+ * The level viewer's File › Capture map and Capture cubemap, after Take screenshot and Record, and the capture's dialog
+ * while it is open.
  */
 export function LevelViewerCaptureActions(): ReactElement {
   const captureService: LevelViewerCaptureService = useInjection(LevelViewerCaptureService);

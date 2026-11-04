@@ -28,6 +28,7 @@ import {
   ILevelViewerSnapshot,
   serializeLevelViewerSnapshot,
 } from "@/tools/level-viewer/lib/snapshot/level-viewer-snapshot";
+import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level-viewer-recording";
 import { LevelViewerSnapshotService } from "@/tools/level-viewer/services/level-viewer-snapshot";
 
 /** Timed reports waited for once the GPU timing is switched on: the first may still hold frames from before it. */
@@ -66,7 +67,8 @@ export class LevelViewerScreenshotService {
   public constructor(
     private readonly renderService: LevelRenderService = inject(LevelRenderService),
     private readonly snapshotService: LevelViewerSnapshotService = inject(LevelViewerSnapshotService),
-    private readonly renderSettingsService: RenderSettingsService = inject(RenderSettingsService)
+    private readonly renderSettingsService: RenderSettingsService = inject(RenderSettingsService),
+    private readonly recordingService: LevelViewerRecordingService = inject(LevelViewerRecordingService)
   ) {}
 
   @OnDeactivation()
@@ -80,10 +82,10 @@ export class LevelViewerScreenshotService {
     return this.shot.isLoading || this.report.isLoading;
   }
 
-  /** Whether a screenshot can be taken now: a level is open and none is being taken. */
+  /** Whether a screenshot can be taken now: a level is open, none is being taken, and no recording runs. */
   @Computed()
   public get canTake(): boolean {
-    return !this.isTaking && this.snapshotService.level !== null;
+    return !this.isTaking && this.snapshotService.level !== null && !this.recordingService.isRecording;
   }
 
   /**
@@ -98,8 +100,6 @@ export class LevelViewerScreenshotService {
    * Saves the viewport's next finished frame to the screenshots folder, then its report once its frame's cost is read;
    * the passes are timed on the GPU meanwhile, the timing setting left as it is. A failure of either is noticed apart,
    * and a screenshot whose report failed is kept.
-   *
-   * One left running when the tool is left is cancelled, so it holds no screenshot a tool no longer shows.
    *
    * @returns The screenshot, or null where none was taken: no level is open, or it failed; a call while one is being
    *   taken answers that one's.

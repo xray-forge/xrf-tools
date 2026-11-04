@@ -1,3 +1,4 @@
+import { FiberManualRecordIcon as RecordIcon } from "@xrf/ui/icons/fiber-manual-record";
 import { MapOutlinedIcon as MapIcon } from "@xrf/ui/icons/map-outlined";
 import { PanoramaPhotosphereOutlinedIcon as PanoramaPhotosphereIcon } from "@xrf/ui/icons/panorama-photosphere-outlined";
 import { PhotoCameraOutlinedIcon as PhotoCameraIcon } from "@xrf/ui/icons/photo-camera-outlined";
@@ -39,10 +40,26 @@ export const CAPTURE_LEVEL_CUBEMAP_KEYBIND_COMMAND: IKeybindCommand = defineKeyb
   label: "Capture cubemap…",
 });
 
+/**
+ * Starts recording the viewport with its sound to the recordings folder, or stops the recording running; beside the
+ * screenshot's F9, as both are taken of what the viewport shows.
+ */
+export const RECORD_LEVEL_KEYBIND_COMMAND: IKeybindCommand = defineKeybindCommand({
+  category: EKeybindCommandCategory.VIEW,
+  chords: ["shift+F9"],
+  description:
+    "Starts recording the viewport with what its camera hears to the recordings folder, or stops the recording " +
+    "running; the camera is heard whatever window takes the focus meanwhile.",
+  icon: <RecordIcon />,
+  id: "level-viewer/record",
+  label: "Record",
+});
+
 /** Commands reachable inside the level viewer, beside the root ones. */
 export const LEVEL_VIEWER_KEYBIND_COMMANDS: ReadonlyArray<IKeybindCommand> = [
   ...LEVEL_KEYBIND_COMMANDS,
   TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND,
+  RECORD_LEVEL_KEYBIND_COMMAND,
   CAPTURE_LEVEL_MAP_KEYBIND_COMMAND,
   CAPTURE_LEVEL_CUBEMAP_KEYBIND_COMMAND,
 ];

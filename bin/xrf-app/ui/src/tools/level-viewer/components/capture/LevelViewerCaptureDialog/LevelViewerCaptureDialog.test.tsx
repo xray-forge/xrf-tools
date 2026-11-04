@@ -12,6 +12,7 @@ import { mockFlow } from "@/fixtures/utils/flow";
 import { LevelViewerCaptureActions } from "@/tools/level-viewer/components/capture/LevelViewerCaptureActions";
 import { LevelViewerCaptureService } from "@/tools/level-viewer/services/level-viewer-capture";
 import { LevelViewerCaptureResultService } from "@/tools/level-viewer/services/level-viewer-capture-result";
+import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level-viewer-recording";
 import { LevelViewerSnapshotService } from "@/tools/level-viewer/services/level-viewer-snapshot";
 
 /**
@@ -23,7 +24,12 @@ function renderDialog(): TLevelViewRenderResult & { service: LevelViewerCaptureS
 
   const rendered: TLevelViewRenderResult = renderLevelView(
     <LevelViewerCaptureActions />,
-    mockLevelViewContainer([LevelViewerCaptureService, LevelViewerCaptureResultService, LevelViewerSnapshotService])
+    mockLevelViewContainer([
+      LevelViewerCaptureService,
+      LevelViewerCaptureResultService,
+      LevelViewerRecordingService,
+      LevelViewerSnapshotService,
+    ])
   );
 
   mockFlow(rendered.weather, "cutTo");
