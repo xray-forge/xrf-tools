@@ -3,6 +3,7 @@ mod level_music;
 mod rain_sound;
 mod sound_outlet;
 mod static_sounds;
+mod zone_sounds;
 
 use std::time::Duration;
 

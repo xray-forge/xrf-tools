@@ -27,4 +27,7 @@ pub struct RenderSceneFrame {
   pub motions: HashMap<String, (Mat4, Vec3)>,
   /// The driving camera's smoothed hemi, which says how far outdoors it stands; none where it is not estimated.
   pub camera_hemi: Option<f32>,
+  /// The helpers of the level objects whose sounds play this frame, by the ids they carry, ascending, which every view
+  /// draws lit.
+  pub sounding: Vec<u32>,
 }

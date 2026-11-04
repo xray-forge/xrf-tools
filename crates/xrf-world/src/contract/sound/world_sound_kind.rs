@@ -19,6 +19,10 @@ pub enum WorldSoundKind {
   Rain,
   /// A thunderbolt's strike.
   Thunder,
+  /// A zone's `idle_sound`, looped while its idle plays.
+  Anomaly,
+  /// A campfire's idle sound while lit, or its `disabled_sound` while out.
+  Campfire,
 }
 
 impl WorldSoundKind {
@@ -27,6 +31,7 @@ impl WorldSoundKind {
     match self {
       Self::Music => WorldSoundCategory::Music,
       Self::Static | Self::Channel | Self::AmbientEffect | Self::Rain | Self::Thunder => WorldSoundCategory::Ambience,
+      Self::Anomaly | Self::Campfire => WorldSoundCategory::World,
     }
   }
 }

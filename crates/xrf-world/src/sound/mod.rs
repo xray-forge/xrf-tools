@@ -8,3 +8,4 @@ pub(crate) mod sound_outlet;
 pub(crate) mod sound_random;
 pub(crate) mod static_sounds;
 pub(crate) mod thunder_sound;
+pub(crate) mod zone_sounds;

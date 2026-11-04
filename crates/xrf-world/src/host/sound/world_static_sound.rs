@@ -5,6 +5,8 @@ use crate::host::sound::world_sound::WorldSound;
 #[derive(Clone, Debug, PartialEq)]
 pub struct WorldStaticSound {
   pub sound: WorldSound,
+  /// The level object it is, by the id its helper carries; none where the level's objects could not be listed.
+  pub object: Option<u32>,
   pub position: [f32; 3],
   pub volume: f32,
   pub frequency: f32,

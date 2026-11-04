@@ -27,13 +27,15 @@ use crate::scene::static_scene::item::object::static_object_box::StaticObjectBox
 /// What a view draws of its scene's helpers: the wires and icons its options keep, which the window pass draws and a
 /// pick draws again, and the spawned models they mark, which the helper marks pass draws in their colours for the
 /// present to tint and outline. Every kept object's are built again only when the scene's set, its spawned objects or
-/// the options the selection and hovering aside change; the selected and hovered objects' are built apart and drawn
-/// over them, so the pointer moving over the scene rebuilds a handful of wires rather than every helper.
+/// the options the selection and hovering aside change; the selected, hovered and sounding objects' are built apart and
+/// drawn over them, so the pointer moving over the scene, or a sound starting, rebuilds a handful of wires rather than
+/// every helper.
 #[derive(Default)]
 pub struct HelpersFeature {
   /// Every kept object's wires and icons, none singled out.
   every: Option<HelperBuild>,
-  /// The selected and hovered objects' wires, their models' boxes among them, and icons, lifted and never faded.
+  /// The selected, hovered and sounding objects' wires, the selected and hovered models' boxes among them, and icons,
+  /// lifted and never dimmed behind what is drawn; the selected and hovered never fade.
   singled: Option<HelperBuild>,
   /// The marked models' places and colours, bound as the helper marks pass reads them.
   marks: Option<HelperMarks>,
@@ -48,6 +50,7 @@ impl HelpersFeature {
   pub fn set(&mut self, device: &wgpu::Device, sources: HelperSources<'_>) {
     let HelperSources {
       helpers,
+      sounding,
       statics,
       options,
       marks_layout,
@@ -58,16 +61,19 @@ impl HelpersFeature {
       ..options.clone()
     };
     let boxes = |object: u32| statics.get_object_box(object);
+    let singled_key: HelperBuildKey = HelperBuildKey::of(sources, options, sounding);
 
-    if !HelperBuild::is_current(&self.singled, &HelperBuildKey::of(sources, options)) {
+    if !HelperBuild::is_current(&self.singled, &singled_key) {
       self.singled = Some(HelperBuild::new(
         device,
-        HelperBuildKey::of(sources, options),
-        HelperBuild::build(helpers, options, HelperPart::Singled, boxes),
+        singled_key,
+        HelperBuild::build(helpers, options, sounding, HelperPart::Singled, boxes),
       ));
     }
 
-    if HelperBuild::is_current(&self.every, &HelperBuildKey::of(sources, &unsingled)) {
+    let every_key: HelperBuildKey = HelperBuildKey::of(sources, &unsingled, &[]);
+
+    if HelperBuild::is_current(&self.every, &every_key) {
       return;
     }
 
@@ -76,8 +82,8 @@ impl HelpersFeature {
     self.is_rest_faded = options.is_shown && options.is_rest_faded;
     self.every = Some(HelperBuild::new(
       device,
-      HelperBuildKey::of(sources, &unsingled),
-      HelperBuild::build(helpers, &unsingled, HelperPart::Every, boxes),
+      every_key,
+      HelperBuild::build(helpers, &unsingled, &[], HelperPart::Every, boxes),
     ));
     self.marks = (!marks.is_empty()).then(|| HelperMarks::new(device, &marks, marks_layout));
   }
@@ -160,10 +166,11 @@ impl HelpersFeature {
   }
 
   /// The objects of `helpers` that `options` draws, of `part`: the kinds switched on and not hidden, none while
-  /// helpers are off.
+  /// helpers are off; for the singled out part, those selected, hovered or among `sounding`.
   fn list_kept<'a>(
     helpers: &'a LevelHelpers,
     options: &'a RenderHelperOptions,
+    sounding: &'a [u32],
     part: HelperPart,
   ) -> impl Iterator<Item = &'a LevelHelperObject> {
     helpers.objects.iter().filter(move |object| {
@@ -171,33 +178,37 @@ impl HelpersFeature {
         && object.kind < u32::BITS
         && options.kinds & 1 << object.kind != 0
         && options.hidden.binary_search(&object.id).is_err()
-        && (part == HelperPart::Every || Self::get_singled(object, options) > 0.0)
+        && (part == HelperPart::Every || Self::get_singled(object, options, sounding) > 0.0)
     })
   }
 
-  /// How `object` is singled out under `options`: [`HelperVertex::SELECTED`], [`HelperVertex::HOVERED`] or nought.
-  fn get_singled(object: &LevelHelperObject, options: &RenderHelperOptions) -> f32 {
+  /// How `object` is singled out under `options`, its sound playing where `sounding` holds it:
+  /// [`HelperVertex::SELECTED`], [`HelperVertex::HOVERED`], [`HelperVertex::SOUNDING`] or nought.
+  fn get_singled(object: &LevelHelperObject, options: &RenderHelperOptions, sounding: &[u32]) -> f32 {
     if options.selected.binary_search(&object.id).is_ok() {
       HelperVertex::SELECTED
     } else if options.hovered == Some(object.id) {
       HelperVertex::HOVERED
+    } else if sounding.binary_search(&object.id).is_ok() {
+      HelperVertex::SOUNDING
     } else {
       0.0
     }
   }
 
-  /// The ends of every wire `options` keeps of `helpers` for `part`, a singled out model's box among them where
-  /// `boxes` stands it (`StaticScene::get_object_box`).
+  /// The ends of every wire `options` keeps of `helpers` for `part`, `sounding` the objects whose sounds play, a
+  /// selected or hovered model's box among them where `boxes` stands it (`StaticScene::get_object_box`).
   pub fn to_vertices(
     helpers: &LevelHelpers,
     options: &RenderHelperOptions,
+    sounding: &[u32],
     part: HelperPart,
     boxes: impl Fn(u32) -> Option<StaticObjectBox>,
   ) -> Vec<HelperVertex> {
-    Self::list_kept(helpers, options, part)
+    Self::list_kept(helpers, options, sounding, part)
       .flat_map(|object: &LevelHelperObject| {
-        let look: HelperLook = HelperLook::of(object, options, part);
-        let boxed: Option<StaticObjectBox> = object.model.filter(|_| look.is_singled()).and_then(&boxes);
+        let look: HelperLook = HelperLook::of(object, options, sounding, part);
+        let boxed: Option<StaticObjectBox> = object.model.filter(|_| look.is_picked).and_then(&boxes);
 
         helpers.segments[object.segments.clone()]
           .iter()
@@ -215,10 +226,15 @@ impl HelpersFeature {
   }
 
   /// Every icon `options` keeps of `helpers` for `part`, drawn as its object's wires are.
-  pub fn to_icons(helpers: &LevelHelpers, options: &RenderHelperOptions, part: HelperPart) -> Vec<HelperIconInstance> {
-    Self::list_kept(helpers, options, part)
+  pub fn to_icons(
+    helpers: &LevelHelpers,
+    options: &RenderHelperOptions,
+    sounding: &[u32],
+    part: HelperPart,
+  ) -> Vec<HelperIconInstance> {
+    Self::list_kept(helpers, options, sounding, part)
       .flat_map(|object: &LevelHelperObject| {
-        let look: HelperLook = HelperLook::of(object, options, part);
+        let look: HelperLook = HelperLook::of(object, options, sounding, part);
 
         helpers.icons[object.icons.clone()]
           .iter()
@@ -242,7 +258,7 @@ impl HelpersFeature {
     options: &RenderHelperOptions,
     places: impl Fn(u32) -> Option<u32>,
   ) -> Vec<[u32; 2]> {
-    let mut marks: Vec<[u32; 2]> = Self::list_kept(helpers, options, HelperPart::Every)
+    let mut marks: Vec<[u32; 2]> = Self::list_kept(helpers, options, &[], HelperPart::Every)
       .filter_map(|object: &LevelHelperObject| {
         let [r, g, b] = object
           .color
@@ -274,21 +290,23 @@ impl ViewFeature for HelpersFeature {
 }
 
 /// What a part of a view's helpers was built from: the scene's set by its version, the scene's spawned objects by how
-/// many were added and removed so far, and the options it was built under.
+/// many were added and removed so far, the options it was built under, and the objects it drew sounding.
 #[derive(Clone, Debug, PartialEq)]
 struct HelperBuildKey {
   version: u64,
   contents: usize,
   options: RenderHelperOptions,
+  sounding: Vec<u32>,
 }
 
 impl HelperBuildKey {
-  /// What `sources` hold, under `options`.
-  fn of(sources: HelperSources<'_>, options: &RenderHelperOptions) -> Self {
+  /// What `sources` hold, under `options`, with `sounding` drawn lit.
+  fn of(sources: HelperSources<'_>, options: &RenderHelperOptions, sounding: &[u32]) -> Self {
     Self {
       version: sources.helpers.version,
       contents: sources.statics.get_contents(),
       options: options.clone(),
+      sounding: sounding.to_vec(),
     }
   }
 }
@@ -310,16 +328,18 @@ impl HelperBuild {
     }
   }
 
-  /// `part`'s wires' ends and icons of `helpers` under `options`, its models' boxes where `boxes` stands them.
+  /// `part`'s wires' ends and icons of `helpers` under `options`, `sounding` lit, its models' boxes where `boxes` stands
+  /// them.
   fn build(
     helpers: &LevelHelpers,
     options: &RenderHelperOptions,
+    sounding: &[u32],
     part: HelperPart,
     boxes: impl Fn(u32) -> Option<StaticObjectBox>,
   ) -> HelperGeometry {
     HelperGeometry {
-      wires: HelpersFeature::to_vertices(helpers, options, part, boxes),
-      icons: HelpersFeature::to_icons(helpers, options, part),
+      wires: HelpersFeature::to_vertices(helpers, options, sounding, part, boxes),
+      icons: HelpersFeature::to_icons(helpers, options, sounding, part),
     }
   }
 
@@ -381,21 +401,24 @@ impl HelperMarks {
 }
 
 /// How one object's helpers draw in a part: its colour with how it is singled out in alpha, nought for every kept
-/// object's, then the distance it fades out by, none for a singled out one, and how strongly it shows hidden.
+/// object's, then the distance it fades out by, none for a selected or hovered one, and how strongly it shows hidden.
 #[derive(Clone, Copy)]
 struct HelperLook {
   color: [f32; 4],
   fade: [f32; 2],
+  /// Whether it is selected or hovered, which draws a model's box.
+  is_picked: bool,
 }
 
 impl HelperLook {
-  /// How `object` draws under `options`, built for `part`.
-  fn of(object: &LevelHelperObject, options: &RenderHelperOptions, part: HelperPart) -> Self {
+  /// How `object` draws under `options`, `sounding` lit, built for `part`.
+  fn of(object: &LevelHelperObject, options: &RenderHelperOptions, sounding: &[u32], part: HelperPart) -> Self {
     let singled: f32 = match part {
       HelperPart::Every => 0.0,
-      HelperPart::Singled => HelpersFeature::get_singled(object, options),
+      HelperPart::Singled => HelpersFeature::get_singled(object, options, sounding),
     };
-    let reach: f32 = if singled > 0.0 {
+    let is_picked: bool = part == HelperPart::Singled && HelpersFeature::get_singled(object, options, &[]) > 0.0;
+    let reach: f32 = if is_picked {
       0.0
     } else {
       object.draw_distance * options.distance_scale
@@ -404,11 +427,7 @@ impl HelperLook {
     Self {
       color: [object.color[0], object.color[1], object.color[2], singled],
       fade: [reach, options.occluded_strength],
+      is_picked,
     }
-  }
-
-  /// Whether it is singled out, which draws a model's box.
-  fn is_singled(self) -> bool {
-    self.color[3] > 0.0
   }
 }

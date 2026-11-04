@@ -18,6 +18,7 @@ mod map_export;
 mod new_game;
 mod particles;
 mod render_reload;
+mod sound_emitters;
 mod surfaces;
 mod textures;
 mod thunderbolt_settings;

@@ -31,7 +31,9 @@ use crate::parts::{
 };
 use crate::render::{LevelParticleCollider, LevelRenderParts};
 use crate::report::LevelReport;
-use crate::sound::{LevelSoundAssets, LevelSoundGeometry, LevelSoundSink, LevelWorldSounds};
+use crate::sound::{
+  LevelSoundAssets, LevelSoundEmitters, LevelSoundFiles, LevelSoundGeometry, LevelSoundSink, LevelWorldSounds,
+};
 use crate::weather::LevelWorldWeather;
 
 /// A level's shader table as it is drawn, and the textures its surfaces bind.
@@ -271,12 +273,19 @@ impl WorldLevelSource for LevelRenderSource {
     Ok(RenderLevelSpawn::from(&*spawn))
   }
 
+  /// The level objects' helpers, the sound emitters' spheres among them.
   fn read_helpers(&self) -> XrfResult<RenderLevelHelpers> {
+    let search: XraySearch = self.search()?;
     // The objects the page lists, in its order: each helper is named by its object's place among them.
     let objects: LevelObjectsDescription =
-      LevelObjectsDescription::read(&self.level, &self.search()?).map_err(XrfError::new_asset_error)?;
+      LevelObjectsDescription::read(&self.level, &search).map_err(XrfError::new_asset_error)?;
+    let emitters: LevelSoundEmitters =
+      LevelSoundEmitters::read(&self.level, &search, Some(&objects), &mut LevelSoundFiles::new(&search));
+    let mut helpers: RenderLevelHelpers = RenderLevelHelpers::from(&objects);
 
-    Ok(RenderLevelHelpers::from(&objects))
+    helpers.objects.extend(emitters.to_helpers());
+
+    Ok(helpers)
   }
 
   fn read_particles(&self) -> XrfResult<Option<RenderLevelParticles>> {

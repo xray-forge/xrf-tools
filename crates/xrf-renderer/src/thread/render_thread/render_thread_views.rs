@@ -625,6 +625,7 @@ impl RenderThread {
         device,
         HelperSources {
           helpers: &scene.helpers,
+          sounding: &scene.sounding,
           statics: &scene.statics,
           options: &options.helpers,
           marks_layout: gpu.scene.gbuffer.get_marks_layout(),

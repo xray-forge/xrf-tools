@@ -14,7 +14,9 @@ mod path;
 mod placement;
 mod volume;
 
-pub use kind::{LEVEL_OBJECT_KINDS, LevelObjectGroup, LevelObjectKind, LevelObjectKindEntry};
+pub use kind::{
+  LEVEL_OBJECT_KINDS, LEVEL_SOUND_EMITTERS_HELPER_KIND, LevelObjectGroup, LevelObjectKind, LevelObjectKindEntry,
+};
 pub use level_object::LevelObject;
 pub use level_object_id::LevelObjectId;
 pub use level_object_light::LevelObjectLight;

@@ -317,6 +317,12 @@ export const LEVEL_PLACEMENTS_PART = "placements" as const;
 /** What a change event calls a level's sections when they go stale. */
 export const LEVEL_SECTIONS_PART = "sections" as const;
 
+/**
+ * The bit a view switches the sound emitters' helpers by, past the kind table's: each static and zone sound's spheres
+ * out to its minimum and maximum distance, named as its level object is.
+ */
+export const LEVEL_SOUND_EMITTERS_HELPER_KIND: number = 24;
+
 /** What a change event calls a level's spawn when it goes stale. */
 export const LEVEL_SPAWN_PART = "spawn" as const;
 

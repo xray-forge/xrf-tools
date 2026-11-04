@@ -24,6 +24,7 @@ use crate::level::effects::level_object_motions::LevelObjectMotions;
 use crate::level::effects::placed_emitter::PlacedEmitter;
 use crate::level::level_drive::LevelDrive;
 use crate::level::loading::loader_once::LoaderOnce;
+use crate::sound::zone_sounds::ZoneStates;
 
 /// A level's effects as the world plays them: its particle systems, read on a loader thread and each placed at an
 /// emitter of the scene's; the weather's ambient effects and the wind they bring; its campfires' switching; and the
@@ -363,5 +364,20 @@ impl LevelEffects {
         }
       }
     }
+  }
+}
+
+/// The campfires and the object motions as the last `advance` moved them on, which the zones' sounds follow as their
+/// particles do.
+impl ZoneStates for LevelEffects {
+  fn get_campfire(&mut self, id: u16) -> Campfire {
+    *self.campfires.get(id)
+  }
+
+  fn get_place(&mut self, motion: &str) -> Option<Vec3> {
+    self
+      .motions
+      .get_pose(motion)
+      .map(|(transform, _)| transform.w_axis.truncate())
   }
 }
