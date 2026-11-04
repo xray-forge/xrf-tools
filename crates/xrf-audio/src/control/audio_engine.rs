@@ -39,6 +39,8 @@ pub struct AudioEngine {
   acoustics: AudioAcoustics,
   /// The listener's reverb on the mixer.
   reverb: Arc<ReverbParameters>,
+  /// Voices let go of whose stop the audio thread had no room for, asked again by every call until it takes them.
+  letting_go: Vec<AudioVoiceId>,
 }
 
 impl AudioEngine {
@@ -69,6 +71,7 @@ impl AudioEngine {
       meter,
       acoustics,
       reverb,
+      letting_go: Vec::new(),
     }
   }
 
@@ -158,6 +161,14 @@ impl AudioEngine {
     self.send(MixerCommand::Stop(voice))
   }
 
+  /// Stops the voice for one that holds it no longer: a stop the audio thread has no room for is asked again by every
+  /// later call, so a looped voice let go of never plays on unheld.
+  pub fn let_go(&mut self, voice: AudioVoiceId) {
+    if self.stop(voice).is_err() {
+      self.letting_go.push(voice);
+    }
+  }
+
   /// Fades the voice out and holds its place.
   ///
   /// # Errors
@@ -217,24 +228,24 @@ impl AudioEngine {
     self.send(MixerCommand::SetMasterGain(gain))
   }
 
-  /// Where the voice is. A voice whose slot has been freed has ended, whatever its last report said.
+  /// Where the voice is. A voice whose slot has been freed has ended, whatever its last report said: asked first, since
+  /// only this side gives a slot to its next voice, so while the voice holds it no other voice's report can be read.
   pub fn get_playback(&self, voice: AudioVoiceId) -> AudioVoicePlayback {
-    let status: Option<AudioVoicePlayback> = self
-      .statuses
-      .get(voice.slot as usize)
-      .and_then(|status| status.read(voice.generation));
-
-    match status {
-      Some(playback) => playback,
-      None if self.slots.is_current(voice) => AudioVoicePlayback {
-        state: AudioVoiceState::Starting,
-        frame: self.start_frames[voice.slot as usize],
-      },
-      None => AudioVoicePlayback {
+    if !self.slots.is_current(voice) {
+      return AudioVoicePlayback {
         state: AudioVoiceState::Ended,
         frame: 0,
-      },
+      };
     }
+
+    self
+      .statuses
+      .get(voice.slot as usize)
+      .and_then(|status| status.read(voice.generation))
+      .unwrap_or_else(|| AudioVoicePlayback {
+        state: AudioVoiceState::Starting,
+        frame: self.start_frames[voice.slot as usize],
+      })
   }
 
   /// Voices playing or waiting to start, of [`Self::get_voices_count`].
@@ -260,13 +271,23 @@ impl AudioEngine {
     Ok(tap)
   }
 
-  /// Frees the voices the mixer is done with, and their slots, and the taps it let go of.
+  /// Frees the voices the mixer is done with, and their slots, and the taps it let go of; asks again to stop the voices
+  /// let go of that are still playing.
   pub fn collect(&mut self) {
     while let Ok(voice) = self.retired.pop() {
       self.slots.give_back(voice.id);
     }
 
     while self.retired_taps.pop().is_ok() {}
+
+    let Self {
+      letting_go,
+      slots,
+      commands,
+      ..
+    } = self;
+
+    letting_go.retain(|voice| slots.is_current(*voice) && commands.push(MixerCommand::Stop(*voice)).is_err());
   }
 
   /// The parameter block of `voice`, while its slot still holds it: a block is never written for a voice whose slot
