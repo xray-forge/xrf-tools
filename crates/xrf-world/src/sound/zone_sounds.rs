@@ -94,9 +94,10 @@ impl ZoneSounds {
           );
         }
       };
+      // The engines stop it at once; it fades out over a tenth of a second here, which ends it as soon without a click.
       let stop = |emitters: &mut SoundEmitters, playing: &mut Option<u64>| {
         if let Some(id) = playing.take() {
-          emitters.stop(id);
+          emitters.stop_deferred(id, now);
         }
       };
 

@@ -1,11 +1,12 @@
 /// How loud a placed sound is heard at a distance, from its minimum and maximum distance: full up to the minimum, then
-/// falling as one over the distance does, eased to silence over the last fifth of its range so nothing is cut off
-/// where a sound leaves it. One curve, whether the acoustics run or sound plays dry.
+/// falling as one over the distance does, eased to silence over the outer half of its range so a sound leaving it
+/// fades away rather than drops out. One curve, whether the acoustics run or sound plays dry.
 pub(crate) struct DistanceCurve;
 
 impl DistanceCurve {
-  /// The share of a sound's range, from its maximum distance in, over which it eases to silence.
-  const TAPER: f32 = 0.2;
+  /// The share of a sound's range, from its maximum distance in, over which it eases to silence: over a fifth, a sound
+  /// still clearly heard falls to nothing within its last few metres, which a moving one crosses in a moment.
+  const TAPER: f32 = 0.5;
 
   /// The gain at `distance` metres of a sound heard fully up to `min_distance` and not at all past `max_distance`.
   pub(crate) fn get_attenuation(min_distance: f32, max_distance: f32, distance: f32) -> f32 {

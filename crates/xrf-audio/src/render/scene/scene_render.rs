@@ -128,6 +128,9 @@ impl SceneRender {
   /// How much of a placed sound the listener's reverb hears.
   const REVERB_SEND: f32 = 0.5;
 
+  /// Seconds an emitter's followed speed takes to settle about two thirds of the way to a new step's.
+  const MOTION_EASE: f32 = 0.15;
+
   pub(crate) fn new(acoustics: &AudioAcoustics, geometry: Option<Arc<dyn AudioSceneGeometry>>) -> Self {
     Self {
       scene: 0,
@@ -304,7 +307,7 @@ impl SceneRender {
         AudioSpatialization::Speakers
       };
 
-      if self.realize(rendered, &mut tick, now, ears) {
+      if self.realize(rendered, &mut tick, now, seconds, ears) {
         self.real_voices += 1;
 
         if ears == AudioSpatialization::Headphones {
@@ -440,7 +443,9 @@ impl SceneRender {
     rendered.culling.is_audible && !matches!(rendered.sound, BankedSound::Loading)
   }
 
-  /// Follows how fast the emitter moves, from where it was at the last tick that moved it.
+  /// Follows how fast the emitter moves, from where it was at the last tick that moved it, eased over
+  /// [`Self::MOTION_EASE`]: its place comes with the host's frames and is read at the ticks, which fall unevenly
+  /// between them, so a step's own speed swings about the true one and would make the pitch waver.
   fn follow_motion(rendered: &mut RenderedEmitter, now: Duration) {
     let position: [f32; 3] = rendered.emitter.position;
 
@@ -457,7 +462,13 @@ impl SceneRender {
         let seconds: f32 = now.saturating_sub(before.at).as_secs_f32();
 
         if seconds > 0.0 {
-          rendered.velocity = std::array::from_fn(|axis| (position[axis] - before.position[axis]) / seconds);
+          let share: f32 = 1.0 - (-seconds / Self::MOTION_EASE).exp();
+
+          rendered.velocity = std::array::from_fn(|axis| {
+            let step: f32 = (position[axis] - before.position[axis]) / seconds;
+
+            rendered.velocity[axis] + (step - rendered.velocity[axis]) * share
+          });
         }
 
         rendered.motion = Some(here);
@@ -468,12 +479,14 @@ impl SceneRender {
 
   /// Gives an emitter a voice where its clock says its sound is at `now`, starting one where it has none, or where its
   /// voice ended or starved past [`SceneClock::DRIFT`], and sets how it is heard, through the HRTF or panned as `ears`
-  /// says where the acoustics place it. Answers whether it holds one.
+  /// says where the acoustics place it, the walls' hold eased over the `seconds` since the last tick. Answers whether it
+  /// holds one.
   fn realize(
     &mut self,
     rendered: &mut RenderedEmitter,
     tick: &mut SceneTick<'_>,
     now: Duration,
+    seconds: f32,
     ears: AudioSpatialization,
   ) -> bool {
     let Some(place) = Self::locate(rendered, now) else {
@@ -523,10 +536,16 @@ impl SceneRender {
       frequency * ListenerSpace::get_doppler(&self.listener, emitter.position, rendered.velocity)
     };
 
-    rendered.acoustics = if is_placed {
-      self.acoustics.get_source(emitter.id)
-    } else {
-      SourceAcoustics::default()
+    // A voice starting takes the walls as they stand; one playing eases toward each new simulation.
+    rendered.acoustics = match (is_placed, rendered.voice.is_some()) {
+      (true, true) => {
+        let mut acoustics: SourceAcoustics = rendered.acoustics;
+
+        acoustics.approach(self.acoustics.get_source(emitter.id), seconds);
+        acoustics
+      }
+      (true, false) => self.acoustics.get_source(emitter.id),
+      (false, _) => SourceAcoustics::default(),
     };
     rendered.spatial = is_placed.then(|| VoiceSpatialParameters {
       direction: ListenerSpace::get_direction(&self.listener, emitter.position),
