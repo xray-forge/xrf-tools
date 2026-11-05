@@ -14,6 +14,7 @@ use crate::lighting::weather::render_fog::RenderFog;
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
+use crate::scene::level::level_time::LevelTime;
 
 // The enhanced fog, scattering as the pack ships it.
 fn enhanced() -> RenderFogSettings {
@@ -58,7 +59,7 @@ fn height_fog(options: &RenderViewOptions, lighting: &RenderLighting) -> Vec4 {
       daylight: None,
       sky_blend: 0.0,
       is_irradiance_up: false,
-      clouds_time: 0.0,
+      cloud_drift: Vec4::ZERO,
       sun_sprite: Vec4::ZERO,
       sky_harmonics: SkyHarmonics::default(),
     },
@@ -173,7 +174,13 @@ fn reports_the_height_fog_faded_indoors() {
   let share = |camera_hemi: Option<f32>| {
     let mut fog: FogFeature = FogFeature::default();
 
-    fog.prepare(&options_with(enhanced()), &fogged(), None, 0.0, camera_hemi);
+    fog.prepare(
+      &options_with(enhanced()),
+      &fogged(),
+      None,
+      LevelTime::default(),
+      camera_hemi,
+    );
     fog.get_applied().map(|applied| applied.indoor_share)
   };
 

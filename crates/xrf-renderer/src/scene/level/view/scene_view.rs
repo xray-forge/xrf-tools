@@ -30,6 +30,7 @@ use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
 use crate::scene::level::level_prepare::LevelPrepare;
 use crate::scene::level::level_scene::LevelScene;
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::lights::asks::light_asks::LightAsks;
 use crate::scene::level::page::helpers::view::helper_marks_pass::HelperMarksPass;
 use crate::scene::level::shadow::shadow_sway::ShadowSway;
@@ -71,6 +72,9 @@ pub struct SceneView {
   stages: ViewStages,
   /// The time its frames are drawn at: its scene's, or a step a frame of its own.
   clock: FrameClock,
+  /// The level's clock at its last frame, which its units step on from; none before its first frame and once its
+  /// motion starts over.
+  last_time: Option<LevelTime>,
 }
 
 impl SceneView {
@@ -82,6 +86,7 @@ impl SceneView {
       features: SceneFeatures::new(device, queue, view_layout),
       stages: ViewStages::new(),
       clock: FrameClock::default(),
+      last_time: None,
     }
   }
 
@@ -156,7 +161,7 @@ impl SceneView {
       self.features.statics.fit(frame.device, (width, height));
     }
 
-    let level: LevelPrepare = LevelPrepare::of(scene, frame.view);
+    let level: LevelPrepare = LevelPrepare::of(scene, frame.view, self.last_time.replace(scene.get_time()));
     let now: Instant = self.clock.tick(scene.get_now());
 
     self.decide(frame, now);
@@ -426,12 +431,11 @@ impl SceneView {
     Some(output)
   }
 
-  /// The sway the shadows see this frame: the `wind`, the trees' reach, and where they stand.
-  fn to_sway<'s>(scene: &'s StaticScene, wind: &WindFeature) -> ShadowSway<'s> {
-    let (amplitude, time): (f32, f32) = wind.get_sway();
-
+  /// The sway the shadows see this frame at the level's clock `time`: the `wind`, the trees' reach, and where they
+  /// stand.
+  fn to_sway<'s>(scene: &'s StaticScene, wind: &WindFeature, time: LevelTime) -> ShadowSway<'s> {
     ShadowSway {
-      amplitude,
+      amplitude: wind.get_sway_amplitude(),
       reach: scene.get_sway_reach(),
       time,
       places: scene.list_swaying(),

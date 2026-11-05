@@ -130,7 +130,7 @@ fn fs_light_volume(in: VolumeVarying) -> @location(0) vec4<f32> {
   let noise_slot: u32 = volumes.noise;
   let noise: vec4<f32> = textureSampleLevel(textures[noise_slot], texture_sampler, noise_uv + vec2<f32>(volumes.scroll, 0.0),
     0.0) * textureSampleLevel(textures[noise_slot], texture_sampler,
-    noise_uv - vec2<f32>(0.0, volumes.scroll * 0.70091), 0.0);
+    noise_uv - vec2<f32>(0.0, volumes.scroll_down), 0.0);
   // The density, the falloff and the noise are amounts the engine tunes as display values, the projector a picture.
   // At the authored levels they gather display values, in the lamp's authored colour, which the composite adds to the
   // frame's as the engine adds its shafts (`fs_sun_shafts_over`), as the froxels gather them; else, under the physical

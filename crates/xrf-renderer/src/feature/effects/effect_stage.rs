@@ -70,7 +70,7 @@ impl EffectStage {
     self.sun_shafts.prepare(options, lighting);
     self
       .fog
-      .prepare(options, lighting, Some(frame.drawn), level.time, level.camera_hemi);
+      .prepare(options, lighting, Some(frame.drawn), level.time.now, level.camera_hemi);
     self.volumetric.prepare(device, options);
     self.meter.prepare(device, options);
 

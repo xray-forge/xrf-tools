@@ -12,6 +12,7 @@ use crate::lighting::lamp::light_animation::{to_animated_color, to_interpolated_
 use crate::lighting::lamp::light_basis::LightBasis;
 use crate::lighting::lamp::light_shadow_size::to_light_shadow_tile_size;
 use crate::scene::level::lights::level_lights::LevelLights;
+use crate::tests::support::test_time::at;
 
 // Under the inverse square a light gives a point `r²/d²` of its colour, so an idle light whose range strays each frame
 // would flash its whole pool; held by the ratio of its own range's square to the stray's, it gives every point inside
@@ -321,9 +322,9 @@ fn light_animation_holds_a_keys_colour_and_blends_between_keys() {
 
 #[test]
 fn light_animation_steps_time_to_frames_and_loops() {
-  assert_eq!(to_animated_color(&animator(), 0.55), Vec3::new(100.0, 50.0, 25.0));
-  assert_eq!(to_animated_color(&animator(), 2.55), Vec3::new(100.0, 50.0, 25.0));
-  assert_eq!(to_animated_color(&animator(), 1.0), Vec3::new(200.0, 100.0, 50.0));
+  assert_eq!(to_animated_color(&animator(), at(0.55)), Vec3::new(100.0, 50.0, 25.0));
+  assert_eq!(to_animated_color(&animator(), at(2.55)), Vec3::new(100.0, 50.0, 25.0));
+  assert_eq!(to_animated_color(&animator(), at(1.0)), Vec3::new(200.0, 100.0, 50.0));
 }
 
 /// The renderer's colour is the engine's before `color_argb_f` floors it to a byte, so the two never differ by more
@@ -392,7 +393,7 @@ fn light_animation_draws_what_the_engines_light_animation_computes() {
       let (_, color) = item.calculate_rgb(seconds).expect("the animation advances");
 
       assert_matches_the_engine(
-        to_animated_color(&animator, seconds),
+        to_animated_color(&animator, at(f64::from(seconds))),
         color,
         &format!("{} at {seconds} s", item.name),
       );

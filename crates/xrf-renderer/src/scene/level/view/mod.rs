@@ -7,3 +7,4 @@ pub(crate) mod view_lens;
 pub(crate) mod view_pick;
 pub(crate) mod view_prepare;
 pub(crate) mod view_reports;
+pub(crate) mod view_time;

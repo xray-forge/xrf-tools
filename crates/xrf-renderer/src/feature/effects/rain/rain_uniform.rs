@@ -113,7 +113,7 @@ pub struct RainUniform {
   pub display: Vec4,
   /// Drops drawn.
   pub count: u32,
-  /// The rain's clock: seconds it has fallen, run at its pace.
+  /// The rain's clock: seconds it has fallen, run at its pace, within `CLOCK_PERIOD`.
   pub time: f32,
   /// Indices the splash's model draws.
   pub splash_indices: u32,
@@ -131,6 +131,10 @@ pub struct RainUniform {
 impl RainUniform {
   /// `max_desired_items`: streaks at the heaviest rain; half as many at the lightest.
   pub const STREAKS: u32 = 2500;
+  /// Seconds the rain's clock repeats over, which the wet surfaces read too: each of their splashes, flows and ripples
+  /// repeats a whole number of times in it (`WetUniform::time`). The drops have no repeat, each falling at a speed of
+  /// its own; at the wrap each starts a new fall at once, as every drop does every second or two anyway.
+  pub const CLOCK_PERIOD: f64 = 2000.0;
 
   /// One `frame`'s rain, its drops leaned by the wind's strength as its field says.
   pub fn new(frame: RainFrame<'_>) -> Self {

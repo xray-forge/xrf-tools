@@ -26,8 +26,10 @@ use crate::host::weather::render_rain::RenderRain;
 use crate::lighting::weather::render_rainfall::RenderRainfall;
 use crate::lighting::wind::ambient_gust::AmbientGust;
 use crate::pass::level_passes::LevelPasses;
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::level::view::view_prepare::ViewPrepare;
+use crate::scene::level::view::view_time::ViewTime;
 use crate::scene::texture::weather_texture_kind::WeatherTextureKind;
 
 /// The falling rain, while the weather rains and the view shows it: the splash's model built for the level's weather,
@@ -40,12 +42,10 @@ pub struct FallingRainFeature {
   views: Option<[wgpu::TextureView; 2]>,
   /// How much of the rain is drawn; none while it does not rain.
   draw: Option<RainCounts>,
-  /// The rain's clock at the last frame it fell, which this frame's step is taken from.
-  last_time: Option<f32>,
   /// Where the enhanced drops' square stood from the eye last frame, eased towards the camera's way.
   aim: Option<Vec2>,
-  /// The rain's clock, run on at its pace each frame.
-  clock: f32,
+  /// The rain's clock in seconds, run on at its pace each frame, in `f64` so a frame's step still adds to a day's.
+  clock: f64,
   /// The pace and the lean it fell at last frame, eased towards the weather's.
   eased: Option<(f32, Vec3)>,
   /// The rings the enhanced drops leave where they land, made once they first fall.
@@ -69,7 +69,7 @@ impl FallingRainFeature {
       ..
     }: &ViewPrepare<'_>,
     gust: AmbientGust,
-    time: f32,
+    time: ViewTime,
     windows: OverheadWindows,
   ) -> Option<RainUniform> {
     let rainfall: Option<RenderRainfall> = lighting.rain.filter(|_| options.mode.is_lit);
@@ -81,11 +81,7 @@ impl FallingRainFeature {
     self.views = None;
 
     // Held within a tenth of a second and never back, so a pause or a jump does not swing the drops' square.
-    let step: f32 = self
-      .last_time
-      .replace(time)
-      .map_or(0.0, |last| time - last)
-      .clamp(0.0, 0.1);
+    let step: f32 = time.get_step().map_or(0.0, |step| step.clamp(0.0, 0.1) as f32);
     let aim: Vec2 = RainUniform::ease_aim(self.aim, look, step);
 
     self.aim = Some(aim);
@@ -121,9 +117,9 @@ impl FallingRainFeature {
       });
 
     self.eased = Some((pace, axis));
-    self.clock += step * pace;
+    self.clock += f64::from(step * pace);
 
-    let uniform: RainUniform = target.clocked(self.clock, pace, axis);
+    let uniform: RainUniform = target.clocked(LevelTime::wrap(self.clock, RainUniform::CLOCK_PERIOD), pace, axis);
     let flat = |reference: Option<&str>| weather_textures.get_view(reference, WeatherTextureKind::Flat).clone();
 
     if uniform.is_enhanced != 0 {
@@ -146,6 +142,19 @@ impl FallingRainFeature {
     });
 
     Some(uniform)
+  }
+
+  /// Starts its clock, its drops' square and its eased pace and lean again from nothing, as at a view's first frame.
+  pub fn restart(&mut self) {
+    self.clock = 0.0;
+    self.aim = None;
+    self.eased = None;
+  }
+
+  /// The rain's clock in seconds, as it last fell: what the wet surfaces' splashes, flow and ripples run by while it
+  /// rains.
+  pub fn get_clock(&self) -> f64 {
+    self.clock
   }
 
   /// The tile the enhanced drops' rings wrap over this frame (`RainUniform::get_rings`), none while none are drawn.

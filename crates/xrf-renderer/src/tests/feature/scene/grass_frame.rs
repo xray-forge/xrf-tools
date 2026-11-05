@@ -36,6 +36,7 @@ use crate::scene::texture::texture_cache::TextureCache;
 use crate::shader::shader_library::ShaderLibrary;
 use crate::tests::support::test_context::create_test_context;
 use crate::tests::support::test_source::EmptySource;
+use crate::tests::support::test_time::frame_at;
 use crate::tests::support::test_workers::create_workers;
 
 /// A level's grass of `models` models, each the same triangle, over a grid of one cell.
@@ -171,7 +172,10 @@ impl GrassFrames {
       &GrassViewFrame {
         camera: &self.camera,
         discard_below: 0.0,
-        time: frame as f32 * 0.1,
+        time: frame_at(
+          f64::from(frame) * 0.1,
+          frame.checked_sub(1).map(|it| f64::from(it) * 0.1),
+        ),
         is_windy: true,
         strength: 1.0,
         foliage: &FoliageWindValues::default(),

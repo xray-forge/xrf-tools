@@ -13,6 +13,7 @@ use crate::lighting::lamp::light_bulb::get_bulb_radius;
 use crate::lighting::lamp::light_shadow_size::{LIGHT_SHADOW_POINT_FACES, to_light_shadow_scale};
 use crate::lighting::lamp::light_specular::to_light_specular;
 use crate::lighting::srgb::{anchored_light, authored_light};
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::lights::asks::light_asks::LightAsks;
 use crate::scene::level::lights::asks::light_in_view::{LightFades, LightInView};
 use crate::scene::level::lights::asks::lights_frame::LightsFrame;
@@ -45,14 +46,7 @@ impl LevelLights {
       ..
     } = asks.frame;
 
-    into.begin(
-      settings,
-      // `timers.z * 0.1`: the engine's global seconds over a hundred.
-      LightVolumesUniform {
-        noise: self.volume_textures.0,
-        scroll: time / 100.0,
-      },
-    );
+    into.begin(settings, LightVolumesUniform::new(self.volume_textures.0, time));
 
     let is_shadowing: bool = asks.frame.is_shadowing();
 
@@ -244,9 +238,9 @@ impl LevelLights {
   }
 
   /// Its colour this frame: animated where it names an animation.
-  fn to_color(animators: &[LightAnimatorDescription], light: &LightDescription, seconds: f32) -> Vec3 {
+  fn to_color(animators: &[LightAnimatorDescription], light: &LightDescription, time: LevelTime) -> Vec3 {
     match light.animator.and_then(|animator| animators.get(animator as usize)) {
-      Some(animator) => to_animated_color(animator, seconds) * light.animator_scale,
+      Some(animator) => to_animated_color(animator, time) * light.animator_scale,
       None => Vec3::from(light.color),
     }
   }

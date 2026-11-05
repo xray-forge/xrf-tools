@@ -13,7 +13,7 @@ pub struct FogScatteringUniform {
   pub size: Vec2,
   /// How readily the frame's bright parts are blurred into the fog.
   pub intensity: f32,
-  /// The clock the blur's debanding noise turns with, in seconds.
+  /// The clock the blur's debanding noise turns with, in seconds within `NOISE_PERIOD`.
   pub time: f32,
   /// Whether the stage reads the scene as it is held, which it takes as it is shown: the first blur.
   pub is_reading_scene: u32,
@@ -21,6 +21,10 @@ pub struct FogScatteringUniform {
 }
 
 impl FogScatteringUniform {
+  /// Seconds the debanding noise's clock repeats over: any span will do, as the noise follows no pattern in time that a
+  /// repeat would break; an hour keeps a level's first hour as it always was.
+  pub const NOISE_PERIOD: f64 = 3600.0;
+
   /// What a view scatters a frame `size` texels across with, or none: the engine's fog asked for, a scattering of none,
   /// no weather's `fog` drawn, unlit or wireframe.
   pub fn for_view(

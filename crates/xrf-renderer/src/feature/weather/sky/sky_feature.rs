@@ -31,6 +31,7 @@ use crate::pass::frame_lighting::lighting_frame::LightingFrame;
 use crate::pass::frame_lighting::lighting_uniform::LightingUniform;
 use crate::pass::level_passes::LevelPasses;
 use crate::pass::view::view_binding::ViewBinding;
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::level::view::view_frame::ViewFrame;
 use crate::scene::level::view::view_prepare::ViewPrepare;
@@ -75,6 +76,22 @@ impl SkyFeature {
   const REFILL_WAIT_MOST: u32 = 4;
   /// Milliseconds a refill costs before the timer measured one.
   const REFILL_SEED: f32 = 0.2;
+  /// The clouds' two layers' drift over their textures a second, `xy` the first's and `zw` the second's: each layer's
+  /// way, `setHP(PI_DIV_4, 0)` and `setHP(PI_DIV_4 + PI_DIV_8, 0)` in `x` and `z` through the byte `RenderClouds` packs
+  /// a direction into, times its speed, `CLOUD_SPEED0` and `CLOUD_SPEED1` (`shared/cloudconfig.h`), on `timers.z`
+  /// run a tenth as fast.
+  const CLOUD_DRIFT: [f64; 4] = [
+    -0.709_803_9 * 0.1 * 0.1,
+    0.701_960_8 * 0.1 * 0.1,
+    -0.929_411_8 * 0.05 * 0.1,
+    0.380_392_2 * 0.05 * 0.1,
+  ];
+
+  /// How far the clouds' layers have drifted over their textures at `time`, each within the textures' repeat of one,
+  /// the first's in `xy` and the second's in `zw`.
+  pub fn get_cloud_drift(time: LevelTime) -> Vec4 {
+    Vec4::from_array(Self::CLOUD_DRIFT.map(|rate| time.get_turns(rate)))
+  }
 
   /// Takes this frame's sky: its textures and the sun's sprite (`sun_sprite`) as the weather textures hold them, the
   /// level's environment cubes beside them, and the prefiltered cube at the size the settings ask, made again where
@@ -244,7 +261,7 @@ impl SkyFeature {
   }
 
   /// What the lighting draws the sky with this frame: a keyframe whose textures are not all up blended out, so a sky
-  /// still going up shows the other one; whether both irradiance cubes are up; the clouds' `time`; the sun's sprite
+  /// still going up shows the other one; whether both irradiance cubes are up; the clouds' drift at `time`; the sun's sprite
   /// while its texture is up; the exposure and the display the view decided (`shared`); at the physical light levels the
   /// world's light, and the units the light is in by the sky last projected.
   pub fn get_lighting_frame(
@@ -256,7 +273,7 @@ impl SkyFeature {
       ..
     }: &ViewPrepare<'_>,
     shared: &ViewFrame,
-    time: f32,
+    time: LevelTime,
   ) -> LightingFrame {
     let sky: &RenderSky = &lighting.sky;
     let daylight: Option<Daylight> = (options.is_light_physical()
@@ -286,7 +303,7 @@ impl SkyFeature {
         .environments
         .iter()
         .all(|reference| reference.as_deref().is_some_and(|it| weather_textures.is_up(it))),
-      clouds_time: time,
+      cloud_drift: Self::get_cloud_drift(time),
       sky_harmonics: self.harmonics,
       sun_sprite: self
         .get_sun_sprite()

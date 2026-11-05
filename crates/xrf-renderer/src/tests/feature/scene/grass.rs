@@ -2,6 +2,7 @@ use crate::feature::scene::grass::build::grass_build_size::GrassBuildSize;
 use crate::feature::scene::grass::level::grass_level::GrassLevel;
 use crate::lighting::wind::foliage_motion::FoliageMotion;
 use crate::lighting::wind::grass_wind::GrassWind;
+use crate::tests::support::test_time::frame_at;
 
 /// What one storage binding holds at least on every adapter the renderer starts on: 128 MiB.
 const BINDING_LIMIT: u64 = 128 << 20;
@@ -54,27 +55,49 @@ fn bounds_a_want_past_any_setting_by_the_binding() {
 fn sways_the_grass_on_its_two_winds_and_stills_it_without_wind() {
   let mut wind: GrassWind = GrassWind::default();
 
-  wind.advance(0.0, FoliageMotion::Blowing, 0.5);
+  wind.advance(frame_at(0.0, None), FoliageMotion::Blowing, 0.5);
 
-  let blowing = wind.advance(0.5, FoliageMotion::Blowing, 0.5);
+  let blowing = wind.advance(frame_at(0.5, Some(0.0)), FoliageMotion::Blowing, 0.5);
 
   // Half the normal swing and half the fast one: 0.225 and 0.125 across the ground.
   assert!((blowing.wind_1.length() - 0.225).abs() < 1e-5);
   assert!((blowing.wind_2.length() - 0.125).abs() < 1e-5);
   assert!(blowing.wave_1.w > 0.0);
-  assert_eq!(wind.advance(1.0, FoliageMotion::Still, 0.5).wind_1.length(), 0.0);
+  assert_eq!(
+    wind
+      .advance(frame_at(1.0, Some(0.5)), FoliageMotion::Still, 0.5)
+      .wind_1
+      .length(),
+    0.0
+  );
+}
+
+// A frame drawn before the last, as a burst at an earlier time is, or past a second after it turns the winds by
+// `hw_Render`'s fallback step, neither back nor by the whole gap.
+#[test]
+fn turns_by_the_fallback_step_where_the_clock_ran_back_or_leapt() {
+  let turned = |previous: f64, now: f64| {
+    let mut wind: GrassWind = GrassWind::default();
+
+    wind.advance(frame_at(previous, None), FoliageMotion::Blowing, 0.5);
+    wind.advance(frame_at(now, Some(previous)), FoliageMotion::Blowing, 0.5)
+  };
+  let fallback = turned(0.0, 0.03);
+
+  assert_eq!(turned(10.0, 5.0).wave_1, fallback.wave_1);
+  assert_eq!(turned(0.0, 30.0).wave_1, fallback.wave_1);
 }
 
 #[test]
 fn carries_the_last_frames_sway_for_the_tufts_motion() {
   let mut wind: GrassWind = GrassWind::default();
-  let first = wind.advance(0.0, FoliageMotion::Blowing, 0.5);
+  let first = wind.advance(frame_at(0.0, None), FoliageMotion::Blowing, 0.5);
 
   // A first frame moved from nowhere.
   assert_eq!(first.previous_wind_1, first.wind_1);
   assert_eq!(first.previous_wave_2, first.wave_2);
 
-  let second = wind.advance(0.5, FoliageMotion::Blowing, 0.5);
+  let second = wind.advance(frame_at(0.5, Some(0.0)), FoliageMotion::Blowing, 0.5);
 
   assert_eq!(second.previous_wind_1, first.wind_1);
   assert_eq!(second.previous_wind_2, first.wind_2);

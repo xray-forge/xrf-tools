@@ -59,7 +59,7 @@ fn lighting_at(options: &RenderViewOptions, lighting: &RenderLighting, pre_expos
       daylight: None,
       sky_blend: 0.0,
       is_irradiance_up: false,
-      clouds_time: 0.0,
+      cloud_drift: Vec4::ZERO,
       sun_sprite: Vec4::ZERO,
       sky_harmonics: SkyHarmonics::default(),
     },
@@ -520,7 +520,7 @@ fn the_sky_irradiance_stands_at_its_levels() {
       daylight: None,
       sky_blend: 0.0,
       is_irradiance_up: false,
-      clouds_time: 0.0,
+      cloud_drift: Vec4::ZERO,
       sun_sprite: Vec4::ZERO,
       sky_harmonics: harmonics,
     };
@@ -575,7 +575,7 @@ fn the_fog_takes_the_skys_colour_only_at_the_anchored_levels() {
       daylight: None,
       sky_blend: 0.0,
       is_irradiance_up: false,
-      clouds_time: 0.0,
+      cloud_drift: Vec4::ZERO,
       sun_sprite: Vec4::ZERO,
       sky_harmonics: harmonics,
     };
@@ -645,7 +645,7 @@ fn metered_frame(units: LightUnits, current: f32, metering: ExposureMetering) ->
     daylight: None,
     sky_blend: 0.0,
     is_irradiance_up: false,
-    clouds_time: 0.0,
+    cloud_drift: Vec4::ZERO,
     sun_sprite: Vec4::ZERO,
     sky_harmonics: SkyHarmonics::default(),
   }

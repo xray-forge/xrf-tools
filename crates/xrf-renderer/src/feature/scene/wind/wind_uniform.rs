@@ -5,6 +5,7 @@ use xrf_renderer_core::ShaderStruct;
 
 use crate::feature::scene::wind::foliage_wind_values::FoliageWindValues;
 use crate::lighting::wind::render_tree_wind::RenderTreeWind;
+use crate::scene::level::level_time::LevelTime;
 
 /// The sway of the trees as `shaders/static/pulling.wgsl` reads it, built each frame as `FTreeVisual_setup::calculate`
 /// builds it: a wind turning once every `rotation` seconds at the amplitude's length, and a wave travelling through the
@@ -32,19 +33,21 @@ pub struct WindUniform {
 }
 
 impl WindUniform {
-  /// The sway at a time, still for none or for no amplitude.
-  pub fn new(trees: Option<&RenderTreeWind>, time: f32) -> Self {
+  /// The sway at a time, still for none or for no amplitude: the wind's turn taken within its rotation, and the wave's
+  /// phase within the turn `shaders/static/sway.wgsl`'s `cyclic` repeats over.
+  pub fn new(trees: Option<&RenderTreeWind>, time: LevelTime) -> Self {
     let Some(trees) = trees.filter(|trees| trees.amplitude > 0.0) else {
       return Self::default();
     };
     let rotation: f32 = if trees.rotation > 0.0 {
-      TAU * time / trees.rotation
+      TAU * time.get_phase(f64::from(trees.rotation)) / trees.rotation
     } else {
       0.0
     };
 
     let wind: Vec4 = Vec4::new(rotation.sin(), 0.0, -rotation.cos(), 0.0) * trees.amplitude;
-    let wave: Vec4 = Vec4::new(trees.wave.x, trees.wave.y, -trees.wave.z, time * trees.speed) / TAU;
+    let wave: Vec4 = (Vec4::new(trees.wave.x, trees.wave.y, -trees.wave.z, 0.0) / TAU)
+      .with_w(time.get_turns(f64::from(trees.speed) / std::f64::consts::TAU));
 
     Self {
       wind,

@@ -12,6 +12,7 @@ use crate::feature::weather::sky::sky_views::SkyViews;
 use crate::feature::weather::water::draw::traced_water::TracedWater;
 use crate::feature::weather::water::draw::water_draw::WaterDraw;
 use crate::feature::weather::water::enhanced::enhanced_water_frame::EnhancedWaterFrame;
+use crate::feature::weather::water::enhanced::enhanced_water_scroll::EnhancedWaterScroll;
 use crate::feature::weather::water::enhanced::enhanced_water_uniform::EnhancedWaterUniform;
 use crate::feature::weather::water::enhanced::water_flow::WaterFlow;
 use crate::feature::weather::water::reflection::water_reflection::WaterReflection;
@@ -39,8 +40,6 @@ pub struct WaterFeature {
   flow: WaterFlow,
   /// Frames prepared, which turns which of its pixels trace.
   frame: u32,
-  /// The water's time the last frame was prepared at, where its wave stood then; none before a first frame.
-  last_time: Option<f32>,
 }
 
 impl WaterFeature {
@@ -91,12 +90,11 @@ impl WaterFeature {
     Some(passes.weather.water.add_passes(graph, bindings, runtime, draw))
   }
 
-  /// Starts its maps' scroll, its traced pixels' turn, its wave's last place and its reflection's histories again from
-  /// nothing.
+  /// Starts its maps' scroll, its traced pixels' turn and its reflection's histories again from nothing; its wave's
+  /// last place starts over with the view's last frame.
   pub fn restart(&mut self) {
     self.flow = WaterFlow::default();
     self.frame = 0;
-    self.last_time = None;
     self.reflection = None;
   }
 
@@ -108,9 +106,7 @@ impl WaterFeature {
     self.is_drawn = settings.is_enabled && !frame.tiles.is_empty() && !options.mode.is_wireframe;
     self.tiles = frame.tiles;
     // The wave's motion runs from where it stood the last frame; still on a first frame.
-    let previous_time: f32 = self.last_time.replace(frame.time).unwrap_or(frame.time);
-
-    self.uniform = WaterUniform::new(&settings, frame.intensity, (frame.time, previous_time));
+    self.uniform = WaterUniform::new(&settings, frame.intensity, frame.time.now).following(frame.time.get_previous());
     // Advanced while the engine's water draws too, so switching back does not lurch the maps by the time between.
     self.flow.advance(frame.time, &settings.enhanced, frame.wind);
 
@@ -159,7 +155,12 @@ impl WaterFeature {
       EnhancedWaterFrame {
         wind: frame.wind,
         rain: frame.rain,
-        flow: self.flow,
+        scroll: EnhancedWaterScroll::new(
+          &self.flow,
+          frame.time.now,
+          frame.rain,
+          settings.enhanced.parallax_height > 0.0,
+        ),
         is_reflected: self.reflection.is_some(),
         has_history: self
           .reflection

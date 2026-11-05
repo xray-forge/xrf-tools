@@ -15,8 +15,11 @@ enable wgpu_binding_array;
 // `watermove`: the wave's direction through the level, in renderer space, where the engine's `z` is negated.
 const WAVE_DIRECTION: vec3<f32> = vec3<f32>(0.11, 0.13, -0.07);
 
-// `watermove_tc`: the scroll's direction across the level, over the engine's `x` and `z`.
+// `watermove_tc`: the scroll's direction across the level, over the engine's `x` and `z`; and the turns about its circle
+// a second of the water's clock, `timers.z` a tenth as fast, which with the wave's own `sin(time)` repeats a whole
+// number of times in `WaterUniform::PERIOD`.
 const SCROLL_DIRECTION: vec2<f32> = vec2<f32>(0.2111, 0.2333);
+const SCROLL_RATE: f32 = 0.1;
 
 // `W_DISTORT_BASE_TILE_0` and `_1`, and `W_DISTORT_AMP_0` and `_1` (`shared/waterconfig.h`).
 const LAYER_TILES: vec2<f32> = vec2<f32>(1.0, 1.1);
@@ -88,7 +91,7 @@ fn water_vertex(vertex_index: u32, instance_index: u32, water: Water) -> WaterVa
 
 // One normal layer's coordinates: the base's, tiled, scrolled around a circle by `timers.z`, `watermove_tc`.
 fn scrolled(base: vec2<f32>, world: vec3<f32>, tile: f32, amplitude: f32, water: Water) -> vec2<f32> {
-  let angle: f32 = water.time / 10.0 + dot(vec2<f32>(world.x, -world.z), SCROLL_DIRECTION * amplitude);
+  let angle: f32 = water.time * SCROLL_RATE + dot(vec2<f32>(world.x, -world.z), SCROLL_DIRECTION * amplitude);
 
   return base * tile + vec2<f32>(sin(angle), cos(angle)) * amplitude * water.ripple;
 }

@@ -48,6 +48,7 @@ struct Lighting {
   fog: vec4<f32>,
   sky: vec4<f32>,
   sky_params: vec4<f32>,
+  cloud_drift: vec4<f32>,
   clouds: vec4<f32>,
   engine: vec4<f32>,
   pre_exposure: vec4<f32>,
@@ -127,6 +128,7 @@ struct LightVolume {
 struct LightVolumes {
   noise: u32,
   scroll: f32,
+  scroll_down: f32,
 }
 
 struct GrassModel {
@@ -470,11 +472,6 @@ struct EnhancedWater {
   parallax_height: f32,
   ripples: f32,
   rain: f32,
-  flowed: f32,
-  waves: f32,
-  heights: f32,
-  gusts_x: f32,
-  gusts_y: f32,
   variation: f32,
   trace_distance: f32,
   trace_turns: u32,
@@ -485,6 +482,11 @@ struct EnhancedWater {
   rings_tile: f32,
   rings_reach: f32,
   rings_strength: f32,
+  heights: vec4<f32>,
+  wave_layers: array<vec4<f32>, 2>,
+  map_offsets: array<vec4<f32>, 2>,
+  flow_scrolls: vec4<f32>,
+  ripple_clocks: vec4<f32>,
 }
 
 struct WaterBlur {
@@ -526,7 +528,7 @@ struct Wet {
   puddles: vec4<f32>,
   puddle_state: vec4<f32>,
   reach: vec4<f32>,
-  gust: vec4<f32>,
+  drift: vec4<f32>,
   water: vec4<f32>,
   relief: vec4<f32>,
   drying: vec4<f32>,

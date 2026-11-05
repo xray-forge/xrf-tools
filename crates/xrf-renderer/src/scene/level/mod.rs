@@ -1,6 +1,7 @@
 pub(crate) mod level_grass;
 pub(crate) mod level_prepare;
 pub(crate) mod level_scene;
+pub(crate) mod level_time;
 pub(crate) mod lights;
 pub(crate) mod load;
 pub(crate) mod page;

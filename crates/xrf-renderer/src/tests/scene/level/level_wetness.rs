@@ -4,6 +4,7 @@ use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::lighting::weather::render_rainfall::RenderRainfall;
 use crate::scene::level::wetness::level_wetness::LevelWetness;
+use crate::tests::support::test_time::at;
 
 fn raining(density: f32) -> RenderLighting {
   RenderLighting {
@@ -25,15 +26,15 @@ fn keeps_the_rain_it_was_moved_on_by() {
   assert_eq!(level.get_wetness().get(), 0.0);
   assert_eq!(level.get_puddles(), (0.0, 0.0, 0.0));
 
-  level.advance(&raining(1.0), &settings, 0.0);
-  level.advance(&raining(1.0), &settings, 60.0);
+  level.advance(&raining(1.0), &settings, at(0.0));
+  level.advance(&raining(1.0), &settings, at(60.0));
 
   let wetness: f32 = level.get_wetness().get();
   let puddles: (f32, f32, f32) = level.get_puddles();
 
   assert!(wetness > 0.0 && puddles.0 > 0.0);
 
-  level.advance(&RenderLighting::default(), &settings, 60.0);
+  level.advance(&RenderLighting::default(), &settings, at(60.0));
 
   assert_eq!(level.get_wetness().get(), wetness);
   assert_eq!(level.get_puddles(), puddles);
@@ -50,8 +51,8 @@ fn a_faster_pace_wets_and_fills_as_a_longer_rain() {
   let (mut slow, mut fast): (LevelWetness, LevelWetness) = (LevelWetness::default(), LevelWetness::default());
 
   for (level, settings, span) in [(&mut slow, &settings, 100.0), (&mut fast, &paced, 1.0)] {
-    level.advance(&raining(0.6), settings, 0.0);
-    level.advance(&raining(0.6), settings, span);
+    level.advance(&raining(0.6), settings, at(0.0));
+    level.advance(&raining(0.6), settings, at(span));
   }
 
   assert!((slow.get_wetness().get() - fast.get_wetness().get()).abs() < 1e-5);

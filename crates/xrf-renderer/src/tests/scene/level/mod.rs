@@ -1,5 +1,6 @@
 mod helper_icons;
 mod helpers;
+mod level_time;
 mod level_wetness;
 mod overhead_map;
 mod overlays;

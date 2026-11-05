@@ -49,8 +49,11 @@ pub struct LightingUniform {
   pub fog: Vec4,
   /// `sky_color`, then the blend between the keyframes' skies.
   pub sky: Vec4,
-  /// The sky's rotation, the clouds', the clouds' clock.
+  /// The sky's rotation and the clouds'; the rest unused.
   pub sky_params: Vec4,
+  /// How far the clouds' two layers have drifted over their textures, each within the textures' repeat
+  /// (`SkyFeature::get_cloud_drift`): the first layer's in `xy`, the second's in `zw`.
+  pub cloud_drift: Vec4,
   /// The clouds' colour and cover; nothing where they are hidden.
   pub clouds: Vec4,
   /// One for Anomaly's shading, the rain's density, one where the enhanced glass draws glass in place of the
@@ -194,12 +197,8 @@ impl LightingUniform {
         flag(options.show.is_sky_visible),
       ),
       sky: lighting.sky.color.extend(frame.sky_blend),
-      sky_params: Vec4::new(
-        lighting.sky.rotation,
-        lighting.sky.clouds.rotation,
-        frame.clouds_time,
-        0.0,
-      ),
+      sky_params: Vec4::new(lighting.sky.rotation, lighting.sky.clouds.rotation, 0.0, 0.0),
+      cloud_drift: frame.cloud_drift,
       clouds: if options.show.is_clouded {
         lighting.sky.clouds.color
       } else {
