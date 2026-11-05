@@ -18,12 +18,14 @@ use crate::host::sound::level::world_static_sound::WorldStaticSound;
 use crate::host::sound::sink::world_sound_frame::WorldSoundFrame;
 use crate::host::sound::sink::world_sound_sink::WorldSoundSink;
 use crate::host::world_level_source::WorldLevelSource;
+use crate::host::world_level_weather::WorldLevelWeather;
 use crate::level::effects::campfire::Campfire;
 use crate::level::effects::level_campfires::LevelCampfires;
 use crate::sound::level::level_sound::LevelSound;
 use crate::sound::level::sound_drive::SoundDrive;
 use crate::sound::schedule::zone_states::ZoneStates;
 use crate::sound::weather::rain_frame::RainFrame;
+use crate::sound::weather::thunder_sound::ThunderSound;
 use crate::tests::fixtures::{SilentSink, TestLevelSource};
 use crate::tests::sound::found;
 use crate::tests::test_workers::create_workers;
@@ -139,7 +141,7 @@ struct Heard {
   forward: Vec3,
   zones: NoZones,
   /// The workers its sounds are read on, kept while it plays.
-  _workers: RenderWorkers,
+  workers: RenderWorkers,
 }
 
 impl Heard {
@@ -159,8 +161,23 @@ impl Heard {
       opened: Instant::now(),
       forward: Vec3::Z,
       zones: NoZones(LevelCampfires::default()),
-      _workers: workers,
+      workers,
     }
+  }
+
+  /// Plays from `from`, a tenth of a second at a time, until its last frame is as `is_heard` wants, as its sounds are
+  /// read on a worker first; answers the time it reached.
+  fn play_until(&mut self, from: f64, is_heard: impl Fn(&WorldSoundFrame) -> bool) -> f64 {
+    let deadline: Instant = Instant::now() + Duration::from_secs(5);
+    let mut at: f64 = from;
+
+    while self.sent.lock().unwrap().last().is_none_or(|frame| !is_heard(frame)) {
+      assert!(Instant::now() < deadline, "the level's sounds were never read");
+      self.play(at, 0.1);
+      at += 0.1;
+    }
+
+    at
   }
 
   /// Plays a frame at `now` on the level's clock, a burst's where `burst` says.
@@ -180,9 +197,7 @@ impl Heard {
       burst,
     };
 
-    self
-      .sound
-      .advance(now, self.opened, None, &drive, None, &mut self.zones);
+    self.sound.advance(now, None, &drive, None, &mut self.zones);
   }
 
   /// Plays the live clock from `from` for `seconds`, sixty frames a second.
@@ -347,4 +362,85 @@ fn hears_from_the_cameras_own_up_as_it_pitches() {
 
   assert!(forward.dot(down).abs() < 1e-5, "{forward} {down}");
   assert!((down - Vec3::Z).length() < 1e-5, "{down}");
+}
+
+// A strike is heard on the level's clock as long after it struck as the sound takes to come, `distance / 300` seconds,
+// over half to twice its distance: one struck 600 m away a tenth of a second before the frame at 5 s starts at 6.9 s.
+#[test]
+fn hears_a_strike_on_the_levels_clock_as_far_after_as_it_struck() {
+  let mut heard: Heard = Heard::new();
+  let weather: WorldLevelWeather = WorldLevelWeather {
+    thunder_sounds: HashMap::from([(String::from("bolt"), found("ambient\\thunder", 4))]),
+    ..WorldLevelWeather::default()
+  };
+  let now: Duration = Duration::from_secs(5);
+  let at: Instant = heard.opened + now;
+  let strikes: [ThunderSound; 1] = [ThunderSound {
+    bolt: String::from("bolt"),
+    position: Vec3::new(0.0, 100.0, 600.0),
+    distance: 600.0,
+    at: at - Duration::from_millis(100),
+  }];
+  let drive: SoundDrive<'_> = SoundDrive {
+    scene: RenderSceneId(1),
+    at,
+    is_audible: true,
+    eye: Vec3::ZERO,
+    forward: Vec3::Z,
+    up: Vec3::Y,
+    game_time: 12 * 3_600_000,
+    toggles: Default::default(),
+    ambients: None,
+    rain: RainFrame::default(),
+    thunder: &strikes,
+    burst: None,
+  };
+
+  heard.sound.advance(now, Some(&weather), &drive, None, &mut heard.zones);
+
+  let frame: WorldSoundFrame = heard.sent.lock().unwrap().last().cloned().expect("a frame was sent");
+  let thunder = frame
+    .emitters
+    .iter()
+    .find(|emitter| emitter.kind == WorldSoundKind::Thunder)
+    .expect("the strike thunders");
+
+  assert_eq!(thunder.start, Duration::from_millis(6900));
+  assert_eq!([thunder.min_distance, thunder.max_distance], [300.0, 1200.0]);
+}
+
+// A reload whose spawn changed reads the level's sounds again: what it read before plays on until the next are read,
+// then every schedule starts afresh from those at the clock's time, so a sound gone from the level stops.
+#[test]
+fn plays_the_sounds_read_again_on_a_reload() {
+  let mut heard: Heard = Heard::new();
+  let reached: f64 = heard.play_until(0.0, |frame| !frame.emitters.is_empty());
+  let named = |frame: &WorldSoundFrame| -> Vec<String> {
+    let mut named: Vec<String> = frame.emitters.iter().map(|emitter| emitter.sound.to_string()).collect();
+
+    named.sort_unstable();
+    named.dedup();
+    named
+  };
+  let wind = WorldLevelSounds {
+    statics: sounds().statics.into_iter().take(1).collect(),
+    music: Vec::new(),
+    ..sounds()
+  };
+  let source: Arc<dyn WorldLevelSource> = Arc::new(TestLevelSource {
+    sounds: wind,
+    ..TestLevelSource::default()
+  });
+  let reloaded: Duration = Duration::from_secs_f64(reached);
+
+  heard.sound.reload(&source, &heard.workers);
+  heard.play_until(reached, |frame| named(frame) == ["ambient\\wind"]);
+
+  let after: WorldSoundFrame = heard.sent.lock().unwrap().last().cloned().expect("a frame was sent");
+
+  assert!(
+    after.emitters.iter().all(|emitter| emitter.start >= reloaded),
+    "{:?}",
+    Played::from(&after)
+  );
 }

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use glam::Vec3;
 use xrf_engine_target::XrayEngine;
@@ -78,15 +78,8 @@ impl LevelSounds {
 
 impl LevelSound {
   pub fn start(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> Self {
-    let reader: Arc<dyn WorldLevelSource> = Arc::clone(source);
-
     Self {
-      pending: LoaderOnce::spawn(workers, "sounds", move || {
-        reader
-          .read_sounds()
-          .inspect_err(|error| log::warn!("The level's sounds cannot be played: {error}"))
-          .ok()
-      }),
+      pending: Self::read_sounds(source, workers),
       read: None,
       level: None,
       is_bursting: false,
@@ -102,13 +95,21 @@ impl LevelSound {
     }
   }
 
-  /// Plays on to `now`, the level's clock started at `opened`, as `drive` gives the frame over what the level's weathers
-  /// play with and `zones` stand its zones, an ambient effect's sound starting with it where one does, and sends the
-  /// scene's frame where one is due.
+  /// Reads the level's own sounds again from `source`, a next source of the same level, whose spawn or helpers changed:
+  /// once read, every schedule starts afresh at the clock's time as a burst's end starts them, so an edited zone plays
+  /// as it now stands and each sounding emitter names its helper by the helpers' new order. What plays meanwhile plays on.
+  pub fn reload(&mut self, source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) {
+    // todo: Reopen the sink where the level's collision changed, so the acoustics' walls follow it; they stay as the
+    // level opened, since a new sink builds Steam Audio's scene afresh, seconds on a large level.
+    self.pending = Self::read_sounds(source, workers);
+  }
+
+  /// Plays on to `now` on the level's clock, as `drive` gives the frame over what the level's weathers play with and
+  /// `zones` stand its zones, an ambient effect's sound starting with it where one does, and sends the scene's frame
+  /// where one is due.
   pub fn advance(
     &mut self,
     now: Duration,
-    opened: Instant,
     weather: Option<&WorldLevelWeather>,
     drive: &SoundDrive<'_>,
     effect: Option<EffectSound<'_>>,
@@ -116,7 +117,7 @@ impl LevelSound {
   ) {
     let delta: Duration = now.saturating_sub(self.now);
 
-    self.take_read();
+    self.take_read(now);
 
     if drive.burst == Some(RenderViewBurst::Starting) || (self.is_bursting && drive.burst.is_none()) {
       self.restart(now);
@@ -159,7 +160,7 @@ impl LevelSound {
         delta,
         now,
       );
-      self.thunder(weather, drive, opened);
+      self.thunder(weather, drive, now);
     }
 
     if let Some(effect) = effect {
@@ -233,7 +234,21 @@ impl LevelSound {
     objects
   }
 
-  fn take_read(&mut self) {
+  /// The level's own sounds read on a worker from `source`, none where they cannot be.
+  fn read_sounds(source: &Arc<dyn WorldLevelSource>, workers: &RenderWorkers) -> LoaderOnce<WorldLevelSounds> {
+    let reader: Arc<dyn WorldLevelSource> = Arc::clone(source);
+
+    LoaderOnce::spawn(workers, "sounds", move || {
+      reader
+        .read_sounds()
+        .inspect_err(|error| log::warn!("The level's sounds cannot be played: {error}"))
+        .ok()
+    })
+  }
+
+  /// Takes the level's sounds once read: the first time its schedules start from them, read again on a reload every
+  /// schedule starts afresh at `now` from them.
+  fn take_read(&mut self, now: Duration) {
     if let Some(sounds) = self.pending.take() {
       log::info!(
         "Level sounds: {} static sounds, {} music tracks, {} zones",
@@ -242,8 +257,15 @@ impl LevelSound {
         sounds.zones.len()
       );
 
-      self.level = Some(LevelSounds::new(&sounds));
+      let is_reread: bool = self.read.is_some();
+
       self.read = Some(sounds);
+
+      if is_reread {
+        self.restart(now);
+      } else {
+        self.level = self.read.as_ref().map(LevelSounds::new);
+      }
     }
   }
 
@@ -299,13 +321,14 @@ impl LevelSound {
     };
   }
 
-  /// Each strike's sound, delayed by how far it struck.
-  fn thunder(&mut self, weather: &WorldLevelWeather, drive: &SoundDrive<'_>, opened: Instant) {
+  /// Each strike's sound, delayed by how far it struck: a strike stamped at a moment before the frame's struck as long
+  /// before `now` on the level's clock.
+  fn thunder(&mut self, weather: &WorldLevelWeather, drive: &SoundDrive<'_>, now: Duration) {
     for strike in drive.thunder {
       let Some(sound) = weather.thunder_sounds.get(&strike.bolt) else {
         continue;
       };
-      let struck: Duration = strike.at.saturating_duration_since(opened);
+      let struck: Duration = now.saturating_sub(drive.at.saturating_duration_since(strike.at));
 
       self.emitters.play(
         weather.engine,
