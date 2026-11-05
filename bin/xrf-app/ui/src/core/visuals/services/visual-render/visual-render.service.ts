@@ -1,5 +1,6 @@
 import { inject, Injectable } from "@wirestate/core";
 import { BoundAction, comparer, reaction, RefObservable, runInAction } from "@wirestate/mobx";
+import { EMPTY_SET } from "@xrf/collections";
 import { visualsCommands } from "@xrf/ipc/commands/visuals";
 import {
   RenderLoadReport,
@@ -15,7 +16,7 @@ import { NativeRenderSurfaceService } from "@/core/render/lib/native/viewport/na
 import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
 import { toRenderOutput } from "@/core/render/lib/settings/device/render-resolution";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { BIND_POSE, IVisualRenderSource, NO_HIDDEN_BONES, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
+import { BIND_POSE, IVisualRenderSource, VISUAL_RENDER_SOURCE } from "@/core/visuals/lib/render";
 import { toVisualCamera, toVisualOverlays, toVisualViewOptions } from "@/core/visuals/lib/render/visual-render";
 import { DEFAULT_VISUAL_PREVIEW_SCENE_CONFIG, IVisualPreviewSceneConfig } from "@/core/visuals/lib/scene/scene-config";
 import { IVisualModelViews } from "@/core/visuals/lib/visual-views";
@@ -112,7 +113,7 @@ export class VisualRenderService extends NativeRenderSurfaceService {
         (): WorldModelPose => {
           const { frame, motion } = this.source.pose ?? BIND_POSE;
 
-          return { frame, hiddenBones: [...(this.source.hiddenBoneIndices ?? NO_HIDDEN_BONES)], motion };
+          return { frame, hiddenBones: [...(this.source.hiddenBoneIndices ?? EMPTY_SET)], motion };
         },
         (pose: WorldModelPose) => viewport.poseModel(pose),
         { equals: comparer.structural, fireImmediately: true }
