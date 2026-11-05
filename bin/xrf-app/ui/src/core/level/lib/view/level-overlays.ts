@@ -1,6 +1,6 @@
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 
-/** One overlay laid over the level, switched from the toolbar's Overlays popover and the level viewer's menu. */
+/** One overlay laid over the level, switched from the toolbar's Show popover and the level viewer's menu. */
 export interface ILevelOverlay {
   /** Kebab case, for the ids of what switches it. */
   readonly id: string;
