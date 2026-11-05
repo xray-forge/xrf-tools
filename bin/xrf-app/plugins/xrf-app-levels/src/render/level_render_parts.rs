@@ -2,9 +2,9 @@ use xrf_app_core::session::{SessionId, SessionPart};
 use xrf_renderer::{LevelPart, LevelParts};
 
 use crate::parts::{
-  LevelCollisionPart, LevelDetailsPart, LevelEnvironmentPart, LevelGeometryPart, LevelHemiPart, LevelLightsPart,
-  LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelSpawnVisualsPart,
-  LevelSurfacesPart, LevelWeatherPart,
+  LevelCollisionPart, LevelDetailsPart, LevelEnvironmentPart, LevelGeometryPart, LevelGraphPart, LevelHemiPart,
+  LevelLightsPart, LevelObjectMotionsPart, LevelParticlesPart, LevelPlacementsPart, LevelSectionsPart, LevelSpawnPart,
+  LevelSpawnVisualsPart, LevelSurfacesPart, LevelWeatherPart,
 };
 
 /// How a level's session parts feed the scene the renderer draws it as: the scene each session shares, the parts whose
@@ -25,8 +25,8 @@ impl LevelRenderParts {
 
   /// What the renderer reads again of a level whose next snapshot let `stale_parts` go: each package whose read asks
   /// for any of them, or recorded what it read as one of them. The sectors stream afresh instead, on their geometry or
-  /// surfaces (`VIEW_PARTS`); the graph feeds nothing drawn, the map and the textures' list are the page's, and
-  /// the start only matters where a viewer first stands.
+  /// surfaces (`VIEW_PARTS`); the map and the textures' list are the page's, and the start only matters where a viewer
+  /// first stands.
   pub fn to_reload(stale_parts: &[&str]) -> LevelParts {
     LevelPart::ALL
       .into_iter()
@@ -39,7 +39,8 @@ impl LevelRenderParts {
   }
 
   /// The session parts the renderer's read of `part` is built from, as `LevelRenderSource` reads it. The sectors
-  /// stream afresh on theirs instead (`VIEW_PARTS`), and the helpers are read again with the spawn.
+  /// stream afresh on theirs instead (`VIEW_PARTS`). The helpers are the level objects, which the level's sounds are
+  /// read from too: the spawn, the graph, the placements (`level.snd_static` among them) and the sections.
   fn list_read_from(part: LevelPart) -> &'static [&'static str] {
     match part {
       LevelPart::Spawn => &[
@@ -65,7 +66,13 @@ impl LevelRenderParts {
       LevelPart::Weather => &[LevelEnvironmentPart::NAME, LevelWeatherPart::NAME],
       LevelPart::Motions => &[LevelObjectMotionsPart::NAME],
       LevelPart::Grass => &[LevelDetailsPart::NAME],
-      LevelPart::Sectors | LevelPart::Helpers => &[],
+      LevelPart::Helpers => &[
+        LevelSpawnPart::NAME,
+        LevelGraphPart::NAME,
+        LevelPlacementsPart::NAME,
+        LevelSectionsPart::NAME,
+      ],
+      LevelPart::Sectors => &[],
     }
   }
 }

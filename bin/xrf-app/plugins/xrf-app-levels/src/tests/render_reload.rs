@@ -5,8 +5,8 @@ use xrf_renderer::{LevelPart, LevelParts};
 
 use crate::parts::{
   LevelCollisionPart, LevelDetailsPart, LevelEnvironmentPart, LevelGraphPart, LevelHemiPart, LevelLightsPart,
-  LevelMapPart, LevelObjectMotionsPart, LevelParticlesPart, LevelSectionsPart, LevelSpawnPart, LevelSpawnVisualsPart,
-  LevelStartPart, LevelTexturesPart, LevelWeatherPart,
+  LevelMapPart, LevelObjectMotionsPart, LevelParticlesPart, LevelPlacementsPart, LevelSectionsPart, LevelSpawnPart,
+  LevelSpawnVisualsPart, LevelStartPart, LevelTexturesPart, LevelWeatherPart,
 };
 use crate::render::LevelRenderParts;
 
@@ -18,10 +18,6 @@ fn parts(parts: &[LevelPart]) -> LevelParts {
 #[test]
 fn a_commit_leaving_every_part_reloads_nothing() {
   assert!(LevelRenderParts::to_reload(&[]).is_empty());
-  assert!(
-    LevelRenderParts::to_reload(&[LevelGraphPart::NAME]).is_empty(),
-    "nothing drawn is built from the graph"
-  );
   assert!(
     LevelRenderParts::to_reload(&[LevelStartPart::NAME]).is_empty(),
     "where a viewer first stands draws nothing"
@@ -44,6 +40,9 @@ fn what_a_render_read_recorded_reloads_that_package_alone() {
     (LevelWeatherPart::NAME, LevelPart::Weather),
     (LevelObjectMotionsPart::NAME, LevelPart::Motions),
     (LevelDetailsPart::NAME, LevelPart::Grass),
+    // The level objects, which the helpers draw and the level's sounds are read from.
+    (LevelGraphPart::NAME, LevelPart::Helpers),
+    (LevelPlacementsPart::NAME, LevelPart::Helpers),
   ] {
     assert_eq!(LevelRenderParts::to_reload(&[part]), parts(&[reload]), "{part}");
   }
@@ -57,7 +56,7 @@ fn a_stale_part_reloads_only_the_packages_built_from_it() {
   );
   assert_eq!(
     LevelRenderParts::to_reload(&[LevelSectionsPart::NAME]),
-    parts(&[LevelPart::Lights, LevelPart::Particles])
+    parts(&[LevelPart::Lights, LevelPart::Helpers, LevelPart::Particles])
   );
   assert_eq!(
     LevelRenderParts::to_reload(&[LevelSpawnVisualsPart::NAME]),
@@ -69,7 +68,12 @@ fn a_stale_part_reloads_only_the_packages_built_from_it() {
   );
   assert_eq!(
     LevelRenderParts::to_reload(&[LevelSpawnPart::NAME]),
-    parts(&[LevelPart::Spawn, LevelPart::Lights, LevelPart::Particles])
+    parts(&[
+      LevelPart::Spawn,
+      LevelPart::Lights,
+      LevelPart::Helpers,
+      LevelPart::Particles
+    ])
   );
 }
 

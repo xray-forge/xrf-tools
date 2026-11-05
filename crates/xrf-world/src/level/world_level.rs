@@ -97,9 +97,9 @@ impl WorldLevel {
 
     self.effects.follow_motions(&source, reload);
 
-    // The spawn names the zones and campfires that sound, and an emitter names its helper by its place among them; the
-    // helpers are read again with it.
-    if reload.contains(LevelPart::Spawn) {
+    // The level's sounds are read from what its helpers are, its level objects, and each names its helper by its place
+    // among them.
+    if reload.contains(LevelPart::Helpers) {
       self.sound.reload(&source, workers);
     }
 
@@ -156,8 +156,13 @@ impl WorldLevel {
       .stream(&mut updates, &mut self.animation, drive.toggles.get_spawn_filter());
     self.animation.pose(&mut updates, self.streaming.get_source());
 
-    let (campfires, motions): (&[u16], &[String]) = self.streaming.list_light_followed();
-    let mut effects: EffectsFrame = self.effects.advance(&mut updates, clock, drive, campfires, motions);
+    let mut effects: EffectsFrame = self.effects.advance(
+      &mut updates,
+      clock,
+      drive,
+      self.streaming.list_light_campfires(),
+      self.streaming.list_light_motions(),
+    );
     let weather: Option<Arc<WorldLevelWeather>> = self.weather.poll().cloned();
     let started: Option<StartedEffect> = effects.started_effect.take();
     let effect: Option<EffectSound<'_>> = started.as_ref().and_then(|started| {
