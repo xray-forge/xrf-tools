@@ -1,11 +1,12 @@
+import { EditorPopoverTextRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { TextField } from "@xrf/ui/material/text-field";
-import { ChangeEvent, ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
 interface ITextureTextFieldProps extends BaseComponentProps {
   label: string;
   value: string;
-  helperText?: string;
+  /** What the field means, read on hovering its label. */
+  description?: string;
   onChange: (value: string) => void;
 }
 
@@ -18,23 +19,18 @@ export function TextureTextField({
   className,
   label,
   value,
-  helperText,
+  description,
   onChange,
 }: ITextureTextFieldProps): ReactElement {
-  const onFieldChange = useCallback((event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value), [onChange]);
-
   return (
-    <TextField
+    <EditorPopoverTextRow
       data-testid={dataTestId}
       id={id}
       className={className}
-      fullWidth
-      size={"small"}
-      margin={"dense"}
       label={label}
+      description={description}
       value={value}
-      helperText={helperText}
-      onChange={onFieldChange}
+      onChange={onChange}
     />
   );
 }

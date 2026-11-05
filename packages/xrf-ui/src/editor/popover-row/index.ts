@@ -4,3 +4,4 @@ export * from "./EditorPopoverNote";
 export * from "./EditorPopoverRow";
 export * from "./EditorPopoverSelectRow";
 export * from "./EditorPopoverSwitchRow";
+export * from "./EditorPopoverTextRow";
