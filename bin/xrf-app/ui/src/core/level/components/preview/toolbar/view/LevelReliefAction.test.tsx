@@ -105,7 +105,7 @@ describe("LevelReliefAction", () => {
   });
 
   it("varies the terrain's tiling for the view and turns it back to the engine's grid", async () => {
-    const { getByRole, findByRole, view } = renderAction();
+    const { getByRole, findByRole, queryByRole, view } = renderAction();
 
     await userEvent.click(getByRole("button", { name: "Relief" }));
     await findByRole("dialog", { name: "Relief" });
@@ -115,10 +115,13 @@ describe("LevelReliefAction", () => {
     await userEvent.click(getByRole("checkbox", { name: "Varied terrain" }));
 
     expect(view.features.terrain).toEqual({ tiling: ERenderTerrainTiling.VARIED });
+    expect(getByRole("button", { name: "Varied terrain: Back to the settings" })).toBeInTheDocument();
     expect(getByRole("checkbox", { name: "Varied terrain" })).toBeChecked();
 
     await userEvent.click(getByRole("checkbox", { name: "Varied terrain" }));
 
     expect(view.features.terrain).toEqual({ tiling: ERenderTerrainTiling.ENGINE });
+    // The view's own value is the settings' again, so a reset would change nothing and is not offered.
+    expect(queryByRole("button", { name: "Varied terrain: Back to the settings" })).toBeNull();
   });
 });

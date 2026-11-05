@@ -23,8 +23,6 @@ export interface ILevelFeatureOverride<K extends TLevelFeatureGroupKey> {
   ) => void;
   /** Leaves the whole group to the settings again. */
   reset: () => void;
-  /** Whether the view sets any of the group, which a reset would give back. */
-  isSet: boolean;
 }
 
 /**
@@ -33,7 +31,6 @@ export interface ILevelFeatureOverride<K extends TLevelFeatureGroupKey> {
  */
 export function useLevelFeatureOverride<K extends TLevelFeatureGroupKey>(key: K): ILevelFeatureOverride<K> {
   const viewService: LevelViewService = useInjection(LevelViewService);
-  const isSet: boolean = Object.keys(viewService.features[key] ?? {}).length > 0;
 
   const set = useCallback(
     (part: ILevelFeatureOptions[K]) =>
@@ -58,5 +55,5 @@ export function useLevelFeatureOverride<K extends TLevelFeatureGroupKey>(key: K)
 
   const reset = useCallback(() => viewService.resetFeatures([key]), [viewService, key]);
 
-  return useMemo(() => ({ isSet, reset, set, setNested }), [isSet, reset, set, setNested]);
+  return useMemo(() => ({ reset, set, setNested }), [reset, set, setNested]);
 }
