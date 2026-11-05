@@ -30,6 +30,7 @@ import {
   toLevelRendererAntialiasing,
   toLevelRendererFeature,
   toLevelRendererFeatures,
+  withoutLevelFeatureKeys,
 } from "@/core/level/lib/features/level-feature-options";
 import { DEFAULT_LEVEL_VIEW_OPTIONS } from "@/core/level/lib/view/level-view-options";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
@@ -70,6 +71,13 @@ describe("level feature options", () => {
 
     expect(isLevelFeatureSet("grass", SETTINGS, view, { radius: 80 })).toBe(false);
     expect(isLevelFeatureSet("grass", SETTINGS, view, {})).toBe(true);
+  });
+
+  it("keeps what a partial reset leaves the view, the values given back dropped", () => {
+    expect(
+      withoutLevelFeatureKeys({ distance: 200, mode: ERenderWaterMode.ENHANCED, steps: 3 }, ["mode", "steps"])
+    ).toEqual({ distance: 200 });
+    expect(withoutLevelFeatureKeys<{ distance: number }>({}, ["distance"])).toEqual({});
   });
 
   it("follows the settings by default", () => {

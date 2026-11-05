@@ -11,6 +11,9 @@ import { ILevelFeatureOptions, isLevelFeatureSet } from "@/core/level/lib/featur
 import { LevelViewService } from "@/core/level/services/level-view";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
+/** What a reset of the view's own values says it does: the view follows Settings › Rendering again. */
+export const LEVEL_SETTINGS_RESET_LABEL: string = "Back to the settings";
+
 /**
  * @param key - A feature group the view sets part of, as a popover section heads it.
  * @param unset - What the view keeps of the group once reset, where the popover owns only part of it (the Grass

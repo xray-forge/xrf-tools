@@ -7,9 +7,11 @@ import { CenterFocusStrongIcon } from "@xrf/ui/icons/center-focus-strong";
 import { Button } from "@xrf/ui/material/button";
 import { ReactElement } from "react";
 
-import { LEVEL_SETTINGS_RESET_LABEL } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
-import { useLevelFeatureReset } from "@/core/level/components/preview/toolbar/use-level-feature-reset";
+import {
+  LEVEL_SETTINGS_RESET_LABEL,
+  useLevelFeatureReset,
+} from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { LevelViewportService } from "@/core/level/services/level-viewport";

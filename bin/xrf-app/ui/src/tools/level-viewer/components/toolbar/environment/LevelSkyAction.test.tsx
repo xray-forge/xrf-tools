@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
+import { act } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { resetMockInvoke } from "@xrf/ipc/testing";
 
@@ -67,5 +68,19 @@ describe("LevelSkyAction", () => {
     await userEvent.type(field, "sky\\clouds_storm{Enter}");
 
     expect(weather.manual?.cloudsTexture).toBe("sky\\clouds_storm");
+  });
+
+  it("sets the clouds' keys back to the weather from their heading, apart from the sky's", async () => {
+    const { getByRole, queryByRole, weather } = await renderOpenAction({ weather: {} });
+    const clouds: string = weather.shown.cloudsTexture;
+
+    act(() => weather.editManual({ cloudsTexture: "sky\\clouds_storm" }));
+
+    expect(queryByRole("button", { name: "Sky: Reset to the weather" })).toBeNull();
+
+    await userEvent.click(getByRole("button", { name: "Clouds: Reset to the weather" }));
+
+    expect(weather.manual?.cloudsTexture).toBe(clouds);
+    expect(queryByRole("button", { name: "Clouds: Reset to the weather" })).toBeNull();
   });
 });

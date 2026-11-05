@@ -54,15 +54,17 @@ describe("LevelWindAction", () => {
       },
     });
 
-    const { getByRole, findByRole, view } = renderLevelView(<LevelWindAction />, descriptor);
+    const { getByRole, findByRole, queryByRole, view } = renderLevelView(<LevelWindAction />, descriptor);
 
     await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Wind" }) });
     await findByRole("dialog", { name: "Wind" });
-    await userEvent.click(getByRole("button", { name: "Set the foliage motion back to the settings" }));
+    await userEvent.click(getByRole("button", { name: "Foliage motion: Back to the settings" }));
 
     expect(view.features.grass).toEqual({
       density: 0.5,
       foliage: { ...FOLIAGE, sssIntensity: FOLIAGE.sssIntensity + 0.25 },
     });
+    // What is left, the light through leaves and the density, is the Grass popover's to give back.
+    expect(queryByRole("button", { name: "Foliage motion: Back to the settings" })).toBeNull();
   });
 });

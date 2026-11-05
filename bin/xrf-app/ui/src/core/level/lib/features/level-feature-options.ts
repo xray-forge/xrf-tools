@@ -472,6 +472,15 @@ export function isLevelFeatureSet<K extends keyof ILevelFeatureOptions & keyof I
 }
 
 /**
+ * @param group - What the view sets of a feature group, each value on its own.
+ * @param keys - The values given back to the settings.
+ * @returns What the view keeps of the group once those follow the settings again, as a partial reset's `unset`.
+ */
+export function withoutLevelFeatureKeys<T extends object>(group: Partial<T>, keys: ReadonlyArray<keyof T>): Partial<T> {
+  return Object.fromEntries(Object.entries(group).filter(([key]) => !keys.includes(key as keyof T))) as Partial<T>;
+}
+
+/**
  * @param settings - What the renderer's settings set, for every viewport.
  * @param view - What the view sets over them.
  * @param toggles - What the toolbar turns off.

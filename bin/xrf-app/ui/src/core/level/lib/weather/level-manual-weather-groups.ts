@@ -11,11 +11,15 @@ export const LEVEL_MANUAL_WEATHER_SUN_KEYS: ReadonlyArray<keyof ILevelManualWeat
   "sunShaftsIntensity",
 ];
 
-/** The sky's and the clouds' keys of a keyframe set by hand, set back together. */
+/** The sky's keys of a keyframe set by hand, set back together. */
 export const LEVEL_MANUAL_WEATHER_SKY_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
   "skyTexture",
   "skyColor",
   "skyRotation",
+];
+
+/** The clouds' keys of a keyframe set by hand, set back together. */
+export const LEVEL_MANUAL_WEATHER_CLOUDS_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
   "cloudsTexture",
   "cloudsColor",
   "cloudsRotation",
@@ -29,10 +33,11 @@ export const LEVEL_MANUAL_WEATHER_FOG_KEYS: ReadonlyArray<keyof ILevelManualWeat
   "farPlane",
 ];
 
-/** The rain's and the thunder's keys of a keyframe set by hand, set back together. */
-export const LEVEL_MANUAL_WEATHER_RAIN_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
-  "rainDensity",
-  "rainColor",
+/** The rain's keys of a keyframe set by hand, set back together. */
+export const LEVEL_MANUAL_WEATHER_RAIN_KEYS: ReadonlyArray<keyof ILevelManualWeather> = ["rainDensity", "rainColor"];
+
+/** The thunder's keys of a keyframe set by hand, set back together. */
+export const LEVEL_MANUAL_WEATHER_THUNDER_KEYS: ReadonlyArray<keyof ILevelManualWeather> = [
   "thunderboltCollection",
   "thunderboltPeriod",
   "thunderboltDuration",

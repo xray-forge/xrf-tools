@@ -6,9 +6,11 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { TextureIcon } from "@xrf/ui/icons/texture";
 import { ReactElement } from "react";
 
-import { LEVEL_SETTINGS_RESET_LABEL } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
-import { useLevelFeatureReset } from "@/core/level/components/preview/toolbar/use-level-feature-reset";
+import {
+  LEVEL_SETTINGS_RESET_LABEL,
+  useLevelFeatureReset,
+} from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { LevelParallaxSettings } from "@/core/level/components/preview/toolbar/world/LevelParallaxSettings";
 import { LevelTerrainSettings } from "@/core/level/components/preview/toolbar/world/LevelTerrainSettings";
