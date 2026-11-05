@@ -1,9 +1,9 @@
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
+use xrf_math::Aabb;
 
 use crate::data::lod::ogf_lod_facet::OgfLodFacet;
-use crate::data::shape::ogf_box::OgfBox;
 
 /// The impostor of a `MT_LOD` visual, `OGF_LODDEF2`: eight facets looking at the trees it stands for from eight
 /// sides, in the level's own space.
@@ -21,7 +21,7 @@ impl OgfLodDefinitionChunk {
 
   /// `FLOD::Load`'s correction to the visual's screen area: how much of its bounding sphere's disc a band of its
   /// middle extent covers, which is how much of a tree's sphere the impostor's facets fill.
-  pub fn get_lod_factor(bounding_box: &OgfBox, radius: f32) -> f32 {
+  pub fn get_lod_factor(bounding_box: &Aabb, radius: f32) -> f32 {
     let mut extents: [f32; 3] = [
       (bounding_box.max.x - bounding_box.min.x) / 2.0,
       (bounding_box.max.y - bounding_box.min.y) / 2.0,
@@ -71,13 +71,12 @@ impl ChunkReadWrite for OgfLodDefinitionChunk {
 mod tests {
   use xrf_chunk::{ChunkReadWrite, ChunkReader, ChunkWriter, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_math::Vector3d;
+  use xrf_math::{Aabb, Vector3d};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use crate::chunks::level::ogf_lod_definition_chunk::OgfLodDefinitionChunk;
   use crate::data::lod::ogf_lod_facet::OgfLodFacet;
   use crate::data::lod::ogf_lod_vertex::OgfLodVertex;
-  use crate::data::shape::ogf_box::OgfBox;
 
   /// A unit square in the plane `z = depth`, wound so its triangles face `+z`.
   fn facet(depth: f32) -> OgfLodFacet {
@@ -138,7 +137,7 @@ mod tests {
 
   #[test]
   fn test_lod_factor_is_the_share_of_the_disc_the_middle_extent_covers() {
-    let bounding_box: OgfBox = OgfBox {
+    let bounding_box: Aabb = Aabb {
       max: Vector3d::new(1.0, 2.0, 1.0),
       min: Vector3d::new(-1.0, -2.0, -1.0),
     };

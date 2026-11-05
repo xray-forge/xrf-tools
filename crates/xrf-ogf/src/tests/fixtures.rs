@@ -2,12 +2,10 @@
 
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
 use xrf_error::XrfResult;
-use xrf_math::Vector3d;
+use xrf_math::{Aabb, Sphere, Vector3d};
 
 use crate::chunks::skeleton::ogf_kinematics_chunk::OgfKinematicsChunk;
 use crate::chunks::visual::ogf_header_chunk::OgfHeaderChunk;
-use crate::data::shape::ogf_box::OgfBox;
-use crate::data::shape::ogf_sphere::OgfSphere;
 
 /// The four references shipped Anomaly zombied faces declare.
 pub(crate) const DECLARED_REFS: [&str; 4] = [
@@ -53,12 +51,12 @@ pub(crate) fn header_bytes() -> XrfResult<Vec<u8>> {
     version: 4,
     model_type: 3,
     shader_id: 0,
-    bounding_box: OgfBox {
+    bounding_box: Aabb {
       min: Vector3d::new(0.0, 0.0, 0.0),
       max: Vector3d::new(1.0, 1.0, 1.0),
     },
-    bounding_sphere: OgfSphere {
-      position: Vector3d::new(0.0, 0.0, 0.0),
+    bounding_sphere: Sphere {
+      center: Vector3d::new(0.0, 0.0, 0.0),
       radius: 1.0,
     },
   })?;

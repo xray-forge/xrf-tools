@@ -65,9 +65,9 @@ impl GenericCommand for InfoCommand {
       header.bounding_box.max.x,
       header.bounding_box.max.y,
       header.bounding_box.max.z,
-      header.bounding_sphere.position.x,
-      header.bounding_sphere.position.y,
-      header.bounding_sphere.position.z,
+      header.bounding_sphere.center.x,
+      header.bounding_sphere.center.y,
+      header.bounding_sphere.center.z,
       header.bounding_sphere.radius
     );
 

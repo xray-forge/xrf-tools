@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use xrf_chunk::{InMemoryChunkDataSource, XRayByteOrder};
 use xrf_error::XrfResult;
-use xrf_math::Vector3d;
-use xrf_ogf::{OgfBox, OgfGeometryContainerChunk, OgfHeaderChunk, OgfSphere};
+use xrf_math::{Aabb, Sphere, Vector3d};
+use xrf_ogf::{OgfGeometryContainerChunk, OgfHeaderChunk};
 
 use crate::cform::level_cform_face::LevelCformFace;
 use crate::cform::level_cform_geometry::LevelCformGeometry;
@@ -103,12 +103,12 @@ fn visual(index: u32, shader: u16) -> LevelVisual {
       version: 4,
       model_type: 0,
       shader_id: shader,
-      bounding_box: OgfBox {
+      bounding_box: Aabb {
         min: Vector3d::new(0.0, 0.0, 0.0),
         max: Vector3d::new(0.0, 0.0, 0.0),
       },
-      bounding_sphere: OgfSphere {
-        position: Vector3d::new(0.0, 0.0, 0.0),
+      bounding_sphere: Sphere {
+        center: Vector3d::new(0.0, 0.0, 0.0),
         radius: 0.0,
       },
     },

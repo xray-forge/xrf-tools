@@ -1,11 +1,10 @@
 use byteorder::{ByteOrder, WriteBytesExt};
-use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
+use xrf_chunk::{ChunkDataSource, ChunkLayout, ChunkReadWrite, ChunkReader, ChunkSequence, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_ogf::OgfBoneShape;
+use xrf_skeleton::SkeletonBoneShape;
 
 use crate::editable_chunks::EditableChunks;
 use crate::{EditableBoneBindPose, EditableBoneBreak, EditableBoneDefinition, EditableBoneJoint, EditableBoneMass};
-use xrf_chunk::{ChunkLayout, ChunkSequence};
 
 /// One bone of an editable object's skeleton, `CBone` as `CBone::Save` stores it.
 ///
@@ -22,9 +21,7 @@ pub struct EditableBone {
   pub data_name: Option<String>,
   /// The game material the bone's collision shape is made of.
   pub game_material: String,
-  // todo: Move `OgfBoneShape`, `OgfJointLimit` and the shapes they hold into a crate the OGF and the editable object
-  // both read, without the `Ogf` prefix, as `xrf-skeleton` holds the motions both OGF and OMF read.
-  pub shape: OgfBoneShape,
+  pub shape: SkeletonBoneShape,
   /// `SJointIKData::ik_flags`, `None` where the chunk is absent.
   pub joint_flags: Option<u32>,
   pub joint: EditableBoneJoint,
@@ -66,7 +63,7 @@ impl EditableBone {
     let mut bind_pose: Option<EditableBoneBindPose> = None;
     let mut data_name: Option<String> = None;
     let mut game_material: Option<String> = None;
-    let mut shape: Option<OgfBoneShape> = None;
+    let mut shape: Option<SkeletonBoneShape> = None;
     let mut joint_flags: Option<u32> = None;
     let mut joint: Option<EditableBoneJoint> = None;
     let mut joint_break: Option<EditableBoneBreak> = None;

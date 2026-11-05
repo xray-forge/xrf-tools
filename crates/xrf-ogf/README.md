@@ -18,8 +18,8 @@ generic over the byte order (`xrf_chunk::XRayByteOrder` for every shipped file).
 
 ```rust
 use xrf_chunk::{ChunkWriter, XRayByteOrder};
-use xrf_math::Vector3d;
-use xrf_ogf::{OgfBox, OgfFile, OgfHeaderChunk, OgfModelType, OgfSphere};
+use xrf_math::{Aabb, Sphere, Vector3d};
+use xrf_ogf::{OgfFile, OgfHeaderChunk, OgfModelType};
 
 # fn main() -> xrf_error::XrfResult {
 // The smallest visual: a header chunk alone.
@@ -29,12 +29,12 @@ writer.write_xr::<XRayByteOrder, _>(&OgfHeaderChunk {
   version: 4,
   model_type: 0,
   shader_id: 0,
-  bounding_box: OgfBox {
+  bounding_box: Aabb {
     min: Vector3d::new(0.0, 0.0, 0.0),
     max: Vector3d::new(1.0, 1.0, 1.0),
   },
-  bounding_sphere: OgfSphere {
-    position: Vector3d::new(0.5, 0.5, 0.5),
+  bounding_sphere: Sphere {
+    center: Vector3d::new(0.5, 0.5, 0.5),
     radius: 1.0,
   },
 })?;

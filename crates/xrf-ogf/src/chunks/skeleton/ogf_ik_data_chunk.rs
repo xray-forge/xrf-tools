@@ -44,48 +44,44 @@ mod tests {
 
   use xrf_chunk::{ChunkReader, ChunkWriter, InMemoryChunkDataSource, XRayByteOrder};
   use xrf_error::XrfResult;
-  use xrf_math::Vector3d;
+  use xrf_math::{Cylinder, Obb, Sphere, Vector3d};
+  use xrf_skeleton::{SkeletonBoneShape, SkeletonBoneShapeKind, SkeletonJointKind, SkeletonJointLimit};
   use xrf_test_utils::{FileSlice, GeneratedResources};
 
   use super::OgfIkDataChunk;
-  use crate::data::shape::ogf_cylinder::OgfCylinder;
-  use crate::data::shape::ogf_obb::OgfObb;
-  use crate::data::shape::ogf_sphere::OgfSphere;
   use crate::data::skeleton::ogf_bone_ik_data::OgfBoneIkData;
-  use crate::data::skeleton::ogf_bone_shape::OgfBoneShape;
   use crate::data::skeleton::ogf_joint_ik_data::OgfJointIkData;
-  use crate::data::skeleton::ogf_joint_limit::OgfJointLimit;
 
   fn vector(base: f32) -> Vector3d {
     Vector3d::new(base, base + 1.0, base + 2.0)
   }
 
-  fn limit(base: f32) -> OgfJointLimit {
-    OgfJointLimit {
-      limit_from: base,
-      limit_to: base + 1.0,
+  fn limit(base: f32) -> SkeletonJointLimit {
+    SkeletonJointLimit {
+      min: base,
+      max: base + 1.0,
       spring_factor: base + 2.0,
       damping_factor: base + 3.0,
     }
   }
 
-  fn bone(version: u16) -> OgfBoneIkData {
+  fn bone(version: u32) -> OgfBoneIkData {
     OgfBoneIkData {
       version,
       game_material: String::from(r"materials\bone"),
-      shape: OgfBoneShape {
-        shape_type: 1,
+      shape: SkeletonBoneShape {
+        kind: SkeletonBoneShapeKind::from(1),
         flags: 2,
-        box_shape: OgfObb {
-          rotate: [vector(1.0), vector(4.0), vector(7.0)],
-          translate: vector(10.0),
-          half_size: vector(13.0),
+        obb: Obb {
+          rotation: [vector(1.0), vector(4.0), vector(7.0)],
+          center: vector(10.0),
+          half_extents: vector(13.0),
         },
-        sphere: OgfSphere {
-          position: vector(16.0),
+        sphere: Sphere {
+          center: vector(16.0),
           radius: 19.0,
         },
-        cylinder: OgfCylinder {
+        cylinder: Cylinder {
           center: vector(20.0),
           direction: vector(23.0),
           height: 26.0,
@@ -93,7 +89,7 @@ mod tests {
         },
       },
       joint: OgfJointIkData {
-        joint_type: 3,
+        kind: SkeletonJointKind::from(3),
         limits: [limit(30.0), limit(40.0), limit(50.0)],
         spring_factor: 60.0,
         damping_factor: 61.0,
@@ -155,6 +151,39 @@ mod tests {
 
     assert_eq!(read.bones[0].joint.friction, None);
     assert_eq!(read.bones[0], chunk.bones[0]);
+
+    Ok(())
+  }
+
+  #[test]
+  fn keeps_a_version_whose_high_half_is_set_and_reads_friction_by_its_low_half() -> XrfResult {
+    // The engine reads the version as a `u32` and narrows it to a `u16`: `0x0001_0000` has a low half of 0, so no
+    // friction follows, and the whole value has to come back for the record to be the bytes it was.
+    let mut zero_low: OgfBoneIkData = bone(0);
+    let mut one_low: OgfBoneIkData = bone(1);
+
+    zero_low.version = 0x0001_0000;
+    one_low.version = 0x0002_0001;
+
+    let chunk: OgfIkDataChunk = OgfIkDataChunk {
+      bones: vec![zero_low, one_low],
+    };
+    let read: OgfIkDataChunk = write_then_read("high_half.chunk", &chunk)?;
+
+    assert_eq!(read.bones[0].version, 0x0001_0000);
+    assert_eq!(read.bones[0].joint.friction, None);
+    assert_eq!(read.bones[1].joint.friction, Some(64.0));
+    assert_eq!(read.bones, chunk.bones);
+
+    Ok(())
+  }
+
+  #[test]
+  fn names_the_shape_and_joint_kinds_the_engine_numbers() -> XrfResult {
+    let read: OgfIkDataChunk = write_then_read("kinds.chunk", &OgfIkDataChunk { bones: vec![bone(1)] })?;
+
+    assert_eq!(read.bones[0].shape.kind, SkeletonBoneShapeKind::Box);
+    assert_eq!(read.bones[0].joint.kind, SkeletonJointKind::Wheel);
 
     Ok(())
   }

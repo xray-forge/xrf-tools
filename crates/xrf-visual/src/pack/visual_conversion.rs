@@ -1,5 +1,4 @@
-use xrf_math::{Matrix4x4, Vector3d};
-use xrf_ogf::{OgfBox, OgfSphere};
+use xrf_math::{Aabb, Matrix4x4, Sphere, Vector3d};
 
 use crate::data::visual::bounds::visual_bounds::VisualBounds;
 use crate::data::visual::bounds::visual_box::VisualBox;
@@ -20,7 +19,7 @@ pub fn convert_uvs(u: f32, v: f32) -> (f32, f32) {
 }
 
 /// Convert the extent an OGF header declares, so it compares against measured geometry.
-pub fn convert_declared_bounds(bounding_box: &OgfBox, bounding_sphere: &OgfSphere) -> VisualBounds {
+pub fn convert_declared_bounds(bounding_box: &Aabb, bounding_sphere: &Sphere) -> VisualBounds {
   let min: Vector3d = convert_vector(&bounding_box.min);
   let max: Vector3d = convert_vector(&bounding_box.max);
 
@@ -38,7 +37,7 @@ pub fn convert_declared_bounds(bounding_box: &OgfBox, bounding_sphere: &OgfSpher
       },
     },
     bounding_sphere: VisualSphere {
-      center: convert_vector(&bounding_sphere.position),
+      center: convert_vector(&bounding_sphere.center),
       radius: bounding_sphere.radius,
     },
   }

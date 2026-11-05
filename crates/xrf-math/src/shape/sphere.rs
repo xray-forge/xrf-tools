@@ -1,31 +1,33 @@
 use byteorder::{ByteOrder, ReadBytesExt, WriteBytesExt};
+use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_math::Vector3d;
 
-/// Cylinder collision primitive, `Fcylinder` in the engine.
-#[derive(Clone, Debug, PartialEq)]
-pub struct OgfCylinder {
+use crate::vector_3d::Vector3d;
+
+/// A sphere, the engine's `Fsphere`: its centre, `P`, and radius, `R`.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Sphere {
   pub center: Vector3d,
-  pub direction: Vector3d,
-  pub height: f32,
   pub radius: f32,
 }
 
-impl ChunkReadWrite for OgfCylinder {
+impl Sphere {
+  /// A centre and a radius, four `f32`s.
+  pub const SERIALIZED_SIZE: u64 = 16;
+}
+
+impl ChunkReadWrite for Sphere {
   fn read<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     Ok(Self {
       center: reader.read_xr::<T, _>()?,
-      direction: reader.read_xr::<T, _>()?,
-      height: reader.read_f32::<T>()?,
       radius: reader.read_f32::<T>()?,
     })
   }
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     self.center.write::<T>(writer)?;
-    self.direction.write::<T>(writer)?;
-    writer.write_f32::<T>(self.height)?;
     writer.write_f32::<T>(self.radius)?;
 
     Ok(())

@@ -1,10 +1,11 @@
 # xrf-skeleton
 
-Skeleton motion data, shared by the formats that carry it: OGF visuals and OMF libraries. A skinned OGF can embed its
-own motions, and an `.omf` file is nothing but a bank of them; both store the same two chunks, so this crate owns their
-types and neither format crate does. It owns no file type of its own: `xrf-ogf` and [xrf-omf](../xrf-omf/README.md)
-read the chunks through it, and [xrf-visual](../xrf-visual/README.md) decodes and bakes the keys. Types reachable from
-the two chunks carry the `Skeleton` prefix, and error text names them that way.
+Skeleton data two formats share, so neither format crate owns it. A skinned OGF can embed its own motions, and an
+`.omf` file is nothing but a bank of them; both store the same two chunks. A bone's physics, its collision shape and
+joint, is what an OGF's IK data and an editable object's bone chunks both store. This crate owns those types and no
+file type of its own: `xrf-ogf`, [xrf-omf](../xrf-omf/README.md) and
+[xrf-editable-object](../xrf-editable-object/README.md) read through it, and [xrf-visual](../xrf-visual/README.md)
+decodes and bakes the keys. Its types carry the `Skeleton` prefix, and error text names them that way.
 
 ## The two chunks
 
@@ -23,8 +24,8 @@ address.
 `SkeletonMotionFlag` names the bits of a definition's flags, `ESMFlags`: `mask`, `is_set_in`, `set_in` for the names a
 word carries, and `unnamed_in` for the bits no name claims.
 
-The crate is grouped by chunk: `src/parameters/` and `src/motions/`, each re-exporting its types and the crate root
-re-exporting them flat.
+The crate is grouped by what it holds: `src/parameters/` and `src/motions/` for the two motion chunks, `src/physics/`
+for a bone's physics, each re-exporting its types and the crate root re-exporting them flat.
 
 A motion's identity is the ordinal pair of its `SkeletonMotionDefinition` and its `SkeletonMotion`: definition `n` plays
 payload `n + 1`. The payload's leading `label` is an authoring leftover kept verbatim, and the definition's `motion`
@@ -92,6 +93,19 @@ The payload stores no bone count: the caller supplies it, usually the partitions
 ends early, when bytes remain after the last bone, which is how a wrong bone count shows, when a keyed stream sits on a
 motion declaring no frames, and when a declared count could not fit the remaining bytes, before anything is reserved.
 
+## A bone's physics
+
+`SkeletonBoneShape` is the engine's `SBoneShape`, 112 bytes: a `SkeletonBoneShapeKind` saying which shape the bone
+collides as (none, box, sphere or cylinder), flags with their `*_FLAG` constants (`sfNoPickable`, `sfRemoveAfterBreak`,
+`sfNoPhysics`, `sfNoFogCollider`), and all three shapes, [xrf-math](../xrf-math/README.md)'s `Obb`, `Sphere` and
+`Cylinder`, of which the kind selects one; the engine keeps the other two as last edited. `SkeletonJointKind` is the
+joint's `EJointType`, and `SkeletonJointLimit` one axis's `SJointLimit`: the range in radians, `min` to `max`, and how
+it springs back. Each kind keeps a number the engine does not name as `Unknown(n)`, so it writes back as stored.
+
+Which layout a joint is stored in is the format's: an OGF stores each limit negated and its ends swapped for the
+physics engine, with friction from record version 1 (`xrf-ogf`'s `OgfJointIkData`), and an editable object stores the
+authored limits with friction and break limits in chunks of their own.
+
 ## Checks
 
 Every list read bounds its declared count by the bytes remaining before reserving, and every write refuses a count its
@@ -101,5 +115,5 @@ tests.
 Run `cargo test --locked -p xrf-skeleton` from the repository root. See the
 [parameters chunk](src/parameters/skeleton_motion_parameters_chunk.rs),
 [motions chunk](src/motions/skeleton_motions_chunk.rs), [definition](src/parameters/skeleton_motion_definition.rs),
-[motion and key decoding](src/motions/skeleton_motion.rs), [partition](src/parameters/skeleton_part.rs), and
-[mark](src/parameters/skeleton_motion_mark.rs).
+[motion and key decoding](src/motions/skeleton_motion.rs), [partition](src/parameters/skeleton_part.rs),
+[mark](src/parameters/skeleton_motion_mark.rs), and the [bone shape](src/physics/skeleton_bone_shape.rs).

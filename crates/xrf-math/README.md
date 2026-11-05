@@ -1,7 +1,7 @@
 # xrf-math
 
 The engine's basic math types as the format crates read and write them: `Vector3d` (the engine's `Fvector`),
-`Matrix4x4` (its full `Fmatrix`), and the engine's float epsilons. It sits at the bottom of the format crates, depending
+`Matrix4x4` (its full `Fmatrix`), the shapes `Aabb`, `Obb`, `Sphere` and `Cylinder`, and the engine's float epsilons. It sits at the bottom of the format crates, depending
 only on `xrf-chunk` and `xrf-error`; spawn, level, visual, OGF and particle crates build on it. Both types read and
 write through `xrf_chunk::ChunkReadWrite` in the byte order the caller names, and serialize with Serde in camelCase.
 
@@ -59,6 +59,22 @@ It is not `xrf-spawn`'s `types::Matrix3d`, which is four `Vector3d`s and 48 byte
 `sizeof(Fmatrix)`, use `Matrix4x4`: the narrower alias reads 48 of the 64 bytes and can still parse, leaving every
 later read misaligned.
 
+## Shapes
+
+Each is named for what it is and lays out as the engine's own type, read and written field by field in the engine's
+order (`SERIALIZED_SIZE` on each):
+
+| Type       | Engine      | Fields                                                                   | Bytes |
+| ---------- | ----------- | ------------------------------------------------------------------------ | ----- |
+| `Aabb`     | `Fbox`      | `min`, `max`                                                             | 24    |
+| `Obb`      | `Fobb`      | `rotation` (`m_rotate`, rows are its axes), `center`, `half_extents`     | 60    |
+| `Sphere`   | `Fsphere`   | `center` (`P`), `radius` (`R`)                                           | 16    |
+| `Cylinder` | `Fcylinder` | `center`, `direction`, `height` (the full height along the axis), `radius` | 32  |
+
+An OGF's header bounds its visual by an `Aabb` and a `Sphere`, its bone names carry an `Obb` each, and a bone's
+collision shape (`xrf-skeleton`'s `SkeletonBoneShape`) holds one of each of the last three. An editable object's mesh
+bounds are an `Aabb`.
+
 ## Epsilons
 
 `EPS_S` (`0.0000001`), `EPS` (`0.00001`) and `EPS_L` (`0.001`) are the engine's epsilons from
@@ -80,4 +96,4 @@ agrees with what the renderer draws.
 crate's tests use, for dependants' tests.
 
 Run `cargo test --locked -p xrf-math` from the repository root. See [Vector3d](src/vector_3d.rs),
-[Matrix4x4](src/matrix_4x4.rs) and the [epsilons](src/math_constants.rs).
+[Matrix4x4](src/matrix_4x4.rs), the [shapes](src/shape/) and the [epsilons](src/math_constants.rs).

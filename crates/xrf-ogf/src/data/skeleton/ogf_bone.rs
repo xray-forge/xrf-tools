@@ -1,20 +1,19 @@
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_math::Vector3d;
+use xrf_math::Obb;
 
+/// One bone of `OGF_S_BONE_NAMES`: its name, its parent's, and the oriented box the engine reads with them.
 #[derive(Clone, Debug, PartialEq)]
 pub struct OgfBone {
   pub name: String,
   pub parent: String,
-  pub rotation: (Vector3d, Vector3d, Vector3d),
-  pub translate: Vector3d,
-  pub half_size: Vector3d,
+  pub obb: Obb,
 }
 
 impl OgfBone {
-  /// Two terminated names, the rotation triple, the translation, and the half size.
-  pub const MIN_SERIALIZED_SIZE: u64 = 1 + 1 + 36 + 12 + 12;
+  /// Two terminated names and the box.
+  pub const MIN_SERIALIZED_SIZE: u64 = 1 + 1 + Obb::SERIALIZED_SIZE;
 }
 
 impl ChunkReadWrite for OgfBone {
@@ -22,26 +21,14 @@ impl ChunkReadWrite for OgfBone {
     Ok(Self {
       name: reader.read_w1251_string()?,
       parent: reader.read_w1251_string()?,
-      rotation: (
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-        reader.read_xr::<T, _>()?,
-      ),
-      translate: reader.read_xr::<T, _>()?,
-      half_size: reader.read_xr::<T, _>()?,
+      obb: reader.read_xr::<T, _>()?,
     })
   }
 
   fn write<T: ByteOrder>(&self, writer: &mut ChunkWriter) -> XrfResult {
     writer.write_w1251_string(&self.name)?;
     writer.write_w1251_string(&self.parent)?;
-
-    writer.write_xr::<T, _>(&self.rotation.0)?;
-    writer.write_xr::<T, _>(&self.rotation.1)?;
-    writer.write_xr::<T, _>(&self.rotation.2)?;
-
-    writer.write_xr::<T, _>(&self.translate)?;
-    writer.write_xr::<T, _>(&self.half_size)?;
+    self.obb.write::<T>(writer)?;
 
     Ok(())
   }

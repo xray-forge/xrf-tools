@@ -38,7 +38,7 @@ impl SectorImpostorArrays {
     surfaces: &SectorSurfaceTable,
   ) {
     let radius: f32 = visual.header.bounding_sphere.radius;
-    let center: Vector3d = convert_vector(&visual.header.bounding_sphere.position);
+    let center: Vector3d = convert_vector(&visual.header.bounding_sphere.center);
 
     self.spheres.extend_from_slice(&[center.x, center.y, center.z, radius]);
     self.factors.push(OgfLodDefinitionChunk::get_lod_factor(
