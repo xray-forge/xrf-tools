@@ -109,7 +109,7 @@ function toShadingChoices(
     }));
 }
 
-/** What is drawn over the frame, as the toolbar's Overlays popover lists it. */
+/** What is drawn over the frame, as the toolbar's Show popover lists it under Overlays. */
 function toOverlaysSubmenu(state: ILevelViewerViewMenuState, viewService: LevelViewService): IMenuSubmenuEntry {
   return {
     kind: EMenuEntryKind.SUBMENU,
@@ -189,6 +189,11 @@ function toObjectsSubmenu(state: ILevelViewerViewMenuState, viewService: LevelVi
         return option ? [toOptionToggle(state, viewService, { option, label: entry.label })] : [];
       }),
       [toOptionToggle(state, viewService, { option: "isSpawnedReleased", label: "Released" })],
+      [
+        toOptionToggle(state, viewService, { option: "isParticled", label: "Particles" }),
+        toOptionToggle(state, viewService, { option: "isCampfireLit", label: "Campfires lit" }),
+        toOptionToggle(state, viewService, { option: "isAmbientEffectPlayed", label: "Ambient effects" }),
+      ],
     ],
   };
 }

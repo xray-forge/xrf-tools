@@ -88,10 +88,10 @@ function toLoad(sectors: number, textures: number = 0): RenderLoadReport {
 }
 
 /** Opens the overlays, the readouts among them, and answers the popover. */
-async function openOverlays(view: RenderResult): Promise<HTMLElement> {
-  await userEvent.click(view.getByRole("button", { name: "Overlays" }));
+async function openShow(view: RenderResult): Promise<HTMLElement> {
+  await userEvent.click(view.getByRole("button", { name: "Show" }));
 
-  return view.findByRole("dialog", { name: "Overlays" });
+  return view.findByRole("dialog", { name: "Show" });
 }
 
 describe("LevelViewerLayout", () => {
@@ -208,7 +208,7 @@ describe("LevelViewerLayout", () => {
     expect(view.getByTestId("level-preview-metrics")).toBeInTheDocument();
     expect(view.getByTestId("level-preview-coordinates")).toBeInTheDocument();
 
-    await userEvent.click(within(await openOverlays(view)).getByRole("checkbox", { name: "Readouts" }));
+    await userEvent.click(within(await openShow(view)).getByRole("checkbox", { name: "Readouts" }));
 
     expect(view.queryByTestId("level-preview-metrics")).not.toBeInTheDocument();
     expect(view.queryByTestId("level-preview-coordinates")).not.toBeInTheDocument();

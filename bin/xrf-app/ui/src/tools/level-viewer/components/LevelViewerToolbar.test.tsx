@@ -22,8 +22,7 @@ describe("LevelViewerToolbar", () => {
 
     expect(actions).toEqual([
       "level-relief-action",
-      "level-overlays-action",
-      "level-helpers-action",
+      "level-show-action",
       "level-look-action",
       "level-image-quality-action",
       "level-sun-action",
@@ -37,8 +36,6 @@ describe("LevelViewerToolbar", () => {
       "level-rain-action",
       "level-wind-action",
       "level-sound-action",
-      "level-show-action",
-      "level-particles-action",
       "level-grass-action",
       "level-water-action",
       "level-culling-action",

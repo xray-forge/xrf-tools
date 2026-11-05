@@ -7,16 +7,13 @@ import { LevelCameraEffectsAction } from "@/core/level/components/preview/toolba
 import { LevelGoToAction } from "@/core/level/components/preview/toolbar/camera/LevelGoToAction";
 import { LevelCullingAction } from "@/core/level/components/preview/toolbar/contents/LevelCullingAction";
 import { LevelGrassAction } from "@/core/level/components/preview/toolbar/contents/LevelGrassAction";
-import { LevelParticlesAction } from "@/core/level/components/preview/toolbar/contents/LevelParticlesAction";
-import { LevelShowAction } from "@/core/level/components/preview/toolbar/contents/LevelShowAction";
 import { LevelWaterAction } from "@/core/level/components/preview/toolbar/contents/LevelWaterAction";
 import { LevelWeatherAction } from "@/core/level/components/preview/toolbar/environment/LevelWeatherAction";
 import { LevelLightsAction } from "@/core/level/components/preview/toolbar/lighting/LevelLightsAction";
 import { LevelSunAction } from "@/core/level/components/preview/toolbar/lighting/LevelSunAction";
 import { LevelSoundAction } from "@/core/level/components/preview/toolbar/sound/LevelSoundAction";
-import { LevelHelpersAction } from "@/core/level/components/preview/toolbar/view/LevelHelpersAction";
-import { LevelOverlaysAction } from "@/core/level/components/preview/toolbar/view/LevelOverlaysAction";
 import { LevelReliefAction } from "@/core/level/components/preview/toolbar/view/LevelReliefAction";
+import { LevelShowAction } from "@/core/level/components/preview/toolbar/view/LevelShowAction";
 import { RenderSliderReference } from "@/core/render/components/controls/RenderSliderReference";
 import { ERenderSliderReferenceSource } from "@/core/render/lib/settings/choice/render-slider-reference-source";
 import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
@@ -54,8 +51,7 @@ export function LevelViewerToolbar({
       actions={
         <RenderSliderReference source={ERenderSliderReferenceSource.SETTINGS}>
           <LevelReliefAction />
-          <LevelOverlaysAction />
-          <LevelHelpersAction />
+          <LevelShowAction />
 
           <EditorToolbarSeparator />
 
@@ -81,8 +77,6 @@ export function LevelViewerToolbar({
 
           <EditorToolbarSeparator />
 
-          <LevelShowAction />
-          <LevelParticlesAction />
           <LevelGrassAction />
           <LevelWaterAction />
           <LevelCullingAction />
