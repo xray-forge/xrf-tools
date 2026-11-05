@@ -4,6 +4,6 @@ import { formatShadowBias } from "@/core/render/lib/features/lighting/render-sha
 
 describe("formatShadowBias", () => {
   it("reads the bias to the quarter step it is set in", () => {
-    expect(formatShadowBias(0.25)).toBe("0.25 texels");
+    expect(formatShadowBias(0.25)).toBe("0.25");
   });
 });

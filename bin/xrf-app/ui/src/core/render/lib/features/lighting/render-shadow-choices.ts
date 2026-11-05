@@ -27,10 +27,10 @@ export const RENDER_SHADOW_RESOLUTION_OPTIONS: ReadonlyArray<IChoiceFormRowOptio
 
 /**
  * @param texels - Texels each way a shadow's edge is averaged over.
- * @returns It as both surfaces read it: a width, or the hardest edge for none.
+ * @returns It as both surfaces read it: a width in texels, which its label names, or the hardest edge for none.
  */
 export function formatShadowFilter(texels: number): string {
-  return texels ? `${texels} texel${texels > 1 ? "s" : ""}` : "Hard";
+  return texels ? formatNumber(texels, 0) : "Hard";
 }
 
 /**
@@ -41,9 +41,9 @@ export function formatCascadeBlend(blend: number): string {
   return blend > 0 ? formatPercent(blend) : "Hard";
 }
 
-/** @returns A shadow's normal offset, in texels. */
+/** @returns A shadow's normal offset, in texels, which its label names. */
 export function formatShadowBias(bias: number): string {
-  return `${formatNumber(bias, 2)} texels`;
+  return formatNumber(bias, 2);
 }
 
 /** @returns How many of the nearest cascades redraw their swaying trees. */
@@ -64,8 +64,9 @@ export const RENDER_SHADOW_SETTINGS: TRenderSettings<TRenderShadowSettings> = {
   bias: {
     control: ERenderSettingControl.SLIDER,
     description: "Offset along the surface normal, in texels. Prevents self-shadowing.",
+    entryLabel: "Bias (texels)",
     format: formatShadowBias,
-    label: "Normal offset",
+    label: "Normal offset (texels)",
     limits: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.bias, 0.25),
   },
   blend: {
@@ -86,7 +87,7 @@ export const RENDER_SHADOW_SETTINGS: TRenderSettings<TRenderShadowSettings> = {
     control: ERenderSettingControl.SLIDER,
     description: "PCF kernel radius in texels. 0 gives hard edges.",
     format: formatShadowFilter,
-    label: "Filter",
+    label: "Filter (texels)",
     limits: toRenderLimits(RENDER_FEATURE_SCHEMA.shadows.filter, 1),
   },
   isEnabled: {
@@ -103,6 +104,7 @@ export const RENDER_SHADOW_SETTINGS: TRenderSettings<TRenderShadowSettings> = {
   resolution: {
     control: ERenderSettingControl.CUSTOM,
     description: "Texels per cascade map. Higher is sharper and uses more memory.",
+    entryLabel: "Resolution",
     label: "Map resolution (texels)",
   },
   swayCascades: {

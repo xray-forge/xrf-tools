@@ -6,25 +6,22 @@ import {
   RenderDlssPreset,
   RenderRayReconstructionPreset,
 } from "@xrf/ipc/types/xrf-renderer";
-import { Nullable } from "@xrf/types";
+import { Nullable, Optional } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
-import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
+import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
+import { EditorPopoverNote, EditorPopoverSwitchRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { HighQualityIcon } from "@xrf/ui/icons/high-quality";
 import { ReactElement, useCallback } from "react";
 
-import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
+import { LEVEL_SETTINGS_RESET_LABEL } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
+import { useLevelFeatureReset } from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
-import {
-  describeLevelFeatureToggle,
-  ILevelFeatureOptions,
-  LEVEL_ANTIALIASING_MODES,
-} from "@/core/level/lib/features/level-feature-options";
+import { describeLevelFeatureToggle, LEVEL_ANTIALIASING_MODES } from "@/core/level/lib/features/level-feature-options";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
@@ -51,13 +48,11 @@ import {
   RENDER_UPSCALING_SETTINGS,
 } from "@/core/render/lib/features/image/render-upscaling-choices";
 import { ERenderResolution } from "@/core/render/lib/settings/device/render-resolution";
+import { RenderSettingsService } from "@/core/render/services/render-settings.service";
 
 const MODE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderAntialiasing>> = LEVEL_ANTIALIASING_MODES.map(
   (value: RenderAntialiasing) => ({ label: describeRenderAntialiasing(value), value })
 );
-
-/** What the popover sets for the view, which its reset leaves to the settings again. */
-const IMAGE_QUALITY_FEATURES: ReadonlyArray<keyof ILevelFeatureOptions> = ["antialiasing", "upscaling", "output"];
 
 /** The modes offered where the GPU has no DLSS: DLSS greyed out, FSR standing in for it. */
 const MODE_OPTIONS_WITHOUT_DLSS: ReadonlyArray<IChoiceFormRowOption<RenderAntialiasing>> = MODE_OPTIONS.map(
@@ -78,7 +73,9 @@ export function LevelImageQualityAction({
   const renderService: LevelRenderService = useInjection(LevelRenderService);
   const { settings, features, drawn, output } = useLevelRenderFeatures();
   const { isOn, toggle } = useLevelViewToggle("isAntialiased");
+  const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
   const { set: setUpscaling } = useLevelFeatureOverride("upscaling");
+  const onUpscalingReset: Optional<() => void> = useLevelFeatureReset("upscaling");
   const { set: setOutput } = useLevelFeatureOverride("output");
   const { dlssPreset, rayReconstructionPreset: rayPreset } = drawn.upscaling;
   // Whether the scene holds linear light, which ray reconstruction needs.
@@ -106,7 +103,14 @@ export function LevelImageQualityAction({
     on: `Edges smoothed by ${describeRenderAntialiasing(mode)}`,
   });
 
-  const reset = useCallback(() => viewService.resetFeatures(IMAGE_QUALITY_FEATURES), [viewService]);
+  // Each section gives back only its own part, and only while that draws otherwise than the settings.
+  const isAntialiasingSet: boolean = features.antialiasing !== null && features.antialiasing !== settings.antialiasing;
+  const isOutputSet: boolean =
+    output.resolution !== renderSettingsService.renderResolution ||
+    output.scale !== renderSettingsService.renderOutputScale;
+
+  const onAntialiasingReset = useCallback(() => viewService.resetFeatures(["antialiasing"]), [viewService]);
+  const onOutputReset = useCallback(() => viewService.resetFeatures(["output"]), [viewService]);
 
   return (
     <EditorPopoverAction
@@ -119,98 +123,112 @@ export function LevelImageQualityAction({
       isActive={isOn && isAvailable}
     >
       <EditorPopoverContent label={"Image quality"} isWide>
-        <CheckboxFormRow
+        <EditorPopoverGroupSection
           label={"Antialiasing"}
           description={isAvailable ? undefined : description}
-          isChecked={isOn && isAvailable}
+          isOn={isOn && isAvailable}
           isDisabled={!isAvailable}
-          onChange={toggle}
-        />
+          resetLabel={LEVEL_SETTINGS_RESET_LABEL}
+          onToggle={toggle}
+          onReset={isAntialiasingSet ? onAntialiasingReset : undefined}
+        >
+          <RenderValueChoice
+            label={"Mode"}
+            options={dlssProblem ? MODE_OPTIONS_WITHOUT_DLSS : MODE_OPTIONS}
+            value={mode}
+            isDisabled={!isAvailable}
+            onChange={(antialiasing: RenderAntialiasing) => viewService.setFeatures({ ...features, antialiasing })}
+          />
 
-        <RenderValueChoice
-          label={"Mode"}
-          options={dlssProblem ? MODE_OPTIONS_WITHOUT_DLSS : MODE_OPTIONS}
-          value={mode}
-          isDisabled={!isAvailable}
-          onChange={(antialiasing: RenderAntialiasing) => viewService.setFeatures({ ...features, antialiasing })}
-        />
+          {isAvailable && dlssProblem ? <EditorPopoverNote>{dlssProblem}</EditorPopoverNote> : null}
+        </EditorPopoverGroupSection>
 
-        {isAvailable && dlssProblem ? <EditorPopoverNote>{dlssProblem}</EditorPopoverNote> : null}
+        <EditorPopoverGroupSection
+          label={"Upscaling"}
+          resetLabel={LEVEL_SETTINGS_RESET_LABEL}
+          onReset={onUpscalingReset}
+        >
+          <RenderSettingEntry
+            settings={RENDER_UPSCALING_SETTINGS}
+            name={"scale"}
+            group={drawn.upscaling}
+            features={drawn}
+            onSet={setUpscaling}
+          />
 
-        <RenderSettingEntry
-          settings={RENDER_UPSCALING_SETTINGS}
-          name={"scale"}
-          group={drawn.upscaling}
-          features={drawn}
-          onSet={setUpscaling}
-        />
+          <EditorPopoverSwitchRow
+            label={"Ray reconstruction"}
+            description={
+              isDlss
+                ? (rayProblem ?? (RENDER_UPSCALING_SETTINGS.isRayReconstructed.description as string))
+                : "Comes with DLSS, under Antialiasing."
+            }
+            isChecked={isDlss && isRayReconstructed}
+            isDisabled={!isDlss || Boolean(rayProblem)}
+            onChange={(next: boolean) => setUpscaling({ isRayReconstructed: next })}
+          />
 
-        <CheckboxFormRow
-          label={RENDER_UPSCALING_SETTINGS.isRayReconstructed.label}
-          description={
-            isDlss
-              ? (rayProblem ?? (RENDER_UPSCALING_SETTINGS.isRayReconstructed.description as string))
-              : "Comes with DLSS, under Mode."
-          }
-          isChecked={isDlss && isRayReconstructed}
-          isDisabled={!isDlss || Boolean(rayProblem)}
-          onChange={(next: boolean) => setUpscaling({ isRayReconstructed: next })}
-        />
+          <RenderValueChoice
+            label={"Upscaler model"}
+            description={RENDER_UPSCALING_SETTINGS.dlssPreset.label}
+            options={RENDER_DLSS_PRESET_SHORT_OPTIONS}
+            value={dlssPreset}
+            isDisabled={!isDlss || isRayReconstructed}
+            onChange={(next: RenderDlssPreset) => setUpscaling({ dlssPreset: next })}
+          />
 
-        <RenderValueChoice
-          label={RENDER_UPSCALING_SETTINGS.dlssPreset.label}
-          options={RENDER_DLSS_PRESET_SHORT_OPTIONS}
-          value={dlssPreset}
-          isDisabled={!isDlss || isRayReconstructed}
-          onChange={(next: RenderDlssPreset) => setUpscaling({ dlssPreset: next })}
-        />
+          <RenderValueChoice
+            label={"Denoiser model"}
+            description={RENDER_UPSCALING_SETTINGS.rayReconstructionPreset.label}
+            options={RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS}
+            value={rayPreset}
+            isDisabled={!isDlss || !isRayReconstructed}
+            onChange={(next: RenderRayReconstructionPreset) => setUpscaling({ rayReconstructionPreset: next })}
+          />
 
-        <RenderValueChoice
-          label={RENDER_UPSCALING_SETTINGS.rayReconstructionPreset.label}
-          options={RENDER_RAY_RECONSTRUCTION_PRESET_OPTIONS}
-          value={rayPreset}
-          isDisabled={!isDlss || !isRayReconstructed}
-          onChange={(next: RenderRayReconstructionPreset) => setUpscaling({ rayReconstructionPreset: next })}
-        />
+          {isDlss ? (
+            <EditorPopoverNote>
+              {isRayReconstructed ? describeRayReconstructionPreset(rayPreset) : describeDlssPreset(dlssPreset)}
+            </EditorPopoverNote>
+          ) : null}
 
-        {isDlss ? (
-          <EditorPopoverNote>
-            {isRayReconstructed ? describeRayReconstructionPreset(rayPreset) : describeDlssPreset(dlssPreset)}
-          </EditorPopoverNote>
-        ) : null}
+          <RenderSettingEntry
+            settings={RENDER_UPSCALING_SETTINGS}
+            name={"sharpening"}
+            group={drawn.upscaling}
+            features={drawn}
+            isDisabled={!isSharpenable}
+            onSet={setUpscaling}
+          />
 
-        <RenderSettingEntry
-          settings={RENDER_UPSCALING_SETTINGS}
-          name={"sharpening"}
-          group={drawn.upscaling}
-          features={drawn}
-          isDisabled={!isSharpenable}
-          onSet={setUpscaling}
-        />
+          {isSharpenable ? null : (
+            <EditorPopoverNote>
+              Sharpens only a frame drawn smaller than the viewport or resolved temporally.
+            </EditorPopoverNote>
+          )}
+        </EditorPopoverGroupSection>
 
-        {isSharpenable ? null : (
-          <EditorPopoverNote>
-            Sharpens only a frame drawn smaller than the viewport or resolved temporally.
-          </EditorPopoverNote>
-        )}
+        <EditorPopoverGroupSection
+          label={"Output"}
+          resetLabel={LEVEL_SETTINGS_RESET_LABEL}
+          onReset={isOutputSet ? onOutputReset : undefined}
+        >
+          <RenderValueChoice
+            label={"Resolution"}
+            options={RENDER_RESOLUTION_OPTIONS}
+            value={output.resolution}
+            onChange={(next: ERenderResolution) => setOutput({ resolution: next })}
+          />
 
-        <RenderValueChoice
-          label={"Output resolution"}
-          options={RENDER_RESOLUTION_OPTIONS}
-          value={output.resolution}
-          onChange={(next: ERenderResolution) => setOutput({ resolution: next })}
-        />
-
-        <RenderValueSlider
-          label={"Output scale"}
-          value={output.scale}
-          {...RENDER_OUTPUT_SCALE_LIMITS}
-          isDisabled={output.resolution !== ERenderResolution.AUTO}
-          format={formatOutputScale}
-          onChange={(next: number) => setOutput({ scale: next })}
-        />
-
-        <LevelSettingsResetButton onReset={reset} />
+          <RenderValueSlider
+            label={"Scale"}
+            value={output.scale}
+            {...RENDER_OUTPUT_SCALE_LIMITS}
+            isDisabled={output.resolution !== ERenderResolution.AUTO}
+            format={formatOutputScale}
+            onChange={(next: number) => setOutput({ scale: next })}
+          />
+        </EditorPopoverGroupSection>
       </EditorPopoverContent>
     </EditorPopoverAction>
   );

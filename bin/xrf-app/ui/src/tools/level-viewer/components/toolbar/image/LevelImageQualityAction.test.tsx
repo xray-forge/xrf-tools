@@ -104,9 +104,11 @@ describe("LevelImageQualityAction", () => {
 
     expect(rendered.view.features).toEqual({ ...before, antialiasing: ERenderAntialiasing.FXAA });
 
-    await userEvent.click(rendered.getByRole("button", { name: "Back to the settings" }));
+    await userEvent.click(rendered.getByRole("button", { name: "Antialiasing: Back to the settings" }));
 
     expect(rendered.view.features).toEqual(before);
+    // The settings' own mode again, so there is nothing left to give back.
+    expect(rendered.queryByRole("button", { name: "Antialiasing: Back to the settings" })).toBeNull();
   });
 
   it("picks the view's own render scale over the settings'", async () => {
@@ -130,16 +132,16 @@ describe("LevelImageQualityAction", () => {
 
     await openSettings(rendered);
 
-    expect(rendered.getByRole("checkbox", { name: "DLSS ray reconstruction" })).toBeChecked();
+    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toBeChecked();
     expect(rendered.getByRole("button", { name: "J" })).toBeDisabled();
 
     await userEvent.click(
-      within(rendered.getByRole("group", { name: "Ray reconstruction model" })).getByRole("button", { name: "E" })
+      within(rendered.getByRole("group", { name: "Denoiser model" })).getByRole("button", { name: "E" })
     );
 
     expect(rendered.view.features.upscaling).toEqual({ rayReconstructionPreset: ERenderRayReconstructionPreset.E });
 
-    await userEvent.click(rendered.getByRole("checkbox", { name: "DLSS ray reconstruction" }));
+    await userEvent.click(rendered.getByRole("checkbox", { name: "Ray reconstruction" }));
 
     expect(rendered.view.features.upscaling).toEqual({
       isRayReconstructed: false,
@@ -157,9 +159,9 @@ describe("LevelImageQualityAction", () => {
 
     await openSettings(rendered);
 
-    expect(rendered.getByRole("checkbox", { name: "DLSS ray reconstruction" })).toBeDisabled();
-    expect(rendered.getByRole("checkbox", { name: "DLSS ray reconstruction" })).not.toBeChecked();
-    expect(rendered.getByRole("checkbox", { name: "DLSS ray reconstruction" })).toHaveAccessibleDescription(
+    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toBeDisabled();
+    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).not.toBeChecked();
+    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toHaveAccessibleDescription(
       "Needs an NVIDIA RTX GPU and a driver with DLSS ray reconstruction."
     );
 
@@ -172,8 +174,8 @@ describe("LevelImageQualityAction", () => {
     });
     act(() => rendered.renderSettings.setRendererOverrides({ tonemap: ERenderTonemapMode.ENGINE }));
 
-    expect(rendered.getByRole("checkbox", { name: "DLSS ray reconstruction" })).toBeDisabled();
-    expect(rendered.getByRole("checkbox", { name: "DLSS ray reconstruction" })).toHaveAccessibleDescription(
+    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toBeDisabled();
+    expect(rendered.getByRole("checkbox", { name: "Ray reconstruction" })).toHaveAccessibleDescription(
       "Needs the Enhanced tonemap or the physical light: ray reconstruction works on linear light."
     );
   });
@@ -197,12 +199,12 @@ describe("LevelImageQualityAction", () => {
 
     await openSettings(rendered);
 
-    expect(rendered.getByRole("slider", { name: "Output scale" })).toBeEnabled();
+    expect(rendered.getByRole("slider", { name: "Scale" })).toBeEnabled();
 
     await userEvent.click(rendered.getByRole("button", { name: "1440p" }));
 
     expect(rendered.view.features.output).toEqual({ resolution: ERenderResolution.HEIGHT_1440 });
-    expect(rendered.getByRole("slider", { name: "Output scale" })).toBeDisabled();
+    expect(rendered.getByRole("slider", { name: "Scale" })).toBeDisabled();
   });
 
   it("picks the view's own DLSS model while DLSS smooths it, and its own sharpening", async () => {

@@ -200,6 +200,7 @@ export const RENDER_UPSCALING_SETTINGS: TRenderSettings<TRenderUpscalingSettings
     description:
       "Share of the output resolution the scene is drawn at. TAA, FSR and DLSS upscale temporally; other modes use " +
       "FSR 1.",
+    entryLabel: "Quality",
     isStacked: true,
     label: "Upscaling quality",
     options: RENDER_SCALE_OPTIONS,

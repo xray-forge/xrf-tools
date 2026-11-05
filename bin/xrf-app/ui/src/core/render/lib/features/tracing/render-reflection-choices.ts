@@ -34,9 +34,9 @@ export function explainRenderReflectionMode(mode: RenderReflectionMode): string 
 }
 
 const RENDER_REFLECTION_PROBE_NAMES: Readonly<Record<RenderReflectionProbe, string>> = {
-  [ERenderReflectionProbe.COARSE]: "256 texels",
-  [ERenderReflectionProbe.FINE]: "512 texels",
-  [ERenderReflectionProbe.FINEST]: "1024 texels",
+  [ERenderReflectionProbe.COARSE]: "256",
+  [ERenderReflectionProbe.FINE]: "512",
+  [ERenderReflectionProbe.FINEST]: "1024",
 };
 
 /** The surroundings cube sizes, coarsest first. */
@@ -61,9 +61,9 @@ export function formatReflectionSkyGain(gain: number): string {
   return `${formatNumber(gain, 2)}×`;
 }
 
-/** @returns How often a pixel the screen misses is traced again. */
+/** @returns How many frames a pixel the screen misses waits before it is traced again, its row naming the unit. */
 export function formatReflectionTraceInterval(interval: number): string {
-  return interval <= 1 ? "Every frame" : `Every ${formatCount(interval)} frames`;
+  return formatCount(Math.max(1, interval));
 }
 
 /** @returns The roughness past which a surface is not traced. */
@@ -151,7 +151,8 @@ export const RENDER_REFLECTION_SETTINGS: TRenderSettings<TRenderReflectionSettin
   },
   probe: {
     control: ERenderSettingControl.CHOICE,
-    description: "How fine the cube is that a ray meeting nothing on the screen reads; finer takes more memory.",
+    description:
+      "How fine the cube is, in texels a side, that a ray meeting nothing on the screen reads; finer takes more memory.",
     isInert: isEngineReflection,
     label: "Surroundings",
     options: RENDER_REFLECTION_PROBE_OPTIONS,
@@ -189,7 +190,7 @@ export const RENDER_REFLECTION_SETTINGS: TRenderSettings<TRenderReflectionSettin
         : "How often a missed pixel traces again, the last answer held between.",
     format: formatReflectionTraceInterval,
     isInert: (reflections: TRenderReflectionSettings) => !reflections.isTraced,
-    label: "Re-trace",
+    label: "Frames per trace",
     limits: toRenderLimits(RENDER_FEATURE_SCHEMA.reflections.traceInterval, 1),
   },
   traceRoughness: {

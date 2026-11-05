@@ -88,13 +88,13 @@ describe("LevelLookAction", () => {
     await userEvent.click(getByRole("button", { name: "Look" }));
     await findByRole("dialog", { name: "Look" });
 
-    expect(getByRole("checkbox", { name: "Bloom" })).toBeEnabled();
+    expect(getByRole("checkbox", { name: "Engine bloom" })).toBeEnabled();
     expect(getByRole("slider", { name: "Vibrance" })).toBeDisabled();
 
     await userEvent.click(getByRole("button", { name: "Enhanced" }));
 
     expect(descriptor.view.features.enhancedBloom).toEqual({ mode: ERenderBloomMode.ENHANCED });
-    expect(getByRole("checkbox", { name: "Bloom" })).toBeDisabled();
+    expect(getByRole("checkbox", { name: "Engine bloom" })).toBeDisabled();
     expect(getByRole("slider", { name: "Radius" })).toBeDisabled();
     expect(getByRole("slider", { name: "Threshold" })).toHaveAttribute("aria-valuetext", "5.0");
     expect(getByRole("slider", { name: "Vibrance" })).toHaveAttribute("aria-valuetext", "1.0");
@@ -122,8 +122,8 @@ describe("LevelLookAction", () => {
     await userEvent.click(getByRole("button", { name: "Look" }));
     await findByRole("dialog", { name: "Look" });
 
-    for (const section of ["Look", "Light", "Exposure", "Display", "Bloom", "Image"]) {
-      expect(getByRole("region", { name: section })).toBeInTheDocument();
+    for (const section of ["Light", "Exposure", "Display", "Bloom", "Image", "Debanding"]) {
+      expect(getByRole("group", { name: section })).toBeInTheDocument();
     }
 
     expect(getByRole("button", { name: "AgX" })).toBeDisabled();
