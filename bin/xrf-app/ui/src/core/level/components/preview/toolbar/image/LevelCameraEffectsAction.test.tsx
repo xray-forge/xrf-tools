@@ -34,9 +34,14 @@ describe("LevelCameraEffectsAction", () => {
     expect(container.get(LevelViewService).features.camera).toEqual({ isDefocused: true });
     expect(within(section).getByRole("slider", { name: "Aperture" })).toHaveAttribute("aria-valuetext", "f/2.8");
 
-    act(() => fireEvent.click(getByTestId("level-camera-focus-pick")));
+    const pick: HTMLElement = within(section).getByRole("button", { name: "Focus by a click" });
+
+    expect(pick).toHaveAttribute("aria-pressed", "false");
+
+    act(() => fireEvent.click(pick));
 
     expect(container.get(LevelViewportService).isFocusPicking).toBe(true);
-    expect(getByTestId("level-camera-focus-pick")).toHaveTextContent("Click in the view to focus");
+    expect(pick).toHaveAttribute("aria-pressed", "true");
+    expect(pick).toHaveAccessibleDescription("Click in the view to focus there");
   });
 });

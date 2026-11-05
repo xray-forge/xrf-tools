@@ -28,8 +28,8 @@ export interface IRenderSettingSectionProps<G> extends BaseComponentProps {
   note?: string;
   /** Sets part of the group, the rest as it was. */
   onSet: (part: Partial<G>) => void;
-  /** What the section holds past its values, such as a pick in the view. */
-  children?: ReactNode;
+  /** What acts on the section beyond its values, such as a pick in the view, at the end of its heading. */
+  actions?: ReactNode;
 }
 
 /**
@@ -48,7 +48,7 @@ export function RenderSettingSection<G>({
   features,
   note,
   onSet,
-  children,
+  actions,
 }: IRenderSettingSectionProps<G>): ReactElement {
   const setting = settings[name];
   const isOn: boolean = group[name] as boolean;
@@ -63,11 +63,10 @@ export function RenderSettingSection<G>({
       note={note}
       isOn={isOn}
       isDisabled={isRenderSettingInert(setting, group, features)}
+      actions={actions}
       onToggle={() => onSet({ [name]: !isOn } as unknown as Partial<G>)}
     >
       <RenderSettingEntries settings={settings} names={names} group={group} features={features} onSet={onSet} />
-
-      {children}
     </EditorPopoverGroupSection>
   );
 }

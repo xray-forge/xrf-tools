@@ -1,10 +1,10 @@
 import { useInjection } from "@wirestate/react";
 import { Optional } from "@xrf/types";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorPopoverGroup } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CameraOutlinedIcon } from "@xrf/ui/icons/camera-outlined";
 import { CenterFocusStrongIcon } from "@xrf/ui/icons/center-focus-strong";
-import { Button } from "@xrf/ui/material/button";
 import { ReactElement } from "react";
 
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
@@ -76,18 +76,20 @@ export function LevelCameraEffectsAction({
         names={["fStop", "focusDistance"]}
         group={camera}
         features={drawn}
+        actions={
+          <EditorIconAction
+            aria-pressed={isFocusPicking}
+            label={"Focus by a click"}
+            description={
+              isFocusPicking ? "Click in the view to focus there" : "Focus where the next click in the view lands"
+            }
+            icon={<CenterFocusStrongIcon />}
+            isActive={isFocusPicking}
+            onClick={() => viewportService.setFocusPicking(!isFocusPicking)}
+          />
+        }
         onSet={set}
-      >
-        <Button
-          data-testid={"level-camera-focus-pick"}
-          size={"small"}
-          variant={isFocusPicking ? "contained" : "outlined"}
-          startIcon={<CenterFocusStrongIcon />}
-          onClick={() => viewportService.setFocusPicking(!isFocusPicking)}
-        >
-          {isFocusPicking ? "Click in the view to focus" : "Focus by a click"}
-        </Button>
-      </RenderSettingSection>
+      />
 
       <RenderSettingSection
         settings={RENDER_CAMERA_SETTINGS}
