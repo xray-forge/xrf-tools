@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { EMPTY_ARRAY } from "@xrf/collections";
 import { assertExhaustive, Nullable } from "@xrf/types";
-import { IMenubarMenu, TMenubarEntry } from "@xrf/ui/shell/menubar";
+import { IMenubarItem, IMenubarMenu, TMenubarEntry } from "@xrf/ui/shell/menubar";
 import { useCallback } from "react";
 
 import { KeybindCommandsService } from "@/core/commands";
@@ -29,8 +29,11 @@ export function useApplicationMenus(): Array<IMenubarMenu> {
     (sections: ReadonlyArray<ReadonlyArray<TMenuEntry>>): Array<Array<TMenubarEntry>> => {
       function toEntry(entry: TMenuEntry): TMenubarEntry {
         switch (entry.kind) {
-          case EMenuEntryKind.COMMAND:
-            return toCommandMenubarItem(entry.command, commandsService, keymapService);
+          case EMenuEntryKind.COMMAND: {
+            const item: IMenubarItem = toCommandMenubarItem(entry.command, commandsService, keymapService);
+
+            return { ...item, label: entry.label ?? item.label, icon: entry.icon ?? item.icon };
+          }
           case EMenuEntryKind.ACTION:
             return {
               id: entry.id,

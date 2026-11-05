@@ -20,6 +20,10 @@ export enum EMenuEntryKind {
 export interface IMenuCommandEntry {
   readonly kind: EMenuEntryKind.COMMAND;
   readonly command: IKeybindCommand;
+  /** Said in place of the command's own label while what it does has turned, as Record stopping a recording. */
+  readonly label?: string;
+  /** Drawn in place of the command's own icon beside such a label. */
+  readonly icon?: ReactNode;
 }
 
 /** An entry running a closure: an action with no chord, such as one opening a dialog. */

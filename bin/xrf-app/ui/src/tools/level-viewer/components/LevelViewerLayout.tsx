@@ -21,9 +21,10 @@ import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { useShellPanels } from "@/core/shell/contributions";
 import { IShellPanel } from "@/core/shell/panels/shell-panel";
-import { LevelViewerCaptureActions } from "@/tools/level-viewer/components/capture/LevelViewerCaptureActions";
 import { LevelViewerCaptureCover } from "@/tools/level-viewer/components/capture/LevelViewerCaptureCover";
+import { LevelViewerCaptureDialogHost } from "@/tools/level-viewer/components/capture/LevelViewerCaptureDialogHost";
 import { LevelViewerToolbar } from "@/tools/level-viewer/components/LevelViewerToolbar";
+import { LevelViewerActionsMenu } from "@/tools/level-viewer/components/menus/LevelViewerActionsMenu";
 import { LevelViewerViewMenu } from "@/tools/level-viewer/components/menus/LevelViewerViewMenu";
 import { LevelHeaderPanel } from "@/tools/level-viewer/components/panels/LevelHeaderPanel";
 import { LevelInspectorPanel } from "@/tools/level-viewer/components/panels/LevelInspectorPanel";
@@ -37,9 +38,9 @@ import { LevelPreviewCoordinates } from "@/tools/level-viewer/components/preview
 import { LevelPreviewEmpty } from "@/tools/level-viewer/components/preview/LevelPreviewEmpty";
 import { LevelPreviewMetrics } from "@/tools/level-viewer/components/preview/LevelPreviewMetrics";
 import { LevelPreviewSpot } from "@/tools/level-viewer/components/preview/LevelPreviewSpot";
-import { LevelViewerRecordingActions } from "@/tools/level-viewer/components/recording/LevelViewerRecordingActions";
+import { LevelViewerRecordingStatus } from "@/tools/level-viewer/components/recording/LevelViewerRecordingStatus";
 import { LevelViewerRecordingToast } from "@/tools/level-viewer/components/recording/LevelViewerRecordingToast";
-import { LevelViewerScreenshotActions } from "@/tools/level-viewer/components/screenshot/LevelViewerScreenshotActions";
+import { LevelViewerScreenshotDialogHost } from "@/tools/level-viewer/components/screenshot/LevelViewerScreenshotDialogHost";
 import { LevelViewerScreenshotToast } from "@/tools/level-viewer/components/screenshot/LevelViewerScreenshotToast";
 import { LevelViewerSnapshotActions } from "@/tools/level-viewer/components/snapshot/LevelViewerSnapshotActions";
 import { ELevelViewerPanelId } from "@/tools/level-viewer/lib/panels/level-viewer-panel-id";
@@ -149,10 +150,11 @@ export function LevelViewerLayout({
   return (
     <EditorLayout toolbar={<LevelViewerToolbar onBack={onBack} />}>
       <LevelViewerViewMenu />
+      <LevelViewerActionsMenu />
       <LevelViewerSnapshotActions />
-      <LevelViewerScreenshotActions />
-      <LevelViewerRecordingActions />
-      <LevelViewerCaptureActions />
+      <LevelViewerScreenshotDialogHost />
+      <LevelViewerRecordingStatus />
+      <LevelViewerCaptureDialogHost />
 
       <div className={"flex min-h-0 min-w-0 grow flex-col"}>
         {heading ? (

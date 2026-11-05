@@ -5,11 +5,6 @@ import { EToolId } from "@/core/routing/tool";
 import { clearLocalStorage } from "@/core/storage";
 import { mockToolScope } from "@/fixtures/utils/container";
 import { LevelViewerToolbar } from "@/tools/level-viewer/components/LevelViewerToolbar";
-import { LevelViewerCaptureService } from "@/tools/level-viewer/services/level-viewer-capture";
-import { LevelViewerCaptureResultService } from "@/tools/level-viewer/services/level-viewer-capture-result";
-import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level-viewer-recording";
-import { LevelViewerScreenshotService } from "@/tools/level-viewer/services/level-viewer-screenshot";
-import { LevelViewerSnapshotService } from "@/tools/level-viewer/services/level-viewer-snapshot";
 
 beforeEach(() => {
   clearLocalStorage();
@@ -19,14 +14,7 @@ describe("LevelViewerToolbar", () => {
   it("lays every action out by what it changes: the view, the image, the lighting, the environment, the contents and the camera", () => {
     const { baseElement }: TLevelViewRenderResult = renderLevelView(
       <LevelViewerToolbar />,
-      mockLevelViewContainer([
-        ...mockToolScope(EToolId.LEVEL_VIEWER),
-        LevelViewerCaptureService,
-        LevelViewerCaptureResultService,
-        LevelViewerRecordingService,
-        LevelViewerScreenshotService,
-        LevelViewerSnapshotService,
-      ])
+      mockLevelViewContainer(mockToolScope(EToolId.LEVEL_VIEWER))
     );
     const actions: Array<string | null> = Array.from(baseElement.querySelectorAll("[data-testid$='-action']")).map(
       (element: Element) => element.getAttribute("data-testid")
@@ -57,7 +45,6 @@ describe("LevelViewerToolbar", () => {
       "level-camera-action",
       "level-camera-effects-action",
       "level-go-to-action",
-      "level-viewer-capture-action",
     ]);
   });
 });
