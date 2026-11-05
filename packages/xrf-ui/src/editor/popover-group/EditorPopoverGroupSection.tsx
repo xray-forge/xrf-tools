@@ -11,26 +11,27 @@ import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
 export interface IEditorPopoverGroupSectionProps extends BaseComponentProps {
-  /** Names the toggle heading the section. */
+  /** Names the section, and the toggle heading it where it has one. */
   label: string;
   /** What it does, read on hovering its name; while it cannot be turned on, why, said under it. */
   description?: string;
   /** What the mode the toggle stands at draws, said under its heading whatever it stands at. */
   note?: string;
-  isOn: boolean;
+  isOn?: boolean;
   isDisabled?: boolean;
-  onToggle: () => void;
+  /** Turns the section over from a box before its name; a section with none is a titled run of rows. */
+  onToggle?: () => void;
   /** Sets the section's settings back, from a button at the end of its heading; none while nothing is to set back. */
   onReset?: () => void;
   /** What the reset sets them back to, its tooltip. */
   resetLabel?: string;
-  /** The toggle's settings, if it has any, each an `EditorPopoverRow`. */
+  /** The section's settings, if it has any, each an `EditorPopoverRow`. */
   children?: ReactNode;
 }
 
 /**
- * One toggle of an `EditorPopoverGroup` heading its settings, as an editor's details panel heads a category: the box
- * before its name, its reset at the end, set apart from the section before.
+ * One section of a toolbar popover heading its settings, as an editor's details panel heads a category: the box before
+ * its name where it turns something on, its reset at the end, set apart from the section before.
  */
 export function EditorPopoverGroupSection({
   "data-testid": dataTestId = "editor-popover-group-section",
@@ -39,7 +40,7 @@ export function EditorPopoverGroupSection({
   label,
   description,
   note,
-  isOn,
+  isOn = false,
   isDisabled = false,
   onToggle,
   onReset,
@@ -60,23 +61,25 @@ export function EditorPopoverGroupSection({
       )}
     >
       <div className={"flex min-h-8 items-center gap-1"}>
-        <Checkbox
-          id={controlId}
-          // The box's own inset, taken back so it starts at the popover's edge.
-          className={"-ml-1 p-0.5"}
-          size={"small"}
-          checked={isOn}
-          disabled={isDisabled}
-          slotProps={{ input: { "aria-labelledby": labelId, "aria-describedby": descriptionId } }}
-          onChange={onToggle}
-        />
+        {onToggle ? (
+          <Checkbox
+            id={controlId}
+            // The box's own inset, taken back so it starts at the popover's edge.
+            className={"-ml-1 p-0.5"}
+            size={"small"}
+            checked={isOn}
+            disabled={isDisabled}
+            slotProps={{ input: { "aria-labelledby": labelId, "aria-describedby": descriptionId } }}
+            onChange={onToggle}
+          />
+        ) : null}
 
         <Tooltip describeChild title={isDisabled ? "" : (description ?? "")} placement={"top-start"}>
           <Typography
             id={labelId}
             className={"min-w-0 flex-1 truncate"}
-            component={"label"}
-            htmlFor={controlId}
+            component={onToggle ? "label" : "h3"}
+            htmlFor={onToggle ? controlId : undefined}
             variant={"subtitle2"}
           >
             {label}

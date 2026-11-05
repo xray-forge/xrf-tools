@@ -413,6 +413,23 @@ export class LevelWeatherService {
   }
 
   /**
+   * @param keys - The keys a reset would set back.
+   * @returns Whether `resetManual(keys)` changes anything: the keyframe set by hand lights the level and one of them
+   *   stands otherwise than the weather it was seeded from.
+   */
+  public isManualResettable(keys: ReadonlyArray<keyof ILevelManualWeather>): boolean {
+    if (!this.isManual) {
+      return false;
+    }
+
+    const shown: ILevelManualWeather = this.shown;
+    const weather: ILevelManualWeather = this.seed?.weather ?? DEFAULT_LEVEL_MANUAL_WEATHER;
+
+    // Every key is a number, a name or a run of numbers, which read alike exactly where they are alike.
+    return keys.some((key: keyof ILevelManualWeather) => String(shown[key]) !== String(weather[key]));
+  }
+
+  /**
    * Changes the keyframe set by hand, which lights the level from now on: one edited while the weather lights it is
    * seeded from what is shown first, so only the change is seen, and eased into.
    *

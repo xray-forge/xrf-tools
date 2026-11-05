@@ -4,6 +4,9 @@ import { ReactElement, useCallback } from "react";
 
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 
+/** What a reset of keys set by hand says it does: they stand as the weather they were seeded from again. */
+export const LEVEL_WEATHER_RESET_LABEL: string = "Reset to the weather";
+
 interface ILevelWeatherResetButtonProps extends BaseComponentProps {
   /** The keys it sets back. */
   keys: ReadonlyArray<keyof ILevelManualWeather>;
@@ -24,7 +27,7 @@ export function LevelWeatherResetButton({
 
   return (
     <Button data-testid={dataTestId} id={id} className={className} size={"small"} onClick={onClick}>
-      Reset to the weather
+      {LEVEL_WEATHER_RESET_LABEL}
     </Button>
   );
 }

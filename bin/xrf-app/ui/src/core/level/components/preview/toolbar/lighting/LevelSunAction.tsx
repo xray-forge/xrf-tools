@@ -5,18 +5,17 @@ import { ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
+import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { WbSunnyIcon } from "@xrf/ui/icons/wb-sunny";
 import { Button } from "@xrf/ui/material/button";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
-import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
+import { LEVEL_WEATHER_RESET_LABEL } from "@/core/level/components/weather/LevelWeatherResetButton";
 import { LevelWeatherSunSelect } from "@/core/level/components/weather/LevelWeatherSunSelect";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
@@ -68,12 +67,16 @@ export function LevelSunAction({
   // `setHP` turns the light's heading by the altitude and tilts it down by the longitude.
   const reading: string = `${formatDegrees(-manual.sunLongitude)} up at a bearing of ${formatDegrees(manual.sunAltitude)}`;
 
+  const isWeatherResettable: boolean = weatherService.isManualResettable(LEVEL_MANUAL_WEATHER_SUN_KEYS);
+
   // The occlusion a level carries was computed for its sun, so lighting it from there is lighting it as xrLC assumed.
   const onUseCompiled = useCallback(() => {
     if (compiled) {
       weatherService.editManual(compiled);
     }
   }, [compiled, weatherService]);
+
+  const onWeatherReset = useCallback(() => weatherService.resetManual(LEVEL_MANUAL_WEATHER_SUN_KEYS), [weatherService]);
 
   return (
     <EditorPopoverAction
@@ -86,105 +89,103 @@ export function LevelSunAction({
       isActive={drawnSun !== null}
     >
       <EditorPopoverContent label={"Sun"}>
-        <LevelManualWeatherVectorField field={"sunColor"} isColor manual={manual} onEdit={weatherService.editManual} />
+        <EditorPopoverGroupSection
+          label={"Light"}
+          resetLabel={LEVEL_WEATHER_RESET_LABEL}
+          onReset={isWeatherResettable ? onWeatherReset : undefined}
+        >
+          <LevelManualWeatherVectorField
+            field={"sunColor"}
+            isColor
+            manual={manual}
+            onEdit={weatherService.editManual}
+          />
 
-        <LevelManualWeatherSlider
-          field={"sunAltitude"}
-          manual={manual}
-          format={formatDegrees}
-          onEdit={weatherService.editManual}
-        />
+          <LevelManualWeatherSlider
+            field={"sunAltitude"}
+            manual={manual}
+            format={formatDegrees}
+            onEdit={weatherService.editManual}
+          />
 
-        <LevelManualWeatherSlider
-          field={"sunLongitude"}
-          manual={manual}
-          format={formatDegrees}
-          onEdit={weatherService.editManual}
-        />
+          <LevelManualWeatherSlider
+            field={"sunLongitude"}
+            manual={manual}
+            format={formatDegrees}
+            onEdit={weatherService.editManual}
+          />
 
-        <Typography className={"block text-text-secondary"} variant={"caption"}>
-          {`The sun stands ${reading}.`}
-        </Typography>
+          <LevelManualWeatherVectorField
+            field={"ambientColor"}
+            isColor
+            manual={manual}
+            onEdit={weatherService.editManual}
+          />
 
-        <LevelManualWeatherVectorField
-          field={"ambientColor"}
-          isColor
-          manual={manual}
-          onEdit={weatherService.editManual}
-        />
+          <LevelManualWeatherVectorField
+            field={"hemisphereColor"}
+            isColor
+            manual={manual}
+            onEdit={weatherService.editManual}
+          />
 
-        <LevelManualWeatherVectorField
-          field={"hemisphereColor"}
-          isColor
-          manual={manual}
-          onEdit={weatherService.editManual}
-        />
+          <Button size={"small"} disabled={!compiled} onClick={onUseCompiled}>
+            {compiled ? "Use the level's compiled sun" : "This level names no sun"}
+          </Button>
+        </EditorPopoverGroupSection>
 
-        <Button size={"small"} disabled={!compiled} onClick={onUseCompiled}>
-          {compiled ? "Use the level's compiled sun" : "This level names no sun"}
-        </Button>
-
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          Lens flare
-        </Typography>
-
-        <CheckboxFormRow
+        <EditorPopoverGroupSection
           label={"Lens flares"}
-          description={"Draws the flares over the frame; the sun's sprite and glow draw either way"}
-          isChecked={options.isLensFlared}
-          onChange={() => viewService.toggleOption("isLensFlared")}
-        />
+          description={"Draws the flares over the frame; the sun's sprite and glow draw either way."}
+          isOn={options.isLensFlared}
+          onToggle={() => viewService.toggleOption("isLensFlared")}
+        >
+          <LevelWeatherSunSelect
+            value={manual.sun}
+            suns={suns}
+            onChange={(sun: string) => weatherService.editManual({ sun })}
+          />
+        </EditorPopoverGroupSection>
 
-        <LevelWeatherSunSelect
-          value={manual.sun}
-          suns={suns}
-          onChange={(sun: string) => weatherService.editManual({ sun })}
-        />
-
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          Sunshafts
-        </Typography>
-
-        <CheckboxFormRow
+        <EditorPopoverGroupSection
           label={"Sun shafts"}
-          description={"Draws the sun's light through the air, cut by its shadow"}
-          isChecked={options.isSunShafted}
-          onChange={() => viewService.toggleOption("isSunShafted")}
-        />
+          description={"Draws the sun's light through the air, cut by its shadow."}
+          isOn={options.isSunShafted}
+          onToggle={() => viewService.toggleOption("isSunShafted")}
+        >
+          <LevelManualWeatherSlider
+            field={"sunShaftsIntensity"}
+            label={"Intensity"}
+            manual={manual}
+            format={(value: number) => value.toFixed(2)}
+            onEdit={weatherService.editManual}
+          />
 
-        <LevelManualWeatherSlider
-          field={"sunShaftsIntensity"}
-          manual={manual}
-          format={(value: number) => value.toFixed(2)}
-          onEdit={weatherService.editManual}
-        />
+          <RenderValueSlider
+            label={"Steps"}
+            hint={"Game setting: r2_sunshafts_quality steps 20, 20 and 40 (OpenXRay), 15, 25 and 30 (Monolith)"}
+            value={sunShafts.steps}
+            isDisabled={!isMarched}
+            {...LEVEL_SUN_SHAFTS_STEPS_LIMITS}
+            format={formatCount}
+            onChange={(steps: number) => weatherService.setSunShafts({ ...sunShafts, steps })}
+          />
 
-        <RenderValueSlider
-          label={"Steps"}
-          hint={"Game setting: r2_sunshafts_quality steps 20, 20 and 40 (OpenXRay), 15, 25 and 30 (Monolith)"}
-          value={sunShafts.steps}
-          isDisabled={!isMarched}
-          {...LEVEL_SUN_SHAFTS_STEPS_LIMITS}
-          format={formatCount}
-          onChange={(steps: number) => weatherService.setSunShafts({ ...sunShafts, steps })}
-        />
+          {isMarched ? null : (
+            <EditorPopoverNote>
+              The enhanced volumetrics draw the shafts; their steps apply with Engine volumetrics.
+            </EditorPopoverNote>
+          )}
 
-        {isMarched ? null : (
-          <EditorPopoverNote>
-            The enhanced volumetrics draw the shafts; their steps apply with Engine volumetrics.
-          </EditorPopoverNote>
-        )}
-
-        <RenderValueSlider
-          label={"Minimum"}
-          hint={"Game setting: r2_sunshafts_min"}
-          value={sunShafts.minimum}
-          {...LEVEL_SUN_SHAFTS_MINIMUM_LIMITS}
-          format={(value: number) => value.toFixed(2)}
-          onChange={(minimum: number) => weatherService.setSunShafts({ ...sunShafts, minimum })}
-        />
-
-        <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_SUN_KEYS} onReset={weatherService.resetManual} />
+          <RenderValueSlider
+            label={"Minimum"}
+            hint={"Game setting: r2_sunshafts_min"}
+            value={sunShafts.minimum}
+            {...LEVEL_SUN_SHAFTS_MINIMUM_LIMITS}
+            format={(value: number) => value.toFixed(2)}
+            onChange={(minimum: number) => weatherService.setSunShafts({ ...sunShafts, minimum })}
+          />
+        </EditorPopoverGroupSection>
       </EditorPopoverContent>
     </EditorPopoverAction>
   );

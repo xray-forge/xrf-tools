@@ -1,19 +1,22 @@
 import { useInjection } from "@wirestate/react";
 import { formatNumber, formatPercent } from "@xrf/format";
 import { ERenderFogMode } from "@xrf/ipc/types/xrf-renderer";
+import { Optional } from "@xrf/types";
+import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { FoggyIcon } from "@xrf/ui/icons/foggy";
-import { ReactElement } from "react";
+import { ReactElement, useCallback } from "react";
 
-import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
+import { LEVEL_SETTINGS_RESET_LABEL } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
+import { useLevelFeatureReset } from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
-import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
+import { LEVEL_WEATHER_RESET_LABEL } from "@/core/level/components/weather/LevelWeatherResetButton";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { LEVEL_MANUAL_WEATHER_FOG_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
@@ -42,15 +45,19 @@ export function LevelFogAction({
   const viewService: LevelViewService = useInjection(LevelViewService);
   const weatherService: LevelWeatherService = useInjection(LevelWeatherService);
   const { settings, features, drawn } = useLevelRenderFeatures();
-  const { set, reset } = useLevelFeatureOverride("fog");
+  const { set } = useLevelFeatureOverride("fog");
+  const onSettingsReset: Optional<() => void> = useLevelFeatureReset("fog");
   const { isOn, toggle } = useLevelViewToggle("isFogged");
 
   const manual: ILevelManualWeather = weatherService.shown;
+  const isWeatherResettable: boolean = weatherService.isManualResettable(LEVEL_MANUAL_WEATHER_FOG_KEYS);
   // Whether the distance fades into the sky's haze rather than into the sky itself.
   const isHazed: boolean = viewService.options.isSkyHazed;
   // How the view draws the fog beyond the weather's keys: the engine's, or the enhanced fog and its strengths.
   const value: TRenderFogSettings = toLevelModeFeature("fog", settings, features);
   const isEnhanced: boolean = value.mode === ERenderFogMode.ENHANCED;
+
+  const onWeatherReset = useCallback(() => weatherService.resetManual(LEVEL_MANUAL_WEATHER_FOG_KEYS), [weatherService]);
 
   return (
     <EditorPopoverToggle
@@ -66,7 +73,9 @@ export function LevelFogAction({
       icon={<FoggyIcon />}
       isOn={isOn}
       toggleLabel={"Fog"}
+      resetLabel={LEVEL_WEATHER_RESET_LABEL}
       onToggle={toggle}
+      onReset={isWeatherResettable ? onWeatherReset : undefined}
     >
       <LevelManualWeatherVectorField field={"fogColor"} isColor manual={manual} onEdit={weatherService.editManual} />
 
@@ -91,24 +100,22 @@ export function LevelFogAction({
         onEdit={weatherService.editManual}
       />
 
-      <RenderValueChoice
-        label={"Fades into"}
-        options={FADE_OPTIONS}
-        value={isHazed ? "haze" : "sky"}
-        onChange={(fade: "sky" | "haze") => viewService.setOption("isSkyHazed", fade === "haze")}
-      />
+      <EditorPopoverGroupSection label={"Rendering"} resetLabel={LEVEL_SETTINGS_RESET_LABEL} onReset={onSettingsReset}>
+        <RenderValueChoice
+          label={"Fades into"}
+          options={FADE_OPTIONS}
+          value={isHazed ? "haze" : "sky"}
+          onChange={(fade: "sky" | "haze") => viewService.setOption("isSkyHazed", fade === "haze")}
+        />
 
-      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_FOG_KEYS} onReset={weatherService.resetManual} />
-
-      <RenderSettingEntries
-        settings={RENDER_FOG_SETTINGS}
-        names={["colour", "mode", "height", "density", "sunColor", "scattering", "skyFade"]}
-        group={value}
-        features={drawn}
-        onSet={set}
-      />
-
-      <LevelSettingsResetButton onReset={reset} />
+        <RenderSettingEntries
+          settings={RENDER_FOG_SETTINGS}
+          names={["colour", "mode", "height", "density", "sunColor", "scattering", "skyFade"]}
+          group={value}
+          features={drawn}
+          onSet={set}
+        />
+      </EditorPopoverGroupSection>
     </EditorPopoverToggle>
   );
 }
