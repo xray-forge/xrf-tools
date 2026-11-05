@@ -17,6 +17,7 @@ members = [
   "crates/xrf-dialog",
   "crates/xrf-dlss",
   "crates/xrf-dltx",
+  "crates/xrf-editable-object",
   "crates/xrf-efd",
   "crates/xrf-engine-target",
   "crates/xrf-env-flags",
@@ -138,6 +139,7 @@ xrf-dds = { path = "crates/xrf-dds" }
 xrf-dialog = { path = "crates/xrf-dialog" }
 xrf-dlss = { path = "crates/xrf-dlss" }
 xrf-dltx = { path = "crates/xrf-dltx" }
+xrf-editable-object = { path = "crates/xrf-editable-object" }
 xrf-efd = { path = "crates/xrf-efd" }
 xrf-error = { path = "crates/xrf-error" }
 xrf-error-derive = { path = "crates/xrf-error-derive" }
