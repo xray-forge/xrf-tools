@@ -35,7 +35,7 @@ export function ArchiveLevelSpawnView({
 
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Spawned objects"} isFirst>
+      <EditorPanelSection title={"Spawned objects"}>
         <ArchiveDescriptionRow
           label={"Objects"}
           value={formatCount(description.objects)}

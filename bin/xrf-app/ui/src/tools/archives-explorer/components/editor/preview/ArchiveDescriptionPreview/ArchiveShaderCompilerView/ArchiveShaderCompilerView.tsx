@@ -27,7 +27,6 @@ export function ArchiveShaderCompilerView({
       <EditorPanelSection
         title={`Compiler shaders (${shaders.length})`}
         caption={"Read when the level was built; the blender of the same name in shaders.xr is what draws it"}
-        isFirst
       >
         {shaders.map((shader: ArchiveShaderCompilerShader) => (
           <ArchiveDescriptionRow

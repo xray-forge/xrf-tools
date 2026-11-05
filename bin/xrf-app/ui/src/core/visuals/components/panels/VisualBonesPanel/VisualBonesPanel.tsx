@@ -50,7 +50,6 @@ export function VisualBonesPanel({
         <EditorPanelSection
           title={`Skeleton (${bones.length})`}
           caption={"Bone names, parented as ogf stores them"}
-          isFirst={true}
           isFilling={true}
         >
           <VirtualizedTree

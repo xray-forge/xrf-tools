@@ -72,7 +72,6 @@ export function VisualMotionsPanel({
         <EditorPanelSection
           title={playable ? `Playable (${playable})` : "Playable"}
           caption={"Grouped by name prefix; double click to pose"}
-          isFirst={true}
           isFilling={true}
         >
           <VisualMotionList filter={filter} />

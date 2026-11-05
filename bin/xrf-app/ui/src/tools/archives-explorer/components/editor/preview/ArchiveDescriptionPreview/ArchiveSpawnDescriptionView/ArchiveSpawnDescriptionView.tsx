@@ -25,7 +25,7 @@ export function ArchiveSpawnDescriptionView({
 
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Spawn set"} isFirst>
+      <EditorPanelSection title={"Spawn set"}>
         <ArchiveDescriptionRow
           label={"Objects"}
           value={`${description.objects}`}

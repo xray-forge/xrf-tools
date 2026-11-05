@@ -17,7 +17,6 @@ import { VisualSubmeshTexture } from "./VisualSubmeshTexture";
 
 interface IVisualSubmeshSectionProps extends BaseComponentProps {
   submesh: VisualSubmesh;
-  isFirst: boolean;
   /** What the backend resolved this submesh's reference to, absent when the model reports no textures at all. */
   texture?: Nullable<VisualTextureDependency>;
   /** What the frontend then did with it. */
@@ -40,7 +39,6 @@ export function VisualSubmeshSection({
   id,
   className,
   submesh,
-  isFirst,
   texture = null,
   status = null,
   bumpStatus = null,
@@ -55,7 +53,6 @@ export function VisualSubmeshSection({
       data-testid={dataTestId}
       id={id}
       className={className}
-      isFirst={isFirst}
       title={
         <div className={"flex items-center gap-1.5"}>
           <span className={"min-w-0 break-all"}>{submesh.textureName ?? `Submesh ${submesh.index}`}</span>

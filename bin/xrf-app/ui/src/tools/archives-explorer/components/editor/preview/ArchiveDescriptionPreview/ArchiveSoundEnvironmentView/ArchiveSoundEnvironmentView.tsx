@@ -27,7 +27,6 @@ export function ArchiveSoundEnvironmentView({
       <EditorPanelSection
         title={`Reverb presets (${environments.length})`}
         caption={"In the order the file holds them, which is how a level addresses one"}
-        isFirst
       >
         {environments.map((environment: ArchiveSoundEnvironment) => (
           <ArchiveDescriptionRow

@@ -134,6 +134,21 @@
   background-image: var(--xrf-header-gloss);
 }
 
+/*
+ * A titled group of a panel's rows. One after anything else, the panel's title band among them, starts at the content
+ * inset; one directly after another is ruled off from it, so no group is told whether it leads.
+ */
+@utility panel-section {
+  min-width: 0;
+  padding: var(--xrf-panel-content-padding) var(--xrf-panel-content-padding) var(--xrf-panel-section-padding);
+
+  & + & {
+    margin-top: var(--xrf-panel-section-padding);
+    border-top: 1px solid var(--mui-palette-divider);
+    padding-top: var(--xrf-panel-section-padding);
+  }
+}
+
 /* Alpha checkerboard, so a transparent region reads as transparent rather than as black. */
 @utility checkerboard {
   background-image:

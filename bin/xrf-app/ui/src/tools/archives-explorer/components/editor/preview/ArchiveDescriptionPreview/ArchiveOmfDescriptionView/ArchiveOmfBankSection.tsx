@@ -25,7 +25,7 @@ export function ArchiveOmfBankSection({
   parts,
 }: IArchiveOmfBankSectionProps): ReactElement {
   return (
-    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Bank"} isFirst>
+    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Bank"}>
       <ArchiveDescriptionRow
         label={"Motions"}
         value={`${bank.motions}`}

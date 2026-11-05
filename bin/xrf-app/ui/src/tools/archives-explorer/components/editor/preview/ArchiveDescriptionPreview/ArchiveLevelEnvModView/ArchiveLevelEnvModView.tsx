@@ -24,7 +24,7 @@ export function ArchiveLevelEnvModView({
 
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Weather overrides"} isFirst>
+      <EditorPanelSection title={"Weather overrides"}>
         <ArchiveDescriptionRow
           label={"Overrides"}
           value={`${modifiers.length}`}

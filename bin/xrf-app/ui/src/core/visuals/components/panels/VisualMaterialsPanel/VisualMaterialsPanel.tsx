@@ -74,7 +74,6 @@ export function VisualMaterialsPanel({
         <VisualSubmeshSection
           key={submesh.index}
           submesh={submesh}
-          isFirst={index === 0}
           texture={textures.get(submesh.index) ?? null}
           status={textureStatuses.get(submesh.index) ?? null}
           bumpStatus={bumpStatuses.get(submesh.index) ?? null}

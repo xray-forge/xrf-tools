@@ -30,7 +30,7 @@ export function ArchiveLevelSndStaticView({
 
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Planted sounds"} isFirst>
+      <EditorPanelSection title={"Planted sounds"}>
         <ArchiveDescriptionRow
           label={"Sounds"}
           value={`${sounds.length}`}

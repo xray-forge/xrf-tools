@@ -163,7 +163,6 @@ export function TextureChannelsPanel({
             data-testid={"texture-channels-readout"}
             title={"Texel"}
             caption={"Under the pointer, as stored and as reconstructed"}
-            isFirst
           >
             <EditorPanelProperty label={"At"} value={readout?.position ?? ABSENT_VALUE} />
             <EditorPanelProperty label={"Bump"} value={readout?.bump ?? ABSENT_VALUE} />

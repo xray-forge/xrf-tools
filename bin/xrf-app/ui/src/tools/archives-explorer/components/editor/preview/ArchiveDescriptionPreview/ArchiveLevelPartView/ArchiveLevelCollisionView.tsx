@@ -23,7 +23,7 @@ export function ArchiveLevelCollisionView({
 }: IArchiveLevelCollisionViewProps): ReactElement {
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Collision mesh"} isFirst>
+      <EditorPanelSection title={"Collision mesh"}>
         <ArchiveDescriptionRow
           label={"Faces"}
           value={formatCount(description.faces)}

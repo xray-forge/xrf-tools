@@ -35,7 +35,7 @@ export function ArchiveLightAnimView({
 
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Colour animations"} isFirst>
+      <EditorPanelSection title={"Colour animations"}>
         <ArchiveDescriptionRow
           label={"Animations"}
           value={`${items.length}`}

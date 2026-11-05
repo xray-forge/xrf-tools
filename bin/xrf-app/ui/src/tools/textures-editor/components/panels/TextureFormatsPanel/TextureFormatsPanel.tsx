@@ -44,7 +44,7 @@ export function TextureFormatsPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Formats"}>
-      <EditorPanelSection title={"Current"} isFirst>
+      <EditorPanelSection title={"Current"}>
         <EditorPanelProperty
           label={"Format"}
           value={comparison?.current.label ?? description.base?.shape?.format ?? "-"}

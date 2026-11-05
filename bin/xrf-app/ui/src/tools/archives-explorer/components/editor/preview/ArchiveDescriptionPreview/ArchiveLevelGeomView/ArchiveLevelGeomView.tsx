@@ -25,7 +25,7 @@ export function ArchiveLevelGeomView({
 
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={description.isDetail ? "Detail geometry" : "Render geometry"} isFirst>
+      <EditorPanelSection title={description.isDetail ? "Detail geometry" : "Render geometry"}>
         <ArchiveDescriptionRow
           label={"Triangles"}
           value={formatCount(description.triangles)}

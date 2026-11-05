@@ -30,7 +30,7 @@ export function LevelHeaderPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Level"}>
-      <EditorPanelSection title={"Built by"} isFirst>
+      <EditorPanelSection title={"Built by"}>
         <EditorPanelProperty label={"xrLC version"} value={description.xrlcVersion} />
         <EditorPanelProperty label={"Quality"} value={description.xrlcQuality} />
       </EditorPanelSection>

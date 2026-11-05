@@ -36,7 +36,7 @@ export function SpawnRowDetailsPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={selection.source}>
-      <EditorPanelSection title={"Properties"} isFirst>
+      <EditorPanelSection title={"Properties"}>
         {entries.map(([key, value]: [string, unknown]) => (
           <EditorPanelProperty key={key} label={key} value={formatSpawnRowDetailsValue(value)} isMonospace />
         ))}

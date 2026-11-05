@@ -24,7 +24,7 @@ export function ArchiveLevelAiView({
 }: IArchiveLevelAiViewProps): ReactElement {
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Navigation grid"} isFirst>
+      <EditorPanelSection title={"Navigation grid"}>
         <ArchiveDescriptionRow
           label={"Nodes"}
           value={formatCount(description.nodes)}

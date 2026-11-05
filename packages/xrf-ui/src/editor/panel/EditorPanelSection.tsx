@@ -1,7 +1,6 @@
 import { ReactElement, ReactNode } from "react";
 
 import { BaseComponentProps } from "#/element-types";
-import { Divider } from "#/material/divider";
 import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
@@ -10,8 +9,6 @@ interface IEditorPanelSectionProps extends BaseComponentProps {
   /** What distinguishes this group from a similar one beside it. */
   caption?: ReactNode;
   children: ReactNode;
-  /** Suppresses the leading divider, so the first group does not draw one against the panel title. */
-  isFirst?: boolean;
   /**
    * Takes the height the panel has left over, for content that scrolls on its own rather than flowing.
    */
@@ -19,7 +16,8 @@ interface IEditorPanelSectionProps extends BaseComponentProps {
 }
 
 /**
- * A titled group of rows.
+ * A titled group of rows, laid out by the theme's `panel-section`: ruled off from a group directly before it, and at
+ * the panel's content inset after anything else.
  */
 export function EditorPanelSection({
   "data-testid": dataTestId = "editor-panel-section",
@@ -28,22 +26,14 @@ export function EditorPanelSection({
   title,
   caption,
   children,
-  isFirst,
   isFilling,
 }: IEditorPanelSectionProps): ReactElement {
   return (
     <div
       data-testid={dataTestId}
       id={id}
-      className={cn(
-        "min-w-0 px-panel-content pb-panel-section",
-        isFirst ? "pt-panel-content" : "pt-panel-section",
-        isFilling ? "flex min-h-0 grow flex-col" : null,
-        className
-      )}
+      className={cn("panel-section", isFilling ? "flex min-h-0 grow flex-col" : null, className)}
     >
-      {isFirst ? null : <Divider className={"-mx-panel-content mb-panel-section"} />}
-
       <Typography className={"wrap-anywhere text-text-secondary"} component={"h3"} variant={"overline"}>
         {title}
       </Typography>

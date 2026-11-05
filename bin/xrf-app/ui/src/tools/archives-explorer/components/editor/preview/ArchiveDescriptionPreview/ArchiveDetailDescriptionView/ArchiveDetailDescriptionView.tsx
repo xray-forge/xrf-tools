@@ -22,7 +22,7 @@ export function ArchiveDetailDescriptionView({
 }: IArchiveDetailDescriptionViewProps): ReactElement {
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <ArchiveDetailModelSection model={description} scope={scope} isFirst />
+      <ArchiveDetailModelSection model={description} scope={scope} />
     </ArchiveDescriptionLayout>
   );
 }

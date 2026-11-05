@@ -39,7 +39,7 @@ export function ArchiveGameMtlView({
 
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Pairings"} isFirst>
+      <EditorPanelSection title={"Pairings"}>
         <ArchiveDescriptionRow
           label={"Pairs"}
           value={formatCount(description.pairs)}

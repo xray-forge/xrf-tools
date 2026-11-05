@@ -31,11 +31,7 @@ export function SequenceTrackPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Sequence"}>
-      <EditorPanelSection
-        title={`Track (${clips.length})`}
-        caption={"Played in order, cutting at each boundary"}
-        isFirst
-      >
+      <EditorPanelSection title={`Track (${clips.length})`} caption={"Played in order, cutting at each boundary"}>
         {clips.map((clip: ISequenceClip, position: number) => (
           <SequenceClipRow key={clip.id} clip={clip} position={position} length={clips.length} />
         ))}

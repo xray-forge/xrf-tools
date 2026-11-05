@@ -12,8 +12,6 @@ import { describeModelBounds, describeModelMesh, describeModelScale } from "./Ar
 interface IArchiveDetailModelSectionProps extends BaseComponentProps {
   model: ArchiveDetailModel;
   scope: ArchiveDescribeScope;
-  /** Whether this section leads the panel, which a standalone object does and a library entry does not. */
-  isFirst?: boolean;
   /** Shown instead of `Detail object`, for a library naming which of its entries this is. */
   title?: string;
 }
@@ -27,11 +25,10 @@ export function ArchiveDetailModelSection({
   className,
   model,
   scope,
-  isFirst = false,
   title = "Detail object",
 }: IArchiveDetailModelSectionProps): ReactElement {
   return (
-    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={title} isFirst={isFirst}>
+    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={title}>
       {model.texture ? (
         <ArchiveDescriptionReference label={"Texture"} reference={model.texture} scope={scope} />
       ) : (

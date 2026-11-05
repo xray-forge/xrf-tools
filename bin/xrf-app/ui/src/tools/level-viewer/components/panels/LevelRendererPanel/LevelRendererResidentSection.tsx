@@ -70,7 +70,7 @@ export function LevelRendererResidentSection({
   memory,
 }: ILevelRendererResidentSectionProps): ReactElement {
   return (
-    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Resident"} isFirst>
+    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Resident"}>
       <EditorPanelProperty
         label={"Sectors"}
         value={`${formatCount(load?.sectors ?? 0)} of ${formatCount(load?.sectorsTotal ?? 0)}`}
