@@ -3,12 +3,14 @@ import { LevelWeatherCycle, LevelWeatherDescription } from "@xrf/ipc/types/xrf-a
 import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { CheckIcon } from "@xrf/ui/icons/check";
+import { ContentCopyIcon } from "@xrf/ui/icons/content-copy";
 import { FilterDramaIcon } from "@xrf/ui/icons/filter-drama";
-import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelWeatherCycleSelect } from "@/core/level/components/weather/LevelWeatherCycleSelect";
@@ -96,7 +98,17 @@ export function LevelWeatherAction({
           />
         </EditorPopoverGroupSection>
 
-        <EditorPopoverGroupSection label={"Time"}>
+        <EditorPopoverGroupSection
+          label={"Time"}
+          actions={
+            <EditorIconAction
+              label={isCopied ? "Copied" : "Copy as LTX"}
+              description={"Copies the keyframe on screen as a weather config section"}
+              icon={isCopied ? <CheckIcon /> : <ContentCopyIcon />}
+              onClick={onCopy}
+            />
+          }
+        >
           <LevelWeatherTime
             time={time}
             keyframes={keyframes}
@@ -106,10 +118,6 @@ export function LevelWeatherAction({
             onPlaying={weatherService.setPlaying}
             onFactor={weatherService.setFactor}
           />
-
-          <Button className={"mt-1 self-start"} size={"small"} onClick={onCopy}>
-            {isCopied ? "Copied" : "Copy as LTX"}
-          </Button>
         </EditorPopoverGroupSection>
       </EditorPopoverContent>
     </EditorPopoverAction>

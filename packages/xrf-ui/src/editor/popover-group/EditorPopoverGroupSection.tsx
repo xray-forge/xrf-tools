@@ -21,6 +21,8 @@ export interface IEditorPopoverGroupSectionProps extends BaseComponentProps {
   isDisabled?: boolean;
   /** Turns the section over from a box before its name; a section with none is a titled run of rows. */
   onToggle?: () => void;
+  /** What acts on the section as a whole, icon actions at the end of its heading, before its reset. */
+  actions?: ReactNode;
   /** Sets the section's settings back, from a button at the end of its heading; none while nothing is to set back. */
   onReset?: () => void;
   /** What the reset sets them back to, its tooltip. */
@@ -31,7 +33,7 @@ export interface IEditorPopoverGroupSectionProps extends BaseComponentProps {
 
 /**
  * One section of a toolbar popover heading its settings, as an editor's details panel heads a category: the box before
- * its name where it turns something on, its reset at the end, set apart from the section before.
+ * its name where it turns something on, its actions and its reset at the end, set apart from the section before.
  */
 export function EditorPopoverGroupSection({
   "data-testid": dataTestId = "editor-popover-group-section",
@@ -43,6 +45,7 @@ export function EditorPopoverGroupSection({
   isOn = false,
   isDisabled = false,
   onToggle,
+  actions,
   onReset,
   resetLabel = "Reset",
   children,
@@ -87,6 +90,8 @@ export function EditorPopoverGroupSection({
             {label}
           </Typography>
         </Tooltip>
+
+        {actions}
 
         {onReset ? (
           <EditorIconAction

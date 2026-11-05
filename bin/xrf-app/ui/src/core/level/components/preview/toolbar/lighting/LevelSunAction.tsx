@@ -3,13 +3,14 @@ import { formatCount, formatDegrees } from "@xrf/format";
 import { LevelSunDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable, Optional } from "@xrf/types";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { LightModeIcon } from "@xrf/ui/icons/light-mode";
 import { WbSunnyIcon } from "@xrf/ui/icons/wb-sunny";
-import { Button } from "@xrf/ui/material/button";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
@@ -89,7 +90,24 @@ export function LevelSunAction({
       isActive={drawnSun !== null}
     >
       <EditorPopoverContent label={"Sun"}>
-        <EditorPopoverGroupSection label={"Light"} resetLabel={LEVEL_WEATHER_RESET_LABEL} onReset={onWeatherReset}>
+        <EditorPopoverGroupSection
+          label={"Light"}
+          resetLabel={LEVEL_WEATHER_RESET_LABEL}
+          actions={
+            <EditorIconAction
+              label={"Use the level's compiled sun"}
+              description={
+                compiled
+                  ? "Stands the sun where xrLC compiled the level's light, as its baked occlusion assumes"
+                  : "This level names no sun"
+              }
+              icon={<LightModeIcon />}
+              isDisabled={!compiled}
+              onClick={onUseCompiled}
+            />
+          }
+          onReset={onWeatherReset}
+        >
           <LevelManualWeatherVectorField
             field={"sunColor"}
             isColor
@@ -124,10 +142,6 @@ export function LevelSunAction({
             manual={manual}
             onEdit={weatherService.editManual}
           />
-
-          <Button size={"small"} disabled={!compiled} onClick={onUseCompiled}>
-            {compiled ? "Use the level's compiled sun" : "This level names no sun"}
-          </Button>
         </EditorPopoverGroupSection>
 
         <EditorPopoverGroupSection
