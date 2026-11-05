@@ -1,4 +1,4 @@
-import { describe, expect, it } from "@jest/globals";
+import { describe, expect, it, jest } from "@jest/globals";
 import { fireEvent, waitFor } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
@@ -8,6 +8,26 @@ import { renderWithTheme } from "#/testing/render";
 import { EditorPopoverAction } from "./EditorPopoverAction";
 
 describe("EditorPopoverAction", () => {
+  // Taller than the window allows, MUI moved a popover up over its trigger; capped, it scrolls under it instead.
+  it("holds the popover to the room under its trigger, so a tall one scrolls rather than moves", async () => {
+    const { getByRole, findByRole } = renderWithTheme(
+      <EditorPopoverAction label={"Look"} description={"The look"} icon={<TuneIcon />}>
+        <button>Setting</button>
+      </EditorPopoverAction>
+    );
+
+    jest
+      .spyOn(getByRole("button", { name: "Look" }), "getBoundingClientRect")
+      .mockReturnValue(DOMRect.fromRect({ x: 0, y: 40, width: 24, height: 24 }));
+
+    await userEvent.click(getByRole("button", { name: "Look" }));
+
+    // The window's height, less the trigger's bottom and the margin MUI keeps from the window's edge.
+    expect(await findByRole("dialog", { name: "Look" })).toHaveStyle({
+      maxHeight: `${window.innerHeight - 64 - 16}px`,
+    });
+  });
+
   it("opens a named dialog from the keyboard and restores focus when dismissed", async () => {
     const { getByRole, findByRole, queryByRole, getByTestId } = renderWithTheme(
       <EditorPopoverAction
