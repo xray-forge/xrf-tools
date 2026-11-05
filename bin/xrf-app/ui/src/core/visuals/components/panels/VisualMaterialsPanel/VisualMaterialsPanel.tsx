@@ -3,6 +3,7 @@ import { AssetTextureDescriptor } from "@xrf/ipc/types/xrf-app-core";
 import { VisualDescription, VisualTextureDependency } from "@xrf/ipc/types/xrf-visual";
 import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
+import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useMemo } from "react";
@@ -62,10 +63,10 @@ export function VisualMaterialsPanel({
           </Typography>
 
           {selected?.texturesLtx ? (
-            <Typography className={"mt-1 block text-warning"} variant={"caption"}>
+            <EditorPopoverNote tone={"warning"}>
               {`Bump declarations are read from .thm files only. ${selected.texturesLtx.logicalPath} may declare ` +
                 "more, and is not read."}
-            </Typography>
+            </EditorPopoverNote>
           ) : null}
         </div>
       ) : null}

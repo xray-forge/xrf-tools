@@ -1,11 +1,10 @@
 import { WorldMusicCommand, WorldSoundMusicReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
-import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection, EditorPanelSectionEmpty } from "@xrf/ui/editor/panel";
 import { EditorPopoverSelectRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { MenuItem } from "@xrf/ui/material/menu";
 import { Slider } from "@xrf/ui/material/slider";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, RefObject, useCallback, useEffect, useRef, useState } from "react";
 
 import { formatLevelSoundSeconds, formatLevelSoundTrackTime } from "@/tools/level-viewer/lib/sound/level-sound-format";
@@ -105,9 +104,7 @@ export function LevelSoundMusicSection({
   if (!music || music.tracks.length === 0) {
     return (
       <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Music"}>
-        <Typography className={"block text-text-secondary"} variant={"caption"}>
-          The level names no music.
-        </Typography>
+        <EditorPanelSectionEmpty label={"The level names no music."} />
       </EditorPanelSection>
     );
   }

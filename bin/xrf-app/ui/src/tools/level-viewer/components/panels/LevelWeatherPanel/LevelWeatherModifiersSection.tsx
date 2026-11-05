@@ -1,6 +1,5 @@
-import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection, EditorPanelSectionEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 interface ILevelWeatherModifiersSectionProps extends BaseComponentProps {
@@ -28,9 +27,7 @@ export function LevelWeatherModifiersSection({
           <EditorPanelProperty label={"Around the camera"} value={reaching} />
         </>
       ) : (
-        <Typography className={"block text-text-secondary"} variant={"caption"}>
-          The level has no level.env_mod.
-        </Typography>
+        <EditorPanelSectionEmpty label={"The level has no level.env_mod."} />
       )}
     </EditorPanelSection>
   );

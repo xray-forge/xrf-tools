@@ -4,7 +4,6 @@ import { Nullable } from "@xrf/types";
 import { EditorPanelSection } from "@xrf/ui/editor/panel";
 import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 import { LevelWeatherCycleSelect } from "@/core/level/components/weather/LevelWeatherCycleSelect";
@@ -67,11 +66,7 @@ export function LevelWeatherPlaySection({
       <div className={"flex flex-col gap-1"}>
         <LevelWeatherSourceChoice source={source} isPlayable={isPlayable} onChange={onSource} />
 
-        {failure ? (
-          <Typography className={"block wrap-anywhere text-warning"} variant={"caption"}>
-            {failure}
-          </Typography>
-        ) : null}
+        {failure ? <EditorPopoverNote tone={"warning"}>{failure}</EditorPopoverNote> : null}
 
         {unfollowed ? (
           <EditorPopoverNote>
