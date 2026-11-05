@@ -1,8 +1,8 @@
 import { useInjection } from "@wirestate/react";
 import { Nullable } from "@xrf/types";
+import { EditorPanelEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { List } from "@xrf/ui/material/list";
-import { Typography } from "@xrf/ui/material/typography";
 import { cn } from "@xrf/ui/theme";
 import { ReactElement, useCallback, useMemo, useState } from "react";
 
@@ -57,9 +57,9 @@ export function EquipmentOccupantsPanel({
       </List>
 
       {rows.length ? null : (
-        <Typography className={"p-2"} variant={"caption"} color={"text.secondary"}>
-          {gridService.layout ? "Nothing matches" : "No sheet open"}
-        </Typography>
+        <EditorPanelEmpty
+          label={gridService.layout ? "No item on the sheet matches that." : "No sheet open. Its items list here."}
+        />
       )}
     </div>
   );

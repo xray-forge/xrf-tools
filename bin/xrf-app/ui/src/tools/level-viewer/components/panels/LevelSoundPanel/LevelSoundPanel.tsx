@@ -1,9 +1,13 @@
 import { useInjection } from "@wirestate/react";
 import { WorldMusicCommand, WorldSoundReport, WorldSoundVoiceReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
-import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import {
+  EditorPanelEmpty,
+  EditorPanelProperty,
+  EditorPanelSection,
+  EditorPanelSectionEmpty,
+} from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback } from "react";
 
 import { LevelLoadService } from "@/core/level/services/level-load";
@@ -75,9 +79,7 @@ export function LevelSoundPanel({
 
       <EditorPanelSection title={report.ambient ? `Channels of ${report.ambient}` : "Channels"}>
         {report.channels.length === 0 ? (
-          <Typography className={"block text-text-secondary"} variant={"caption"}>
-            The ambient playing has no sound channel.
-          </Typography>
+          <EditorPanelSectionEmpty label={"The ambient playing has no sound channel."} />
         ) : (
           report.channels.map((channel) => (
             <EditorPanelProperty

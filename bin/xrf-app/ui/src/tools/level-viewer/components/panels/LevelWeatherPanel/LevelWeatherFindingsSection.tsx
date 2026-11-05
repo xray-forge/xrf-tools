@@ -1,5 +1,5 @@
 import { EnvironmentFinding } from "@xrf/ipc/types/xrf-environment";
-import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelSection, EditorPanelSectionEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
@@ -38,9 +38,7 @@ export function LevelWeatherFindingsSection({
           ))}
         </ul>
       ) : (
-        <Typography className={"block text-text-secondary"} variant={"caption"}>
-          Nothing wrong in its config.
-        </Typography>
+        <EditorPanelSectionEmpty label={"Nothing wrong in its config."} />
       )}
     </EditorPanelSection>
   );

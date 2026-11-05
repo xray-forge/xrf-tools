@@ -1,6 +1,6 @@
 import { Nullable } from "@xrf/types";
+import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
@@ -49,9 +49,9 @@ export function TextureGlossField({
       />
 
       {minimum !== null && value < minimum ? (
-        <Typography className={"block"} variant={"caption"} color={"warning.main"}>
+        <EditorPopoverNote tone={"warning"}>
           {`Below ${minimum}, the surface shows almost no specular response. The pair is still written.`}
-        </Typography>
+        </EditorPopoverNote>
       ) : null}
     </div>
   );

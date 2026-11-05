@@ -8,7 +8,6 @@ import { RestartAltIcon } from "@xrf/ui/icons/restart-alt";
 import { VisibilityIcon } from "@xrf/ui/icons/visibility";
 import { VisibilityOffIcon } from "@xrf/ui/icons/visibility-off";
 import { Chip } from "@xrf/ui/material/chip";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
@@ -84,11 +83,11 @@ export function VisualBoneVisibility(): Nullable<ReactElement> {
       ) : null}
 
       {bones.length > VISIBILITY_MASK_BONES ? (
-        <Typography className={"mt-2 block text-warning"} variant={"caption"}>
+        <EditorPopoverNote className={"mt-2"} tone={"warning"}>
           {`${bones.length - VISIBILITY_MASK_BONES} of these bones sit past the engine's ` +
             `${VISIBILITY_MASK_BONES} bone visibility mask, so hiding one of them is a viewer state the engine ` +
             `cannot reach.`}
-        </Typography>
+        </EditorPopoverNote>
       ) : null}
     </EditorPanelSection>
   );

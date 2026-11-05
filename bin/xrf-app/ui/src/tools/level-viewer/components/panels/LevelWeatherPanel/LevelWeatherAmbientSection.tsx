@@ -1,10 +1,9 @@
 import { WorldAmbientReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
-import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPanelProperty, EditorPanelSection, EditorPanelSectionEmpty } from "@xrf/ui/editor/panel";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PlayArrowIcon } from "@xrf/ui/icons/play-arrow";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 /**
@@ -51,11 +50,13 @@ export function LevelWeatherAmbientSection({
   if (!isPlayed || !ambient) {
     return (
       <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Ambient effects"}>
-        <Typography className={"block text-text-secondary"} variant={"caption"}>
-          {isPlayed
-            ? "None until the weather plays and the level's particles are read."
-            : "Switched off in the Particles menu."}
-        </Typography>
+        <EditorPanelSectionEmpty
+          label={
+            isPlayed
+              ? "None until the weather plays and the level's particles are read."
+              : "Switched off in the Particles menu."
+          }
+        />
       </EditorPanelSection>
     );
   }
