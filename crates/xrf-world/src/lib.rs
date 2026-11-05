@@ -17,6 +17,7 @@ pub use crate::contract::camera::world_camera::WorldCamera;
 pub use crate::contract::camera::world_camera_command::WorldCameraCommand;
 pub use crate::contract::camera::world_camera_pose::WorldCameraPose;
 pub use crate::contract::camera::world_drag_end_reason::WorldDragEndReason;
+pub use crate::contract::camera::world_input_buttons::WorldInputButtons;
 pub use crate::contract::camera::world_input_event::WorldInputEvent;
 pub use crate::contract::camera::world_input_modifiers::WorldInputModifiers;
 pub use crate::contract::level::world_level_problems::WorldLevelProblems;

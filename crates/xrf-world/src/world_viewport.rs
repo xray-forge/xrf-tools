@@ -134,6 +134,12 @@ impl WorldViewport {
 
     self.publish_pose(now);
 
+    let steps: i32 = self.camera.take_speed_steps();
+
+    if steps != 0 {
+      self.send(WorldViewportEvent::FlySpeed { steps });
+    }
+
     if let Some(report) = self.weather.take_report(now, ambient) {
       self.send(WorldViewportEvent::Weather { report });
     }

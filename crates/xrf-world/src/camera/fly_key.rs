@@ -16,19 +16,20 @@ pub enum FlyKey {
 }
 
 impl FlyKey {
-  /// What a `KeyboardEvent.code` does: WASD, `E` and `Q` move the camera, and the arrow keys turn it.
+  /// What a `KeyboardEvent.code` does: WASD and the numpad move the camera, `E` and `Q` or the page keys raise and lower
+  /// it, and the arrow keys turn it.
   pub fn from_code(code: &str) -> Option<Self> {
     Some(match code {
       "ArrowDown" => FlyKey::LookDown,
       "ArrowLeft" => FlyKey::TurnLeft,
       "ArrowRight" => FlyKey::TurnRight,
       "ArrowUp" => FlyKey::LookUp,
-      "KeyA" => FlyKey::Left,
-      "KeyD" => FlyKey::Right,
-      "KeyE" => FlyKey::Up,
-      "KeyQ" => FlyKey::Down,
-      "KeyS" => FlyKey::Back,
-      "KeyW" => FlyKey::Forward,
+      "KeyA" | "Numpad4" => FlyKey::Left,
+      "KeyD" | "Numpad6" => FlyKey::Right,
+      "KeyE" | "Numpad9" | "PageUp" => FlyKey::Up,
+      "KeyQ" | "Numpad7" | "PageDown" => FlyKey::Down,
+      "KeyS" | "Numpad2" => FlyKey::Back,
+      "KeyW" | "Numpad8" => FlyKey::Forward,
       "ShiftLeft" | "ShiftRight" => FlyKey::Fast,
       _ => return None,
     })

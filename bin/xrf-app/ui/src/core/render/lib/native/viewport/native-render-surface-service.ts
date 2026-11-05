@@ -86,6 +86,7 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
         this.log.warn("A native viewport command failed:", command, error);
       },
       onFailed: (message: string): void => this.fail(message),
+      onFlySpeed: (steps: number): void => this.onFlySpeed(steps),
       onFrame: (report: RenderFrameReport): void => {
         // A viewport reports only frames it drew, so by its first the window holds the page's backdrop.
         if (this.isRevealedByAnyFrame) {
@@ -189,6 +190,14 @@ export abstract class NativeRenderSurfaceService implements IRenderSurfaceHost {
    * @param _point - Where, in css pixels from the viewport's top left corner; null once it leaves or a press takes it.
    */
   protected onHover(_point: Nullable<IRenderViewPoint>): void {}
+
+  /**
+   * Called with the steps of speed the viewport's fly camera asked for, its wheel turned while the secondary button
+   * flew it: the speed is the subclass's setting to change.
+   *
+   * @param _steps - Whole steps, positive faster.
+   */
+  protected onFlySpeed(_steps: number): void {}
 
   /** Called before the viewport goes. */
   protected onDetached(): void {}

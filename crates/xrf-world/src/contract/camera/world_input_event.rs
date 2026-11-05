@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::contract::camera::world_drag_end_reason::WorldDragEndReason;
+use crate::contract::camera::world_input_buttons::WorldInputButtons;
 use crate::contract::camera::world_input_modifiers::WorldInputModifiers;
 
 /// What the person does over a viewport: the drags its page told from clicks, the hover, the wheel and the keys.
@@ -8,14 +9,16 @@ use crate::contract::camera::world_input_modifiers::WorldInputModifiers;
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 pub enum WorldInputEvent {
-  /// A press travelled far enough to be a drag; `button` is the `PointerEvent.button` pressed, `0` the main one.
+  /// A drag began: the main button alone once its press travelled past a click, any other as it went down.
   DragStart {
-    button: i32,
+    buttons: WorldInputButtons,
     modifiers: WorldInputModifiers,
   },
+  /// Another button went down during the drag, or one of those it holds was let go while another stays held.
+  DragButtons { buttons: WorldInputButtons },
   /// How far the drag moved since its last move: CSS pixels, or the mouse's own counts while the pointer is locked.
   DragMove { dx: f32, dy: f32 },
-  /// The drag is over.
+  /// The drag is over: its last button was let go, or it was taken away.
   DragEnd { reason: WorldDragEndReason },
   /// Where the pointer rests while nothing drags, in CSS pixels from the viewport element's top left corner.
   Hover { x: f32, y: f32 },
@@ -29,7 +32,7 @@ pub enum WorldInputEvent {
   KeyDown { code: String },
   /// A key went up.
   KeyUp { code: String },
-  /// The secondary button asked for a menu, which the page withholds.
+  /// The secondary button, let go without dragging, asked for a menu, which the page withholds.
   ContextMenu,
   /// Nothing heard held is held now: the viewport lost focus, or lost the pointer lock and the key-ups with it.
   ReleaseAll,

@@ -44,6 +44,8 @@ export interface INativeViewportListener {
   onApplied(report: RenderAppliedReport): void;
   /** Where its camera stands, while it moves and once after. */
   onCamera(pose: WorldCameraPose): void;
+  /** Whole steps of speed its fly camera's wheel asked for while the secondary button flew it, positive faster. */
+  onFlySpeed(steps: number): void;
   /** How far its scene has loaded, as that changes. */
   onLoad(report: RenderLoadReport): void;
   /** Where its weather stands, as that changes; null while none plays. */
@@ -87,6 +89,9 @@ export class NativeViewport {
 
         case EWorldViewportEvent.CAMERA:
           return listener.onCamera(event.pose);
+
+        case EWorldViewportEvent.FLY_SPEED:
+          return listener.onFlySpeed(event.steps);
 
         case ERenderViewportEvent.LOAD:
           return listener.onLoad(event.report);

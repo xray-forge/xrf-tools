@@ -103,13 +103,25 @@ export enum EWorldDragEndReason {
 /** Every `EWorldDragEndReason` as the spelling it crosses IPC as, for a value no member has narrowed. */
 export type WorldDragEndReason = `${EWorldDragEndReason}`;
 
+/** The mouse buttons a drag holds, by their `PointerEvent` roles: a left-handed mouse swaps the two sides. */
+export type WorldInputButtons = {
+  /** The main button, usually the left. */
+  main: boolean;
+  /** The secondary button, usually the right. */
+  secondary: boolean;
+  /** The auxiliary button, usually the wheel's press. */
+  auxiliary: boolean;
+};
+
 /** Every `kind` the `WorldInputEvent` union is told apart by, so a switch or a comparison names one. */
 export enum EWorldInputEvent {
-  /** A press travelled far enough to be a drag; `button` is the `PointerEvent.button` pressed, `0` the main one. */
+  /** A drag began: the main button alone once its press travelled past a click, any other as it went down. */
   DRAG_START = "dragStart",
+  /** Another button went down during the drag, or one of those it holds was let go while another stays held. */
+  DRAG_BUTTONS = "dragButtons",
   /** How far the drag moved since its last move: CSS pixels, or the mouse's own counts while the pointer is locked. */
   DRAG_MOVE = "dragMove",
-  /** The drag is over. */
+  /** The drag is over: its last button was let go, or it was taken away. */
   DRAG_END = "dragEnd",
   /** Where the pointer rests while nothing drags, in CSS pixels from the viewport element's top left corner. */
   HOVER = "hover",
@@ -119,7 +131,7 @@ export enum EWorldInputEvent {
   KEY_DOWN = "keyDown",
   /** A key went up. */
   KEY_UP = "keyUp",
-  /** The secondary button asked for a menu, which the page withholds. */
+  /** The secondary button, let go without dragging, asked for a menu, which the page withholds. */
   CONTEXT_MENU = "contextMenu",
   /** Nothing heard held is held now: the viewport lost focus, or lost the pointer lock and the key-ups with it. */
   RELEASE_ALL = "releaseAll",
@@ -127,11 +139,13 @@ export enum EWorldInputEvent {
 
 /** What the person does over a viewport: the drags its page told from clicks, the hover, the wheel and the keys. */
 export type WorldInputEvent =
-  /** A press travelled far enough to be a drag; `button` is the `PointerEvent.button` pressed, `0` the main one. */
-  | { kind: "dragStart"; button: number; modifiers: WorldInputModifiers }
+  /** A drag began: the main button alone once its press travelled past a click, any other as it went down. */
+  | { kind: "dragStart"; buttons: WorldInputButtons; modifiers: WorldInputModifiers }
+  /** Another button went down during the drag, or one of those it holds was let go while another stays held. */
+  | { kind: "dragButtons"; buttons: WorldInputButtons }
   /** How far the drag moved since its last move: CSS pixels, or the mouse's own counts while the pointer is locked. */
   | { kind: "dragMove"; dx: number | null; dy: number | null }
-  /** The drag is over. */
+  /** The drag is over: its last button was let go, or it was taken away. */
   | { kind: "dragEnd"; reason: WorldDragEndReason }
   /** Where the pointer rests while nothing drags, in CSS pixels from the viewport element's top left corner. */
   | { kind: "hover"; x: number | null; y: number | null }
@@ -141,7 +155,7 @@ export type WorldInputEvent =
   | { kind: "keyDown"; code: string }
   /** A key went up. */
   | { kind: "keyUp"; code: string }
-  /** The secondary button asked for a menu, which the page withholds. */
+  /** The secondary button, let go without dragging, asked for a menu, which the page withholds. */
   | { kind: "contextMenu" }
   /** Nothing heard held is held now: the viewport lost focus, or lost the pointer lock and the key-ups with it. */
   | { kind: "releaseAll" };
@@ -417,6 +431,11 @@ export type WorldToggles = {
 export enum EWorldViewportEvent {
   /** Where the camera stands, sent while it moves and once more after it stops. */
   CAMERA = "camera",
+  /**
+   * The fly camera's wheel, turned while the secondary button flies it, asked for it faster or slower: whole steps,
+   * positive faster, which the page's speed setting takes, since the speed the camera flies at is the page's to keep.
+   */
+  FLY_SPEED = "flySpeed",
   /** Where its weather stands, sent as it changes, a few times a second at most; none while nothing plays. */
   WEATHER = "weather",
 }
@@ -425,6 +444,11 @@ export enum EWorldViewportEvent {
 export type WorldViewportEvent =
   /** Where the camera stands, sent while it moves and once more after it stops. */
   | { kind: "camera"; pose: WorldCameraPose }
+  /**
+   * The fly camera's wheel, turned while the secondary button flies it, asked for it faster or slower: whole steps,
+   * positive faster, which the page's speed setting takes, since the speed the camera flies at is the page's to keep.
+   */
+  | { kind: "flySpeed"; steps: number }
   /** Where its weather stands, sent as it changes, a few times a second at most; none while nothing plays. */
   | { kind: "weather"; report: WorldWeatherReport | null };
 

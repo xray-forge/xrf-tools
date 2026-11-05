@@ -178,6 +178,10 @@ export class LevelRenderService extends NativeRenderSurfaceService {
     this.picks.rest(point);
   }
 
+  protected onFlySpeed(steps: number): void {
+    this.camera.stepSpeed(steps);
+  }
+
   protected onDetached(): void {
     this.unlisten?.();
     this.unlisten = null;

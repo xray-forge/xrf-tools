@@ -31,6 +31,21 @@ export const LEVEL_CAMERA_LIMITS = {
   speed: { max: 120, min: 1, step: 1 },
 } as const;
 
+/** What a step of the wheel multiplies the speed by while the secondary button flies the camera. */
+const LEVEL_CAMERA_SPEED_STEP: number = 1.25;
+
+/**
+ * @param speed - Metres a second now.
+ * @param steps - Whole steps of the wheel, positive faster.
+ * @returns The speed a quarter faster or slower a step and at least a metre a second, held to its bounds.
+ */
+export function stepLevelCameraSpeed(speed: number, steps: number): number {
+  const { min, max } = LEVEL_CAMERA_LIMITS.speed;
+  const scaled: number = Math.round(speed * LEVEL_CAMERA_SPEED_STEP ** steps);
+
+  return clamp(steps > 0 ? Math.max(scaled, speed + steps) : Math.min(scaled, speed + steps), min, max);
+}
+
 /** @returns The pointer's sensitivity as the degrees the camera turns a pixel it moves. */
 export function formatCameraSensitivity(sensitivity: number): string {
   return `${formatDegrees(toDegrees(sensitivity), 2)} a pixel`;

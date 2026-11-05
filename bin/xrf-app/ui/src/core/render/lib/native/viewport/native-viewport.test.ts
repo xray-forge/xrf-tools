@@ -14,6 +14,7 @@ function mockListener(): jest.Mocked<INativeViewportListener> {
     onCamera: jest.fn(),
     onCommandFailed: jest.fn(),
     onFailed: jest.fn(),
+    onFlySpeed: jest.fn(),
     onFrame: jest.fn(),
     onLoad: jest.fn(),
     onWeather: jest.fn(),

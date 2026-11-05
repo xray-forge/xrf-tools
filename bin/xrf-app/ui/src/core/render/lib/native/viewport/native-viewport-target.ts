@@ -4,6 +4,7 @@ import {
   EWorldDragEndReason,
   EWorldInputEvent,
   WorldCamera,
+  WorldInputButtons,
   WorldInputEvent,
   WorldInputModifiers,
 } from "@xrf/ipc/types/xrf-world";
@@ -11,6 +12,15 @@ import { assertExhaustive, Nullable } from "@xrf/types";
 
 import { IRenderViewPoint } from "@/core/render/lib/frame/render-view-point";
 import { toNativeRect } from "@/core/render/lib/native/contract/native-rect";
+import {
+  isMainPointerButtonOnly,
+  isNoPointerButton,
+  isSamePointerButtons,
+  isSecondaryPointerButtonOnly,
+  NO_POINTER_BUTTONS,
+  togglePointerButton,
+  toPointerButtons,
+} from "@/core/render/lib/native/viewport/native-pointer-buttons";
 import { requestNativePointerLock } from "@/core/render/lib/native/viewport/native-pointer-lock";
 import { NativeViewport } from "@/core/render/lib/native/viewport/native-viewport";
 import { ENativeViewportAffordance } from "@/core/render/lib/native/viewport/native-viewport-affordance";
@@ -21,7 +31,10 @@ import { clearWindowTextSelection } from "@/lib/dom/selection";
 /** What the pointer shows while it drags a scene, until a lock hides it. */
 const DRAG_CURSOR: string = "grabbing";
 
-/** Css pixels a press may travel and still be a click, rather than the drag a camera looks around by. */
+/**
+ * Css pixels a press may travel and still be a click, rather than the drag a camera moves by; a drag of a button that
+ * never clicks asks for its lock past it, so a right click stays a menu's.
+ */
 const RENDER_CLICK_SLOP: number = 4;
 
 /** Milliseconds within which a second click at the same place is a double click's, which picks nothing again. */
@@ -39,7 +52,10 @@ enum EPressPhase {
 
 /** Whether a drag holds the pointer locked. */
 enum EPressLock {
+  /** Not locked: refused, or not a drag. */
   NONE,
+  /** A drag not yet past the slop, as one of a button that drags as it goes down is: its lock is asked once it is. */
+  UNASKED,
   /** Asked for and not answered; the drag measures the pointer unlocked meanwhile. */
   REQUESTED,
   LOCKED,
@@ -48,7 +64,8 @@ enum EPressLock {
 /** The one press over the viewport being watched. */
 interface IPress {
   pointerId: number;
-  button: number;
+  /** The buttons it holds now, another going down or one of them up as it goes on. */
+  buttons: WorldInputButtons;
   modifiers: WorldInputModifiers;
   /** Where it went down, in client css pixels. */
   originX: number;
@@ -58,6 +75,8 @@ interface IPress {
   lastY: number;
   phase: EPressPhase;
   lock: EPressLock;
+  /** Whether it has travelled past the slop: then its release opens no menu. */
+  isTravelled: boolean;
 }
 
 /** The last click heard, so the second of a double click is not heard as another. */
@@ -98,8 +117,10 @@ export interface INativeViewportPointerListeners {
  * It opens a hole down to the window through the page (`NativeViewportHole`) once the renderer draws the window, reports
  * where the element is and what the page shows around it whenever that changes, and tells the world what the person
  * does over it. It alone tells a click from a drag: a main-button press let go within the slop is a click, handed to
- * `onClick`; a press travelling past it is a drag, sent as gestures with the pointer locked. Drag motion and hovering
- * merge into one event a frame, the hovering handed to `onHover` too.
+ * `onClick`; one travelling past it is a drag. Any other button drags as it goes down, so the camera hears it held
+ * before the pointer moves. A drag is sent as gestures with the pointer locked once it travels past the slop, a button
+ * joining or leaving it as its buttons changing. Drag motion and hovering merge into one event a frame, the hovering
+ * handed to `onHover` too.
  */
 export class NativeViewportTarget {
   private readonly hole: NativeViewportHole;
@@ -109,6 +130,8 @@ export class NativeViewportTarget {
   private sent: string = "";
   private rect: DOMRect;
   private press: Nullable<IPress> = null;
+  /** Whether the press just let go travelled past the slop, so the menu its release asks for is not one. */
+  private isMenuWithheld: boolean = false;
   private clicked: Nullable<IClick> = null;
   /** Drag motion gathered and not yet sent. */
   private moved: { dx: number; dy: number } = { dx: 0, dy: 0 };
@@ -220,12 +243,35 @@ export class NativeViewportTarget {
 
   private startDrag(press: IPress, pointer: PointerEvent): void {
     press.phase = EPressPhase.DRAGGING;
-    this.send({ button: press.button, kind: EWorldInputEvent.DRAG_START, modifiers: press.modifiers });
+    press.lock = EPressLock.UNASKED;
+    this.send({ buttons: press.buttons, kind: EWorldInputEvent.DRAG_START, modifiers: press.modifiers });
     // The travel before it became a drag is its first move, so the view does not jump.
     this.track(press, pointer);
 
     this.resting ??= this.element.style.cursor;
     this.element.style.cursor = DRAG_CURSOR;
+
+    this.lockPast(press, pointer);
+  }
+
+  /** Whether a press has travelled past the slop, which it stays once it has, whatever a lock keeps of the pointer. */
+  private isPastSlop(press: IPress, pointer: PointerEvent): boolean {
+    press.isTravelled ||=
+      Math.hypot(pointer.clientX - press.originX, pointer.clientY - press.originY) > RENDER_CLICK_SLOP;
+
+    return press.isTravelled;
+  }
+
+  /** Whether a press measures the pointer unlocked, where its position moves. */
+  private isUnlocked(press: IPress): boolean {
+    return press.lock === EPressLock.NONE || press.lock === EPressLock.UNASKED;
+  }
+
+  /** Asks for a drag's lock once it has travelled past the slop, from a move, where WebView2 grants a raw one. */
+  private lockPast(press: IPress, pointer: PointerEvent): void {
+    if (press.lock !== EPressLock.UNASKED || !this.isPastSlop(press, pointer)) {
+      return;
+    }
 
     const affordance: ENativeViewportAffordance = this.getAffordance({
       x: press.originX - this.rect.left,
@@ -242,21 +288,66 @@ export class NativeViewportTarget {
     }
   }
 
-  /** Whether a drag turns the camera rather than panning it, as the camera's controller tells them apart. */
+  /**
+   * Whether a drag turns the camera rather than panning it, as the camera's controller tells them apart by the buttons
+   * it began with.
+   */
   private isTurn(press: IPress): boolean {
+    // todo: Take whether a drag turns from the affordance the world answers a hover with, rather than mirroring each
+    // controller's mapping of buttons here, which needs the world to answer hovers.
     const kind: WorldCamera["kind"] = this.viewport.getCameraKind();
 
     switch (kind) {
-      // Shift is the fly camera's boost, held while it looks around.
+      // The main button walks and turns, or orbits with Alt; the secondary alone looks around, and dollies with Alt.
       case EWorldCamera.FLY:
-        return press.button === 0;
+        return (
+          isMainPointerButtonOnly(press.buttons) ||
+          (isSecondaryPointerButtonOnly(press.buttons) && !press.modifiers.altKey)
+        );
 
       case EWorldCamera.ORBIT:
-        return press.button === 0 && !press.modifiers.shiftKey && !press.modifiers.ctrlKey;
+        return isMainPointerButtonOnly(press.buttons) && !press.modifiers.shiftKey && !press.modifiers.ctrlKey;
 
       default:
         assertExhaustive(kind);
     }
+  }
+
+  /**
+   * Hears a button go down or up while another is held, which reaches the page as a move rather than a press: a press
+   * still pending becomes a drag of them all, a drag tells the world its buttons changed.
+   */
+  private rebutton(press: IPress, pointer: PointerEvent): void {
+    const buttons: WorldInputButtons = this.getHeldButtons(press, pointer);
+
+    if (isSamePointerButtons(buttons, press.buttons) || isNoPointerButton(buttons)) {
+      return;
+    }
+
+    press.buttons = buttons;
+
+    switch (press.phase) {
+      case EPressPhase.PENDING:
+        return this.startDrag(press, pointer);
+
+      case EPressPhase.DRAGGING:
+        return this.send({ buttons, kind: EWorldInputEvent.DRAG_BUTTONS });
+
+      case EPressPhase.CANCELLED:
+        return;
+
+      default:
+        assertExhaustive(press.phase);
+    }
+  }
+
+  /** The buttons a move says are held, which WebView2's raw lock reports as none: then the one it names toggles. */
+  private getHeldButtons(press: IPress, pointer: PointerEvent): WorldInputButtons {
+    if (pointer.buttons !== 0) {
+      return toPointerButtons(pointer.buttons);
+    }
+
+    return press.lock === EPressLock.LOCKED ? togglePointerButton(press.buttons, pointer.button) : press.buttons;
   }
 
   /** Gathers how far a dragging pointer moved: by its motion while locked, where its position stands still. */
@@ -364,9 +455,15 @@ export class NativeViewportTarget {
       this.cancel();
       this.send({ kind: EWorldInputEvent.RELEASE_ALL });
     },
+    // The secondary button's release asks for a menu, unless it dragged the camera.
     contextmenu: (event: Event): void => {
       event.preventDefault();
-      this.send({ kind: EWorldInputEvent.CONTEXT_MENU });
+
+      if (!this.isMenuWithheld) {
+        this.send({ kind: EWorldInputEvent.CONTEXT_MENU });
+      }
+
+      this.isMenuWithheld = false;
     },
     keydown: (event: Event): void => {
       const key: KeyboardEvent = event as KeyboardEvent;
@@ -385,7 +482,7 @@ export class NativeViewportTarget {
     keyup: (event: Event): void => this.send({ code: (event as KeyboardEvent).code, kind: EWorldInputEvent.KEY_UP }),
     // A capture dropped mid-press takes the press away, unless a lock took it, which it does as it engages.
     lostpointercapture: (): void => {
-      if (this.press && this.press.lock === EPressLock.NONE) {
+      if (this.press && this.isUnlocked(this.press)) {
         this.cancel();
       }
     },
@@ -403,16 +500,25 @@ export class NativeViewportTarget {
       clearWindowTextSelection();
       this.element.focus({ preventScroll: true });
 
-      // One press at a time, of the first pointer down: a second finger would fight it.
-      if (!pointer.isPrimary || (this.press && this.press.phase !== EPressPhase.CANCELLED)) {
+      const buttons: WorldInputButtons = togglePointerButton(NO_POINTER_BUTTONS, pointer.button);
+
+      // One press at a time, of the first pointer down: a second finger would fight it. A button a drag does not tell
+      // of, as the back and forward ones, presses nothing.
+      if (
+        !pointer.isPrimary ||
+        (this.press && this.press.phase !== EPressPhase.CANCELLED) ||
+        isNoPointerButton(buttons)
+      ) {
         return;
       }
 
       this.element.setPointerCapture?.(pointer.pointerId);
       this.hovered = null;
       this.told.onHover?.(null);
-      this.press = {
-        button: pointer.button,
+
+      const press: IPress = {
+        buttons,
+        isTravelled: false,
         lastX: pointer.clientX,
         lastY: pointer.clientY,
         lock: EPressLock.NONE,
@@ -427,6 +533,14 @@ export class NativeViewportTarget {
         phase: EPressPhase.PENDING,
         pointerId: pointer.pointerId,
       };
+
+      this.press = press;
+      this.isMenuWithheld = false;
+
+      // Only the main button clicks; another drags at once, so the fly camera hears the secondary held before it moves.
+      if (!isMainPointerButtonOnly(buttons)) {
+        this.startDrag(press, pointer);
+      }
     },
     // The viewport under the pointer hears its keys without a click first; leaving it keeps the focus where it is.
     pointerenter: (event: Event): void => {
@@ -456,23 +570,27 @@ export class NativeViewportTarget {
 
       // A move with no button held ends a press whose release never arrived. Not while locked: a raw lock's moves
       // report no buttons in WebView2, and a locked pointer's release always reaches the lock.
-      if (pointer.buttons === 0 && press.lock === EPressLock.NONE) {
+      if (pointer.buttons === 0 && this.isUnlocked(press)) {
         this.endDrag(press, EWorldDragEndReason.RELEASED);
         this.press = null;
 
         return;
       }
 
+      this.rebutton(press, pointer);
+
       switch (press.phase) {
         case EPressPhase.PENDING:
-          if (Math.hypot(pointer.clientX - press.originX, pointer.clientY - press.originY) > RENDER_CLICK_SLOP) {
+          if (this.isPastSlop(press, pointer)) {
             this.startDrag(press, pointer);
           }
 
           return;
 
         case EPressPhase.DRAGGING:
-          return this.track(press, pointer);
+          this.track(press, pointer);
+
+          return this.lockPast(press, pointer);
 
         case EPressPhase.CANCELLED:
           return;
@@ -490,9 +608,10 @@ export class NativeViewportTarget {
       }
 
       this.press = null;
+      this.isMenuWithheld = press.isTravelled;
 
-      // Only the main button is a click; it stayed within the slop, or it would be dragging.
-      if (press.phase === EPressPhase.PENDING && press.button === 0 && pointer.button === 0) {
+      // Only the main button alone stays pending: let go, it is a click, having stayed within the slop.
+      if (press.phase === EPressPhase.PENDING) {
         this.click(pointer);
       }
 
