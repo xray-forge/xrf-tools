@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { EMPTY_ARRAY } from "@xrf/collections";
 import { formatPercent, formatSeconds } from "@xrf/format";
 import { ThunderboltCollection } from "@xrf/ipc/types/xrf-environment";
 import { ERenderRainDropsMode, ERenderRainMode } from "@xrf/ipc/types/xrf-renderer";
@@ -37,9 +38,6 @@ import {
 } from "@/core/render/lib/features/world/render-rain-choices";
 import { TRenderRainSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { LevelWeatherCollectionSelect } from "@/tools/level-viewer/components/weather/LevelWeatherCollectionSelect";
-
-/** What the thunder's list offers before the level's weather is read. */
-const NO_COLLECTIONS: ReadonlyArray<ThunderboltCollection> = [];
 
 /** The rain settings the falling drops' section sets, and gives back to the settings. */
 const RAIN_DROPS_KEYS: ReadonlyArray<keyof TRenderRainSettings> = [
@@ -89,7 +87,7 @@ export function LevelRainAction({
   // The keyframe on screen: the one set by hand, or the weather's mix, which the first edit seeds it from.
   const manual: ILevelManualWeather = weatherService.shown;
   const collections: ReadonlyArray<ThunderboltCollection> =
-    weatherService.description.value?.thunderboltCollections ?? NO_COLLECTIONS;
+    weatherService.description.value?.thunderboltCollections ?? EMPTY_ARRAY;
   // The rain as the view draws it: its drops, whether puddles gather, and their strengths.
   const rain: TRenderRainSettings = toLevelModeFeature("rain", settings, features);
   const isRaining: boolean = isRainy && manual.rainDensity > 0;

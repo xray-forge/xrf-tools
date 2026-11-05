@@ -1,3 +1,4 @@
+import { EMPTY_ARRAY } from "@xrf/collections";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { PauseIcon } from "@xrf/ui/icons/pause";
 import { PlayArrowIcon } from "@xrf/ui/icons/play-arrow";
@@ -13,9 +14,6 @@ import { WEATHER_DAY_LENGTH } from "@/core/level/lib/weather/weather-day";
 
 /** A minute, the slider's step. */
 const MINUTE: number = 60;
-
-/** No keyframe marked, one array kept so the marks are not built again on every render. */
-const NO_KEYFRAMES: ReadonlyArray<number> = [];
 
 interface ILevelWeatherClockProps extends BaseComponentProps {
   /** Seconds since midnight. */
@@ -37,7 +35,7 @@ export function LevelWeatherClock({
   className,
   time,
   isPlaying,
-  keyframes = NO_KEYFRAMES,
+  keyframes = EMPTY_ARRAY,
   isDisabled = false,
   onSeek,
   onPlaying,

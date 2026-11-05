@@ -1,4 +1,5 @@
 import { useInjection } from "@wirestate/react";
+import { EMPTY_ARRAY } from "@xrf/collections";
 import { formatCount, formatDegrees } from "@xrf/format";
 import { LevelSunDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
@@ -36,9 +37,6 @@ import { LevelViewService } from "@/core/level/services/level-view";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 
-/** Lens flares while the weather is not read yet. */
-const NO_SUNS: ReadonlyArray<string> = [];
-
 /**
  * The sun, the ambient and the hemisphere, by the keys a weather writes them with; the lens flare the sun is drawn
  * with and the light shafts through its shadow, each with its switch. Its direction is marked among the overlays.
@@ -62,7 +60,7 @@ export function LevelSunAction({
   // The sun or moon the sky draws now, by its `suns.ltx` section, or null where it shows neither.
   const drawnSun: Nullable<string> = renderService.drawnSun;
   // Every lens flare of the game a keyframe can name by `sun`.
-  const suns: ReadonlyArray<string> = weatherService.description.value?.suns ?? NO_SUNS;
+  const suns: ReadonlyArray<string> = weatherService.description.value?.suns ?? EMPTY_ARRAY;
   const options: ILevelViewOptions = viewService.options;
   // How the level's sun shafts step, and the floor under their density.
   const sunShafts: ILevelSunShaftsOptions = weatherService.sunShafts;
