@@ -4,18 +4,21 @@ import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { VideocamIcon } from "@xrf/ui/icons/videocam";
-import { Button } from "@xrf/ui/material/button";
-import { ReactElement } from "react";
+import { ReactElement, useCallback } from "react";
 
 import {
   DEFAULT_LEVEL_CAMERA_OPTIONS,
   formatCameraSensitivity,
   ILevelCameraOptions,
+  isDefaultLevelCamera,
   LEVEL_CAMERA_LIMITS,
 } from "@/core/level/lib/camera/level-camera-options";
 import { LevelViewService } from "@/core/level/services/level-view";
 import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 import { usePartialChange } from "@/lib/react/use-partial-change";
+
+/** What the camera's reset says it does: it sees and moves as it did before anyone touched it. */
+const LEVEL_CAMERA_RESET_LABEL: string = "Reset to the defaults";
 
 /**
  * What the camera sees and how it answers input, in the toolbar beside the rest of what a person sets.
@@ -30,6 +33,8 @@ export function LevelCameraAction({
 
   const onSet = usePartialChange(camera, viewService.setCameraOptions);
 
+  const onReset = useCallback(() => viewService.setCameraOptions(DEFAULT_LEVEL_CAMERA_OPTIONS), [viewService]);
+
   return (
     <EditorPopoverAction
       data-testid={dataTestId}
@@ -39,7 +44,11 @@ export function LevelCameraAction({
       description={`${formatDegrees(camera.fieldOfView)} field of view, ${camera.speed} m/s`}
       icon={<VideocamIcon />}
     >
-      <EditorPopoverContent label={"Camera"}>
+      <EditorPopoverContent
+        label={"Camera"}
+        resetLabel={LEVEL_CAMERA_RESET_LABEL}
+        onReset={isDefaultLevelCamera(camera) ? undefined : onReset}
+      >
         <RenderValueSlider
           label={"Field of view"}
           value={camera.fieldOfView}
@@ -71,10 +80,6 @@ export function LevelCameraAction({
           format={formatCameraSensitivity}
           onChange={(sensitivity) => onSet({ sensitivity })}
         />
-
-        <Button size={"small"} onClick={() => viewService.setCameraOptions(DEFAULT_LEVEL_CAMERA_OPTIONS)}>
-          Reset the camera
-        </Button>
       </EditorPopoverContent>
     </EditorPopoverAction>
   );

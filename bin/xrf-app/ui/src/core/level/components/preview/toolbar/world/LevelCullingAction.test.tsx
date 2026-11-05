@@ -8,6 +8,7 @@ import {
   renderLevelView,
   TLevelViewRenderResult,
 } from "@/core/level/fixtures/level-container";
+import { DEFAULT_LEVEL_LOD_OPTIONS } from "@/core/level/lib/lod/level-lod-options";
 import { clearLocalStorage } from "@/core/storage";
 
 /**
@@ -54,5 +55,17 @@ describe("LevelCullingAction", () => {
     await userEvent.click(getByRole("checkbox", { name: "Opaque depth pass" }));
 
     expect(view.options.isDepthPrepassed).toBe(false);
+  });
+
+  it("sets the impostors' distance back to the game's from their heading, only while it is off it", async () => {
+    const { getByRole, queryByRole, view } = await renderOpenAction(({ renderSettings, view }) => {
+      renderSettings.setRendererOverrides({ lod: { isImpostors: true } });
+      view.setLod({ ...DEFAULT_LEVEL_LOD_OPTIONS, distance: 2 });
+    });
+
+    await userEvent.click(getByRole("button", { name: "Impostors: Reset to the game's" }));
+
+    expect(view.lod).toEqual(DEFAULT_LEVEL_LOD_OPTIONS);
+    expect(queryByRole("button", { name: "Impostors: Reset to the game's" })).toBeNull();
   });
 });
