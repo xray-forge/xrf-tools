@@ -1,9 +1,9 @@
 import { Nullable } from "@xrf/types";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Slider } from "@xrf/ui/material/slider";
 import { Typography } from "@xrf/ui/material/typography";
-import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
+
+import { RenderValueSlider } from "@/core/render/components/controls/RenderValueSlider";
 
 interface ITextureGlossFieldProps extends BaseComponentProps {
   value: number;
@@ -11,6 +11,11 @@ interface ITextureGlossFieldProps extends BaseComponentProps {
   minimum: Nullable<number>;
   isDisabled?: boolean;
   onChange: (value: number) => void;
+}
+
+/** A gloss level as the slider reads it. */
+function formatGloss(value: number): string {
+  return value.toFixed(2);
 }
 
 /**
@@ -30,24 +35,21 @@ export function TextureGlossField({
   onChange,
 }: ITextureGlossFieldProps): ReactElement {
   return (
-    <div data-testid={dataTestId} id={id} className={cn("px-2", className)}>
-      <Typography variant={"caption"} color={"text.secondary"}>
-        {`Gloss level ${value.toFixed(2)}`}
-      </Typography>
-
-      <Slider
-        size={"small"}
+    <div data-testid={dataTestId} id={id} className={className}>
+      <RenderValueSlider
+        label={"Gloss level"}
+        description={"The one level the whole surface takes, without a mask"}
+        value={value}
         min={0}
         max={1}
         step={0.05}
-        value={value}
-        disabled={isDisabled}
-        valueLabelDisplay={"auto"}
-        onChange={(_, next: number | Array<number>) => onChange(Array.isArray(next) ? (next[0] ?? 0) : next)}
+        format={formatGloss}
+        isDisabled={isDisabled}
+        onChange={onChange}
       />
 
       {minimum !== null && value < minimum ? (
-        <Typography variant={"caption"} color={"warning.main"}>
+        <Typography className={"block"} variant={"caption"} color={"warning.main"}>
           {`Below ${minimum}, the surface shows almost no specular response. The pair is still written.`}
         </Typography>
       ) : null}

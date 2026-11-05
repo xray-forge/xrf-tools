@@ -7,6 +7,7 @@ import {
 } from "@xrf/ipc/types/xrf-app-textures";
 import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Alert } from "@xrf/ui/material/alert";
 import { Button } from "@xrf/ui/material/button";
@@ -72,16 +73,16 @@ export function TextureDescriptorPanel({
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Descriptor"}>
       {description.targets === null ? (
-        <Alert className={"mb-2"} severity={"info"}>
+        <EditorPopoverNote>
           This texture is served out of an archive, so there is no file to write. Fields can be read, not saved.
-        </Alert>
+        </EditorPopoverNote>
       ) : null}
 
       {isAuthoring ? (
-        <Alert className={"mb-2"} severity={"info"}>
+        <EditorPopoverNote>
           No .thm sits beside this texture. Saving writes one, starting from the defaults the SDK begins a new
           descriptor at.
-        </Alert>
+        </EditorPopoverNote>
       ) : null}
 
       <EditorPanelSection title={"Primary"} caption={"What the engine reads at load time"}>
@@ -90,7 +91,9 @@ export function TextureDescriptorPanel({
           label={"Texture type"}
           entries={vocabulary.textureTypes}
           value={draft.textureType}
-          helperText={"LoadTHM skips a cube or bump map's descriptor whole; choosing a type applies the SDK's defaults"}
+          description={
+            "LoadTHM skips a cube or bump map's descriptor whole; choosing a type applies the SDK's defaults"
+          }
           onChange={(textureType: number) => onEdit(withTextureType(draft, textureType, vocabulary.typeChanges))}
         />
 
@@ -106,7 +109,7 @@ export function TextureDescriptorPanel({
           data-testid={"texture-field-bump-name"}
           label={"Bump texture"}
           value={draft.bumpName}
-          helperText={"Taken verbatim; there is no _bump naming convention behind it"}
+          description={"Taken verbatim; there is no _bump naming convention behind it"}
           onChange={(bumpName: string) => onEdit({ bumpName })}
         />
 
@@ -124,7 +127,7 @@ export function TextureDescriptorPanel({
           onChange={(detailScale: number) => onEdit({ detailScale })}
         />
 
-        <div className={"mt-2 flex flex-col"}>
+        <div className={"mt-1 flex flex-col"}>
           {primaryFlags.map((flag: TextureFlagEntry) => (
             <TextureFlagField
               key={flag.bit}
@@ -162,7 +165,7 @@ export function TextureDescriptorPanel({
           label={"Material"}
           entries={vocabulary.materials}
           value={draft.material}
-          helperText={"Reaches the renderer through the descriptor manager, unlike the rest of this group"}
+          description={"Reaches the renderer through the descriptor manager, unlike the rest of this group"}
           onChange={(material: number) => onEdit({ material })}
         />
 
@@ -177,14 +180,15 @@ export function TextureDescriptorPanel({
           data-testid={"texture-field-virtual-height"}
           label={"Virtual height"}
           value={draft.virtualHeight}
-          helperText={"Not read at runtime; the bump generator reads it"}
+          description={"Not read at runtime; the bump generator reads it"}
           onChange={(virtualHeight: number) => onEdit({ virtualHeight })}
         />
 
         <TextureTextField
           data-testid={"texture-field-ext-normal-map"}
-          label={"External normal map"}
+          label={"Normal map"}
           value={draft.extNormalMapName}
+          description={"The external normal map the SDK names, in place of one generated from the bump"}
           onChange={(extNormalMapName: string) => onEdit({ extNormalMapName })}
         />
 
@@ -199,13 +203,13 @@ export function TextureDescriptorPanel({
           data-testid={"texture-field-width"}
           label={"Width"}
           value={draft.width}
-          helperText={"From the DDS header; the descriptor's own copy is refreshed on save"}
+          description={"From the DDS header; the descriptor's own copy is refreshed on save"}
           isReadOnly
         />
 
         <TextureNumberField data-testid={"texture-field-height"} label={"Height"} value={draft.height} isReadOnly />
 
-        <div className={"mt-2 flex flex-col"}>
+        <div className={"mt-1 flex flex-col"}>
           {vocabulary.flags
             .filter((flag: TextureFlagEntry) => !PRIMARY_FLAG_LABELS.includes(flag.label))
             .map((flag: TextureFlagEntry) => (

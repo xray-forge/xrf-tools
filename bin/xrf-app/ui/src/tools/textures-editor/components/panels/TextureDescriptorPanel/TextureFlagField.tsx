@@ -1,7 +1,6 @@
+import { EditorPopoverSwitchRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { Checkbox } from "@xrf/ui/material/checkbox";
-import { FormControlLabel } from "@xrf/ui/material/form-control-label";
-import { ChangeEvent, ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
 interface ITextureFlagFieldProps extends BaseComponentProps {
   label: string;
@@ -13,7 +12,8 @@ interface ITextureFlagFieldProps extends BaseComponentProps {
  * One bit of the flag word, under the SDK's own identifier for it.
  *
  * Labelled `flHasAlpha` rather than "Has alpha", because the identifier is what an author of a `.thm` recognises and
- * what every other tool and every piece of documentation calls it.
+ * what every other tool and every piece of documentation calls it. The box leads, so the identifier takes the row's
+ * whole width rather than a label column too narrow for the longer ones.
  */
 export function TextureFlagField({
   "data-testid": dataTestId = "texture-flag-field",
@@ -23,19 +23,14 @@ export function TextureFlagField({
   isChecked,
   onChange,
 }: ITextureFlagFieldProps): ReactElement {
-  const handleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => onChange(event.target.checked),
-    [onChange]
-  );
-
   return (
-    <FormControlLabel
+    <EditorPopoverSwitchRow
       data-testid={dataTestId}
       id={id}
       className={className}
-      control={<Checkbox size={"small"} checked={isChecked} onChange={handleChange} />}
       label={label}
-      slotProps={{ typography: { variant: "body2" } }}
+      isChecked={isChecked}
+      onChange={onChange}
     />
   );
 }

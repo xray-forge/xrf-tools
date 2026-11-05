@@ -3,13 +3,11 @@ import { TextureDescription } from "@xrf/ipc/types/xrf-app-textures";
 import { EXrayExtension } from "@xrf/ipc/types/xrf-extension";
 import { Nullable } from "@xrf/types";
 import { EditorPanelEmpty, EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPopoverNote, EditorPopoverSwitchRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Alert } from "@xrf/ui/material/alert";
 import { Button } from "@xrf/ui/material/button";
-import { Checkbox } from "@xrf/ui/material/checkbox";
-import { FormControlLabel } from "@xrf/ui/material/form-control-label";
 import { Stack } from "@xrf/ui/material/stack";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback, useState } from "react";
 
 import { EToolId } from "@/core/routing/tool";
@@ -107,9 +105,9 @@ export function TextureBumpPanel({
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"Bump"}>
       {bumpService.destination === null ? (
-        <Alert className={"mb-2"} severity={"info"}>
+        <EditorPopoverNote>
           This texture is served out of an archive, so there is nowhere beside it to write a pair.
-        </Alert>
+        </EditorPopoverNote>
       ) : null}
 
       <EditorPanelSection title={"Writes"} caption={"Derived from the texture, not chosen"}>
@@ -125,17 +123,14 @@ export function TextureBumpPanel({
           field={height}
         />
 
-        <FormControlLabel
+        <EditorPopoverSwitchRow
           data-testid={"texture-bump-gloss-from-height"}
-          label={"Gloss from the height map's alpha, as the SDK's bump source carries it"}
-          disabled={isRunning}
-          control={
-            <Checkbox
-              size={"small"}
-              checked={isGlossFromHeight}
-              onChange={(_, isChecked: boolean) => setIsGlossFromHeight(isChecked)}
-            />
-          }
+          className={"my-1"}
+          label={"Gloss from the height map's alpha"}
+          description={"Reads the gloss out of the height map's alpha channel, as the SDK's bump source carries it"}
+          isChecked={isGlossFromHeight}
+          isDisabled={isRunning}
+          onChange={setIsGlossFromHeight}
         />
 
         {isGlossFromHeight ? null : (
@@ -183,9 +178,9 @@ export function TextureBumpPanel({
           ) : null}
         </Stack>
 
-        <Typography className={"mt-2 block"} variant={"caption"} color={"text.secondary"}>
+        <EditorPopoverNote className={"mt-2"}>
           Both halves are written at once, and the descriptor is pointed at them. Saving is still a separate act.
-        </Typography>
+        </EditorPopoverNote>
 
         {bumpService.generate.error ? (
           <Alert className={"mt-2"} severity={"error"}>

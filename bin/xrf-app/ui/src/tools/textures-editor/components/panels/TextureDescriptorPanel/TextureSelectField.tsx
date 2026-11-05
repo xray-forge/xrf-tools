@@ -1,8 +1,8 @@
 import { TextureVocabularyEntry } from "@xrf/ipc/types/xrf-app-textures";
+import { EditorPopoverSelectRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { MenuItem } from "@xrf/ui/material/menu";
-import { TextField } from "@xrf/ui/material/text-field";
-import { ChangeEvent, ReactElement, useCallback } from "react";
+import { ReactElement } from "react";
 
 import { toVocabularyOptions } from "@/tools/textures-editor/lib/texture-vocabulary";
 
@@ -11,7 +11,8 @@ interface ITextureSelectFieldProps extends BaseComponentProps {
   /** The named values the SDK offers for this field. */
   entries: ReadonlyArray<TextureVocabularyEntry>;
   value: number;
-  helperText?: string;
+  /** What the field means, read on hovering its label. */
+  description?: string;
   onChange: (value: number) => void;
 }
 
@@ -25,33 +26,24 @@ export function TextureSelectField({
   label,
   entries,
   value,
-  helperText,
+  description,
   onChange,
 }: ITextureSelectFieldProps): ReactElement {
-  const handleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => onChange(Number(event.target.value)),
-    [onChange]
-  );
-
   return (
-    <TextField
+    <EditorPopoverSelectRow<string>
       data-testid={dataTestId}
       id={id}
       className={className}
-      select
-      fullWidth
-      size={"small"}
-      margin={"dense"}
       label={label}
+      description={description}
       value={String(value)}
-      helperText={helperText}
-      onChange={handleChange}
+      onChange={(selected: string) => onChange(Number(selected))}
     >
       {toVocabularyOptions(entries, value).map((entry: TextureVocabularyEntry) => (
         <MenuItem key={entry.value} value={String(entry.value)}>
           {entry.label}
         </MenuItem>
       ))}
-    </TextField>
+    </EditorPopoverSelectRow>
   );
 }
