@@ -147,10 +147,41 @@ fn resolves_a_root_column_naming_an_absolute_directory() {
 }
 
 #[test]
-fn leaves_a_relative_root_column_naming_no_alias_unresolved() {
-  let file: FsgameFile = FsgameFile::parse(root(), "$game_data$ = true | true | gamedata\n").expect("contents parse");
+fn resolves_a_relative_root_column_under_the_files_directory() {
+  // The locator opens the file from its working directory and takes `$fs_root$` from there, so a relative root names a
+  // directory beside the file: the SDK's `fs.ltx` declares `$server_data_root$` as `rawdata\`.
+  let file: FsgameFile = FsgameFile::parse(
+    root(),
+    "$server_data_root$ = false | false | rawdata\\\n$objects$ = true | true | $server_data_root$ | objects\\\n\
+     $nested$ = false | false | a/b\\c\\\n$here$ = false | true | .\\\n",
+  )
+  .expect("contents parse");
 
-  assert_eq!(file.resolve("$game_data$"), None);
+  assert_eq!(file.resolve("$server_data_root$"), Some(root().join("rawdata")));
+  assert_eq!(file.resolve("$objects$"), Some(root().join("rawdata").join("objects")));
+  assert_eq!(
+    file.resolve("$nested$"),
+    Some(root().join("a").join("b").join("c")),
+    "either separator splits a segment, whatever the host"
+  );
+  assert_eq!(
+    file.resolve("$here$"),
+    Some(root()),
+    "IX-Ray's `fs.ltx` names its own directory `.\\`"
+  );
+}
+
+#[test]
+fn leaves_a_root_column_rooted_without_a_drive_unresolved() {
+  // `\` is the root of whichever drive the locator ran on, which a file read elsewhere cannot know.
+  let file: FsgameFile = FsgameFile::parse(
+    root(),
+    "$server_root$ = false | true | \\\n$app_data_root$ = true | false | $server_root$ | _appdata_\\\n",
+  )
+  .expect("contents parse");
+
+  assert_eq!(file.resolve("$server_root$"), None);
+  assert_eq!(file.resolve("$app_data_root$"), None);
 }
 
 #[test]
