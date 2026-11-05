@@ -4,5 +4,6 @@
  */
 
 export * from "./PathFormRow";
+export * from "./PathPanelRow";
 export * from "./use-path-field";
 export * from "./use-remembered-value";
