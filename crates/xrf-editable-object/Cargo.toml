@@ -1,0 +1,23 @@
+[package]
+name = "xrf-editable-object"
+version = "0.1.0"
+publish = false
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+byteorder = { workspace = true }
+xrf-chunk = { workspace = true }
+xrf-error = { workspace = true }
+xrf-math = { workspace = true }
+xrf-ogf = { workspace = true }
+xrf-utils = { workspace = true }
+
+[dev-dependencies]
+xrf-test-utils = { workspace = true }
+
+[lints]
+workspace = true

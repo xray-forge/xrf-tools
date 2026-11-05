@@ -15,6 +15,7 @@ README is also its crate's rustdoc page.
 | [xrf-animation-envelope](xrf-animation-envelope/README.md) | Read, write, and evaluate the scalar animation envelopes ANM and PPE share     |
 | [xrf-anm](xrf-anm/README.md)                               | Read and write object and camera motions (`.anm`, `.anm1`)                     |
 | [xrf-dds](xrf-dds/README.md)                               | Decode, encode, and compare DDS textures and mipmaps                           |
+| [xrf-editable-object](xrf-editable-object/README.md)       | Read and write SDK `.object` editable objects, the source an OGF exports from  |
 | [xrf-efd](xrf-efd/README.md)                               | Read and write `.efd` evaluation function data                                 |
 | [xrf-gamemtl](xrf-gamemtl/README.md)                       | Read and write `gamemtl.xr` game materials and the pairs between them          |
 | [xrf-level](xrf-level/README.md)                           | Read compiled levels, one module per file the game ships, and write companions |

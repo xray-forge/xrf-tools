@@ -8338,6 +8338,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "xrf-editable-object"
+version = "0.1.0"
+dependencies = [
+ "byteorder",
+ "xrf-chunk",
+ "xrf-error",
+ "xrf-math",
+ "xrf-ogf",
+ "xrf-test-utils",
+ "xrf-utils",
+]
+
+[[package]]
 name = "xrf-efd"
 version = "0.1.0"
 dependencies = [
