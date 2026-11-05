@@ -64,6 +64,14 @@ describe("matchesChord", () => {
     expect(matchesChord(mockKeyEvent({ code: "KeyG", ctrlKey: true, key: "п" }), parseChord("mod+h"))).toBe(false);
   });
 
+  // Ukrainian prints `б` on the comma's key, so Settings' `mod+,` read as `mod+б` reached nothing.
+  it("reads a punctuation key a non-Latin layout prints a letter on as its US punctuation", () => {
+    expect(matchesChord(mockKeyEvent({ code: "Comma", ctrlKey: true, key: "б" }), parseChord("mod+,"))).toBe(true);
+    expect(matchesChord(mockKeyEvent({ code: "Period", key: "ю" }), parseChord("."))).toBe(true);
+    // Its slash key prints a full stop, a symbol, which a chord names as itself.
+    expect(matchesChord(mockKeyEvent({ code: "Slash", key: "." }), parseChord("/"))).toBe(false);
+  });
+
   // Only a letter falls back to its place: a symbol is what a chord names, whichever key a layout prints it on.
   it("reads a symbol as itself, never as the digit key it sits on", () => {
     expect(matchesChord(mockKeyEvent({ code: "Digit1", key: "!", shiftKey: true }), parseChord("shift+!"))).toBe(true);
