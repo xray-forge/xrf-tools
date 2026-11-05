@@ -3,7 +3,7 @@ import { fireEvent, RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { Nullable } from "@xrf/types";
 
-import { LevelGoToForm } from "@/core/level/components/preview/toolbar/camera/LevelGoToForm";
+import { LevelGoToForm } from "@/core/level/components/preview/toolbar/view/LevelGoToForm";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { ILevelGoTo } from "@/core/level/lib/camera/level-camera-goto";
 import { renderWithProviders } from "@/fixtures/utils/render";

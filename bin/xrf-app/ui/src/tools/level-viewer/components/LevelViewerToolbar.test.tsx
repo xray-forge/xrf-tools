@@ -11,7 +11,7 @@ beforeEach(() => {
 });
 
 describe("LevelViewerToolbar", () => {
-  it("lays every action out by what it changes: the view, the image, the lighting, the environment, the contents and the camera", () => {
+  it("lays every action out by what it changes: the viewport, the world, the lighting, the environment, the image and the sound", () => {
     const { baseElement }: TLevelViewRenderResult = renderLevelView(
       <LevelViewerToolbar />,
       mockLevelViewContainer(mockToolScope(EToolId.LEVEL_VIEWER))
@@ -21,10 +21,13 @@ describe("LevelViewerToolbar", () => {
     );
 
     expect(actions).toEqual([
-      "level-relief-action",
       "level-show-action",
-      "level-look-action",
-      "level-image-quality-action",
+      "level-camera-action",
+      "level-go-to-action",
+      "level-relief-action",
+      "level-grass-action",
+      "level-water-action",
+      "level-culling-action",
       "level-sun-action",
       "level-lights-action",
       "level-shadow-action",
@@ -35,13 +38,10 @@ describe("LevelViewerToolbar", () => {
       "level-fog-action",
       "level-rain-action",
       "level-wind-action",
-      "level-sound-action",
-      "level-grass-action",
-      "level-water-action",
-      "level-culling-action",
-      "level-camera-action",
+      "level-look-action",
       "level-camera-effects-action",
-      "level-go-to-action",
+      "level-image-quality-action",
+      "level-sound-action",
     ]);
   });
 });

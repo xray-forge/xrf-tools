@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { LevelCullingAction } from "@/core/level/components/preview/toolbar/contents/LevelCullingAction";
+import { LevelCullingAction } from "@/core/level/components/preview/toolbar/world/LevelCullingAction";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,

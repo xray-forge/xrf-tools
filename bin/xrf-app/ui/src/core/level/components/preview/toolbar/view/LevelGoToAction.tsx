@@ -5,7 +5,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { MyLocationIcon } from "@xrf/ui/icons/my-location";
 import { ReactElement, useCallback } from "react";
 
-import { LevelGoToForm } from "@/core/level/components/preview/toolbar/camera/LevelGoToForm";
+import { LevelGoToForm } from "@/core/level/components/preview/toolbar/view/LevelGoToForm";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
 import { LevelLoadService } from "@/core/level/services/level-load";
 import { LevelRenderService } from "@/core/level/services/level-render";

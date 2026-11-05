@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 import { ERenderWaterMode } from "@xrf/ipc/types/xrf-renderer";
 
-import { LevelWaterAction } from "@/core/level/components/preview/toolbar/contents/LevelWaterAction";
+import { LevelWaterAction } from "@/core/level/components/preview/toolbar/world/LevelWaterAction";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,

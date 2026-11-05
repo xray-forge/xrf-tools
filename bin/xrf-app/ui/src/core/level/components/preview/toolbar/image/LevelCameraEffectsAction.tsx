@@ -6,7 +6,7 @@ import { CenterFocusStrongIcon } from "@xrf/ui/icons/center-focus-strong";
 import { Button } from "@xrf/ui/material/button";
 import { ReactElement } from "react";
 
-import { LevelCameraEffectSection } from "@/core/level/components/preview/toolbar/camera/LevelCameraEffectSection";
+import { LevelCameraEffectSection } from "@/core/level/components/preview/toolbar/image/LevelCameraEffectSection";
 import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";

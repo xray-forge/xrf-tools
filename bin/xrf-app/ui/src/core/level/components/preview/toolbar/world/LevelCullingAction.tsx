@@ -1,7 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { LayersIcon } from "@xrf/ui/icons/layers";
+import { FilterAltIcon } from "@xrf/ui/icons/filter-alt";
 import { Button } from "@xrf/ui/material/button";
 import { ReactElement } from "react";
 
@@ -57,7 +57,7 @@ export function LevelCullingAction({
       ]
         .filter(Boolean)
         .join(", ")}
-      icon={<LayersIcon />}
+      icon={<FilterAltIcon />}
       isActive={isOccluding || isPrepassed || isImpostors}
     >
       <EditorPopoverGroupSection

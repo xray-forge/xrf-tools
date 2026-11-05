@@ -2,18 +2,18 @@ import { EditorToolbarSeparator } from "@xrf/ui/editor/toolbar";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
-import { LevelCameraAction } from "@/core/level/components/preview/toolbar/camera/LevelCameraAction";
-import { LevelCameraEffectsAction } from "@/core/level/components/preview/toolbar/camera/LevelCameraEffectsAction";
-import { LevelGoToAction } from "@/core/level/components/preview/toolbar/camera/LevelGoToAction";
-import { LevelCullingAction } from "@/core/level/components/preview/toolbar/contents/LevelCullingAction";
-import { LevelGrassAction } from "@/core/level/components/preview/toolbar/contents/LevelGrassAction";
-import { LevelWaterAction } from "@/core/level/components/preview/toolbar/contents/LevelWaterAction";
 import { LevelWeatherAction } from "@/core/level/components/preview/toolbar/environment/LevelWeatherAction";
+import { LevelCameraEffectsAction } from "@/core/level/components/preview/toolbar/image/LevelCameraEffectsAction";
 import { LevelLightsAction } from "@/core/level/components/preview/toolbar/lighting/LevelLightsAction";
 import { LevelSunAction } from "@/core/level/components/preview/toolbar/lighting/LevelSunAction";
 import { LevelSoundAction } from "@/core/level/components/preview/toolbar/sound/LevelSoundAction";
-import { LevelReliefAction } from "@/core/level/components/preview/toolbar/view/LevelReliefAction";
+import { LevelCameraAction } from "@/core/level/components/preview/toolbar/view/LevelCameraAction";
+import { LevelGoToAction } from "@/core/level/components/preview/toolbar/view/LevelGoToAction";
 import { LevelShowAction } from "@/core/level/components/preview/toolbar/view/LevelShowAction";
+import { LevelCullingAction } from "@/core/level/components/preview/toolbar/world/LevelCullingAction";
+import { LevelGrassAction } from "@/core/level/components/preview/toolbar/world/LevelGrassAction";
+import { LevelReliefAction } from "@/core/level/components/preview/toolbar/world/LevelReliefAction";
+import { LevelWaterAction } from "@/core/level/components/preview/toolbar/world/LevelWaterAction";
 import { RenderSliderReference } from "@/core/render/components/controls/RenderSliderReference";
 import { ERenderSliderReferenceSource } from "@/core/render/lib/settings/choice/render-slider-reference-source";
 import { EditorToolbar } from "@/core/shell/chrome/EditorToolbar";
@@ -32,9 +32,11 @@ interface ILevelViewerToolbarProps extends BaseComponentProps {
 }
 
 /**
- * Composes the level view toggles in the editor toolbar, by what each changes: the view, the image, the lighting, the
- * environment and the contents, then the camera's value pickers; the captures are the Actions menu's. Each action reads
- * and sets what it shows itself, its sliders measured by the settings, which its popover resets to.
+ * Composes the level view's actions in the editor toolbar in the order a look at a level is made: the viewport (what
+ * is shown and from where), the world (how its surfaces, vegetation and geometry are drawn), the lighting, the
+ * environment, the image (how the frame is finished), and the sound last, the one that is no part of the picture; the
+ * captures are the Actions menu's. Each action reads and sets what it shows itself, its sliders measured by the
+ * settings, which its popover resets to.
  */
 export function LevelViewerToolbar({
   "data-testid": dataTestId,
@@ -50,13 +52,16 @@ export function LevelViewerToolbar({
       onBack={onBack}
       actions={
         <RenderSliderReference source={ERenderSliderReferenceSource.SETTINGS}>
-          <LevelReliefAction />
           <LevelShowAction />
+          <LevelCameraAction />
+          <LevelGoToAction />
 
           <EditorToolbarSeparator />
 
-          <LevelLookAction />
-          <LevelImageQualityAction />
+          <LevelReliefAction />
+          <LevelGrassAction />
+          <LevelWaterAction />
+          <LevelCullingAction />
 
           <EditorToolbarSeparator />
 
@@ -73,19 +78,16 @@ export function LevelViewerToolbar({
           <LevelFogAction />
           <LevelRainAction />
           <LevelWindAction />
-          <LevelSoundAction />
 
           <EditorToolbarSeparator />
 
-          <LevelGrassAction />
-          <LevelWaterAction />
-          <LevelCullingAction />
-
-          <EditorToolbarSeparator />
-
-          <LevelCameraAction />
+          <LevelLookAction />
           <LevelCameraEffectsAction />
-          <LevelGoToAction />
+          <LevelImageQualityAction />
+
+          <EditorToolbarSeparator />
+
+          <LevelSoundAction />
         </RenderSliderReference>
       }
     />
