@@ -8,8 +8,8 @@ use glam::Vec3;
 use crate::host::sound::world_sound_channel::WorldSoundChannel;
 use crate::host::world_ambient::WorldAmbient;
 use crate::host::world_level_weather::WorldLevelWeather;
-use crate::sound::ambient_channels::AmbientChannels;
-use crate::sound::sound_emitters::SoundEmitters;
+use crate::sound::emitters::sound_emitters::SoundEmitters;
+use crate::sound::weather::ambient_channels::AmbientChannels;
 use crate::tests::sound::found;
 use crate::weather::weather_ambients::WeatherAmbients;
 

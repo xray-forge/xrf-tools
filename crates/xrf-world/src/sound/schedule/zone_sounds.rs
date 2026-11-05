@@ -5,21 +5,12 @@ use xrf_engine_target::XrayEngine;
 use xrf_renderer::ZONE_FAST_DISTANCE;
 
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
+use crate::host::sound::level::world_zone_sound::WorldZoneSound;
 use crate::host::sound::world_sound::WorldSound;
-use crate::host::sound::world_zone_sound::WorldZoneSound;
 use crate::level::effects::campfire::Campfire;
-use crate::sound::sound_emitters::{SoundEmitters, SoundPlay};
-
-/// What a level's zones stand in this frame, which their sounds follow: each campfire's switching and where each object
-/// motion has its object.
-pub trait ZoneStates {
-  /// The campfire spawned as object `id`, as its switch stands this frame.
-  fn get_campfire(&mut self, id: u16) -> Campfire;
-
-  /// Where `motion` has its object this frame, in engine space; none while it is read, or where it cannot be, which
-  /// leaves the zone where it spawned.
-  fn get_place(&mut self, motion: &str) -> Option<Vec3>;
-}
+use crate::sound::emitters::sound_emitters::SoundEmitters;
+use crate::sound::emitters::sound_play::SoundPlay;
+use crate::sound::schedule::zone_states::ZoneStates;
 
 /// A level's zones' sounds as `CCustomZone` plays them: its `idle_sound` looped with its idle (`PlayIdleParticles`,
 /// `StopIdleParticles`), a torrid zone's following its motion, and a campfire's idle through its turn's gates and its

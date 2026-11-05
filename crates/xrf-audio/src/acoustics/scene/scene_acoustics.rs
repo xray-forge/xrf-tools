@@ -10,8 +10,8 @@ use crate::acoustics::scene::source_acoustics::SourceAcoustics;
 #[cfg(feature = "steam-audio")]
 use crate::acoustics::steam::scene_simulation::SceneSimulation;
 use crate::host::audio_scene_geometry::AudioSceneGeometry;
-use crate::scene::audio_acoustics_report::AudioAcousticsReport;
 use crate::scene::audio_listener::AudioListener;
+use crate::scene::report::audio_acoustics_report::AudioAcousticsReport;
 use crate::voice::voice_spatial::VoiceSpatial;
 
 /// A scene's acoustics on the control thread: where the acoustics run and the host gave the scene's geometry, a

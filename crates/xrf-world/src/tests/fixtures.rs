@@ -12,8 +12,8 @@ use xrf_renderer::{
 use xrf_visual::{LightsDescription, SectorPackage};
 
 use crate::contract::world_viewport_event::WorldViewportEvent;
-use crate::host::sound::world_level_sounds::WorldLevelSounds;
-use crate::host::sound::world_sound_sink::WorldSoundSink;
+use crate::host::sound::level::world_level_sounds::WorldLevelSounds;
+use crate::host::sound::sink::world_sound_sink::WorldSoundSink;
 use crate::host::world_event_sink::WorldEventSink;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_level_weather::WorldLevelWeather;

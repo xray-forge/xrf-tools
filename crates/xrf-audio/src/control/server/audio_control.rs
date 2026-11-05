@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ops::ControlFlow;
 use std::time::{Duration, Instant};
 
 use xrf_error::{XrfError, XrfResult};
@@ -14,10 +15,10 @@ use crate::control::server::control_runtime::ControlRuntime;
 use crate::control::server::control_scene::ControlScene;
 use crate::mixer::audio_bus::AudioBus;
 use crate::mixer::audio_mixer::AudioMixer;
+use crate::render::bank::sound_bank::SoundBank;
 use crate::render::scene::scene_tick::SceneTick;
-use crate::render::sound_bank::SoundBank;
 use crate::render::stream_launcher::StreamLauncher;
-use crate::scene::audio_scene_report::AudioSceneReport;
+use crate::scene::report::audio_scene_report::AudioSceneReport;
 use crate::transport::audio_transport::AudioTransport;
 use crate::transport::audio_transport_command::AudioTransportCommand;
 use crate::transport::audio_transport_id::AudioTransportId;
@@ -43,15 +44,14 @@ pub(crate) struct AudioControl {
 
 struct OpenTransport {
   transport: Box<AudioTransport>,
-  /// What was last sent of it, and when.
-  sent: Option<(AudioTransportState, Instant)>,
+  /// What was last sent of it.
+  sent: Option<SentTransport>,
 }
 
-/// Whether the control thread goes on after a request.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub(crate) enum ControlFlow {
-  Continue,
-  ShutDown,
+/// A transport's state as it was sent, and when.
+struct SentTransport {
+  state: AudioTransportState,
+  at: Instant,
 }
 
 impl AudioControl {
@@ -88,7 +88,8 @@ impl AudioControl {
     &mut self.streams
   }
 
-  pub(crate) fn handle(&mut self, request: ControlRequest) -> ControlFlow {
+  /// Carries out `request`, breaking where it shuts the control thread down.
+  pub(crate) fn handle(&mut self, request: ControlRequest) -> ControlFlow<()> {
     match request {
       ControlRequest::SetGains(gains) => self.set_gains(gains),
       ControlRequest::OpenTransport { id, transport } => {
@@ -130,11 +131,11 @@ impl AudioControl {
       ControlRequest::ShutDown => {
         self.close_transports();
         self.close_scenes();
-        return ControlFlow::ShutDown;
+        return ControlFlow::Break(());
       }
     }
 
-    ControlFlow::Continue
+    ControlFlow::Continue(())
   }
 
   /// Frees the voices the mixer is done with, plays every scene on to the mixer's clock, and sends what changed of the
@@ -148,9 +149,9 @@ impl AudioControl {
       let state: AudioTransportState = open.transport.describe(&self.engine);
       let is_due: bool = match &open.sent {
         None => true,
-        Some((sent, sent_at)) => {
-          Self::is_changed_besides_position(sent, &state)
-            || (sent.position != state.position && now.duration_since(*sent_at) >= self.position_interval)
+        Some(sent) => {
+          Self::is_changed_besides_position(&sent.state, &state)
+            || (sent.state.position != state.position && now.duration_since(sent.at) >= self.position_interval)
         }
       };
 
@@ -159,7 +160,7 @@ impl AudioControl {
           id: *id,
           state: state.clone(),
         });
-        open.sent = Some((state, now));
+        open.sent = Some(SentTransport { state, at: now });
       }
     }
   }

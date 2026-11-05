@@ -1,11 +1,12 @@
 use std::sync::Arc;
 use std::sync::mpsc::Sender;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use xrf_error::XrfError;
 
 use crate::capture::record::record_event::RecordEvent;
 use crate::capture::record::record_frame::RecordFrame;
+use crate::capture::record::record_layout::RecordLayout;
 use crate::capture::record::record_shot::RecordShot;
 use crate::frame::readback::gpu_readback::GpuReadback;
 
@@ -24,9 +25,7 @@ enum RecordSlot {
 /// reads on its own thread. With every buffer on its way or held by the recorder, a frame due is dropped and counted,
 /// so the render thread never waits on a recording.
 pub struct RecordJob {
-  size: (u32, u32),
-  /// Bytes a row of a copy takes, aligned as copies need.
-  row: u32,
+  layout: RecordLayout,
   readbacks: Vec<Arc<GpuReadback>>,
   slots: [RecordSlot; Self::RING],
   /// When the first frame was due, which the sixtieths are counted from, and the last one taken or dropped.
@@ -41,14 +40,10 @@ impl RecordJob {
   /// Buffers a recording's frames go back through.
   pub const RING: usize = 4;
 
-  /// The time between the frames kept.
-  pub const EVERY: Duration = Duration::from_nanos(16_666_667);
-
   /// A recording of frames `size` pixels across, told to `events`.
   pub fn new(size: (u32, u32), events: Sender<RecordEvent>) -> Self {
     Self {
-      size,
-      row: (size.0 * 4).next_multiple_of(wgpu::COPY_BYTES_PER_ROW_ALIGNMENT),
+      layout: RecordLayout::new(size),
       readbacks: Vec::new(),
       slots: [RecordSlot::Free; Self::RING],
       started: None,
@@ -68,7 +63,7 @@ impl RecordJob {
 
     // Counted to the nearest sixtieth, so a frame presented a little early or late keeps its place.
     let started: Instant = *self.started.get_or_insert(now);
-    let index: u64 = (now.duration_since(started).as_secs_f64() / Self::EVERY.as_secs_f64()).round() as u64;
+    let index: u64 = (now.duration_since(started).as_secs_f64() / RecordFrame::INTERVAL.as_secs_f64()).round() as u64;
 
     if self.last.is_some_and(|last| index <= last) {
       return None;
@@ -77,7 +72,7 @@ impl RecordJob {
     self.last = Some(index);
 
     if self.readbacks.is_empty() {
-      let size: u64 = u64::from(self.row) * u64::from(self.size.1);
+      let size: u64 = self.layout.get_buffer_size();
 
       self.readbacks = (0..Self::RING)
         .map(|_| Arc::new(GpuReadback::new(device, "record frame", size)))
@@ -92,12 +87,7 @@ impl RecordJob {
 
     self.slots[slot] = RecordSlot::Drawn { index };
 
-    Some(RecordShot::new(
-      slot,
-      Arc::clone(&self.readbacks[slot]),
-      self.size,
-      self.row,
-    ))
+    Some(RecordShot::new(slot, Arc::clone(&self.readbacks[slot]), self.layout))
   }
 
   /// Ends the frame `shot` was drawn in, submitted: its copy asked back, or its buffer freed where the frame drew none.
@@ -145,7 +135,7 @@ impl RecordJob {
 
           let frame: RecordFrame = RecordFrame::new(
             Arc::clone(&self.readbacks[slot]),
-            (self.size.0, self.size.1, self.row),
+            self.layout,
             index,
             presented,
             self.dropped,

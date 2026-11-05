@@ -43,6 +43,12 @@ pub struct AudioEngine {
   letting_go: Vec<AudioVoiceId>,
 }
 
+/// What a voice the acoustics place starts with: its effects, and how they hear it at first.
+struct PlacedStart<'a> {
+  spatial: Box<VoiceSpatial>,
+  parameters: &'a VoiceSpatialParameters,
+}
+
 impl AudioEngine {
   pub(crate) fn new(
     commands: Producer<MixerCommand>,
@@ -105,7 +111,7 @@ impl AudioEngine {
     spatial: Box<VoiceSpatial>,
     parameters: &VoiceSpatialParameters,
   ) -> Result<AudioVoiceId, AudioRefusal> {
-    self.start(play, Some((spatial, parameters)))
+    self.start(play, Some(PlacedStart { spatial, parameters }))
   }
 
   /// Moves a placed voice to how `parameters` say it is heard, from its next block. A voice that has ended is left
@@ -121,11 +127,7 @@ impl AudioEngine {
     self.reverb.set_times(times);
   }
 
-  fn start(
-    &mut self,
-    play: AudioPlay,
-    spatial: Option<(Box<VoiceSpatial>, &VoiceSpatialParameters)>,
-  ) -> Result<AudioVoiceId, AudioRefusal> {
+  fn start(&mut self, play: AudioPlay, placed: Option<PlacedStart<'_>>) -> Result<AudioVoiceId, AudioRefusal> {
     self.collect();
 
     let id: AudioVoiceId = self.slots.take().ok_or(AudioRefusal::VoicesExhausted)?;
@@ -137,10 +139,10 @@ impl AudioEngine {
     parameters.set_pan(play.pan);
     self.start_frames[id.slot as usize] = play.source.get_start_frame();
 
-    let spatial: Option<Box<VoiceSpatial>> = spatial.map(|(spatial, spatial_parameters)| {
-      parameters.set_spatial(spatial_parameters);
+    let spatial: Option<Box<VoiceSpatial>> = placed.map(|placed| {
+      parameters.set_spatial(placed.parameters);
 
-      spatial
+      placed.spatial
     });
     let voice: Box<Voice> = Box::new(Voice::new(id, play.source, play.bus, spatial).starting_at(play.at));
 

@@ -10,13 +10,14 @@ use xrf_math::Vector3d;
 use xrf_visual::ZoneSphere;
 
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
-use crate::host::sound::world_sound_emitter::WorldSoundEmitter;
-use crate::host::sound::world_zone_sound::WorldZoneSound;
+use crate::host::sound::level::world_zone_sound::WorldZoneSound;
+use crate::host::sound::sink::world_sound_emitter::WorldSoundEmitter;
 use crate::level::effects::campfire::Campfire;
 use crate::level::effects::campfire_state::CampfireState;
 use crate::level::effects::level_campfires::LevelCampfires;
-use crate::sound::sound_emitters::SoundEmitters;
-use crate::sound::zone_sounds::{ZoneSounds, ZoneStates};
+use crate::sound::emitters::sound_emitters::SoundEmitters;
+use crate::sound::schedule::zone_sounds::ZoneSounds;
+use crate::sound::schedule::zone_states::ZoneStates;
 use crate::tests::sound::{found, missing, seconds};
 
 /// The campfires as a view switches them and where each motion has its object.

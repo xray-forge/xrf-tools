@@ -1,6 +1,6 @@
-use crate::scene::audio_acoustics_report::AudioAcousticsReport;
-use crate::scene::audio_emitter_report::AudioEmitterReport;
-use crate::scene::audio_scene_refusal::AudioSceneRefusal;
+use crate::scene::report::audio_acoustics_report::AudioAcousticsReport;
+use crate::scene::report::audio_emitter_report::AudioEmitterReport;
+use crate::scene::report::audio_scene_refusal::AudioSceneRefusal;
 
 /// How the control thread plays a scene as of its last tick: each emitter's gain and whether it holds a voice, the
 /// sounds it could not play, its targets, and how its acoustics run.

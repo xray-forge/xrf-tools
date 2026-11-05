@@ -4,10 +4,11 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
-use crate::host::sound::world_sound_frame::WorldSoundFrame;
-use crate::host::sound::world_sound_sink::WorldSoundSink;
-use crate::sound::sound_emitters::{SoundEmitters, SoundPlay};
-use crate::sound::sound_outlet::SoundOutlet;
+use crate::host::sound::sink::world_sound_frame::WorldSoundFrame;
+use crate::host::sound::sink::world_sound_sink::WorldSoundSink;
+use crate::sound::emitters::sound_emitters::SoundEmitters;
+use crate::sound::emitters::sound_outlet::SoundOutlet;
+use crate::sound::emitters::sound_play::SoundPlay;
 use crate::tests::sound::found;
 
 /// A sink handing every frame straight back, noting the address each frame's emitters were held at.

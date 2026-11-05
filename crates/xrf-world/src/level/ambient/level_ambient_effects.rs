@@ -13,6 +13,7 @@ use crate::host::world_ambient_effect::WorldAmbientEffect;
 use crate::level::ambient::ambient_frame::AmbientFrame;
 use crate::level::ambient::ambient_systems::AmbientSystems;
 use crate::level::ambient::ambient_wind::AmbientWind;
+use crate::level::ambient::started_effect::StartedEffect;
 
 /// What the schedule's numbers are drawn from on every level open, so a driven capture plays the same effects.
 const SEED: u64 = 0x5EED_AB1E;
@@ -36,8 +37,8 @@ pub struct LevelAmbientEffects {
   /// Whether the next update is to play an effect at once, whatever plays or is waited for.
   is_forced: bool,
   wind: AmbientWind,
-  /// The effect started since the last take and where, in engine space, which plays its sound there.
-  started: Option<(String, Vec3)>,
+  /// The effect started since the last take.
+  started: Option<StartedEffect>,
 }
 
 /// The effect playing: its emitter, the names it is reported by, and whether it was stopped.
@@ -123,8 +124,8 @@ impl LevelAmbientEffects {
     self.wind.get_gust()
   }
 
-  /// The effect started since the last take, by its section, and where it stands in engine space.
-  pub fn take_started(&mut self) -> Option<(String, Vec3)> {
+  /// The effect started since the last take.
+  pub fn take_started(&mut self) -> Option<StartedEffect> {
     self.started.take()
   }
 
@@ -201,7 +202,10 @@ impl LevelAmbientEffects {
     let offset: Vec3 = self.draw_offset(effect, systems.engine);
 
     self.played += 1;
-    self.started = Some((chosen.to_owned(), eye + offset));
+    self.started = Some(StartedEffect {
+      name: chosen.to_owned(),
+      position: eye + offset,
+    });
 
     // `CParticlesObject::Create`, then `play_at_pos`; an effect the library lacks plays nothing.
     let library: &ParticleLibrary = systems.library;

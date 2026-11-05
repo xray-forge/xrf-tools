@@ -7,47 +7,8 @@ use crate::decode::decoded_sound::DecodedSound;
 use crate::decode::sound_decoder::SoundDecoder;
 use crate::decode::sound_format::SoundFormat;
 use crate::host::audio_asset_source::AudioAssetSource;
-
-/// A sound by its source's scope and its reference.
-type SoundKey = (Arc<str>, Arc<str>);
-
-/// A sound as a scene's emitters play it: decoded whole, streamed from its bytes, still being read, or refused.
-#[derive(Clone, Debug)]
-pub(crate) enum BankedSound {
-  Loading,
-  Decoded(Arc<DecodedSound>),
-  Streamed { bytes: Arc<[u8]>, format: SoundFormat },
-  Refused(String),
-}
-
-impl BankedSound {
-  /// How many channels it plays in, none until it is read or once it is refused.
-  pub(crate) fn get_channel_count(&self) -> Option<usize> {
-    match self {
-      Self::Decoded(sound) => Some(sound.get_channels().get_count()),
-      Self::Streamed { format, .. } => Some(format.channels.get_count()),
-      Self::Loading | Self::Refused(_) => None,
-    }
-  }
-
-  /// The bytes it holds in memory.
-  fn get_size(&self) -> usize {
-    match self {
-      Self::Decoded(sound) => std::mem::size_of_val(sound.get_samples()),
-      Self::Streamed { bytes, .. } => bytes.len(),
-      Self::Loading | Self::Refused(_) => 0,
-    }
-  }
-
-  /// Whether nothing but the bank holds what it read, so letting it go frees it.
-  fn is_unheld(&self) -> bool {
-    match self {
-      Self::Decoded(sound) => Arc::strong_count(sound) == 1,
-      Self::Streamed { bytes, .. } => Arc::strong_count(bytes) == 1,
-      Self::Loading | Self::Refused(_) => false,
-    }
-  }
-}
+use crate::render::bank::banked_sound::BankedSound;
+use crate::render::bank::sound_key::SoundKey;
 
 /// The sounds the scenes play, by their source's scope and reference, read and decoded off the control thread: on a
 /// loader thread of its own, or in the call that asks for them in an offline session. A sound up to
@@ -104,7 +65,7 @@ impl SoundBank {
       .name(String::from("xrf-audio-load"))
       .spawn(move || {
         while let Ok(SoundRequest { key, assets }) = received.recv() {
-          let sound: BankedSound = Self::load(assets.as_ref(), &key.1);
+          let sound: BankedSound = Self::load(assets.as_ref(), &key.reference);
 
           if sender.send(SoundLoaded { key, sound }).is_err() {
             return;
@@ -156,7 +117,10 @@ impl SoundBank {
     assets: &Arc<dyn AudioAssetSource>,
     reference: &Arc<str>,
   ) -> BankedSound {
-    let key: SoundKey = (Arc::clone(scope), Arc::clone(reference));
+    let key: SoundKey = SoundKey {
+      scope: Arc::clone(scope),
+      reference: Arc::clone(reference),
+    };
 
     self.asks += 1;
 
@@ -194,7 +158,7 @@ impl SoundBank {
 
       for SoundLoaded { key, sound } in received {
         if let BankedSound::Refused(reason) = &sound {
-          log::warn!("Sound '{}' cannot be played: {reason}", key.1);
+          log::warn!("Sound '{}' cannot be played: {reason}", key.reference);
         }
 
         self.insert(key, sound);
@@ -223,16 +187,16 @@ impl SoundBank {
       return;
     }
 
-    let mut unheld: Vec<(u64, SoundKey)> = self
+    let mut unheld: Vec<SoundKey> = self
       .sounds
       .iter()
       .filter(|(_, entry)| entry.sound.is_unheld())
-      .map(|(key, entry)| (entry.asked, key.clone()))
+      .map(|(key, _)| key.clone())
       .collect();
 
-    unheld.sort_unstable_by_key(|(asked, _)| *asked);
+    unheld.sort_unstable_by_key(|key| self.sounds[key].asked);
 
-    for (_, key) in unheld {
+    for key in unheld {
       if self.size <= self.budget {
         break;
       }

@@ -49,6 +49,12 @@ struct SteppedSimulation {
   output: Option<SceneAcousticsState>,
 }
 
+/// Steam Audio's world of a scene's geometry, none where it failed, and the geometry's state.
+struct BuiltScene {
+  world: Option<SimulatedWorld>,
+  geometry: SceneGeometryState,
+}
+
 impl SceneSimulation {
   /// The longest a sound's way through the walls waits to be heard again.
   const DIRECT_INTERVAL: Duration = Duration::from_millis(33);
@@ -117,7 +123,7 @@ impl SceneSimulation {
   }
 
   fn run(acoustics: &AudioAcoustics, geometry: &dyn AudioSceneGeometry, shared: &SimulationShared) {
-    let Some((world, geometry)) = Self::build(acoustics, geometry, Self::REVERB_THREADS) else {
+    let Some(BuiltScene { world, geometry }) = Self::build(acoustics, geometry, Self::REVERB_THREADS) else {
       return;
     };
     let mut last: SceneAcousticsState = SceneAcousticsState::new(geometry);
@@ -153,11 +159,7 @@ impl SceneSimulation {
 
   /// Steam Audio's world of the scene's geometry, its reverb on `reverb_threads`, and the geometry's state: ready, or
   /// failed with no world. None where the acoustics do not run.
-  fn build(
-    acoustics: &AudioAcoustics,
-    geometry: &dyn AudioSceneGeometry,
-    reverb_threads: u32,
-  ) -> Option<(Option<SimulatedWorld>, SceneGeometryState)> {
+  fn build(acoustics: &AudioAcoustics, geometry: &dyn AudioSceneGeometry, reverb_threads: u32) -> Option<BuiltScene> {
     let steam = acoustics.get_steam()?;
     let started: Instant = Instant::now();
     let built: Result<SimulatedWorld, String> = geometry
@@ -178,12 +180,18 @@ impl SceneSimulation {
           build_time: started.elapsed(),
         };
 
-        (Some(world), geometry)
+        BuiltScene {
+          world: Some(world),
+          geometry,
+        }
       }
       Err(reason) => {
         log::warn!("The scene's walls shape no sound: {reason}");
 
-        (None, SceneGeometryState::Failed(reason))
+        BuiltScene {
+          world: None,
+          geometry: SceneGeometryState::Failed(reason),
+        }
       }
     })
   }
@@ -248,9 +256,11 @@ impl SimulationShared {
 impl SteppedSimulation {
   /// Builds the scene's world inline, telling what it built at once.
   fn build(acoustics: &AudioAcoustics, geometry: &dyn AudioSceneGeometry) -> Self {
-    let (world, geometry): (Option<SimulatedWorld>, SceneGeometryState) =
-      SceneSimulation::build(acoustics, geometry, SceneSimulation::STEPPED_REVERB_THREADS)
-        .unwrap_or_else(|| (None, SceneGeometryState::Absent));
+    let BuiltScene { world, geometry } =
+      SceneSimulation::build(acoustics, geometry, SceneSimulation::STEPPED_REVERB_THREADS).unwrap_or(BuiltScene {
+        world: None,
+        geometry: SceneGeometryState::Absent,
+      });
     let last: SceneAcousticsState = SceneAcousticsState::new(geometry);
 
     Self {

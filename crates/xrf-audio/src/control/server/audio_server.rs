@@ -11,7 +11,7 @@ use crate::acoustics::audio_spatialization::AudioSpatialization;
 use crate::control::audio_engine::AudioEngine;
 use crate::control::audio_engine_parts::AudioEngineParts;
 use crate::control::audio_engine_settings::AudioEngineSettings;
-use crate::control::server::audio_control::{AudioControl, ControlFlow};
+use crate::control::server::audio_control::AudioControl;
 use crate::control::server::audio_event_sink::AudioEventSink;
 use crate::control::server::audio_gains::AudioGains;
 use crate::control::server::control_request::ControlRequest;
@@ -24,8 +24,8 @@ use crate::host::audio_scene_geometry::AudioSceneGeometry;
 use crate::mixer::audio_bus::AudioBus;
 use crate::mixer::audio_mixer_meter::AudioMixerMeter;
 use crate::mixer::tap::audio_tap::AudioTap;
-use crate::scene::audio_scene_inbox::AudioSceneInbox;
-use crate::scene::audio_scene_report::AudioSceneReport;
+use crate::scene::inbox::audio_scene_inbox::AudioSceneInbox;
+use crate::scene::report::audio_scene_report::AudioSceneReport;
 use crate::transport::audio_transport::AudioTransport;
 use crate::transport::audio_transport_command::AudioTransportCommand;
 use crate::transport::audio_transport_id::AudioTransportId;
@@ -268,12 +268,12 @@ impl AudioServer {
     loop {
       match requests.recv_timeout(Self::TICK_INTERVAL) {
         Ok(request) => {
-          if control.handle(request) == ControlFlow::ShutDown {
+          if control.handle(request).is_break() {
             return;
           }
 
           while let Ok(request) = requests.try_recv() {
-            if control.handle(request) == ControlFlow::ShutDown {
+            if control.handle(request).is_break() {
               return;
             }
           }

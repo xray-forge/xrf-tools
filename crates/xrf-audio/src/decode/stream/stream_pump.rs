@@ -5,13 +5,14 @@ use xrf_error::{XrfError, XrfResult};
 
 use crate::decode::sound_decoder::SoundDecoder;
 use crate::decode::sound_format::SoundFormat;
+use crate::decode::stream::stream_pump_state::StreamPumpState;
 use crate::decode::stream::stream_shared::StreamShared;
 
 /// A stream's decoding: it opens the sound and seeks on its first fill, then decodes ahead into the ring its voice
 /// reads until the ring is full, the sound ends without looping, or the decoder fails. A stream's own thread runs it;
 /// an offline session runs it inline before each block, so a render with streams comes out the same every time.
 pub struct StreamPump {
-  opening: Option<(Arc<[u8]>, u64)>,
+  opening: Option<StreamOpening>,
   decoder: Option<SoundDecoder>,
   producer: Producer<f32>,
   shared: Arc<StreamShared>,
@@ -20,19 +21,16 @@ pub struct StreamPump {
   offset: usize,
 }
 
-/// Where a pump stands after a fill.
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub enum StreamPumpState {
-  /// The ring is full; more fits once the voice has read some.
-  Full,
-  /// Nothing more will come: the sound ended, the decoder failed, or the voice let go of the stream.
-  Done,
+/// The sound a pump opens on its first fill, and the frame it seeks to.
+struct StreamOpening {
+  bytes: Arc<[u8]>,
+  frame: u64,
 }
 
 impl StreamPump {
   pub(crate) fn new(bytes: Arc<[u8]>, frame: u64, producer: Producer<f32>, shared: Arc<StreamShared>) -> Self {
     Self {
-      opening: Some((bytes, frame)),
+      opening: Some(StreamOpening { bytes, frame }),
       decoder: None,
       producer,
       shared,
@@ -43,7 +41,7 @@ impl StreamPump {
 
   /// Decodes into the ring until it is full or nothing more will come.
   pub fn fill(&mut self) -> StreamPumpState {
-    if let Some((bytes, frame)) = self.opening.take() {
+    if let Some(StreamOpening { bytes, frame }) = self.opening.take() {
       match Self::open(bytes, frame, self.shared.format) {
         Ok(decoder) => self.decoder = Some(decoder),
         Err(error) => {

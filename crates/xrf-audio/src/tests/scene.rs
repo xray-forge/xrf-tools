@@ -8,9 +8,10 @@ use std::time::Duration;
 use crate::acoustics::distance_curve::DistanceCurve;
 use crate::acoustics::listener_space::ListenerSpace;
 use crate::acoustics::scene::source_acoustics::SourceAcoustics;
+use crate::render::bank::banked_sound::BankedSound;
+use crate::render::bank::sound_bank::SoundBank;
 use crate::render::emitter_loudness::EmitterLoudness;
 use crate::render::scene::scene_clock::SceneClock;
-use crate::render::sound_bank::{BankedSound, SoundBank};
 use crate::tests::fixtures::{MemorySounds, RATE, rms_left, wav};
 use crate::{
   AudioAssetSource, AudioBus, AudioEngineSettings, AudioListener, AudioSceneEmitter, AudioSceneFrame, AudioSceneInbox,

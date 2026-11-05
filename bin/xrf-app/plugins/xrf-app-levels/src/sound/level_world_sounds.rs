@@ -29,11 +29,7 @@ impl LevelWorldSounds {
     let objects: Option<LevelObjectsDescription> = LevelObjectsDescription::read(level, search).ok();
     let mut files: LevelSoundFiles<'_> = LevelSoundFiles::new(search);
     let emitters: LevelSoundEmitters = LevelSoundEmitters::read(level, search, objects.as_ref(), &mut files);
-    let name: String = level.source.get_name().unwrap_or_default();
-    let music: Vec<WorldMusicTrack> = Self::read_music(level, search, &name)?
-      .into_iter()
-      .map(|(track, parameters)| Self::to_track(&track, &parameters, &mut files))
-      .collect();
+    let music: Vec<WorldMusicTrack> = Self::read_music(level, search, &mut files)?;
 
     Ok(WorldLevelSounds {
       engine: level.engine.engine,
@@ -43,13 +39,14 @@ impl LevelWorldSounds {
     })
   }
 
-  /// The entries of the level's music section, in the config's order; none where `game.ltx` or the section names
-  /// none.
+  /// The tracks of the level's music section, in the config's order, each sound read through `files`; none where
+  /// `game.ltx` or the section names none.
   fn read_music(
     level: &SessionSnapshot<SelectedLevel>,
     search: &XraySearch,
-    name: &str,
-  ) -> XrfResult<Vec<(String, String)>> {
+    files: &mut LevelSoundFiles<'_>,
+  ) -> XrfResult<Vec<WorldMusicTrack>> {
+    let name: String = level.source.get_name().unwrap_or_default();
     let project: LtxProject = LevelConfigs::of(level)
       .open(search)
       .map_err(XrfError::new_asset_error)?;
@@ -62,7 +59,7 @@ impl LevelWorldSounds {
     let game: Arc<LtxResolution> = project.read_resolution(&path)?;
     let Some(section) = game
       .ltx
-      .get_from(name, "music_tracks")
+      .get_from(&name, "music_tracks")
       .map(str::trim)
       .filter(|section| !section.is_empty())
     else {
@@ -76,7 +73,7 @@ impl LevelWorldSounds {
         .map(|tracks| {
           tracks
             .iter()
-            .map(|(track, parameters)| (track.to_owned(), parameters.to_owned()))
+            .map(|(track, parameters)| Self::to_track(track, parameters, files))
             .collect()
         })
         .unwrap_or_default(),

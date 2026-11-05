@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use glam::{Mat4, Vec3};
 use xrf_renderer::AmbientGust;
 
+use crate::level::ambient::started_effect::StartedEffect;
+
 /// What a frame of a level's effects gives its scene besides its posts: the wind the ambient effects blow, how much of
 /// each campfire's idle light shows by its id, and where each object motion has its object in engine space and how fast
 /// it moves, by the motion's name.
@@ -15,6 +17,6 @@ pub struct EffectsFrame {
   pub camera_hemi: Option<f32>,
   /// How open to the sky the camera stands for the rain's loop, none where the level has no estimator.
   pub open_sky: Option<f32>,
-  /// The ambient effect started this frame, by its section, and where it stands in engine space.
-  pub started_effect: Option<(String, Vec3)>,
+  /// The ambient effect started this frame.
+  pub started_effect: Option<StartedEffect>,
 }

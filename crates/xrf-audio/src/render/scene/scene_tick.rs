@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::acoustics::audio_spatialization::AudioSpatialization;
 use crate::control::audio_engine::AudioEngine;
-use crate::render::sound_bank::SoundBank;
+use crate::render::bank::sound_bank::SoundBank;
 use crate::render::stream_launcher::StreamLauncher;
 
 /// What a control tick hands each scene: the engine its voices play on, where their sounds are read and streamed, how

@@ -4,8 +4,8 @@ use glam::Vec3;
 use xrf_renderer::{RenderSceneId, RenderViewBurst};
 
 use crate::contract::sound::world_sound_toggles::WorldSoundToggles;
-use crate::sound::rain_sound::RainFrame;
-use crate::sound::thunder_sound::ThunderSound;
+use crate::sound::weather::rain_frame::RainFrame;
+use crate::sound::weather::thunder_sound::ThunderSound;
 use crate::weather::weather_ambients::WeatherAmbients;
 
 /// What the viewport a scene is heard by gives its sound for a frame: one drawing a burst of the scene, else the

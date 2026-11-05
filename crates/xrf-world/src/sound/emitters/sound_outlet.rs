@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use crate::host::sound::world_sound_frame::WorldSoundFrame;
-use crate::host::sound::world_sound_sink::WorldSoundSink;
+use crate::host::sound::sink::world_sound_frame::WorldSoundFrame;
+use crate::host::sound::sink::world_sound_sink::WorldSoundSink;
 
 /// How often a scene's sound is sent at most: the audio follows the level's clock between frames, so a faster frame
 /// rate gains nothing.

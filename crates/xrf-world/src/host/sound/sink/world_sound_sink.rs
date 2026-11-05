@@ -1,4 +1,4 @@
-use crate::host::sound::world_sound_frame::WorldSoundFrame;
+use crate::host::sound::sink::world_sound_frame::WorldSoundFrame;
 
 /// Where a scene's sound frames go: the host's audio, which the world cannot depend on. A sink hands back the frames it
 /// is done with, which the scene fills again.

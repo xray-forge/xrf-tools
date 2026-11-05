@@ -5,7 +5,8 @@ use xrf_error::XrfResult;
 use crate::decode::sound_format::SoundFormat;
 use crate::decode::stream::sound_stream::SoundStream;
 use crate::decode::stream::sound_stream_start::SoundStreamStart;
-use crate::decode::stream::stream_pump::{StreamPump, StreamPumpState};
+use crate::decode::stream::stream_pump::StreamPump;
+use crate::decode::stream::stream_pump_state::StreamPumpState;
 use crate::decode::stream::stream_reader::StreamReader;
 
 /// How the control thread starts a stream: each on a thread of its own, or pumped by whoever renders, as an offline

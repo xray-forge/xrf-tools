@@ -4,12 +4,13 @@ use std::time::Duration;
 
 use glam::Vec3;
 
-use crate::contract::sound::world_sound_channel_report::WorldSoundChannelReport;
+use crate::contract::sound::report::world_sound_channel_report::WorldSoundChannelReport;
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
 use crate::host::sound::world_sound::WorldSound;
 use crate::host::sound::world_sound_channel::WorldSoundChannel;
 use crate::host::world_level_weather::WorldLevelWeather;
-use crate::sound::sound_emitters::{SoundEmitters, SoundPlay};
+use crate::sound::emitters::sound_emitters::SoundEmitters;
+use crate::sound::emitters::sound_play::SoundPlay;
 use crate::sound::sound_random::SoundRandom;
 use crate::weather::weather_ambients::WeatherAmbients;
 
@@ -27,10 +28,17 @@ pub struct AmbientChannels {
   /// `ambient_sound_next_time`, by the channel's place, which an ambient taking over keeps.
   next: Vec<Option<Duration>>,
   /// Each channel's sounds' last plays, which a sound picked again while playing starts over.
-  playing: HashMap<(String, usize), u64>,
+  playing: HashMap<ChannelSound, u64>,
   /// The ambient the last update played.
   ambient: Option<String>,
   random: SoundRandom,
+}
+
+/// One of a channel's sounds: the channel's name, and the sound's place in its list.
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+struct ChannelSound {
+  channel: String,
+  sound: usize,
 }
 
 impl Default for AmbientChannels {
@@ -83,7 +91,10 @@ impl AmbientChannels {
             continue;
           };
           let position: Vec3 = self.draw_position(channel, eye);
-          let key: (String, usize) = (channel_name.clone(), sound_index);
+          let key: ChannelSound = ChannelSound {
+            channel: channel_name.clone(),
+            sound: sound_index,
+          };
 
           if let Some(previous) = self.playing.remove(&key) {
             emitters.stop(previous);

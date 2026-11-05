@@ -6,32 +6,28 @@ use glam::Vec3;
 use xrf_engine_target::XrayEngine;
 use xrf_renderer::{RenderViewBurst, RenderWorkers};
 
+use crate::contract::sound::report::world_sound_refusal::WorldSoundRefusal;
+use crate::contract::sound::report::world_sound_report::WorldSoundReport;
+use crate::contract::sound::report::world_sound_voice_report::WorldSoundVoiceReport;
 use crate::contract::sound::world_music_command::WorldMusicCommand;
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
-use crate::contract::sound::world_sound_refusal::WorldSoundRefusal;
-use crate::contract::sound::world_sound_report::WorldSoundReport;
-use crate::contract::sound::world_sound_voice_report::WorldSoundVoiceReport;
-use crate::host::sound::world_level_sounds::WorldLevelSounds;
+use crate::host::sound::level::world_level_sounds::WorldLevelSounds;
+use crate::host::sound::sink::world_sound_listener::WorldSoundListener;
 use crate::host::sound::world_sound::WorldSound;
-use crate::host::sound::world_sound_listener::WorldSoundListener;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_level_weather::WorldLevelWeather;
 use crate::level::loading::loader_once::LoaderOnce;
-use crate::sound::ambient_channels::AmbientChannels;
-use crate::sound::level_music::LevelMusic;
-use crate::sound::rain_sound::RainSound;
-use crate::sound::sound_drive::SoundDrive;
-use crate::sound::sound_emitters::{SoundEmitters, SoundPlay};
-use crate::sound::sound_outlet::SoundOutlet;
-use crate::sound::static_sounds::StaticSounds;
-use crate::sound::zone_sounds::{ZoneSounds, ZoneStates};
-
-/// An ambient effect's sound starting this frame: the effect's section and where it plays, in engine space.
-pub struct EffectSound<'a> {
-  pub effect: &'a str,
-  pub sound: &'a WorldSound,
-  pub position: Vec3,
-}
+use crate::sound::emitters::sound_emitters::SoundEmitters;
+use crate::sound::emitters::sound_outlet::SoundOutlet;
+use crate::sound::emitters::sound_play::SoundPlay;
+use crate::sound::level::effect_sound::EffectSound;
+use crate::sound::level::sound_drive::SoundDrive;
+use crate::sound::schedule::level_music::LevelMusic;
+use crate::sound::schedule::static_sounds::StaticSounds;
+use crate::sound::schedule::zone_sounds::ZoneSounds;
+use crate::sound::schedule::zone_states::ZoneStates;
+use crate::sound::weather::ambient_channels::AmbientChannels;
+use crate::sound::weather::rain_sound::RainSound;
 
 /// A level's sound as the world plays it beside its picture, by the level's clock: its static sounds, music and zones'
 /// sounds read on a loader thread, the weather's ambient channels, rain, thunder and ambient-effect sounds as the
@@ -367,32 +363,38 @@ impl LevelSound {
   /// The sounds the scene would play whose files are missing: its static sounds, its music, its zones', the channels of
   /// the ambient playing, and the rain.
   fn list_missing(&self, weather: Option<&WorldLevelWeather>) -> Vec<WorldSoundRefusal> {
-    let mut missing: Vec<(&WorldSound, WorldSoundKind)> = Vec::new();
+    let mut refused: Vec<WorldSoundRefusal> = Vec::new();
+    let mut check = |sound: &WorldSound, kind: WorldSoundKind| {
+      if sound.info.is_none() {
+        refused.push(WorldSoundRefusal {
+          sound: sound.reference.to_string(),
+          kind: Some(kind),
+          reason: String::from("The sound's file is missing or not a sound the engine loads"),
+        });
+      }
+    };
 
     if let Some(level) = &self.level {
-      missing.extend(
-        level
-          .statics
-          .iter_records()
-          .map(|record| (&record.sound, WorldSoundKind::Static)),
-      );
+      for record in level.statics.iter_records() {
+        check(&record.sound, WorldSoundKind::Static);
+      }
+
       // Vanilla plays a track's two halves where its stereo file is missing, so the halves are what may be missing then.
       for track in level.music.iter_tracks() {
         match &track.halves {
           Some(halves) if level.engine != XrayEngine::Extended => {
-            missing.extend(halves.iter().map(|half| (half, WorldSoundKind::Music)));
+            for half in halves {
+              check(half, WorldSoundKind::Music);
+            }
           }
-          _ => missing.push((&track.stereo, WorldSoundKind::Music)),
+          _ => check(&track.stereo, WorldSoundKind::Music),
         }
       }
 
       for zone in level.zones.iter_records() {
-        missing.extend(
-          [&zone.idle, &zone.disabled]
-            .into_iter()
-            .flatten()
-            .map(|sound| (sound, zone.get_kind())),
-        );
+        for sound in [&zone.idle, &zone.disabled].into_iter().flatten() {
+          check(sound, zone.get_kind());
+        }
       }
     }
 
@@ -406,19 +408,14 @@ impl LevelSound {
         .filter_map(|name| weather.sound_channels.get(name))
         .flat_map(|channel| &channel.sounds);
 
-      missing.extend(channels.map(|sound| (sound, WorldSoundKind::Channel)));
-      missing.extend(weather.rain_sound.iter().map(|sound| (sound, WorldSoundKind::Rain)));
-    }
+      for sound in channels {
+        check(sound, WorldSoundKind::Channel);
+      }
 
-    let mut refused: Vec<WorldSoundRefusal> = missing
-      .into_iter()
-      .filter(|(sound, _)| sound.info.is_none())
-      .map(|(sound, kind)| WorldSoundRefusal {
-        sound: sound.reference.to_string(),
-        kind: Some(kind),
-        reason: String::from("The sound's file is missing or not a sound the engine loads"),
-      })
-      .collect();
+      if let Some(sound) = &weather.rain_sound {
+        check(sound, WorldSoundKind::Rain);
+      }
+    }
 
     // A missing file is named once, however many sounds name it.
     refused.sort_by(|a, b| a.sound.cmp(&b.sound));
