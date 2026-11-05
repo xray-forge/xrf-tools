@@ -1,9 +1,8 @@
+import { EditorPopoverSelectRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ListItemText } from "@xrf/ui/material/list";
 import { MenuItem } from "@xrf/ui/material/menu";
-import { TextField } from "@xrf/ui/material/text-field";
-import { CONTROL } from "@xrf/ui/theme";
-import { ChangeEvent, ReactElement } from "react";
+import { ReactElement } from "react";
 
 import {
   describeLevelManualWeatherKey,
@@ -33,26 +32,16 @@ export function LevelWeatherSunSelect({
   onChange,
 }: ILevelWeatherSunSelectProps): ReactElement {
   return (
-    <TextField
+    <EditorPopoverSelectRow
       data-testid={dataTestId}
       id={id}
       className={className}
-      select
-      fullWidth
-      size={"small"}
       label={LEVEL_MANUAL_WEATHER_LABELS.sun}
-      title={describeLevelManualWeatherKey("sun")}
+      description={describeLevelManualWeatherKey("sun")}
       value={value}
-      disabled={!suns.length && !value}
-      slotProps={{
-        inputLabel: { shrink: true },
-        select: {
-          displayEmpty: true,
-          MenuProps: { slotProps: { paper: { sx: { maxHeight: CONTROL.selectMenuMaxHeight } } } },
-          renderValue: (selected: unknown) => String(selected) || "None",
-        },
-      }}
-      onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(event.target.value)}
+      isDisabled={!suns.length && !value}
+      renderValue={(selected: string) => selected || "None"}
+      onChange={onChange}
     >
       <MenuItem dense value={NONE}>
         None
@@ -68,6 +57,6 @@ export function LevelWeatherSunSelect({
           {sun}
         </MenuItem>
       ))}
-    </TextField>
+    </EditorPopoverSelectRow>
   );
 }

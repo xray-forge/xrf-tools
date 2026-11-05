@@ -89,11 +89,8 @@ export function LevelWeatherAction({
               onBack={() => weatherService.setSource(ELevelWeatherSource.WEATHER)}
             />
           ) : null}
-        </EditorPopoverGroupSection>
 
-        <EditorPopoverGroupSection label={"Cycle"}>
           <LevelWeatherCycleSelect
-            className={"mt-2"}
             cycles={cycles}
             selected={cycle?.name ?? null}
             reading={weatherService.reading}
@@ -101,7 +98,6 @@ export function LevelWeatherAction({
           />
 
           <LevelWeatherEffectSelect
-            className={"mt-3"}
             effects={description?.effects ?? []}
             playing={report?.effect ?? null}
             onPlay={renderService.weather.playEffect}

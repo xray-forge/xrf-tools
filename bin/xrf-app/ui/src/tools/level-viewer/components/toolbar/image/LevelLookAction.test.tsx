@@ -20,40 +20,47 @@ function renderAction(): TLevelViewRenderResult {
   return renderLevelView(<LevelLookAction />, descriptor);
 }
 
+async function pickSource(rendered: TLevelViewRenderResult, name: string): Promise<void> {
+  await userEvent.click(rendered.getByRole("combobox", { name: "Source" }));
+  await userEvent.click(rendered.getByRole("option", { name }));
+}
+
 afterEach(() => {
   clearLocalStorage();
 });
 
 describe("LevelLookAction", () => {
   it("draws with the settings' look, and saves no presets of its own", async () => {
-    const { getByRole, findByRole, queryByRole, look } = renderAction();
+    const rendered: TLevelViewRenderResult = renderAction();
+    const { getByRole, findByRole, queryByRole, look } = rendered;
 
     await userEvent.click(getByRole("button", { name: "Look" }));
     await findByRole("dialog", { name: "Look" });
-    await userEvent.click(getByRole("option", { name: "Settings" }));
+    await pickSource(rendered, "Settings");
 
     expect(look.choice.source).toBe(ELevelLookSource.SETTINGS);
     expect(queryByRole("textbox", { name: "Preset name" })).not.toBeInTheDocument();
   });
 
   it("offers XRF's, Anomaly's and OpenXRay's own looks whatever game is open", async () => {
-    const { getByRole, findByRole, look } = renderAction();
+    const rendered: TLevelViewRenderResult = renderAction();
+    const { getByRole, findByRole, look } = rendered;
 
     await userEvent.click(getByRole("button", { name: "Look" }));
     await findByRole("dialog", { name: "Look" });
-    await userEvent.click(getByRole("option", { name: "XRF" }));
+    await pickSource(rendered, "XRF");
 
     expect(look.choice.source).toBe(ELevelLookSource.XRF);
     expect(look.look.lightScales).toEqual({ ambient: 0.1, hemi: 0.6, sun: 1 });
     expect(look.look.exposure.middleGray).toBe(1.1);
 
-    await userEvent.click(getByRole("option", { name: "Anomaly" }));
+    await pickSource(rendered, "Anomaly");
 
     expect(look.choice.source).toBe(ELevelLookSource.ANOMALY);
     expect(look.look.lightScales.sun).toBe(2);
     expect(look.look.exposure.middleGray).toBe(1.5);
 
-    await userEvent.click(getByRole("option", { name: "OpenXRay" }));
+    await pickSource(rendered, "OpenXRay");
 
     expect(look.look.lightScales.sun).toBe(1);
     expect(look.look.exposure.middleGray).toBe(1);
@@ -61,14 +68,15 @@ describe("LevelLookAction", () => {
 
   // Trying another look does not throw away the values edited by hand.
   it("keeps the values edited by hand to go back to after another look is picked", async () => {
-    const { getByRole, findByRole, look } = renderAction();
+    const rendered: TLevelViewRenderResult = renderAction();
+    const { getByRole, findByRole, look } = rendered;
 
     act(() => look.edit({ ...look.look, lightScales: { ...look.look.lightScales, sun: 3 } }));
 
     await userEvent.click(getByRole("button", { name: "Look" }));
     await findByRole("dialog", { name: "Look" });
-    await userEvent.click(getByRole("option", { name: "Settings" }));
-    await userEvent.click(getByRole("option", { name: "Edited by hand" }));
+    await pickSource(rendered, "Settings");
+    await pickSource(rendered, "Edited by hand");
 
     expect(look.choice.source).toBe(ELevelLookSource.CUSTOM);
     expect(look.look.lightScales.sun).toBe(3);

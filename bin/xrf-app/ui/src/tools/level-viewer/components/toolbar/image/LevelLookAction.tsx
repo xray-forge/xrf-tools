@@ -14,11 +14,11 @@ import { Optional } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
-import { EditorPopoverCheckboxRow, EditorPopoverNote } from "@xrf/ui/editor/popover-row";
+import { EditorPopoverCheckboxRow, EditorPopoverNote, EditorPopoverSelectRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { ChoiceListFormRow } from "@xrf/ui/form/choice-list-row";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ExposureIcon } from "@xrf/ui/icons/exposure";
+import { MenuItem } from "@xrf/ui/material/menu";
 import { ReactElement, useCallback } from "react";
 
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
@@ -193,15 +193,20 @@ export function LevelLookAction({
       isActive={picked !== ELevelLookSource.GAME || isEnhancedBloom || isPhysical}
     >
       <EditorPopoverContent label={"Look"} isWide>
-        <ChoiceListFormRow
+        <EditorPopoverSelectRow
           data-testid={"level-look-source"}
           label={"Source"}
-          description={"Picks where the exposure, light scales, bloom and image corrections come from"}
-          options={options}
+          description={"Where the exposure, light scales, bloom and image corrections come from."}
           value={picked}
-          filterFrom={options.length + 1}
+          renderValue={(value: string) => options.find((it) => it.value === value)?.label ?? value}
           onChange={onPick}
-        />
+        >
+          {options.map((option: IChoiceFormRowOption<string>) => (
+            <MenuItem key={option.value} dense value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </EditorPopoverSelectRow>
 
         <EditorPopoverGroupSection label={"Light"} note={explainRenderLightModel(lightModel)}>
           <RenderSettingEntry
