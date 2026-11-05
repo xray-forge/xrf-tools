@@ -1,4 +1,4 @@
-import { Nullable } from "@xrf/types";
+import { Nullable, Optional } from "@xrf/types";
 import { ChangeEvent, ReactElement, useId, useState } from "react";
 
 import { BaseComponentProps } from "#/element-types";
@@ -8,6 +8,7 @@ import { HistoryIcon } from "#/icons/history";
 import { IconButton } from "#/material/icon-button";
 import { TextField } from "#/material/text-field";
 import { Tooltip } from "#/material/tooltip";
+import { POPOVER_INPUT_SX } from "#/theme/sx";
 
 import { FilePickerRecentsMenu } from "./FilePickerRecentsMenu";
 import { IPathFieldRecents } from "./path-field-recents";
@@ -19,6 +20,8 @@ interface IFilePickerInputProps extends BaseComponentProps {
   value?: Nullable<string>;
   isDisabled?: boolean;
   isInvalid?: boolean;
+  /** Sized as a popover or panel row's field: the row's height and type, its buttons as small as the field. */
+  isCompact?: boolean;
   onSelect: () => void;
   /** Enables typing and pasting a path. Without it the field only reports what the dialog returned. */
   onChange?: (value: string) => void;
@@ -41,11 +44,15 @@ export function FilePickerInput({
   value,
   isDisabled,
   isInvalid,
+  isCompact = false,
   onSelect,
   onChange,
   onClear,
   recents,
 }: IFilePickerInputProps): ReactElement {
+  // A compact field is lower than a form's buttons, so its own shrink to fit inside it.
+  const buttonClassName: Optional<string> = isCompact ? "p-0.5 [&>svg]:text-base" : undefined;
+
   const generatedId: string = useId();
   const controlId: string = id ?? generatedId;
 
@@ -80,12 +87,18 @@ export function FilePickerInput({
         },
         input: {
           readOnly: !onChange,
+          sx: isCompact ? POPOVER_INPUT_SX : undefined,
           endAdornment: (
             <div className={"flex shrink-0"}>
               {value && onClear ? (
                 <Tooltip describeChild title={"Clear"}>
                   <span>
-                    <IconButton aria-label={"Clear"} disabled={isDisabled} onClick={onClear}>
+                    <IconButton
+                      className={buttonClassName}
+                      aria-label={"Clear"}
+                      disabled={isDisabled}
+                      onClick={onClear}
+                    >
                       <ClearIcon fontSize={"small"} />
                     </IconButton>
                   </span>
@@ -95,7 +108,12 @@ export function FilePickerInput({
               {hasRecents ? (
                 <Tooltip describeChild title={"Recent paths"}>
                   <span>
-                    <IconButton aria-label={"Recent paths"} disabled={isDisabled} onClick={() => setRecentsOpen(true)}>
+                    <IconButton
+                      className={buttonClassName}
+                      aria-label={"Recent paths"}
+                      disabled={isDisabled}
+                      onClick={() => setRecentsOpen(true)}
+                    >
                       <HistoryIcon fontSize={"small"} />
                     </IconButton>
                   </span>
@@ -104,7 +122,12 @@ export function FilePickerInput({
 
               <Tooltip describeChild title={"Browse"}>
                 <span>
-                  <IconButton aria-label={"Browse"} disabled={isDisabled} onClick={onSelect}>
+                  <IconButton
+                    className={buttonClassName}
+                    aria-label={"Browse"}
+                    disabled={isDisabled}
+                    onClick={onSelect}
+                  >
                     <FolderOpenIcon fontSize={"small"} />
                   </IconButton>
                 </span>

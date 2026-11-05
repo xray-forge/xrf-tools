@@ -13,7 +13,7 @@ import { ReactElement, useCallback, useState } from "react";
 import { EToolId } from "@/core/routing/tool";
 import { EditorPanel } from "@/core/shell/chrome/EditorPanel";
 import { TextureSelectionService } from "@/core/textures/services/texture-selection";
-import { IPathField, PathFormRow, usePathField } from "@/core/ui/form";
+import { IPathField, PathPanelRow, usePathField } from "@/core/ui/form";
 import { DEFAULT_GLOSS_POWER, toBumpGloss } from "@/tools/textures-editor/lib/texture-bump-gloss";
 import { TextureBumpService } from "@/tools/textures-editor/services/texture-bump";
 import { TextureEditorService } from "@/tools/textures-editor/services/texture-editor";
@@ -74,25 +74,23 @@ export function TextureBumpPanel({
     title: "Select an external normal map",
   });
 
-  const onGenerate = useCallback(
-    () =>
-      void bumpService.run({
-        gloss: toBumpGloss(isGlossFromHeight, gloss.value, glossConstant),
-        height: height.value ?? "",
-        normalMap: normalMap.value,
-        // The descriptor's own, so generating twice at different depths is a deliberate act rather than a surprise.
-        virtualHeight: editorService.draft?.virtualHeight ?? null,
-      }),
-    [
-      bumpService,
-      editorService.draft?.virtualHeight,
-      gloss.value,
-      glossConstant,
-      height.value,
-      isGlossFromHeight,
-      normalMap.value,
-    ]
-  );
+  const onGenerate = useCallback(() => {
+    // A panel has no form to commit its paths on submit, so the run that reads them remembers them.
+    height.commit();
+    normalMap.commit();
+
+    if (!isGlossFromHeight) {
+      gloss.commit();
+    }
+
+    void bumpService.run({
+      gloss: toBumpGloss(isGlossFromHeight, gloss.value, glossConstant),
+      height: height.value ?? "",
+      normalMap: normalMap.value,
+      // The descriptor's own, so generating twice at different depths is a deliberate act rather than a surprise.
+      virtualHeight: editorService.draft?.virtualHeight ?? null,
+    });
+  }, [bumpService, editorService.draft?.virtualHeight, gloss, glossConstant, height, isGlossFromHeight, normalMap]);
 
   if (!description) {
     return (
@@ -116,7 +114,7 @@ export function TextureBumpPanel({
       </EditorPanelSection>
 
       <EditorPanelSection title={"Sources"} caption={"The relief is required; everything else refines it"}>
-        <PathFormRow
+        <PathPanelRow
           label={"Height map"}
           description={"Averaged across its colour channels, as the SDK does"}
           isDisabled={isRunning}
@@ -125,7 +123,6 @@ export function TextureBumpPanel({
 
         <EditorPopoverSwitchRow
           data-testid={"texture-bump-gloss-from-height"}
-          className={"my-1"}
           label={"Gloss from the height map's alpha"}
           description={"Reads the gloss out of the height map's alpha channel, as the SDK's bump source carries it"}
           isChecked={isGlossFromHeight}
@@ -134,7 +131,7 @@ export function TextureBumpPanel({
         />
 
         {isGlossFromHeight ? null : (
-          <PathFormRow
+          <PathPanelRow
             label={"Gloss mask"}
             description={"Optional. Without one, the level below is used everywhere"}
             isDisabled={isRunning}
@@ -151,7 +148,7 @@ export function TextureBumpPanel({
           />
         )}
 
-        <PathFormRow
+        <PathPanelRow
           label={"Normal map"}
           description={"Optional. Replaces the normals the height implies, and must match its size"}
           isDisabled={isRunning}
