@@ -1,6 +1,8 @@
 import { ReactElement, ReactNode } from "react";
 
+import { EditorIconAction } from "#/editor/icon-action";
 import { BaseComponentProps } from "#/element-types";
+import { RestartAltIcon } from "#/icons/restart-alt";
 import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
@@ -9,6 +11,13 @@ export interface IEditorPopoverContentProps extends BaseComponentProps {
   label: string;
   /** Whether it takes the wider width, for rows of several named choices. */
   isWide?: boolean;
+  /**
+   * Sets back what every section of the popover sets, from a button at the end of its heading, where one reset covers
+   * them all; none while nothing is to set back.
+   */
+  onReset?: () => void;
+  /** What the reset sets them back to, its tooltip. */
+  resetLabel?: string;
   children: ReactNode;
 }
 
@@ -21,6 +30,8 @@ export function EditorPopoverContent({
   className,
   label,
   isWide = false,
+  onReset,
+  resetLabel = "Reset",
   children,
 }: IEditorPopoverContentProps): ReactElement {
   return (
@@ -29,9 +40,20 @@ export function EditorPopoverContent({
       id={id}
       className={cn("flex flex-col gap-1 px-3 pt-1 pb-3", isWide ? "w-popover-wide" : "w-popover", className)}
     >
-      <Typography className={"text-text-secondary"} variant={"overline"}>
-        {label}
-      </Typography>
+      <div className={"flex min-h-8 items-center justify-between gap-1"}>
+        <Typography className={"text-text-secondary"} variant={"overline"}>
+          {label}
+        </Typography>
+
+        {onReset ? (
+          <EditorIconAction
+            label={`${label}: ${resetLabel}`}
+            description={resetLabel}
+            icon={<RestartAltIcon />}
+            onClick={onReset}
+          />
+        ) : null}
+      </div>
 
       {children}
     </div>

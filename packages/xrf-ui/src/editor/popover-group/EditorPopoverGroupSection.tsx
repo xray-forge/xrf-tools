@@ -54,7 +54,9 @@ export function EditorPopoverGroupSection({
   return (
     <div
       data-testid={dataTestId}
+      aria-labelledby={labelId}
       id={id}
+      role={"group"}
       className={cn(
         "flex flex-col border-t border-divider pt-1.5 first-of-type:border-t-0 first-of-type:pt-0",
         className

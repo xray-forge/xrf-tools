@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ERenderContactShadowMode } from "@xrf/ipc/types/xrf-renderer";
 
@@ -50,14 +51,16 @@ describe("LevelShadowAction", () => {
     await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Sun shadows" }) });
     await findByRole("dialog", { name: "Sun shadows" });
 
-    expect(getByRole("slider", { name: "Contact length" })).toBeDisabled();
+    const contact: HTMLElement = getByRole("group", { name: "Contact shadows" });
 
-    await userEvent.click(getByRole("button", { name: "Enhanced" }));
+    expect(within(contact).getByRole("slider", { name: "Length" })).toBeDisabled();
+
+    await userEvent.click(within(contact).getByRole("button", { name: "Enhanced" }));
 
     // Only the mode is the view's own, so the strengths still follow the settings.
     expect(view.features.shadows).toEqual({ contact: { mode: ERenderContactShadowMode.ENHANCED } });
-    expect(getByRole("slider", { name: "Contact length" })).toBeEnabled();
-    expect(getByRole("slider", { name: "Contact lights" })).toHaveAttribute("aria-valuetext", "4 lights");
+    expect(within(contact).getByRole("slider", { name: "Length" })).toBeEnabled();
+    expect(within(contact).getByRole("slider", { name: "Lamps" })).toHaveAttribute("aria-valuetext", "4 lights");
     expect(getByRole("button", { hidden: true, name: "Sun shadows" })).toHaveAccessibleDescription(
       "Sun shadows in 4 cascades, the widest 480 m across, at 2048, with contact shadows. Right-click for its settings"
     );

@@ -61,14 +61,13 @@ function isEngineContactShadow(contact: TRenderContactShadowSettings): boolean {
 }
 
 /**
- * How each contact shadow setting is set, in the settings' Shadows tab and the Sun shadows popover alike, whose
- * entries name the contact shadows beside the cascades' values.
+ * How each contact shadow setting is set, in the settings' Shadows tab and the Sun shadows popover alike, each under a
+ * Contact shadows heading.
  */
 export const RENDER_CONTACT_SHADOW_SETTINGS: TRenderSettings<TRenderContactShadowSettings> = {
   intensity: {
     control: ERenderSettingControl.SLIDER,
     description: "How much of the light a contact shadow takes away.",
-    entryLabel: "Contact intensity",
     format: formatContactShadowIntensity,
     isInert: isEngineContactShadow,
     label: "Intensity",
@@ -77,7 +76,6 @@ export const RENDER_CONTACT_SHADOW_SETTINGS: TRenderSettings<TRenderContactShado
   isFullResolution: {
     control: ERenderSettingControl.CHECKBOX,
     description: "Marches every pixel rather than one in four: thin foliage stops flickering, at four times the cost.",
-    entryLabel: "Full resolution contact",
     isEntryDescribed: true,
     isInert: isEngineContactShadow,
     label: "Full resolution",
@@ -85,7 +83,6 @@ export const RENDER_CONTACT_SHADOW_SETTINGS: TRenderSettings<TRenderContactShado
   length: {
     control: ERenderSettingControl.SLIDER,
     description: "Metres a pixel's ray reaches towards the sun or a lamp over the frame's depth.",
-    entryLabel: "Contact length",
     format: formatContactShadowLength,
     isInert: isEngineContactShadow,
     label: "Length",
@@ -94,7 +91,6 @@ export const RENDER_CONTACT_SHADOW_SETTINGS: TRenderSettings<TRenderContactShado
   lights: {
     control: ERenderSettingControl.SLIDER,
     description: "Lamps each pixel marches towards too, the strongest there; none marches towards the sun alone.",
-    entryLabel: "Contact lights",
     format: formatContactShadowLights,
     isInert: isEngineContactShadow,
     label: "Lamps",
@@ -102,7 +98,6 @@ export const RENDER_CONTACT_SHADOW_SETTINGS: TRenderSettings<TRenderContactShado
   },
   mode: {
     control: ERenderSettingControl.CHOICE,
-    entryLabel: "Contact shadow mode",
     explain: explainRenderContactShadowMode,
     isEntryDescribed: true,
     label: "Mode",
@@ -111,7 +106,6 @@ export const RENDER_CONTACT_SHADOW_SETTINGS: TRenderSettings<TRenderContactShado
   steps: {
     control: ERenderSettingControl.SLIDER,
     description: "Depth reads along each ray: more finds smaller shadows and costs more.",
-    entryLabel: "Contact steps",
     format: formatContactShadowSteps,
     isInert: isEngineContactShadow,
     label: "Steps",
@@ -120,7 +114,6 @@ export const RENDER_CONTACT_SHADOW_SETTINGS: TRenderSettings<TRenderContactShado
   thickness: {
     control: ERenderSettingControl.SLIDER,
     description: "How deep what the frame's depth shows is taken to be: light passes behind anything thinner.",
-    entryLabel: "Contact thickness",
     format: formatContactShadowThickness,
     isInert: isEngineContactShadow,
     label: "Thickness",

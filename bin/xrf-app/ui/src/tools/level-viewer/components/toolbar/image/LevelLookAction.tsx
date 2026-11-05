@@ -10,18 +10,21 @@ import {
   RenderLightLevel,
   RenderLightModel,
 } from "@xrf/ipc/types/xrf-renderer";
+import { Optional } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
-import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
+import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
+import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
+import { EditorPopoverCheckboxRow, EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ChoiceListFormRow } from "@xrf/ui/form/choice-list-row";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ExposureIcon } from "@xrf/ui/icons/exposure";
 import { ReactElement, useCallback } from "react";
 
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
-import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
+import { LEVEL_SETTINGS_RESET_LABEL } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
+import { useLevelFeatureReset } from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { ILevelLook } from "@/core/level/lib/look/level-look";
 import { ELevelLookSource } from "@/core/level/lib/look/level-look-choice";
@@ -53,7 +56,6 @@ import {
   TRenderLightSettings,
 } from "@/core/render/lib/settings/choice/render-feature-settings";
 import { RenderSettingsService } from "@/core/render/services/render-settings.service";
-import { LevelLookSection } from "@/tools/level-viewer/components/toolbar/image/LevelLookSection";
 import { LevelLookSliders } from "@/tools/level-viewer/components/toolbar/image/LevelLookSliders";
 import {
   LEVEL_LOOK_BLOOM_FIELDS,
@@ -103,7 +105,8 @@ function describeGameDefaults(defaults: AsyncState<LevelConsoleDefaults>): strin
 
 /**
  * How the level is exposed, lit, bloomed and corrected: the game's console defaults, the settings', a built-in engine's,
- * or values edited by hand; whether the engine's bloom draws or the enhanced one in its place; and the sky's debanding.
+ * or values edited by hand, a section each of the light, the exposure, the display, the bloom (the engine's values
+ * first, the enhanced bloom's after them) and the image; and the sky's debanding last.
  */
 export function LevelLookAction({
   "data-testid": dataTestId = "level-look-action",
@@ -114,7 +117,8 @@ export function LevelLookAction({
   const viewService: LevelViewService = useInjection(LevelViewService);
   const renderSettingsService: RenderSettingsService = useInjection(RenderSettingsService);
   const { features, drawn } = useLevelRenderFeatures();
-  const { set: setBloom, reset: resetBloom } = useLevelFeatureOverride("enhancedBloom");
+  const { set: setBloom } = useLevelFeatureOverride("enhancedBloom");
+  const onBloomReset: Optional<() => void> = useLevelFeatureReset("enhancedBloom");
   const { set: setGrading } = useLevelFeatureOverride("grading");
 
   // Which bloom the view draws, and the enhanced bloom's strengths.
@@ -186,20 +190,18 @@ export function LevelLookAction({
       icon={<ExposureIcon />}
       isActive={picked !== ELevelLookSource.GAME || isEnhancedBloom || isPhysical}
     >
-      <div className={"flex w-popover-wide flex-col gap-3 px-3 pt-1 pb-3"}>
-        <LevelLookSection title={"Look"}>
-          <ChoiceListFormRow
-            data-testid={"level-look-source"}
-            label={"Source"}
-            description={"Picks where the exposure, light scales, bloom and image corrections come from"}
-            options={options}
-            value={picked}
-            filterFrom={options.length + 1}
-            onChange={onPick}
-          />
-        </LevelLookSection>
+      <EditorPopoverContent label={"Look"} isWide>
+        <ChoiceListFormRow
+          data-testid={"level-look-source"}
+          label={"Source"}
+          description={"Picks where the exposure, light scales, bloom and image corrections come from"}
+          options={options}
+          value={picked}
+          filterFrom={options.length + 1}
+          onChange={onPick}
+        />
 
-        <LevelLookSection title={"Light"} note={explainRenderLightModel(lightModel)}>
+        <EditorPopoverGroupSection label={"Light"} note={explainRenderLightModel(lightModel)}>
           <RenderSettingEntry
             settings={RENDER_LIGHT_SETTINGS}
             name={"lightModel"}
@@ -234,9 +236,9 @@ export function LevelLookAction({
             isPhysicalLevels={isPhysicalLevels}
             onEdit={onEdit}
           />
-        </LevelLookSection>
+        </EditorPopoverGroupSection>
 
-        <LevelLookSection title={"Exposure"}>
+        <EditorPopoverGroupSection label={"Exposure"}>
           <RenderSettingEntries
             settings={RENDER_EXPOSURE_SETTINGS}
             names={["isEnabled", "compensation"]}
@@ -252,10 +254,10 @@ export function LevelLookAction({
             isPhysicalLevels={isPhysicalLevels}
             onEdit={onEdit}
           />
-        </LevelLookSection>
+        </EditorPopoverGroupSection>
 
-        <LevelLookSection
-          title={"Display"}
+        <EditorPopoverGroupSection
+          label={"Display"}
           note={isPhysical ? explainRenderDisplayTransform(displayTransform) : "Under the physical light only."}
         >
           <RenderSettingEntry
@@ -273,9 +275,14 @@ export function LevelLookAction({
             features={drawn}
             onSet={setGrading}
           />
-        </LevelLookSection>
+        </EditorPopoverGroupSection>
 
-        <LevelLookSection title={"Bloom"} note={explainRenderBloomMode(bloom.mode)}>
+        <EditorPopoverGroupSection
+          label={"Bloom"}
+          note={explainRenderBloomMode(bloom.mode)}
+          resetLabel={LEVEL_SETTINGS_RESET_LABEL}
+          onReset={onBloomReset}
+        >
           <RenderValueChoice
             label={"Mode"}
             options={RENDER_BLOOM_MODE_OPTIONS}
@@ -283,19 +290,9 @@ export function LevelLookAction({
             onChange={onBloomMode}
           />
 
-          <div className={"flex flex-col gap-1"}>
-            <RenderSettingEntries
-              settings={RENDER_ENHANCED_BLOOM_SETTINGS}
-              names={["threshold", "exposure", "blur", "vibrance", "sky"]}
-              group={bloom}
-              features={drawn}
-              onSet={setBloom}
-            />
-          </div>
-
-          <CheckboxFormRow
-            label={"Bloom"}
-            description={"Blurs the frame's bright parts over it. Game setting: phase_bloom."}
+          <EditorPopoverCheckboxRow
+            label={"Engine bloom"}
+            description={"The engine's bloom: blurs the frame's bright parts over it. Game setting: phase_bloom."}
             isChecked={look.bloom.isEnabled}
             isDisabled={isEnhancedBloom}
             onChange={onEngineBloom}
@@ -310,13 +307,16 @@ export function LevelLookAction({
             onEdit={onEdit}
           />
 
-          <LevelSettingsResetButton subject={"bloom"} onReset={resetBloom} />
-        </LevelLookSection>
+          <RenderSettingEntries
+            settings={RENDER_ENHANCED_BLOOM_SETTINGS}
+            names={["threshold", "exposure", "blur", "vibrance", "sky"]}
+            group={bloom}
+            features={drawn}
+            onSet={setBloom}
+          />
+        </EditorPopoverGroupSection>
 
-        <LevelLookSection
-          title={"Image"}
-          note={"The engine's corrections of the finished frame, and the sky's debanding."}
-        >
+        <EditorPopoverGroupSection label={"Image"} description={"The engine's corrections of the finished frame."}>
           <LevelLookSliders
             fields={LEVEL_LOOK_IMAGE_FIELDS}
             look={look}
@@ -324,10 +324,10 @@ export function LevelLookAction({
             isPhysicalLevels={isPhysicalLevels}
             onEdit={onEdit}
           />
+        </EditorPopoverGroupSection>
 
-          <LevelEnhancedFeatureSection feature={"debanding"} />
-        </LevelLookSection>
-      </div>
+        <LevelEnhancedFeatureSection feature={"debanding"} />
+      </EditorPopoverContent>
     </EditorPopoverAction>
   );
 }
