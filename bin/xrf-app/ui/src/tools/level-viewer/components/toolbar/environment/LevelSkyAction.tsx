@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { formatDegrees, formatPercent } from "@xrf/format";
 import { LevelWeatherTexture } from "@xrf/ipc/types/xrf-app-levels";
+import { Optional } from "@xrf/types";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { NightsStayIcon } from "@xrf/ui/icons/nights-stay";
@@ -8,9 +9,15 @@ import { ReactElement } from "react";
 
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
-import { LevelWeatherResetButton } from "@/core/level/components/weather/LevelWeatherResetButton";
+import {
+  LEVEL_WEATHER_RESET_LABEL,
+  useLevelWeatherReset,
+} from "@/core/level/components/weather/use-level-weather-reset";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
-import { LEVEL_MANUAL_WEATHER_SKY_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
+import {
+  LEVEL_MANUAL_WEATHER_CLOUDS_KEYS,
+  LEVEL_MANUAL_WEATHER_SKY_KEYS,
+} from "@/core/level/lib/weather/level-manual-weather-groups";
 import {
   describeLevelManualWeatherKey,
   LEVEL_MANUAL_WEATHER_LABELS,
@@ -39,6 +46,8 @@ export function LevelSkyAction({
   const skies: ReadonlyArray<LevelWeatherTexture> = weatherService.description.value?.skies ?? NO_TEXTURES;
   const clouds: ReadonlyArray<LevelWeatherTexture> = weatherService.description.value?.clouds ?? NO_TEXTURES;
   const isCloudy: boolean = isClouded && manual.cloudsTexture !== "";
+  const onSkyReset: Optional<() => void> = useLevelWeatherReset(LEVEL_MANUAL_WEATHER_SKY_KEYS);
+  const onCloudsReset: Optional<() => void> = useLevelWeatherReset(LEVEL_MANUAL_WEATHER_CLOUDS_KEYS);
 
   return (
     <EditorPopoverGroup
@@ -56,7 +65,9 @@ export function LevelSkyAction({
       <EditorPopoverGroupSection
         label={"Sky"}
         isOn={isSkyVisible}
+        resetLabel={LEVEL_WEATHER_RESET_LABEL}
         onToggle={() => viewService.toggleOption("isSkyVisible")}
+        onReset={onSkyReset}
       >
         <LevelWeatherTextureField
           label={LEVEL_MANUAL_WEATHER_LABELS.skyTexture}
@@ -79,7 +90,9 @@ export function LevelSkyAction({
       <EditorPopoverGroupSection
         label={"Clouds"}
         isOn={isClouded}
+        resetLabel={LEVEL_WEATHER_RESET_LABEL}
         onToggle={() => viewService.toggleOption("isClouded")}
+        onReset={onCloudsReset}
       >
         <LevelWeatherTextureField
           label={LEVEL_MANUAL_WEATHER_LABELS.cloudsTexture}
@@ -103,8 +116,6 @@ export function LevelSkyAction({
           onEdit={weatherService.editManual}
         />
       </EditorPopoverGroupSection>
-
-      <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_SKY_KEYS} onReset={weatherService.resetManual} />
     </EditorPopoverGroup>
   );
 }

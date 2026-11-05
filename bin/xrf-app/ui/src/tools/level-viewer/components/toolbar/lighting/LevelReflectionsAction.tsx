@@ -13,10 +13,12 @@ import { FlipIcon } from "@xrf/ui/icons/flip";
 import { ReactElement } from "react";
 
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
-import { LEVEL_SETTINGS_RESET_LABEL } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { ILevelFeature, useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
-import { useLevelFeatureReset } from "@/core/level/components/preview/toolbar/use-level-feature-reset";
+import {
+  LEVEL_SETTINGS_RESET_LABEL,
+  useLevelFeatureReset,
+} from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { LevelRenderService } from "@/core/level/services/level-render";

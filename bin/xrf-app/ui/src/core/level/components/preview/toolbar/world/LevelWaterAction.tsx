@@ -8,13 +8,18 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { WaterIcon } from "@xrf/ui/icons/water";
 import { ReactElement, useCallback } from "react";
 
-import { LEVEL_SETTINGS_RESET_LABEL } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
-import { useLevelFeatureReset } from "@/core/level/components/preview/toolbar/use-level-feature-reset";
+import {
+  LEVEL_SETTINGS_RESET_LABEL,
+  useLevelFeatureReset,
+} from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
-import { LEVEL_WEATHER_RESET_LABEL } from "@/core/level/components/weather/LevelWeatherResetButton";
+import {
+  LEVEL_WEATHER_RESET_LABEL,
+  useLevelWeatherReset,
+} from "@/core/level/components/weather/use-level-weather-reset";
 import { describeLevelFeatureToggle, toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ILevelManualWeather } from "@/core/level/lib/weather/level-manual-weather";
 import { LEVEL_MANUAL_WEATHER_WATER_KEYS } from "@/core/level/lib/weather/level-manual-weather-groups";
@@ -48,9 +53,9 @@ export function LevelWaterAction({
   const { isOn, toggle } = useLevelViewToggle("isWaterVisible");
   const { state, set, setNested } = useLevelFeature("water");
   const onReset: Optional<() => void> = useLevelFeatureReset("water");
+  const onWeatherReset: Optional<() => void> = useLevelWeatherReset(LEVEL_MANUAL_WEATHER_WATER_KEYS);
   // The keyframe on screen, whose `water_intensity` scales what the water reflects.
   const manual: ILevelManualWeather = weatherService.shown;
-  const isWeatherResettable: boolean = weatherService.isManualResettable(LEVEL_MANUAL_WEATHER_WATER_KEYS);
   const water: TRenderWaterSettings = state.value;
   const isEnhanced: boolean = water.mode === ERenderWaterMode.ENHANCED;
   // The water's reflection is set in the Reflections group, beside the surfaces' and the ray trace both share.
@@ -60,10 +65,6 @@ export function LevelWaterAction({
   const onSetEnhanced = useCallback(
     (part: Partial<TRenderEnhancedWaterSettings>): void => setNested("enhanced", part),
     [setNested]
-  );
-  const onWeatherReset = useCallback(
-    () => weatherService.resetManual(LEVEL_MANUAL_WEATHER_WATER_KEYS),
-    [weatherService]
   );
 
   return (
@@ -163,11 +164,7 @@ export function LevelWaterAction({
         onSet={set}
       />
 
-      <EditorPopoverGroupSection
-        label={"Weather"}
-        resetLabel={LEVEL_WEATHER_RESET_LABEL}
-        onReset={isWeatherResettable ? onWeatherReset : undefined}
-      >
+      <EditorPopoverGroupSection label={"Weather"} resetLabel={LEVEL_WEATHER_RESET_LABEL} onReset={onWeatherReset}>
         <LevelManualWeatherSlider
           field={"waterIntensity"}
           label={"Intensity"}

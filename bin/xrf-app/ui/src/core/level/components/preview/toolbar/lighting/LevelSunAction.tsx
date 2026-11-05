@@ -2,7 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { formatCount, formatDegrees } from "@xrf/format";
 import { LevelSunDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
-import { Nullable } from "@xrf/types";
+import { Nullable, Optional } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
@@ -15,8 +15,11 @@ import { ReactElement, useCallback, useMemo } from "react";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { LevelManualWeatherSlider } from "@/core/level/components/weather/LevelManualWeatherSlider";
 import { LevelManualWeatherVectorField } from "@/core/level/components/weather/LevelManualWeatherVectorField";
-import { LEVEL_WEATHER_RESET_LABEL } from "@/core/level/components/weather/LevelWeatherResetButton";
 import { LevelWeatherSunSelect } from "@/core/level/components/weather/LevelWeatherSunSelect";
+import {
+  LEVEL_WEATHER_RESET_LABEL,
+  useLevelWeatherReset,
+} from "@/core/level/components/weather/use-level-weather-reset";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { ILevelManualWeather, toLevelManualSun } from "@/core/level/lib/weather/level-manual-weather";
@@ -66,8 +69,7 @@ export function LevelSunAction({
 
   // `setHP` turns the light's heading by the altitude and tilts it down by the longitude.
   const reading: string = `${formatDegrees(-manual.sunLongitude)} up at a bearing of ${formatDegrees(manual.sunAltitude)}`;
-
-  const isWeatherResettable: boolean = weatherService.isManualResettable(LEVEL_MANUAL_WEATHER_SUN_KEYS);
+  const onWeatherReset: Optional<() => void> = useLevelWeatherReset(LEVEL_MANUAL_WEATHER_SUN_KEYS);
 
   // The occlusion a level carries was computed for its sun, so lighting it from there is lighting it as xrLC assumed.
   const onUseCompiled = useCallback(() => {
@@ -75,8 +77,6 @@ export function LevelSunAction({
       weatherService.editManual(compiled);
     }
   }, [compiled, weatherService]);
-
-  const onWeatherReset = useCallback(() => weatherService.resetManual(LEVEL_MANUAL_WEATHER_SUN_KEYS), [weatherService]);
 
   return (
     <EditorPopoverAction
@@ -89,11 +89,7 @@ export function LevelSunAction({
       isActive={drawnSun !== null}
     >
       <EditorPopoverContent label={"Sun"}>
-        <EditorPopoverGroupSection
-          label={"Light"}
-          resetLabel={LEVEL_WEATHER_RESET_LABEL}
-          onReset={isWeatherResettable ? onWeatherReset : undefined}
-        >
+        <EditorPopoverGroupSection label={"Light"} resetLabel={LEVEL_WEATHER_RESET_LABEL} onReset={onWeatherReset}>
           <LevelManualWeatherVectorField
             field={"sunColor"}
             isColor

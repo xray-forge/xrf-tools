@@ -69,8 +69,8 @@ describe("LevelRainAction", () => {
     expect(weather.manual?.thunderboltCollection).toBe("collection_default");
   });
 
-  it("gathers puddles on the ground as the rain's third section, their strengths settable only then", async () => {
-    const { getByRole, findByRole, view } = await renderAction();
+  it("gathers puddles on the ground as the rain's last section, their strengths settable only then", async () => {
+    const { getByRole, findByRole, queryByRole, view } = await renderAction();
 
     expect(getByRole("button", { name: "Rain" })).toHaveAccessibleDescription("No rain, no thunder, no puddles");
 
@@ -91,9 +91,47 @@ describe("LevelRainAction", () => {
       "No rain, no thunder, puddles at 50% of the sites"
     );
 
-    await userEvent.click(getByRole("button", { name: "Back to the settings" }));
+    await userEvent.click(getByRole("button", { name: "Puddles: Back to the settings" }));
 
     expect(view.features.rain).toEqual({});
+    expect(queryByRole("button", { name: "Puddles: Back to the settings" })).toBeNull();
+  });
+
+  it("gives each section's settings back on their own, the drops' reset keeping the puddles", async () => {
+    const descriptor: ILevelViewContainerDescriptor = mockLevelViewContainer();
+
+    descriptor.renderSettings.setRendererOverrides({ rain: DEFAULT_RENDER_RAIN_SETTINGS });
+    descriptor.view.setFeatures({
+      ...descriptor.view.features,
+      rain: { dropSquare: 20, drops: ERenderRainDropsMode.ENHANCED, mode: ERenderRainMode.ENHANCED },
+    });
+
+    const { getByRole, findByRole, queryByRole, view } = renderLevelView(<LevelRainAction />, descriptor);
+
+    await userEvent.click(getByRole("button", { name: "Rain" }));
+    await findByRole("dialog", { name: "Rain" });
+    await userEvent.click(getByRole("button", { name: "Refracting drops: Back to the settings" }));
+
+    expect(view.features.rain).toEqual({ mode: ERenderRainMode.ENHANCED });
+    expect(queryByRole("button", { name: "Refracting drops: Back to the settings" })).toBeNull();
+    expect(getByRole("button", { name: "Puddles: Back to the settings" })).toBeInTheDocument();
+  });
+
+  it("sets the rain's keys back to the weather from its heading, apart from the thunder's", async () => {
+    const { getByRole, findByRole, queryByRole, weather } = await renderAction({ weather: {} });
+    const density: number = weather.shown.rainDensity;
+
+    act(() => weather.editManual({ rainDensity: density + 0.5 }));
+
+    await userEvent.click(getByRole("button", { name: "Rain" }));
+    await findByRole("dialog", { name: "Rain" });
+
+    expect(queryByRole("button", { name: "Thunder: Reset to the weather" })).toBeNull();
+
+    await userEvent.click(getByRole("button", { name: "Rain: Reset to the weather" }));
+
+    expect(weather.manual?.rainDensity).toBe(density);
+    expect(queryByRole("button", { name: "Rain: Reset to the weather" })).toBeNull();
   });
 
   it("bends the scene through the falling drops from the rain's own section, apart from the puddles", async () => {

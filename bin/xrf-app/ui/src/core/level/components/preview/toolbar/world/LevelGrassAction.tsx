@@ -6,9 +6,11 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { GrassIcon } from "@xrf/ui/icons/grass";
 import { ReactElement, useCallback } from "react";
 
-import { LEVEL_SETTINGS_RESET_LABEL } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
-import { useLevelFeatureReset } from "@/core/level/components/preview/toolbar/use-level-feature-reset";
+import {
+  LEVEL_SETTINGS_RESET_LABEL,
+  useLevelFeatureReset,
+} from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { useLevelViewToggle } from "@/core/level/components/preview/toolbar/use-level-view-toggle";
 import { describeLevelFeatureToggle } from "@/core/level/lib/features/level-feature-options";
