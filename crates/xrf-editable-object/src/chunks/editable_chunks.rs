@@ -3,8 +3,6 @@ use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
 use xrf_utils::to_format_size;
 
-use crate::EditableExtraChunk;
-
 /// The chunk handling every container of an editable object shares: one framed child at a time on write, and on read
 /// each child either folded into a field or kept as it was stored.
 pub(crate) struct EditableChunks;
@@ -105,16 +103,6 @@ impl EditableChunks {
     for record in records {
       record.write::<T>(writer)?;
     }
-
-    Ok(())
-  }
-
-  /// Keeps a chunk no field takes as the bytes it was stored as.
-  pub(crate) fn keep<D: ChunkDataSource>(chunk: &mut ChunkReader<D>, extra: &mut Vec<EditableExtraChunk>) -> XrfResult {
-    extra.push(EditableExtraChunk {
-      id: chunk.id,
-      bytes: chunk.read_remaining()?,
-    });
 
     Ok(())
   }

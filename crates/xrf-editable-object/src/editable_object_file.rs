@@ -10,7 +10,7 @@ use xrf_utils::{StagedFile, format_path, to_format_size};
 use crate::chunks::editable_chunk_sequence::EditableChunkSequence;
 use crate::chunks::editable_chunks::EditableChunks;
 use crate::{
-  EditableActorTransform, EditableBone, EditableBonePart, EditableDescription, EditableExtraChunk, EditableMesh,
+  EditableActorTransform, EditableBone, EditableBonePart, EditableChunkLayout, EditableDescription, EditableMesh,
   EditableSurface,
 };
 
@@ -18,13 +18,16 @@ use crate::{
 /// are made of, and for a dynamic object its skeleton. It is the source an OGF is exported from, and holds what the
 /// export drops: shared points, vertex maps, smoothing groups and every surface's names.
 ///
-/// Every chunk the SDK names is a field; any other chunk is kept in `extra` as it was stored. Writing follows the
-/// order the file stored its chunks in, so a file reads and writes back byte for byte whichever exporter laid it out,
-/// and an object built in code is written in the order `CEditableObject::Save` writes.
+/// Every chunk the SDK names is a field. How the file laid them out, and any chunk no field takes, is the body's,
+/// each mesh's and each bone's [`EditableChunkLayout`], so a file reads and writes back byte for byte whichever editor
+/// or exporter saved it, and an object built in code is written in the order `CEditableObject::Save` writes.
 #[derive(Clone, Debug, PartialEq)]
 pub struct EditableObjectFile {
   /// `CEditableObject::m_objectFlags`: dynamic, HOM, multiple usage, sound occluder and the rest.
   pub flags: u32,
+  /// Bytes the flags chunk holds: 4 as the editor writes it, 1 in an older object. `CEditableObject::Load` reads it
+  /// with `r_chunk`, which copies however many the chunk holds into the low bytes.
+  pub flags_size: u8,
   /// The script class the Level Editor gives the object, `None` where the chunk is absent.
   pub class_script: Option<String>,
   /// The LOD reference, `None` where the chunk is absent.
@@ -42,11 +45,8 @@ pub struct EditableObjectFile {
   pub bone_parts: Option<Vec<EditableBonePart>>,
   pub actor_transform: Option<EditableActorTransform>,
   pub description: Option<EditableDescription>,
-  /// Chunks no field takes, see [`EditableExtraChunk`].
-  pub extra: Vec<EditableExtraChunk>,
-  /// The body's chunk ids in the order the file stored them, which the writer follows. Empty for an object built in
-  /// code, which is then written in `Save`'s order.
-  pub chunk_order: Vec<u32>,
+  /// How the body's chunks were laid out in its file.
+  pub layout: EditableChunkLayout,
 }
 
 impl EditableObjectFile {
@@ -71,6 +71,9 @@ impl EditableObjectFile {
 
   /// `CEditableObject::eoDynamic`: the object is a skinned or animated model rather than level geometry.
   pub const DYNAMIC_FLAG: u32 = 1 << 0;
+
+  /// Bytes the flags chunk holds as the current editor writes it.
+  pub const FLAGS_SIZE: u8 = 4;
 
   /// Reads an editable object from a path.
   ///
@@ -134,6 +137,7 @@ impl EditableObjectFile {
   pub fn read_from_body_chunk<T: ByteOrder, D: ChunkDataSource>(reader: &mut ChunkReader<D>) -> XrfResult<Self> {
     let mut version: Option<u16> = None;
     let mut flags: Option<u32> = None;
+    let mut flags_size: u8 = Self::FLAGS_SIZE;
     let mut class_script: Option<String> = None;
     let mut lods: Option<String> = None;
     let mut meshes: Option<Vec<EditableMesh>> = None;
@@ -144,52 +148,48 @@ impl EditableObjectFile {
     let mut bone_parts: Option<Vec<EditableBonePart>> = None;
     let mut actor_transform: Option<EditableActorTransform> = None;
     let mut description: Option<EditableDescription> = None;
-    let mut extra: Vec<EditableExtraChunk> = Vec::new();
 
-    let children: Vec<ChunkReader<D>> = reader.read_children()?;
-    let chunk_order: Vec<u32> = children.iter().map(|chunk| chunk.id).collect();
-
-    for mut chunk in children {
+    let layout: EditableChunkLayout = EditableChunkLayout::read(reader, |chunk| {
       match chunk.id {
-        Self::VERSION_CHUNK_ID if version.is_none() => {
-          version = Some(chunk.read_u16_payload::<T>()?);
-        }
+        Self::VERSION_CHUNK_ID if version.is_none() => version = Some(chunk.read_u16_payload::<T>()?),
         Self::FLAGS_CHUNK_ID if flags.is_none() => {
-          flags = Some(chunk.read_u32_payload::<T>()?);
+          flags_size = Self::check_flags_size(chunk.read_bytes_remain())?;
+          flags = Some(
+            u32::try_from(T::read_uint(&chunk.read_remaining()?, flags_size.into()))
+              .map_err(|_| XrfError::new_parsing_error("Object flags do not fit 32 bits"))?,
+          );
         }
         Self::CLASS_SCRIPT_CHUNK_ID if class_script.is_none() => {
-          class_script = Some(chunk.read_w1251_string_payload()?);
+          class_script = Some(chunk.read_w1251_string_payload()?)
         }
-        Self::LODS_CHUNK_ID if lods.is_none() => {
-          lods = Some(chunk.read_w1251_string_payload()?);
-        }
+        Self::LODS_CHUNK_ID if lods.is_none() => lods = Some(chunk.read_w1251_string_payload()?),
         Self::MESHES_CHUNK_ID if meshes.is_none() => {
-          meshes = Some(EditableChunks::read_numbered(&mut chunk, "mesh", |chunk| {
+          meshes = Some(EditableChunks::read_numbered(chunk, "mesh", |chunk| {
             EditableMesh::read::<T, D>(chunk)
           })?);
         }
         Self::SURFACES_CHUNK_ID if surfaces.is_none() => {
-          surfaces = Some(EditableChunks::read_whole(&mut chunk, "surfaces", |chunk| {
+          surfaces = Some(EditableChunks::read_whole(chunk, "surfaces", |chunk| {
             EditableChunks::read_counted::<T, D, _>(chunk, EditableSurface::MIN_SERIALIZED_SIZE, "surfaces", |chunk| {
               chunk.read_xr::<T, _>()
             })
           })?);
         }
         Self::BONES_CHUNK_ID if bones.is_none() => {
-          bones = Some(EditableChunks::read_numbered(&mut chunk, "bone", |chunk| {
+          bones = Some(EditableChunks::read_numbered(chunk, "bone", |chunk| {
             EditableBone::read::<T, D>(chunk)
           })?);
         }
         Self::EMBEDDED_MOTIONS_CHUNK_ID if embedded_motions.is_none() => {
-          embedded_motions = Some(chunk.read_remaining()?);
+          embedded_motions = Some(chunk.read_remaining()?)
         }
         Self::MOTION_REFERENCES_CHUNK_ID if motion_references.is_none() => {
-          motion_references = Some(EditableChunks::read_whole(&mut chunk, "motion references", |chunk| {
+          motion_references = Some(EditableChunks::read_whole(chunk, "motion references", |chunk| {
             EditableChunks::read_counted::<T, D, _>(chunk, 1, "motion references", |chunk| chunk.read_w1251_string())
           })?);
         }
         Self::BONE_PARTS_CHUNK_ID if bone_parts.is_none() => {
-          bone_parts = Some(EditableChunks::read_whole(&mut chunk, "bone parts", |chunk| {
+          bone_parts = Some(EditableChunks::read_whole(chunk, "bone parts", |chunk| {
             EditableChunks::read_counted::<T, D, _>(
               chunk,
               EditableBonePart::MIN_SERIALIZED_SIZE,
@@ -199,18 +199,20 @@ impl EditableObjectFile {
           })?);
         }
         Self::ACTOR_TRANSFORM_CHUNK_ID if actor_transform.is_none() => {
-          actor_transform = Some(EditableChunks::read_whole(&mut chunk, "actor transform", |chunk| {
+          actor_transform = Some(EditableChunks::read_whole(chunk, "actor transform", |chunk| {
             chunk.read_xr::<T, _>()
           })?);
         }
         Self::DESCRIPTION_CHUNK_ID if description.is_none() => {
-          description = Some(EditableChunks::read_whole(&mut chunk, "description", |chunk| {
+          description = Some(EditableChunks::read_whole(chunk, "description", |chunk| {
             chunk.read_xr::<T, _>()
           })?);
         }
-        _ => EditableChunks::keep(&mut chunk, &mut extra)?,
+        _ => return Ok(false),
       }
-    }
+
+      Ok(true)
+    })?;
 
     EditableChunks::require_version(
       EditableChunks::require(version, "object version")?,
@@ -220,6 +222,7 @@ impl EditableObjectFile {
 
     Ok(Self {
       flags: EditableChunks::require(flags, "object flags")?,
+      flags_size,
       class_script,
       lods,
       meshes,
@@ -230,8 +233,7 @@ impl EditableObjectFile {
       bone_parts,
       actor_transform,
       description,
-      extra,
-      chunk_order,
+      layout,
     })
   }
 
@@ -261,8 +263,8 @@ impl EditableObjectFile {
     writer.flush_chunk_into_buffer::<T>(Self::BODY_CHUNK_ID)
   }
 
-  /// Writes the body's children in [`Self::chunk_order`], and any it does not list in the order
-  /// `CEditableObject::Save` writes them, the extra chunks last.
+  /// Writes the body's children as [`Self::layout`] lays them out, and any it does not list in the order
+  /// `CEditableObject::Save` writes them.
   ///
   /// # Errors
   ///
@@ -290,7 +292,22 @@ impl EditableObjectFile {
       })?;
     }
 
-    sequence.push(Self::FLAGS_CHUNK_ID, |writer| Ok(writer.write_u32::<T>(self.flags)?))?;
+    sequence.push(Self::FLAGS_CHUNK_ID, |writer| {
+      let size: usize = Self::check_flags_size(self.flags_size.into())?.into();
+
+      if size < 4 && self.flags >> (size * 8) != 0 {
+        return Err(XrfError::new_invalid_error(format!(
+          "Object flags {:#x} do not fit the {size} bytes the flags chunk holds",
+          self.flags
+        )));
+      }
+
+      let mut bytes: [u8; 4] = [0; 4];
+
+      T::write_uint(&mut bytes, self.flags.into(), size);
+
+      Ok(writer.write_all(&bytes[..size])?)
+    })?;
 
     if let Some(meshes) = &self.meshes {
       sequence.push(Self::MESHES_CHUNK_ID, |writer| {
@@ -340,14 +357,23 @@ impl EditableObjectFile {
       sequence.push(Self::DESCRIPTION_CHUNK_ID, |writer| description.write::<T>(writer))?;
     }
 
-    sequence.push_extra(&self.extra);
-
-    sequence.write_into::<T>(writer, &self.chunk_order)
+    self.layout.write::<T>(writer, sequence)
   }
 
   /// Whether the object is a dynamic model, which the Actor Editor exports to an OGF of its own, rather than level
   /// geometry a level build merges.
   pub const fn is_dynamic(&self) -> bool {
     self.flags & Self::DYNAMIC_FLAG != 0
+  }
+
+  /// Refuses a flags chunk `r_chunk` could not read into the flags: empty, or wider than them.
+  fn check_flags_size(size: u64) -> XrfResult<u8> {
+    match u8::try_from(size) {
+      Ok(size @ 1..=Self::FLAGS_SIZE) => Ok(size),
+      _ => Err(XrfError::new_parsing_error(format!(
+        "Unexpected object flags chunk of {size} bytes, the editor reads 1 to {}",
+        Self::FLAGS_SIZE
+      ))),
+    }
   }
 }

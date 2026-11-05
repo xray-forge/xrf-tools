@@ -33,7 +33,10 @@ which must be the body chunk (`0x7777`) alone, and `read_from_body_chunk` reads 
 ## What is read
 
 A file is one body chunk whose children `CEditableObject::Save` writes in a fixed order. The reader takes each child it
-names into a field and keeps every other child, including a second copy of one it names, as an `EditableExtraChunk`:
+names into a field. How the file laid a container out is that container's `layout`, an `EditableChunkLayout`: the
+order its chunks were stored in, and every child no field takes, a second copy of a named one included, as an
+`EditableExtraChunk`. Content and layout stay apart, so code that builds or edits an object never handles storage
+detail, and a container built in code takes `EditableChunkLayout::default()`.
 
 | Container          | Named chunks                                                                                     |
 | ------------------ | ------------------------------------------------------------------------------------------------ |
@@ -44,7 +47,12 @@ names into a field and keeps every other child, including a second copy of one i
 | Bone (`EditableBone`) | version, definition, bind pose, the repeated definition, material, shape, joint flags, joint,  |
 |                    | joint break, friction, mass                                                                      |
 
-The older surface, vertex map and bone part layouts the SDK still loads are kept as extra chunks, not read, and
+Three layouts older editors saved and the SDK still loads are read: description time stamps 32 or 64 bits wide
+(`EditableTimeWidth`, taken from the chunk's size), the faces around each point saved after the points
+(`EditableMesh::has_point_faces`), and a flags chunk shorter than 4 bytes, which the loader's `r_chunk` reads into the
+low bytes (`EditableObjectFile::flags_size`). The faces around each point are derived data: `get_point_faces` computes
+them from the faces, the writer puts down what it computes, and a read refuses stored lists that differ, so an edited
+mesh never carries lists its faces no longer give. The older surface, vertex map and bone layouts are kept as extra chunks, and
 embedded motions (`EOBJ_CHUNK_SMOTIONS`) are kept as their stored bytes. A field is `Option` wherever the editor's own
 loader treats its chunk as optional, so a file that omits a chunk writes back without it.
 
@@ -54,18 +62,19 @@ Bone shapes and joint limits use `xrf-ogf`'s `OgfBoneShape` and `OgfJointLimit`,
 ## Write an object
 
 `write_to_bytes` writes the whole file and `write_to_path` writes it through a staged file, creating the directories
-leading to it. Each container remembers the order its file stored its chunks in (`chunk_order`) and the writer follows
-it, so a file comes back byte for byte whichever exporter laid it out: mod-shipped objects store a mesh's vertex map
-references before its smoothing groups, the other way round from the SDK. A container built in code leaves the order
-empty and is written in `Save`'s order, and a named chunk added after reading follows the ones the stored order lists.
+leading to it. The writer follows each container's layout, so a file comes back byte for byte whichever exporter laid
+it out: mod-shipped objects store a mesh's vertex map references before its smoothing groups, the other way round from
+the SDK. A default layout writes `Save`'s order, and a named chunk added after reading follows the ones the stored
+order lists.
 
 ```rust
 use xrf_chunk::XRayByteOrder;
-use xrf_editable_object::EditableObjectFile;
+use xrf_editable_object::{EditableChunkLayout, EditableObjectFile};
 
 fn main() -> xrf_error::XrfResult {
   let object = EditableObjectFile {
     flags: 0,
+    flags_size: EditableObjectFile::FLAGS_SIZE,
     class_script: Some(String::new()),
     lods: Some(String::new()),
     meshes: Some(Vec::new()),
@@ -76,15 +85,14 @@ fn main() -> xrf_error::XrfResult {
     bone_parts: None,
     actor_transform: None,
     description: None,
-    extra: Vec::new(),
-    chunk_order: Vec::new(),
+    layout: EditableChunkLayout::default(),
   };
 
   let bytes = object.write_to_bytes::<XRayByteOrder>()?;
   let restored = EditableObjectFile::read_from_bytes::<XRayByteOrder>(bytes.clone())?;
 
   // The object read back knows the order it was stored in; the rest is what was written.
-  assert_eq!(restored.chunk_order.len(), 6);
+  assert_eq!(restored.layout.order.len(), 6);
   assert_eq!(restored.write_to_bytes::<XRayByteOrder>()?, bytes);
 
   Ok(())
