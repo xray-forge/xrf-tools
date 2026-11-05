@@ -10,6 +10,7 @@ use crate::lighting::lamp::light_shadow_size::{
   LIGHT_SHADOW_MIN_SIZE, LIGHT_SHADOW_POINT_CONE, LIGHT_SHADOW_POINT_FACES, LIGHT_SHADOW_WIDENING,
   to_light_shadow_size, to_light_shadow_tile_size,
 };
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::lights::atlas::level_light_shadows::{
   DEFAULT_NEAR, FaceCandidate, FaceKey, FaceOrder, FaceSet, GROW, LevelLightShadows, SHRINK, STALE_WAIT_MOST,
   SWAY_WAIT_MOST,
@@ -210,9 +211,13 @@ impl LevelLightShadows {
             state.drawn_static = None;
             self.candidates.push(candidate(false, distance, stale_wait));
           } else if is_moved {
-            self.candidates.push(candidate(true, state.drawn_at, moved_wait));
+            self
+              .candidates
+              .push(candidate(true, state.drawn_at.get_seconds() as f32, moved_wait));
           } else if sway.is_redrawn(swaying, spread / state.tile.size as f32, state.drawn_at) {
-            self.candidates.push(candidate(true, state.drawn_at, SWAY_WAIT_MOST));
+            self
+              .candidates
+              .push(candidate(true, state.drawn_at.get_seconds() as f32, SWAY_WAIT_MOST));
           }
         }
       }
@@ -244,7 +249,7 @@ impl LevelLightShadows {
             view: Self::to_face_view(light, basis, face, near, far),
             drawn: None,
             drawn_static: None,
-            drawn_at: 0.0,
+            drawn_at: LevelTime::default(),
             waited: 0,
             casting: DrawableKinds::default(),
           })

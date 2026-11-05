@@ -5,6 +5,7 @@ use xrf_renderer_core::{ShaderAddressSpace, ShaderLayoutVerifier};
 use crate::contract::feature::lighting::render_contact_shadow_settings::RENDER_MAX_CONTACT_SHADOW_LIGHTS;
 use crate::contract::view::output::render_debug_view::RenderDebugView;
 use crate::feature::effects::flares::draw::flare_pass::FlarePass;
+use crate::feature::effects::rain::rain_uniform::RainUniform;
 use crate::feature::image::camera::camera_effects_uniform::CameraEffectsUniform;
 use crate::feature::image::exposure::exposure_feature::ExposureFeature;
 use crate::feature::image::exposure::exposure_pass::ExposurePass;
@@ -23,8 +24,11 @@ use crate::feature::tracing::view_trace::sway::trace_sway_pass::TraceSwayPass;
 use crate::feature::weather::sky::irradiance::sky_irradiance_pass::SkyIrradiancePass;
 use crate::feature::weather::sky::prefilter::sky_prefilter_pass::SkyPrefilterPass;
 use crate::feature::weather::volumetric::froxels::froxel_pass::FroxelPass;
+use crate::feature::weather::water::enhanced::enhanced_water_scroll::EnhancedWaterScroll;
+use crate::feature::weather::water::water_uniform::WaterUniform;
 use crate::feature::weather::wet::puddles::puddle_sites_pass::PuddleSitesPass;
 use crate::feature::weather::wet::puddles::puddle_sites_uniform::PuddleSitesUniform;
+use crate::feature::weather::wet::wet_uniform::WetUniform;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::lighting::material_slice::material_slice;
 use crate::pass::view::camera_uniform::CameraUniform;
@@ -88,6 +92,86 @@ fn the_cull_counts_classes_as_rust_does() {
     get_constant(&library, "static/cull", "TREE_LAYOUT"),
     StaticLayout::Tree.get_index() as u32
   );
+}
+
+/// The enhanced water turns, tiles and scales its map reads as Rust works out where each has scrolled to, so each
+/// read's offset lands where the shader's own coordinates would have put it.
+#[test]
+fn the_enhanced_water_reads_its_maps_as_rust_scrolls_them() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+  let module: &str = "static/water_enhanced";
+
+  assert_eq!(
+    get_vector_constant(&library, module, "WAVE_TURN_COS"),
+    EnhancedWaterScroll::WAVE_TURN_COS
+  );
+  assert_eq!(
+    get_vector_constant(&library, module, "WAVE_TURN_SIN"),
+    EnhancedWaterScroll::WAVE_TURN_SIN
+  );
+  assert_eq!(
+    get_vector_constant(&library, module, "WAVE_TILES"),
+    EnhancedWaterScroll::WAVE_TILES
+  );
+  assert_eq!(
+    get_float_constant(&library, module, "GUST_SCALE"),
+    EnhancedWaterScroll::GUST_SCALE
+  );
+  assert_eq!(
+    get_float_constant(&library, module, "RIPPLE_MAP_SCALE"),
+    EnhancedWaterScroll::RIPPLE_MAP_SCALE
+  );
+  assert_eq!(
+    get_vector_constant(&library, module, "RIPPLE_LAYER_SCALES"),
+    EnhancedWaterScroll::RIPPLE_LAYER_SCALES
+  );
+}
+
+/// The water's and the rain's clocks wrap where every reader of them repeats a whole number of times, so a wrap moves
+/// nothing they draw: the engine water's wave and its normal layers' circle; the wet surfaces' splashes at either
+/// engine's pace, their flow at each slope's step and either engine's pace, and their rain rings' layers.
+#[test]
+fn the_water_and_rain_clocks_wrap_where_their_readers_repeat() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+  let whole = |turns: f64| (turns - turns.round()).abs() < 1e-3;
+  let wave_turns: f64 = WaterUniform::PERIOD / std::f64::consts::TAU;
+  let scroll_rate: f32 = get_float_constant(&library, "static/water", "SCROLL_RATE");
+
+  assert!(whole(wave_turns));
+  assert!(whole(wave_turns * f64::from(scroll_rate)), "{scroll_rate}");
+
+  let (wet, period): (&str, f64) = ("frame/wet_patch", RainUniform::CLOCK_PERIOD);
+  let steps: f32 = get_float_constant(&library, wet, "FLOW_SLIDE_STEPS");
+  let ripple: f32 = get_float_constant(&library, wet, "RIPPLE_PACE");
+
+  for pace in get_vector_constant(&library, wet, "SPLASH_PACE") {
+    assert!(whole(period * f64::from(pace)), "splash {pace}");
+  }
+
+  for pace in get_vector_constant(&library, wet, "FLOW_SLIDE_PACE") {
+    for step in 1..=steps as u32 {
+      assert!(
+        whole(period * f64::from(pace) * f64::from(step) / f64::from(steps)),
+        "flow {pace} at {step}"
+      );
+    }
+  }
+
+  for speed in get_vector_constant(&library, wet, "RIPPLE_LAYER_SPEEDS") {
+    assert!(whole(period * f64::from(ripple) * f64::from(speed)), "ripple {speed}");
+  }
+}
+
+/// The puddles' gusts drift over a repeat each of the gust noise's two readings fits a whole number of times in, the
+/// second reading at half the drift.
+#[test]
+fn the_puddles_gusts_repeat_where_both_readings_do() {
+  let library: ShaderLibrary = ShaderLibrary::default();
+  let tiles: Vec<f32> = get_vector_constant(&library, "frame/wet_patch", "GUST_TILES");
+  let whole = |value: f64| (value - value.round()).abs() < 1e-9;
+
+  assert!(whole(WetUniform::GUST_REPEAT / f64::from(tiles[0])));
+  assert!(whole(WetUniform::GUST_REPEAT * 0.5 / f64::from(tiles[1])));
 }
 
 /// The lamps read their shadows in texels of the atlas the renderer allocates their tiles in.

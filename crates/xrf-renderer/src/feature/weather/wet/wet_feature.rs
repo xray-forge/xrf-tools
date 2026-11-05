@@ -1,4 +1,4 @@
-use glam::Vec4;
+use glam::{Vec2, Vec4};
 use xrf_engine_target::XrayEngine;
 use xrf_renderer_core::{
   GraphColorAttachment, GraphDeclaration, GraphRuntime, GraphTexture, GraphTextureDescriptor, UniformBinding,
@@ -18,6 +18,7 @@ use crate::feature::weather::wet::draw::wet_patch_parameters::WetPatchParameters
 use crate::feature::weather::wet::wet_stage::WetStage;
 use crate::feature::weather::wet::wet_targets::WetTargets;
 use crate::feature::weather::wet::wet_uniform::WetUniform;
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::view::record::shadows_recorded::ShadowsRecorded;
 use crate::scene::level::view::record::view_record::ViewRecord;
 use crate::scene::level::view::view_prepare::ViewPrepare;
@@ -35,8 +36,9 @@ pub struct WetFeature {
 }
 
 impl WetFeature {
-  /// Takes this frame's wetting from the level's wetness (`level`) at the scene's clock `time`: with the falling rain's
-  /// uniform where it falls, over the overhead maps where they stand (`windows`), its cover's noise turned by
+  /// Takes this frame's wetting from the level's wetness (`level`) at `clock`, in seconds, the rain's clock while it
+  /// falls and the level's else: with the falling rain's uniform where it falls, over the overhead maps where they
+  /// stand (`windows`), its cover's noise turned by
   /// `noise_frame`; dry for an orthographic view, which has no eye for the overhead maps to stand about.
   pub fn prepare(
     &mut self,
@@ -50,7 +52,7 @@ impl WetFeature {
     }: &ViewPrepare<'_>,
     level: &LevelWetness,
     falling: Option<&RainUniform>,
-    time: f32,
+    clock: f64,
     windows: OverheadWindows,
     noise_frame: u32,
   ) {
@@ -79,10 +81,12 @@ impl WetFeature {
     };
 
     let RainCoverShape { texels, reach } = windows.cover_shape;
+    let density: f32 = falling.map_or(0.0, |_| lighting.rain.map_or(0.0, |rain| rain.density.clamp(0.0, 1.0)));
+    let gust: Vec2 = WetUniform::get_gust(lighting.wind.direction, lighting.wind.velocity);
 
     self.uniform = WetUniform {
-      density: falling.map_or(0.0, |_| lighting.rain.map_or(0.0, |rain| rain.density.clamp(0.0, 1.0))),
-      time: falling.map_or(time, |uniform| uniform.time),
+      density,
+      time: LevelTime::wrap(clock, RainUniform::CLOCK_PERIOD),
       is_extended: (lighting.engine == XrayEngine::Extended) as u32 as f32,
       is_enhanced: f32::from(u8::from(is_enhanced)),
       cover: windows.cover,
@@ -103,7 +107,7 @@ impl WetFeature {
         0.0,
         0.0,
       ),
-      gust: WetUniform::get_gust(lighting.wind.direction, lighting.wind.velocity),
+      drift: WetUniform::get_drift(gust, clock, density),
       relief: Vec4::new(f32::from(u8::from(settings.is_relief_flooded)), 0.0, 0.0, 0.0),
       drying: Vec4::new(drying.get_peak(), drying.get_left(), 0.0, 0.0),
       rings: Vec4::ZERO,

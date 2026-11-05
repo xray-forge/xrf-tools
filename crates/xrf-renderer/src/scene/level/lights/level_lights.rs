@@ -207,7 +207,7 @@ impl LevelLights {
       let sway: ShadowSway<'_> = ShadowSway {
         amplitude: frame.sway_amplitude,
         reach: statics.get_sway_reach(),
-        time: frame.sway_time,
+        time: frame.time,
         places: statics.list_swaying(),
       };
 

@@ -1,9 +1,11 @@
+use crate::scene::level::level_time::LevelTime;
+
 /// How wet the level has become, built up towards the rain's density as Monolith's weather accumulates
 /// `wetness_factor` and dried slowly after, beside the wet spell's peak the surfaces dry from in turn.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct RainWetness {
   /// Its wetness, from nothing to one, the clock it was last moved on at, and the wet spell's peak.
-  state: Option<(f32, f32, f32)>,
+  state: Option<(f32, LevelTime, f32)>,
 }
 
 impl RainWetness {
@@ -19,14 +21,14 @@ impl RainWetness {
   /// had dried, about a game minute.
   const REWETTING: f32 = 0.05;
 
-  /// Moves it on to the real clock `time`, in seconds, under a rain of `density`, at `pace` times the game's own pace,
-  /// building up by `build_up` a second of full rain, and returns it.
-  pub fn advance(&mut self, time: f32, density: f32, pace: f32, build_up: f32) -> f32 {
+  /// Moves it on to the real clock `time` under a rain of `density`, at `pace` times the game's own pace, building up by
+  /// `build_up` a second of full rain, and returns it.
+  pub fn advance(&mut self, time: LevelTime, density: f32, pace: f32, build_up: f32) -> f32 {
     let density: f32 = density.clamp(0.0, 1.0);
     let (wetness, peak): (f32, f32) = match self.state {
       None => (0.0, 0.0),
       Some((wetness, clock, peak)) => {
-        let elapsed: f32 = (time - clock).max(0.0) * pace.max(0.0);
+        let elapsed: f32 = time.get_since(clock) * pace.max(0.0);
         let wetness: f32 = if wetness < density {
           (wetness + density * build_up * elapsed).min(density)
         } else {

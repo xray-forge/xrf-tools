@@ -34,6 +34,7 @@ use crate::scene::level::lights::asks::light_asks::LightAsks;
 use crate::scene::level::lights::asks::lights_frame::LightsFrame;
 use crate::scene::level::view::scene_view::SceneView;
 use crate::scene::level::view::view_prepare::ViewPrepare;
+use crate::scene::level::view::view_time::ViewTime;
 use crate::scene::static_scene::draw::static_sight::StaticSight;
 use crate::scene::texture::texture_cache::TextureCache;
 
@@ -49,7 +50,7 @@ impl SceneView {
     now: Instant,
   ) -> LightingFrame {
     let (device, options, lighting) = (frame.device, frame.options, frame.lighting);
-    let time: f32 = level.time;
+    let time: ViewTime = level.time;
     let size: Option<(u32, u32)> = self.targets.as_ref().map(|targets| (targets.width, targets.height));
 
     self.features.shadows.prepare(
@@ -80,11 +81,17 @@ impl SceneView {
     let falling: Option<RainUniform> = self.features.rain.prepare(frame, level.gust, time, windows);
 
     self.features.rain.follow_display(self.shared.display);
+    // The wet surfaces' splashes, flow and ripples run on the rain's clock while it falls.
+    let wet_clock: f64 = match falling {
+      Some(_) => self.features.rain.get_clock(),
+      None => time.now.get_seconds(),
+    };
+
     self.features.wet.prepare(
       frame,
       &level.wetness,
       falling.as_ref(),
-      time,
+      wet_clock,
       windows,
       self.shared.resolve.noise_frame,
     );
@@ -100,7 +107,7 @@ impl SceneView {
     self.features.water.follow_rings(rings);
     self.features.wet.follow_rings(rings);
 
-    let lighting_frame: LightingFrame = self.features.sky.get_lighting_frame(frame, &self.shared, time);
+    let lighting_frame: LightingFrame = self.features.sky.get_lighting_frame(frame, &self.shared, time.now);
 
     self
       .features
@@ -121,7 +128,7 @@ impl SceneView {
     level: &LevelPrepare,
   ) -> LightAsks {
     let (device, options, lighting, view) = (frame.device, frame.options, frame.lighting, frame.view);
-    let time: f32 = level.time;
+    let time: ViewTime = level.time;
 
     self
       .features
@@ -164,7 +171,7 @@ impl SceneView {
       .grass
       .prepare(device, scene.grass.get_level(), &options.features.grass, &grass);
 
-    let (sway_amplitude, sway_time): (f32, f32) = self.features.wind.get_sway();
+    let sway_amplitude: f32 = self.features.wind.get_sway_amplitude();
     let frame_lights: LightsFrame = LightsFrame {
       camera: *view,
       settings: options.features.lights,
@@ -174,7 +181,6 @@ impl SceneView {
         self.features.statics.get_cull().glod_end,
       ),
       sway_amplitude,
-      sway_time,
       casters: self.features.grass.get_light_casters(),
       is_physical: options.is_light_physical(),
       is_specular_linear: options.is_specular_linear(),
@@ -184,7 +190,7 @@ impl SceneView {
       light_scale: lighting_frame.light_units.local
         * lighting_frame.light_units.light_gain
         * lighting_frame.exposure.pre_exposure.current,
-      time,
+      time: time.now,
     };
     let lights: LightAsks = scene.lights.pick(frame_lights, &scene.campfire_shares);
 

@@ -1,5 +1,6 @@
 use crate::contract::feature::effects::render_rain_settings::RenderRainSettings;
 use crate::lighting::weather::render_lighting::RenderLighting;
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::wetness::puddle_fill::PuddleFill;
 use crate::scene::level::wetness::rain_wetness::RainWetness;
 
@@ -14,7 +15,7 @@ pub struct LevelWetness {
 impl LevelWetness {
   /// Moves both on to the scene's real clock `time` under the rain `lighting` holds, at the rain's `settings`' pace times
   /// the game's own whatever the weather's clock runs at, building up as they say.
-  pub fn advance(&mut self, lighting: &RenderLighting, settings: &RenderRainSettings, time: f32) {
+  pub fn advance(&mut self, lighting: &RenderLighting, settings: &RenderRainSettings, time: LevelTime) {
     let density: f32 = lighting.rain.map_or(0.0, |rain| rain.density);
     let build_up: f32 = if settings.is_enhanced() {
       RainWetness::ENHANCED_BUILD_UP

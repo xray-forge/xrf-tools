@@ -10,6 +10,7 @@ use crate::feature::weather::fog::fog_scattering_uniform::FogScatteringUniform;
 use crate::frame::targets::texture_copy::add_texture_copy;
 use crate::frame::targets::view_targets::ViewTargets;
 use crate::lighting::weather::render_lighting::RenderLighting;
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::view::record::view_record::ViewRecord;
 
 /// The camera hemi under which the enhanced fog's height fog is gone and over which it is whole, about the engine's
@@ -41,13 +42,15 @@ impl FogFeature {
     options: &RenderViewOptions,
     lighting: &RenderLighting,
     size: Option<(u32, u32)>,
-    time: f32,
+    time: LevelTime,
     camera_hemi: Option<f32>,
   ) {
     let fog: &RenderFogSettings = &options.features.fog;
     let is_fogged: bool = options.mode.is_lit && options.show.is_fogged && lighting.fog.is_some();
+    let noise_time: f32 = time.get_phase(FogScatteringUniform::NOISE_PERIOD);
 
-    self.stages = size.and_then(|size| FogScatteringUniform::for_view(options, lighting.fog.as_ref(), size, time));
+    self.stages =
+      size.and_then(|size| FogScatteringUniform::for_view(options, lighting.fog.as_ref(), size, noise_time));
     self.height = (is_fogged && fog.is_enhanced()).then(|| RenderAppliedHeightFog {
       height: fog.height,
       density: fog.density,

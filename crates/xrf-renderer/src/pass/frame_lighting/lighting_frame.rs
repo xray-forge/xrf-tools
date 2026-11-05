@@ -21,8 +21,8 @@ pub struct LightingFrame {
   pub sky_blend: f32,
   /// Whether both irradiance cubes are up, else the lighting's stand-in lights the hemisphere.
   pub is_irradiance_up: bool,
-  /// Seconds the clouds have drifted.
-  pub clouds_time: f32,
+  /// How far the clouds' layers have drifted over their textures (`SkyFeature::get_cloud_drift`).
+  pub cloud_drift: Vec4,
   /// The sun's sprite colour times how far it has faded in, then half its side as a share of the distance it stands
   /// at; zero where none is drawn.
   pub sun_sprite: Vec4,

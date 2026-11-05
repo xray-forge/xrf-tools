@@ -60,7 +60,7 @@ fn lighting_uniform(options: &RenderViewOptions, lighting: &RenderLighting) -> L
       daylight: None,
       sky_blend: 0.0,
       is_irradiance_up: false,
-      clouds_time: 0.0,
+      cloud_drift: Vec4::ZERO,
       sun_sprite: Vec4::ZERO,
       sky_harmonics: SkyHarmonics::default(),
     },

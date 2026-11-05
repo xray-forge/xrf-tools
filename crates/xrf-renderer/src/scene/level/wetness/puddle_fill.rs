@@ -1,9 +1,11 @@
+use crate::scene::level::level_time::LevelTime;
+
 /// How full the level's puddles are, how stormy the rain has been and how soaked a long rain has left the level, on the
 /// weather's clock, from empty and dry before any rain.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct PuddleFill {
   /// How full, how stormy, how soaked, and the clock they were last moved on at.
-  state: Option<(f32, f32, f32, f32)>,
+  state: Option<(f32, f32, f32, LevelTime)>,
 }
 
 impl PuddleFill {
@@ -20,15 +22,15 @@ impl PuddleFill {
   const SOAKING: f32 = 0.0004;
   const SOAK_DRYING: f32 = 0.0001;
 
-  /// Moves it on to the real clock `time`, in seconds, under a rain of `density`, at `pace` times the game's own pace,
-  /// and returns how full, how stormy and how soaked.
-  pub fn advance(&mut self, time: f32, density: f32, pace: f32) -> (f32, f32, f32) {
+  /// Moves it on to the real clock `time` under a rain of `density`, at `pace` times the game's own pace, and returns
+  /// how full, how stormy and how soaked.
+  pub fn advance(&mut self, time: LevelTime, density: f32, pace: f32) -> (f32, f32, f32) {
     let density: f32 = density.clamp(0.0, 1.0);
     let storminess: f32 = Self::get_storminess(density);
     let (fill, storm, soak): (f32, f32, f32) = match self.state {
       None => (0.0, 0.0, 0.0),
       Some((fill, storm, soak, clock)) => {
-        let elapsed: f32 = (time - clock).max(0.0) * pace.max(0.0);
+        let elapsed: f32 = time.get_since(clock) * pace.max(0.0);
         let change: f32 = if density > 0.0 {
           density * (0.5 + density) * Self::FILLING
         } else {

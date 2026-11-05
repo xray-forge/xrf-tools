@@ -10,6 +10,7 @@ use crate::lighting::weather::render_rainfall::RenderRainfall;
 use crate::lighting::wind::render_tree_wind::RenderTreeWind;
 use crate::lighting::wind::render_wind::RenderWind;
 use crate::scene::level::shadow::shadow_sway::ShadowSway;
+use crate::tests::support::test_time::at;
 
 #[test]
 fn fogs_by_the_engine_ramp_and_ends_the_view_where_it_is_total() {
@@ -148,19 +149,19 @@ fn sways_the_trees_by_the_wind_turning_and_stills_them_without_one() {
     amplitude: 0.01,
     ..Default::default()
   };
-  let wind: WindUniform = WindUniform::new(Some(&trees), 0.0);
+  let wind: WindUniform = WindUniform::new(Some(&trees), at(0.0));
 
   assert!(wind.wind.truncate().distance(Vec3::new(0.0, 0.0, -0.01)) < 1e-7);
   assert!(wind.is_swaying());
   // A quarter of its turn later it leans across.
   assert!(
-    WindUniform::new(Some(&trees), 2.5)
+    WindUniform::new(Some(&trees), at(2.5))
       .wind
       .truncate()
       .distance(Vec3::new(0.01, 0.0, 0.0))
       < 1e-6
   );
-  assert!(!WindUniform::new(None, 1.0).is_swaying());
+  assert!(!WindUniform::new(None, at(1.0)).is_swaying());
   assert!((wind.get_amplitude() - 0.01).abs() < 1e-7);
 }
 
@@ -169,19 +170,19 @@ fn redraws_a_shadow_for_the_sway_where_the_lean_shows_once_an_interval() {
   let sway = |amplitude: f32, time: f32| ShadowSway {
     amplitude,
     reach: 20.0,
-    time,
+    time: at(f64::from(time)),
     places: &[],
   };
 
   // Twenty metres of reach at a hundredth's amplitude lean a fifth of a metre: shown at a decimetre's texels, not a
   // metre's.
-  assert!(sway(0.01, 1.0).is_redrawn(20.0, 0.1, 0.0));
-  assert!(!sway(0.01, 1.0).is_redrawn(20.0, 1.0, 0.0));
+  assert!(sway(0.01, 1.0).is_redrawn(20.0, 0.1, at(0.0)));
+  assert!(!sway(0.01, 1.0).is_redrawn(20.0, 1.0, at(0.0)));
   // Still trees never draw a map again.
-  assert!(!sway(0.0, 1.0).is_redrawn(20.0, 0.01, 0.0));
+  assert!(!sway(0.0, 1.0).is_redrawn(20.0, 0.01, at(0.0)));
   // Within an interval it waits; a hair short of one, it draws.
-  assert!(!sway(0.01, 1.0 + ShadowSway::INTERVAL * 0.5).is_redrawn(20.0, 0.1, 1.0));
-  assert!(sway(0.01, 1.0 + ShadowSway::INTERVAL * 0.95).is_redrawn(20.0, 0.1, 1.0));
+  assert!(!sway(0.01, 1.0 + ShadowSway::INTERVAL * 0.5).is_redrawn(20.0, 0.1, at(1.0)));
+  assert!(sway(0.01, 1.0 + ShadowSway::INTERVAL * 0.95).is_redrawn(20.0, 0.1, at(1.0)));
 }
 
 #[test]
@@ -190,8 +191,8 @@ fn carries_the_last_frames_sway_for_the_trees_motion() {
     amplitude: 0.01,
     ..Default::default()
   };
-  let first: WindUniform = WindUniform::new(Some(&trees), 0.0).following(None);
-  let second: WindUniform = WindUniform::new(Some(&trees), 2.5).following(Some(&first));
+  let first: WindUniform = WindUniform::new(Some(&trees), at(0.0)).following(None);
+  let second: WindUniform = WindUniform::new(Some(&trees), at(2.5)).following(Some(&first));
 
   assert_eq!(first.previous_wind, first.wind);
   assert_eq!(second.previous_wind, first.wind);

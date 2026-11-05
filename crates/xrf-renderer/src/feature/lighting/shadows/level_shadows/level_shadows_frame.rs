@@ -12,6 +12,7 @@ use crate::feature::lighting::shadows::shadow_cut::ShadowCut;
 use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::pass::view::camera_uniform::CameraUniform;
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::shadow::shadow_frame::ShadowFrame;
 
 impl LevelShadows {
@@ -169,7 +170,7 @@ impl LevelShadows {
       match offer.draw {
         CascadeDraw::Kept => {}
         CascadeDraw::Banded(band) => {
-          let started: f32 = cascade.sway_sweep.map_or(frame.sway.time, |(started, _)| started);
+          let started: LevelTime = cascade.sway_sweep.map_or(frame.sway.time, |(started, _)| started);
 
           cascade.sway_sweep = (band + 1 < BANDS).then_some((started, band + 1));
 

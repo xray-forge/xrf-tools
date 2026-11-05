@@ -3,6 +3,7 @@ use glam::Vec3;
 use crate::feature::lighting::shadows::cascades::shadow_prefetch::ShadowPrefetch;
 use crate::feature::lighting::shadows::shadow_cut::ShadowCut;
 use crate::lighting::sun::sun_cascade::SunCascade;
+use crate::scene::level::level_time::LevelTime;
 
 /// One cascade of a level's sun shadow: its fit, the cut it is culled and drawn by, and what its map was last drawn at;
 /// and, while it keeps a static layer, which layer that is, what it was drawn at, and the next one drawn ahead.
@@ -11,8 +12,8 @@ pub struct ShadowCascadeView {
   pub cut: ShadowCut,
   /// The version and what the scene held when its map was last drawn, or none before it was drawn.
   pub drawn: Option<(u64, usize)>,
-  /// The sway's time its map was last drawn at.
-  pub drawn_at: f32,
+  /// The level's clock its map was last drawn at.
+  pub drawn_at: LevelTime,
   /// The fit its map was last drawn at, which a fit strayed too far from draws again whatever its stagger.
   pub drawn_fit: SunCascade,
   /// Frames it has waited for a draw it wants.
@@ -26,8 +27,8 @@ pub struct ShadowCascadeView {
   /// The eye and the look its trees were last drawn for, where they were drawn only where the camera saw their shadows:
   /// a swaying cascade's, or one whose trees went into its kept layer.
   pub received_at: Option<(Vec3, Vec3)>,
-  /// The sway's time a banded redraw of its trees started at and the band it draws next, while one runs.
-  pub sway_sweep: Option<(f32, u32)>,
+  /// The level's clock a banded redraw of its trees started at and the band it draws next, while one runs.
+  pub sway_sweep: Option<(LevelTime, u32)>,
   /// The layer of the static layers it shows, and the version and contents its static layer was drawn at, none before
   /// it was or since it went stale; and the fit it was drawn at.
   pub static_layer: u32,
@@ -46,7 +47,7 @@ impl ShadowCascadeView {
       cascade: SunCascade::default(),
       cut: ShadowCut::new(device, view_layout, "sun shadow"),
       drawn: None,
-      drawn_at: 0.0,
+      drawn_at: LevelTime::default(),
       drawn_fit: SunCascade::default(),
       waited: 0,
       has_drawn_moving: false,

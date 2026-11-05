@@ -221,7 +221,7 @@ impl LevelShadows {
         .sway
         .is_redrawn_every(frame.sway.reach, current.texel, cascade.drawn_at, interval);
     let is_kept: bool = has_moving && cascade.is_kept;
-    let can_wait: bool = frame.sway.time - cascade.drawn_at < interval * TREES_WAIT_MOST;
+    let can_wait: bool = frame.sway.time.get_since(cascade.drawn_at) < interval * TREES_WAIT_MOST;
     let is_trees_due: bool = is_stale || (is_swayed && !(is_kept && *is_trees_taken && can_wait));
 
     if is_kept && is_trees_due {

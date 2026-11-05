@@ -29,6 +29,7 @@ use crate::host::world::render_scene_update::RenderSceneUpdate;
 use crate::lighting::weather::render_lighting::RenderLighting;
 use crate::lighting::wind::ambient_gust::AmbientGust;
 use crate::scene::level::level_grass::LevelGrass;
+use crate::scene::level::level_time::LevelTime;
 use crate::scene::level::lights::asks::light_asks::LightAsks;
 use crate::scene::level::lights::level_lights::LevelLights;
 use crate::scene::level::load::level_load::LevelLoad;
@@ -251,12 +252,10 @@ impl LevelScene {
   /// its settle (`settle`) joins, and the wetness every view wets its surfaces by moves on by that view's rain, both on
   /// the scene's clock.
   pub fn begin_frame(&mut self, actor: &CameraView, options: &RenderViewOptions, lighting: &RenderLighting) {
-    let time: Duration = self.get_time();
+    let time: LevelTime = self.get_time();
 
-    self.particles.start_simulation(actor, options, time);
-    self
-      .wetness
-      .advance(lighting, &options.features.rain, time.as_secs_f32());
+    self.particles.start_simulation(actor, options, time.get_duration());
+    self.wetness.advance(lighting, &options.features.rain, time);
   }
 
   /// Settles what its views asked of it this frame, its driving view's first, once every one has readied its frame and
@@ -310,8 +309,8 @@ impl LevelScene {
 
   /// How long it has lived at this frame, on the frames' clock: what its clouds, sway, water, lights and effects move
   /// by.
-  pub fn get_time(&self) -> Duration {
-    self.now.saturating_duration_since(self.started)
+  pub fn get_time(&self) -> LevelTime {
+    LevelTime::new(self.now.saturating_duration_since(self.started))
   }
 
   /// The time on the frames' clock that stands `time` after it began opening.
@@ -507,9 +506,9 @@ impl LevelScene {
         } => self.particles.add_emitter(handle, transform, seed),
         RenderSceneUpdate::RemoveEmitter(handle) => self.particles.remove_emitter(handle),
         RenderSceneUpdate::PlayEffect { handle, effect, name } => {
-          let time: Duration = self.get_time();
+          let time: LevelTime = self.get_time();
 
-          self.particles.play(handle, effect, &name, time);
+          self.particles.play(handle, effect, &name, time.get_duration());
         }
         RenderSceneUpdate::StopEffect {
           handle,

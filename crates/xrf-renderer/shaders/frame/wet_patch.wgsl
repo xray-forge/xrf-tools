@@ -22,6 +22,15 @@ fn engine_value(vanilla: f32, extended: f32) -> f32 {
   return select(vanilla, extended, wet.is_extended > 0.5);
 }
 
+// The rain's clock's readers, each repeating a whole number of times in `RainUniform::CLOCK_PERIOD`: the splashes'
+// volume run through once a second times its pace, vanilla's then the extended engine's; the flow's slide down a wall,
+// in steps of a tenth by how upright it stands, times its pace, vanilla's then the extended engine's; and the rain rings'
+// pace, times each layer's speed (`RIPPLE_LAYER_SPEEDS`).
+const SPLASH_PACE: vec2<f32> = vec2<f32>(3.0, 1.0);
+const FLOW_SLIDE_STEPS: f32 = 10.0;
+const FLOW_SLIDE_PACE: vec2<f32> = vec2<f32>(0.5, 0.3);
+const RIPPLE_PACE: f32 = 0.85;
+
 // Metres of view depth past which the engine's splashes and flow wet nothing.
 fn engine_reach() -> f32 {
   return engine_value(20.0, 25.0);
@@ -94,9 +103,10 @@ fn engine_wetting(
   let near: f32 = reached * fade * fade * saturate(up * 10.0 + 10.0 * 0.5 + 0.5);
   let wetness: f32 = near * wet.puddles.x;
   let upward: f32 = max(up, 0.0);
-  let splashed: vec3<f32> = splash_normal(place.xz, wet.time * engine_value(3.0, 1.0));
+  let splashed: vec3<f32> = splash_normal(place.xz, wet.time * engine_value(SPLASH_PACE.x, SPLASH_PACE.y));
   let along: vec3<f32> = place / 2.0;
-  let slide: f32 = ceil((1.0 - upward) * 10.0) * 0.1 * engine_value(0.5, 0.3);
+  let slide: f32 = ceil((1.0 - upward) * FLOW_SLIDE_STEPS) / FLOW_SLIDE_STEPS *
+    engine_value(FLOW_SLIDE_PACE.x, FLOW_SLIDE_PACE.y);
   let fall_x: vec3<f32> = flow_normal(vec2<f32>(along.z, along.y + wet.time * slide));
   let fall_z: vec3<f32> = flow_normal(vec2<f32>(along.x, along.y + wet.time * slide));
   // Nothing on the weapon in hand, which the viewer has none of.
@@ -346,7 +356,7 @@ const PUDDLE_MURK: vec2<f32> = vec2<f32>(0.6, 1.3);
 const WAVE_PHASE: f32 = 0.5;
 const WAVE_STRENGTH: vec2<f32> = vec2<f32>(0.6, 1.4);
 const VARIATION_TILES: vec3<f32> = vec3<f32>(37.0, 53.0, 43.0);
-// Gusts: patches of stronger wind drifting downwind across the level (`wet.gust`), two readings of the regional noise
+// Gusts: patches of stronger wind drifting downwind across the level (`wet.drift`), two readings of the regional noise
 // at metres apart, the second drifting half as fast; the calm waves under a gust's lull and its strongest, and the rain
 // rings' share of it, so a gust ruffles some puddles while others lie still.
 const GUST_TILES: vec2<f32> = vec2<f32>(70.0, 29.0);
@@ -642,7 +652,7 @@ fn puddle_variation(place: vec2<f32>) -> vec3<f32> {
 
 // How gusty the wind is over a place in renderer space, from a lull to a gust's strongest.
 fn gustiness(place: vec2<f32>) -> f32 {
-  let drift: vec2<f32> = wet.gust.xy * wet.time;
+  let drift: vec2<f32> = wet.drift.xy;
   let broad: f32 = textureSampleLevel(puddle_noise, wet_sampler, (place - drift) / GUST_TILES.x + 0.21, 0.0).r;
   let fine: f32 =
     textureSampleLevel(puddle_noise, wet_sampler, (place.yx - drift.yx * 0.5) / GUST_TILES.y + 0.67, 0.0).r;
@@ -669,7 +679,7 @@ struct PuddleRipples {
 // maps' otherwise.
 fn puddle_ripples(place: vec2<f32>, gradients: PlaceGradients, phase: f32, ground: vec2<f32>, distance: f32,
   puddle: f32) -> PuddleRipples {
-  let pace: f32 = wet.time * (0.01 + saturate(wet.density * 1.5) * 0.008);
+  let pace: f32 = wet.drift.z;
   let uv: vec2<f32> = place / PUDDLE_RIPPLE_TILE;
   let waves: vec2<f32> = uv + (phase - 0.5) * WAVE_PHASE;
   let across: vec2<f32> = gradients.across / PUDDLE_RIPPLE_TILE;
@@ -686,7 +696,7 @@ fn puddle_ripples(place: vec2<f32>, gradients: PlaceGradients, phase: f32, groun
     mix(WAVE_STRENGTH.x, WAVE_STRENGTH.y, phase) * mix(GUST_WAVES.x, GUST_WAVES.y, gust);
   let drop_scale: f32 = wet.density * 3.0 * wet.puddles.w * PUDDLE_RIPPLE_SHARE * 0.15 *
     mix(GUST_RINGS.x, GUST_RINGS.y, gust);
-  let drops: vec3<f32> = rain_ripples(uv * 1.3, PlaceGradients(across * 1.3, down * 1.3), vec3<f32>(0.85, 1.0, 10.0),
+  let drops: vec3<f32> = rain_ripples(uv * 1.3, PlaceGradients(across * 1.3, down * 1.3), vec3<f32>(RIPPLE_PACE, 1.0, 10.0),
     distance);
   let rings: RainRings = read_rain_rings(rain_rings, wet_sampler, wet.rings.xy, camera.position.xz, ground,
     gradients.across, gradients.down);
