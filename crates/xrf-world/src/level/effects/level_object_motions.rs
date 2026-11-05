@@ -4,7 +4,7 @@ use std::time::Duration;
 use glam::{Mat4, Vec3};
 use xrf_animation_envelope::AnimationPlayback;
 use xrf_anm::AnmFile;
-use xrf_renderer::{LevelPart, LevelParts, RenderWorkers};
+use xrf_renderer::{LevelPart, LevelParts, RenderMotionPose, RenderWorkers};
 use xrf_visual::VisualTransform;
 
 use crate::host::world_level_source::WorldLevelSource;
@@ -52,7 +52,7 @@ impl LevelObjectMotions {
 
   /// Where a motion has its object this frame, in engine space, and how fast it moved since the frame before
   /// (`CCustomZone::OnMove`); none while the motion is read, or where it cannot be, which leaves the object standing.
-  pub fn get_pose(&mut self, name: &str) -> Option<(Mat4, Vec3)> {
+  pub fn get_pose(&mut self, name: &str) -> Option<RenderMotionPose> {
     let (now, previous) = (self.now, self.previous);
     let motion: &AnmFile = self.get(name)?;
     let (looped, looped_before): (f32, f32) = (
@@ -76,7 +76,7 @@ impl LevelObjectMotions {
       Vec3::ZERO
     };
 
-    Some((transform, velocity))
+    Some(RenderMotionPose { transform, velocity })
   }
 
   /// Whether the motion `name` is still on its way from its loader.

@@ -2,11 +2,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use glam::{Mat4, Vec3};
+use glam::Vec3;
 
 use crate::contract::viewport::render_viewport_id::RenderViewportId;
 use crate::host::level::render_level_source::RenderLevelSource;
 use crate::host::world::feedback::render_streaming_progress::RenderStreamingProgress;
+use crate::host::world::render_motion_pose::RenderMotionPose;
 use crate::host::world::render_scene_update::RenderSceneUpdate;
 use crate::lighting::wind::ambient_gust::AmbientGust;
 
@@ -28,8 +29,8 @@ pub struct RenderSceneFrame {
   pub gust: AmbientGust,
   /// How much of each campfire's idle light shows this frame, by its spawned object's id.
   pub campfire_shares: HashMap<u16, f32>,
-  /// Where each object motion has its object this frame, in engine space, and how fast it moves, by the motion's name.
-  pub motions: HashMap<String, (Mat4, Vec3)>,
+  /// Where each object motion has its object this frame, and how fast it moves, by the motion's name.
+  pub motions: HashMap<String, RenderMotionPose>,
   /// The driving camera's smoothed hemi, which says how far outdoors it stands; none where it is not estimated.
   pub camera_hemi: Option<f32>,
   /// The helpers of the level objects whose sounds play this frame, by the ids they carry, ascending, which every view

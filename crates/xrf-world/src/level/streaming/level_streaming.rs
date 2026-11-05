@@ -133,8 +133,8 @@ impl LevelStreaming {
 
   /// Streams on from `source`, a next source of the same level: the sectors posted stay, and those still being read
   /// finish from the source they started from. Where `reload` names the spawn, every spawned model posted leaves the
-  /// scene with its objects and the spawn streams in again; where it names the lights or the grass, they are read again
-  /// and replace those drawn once read.
+  /// scene with its objects and the spawn streams in again; where it names the helpers, the lights or the grass, they
+  /// are read again and replace those drawn once read.
   pub fn follow(
     &mut self,
     updates: &mut Vec<RenderSceneUpdate>,
@@ -145,7 +145,6 @@ impl LevelStreaming {
   ) {
     self.source = source;
 
-    // The helpers are the spawned objects', so they are read again with the spawn.
     if reload.contains(LevelPart::Spawn) {
       for model in std::mem::take(&mut self.models) {
         self.release_model(animation, &model);
@@ -154,6 +153,10 @@ impl LevelStreaming {
 
       self.failed_models.clear();
       self.spawn = SpawnLoader::start(Arc::clone(&self.source), workers);
+    }
+
+    // The helpers are the level objects, the spawned ones and the placed ones alike.
+    if reload.contains(LevelPart::Helpers) {
       self.helpers = Self::read_helpers(&self.source, workers);
     }
 
@@ -288,9 +291,14 @@ impl LevelStreaming {
     }
   }
 
-  /// The campfires and the object motions the level's lights follow, by the campfires' ids and the motions' names.
-  pub fn list_light_followed(&self) -> (&[u16], &[String]) {
-    (&self.light_campfires, &self.light_motions)
+  /// The campfires the level's lights follow, by their ids.
+  pub fn list_light_campfires(&self) -> &[u16] {
+    &self.light_campfires
+  }
+
+  /// The object motions the level's lights follow, by their names.
+  pub fn list_light_motions(&self) -> &[String] {
+    &self.light_motions
   }
 
   /// How much each shader table entry draws across the sectors streamed in.

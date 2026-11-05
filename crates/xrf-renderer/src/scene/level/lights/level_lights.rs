@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use glam::{Mat4, Vec2, Vec3, Vec4};
+use glam::{Vec2, Vec3, Vec4};
 use xrf_math::{EPS_L, Vector3d};
 use xrf_renderer_core::{GraphDeclaration, ProxyHandle, ProxyStore};
 use xrf_visual::{LightAnimatorDescription, LightDescription, LightVolumetric, LightsDescription};
@@ -13,6 +13,7 @@ use crate::frame::frame_encoder::FrameEncoder;
 use crate::frame::periodic::periodic_scheduler::PeriodicScheduler;
 use crate::host::level::zone_fast_mode::ZONE_FAST_DISTANCE;
 use crate::host::render_asset_source::RenderAssetSource;
+use crate::host::world::render_motion_pose::RenderMotionPose;
 use crate::lighting::lamp::light_basis::LightBasis;
 use crate::scene::level::lights::asks::light_asks::LightAsks;
 use crate::scene::level::lights::asks::light_in_view::{LightFades, LightInView};
@@ -302,21 +303,21 @@ impl LevelLights {
   }
 
   /// Starts a scene's frame: stands each light its motion carries.
-  pub fn begin_frame(&mut self, motions: &HashMap<String, (Mat4, Vec3)>) {
+  pub fn begin_frame(&mut self, motions: &HashMap<String, RenderMotionPose>) {
     self.move_lights(motions);
   }
 
   /// Stands each light a motion carries `height` over where the motion has its zone this frame (`UpdateIdleLight`);
   /// one whose motion is still read stays where its zone spawned.
-  fn move_lights(&mut self, motions: &HashMap<String, (Mat4, Vec3)>) {
+  fn move_lights(&mut self, motions: &HashMap<String, RenderMotionPose>) {
     for handle in &self.moving {
       let Some(motion) = self.lights.get(*handle).and_then(|light| light.motion.clone()) else {
         continue;
       };
-      let Some((transform, _)) = motions.get(&motion.name) else {
+      let Some(pose) = motions.get(&motion.name) else {
         continue;
       };
-      let at: Vec3 = transform.w_axis.truncate();
+      let at: Vec3 = pose.transform.w_axis.truncate();
 
       // Lights stand in renderer space, which mirrors the engine's z.
       if let Some(light) = self.lights.get_mut(*handle) {

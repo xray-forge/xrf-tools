@@ -214,6 +214,7 @@ pub use crate::host::world::feedback::render_model_failure::RenderModelFailure;
 pub use crate::host::world::feedback::render_scene_feedback::RenderSceneFeedback;
 pub use crate::host::world::feedback::render_sector_failure::RenderSectorFailure;
 pub use crate::host::world::feedback::render_streaming_progress::RenderStreamingProgress;
+pub use crate::host::world::render_motion_pose::RenderMotionPose;
 pub use crate::host::world::render_scene_frame::RenderSceneFrame;
 pub use crate::host::world::render_scene_id::RenderSceneId;
 pub use crate::host::world::render_scene_update::RenderSceneUpdate;

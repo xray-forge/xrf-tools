@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 use glam::{Mat4, Vec3};
 use xrf_animation_envelope::{AnimationEnvelope, AnimationKey, AnimationShape};
 use xrf_anm::AnmFile;
-use xrf_renderer::{LevelPart, LevelParts};
+use xrf_renderer::{LevelPart, LevelParts, RenderMotionPose};
 
 use crate::host::world_level_source::WorldLevelSource;
 use crate::level::effects::level_object_motions::LevelObjectMotions;
@@ -57,7 +57,7 @@ fn create_source() -> Arc<dyn WorldLevelSource> {
 }
 
 /// Asks for a motion until its loader has answered, a few seconds at most.
-fn read(motions: &mut LevelObjectMotions, name: &str) -> Option<(Mat4, Vec3)> {
+fn read(motions: &mut LevelObjectMotions, name: &str) -> Option<RenderMotionPose> {
   let started: Instant = Instant::now();
 
   loop {
@@ -82,10 +82,16 @@ fn moves_an_object_along_its_motion_with_its_velocity() {
   motions.prepare(Duration::from_millis(1000));
   motions.prepare(Duration::from_millis(1500));
 
-  let (transform, velocity) = read(&mut motions, "line.anm").expect("the motion to be read");
+  let pose: RenderMotionPose = read(&mut motions, "line.anm").expect("the motion to be read");
 
-  assert!(transform.w_axis.truncate().abs_diff_eq(Vec3::new(4.5, 0.0, 0.0), 1e-4));
-  assert!(velocity.abs_diff_eq(Vec3::new(3.0, 0.0, 0.0), 1e-3));
+  assert!(
+    pose
+      .transform
+      .w_axis
+      .truncate()
+      .abs_diff_eq(Vec3::new(4.5, 0.0, 0.0), 1e-4)
+  );
+  assert!(pose.velocity.abs_diff_eq(Vec3::new(3.0, 0.0, 0.0), 1e-3));
 }
 
 // From 1.9 s to 2.1 s the two-second motion wraps: it still moves at its 3 m a second, not back across the seam.
@@ -97,7 +103,7 @@ fn keeps_an_object_s_velocity_across_its_loop_s_seam() {
   motions.prepare(Duration::from_millis(1900));
   motions.prepare(Duration::from_millis(2100));
 
-  let (_, velocity) = read(&mut motions, "line.anm").expect("the motion to be read");
+  let velocity: Vec3 = read(&mut motions, "line.anm").expect("the motion to be read").velocity;
 
   assert!(velocity.abs_diff_eq(Vec3::new(3.0, 0.0, 0.0), 1e-3), "{velocity}");
 }
@@ -124,13 +130,15 @@ fn reads_its_motions_again_from_a_next_source_only_when_told() {
 
   motions.follow(&create_still_source(), LevelParts::NONE);
 
-  let (kept, _) = read(&mut motions, "line.anm").expect("the motion read before");
+  let kept: Mat4 = read(&mut motions, "line.anm")
+    .expect("the motion read before")
+    .transform;
 
   assert!(kept.w_axis.truncate().abs_diff_eq(Vec3::new(3.0, 0.0, 0.0), 1e-4));
 
   motions.follow(&create_still_source(), LevelParts::NONE.with(LevelPart::Motions));
 
-  let (reread, _) = read(&mut motions, "line.anm").expect("the motion read again");
+  let reread: Mat4 = read(&mut motions, "line.anm").expect("the motion read again").transform;
 
   assert!(reread.w_axis.truncate().abs_diff_eq(Vec3::ZERO, 1e-4), "{reread}");
 }

@@ -6,7 +6,7 @@ use glam::{Mat4, Vec3};
 use xrf_engine_target::XrayEngine;
 use xrf_particles::ParticleLibrary;
 use xrf_renderer::{
-  AmbientGust, LevelParts, ParticleEmitterProxy, PlacedEffect, RenderLevelPart, RenderLevelParticles,
+  AmbientGust, LevelParts, ParticleEmitterProxy, PlacedEffect, RenderLevelPart, RenderLevelParticles, RenderMotionPose,
   RenderParticleDefinitions, RenderParticleSource, RenderSceneUpdate, RenderWorkers, ZONE_FAST_DISTANCE,
 };
 use xrf_renderer_core::{ProxyAllocator, ProxyHandle};
@@ -184,7 +184,7 @@ impl LevelEffects {
 
     let placed: &[PlacedEmitter] = self.systems.as_ref().map_or(&[], |systems| &systems.placed);
     let mut campfire_shares: HashMap<u16, f32> = HashMap::new();
-    let mut motions: HashMap<String, (Mat4, Vec3)> = HashMap::new();
+    let mut motions: HashMap<String, RenderMotionPose> = HashMap::new();
 
     for id in placed
       .iter()
@@ -299,14 +299,14 @@ impl LevelEffects {
     eye: Vec3,
     wind: Vec3,
     campfires: &mut LevelCampfires,
-    motions: &HashMap<String, (Mat4, Vec3)>,
+    motions: &HashMap<String, RenderMotionPose>,
   ) {
     // Only Monolith stops a slowed zone's idle particles.
     let is_slowed: bool = systems.engine == XrayEngine::Extended;
 
     for emitter in &mut systems.placed {
-      if let Some(&(transform, velocity)) = emitter.motion.as_ref().and_then(|name| motions.get(name)) {
-        emitter.move_to(updates, transform, velocity);
+      if let Some(pose) = emitter.motion.as_ref().and_then(|name| motions.get(name)) {
+        emitter.move_to(updates, pose.transform, pose.velocity);
       }
 
       let is_far: bool = is_slowed
@@ -379,6 +379,6 @@ impl ZoneStates for LevelEffects {
     self
       .motions
       .get_pose(motion)
-      .map(|(transform, _)| transform.w_axis.truncate())
+      .map(|pose| pose.transform.w_axis.truncate())
   }
 }
