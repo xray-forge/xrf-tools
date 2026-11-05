@@ -74,6 +74,10 @@
   --spacing-panel-content: var(--xrf-panel-content-padding);
   --spacing-panel-section: var(--xrf-panel-section-padding);
   --spacing-panel-section-gap: var(--xrf-panel-section-gap);
+  --spacing-popover: var(--xrf-popover-width);
+  --spacing-popover-wide: var(--xrf-popover-wide-width);
+  --spacing-popover-label: var(--xrf-popover-label-width);
+  --spacing-popover-readout: var(--xrf-popover-readout-width);
   --spacing-content-state: var(--xrf-content-state-padding);
   --spacing-content-state-gap: var(--xrf-content-state-gap);
   --spacing-editor-action: var(--xrf-editor-action-size);

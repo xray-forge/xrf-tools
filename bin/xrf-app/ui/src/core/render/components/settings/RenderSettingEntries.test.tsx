@@ -46,12 +46,16 @@ describe("RenderSettingEntries", () => {
     expect(getByRole("button", { name: "Every lamp" })).toBeDisabled();
   });
 
-  it("says what a setting does only where its declaration has the popover say it", () => {
-    const { getByText, queryByText } = renderEntries();
+  it("describes every setting by what it does, saying it under its row only where its declaration asks", () => {
+    const { getAllByText, getByText } = renderEntries();
 
-    expect(getByText(RENDER_LIGHTS_SETTINGS.isVolumetric.description as string)).toBeInTheDocument();
+    function isShown(it: HTMLElement): boolean {
+      return !it.classList.contains("sr-only");
+    }
+
+    expect(getAllByText(RENDER_LIGHTS_SETTINGS.isVolumetric.description as string).some(isShown)).toBe(true);
     expect(getByText(explainRenderLightShafts(ERenderLightShafts.ENGINE))).toBeInTheDocument();
-    expect(queryByText(RENDER_LIGHTS_SETTINGS.isShadowed.description as string)).not.toBeInTheDocument();
+    expect(getAllByText(RENDER_LIGHTS_SETTINGS.isShadowed.description as string).some(isShown)).toBe(false);
   });
 
   it("sets the one value it changes, the rest of the group left as it was", () => {

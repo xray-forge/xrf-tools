@@ -85,6 +85,25 @@ describe("LevelReliefAction", () => {
     expect(none.getByRole("checkbox", { name: "Parallax" })).toBeDisabled();
   });
 
+  it("offers a section's reset only while the view sets its values, and gives them back to the settings", async () => {
+    const { getByRole, findByRole, queryByRole, view } = renderAction();
+
+    await userEvent.click(getByRole("button", { name: "Relief" }));
+    await findByRole("dialog", { name: "Relief" });
+
+    expect(queryByRole("button", { name: "Parallax: Back to the settings" })).toBeNull();
+
+    await userEvent.click(getByRole("button", { name: "Enhanced" }));
+
+    expect(view.features.parallax).toEqual({ mode: ERenderParallaxMode.ENHANCED });
+
+    await userEvent.click(getByRole("button", { name: "Parallax: Back to the settings" }));
+
+    expect(view.features.parallax).toEqual({});
+    expect(getByRole("slider", { name: "Steps" })).toBeDisabled();
+    expect(queryByRole("button", { name: "Parallax: Back to the settings" })).toBeNull();
+  });
+
   it("varies the terrain's tiling for the view and turns it back to the engine's grid", async () => {
     const { getByRole, findByRole, view } = renderAction();
 

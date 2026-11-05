@@ -1,9 +1,9 @@
 import { formatDegrees, formatNumber } from "@xrf/format";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
+import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { WbSunnyIcon } from "@xrf/ui/icons/wb-sunny";
 import { Button } from "@xrf/ui/material/button";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 import { RenderLightingControls } from "@/core/render/components/lighting/RenderLightingControls";
@@ -46,17 +46,13 @@ export function RenderLightingAction({
       icon={<WbSunnyIcon />}
       isDisabled={isDisabled}
     >
-      <div className={"flex w-56 flex-col gap-2 px-4 py-2"}>
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          Lighting
-        </Typography>
-
+      <EditorPopoverContent label={"Lighting"}>
         <RenderLightingControls lighting={lighting} onChange={onChange} />
 
         <Button size={"small"} onClick={() => onChange(fallback)}>
           Back to the default light
         </Button>
-      </div>
+      </EditorPopoverContent>
     </EditorPopoverAction>
   );
 }

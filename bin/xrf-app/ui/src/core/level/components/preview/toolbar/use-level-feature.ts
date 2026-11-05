@@ -21,7 +21,7 @@ export interface ILevelFeature<K extends TLevelFeatureKey> extends ILevelFeature
  */
 export function useLevelFeature<K extends TLevelFeatureKey>(key: K): ILevelFeature<K> {
   const { settings, features } = useLevelRenderFeatures();
-  const { set, setNested, reset } = useLevelFeatureOverride(key);
+  const override: ILevelFeatureOverride<K> = useLevelFeatureOverride(key);
 
-  return { reset, set, setNested, state: toLevelFeatureState(key, settings, features) };
+  return { ...override, state: toLevelFeatureState(key, settings, features) };
 }

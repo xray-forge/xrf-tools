@@ -77,7 +77,9 @@ export function SliderReadout({
           component={"span"}
           variant={isCompact ? "caption" : "body2"}
           className={cn("tabular-nums", isCompact && "font-mono")}
-          sx={{ color: isWasted ? "error.main" : warning ? "warning.main" : "text.primary" }}
+          sx={{
+            color: isDisabled ? "text.disabled" : isWasted ? "error.main" : warning ? "warning.main" : "text.primary",
+          }}
         >
           {format(value)}
         </Typography>

@@ -8,6 +8,7 @@ import {
 } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
+import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
@@ -117,11 +118,7 @@ export function LevelImageQualityAction({
       icon={<HighQualityIcon />}
       isActive={isOn && isAvailable}
     >
-      <div className={"flex w-80 flex-col gap-2 px-4 py-2"}>
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          Image quality
-        </Typography>
-
+      <EditorPopoverContent label={"Image quality"} isWide>
         <CheckboxFormRow
           label={"Antialiasing"}
           description={isAvailable ? undefined : description}
@@ -218,7 +215,7 @@ export function LevelImageQualityAction({
         />
 
         <LevelSettingsResetButton onReset={reset} />
-      </div>
+      </EditorPopoverContent>
     </EditorPopoverAction>
   );
 }

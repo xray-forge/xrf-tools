@@ -1,7 +1,6 @@
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
-import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
@@ -9,14 +8,17 @@ import { RenderSettingEntries } from "@/core/render/components/settings/RenderSe
 import { RENDER_TERRAIN_SETTINGS } from "@/core/render/lib/features/world/render-terrain-choices";
 import { TRenderTerrainSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
 
-/** How this view's varied terrain tiling lays its hexagons: how small, how far their copies turn, how sharply they meet. */
+/**
+ * How this view's varied terrain tiling lays its hexagons: how small, how far their copies turn, how sharply they meet.
+ * Their reset is the section's heading's.
+ */
 export function LevelTerrainSettings({
   "data-testid": dataTestId = "level-terrain-settings",
   id,
   className,
 }: BaseComponentProps): ReactElement {
   const { settings, features, drawn } = useLevelRenderFeatures();
-  const { set, reset } = useLevelFeatureOverride("terrain");
+  const { set } = useLevelFeatureOverride("terrain");
 
   const value: TRenderTerrainSettings = toLevelModeFeature("terrain", settings, features);
 
@@ -29,8 +31,6 @@ export function LevelTerrainSettings({
         features={drawn}
         onSet={set}
       />
-
-      <LevelSettingsResetButton onReset={reset} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { LevelSunDescription } from "@xrf/ipc/types/xrf-app-levels";
 import { ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
+import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { WbSunnyIcon } from "@xrf/ui/icons/wb-sunny";
@@ -83,11 +84,7 @@ export function LevelSunAction({
       icon={<WbSunnyIcon />}
       isActive={drawnSun !== null}
     >
-      <div className={"flex w-60 flex-col gap-2 px-4 py-2"}>
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          Sun
-        </Typography>
-
+      <EditorPopoverContent label={"Sun"}>
         <LevelManualWeatherVectorField field={"sunColor"} isColor manual={manual} onEdit={weatherService.editManual} />
 
         <LevelManualWeatherSlider
@@ -187,7 +184,7 @@ export function LevelSunAction({
         />
 
         <LevelWeatherResetButton keys={LEVEL_MANUAL_WEATHER_SUN_KEYS} onReset={weatherService.resetManual} />
-      </div>
+      </EditorPopoverContent>
     </EditorPopoverAction>
   );
 }

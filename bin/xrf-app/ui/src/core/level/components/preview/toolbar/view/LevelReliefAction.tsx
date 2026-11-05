@@ -5,7 +5,11 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { TextureIcon } from "@xrf/ui/icons/texture";
 import { ReactElement } from "react";
 
-import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
+import { LEVEL_SETTINGS_RESET_LABEL } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
+import {
+  ILevelFeatureOverride,
+  useLevelFeatureOverride,
+} from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import { LevelParallaxSettings } from "@/core/level/components/preview/toolbar/view/LevelParallaxSettings";
 import { LevelTerrainSettings } from "@/core/level/components/preview/toolbar/view/LevelTerrainSettings";
@@ -31,7 +35,8 @@ export function LevelReliefAction({
 }: BaseComponentProps): ReactElement {
   const viewService: LevelViewService = useInjection(LevelViewService);
   const { settings, features } = useLevelRenderFeatures();
-  const { set: setTerrain } = useLevelFeatureOverride("terrain");
+  const parallaxOverride: ILevelFeatureOverride<"parallax"> = useLevelFeatureOverride("parallax");
+  const terrainOverride: ILevelFeatureOverride<"terrain"> = useLevelFeatureOverride("terrain");
 
   const options: ILevelViewOptions = viewService.options;
   const parallax: TRenderParallaxSettings = toLevelModeFeature("parallax", settings, features);
@@ -58,9 +63,7 @@ export function LevelReliefAction({
     >
       <EditorPopoverGroupSection
         label={"Bumps"}
-        description={
-          options.isBumped ? "Shades each surface with its textures' bump maps" : "Shades every surface flat"
-        }
+        description={"Shades each surface with its textures' bump maps."}
         isOn={options.isBumped}
         onToggle={() => viewService.toggleOption("isBumped")}
       />
@@ -69,14 +72,14 @@ export function LevelReliefAction({
         label={"Parallax"}
         description={
           isParallaxAvailable
-            ? isParallaxed
-              ? "Displaces each surface by its textures' height"
-              : "Draws every surface flat"
-            : "Settings draw neither the steep nor the enhanced parallax"
+            ? "Displaces each surface by its textures' height."
+            : "The settings draw neither the steep nor the enhanced parallax."
         }
         isOn={isParallaxed}
         isDisabled={!isParallaxAvailable}
+        resetLabel={LEVEL_SETTINGS_RESET_LABEL}
         onToggle={() => viewService.toggleOption("isParallaxed")}
+        onReset={parallaxOverride.isSet ? parallaxOverride.reset : undefined}
       >
         <LevelParallaxSettings />
       </EditorPopoverGroupSection>
@@ -84,11 +87,13 @@ export function LevelReliefAction({
       <EditorPopoverGroupSection
         data-testid={"level-terrain-tiling"}
         label={"Varied terrain"}
-        description={explainRenderTerrainTiling(terrain.tiling)}
+        description={explainRenderTerrainTiling(ERenderTerrainTiling.VARIED)}
         isOn={isTerrainVaried}
+        resetLabel={LEVEL_SETTINGS_RESET_LABEL}
         onToggle={() =>
-          setTerrain({ tiling: isTerrainVaried ? ERenderTerrainTiling.ENGINE : ERenderTerrainTiling.VARIED })
+          terrainOverride.set({ tiling: isTerrainVaried ? ERenderTerrainTiling.ENGINE : ERenderTerrainTiling.VARIED })
         }
+        onReset={terrainOverride.isSet ? terrainOverride.reset : undefined}
       >
         <LevelTerrainSettings />
       </EditorPopoverGroupSection>
