@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 
 pub(crate) mod bone;
-pub(crate) mod chunks;
+pub(crate) mod editable_chunks;
 pub(crate) mod editable_object_file;
 pub(crate) mod mesh;
 pub(crate) mod object;
@@ -15,8 +15,6 @@ pub use crate::bone::editable_bone_break::EditableBoneBreak;
 pub use crate::bone::editable_bone_definition::EditableBoneDefinition;
 pub use crate::bone::editable_bone_joint::EditableBoneJoint;
 pub use crate::bone::editable_bone_mass::EditableBoneMass;
-pub use crate::chunks::editable_chunk_layout::EditableChunkLayout;
-pub use crate::chunks::editable_extra_chunk::EditableExtraChunk;
 pub use crate::editable_object_file::EditableObjectFile;
 pub use crate::mesh::editable_face::EditableFace;
 pub use crate::mesh::editable_face_corner::EditableFaceCorner;

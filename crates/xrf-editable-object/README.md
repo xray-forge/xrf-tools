@@ -33,10 +33,10 @@ which must be the body chunk (`0x7777`) alone, and `read_from_body_chunk` reads 
 ## What is read
 
 A file is one body chunk whose children `CEditableObject::Save` writes in a fixed order. The reader takes each child it
-names into a field. How the file laid a container out is that container's `layout`, an `EditableChunkLayout`: the
-order its chunks were stored in, and every child no field takes, a second copy of a named one included, as an
-`EditableExtraChunk`. Content and layout stay apart, so code that builds or edits an object never handles storage
-detail, and a container built in code takes `EditableChunkLayout::default()`.
+names into a field. How the file laid a container out is that container's `layout`, `xrf-chunk`'s `ChunkLayout`: the
+order its chunks were stored in, and every child no field takes, a second copy of a named one included, kept as a
+`ChunkPayload`. Content and layout stay apart, so code that builds or edits an object never handles storage detail,
+and a container built in code takes `ChunkLayout::default()`.
 
 | Container          | Named chunks                                                                                     |
 | ------------------ | ------------------------------------------------------------------------------------------------ |
@@ -52,7 +52,7 @@ Three layouts older editors saved and the SDK still loads are read: description 
 (`EditableMesh::has_point_faces`), and a flags chunk shorter than 4 bytes, which the loader's `r_chunk` reads into the
 low bytes (`EditableObjectFile::flags_size`). The faces around each point are derived data: `get_point_faces` computes
 them from the faces, the writer puts down what it computes, and a read refuses stored lists that differ, so an edited
-mesh never carries lists its faces no longer give. The older surface, vertex map and bone layouts are kept as extra chunks, and
+mesh never carries lists its faces no longer give. The older surface, vertex map and bone layouts are kept chunks, and
 embedded motions (`EOBJ_CHUNK_SMOTIONS`) are kept as their stored bytes. A field is `Option` wherever the editor's own
 loader treats its chunk as optional, so a file that omits a chunk writes back without it.
 
@@ -68,8 +68,8 @@ the SDK. A default layout writes `Save`'s order, and a named chunk added after r
 order lists.
 
 ```rust
-use xrf_chunk::XRayByteOrder;
-use xrf_editable_object::{EditableChunkLayout, EditableObjectFile};
+use xrf_chunk::{ChunkLayout, XRayByteOrder};
+use xrf_editable_object::EditableObjectFile;
 
 fn main() -> xrf_error::XrfResult {
   let object = EditableObjectFile {
@@ -85,7 +85,7 @@ fn main() -> xrf_error::XrfResult {
     bone_parts: None,
     actor_transform: None,
     description: None,
-    layout: EditableChunkLayout::default(),
+    layout: ChunkLayout::default(),
   };
 
   let bytes = object.write_to_bytes::<XRayByteOrder>()?;
