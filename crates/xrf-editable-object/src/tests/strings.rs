@@ -35,14 +35,20 @@ fn a_cyrillic_name_comes_back_as_its_bytes() -> XrfResult {
 }
 
 #[test]
-fn a_name_opening_on_the_utf8_byte_order_mark_loses_it_on_read() -> XrfResult {
-  // todo: Read chunk strings without byte order mark sniffing, so a Windows-1251 name opening on «п»ї» (EF BB BF)
-  // keeps those bytes; `ChunkReader::read_w1251_string` decodes it as UTF-8 and drops them, and this pins that.
-  let original: Vec<u8> = object_with_lods(&[0xef, 0xbb, 0xbf, b'a']);
+fn a_name_opening_on_byte_order_mark_bytes_comes_back_as_its_bytes() -> XrfResult {
+  // «п»ї» is `EF BB BF` and «яю» is `FF FE` in Windows-1251; read as marks, the first lost three bytes and the second
+  // turned into UTF-16.
+  assert_lods_come_back("п»їa", &[0xef, 0xbb, 0xbf, b'a'])?;
+  assert_lods_come_back("яюab", &[0xff, 0xfe, b'a', b'b'])
+}
+
+/// Reads an object whose LOD reference is `bytes`, checks it reads as `name`, and that it writes back as it was.
+fn assert_lods_come_back(name: &str, bytes: &[u8]) -> XrfResult {
+  let original: Vec<u8> = object_with_lods(bytes);
   let object: EditableObjectFile = EditableObjectFile::read_from_bytes::<XRayByteOrder>(original.clone())?;
 
-  assert_eq!(object.lods.as_deref(), Some("a"));
-  assert_ne!(object.write_to_bytes::<XRayByteOrder>()?, original);
+  assert_eq!(object.lods.as_deref(), Some(name));
+  assert_eq!(object.write_to_bytes::<XRayByteOrder>()?, original, "{name}");
 
   Ok(())
 }

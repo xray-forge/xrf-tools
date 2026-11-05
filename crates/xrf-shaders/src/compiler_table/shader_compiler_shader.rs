@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{decode_w1251_bytes_to_string, encode_string_to_w1251_bytes};
+use xrf_utils::{decode_w1251_field_to_string, encode_string_to_w1251_bytes};
 
 /// One compiler shader, `Shader_xrLC` (`utils/Shader_xrLC.h`).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -45,7 +45,7 @@ impl ShaderCompilerShader {
       ));
     };
 
-    Ok((decode_w1251_bytes_to_string(&bytes[..end])?, bytes[end..].to_vec()))
+    Ok((decode_w1251_field_to_string(&bytes[..end])?, bytes[end..].to_vec()))
   }
 
   /// Rebuilds the name field out of the name and what trailed it.

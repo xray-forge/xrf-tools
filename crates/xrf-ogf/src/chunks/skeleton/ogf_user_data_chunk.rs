@@ -3,7 +3,7 @@ use std::io::Write;
 use byteorder::ByteOrder;
 use xrf_chunk::{ChunkDataSource, ChunkReadWrite, ChunkReader, ChunkWriter};
 use xrf_error::XrfResult;
-use xrf_utils::{decode_bytes_to_string, encode_string_to_bytes, new_windows1251_encoder};
+use xrf_utils::{decode_w1251_field_to_string, encode_string_to_bytes, new_windows1251_encoder};
 
 /// Free-form ini text attached to a skeleton, `OGF_S_USERDATA` in the engine.
 #[derive(Debug)]
@@ -20,7 +20,7 @@ impl ChunkReadWrite for OgfUserDataChunk {
     let bytes: Vec<u8> = reader.read_remaining()?;
 
     Ok(Self {
-      user_data: decode_bytes_to_string(&bytes, new_windows1251_encoder())?,
+      user_data: decode_w1251_field_to_string(&bytes)?,
     })
   }
 

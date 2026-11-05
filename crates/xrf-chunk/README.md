@@ -60,7 +60,9 @@ unrelated payload. A payload larger than a `u32` can declare is refused.
 `XRayByteOrder` is little-endian. Payload reads and the writer's header take the byte order as a type parameter, but
 the child iterators always read headers little-endian.
 
-Strings are null-terminated Windows-1251, read up to 10,240 bytes unless a `_limited` form gives another bound.
+Strings are null-terminated Windows-1251, read up to 10,240 bytes unless a `_limited` form gives another bound, and
+decoded through `xrf_utils::decode_w1251_field_to_string`: no byte order mark is looked for, so a string opening on
+`EF BB BF` reads as «п»ї» and writes back as the same bytes.
 `read_w1251_line` reads a value ended by any run of `\r` and `\n`, and returns a `ChunkLine` carrying that terminator so
 `write_w1251_line` can put back exactly what the file held. `read_f32_q16` and `write_f32_q16` read and write a float
 quantised into a `u16` over a range the format supplies; a write clamps a value outside the range, and only the bytes,

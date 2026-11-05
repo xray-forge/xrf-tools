@@ -3,7 +3,7 @@ use std::io::Write;
 use serde::{Deserialize, Serialize};
 use xrf_chunk::{ChunkDataSource, ChunkReader, ChunkWriter};
 use xrf_error::{XrfError, XrfResult};
-use xrf_utils::{decode_w1251_bytes_to_string, encode_string_to_w1251_bytes};
+use xrf_utils::{decode_w1251_field_to_string, encode_string_to_w1251_bytes};
 
 /// A name in one of the editor's fixed buffers, `string128` or `string64`.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -57,7 +57,7 @@ impl BuildPrjName {
     };
 
     Ok(Self {
-      value: decode_w1251_bytes_to_string(&bytes[..end])?,
+      value: decode_w1251_field_to_string(&bytes[..end])?,
       trailing: bytes[end..].to_vec(),
     })
   }
