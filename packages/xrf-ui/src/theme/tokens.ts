@@ -186,6 +186,20 @@ export const PANEL = {
   contentLineHeight: 1.6,
 } as const;
 
+/**
+ * Toolbar popovers: one width for all of them, so each settings row lines its label, control and readout up in the
+ * same columns as the next popover's.
+ */
+export const POPOVER = {
+  width: 304,
+  /** For rows of several named choices. */
+  wideWidth: 368,
+  /** A row's label column; a longer name is cut short and read whole on hover. */
+  labelWidth: 96,
+  /** A slider's value column, room for a five-character value and its reset beside it. */
+  readoutWidth: 56,
+} as const;
+
 /** Text compared by eye rather than read as prose: identifiers, engine paths, archive entry names, file positions. */
 export const MONOSPACE = {
   fontFamily: "'Cascadia Mono', 'Consolas', monospace",

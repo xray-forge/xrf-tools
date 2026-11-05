@@ -8,6 +8,9 @@ export interface ILevelSettingsResetButtonProps extends BaseComponentProps {
   onReset: () => void;
 }
 
+/** What a reset of the view's own values says it does: the view follows Settings › Rendering again. */
+export const LEVEL_SETTINGS_RESET_LABEL: string = "Back to the settings";
+
 /** Clears what a popover set for the view, which then follows Settings › Rendering again. */
 export function LevelSettingsResetButton({
   "data-testid": dataTestId = "level-settings-reset-button",
@@ -25,7 +28,7 @@ export function LevelSettingsResetButton({
       aria-label={subject ? `Set the ${subject} back to the settings` : undefined}
       onClick={onReset}
     >
-      Back to the settings
+      {LEVEL_SETTINGS_RESET_LABEL}
     </Button>
   );
 }

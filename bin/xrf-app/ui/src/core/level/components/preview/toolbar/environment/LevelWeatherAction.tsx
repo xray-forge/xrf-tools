@@ -4,10 +4,10 @@ import { Logger } from "@xrf/logging";
 import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
+import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FilterDramaIcon } from "@xrf/ui/icons/filter-drama";
 import { Button } from "@xrf/ui/material/button";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback, useMemo } from "react";
 
 import { LevelWeatherCycleSelect } from "@/core/level/components/weather/LevelWeatherCycleSelect";
@@ -76,11 +76,7 @@ export function LevelWeatherAction({
       icon={<FilterDramaIcon />}
       isActive={!isManual}
     >
-      <div className={"flex w-72 flex-col gap-3 px-4 py-2"}>
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          Weather
-        </Typography>
-
+      <EditorPopoverContent className={"gap-3"} label={"Weather"}>
         <LevelWeatherSourceChoice source={source} isPlayable={isPlayable} onChange={weatherService.setSource} />
 
         {isManual ? (
@@ -117,7 +113,7 @@ export function LevelWeatherAction({
         <Button size={"small"} onClick={onCopy}>
           {isCopied ? "Copied" : "Copy as LTX"}
         </Button>
-      </div>
+      </EditorPopoverContent>
     </EditorPopoverAction>
   );
 }

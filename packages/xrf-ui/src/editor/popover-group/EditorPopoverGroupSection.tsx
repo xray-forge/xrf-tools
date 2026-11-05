@@ -1,23 +1,33 @@
-import { ReactElement, ReactNode } from "react";
+import { Optional } from "@xrf/types";
+import { ReactElement, ReactNode, useId } from "react";
 
+import { EditorIconAction } from "#/editor/icon-action";
 import { BaseComponentProps } from "#/element-types";
-import { CheckboxFormRow } from "#/form/checkbox-row";
+import { RestartAltIcon } from "#/icons/restart-alt";
+import { Checkbox } from "#/material/checkbox";
+import { Tooltip } from "#/material/tooltip";
+import { Typography } from "#/material/typography";
 import { cn } from "#/theme";
 
 export interface IEditorPopoverGroupSectionProps extends BaseComponentProps {
   /** Names the toggle heading the section. */
   label: string;
-  /** What it does, or why it cannot be turned on. */
+  /** What it does, read on hovering its name; while it cannot be turned on, why, said under it. */
   description?: string;
   isOn: boolean;
   isDisabled?: boolean;
   onToggle: () => void;
-  /** The toggle's settings, if it has any. */
+  /** Sets the section's settings back, from a button at the end of its heading; none while nothing is to set back. */
+  onReset?: () => void;
+  /** What the reset sets them back to, its tooltip. */
+  resetLabel?: string;
+  /** The toggle's settings, if it has any, each an `EditorPopoverRow`. */
   children?: ReactNode;
 }
 
 /**
- * One toggle of an `EditorPopoverGroup`, with its settings under it, set apart from the one before.
+ * One toggle of an `EditorPopoverGroup` heading its settings, as an editor's details panel heads a category: the box
+ * before its name, its reset at the end, set apart from the section before.
  */
 export function EditorPopoverGroupSection({
   "data-testid": dataTestId = "editor-popover-group-section",
@@ -28,26 +38,68 @@ export function EditorPopoverGroupSection({
   isOn,
   isDisabled = false,
   onToggle,
+  onReset,
+  resetLabel = "Reset",
   children,
 }: IEditorPopoverGroupSectionProps): ReactElement {
+  const controlId: string = useId();
+  const labelId: string = `${controlId}-label`;
+  const descriptionId: Optional<string> = description ? `${controlId}-description` : undefined;
+
   return (
     <div
       data-testid={dataTestId}
       id={id}
       className={cn(
-        "flex flex-col gap-2 border-t border-divider pt-2 first-of-type:border-t-0 first-of-type:pt-0",
+        "flex flex-col border-t border-divider pt-1.5 first-of-type:border-t-0 first-of-type:pt-0",
         className
       )}
     >
-      <CheckboxFormRow
-        label={label}
-        description={description}
-        isChecked={isOn}
-        isDisabled={isDisabled}
-        onChange={onToggle}
-      />
+      <div className={"flex min-h-8 items-center gap-1"}>
+        <Checkbox
+          id={controlId}
+          // The box's own inset, taken back so it starts at the popover's edge.
+          className={"-ml-1 p-0.5"}
+          size={"small"}
+          checked={isOn}
+          disabled={isDisabled}
+          slotProps={{ input: { "aria-labelledby": labelId, "aria-describedby": descriptionId } }}
+          onChange={onToggle}
+        />
 
-      {children}
+        <Tooltip describeChild title={isDisabled ? "" : (description ?? "")} placement={"top-start"}>
+          <Typography
+            id={labelId}
+            className={"min-w-0 flex-1 truncate"}
+            component={"label"}
+            htmlFor={controlId}
+            variant={"subtitle2"}
+          >
+            {label}
+          </Typography>
+        </Tooltip>
+
+        {onReset ? (
+          <EditorIconAction
+            label={`${label}: ${resetLabel}`}
+            description={resetLabel}
+            icon={<RestartAltIcon />}
+            onClick={onReset}
+          />
+        ) : null}
+      </div>
+
+      {description ? (
+        <Typography
+          id={descriptionId}
+          className={isDisabled ? "pb-1 text-text-secondary" : "sr-only"}
+          variant={"caption"}
+        >
+          {description}
+        </Typography>
+      ) : null}
+
+      {children ? <div className={"flex flex-col pb-1"}>{children}</div> : null}
     </div>
   );
 }

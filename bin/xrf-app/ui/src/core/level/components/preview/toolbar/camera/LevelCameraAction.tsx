@@ -1,10 +1,10 @@
 import { useInjection } from "@wirestate/react";
 import { formatDegrees } from "@xrf/format";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
+import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { VideocamIcon } from "@xrf/ui/icons/videocam";
 import { Button } from "@xrf/ui/material/button";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 import {
@@ -39,11 +39,7 @@ export function LevelCameraAction({
       description={`Camera: ${formatDegrees(camera.fieldOfView)}, ${camera.speed} m/s`}
       icon={<VideocamIcon />}
     >
-      <div className={"flex w-56 flex-col gap-2 px-4 py-2"}>
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          Camera
-        </Typography>
-
+      <EditorPopoverContent label={"Camera"}>
         <RenderValueSlider
           label={"Field of view"}
           value={camera.fieldOfView}
@@ -79,7 +75,7 @@ export function LevelCameraAction({
         <Button size={"small"} onClick={() => viewService.setCameraOptions(DEFAULT_LEVEL_CAMERA_OPTIONS)}>
           Reset the camera
         </Button>
-      </div>
+      </EditorPopoverContent>
     </EditorPopoverAction>
   );
 }

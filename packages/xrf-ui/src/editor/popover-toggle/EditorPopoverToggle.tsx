@@ -2,6 +2,7 @@ import { Nullable } from "@xrf/types";
 import { ReactElement, ReactNode, useCallback } from "react";
 
 import { EditorPopoverAction } from "#/editor/popover-action";
+import { EditorPopoverContent } from "#/editor/popover-content";
 import { BaseComponentProps } from "#/element-types";
 import { CheckboxFormRow } from "#/form/checkbox-row";
 import { Typography } from "#/material/typography";
@@ -65,11 +66,7 @@ export function EditorPopoverToggle({
       kind={isDisabled ? "popover" : "toggle"}
       onClick={isDisabled ? undefined : onClick}
     >
-      <div className={`flex ${isWide ? "w-80" : "w-60"} flex-col gap-2 px-4 py-2`}>
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          {label}
-        </Typography>
-
+      <EditorPopoverContent label={label} isWide={isWide}>
         {header}
 
         <CheckboxFormRow
@@ -86,7 +83,7 @@ export function EditorPopoverToggle({
         ) : (
           children
         )}
-      </div>
+      </EditorPopoverContent>
     </EditorPopoverAction>
   );
 }

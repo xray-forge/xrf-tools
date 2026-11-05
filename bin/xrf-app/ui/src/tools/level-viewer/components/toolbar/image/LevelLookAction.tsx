@@ -185,7 +185,7 @@ export function LevelLookAction({
       icon={<ExposureIcon />}
       isActive={picked !== ELevelLookSource.GAME || isEnhancedBloom || isPhysical}
     >
-      <div className={"flex w-80 flex-col gap-3 px-4 py-2"}>
+      <div className={"flex w-popover-wide flex-col gap-3 px-3 pt-1 pb-3"}>
         <LevelLookSection title={"Look"}>
           <ChoiceListFormRow
             data-testid={"level-look-source"}

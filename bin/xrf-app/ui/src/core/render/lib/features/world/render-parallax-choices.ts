@@ -107,7 +107,6 @@ export const RENDER_PARALLAX_SETTINGS: TRenderSettings<TRenderParallaxSettings> 
   isSteep: {
     control: ERenderSettingControl.CHECKBOX,
     description: "The engine's steep parallax within 12 m on level surfaces whose texture asks for it.",
-    isEntryDescribed: true,
     label: "Steep parallax",
   },
   mode: {
