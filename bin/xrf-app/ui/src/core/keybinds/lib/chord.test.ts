@@ -57,6 +57,26 @@ describe("matchesChord", () => {
     expect(matchesChord(mockKeyEvent({ key: "k", metaKey: true }), parseChord("mod+k"))).toBe(false);
   });
 
+  // A Ukrainian layout sends `п` for the key a US one labels G: matched by the letter, no letter chord reached it.
+  it("reads a key a non-Latin layout prints as its place on a US keyboard", () => {
+    expect(matchesChord(mockKeyEvent({ code: "KeyG", ctrlKey: true, key: "п" }), parseChord("mod+g"))).toBe(true);
+    expect(matchesChord(mockKeyEvent({ code: "KeyH", key: "р" }), parseChord("h"))).toBe(true);
+    expect(matchesChord(mockKeyEvent({ code: "KeyG", ctrlKey: true, key: "п" }), parseChord("mod+h"))).toBe(false);
+  });
+
+  // Only a letter falls back to its place: a symbol is what a chord names, whichever key a layout prints it on.
+  it("reads a symbol as itself, never as the digit key it sits on", () => {
+    expect(matchesChord(mockKeyEvent({ code: "Digit1", key: "!", shiftKey: true }), parseChord("shift+!"))).toBe(true);
+    expect(matchesChord(mockKeyEvent({ code: "Digit1", key: "!", shiftKey: true }), parseChord("shift+1"))).toBe(false);
+    expect(matchesChord(mockKeyEvent({ code: "Digit1", ctrlKey: true, key: "&" }), parseChord("mod+1"))).toBe(false);
+  });
+
+  // AZERTY prints Z where a US keyboard has W: the chord follows the letter a Latin layout prints, not the place.
+  it("keeps a Latin layout's own letters", () => {
+    expect(matchesChord(mockKeyEvent({ code: "KeyW", ctrlKey: true, key: "z" }), parseChord("mod+z"))).toBe(true);
+    expect(matchesChord(mockKeyEvent({ code: "KeyW", ctrlKey: true, key: "z" }), parseChord("mod+w"))).toBe(false);
+  });
+
   it("compares characters case insensitively but names exactly", () => {
     expect(matchesChord(mockKeyEvent({ ctrlKey: true, key: "K" }), parseChord("mod+k"))).toBe(true);
     expect(matchesChord(mockKeyEvent({ key: "F1" }), parseChord("F1"))).toBe(true);

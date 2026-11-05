@@ -1,4 +1,4 @@
-import { Optional } from "@xrf/types";
+import { Nullable, Optional } from "@xrf/types";
 
 import { isApplePlatform } from "@/lib/env/platform";
 
@@ -35,6 +35,12 @@ const NAMED_KEYS: ReadonlyMap<string, string> = new Map([
 const KEY_LABELS: ReadonlyMap<string, string> = new Map([[" ", "Space"]]);
 
 const FUNCTION_KEY_PATTERN: RegExp = /^f([1-9]|1[0-9]|2[0-4])$/;
+
+/** A letter no Latin layout prints, Cyrillic or Greek; a symbol such as `!` or AZERTY's `&` reads as itself. */
+const NON_LATIN_LETTER_PATTERN: RegExp = /^(?![a-z])\p{L}$/u;
+
+/** A letter key by its place on the keyboard, as `event.code` names it whatever the layout: `KeyG`. */
+const LETTER_CODE_PATTERN: RegExp = /^Key([A-Z])$/;
 
 /** One parsed chord, with every spelling variation already resolved. */
 export interface IKeyChord {
@@ -202,5 +208,24 @@ export function matchesChord(event: KeyboardEvent, chord: IKeyChord): boolean {
     return false;
   }
 
-  return (event.key.length === 1 ? event.key.toLowerCase() : event.key) === chord.key;
+  return toChordEventKey(event) === chord.key;
+}
+
+/**
+ * The key an event presses, as a chord spells it.
+ *
+ * @param event - Keyboard event being dispatched.
+ * @returns A lowercase character, or a canonical key name.
+ */
+function toChordEventKey(event: KeyboardEvent): string {
+  if (event.key.length !== 1) {
+    return event.key;
+  }
+
+  const character: string = event.key.toLowerCase();
+  const place: Nullable<RegExpExecArray> = NON_LATIN_LETTER_PATTERN.test(character)
+    ? LETTER_CODE_PATTERN.exec(event.code)
+    : null;
+
+  return place ? place[1].toLowerCase() : character;
 }
