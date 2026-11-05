@@ -132,11 +132,14 @@ describe("LevelWeatherPanel", () => {
     expect(weather.cycle.value?.name).toBe("default_clear");
   });
 
-  it("goes back to the weather from the keyframe set by hand", async () => {
-    const { getByRole, weather } = await renderPanel();
+  it("goes back to the weather from the keyframe set by hand, saying what it was seeded from meanwhile", async () => {
+    const { getByRole, getByTestId, weather } = await renderPanel();
 
     await userEvent.click(getByRole("button", { name: "Manual" }));
-    await userEvent.click(getByRole("button", { name: "Play the weather" }));
+
+    expect(getByTestId("level-weather-seed-note")).toHaveTextContent(/^Seeded from/);
+
+    await userEvent.click(getByRole("button", { name: "Weather" }));
 
     expect(weather.source).toBe(ELevelWeatherSource.WEATHER);
   });

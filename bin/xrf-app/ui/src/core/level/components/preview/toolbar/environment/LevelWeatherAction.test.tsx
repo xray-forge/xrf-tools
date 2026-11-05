@@ -31,7 +31,7 @@ describe("LevelWeatherAction", () => {
     await userEvent.click(getByRole("button", { name: "Manual" }));
 
     expect(weather.source).toBe(ELevelWeatherSource.MANUAL);
-    expect(getByRole("dialog", { name: "Weather" }).textContent).toContain("Play the weather");
+    expect(getByRole("dialog", { name: "Weather" }).textContent).toContain("Seeded from");
   });
 
   it("shows the time of day as the panel does: the cycle's keyframes marked, and its speed beneath", async () => {
