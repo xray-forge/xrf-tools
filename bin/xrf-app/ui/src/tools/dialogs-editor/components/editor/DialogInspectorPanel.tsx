@@ -78,7 +78,7 @@ export function DialogInspectorPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={isDialogRoot ? "Dialog" : "Phrase"}>
-      <EditorPanelSection title={"Details"} isFirst>
+      <EditorPanelSection title={"Details"}>
         <EditorPanelProperty label={"ID"} value={isDialogRoot ? dialog.id : phrase?.id} isMonospace />
 
         {isDialogRoot ? (

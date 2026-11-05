@@ -27,7 +27,7 @@ export function ArchiveThmTextureSection({
   scope,
 }: IArchiveThmTextureSectionProps): ReactElement {
   return (
-    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Texture"} isFirst>
+    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Texture"}>
       <ArchiveDescriptionReference label={"File"} reference={texture.reference} scope={scope} />
 
       <ArchiveDescriptionRow label={"Size"} value={describeTextureShape(texture)} />

@@ -23,7 +23,7 @@ export function ArchiveLevelHomView({
 }: IArchiveLevelHomViewProps): ReactElement {
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Occlusion mesh"} isFirst>
+      <EditorPanelSection title={"Occlusion mesh"}>
         <ArchiveDescriptionRow
           label={"Occluders"}
           value={formatCount(description.triangles)}

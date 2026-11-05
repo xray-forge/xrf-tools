@@ -62,7 +62,7 @@ export function LevelWeatherPlaySection({
   onEffect,
 }: ILevelWeatherPlaySectionProps): ReactElement {
   return (
-    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Lit by"} isFirst>
+    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Lit by"}>
       <div className={"flex flex-col gap-3"}>
         <LevelWeatherSourceChoice source={source} isPlayable={isPlayable} onChange={onSource} />
 

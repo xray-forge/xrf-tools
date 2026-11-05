@@ -40,7 +40,7 @@ export function ArchiveShadersDescriptionView({
 
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Library"} isFirst>
+      <EditorPanelSection title={"Library"}>
         <ArchiveDescriptionRow
           label={"Blenders"}
           value={`${library.blenders}`}

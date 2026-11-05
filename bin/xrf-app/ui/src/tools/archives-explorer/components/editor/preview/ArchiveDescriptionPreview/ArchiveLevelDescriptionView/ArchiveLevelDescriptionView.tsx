@@ -52,7 +52,7 @@ export function ArchiveLevelDescriptionView({
 
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Bundle"} isFirst>
+      <EditorPanelSection title={"Bundle"}>
         <ArchiveDescriptionRow
           label={"Surfaces"}
           value={`${bundle.surfaces}`}

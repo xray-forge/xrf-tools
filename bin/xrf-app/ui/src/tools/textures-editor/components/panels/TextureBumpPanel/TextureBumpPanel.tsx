@@ -112,7 +112,7 @@ export function TextureBumpPanel({
         </Alert>
       ) : null}
 
-      <EditorPanelSection title={"Writes"} caption={"Derived from the texture, not chosen"} isFirst>
+      <EditorPanelSection title={"Writes"} caption={"Derived from the texture, not chosen"}>
         <EditorPanelProperty label={"Bump"} value={description.generatedBump.bump} isMonospace />
         <EditorPanelProperty label={"Companion"} value={description.generatedBump.companion} isMonospace />
       </EditorPanelSection>

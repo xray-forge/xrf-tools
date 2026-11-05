@@ -26,7 +26,7 @@ export function ArchiveLevelLightsView({
 
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Compiled lights"} isFirst>
+      <EditorPanelSection title={"Compiled lights"}>
         <ArchiveDescriptionRow
           label={"Lights"}
           value={formatCount(description.lights)}

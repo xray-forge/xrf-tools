@@ -28,7 +28,6 @@ export function ArchiveLevelGameView({
       <EditorPanelSection
         title={"Respawn points"}
         caption={"Grouped by what they spawn: a level plants thousands of a few kinds"}
-        isFirst
       >
         <ArchiveDescriptionRow
           label={"Points"}

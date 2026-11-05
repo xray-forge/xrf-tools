@@ -31,7 +31,7 @@ export function ArchiveLevelWallmarksView({
 
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Baked decals"} isFirst>
+      <EditorPanelSection title={"Baked decals"}>
         <ArchiveDescriptionRow
           label={"Decals"}
           value={formatCount(description.marks)}

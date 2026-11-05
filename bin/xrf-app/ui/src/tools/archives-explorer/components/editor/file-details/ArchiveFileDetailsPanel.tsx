@@ -57,7 +57,7 @@ export function ArchiveFileDetailsPanel({
 
   return (
     <EditorPanel data-testid={dataTestId} id={id} className={className} title={"File details"}>
-      <EditorPanelSection title={"Metadata"} isFirst>
+      <EditorPanelSection title={"Metadata"}>
         <EditorPanelProperty label={"Name"} value={entry.name} isMonospace />
 
         <EditorPanelProperty label={"Extension"} value={getFileExtension(entry.name) || "-"} />

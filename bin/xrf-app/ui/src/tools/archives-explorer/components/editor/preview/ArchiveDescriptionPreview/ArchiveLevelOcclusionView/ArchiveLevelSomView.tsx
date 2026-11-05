@@ -24,7 +24,7 @@ export function ArchiveLevelSomView({
 }: IArchiveLevelSomViewProps): ReactElement {
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Sound occlusion"} isFirst>
+      <EditorPanelSection title={"Sound occlusion"}>
         <ArchiveDescriptionRow
           label={"Occluders"}
           value={formatCount(description.triangles)}

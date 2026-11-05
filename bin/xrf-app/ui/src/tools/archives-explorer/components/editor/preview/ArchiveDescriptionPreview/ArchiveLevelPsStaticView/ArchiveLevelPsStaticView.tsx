@@ -25,7 +25,7 @@ export function ArchiveLevelPsStaticView({
 
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Planted effects"} isFirst>
+      <EditorPanelSection title={"Planted effects"}>
         <ArchiveDescriptionRow
           label={"Placements"}
           value={formatCount(description.placements)}

@@ -21,7 +21,7 @@ export function ArchiveDetailLayerSection({
   description,
 }: IArchiveDetailLayerSectionProps): ReactElement {
   return (
-    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Detail layer"} isFirst>
+    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Detail layer"}>
       <ArchiveDescriptionRow
         label={"Planted"}
         value={describePlanting(description)}

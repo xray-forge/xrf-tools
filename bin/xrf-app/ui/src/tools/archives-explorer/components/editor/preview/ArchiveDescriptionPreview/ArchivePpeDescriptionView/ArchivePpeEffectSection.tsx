@@ -26,7 +26,7 @@ export function ArchivePpeEffectSection({
   const { colorMap } = description;
 
   return (
-    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Effect"} isFirst>
+    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Effect"}>
       <ArchiveDescriptionRow
         label={"Runs for"}
         value={formatSeconds(description.lengthSeconds)}

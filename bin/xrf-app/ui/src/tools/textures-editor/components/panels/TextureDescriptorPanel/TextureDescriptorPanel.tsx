@@ -84,7 +84,7 @@ export function TextureDescriptorPanel({
         </Alert>
       ) : null}
 
-      <EditorPanelSection title={"Primary"} caption={"What the engine reads at load time"} isFirst>
+      <EditorPanelSection title={"Primary"} caption={"What the engine reads at load time"}>
         <TextureSelectField
           data-testid={"texture-field-texture-type"}
           label={"Texture type"}

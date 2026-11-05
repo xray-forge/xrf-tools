@@ -51,7 +51,6 @@ export function LevelSurfaceDetails({
       id={id}
       className={className}
       title={`${summary.shaderId} · ${describeLevelSurface(summary)}`}
-      isFirst={true}
     >
       <EditorPanelProperty
         label={"Drawn as"}

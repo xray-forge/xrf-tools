@@ -25,7 +25,7 @@ export function ArchiveEfdView({
 
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Evaluation function"} isFirst>
+      <EditorPanelSection title={"Evaluation function"}>
         <ArchiveDescriptionRow
           label={"Registers as"}
           value={`Function ${description.functionType}`}

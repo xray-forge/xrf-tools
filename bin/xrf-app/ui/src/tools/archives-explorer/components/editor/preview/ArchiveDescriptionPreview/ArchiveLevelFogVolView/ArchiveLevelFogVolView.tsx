@@ -31,7 +31,7 @@ export function ArchiveLevelFogVolView({
 
   return (
     <ArchiveDescriptionLayout data-testid={dataTestId} id={id} className={className}>
-      <EditorPanelSection title={"Volumetric fog"} isFirst>
+      <EditorPanelSection title={"Volumetric fog"}>
         <ArchiveDescriptionRow
           label={"Bodies"}
           value={`${volumes.length}`}

@@ -27,7 +27,7 @@ export function ArchiveAnmMotionSection({
   const { frameStart, frameEnd, frames, fps } = description;
 
   return (
-    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Motion"} isFirst>
+    <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Motion"}>
       <ArchiveDescriptionRow
         label={"Saved as"}
         value={description.name ?? NOT_DECLARED}

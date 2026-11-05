@@ -28,7 +28,6 @@ export function ArchiveChunksDescriptionView({
       <EditorPanelSection
         title={"Container"}
         caption={"No reader claims this format. What follows is the framing every X-Ray binary shares."}
-        isFirst
       >
         <ArchiveDescriptionRow
           label={"Chunks"}
