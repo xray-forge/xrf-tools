@@ -1,4 +1,4 @@
-import { Nullable } from "@xrf/types";
+import { Nullable, Optional } from "@xrf/types";
 import {
   CSSProperties,
   MouseEvent,
@@ -32,6 +32,21 @@ const CUE_SX: Readonly<Record<TEditorPopoverKind, CSSProperties>> = {
     backgroundColor: "currentColor",
   },
 };
+
+/** How close to the window's edge a popover comes, MUI's `marginThreshold`, kept apart from its height too. */
+const WINDOW_MARGIN: number = 16;
+
+/**
+ * @param anchor - The trigger a popover opens from.
+ * @param placement - The side of it the popover opens on.
+ * @returns The height the popover may take on that side before it scrolls, so a tall one stays at its trigger rather
+ *   than being moved over it to fit the window.
+ */
+function toPopoverMaxHeight(anchor: HTMLElement, placement: "top" | "bottom"): number {
+  const rect: DOMRect = anchor.getBoundingClientRect();
+
+  return Math.max(0, (placement === "top" ? rect.top : window.innerHeight - rect.bottom) - WINDOW_MARGIN);
+}
 
 interface IEditorPopoverActionProps extends BaseComponentProps {
   label: string;
@@ -68,10 +83,17 @@ export function EditorPopoverAction({
   children,
 }: IEditorPopoverActionProps): ReactElement {
   const [anchor, setAnchor] = useState<Nullable<HTMLButtonElement>>(null);
+  const [maxHeight, setMaxHeight] = useState<Optional<number>>(undefined);
   const dialogId: string = useId();
   const isOpen: boolean = anchor !== null && !isDisabled;
 
-  const onOpen = useCallback((event: MouseEvent<HTMLButtonElement>) => setAnchor(event.currentTarget), []);
+  const onOpen = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      setMaxHeight(toPopoverMaxHeight(event.currentTarget, placement));
+      setAnchor(event.currentTarget);
+    },
+    [placement]
+  );
 
   const onContextMenu = useCallback(
     (event: MouseEvent<HTMLButtonElement>) => {
@@ -126,7 +148,8 @@ export function EditorPopoverAction({
         open={isOpen}
         anchorOrigin={{ vertical: placement, horizontal: "center" }}
         transformOrigin={{ vertical: placement === "top" ? "bottom" : "top", horizontal: "center" }}
-        slotProps={{ paper: { id: dialogId, role: "dialog", "aria-label": label } }}
+        marginThreshold={WINDOW_MARGIN}
+        slotProps={{ paper: { id: dialogId, role: "dialog", "aria-label": label, style: { maxHeight } } }}
         onClose={onClose}
       >
         {typeof children === "function" ? children(onClose) : children}

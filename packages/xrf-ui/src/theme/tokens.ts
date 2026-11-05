@@ -198,6 +198,10 @@ export const POPOVER = {
   labelWidth: 96,
   /** A slider's value column, room for a five-character value and its reset beside it. */
   readoutWidth: 56,
+  /** A select or text field in a row, as low as the row's choices rather than a form's field. */
+  inputHeight: 24,
+  /** The padding above and below a row's field text; the line box is whatever height is left. */
+  inputPaddingY: 3,
 } as const;
 
 /** Text compared by eye rather than read as prose: identifiers, engine paths, archive entry names, file positions. */
