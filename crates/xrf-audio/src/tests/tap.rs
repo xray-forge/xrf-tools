@@ -20,6 +20,27 @@ fn read_all(tap: &mut AudioTap) -> Vec<AudioTapBlock> {
   std::iter::from_fn(|| tap.read().expect("the tap's stream runs")).collect()
 }
 
+// Taps opened faster than the mixer lets the earlier ones go are refused past the ring they come back through, rather
+// than lost on the audio thread; once it has let them go, a tap opens again.
+#[test]
+fn refuses_a_tap_past_those_the_mixer_can_hand_back() {
+  let AudioEngineParts { mut engine, mixer } = engine(4);
+  let mut render: OfflineRender = OfflineRender::new(mixer, RATE);
+  let mut buffer: Vec<f32> = vec![0.0; 480 * 2];
+  let first: AudioTap = engine.open_tap(Duration::from_secs(1)).expect("the first tap opens");
+  let second: AudioTap = engine.open_tap(Duration::from_secs(1)).expect("the second tap opens");
+
+  assert_eq!(
+    engine.open_tap(Duration::from_secs(1)).err(),
+    Some(crate::AudioRefusal::TapsBusy)
+  );
+
+  drop((first, second));
+  render.render_into(&mut buffer);
+
+  assert!(engine.open_tap(Duration::from_secs(1)).is_ok());
+}
+
 // The tap holds the mix as the master takes it: the output is the tapped blocks at the master's gain, frame for frame,
 // each block where the mixer's clock has it.
 #[test]

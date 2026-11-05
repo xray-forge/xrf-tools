@@ -6,9 +6,9 @@ use std::thread;
 use crate::decode::decoded_sound::DecodedSound;
 use crate::decode::sound_decoder::SoundDecoder;
 use crate::decode::sound_format::SoundFormat;
-use crate::host::audio_asset_source::AudioAssetSource;
 use crate::render::bank::banked_sound::BankedSound;
 use crate::render::bank::sound_key::SoundKey;
+use crate::scene::host::audio_asset_source::AudioAssetSource;
 
 /// The sounds the scenes play, by their source's scope and reference, read and decoded off the control thread: on a
 /// loader thread of its own, or in the call that asks for them in an offline session. A sound up to

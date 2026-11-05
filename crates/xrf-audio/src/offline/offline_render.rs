@@ -1,5 +1,5 @@
 use crate::mixer::audio_mixer::AudioMixer;
-use crate::mixer::audio_mixer_meter::AudioMixerMeter;
+use crate::mixer::meter::audio_mixer_meter::AudioMixerMeter;
 
 /// Renders a mixer without a device, as many frames as asked and as fast as the machine allows: what tests listen to.
 pub struct OfflineRender {

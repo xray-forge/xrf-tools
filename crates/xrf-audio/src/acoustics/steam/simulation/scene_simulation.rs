@@ -7,8 +7,8 @@ use crate::acoustics::scene::scene_acoustics_state::SceneAcousticsState;
 use crate::acoustics::scene::scene_geometry_state::SceneGeometryState;
 use crate::acoustics::scene::simulated_source::SimulatedSource;
 use crate::acoustics::scene::simulation_pace::SimulationPace;
-use crate::acoustics::steam::simulated_world::SimulatedWorld;
-use crate::host::audio_scene_geometry::AudioSceneGeometry;
+use crate::acoustics::steam::simulation::simulated_world::SimulatedWorld;
+use crate::scene::host::audio_scene_geometry::AudioSceneGeometry;
 use xrf_audio_scene::AudioListener;
 
 /// One scene's simulation: it reads the scene's geometry and builds Steam Audio's scene from it, then, each time the

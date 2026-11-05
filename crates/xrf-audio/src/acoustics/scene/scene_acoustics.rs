@@ -8,9 +8,9 @@ use crate::acoustics::scene::simulated_source::SimulatedSource;
 use crate::acoustics::scene::simulation_pace::SimulationPace;
 use crate::acoustics::scene::source_acoustics::SourceAcoustics;
 #[cfg(feature = "steam-audio")]
-use crate::acoustics::steam::scene_simulation::SceneSimulation;
-use crate::host::audio_scene_geometry::AudioSceneGeometry;
-use crate::scene::audio_acoustics_report::AudioAcousticsReport;
+use crate::acoustics::steam::simulation::scene_simulation::SceneSimulation;
+use crate::scene::host::audio_scene_geometry::AudioSceneGeometry;
+use crate::scene::report::audio_acoustics_report::AudioAcousticsReport;
 use crate::voice::voice_spatial::VoiceSpatial;
 use xrf_audio_scene::AudioListener;
 

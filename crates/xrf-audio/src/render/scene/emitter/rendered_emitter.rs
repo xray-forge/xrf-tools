@@ -10,7 +10,7 @@ use crate::render::scene::emitter::real_voice::RealVoice;
 use crate::render::scene::emitter::sound_place::SoundPlace;
 use crate::render::scene::scene_assets::SceneAssets;
 use crate::render::scene::scene_moment::SceneMoment;
-use crate::scene::audio_scene_refusal::AudioSceneRefusal;
+use crate::scene::report::audio_scene_refusal::AudioSceneRefusal;
 use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
 use xrf_audio_scene::AudioListener;
 use xrf_audio_scene::AudioSceneEmitter;

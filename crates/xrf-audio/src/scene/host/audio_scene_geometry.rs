@@ -1,6 +1,6 @@
 use xrf_error::XrfResult;
 
-use crate::host::audio_scene_mesh::AudioSceneMesh;
+use crate::scene::host::audio_scene_mesh::AudioSceneMesh;
 
 /// What shapes a scene's sound: the walls, floors and ground a level's sound meets, each triangle with what it is
 /// made of. The host builds it once per scene and the acoustics read it once, off the render thread, on the scene's

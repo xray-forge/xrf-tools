@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicU8, AtomicU32, AtomicU64, Ordering};
 
-use crate::voice::audio_voice_playback::AudioVoicePlayback;
-use crate::voice::audio_voice_state::AudioVoiceState;
+use crate::voice::playback::audio_voice_playback::AudioVoicePlayback;
+use crate::voice::playback::audio_voice_state::AudioVoiceState;
 
 /// What the audio thread last reported of the voice in one slot, read without a lock by the control side.
 #[derive(Debug, Default)]

@@ -1,4 +1,4 @@
-use crate::control::server::audio_event::AudioEvent;
+use crate::control::server::events::audio_event::AudioEvent;
 
 /// Where the control thread sends its [`AudioEvent`]s, called on that thread: a host hands them on and returns soon.
 pub trait AudioEventSink: Send + 'static {

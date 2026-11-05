@@ -1,4 +1,4 @@
-use crate::host::audio_material::AudioMaterial;
+use crate::scene::host::audio_material::AudioMaterial;
 
 /// Triangles and their materials, in the game's left-handed space: `x` right, `y` up, `z` ahead.
 #[derive(Clone, Debug, Default, PartialEq)]

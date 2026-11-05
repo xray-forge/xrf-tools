@@ -5,16 +5,16 @@ use rtrb::{Consumer, Producer};
 
 use crate::acoustics::audio_acoustics::AudioAcoustics;
 use crate::acoustics::effects::ear_blocks::EarBlocks;
-use crate::control::engine_shared::EngineShared;
-use crate::mixer::audio_mixer_meter::AudioMixerMeter;
+use crate::control::engine::engine_shared::EngineShared;
 use crate::mixer::gain_ramp::GainRamp;
+use crate::mixer::meter::audio_mixer_meter::AudioMixerMeter;
 use crate::mixer::mixer_command::MixerCommand;
-use crate::mixer::mixer_reverb::MixerReverb;
-use crate::mixer::reverb_parameters::ReverbParameters;
+use crate::mixer::reverb::mixer_reverb::MixerReverb;
+use crate::mixer::reverb::reverb_parameters::ReverbParameters;
 use crate::mixer::tap::mixer_tap::MixerTap;
 use crate::voice::audio_voice_id::AudioVoiceId;
-use crate::voice::audio_voice_playback::AudioVoicePlayback;
-use crate::voice::audio_voice_state::AudioVoiceState;
+use crate::voice::playback::audio_voice_playback::AudioVoicePlayback;
+use crate::voice::playback::audio_voice_state::AudioVoiceState;
 use crate::voice::shared::voice_parameters::VoiceParameters;
 use crate::voice::shared::voice_status::VoiceStatus;
 use crate::voice::voice::Voice;
@@ -309,8 +309,8 @@ impl AudioMixer {
 
   /// Hands `tap` back to the control side, which frees it.
   fn retire_tap(tap: Option<Box<MixerTap>>, retired: &mut Producer<Box<MixerTap>>) {
-    // The ring holds two, and the control side empties it each tick, a tap at a time being set; were it full, the tap
-    // would be lost rather than freed on this thread.
+    // The control side never has more taps out than the ring holds (`AudioEngine::TAPS_MOST`), so it is never full; were
+    // it, the tap would be lost rather than freed on this thread.
     if let Some(tap) = tap
       && let Err(rtrb::PushError::Full(tap)) = retired.push(tap)
     {

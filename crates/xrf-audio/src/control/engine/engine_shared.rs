@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::acoustics::audio_acoustics::AudioAcoustics;
-use crate::mixer::audio_mixer_meter::AudioMixerMeter;
-use crate::mixer::reverb_parameters::ReverbParameters;
+use crate::mixer::meter::audio_mixer_meter::AudioMixerMeter;
+use crate::mixer::reverb::reverb_parameters::ReverbParameters;
 use crate::voice::shared::voice_parameters::VoiceParameters;
 use crate::voice::shared::voice_status::VoiceStatus;
 
