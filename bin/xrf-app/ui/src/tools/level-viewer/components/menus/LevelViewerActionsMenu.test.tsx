@@ -7,6 +7,7 @@ import { EMenuEntryKind, IMenuContribution, isSameMenuSection, TMenuEntry } from
 import { ShellContributionsService } from "@/core/shell/services/shell-contributions";
 import { mockToolScope } from "@/fixtures/utils/container";
 import { renderWithProviders } from "@/fixtures/utils/render";
+import { COPY_LEVEL_COORDINATES_KEYBIND_COMMAND } from "@/tools/level-viewer/commands";
 import { LevelViewerActionsMenu } from "@/tools/level-viewer/components/menus/LevelViewerActionsMenu";
 import { LEVEL_VIEWER_ACTIONS_MENU } from "@/tools/level-viewer/menus";
 import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level-viewer-recording";
@@ -54,13 +55,14 @@ describe("LevelViewerActionsMenu", () => {
     ]);
   });
 
-  it("offers to go to coordinates after the captures, as its own section", () => {
+  it("offers to go to coordinates and copy them after the captures, as their own section", () => {
     const [camera] = renderActions().filter((it: IMenuContribution) =>
       isSameMenuSection(it.section, LEVEL_VIEWER_ACTIONS_MENU.sections.camera)
     );
 
     expect(camera?.entries).toEqual([
       { kind: EMenuEntryKind.COMMAND, command: GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND },
+      { kind: EMenuEntryKind.COMMAND, command: COPY_LEVEL_COORDINATES_KEYBIND_COMMAND },
     ]);
   });
 

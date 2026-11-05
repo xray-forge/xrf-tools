@@ -9,6 +9,7 @@ import { EMenuEntryKind, IMenuContribution } from "@/core/shell/menu/lib";
 import {
   CAPTURE_LEVEL_CUBEMAP_KEYBIND_COMMAND,
   CAPTURE_LEVEL_MAP_KEYBIND_COMMAND,
+  COPY_LEVEL_COORDINATES_KEYBIND_COMMAND,
   RECORD_LEVEL_KEYBIND_COMMAND,
   TAKE_LEVEL_SCREENSHOT_KEYBIND_COMMAND,
 } from "@/tools/level-viewer/commands";
@@ -17,7 +18,7 @@ import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level
 
 /**
  * The level viewer's Actions menu: Capture ▸ a screenshot, the recording, a level map and a cubemap, Record turned to
- * Stop recording, its dot red, while one runs; then Go to coordinates.
+ * Stop recording, its dot red, while one runs; then Go to coordinates and Copy coordinates.
  */
 export function LevelViewerActionsMenu(): ReactElement {
   const recordingService: LevelViewerRecordingService = useInjection(LevelViewerRecordingService);
@@ -55,7 +56,10 @@ export function LevelViewerActionsMenu(): ReactElement {
       },
       {
         section: LEVEL_VIEWER_ACTIONS_MENU.sections.camera,
-        entries: [{ kind: EMenuEntryKind.COMMAND, command: GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND }],
+        entries: [
+          { kind: EMenuEntryKind.COMMAND, command: GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND },
+          { kind: EMenuEntryKind.COMMAND, command: COPY_LEVEL_COORDINATES_KEYBIND_COMMAND },
+        ],
       },
     ],
     [isRecording]
