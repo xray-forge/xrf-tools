@@ -1,16 +1,33 @@
 import { ETextureSurfaceAlpha, ETextureSurfaceShape } from "@xrf/ipc/types/xrf-app-textures";
-import { Nullable } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
+import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { BaseComponentProps } from "@xrf/ui/element-types";
+import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ViewQuiltIcon } from "@xrf/ui/icons/view-quilt";
-import { ToggleButton, ToggleButtonGroup } from "@xrf/ui/material/toggle-button";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
+import { RenderValueChoice } from "@/core/render/components/controls/RenderValueChoice";
 import { ETexturePreviewMode, ITexturePreviewOptions, TEXTURE_TILING_STEPS } from "@/core/textures/lib/texture-preview";
 import { describeTextureSurfaceAlpha, describeTextureSurfaceShape } from "@/core/textures/lib/texture-surface";
 
 import { SURFACE_ONLY } from "./TextureWorkspaceToolbar.utils";
+
+/** Every body a texture can be laid on. */
+const SHAPE_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ETextureSurfaceShape>> = Object.values(
+  ETextureSurfaceShape
+).map((value: ETextureSurfaceShape) => ({ label: describeTextureSurfaceShape(value), value }));
+
+/** Every way the body reads the texture's alpha. */
+const ALPHA_OPTIONS: ReadonlyArray<IChoiceFormRowOption<ETextureSurfaceAlpha>> = Object.values(
+  ETextureSurfaceAlpha
+).map((value: ETextureSurfaceAlpha) => ({ label: describeTextureSurfaceAlpha(value), value }));
+
+/** Every tiling offered, as the choice's text values; a choice holds strings, the preview a count. */
+const TILING_OPTIONS: ReadonlyArray<IChoiceFormRowOption<string>> = TEXTURE_TILING_STEPS.map((value: number) => ({
+  "aria-label": `Tile ${value} by ${value}`,
+  label: `${value}×`,
+  value: String(value),
+}));
 
 interface ITextureBodyOptionsProps extends BaseComponentProps {
   options: ITexturePreviewOptions;
@@ -18,7 +35,7 @@ interface ITextureBodyOptionsProps extends BaseComponentProps {
 }
 
 /**
- * Shape and tiling controls for the texture's lit surface preview.
+ * Shape, tiling and alpha of the texture's lit surface preview, a row each.
  */
 export function TextureBodyOptions({
   "data-testid": dataTestId = "texture-body-options",
@@ -45,61 +62,28 @@ export function TextureBodyOptions({
       icon={<ViewQuiltIcon />}
       isDisabled={!isSurface}
     >
-      <div className={"flex flex-col gap-2 px-4 pt-2 pb-4"}>
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          Body
-        </Typography>
-
-        <ToggleButtonGroup
-          exclusive
-          size={"small"}
+      <EditorPopoverContent label={"Body"}>
+        <RenderValueChoice
+          label={"Shape"}
+          options={SHAPE_OPTIONS}
           value={options.shape}
-          aria-label={"Body shape"}
-          onChange={(_, next: Nullable<ETextureSurfaceShape>) => next && onChangeOptions({ ...options, shape: next })}
-        >
-          {Object.values(ETextureSurfaceShape).map((value: ETextureSurfaceShape) => (
-            <ToggleButton key={value} value={value}>
-              {describeTextureSurfaceShape(value)}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
+          onChange={(shape: ETextureSurfaceShape) => onChangeOptions({ ...options, shape })}
+        />
 
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          Tiling
-        </Typography>
+        <RenderValueChoice
+          label={"Tiling"}
+          options={TILING_OPTIONS}
+          value={String(options.tiling)}
+          onChange={(tiling: string) => onChangeOptions({ ...options, tiling: Number(tiling) })}
+        />
 
-        <ToggleButtonGroup
-          exclusive
-          size={"small"}
-          value={options.tiling}
-          aria-label={"Tiling"}
-          onChange={(_, next: Nullable<number>) => next && onChangeOptions({ ...options, tiling: next })}
-        >
-          {TEXTURE_TILING_STEPS.map((value: number) => (
-            <ToggleButton key={value} value={value} aria-label={`Tile ${value} by ${value}`}>
-              {`${value}×`}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          Alpha
-        </Typography>
-
-        <ToggleButtonGroup
-          aria-label={"Alpha"}
-          exclusive={true}
-          size={"small"}
+        <RenderValueChoice
+          label={"Alpha"}
+          options={ALPHA_OPTIONS}
           value={options.alpha}
-          onChange={(_, next: Nullable<ETextureSurfaceAlpha>) => next && onChangeOptions({ ...options, alpha: next })}
-        >
-          {Object.values(ETextureSurfaceAlpha).map((value: ETextureSurfaceAlpha) => (
-            <ToggleButton key={value} value={value}>
-              {describeTextureSurfaceAlpha(value)}
-            </ToggleButton>
-          ))}
-        </ToggleButtonGroup>
-      </div>
+          onChange={(alpha: ETextureSurfaceAlpha) => onChangeOptions({ ...options, alpha })}
+        />
+      </EditorPopoverContent>
     </EditorPopoverAction>
   );
 }
