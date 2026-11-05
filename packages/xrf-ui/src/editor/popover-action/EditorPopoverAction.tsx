@@ -101,6 +101,7 @@ export function EditorPopoverAction({
         className={className}
         label={label}
         description={description}
+        title={label}
         icon={icon}
         isActive={isActive}
         isDisabled={isDisabled}

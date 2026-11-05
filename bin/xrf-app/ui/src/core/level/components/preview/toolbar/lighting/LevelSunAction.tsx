@@ -5,6 +5,7 @@ import { ERenderVolumetricMode } from "@xrf/ipc/types/xrf-renderer";
 import { Nullable } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
+import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { WbSunnyIcon } from "@xrf/ui/icons/wb-sunny";
@@ -169,9 +170,9 @@ export function LevelSunAction({
         />
 
         {isMarched ? null : (
-          <p className={"text-xs text-text-secondary"}>
+          <EditorPopoverNote>
             The enhanced volumetrics draw the shafts; their steps apply with Engine volumetrics.
-          </p>
+          </EditorPopoverNote>
         )}
 
         <RenderValueSlider

@@ -36,7 +36,7 @@ export function LevelCameraAction({
       id={id}
       className={className}
       label={"Camera"}
-      description={`Camera: ${formatDegrees(camera.fieldOfView)}, ${camera.speed} m/s`}
+      description={`${formatDegrees(camera.fieldOfView)} field of view, ${camera.speed} m/s`}
       icon={<VideocamIcon />}
     >
       <EditorPopoverContent label={"Camera"}>

@@ -110,7 +110,7 @@ describe("LevelOcclusionAction", () => {
       "GTAO occlusion over 1.00 m, 3 × 3 steps, indirect light, baked at 100%"
     );
 
-    await userEvent.click(getByRole("button", { name: "Set the indirect light back to the settings" }));
+    await userEvent.click(getByRole("button", { name: "Indirect light: Back to the settings" }));
 
     expect(view.features.indirectLight).toEqual({});
   });

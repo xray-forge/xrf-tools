@@ -65,8 +65,8 @@ export function formatShaftStrength(strength: number): string {
 
 /** The lamp falloffs, in the order they are offered. */
 export const RENDER_LIGHT_FALLOFF_OPTIONS: ReadonlyArray<IChoiceFormRowOption<RenderLightFalloff>> = [
-  { label: "Physical", value: ERenderLightFalloff.PHYSICAL },
   { label: "Engine", value: ERenderLightFalloff.ENGINE },
+  { label: "Physical", value: ERenderLightFalloff.PHYSICAL },
 ];
 
 /** Which lamps draw shafts, in the order offered. */

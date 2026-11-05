@@ -11,6 +11,7 @@ import {
   RenderLightModel,
 } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
+import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { ChoiceListFormRow } from "@xrf/ui/form/choice-list-row";
@@ -216,7 +217,7 @@ export function LevelLookAction({
             onSet={onSetLight}
           />
 
-          {isPhysical ? <p className={"text-xs text-text-secondary"}>{explainRenderLightLevel(lightLevel)}</p> : null}
+          {isPhysical ? <EditorPopoverNote>{explainRenderLightLevel(lightLevel)}</EditorPopoverNote> : null}
 
           <RenderSettingEntry
             settings={RENDER_LIGHT_SETTINGS}

@@ -6,6 +6,7 @@ import {
   RenderTraceSize,
 } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
+import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FlipIcon } from "@xrf/ui/icons/flip";
 import { ReactElement } from "react";
@@ -69,14 +70,14 @@ export function LevelReflectionsAction({
     >
       <EditorPopoverGroupSection
         label={"Surfaces"}
-        description={explainRenderReflectionMode(value.mode)}
+        note={explainRenderReflectionMode(value.mode)}
         isOn={isSurfaces}
         onToggle={() => set({ mode: isSurfaces ? ERenderReflectionMode.ENGINE : ERenderReflectionMode.ENHANCED })}
       >
         {isSurfaces && isRayReconstructed ? (
-          <p className={"text-xs text-text-secondary"}>
+          <EditorPopoverNote>
             Traced at full size every frame: ray reconstruction takes each pixel&apos;s own ray.
-          </p>
+          </EditorPopoverNote>
         ) : null}
 
         <RenderValueChoice
@@ -149,7 +150,7 @@ export function LevelReflectionsAction({
         />
 
         {isTraced && isRayReconstructed && isSurfaces ? (
-          <p className={"text-xs text-text-secondary"}>The surfaces re-trace every frame under ray reconstruction.</p>
+          <EditorPopoverNote>The surfaces re-trace every frame under ray reconstruction.</EditorPopoverNote>
         ) : null}
       </EditorPopoverGroupSection>
 

@@ -2,6 +2,7 @@ import { Optional } from "@xrf/types";
 import { ReactElement, ReactNode, useId } from "react";
 
 import { EditorIconAction } from "#/editor/icon-action";
+import { EditorPopoverNote } from "#/editor/popover-row";
 import { BaseComponentProps } from "#/element-types";
 import { RestartAltIcon } from "#/icons/restart-alt";
 import { Checkbox } from "#/material/checkbox";
@@ -14,6 +15,8 @@ export interface IEditorPopoverGroupSectionProps extends BaseComponentProps {
   label: string;
   /** What it does, read on hovering its name; while it cannot be turned on, why, said under it. */
   description?: string;
+  /** What the mode the toggle stands at draws, said under its heading whatever it stands at. */
+  note?: string;
   isOn: boolean;
   isDisabled?: boolean;
   onToggle: () => void;
@@ -35,6 +38,7 @@ export function EditorPopoverGroupSection({
   className,
   label,
   description,
+  note,
   isOn,
   isDisabled = false,
   onToggle,
@@ -89,15 +93,15 @@ export function EditorPopoverGroupSection({
         ) : null}
       </div>
 
-      {description ? (
-        <Typography
-          id={descriptionId}
-          className={isDisabled ? "pb-1 text-text-secondary" : "sr-only"}
-          variant={"caption"}
-        >
+      {description && isDisabled ? (
+        <EditorPopoverNote id={descriptionId}>{description}</EditorPopoverNote>
+      ) : description ? (
+        <span id={descriptionId} className={"sr-only"}>
           {description}
-        </Typography>
+        </span>
       ) : null}
+
+      {note ? <EditorPopoverNote>{note}</EditorPopoverNote> : null}
 
       {children ? <div className={"flex flex-col pb-1"}>{children}</div> : null}
     </div>

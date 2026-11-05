@@ -2,7 +2,7 @@ import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
-import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
+import { LEVEL_SETTINGS_RESET_LABEL } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import {
@@ -30,7 +30,7 @@ export function LevelEnhancedFeatureSection<K extends TLevelEnhancedFeatureKey>(
   feature,
 }: ILevelEnhancedFeatureSectionProps<K>): ReactElement {
   const { settings, features, drawn } = useLevelRenderFeatures();
-  const { set, reset } = useLevelFeatureOverride(feature);
+  const { set, reset, isSet } = useLevelFeatureOverride(feature);
 
   const enhanced: ILevelEnhancedFeature<K> = LEVEL_ENHANCED_FEATURES[feature];
   const value: IRenderFeatureSettings[K] = toLevelModeFeature(feature, settings, features);
@@ -43,9 +43,11 @@ export function LevelEnhancedFeatureSection<K extends TLevelEnhancedFeatureKey>(
       id={id}
       className={className}
       label={enhanced.label}
-      description={enhanced.explain(value.mode)}
+      note={enhanced.explain(value.mode)}
       isOn={isEnhanced}
+      resetLabel={LEVEL_SETTINGS_RESET_LABEL}
       onToggle={() => set({ mode: isEnhanced ? "engine" : "enhanced" } as ILevelFeatureOptions[K])}
+      onReset={isSet ? reset : undefined}
     >
       <RenderSettingEntries
         settings={enhanced.settings}
@@ -54,8 +56,6 @@ export function LevelEnhancedFeatureSection<K extends TLevelEnhancedFeatureKey>(
         features={drawn}
         onSet={(part: Partial<IRenderFeatureSettings[K]>) => set(part as ILevelFeatureOptions[K])}
       />
-
-      <LevelSettingsResetButton subject={enhanced.subject} onReset={reset} />
     </EditorPopoverGroupSection>
   );
 }

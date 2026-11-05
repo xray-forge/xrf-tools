@@ -37,6 +37,7 @@ export function LevelCameraEffectsAction({
     camera.isGrained ? "grain" : null,
     camera.isAberrated ? "aberration" : null,
   ].filter((it): it is string => it !== null);
+  const summary: string = effects.join(", ");
 
   return (
     <EditorPopoverGroup
@@ -44,7 +45,7 @@ export function LevelCameraEffectsAction({
       id={id}
       className={className}
       label={"Camera effects"}
-      description={effects.length ? `Camera effects: ${effects.join(", ")}` : "No camera effects"}
+      description={summary ? summary.charAt(0).toUpperCase() + summary.slice(1) : "None"}
       icon={<CameraOutlinedIcon />}
       isActive={effects.length > 0}
     >

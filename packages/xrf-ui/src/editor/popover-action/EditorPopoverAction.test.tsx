@@ -63,19 +63,21 @@ describe("EditorPopoverAction", () => {
     expect(await findByRole("dialog", { name: "Options" })).toBeInTheDocument();
   });
 
-  it("explains a disabled action without opening its dialog", async () => {
-    const { getByRole, getByTitle, findByRole, queryByRole } = renderWithTheme(
+  it("explains a disabled action under its name without opening its dialog", async () => {
+    const { getByRole, findByRole, queryByRole } = renderWithTheme(
       <EditorPopoverAction label={"Options"} description={"No preview available"} icon={<TuneIcon />} isDisabled={true}>
         <button>Setting</button>
       </EditorPopoverAction>
     );
-    const wrapper: HTMLElement = getByTitle("No preview available");
+    const button: HTMLElement = getByRole("button", { name: "Options" });
+    const wrapper: HTMLElement = button.parentElement as HTMLElement;
 
-    expect(getByRole("button", { name: "Options" })).toBeDisabled();
+    expect(button).toBeDisabled();
+    expect(button).toHaveAccessibleDescription("No preview available");
 
     await userEvent.hover(wrapper);
 
-    expect(await findByRole("tooltip")).toHaveTextContent("No preview available");
+    expect(await findByRole("tooltip")).toHaveTextContent("OptionsNo preview available");
 
     await userEvent.click(wrapper);
 

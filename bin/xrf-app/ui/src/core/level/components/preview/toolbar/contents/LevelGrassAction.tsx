@@ -1,5 +1,6 @@
 import { useInjection } from "@wirestate/react";
 import { ERenderFoliageMode } from "@xrf/ipc/types/xrf-renderer";
+import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { GrassIcon } from "@xrf/ui/icons/grass";
@@ -96,9 +97,7 @@ export function LevelGrassAction({
       />
 
       {isEnhancedFoliage ? null : (
-        <p className={"text-xs text-text-secondary"}>
-          Light through leaves comes with the Enhanced foliage motion, under Wind.
-        </p>
+        <EditorPopoverNote>Light through leaves comes with the Enhanced foliage motion, under Wind.</EditorPopoverNote>
       )}
 
       <RenderSettingEntries
