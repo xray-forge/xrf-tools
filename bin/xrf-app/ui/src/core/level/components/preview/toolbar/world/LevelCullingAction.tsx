@@ -4,6 +4,7 @@ import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FilterAltIcon } from "@xrf/ui/icons/filter-alt";
 import { ReactElement, useCallback } from "react";
 
+import { LEVEL_GAME_RESET_LABEL } from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import {
   DEFAULT_LEVEL_LOD_OPTIONS,
@@ -94,7 +95,7 @@ export function LevelCullingAction({
         }
         isOn={isImpostors}
         isDisabled={!isImpostorsAvailable}
-        resetLabel={"Reset to the game's"}
+        resetLabel={LEVEL_GAME_RESET_LABEL}
         onToggle={() => viewService.toggleOption("isImpostors")}
         onReset={lod.distance === DEFAULT_LEVEL_LOD_OPTIONS.distance ? undefined : onLodReset}
       >
