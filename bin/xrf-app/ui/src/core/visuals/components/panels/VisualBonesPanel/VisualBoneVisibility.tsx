@@ -1,33 +1,27 @@
 import { useInjection } from "@wirestate/react";
+import { EMPTY_SET } from "@xrf/collections";
 import { Nullable } from "@xrf/types";
+import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPopoverNote, EditorPopoverSwitchRow } from "@xrf/ui/editor/popover-row";
+import { RestartAltIcon } from "@xrf/ui/icons/restart-alt";
 import { VisibilityIcon } from "@xrf/ui/icons/visibility";
 import { VisibilityOffIcon } from "@xrf/ui/icons/visibility-off";
-import { Button } from "@xrf/ui/material/button";
 import { Chip } from "@xrf/ui/material/chip";
-import { FormControlLabel } from "@xrf/ui/material/form-control-label";
-import { Switch } from "@xrf/ui/material/switch";
 import { Typography } from "@xrf/ui/material/typography";
-import { cn } from "@xrf/ui/theme";
 import { ReactElement } from "react";
 
 import { IVisualInspection, VISUAL_INSPECTION } from "@/core/visuals/components/panels/visual-inspection";
 import { VISIBILITY_MASK_BONES } from "@/core/visuals/lib/visual-bones";
 
-/** Stable, so a surface offering no bone controls does not hand the section a new set on every render. */
-const EMPTY_HIDDEN: ReadonlySet<string> = new Set();
-
 /**
  * Turning parts of the model off, the way the engine turns off an addon that is not attached.
- *
- * The addon bones get controls of their own because they are the ones anyone looks for. Anything else is hidden through
- * the tree above: select a bone, then hide it.
  */
 export function VisualBoneVisibility(): Nullable<ReactElement> {
   const { bones, boneControls }: IVisualInspection = useInjection(VISUAL_INSPECTION);
 
   const addons: Array<string> = boneControls?.addonBones ?? [];
-  const hidden: ReadonlySet<string> = boneControls?.hiddenBones ?? EMPTY_HIDDEN;
+  const hidden: ReadonlySet<string> = boneControls?.hiddenBones ?? EMPTY_SET;
   const selected: Nullable<string> = boneControls?.highlightedBone ?? null;
 
   // Addon bones carry their own switch, so listing them again as chips would offer the same action twice.
@@ -41,45 +35,45 @@ export function VisualBoneVisibility(): Nullable<ReactElement> {
     <EditorPanelSection
       title={"Visibility"}
       caption={"Collapses a bone to nothing, as the engine does for an addon that is not attached"}
+      actions={
+        <>
+          {selected ? (
+            <EditorIconAction
+              label={hidden.has(selected) ? `Show ${selected}` : `Hide ${selected}`}
+              description={
+                hidden.has(selected)
+                  ? "Shows the bone selected above again"
+                  : "Hides the bone selected above, and everything parented to it"
+              }
+              icon={hidden.has(selected) ? <VisibilityIcon /> : <VisibilityOffIcon />}
+              onClick={() => boneControls.toggleBoneVisibility(selected)}
+            />
+          ) : null}
+
+          {hidden.size ? (
+            <EditorIconAction
+              label={"Show all"}
+              description={"Shows every bone hidden again"}
+              icon={<RestartAltIcon />}
+              onClick={boneControls.showAllBones}
+            />
+          ) : null}
+        </>
+      }
     >
       {addons.map((name: string) => (
-        <FormControlLabel
+        <EditorPopoverSwitchRow
           key={name}
-          className={"ml-0 flex justify-between"}
-          labelPlacement={"start"}
-          label={<Typography variant={"body2"}>{name}</Typography>}
-          control={
-            <Switch
-              size={"small"}
-              checked={!hidden.has(name)}
-              slotProps={{ input: { "aria-label": `Show ${name}` } }}
-              onChange={() => boneControls.toggleBoneVisibility(name)}
-            />
-          }
+          label={name}
+          description={`Shows ${name}, as the game does while its addon is attached`}
+          isChecked={!hidden.has(name)}
+          onChange={() => boneControls.toggleBoneVisibility(name)}
         />
       ))}
 
-      <div className={cn("flex flex-wrap items-center gap-2", addons.length ? "mt-2" : null)}>
-        {selected ? (
-          <Button
-            size={"small"}
-            startIcon={hidden.has(selected) ? <VisibilityIcon /> : <VisibilityOffIcon />}
-            onClick={() => boneControls.toggleBoneVisibility(selected)}
-          >
-            {hidden.has(selected) ? `Show ${selected}` : `Hide ${selected}`}
-          </Button>
-        ) : (
-          <Typography className={"text-text-disabled"} variant={"caption"}>
-            Pick a bone above to hide it, and everything parented to it.
-          </Typography>
-        )}
-
-        {hidden.size ? (
-          <Button size={"small"} onClick={boneControls.showAllBones}>
-            Show all
-          </Button>
-        ) : null}
-      </div>
+      {selected ? null : (
+        <EditorPopoverNote>Pick a bone above to hide it, and everything parented to it.</EditorPopoverNote>
+      )}
 
       {others.length ? (
         <div className={"mt-2 flex flex-wrap gap-1"}>

@@ -55,18 +55,18 @@ describe("VisualBoneVisibility", () => {
   it("offers a control for each addon bone the visual carries, and nothing for the rest", async () => {
     const { render } = await renderVisibility();
 
-    expect(render.getByLabelText("Show wpn_scope")).toBeInTheDocument();
-    expect(render.getByLabelText("Show wpn_silencer")).toBeInTheDocument();
-    expect(render.queryByLabelText("Show magazin")).toBeNull();
+    expect(render.getByRole("checkbox", { name: "wpn_scope" })).toBeInTheDocument();
+    expect(render.getByRole("checkbox", { name: "wpn_silencer" })).toBeInTheDocument();
+    expect(render.queryByRole("checkbox", { name: "magazin" })).toBeNull();
   });
 
   it("turns an addon off, which is the state the game shows when it is not attached", async () => {
     const { render, service } = await renderVisibility();
 
-    fireEvent.click(render.getByLabelText("Show wpn_scope"));
+    fireEvent.click(render.getByRole("checkbox", { name: "wpn_scope" }));
 
     expect(service.hiddenBones.has("wpn_scope")).toBe(true);
-    expect(render.getByLabelText("Show wpn_scope")).not.toBeChecked();
+    expect(render.getByRole("checkbox", { name: "wpn_scope" })).not.toBeChecked();
   });
 
   it("hides any other bone through the selection the tree made", async () => {
@@ -91,7 +91,7 @@ describe("VisualBoneVisibility", () => {
   it("brings everything back at once", async () => {
     const { render, service } = await renderVisibility();
 
-    fireEvent.click(render.getByLabelText("Show wpn_scope"));
+    fireEvent.click(render.getByRole("checkbox", { name: "wpn_scope" }));
     fireEvent.click(render.getByRole("button", { name: "Show all" }));
 
     expect(service.hiddenBones.size).toBe(0);
