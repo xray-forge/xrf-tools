@@ -65,6 +65,13 @@ describe("level feature options", () => {
     expect(isLevelFeatureSet("shadows", SETTINGS, VIEW)).toBe(true);
   });
 
+  it("counts a group as set only by what a partial reset would undo, the part it keeps aside", () => {
+    const view: ILevelFeatureOptions = { ...mockLevelFeatureOptions(), grass: { radius: 80 } };
+
+    expect(isLevelFeatureSet("grass", SETTINGS, view, { radius: 80 })).toBe(false);
+    expect(isLevelFeatureSet("grass", SETTINGS, view, {})).toBe(true);
+  });
+
   it("follows the settings by default", () => {
     expect(toLevelRendererAntialiasing(ERenderAntialiasing.SMAA, mockLevelFeatureOptions(), true)).toBe(
       ERenderAntialiasing.SMAA

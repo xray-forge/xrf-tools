@@ -33,7 +33,7 @@ describe("LevelWindAction", () => {
     expect(view.features.grass.foliage?.mode).toBe(ERenderFoliageMode.ENHANCED);
     expect(getByRole("slider", { name: "Trunk bend" })).toBeEnabled();
     expect(getByRole("slider", { name: "Grass speed" })).toBeEnabled();
-    expect(queryByRole("slider", { name: "Light through leaves" })).not.toBeInTheDocument();
+    expect(queryByRole("group", { name: "Light through leaves" })).not.toBeInTheDocument();
   });
 
   // The light through leaves is the Grass popover's, so the foliage's reset here keeps it.

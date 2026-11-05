@@ -23,13 +23,22 @@ describe("LevelLightsAction", () => {
 
     descriptor.view.setFeatures(before);
 
-    const { getByRole, findByRole, view } = renderLevelView(<LevelLightsAction />, descriptor);
+    const { getByRole, findByRole, queryByRole, view } = renderLevelView(<LevelLightsAction />, descriptor);
 
     await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Lamps" }) });
     await findByRole("dialog", { name: "Lamps" });
-    await userEvent.click(getByRole("button", { name: "Back to the settings" }));
+
+    const shadows: HTMLElement = getByRole("group", { name: "Shadows" });
+
+    expect(within(shadows).getByRole("checkbox", { name: "Shadows" })).not.toBeChecked();
+    expect(
+      within(within(shadows).getByRole("group", { name: "Filter" })).getByRole("button", { name: "Soft" })
+    ).toBeDisabled();
+
+    await userEvent.click(getByRole("button", { name: "Lamps: Back to the settings" }));
 
     expect(view.features).toEqual({ ...before, lights: {} });
+    expect(queryByRole("button", { name: "Lamps: Back to the settings" })).toBeNull();
   });
 
   it("opens on a click, saying why, while the settings keep the lights off", async () => {
@@ -71,7 +80,7 @@ describe("LevelLightsAction", () => {
     await userEvent.pointer({ keys: "[MouseRight]", target: getByRole("button", { name: "Lamps" }) });
     await findByRole("dialog", { name: "Lamps" });
 
-    const shafts: HTMLElement = getByRole("group", { name: "Shafts from" });
+    const shafts: HTMLElement = within(getByRole("group", { name: "Shafts" })).getByRole("group", { name: "From" });
 
     expect(within(shafts).getByRole("button", { name: "Engine" })).toHaveAttribute("aria-pressed", "true");
 

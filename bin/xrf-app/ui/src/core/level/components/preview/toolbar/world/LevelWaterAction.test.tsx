@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
+import { within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { ERenderWaterMode } from "@xrf/ipc/types/xrf-renderer";
 
@@ -41,18 +42,43 @@ beforeEach(() => {
 
 describe("LevelWaterAction", () => {
   it("draws the water enhanced on asking, its values settable only then, and back to the settings", async () => {
-    const { getByRole, view } = await renderOpenAction();
+    const { getByRole, queryByRole, view } = await renderOpenAction();
+    const under: HTMLElement = getByRole("group", { name: "Under the surface" });
 
-    expect(getByRole("slider", { name: "Refraction" })).toBeDisabled();
+    expect(within(under).getByRole("slider", { name: "Refraction" })).toBeDisabled();
+    expect(within(getByRole("group", { name: "Waves" })).getByRole("slider", { name: "Height" })).toBeEnabled();
+    expect(queryByRole("button", { name: "Water: Back to the settings" })).toBeNull();
 
     await userEvent.click(getByRole("button", { name: "Enhanced" }));
 
     expect(view.features.water).toEqual({ mode: ERenderWaterMode.ENHANCED });
-    expect(getByRole("slider", { name: "Refraction" })).toBeEnabled();
+    expect(within(under).getByRole("slider", { name: "Refraction" })).toBeEnabled();
 
-    await userEvent.click(getByRole("button", { name: "Back to the settings" }));
+    await userEvent.click(getByRole("button", { name: "Water: Back to the settings" }));
 
     expect(view.features.water).toEqual({});
+  });
+
+  it("sets the distortion's strength only while the water distorts", async () => {
+    const { getByRole, view } = await renderOpenAction(({ view }) =>
+      view.setFeatures({ ...view.features, water: { isDistorted: false } })
+    );
+    const distortion: HTMLElement = getByRole("group", { name: "Distortion" });
+
+    expect(within(distortion).getByRole("slider", { name: "Strength" })).toBeDisabled();
+
+    await userEvent.click(within(distortion).getByRole("checkbox", { name: "Distortion" }));
+
+    expect(view.features.water).toEqual({ isDistorted: true });
+    expect(within(distortion).getByRole("slider", { name: "Strength" })).toBeEnabled();
+  });
+
+  it("offers the weather's reflection strength in a section of its own, with no reset while it is the weather's", async () => {
+    const { getByRole, queryByRole } = await renderOpenAction();
+    const weather: HTMLElement = getByRole("group", { name: "Weather" });
+
+    expect(within(weather).getByRole("slider", { name: "Intensity" })).toBeInTheDocument();
+    expect(queryByRole("button", { name: "Weather: Reset to the weather" })).toBeNull();
   });
 
   it("says what the enhanced water reflects, by the reflections' settings", async () => {
