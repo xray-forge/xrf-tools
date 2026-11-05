@@ -3,15 +3,14 @@ import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { WbSunnyIcon } from "@xrf/ui/icons/wb-sunny";
-import { Button } from "@xrf/ui/material/button";
-import { ReactElement } from "react";
+import { ReactElement, useCallback } from "react";
 
 import { RenderLightingControls } from "@/core/render/components/lighting/RenderLightingControls";
-import { IRenderLighting } from "@/core/render/lib/lighting/render-lighting";
+import { IRenderLighting, isSameRenderLighting } from "@/core/render/lib/lighting/render-lighting";
 
 interface IRenderLightingActionProps extends BaseComponentProps {
   lighting: IRenderLighting;
-  /** What the reset button puts back, which each surface answers for itself. */
+  /** What the heading's reset puts back, offered while the light differs from it; each surface answers for itself. */
   fallback: IRenderLighting;
   isDisabled?: boolean;
   /** Said in place of the summary while the action is disabled, so it reads as a reason rather than a state. */
@@ -32,6 +31,8 @@ export function RenderLightingAction({
   unavailableDescription,
   onChange,
 }: IRenderLightingActionProps): ReactElement {
+  const onReset = useCallback(() => onChange(fallback), [fallback, onChange]);
+
   return (
     <EditorPopoverAction
       data-testid={dataTestId}
@@ -46,12 +47,12 @@ export function RenderLightingAction({
       icon={<WbSunnyIcon />}
       isDisabled={isDisabled}
     >
-      <EditorPopoverContent label={"Lighting"}>
+      <EditorPopoverContent
+        label={"Lighting"}
+        resetLabel={"Back to the default light"}
+        onReset={isSameRenderLighting(lighting, fallback) ? undefined : onReset}
+      >
         <RenderLightingControls lighting={lighting} onChange={onChange} />
-
-        <Button size={"small"} onClick={() => onChange(fallback)}>
-          Back to the default light
-        </Button>
       </EditorPopoverContent>
     </EditorPopoverAction>
   );

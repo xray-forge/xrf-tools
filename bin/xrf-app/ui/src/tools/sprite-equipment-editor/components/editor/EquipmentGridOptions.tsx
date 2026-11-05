@@ -1,13 +1,17 @@
 import { useInjection } from "@wirestate/react";
 import { EditorIconAction } from "@xrf/ui/editor/icon-action";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
+import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
+import {
+  EditorPopoverNote,
+  EditorPopoverRow,
+  EditorPopoverSwitchRow,
+  IEditorPopoverRowControlProps,
+} from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { AddCircleIcon as AddIcon } from "@xrf/ui/icons/add-circle";
 import { GridOnIcon as GridIcon } from "@xrf/ui/icons/grid-on";
 import { RemoveCircleIcon as RemoveIcon } from "@xrf/ui/icons/remove-circle";
-import { FormControlLabel } from "@xrf/ui/material/form-control-label";
-import { Switch } from "@xrf/ui/material/switch";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback } from "react";
 
 import { ENGINE_GRID_SQUARE } from "@/core/sprite-equipment/lib";
@@ -45,6 +49,8 @@ export function EquipmentGridOptions({
     [gridSize, spriteEquipmentService]
   );
 
+  const onReset = useCallback(() => spriteEquipmentService.setGridSize(ENGINE_GRID_SQUARE), [spriteEquipmentService]);
+
   return (
     <EditorPopoverAction
       data-testid={dataTestId}
@@ -56,46 +62,41 @@ export function EquipmentGridOptions({
       // A size the engine never reads is worth noticing from the toolbar, without opening anything.
       isActive={!isEngineSize}
     >
-      <div className={"flex flex-col gap-2 px-4 py-2"}>
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          Grid
-        </Typography>
+      <EditorPopoverContent
+        label={"Grid"}
+        resetLabel={`Reset to the engine's ${ENGINE_GRID_SQUARE}px`}
+        onReset={isEngineSize ? undefined : onReset}
+      >
+        <EditorPopoverSwitchRow label={"Show cells"} isChecked={isGridVisible} onChange={onToggle} />
 
-        <FormControlLabel
-          label={"Show cells"}
-          control={<Switch size={"small"} checked={isGridVisible} onChange={onToggle} />}
-        />
+        <EditorPopoverRow label={"Cell size"}>
+          {(control: IEditorPopoverRowControlProps) => (
+            <div {...control} role={"group"} className={"flex items-center gap-1"}>
+              <EditorIconAction
+                label={"Decrease grid size"}
+                description={`Decrease the grid cell size by ${GRID_SIZE_STEP} pixels`}
+                icon={<RemoveIcon />}
+                onClick={onDecrease}
+              />
 
-        <Typography className={"text-text-secondary"} variant={"overline"}>
-          Cell size
-        </Typography>
+              <span className={"min-w-10 text-center text-xs"}>{`${gridSize}px`}</span>
 
-        <div className={"flex items-center gap-1"}>
-          <EditorIconAction
-            label={"Decrease grid size"}
-            description={`Decrease the grid cell size by ${GRID_SIZE_STEP} pixels`}
-            icon={<RemoveIcon />}
-            onClick={onDecrease}
-          />
+              <EditorIconAction
+                label={"Increase grid size"}
+                description={`Increase the grid cell size by ${GRID_SIZE_STEP} pixels`}
+                icon={<AddIcon />}
+                onClick={onIncrease}
+              />
+            </div>
+          )}
+        </EditorPopoverRow>
 
-          <Typography className={"min-w-10 text-center"} variant={"body2"}>
-            {`${gridSize}px`}
-          </Typography>
-
-          <EditorIconAction
-            label={"Increase grid size"}
-            description={`Increase the grid cell size by ${GRID_SIZE_STEP} pixels`}
-            icon={<AddIcon />}
-            onClick={onIncrease}
-          />
-        </div>
-
-        <Typography className={"max-w-60 text-text-secondary"} variant={"caption"}>
+        <EditorPopoverNote>
           {isEngineSize
             ? `${ENGINE_GRID_SQUARE}px is what the engine reads, so a cell here is one inv_grid unit.`
             : `The engine reads ${ENGINE_GRID_SQUARE}px cells. At this size the lattice is a guide, and the readout no longer matches inv_grid_x.`}
-        </Typography>
-      </div>
+        </EditorPopoverNote>
+      </EditorPopoverContent>
     </EditorPopoverAction>
   );
 }
