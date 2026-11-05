@@ -15,6 +15,7 @@ import { ReactElement, useCallback } from "react";
 import { LevelEnhancedFeatureSection } from "@/core/level/components/preview/toolbar/LevelEnhancedFeatureSection";
 import { useLevelFeature } from "@/core/level/components/preview/toolbar/use-level-feature";
 import {
+  LEVEL_GAME_RESET_LABEL,
   LEVEL_SETTINGS_RESET_LABEL,
   useLevelFeatureReset,
 } from "@/core/level/components/preview/toolbar/use-level-feature-reset";
@@ -200,7 +201,7 @@ export function LevelOcclusionAction({
         label={"Baked light"}
         description={"The hemisphere occlusion xrLC baked into the level, which shades the sky's light."}
         isOn={options.isBaked}
-        resetLabel={"Reset to the game's"}
+        resetLabel={LEVEL_GAME_RESET_LABEL}
         onToggle={() => viewService.toggleOption("isBaked")}
         onReset={hemiStrength === DEFAULT_LEVEL_HEMI_STRENGTH ? undefined : onBakedReset}
       >
