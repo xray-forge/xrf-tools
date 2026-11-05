@@ -8,7 +8,6 @@ use crate::control::audio_play::AudioPlay;
 use crate::control::audio_refusal::AudioRefusal;
 use crate::control::engine_shared::EngineShared;
 use crate::control::voice_slots::VoiceSlots;
-use crate::mixer::audio_bus::AudioBus;
 use crate::mixer::audio_mixer_meter::AudioMixerMeter;
 use crate::mixer::mixer_command::MixerCommand;
 use crate::mixer::reverb_parameters::ReverbParameters;
@@ -22,6 +21,7 @@ use crate::voice::shared::voice_spatial_parameters::VoiceSpatialParameters;
 use crate::voice::shared::voice_status::VoiceStatus;
 use crate::voice::voice::Voice;
 use crate::voice::voice_spatial::VoiceSpatial;
+use xrf_audio_scene::AudioBus;
 
 /// The control side of the audio: it starts, steers and stops voices on the mixer it was made with
 /// ([`crate::AudioEngineParts::new`]), from any one thread, without waiting on the audio thread.

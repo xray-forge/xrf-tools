@@ -3,6 +3,8 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use xrf_audio_scene::AudioSceneFrame;
+
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
 use crate::host::sound::sink::world_sound_frame::WorldSoundFrame;
 use crate::host::sound::sink::world_sound_sink::WorldSoundSink;
@@ -15,20 +17,23 @@ use crate::tests::sound::found;
 #[derive(Clone, Default)]
 struct ReturningSink {
   sent: Arc<Mutex<Vec<(Duration, usize, usize)>>>,
-  spent: Arc<Mutex<Vec<WorldSoundFrame>>>,
+  #[allow(clippy::vec_box)]
+  spent: Arc<Mutex<Vec<Box<AudioSceneFrame>>>>,
 }
 
 impl WorldSoundSink for ReturningSink {
   fn send(&mut self, frame: WorldSoundFrame) {
+    let sound: &AudioSceneFrame = &frame.sound;
+
     self
       .sent
       .lock()
       .unwrap()
-      .push((frame.time, frame.emitters.len(), frame.emitters.as_ptr() as usize));
-    self.spent.lock().unwrap().push(frame);
+      .push((sound.time, sound.emitters.len(), sound.emitters.as_ptr() as usize));
+    self.spent.lock().unwrap().push(frame.sound);
   }
 
-  fn take_spent(&mut self) -> Option<WorldSoundFrame> {
+  fn take_spent(&mut self) -> Option<Box<AudioSceneFrame>> {
     self.spent.lock().unwrap().pop()
   }
 }
@@ -50,7 +55,7 @@ fn sends_at_most_sixty_frames_a_second_from_the_frames_handed_back() {
     let now: Duration = Duration::from_nanos(tick * 1_000_000_000 / 240);
 
     if outlet.is_due(now) {
-      outlet.send(now, |frame| emitters.fill(&mut frame.emitters, now));
+      outlet.send(now, |frame| emitters.fill(&mut frame.sound.emitters, now));
     }
   }
 

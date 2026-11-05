@@ -6,12 +6,12 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use glam::Vec3;
+use xrf_audio_scene::{AudioBus, AudioSceneFrame};
 use xrf_engine_target::XrayEngine;
 use xrf_renderer::{
   RenderSceneFeedback, RenderSceneFrame, RenderSceneId, RenderViewBurst, RenderViewportId, RenderWorkers, RenderWorld,
 };
 
-use crate::contract::sound::world_sound_kind::WorldSoundKind;
 use crate::host::sound::level::world_level_sounds::WorldLevelSounds;
 use crate::host::sound::level::world_music_track::WorldMusicTrack;
 use crate::host::sound::level::world_static_sound::WorldStaticSound;
@@ -35,16 +35,17 @@ use crate::world::World;
 #[derive(Clone, Default)]
 struct KeepingSink {
   sent: Arc<Mutex<Vec<WorldSoundFrame>>>,
-  spent: Vec<WorldSoundFrame>,
+  #[allow(clippy::vec_box)]
+  spent: Vec<Box<AudioSceneFrame>>,
 }
 
 impl WorldSoundSink for KeepingSink {
   fn send(&mut self, frame: WorldSoundFrame) {
     self.sent.lock().unwrap().push(frame.clone());
-    self.spent.push(frame);
+    self.spent.push(frame.sound);
   }
 
-  fn take_spent(&mut self) -> Option<WorldSoundFrame> {
+  fn take_spent(&mut self) -> Option<Box<AudioSceneFrame>> {
     self.spent.pop()
   }
 }
@@ -66,18 +67,19 @@ impl ZoneStates for NoZones {
 #[derive(Debug, PartialEq)]
 struct Played {
   time: Duration,
-  emitters: Vec<(String, WorldSoundKind, Duration, Duration, Option<Duration>, bool)>,
+  emitters: Vec<(String, AudioBus, Duration, Duration, Option<Duration>, bool)>,
 }
 
 impl From<&WorldSoundFrame> for Played {
   fn from(frame: &WorldSoundFrame) -> Self {
     let mut emitters: Vec<_> = frame
+      .sound
       .emitters
       .iter()
       .map(|emitter| {
         (
           emitter.sound.to_string(),
-          emitter.kind,
+          emitter.bus,
           emitter.start,
           emitter.offset,
           emitter.stop,
@@ -89,7 +91,7 @@ impl From<&WorldSoundFrame> for Played {
     emitters.sort_by(|a, b| a.0.cmp(&b.0).then(a.2.cmp(&b.2)));
 
     Self {
-      time: frame.time,
+      time: frame.sound.time,
       emitters,
     }
   }
@@ -275,7 +277,7 @@ fn starts_the_level_sound_once_its_scene_stands_ready_on_the_scenes_clock() {
   let mut frame: u32 = 120;
 
   // Its sounds are read on a worker meanwhile, maybe not yet by the frame it stands ready.
-  while sent.lock().unwrap().iter().all(|frame| frame.emitters.is_empty()) {
+  while sent.lock().unwrap().iter().all(|frame| frame.sound.emitters.is_empty()) {
     assert!(Instant::now() < deadline, "the level's sounds were never read");
     assert_eq!(play(&mut world, frame, true), first);
     frame += 1;
@@ -283,11 +285,11 @@ fn starts_the_level_sound_once_its_scene_stands_ready_on_the_scenes_clock() {
 
   let sent = sent.lock().unwrap();
 
-  assert_eq!(sent[0].time, Duration::from_secs(2));
+  assert_eq!(sent[0].sound.time, Duration::from_secs(2));
   assert!(
     sent
       .iter()
-      .flat_map(|frame| &frame.emitters)
+      .flat_map(|frame| &frame.sound.emitters)
       .all(|emitter| emitter.start >= Duration::from_secs(2))
   );
 }
@@ -303,7 +305,7 @@ fn sends_the_same_frames_for_two_bursts_from_one_time() {
     .lock()
     .unwrap()
     .last()
-    .is_none_or(|frame| frame.emitters.is_empty())
+    .is_none_or(|frame| frame.sound.emitters.is_empty())
   {
     assert!(Instant::now() < deadline, "the level's sounds were never read");
     heard.play(0.0, 0.1);
@@ -321,6 +323,7 @@ fn sends_the_same_frames_for_two_bursts_from_one_time() {
   assert!(!after.is_burst);
   assert!(
     after
+      .sound
       .emitters
       .iter()
       .any(|emitter| emitter.start == Duration::from_secs_f64(20.1))
@@ -345,7 +348,10 @@ fn hears_from_the_cameras_own_up_as_it_pitches() {
 
     let sent: WorldSoundFrame = heard.sent.lock().unwrap().last().cloned().expect("a frame was sent");
 
-    (Vec3::from(sent.listener.forward), Vec3::from(sent.listener.up))
+    (
+      Vec3::from(sent.sound.listener.forward),
+      Vec3::from(sent.sound.listener.up),
+    )
   };
 
   heard.forward = Vec3::new(0.0, -1.0, 1.0);
@@ -400,9 +406,10 @@ fn hears_a_strike_on_the_levels_clock_as_far_after_as_it_struck() {
 
   let frame: WorldSoundFrame = heard.sent.lock().unwrap().last().cloned().expect("a frame was sent");
   let thunder = frame
+    .sound
     .emitters
     .iter()
-    .find(|emitter| emitter.kind == WorldSoundKind::Thunder)
+    .find(|emitter| &*emitter.sound == "ambient\\thunder")
     .expect("the strike thunders");
 
   assert_eq!(thunder.start, Duration::from_millis(6900));
@@ -414,9 +421,14 @@ fn hears_a_strike_on_the_levels_clock_as_far_after_as_it_struck() {
 #[test]
 fn plays_the_sounds_read_again_on_a_reload() {
   let mut heard: Heard = Heard::new();
-  let reached: f64 = heard.play_until(0.0, |frame| !frame.emitters.is_empty());
+  let reached: f64 = heard.play_until(0.0, |frame| !frame.sound.emitters.is_empty());
   let named = |frame: &WorldSoundFrame| -> Vec<String> {
-    let mut named: Vec<String> = frame.emitters.iter().map(|emitter| emitter.sound.to_string()).collect();
+    let mut named: Vec<String> = frame
+      .sound
+      .emitters
+      .iter()
+      .map(|emitter| emitter.sound.to_string())
+      .collect();
 
     named.sort_unstable();
     named.dedup();
@@ -439,7 +451,7 @@ fn plays_the_sounds_read_again_on_a_reload() {
   let after: WorldSoundFrame = heard.sent.lock().unwrap().last().cloned().expect("a frame was sent");
 
   assert!(
-    after.emitters.iter().all(|emitter| emitter.start >= reloaded),
+    after.sound.emitters.iter().all(|emitter| emitter.start >= reloaded),
     "{:?}",
     Played::from(&after)
   );

@@ -1,4 +1,4 @@
-use crate::scene::audio_listener::AudioListener;
+use xrf_audio_scene::AudioListener;
 
 /// Where a mono source is heard between the two outputs, by how far to the listener's right it stands: equal power, so
 /// a source ahead plays at a half's power in each, as a stereo device's default panning places it. A stereo source is

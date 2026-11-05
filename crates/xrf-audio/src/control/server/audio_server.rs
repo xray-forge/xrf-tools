@@ -21,15 +21,15 @@ use crate::device::audio_output_choice::AudioOutputChoice;
 use crate::device::audio_output_status::AudioOutputStatus;
 use crate::host::audio_asset_source::AudioAssetSource;
 use crate::host::audio_scene_geometry::AudioSceneGeometry;
-use crate::mixer::audio_bus::AudioBus;
 use crate::mixer::audio_mixer_meter::AudioMixerMeter;
 use crate::mixer::tap::audio_tap::AudioTap;
-use crate::scene::inbox::audio_scene_inbox::AudioSceneInbox;
-use crate::scene::report::audio_scene_report::AudioSceneReport;
+use crate::scene::audio_scene_report::AudioSceneReport;
 use crate::transport::audio_transport::AudioTransport;
 use crate::transport::audio_transport_command::AudioTransportCommand;
 use crate::transport::audio_transport_id::AudioTransportId;
 use crate::transport::audio_transport_state::AudioTransportState;
+use xrf_audio_scene::AudioBus;
+use xrf_audio_scene::AudioSceneInbox;
 
 /// The audio's control tier: a thread of its own owns the [`AudioEngine`] and every transport, takes requests from any
 /// thread, and tells its host what changed through an [`AudioEventSink`]. A clone is a handle on the same thread; the

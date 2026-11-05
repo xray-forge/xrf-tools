@@ -55,9 +55,9 @@ fn play(level: &WorldLevelWeather, ticks: u64) -> Vec<(Duration, [f32; 3])> {
     channels.update(&mut emitters, level, &day(), EYE, now);
     emitters.retire(now);
 
-    for emitter in emitters.iter_playing(now) {
-      if !starts.iter().any(|(start, _)| *start == emitter.start) {
-        starts.push((emitter.start, emitter.position));
+    for live in emitters.iter_playing(now) {
+      if !starts.iter().any(|(start, _)| *start == live.emitter.start) {
+        starts.push((live.emitter.start, live.emitter.position));
       }
     }
   }

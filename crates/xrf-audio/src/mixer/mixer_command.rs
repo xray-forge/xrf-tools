@@ -1,7 +1,7 @@
-use crate::mixer::audio_bus::AudioBus;
 use crate::mixer::tap::mixer_tap::MixerTap;
 use crate::voice::audio_voice_id::AudioVoiceId;
 use crate::voice::voice::Voice;
+use xrf_audio_scene::AudioBus;
 
 /// What the control side asks of the audio thread, taken at the start of each buffer: a voice's life, the mix's levels
 /// and its tap. A voice's continuous controls go through its slot's parameter block instead.

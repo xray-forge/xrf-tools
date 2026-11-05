@@ -13,16 +13,16 @@ use crate::control::server::audio_gains::AudioGains;
 use crate::control::server::control_request::ControlRequest;
 use crate::control::server::control_runtime::ControlRuntime;
 use crate::control::server::control_scene::ControlScene;
-use crate::mixer::audio_bus::AudioBus;
 use crate::mixer::audio_mixer::AudioMixer;
 use crate::render::bank::sound_bank::SoundBank;
 use crate::render::scene::scene_tick::SceneTick;
 use crate::render::stream_launcher::StreamLauncher;
-use crate::scene::report::audio_scene_report::AudioSceneReport;
+use crate::scene::audio_scene_report::AudioSceneReport;
 use crate::transport::audio_transport::AudioTransport;
 use crate::transport::audio_transport_command::AudioTransportCommand;
 use crate::transport::audio_transport_id::AudioTransportId;
 use crate::transport::audio_transport_state::AudioTransportState;
+use xrf_audio_scene::AudioBus;
 
 /// What the control thread owns: the engine, the transports and the scenes open on it, steered by requests and looked
 /// at once a tick. A plain state machine, so a test or an offline session drives it without the thread.

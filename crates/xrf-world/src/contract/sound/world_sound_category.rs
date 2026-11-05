@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use xrf_audio_scene::AudioBus;
 
 /// The volumes a level's sounds are heard at, which the viewer switches each on or off.
 #[cfg_attr(feature = "typescript-bindings", derive(specta::Type))]
@@ -10,4 +11,17 @@ pub enum WorldSoundCategory {
   Ambience,
   /// Sounds at the world's objects: anomalies and campfires.
   World,
+}
+
+impl WorldSoundCategory {
+  pub const ALL: [Self; 3] = [Self::Music, Self::Ambience, Self::World];
+
+  /// The audio's bus a sound of the category plays on, its volume the category's.
+  pub fn get_bus(self) -> AudioBus {
+    match self {
+      Self::Music => AudioBus::Music,
+      Self::Ambience => AudioBus::Ambience,
+      Self::World => AudioBus::World,
+    }
+  }
 }

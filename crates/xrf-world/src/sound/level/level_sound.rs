@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use glam::Vec3;
+use xrf_audio_scene::{AudioListener, AudioSceneFrame, AudioSceneRules};
 use xrf_engine_target::XrayEngine;
 use xrf_renderer::{RenderViewBurst, RenderWorkers};
 
@@ -12,7 +13,6 @@ use crate::contract::sound::report::world_sound_voice_report::WorldSoundVoiceRep
 use crate::contract::sound::world_music_command::WorldMusicCommand;
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
 use crate::host::sound::level::world_level_sounds::WorldLevelSounds;
-use crate::host::sound::sink::world_sound_listener::WorldSoundListener;
 use crate::host::sound::world_sound::WorldSound;
 use crate::host::world_level_source::WorldLevelSource;
 use crate::host::world_level_weather::WorldLevelWeather;
@@ -52,7 +52,7 @@ pub struct LevelSound {
   outlet: Option<SoundOutlet>,
   /// The level's clock, and the listener, as of the last frame.
   now: Duration,
-  listener: WorldSoundListener,
+  listener: AudioListener,
   is_audible: bool,
   game_time: u32,
 }
@@ -89,7 +89,7 @@ impl LevelSound {
       emitters: SoundEmitters::default(),
       outlet: source.open_sound().map(SoundOutlet::new),
       now: Duration::ZERO,
-      listener: WorldSoundListener::default(),
+      listener: AudioListener::default(),
       is_audible: false,
       game_time: 0,
     }
@@ -182,15 +182,15 @@ impl LevelSound {
       voices: self
         .emitters
         .iter_playing(self.now)
-        .map(|emitter| WorldSoundVoiceReport {
-          id: emitter.id,
-          sound: emitter.sound.to_string(),
-          kind: emitter.kind,
-          category: emitter.kind.get_category(),
-          object: emitter.object,
-          position: emitter.position,
-          is_2d: emitter.is_2d,
-          distance: (!emitter.is_2d).then(|| listener.distance(Vec3::from(emitter.position))),
+        .map(|live| WorldSoundVoiceReport {
+          id: live.emitter.id,
+          sound: live.emitter.sound.to_string(),
+          kind: live.kind,
+          category: live.kind.get_category(),
+          object: live.object,
+          position: live.emitter.position,
+          is_2d: live.emitter.is_2d,
+          distance: (!live.emitter.is_2d).then(|| listener.distance(Vec3::from(live.emitter.position))),
           gain: None,
           occlusion: None,
           transmission: None,
@@ -226,7 +226,7 @@ impl LevelSound {
     let mut objects: Vec<u32> = self
       .emitters
       .iter_playing(self.now)
-      .filter_map(|emitter| emitter.object)
+      .filter_map(|live| live.object)
       .collect();
 
     objects.sort_unstable();
@@ -313,7 +313,7 @@ impl LevelSound {
       .or_else(|| square(Vec3::Z))
       .unwrap_or(Vec3::Y);
 
-    self.listener = WorldSoundListener {
+    self.listener = AudioListener {
       position: drive.eye.to_array(),
       forward: forward.to_array(),
       up: up.to_array(),
@@ -363,23 +363,30 @@ impl LevelSound {
     }
   }
 
+  /// Sends the audio the scene's frame where one is due: what plays, heard from the listener as the drive's toggles say,
+  /// by the voice rules of `engine`.
   fn send(&mut self, drive: &SoundDrive<'_>, engine: XrayEngine) {
     let now: Duration = self.now;
     let Some(outlet) = self.outlet.as_mut().filter(|outlet| outlet.is_due(now)) else {
       return;
     };
     let emitters: &mut SoundEmitters = &mut self.emitters;
-    let listener: WorldSoundListener = self.listener;
+    let listener: AudioListener = self.listener;
 
     outlet.send(now, |frame| {
-      frame.scene = drive.scene;
-      frame.time = now;
-      frame.engine = engine;
-      frame.is_audible = drive.is_audible;
+      let sound: &mut AudioSceneFrame = &mut frame.sound;
+
+      sound.scene = drive.scene.0;
+      sound.time = now;
+      sound.rules = match engine {
+        XrayEngine::Vanilla => AudioSceneRules::Vanilla,
+        XrayEngine::Extended => AudioSceneRules::Extended,
+      };
+      sound.is_audible = drive.is_audible;
+      sound.listener = listener;
+      sound.heard = drive.toggles.get_heard_buses();
+      emitters.fill(&mut sound.emitters, now);
       frame.is_burst = drive.burst.is_some();
-      frame.listener = listener;
-      frame.toggles = drive.toggles;
-      emitters.fill(&mut frame.emitters, now);
     });
   }
 

@@ -1,4 +1,4 @@
-use crate::mixer::audio_bus::AudioBus;
+use xrf_audio_scene::AudioBus;
 
 /// The linear gains of the master and of each bus, set together.
 #[derive(Clone, Copy, Debug, PartialEq)]

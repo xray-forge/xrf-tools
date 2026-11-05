@@ -10,12 +10,12 @@ use crate::control::server::audio_gains::AudioGains;
 use crate::host::audio_asset_source::AudioAssetSource;
 use crate::host::audio_scene_geometry::AudioSceneGeometry;
 use crate::mixer::tap::audio_tap::AudioTap;
-use crate::scene::inbox::scene_mailbox::SceneMailbox;
-use crate::scene::report::audio_scene_report::AudioSceneReport;
+use crate::scene::audio_scene_report::AudioSceneReport;
 use crate::transport::audio_transport::AudioTransport;
 use crate::transport::audio_transport_command::AudioTransportCommand;
 use crate::transport::audio_transport_id::AudioTransportId;
 use crate::transport::audio_transport_state::AudioTransportState;
+use xrf_audio_scene::AudioSceneMailbox;
 
 /// What an [`crate::AudioServer`] sends its control thread; a request with an `answer` is waited on.
 pub(crate) enum ControlRequest {
@@ -39,7 +39,7 @@ pub(crate) enum ControlRequest {
   /// Plays a scene whose frames come through `mailbox`, its sounds read from `assets`, shaped by `geometry` where the
   /// host has it.
   OpenScene {
-    mailbox: SceneMailbox,
+    mailbox: AudioSceneMailbox,
     assets: Arc<dyn AudioAssetSource>,
     geometry: Option<Arc<dyn AudioSceneGeometry>>,
   },

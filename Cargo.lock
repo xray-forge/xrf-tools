@@ -8194,9 +8194,19 @@ dependencies = [
  "serde",
  "specta",
  "symphonia",
+ "xrf-audio-scene",
  "xrf-error",
  "xrf-sound",
  "xrf-utils",
+]
+
+[[package]]
+name = "xrf-audio-scene"
+version = "0.1.0"
+dependencies = [
+ "rtrb",
+ "serde",
+ "specta",
 ]
 
 [[package]]
@@ -9028,6 +9038,7 @@ dependencies = [
  "specta",
  "xrf-animation-envelope",
  "xrf-anm",
+ "xrf-audio-scene",
  "xrf-engine-target",
  "xrf-environment",
  "xrf-error",

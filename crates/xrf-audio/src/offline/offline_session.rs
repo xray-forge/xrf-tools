@@ -17,8 +17,8 @@ use crate::mixer::audio_mixer_meter::AudioMixerMeter;
 use crate::offline::offline_render::OfflineRender;
 use crate::render::bank::sound_bank::SoundBank;
 use crate::render::stream_launcher::StreamLauncher;
-use crate::scene::inbox::audio_scene_inbox::AudioSceneInbox;
-use crate::scene::report::audio_scene_report::AudioSceneReport;
+use crate::scene::audio_scene_report::AudioSceneReport;
+use xrf_audio_scene::AudioSceneInbox;
 
 /// The audio's whole runtime without a device or a thread, on a clock of the frames it renders: the control side ticks
 /// every [`Self::TICK`] of them however the renders are cut, sounds are read and streams decode before each tick, so a

@@ -11,10 +11,10 @@ use xrf_visual::ZoneSphere;
 
 use crate::contract::sound::world_sound_kind::WorldSoundKind;
 use crate::host::sound::level::world_zone_sound::WorldZoneSound;
-use crate::host::sound::sink::world_sound_emitter::WorldSoundEmitter;
 use crate::level::effects::campfire::Campfire;
 use crate::level::effects::campfire_state::CampfireState;
 use crate::level::effects::level_campfires::LevelCampfires;
+use crate::sound::emitters::live_emitter::LiveEmitter;
 use crate::sound::emitters::sound_emitters::SoundEmitters;
 use crate::sound::schedule::zone_sounds::ZoneSounds;
 use crate::sound::schedule::zone_states::ZoneStates;
@@ -66,10 +66,10 @@ fn campfire() -> WorldZoneSound {
 }
 
 /// What plays on at `now`, those fading out after a stop aside.
-fn playing(emitters: &SoundEmitters, now: Duration) -> Vec<WorldSoundEmitter> {
+fn playing(emitters: &SoundEmitters, now: Duration) -> Vec<LiveEmitter> {
   emitters
     .iter_playing(now)
-    .filter(|emitter| emitter.stop.is_none())
+    .filter(|live| live.emitter.stop.is_none())
     .cloned()
     .collect()
 }
@@ -77,7 +77,7 @@ fn playing(emitters: &SoundEmitters, now: Duration) -> Vec<WorldSoundEmitter> {
 fn sounds_of(emitters: &SoundEmitters, now: Duration) -> Vec<String> {
   playing(emitters, now)
     .into_iter()
-    .map(|emitter| emitter.sound.to_string())
+    .map(|live| live.emitter.sound.to_string())
     .collect()
 }
 
@@ -99,13 +99,13 @@ fn hums_from_the_first_frame_looped_at_the_zone_as_its_object() {
     Duration::ZERO,
   );
 
-  let hum: Vec<WorldSoundEmitter> = playing(&emitters, Duration::ZERO);
+  let hum: Vec<LiveEmitter> = playing(&emitters, Duration::ZERO);
 
   assert_eq!(hum.len(), 1);
-  assert!(hum[0].is_looped);
+  assert!(hum[0].emitter.is_looped);
   assert_eq!(hum[0].kind, WorldSoundKind::Anomaly);
   assert_eq!(hum[0].object, Some(40));
-  assert_eq!(hum[0].position, [0.0; 3]);
+  assert_eq!(hum[0].emitter.position, [0.0; 3]);
 }
 
 // Past a hundred metres from its sphere Monolith stops the idle, fading it out, and plays it afresh once the camera is
@@ -119,11 +119,11 @@ fn falls_silent_past_the_fast_distance_on_monolith_only() {
 
     zones.update(&mut emitters, engine, &mut states, eye(100.0), Duration::ZERO);
 
-    let near: u64 = playing(&emitters, Duration::ZERO)[0].id;
+    let near: u64 = playing(&emitters, Duration::ZERO)[0].emitter.id;
 
     // 104 metres from the centre is 99 outside the sphere: still fast.
     zones.update(&mut emitters, engine, &mut states, eye(104.0), seconds(1));
-    assert_eq!(playing(&emitters, seconds(1))[0].id, near);
+    assert_eq!(playing(&emitters, seconds(1))[0].emitter.id, near);
 
     zones.update(&mut emitters, engine, &mut states, eye(106.0), seconds(2));
     emitters.retire(seconds(2));
@@ -138,10 +138,10 @@ fn falls_silent_past_the_fast_distance_on_monolith_only() {
 
     zones.update(&mut emitters, engine, &mut states, eye(50.0), seconds(3));
 
-    let back: Vec<WorldSoundEmitter> = playing(&emitters, seconds(3));
+    let back: Vec<LiveEmitter> = playing(&emitters, seconds(3));
 
     assert_eq!(back.len(), 1, "{engine:?}");
-    assert_eq!(back[0].id == near, is_heard_far, "{engine:?}");
+    assert_eq!(back[0].emitter.id == near, is_heard_far, "{engine:?}");
   }
 }
 
@@ -185,19 +185,19 @@ fn moves_a_torrid_zones_sound_with_its_motion() {
     Duration::ZERO,
   );
 
-  let id: u64 = playing(&emitters, Duration::ZERO)[0].id;
+  let id: u64 = playing(&emitters, Duration::ZERO)[0].emitter.id;
 
-  assert_eq!(playing(&emitters, Duration::ZERO)[0].position, [1.0, 2.0, 3.0]);
+  assert_eq!(playing(&emitters, Duration::ZERO)[0].emitter.position, [1.0, 2.0, 3.0]);
 
   states
     .places
     .insert(String::from("torrid_path"), Vec3::new(4.0, 2.0, 3.0));
   zones.update(&mut emitters, XrayEngine::Extended, &mut states, eye(0.0), seconds(1));
 
-  let moved: Vec<WorldSoundEmitter> = playing(&emitters, seconds(1));
+  let moved: Vec<LiveEmitter> = playing(&emitters, seconds(1));
 
-  assert_eq!(moved[0].id, id);
-  assert_eq!(moved[0].position, [4.0, 2.0, 3.0]);
+  assert_eq!(moved[0].emitter.id, id);
+  assert_eq!(moved[0].emitter.position, [4.0, 2.0, 3.0]);
 
   // The camera stands near the zone's spawn, but the motion has carried it two hundred metres off.
   states
@@ -251,12 +251,12 @@ fn loops_the_disabled_sound_of_a_campfire_out_from_the_first() {
     Duration::ZERO,
   );
 
-  let out: Vec<WorldSoundEmitter> = playing(&emitters, Duration::ZERO);
+  let out: Vec<LiveEmitter> = playing(&emitters, Duration::ZERO);
 
   assert_eq!(out.len(), 1);
-  assert_eq!(&*out[0].sound, "ambient\\fire_out");
+  assert_eq!(&*out[0].emitter.sound, "ambient\\fire_out");
   assert_eq!(out[0].kind, WorldSoundKind::Campfire);
-  assert!(out[0].is_looped);
+  assert!(out[0].emitter.is_looped);
 }
 
 // Monolith stops a lit campfire's idle past the fast distance as it does any zone's.
