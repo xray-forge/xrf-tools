@@ -3,6 +3,7 @@ import { FiberManualRecordIcon as RecordIcon } from "@xrf/ui/icons/fiber-manual-
 import { PhotoCameraOutlinedIcon as PhotoCameraIcon } from "@xrf/ui/icons/photo-camera-outlined";
 import { ReactElement } from "react";
 
+import { GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND } from "@/core/level/commands";
 import { useShellMenus } from "@/core/shell/contributions";
 import { EMenuEntryKind, IMenuContribution } from "@/core/shell/menu/lib";
 import {
@@ -16,7 +17,7 @@ import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level
 
 /**
  * The level viewer's Actions menu: Capture ▸ a screenshot, the recording, a level map and a cubemap, Record turned to
- * Stop recording, its dot red, while one runs.
+ * Stop recording, its dot red, while one runs; then Go to coordinates.
  */
 export function LevelViewerActionsMenu(): ReactElement {
   const recordingService: LevelViewerRecordingService = useInjection(LevelViewerRecordingService);
@@ -51,6 +52,10 @@ export function LevelViewerActionsMenu(): ReactElement {
             ],
           },
         ],
+      },
+      {
+        section: LEVEL_VIEWER_ACTIONS_MENU.sections.camera,
+        entries: [{ kind: EMenuEntryKind.COMMAND, command: GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND }],
       },
     ],
     [isRecording]

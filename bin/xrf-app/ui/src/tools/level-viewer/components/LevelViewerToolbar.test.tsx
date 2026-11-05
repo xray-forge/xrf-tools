@@ -23,7 +23,6 @@ describe("LevelViewerToolbar", () => {
     expect(actions).toEqual([
       "level-show-action",
       "level-camera-action",
-      "level-go-to-action",
       "level-relief-action",
       "level-grass-action",
       "level-water-action",

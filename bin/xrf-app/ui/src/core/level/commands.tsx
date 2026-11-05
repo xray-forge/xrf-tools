@@ -1,4 +1,21 @@
+import { MyLocationIcon } from "@xrf/ui/icons/my-location";
+
 import { defineKeybindCommand, EKeybindCommandCategory, IKeybindCommand } from "@/core/commands";
+
+/**
+ * Opens the field the camera readout turns into, which stands the camera wherever coordinates typed or pasted into it
+ * say; `mod+g`, as an editor goes to a line.
+ */
+export const GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND: IKeybindCommand = defineKeybindCommand({
+  category: EKeybindCommandCategory.VIEW,
+  chords: ["mod+g"],
+  description:
+    "Stands the camera where typed or pasted coordinates say: the readout's `x 0 y 0 z 0 h 0 p 0`, part of it, or " +
+    "bare numbers in that order, as a config writes a position.",
+  icon: <MyLocationIcon />,
+  id: "level/go-to",
+  label: "Go to coordinates…",
+});
 
 /** Drops what is selected in the level, while the scene has the keyboard. */
 export const CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND: IKeybindCommand = defineKeybindCommand({
@@ -56,6 +73,7 @@ export const TOGGLE_LEVEL_HELPERS_KEYBIND_COMMAND: IKeybindCommand = defineKeybi
 
 /** Commands the level domain owns, reachable from every tool that shows a level. */
 export const LEVEL_KEYBIND_COMMANDS: ReadonlyArray<IKeybindCommand> = [
+  GO_TO_LEVEL_COORDINATES_KEYBIND_COMMAND,
   CLEAR_LEVEL_SELECTION_KEYBIND_COMMAND,
   FRAME_LEVEL_SELECTION_KEYBIND_COMMAND,
   TOGGLE_LEVEL_HELPERS_KEYBIND_COMMAND,
