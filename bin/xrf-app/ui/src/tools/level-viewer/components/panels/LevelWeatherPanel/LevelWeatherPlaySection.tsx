@@ -2,6 +2,7 @@ import { LevelWeatherCycle } from "@xrf/ipc/types/xrf-app-levels";
 import { WorldWeatherEffectReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
@@ -73,18 +74,12 @@ export function LevelWeatherPlaySection({
         ) : null}
 
         {unfollowed ? (
-          <Typography className={"block wrap-anywhere text-text-secondary"} variant={"caption"}>
+          <EditorPopoverNote>
             {`The level's weathers = ${unfollowed} names no cycle here, so the game's scripts choose. Its first cycle plays.`}
-          </Typography>
+          </EditorPopoverNote>
         ) : null}
 
-        {isManual ? (
-          <LevelWeatherSeedNote
-            seed={seed}
-            isPlayable={isPlayable}
-            onBack={() => onSource(ELevelWeatherSource.WEATHER)}
-          />
-        ) : null}
+        {isManual ? <LevelWeatherSeedNote seed={seed} /> : null}
 
         <LevelWeatherCycleSelect cycles={cycles} selected={cycle} reading={reading} onSelect={onCycle} />
 

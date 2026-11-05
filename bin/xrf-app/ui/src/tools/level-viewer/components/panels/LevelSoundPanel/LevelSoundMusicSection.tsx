@@ -1,13 +1,12 @@
 import { WorldMusicCommand, WorldSoundMusicReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 import { EditorPanelProperty, EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPopoverSelectRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { MenuItem } from "@xrf/ui/material/menu";
 import { Slider } from "@xrf/ui/material/slider";
-import { TextField } from "@xrf/ui/material/text-field";
 import { Typography } from "@xrf/ui/material/typography";
-import { CONTROL } from "@xrf/ui/theme";
-import { ChangeEvent, ReactElement, RefObject, useCallback, useEffect, useRef, useState } from "react";
+import { ReactElement, RefObject, useCallback, useEffect, useRef, useState } from "react";
 
 import { formatLevelSoundSeconds, formatLevelSoundTrackTime } from "@/tools/level-viewer/lib/sound/level-sound-format";
 
@@ -59,10 +58,7 @@ export function LevelSoundMusicSection({
   const shown: RefObject<Nullable<WorldSoundMusicReport>> = useRef<Nullable<WorldSoundMusicReport>>(music);
 
   const onTrack = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) =>
-      void onCommand(
-        event.target.value === BY_SCHEDULE ? { kind: "schedule" } : { kind: "play", track: event.target.value }
-      ),
+    (track: string) => void onCommand(track === BY_SCHEDULE ? { kind: "schedule" } : { kind: "play", track }),
     [onCommand]
   );
 
@@ -120,19 +116,11 @@ export function LevelSoundMusicSection({
 
   return (
     <EditorPanelSection data-testid={dataTestId} id={id} className={className} title={"Music"}>
-      <TextField
-        select
-        fullWidth
-        size={"small"}
+      <EditorPopoverSelectRow
         label={"Track"}
+        description={"Plays the level's music by the game's schedule, or one track chosen by hand."}
         value={music.chosen ?? BY_SCHEDULE}
-        slotProps={{
-          inputLabel: { shrink: true },
-          select: {
-            displayEmpty: true,
-            MenuProps: { slotProps: { paper: { sx: { maxHeight: CONTROL.selectMenuMaxHeight } } } },
-          },
-        }}
+        renderValue={(value: string) => value || "By schedule"}
         onChange={onTrack}
       >
         <MenuItem dense value={BY_SCHEDULE}>
@@ -143,7 +131,7 @@ export function LevelSoundMusicSection({
             {track}
           </MenuItem>
         ))}
-      </TextField>
+      </EditorPopoverSelectRow>
 
       {music.track ? (
         <>

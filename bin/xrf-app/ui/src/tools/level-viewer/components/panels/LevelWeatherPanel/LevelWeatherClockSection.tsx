@@ -1,9 +1,8 @@
 import { WorldWeatherReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
 import { EditorPanelSection } from "@xrf/ui/editor/panel";
+import { EditorPopoverCheckboxRow, EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
-import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement } from "react";
 
 import { LevelWeatherTime } from "@/core/level/components/weather/LevelWeatherTime";
@@ -58,25 +57,29 @@ export function LevelWeatherClockSection({
       />
 
       {isSunTabled ? (
-        <Typography className={"block text-text-secondary"} variant={"caption"}>
+        <EditorPopoverNote>
           {isManual
             ? "The keyframe set by hand stands the sun by its own angles."
             : "The sun stands by the game's sun table, hour by hour."}
-        </Typography>
+        </EditorPopoverNote>
       ) : (
-        <CheckboxFormRow
-          label={"Dynamic sun"}
-          description={
-            isManual
-              ? "The keyframe set by hand stands the sun by its own angles"
-              : control.isDynamicSun
-                ? "Computed for the time of day, as OpenXRay does by default"
-                : "At the angles the keyframes write"
-          }
-          isChecked={control.isDynamicSun && !isManual}
-          isDisabled={isManual}
-          onChange={onDynamicSun}
-        />
+        <>
+          <EditorPopoverCheckboxRow
+            label={"Dynamic sun"}
+            description={
+              control.isDynamicSun
+                ? "Computed for the time of day, as OpenXRay does by default."
+                : "At the angles the keyframes write."
+            }
+            isChecked={control.isDynamicSun && !isManual}
+            isDisabled={isManual}
+            onChange={onDynamicSun}
+          />
+
+          {isManual ? (
+            <EditorPopoverNote>The keyframe set by hand stands the sun by its own angles.</EditorPopoverNote>
+          ) : null}
+        </>
       )}
     </EditorPanelSection>
   );

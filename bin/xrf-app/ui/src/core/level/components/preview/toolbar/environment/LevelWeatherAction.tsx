@@ -18,7 +18,6 @@ import { LevelWeatherSourceChoice } from "@/core/level/components/weather/LevelW
 import { LevelWeatherTime } from "@/core/level/components/weather/LevelWeatherTime";
 import { toLevelManualWeatherLtx } from "@/core/level/lib/weather/level-manual-weather-ltx";
 import { listLevelWeatherCycles } from "@/core/level/lib/weather/level-weather-cycle-choice";
-import { ELevelWeatherSource } from "@/core/level/lib/weather/level-weather-source";
 import { formatLevelWeatherTime } from "@/core/level/lib/weather/level-weather-time";
 import { LevelRenderService } from "@/core/level/services/level-render";
 import { LevelWeatherService } from "@/core/level/services/level-weather";
@@ -81,14 +80,7 @@ export function LevelWeatherAction({
         <EditorPopoverGroupSection label={"Lit by"}>
           <LevelWeatherSourceChoice source={source} isPlayable={isPlayable} onChange={weatherService.setSource} />
 
-          {isManual ? (
-            <LevelWeatherSeedNote
-              className={"mt-1"}
-              seed={seed}
-              isPlayable={isPlayable}
-              onBack={() => weatherService.setSource(ELevelWeatherSource.WEATHER)}
-            />
-          ) : null}
+          {isManual ? <LevelWeatherSeedNote seed={seed} /> : null}
 
           <LevelWeatherCycleSelect
             cycles={cycles}
