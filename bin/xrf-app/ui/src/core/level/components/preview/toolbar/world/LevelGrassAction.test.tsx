@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 
-import { LevelGrassAction } from "@/core/level/components/preview/toolbar/contents/LevelGrassAction";
+import { LevelGrassAction } from "@/core/level/components/preview/toolbar/world/LevelGrassAction";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,

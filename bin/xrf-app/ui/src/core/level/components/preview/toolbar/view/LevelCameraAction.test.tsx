@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { fireEvent } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 
-import { LevelCameraAction } from "@/core/level/components/preview/toolbar/camera/LevelCameraAction";
+import { LevelCameraAction } from "@/core/level/components/preview/toolbar/view/LevelCameraAction";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,

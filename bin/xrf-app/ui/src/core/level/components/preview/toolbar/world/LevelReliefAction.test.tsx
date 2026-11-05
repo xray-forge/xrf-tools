@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 import { ERenderParallaxMode, ERenderTerrainTiling } from "@xrf/ipc/types/xrf-renderer";
 
-import { LevelReliefAction } from "@/core/level/components/preview/toolbar/view/LevelReliefAction";
+import { LevelReliefAction } from "@/core/level/components/preview/toolbar/world/LevelReliefAction";
 import {
   ILevelViewContainerDescriptor,
   mockLevelViewContainer,

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "@jest/globals";
 import { userEvent } from "@testing-library/user-event";
 import { ERenderParallaxMode } from "@xrf/ipc/types/xrf-renderer";
 
-import { LevelParallaxSettings } from "@/core/level/components/preview/toolbar/view/LevelParallaxSettings";
+import { LevelParallaxSettings } from "@/core/level/components/preview/toolbar/world/LevelParallaxSettings";
 import { mockLevelViewContainer } from "@/core/level/fixtures/level-container";
 import { clearLocalStorage } from "@/core/storage";
 import { renderWithProviders } from "@/fixtures/utils/render";

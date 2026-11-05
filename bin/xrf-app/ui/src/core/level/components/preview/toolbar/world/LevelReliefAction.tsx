@@ -10,8 +10,8 @@ import { LEVEL_SETTINGS_RESET_LABEL } from "@/core/level/components/preview/tool
 import { useLevelFeatureOverride } from "@/core/level/components/preview/toolbar/use-level-feature-override";
 import { useLevelFeatureReset } from "@/core/level/components/preview/toolbar/use-level-feature-reset";
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
-import { LevelParallaxSettings } from "@/core/level/components/preview/toolbar/view/LevelParallaxSettings";
-import { LevelTerrainSettings } from "@/core/level/components/preview/toolbar/view/LevelTerrainSettings";
+import { LevelParallaxSettings } from "@/core/level/components/preview/toolbar/world/LevelParallaxSettings";
+import { LevelTerrainSettings } from "@/core/level/components/preview/toolbar/world/LevelTerrainSettings";
 import { toLevelModeFeature } from "@/core/level/lib/features/level-feature-options";
 import { ILevelViewOptions } from "@/core/level/lib/view/level-view-options";
 import { LevelViewService } from "@/core/level/services/level-view";

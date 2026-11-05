@@ -4,7 +4,7 @@ import { userEvent } from "@testing-library/user-event";
 import { ELevelsCommand } from "@xrf/ipc/commands/levels";
 import { mockIpcCommands, resetMockInvoke } from "@xrf/ipc/testing";
 
-import { LevelGoToAction } from "@/core/level/components/preview/toolbar/camera/LevelGoToAction";
+import { LevelGoToAction } from "@/core/level/components/preview/toolbar/view/LevelGoToAction";
 import { mockLevelViewContainer } from "@/core/level/fixtures/level-container";
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { ILevelCamera } from "@/core/level/lib/camera/level-camera";
