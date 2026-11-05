@@ -87,6 +87,9 @@ impl SceneRender {
   /// fifth as much.
   const BINAURAL_VOICES: usize = 64;
 
+  /// Ranks past the last of [`Self::BINAURAL_VOICES`] a voice heard through the HRTF may fall and keep it.
+  const BINAURAL_GRACE: usize = 8;
+
   /// How much of a placed sound the listener's reverb hears.
   const REVERB_SEND: f32 = 0.5;
 
@@ -226,14 +229,32 @@ impl SceneRender {
     // Taken out for the while, so each emitter is realized against the scene it belongs to.
     let mut emitters: HashMap<u64, RenderedEmitter> = std::mem::take(&mut self.emitters);
     let ranked: Vec<RankedEmitter> = std::mem::take(&mut self.ranked);
-    let mut binaural_left: usize = match tick.spatialization {
+    let binaural: usize = match tick.spatialization {
       AudioSpatialization::Headphones => Self::BINAURAL_VOICES,
       AudioSpatialization::Speakers => 0,
     };
+    // A voice heard through the HRTF keeps its place while it ranks within a few of the last, so voices whose loudness
+    // hovers about the last place do not trade it every tick; the places it leaves go to the loudest of the rest.
+    let is_holding = |index: usize, rendered: &RenderedEmitter| {
+      index < binaural + Self::BINAURAL_GRACE
+        && rendered.voice.is_some()
+        && rendered.spatial.is_some_and(|spatial| spatial.is_binaural)
+    };
+    let mut held: usize = ranked
+      .iter()
+      .enumerate()
+      .filter(|(index, ranked)| {
+        emitters
+          .get(&ranked.id)
+          .is_some_and(|rendered| !rendered.is_done && is_holding(*index, rendered))
+      })
+      .count()
+      .min(binaural);
+    let mut open: usize = binaural - held;
 
     self.real_voices = 0;
 
-    for ranked in &ranked {
+    for (index, ranked) in ranked.iter().enumerate() {
       let Some(rendered) = emitters.get_mut(&ranked.id) else {
         continue;
       };
@@ -242,18 +263,20 @@ impl SceneRender {
         continue;
       }
 
-      let ears: AudioSpatialization = if binaural_left > 0 && rendered.is_placeable(&self.acoustics) {
+      let is_placeable: bool = rendered.is_placeable(&self.acoustics);
+      let is_held: bool = is_placeable && held > 0 && is_holding(index, rendered);
+      let is_opened: bool = !is_held && is_placeable && open > 0;
+      let ears: AudioSpatialization = if is_held || is_opened {
         AudioSpatialization::Headphones
       } else {
         AudioSpatialization::Speakers
       };
 
+      held -= usize::from(is_held);
+
       if self.realize(rendered, &mut tick, now, seconds, ears) {
         self.real_voices += 1;
-
-        if ears == AudioSpatialization::Headphones {
-          binaural_left -= 1;
-        }
+        open -= usize::from(is_opened);
       }
     }
 
