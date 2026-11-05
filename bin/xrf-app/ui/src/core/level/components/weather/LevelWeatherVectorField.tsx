@@ -10,6 +10,7 @@ import {
   toPickedColor,
   useOpenColorField,
 } from "@xrf/ui/color";
+import { EditorPopoverRow, IEditorPopoverRowControlProps } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ButtonBase } from "@xrf/ui/material/button-base";
 import { InputBase } from "@xrf/ui/material/input";
@@ -37,7 +38,7 @@ function toSwatch(value: ReadonlyArray<number>): string {
 
 interface ILevelWeatherVectorFieldProps extends BaseComponentProps {
   label: string;
-  /** Shown on hovering its label, such as the config key it is written under. */
+  /** Read on hovering its label, such as the config key it is written under. */
   hint?: string;
   value: ReadonlyArray<number>;
   /**
@@ -49,7 +50,8 @@ interface ILevelWeatherVectorFieldProps extends BaseComponentProps {
 }
 
 /**
- * A weather key of a few numbers, each typed as the engine holds it, unclamped; one is told once it is let go.
+ * A weather key of a few numbers, each typed as the engine holds it, unclamped; one is told once it is let go. Too
+ * many to share a row with its label, they stand under it, a colour's swatch first.
  */
 export function LevelWeatherVectorField({
   "data-testid": dataTestId = "level-weather-vector-field",
@@ -101,69 +103,72 @@ export function LevelWeatherVectorField({
   );
 
   return (
-    <div data-testid={dataTestId} id={id} className={className}>
-      <div className={"flex items-center justify-between gap-2"}>
-        <span className={"text-xs text-text-secondary"} title={hint}>
-          {label}
-        </span>
-        {isColor ? (
-          <ButtonBase
-            className={"h-3 w-6 rounded-control border border-solid border-divider"}
-            style={{ backgroundColor: toSwatch(value) }}
-            aria-label={`Pick ${label}`}
-            aria-expanded={isPicking}
-            onClick={togglePicking}
-          />
-        ) : null}
-      </div>
-
-      <div
-        className={"mt-1 grid gap-1"}
-        style={{ gridTemplateColumns: `repeat(${value.length + (isColor ? 1 : 0)}, minmax(0, 1fr))` }}
-      >
-        {value.map((component: number, index: number) => (
-          <InputBase
-            key={names[index]}
-            className={"rounded-control bg-action-hover px-1 font-mono text-xs"}
-            value={draft?.index === index ? draft.text : String(Number(component.toFixed(6)))}
-            inputProps={{ "aria-label": `${label} ${names[index]}`, inputMode: "decimal" }}
-            onFocus={(event: FocusEvent<HTMLInputElement>) => setDraft({ index, text: event.target.value })}
-            onChange={(event) => setDraft({ index, text: event.target.value })}
-            onBlur={(event: FocusEvent<HTMLInputElement>) => onCommit(index, event.target.value)}
-            onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-              if (event.key === "Enter") {
-                event.currentTarget.blur();
-              }
+    <EditorPopoverRow data-testid={dataTestId} id={id} className={className} label={label} description={hint} isStacked>
+      {(control: IEditorPopoverRowControlProps) => (
+        <div className={"flex w-full min-w-0 flex-col"}>
+          <div
+            {...control}
+            role={"group"}
+            className={"grid w-full items-center gap-1"}
+            style={{
+              gridTemplateColumns: `${isColor ? "auto " : ""}repeat(${value.length + (isColor ? 1 : 0)}, minmax(0, 1fr))`,
             }}
-          />
-        ))}
+          >
+            {isColor ? (
+              <ButtonBase
+                className={"h-4 w-6 rounded-control border border-solid border-divider"}
+                style={{ backgroundColor: toSwatch(value) }}
+                aria-label={`Pick ${label}`}
+                aria-expanded={isPicking}
+                onClick={togglePicking}
+              />
+            ) : null}
 
-        {isColor ? (
-          <InputBase
-            className={"rounded-control bg-action-hover px-1 font-mono text-xs"}
-            value={draft?.index === INTENSITY_DRAFT ? draft.text : String(Number(intensity.toFixed(3)))}
-            inputProps={{ "aria-label": `${label} intensity`, inputMode: "decimal", title: "Intensity" }}
-            onFocus={(event: FocusEvent<HTMLInputElement>) =>
-              setDraft({ index: INTENSITY_DRAFT, text: event.target.value })
-            }
-            onChange={(event) => setDraft({ index: INTENSITY_DRAFT, text: event.target.value })}
-            onBlur={(event: FocusEvent<HTMLInputElement>) => onCommitIntensity(event.target.value)}
-            onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
-              if (event.key === "Enter") {
-                event.currentTarget.blur();
-              }
-            }}
-          />
-        ) : null}
-      </div>
+            {value.map((component: number, index: number) => (
+              <InputBase
+                key={names[index]}
+                className={"rounded-control bg-action-hover px-1 font-mono text-xs"}
+                value={draft?.index === index ? draft.text : String(Number(component.toFixed(6)))}
+                inputProps={{ "aria-label": `${label} ${names[index]}`, inputMode: "decimal" }}
+                onFocus={(event: FocusEvent<HTMLInputElement>) => setDraft({ index, text: event.target.value })}
+                onChange={(event) => setDraft({ index, text: event.target.value })}
+                onBlur={(event: FocusEvent<HTMLInputElement>) => onCommit(index, event.target.value)}
+                onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                  if (event.key === "Enter") {
+                    event.currentTarget.blur();
+                  }
+                }}
+              />
+            ))}
 
-      {isColor && isPicking ? (
-        <ColorPicker
-          className={"mt-2"}
-          value={toPickedColor(channels, intensity)}
-          onChange={(picked: IPickedColor) => onChangeChannels(fromPickedColor(picked, intensity))}
-        />
-      ) : null}
-    </div>
+            {isColor ? (
+              <InputBase
+                className={"rounded-control bg-action-hover px-1 font-mono text-xs"}
+                value={draft?.index === INTENSITY_DRAFT ? draft.text : String(Number(intensity.toFixed(3)))}
+                inputProps={{ "aria-label": `${label} intensity`, inputMode: "decimal", title: "Intensity" }}
+                onFocus={(event: FocusEvent<HTMLInputElement>) =>
+                  setDraft({ index: INTENSITY_DRAFT, text: event.target.value })
+                }
+                onChange={(event) => setDraft({ index: INTENSITY_DRAFT, text: event.target.value })}
+                onBlur={(event: FocusEvent<HTMLInputElement>) => onCommitIntensity(event.target.value)}
+                onKeyDown={(event: KeyboardEvent<HTMLInputElement>) => {
+                  if (event.key === "Enter") {
+                    event.currentTarget.blur();
+                  }
+                }}
+              />
+            ) : null}
+          </div>
+
+          {isColor && isPicking ? (
+            <ColorPicker
+              className={"mt-2"}
+              value={toPickedColor(channels, intensity)}
+              onChange={(picked: IPickedColor) => onChangeChannels(fromPickedColor(picked, intensity))}
+            />
+          ) : null}
+        </div>
+      )}
+    </EditorPopoverRow>
   );
 }

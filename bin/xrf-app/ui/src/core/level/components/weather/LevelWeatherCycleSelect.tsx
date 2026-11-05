@@ -1,10 +1,9 @@
 import { Nullable } from "@xrf/types";
+import { EditorPopoverSelectRow } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ListItemText } from "@xrf/ui/material/list";
 import { MenuItem } from "@xrf/ui/material/menu";
-import { TextField } from "@xrf/ui/material/text-field";
-import { CONTROL } from "@xrf/ui/theme";
-import { ChangeEvent, ReactElement } from "react";
+import { ReactElement } from "react";
 
 import {
   formatLevelWeatherFindings,
@@ -22,7 +21,8 @@ interface ILevelWeatherCycleSelectProps extends BaseComponentProps {
 }
 
 /**
- * Every cycle the level can be played under, the ones its weather resolves to first and marked.
+ * Every cycle the level can be played under, the ones its weather resolves to first and marked; the one being read
+ * named in its place until it plays.
  */
 export function LevelWeatherCycleSelect({
   "data-testid": dataTestId = "level-weather-cycle-select",
@@ -34,24 +34,15 @@ export function LevelWeatherCycleSelect({
   onSelect,
 }: ILevelWeatherCycleSelectProps): ReactElement {
   return (
-    <TextField
+    <EditorPopoverSelectRow
       data-testid={dataTestId}
       id={id}
       className={className}
-      select
-      fullWidth
-      size={"small"}
-      label={reading ? `Cycle, reading ${reading}` : "Cycle"}
+      label={"Cycle"}
       value={selected ?? ""}
-      disabled={reading !== null || !cycles.length}
-      slotProps={{
-        inputLabel: { shrink: true },
-        select: {
-          MenuProps: { slotProps: { paper: { sx: { maxHeight: CONTROL.selectMenuMaxHeight } } } },
-          renderValue: (value: unknown) => String(value),
-        },
-      }}
-      onChange={(event: ChangeEvent<HTMLInputElement>) => onSelect(event.target.value)}
+      isDisabled={reading !== null || !cycles.length}
+      renderValue={(value: string) => (reading ? `Reading ${reading}…` : value)}
+      onChange={onSelect}
     >
       {cycles.map((cycle: ILevelWeatherCycleChoice) => (
         <MenuItem key={cycle.name} dense value={cycle.name}>
@@ -67,6 +58,6 @@ export function LevelWeatherCycleSelect({
           />
         </MenuItem>
       ))}
-    </TextField>
+    </EditorPopoverSelectRow>
   );
 }

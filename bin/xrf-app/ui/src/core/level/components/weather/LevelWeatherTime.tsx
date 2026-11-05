@@ -1,7 +1,7 @@
 import { formatPercent } from "@xrf/format";
 import { WorldWeatherReport } from "@xrf/ipc/types/xrf-world";
 import { Nullable } from "@xrf/types";
-import { EditorPanelProperty } from "@xrf/ui/editor/panel";
+import { EditorPopoverRow, IEditorPopoverRowControlProps } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { ReactElement } from "react";
 
@@ -24,8 +24,9 @@ interface ILevelWeatherTimeProps extends BaseComponentProps {
 }
 
 /**
- * The time of day and how it runs: the clock with the cycle's keyframes marked, the two keyframes it stands between
- * and how far, and how fast it runs. The Weather panel and the toolbar's Weather popover show the same.
+ * The time of day and how it runs, a row each: the clock with the cycle's keyframes marked, the two keyframes it stands
+ * between and how far, and how many times real time it runs. The Weather panel and the toolbar's Weather popover show
+ * the same.
  */
 export function LevelWeatherTime({
   "data-testid": dataTestId = "level-weather-time",
@@ -50,20 +51,26 @@ export function LevelWeatherTime({
       />
 
       {report ? (
-        <EditorPanelProperty
+        <EditorPopoverRow
           label={"Between"}
-          value={`${formatLevelWeatherTime(report.between[0] ?? 0)}-${formatLevelWeatherTime(report.between[1] ?? 0)}, ${formatPercent(report.weight ?? 0)}`}
-        />
+          description={"The two keyframes the time stands between, and how far it is toward the second."}
+        >
+          {({ id: valueId }: IEditorPopoverRowControlProps) => (
+            <span id={valueId} className={"text-xs tabular-nums"}>
+              {`${formatLevelWeatherTime(report.between[0] ?? 0)}-${formatLevelWeatherTime(report.between[1] ?? 0)}, ${formatPercent(report.weight ?? 0)}`}
+            </span>
+          )}
+        </EditorPopoverRow>
       ) : null}
 
       <RenderValueSlider
-        className={"mt-1"}
         label={"Speed"}
+        description={"How many times faster than real time the clock runs."}
         value={Math.log10(control.factor)}
         min={Math.log10(LEVEL_WEATHER_FACTOR_LIMITS.min)}
         max={Math.log10(LEVEL_WEATHER_FACTOR_LIMITS.max)}
         step={0.01}
-        format={(value: number) => `${Math.round(10 ** value)}× real time`}
+        format={(value: number) => `${Math.round(10 ** value)}×`}
         onChange={(value: number) => onFactor(10 ** value)}
       />
     </div>
