@@ -42,6 +42,24 @@ const NON_LATIN_LETTER_PATTERN: RegExp = /^(?![a-z])\p{L}$/u;
 /** A letter key by its place on the keyboard, as `event.code` names it whatever the layout: `KeyG`. */
 const LETTER_CODE_PATTERN: RegExp = /^Key([A-Z])$/;
 
+/**
+ * What a US keyboard prints on each punctuation key, by its place: where a Cyrillic layout prints a letter on one, as
+ * Ukrainian `б` on the comma's, `mod+,` still reaches it.
+ */
+const PUNCTUATION_CODE_KEYS: ReadonlyMap<string, string> = new Map([
+  ["Backquote", "`"],
+  ["Backslash", "\\"],
+  ["BracketLeft", "["],
+  ["BracketRight", "]"],
+  ["Comma", ","],
+  ["Equal", "="],
+  ["Minus", "-"],
+  ["Period", "."],
+  ["Quote", "'"],
+  ["Semicolon", ";"],
+  ["Slash", "/"],
+]);
+
 /** One parsed chord, with every spelling variation already resolved. */
 export interface IKeyChord {
   /** `event.key` as this chord expects it: a lowercase character, or a canonical key name. */
@@ -223,9 +241,12 @@ function toChordEventKey(event: KeyboardEvent): string {
   }
 
   const character: string = event.key.toLowerCase();
-  const place: Nullable<RegExpExecArray> = NON_LATIN_LETTER_PATTERN.test(character)
-    ? LETTER_CODE_PATTERN.exec(event.code)
-    : null;
 
-  return place ? place[1].toLowerCase() : character;
+  if (!NON_LATIN_LETTER_PATTERN.test(character)) {
+    return character;
+  }
+
+  const letter: Nullable<RegExpExecArray> = LETTER_CODE_PATTERN.exec(event.code);
+
+  return letter ? letter[1].toLowerCase() : (PUNCTUATION_CODE_KEYS.get(event.code) ?? character);
 }
