@@ -73,12 +73,19 @@ describe("LevelWeatherService, set by hand", () => {
     service.resetManual(["skyTexture"]);
 
     expect(service.source).toBe(ELevelWeatherSource.WEATHER);
+    expect(service.isManualResettable(["skyTexture"])).toBe(false);
 
     service.editManual({ skyTexture: "sky\\sky_noon", rainDensity: 0.5 });
+
+    expect(service.isManualResettable(["skyTexture"])).toBe(true);
+
     service.resetManual(["skyTexture"]);
 
     expect(service.manual?.skyTexture).toBe("sky\\sky_night");
     expect(service.manual?.rainDensity).toBe(0.5);
+    // Its keys the weather's again, a reset would change nothing; the rain set by hand still would.
+    expect(service.isManualResettable(["skyTexture"])).toBe(false);
+    expect(service.isManualResettable(["skyTexture", "rainDensity"])).toBe(true);
     expect(
       readLevelWeatherMemory(toLevelWeatherMemoryKey(LEVEL_WEATHER_SELECTED.value))?.seed?.weather?.skyTexture
     ).toBe("sky\\sky_night");

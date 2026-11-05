@@ -54,19 +54,25 @@ describe("LevelSunAction", () => {
     act(() => rendered.weather.editManual({ sunAltitude: 10, sunLongitude: -80 }));
     await openSettings(rendered);
 
-    expect(rendered.getByRole("dialog", { name: "Sun" }).textContent).toContain("80° up at a bearing of 10°");
+    expect(rendered.getByRole("button", { name: "Sun", hidden: true })).toHaveAccessibleDescription(
+      /80° up at a bearing of 10°/
+    );
     // `sun_longitude` points the sun down as it grows: shown as an elevation, it reads negated.
     expect(rendered.getByRole("slider", { name: "Elevation" })).toHaveAttribute("aria-valuetext", "80°");
     expect(rendered.getByRole("slider", { name: "Bearing" })).toHaveAttribute("aria-valuetext", "10°");
-    expect(rendered.getByText("Elevation")).toHaveAttribute("title", "Weather key: sun_longitude");
+    expect(rendered.getByRole("slider", { name: "Elevation" })).toHaveAccessibleDescription(
+      "Weather key: sun_longitude"
+    );
 
     await userEvent.click(rendered.getByRole("button", { name: "Use the level's compiled sun" }));
 
     expect(rendered.weather.manual?.sunAltitude).toBeCloseTo(0);
     expect(rendered.weather.manual?.sunLongitude).toBeCloseTo(-45);
 
-    await userEvent.click(rendered.getByRole("button", { name: "Reset to the weather" }));
+    await userEvent.click(rendered.getByRole("button", { name: "Light: Reset to the weather" }));
 
+    // Set back, the keys stand as the weather's again, so there is nothing left to reset.
+    expect(rendered.queryByRole("button", { name: "Light: Reset to the weather" })).toBeNull();
     expect(rendered.weather.manual).toMatchObject({
       ambientColor: DEFAULT_LEVEL_MANUAL_WEATHER.ambientColor,
       hemisphereColor: DEFAULT_LEVEL_MANUAL_WEATHER.hemisphereColor,

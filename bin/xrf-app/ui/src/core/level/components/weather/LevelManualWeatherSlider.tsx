@@ -14,6 +14,8 @@ import { RenderValueSlider } from "@/core/render/components/controls/RenderValue
 interface ILevelManualWeatherSliderProps extends BaseComponentProps {
   /** The number it sets, offered between its limits, its config key in the tooltip. */
   field: TLevelManualWeatherNumberKey;
+  /** What its row says in place of the key's own name, where the section over it names the rest. */
+  label?: string;
   /** The keyframe on screen. */
   manual: ILevelManualWeather;
   format: (value: number) => string;
@@ -28,6 +30,7 @@ export function LevelManualWeatherSlider({
   id,
   className,
   field,
+  label = LEVEL_MANUAL_WEATHER_LABELS[field],
   manual,
   format,
   onEdit,
@@ -39,7 +42,7 @@ export function LevelManualWeatherSlider({
       data-testid={dataTestId}
       id={id}
       className={className}
-      label={LEVEL_MANUAL_WEATHER_LABELS[field]}
+      label={label}
       hint={describeLevelManualWeatherKey(field)}
       value={sign * manual[field]}
       {...LEVEL_MANUAL_WEATHER_LIMITS[field]}
