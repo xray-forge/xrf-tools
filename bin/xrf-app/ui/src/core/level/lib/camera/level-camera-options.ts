@@ -31,6 +31,16 @@ export const LEVEL_CAMERA_LIMITS = {
   speed: { max: 120, min: 1, step: 1 },
 } as const;
 
+/**
+ * @param options - How the camera sees and moves now.
+ * @returns Whether every value stands at its default, so setting the camera back would change nothing.
+ */
+export function isDefaultLevelCamera(options: ILevelCameraOptions): boolean {
+  return (Object.keys(DEFAULT_LEVEL_CAMERA_OPTIONS) as Array<keyof ILevelCameraOptions>).every(
+    (key: keyof ILevelCameraOptions) => options[key] === DEFAULT_LEVEL_CAMERA_OPTIONS[key]
+  );
+}
+
 /** What a step of the wheel multiplies the speed by while the secondary button flies the camera. */
 const LEVEL_CAMERA_SPEED_STEP: number = 1.25;
 

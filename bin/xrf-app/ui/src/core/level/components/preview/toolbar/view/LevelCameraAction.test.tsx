@@ -54,12 +54,13 @@ describe("LevelCameraAction", () => {
     expect(rendered.view.cameraOptions).toEqual({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, fieldOfView: 90 });
   });
 
-  it("puts the camera back", async () => {
+  it("puts the camera back from the popover's heading, offered only while it is off its defaults", async () => {
     const rendered = renderAction(({ view }) => view.setCameraOptions({ ...DEFAULT_LEVEL_CAMERA_OPTIONS, speed: 40 }));
 
     await userEvent.click(rendered.getByRole("button", { name: "Camera" }));
-    await userEvent.click(rendered.getByRole("button", { name: "Reset the camera" }));
+    await userEvent.click(rendered.getByRole("button", { name: "Camera: Reset to the defaults" }));
 
     expect(rendered.view.cameraOptions).toEqual(DEFAULT_LEVEL_CAMERA_OPTIONS);
+    expect(rendered.queryByRole("button", { name: "Camera: Reset to the defaults" })).toBeNull();
   });
 });

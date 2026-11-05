@@ -2,8 +2,7 @@ import { useInjection } from "@wirestate/react";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FilterAltIcon } from "@xrf/ui/icons/filter-alt";
-import { Button } from "@xrf/ui/material/button";
-import { ReactElement } from "react";
+import { ReactElement, useCallback } from "react";
 
 import { useLevelRenderFeatures } from "@/core/level/components/preview/toolbar/use-level-render-features";
 import {
@@ -43,6 +42,8 @@ export function LevelCullingAction({
   const isOccluding: boolean = options.isOcclusionCulled && isOcclusionAvailable;
   const isPrepassed: boolean = options.isDepthPrepassed && isPrepassAvailable;
   const isImpostors: boolean = options.isImpostors && isImpostorsAvailable;
+
+  const onLodReset = useCallback(() => viewService.setLod(DEFAULT_LEVEL_LOD_OPTIONS), [viewService]);
 
   return (
     <EditorPopoverGroup
@@ -93,7 +94,9 @@ export function LevelCullingAction({
         }
         isOn={isImpostors}
         isDisabled={!isImpostorsAvailable}
+        resetLabel={"Reset to the game's"}
         onToggle={() => viewService.toggleOption("isImpostors")}
+        onReset={lod.distance === DEFAULT_LEVEL_LOD_OPTIONS.distance ? undefined : onLodReset}
       >
         <RenderValueSlider
           label={"Distance"}
@@ -102,10 +105,6 @@ export function LevelCullingAction({
           format={formatLevelLodDistance}
           onChange={(distance: number) => viewService.setLod({ ...lod, distance })}
         />
-
-        <Button size={"small"} onClick={() => viewService.setLod(DEFAULT_LEVEL_LOD_OPTIONS)}>
-          Reset to the game&apos;s
-        </Button>
       </EditorPopoverGroupSection>
     </EditorPopoverGroup>
   );

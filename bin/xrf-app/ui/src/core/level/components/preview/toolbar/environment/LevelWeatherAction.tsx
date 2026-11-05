@@ -5,6 +5,7 @@ import { useLogger } from "@xrf/logging/react";
 import { Nullable } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
+import { EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { FilterDramaIcon } from "@xrf/ui/icons/filter-drama";
 import { Button } from "@xrf/ui/material/button";
@@ -76,43 +77,52 @@ export function LevelWeatherAction({
       icon={<FilterDramaIcon />}
       isActive={!isManual}
     >
-      <EditorPopoverContent className={"gap-3"} label={"Weather"}>
-        <LevelWeatherSourceChoice source={source} isPlayable={isPlayable} onChange={weatherService.setSource} />
+      <EditorPopoverContent label={"Weather"}>
+        <EditorPopoverGroupSection label={"Lit by"}>
+          <LevelWeatherSourceChoice source={source} isPlayable={isPlayable} onChange={weatherService.setSource} />
 
-        {isManual ? (
-          <LevelWeatherSeedNote
-            seed={seed}
-            isPlayable={isPlayable}
-            onBack={() => weatherService.setSource(ELevelWeatherSource.WEATHER)}
+          {isManual ? (
+            <LevelWeatherSeedNote
+              className={"mt-1"}
+              seed={seed}
+              isPlayable={isPlayable}
+              onBack={() => weatherService.setSource(ELevelWeatherSource.WEATHER)}
+            />
+          ) : null}
+        </EditorPopoverGroupSection>
+
+        <EditorPopoverGroupSection label={"Cycle"}>
+          <LevelWeatherCycleSelect
+            className={"mt-2"}
+            cycles={cycles}
+            selected={cycle?.name ?? null}
+            reading={weatherService.reading}
+            onSelect={(name: string) => void weatherService.selectCycle(name)}
           />
-        ) : null}
 
-        <LevelWeatherCycleSelect
-          cycles={cycles}
-          selected={cycle?.name ?? null}
-          reading={weatherService.reading}
-          onSelect={(name: string) => void weatherService.selectCycle(name)}
-        />
+          <LevelWeatherEffectSelect
+            className={"mt-3"}
+            effects={description?.effects ?? []}
+            playing={report?.effect ?? null}
+            onPlay={renderService.weather.playEffect}
+          />
+        </EditorPopoverGroupSection>
 
-        <LevelWeatherEffectSelect
-          effects={description?.effects ?? []}
-          playing={report?.effect ?? null}
-          onPlay={renderService.weather.playEffect}
-        />
+        <EditorPopoverGroupSection label={"Time"}>
+          <LevelWeatherTime
+            time={time}
+            keyframes={keyframes}
+            report={weatherService.weather !== null ? report : null}
+            control={control}
+            onSeek={renderService.weather.seek}
+            onPlaying={weatherService.setPlaying}
+            onFactor={weatherService.setFactor}
+          />
 
-        <LevelWeatherTime
-          time={time}
-          keyframes={keyframes}
-          report={weatherService.weather !== null ? report : null}
-          control={control}
-          onSeek={renderService.weather.seek}
-          onPlaying={weatherService.setPlaying}
-          onFactor={weatherService.setFactor}
-        />
-
-        <Button size={"small"} onClick={onCopy}>
-          {isCopied ? "Copied" : "Copy as LTX"}
-        </Button>
+          <Button className={"mt-1 self-start"} size={"small"} onClick={onCopy}>
+            {isCopied ? "Copied" : "Copy as LTX"}
+          </Button>
+        </EditorPopoverGroupSection>
       </EditorPopoverContent>
     </EditorPopoverAction>
   );
