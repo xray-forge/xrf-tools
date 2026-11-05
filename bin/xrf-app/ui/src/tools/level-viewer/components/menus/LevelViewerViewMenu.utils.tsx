@@ -1,5 +1,9 @@
 import { LEVEL_OBJECT_KINDS, LevelObjectKindEntry } from "@xrf/ipc/types/xrf-app-levels";
 import { Nullable } from "@xrf/types";
+import { GridOnIcon } from "@xrf/ui/icons/grid-on";
+import { Inventory2Icon } from "@xrf/ui/icons/inventory2";
+import { PaletteIcon } from "@xrf/ui/icons/palette";
+import { ViewInArIcon } from "@xrf/ui/icons/view-in-ar";
 
 import { TOGGLE_LEVEL_HELPERS_KEYBIND_COMMAND } from "@/core/level/commands";
 import { ILevelHelperOptions, isLevelHelperOn } from "@/core/level/lib/objects/level-helper-options";
@@ -64,6 +68,7 @@ function toShadingSubmenu(state: ILevelViewerViewMenuState, viewService: LevelVi
     kind: EMenuEntryKind.SUBMENU,
     id: "level-viewer/shading",
     label: "Shading",
+    icon: <PaletteIcon />,
     sections: [
       toShadingChoices(state, viewService, FRAME_SHADING_SECTION),
       targetSections.map((section: TLevelShadingSection): IMenuSubmenuEntry => ({
@@ -110,6 +115,7 @@ function toOverlaysSubmenu(state: ILevelViewerViewMenuState, viewService: LevelV
     kind: EMenuEntryKind.SUBMENU,
     id: "level-viewer/overlays",
     label: "Overlays",
+    icon: <GridOnIcon />,
     sections: [
       LEVEL_OVERLAYS.map((overlay: ILevelOverlay): TMenuEntry => ({
         ...toOptionToggle(state, viewService, { option: overlay.option, label: overlay.label }),
@@ -127,6 +133,7 @@ function toHelpersSubmenu(state: ILevelViewerViewMenuState, viewService: LevelVi
     kind: EMenuEntryKind.SUBMENU,
     id: "level-viewer/helpers",
     label: "Helpers",
+    icon: <ViewInArIcon />,
     sections: [
       [
         {
@@ -174,6 +181,7 @@ function toObjectsSubmenu(state: ILevelViewerViewMenuState, viewService: LevelVi
     kind: EMenuEntryKind.SUBMENU,
     id: "level-viewer/objects",
     label: "Objects",
+    icon: <Inventory2Icon />,
     sections: [
       LEVEL_OBJECT_KINDS.flatMap((entry: LevelObjectKindEntry): Array<TMenuEntry> => {
         const option: Nullable<TLevelVisibleOption> = getLevelVisibleOption(entry.kind);

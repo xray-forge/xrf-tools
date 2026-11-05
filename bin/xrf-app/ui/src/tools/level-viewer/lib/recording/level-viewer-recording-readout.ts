@@ -5,7 +5,7 @@ import { Nullable } from "@xrf/types";
 /** What a recording dropped, running or written: frames, and blocks of sound. */
 export type TRecordingDrops = Pick<RecordingOutcome, "droppedFrames" | "droppedSound">;
 
-/** How a recording reads to the user, running in the Capture control's tooltip and written in its toast and notice. */
+/** How a recording reads to the user, running in the status bar and written in its toast and notice. */
 export class LevelViewerRecordingReadout {
   /**
    * @param progress - Where a recording stands, null before its first word.

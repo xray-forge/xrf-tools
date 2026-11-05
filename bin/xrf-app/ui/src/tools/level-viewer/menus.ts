@@ -12,14 +12,21 @@ export const LEVEL_VIEWER_VIEW_MENU: IMenu<"frame" | "objects"> = defineMenu({
   sections: ["frame", "objects"],
 });
 
-/** What the level viewer adds to File: the view written to a file and read back, and the screenshot. */
-export const LEVEL_VIEWER_FILE_MENU_EXTENSION: IMenuExtension<"view" | "screenshot"> = defineMenuExtension(FILE_MENU, {
+/** What the level viewer does with the open level, a submenu a kind: Capture ▸ first. */
+export const LEVEL_VIEWER_ACTIONS_MENU: IMenu<"capture"> = defineMenu({
+  id: "level-viewer/actions",
+  label: "Actions",
+  sections: ["capture"],
+});
+
+/** What the level viewer adds to File: the view written to a file and read back. */
+export const LEVEL_VIEWER_FILE_MENU_EXTENSION: IMenuExtension<"view"> = defineMenuExtension(FILE_MENU, {
   owner: EToolId.LEVEL_VIEWER,
-  sections: ["view", "screenshot"],
+  sections: ["view"],
 });
 
 /** Sections the level viewer adds to the core menus. */
 export const LEVEL_VIEWER_MENU_EXTENSIONS: ReadonlyArray<IMenuExtension> = [LEVEL_VIEWER_FILE_MENU_EXTENSION];
 
 /** Menus the level viewer adds between File and Help. */
-export const LEVEL_VIEWER_MENUS: ReadonlyArray<IMenu> = [LEVEL_VIEWER_VIEW_MENU];
+export const LEVEL_VIEWER_MENUS: ReadonlyArray<IMenu> = [LEVEL_VIEWER_VIEW_MENU, LEVEL_VIEWER_ACTIONS_MENU];

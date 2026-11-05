@@ -162,6 +162,23 @@ describe("Menubar", () => {
     expect(queryByRole("tooltip")).toBeNull();
   });
 
+  it("scrolls a menu taller than the window, a menu from under its button and a submenu by the window's height", async () => {
+    const { getByRole } = await renderExpanded([menu("View", [[submenu("Helpers", [[item("Props")]])]])]);
+    const button: HTMLElement = getByRole("menuitem", { name: "View" });
+
+    jest.spyOn(button, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 40, 30));
+    await userEvent.click(button);
+    await userEvent.keyboard("{ArrowDown}{ArrowRight}");
+
+    const view: HTMLElement = getByRole("menu", { name: "View" }).parentElement as HTMLElement;
+    const helpers: HTMLElement = getByRole("menu", { name: "Helpers" }).parentElement as HTMLElement;
+
+    expect(view).toHaveClass("overflow-y-auto");
+    expect(view.style.maxHeight).toBe("calc(100vh - 42px)");
+    expect(helpers).toHaveClass("overflow-y-auto");
+    expect(helpers.style.maxHeight).toBe("calc(100vh - 16px)");
+  });
+
   it("draws a switch with its state and a disabled row that cannot be chosen", async () => {
     const disabled: IMenubarItem = item("Reload", { isDisabled: true, shortcut: "F5" });
     const { getByRole, getByText } = await renderExpanded([

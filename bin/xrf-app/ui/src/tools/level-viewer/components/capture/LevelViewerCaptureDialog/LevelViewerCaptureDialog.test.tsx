@@ -9,7 +9,7 @@ import { mockLevelViewContainer, renderLevelView, TLevelViewRenderResult } from 
 import { mockSelectedLevelDescription } from "@/core/level/fixtures/level.mocks";
 import { clearLocalStorage } from "@/core/storage";
 import { mockFlow } from "@/fixtures/utils/flow";
-import { LevelViewerCaptureActions } from "@/tools/level-viewer/components/capture/LevelViewerCaptureActions";
+import { LevelViewerCaptureDialogHost } from "@/tools/level-viewer/components/capture/LevelViewerCaptureDialogHost";
 import { LevelViewerCaptureService } from "@/tools/level-viewer/services/level-viewer-capture";
 import { LevelViewerCaptureResultService } from "@/tools/level-viewer/services/level-viewer-capture-result";
 import { LevelViewerRecordingService } from "@/tools/level-viewer/services/level-viewer-recording";
@@ -23,7 +23,7 @@ function renderDialog(): TLevelViewRenderResult & { service: LevelViewerCaptureS
   jest.spyOn(LevelViewerCaptureService.prototype, "level", "get").mockReturnValue(mockSelectedLevelDescription());
 
   const rendered: TLevelViewRenderResult = renderLevelView(
-    <LevelViewerCaptureActions />,
+    <LevelViewerCaptureDialogHost />,
     mockLevelViewContainer([
       LevelViewerCaptureService,
       LevelViewerCaptureResultService,
