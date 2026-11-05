@@ -1,11 +1,7 @@
-//! Video written with its sound into one file through Media Foundation's Sink Writer, on Windows only: its libraries
-//! are delay-loaded, so the probe answers whether this Windows has them before anything binds to them.
+//! Video written with its sound into one file through Media Foundation's Sink Writer, on Windows only, which a recording
+//! and a burst's video write through alike.
 
-mod media_probe;
-#[cfg(windows)]
-mod media_session;
-#[cfg(windows)]
-mod media_sink;
+pub(crate) mod media;
 #[cfg(windows)]
 mod record_format;
 #[cfg(windows)]
@@ -19,11 +15,9 @@ mod record_summary;
 #[cfg(windows)]
 mod record_writer;
 
-pub use media_probe::MediaProbe;
+pub use media::MediaProbe;
 #[cfg(windows)]
-pub use media_session::MediaSession;
-#[cfg(windows)]
-pub use media_sink::MediaSink;
+pub use media::{MediaSession, MediaSink};
 #[cfg(windows)]
 pub use record_format::RecordFormat;
 #[cfg(windows)]

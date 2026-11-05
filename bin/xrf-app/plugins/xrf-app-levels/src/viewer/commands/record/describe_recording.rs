@@ -1,8 +1,8 @@
 use tauri::State;
 
 use crate::render::ShownLevels;
-use crate::viewer::record::MediaProbe;
 use crate::viewer::recording::RecordingAvailability;
+use crate::viewer::recording::writer::MediaProbe;
 
 /// Whether a viewport can be recorded here: Media Foundation loads and the audio started; why not where not.
 #[cfg_attr(feature = "typescript-bindings", specta::specta)]

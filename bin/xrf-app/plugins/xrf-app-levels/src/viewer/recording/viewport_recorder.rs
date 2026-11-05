@@ -12,7 +12,7 @@ use xrf_app_render::Renderer;
 use xrf_audio::{AudioClockAnchor, AudioMixerMeter, AudioServer, AudioTap, AudioTapBlock};
 use xrf_renderer::{RecordEvent, RecordFrame, RenderViewportId};
 
-use crate::viewer::record::{RecordFormat, RecordSample, RecordSoundFormat, RecordSummary, RecordWriter};
+use crate::viewer::recording::writer::{RecordFormat, RecordSample, RecordSoundFormat, RecordSummary, RecordWriter};
 use crate::viewer::recording::{RecordingOutcome, RecordingProgress};
 
 /// A viewport recorded with what its camera hears into one video, on a thread of its own: the renderer's frames as they

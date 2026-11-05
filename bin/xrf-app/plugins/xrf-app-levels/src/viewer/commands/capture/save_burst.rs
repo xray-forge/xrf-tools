@@ -11,7 +11,7 @@ use xrf_renderer::BurstEvent;
 use crate::render::{LevelAudio, ShownLevels};
 use crate::viewer::LevelViewerFolder;
 use crate::viewer::burst::{BurstCaptureRequest, BurstOutcome, BurstSound, BurstVideo, BurstWriter};
-use crate::viewer::record::MediaProbe;
+use crate::viewer::recording::writer::MediaProbe;
 
 /// Draw a burst of consecutive frames in a viewport and write each, with its G-buffer's marks, into a new folder of
 /// the level viewer's bursts named as asked, the sound its camera hears at the burst's times beside them, and the frames

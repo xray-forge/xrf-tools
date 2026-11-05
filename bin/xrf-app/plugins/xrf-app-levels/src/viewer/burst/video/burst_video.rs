@@ -10,9 +10,9 @@ use xrf_renderer::RenderBurst;
 #[cfg(windows)]
 use crate::viewer::burst::BurstSound;
 use crate::viewer::burst::{BurstSoundChunk, BurstVideoOutcome};
-use crate::viewer::record::MediaProbe;
+use crate::viewer::recording::writer::MediaProbe;
 #[cfg(windows)]
-use crate::viewer::record::{RecordFormat, RecordSample, RecordSoundFormat, RecordSummary, RecordWriter};
+use crate::viewer::recording::writer::{RecordFormat, RecordSample, RecordSoundFormat, RecordSummary, RecordWriter};
 
 /// A burst written as one video as it comes, `burst.mp4` in its folder: each frame handed over as it is read back,
 /// frame `k` shown from `k × step` for a step, and its sound from the first frame's start as the sound's thread renders

@@ -8,7 +8,6 @@ pub(crate) mod commands;
 pub(crate) mod cube;
 mod folder;
 pub(crate) mod map;
-pub(crate) mod record;
 pub(crate) mod recording;
 pub(crate) mod routes;
 

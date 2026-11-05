@@ -4,7 +4,9 @@ use std::thread::{self, JoinHandle};
 
 use xrf_app_core::TauriResult;
 
-use crate::viewer::record::{MediaProbe, MediaSession, MediaSink, RecordFormat, RecordSample, RecordSummary};
+use crate::viewer::recording::writer::{
+  MediaProbe, MediaSession, MediaSink, RecordFormat, RecordSample, RecordSummary,
+};
 
 /// A recording written as fragmented MP4 on a thread of its own, which holds Media Foundation and the Sink Writer for
 /// the recording's life: samples handed over queue a few deep, so one handed faster than the encoders take it waits.

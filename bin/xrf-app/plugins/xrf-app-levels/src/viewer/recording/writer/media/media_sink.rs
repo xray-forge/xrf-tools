@@ -15,7 +15,7 @@ use windows::Win32::Media::MediaFoundation::{
 };
 use windows::core::{GUID, HSTRING, Interface, PCWSTR};
 
-use crate::viewer::record::{RecordFormat, RecordResampler, RecordSample, RecordSoundFormat, RecordSummary};
+use crate::viewer::recording::writer::{RecordFormat, RecordResampler, RecordSample, RecordSoundFormat, RecordSummary};
 
 /// Media Foundation's Sink Writer writing one recording as fragmented MP4: H.264 High from frames handed over as RGB32,
 /// which the writer converts for the encoder, a hardware one where the GPU has it; and AAC from 16-bit PCM, sound at a
