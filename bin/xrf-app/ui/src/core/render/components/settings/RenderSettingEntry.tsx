@@ -1,4 +1,4 @@
-import { EditorPopoverCheckboxRow } from "@xrf/ui/editor/popover-row";
+import { EditorPopoverCheckboxRow, EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { ReactElement, useCallback } from "react";
@@ -12,9 +12,6 @@ import {
   TRenderSettings,
 } from "@/core/render/lib/features/render-setting";
 import { IRenderFeatureSettings } from "@/core/render/lib/settings/choice/render-feature-settings";
-
-/** A note a declaration has an entry say under its row, as a mode's explanation of what it draws. */
-const NOTE_CLASS_NAME: string = "pb-1 text-xs text-text-secondary";
 
 export interface IRenderSettingEntryProps<G, K extends keyof G> extends BaseComponentProps {
   /** How each setting of the group is set. */
@@ -73,7 +70,7 @@ export function RenderSettingEntry<G, K extends keyof G>({
             onChange={(isChecked: boolean) => onChange(isChecked as G[K])}
           />
 
-          {note ? <p className={NOTE_CLASS_NAME}>{note}</p> : null}
+          {note ? <EditorPopoverNote>{note}</EditorPopoverNote> : null}
         </>
       );
 
@@ -94,7 +91,7 @@ export function RenderSettingEntry<G, K extends keyof G>({
           />
 
           {setting.isEntryDescribed ? (
-            <p className={NOTE_CLASS_NAME}>{setting.explain?.(value as never) ?? description}</p>
+            <EditorPopoverNote>{setting.explain?.(value as never) ?? description}</EditorPopoverNote>
           ) : null}
         </>
       );
@@ -115,7 +112,7 @@ export function RenderSettingEntry<G, K extends keyof G>({
             onChange={(moved: number) => onChange(moved as G[K])}
           />
 
-          {note ? <p className={NOTE_CLASS_NAME}>{note}</p> : null}
+          {note ? <EditorPopoverNote>{note}</EditorPopoverNote> : null}
         </>
       );
 

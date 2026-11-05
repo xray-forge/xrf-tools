@@ -9,11 +9,11 @@ import {
 import { Nullable } from "@xrf/types";
 import { EditorPopoverAction } from "@xrf/ui/editor/popover-action";
 import { EditorPopoverContent } from "@xrf/ui/editor/popover-content";
+import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { CheckboxFormRow } from "@xrf/ui/form/checkbox-row";
 import { IChoiceFormRowOption } from "@xrf/ui/form/choice-row";
 import { HighQualityIcon } from "@xrf/ui/icons/high-quality";
-import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, useCallback } from "react";
 
 import { LevelSettingsResetButton } from "@/core/level/components/preview/toolbar/LevelSettingsResetButton";
@@ -135,11 +135,7 @@ export function LevelImageQualityAction({
           onChange={(antialiasing: RenderAntialiasing) => viewService.setFeatures({ ...features, antialiasing })}
         />
 
-        {isAvailable && dlssProblem ? (
-          <Typography className={"text-text-secondary"} variant={"caption"}>
-            {dlssProblem}
-          </Typography>
-        ) : null}
+        {isAvailable && dlssProblem ? <EditorPopoverNote>{dlssProblem}</EditorPopoverNote> : null}
 
         <RenderSettingEntry
           settings={RENDER_UPSCALING_SETTINGS}
@@ -178,9 +174,9 @@ export function LevelImageQualityAction({
         />
 
         {isDlss ? (
-          <Typography className={"text-text-secondary"} variant={"caption"}>
+          <EditorPopoverNote>
             {isRayReconstructed ? describeRayReconstructionPreset(rayPreset) : describeDlssPreset(dlssPreset)}
-          </Typography>
+          </EditorPopoverNote>
         ) : null}
 
         <RenderSettingEntry
@@ -193,9 +189,9 @@ export function LevelImageQualityAction({
         />
 
         {isSharpenable ? null : (
-          <Typography className={"text-text-secondary"} variant={"caption"}>
+          <EditorPopoverNote>
             Sharpens only a frame drawn smaller than the viewport or resolved temporally.
-          </Typography>
+          </EditorPopoverNote>
         )}
 
         <RenderValueChoice

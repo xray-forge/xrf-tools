@@ -3,9 +3,9 @@ import { ReactElement, ReactNode, useCallback } from "react";
 
 import { EditorPopoverAction } from "#/editor/popover-action";
 import { EditorPopoverContent } from "#/editor/popover-content";
+import { EditorPopoverNote } from "#/editor/popover-row";
 import { BaseComponentProps } from "#/element-types";
 import { CheckboxFormRow } from "#/form/checkbox-row";
-import { Typography } from "#/material/typography";
 
 export interface IEditorPopoverToggleProps extends BaseComponentProps {
   /** Stable accessible name, independent of whether the toggle is on. */
@@ -76,13 +76,7 @@ export function EditorPopoverToggle({
           onChange={onToggle}
         />
 
-        {reason ? (
-          <Typography className={"text-text-secondary"} variant={"caption"}>
-            {reason}
-          </Typography>
-        ) : (
-          children
-        )}
+        {reason ? <EditorPopoverNote>{reason}</EditorPopoverNote> : children}
       </EditorPopoverContent>
     </EditorPopoverAction>
   );

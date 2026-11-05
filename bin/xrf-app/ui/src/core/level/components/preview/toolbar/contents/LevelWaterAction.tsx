@@ -1,6 +1,7 @@
 import { useInjection } from "@wirestate/react";
 import { formatPercent } from "@xrf/format";
 import { ERenderWaterMode } from "@xrf/ipc/types/xrf-renderer";
+import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { EditorPopoverToggle } from "@xrf/ui/editor/popover-toggle";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { WaterIcon } from "@xrf/ui/icons/water";
@@ -102,13 +103,13 @@ export function LevelWaterAction({
       />
 
       {isEnhanced ? (
-        <p className={"text-xs text-text-secondary"}>
+        <EditorPopoverNote>
           {!reflections.isWaterReflected
             ? "It reflects the sky's cube alone: Reflections, Water reflects the screen."
             : isReflectionTraced
               ? "It reflects the screen, what that misses ray-traced: Reflections, Water and Ray tracing."
               : "It reflects the screen, the sky's cube where that misses: Reflections, Water and Ray tracing."}
-        </p>
+        </EditorPopoverNote>
       ) : null}
 
       <RenderSettingEntries

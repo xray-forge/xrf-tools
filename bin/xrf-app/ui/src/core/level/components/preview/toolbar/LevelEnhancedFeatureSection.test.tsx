@@ -28,7 +28,12 @@ describe("LevelEnhancedFeatureSection", () => {
       descriptor
     );
 
-    expect(getByText(explainRenderVolumetricMode(ERenderVolumetricMode.ENGINE))).toBeInTheDocument();
+    // Said as a note under the toggle, not only on hovering it.
+    expect(
+      getByText(explainRenderVolumetricMode(ERenderVolumetricMode.ENGINE)).closest(
+        "[data-testid='editor-popover-note']"
+      )
+    ).not.toBeNull();
     expect(getByRole("slider", { name: "Intensity" })).toBeDisabled();
 
     await userEvent.click(getByRole("checkbox", { name: "Enhanced volumetric light" }));
@@ -40,7 +45,7 @@ describe("LevelEnhancedFeatureSection", () => {
     // The Base preset's own reach, which the settings keep.
     expect(getByRole("slider", { name: "Distance" })).toHaveAttribute("aria-valuetext", "80 m");
 
-    await userEvent.click(getByRole("button", { name: "Set the volumetric light back to the settings" }));
+    await userEvent.click(getByRole("button", { name: "Enhanced volumetric light: Back to the settings" }));
 
     expect(view.features.volumetric).toEqual({});
     expect(getByRole("slider", { name: "Intensity" })).toBeDisabled();

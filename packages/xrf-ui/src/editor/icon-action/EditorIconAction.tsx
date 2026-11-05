@@ -13,6 +13,8 @@ interface IEditorIconActionProps
     Pick<AriaAttributes, "aria-controls" | "aria-expanded" | "aria-haspopup" | "aria-pressed"> {
   label: string;
   description: string;
+  /** Heads the tooltip above the description, naming what the action is before what it stands at. */
+  title?: string;
   icon: ReactNode;
   isDisabled?: boolean;
   /** The control is doing something: a toggle that is on, or a value that differs from its default. */
@@ -23,7 +25,8 @@ interface IEditorIconActionProps
 }
 
 /**
- * Compact editor action with an accessible name and a tooltip that remains available while disabled.
+ * Compact editor action with an accessible name and a tooltip that remains available while disabled, headed by its
+ * title where it has one.
  */
 export function EditorIconAction({
   "data-testid": dataTestId = "editor-icon-action",
@@ -31,6 +34,7 @@ export function EditorIconAction({
   className,
   label,
   description,
+  title,
   icon,
   isDisabled = false,
   isActive = false,
@@ -40,7 +44,19 @@ export function EditorIconAction({
   ...rest
 }: IEditorIconActionProps): ReactElement {
   return (
-    <Tooltip describeChild title={description}>
+    <Tooltip
+      describeChild
+      title={
+        title && title !== description ? (
+          <span className={"flex flex-col gap-0.5"}>
+            <span className={"font-semibold"}>{title}</span>
+            <span className={"opacity-80"}>{description}</span>
+          </span>
+        ) : (
+          description
+        )
+      }
+    >
       <span className={"inline-flex"}>
         <IconButton
           {...rest}

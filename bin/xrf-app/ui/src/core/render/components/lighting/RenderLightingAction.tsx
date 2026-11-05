@@ -41,7 +41,7 @@ export function RenderLightingAction({
       description={
         isDisabled && unavailableDescription
           ? unavailableDescription
-          : `Lighting: ${formatDegrees(lighting.sunElevation)} up, ${formatNumber(lighting.sunIntensity, 2)} light`
+          : `Sun ${formatDegrees(lighting.sunElevation)} up, ${formatNumber(lighting.sunIntensity, 2)} light`
       }
       icon={<WbSunnyIcon />}
       isDisabled={isDisabled}

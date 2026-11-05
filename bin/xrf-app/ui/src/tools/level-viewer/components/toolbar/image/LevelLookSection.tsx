@@ -1,3 +1,4 @@
+import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { Typography } from "@xrf/ui/material/typography";
 import { ReactElement, ReactNode } from "react";
@@ -30,7 +31,7 @@ export function LevelLookSection({
         {title}
       </Typography>
 
-      {note ? <p className={"-mt-2 text-xs text-text-secondary"}>{note}</p> : null}
+      {note ? <EditorPopoverNote className={"-mt-1"}>{note}</EditorPopoverNote> : null}
 
       {children}
     </section>

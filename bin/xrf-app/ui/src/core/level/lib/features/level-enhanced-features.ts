@@ -24,8 +24,6 @@ export type TLevelEnhancedFeatureMode<K extends TLevelEnhancedFeatureKey> = IRen
 export interface ILevelEnhancedFeature<K extends TLevelEnhancedFeatureKey> {
   /** Names the toggle that draws it enhanced. */
   label: string;
-  /** What it is called where its reset is named. */
-  subject: string;
   /** What a mode draws, said under the toggle. */
   explain: (mode: TLevelEnhancedFeatureMode<K>) => string;
   /** How each of its settings is set. */
@@ -41,27 +39,23 @@ export const LEVEL_ENHANCED_FEATURES: { readonly [K in TLevelEnhancedFeatureKey]
     label: "Debanding",
     names: [],
     settings: RENDER_DEBANDING_SETTINGS,
-    subject: "debanding",
   },
   glass: {
     explain: explainRenderGlassMode,
     label: "Enhanced glass",
     names: ["refraction"],
     settings: RENDER_GLASS_SETTINGS,
-    subject: "glass",
   },
   indirectLight: {
     explain: explainRenderIndirectLightMode,
     label: "Indirect light",
     names: ["intensity", "radius", "steps"],
     settings: RENDER_INDIRECT_LIGHT_SETTINGS,
-    subject: "indirect light",
   },
   volumetric: {
     explain: explainRenderVolumetricMode,
     label: "Enhanced volumetric light",
     names: ["intensity", "anisotropy", "distance"],
     settings: RENDER_VOLUMETRIC_SETTINGS,
-    subject: "volumetric light",
   },
 };

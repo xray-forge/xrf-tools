@@ -30,7 +30,9 @@ beforeEach(() => {
 
 describe("LevelCameraAction", () => {
   it("says what the camera is set to without being opened", () => {
-    expect(renderAction().getByTitle(/Camera: 68°, 12 m\/s/)).toBeInTheDocument();
+    expect(renderAction().getByRole("button", { name: "Camera" })).toHaveAccessibleDescription(
+      "68° field of view, 12 m/s"
+    );
   });
 
   it("offers what a person flying a level changes", async () => {

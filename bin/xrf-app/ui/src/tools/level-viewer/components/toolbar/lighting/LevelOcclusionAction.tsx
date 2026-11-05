@@ -6,6 +6,7 @@ import {
   RenderAmbientOcclusionMethod,
 } from "@xrf/ipc/types/xrf-renderer";
 import { EditorPopoverGroup, EditorPopoverGroupSection } from "@xrf/ui/editor/popover-group";
+import { EditorPopoverNote } from "@xrf/ui/editor/popover-row";
 import { BaseComponentProps } from "@xrf/ui/element-types";
 import { GradientIcon } from "@xrf/ui/icons/gradient";
 import { Button } from "@xrf/ui/material/button";
@@ -124,11 +125,11 @@ export function LevelOcclusionAction({
           onChange={(method: RenderAmbientOcclusionMethod) => set({ method })}
         />
 
-        <p className={"text-xs text-text-secondary"}>
+        <EditorPopoverNote>
           {isUntraced
             ? "RTAO needs a GPU that traces rays: VBAO searches in its place."
             : explainRenderAmbientOcclusionMethod(occlusion.method)}
-        </p>
+        </EditorPopoverNote>
 
         {isGtao ? (
           <RenderSettingEntries

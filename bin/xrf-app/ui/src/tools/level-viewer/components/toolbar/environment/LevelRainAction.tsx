@@ -132,7 +132,7 @@ export function LevelRainAction({
 
       <EditorPopoverGroupSection
         label={"Puddles"}
-        description={explainRenderRainMode(puddles.mode)}
+        note={explainRenderRainMode(puddles.mode)}
         isOn={isPuddled}
         onToggle={() => setPuddles({ mode: isPuddled ? ERenderRainMode.ENGINE : ERenderRainMode.ENHANCED })}
       >
