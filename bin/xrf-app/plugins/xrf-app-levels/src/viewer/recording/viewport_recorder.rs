@@ -21,6 +21,7 @@ use crate::viewer::recording::{RecordingOutcome, RecordingProgress};
 /// on from it, so a block the tap had no room for is a gap, not a shift. It ends when stopped, or by itself where the
 /// renderer stops recording or the audio goes on at another rate, the file finished to there either way.
 pub struct ViewportRecorder {
+  renderer: Renderer,
   viewport: RenderViewportId,
   file: PathBuf,
   is_stopped: Arc<AtomicBool>,
@@ -114,6 +115,7 @@ impl ViewportRecorder {
       .map_err(|error| format!("The recording cannot start: {error}"))?;
 
     Ok(Self {
+      renderer: renderer.clone(),
       viewport,
       file,
       is_stopped,
@@ -136,13 +138,15 @@ impl ViewportRecorder {
     self.thread.as_ref().is_none_or(JoinHandle::is_finished)
   }
 
-  /// Stops it and finishes the file, answering what was written.
+  /// Stops it and finishes the file, answering what was written. The renderer is told before the next command, so a
+  /// recording of a viewport drawing nothing holds off no other long job, and a recording started next follows it.
   ///
   /// # Errors
   ///
   /// Returns an error when the file could not be finished, or its thread stopped on a panic.
   pub fn stop(mut self) -> TauriResult<RecordingOutcome> {
     self.is_stopped.store(true, Ordering::Release);
+    self.renderer.stop_record(self.viewport);
 
     self
       .thread
