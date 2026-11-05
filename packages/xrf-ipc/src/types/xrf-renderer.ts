@@ -3018,7 +3018,10 @@ export type RenderWaterSettings = {
   isSoft: boolean;
   /** Whether water writes the distortion it causes, moving what is seen through it. */
   isDistorted: boolean;
-  /** How high the waves lift the surface, in metres: `W_POSITION_SHIFT_HEIGHT`, 1/60 on the setting's step. */
+  /**
+   * How high the waves lift the engine's water, in metres: `W_POSITION_SHIFT_HEIGHT`, 1/60 on the setting's step. The
+   * enhanced water stands flat, its waves in its maps.
+   */
   waveHeight: number | null;
   /** How fast they run: `W_POSITION_SHIFT_SPEED`. */
   waveSpeed: number | null;

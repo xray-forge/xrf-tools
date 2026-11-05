@@ -18,7 +18,8 @@ pub struct RenderWaterSettings {
   pub is_soft: bool,
   /// Whether water writes the distortion it causes, moving what is seen through it.
   pub is_distorted: bool,
-  /// How high the waves lift the surface, in metres: `W_POSITION_SHIFT_HEIGHT`, 1/60 on the setting's step.
+  /// How high the waves lift the engine's water, in metres: `W_POSITION_SHIFT_HEIGHT`, 1/60 on the setting's step. The
+  /// enhanced water stands flat, its waves in its maps.
   #[setting(min = 0, max = 0.2)]
   pub wave_height: f32,
   /// How fast they run: `W_POSITION_SHIFT_SPEED`.
