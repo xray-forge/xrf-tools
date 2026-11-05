@@ -1,9 +1,7 @@
 pub(crate) mod close_level;
-pub(crate) mod command_music;
 pub(crate) mod describe_console_defaults;
 pub(crate) mod describe_level_map;
 pub(crate) mod describe_objects;
-pub(crate) mod describe_sound;
 pub(crate) mod describe_spawn_object;
 pub(crate) mod describe_start;
 pub(crate) mod describe_surfaces;
@@ -14,3 +12,4 @@ pub(crate) mod open_level;
 pub(crate) mod read_level_cycle;
 pub(crate) mod restore_level;
 pub(crate) mod show_level;
+pub(crate) mod sound;

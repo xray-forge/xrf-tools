@@ -16,7 +16,7 @@ use xrf_renderer::RenderBurst;
 use xrf_test_utils::GeneratedResources;
 
 use crate::viewer::burst::{BurstSoundChunk, BurstVideo, BurstVideoOutcome};
-use crate::viewer::record::{
+use crate::viewer::recording::writer::{
   MediaProbe, MediaSession, RecordFormat, RecordSample, RecordSoundFormat, RecordSummary, RecordWriter,
 };
 

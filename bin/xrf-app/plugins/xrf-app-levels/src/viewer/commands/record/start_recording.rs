@@ -10,7 +10,7 @@ use xrf_renderer::{RenderFrameReport, RenderViewportId};
 
 use crate::render::ShownLevels;
 use crate::viewer::LevelViewerFolder;
-use crate::viewer::record::MediaProbe;
+use crate::viewer::recording::writer::MediaProbe;
 use crate::viewer::recording::{LevelRecordings, RecordingProgress};
 
 /// Record a viewport with what its camera hears into a new video of the level viewer's recordings named as asked, at

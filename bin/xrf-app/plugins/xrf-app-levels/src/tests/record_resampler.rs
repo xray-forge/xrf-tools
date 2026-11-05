@@ -3,7 +3,7 @@
 
 use std::f64::consts::TAU;
 
-use crate::viewer::record::RecordResampler;
+use crate::viewer::recording::writer::RecordResampler;
 
 /// Interleaved stereo of `frames` at `rate`, a sine of `frequency` at half scale in both channels.
 fn sine(rate: u32, frames: usize, frequency: f64) -> Vec<f32> {
